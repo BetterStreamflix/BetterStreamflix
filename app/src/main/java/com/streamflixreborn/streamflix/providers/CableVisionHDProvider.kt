@@ -1,42 +1,53 @@
 package com.streamflixreborn.streamflix.providers
 
 import android.util.Base64
-import com.tanasi.retrofit_jsoup.converter.JsoupConverterFactory
-import com.streamflixreborn.streamflix.models.Category
-import com.streamflixreborn.streamflix.models.Episode
-import com.streamflixreborn.streamflix.models.Genre
-import com.streamflixreborn.streamflix.models.Movie
-import com.streamflixreborn.streamflix.models.People
-import com.streamflixreborn.streamflix.models.Season
-import com.streamflixreborn.streamflix.models.Show
-import com.streamflixreborn.streamflix.models.TvShow
-import com.streamflixreborn.streamflix.models.Video
+import android.util.Log
+import com.streamflixreborn.streamflix.models.*
 import com.streamflixreborn.streamflix.models.cablevisionhd.toTvShows
-import com.streamflixreborn.streamflix.utils.DnsResolver
+import com.tanasi.retrofit_jsoup.converter.JsoupConverterFactory
+import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
-import okhttp3.OkHttpClient
+import okhttp3.*
 import org.jsoup.nodes.Document
 import retrofit2.Retrofit
 import retrofit2.http.GET
 import retrofit2.http.Header
 import retrofit2.http.Url
 import java.util.concurrent.TimeUnit
-import kotlinx.coroutines.Deferred
-import kotlinx.coroutines.awaitAll
+import com.streamflixreborn.streamflix.utils.JsUnpacker
 
-object CableVisionHDProvider : com.streamflixreborn.streamflix.providers.Provider {
+object CableVisionHDProvider : Provider {
 
     override val name = "CableVisionHD"
     override val baseUrl = "https://www.cablevisionhd.com"
     override val logo = "https://i.ibb.co/4gMQkN2b/imagen-2025-09-05-212536248.png"
     override val language = "es"
 
+    private const val TAG = "CableVisionHDProvider"
+    private const val USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/118.0.0.0 Safari/537.36"
+
     private val client = OkHttpClient.Builder()
         .connectTimeout(30, TimeUnit.SECONDS)
         .readTimeout(30, TimeUnit.SECONDS)
         .writeTimeout(30, TimeUnit.SECONDS)
-        .dns(DnsResolver.doh)
+        // Implementación de CookieJar interna (Estilo AnimeOnlineLat)
+        .cookieJar(object : CookieJar {
+            private val cookieStore = HashMap<String, List<Cookie>>()
+            override fun saveFromResponse(url: HttpUrl, cookies: List<Cookie>) {
+                cookieStore[url.host] = cookies
+            }
+            override fun loadForRequest(url: HttpUrl): List<Cookie> {
+                return cookieStore[url.host] ?: ArrayList()
+            }
+        })
+        .addInterceptor { chain ->
+            val request = chain.request().newBuilder()
+                .header("User-Agent", USER_AGENT)
+                .build()
+            chain.proceed(request)
+        }
         .build()
 
     private val service = Retrofit.Builder()
@@ -44,73 +55,111 @@ object CableVisionHDProvider : com.streamflixreborn.streamflix.providers.Provide
         .addConverterFactory(JsoupConverterFactory.create())
         .client(client)
         .build()
-        .create(CableVisionHDService::class.java)
+        .create(Service::class.java)
 
-
-    interface CableVisionHDService {
+    interface Service {
         @GET
         suspend fun getPage(
             @Url url: String,
-            @Header("Referer") referer: String
+            @Header("Referer") referer: String = baseUrl
         ): Document
     }
 
     override suspend fun getHome(): List<Category> = coroutineScope {
-        val document = service.getPage(baseUrl, referer = baseUrl)
-        val allShows = document.toTvShows()
-
         val categories = mutableListOf<Deferred<Category>>()
-        categories.add(async {
-            Category(
-                name = "Todos los Canales",
-                list = allShows
-            )
-        })
+        try {
+            val document = service.getPage(baseUrl)
 
-        categories.add(async {
-            Category(
-                name = "Deportes",
-                list = allShows.filter { it.title.contains("sports", ignoreCase = true) || it.title.contains("espn", ignoreCase = true) }
-            )
-        })
+            // Verificación básica de que cargó el sitio
+            if (document.select("div.channels").isEmpty()) {
+                Log.e(TAG, "No se encontraron canales en el home. Posible bloqueo o cambio de estructura.")
+            }
 
-        categories.add(async {
-            Category(
-                name = "Noticias",
-                list = allShows.filter { it.title.contains("news", ignoreCase = true) || it.title.contains("noticias", ignoreCase = true) }
-            )
-        })
+            val allShows = document.toTvShows()
 
-        categories.add(async {
-            Category(
-                name = "Cine y Series",
-                list = allShows.filter { it.title.contains("hbo", ignoreCase = true) || it.title.contains("max", ignoreCase = true) || it.title.contains("cine", ignoreCase = true) }
-            )
-        })
-        categories.add(async {
-            val creador = TvShow(
-                id = "creador-info", // ID especial
-                title = "Reportar problemas con proveedores en ES.",
-                poster = "https://i.ibb.co/dsknGBHT/Imagen-de-Whats-App-2025-09-06-a-las-19-00-50-e8e5bcaa.jpg"
-            )
-            val apoyo = TvShow(
-                id = "apoyo-info", // ID especial
-                title = "Apoya Si te gusta este Proveedor",
-                poster = "https://i.ibb.co/B234HsZg/APOYO-NANDO.png"
-            )
-            Category(
-                name = "Acerca de este Proveedor",
-                list = listOf(creador, apoyo)
-            )
-        })
-        categories.awaitAll().filter { it.list.isNotEmpty() }
+            // 1. Todos los canales
+            categories.add(async {
+                Category(name = "Todos los Canales", list = allShows)
+            })
+
+            // 2. Deportes
+            categories.add(async {
+                Category(
+                    name = "Deportes",
+                    list = allShows.filter {
+                        it.title.contains("sport", ignoreCase = true) ||
+                                it.title.contains("espn", ignoreCase = true) ||
+                                it.title.contains("fox", ignoreCase = true)
+                    }
+                )
+            })
+
+            // 3. Noticias
+            categories.add(async {
+                Category(
+                    name = "Noticias",
+                    list = allShows.filter {
+                        it.title.contains("news", ignoreCase = true) ||
+                                it.title.contains("noticias", ignoreCase = true) ||
+                                it.title.contains("cnn", ignoreCase = true)
+                    }
+                )
+            })
+
+            // 4. Cine y Entretenimiento
+            categories.add(async {
+                Category(
+                    name = "Cine y Series",
+                    list = allShows.filter {
+                        it.title.contains("hbo", ignoreCase = true) ||
+                                it.title.contains("max", ignoreCase = true) ||
+                                it.title.contains("cine", ignoreCase = true) ||
+                                it.title.contains("warner", ignoreCase = true) ||
+                                it.title.contains("star", ignoreCase = true)
+                    }
+                )
+            })
+
+            // 5. Info Especial
+            categories.add(async {
+                val creador = TvShow(
+                    id = "creador-info",
+                    title = "Reportar problemas",
+                    poster = "https://i.ibb.co/dsknGBHT/Imagen-de-Whats-App-2025-09-06-a-las-19-00-50-e8e5bcaa.jpg"
+                )
+                val apoyo = TvShow(
+                    id = "apoyo-info",
+                    title = "Apoya al Proveedor",
+                    poster = "https://i.ibb.co/GQypMpS7/aPOYA.png"
+                )
+                val donate = TvShow(
+                    id = "apoyo-info",
+                    title = "Apoya al Proveedor",
+                    poster = "https://i.ibb.co/C3LsHmth/buy-me-a-Coffe.png"
+                )
+                Category(
+                    name = "Información",
+                    list = listOf(creador, apoyo, donate)
+                )
+            })
+
+            categories.awaitAll().filter { it.list.isNotEmpty() }
+
+        } catch (e: Exception) {
+            Log.e(TAG, "Error en getHome: ${e.message}")
+            emptyList()
+        }
     }
 
     override suspend fun search(query: String, page: Int): List<Show> {
-        val document = service.getPage(baseUrl, referer = baseUrl)
-        val allShows = document.toTvShows()
-        return allShows.filter {
-            it.title.contains(query, ignoreCase = true)
+        return try {
+            // CableVision carga todo en el home, filtramos localmente
+            val document = service.getPage(baseUrl)
+            val allShows = document.toTvShows()
+            allShows.filter { it.title.contains(query, ignoreCase = true) }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error en search: ", e)
+            emptyList()
         }
     }
 
@@ -118,115 +167,205 @@ object CableVisionHDProvider : com.streamflixreborn.streamflix.providers.Provide
 
     override suspend fun getTvShows(page: Int): List<TvShow> {
         if (page > 1) return emptyList()
-        val document = service.getPage(baseUrl, referer = baseUrl)
-        return document.toTvShows()
+        return try {
+            val document = service.getPage(baseUrl)
+            document.toTvShows()
+        } catch (e: Exception) {
+            Log.e(TAG, "Error en getTvShows: ", e)
+            emptyList()
+        }
     }
 
     override suspend fun getMovie(id: String): Movie = throw NotImplementedError()
 
     override suspend fun getTvShow(id: String): TvShow {
-        when (id) {
-            "creador-info" -> {
-                return TvShow(
-                    id = id,
-                    title = "Reportar problemas con proveedores en ES.",
-                    poster = "https://i.ibb.co/dsknGBHT/Imagen-de-Whats-App-2025-09-06-a-las-19-00-50-e8e5bcaa.jpg",
-                    banner = "https://i.ibb.co/dsknGBHT/Imagen-de-Whats-App-2025-09-06-a-las-19-00-50-e8e5bcaa.jpg",
-                    overview = "¡Hola a todos!\n" +
-                            "\n" +
-                            "Les presento este nuevo proveedor, que ha sido desarrollado gracias a la fantástica colaboración de \uD83D\uDC8E@NandoGT\uD83D\uDC8E y \uD83D\uDC8E@Nandofs\uD83D\uDC8E. ¡Un excelente trabajo en equipo!\n" +
-                            "\n" +
-                            "Soporte y Reporte de Errores\n" +
-                            "Si llegan a encontrar algún problema o error con los proveedores para contenido en español (Latinoamérica) que he creado, por favor no duden en contactarme para reportarlo. De esta manera, podré trabajar en una solución lo antes posible.\n" +
-                            "\n" +
-                            "¿Interesado en el proveedor?\n" +
-                            "Si tienes curiosidad, quieres implementarlo o tienes alguna consulta sobre su funcionamiento, ¡pregunta con toda confianza! Estaré encantado de ayudarte.\n" +
-                            "\n" +
-                            "Agradecimientos Especiales\n" +
-                            "Finalmente, quiero extender un agradecimiento a todas las personas que aportan a este proyecto, y de manera muy especial a su autor principal, Lory-Stan TANASI (stantanasi.github.io), por su increíble trabajo y dedicación.\n" +
-                            "\n" +
-                            "¡Gracias a todos por su apoyo!",
-                    seasons = emptyList()
-                )
-            }
-            "apoyo-info" -> {
-                return TvShow(
-                    id = id,
-                    title = "Apoya Si te gusta este Proveedor",
-                    poster = "https://i.ibb.co/B234HsZg/APOYO-NANDO.png",
-                    banner = "https://i.ibb.co/B234HsZg/APOYO-NANDO.png",
-                    overview = "Si disfrutas usando este proveedor, te invito a considerar apoyar mi trabajo y, a su vez, al proyecto principal de Streamflix. Saber que valoras nuestro esfuerzo nos anima a seguir dedicándole tiempo y pasión a este hermoso proyecto.\n" +
-                            "\n" +
-                            "Para colaborar, simplemente escanea el siguiente código QR.\n" +
-                            "\n" +
-                            "¡Cualquier aporte, por pequeño que sea, hace una gran diferencia!",
-                    seasons = emptyList()
-                )
-            }
+        if (id == "creador-info" || id == "apoyo-info") return getInfoItem(id)
+
+        return try {
+            val fullUrl = if (id.startsWith("http")) id else "$baseUrl/$id"
+            val document = service.getPage(fullUrl)
+
+            val title = document.selectFirst("div.card-body h2")?.text()
+                ?: document.selectFirst("h1")?.text()
+                ?: "Canal en Vivo"
+
+            val poster = document.selectFirst("div.card-body img")?.attr("src")
+            val overview = document.selectFirst("div.card-body p")?.text() ?: "Transmisión en directo"
+
+            // Ajustar URL del poster
+            val finalPoster = poster?.let { if (!it.startsWith("http")) "$baseUrl/$it" else it }
+
+            val season = Season(id = id, number = 1, title = "En Vivo", episodes = listOf(
+                Episode(id = id, number = 1, title = "Señal en Directo", poster = finalPoster)
+            ))
+
+            TvShow(
+                id = id,
+                title = title,
+                overview = overview,
+                poster = finalPoster,
+                banner = finalPoster,
+                seasons = listOf(season)
+            )
+        } catch (e: Exception) {
+            Log.e(TAG, "Error en getTvShow: ", e)
+            TvShow(id = id, title = "Error de carga")
         }
-        val document = service.getPage(id, referer = baseUrl)
-
-        val title = document.selectFirst("div.card-body h2")?.text() ?: ""
-        val poster = document.selectFirst("div.card-body img")?.attr("src")
-        val overview = document.selectFirst("div.card-body p")?.text()
-
-        val season = Season(id = id, number = 1, title = "Ver en Vivo")
-
-        return TvShow(
-            id = id,
-            title = title,
-            overview = overview,
-            poster = poster?.let { if (!it.startsWith("http")) "$baseUrl/$it" else it },
-            banner = poster?.let { if (!it.startsWith("http")) "$baseUrl/$it" else it },
-            seasons = listOf(season)
-        )
     }
 
     override suspend fun getEpisodesBySeason(seasonId: String): List<Episode> {
-        val episode = Episode(id = seasonId, number = 1, title = "Canal en Vivo")
-        return listOf(episode)
+        // Retornamos un episodio dummy que apunta al mismo canal
+        return listOf(Episode(id = seasonId, number = 1, title = "Señal en Directo"))
     }
 
     override suspend fun getGenre(id: String, page: Int): Genre = throw NotImplementedError()
-
     override suspend fun getPeople(id: String, page: Int): People = throw NotImplementedError()
 
     override suspend fun getServers(id: String, videoType: Video.Type): List<Video.Server> {
-        val document = service.getPage(id, referer = baseUrl)
-        val serverElements = document.select("a.btn.btn-md[target=iframe]")
-        return serverElements.map {
-            Video.Server(
-                id = it.attr("href"),
-                name = it.text()
-            )
+        return try {
+            val fullUrl = if (id.startsWith("http")) id else "$baseUrl/$id"
+            val document = service.getPage(fullUrl)
+
+            val servers = mutableListOf<Video.Server>()
+            val serverElements = document.select("a.btn.btn-md[target=iframe]")
+
+            serverElements.forEach {
+                servers.add(Video.Server(
+                    id = it.attr("href"), // URL intermedia
+                    name = it.text().ifEmpty { "Opción Principal" }
+                ))
+            }
+
+            // Fallback si no hay botones pero hay iframe directo
+            if (servers.isEmpty() && document.select("iframe").isNotEmpty()) {
+                servers.add(Video.Server(id = fullUrl, name = "Directo"))
+            }
+
+            servers
+        } catch (e: Exception) {
+            Log.e(TAG, "Error en getServers: ", e)
+            emptyList()
         }
     }
 
     override suspend fun getVideo(server: Video.Server): Video {
-        val intermediateDocument = service.getPage(server.id, referer = baseUrl)
+        // Variables para el bucle de "taladro"
+        var currentUrl = if (server.name == "Directo") server.id else server.id
+        var currentReferer = if (server.name == "Directo") baseUrl else baseUrl
 
-        val finalIframeUrl = intermediateDocument.selectFirst("iframe")?.attr("src")
-            ?: throw Exception("No se encontró el iframe final en la página intermedia.")
+        Log.d(TAG, "🚀 Iniciando extracción recursiva en: $currentUrl")
 
-        val finalDocument = service.getPage(finalIframeUrl, referer = server.id)
+        var depth = 0
+        val maxDepth = 4 // Límite de seguridad para no caer en bucles infinitos
 
-        val script = finalDocument.selectFirst("script:containsData(const decodedURL)")?.data()
-            ?: finalDocument.selectFirst("script:containsData(var src)")?.data()
-            ?: throw Exception("No se encontró ningún script de video conocido.")
+        while (depth < maxDepth) {
+            depth++
+            try {
+                Log.d(TAG, "➡️ Nivel $depth: Analizando $currentUrl (Ref: $currentReferer)")
 
-        val videoUrl = when {
-            script.contains("const decodedURL") -> {
-                val encodedUrl = script.substringAfter("atob(\"").substringBefore("\"))))")
-                String(Base64.decode(String(Base64.decode(String(Base64.decode(encodedUrl, Base64.DEFAULT)), Base64.DEFAULT)), Base64.DEFAULT))
+                val document = service.getPage(currentUrl, referer = currentReferer)
+                val html = document.html()
+
+                // --- FASE 1: BUSCAR VIDEO EN EL NIVEL ACTUAL ---
+
+                // A. M3U8 Directo
+                val m3u8Regex = Regex("""["'](https?://[^"']+\.m3u8[^"']*)["']""")
+                m3u8Regex.find(html)?.let {
+                    val url = it.groupValues[1].replace("\\/", "/") // Limpieza importante
+                    Log.d(TAG, "✅ ¡Encontrado M3U8 directo!: $url")
+                    return Video(source = url, headers = mapOf("Referer" to currentUrl, "User-Agent" to USER_AGENT))
+                }
+
+                // B. Script Packer (Desempaquetado)
+                val packedRegex = Regex("""eval\(function\(p,a,c,k,e,d\).*?\)""")
+                packedRegex.findAll(html).forEach { match ->
+                    try {
+                        val unpacked = JsUnpacker(match.value).unpack() ?: ""
+
+                        // Buscar URLs dentro del código desempaquetado
+                        val urlMatch = m3u8Regex.find(unpacked)
+                            ?: Regex("""file\s*:\s*["']([^"']+)["']""").find(unpacked)
+                            ?: Regex("""["'](https?://[^"']+\.mp4[^"']*)["']""").find(unpacked)
+
+                        urlMatch?.let {
+                            val url = it.groupValues[1].replace("\\/", "/")
+                            if (url.startsWith("http")) {
+                                Log.d(TAG, "✅ Video en script desempaquetado: $url")
+                                return Video(source = url, headers = mapOf("Referer" to currentUrl, "User-Agent" to USER_AGENT))
+                            }
+                        }
+                    } catch (e: Exception) { Log.w(TAG, "Error unpack: ${e.message}") }
+                }
+
+                // C. Triple Base64 (Clásico de CableVision)
+                if (html.contains("const decodedURL")) {
+                    document.select("script").forEach {
+                        if (it.data().contains("const decodedURL")) {
+                            val encodedUrl = it.data().substringAfter("atob(\"").substringBefore("\"))))")
+                            try {
+                                val decoded = String(Base64.decode(String(Base64.decode(String(Base64.decode(encodedUrl, Base64.DEFAULT)), Base64.DEFAULT)), Base64.DEFAULT))
+                                Log.d(TAG, "✅ Triple Base64 decodificado: $decoded")
+                                return Video(source = decoded, headers = mapOf("Referer" to currentUrl, "User-Agent" to USER_AGENT))
+                            } catch (e: Exception) {}
+                        }
+                    }
+                }
+
+                // D. Patrones Genéricos (Clappr, JWPlayer, var src)
+                val sourceRegexes = listOf(
+                    Regex("""source\s*:\s*["']([^"']+)["']"""),
+                    Regex("""file\s*:\s*["']([^"']+)["']"""),
+                    Regex("""var\s+src\s*=\s*["']([^"']+)["']"""),
+                    Regex("""["'](https?://[^"']+\.mp4[^"']*)["']""")
+                )
+                for (regex in sourceRegexes) {
+                    regex.find(html)?.let {
+                        // AQUÍ ESTÁ EL FIX FINAL: .replace("\\/", "/")
+                        val url = it.groupValues[1].replace("\\/", "/")
+
+                        if (url.startsWith("http")) {
+                            Log.d(TAG, "✅ Patrón genérico encontrado y limpiado: $url")
+                            return Video(source = url, headers = mapOf("Referer" to currentUrl, "User-Agent" to USER_AGENT))
+                        }
+                    }
+                }
+
+                // --- FASE 2: SI NO HAY VIDEO, BUSCAR IFRAME PARA PROFUNDIZAR ---
+                val iframeSrc = document.select("iframe").attr("src")
+                if (iframeSrc.isNotEmpty()) {
+                    val nextUrl = if (iframeSrc.startsWith("http")) iframeSrc else "$baseUrl/$iframeSrc"
+
+                    // Evitar recargar la misma página (bucle simple)
+                    if (nextUrl == currentUrl) {
+                        Log.w(TAG, "⚠️ Iframe apunta a sí mismo. Abortando ciclo.")
+                        break
+                    }
+
+                    Log.d(TAG, "⛏️ No hay video, pero hay iframe. Profundizando a: $nextUrl")
+
+                    // Actualizamos para la siguiente vuelta del while
+                    currentReferer = currentUrl
+                    currentUrl = nextUrl
+                    continue // Vuelve al inicio del while con la nueva URL
+                }
+
+                // Si llegamos aquí: No hay video Y no hay iframes. Fin del camino.
+                Log.e(TAG, "❌ Fin del camino en nivel $depth. No se halló video ni más iframes.")
+                break
+
+            } catch (e: Exception) {
+                Log.e(TAG, "❌ Error crítico en nivel $depth: ${e.message}")
+                break
             }
-            script.contains("var src") -> {
-                script.substringAfter("var src = \"").substringBefore("\";").replace("\\/", "/")
-            }
-            else -> throw Exception("El script encontrado no tiene un formato de video reconocible.")
         }
 
-        return Video(
-            source = videoUrl
-        )
+        return Video(source = "", subtitles = emptyList())
+    }
+    // Auxiliar para items de información
+    private fun getInfoItem(id: String): TvShow {
+        val title = if(id == "creador-info") "Reportar problemas" else "Apoya al Proveedor"
+        val poster = if(id == "creador-info") "https://i.ibb.co/dsknGBHT/Imagen-de-Whats-App-2025-09-06-a-las-19-00-50-e8e5bcaa.jpg" else "https://i.ibb.co/B234HsZg/APOYO-NANDO.png"
+        val desc = if(id == "creador-info") "Reporta errores a @NandoGT o @Nandofs." else "Escanea el QR para apoyar el proyecto."
+        return TvShow(id = id, title = title, poster = poster, banner = poster, overview = desc, seasons = emptyList())
     }
 }
