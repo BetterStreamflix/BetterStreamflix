@@ -13,7 +13,7 @@ import java.util.regex.Pattern
 open class VidMoLyExtractor : Extractor() {
     override val name = "VidMoLy"
     override val mainUrl = "https://vidmoly.me/"
-    override val aliasUrls = listOf("https://vidmoly.net")
+    override val aliasUrls = listOf("https://vidmoly.net", "https://vidmoly.org")
     private val redirectUrl = "https://vidmoly.to/"
 
     override suspend fun extract(link: String): Video {
@@ -34,7 +34,7 @@ open class VidMoLyExtractor : Extractor() {
     }
 
     private fun extractHlsUrl(document: Document): String? {
-        val pattern = Pattern.compile("sources:\\s*\\[\\{file:\\s*\"([^\"]+)\"\\}]")
+        val pattern = Pattern.compile("""sources:\s*\[\{\s*file:\s*['"]([^'"]+)['"]\s*\}\]""")
         val matcher = pattern.matcher(document.toString())
         return if (matcher.find()) {
             matcher.group(1)

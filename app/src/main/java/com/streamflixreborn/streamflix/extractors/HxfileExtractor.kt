@@ -13,6 +13,7 @@ import com.tanasi.retrofit_jsoup.converter.JsoupConverterFactory
 class HxfileExtractor : Extractor() {
     override val name = "Hxfile"
     override val mainUrl = "https://hxfile.co"
+    override val aliasUrls = listOf("https://xshotcok.com")
 
     companion object {
         private const val DEFAULT_USER_AGENT =

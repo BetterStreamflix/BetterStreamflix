@@ -111,7 +111,8 @@ class VidxGoExtractor : Extractor() {
                     "origin" to "https://v.vidxgo.co",
                     "referer" to "https://v.vidxgo.co/",
                     "sec-fetch-dest" to "empty",
-                    "sec-fetch-site" to "cross-site"
+                    "sec-fetch-site" to "cross-site",
+                    "User-Agent" to "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36"
                 ),
                 maintainToken = true
             )
@@ -121,29 +122,41 @@ class VidxGoExtractor : Extractor() {
         val scriptRegex = Regex("<script[\\s\\S]*?>[\\s\\S]*?\\(function\\(\\)\\s*\\{[\\s\\S]*?\\}\\s*\\)\\(\\);[\\s\\S]*?</script>", RegexOption.IGNORE_CASE)
         val scriptMatches = scriptRegex.findAll(html).toList()
         
-        if (scriptMatches.size < 5) {
-            Log.e("VidxGoExtractor", "Could not find enough encrypted scripts. Found: ${scriptMatches.size}")
-            throw Exception("VidxGo: Could not find fifth encrypted script")
-        }
-
-        val targetScript = scriptMatches[4].value
-
-        val k = Regex("var\\s+k\\s*=\\s*['\"]([^'\"]+)['\"]").find(targetScript)?.groupValues?.get(1)
-            ?: throw Exception("VidxGo: Could not find key 'k'")
-        val d = Regex("atob\\(['\"]([^'\"]+)['\"]\\)").find(targetScript)?.groupValues?.get(1)
-            ?: throw Exception("VidxGo: Could not find data 'd'")
-
-        val decodedD = Base64.decode(d, Base64.DEFAULT)
-        val decrypted = ByteArray(decodedD.size)
-        for (i in decodedD.indices) {
-            decrypted[i] = ((decodedD[i].toInt() and 0xFF) xor (k[i % k.length].code and 0xFF)).toByte()
-        }
-
-        val decryptedText = String(decrypted)
+        var videoUrlRaw: String? = null
+        var currentToken: String? = null
+        var initialExpireRaw: Long? = null
         
-        // Extract the source URL from currentSrc
-        val videoUrlRaw = Regex("currentSrc\\s*=\\s*['\"]([^'\"]+)['\"]").find(decryptedText)?.groupValues?.get(1)
-            ?: throw Exception("VidxGo: Could not find currentSrc in decrypted script")
+        for (match in scriptMatches) {
+            val targetScript = match.value
+            
+            val k = Regex("var\\s+k\\s*=\\s*['\"]([^'\"]+)['\"]").find(targetScript)?.groupValues?.get(1) ?: continue
+            val d = Regex("atob\\(['\"]([^'\"]+)['\"]\\)").find(targetScript)?.groupValues?.get(1) ?: continue
+            
+            try {
+                val decodedD = Base64.decode(d, Base64.DEFAULT)
+                val decrypted = ByteArray(decodedD.size)
+                for (i in decodedD.indices) {
+                    decrypted[i] = ((decodedD[i].toInt() and 0xFF) xor (k[i % k.length].code and 0xFF)).toByte()
+                }
+
+                val decryptedText = String(decrypted)
+                
+                videoUrlRaw = Regex("currentSrc\\s*=\\s*['\"]([^'\"]+)['\"]").find(decryptedText)?.groupValues?.get(1)
+                
+                if (videoUrlRaw != null) {
+                    currentToken = Regex("let\\s+currentToken\\s*=\\s*['\"]([^'\"]+)['\"]").find(decryptedText)?.groupValues?.get(1)
+                    initialExpireRaw = Regex("let\\s+currentExpire\\s*=\\s*(\\d+)").find(decryptedText)?.groupValues?.get(1)?.toLongOrNull()
+                    break
+                }
+            } catch (e: Exception) {
+                // Ignore decryption errors and try next script
+                continue
+            }
+        }
+        
+        if (videoUrlRaw == null) {
+            throw Exception("VidxGo: Could not find currentSrc in any encrypted script")
+        }
 
         val videoUrl = videoUrlRaw.replace("\\/", "/")
 
@@ -152,11 +165,6 @@ class VidxGoExtractor : Extractor() {
         val filmRefreshUrl = if (filmPathSegment != null) "https://v.vidxgo.co/t/$filmPathSegment" else null
 
         val initialUri = android.net.Uri.parse(videoUrl)
-        
-        // Extract currentToken and currentExpire directly from the decrypted JS variables
-        val currentToken = Regex("let\\s+currentToken\\s*=\\s*['\"]([^'\"]+)['\"]").find(decryptedText)?.groupValues?.get(1)
-        val initialExpireRaw = Regex("let\\s+currentExpire\\s*=\\s*(\\d+)").find(decryptedText)?.groupValues?.get(1)?.toLongOrNull()
-        
         TokenManager.latestQuery = initialUri.encodedQuery
 
         val initialExpireTime = initialExpireRaw
@@ -221,7 +229,8 @@ class VidxGoExtractor : Extractor() {
                 "origin" to "https://v.vidxgo.co",
                 "referer" to "https://v.vidxgo.co/",
                 "sec-fetch-dest" to "empty",
-                "sec-fetch-site" to "cross-site"
+                "sec-fetch-site" to "cross-site",
+                "User-Agent" to "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36"
             ),
             maintainToken = true
         )

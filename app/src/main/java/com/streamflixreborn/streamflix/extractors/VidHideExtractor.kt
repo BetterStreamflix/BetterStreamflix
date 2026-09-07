@@ -24,7 +24,8 @@ class VidHideExtractor: Extractor() {
         "https://dintezuvio.com",
         "https://minochinos.com",
         "https://moflix-stream.click",
-        "https://filelions.to"
+        "https://filelions.to",
+        "https://morencius.com"
     )
 
     companion object {

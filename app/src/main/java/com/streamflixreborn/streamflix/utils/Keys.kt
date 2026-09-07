@@ -6,14 +6,21 @@ package com.streamflixreborn.streamflix.utils
  * with a standard Java/Kotlin decompiler.
  */
 object Keys {
-    init {
+    private val isLoaded = try {
         System.loadLibrary("streamflix-keys")
+        true
+    } catch (_: Throwable) {
+        false
     }
 
-    external fun getUprotMsfiApiBase(): String
-    external fun getUprotMseApiBase(): String
+    fun getUprotApiBase(): String = if (isLoaded) runCatching { nativeGetUprotApiBase() }.getOrDefault("") else ""
+    fun getUprotSignKey(): String = if (isLoaded) runCatching { nativeGetUprotSignKey() }.getOrDefault("") else ""
+    fun getUprotDirectApiBase(): String = if (isLoaded) runCatching { nativeGetUprotDirectApiBase() }.getOrDefault("") else ""
+    fun getUprotDirectKey(): String = if (isLoaded) runCatching { nativeGetUprotDirectKey() }.getOrDefault("") else ""
 
-
-    external fun getUprotApiKey(): String
+    private external fun nativeGetUprotApiBase(): String
+    private external fun nativeGetUprotSignKey(): String
+    private external fun nativeGetUprotDirectApiBase(): String
+    private external fun nativeGetUprotDirectKey(): String
 }
 
