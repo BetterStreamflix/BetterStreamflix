@@ -39,17 +39,21 @@ android {
         buildConfigField "String", "SUBDL_API_KEY", "\"${properties.getProperty("SUBDL_API_KEY")}\""
         buildConfigField "String", "RABBITSTREAM_SOURCE_API", "\"${properties.getProperty("RABBITSTREAM_SOURCE_API")}\""
 
-        externalNativeBuild {
-            cmake {
-                cppFlags "-std=c++17"
+        if (file("src/main/cpp/native-lib.cpp").exists()) {
+            externalNativeBuild {
+                cmake {
+                    cppFlags "-std=c++17"
+                }
             }
         }
     }
 
-    externalNativeBuild {
-        cmake {
-            path "src/main/cpp/CMakeLists.txt"
-            version "3.22.1"
+    if (file("src/main/cpp/native-lib.cpp").exists()) {
+        externalNativeBuild {
+            cmake {
+                path "src/main/cpp/CMakeLists.txt"
+                version "3.22.1"
+            }
         }
     }
 

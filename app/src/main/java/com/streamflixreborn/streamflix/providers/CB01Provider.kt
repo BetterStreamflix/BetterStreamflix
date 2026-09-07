@@ -361,6 +361,31 @@ object CB01Provider : Provider {
                 if (!hasLinks) return@forEachIndexed
             }
 
+            val rangeMatch = Regex("STAGIONE\\s+(\\d+)\\s+(?:A|-)\\s+(\\d+)", RegexOption.IGNORE_CASE).find(head)
+
+            val isCompleteSeries = body?.text()?.contains("TUTTA LA SERIE", ignoreCase = true) == true ||
+                                   head.contains("COMPLETA", ignoreCase = true)
+
+            // Only expand using TMDB if the page doesn't already explicitly list multiple seasons (e.g. via a range in the title)
+            if (isCompleteSeries && rangeMatch == null && tmdbTvShow != null && tmdbTvShow.seasons.isNotEmpty()) {
+                val tmdbSeasons = tmdbTvShow.seasons.filter { it.number > 0 }
+                if (tmdbSeasons.size > 1) { // Only expand if TMDB has more than 1 season
+                    tmdbSeasons.forEach { tmdbSeason ->
+                        if (!seasons.any { it.number == tmdbSeason.number }) {
+                            seasons.add(
+                                Season(
+                                    id = "$id#s${tmdbSeason.number}#w$index",
+                                    number = tmdbSeason.number,
+                                    title = null, // fallback to TMDB translation
+                                    poster = tmdbSeason.poster ?: tmdbTvShow.poster
+                                )
+                            )
+                        }
+                    }
+                    return@forEachIndexed
+                }
+            }
+
             val cleanedHead = head
                 .replace(Regex("\\[\\s*hd\\s*(?:/3d)?\\s*\\]", RegexOption.IGNORE_CASE), "")
                 .replace(Regex("\\s*-\\s*(?:ITA|SUB ITA|HD|HD/3D)\\s*$", RegexOption.IGNORE_CASE), "")
@@ -374,7 +399,6 @@ object CB01Provider : Provider {
                 cleanedHead
             }
 
-            val rangeMatch = Regex("STAGIONE\\s+(\\d+)\\s+(?:A|-|FINO\\s+ALLA)\\s+(\\d+)", RegexOption.IGNORE_CASE).find(head)
             if (rangeMatch != null) {
                 val start = rangeMatch.groupValues[1].toIntOrNull() ?: 1
                 val end = rangeMatch.groupValues[2].toIntOrNull() ?: start
@@ -503,7 +527,9 @@ object CB01Provider : Provider {
 
                 val seasonsInFolder = rows.mapNotNull { tr ->
                     val fileName = tr.selectFirst("td")?.text()?.trim().orEmpty()
-                    Regex("""S(\d{1,2})E""", RegexOption.IGNORE_CASE).find(fileName)?.groupValues?.getOrNull(1)?.toIntOrNull()
+                    val match = Regex("""S(\d{1,2})E""", RegexOption.IGNORE_CASE).find(fileName)
+                        ?: Regex("""(?:^|\b|\.)(\d{1,2})x\d""", RegexOption.IGNORE_CASE).find(fileName)
+                    match?.groupValues?.getOrNull(1)?.toIntOrNull()
                 }.distinct()
 
                 val hasMultipleSeasonsInFolder = seasonsInFolder.size > 1
@@ -514,6 +540,7 @@ object CB01Provider : Provider {
                         ?: tr.selectFirst("a[href]")?.attr("href")?.trim()
                         ?: return@mapIndexedNotNull null
                     val sAndEMatch = Regex("""S(\d{1,2})E(\d{1,3})""", RegexOption.IGNORE_CASE).find(fileName)
+                        ?: Regex("""(?:^|\b|\.)(\d{1,2})x(\d{1,3})""", RegexOption.IGNORE_CASE).find(fileName)
                     val epNum: Int
                     if (sAndEMatch != null) {
                         val fileSeason = sAndEMatch.groupValues[1].toIntOrNull()
@@ -584,11 +611,11 @@ object CB01Provider : Provider {
      * @param isStayOnline True if the link originated from stayonline.pro
      */
     private suspend fun resolveMaxstreamUrl(url: String, isStayOnline: Boolean = false): String? {
-        // 1. Links from stayonline.pro or containing /msfi/ use Keys.getUprotMsfiApiBase()
+        // 1. Links from stayonline.pro or containing /msfi/
         if (isStayOnline || url.contains("/msfi/", ignoreCase = true)) {
             val uprotId = Regex("""/ms[a-zA-Z]+/([A-Za-z0-9+/=]+)""").find(url)?.groupValues?.getOrNull(1)
                 ?: return null
-            return callUprotApi(Keys.getUprotMsfiApiBase(), uprotId)
+            return callUprotApi(uprotId, "msi")
         }
 
         // 2. Direct uprot.net links (/mse/): Try HTML base64 decoding first
@@ -608,34 +635,96 @@ object CB01Provider : Provider {
             }
         } catch (_: Exception) { }
 
-        // 3. Fallback for direct uprot.net links when base64 fails: Call Keys.getUprotMseApiBase()
+        // 3. Fallback for direct uprot.net links when base64 fails
         val uprotId = Regex("""/ms[a-zA-Z]+/([A-Za-z0-9+/=]+)""").find(url)?.groupValues?.getOrNull(1)
             ?: return null
-        return callUprotApi(Keys.getUprotMseApiBase(), uprotId)
+        return callUprotApi(uprotId, "ms")
 
     }
 
 
 
 
-    private fun callUprotApi(apiBase: String, uprotId: String): String? {
-        val apiUrl = "$apiBase$uprotId&key=${Keys.getUprotApiKey()}"
+    private fun hmacSHA256(message: String, key: String): String {
+        val mac = javax.crypto.Mac.getInstance("HmacSHA256")
+        val secretKey = javax.crypto.spec.SecretKeySpec(key.toByteArray(Charsets.UTF_8), "HmacSHA256")
+        mac.init(secretKey)
+        return mac.doFinal(message.toByteArray(Charsets.UTF_8)).joinToString("") { "%02x".format(it) }
+    }
+
+    private fun callUprotApi(uprotId: String, apiType: String = "ms"): String? {
+        val client = OkHttpClient.Builder()
+            .connectTimeout(15, TimeUnit.SECONDS)
+            .readTimeout(15, TimeUnit.SECONDS)
+            .build()
+
+        // 1. Direct API
+        try {
+            val directBase = Keys.getUprotDirectApiBase()
+            val directKey = Keys.getUprotDirectKey()
+            if (directBase.isNotBlank() && directKey.isNotBlank()) {
+                val endpoint = if (apiType == "msi") "api_msi_dec.php" else "api_ms_dec.php"
+                val directUrl = "$directBase$endpoint?fc=$uprotId&key=$directKey"
+                val directReq = okhttp3.Request.Builder()
+                    .url(directUrl)
+                    .header("Accept-Language", "it")
+                    .header("Sec-Fetch-Dest", "empty")
+                    .header("Sec-Fetch-Mode", "no-cors")
+                    .header("Sec-Fetch-Site", "none")
+                    .header("User-Agent", "Mozilla/5.0 (Linux; Android 9.0; SM-G930V Build/NRD90M) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/59.0.3071.125 Mobile Safari/537.36")
+                    .header("X-Requested-With", "")
+                    .build()
+                val directResp = client.newCall(directReq).execute()
+                if (directResp.isSuccessful) {
+                    val body = directResp.body?.string()?.trim().orEmpty()
+                    if (body.isNotBlank() && body != "not found" && !body.contains("<") && !body.contains(" ")) {
+                        return "https://maxstream.video/emihiuhi/$body"
+                    }
+                }
+            }
+        } catch (_: Exception) { }
+
+        // 2. Fallback API
         return try {
-            val client = OkHttpClient.Builder()
-                .connectTimeout(15, TimeUnit.SECONDS)
-                .readTimeout(15, TimeUnit.SECONDS)
-                .build()
-            val req = okhttp3.Request.Builder()
-                .url(apiUrl)
-                .header("User-Agent", DEFAULT_USER_AGENT)
-                .build()
-            val resp = client.newCall(req).execute()
-            if (!resp.isSuccessful) return null
-            val responseText = resp.body?.string()?.trim().orEmpty()
-            if (responseText.isBlank() || responseText.contains("<") || responseText.contains(" ")) return null
+            val apiBase = Keys.getUprotApiBase()
+            val signKey = Keys.getUprotSignKey()
+            if (apiBase.isBlank() || signKey.isBlank()) return null
 
-            "https://maxstream.video/emiuhi/$responseText"
+            var tsSkew = 0L
 
+            // Retry once if the server asks us to sync the clock (MSDEC_TS response)
+            repeat(2) { attempt ->
+                val ts = System.currentTimeMillis() / 1000 + tsSkew
+                val message = "$uprotId|$apiType|$ts"
+                val sig = hmacSHA256(message, signKey)
+                val apiUrl = "$apiBase$uprotId&t=$apiType&ts=$ts&v=1&sig=$sig"
+
+                val req = okhttp3.Request.Builder()
+                    .url(apiUrl)
+                    .header("User-Agent", "Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/53.0.2785.101 Safari/537.36")
+                    .header("X-Requested-With", "")
+                    .header("Accept-Language", "it")
+                    .build()
+
+                val resp = client.newCall(req).execute()
+                if (!resp.isSuccessful) return null
+
+                val responseText = resp.body?.string()?.trim().orEmpty()
+
+                // Server signals clock drift — sync and retry
+                if (responseText.startsWith("MSDEC_TS") && attempt == 0) {
+                    val serverTs = responseText.split(" ").getOrNull(1)?.toLongOrNull()
+                    if (serverTs != null) {
+                        tsSkew = serverTs - System.currentTimeMillis() / 1000
+                    }
+                    return@repeat // continue to next iteration (retry)
+                }
+
+                if (responseText.isBlank() || responseText.contains("<") || responseText.contains(" ")) return null
+                return "https://maxstream.video/emihiuhi/$responseText"
+            }
+
+            null
         } catch (_: Exception) {
             null
         }

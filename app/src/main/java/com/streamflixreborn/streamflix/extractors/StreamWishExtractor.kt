@@ -110,6 +110,7 @@ open class StreamWishExtractor : Extractor() {
         "https://streamwish.org",
         "https://streamwish.live",
         "https://streamwish.me",
+        "https://hanerix.com"
     )
 
     protected var referer = ""
