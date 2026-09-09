@@ -4,8 +4,8 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:padding="4dp"
-    android:background="@color/exp_charcoal">
+    android:background="@color/exp_ink"
+    android:padding="3dp">
 
     <ImageView
         android:id="@+id/iv_movie_poster"
@@ -18,10 +18,18 @@
         app:layout_constraintTop_toTopOf="parent"
         tools:ignore="ContentDescription" />
 
+    <View
+        android:layout_width="0dp"
+        android:layout_height="80dp"
+        android:background="@drawable/bg_exp_poster_scrim"
+        app:layout_constraintBottom_toBottomOf="@id/iv_movie_poster"
+        app:layout_constraintEnd_toEndOf="@id/iv_movie_poster"
+        app:layout_constraintStart_toStartOf="@id/iv_movie_poster" />
+
     <ImageView
         android:id="@+id/iv_movie_favorite_ribbon"
-        android:layout_width="24dp"
-        android:layout_height="24dp"
+        android:layout_width="22dp"
+        android:layout_height="22dp"
         android:layout_margin="6dp"
         android:elevation="2dp"
         android:src="@drawable/ic_favorite_badge"
@@ -31,10 +39,10 @@
         tools:ignore="ContentDescription"
         tools:visibility="visible" />
 
-        <ImageView
+    <ImageView
         android:id="@+id/iv_movie_download_ribbon"
-        android:layout_width="24dp"
-        android:layout_height="24dp"
+        android:layout_width="22dp"
+        android:layout_height="22dp"
         android:layout_margin="6dp"
         android:elevation="2dp"
         android:src="@drawable/ic_offline_badge"
@@ -44,10 +52,10 @@
         tools:ignore="ContentDescription"
         tools:visibility="visible" />
 
-<ImageView
+    <ImageView
         android:id="@+id/iv_movie_watched_ribbon"
-        android:layout_width="24dp"
-        android:layout_height="24dp"
+        android:layout_width="22dp"
+        android:layout_height="22dp"
         android:layout_marginStart="6dp"
         android:layout_marginTop="2dp"
         android:elevation="2dp"
@@ -63,17 +71,11 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginTop="6dp"
-        android:layout_marginEnd="4dp"
-        android:paddingStart="4dp"
-        android:paddingTop="2dp"
-        android:paddingEnd="4dp"
-        android:paddingBottom="2dp"
-        android:shadowColor="#000000"
-        android:shadowDx="2"
-        android:shadowDy="2"
-        android:shadowRadius="5"
+        android:layout_marginEnd="6dp"
+        android:fontFamily="@font/outfit"
+        android:padding="3dp"
         android:textAllCaps="true"
-        android:textColor="@color/exp_text_primary"
+        android:textColor="@color/exp_signal"
         android:textStyle="bold"
         app:layout_constraintEnd_toEndOf="@id/iv_movie_poster"
         app:layout_constraintTop_toBottomOf="@id/iv_movie_download_ribbon"
@@ -85,32 +87,26 @@
         android:id="@+id/tv_movie_released_year"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginEnd="4dp"
-        android:paddingStart="4dp"
-        android:paddingTop="2dp"
-        android:paddingEnd="4dp"
-        android:paddingBottom="2dp"
-        android:shadowColor="#000000"
-        android:shadowDx="2"
-        android:shadowDy="2"
-        android:shadowRadius="5"
-        android:textColor="@color/exp_text_primary"
+        android:layout_marginEnd="6dp"
+        android:fontFamily="@font/outfit"
+        android:padding="3dp"
+        android:textColor="@color/exp_frost"
+        android:visibility="gone"
         app:layout_constraintEnd_toEndOf="@id/iv_movie_poster"
         app:layout_constraintTop_toBottomOf="@id/tv_movie_quality"
-        app:layout_goneMarginTop="6dp"
         tools:text="2022" />
 
     <ProgressBar
         android:id="@+id/pb_movie_progress"
         style="@android:style/Widget.ProgressBar.Horizontal"
         android:layout_width="0dp"
-        android:layout_height="4dp"
-        android:layout_marginStart="8dp"
-        android:layout_marginEnd="8dp"
-        android:layout_marginBottom="10dp"
-        android:backgroundTint="#CC646464"
-        android:progressTint="@color/exp_steel_teal"
-        app:layout_constraintBottom_toBottomOf="@id/iv_movie_poster"
+        android:layout_height="3dp"
+        android:layout_marginStart="6dp"
+        android:layout_marginEnd="6dp"
+        android:layout_marginBottom="6dp"
+        android:backgroundTint="#88646464"
+        android:progressTint="@color/exp_signal"
+        app:layout_constraintBottom_toTopOf="@id/tv_movie_title"
         app:layout_constraintEnd_toEndOf="@id/iv_movie_poster"
         app:layout_constraintStart_toStartOf="@id/iv_movie_poster"
         tools:progress="80" />
@@ -119,16 +115,19 @@
         android:id="@+id/tv_movie_title"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:layout_margin="8dp"
+        android:layout_marginStart="6dp"
+        android:layout_marginEnd="6dp"
+        android:layout_marginBottom="8dp"
         android:ellipsize="end"
         android:fontFamily="@font/outfit"
-        android:gravity="center_horizontal"
+        android:gravity="start"
         android:lines="2"
-        android:textColor="@color/exp_text_primary"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/iv_movie_poster"
+        android:textColor="@color/exp_frost"
+        android:textSize="12sp"
+        android:textStyle="bold"
+        app:layout_constraintBottom_toBottomOf="@id/iv_movie_poster"
+        app:layout_constraintEnd_toEndOf="@id/iv_movie_poster"
+        app:layout_constraintStart_toStartOf="@id/iv_movie_poster"
         tools:text="Title" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>
