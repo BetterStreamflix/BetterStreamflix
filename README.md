@@ -3,6 +3,12 @@
 <p align="center">
   <img src="./branding/ic_launcher-512.png" height="120px" alt="BetterStreamflix" />
   <br />
+  <a href="https://github.com/dskja/BetterStreamflix/stargazers"><img src="https://img.shields.io/github/stars/dskja/BetterStreamflix" alt="Stars" /></a>
+  <a href="https://github.com/dskja/BetterStreamflix/blob/main/LICENSE"><img src="https://img.shields.io/github/license/dskja/BetterStreamflix" alt="License" /></a>
+  <a href="https://github.com/dskja/BetterStreamflix/releases/latest"><img src="https://img.shields.io/github/v/release/dskja/BetterStreamflix" alt="Release" /></a>
+  <a href="https://github.com/dskja/BetterStreamflix/releases"><img src="https://img.shields.io/github/downloads/dskja/BetterStreamflix/total" alt="Downloads" /></a>
+  <img src="https://img.shields.io/badge/Kotlin-Android%20TV%20%2B%20Mobile-7F52FF" alt="Kotlin" />
+  <br />
   <strong>v1.1.1</strong> · Maintained by <a href="https://github.com/dskja">dskja</a>
   <br />
   An actively maintained fork of Streamflix with extra fixes, providers and UX improvements for Android TV and mobile.
@@ -46,7 +52,7 @@
 - [Contributing](#contributing)
 - [Support](#support)
 - [Legal Disclaimer](#legal-disclaimer)
-- [Credits &amp; Authors](#credits--authors)
+- [Credits & Authors](#credits--authors)
 - [License](#license)
 </details>
 
@@ -68,7 +74,7 @@ This app provides a user interface for accessing publicly available streaming co
 - Aggregates content from multiple third-party providers
 - No account required for the app interface
 - Educational and personal use only
-- Optimized UI &amp; UX for mobile and Android TV
+- Optimized UI & UX for mobile and Android TV
 - Multiple providers (incl. SerienStream via [serien.domains](https://serien.domains) proxy)
 - Offline downloads with configurable storage location
 - Chromecast queue + subtitles
@@ -143,7 +149,7 @@ One-time goal of **$25** (open) for personal basic costs so development can cont
 - This app functions as a search engine aggregator only
 - No copyrighted material is stored on our servers
 
-## Credits &amp; Authors
+## Credits & Authors
 
 ### Maintainer
 - **[dskja](https://github.com/dskja)** — BetterStreamflix
