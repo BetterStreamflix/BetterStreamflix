@@ -18,7 +18,7 @@
         android:letterSpacing="0.14"
         android:text="@string/profile_settings_hero_eyebrow"
         android:textAllCaps="true"
-        android:textAppearance="@style/TextAppearance.Nocturne.Eyebrow"
+        android:textAppearance="@style/TextAppearance.Lumina.Eyebrow"
         android:textColor="@color/profile_accent"
         android:textSize="11sp"
         android:textStyle="bold" />
@@ -47,7 +47,7 @@
         android:layout_height="wrap_content"
         android:layout_marginTop="12dp"
         android:gravity="center"
-        android:textAppearance="@style/TextAppearance.Nocturne.Title"
+        android:textAppearance="@style/TextAppearance.Lumina.Title"
         android:textColor="@color/profile_text_primary"
         android:textSize="22sp"
         android:textStyle="bold"
@@ -59,7 +59,7 @@
         android:layout_height="wrap_content"
         android:layout_marginTop="4dp"
         android:gravity="center"
-        android:textAppearance="@style/TextAppearance.Nocturne.Caption"
+        android:textAppearance="@style/TextAppearance.Lumina.Caption"
         android:textColor="@color/profile_text_secondary"
         android:textSize="13sp"
         tools:text="Gold · Active" />

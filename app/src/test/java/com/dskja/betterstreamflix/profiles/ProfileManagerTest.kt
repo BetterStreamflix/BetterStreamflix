@@ -48,10 +48,10 @@ class ProfileManagerTest {
 
     @Test
     fun avatarKeys_containsExpectedPalette() {
-        assertTrue(ProfileManager.avatarKeys.contains("copper"))
-        assertTrue(ProfileManager.avatarKeys.contains("violet"))
-        assertTrue(ProfileManager.avatarKeys.contains("crimson"))
-        assertTrue(ProfileManager.avatarKeys.size >= 12)
+        assertEquals(
+            listOf("crimson", "ember", "aurora", "slate", "forest", "ocean", "gold", "rose"),
+            ProfileManager.avatarKeys,
+        )
     }
 
     @Test
@@ -67,37 +67,9 @@ class ProfileManagerTest {
     }
 
     @Test
-    fun uniqueCopyName_appendsIncrement() {
+    fun defaultProfileId_isStableLiteral() {
         assertEquals("default", ProfileManager.DEFAULT_PROFILE_ID)
-    }
-
-    @Test
-    fun pinLengthBounds_areFourToEight() {
-        assertEquals(4, ProfileManager.PIN_MIN_LENGTH)
-        assertEquals(8, ProfileManager.PIN_MAX_LENGTH)
-        assertEquals(5, ProfileManager.PIN_MAX_ATTEMPTS)
-    }
-
-    @Test
-    fun atmosphere_normalizesUnknown() {
-        assertEquals(ProfileAtmosphere.DEFAULT, ProfileAtmosphere.normalize(null))
-        assertEquals(ProfileAtmosphere.DEFAULT, ProfileAtmosphere.normalize("neon"))
-        assertEquals("cinema", ProfileAtmosphere.normalize("cinema"))
-        assertTrue(ProfileAtmosphere.KEYS.contains("lounge"))
-    }
-
-    @Test
-    fun userProfile_publicNameFallsBackToDisplayName() {
-        val profile = UserProfile(
-            id = "test",
-            displayName = "Alex",
-            avatarKey = "copper",
-            createdAtMillis = 1L,
-            updatedAtMillis = 1L,
-            greetingName = "  ",
-        )
-        assertEquals("Alex", profile.publicName())
-        assertEquals("atelier", profile.safeAtmosphere())
+        assertEquals("default", ProfileStore.DEFAULT_PROFILE_ID)
     }
 
     @Test
@@ -115,7 +87,7 @@ class ProfileManagerTest {
         val profile = UserProfile(
             id = "test",
             displayName = "Test",
-            avatarKey = "copper",
+            avatarKey = "crimson",
             createdAtMillis = 1L,
             updatedAtMillis = 1L,
             enabledIntegrations = setOf(UserProfile.Integration.TRAKT, UserProfile.Integration.PLEX),
@@ -123,23 +95,5 @@ class ProfileManagerTest {
         val updated = profile.copy(enabledIntegrations = profile.enabledIntegrations + UserProfile.Integration.TMDB)
         assertTrue(updated.enabledIntegrations.contains(UserProfile.Integration.TMDB))
         assertFalse(updated.enabledIntegrations.contains(UserProfile.Integration.DEBRID))
-    }
-
-    @Test
-    fun sanitize_fillsMissingPersonaFields() {
-        val clean = ProfileStore.sanitize(
-            UserProfile(
-                id = "x",
-                displayName = "  ",
-                avatarKey = "",
-                createdAtMillis = 1L,
-                updatedAtMillis = 1L,
-                atmosphereKey = null,
-            ),
-        )
-        assertEquals("Profile", clean.displayName)
-        assertEquals("copper", clean.avatarKey)
-        assertEquals(ProfileAtmosphere.DEFAULT, clean.atmosphereKey)
-        assertTrue(clean.safeIntegrations().isEmpty())
     }
 }

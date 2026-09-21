@@ -12,7 +12,7 @@
         android:id="@+id/tv_movie_recommendations_label"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:textAppearance="@style/TextAppearance.Nocturne.Title"
+        android:textAppearance="@style/TextAppearance.Lumina.Title"
         android:layout_marginStart="22dp"
         android:layout_marginEnd="22dp"
         android:letterSpacing="0.01"

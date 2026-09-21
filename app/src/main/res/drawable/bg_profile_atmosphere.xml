@@ -1,24 +1,43 @@
 <?xml version="1.0" encoding="utf-8"?>
 <layer-list xmlns:android="http://schemas.android.com/apk/res/android">
     <item>
-        <shape android:shape="rectangle"><solid android:color="@color/profile_bg" /></shape>
-    </item>
-    <item android:gravity="top|fill_horizontal" android:height="320dp">
         <shape android:shape="rectangle">
-            <gradient android:angle="270" android:type="linear"
-                android:startColor="#40D08A4A" android:endColor="#00000000" />
+            <solid android:color="@color/profile_bg" />
         </shape>
     </item>
+    <!-- Soft cyan wash from top -->
+    <item
+        android:gravity="top|fill_horizontal"
+        android:height="280dp">
+        <shape android:shape="rectangle">
+            <gradient
+                android:angle="270"
+                android:endColor="#00000000"
+                android:startColor="@color/profile_accent_soft"
+                android:type="linear" />
+        </shape>
+    </item>
+    <!-- Diagonal ink depth -->
     <item>
         <shape android:shape="rectangle">
-            <gradient android:angle="145" android:type="linear"
-                android:startColor="#1A140C" android:centerColor="#0C0A08" android:endColor="#0C0A08" />
+            <gradient
+                android:angle="145"
+                android:centerColor="#0A1220"
+                android:endColor="@color/profile_bg"
+                android:startColor="#0F2A3F"
+                android:type="linear" />
         </shape>
     </item>
-    <item android:gravity="bottom|fill_horizontal" android:height="180dp">
+    <!-- Bottom vignette -->
+    <item
+        android:gravity="bottom|fill_horizontal"
+        android:height="160dp">
         <shape android:shape="rectangle">
-            <gradient android:angle="90" android:type="linear"
-                android:startColor="#E60C0A08" android:endColor="#00000000" />
+            <gradient
+                android:angle="90"
+                android:endColor="#00000000"
+                android:startColor="#CC070709"
+                android:type="linear" />
         </shape>
     </item>
 </layer-list>

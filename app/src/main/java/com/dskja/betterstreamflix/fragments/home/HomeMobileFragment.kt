@@ -20,7 +20,6 @@ import com.dskja.betterstreamflix.models.Episode
 import com.dskja.betterstreamflix.models.Movie
 import com.dskja.betterstreamflix.models.TvShow
 import com.dskja.betterstreamflix.fragments.settings.ProfilesSettingsController
-import com.dskja.betterstreamflix.profiles.ProfileGreeting
 import com.dskja.betterstreamflix.profiles.ProfileManager
 import com.dskja.betterstreamflix.ui.SpacingItemDecoration
 import com.dskja.betterstreamflix.utils.UserPreferences
@@ -272,14 +271,12 @@ class HomeMobileFragment : Fragment() {
             ExpNavAutoHide.attach(binding.root)
         com.dskja.betterstreamflix.utils.ExpPressEffects.wireLoadingRetry(binding.isLoading.root)
             refreshProviderChip()
-            ExpMotion.revealHeader(
+            ExpMotion.brandReveal(
                 binding.ivProviderLogo,
-                binding.root.findViewById(R.id.tv_home_greeting),
                 binding.root.findViewById(R.id.tv_home_brand),
                 binding.root.findViewById(R.id.tv_home_tagline),
                 binding.root.findViewById(R.id.v_home_brand_rule),
             )
-            ExpMotion.pulseAccentRule(binding.root.findViewById(R.id.v_home_brand_rule))
             ExpMotion.enterScreen(binding.root)
             ExperimentalMobileDesign.applyReducedGlass(binding.root)
             ExpMotion.kenBurns(
@@ -317,8 +314,6 @@ class HomeMobileFragment : Fragment() {
         val name = profile?.displayName?.takeIf { it.isNotBlank() }
             ?: getString(R.string.profile_default)
         chip.findViewById<android.widget.TextView>(R.id.tv_home_profile_name)?.text = name
-        _binding?.root?.findViewById<android.widget.TextView>(R.id.tv_home_greeting)?.text =
-            ProfileGreeting.homeEyebrow(requireContext(), profile)
         chip.findViewById<com.dskja.betterstreamflix.profiles.ProfileAvatarView>(R.id.pav_home_profile)
             ?.bind(
                 avatarKey = profile?.avatarKey ?: ProfileManager.avatarKeys.first(),
@@ -360,7 +355,6 @@ class HomeMobileFragment : Fragment() {
                 val brandDrift = -parallax * 0.5f
                 val brandAlpha = (1f - parallax / 340f).coerceIn(0f, 1f)
                 listOf(
-                    R.id.tv_home_greeting,
                     R.id.tv_home_brand,
                     R.id.tv_home_tagline,
                     R.id.v_home_brand_rule,

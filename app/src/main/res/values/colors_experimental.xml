@@ -1,76 +1,64 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <!--
-      Nocturne — editorial streaming atelier.
-      Warm black canvas, ivory type, copper signal. No glass, no Netflix crimson.
+      Lumina Ink Lock — crimson locked to Support #E50914.
+      Deeper ink blacks; DynamicColors may still tint on 12+.
     -->
-    <color name="m3_primary">#D08A4A</color>
-    <color name="m3_on_primary">#1A1108</color>
-    <color name="m3_primary_container">#3D2A16</color>
-    <color name="m3_on_primary_container">#F6DCC0</color>
-    <color name="m3_secondary">#B8A48C</color>
-    <color name="m3_on_secondary">#1C1710</color>
-    <color name="m3_secondary_container">#2E281F</color>
-    <color name="m3_on_secondary_container">#E8DCCB</color>
-    <color name="m3_tertiary">#9B7EC8</color>
-    <color name="m3_on_tertiary">#1A1224</color>
-    <color name="m3_tertiary_container">#2E2240</color>
-    <color name="m3_on_tertiary_container">#E6D8F5</color>
-    <color name="m3_error">#E8A0A0</color>
-    <color name="m3_on_error">#3A1010</color>
-    <color name="m3_error_container">#5C2020</color>
-    <color name="m3_on_error_container">#FFD6D6</color>
-    <color name="m3_surface">#0C0A08</color>
-    <color name="m3_on_surface">#F3EBDD</color>
-    <color name="m3_on_surface_variant">#A89B8C</color>
-    <color name="m3_surface_dim">#0C0A08</color>
-    <color name="m3_surface_bright">#24201A</color>
-    <color name="m3_surface_container_lowest">#070605</color>
-    <color name="m3_surface_container_low">#12100D</color>
-    <color name="m3_surface_container">#171410</color>
-    <color name="m3_surface_container_high">#1E1A15</color>
-    <color name="m3_surface_container_highest">#26211B</color>
-    <color name="m3_surface_variant">#26211B</color>
-    <color name="m3_outline">#6E6358</color>
-    <color name="m3_outline_variant">#2C2721</color>
+    <color name="m3_primary">#E50914</color>
+    <color name="m3_on_primary">#FFFFFF</color>
+    <color name="m3_primary_container">#4A0A0E</color>
+    <color name="m3_on_primary_container">#FFDAD6</color>
+    <color name="m3_secondary">#C4B5B4</color>
+    <color name="m3_on_secondary">#2A1F1E</color>
+    <color name="m3_secondary_container">#3D3231</color>
+    <color name="m3_on_secondary_container">#E6D4D2</color>
+    <color name="m3_tertiary">#C9B896</color>
+    <color name="m3_on_tertiary">#2C2416</color>
+    <color name="m3_tertiary_container">#3F3426</color>
+    <color name="m3_on_tertiary_container">#F1E0C4</color>
+    <color name="m3_error">#FFB4AB</color>
+    <color name="m3_on_error">#690005</color>
+    <color name="m3_error_container">#93000A</color>
+    <color name="m3_on_error_container">#FFDAD6</color>
+    <color name="m3_surface">#080808</color>
+    <color name="m3_on_surface">#F5F5F5</color>
+    <color name="m3_on_surface_variant">#9E9E9E</color>
+    <color name="m3_surface_dim">#080808</color>
+    <color name="m3_surface_bright">#282828</color>
+    <color name="m3_surface_container_lowest">#030303</color>
+    <color name="m3_surface_container_low">#101010</color>
+    <color name="m3_surface_container">#141414</color>
+    <color name="m3_surface_container_high">#1A1A1A</color>
+    <color name="m3_surface_container_highest">#222222</color>
+    <color name="m3_surface_variant">#282828</color>
+    <color name="m3_outline">#6E6E6E</color>
+    <color name="m3_outline_variant">#2A2A2A</color>
     <color name="m3_surface_tint">@color/m3_primary</color>
-    <color name="m3_inverse_surface">#F3EBDD</color>
-    <color name="m3_inverse_on_surface">#1A1612</color>
-    <color name="m3_inverse_primary">#8A5A2C</color>
+    <color name="m3_inverse_surface">#F5F5F5</color>
+    <color name="m3_inverse_on_surface">#1A1A1A</color>
+    <color name="m3_inverse_primary">#B20710</color>
     <color name="m3_scrim">#000000</color>
 
     <color name="exp_on_media">@color/m3_on_surface</color>
     <color name="exp_on_accent">@color/m3_on_primary</color>
-    <color name="exp_ivory">#F3EBDD</color>
-    <color name="exp_hairline">#33F3EBDD</color>
-    <color name="exp_hairline_strong">#59F3EBDD</color>
-    <color name="exp_nav_rail">#E00C0A08</color>
-    <color name="exp_nav_rail_stroke">#26F3EBDD</color>
-    <color name="exp_panel">#CC171410</color>
-    <color name="exp_panel_solid">#FF1E1A15</color>
 
-    <!-- Legacy glass tokens remapped to matte Nocturne (resource ids kept). -->
-    <color name="exp_nav_glass">@color/exp_nav_rail</color>
-    <color name="exp_nav_glass_stroke">@color/exp_hairline</color>
+    <!-- Soft glass for floating nav -->
+    <color name="exp_nav_glass">#E0141414</color>
+    <color name="exp_nav_glass_stroke">#33FFFFFF</color>
 
-    <!-- Accent presets — Violet / Moss / Ink (theme style names stay Ember/Aurora/Slate). -->
-    <color name="exp_ember_primary">#9B7EC8</color>
-    <color name="exp_ember_on_primary">#160F22</color>
-    <color name="exp_ember_primary_container">#2E2240</color>
-    <color name="exp_ember_on_primary_container">#E6D8F5</color>
+    <!-- Accent presets (Lumina) — Aurora softened for less neon clash -->
+    <color name="exp_ember_primary">#E8724A</color>
+    <color name="exp_ember_on_primary">#1A0A04</color>
+    <color name="exp_ember_primary_container">#5C2A14</color>
+    <color name="exp_ember_on_primary_container">#FFDBCF</color>
 
-    <color name="exp_aurora_primary">#6FA37A</color>
-    <color name="exp_aurora_on_primary">#0C1A10</color>
-    <color name="exp_aurora_primary_container">#1C3322</color>
-    <color name="exp_aurora_on_primary_container">#D4EDD8</color>
+    <color name="exp_aurora_primary">#3D9A8E</color>
+    <color name="exp_aurora_on_primary">#003730</color>
+    <color name="exp_aurora_primary_container">#0C3D37</color>
+    <color name="exp_aurora_on_primary_container">#A8E0D6</color>
 
-    <color name="exp_slate_primary">#A8B4C0</color>
-    <color name="exp_slate_on_primary">#12161A</color>
-    <color name="exp_slate_primary_container">#2A323A</color>
-    <color name="exp_slate_on_primary_container">#E4EAF0</color>
-
-    <color name="exp_violet_primary">@color/exp_ember_primary</color>
-    <color name="exp_moss_primary">@color/exp_aurora_primary</color>
-    <color name="exp_ink_primary">@color/exp_slate_primary</color>
-    <color name="exp_copper_primary">@color/m3_primary</color>
+    <color name="exp_slate_primary">#A8B6BD</color>
+    <color name="exp_slate_on_primary">#1A2226</color>
+    <color name="exp_slate_primary_container">#37474F</color>
+    <color name="exp_slate_on_primary_container">#E0E8EC</color>
 </resources>

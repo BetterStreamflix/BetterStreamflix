@@ -44,6 +44,7 @@ import com.dskja.betterstreamflix.utils.AppLanguageManager
 import com.dskja.betterstreamflix.utils.ExpDialogChrome
 import com.dskja.betterstreamflix.utils.ExperimentalMobileDesign
 import com.dskja.betterstreamflix.utils.ThemeManager
+import com.google.android.material.color.DynamicColors
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.dskja.betterstreamflix.utils.UserPreferences
 import java.util.concurrent.Executor
@@ -122,8 +123,16 @@ class QrScannerActivity : AppCompatActivity() {
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
-        setTheme(ExperimentalMobileDesign.themeRes())
-        ExperimentalMobileDesign.applyDynamicColors(this)
+        setTheme(
+            if (ExperimentalMobileDesign.enabled()) {
+                ExperimentalMobileDesign.themeRes()
+            } else {
+                ThemeManager.mobileThemeRes(UserPreferences.selectedTheme)
+            }
+        )
+        if (ExperimentalMobileDesign.enabled()) {
+            DynamicColors.applyToActivityIfAvailable(this)
+        }
 
         super.onCreate(savedInstanceState)
 

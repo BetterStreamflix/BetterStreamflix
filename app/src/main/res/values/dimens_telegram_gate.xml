@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <dimen name="tg_gate_pad_h">28dp</dimen>
-    <dimen name="tg_gate_pad_v">24dp</dimen>
+    <dimen name="tg_gate_pad_h">20dp</dimen>
+    <dimen name="tg_gate_pad_v">16dp</dimen>
     <dimen name="tg_gate_brand_size">46sp</dimen>
     <dimen name="tg_gate_headline_size">24sp</dimen>
     <dimen name="tg_gate_body_size">15sp</dimen>

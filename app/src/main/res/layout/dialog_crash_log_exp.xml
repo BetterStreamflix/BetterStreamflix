@@ -14,7 +14,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:text="@string/settings_view_crash_log_title"
-        android:textAppearance="@style/TextAppearance.Nocturne.Title"
+        android:textAppearance="@style/TextAppearance.Lumina.Title"
         android:textColor="?attr/colorOnSurface"
         android:textSize="18sp" />
 
@@ -41,7 +41,7 @@
             android:layout_height="wrap_content"
             android:fontFamily="monospace"
             android:lineSpacingExtra="2dp"
-            android:textAppearance="@style/TextAppearance.Nocturne.Caption"
+            android:textAppearance="@style/TextAppearance.Lumina.Caption"
             android:textColor="?attr/colorOnSurfaceVariant"
             android:textIsSelectable="true"
             android:textSize="12sp" />

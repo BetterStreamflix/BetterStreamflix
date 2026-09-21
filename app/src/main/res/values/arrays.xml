@@ -2,15 +2,27 @@
 <resources>
     <string-array name="theme_names">
         <item>@string/theme_default</item>
-        <item>@string/theme_midnight_violet</item>
-        <item>@string/theme_forest_night</item>
+        <item>@string/theme_nero_amoled_oled</item>
+        <item>@string/theme_sunset_cinema</item>
         <item>@string/theme_steel_blue</item>
+        <item>@string/theme_forest_night</item>
+        <item>@string/theme_crimson_noir</item>
+        <item>@string/theme_midnight_violet</item>
+        <item>@string/theme_nord_frost</item>
+        <item>@string/theme_emerald_luxe</item>
+        <item>@string/theme_retro_neon</item>
     </string-array>
     <string-array name="theme_values">
         <item>default</item>
-        <item>midnight_violet</item>
-        <item>forest_night</item>
+        <item>nero_amoled_oled</item>
+        <item>sunset_cinema</item>
         <item>steel_blue</item>
+        <item>forest_night</item>
+        <item>crimson_noir</item>
+        <item>midnight_violet</item>
+        <item>nord_frost</item>
+        <item>emerald_luxe</item>
+        <item>retro_neon</item>
     </string-array>
 
     <string-array name="catalog_sort_names">
@@ -161,66 +173,37 @@
     </string-array>
 
     <string-array name="lumina_accent_names">
-        <item>@string/exp_accent_copper</item>
-        <item>@string/exp_accent_violet</item>
-        <item>@string/exp_accent_moss</item>
-        <item>@string/exp_accent_ink</item>
+        <item>@string/exp_accent_crimson</item>
+        <item>@string/exp_accent_ember</item>
+        <item>@string/exp_accent_aurora</item>
+        <item>@string/exp_accent_slate</item>
     </string-array>
     <string-array name="lumina_accent_values">
-        <item>copper</item>
-        <item>violet</item>
-        <item>moss</item>
-        <item>ink</item>
+        <item>crimson</item>
+        <item>ember</item>
+        <item>aurora</item>
+        <item>slate</item>
     </string-array>
 
     <string-array name="profile_avatar_names">
-        <item>@string/profile_avatar_copper_atelier</item>
-        <item>@string/profile_avatar_violet_salon</item>
-        <item>@string/profile_avatar_moss_garden</item>
-        <item>@string/profile_avatar_ink_press</item>
+        <item>@string/profile_avatar_crimson_signal</item>
         <item>@string/profile_avatar_ember_forge</item>
         <item>@string/profile_avatar_aurora_tide</item>
+        <item>@string/profile_avatar_slate_noir</item>
         <item>@string/profile_avatar_forest_grove</item>
         <item>@string/profile_avatar_ocean_depth</item>
-        <item>@string/profile_avatar_amber_lamp</item>
-        <item>@string/profile_avatar_plum_velvet</item>
-        <item>@string/profile_avatar_steel_frame</item>
-        <item>@string/profile_avatar_rose_velvet</item>
-        <item>@string/profile_avatar_crimson_signal</item>
-        <item>@string/profile_avatar_slate_noir</item>
         <item>@string/profile_avatar_gold_atelier</item>
+        <item>@string/profile_avatar_rose_velvet</item>
     </string-array>
     <string-array name="profile_avatar_values">
-        <item>copper</item>
-        <item>violet</item>
-        <item>moss</item>
-        <item>ink</item>
+        <item>crimson</item>
         <item>ember</item>
         <item>aurora</item>
+        <item>slate</item>
         <item>forest</item>
         <item>ocean</item>
-        <item>amber</item>
-        <item>plum</item>
-        <item>steel</item>
-        <item>rose</item>
-        <item>crimson</item>
-        <item>slate</item>
         <item>gold</item>
-    </string-array>
-
-    <string-array name="profile_atmosphere_names">
-        <item>@string/profile_atmosphere_atelier</item>
-        <item>@string/profile_atmosphere_cinema</item>
-        <item>@string/profile_atmosphere_lounge</item>
-        <item>@string/profile_atmosphere_night</item>
-        <item>@string/profile_atmosphere_kids</item>
-    </string-array>
-    <string-array name="profile_atmosphere_values">
-        <item>atelier</item>
-        <item>cinema</item>
-        <item>lounge</item>
-        <item>night</item>
-        <item>kids</item>
+        <item>rose</item>
     </string-array>
 
 </resources>

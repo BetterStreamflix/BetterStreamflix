@@ -281,8 +281,8 @@
 	<string name="settings_enable_tmdb_disabled">تم تعطيل TMDB</string>
     <string name="main_menu_all_channels">جميع القنوات</string>
     <string name="main_menu_theme_change">تغيير السمة</string>
-    <string name="theme_default">Nocturne Copper</string>
-    <string name="theme_nero_amoled_oled">Nocturne AMOLED</string>
+    <string name="theme_default">افتراضي</string>
+    <string name="theme_nero_amoled_oled">أسود AMOLED/OLED</string>
     <string name="player_not_available_it_message">غير متوفر على الخوادم الإيطالية، ابحث عنه على TMDB بلغات أخرى</string>
     <string name="player_not_available_lang_message">غير متوفر باللغة %s، ابحث عنه على TMDB بلغات أخرى</string>
     <string name="player_aspect_ratio_zoom_4_3">تكبير لـ 4:3</string>
@@ -492,10 +492,10 @@
     <string name="backup_delete_success">تم حذف النسخة الاحتياطية.</string>
     <string name="backup_delete_error">تعذر حذف النسخة الاحتياطية.</string>
     <string name="theme_sunset_cinema">سينما الغروب</string>
-    <string name="theme_steel_blue">Nocturne Ink</string>
-    <string name="theme_forest_night">Nocturne Moss</string>
+    <string name="theme_steel_blue">أزرق فولاذي</string>
+    <string name="theme_forest_night">ليلة الغابة</string>
     <string name="theme_crimson_noir">قرمزي داكن</string>
-    <string name="theme_midnight_violet">Nocturne Violet</string>
+    <string name="theme_midnight_violet">بنفسجي منتصف الليل</string>
     <string name="theme_nord_frost">صقيع الشمال</string>
     <string name="theme_emerald_luxe">زمرد فاخر</string>
     <string name="theme_retro_neon">نيون كلاسيكي</string>

@@ -23,9 +23,9 @@
             android:layout_height="wrap_content"
             android:gravity="center_horizontal"
             android:orientation="vertical"
-            android:paddingStart="22dp"
-            android:paddingTop="48dp"
-            android:paddingEnd="22dp">
+            android:paddingStart="24dp"
+            android:paddingTop="56dp"
+            android:paddingEnd="24dp">
 
             <ImageView
                 android:id="@+id/btn_profile_picker_close"
@@ -38,37 +38,40 @@
                 android:src="@drawable/ic_profile_close"
                 app:tint="@color/profile_text_secondary" />
 
+            <ImageView
+                android:id="@+id/iv_profile_picker_logo"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:contentDescription="@string/app_name"
+                android:scaleType="fitCenter"
+                android:src="@mipmap/ic_launcher" />
+
             <TextView
                 android:id="@+id/tv_profile_picker_brand"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
+                android:layout_marginTop="14dp"
+                android:letterSpacing="0.12"
                 android:text="@string/profile_atelier_brand"
-                android:textAppearance="@style/TextAppearance.Nocturne.Eyebrow"
-                android:textColor="@color/profile_accent" />
-
-            <TextView
-                android:id="@+id/tv_profile_picker_greeting"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="18dp"
-                android:gravity="center"
-                android:textAppearance="@style/TextAppearance.Nocturne.Caption"
-                android:textColor="@color/profile_text_secondary"
-                tools:text="Good evening, Alex" />
+                android:textAllCaps="true"
+                android:textAppearance="@style/TextAppearance.Lumina.Eyebrow"
+                android:textColor="@color/profile_accent"
+                android:textSize="11sp"
+                android:textStyle="bold" />
 
             <TextView
                 android:id="@+id/tv_profile_picker_title"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="6dp"
+                android:layout_marginTop="18dp"
                 android:gravity="center"
-                android:letterSpacing="-0.02"
+                android:letterSpacing="-0.03"
                 android:lineSpacingMultiplier="0.96"
                 android:text="@string/profile_picker_title"
-                android:textAppearance="@style/TextAppearance.Nocturne.Hero"
+                android:textAppearance="@style/TextAppearance.Lumina.Hero"
                 android:textColor="@color/profile_text_primary"
-                android:textSize="36sp" />
+                android:textSize="34sp"
+                android:textStyle="bold" />
 
             <TextView
                 android:id="@+id/tv_profile_picker_subtitle"
@@ -78,57 +81,62 @@
                 android:gravity="center"
                 android:lineSpacingExtra="2dp"
                 android:text="@string/profile_picker_subtitle"
-                android:textAppearance="@style/TextAppearance.Nocturne.Body"
+                android:textAppearance="@style/TextAppearance.Lumina.Body"
                 android:textColor="@color/profile_text_secondary"
                 android:textSize="14sp" />
 
             <View
                 android:id="@+id/v_profile_picker_rule"
-                android:layout_width="28dp"
-                android:layout_height="1.5dp"
-                android:layout_marginTop="16dp"
+                android:layout_width="40dp"
+                android:layout_height="2dp"
+                android:layout_marginTop="18dp"
                 android:background="@drawable/bg_exp_accent_rule" />
 
-            <LinearLayout
-                android:id="@+id/ll_profile_picker_row"
+            <FrameLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="28dp"
-                android:gravity="center_horizontal"
-                android:orientation="vertical"
-                android:paddingBottom="8dp" />
+                android:layout_marginTop="36dp">
+
+                <LinearLayout
+                    android:id="@+id/ll_profile_picker_row"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:gravity="center_horizontal"
+                    android:orientation="vertical"
+                    android:paddingBottom="8dp" />
+            </FrameLayout>
 
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="32dp"
+                android:layout_marginTop="40dp"
                 android:orientation="vertical">
 
                 <TextView
                     android:id="@+id/btn_profile_picker_create"
                     android:layout_width="match_parent"
-                    android:layout_height="52dp"
+                    android:layout_height="54dp"
                     android:background="@drawable/bg_profile_btn_primary"
                     android:focusable="true"
                     android:gravity="center"
                     android:text="@string/profile_create_title"
-                    android:textAppearance="@style/TextAppearance.Nocturne.Caption"
+                    android:textAppearance="@style/TextAppearance.Lumina.Caption"
                     android:textColor="@color/profile_on_accent"
-                    android:textSize="14sp"
+                    android:textSize="15sp"
                     android:textStyle="bold" />
 
                 <TextView
                     android:id="@+id/btn_profile_picker_manage"
                     android:layout_width="match_parent"
-                    android:layout_height="48dp"
-                    android:layout_marginTop="8dp"
+                    android:layout_height="50dp"
+                    android:layout_marginTop="10dp"
                     android:background="@drawable/bg_profile_btn_secondary"
                     android:focusable="true"
                     android:gravity="center"
                     android:text="@string/profile_picker_manage"
-                    android:textAppearance="@style/TextAppearance.Nocturne.Caption"
+                    android:textAppearance="@style/TextAppearance.Lumina.Caption"
                     android:textColor="@color/profile_text_primary"
-                    android:textSize="13sp"
+                    android:textSize="14sp"
                     android:textStyle="bold"
                     tools:ignore="UnusedAttribute" />
             </LinearLayout>

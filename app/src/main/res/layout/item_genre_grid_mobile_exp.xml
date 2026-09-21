@@ -14,7 +14,7 @@
         android:layout_margin="8dp"
         android:gravity="center"
         android:minHeight="96dp"
-        android:textAppearance="@style/TextAppearance.Nocturne.Title"
+        android:textAppearance="@style/TextAppearance.Lumina.Title"
         android:textColor="?attr/colorOnSurface"
         android:textSize="15sp"
         app:layout_constraintBottom_toBottomOf="parent"

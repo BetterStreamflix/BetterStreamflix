@@ -27,7 +27,7 @@
             android:layout_height="wrap_content"
             android:layout_weight="1"
             android:text="@string/settings_scan_resolver_qr_title"
-            android:textAppearance="@style/TextAppearance.Nocturne.Title"
+            android:textAppearance="@style/TextAppearance.Lumina.Title"
         android:textColor="?attr/colorOnSurface"
         android:textSize="20sp" />
 
@@ -43,7 +43,7 @@
             android:paddingEnd="12dp"
             android:paddingBottom="8dp"
             android:text="@android:string/cancel"
-            android:textAppearance="@style/TextAppearance.Nocturne.Caption"
+            android:textAppearance="@style/TextAppearance.Lumina.Caption"
             android:textColor="?attr/colorOnSurface"
             android:textSize="15sp" />
     </LinearLayout>
@@ -73,7 +73,7 @@
             android:paddingEnd="16dp"
             android:paddingBottom="10dp"
             android:text="@string/settings_scan_resolver_qr_summary"
-            android:textAppearance="@style/TextAppearance.Nocturne.Body"
+            android:textAppearance="@style/TextAppearance.Lumina.Body"
             android:textColor="?attr/colorOnSurface"
             android:textSize="15sp" />
     </LinearLayout>

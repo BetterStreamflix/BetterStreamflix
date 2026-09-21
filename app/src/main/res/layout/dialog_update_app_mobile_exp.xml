@@ -8,7 +8,7 @@
 
     <TextView
         android:id="@+id/tv_update_title"
-        android:textAppearance="@style/TextAppearance.Nocturne.Brand"
+        android:textAppearance="@style/TextAppearance.Lumina.Brand"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_marginStart="20dp"
@@ -42,7 +42,7 @@
         android:layout_marginEnd="20dp"
         android:gravity="center"
         android:text="@string/update_message"
-        android:textAppearance="@style/TextAppearance.Nocturne.Body"
+        android:textAppearance="@style/TextAppearance.Lumina.Body"
         android:textColor="?attr/colorOnSurfaceVariant"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
@@ -50,7 +50,7 @@
 
     <TextView
         android:id="@+id/tv_update_current_version_label"
-        android:textAppearance="@style/TextAppearance.Nocturne.Eyebrow"
+        android:textAppearance="@style/TextAppearance.Lumina.Eyebrow"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_marginStart="16dp"
@@ -68,7 +68,7 @@
 
     <TextView
         android:id="@+id/tv_update_current_version"
-        android:textAppearance="@style/TextAppearance.Nocturne.Title"
+        android:textAppearance="@style/TextAppearance.Lumina.Title"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_marginStart="16dp"
@@ -96,7 +96,7 @@
 
     <TextView
         android:id="@+id/tv_update_new_version_label"
-        android:textAppearance="@style/TextAppearance.Nocturne.Eyebrow"
+        android:textAppearance="@style/TextAppearance.Lumina.Eyebrow"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_marginStart="16dp"
@@ -115,7 +115,7 @@
 
     <TextView
         android:id="@+id/tv_update_new_version"
-        android:textAppearance="@style/TextAppearance.Nocturne.Title"
+        android:textAppearance="@style/TextAppearance.Lumina.Title"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_marginStart="16dp"
@@ -130,7 +130,7 @@
 
     <TextView
         android:id="@+id/tv_update_release_notes_label"
-        android:textAppearance="@style/TextAppearance.Nocturne.Eyebrow"
+        android:textAppearance="@style/TextAppearance.Lumina.Eyebrow"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_marginStart="20dp"
@@ -165,7 +165,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:lineSpacingExtra="3dp"
-            android:textAppearance="@style/TextAppearance.Nocturne.Caption"
+            android:textAppearance="@style/TextAppearance.Lumina.Caption"
             android:textColor="?attr/colorOnSurfaceVariant"
             android:textSize="12sp"
             tools:text="- Bug fixes" />
