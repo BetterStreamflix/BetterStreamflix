@@ -33,9 +33,11 @@ import com.dskja.betterstreamflix.utils.AppLanguageManager
 import com.dskja.betterstreamflix.utils.ExpDialogChrome
 import com.dskja.betterstreamflix.utils.ExperimentalMobileDesign
 import com.dskja.betterstreamflix.utils.NetworkClient
+import com.dskja.betterstreamflix.utils.ThemeManager
 import com.dskja.betterstreamflix.utils.UserPreferences
 import com.dskja.betterstreamflix.utils.WebViewDohBridge
 import com.dskja.betterstreamflix.watchlist.WatchlistImporter
+import com.google.android.material.color.DynamicColors
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -110,8 +112,16 @@ class WatchlistImportActivity : AppCompatActivity() {
 
     @SuppressLint("SetJavaScriptEnabled")
     override fun onCreate(savedInstanceState: Bundle?) {
-        setTheme(ExperimentalMobileDesign.themeRes())
-        ExperimentalMobileDesign.applyDynamicColors(this)
+        setTheme(
+            if (ExperimentalMobileDesign.enabled()) {
+                ExperimentalMobileDesign.themeRes()
+            } else {
+                ThemeManager.mobileThemeRes(UserPreferences.selectedTheme)
+            },
+        )
+        if (ExperimentalMobileDesign.enabled()) {
+            DynamicColors.applyToActivityIfAvailable(this)
+        }
         super.onCreate(savedInstanceState)
         setContentView(
             ExperimentalMobileDesign.layout(

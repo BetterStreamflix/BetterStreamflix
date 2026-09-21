@@ -31,7 +31,7 @@
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@id/ic_handlebar"
-        app:shapeAppearanceOverlay="@style/ShapeAppearance.Nocturne.Episode"
+        app:shapeAppearanceOverlay="@style/ShapeAppearance.Lumina.Episode"
         app:strokeColor="?attr/colorOutlineVariant"
         app:strokeWidth="1dp"
         tools:ignore="ContentDescription" />
@@ -44,7 +44,7 @@
         android:layout_marginTop="16dp"
         android:layout_marginEnd="18dp"
         android:letterSpacing="-0.01"
-        android:textAppearance="@style/TextAppearance.Nocturne.Title"
+        android:textAppearance="@style/TextAppearance.Lumina.Title"
         android:textColor="?attr/colorOnSurface"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
@@ -58,7 +58,7 @@
         android:layout_marginStart="18dp"
         android:layout_marginTop="4dp"
         android:layout_marginEnd="18dp"
-        android:textAppearance="@style/TextAppearance.Nocturne.Body"
+        android:textAppearance="@style/TextAppearance.Lumina.Body"
         android:textColor="?attr/colorOnSurfaceVariant"
         android:textSize="13sp"
         app:layout_constraintEnd_toEndOf="parent"
@@ -99,7 +99,7 @@
             android:gravity="center_vertical"
             android:padding="14dp"
             android:text="@string/option_episode_open_tv_show"
-            android:textAppearance="@style/TextAppearance.Nocturne.Body"
+            android:textAppearance="@style/TextAppearance.Lumina.Body"
             android:textColor="?attr/colorOnSurface"
             android:textSize="14sp"
             app:drawableTint="?attr/colorOnSurfaceVariant" />
@@ -115,7 +115,7 @@
             android:gravity="center_vertical"
             android:padding="14dp"
             android:text="@string/option_show_favorite"
-            android:textAppearance="@style/TextAppearance.Nocturne.Body"
+            android:textAppearance="@style/TextAppearance.Lumina.Body"
             android:textColor="?attr/colorOnSurface"
             android:textSize="14sp"
             app:drawableTint="?attr/colorOnSurfaceVariant" />
@@ -131,7 +131,7 @@
             android:gravity="center_vertical"
             android:padding="14dp"
             android:text="@string/option_show_watched"
-            android:textAppearance="@style/TextAppearance.Nocturne.Body"
+            android:textAppearance="@style/TextAppearance.Lumina.Body"
             android:textColor="?attr/colorOnSurface"
             android:textSize="14sp"
             app:drawableTint="?attr/colorOnSurfaceVariant" />
@@ -147,7 +147,7 @@
             android:gravity="center_vertical"
             android:padding="14dp"
             android:text="@string/option_show_download"
-            android:textAppearance="@style/TextAppearance.Nocturne.Body"
+            android:textAppearance="@style/TextAppearance.Lumina.Body"
             android:textColor="?attr/colorOnSurface"
             android:textSize="14sp"
             app:drawableTint="?attr/colorOnSurfaceVariant" />
@@ -163,7 +163,7 @@
             android:gravity="center_vertical"
             android:padding="14dp"
             android:text="@string/option_show_mark_all_previous_watched"
-            android:textAppearance="@style/TextAppearance.Nocturne.Body"
+            android:textAppearance="@style/TextAppearance.Lumina.Body"
             android:textColor="?attr/colorOnSurface"
             android:textSize="14sp"
             app:drawableTint="?attr/colorOnSurfaceVariant" />
@@ -179,7 +179,7 @@
             android:gravity="center_vertical"
             android:padding="14dp"
             android:text="@string/option_clear_program"
-            android:textAppearance="@style/TextAppearance.Nocturne.Body"
+            android:textAppearance="@style/TextAppearance.Lumina.Body"
             android:textColor="?attr/colorOnSurface"
             android:textSize="14sp"
             app:drawableTint="?attr/colorOnSurfaceVariant" />
@@ -195,7 +195,7 @@
             android:gravity="center_vertical"
             android:padding="14dp"
             android:text="@string/option_clear_recently_watched"
-            android:textAppearance="@style/TextAppearance.Nocturne.Body"
+            android:textAppearance="@style/TextAppearance.Lumina.Body"
             android:textColor="?attr/colorOnSurface"
             android:textSize="14sp"
             android:visibility="gone"
@@ -210,7 +210,7 @@
             android:gravity="center"
             android:padding="14dp"
             android:text="@string/option_cancel"
-            android:textAppearance="@style/TextAppearance.Nocturne.Caption"
+            android:textAppearance="@style/TextAppearance.Lumina.Caption"
             android:textColor="?attr/colorOnSurfaceVariant"
             android:textSize="14sp"
             android:textStyle="bold" />

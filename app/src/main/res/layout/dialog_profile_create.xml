@@ -16,7 +16,7 @@
         android:letterSpacing="0.12"
         android:text="@string/profile_settings_hero_eyebrow"
         android:textAllCaps="true"
-        android:textAppearance="@style/TextAppearance.Nocturne.Eyebrow"
+        android:textAppearance="@style/TextAppearance.Lumina.Eyebrow"
         android:textColor="@color/profile_accent"
         android:textSize="11sp"
         android:textStyle="bold" />
@@ -27,7 +27,7 @@
         android:layout_height="wrap_content"
         android:layout_marginTop="8dp"
         android:text="@string/profile_create_title"
-        android:textAppearance="@style/TextAppearance.Nocturne.Title"
+        android:textAppearance="@style/TextAppearance.Lumina.Title"
         android:textColor="@color/profile_text_primary"
         android:textSize="22sp"
         android:textStyle="bold" />
@@ -37,7 +37,7 @@
         android:layout_height="wrap_content"
         android:layout_marginTop="6dp"
         android:text="@string/profile_create_subtitle"
-        android:textAppearance="@style/TextAppearance.Nocturne.Body"
+        android:textAppearance="@style/TextAppearance.Lumina.Body"
         android:textColor="@color/profile_text_secondary"
         android:textSize="13sp" />
 
@@ -60,7 +60,7 @@
         android:inputType="textCapWords"
         android:paddingStart="16dp"
         android:paddingEnd="16dp"
-        android:textAppearance="@style/TextAppearance.Nocturne.Body"
+        android:textAppearance="@style/TextAppearance.Lumina.Body"
         android:textColor="@color/profile_text_primary"
         android:textColorHint="@color/profile_text_tertiary"
         android:textSize="15sp" />
@@ -70,7 +70,7 @@
         android:layout_height="wrap_content"
         android:layout_marginTop="18dp"
         android:text="@string/profile_avatar_choose"
-        android:textAppearance="@style/TextAppearance.Nocturne.Caption"
+        android:textAppearance="@style/TextAppearance.Lumina.Caption"
         android:textColor="@color/profile_text_secondary"
         android:textSize="12sp"
         android:textStyle="bold" />
@@ -95,7 +95,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="10dp"
-        android:textAppearance="@style/TextAppearance.Nocturne.Caption"
+        android:textAppearance="@style/TextAppearance.Lumina.Caption"
         android:textColor="@color/profile_accent"
         android:textSize="13sp"
         android:textStyle="bold"
@@ -108,59 +108,8 @@
         android:layout_marginTop="14dp"
         android:buttonTint="@color/profile_accent"
         android:text="@string/profile_kids_title"
-        android:textAppearance="@style/TextAppearance.Nocturne.Body"
+        android:textAppearance="@style/TextAppearance.Lumina.Body"
         android:textColor="@color/profile_text_primary" />
-
-    <TextView
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="16dp"
-        android:text="@string/profile_atmosphere_title"
-        android:textAppearance="@style/TextAppearance.Nocturne.Caption"
-        android:textColor="@color/profile_text_secondary"
-        android:textSize="12sp"
-        android:textStyle="bold" />
-
-    <HorizontalScrollView
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="10dp"
-        android:overScrollMode="never"
-        android:scrollbars="none">
-
-        <LinearLayout
-            android:id="@+id/ll_profile_create_atmospheres"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:orientation="horizontal" />
-    </HorizontalScrollView>
-
-    <TextView
-        android:id="@+id/tv_profile_create_atmosphere_label"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="8dp"
-        android:textAppearance="@style/TextAppearance.Nocturne.Caption"
-        android:textColor="@color/profile_accent"
-        android:textSize="13sp"
-        tools:text="Atelier" />
-
-    <EditText
-        android:id="@+id/et_profile_create_greeting"
-        android:layout_width="match_parent"
-        android:layout_height="48dp"
-        android:layout_marginTop="14dp"
-        android:background="@drawable/bg_profile_field"
-        android:hint="@string/profile_greeting_hint"
-        android:imeOptions="actionDone"
-        android:importantForAutofill="no"
-        android:inputType="textCapWords"
-        android:paddingStart="16dp"
-        android:paddingEnd="16dp"
-        android:textAppearance="@style/TextAppearance.Nocturne.Body"
-        android:textColor="@color/profile_text_primary"
-        android:textColorHint="@color/profile_text_tertiary"
-        android:textSize="14sp" />
 
     <LinearLayout
         android:layout_width="match_parent"
@@ -178,7 +127,7 @@
             android:paddingStart="16dp"
             android:paddingEnd="16dp"
             android:text="@android:string/cancel"
-            android:textAppearance="@style/TextAppearance.Nocturne.Caption"
+            android:textAppearance="@style/TextAppearance.Lumina.Caption"
             android:textColor="@color/profile_text_secondary"
             android:textSize="14sp"
             android:textStyle="bold" />
@@ -194,7 +143,7 @@
             android:paddingStart="18dp"
             android:paddingEnd="18dp"
             android:text="@android:string/ok"
-            android:textAppearance="@style/TextAppearance.Nocturne.Caption"
+            android:textAppearance="@style/TextAppearance.Lumina.Caption"
             android:textColor="@color/profile_on_accent"
             android:textSize="14sp"
             android:textStyle="bold" />

@@ -114,7 +114,13 @@ class MainMobileActivity : FragmentActivity() {
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
-        setTheme(ExperimentalMobileDesign.themeRes())
+        setTheme(
+            if (ExperimentalMobileDesign.enabled()) {
+                ExperimentalMobileDesign.themeRes()
+            } else {
+                ThemeManager.mobileThemeRes(UserPreferences.selectedTheme)
+            }
+        )
         super.onCreate(savedInstanceState)
         ExperimentalMobileDesign.applyDynamicColors(this)
 
@@ -132,13 +138,17 @@ class MainMobileActivity : FragmentActivity() {
             )
         )
         setContentView(binding.root)
-        applyExperimentalNavigationChrome()
-        ExperimentalMobileDesign.applyReducedGlass(binding.root)
-        binding.root.findViewById<View>(R.id.bv_main_nav)?.let { nav ->
-            nav.setBackgroundResource(ExperimentalMobileDesign.navPillBackground())
-            ExpMotion.enterScreen(binding.root)
-            ExpMotion.popIn(nav)
-            ExpMotion.popIn(binding.btnMainSearch)
+        if (ExperimentalMobileDesign.enabled()) {
+            applyExperimentalNavigationChrome()
+            ExperimentalMobileDesign.applyReducedGlass(binding.root)
+            binding.root.findViewById<View>(R.id.bv_main_nav)?.let { nav ->
+                nav.setBackgroundResource(ExperimentalMobileDesign.navPillBackground())
+                ExpMotion.enterScreen(binding.root)
+                ExpMotion.popIn(nav)
+                ExpMotion.popIn(binding.btnMainSearch)
+            }
+        } else {
+            applyThemeNavigationChrome()
         }
         if (UserPreferences.castEnabled) {
             CastPlaybackHub.ensureCastContext(this)

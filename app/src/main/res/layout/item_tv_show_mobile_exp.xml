@@ -17,7 +17,7 @@
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent"
-        app:shapeAppearanceOverlay="@style/ShapeAppearance.Nocturne.Poster"
+        app:shapeAppearanceOverlay="@style/ShapeAppearance.Lumina.Poster"
         app:strokeColor="?attr/colorOutlineVariant"
         app:strokeWidth="1dp" />
 
@@ -50,7 +50,7 @@
 
     <TextView
         android:id="@+id/tv_tv_show_quality"
-        android:textAppearance="@style/TextAppearance.Nocturne.Caption"
+        android:textAppearance="@style/TextAppearance.Lumina.Caption"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginTop="9dp"
@@ -79,7 +79,7 @@
         android:paddingTop="2dp"
         android:paddingEnd="6dp"
         android:paddingBottom="2dp"
-        android:textAppearance="@style/TextAppearance.Nocturne.Caption"
+        android:textAppearance="@style/TextAppearance.Lumina.Caption"
         android:textColor="?attr/colorOnSecondaryContainer"
         android:textSize="10sp"
         app:layout_constraintEnd_toEndOf="@id/iv_tv_show_poster"
@@ -114,7 +114,7 @@
         app:layout_constraintStart_toStartOf="@id/iv_tv_show_poster"
         app:layout_constraintTop_toBottomOf="@id/iv_tv_show_poster"
         tools:text="Title" 
-        android:textAppearance="@style/TextAppearance.Nocturne.Title"
+        android:textAppearance="@style/TextAppearance.Lumina.Title"
         android:textSize="13sp"/>
 
 </androidx.constraintlayout.widget.ConstraintLayout>

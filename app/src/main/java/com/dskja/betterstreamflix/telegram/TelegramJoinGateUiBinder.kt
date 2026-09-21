@@ -4,7 +4,6 @@ import android.content.Context
 import android.net.Uri
 import android.provider.Settings
 import android.view.View
-import android.view.animation.AccelerateDecelerateInterpolator
 import android.view.animation.DecelerateInterpolator
 import android.widget.Toast
 import androidx.core.view.ViewCompat
@@ -39,7 +38,6 @@ class TelegramJoinGateUiBinder(
         fun onDismissed()
     }
 
-    private var orbDriftRunning = false
     private var metaJob: Job? = null
     private var finishing = false
 
@@ -78,7 +76,6 @@ class TelegramJoinGateUiBinder(
         ).forEach { it.applyExpPress() }
 
         playEnterMotion()
-        startOrbDrift()
         loadLiveMetadata()
     }
 
@@ -92,7 +89,6 @@ class TelegramJoinGateUiBinder(
     fun destroy() {
         metaJob?.cancel()
         metaJob = null
-        stopOrbDrift()
         binding.root.animate().cancel()
         runCatching {
             Glide.with(host.context().applicationContext)
@@ -108,7 +104,6 @@ class TelegramJoinGateUiBinder(
         if (finishing) return
         finishing = true
         TelegramJoinGatePolicy.markDismissed()
-        stopOrbDrift()
         metaJob?.cancel()
         if (!animate || reduceMotion()) {
             host.onDismissed()
@@ -289,45 +284,6 @@ class TelegramJoinGateUiBinder(
             .setDuration(520L)
             .setInterpolator(DecelerateInterpolator())
             .start()
-    }
-
-    private fun startOrbDrift() {
-        if (reduceMotion() || orbDriftRunning) return
-        orbDriftRunning = true
-        fun drift(view: View, dx: Float, dy: Float, duration: Long) {
-            view.animate()
-                .translationX(dx)
-                .translationY(dy)
-                .setDuration(duration)
-                .setInterpolator(AccelerateDecelerateInterpolator())
-                .withEndAction {
-                    if (!orbDriftRunning || !host.isHostAlive()) return@withEndAction
-                    view.animate()
-                        .translationX(0f)
-                        .translationY(0f)
-                        .setDuration(duration)
-                        .setInterpolator(AccelerateDecelerateInterpolator())
-                        .withEndAction {
-                            if (orbDriftRunning && host.isHostAlive()) {
-                                drift(view, dx, dy, duration)
-                            }
-                        }
-                        .start()
-                }
-                .start()
-        }
-        drift(binding.vTgGateOrbA, -16f, 20f, 5400L)
-        drift(binding.vTgGateOrbB, 20f, -14f, 6800L)
-    }
-
-    private fun stopOrbDrift() {
-        orbDriftRunning = false
-        binding.vTgGateOrbA.animate().cancel()
-        binding.vTgGateOrbB.animate().cancel()
-        binding.vTgGateOrbA.translationX = 0f
-        binding.vTgGateOrbA.translationY = 0f
-        binding.vTgGateOrbB.translationX = 0f
-        binding.vTgGateOrbB.translationY = 0f
     }
 
     private fun haptic(view: View) {

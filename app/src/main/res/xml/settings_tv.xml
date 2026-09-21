@@ -76,11 +76,6 @@
                 android:summary="@string/profile_create_summary" />
 
             <Preference
-                android:key="PROFILE_DUPLICATE"
-                android:title="@string/profile_duplicate_title"
-                android:summary="@string/profile_duplicate_summary" />
-
-            <Preference
                 android:key="PROFILE_RENAME"
                 android:title="@string/profile_rename_title" />
 
@@ -99,14 +94,6 @@
                 android:title="@string/profile_avatar_title"
                 android:summary="@string/profile_avatar_choose"
                 android:icon="@drawable/bg_profile_avatar_preview" />
-
-            <ListPreference
-                android:key="PROFILE_ATMOSPHERE"
-                android:title="@string/profile_atmosphere_title"
-                android:summary="%s"
-                android:entries="@array/profile_atmosphere_names"
-                android:entryValues="@array/profile_atmosphere_values"
-                android:defaultValue="atelier" />
 
             <SwitchPreferenceCompat
                 android:key="PROFILE_KIDS"
@@ -849,12 +836,25 @@
                 android:entryValues="@array/theme_values"
                 android:defaultValue="default" />
 
+            <SwitchPreference
+                android:key="EXPERIMENTAL_NEW_APP_DESIGN"
+                android:title="@string/settings_experimental_new_design_title"
+                android:summary="@string/settings_experimental_new_design_summary"
+                android:defaultValue="false" />
+
             <PreferenceScreen
                 android:key="screen_lumina_options"
                 android:title="@string/settings_lumina_options_title"
                 android:summary="@string/settings_lumina_options_summary">
 
                 <PreferenceCategory android:title="@string/settings_lumina_options_title">
+                    <ListPreference
+                        android:key="EXPERIMENTAL_LUMINA_ACCENT"
+                        android:title="@string/settings_lumina_accent_title"
+                        android:summary="%s"
+                        android:entries="@array/lumina_accent_names"
+                        android:entryValues="@array/lumina_accent_values"
+                        android:defaultValue="crimson" />
                     <SwitchPreference
                         android:key="EXPERIMENTAL_LUMINA_PURE_BLACK"
                         android:title="@string/settings_lumina_pure_black_title"

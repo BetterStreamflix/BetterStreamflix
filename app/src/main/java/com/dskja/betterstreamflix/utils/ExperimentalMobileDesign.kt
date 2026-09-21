@@ -7,69 +7,59 @@ import com.dskja.betterstreamflix.R
 import com.google.android.material.color.DynamicColors
 
 /**
- * Nocturne — the single app-wide design language.
+ * Lumina — off-by-default cinematic mobile shell.
  *
- * Matte canvas, hairline frames, Fraunces/Syne/Outfit type. Always on for
- * mobile, TV, support, gate and player. Accents (copper / violet / moss / ink)
- * and optional OLED black are the only remaining look variants.
- * The React/Vite home shell stays a nested DEBUG opt-in.
+ * DEBUG builds can enable the React/Vite shell (assets/experimental) plus the
+ * legacy XML glass layouts for screens that are not yet ported.
  */
 object ExperimentalMobileDesign {
 
     enum class Accent(val key: String) {
-        COPPER("copper"),
-        VIOLET("violet"),
-        MOSS("moss"),
-        INK("ink");
+        CRIMSON("crimson"),
+        EMBER("ember"),
+        AURORA("aurora"),
+        SLATE("slate");
 
         companion object {
-            fun fromKey(raw: String?): Accent = when (raw?.lowercase()) {
-                COPPER.key, "crimson" -> COPPER
-                VIOLET.key, "ember" -> VIOLET
-                MOSS.key, "aurora" -> MOSS
-                INK.key, "slate" -> INK
-                else -> COPPER
-            }
+            fun fromKey(raw: String?): Accent =
+                entries.firstOrNull { it.key.equals(raw, ignoreCase = true) } ?: CRIMSON
         }
     }
 
-    fun isAvailable(): Boolean = true
+    fun isAvailable(): Boolean = BuildConfig.DEBUG
 
-    fun enabled(): Boolean = true
+    fun enabled(): Boolean = isAvailable() && UserPreferences.experimentalNewAppDesign
 
     /**
-     * React home is a separate DEBUG opt-in. Native Featured carousel is default.
+     * React Lumina home is a separate opt-in. When Lumina is on but React home is off,
+     * the native Featured ViewPager carousel is used (preferred / default).
      */
     fun useReactShell(): Boolean =
-        BuildConfig.DEBUG && UserPreferences.experimentalReactHome
+        enabled() && UserPreferences.experimentalReactHome
 
-    /** Call once at app start: keep Nocturne on, fold legacy skins into it. */
+    /** Call once at app start to clear stale Lumina prefs in release builds. */
     fun enforceAvailabilityGate() {
-        UserPreferences.experimentalNewAppDesign = true
-        ThemeManager.syncSavedLook()
-        if (!BuildConfig.DEBUG && UserPreferences.experimentalReactHome) {
+        if (!isAvailable() && UserPreferences.experimentalNewAppDesign) {
+            UserPreferences.experimentalNewAppDesign = false
+        }
+        if (!isAvailable() && UserPreferences.experimentalReactHome) {
             UserPreferences.experimentalReactHome = false
         }
     }
-
-    fun layout(defaultRes: Int, experimentalRes: Int): Int = experimentalRes
+    fun layout(defaultRes: Int, experimentalRes: Int): Int =
+        if (enabled()) experimentalRes else defaultRes
 
     fun accent(): Accent = Accent.fromKey(UserPreferences.experimentalLuminaAccent)
 
-    fun pureBlack(): Boolean =
-        UserPreferences.experimentalLuminaPureBlack ||
-            UserPreferences.selectedTheme == ThemeManager.NERO_AMOLED_OLED
+    fun pureBlack(): Boolean = enabled() && UserPreferences.experimentalLuminaPureBlack
 
-    fun dynamicColors(): Boolean = UserPreferences.experimentalLuminaDynamicColors
+    fun dynamicColors(): Boolean = enabled() && UserPreferences.experimentalLuminaDynamicColors
 
-    fun navAutoHide(): Boolean = UserPreferences.experimentalLuminaNavAutoHide
+    fun navAutoHide(): Boolean = enabled() && UserPreferences.experimentalLuminaNavAutoHide
 
-    fun heroParallax(): Boolean = UserPreferences.experimentalLuminaHeroParallax
+    fun heroParallax(): Boolean = enabled() && UserPreferences.experimentalLuminaHeroParallax
 
-    /** Flatter matte panels (legacy pref key: reduced glass). */
-    fun reducedGlass(): Boolean = UserPreferences.experimentalLuminaReducedGlass
-
-    fun reducedAtmosphere(): Boolean = reducedGlass()
+    fun reducedGlass(): Boolean = enabled() && UserPreferences.experimentalLuminaReducedGlass
 
     fun glassCardBackground(): Int =
         if (reducedGlass()) R.drawable.bg_exp_glass_card_flat else R.drawable.bg_exp_glass_card
@@ -113,10 +103,11 @@ object ExperimentalMobileDesign {
     fun primaryButtonBackground(): Int = R.drawable.bg_exp_button_primary
 
     /**
-     * Walk [root] and swap hairline panels to solid flats when reduced atmosphere is on.
+     * Walk [root] and swap glossy Lumina glass/sheet/nav shells to flat variants
+     * when [reducedGlass] is on. Safe no-op when the experiment is off.
      */
     fun applyReducedGlass(root: android.view.View?) {
-        if (root == null || !reducedGlass()) return
+        if (root == null || !enabled() || !reducedGlass()) return
         val ctx = root.context
         fun matches(view: android.view.View, resId: Int): Boolean {
             val bg = view.background ?: return false
@@ -161,27 +152,27 @@ object ExperimentalMobileDesign {
         walk(root)
     }
 
-    /** Theme resource for [Activity.setTheme]. */
+    /** Theme resource for [Activity.setTheme] when Lumina is on. */
     fun themeRes(): Int {
         val black = pureBlack()
         return when (accent()) {
-            Accent.COPPER -> if (black) R.style.AppTheme_Mobile_Experimental_PureBlack
+            Accent.CRIMSON -> if (black) R.style.AppTheme_Mobile_Experimental_PureBlack
             else R.style.AppTheme_Mobile_Experimental
-            Accent.VIOLET -> if (black) R.style.AppTheme_Mobile_Experimental_Ember_PureBlack
+            Accent.EMBER -> if (black) R.style.AppTheme_Mobile_Experimental_Ember_PureBlack
             else R.style.AppTheme_Mobile_Experimental_Ember
-            Accent.MOSS -> if (black) R.style.AppTheme_Mobile_Experimental_Aurora_PureBlack
+            Accent.AURORA -> if (black) R.style.AppTheme_Mobile_Experimental_Aurora_PureBlack
             else R.style.AppTheme_Mobile_Experimental_Aurora
-            Accent.INK -> if (black) R.style.AppTheme_Mobile_Experimental_Slate_PureBlack
+            Accent.SLATE -> if (black) R.style.AppTheme_Mobile_Experimental_Slate_PureBlack
             else R.style.AppTheme_Mobile_Experimental_Slate
         }
     }
 
     /** CSS hex for out-of-process surfaces (TV bypass landing HTML). */
     fun accentCssHex(): String = when (accent()) {
-        Accent.COPPER -> "#D08A4A"
-        Accent.VIOLET -> "#9B7EC8"
-        Accent.MOSS -> "#6FA37A"
-        Accent.INK -> "#A8B4C0"
+        Accent.CRIMSON -> "#E50914"
+        Accent.EMBER -> "#E85A2A"
+        Accent.AURORA -> "#2BB8A6"
+        Accent.SLATE -> "#7A8B9A"
     }
 
     /**
@@ -194,25 +185,27 @@ object ExperimentalMobileDesign {
     }
 
     fun summary(context: Context): String {
+        if (!isAvailable()) {
+            return context.getString(R.string.settings_experimental_broken_summary)
+        }
+        if (!enabled()) {
+            return context.getString(R.string.settings_experimental_new_design_summary)
+        }
         val accentLabel = when (accent()) {
-            Accent.COPPER -> context.getString(R.string.exp_accent_copper)
-            Accent.VIOLET -> context.getString(R.string.exp_accent_violet)
-            Accent.MOSS -> context.getString(R.string.exp_accent_moss)
-            Accent.INK -> context.getString(R.string.exp_accent_ink)
+            Accent.CRIMSON -> context.getString(R.string.exp_accent_crimson)
+            Accent.EMBER -> context.getString(R.string.exp_accent_ember)
+            Accent.AURORA -> context.getString(R.string.exp_accent_aurora)
+            Accent.SLATE -> context.getString(R.string.exp_accent_slate)
         }
         val extras = buildList {
-            if (useReactShell()) add(context.getString(R.string.exp_opt_react_shell_short))
+            add(context.getString(R.string.exp_opt_react_shell_short))
             if (pureBlack()) add(context.getString(R.string.exp_opt_pure_black_short))
             if (dynamicColors()) add(context.getString(R.string.exp_opt_dynamic_short))
         }.joinToString(" · ")
-        return if (extras.isBlank()) {
-            context.getString(R.string.settings_experimental_lumina_active_summary, accentLabel)
-        } else {
-            context.getString(
-                R.string.settings_experimental_lumina_active_summary_extra,
-                accentLabel,
-                extras,
-            )
-        }
+        return context.getString(
+            R.string.settings_experimental_lumina_active_summary_extra,
+            accentLabel,
+            extras,
+        )
     }
 }

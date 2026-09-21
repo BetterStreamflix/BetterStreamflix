@@ -136,7 +136,7 @@
             android:drawableTint="?attr/colorPrimary"
             android:gravity="center"
             android:text="@string/loading_error_title"
-            android:textAppearance="@style/TextAppearance.Nocturne.Brand"
+            android:textAppearance="@style/TextAppearance.Lumina.Brand"
             android:textSize="22sp" />
 
         <TextView
@@ -146,7 +146,7 @@
             android:layout_marginTop="10dp"
             android:gravity="center"
             android:text="@string/loading_error_body"
-            android:textAppearance="@style/TextAppearance.Nocturne.Body"
+            android:textAppearance="@style/TextAppearance.Lumina.Body"
             android:textColor="?attr/colorOnSurfaceVariant"
             android:textSize="14sp" />
     </LinearLayout>

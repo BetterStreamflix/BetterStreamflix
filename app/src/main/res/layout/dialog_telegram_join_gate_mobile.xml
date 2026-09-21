@@ -5,7 +5,7 @@
     android:id="@+id/tg_gate_root"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@drawable/bg_tg_gate_fullscreen"
+    android:background="@color/support_bg"
     android:clickable="true"
     android:focusable="true">
 
@@ -17,7 +17,8 @@
         android:layout_marginTop="-72dp"
         android:layout_marginEnd="-96dp"
         android:background="@drawable/bg_tg_gate_orb"
-        android:importantForAccessibility="no" />
+        android:importantForAccessibility="no"
+        android:visibility="gone" />
 
     <View
         android:id="@+id/v_tg_gate_orb_b"
@@ -27,7 +28,8 @@
         android:layout_marginStart="-64dp"
         android:layout_marginBottom="120dp"
         android:background="@drawable/bg_community_invite_orb_discord"
-        android:importantForAccessibility="no" />
+        android:importantForAccessibility="no"
+        android:visibility="gone" />
 
     <androidx.core.widget.NestedScrollView
         android:layout_width="match_parent"
@@ -56,19 +58,20 @@
                 android:src="@drawable/ic_support_close"
                 app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintTop_toTopOf="parent"
-                app:tint="@color/tg_gate_text_secondary" />
+                app:tint="@color/support_text_primary" />
 
             <TextView
                 android:id="@+id/tv_tg_gate_brand"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="28dp"
-                android:gravity="center"
-                android:letterSpacing="-0.04"
+                android:gravity="start"
+                android:letterSpacing="-0.02"
                 android:text="@string/tg_gate_brand"
-                android:textAppearance="@style/TextAppearance.Nocturne.Brand"
-                android:textColor="@color/tg_gate_brand"
-                android:textSize="42sp"
+                android:textAppearance="@style/TextAppearance.Lumina.Brand"
+                android:textColor="@color/support_text_primary"
+                android:textSize="@dimen/support_text_hero"
+                android:textStyle="bold"
                 app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintTop_toBottomOf="@id/btn_tg_gate_close" />
@@ -76,10 +79,9 @@
             <View
                 android:id="@+id/v_tg_gate_brand_rule"
                 android:layout_width="36dp"
-                android:layout_height="2dp"
-                android:layout_marginTop="14dp"
-                android:background="@color/tg_gate_telegram"
-                app:layout_constraintEnd_toEndOf="parent"
+                android:layout_height="3dp"
+                android:layout_marginTop="12dp"
+                android:background="@color/support_accent"
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintTop_toBottomOf="@id/tv_tg_gate_brand" />
 
@@ -88,12 +90,13 @@
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="28dp"
-                android:gravity="center"
+                android:gravity="start"
                 android:letterSpacing="-0.02"
                 android:text="@string/tg_gate_headline"
-                android:textAppearance="@style/TextAppearance.Nocturne.Title"
-                android:textColor="@color/tg_gate_text_primary"
-                android:textSize="26sp"
+                android:textAppearance="@style/TextAppearance.Lumina.Title"
+                android:textColor="@color/support_text_primary"
+                android:textSize="@dimen/support_text_screen_title"
+                android:textStyle="bold"
                 app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintTop_toBottomOf="@id/v_tg_gate_brand_rule" />
@@ -103,12 +106,12 @@
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="10dp"
-                android:gravity="center"
-                android:lineSpacingExtra="3dp"
+                android:gravity="start"
+                android:lineSpacingExtra="2dp"
                 android:text="@string/tg_gate_body"
-                android:textAppearance="@style/TextAppearance.Nocturne.Body"
-                android:textColor="@color/tg_gate_text_secondary"
-                android:textSize="15sp"
+                android:textAppearance="@style/TextAppearance.Lumina.Body"
+                android:textColor="@color/support_text_secondary"
+                android:textSize="@dimen/support_text_body"
                 app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintTop_toBottomOf="@id/tv_tg_gate_headline" />
@@ -118,8 +121,8 @@
                 android:id="@+id/row_tg_gate_telegram"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="36dp"
-                android:background="@drawable/bg_community_invite_row"
+                android:layout_marginTop="@dimen/support_section_spacing"
+                android:background="@drawable/bg_support_card"
                 android:gravity="center_vertical"
                 android:orientation="horizontal"
                 android:padding="16dp"
@@ -135,7 +138,7 @@
                         android:id="@+id/iv_tg_gate_telegram_icon"
                         android:layout_width="56dp"
                         android:layout_height="56dp"
-                        android:background="@drawable/bg_community_invite_avatar"
+                        android:background="@drawable/bg_support_icon_chip"
                         android:contentDescription="@string/tg_gate_telegram_cd"
                         android:padding="12dp"
                         android:scaleType="centerCrop"
@@ -147,7 +150,7 @@
                         android:layout_width="24dp"
                         android:layout_height="24dp"
                         android:layout_gravity="center"
-                        android:indeterminateTint="@color/tg_gate_telegram"
+                        android:indeterminateTint="@color/support_accent"
                         android:visibility="gone" />
                 </FrameLayout>
 
@@ -165,9 +168,10 @@
                         android:ellipsize="end"
                         android:maxLines="1"
                         android:text="@string/tg_gate_telegram_title"
-                        android:textAppearance="@style/TextAppearance.Nocturne.Title"
-                        android:textColor="@color/tg_gate_text_primary"
-                        android:textSize="16sp" />
+                        android:textAppearance="@style/TextAppearance.Lumina.Title"
+                        android:textColor="@color/support_text_primary"
+                        android:textSize="@dimen/support_text_card_title"
+                        android:textStyle="bold" />
 
                     <TextView
                         android:id="@+id/tv_tg_gate_telegram_handle"
@@ -177,9 +181,9 @@
                         android:ellipsize="end"
                         android:maxLines="1"
                         android:text="@string/tg_gate_channel_chip"
-                        android:textAppearance="@style/TextAppearance.Nocturne.Caption"
-                        android:textColor="@color/tg_gate_telegram_bright"
-                        android:textSize="13sp"
+                        android:textAppearance="@style/TextAppearance.Lumina.Caption"
+                        android:textColor="@color/support_text_secondary"
+                        android:textSize="@dimen/support_text_secondary"
                         tools:text="@BetterStreamflix" />
 
                     <TextView
@@ -188,23 +192,23 @@
                         android:layout_height="wrap_content"
                         android:layout_marginTop="4dp"
                         android:text="@string/tg_gate_members_loading"
-                        android:textAppearance="@style/TextAppearance.Nocturne.Caption"
-                        android:textColor="@color/tg_gate_text_tertiary"
-                        android:textSize="12sp" />
+                        android:textAppearance="@style/TextAppearance.Lumina.Caption"
+                        android:textColor="@color/support_text_tertiary"
+                        android:textSize="@dimen/support_text_caption" />
                 </LinearLayout>
 
                 <TextView
                     android:id="@+id/btn_tg_gate_open"
                     android:layout_width="wrap_content"
-                    android:layout_height="40dp"
-                    android:background="@drawable/bg_tg_gate_btn_primary"
+                    android:layout_height="@dimen/support_button_height"
+                    android:background="@drawable/bg_support_btn_primary"
                     android:gravity="center"
                     android:minWidth="72dp"
                     android:paddingHorizontal="14dp"
                     android:text="@string/tg_gate_cta_open_short"
-                    android:textAppearance="@style/TextAppearance.Nocturne.Caption"
-                    android:textColor="@color/tg_gate_on_primary"
-                    android:textSize="13sp"
+                    android:textAppearance="@style/TextAppearance.Lumina.Caption"
+                    android:textColor="@color/support_on_accent"
+                    android:textSize="@dimen/support_text_cta"
                     android:textStyle="bold" />
             </LinearLayout>
 
@@ -213,8 +217,8 @@
                 android:id="@+id/row_tg_gate_discord"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="12dp"
-                android:background="@drawable/bg_community_invite_row"
+                android:layout_marginTop="@dimen/support_card_spacing"
+                android:background="@drawable/bg_support_card"
                 android:gravity="center_vertical"
                 android:orientation="horizontal"
                 android:padding="16dp"
@@ -230,7 +234,7 @@
                         android:id="@+id/iv_tg_gate_discord_icon"
                         android:layout_width="56dp"
                         android:layout_height="56dp"
-                        android:background="@drawable/bg_community_invite_avatar"
+                        android:background="@drawable/bg_support_icon_chip"
                         android:contentDescription="@string/tg_gate_discord_cd"
                         android:padding="12dp"
                         android:scaleType="centerCrop"
@@ -242,7 +246,7 @@
                         android:layout_width="24dp"
                         android:layout_height="24dp"
                         android:layout_gravity="center"
-                        android:indeterminateTint="@color/tg_gate_discord"
+                        android:indeterminateTint="@color/support_accent"
                         android:visibility="gone" />
                 </FrameLayout>
 
@@ -260,9 +264,10 @@
                         android:ellipsize="end"
                         android:maxLines="1"
                         android:text="@string/tg_gate_discord_title"
-                        android:textAppearance="@style/TextAppearance.Nocturne.Title"
-                        android:textColor="@color/tg_gate_text_primary"
-                        android:textSize="16sp" />
+                        android:textAppearance="@style/TextAppearance.Lumina.Title"
+                        android:textColor="@color/support_text_primary"
+                        android:textSize="@dimen/support_text_card_title"
+                        android:textStyle="bold" />
 
                     <TextView
                         android:id="@+id/tv_tg_gate_discord_handle"
@@ -272,9 +277,9 @@
                         android:ellipsize="end"
                         android:maxLines="1"
                         android:text="@string/tg_gate_discord_handle"
-                        android:textAppearance="@style/TextAppearance.Nocturne.Caption"
-                        android:textColor="@color/tg_gate_discord_bright"
-                        android:textSize="13sp" />
+                        android:textAppearance="@style/TextAppearance.Lumina.Caption"
+                        android:textColor="@color/support_text_secondary"
+                        android:textSize="@dimen/support_text_secondary" />
 
                     <TextView
                         android:id="@+id/tv_tg_gate_discord_members"
@@ -282,23 +287,23 @@
                         android:layout_height="wrap_content"
                         android:layout_marginTop="4dp"
                         android:text="@string/tg_gate_members_loading"
-                        android:textAppearance="@style/TextAppearance.Nocturne.Caption"
-                        android:textColor="@color/tg_gate_text_tertiary"
-                        android:textSize="12sp" />
+                        android:textAppearance="@style/TextAppearance.Lumina.Caption"
+                        android:textColor="@color/support_text_tertiary"
+                        android:textSize="@dimen/support_text_caption" />
                 </LinearLayout>
 
                 <TextView
                     android:id="@+id/btn_tg_gate_discord_open"
                     android:layout_width="wrap_content"
-                    android:layout_height="40dp"
-                    android:background="@drawable/bg_community_invite_btn_discord"
+                    android:layout_height="@dimen/support_button_height"
+                    android:background="@drawable/bg_support_btn_primary"
                     android:gravity="center"
                     android:minWidth="72dp"
                     android:paddingHorizontal="14dp"
                     android:text="@string/tg_gate_cta_open_short"
-                    android:textAppearance="@style/TextAppearance.Nocturne.Caption"
-                    android:textColor="@color/tg_gate_on_primary"
-                    android:textSize="13sp"
+                    android:textAppearance="@style/TextAppearance.Lumina.Caption"
+                    android:textColor="@color/support_on_accent"
+                    android:textSize="@dimen/support_text_cta"
                     android:textStyle="bold" />
             </LinearLayout>
 
@@ -307,11 +312,11 @@
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="20dp"
-                android:gravity="center"
+                android:gravity="start"
                 android:text="@string/tg_gate_hint_optional"
-                android:textAppearance="@style/TextAppearance.Nocturne.Caption"
-                android:textColor="@color/tg_gate_text_tertiary"
-                android:textSize="12sp"
+                android:textAppearance="@style/TextAppearance.Lumina.Caption"
+                android:textColor="@color/support_text_tertiary"
+                android:textSize="@dimen/support_text_caption"
                 app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintTop_toBottomOf="@id/row_tg_gate_discord" />
@@ -319,15 +324,15 @@
             <TextView
                 android:id="@+id/btn_tg_gate_continue"
                 android:layout_width="0dp"
-                android:layout_height="@dimen/tg_gate_cta_height"
-                android:layout_marginTop="28dp"
-                android:background="@drawable/bg_community_invite_btn_continue"
+                android:layout_height="@dimen/support_button_height_lg"
+                android:layout_marginTop="@dimen/support_section_spacing"
+                android:background="@drawable/bg_support_btn_secondary"
                 android:focusable="true"
                 android:gravity="center"
                 android:text="@string/tg_gate_cta_continue"
-                android:textAppearance="@style/TextAppearance.Nocturne.Title"
-                android:textColor="@color/tg_gate_text_primary"
-                android:textSize="16sp"
+                android:textAppearance="@style/TextAppearance.Lumina.Title"
+                android:textColor="@color/support_text_primary"
+                android:textSize="@dimen/support_text_cta"
                 app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintTop_toBottomOf="@id/tv_tg_gate_hint" />
@@ -472,7 +477,7 @@
                 android:layout_marginTop="16dp"
                 android:padding="10dp"
                 android:text="@string/tg_gate_debug_skip"
-                android:textColor="@color/tg_gate_text_tertiary"
+                android:textColor="@color/support_text_tertiary"
                 android:textSize="12sp"
                 android:visibility="gone"
                 app:layout_constraintEnd_toEndOf="parent"

@@ -441,22 +441,22 @@ object UserPreferences {
         get() = Key.SELECTED_THEME.getString() ?: "default"
         set(value) = Key.SELECTED_THEME.setString(value)
 
-    /** Always-on Nocturne shell. Kept so older prefs still round-trip. */
+    /** Off-by-default complete mobile shell redesign. Requires activity restart. */
     var experimentalNewAppDesign: Boolean
-        get() = true
+        get() = Key.EXPERIMENTAL_NEW_APP_DESIGN.getBoolean() ?: false
         set(value) = Key.EXPERIMENTAL_NEW_APP_DESIGN.setBoolean(value)
 
     /**
-     * Opt-in React/Vite home shell (DEBUG only). Default off so the native
+     * Opt-in React/Vite home shell (DEBUG + Lumina only). Default off so the native
      * Featured ViewPager carousel stays active.
      */
     var experimentalReactHome: Boolean
         get() = Key.EXPERIMENTAL_REACT_HOME.getBoolean() ?: false
         set(value) = Key.EXPERIMENTAL_REACT_HOME.setBoolean(value)
 
-    /** Nocturne accent: copper | violet | moss | ink (legacy crimson/ember/aurora/slate still map) */
+    /** Lumina accent palette: crimson | ember | aurora | slate */
     var experimentalLuminaAccent: String
-        get() = Key.EXPERIMENTAL_LUMINA_ACCENT.getString() ?: "copper"
+        get() = Key.EXPERIMENTAL_LUMINA_ACCENT.getString() ?: "crimson"
         set(value) = Key.EXPERIMENTAL_LUMINA_ACCENT.setString(value)
 
     var experimentalLuminaPureBlack: Boolean

@@ -34,7 +34,7 @@
 
     <TextView
         android:id="@+id/tv_exo_title"
-        android:textAppearance="@style/TextAppearance.Nocturne.Title"
+        android:textAppearance="@style/TextAppearance.Lumina.Title"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_marginStart="14dp"
@@ -50,7 +50,7 @@
 
     <TextView
         android:id="@+id/tv_exo_subtitle"
-        android:textAppearance="@style/TextAppearance.Nocturne.Caption"
+        android:textAppearance="@style/TextAppearance.Lumina.Caption"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_marginStart="14dp"
@@ -207,7 +207,7 @@
 
         <TextView
             android:id="@+id/tv_live_indicator"
-            android:textAppearance="@style/TextAppearance.Nocturne.Eyebrow"
+            android:textAppearance="@style/TextAppearance.Lumina.Eyebrow"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:background="@drawable/bg_exp_live_indicator"
@@ -229,7 +229,7 @@
 
         <TextView
             android:id="@+id/btn_go_live"
-            android:textAppearance="@style/TextAppearance.Nocturne.Eyebrow"
+            android:textAppearance="@style/TextAppearance.Lumina.Eyebrow"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginStart="8dp"
@@ -252,7 +252,7 @@
 
         <TextView
             android:id="@+id/tv_live_channel_meta"
-            android:textAppearance="@style/TextAppearance.Nocturne.Caption"
+            android:textAppearance="@style/TextAppearance.Lumina.Caption"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_marginStart="12dp"
@@ -276,7 +276,7 @@
 
         <TextView
             android:id="@+id/exo_position"
-        android:textAppearance="@style/TextAppearance.Nocturne.Caption"
+        android:textAppearance="@style/TextAppearance.Lumina.Caption"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:fontFeatureSettings="tnum"
@@ -290,7 +290,7 @@
 
         <TextView
             android:id="@+id/tv_time_separator"
-        android:textAppearance="@style/TextAppearance.Nocturne.Caption"
+        android:textAppearance="@style/TextAppearance.Lumina.Caption"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:paddingStart="8dp"
@@ -305,7 +305,7 @@
 
         <TextView
             android:id="@+id/exo_duration"
-        android:textAppearance="@style/TextAppearance.Nocturne.Caption"
+        android:textAppearance="@style/TextAppearance.Lumina.Caption"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:fontFeatureSettings="tnum"
@@ -379,7 +379,7 @@
 
     <TextView
         android:id="@+id/btn_skip_intro"
-        android:textAppearance="@style/TextAppearance.Nocturne.Caption"
+        android:textAppearance="@style/TextAppearance.Lumina.Caption"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginEnd="20dp"

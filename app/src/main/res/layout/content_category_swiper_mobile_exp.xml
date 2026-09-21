@@ -28,7 +28,7 @@
         android:paddingTop="7dp"
         android:paddingEnd="14dp"
         android:paddingBottom="7dp"
-        android:textAppearance="@style/TextAppearance.Nocturne.Eyebrow"
+        android:textAppearance="@style/TextAppearance.Lumina.Eyebrow"
         android:textColor="?attr/colorPrimary"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent"

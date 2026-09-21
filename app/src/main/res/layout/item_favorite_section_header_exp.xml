@@ -16,7 +16,7 @@
         android:layout_height="wrap_content"
         android:letterSpacing="0.08"
         android:textAllCaps="true"
-        android:textAppearance="@style/TextAppearance.Nocturne.Eyebrow"
+        android:textAppearance="@style/TextAppearance.Lumina.Eyebrow"
         android:textColor="?attr/colorPrimary"
         android:textSize="12sp"
         tools:text="Movies" />
