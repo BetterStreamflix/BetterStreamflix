@@ -9,15 +9,15 @@ class ProfileAvatarStyleTest {
 
     @Test
     fun colorFor_knownKeysAreDistinct() {
-        val crimson = ProfileAvatarStyle.colorFor("crimson")
+        val crimson = ProfileAvatarStyle.colorFor("copper")
         val ocean = ProfileAvatarStyle.colorFor("ocean")
         assertNotEquals(crimson, ocean)
     }
 
     @Test
-    fun colorFor_unknownFallsBackToCrimson() {
+    fun colorFor_unknownFallsBackToCopper() {
         assertEquals(
-            ProfileAvatarStyle.colorFor("crimson"),
+            ProfileAvatarStyle.colorFor("copper"),
             ProfileAvatarStyle.colorFor("unknown-key"),
         )
     }
@@ -45,7 +45,8 @@ class ProfileAvatarStyleTest {
     }
 
     @Test
-    fun all_returnsEightSignals() {
-        assertEquals(8, ProfileAvatarStyle.all().size)
+    fun all_returnsExpandedSignals() {
+        assertTrue(ProfileAvatarStyle.all().size >= 12)
+        assertTrue(ProfileAvatarStyle.all().any { it.motif == ProfileAvatarStyle.Motif.CRESCENT })
     }
 }

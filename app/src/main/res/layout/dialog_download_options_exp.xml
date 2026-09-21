@@ -15,7 +15,7 @@
             android:id="@+id/tv_download_options_title"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:textAppearance="@style/TextAppearance.Lumina.Brand"
+            android:textAppearance="@style/TextAppearance.Nocturne.Brand"
             android:textSize="22sp"
             tools:text="Beispieltext" />
 
@@ -31,7 +31,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="5dp"
-            android:textAppearance="@style/TextAppearance.Lumina.Body"
+            android:textAppearance="@style/TextAppearance.Nocturne.Body"
             android:textColor="?attr/colorOnSurfaceVariant"
             android:textSize="14sp" />
 
@@ -40,7 +40,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="12dp"
-            android:textAppearance="@style/TextAppearance.Lumina.Caption"
+            android:textAppearance="@style/TextAppearance.Nocturne.Caption"
             android:textColor="?attr/colorOnSurfaceVariant"
             android:textSize="13sp" />
 
@@ -51,7 +51,7 @@
             android:letterSpacing="0.1"
             android:text="@string/download_options_server"
             android:textAllCaps="true"
-            android:textAppearance="@style/TextAppearance.Lumina.Eyebrow"
+            android:textAppearance="@style/TextAppearance.Nocturne.Eyebrow"
             android:textColor="?attr/colorPrimary"
             android:textSize="11sp" />
 
@@ -71,7 +71,7 @@
             android:letterSpacing="0.1"
             android:text="@string/download_options_quality"
             android:textAllCaps="true"
-            android:textAppearance="@style/TextAppearance.Lumina.Eyebrow"
+            android:textAppearance="@style/TextAppearance.Nocturne.Eyebrow"
             android:textColor="?attr/colorPrimary"
             android:textSize="11sp" />
 
@@ -99,7 +99,7 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="16dp"
             android:text="@string/download_options_wifi_hint"
-            android:textAppearance="@style/TextAppearance.Lumina.Caption"
+            android:textAppearance="@style/TextAppearance.Nocturne.Caption"
             android:textColor="?attr/colorOnSurfaceVariant"
             android:textSize="12sp" />
     </LinearLayout>

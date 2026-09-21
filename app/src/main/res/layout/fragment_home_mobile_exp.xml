@@ -15,7 +15,7 @@
         android:scaleType="centerCrop"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintHeight_percent="0.62"
+        app:layout_constraintHeight_percent="0.58"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent"
         app:layout_constraintVertical_bias="0"
@@ -41,7 +41,7 @@
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintVertical_bias="0.42" />
+        app:layout_constraintVertical_bias="0.28" />
 
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/rv_home"
@@ -49,8 +49,8 @@
         android:layout_height="0dp"
         android:clipToPadding="false"
         android:orientation="vertical"
-        android:paddingTop="128dp"
-        android:paddingBottom="110dp"
+        android:paddingTop="168dp"
+        android:paddingBottom="96dp"
         app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
@@ -59,45 +59,76 @@
         tools:itemCount="1"
         tools:listitem="@layout/content_category_swiper_mobile_exp" />
 
+    <ImageView
+        android:id="@+id/iv_provider_logo"
+        android:layout_width="44dp"
+        android:layout_height="0dp"
+        android:layout_marginStart="20dp"
+        android:layout_marginTop="44dp"
+        android:background="@drawable/bg_provider_logo_home_exp"
+        android:clickable="true"
+        android:contentDescription="@string/providers_choose_title"
+        android:elevation="4dp"
+        android:focusable="true"
+        android:foreground="?attr/selectableItemBackgroundBorderless"
+        android:padding="8dp"
+        app:layout_constraintDimensionRatio="1:1"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
+
+    <TextView
+        android:id="@+id/tv_home_greeting"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="14dp"
+        android:layout_marginEnd="8dp"
+        android:elevation="4dp"
+        android:ellipsize="end"
+        android:maxLines="1"
+        android:textAppearance="@style/TextAppearance.Nocturne.Eyebrow"
+        android:textColor="?attr/colorPrimary"
+        app:layout_constraintEnd_toStartOf="@id/tv_home_profile_chip"
+        app:layout_constraintStart_toEndOf="@id/iv_provider_logo"
+        app:layout_constraintTop_toTopOf="@id/iv_provider_logo"
+        tools:text="Good evening, Alex" />
+
     <TextView
         android:id="@+id/tv_home_brand"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:layout_marginStart="14dp"
-        android:layout_marginTop="42dp"
-        android:layout_marginEnd="14dp"
-        android:elevation="10dp"
+        android:layout_marginTop="4dp"
+        android:elevation="4dp"
         android:ellipsize="end"
-        android:maxLines="2"
+        android:maxLines="1"
         android:text="@string/app_name"
-        android:textAppearance="@style/TextAppearance.Lumina.Hero"
-        android:textSize="32sp"
+        android:textAppearance="@style/TextAppearance.Nocturne.Hero"
+        android:textSize="30sp"
         app:layout_constraintEnd_toStartOf="@id/tv_home_profile_chip"
-        app:layout_constraintStart_toEndOf="@id/iv_provider_logo"
-        app:layout_constraintTop_toTopOf="parent" />
+        app:layout_constraintStart_toStartOf="@id/tv_home_greeting"
+        app:layout_constraintTop_toBottomOf="@id/tv_home_greeting" />
 
     <TextView
         android:id="@+id/tv_home_tagline"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:layout_marginTop="10dp"
-        android:elevation="10dp"
+        android:layout_marginTop="6dp"
+        android:elevation="4dp"
         android:text="@string/exp_home_tagline"
-        android:textAppearance="@style/TextAppearance.Lumina.Eyebrow"
+        android:textAppearance="@style/TextAppearance.Nocturne.Body"
         android:textColor="?attr/colorOnSurfaceVariant"
+        android:textSize="13sp"
         app:layout_constraintEnd_toEndOf="@id/tv_home_brand"
         app:layout_constraintStart_toStartOf="@id/tv_home_brand"
         app:layout_constraintTop_toBottomOf="@id/tv_home_brand" />
 
-    <!-- Provider identity lives on the logo; chip kept for a11y/tools but off the hero. -->
     <TextView
         android:id="@+id/tv_home_provider_chip"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:elevation="10dp"
+        android:elevation="4dp"
         android:ellipsize="end"
         android:maxLines="1"
-        android:textAppearance="@style/TextAppearance.Lumina.Caption"
+        android:textAppearance="@style/TextAppearance.Nocturne.Caption"
         android:visibility="gone"
         app:layout_constraintStart_toStartOf="@id/tv_home_brand"
         app:layout_constraintTop_toBottomOf="@id/v_home_brand_rule"
@@ -106,29 +137,28 @@
 
     <View
         android:id="@+id/v_home_brand_rule"
-        android:layout_width="52dp"
-        android:layout_height="3dp"
-        android:layout_marginTop="14dp"
+        android:layout_width="28dp"
+        android:layout_height="1.5dp"
+        android:layout_marginTop="12dp"
         android:background="@drawable/bg_exp_accent_rule"
-        android:elevation="10dp"
+        android:elevation="4dp"
         app:layout_constraintStart_toStartOf="@id/tv_home_brand"
         app:layout_constraintTop_toBottomOf="@id/tv_home_tagline" />
 
     <View
         android:id="@+id/v_home_header_fade"
         android:layout_width="0dp"
-        android:layout_height="48dp"
-        android:layout_marginTop="10dp"
+        android:layout_height="36dp"
+        android:layout_marginTop="8dp"
         android:background="@drawable/bg_exp_header_fade"
-        android:elevation="8dp"
+        android:elevation="2dp"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@id/v_home_brand_rule" />
 
-    <!-- Keeps brand and profile clear of the activity search chip on the right. -->
     <Space
         android:id="@+id/btn_home_search_spacer"
-        android:layout_width="108dp"
+        android:layout_width="96dp"
         android:layout_height="48dp"
         android:layout_marginTop="12dp"
         android:layout_marginEnd="12dp"
@@ -146,44 +176,26 @@
         app:layout_constraintEnd_toStartOf="@id/btn_home_search_spacer"
         app:layout_constraintHorizontal_bias="1"
         app:layout_constraintStart_toEndOf="@id/iv_provider_logo"
-        app:layout_constraintTop_toTopOf="@id/tv_home_brand" />
-
-    <ImageView
-        android:id="@+id/iv_provider_logo"
-        android:layout_width="50dp"
-        android:layout_height="0dp"
-        android:layout_marginStart="18dp"
-        android:layout_marginTop="40dp"
-        android:background="@drawable/bg_provider_logo_home_exp"
-        android:clickable="true"
-        android:contentDescription="@string/providers_choose_title"
-        android:elevation="12dp"
-        android:focusable="true"
-        android:foreground="?attr/selectableItemBackgroundBorderless"
-        android:padding="10dp"
-        android:translationZ="12dp"
-        app:layout_constraintDimensionRatio="1:1"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent" />
+        app:layout_constraintTop_toTopOf="@id/tv_home_greeting" />
 
     <TextView
         android:id="@+id/tv_home_catalog_warning"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:layout_marginStart="18dp"
+        android:layout_marginStart="20dp"
         android:layout_marginTop="12dp"
-        android:layout_marginEnd="18dp"
-        android:background="@drawable/bg_exp_glass_card"
+        android:layout_marginEnd="20dp"
+        android:background="@drawable/bg_exp_meta_pill"
         android:clickable="true"
-        android:elevation="14dp"
+        android:elevation="6dp"
         android:ellipsize="end"
         android:focusable="true"
-        android:textAppearance="@style/TextAppearance.Lumina.Caption"
         android:maxLines="2"
         android:paddingStart="14dp"
         android:paddingTop="10dp"
         android:paddingEnd="14dp"
         android:paddingBottom="10dp"
+        android:textAppearance="@style/TextAppearance.Nocturne.Caption"
         android:textColor="?attr/colorOnSurface"
         android:textSize="12sp"
         android:visibility="gone"
@@ -193,7 +205,7 @@
         tools:text="Catalog unavailable — showing cache"
         tools:visibility="visible" />
 
-        <TextView
+    <TextView
         android:id="@+id/tv_home_empty"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
@@ -204,9 +216,9 @@
         android:drawablePadding="18dp"
         android:drawableTint="?attr/colorPrimary"
         android:gravity="center"
-        android:padding="32dp"
+        android:padding="28dp"
         android:text="@string/home_empty"
-        android:textAppearance="@style/TextAppearance.Lumina.Body"
+        android:textAppearance="@style/TextAppearance.Nocturne.Body"
         android:visibility="gone"
         app:layout_constraintBottom_toTopOf="@id/v_home_empty_rule"
         app:layout_constraintEnd_toEndOf="parent"
@@ -218,8 +230,8 @@
 
     <View
         android:id="@+id/v_home_empty_rule"
-        android:layout_width="36dp"
-        android:layout_height="3dp"
+        android:layout_width="28dp"
+        android:layout_height="1.5dp"
         android:layout_marginTop="14dp"
         android:background="@drawable/bg_exp_accent_rule"
         android:visibility="gone"
@@ -241,7 +253,7 @@
         android:paddingBottom="10dp"
         android:text="@string/exp_empty_choose_provider"
         android:textAllCaps="false"
-        android:textAppearance="@style/TextAppearance.Lumina.Caption"
+        android:textAppearance="@style/TextAppearance.Nocturne.Caption"
         android:textColor="?attr/colorOnPrimary"
         android:visibility="gone"
         app:layout_constraintBottom_toBottomOf="parent"

@@ -685,7 +685,7 @@ class SettingsMobileFragment : PreferenceFragmentCompat() {
         findPreference<Preference>("p_settings_support_preview")?.apply {
             // Same PreferenceScreen as EXPERIMENTAL_NEW_APP_DESIGN (Appearance) —
             // never use android:dependency across nested screens (BETTERSTREAMFLIX-K).
-            isVisible = ExperimentalMobileDesign.enabled()
+            isVisible = BuildConfig.DEBUG
             setOnPreferenceClickListener {
                 runCatching {
                     findNavController().navigate(R.id.support_preview)
@@ -979,7 +979,7 @@ class SettingsMobileFragment : PreferenceFragmentCompat() {
             }
             setOnPreferenceChangeListener { preference, newValue ->
                 val newTheme = newValue as String
-                UserPreferences.selectedTheme = newTheme
+                ThemeManager.applyLook(newTheme)
                 if (preference is ListPreference) {
                     preference.value = newTheme
                 }
@@ -2111,39 +2111,19 @@ class SettingsMobileFragment : PreferenceFragmentCompat() {
     }
 
     private fun bindExperimentalDesignGate() {
-        if (!ExperimentalMobileDesign.isAvailable() && UserPreferences.experimentalNewAppDesign) {
-            UserPreferences.experimentalNewAppDesign = false
-        }
-        findPreference<Preference>("screen_lumina_options")?.isVisible = ExperimentalMobileDesign.isAvailable()
+        findPreference<Preference>("screen_lumina_options")?.isVisible = true
+        findPreference<Preference>("EXPERIMENTAL_NEW_APP_DESIGN")?.isVisible = false
     }
 
     private fun bindExperimentalDesignPreference() {
-        findPreference<SwitchPreference>("EXPERIMENTAL_NEW_APP_DESIGN")?.apply {
-            val available = ExperimentalMobileDesign.isAvailable()
+        findPreference<SwitchPreference>("EXPERIMENTAL_NEW_APP_DESIGN")?.isVisible = false
+        findPreference<SwitchPreference>("EXPERIMENTAL_REACT_HOME")?.apply {
+            val available = BuildConfig.DEBUG
+            isVisible = available
             isEnabled = available
-            isChecked = available && UserPreferences.experimentalNewAppDesign
-            summary = ExperimentalMobileDesign.summary(requireContext())
+            isChecked = available && UserPreferences.experimentalReactHome
             setOnPreferenceChangeListener { _, newValue ->
                 if (!available) return@setOnPreferenceChangeListener false
-                UserPreferences.experimentalNewAppDesign = newValue as Boolean
-                if (!(newValue as Boolean)) {
-                    UserPreferences.experimentalReactHome = false
-                }
-                requireActivity().apply {
-                    finish()
-                    startActivity(Intent(this, MainMobileActivity::class.java))
-                }
-                true
-            }
-        }
-        findPreference<SwitchPreference>("EXPERIMENTAL_REACT_HOME")?.apply {
-            val available = ExperimentalMobileDesign.isAvailable()
-            val luminaOn = available && UserPreferences.experimentalNewAppDesign
-            isVisible = available
-            isEnabled = luminaOn
-            isChecked = luminaOn && UserPreferences.experimentalReactHome
-            setOnPreferenceChangeListener { _, newValue ->
-                if (!luminaOn) return@setOnPreferenceChangeListener false
                 UserPreferences.experimentalReactHome = newValue as Boolean
                 requireActivity().apply {
                     finish()
@@ -2155,8 +2135,7 @@ class SettingsMobileFragment : PreferenceFragmentCompat() {
     }
 
     private fun bindLuminaOptions() {
-        val luminaOn = ExperimentalMobileDesign.enabled()
-        findPreference<Preference>("screen_lumina_options")?.isVisible = ExperimentalMobileDesign.isAvailable() && luminaOn
+        findPreference<Preference>("screen_lumina_options")?.isVisible = true
 
         fun restartShell() {
             requireActivity().apply {
@@ -2168,9 +2147,9 @@ class SettingsMobileFragment : PreferenceFragmentCompat() {
         (findPreference("EXPERIMENTAL_LUMINA_ACCENT") as? ListPreference)?.apply {
             value = UserPreferences.experimentalLuminaAccent
             summaryProvider = ListPreference.SimpleSummaryProvider.getInstance()
-            isEnabled = luminaOn
+            isVisible = false
             setOnPreferenceChangeListener { _, newValue ->
-                UserPreferences.experimentalLuminaAccent = newValue.toString()
+                ThemeManager.applyAccent(newValue.toString())
                 restartShell()
                 true
             }
@@ -2179,7 +2158,7 @@ class SettingsMobileFragment : PreferenceFragmentCompat() {
         fun bindToggle(key: String, get: () -> Boolean, set: (Boolean) -> Unit, restart: Boolean) {
             (findPreference(key) as? SwitchPreference)?.apply {
                 isChecked = get()
-                isEnabled = luminaOn
+                isEnabled = true
                 setOnPreferenceChangeListener { _, newValue ->
                     set(newValue as Boolean)
                     if (restart) restartShell()

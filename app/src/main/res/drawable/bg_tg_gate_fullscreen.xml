@@ -27,7 +27,7 @@
             <gradient
                 android:endColor="#00000000"
                 android:gradientRadius="230dp"
-                android:startColor="@color/tg_gate_telegram_soft"
+                android:startColor="@color/tg_gate_canvas_soft"
                 android:type="radial" />
         </shape>
     </item>
@@ -69,7 +69,7 @@
             <gradient
                 android:angle="270"
                 android:endColor="#00000000"
-                android:startColor="@color/tg_gate_telegram_mist"
+                android:startColor="@color/tg_gate_canvas_mist"
                 android:type="linear" />
         </shape>
     </item>

@@ -1,24 +1,24 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Premium Support design tokens — cinematic dark, restrained red accent -->
-    <color name="support_bg">#0A0A0A</color>
-    <color name="support_surface">#121212</color>
-    <color name="support_surface_elevated">#1A1A1A</color>
-    <color name="support_surface_elevated_2">#222222</color>
-    <color name="support_card_bg">#161616</color>
-    <color name="support_card_border">#2A2A2A</color>
-    <color name="support_card_border_focus">#E50914</color>
-    <color name="support_text_primary">#F5F5F5</color>
-    <color name="support_text_secondary">#A3A3A3</color>
-    <color name="support_text_tertiary">#737373</color>
-    <color name="support_accent">#E50914</color>
-    <color name="support_accent_pressed">#B20710</color>
-    <color name="support_accent_soft">#33E50914</color>
-    <color name="support_success">#3DDC97</color>
-    <color name="support_warning">#F5A623</color>
-    <color name="support_divider">#1F1F1F</color>
-    <color name="support_scrim">#CC000000</color>
-    <color name="support_hero_overlay_start">#E6000000</color>
-    <color name="support_hero_overlay_end">#66000000</color>
-    <color name="support_on_accent">#FFFFFF</color>
+    <!-- Support — Nocturne canvas + copper signal. -->
+    <color name="support_bg">@color/m3_surface</color>
+    <color name="support_surface">@color/m3_surface_container</color>
+    <color name="support_surface_elevated">@color/m3_surface_container_high</color>
+    <color name="support_surface_elevated_2">@color/m3_surface_container_highest</color>
+    <color name="support_card_bg">@color/m3_surface_container</color>
+    <color name="support_card_border">@color/m3_outline_variant</color>
+    <color name="support_card_border_focus">@color/m3_primary</color>
+    <color name="support_text_primary">@color/m3_on_surface</color>
+    <color name="support_text_secondary">@color/m3_on_surface_variant</color>
+    <color name="support_text_tertiary">@color/m3_outline</color>
+    <color name="support_accent">@color/m3_primary</color>
+    <color name="support_accent_pressed">@color/m3_inverse_primary</color>
+    <color name="support_accent_soft">#33D08A4A</color>
+    <color name="support_success">@color/exp_aurora_primary</color>
+    <color name="support_warning">#C4A46A</color>
+    <color name="support_divider">@color/m3_outline_variant</color>
+    <color name="support_scrim">@color/profile_scrim</color>
+    <color name="support_hero_overlay_start">#E60C0A08</color>
+    <color name="support_hero_overlay_end">#660C0A08</color>
+    <color name="support_on_accent">@color/m3_on_primary</color>
 </resources>

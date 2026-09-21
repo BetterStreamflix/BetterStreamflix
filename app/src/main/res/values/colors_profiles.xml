@@ -1,38 +1,53 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Profiles — cinema ink + signal cyan (matches app, no gold) -->
-    <color name="profile_bg">#07070D</color>
-    <color name="profile_bg_elevated">#0E1218</color>
-    <color name="profile_surface">#141A24</color>
-    <color name="profile_surface_soft">#1A2230</color>
-    <color name="profile_border">#2C3D55</color>
-    <color name="profile_border_focus">#2AABEE</color>
-    <color name="profile_text_primary">#F5F8FC</color>
-    <color name="profile_text_secondary">#A3B1C4</color>
-    <color name="profile_text_tertiary">#6E7E94</color>
-    <color name="profile_accent">#2AABEE</color>
-    <color name="profile_accent_pressed">#1A8FC8</color>
-    <color name="profile_accent_soft">#332AABEE</color>
-    <color name="profile_on_accent">#FFFFFF</color>
-    <color name="profile_success">#3DDC97</color>
+    <!-- Profiles lounge — Nocturne ivory / copper, no cyan, no gold. -->
+    <color name="profile_bg">#0C0A08</color>
+    <color name="profile_bg_elevated">#14110D</color>
+    <color name="profile_surface">#1E1A15</color>
+    <color name="profile_surface_soft">#26211B</color>
+    <color name="profile_border">#332C2721</color>
+    <color name="profile_border_focus">#D08A4A</color>
+    <color name="profile_text_primary">#F3EBDD</color>
+    <color name="profile_text_secondary">#A89B8C</color>
+    <color name="profile_text_tertiary">#6E6358</color>
+    <color name="profile_accent">#D08A4A</color>
+    <color name="profile_accent_pressed">#B4743C</color>
+    <color name="profile_accent_soft">#33D08A4A</color>
+    <color name="profile_on_accent">#1A1108</color>
+    <color name="profile_success">#6FA37A</color>
     <color name="profile_danger">#C45C5C</color>
-    <color name="profile_scrim">#E604070D</color>
+    <color name="profile_scrim">#E60C0A08</color>
+    <color name="profile_keypad">#1E1A15</color>
+    <color name="profile_keypad_pressed">#2C2620</color>
+    <color name="profile_dot_on">#F3EBDD</color>
+    <color name="profile_dot_off">#336E6358</color>
 
-    <!-- Avatar palette cores -->
-    <color name="profile_avatar_crimson_a">#8B1020</color>
-    <color name="profile_avatar_crimson_b">#E23A45</color>
-    <color name="profile_avatar_ember_a">#7A3318</color>
-    <color name="profile_avatar_ember_b">#E8904A</color>
-    <color name="profile_avatar_aurora_a">#0E4A44</color>
-    <color name="profile_avatar_aurora_b">#4ECFBE</color>
-    <color name="profile_avatar_slate_a">#2A3038</color>
-    <color name="profile_avatar_slate_b">#8A93A0</color>
-    <color name="profile_avatar_forest_a">#1A3D2C</color>
+    <color name="profile_avatar_crimson_a">#6A2A14</color>
+    <color name="profile_avatar_crimson_b">#D08A4A</color>
+    <color name="profile_avatar_ember_a">#4A2818</color>
+    <color name="profile_avatar_ember_b">#E0A06A</color>
+    <color name="profile_avatar_aurora_a">#1A3A28</color>
+    <color name="profile_avatar_aurora_b">#6FA37A</color>
+    <color name="profile_avatar_slate_a">#242830</color>
+    <color name="profile_avatar_slate_b">#A8B4C0</color>
+    <color name="profile_avatar_forest_a">#163024</color>
     <color name="profile_avatar_forest_b">#4F9A6E</color>
-    <color name="profile_avatar_ocean_a">#12304F</color>
-    <color name="profile_avatar_ocean_b">#3D7CC9</color>
-    <color name="profile_avatar_gold_a">#0F2A3F</color>
-    <color name="profile_avatar_gold_b">#2AABEE</color>
-    <color name="profile_avatar_rose_a">#5A2A3C</color>
-    <color name="profile_avatar_rose_b">#D484A8</color>
+    <color name="profile_avatar_ocean_a">#1A2840</color>
+    <color name="profile_avatar_ocean_b">#5A84B8</color>
+    <color name="profile_avatar_gold_a">#3A2A14</color>
+    <color name="profile_avatar_gold_b">#C4A46A</color>
+    <color name="profile_avatar_rose_a">#4A2434</color>
+    <color name="profile_avatar_rose_b">#C484A0</color>
+    <color name="profile_avatar_copper_a">#4A2C14</color>
+    <color name="profile_avatar_copper_b">#D08A4A</color>
+    <color name="profile_avatar_violet_a">#2A1A40</color>
+    <color name="profile_avatar_violet_b">#9B7EC8</color>
+    <color name="profile_avatar_moss_a">#1C3020</color>
+    <color name="profile_avatar_moss_b">#7AB08A</color>
+    <color name="profile_avatar_plum_a">#3A1830</color>
+    <color name="profile_avatar_plum_b">#B06090</color>
+    <color name="profile_avatar_amber_a">#3A2810</color>
+    <color name="profile_avatar_amber_b">#E0B060</color>
+    <color name="profile_avatar_steel_a">#1C242C</color>
+    <color name="profile_avatar_steel_b">#7A8C9C</color>
 </resources>

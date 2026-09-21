@@ -12,7 +12,7 @@
 
     <TextView
         android:id="@+id/tv_download_season_title"
-        android:textAppearance="@style/TextAppearance.Lumina.Title"
+        android:textAppearance="@style/TextAppearance.Nocturne.Title"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:textColor="?attr/colorOnSurface"
@@ -22,7 +22,7 @@
 
     <TextView
         android:id="@+id/tv_download_season_subtitle"
-        android:textAppearance="@style/TextAppearance.Lumina.Caption"
+        android:textAppearance="@style/TextAppearance.Nocturne.Caption"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="3dp"

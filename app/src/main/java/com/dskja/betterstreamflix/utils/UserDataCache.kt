@@ -1,7 +1,6 @@
 package com.dskja.betterstreamflix.utils
 
 import android.content.Context
-import android.util.Log
 import com.google.gson.Gson
 import com.google.gson.JsonSyntaxException
 import com.google.gson.reflect.TypeToken
@@ -69,12 +68,19 @@ object UserDataCache {
             File(context.filesDir, "user-data-cache/$profileId")
         }
         val file = File(cacheDir, "$safeName.json")
-        Log.d("CACHE_PATH", file.absolutePath)
         return file
     }
 
     fun clearMemory() {
         memoryCache.clear()
+    }
+
+    /** In-memory snapshot only — never reads disk. Safe on the main thread. */
+    fun peekMemory(
+        provider: Provider,
+        profileId: String = ProfileManager.activeProfileId,
+    ): UserData? {
+        return memoryCache[cacheKey(provider, profileId)]
     }
 
     // -------------------------

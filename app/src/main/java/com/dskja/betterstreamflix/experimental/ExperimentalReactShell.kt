@@ -23,7 +23,7 @@ import org.json.JSONArray
 import org.json.JSONObject
 
 /**
- * Hosts the Vite/React Lumina shell inside a WebView and bridges catalog + navigation
+ * Hosts the Vite/React experimental shell inside a WebView and bridges catalog + navigation
  * back to native fragments.
  */
 class ExperimentalReactShell(

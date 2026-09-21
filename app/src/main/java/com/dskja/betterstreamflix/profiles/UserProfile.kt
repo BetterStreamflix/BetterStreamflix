@@ -12,7 +12,21 @@ data class UserProfile(
     val updatedAtMillis: Long,
     val enabledIntegrations: Set<String> = emptySet(),
     val notes: String? = null,
+    val lastUsedAtMillis: Long = 0L,
+    val atmosphereKey: String? = ProfileAtmosphere.DEFAULT,
+    val greetingName: String? = null,
+    val autoLockMinutes: Int? = null,
+    val pinFailedAttempts: Int = 0,
+    val pinLockedUntilMillis: Long = 0L,
 ) {
+    fun safeIntegrations(): Set<String> =
+        runCatching { enabledIntegrations }.getOrNull().orEmpty()
+
+    fun safeAtmosphere(): String = ProfileAtmosphere.normalize(atmosphereKey)
+
+    fun publicName(): String =
+        greetingName?.trim()?.takeIf { it.isNotEmpty() } ?: displayName
+
     object Integration {
         const val TRAKT = "trakt"
         const val JELLYFIN = "jellyfin"

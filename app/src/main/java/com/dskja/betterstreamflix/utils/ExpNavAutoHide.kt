@@ -8,7 +8,7 @@ import android.view.ViewGroup
 import com.dskja.betterstreamflix.activities.main.MainMobileActivity
 
 /**
- * Hides the floating navigation pill while the user scrolls down through
+ * Hides the bottom navigation rail while the user scrolls down through
  * content and brings it back on scroll-up. Attaches to the first scrollable
  * view found in a fragment's view tree. Experimental mobile shell only.
  */

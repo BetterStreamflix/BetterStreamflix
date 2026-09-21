@@ -12,17 +12,13 @@ import com.google.android.gms.cast.framework.media.widget.ExpandedControllerActi
 /** Full-screen Cast media controls (required by CastOptions notification target). */
 class CastExpandedControllerActivity : ExpandedControllerActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
-        if (ExperimentalMobileDesign.enabled()) {
-            setTheme(ExperimentalMobileDesign.themeRes())
-        }
+        setTheme(ExperimentalMobileDesign.themeRes())
         super.onCreate(savedInstanceState)
-        if (ExperimentalMobileDesign.enabled()) {
-            ExperimentalMobileDesign.applyDynamicColors(this)
-            window?.decorView?.let { decor ->
-                ExperimentalMobileDesign.applyReducedGlass(decor)
-                ExpMotion.enterScreen(decor)
-                decor.post { polishCastControls(decor) }
-            }
+        ExperimentalMobileDesign.applyDynamicColors(this)
+        window?.decorView?.let { decor ->
+            ExperimentalMobileDesign.applyReducedGlass(decor)
+            ExpMotion.enterScreen(decor)
+            decor.post { polishCastControls(decor) }
         }
     }
 

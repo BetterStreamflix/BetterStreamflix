@@ -19,7 +19,7 @@
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent"
-        app:shapeAppearanceOverlay="@style/ShapeAppearance.Lumina.PosterSmall"
+        app:shapeAppearanceOverlay="@style/ShapeAppearance.Nocturne.PosterSmall"
         app:strokeColor="#66FFFFFF"
         app:strokeWidth="1dp"
         tools:ignore="ContentDescription" />
@@ -43,7 +43,7 @@
         android:layout_height="wrap_content"
         android:layout_marginTop="9dp"
         android:gravity="center"
-        android:textAppearance="@style/TextAppearance.Lumina.Caption"
+        android:textAppearance="@style/TextAppearance.Nocturne.Caption"
         android:textColor="?attr/colorOnSurface"
         android:textStyle="bold"
         app:layout_constraintEnd_toEndOf="parent"

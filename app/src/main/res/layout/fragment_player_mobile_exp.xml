@@ -58,7 +58,7 @@
             android:layout_height="50dp"
             android:contentDescription="@null"
             android:scaleType="centerCrop"
-            app:shapeAppearanceOverlay="@style/ShapeAppearance.Lumina.PosterSmall"
+            app:shapeAppearanceOverlay="@style/ShapeAppearance.Nocturne.PosterSmall"
             app:strokeColor="?attr/colorOutlineVariant"
             app:strokeWidth="1dp"
             tools:src="@drawable/glide_fallback_cover" />
@@ -75,7 +75,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="@string/player_next_episode_up_next"
-                android:textAppearance="@style/TextAppearance.Lumina.Eyebrow"
+                android:textAppearance="@style/TextAppearance.Nocturne.Eyebrow"
                 android:textSize="9sp" />
 
             <View
@@ -87,7 +87,7 @@
 
             <TextView
                 android:id="@+id/tv_next_episode_meta"
-        android:textAppearance="@style/TextAppearance.Lumina.Caption"
+        android:textAppearance="@style/TextAppearance.Nocturne.Caption"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="3dp"
@@ -98,7 +98,7 @@
 
             <TextView
                 android:id="@+id/tv_next_episode_title"
-        android:textAppearance="@style/TextAppearance.Lumina.Title"
+        android:textAppearance="@style/TextAppearance.Nocturne.Title"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="2dp"
@@ -110,7 +110,7 @@
 
             <TextView
                 android:id="@+id/tv_next_episode_countdown"
-        android:textAppearance="@style/TextAppearance.Lumina.Caption"
+        android:textAppearance="@style/TextAppearance.Nocturne.Caption"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="4dp"
@@ -121,7 +121,7 @@
 
             <TextView
                 android:id="@+id/btn_next_episode_action"
-        android:textAppearance="@style/TextAppearance.Lumina.Caption"
+        android:textAppearance="@style/TextAppearance.Nocturne.Caption"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="9dp"
@@ -139,7 +139,7 @@
 
             <TextView
                 android:id="@+id/btn_next_episode_dismiss"
-                android:textAppearance="@style/TextAppearance.Lumina.Caption"
+                android:textAppearance="@style/TextAppearance.Nocturne.Caption"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="7dp"
@@ -186,7 +186,7 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="14dp"
             android:text="@string/exp_player_error_title"
-            android:textAppearance="@style/TextAppearance.Lumina.Title"
+            android:textAppearance="@style/TextAppearance.Nocturne.Title"
             android:textColor="?attr/colorOnSurface" />
 
         <TextView
@@ -195,7 +195,7 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="8dp"
             android:gravity="center"
-            android:textAppearance="@style/TextAppearance.Lumina.Body"
+            android:textAppearance="@style/TextAppearance.Nocturne.Body"
             android:textColor="?attr/colorOnSurfaceVariant"
             tools:text="Error message" />
 
@@ -228,7 +228,7 @@
 
         <TextView
             android:id="@+id/tv_brightness_percentage"
-        android:textAppearance="@style/TextAppearance.Lumina.Caption"
+        android:textAppearance="@style/TextAppearance.Nocturne.Caption"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:fontFeatureSettings="tnum"
@@ -276,7 +276,7 @@
 
         <TextView
             android:id="@+id/tv_volume_percentage"
-        android:textAppearance="@style/TextAppearance.Lumina.Caption"
+        android:textAppearance="@style/TextAppearance.Nocturne.Caption"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:fontFeatureSettings="tnum"

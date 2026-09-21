@@ -18,13 +18,13 @@
         android:scaleType="centerCrop"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent"
-        app:shapeAppearanceOverlay="@style/ShapeAppearance.Lumina.PosterSmall"
+        app:shapeAppearanceOverlay="@style/ShapeAppearance.Nocturne.PosterSmall"
         app:strokeColor="?attr/colorOutlineVariant"
         app:strokeWidth="1dp" />
 
     <TextView
         android:id="@+id/tv_download_title"
-        android:textAppearance="@style/TextAppearance.Lumina.Title"
+        android:textAppearance="@style/TextAppearance.Nocturne.Title"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:ellipsize="end"
@@ -40,7 +40,7 @@
 
     <TextView
         android:id="@+id/tv_download_subtitle"
-        android:textAppearance="@style/TextAppearance.Lumina.Body"
+        android:textAppearance="@style/TextAppearance.Nocturne.Body"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:ellipsize="end"
@@ -68,7 +68,7 @@
 
     <TextView
         android:id="@+id/tv_download_progress"
-        android:textAppearance="@style/TextAppearance.Lumina.Caption"
+        android:textAppearance="@style/TextAppearance.Nocturne.Caption"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:paddingStart="14dp"
@@ -102,7 +102,7 @@
             android:paddingBottom="9dp"
             android:text="@string/downloads_action_pause"
             android:textAllCaps="false"
-            android:textAppearance="@style/TextAppearance.Lumina.Caption"
+            android:textAppearance="@style/TextAppearance.Nocturne.Caption"
             android:textColor="?attr/colorOnPrimary"
             android:textSize="13sp"
             android:textStyle="bold" />
@@ -120,7 +120,7 @@
             android:paddingBottom="9dp"
             android:text="@string/downloads_action_delete"
             android:textAllCaps="false"
-            android:textAppearance="@style/TextAppearance.Lumina.Caption"
+            android:textAppearance="@style/TextAppearance.Nocturne.Caption"
             android:textColor="?attr/colorError"
             android:textSize="13sp"
             android:textStyle="bold" />

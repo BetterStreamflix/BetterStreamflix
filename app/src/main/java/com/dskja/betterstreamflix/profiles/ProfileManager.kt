@@ -13,16 +13,27 @@ object ProfileManager {
 
     const val DEFAULT_PROFILE_ID = ProfileStore.DEFAULT_PROFILE_ID
     const val KIDS_DEFAULT_MAX_AGE = 12
+    const val PIN_MIN_LENGTH = 4
+    const val PIN_MAX_LENGTH = 8
+    const val PIN_MAX_ATTEMPTS = 5
+    const val PIN_LOCKOUT_MS = 30_000L
 
     val avatarKeys = listOf(
-        "crimson",
+        "copper",
+        "violet",
+        "moss",
+        "ink",
         "ember",
         "aurora",
-        "slate",
         "forest",
         "ocean",
-        "gold",
+        "amber",
+        "plum",
+        "steel",
         "rose",
+        "crimson",
+        "slate",
+        "gold",
     )
 
     private lateinit var appContext: Context
@@ -59,29 +70,64 @@ object ProfileManager {
         return ProfileStore.loadAll(appContext)
     }
 
+    fun profilesForPicker(): List<UserProfile> {
+        val active = activeProfileId
+        return profiles().sortedWith(
+            compareBy<UserProfile> { it.id != active }
+                .thenByDescending { it.lastUsedAtMillis }
+                .thenBy { it.displayName.lowercase() },
+        )
+    }
+
     fun create(
         name: String,
         isKids: Boolean = false,
         avatarKey: String = avatarKeys.first(),
+        atmosphereKey: String = ProfileAtmosphere.DEFAULT,
+        greetingName: String? = null,
     ): UserProfile {
         require(::appContext.isInitialized) { "ProfileManager.init() must be called first" }
         val trimmedName = name.trim()
         require(trimmedName.isNotEmpty()) { "Profile name cannot be empty" }
-        require(avatarKey in avatarKeys) { "Unknown avatar key: $avatarKey" }
+        val resolvedAvatar = if (avatarKey in avatarKeys) avatarKey else avatarKeys.first()
 
         val now = System.currentTimeMillis()
         val profile = UserProfile(
             id = UUID.randomUUID().toString().replace("-", "").take(12),
             displayName = trimmedName,
-            avatarKey = avatarKey,
+            avatarKey = resolvedAvatar,
             isKids = isKids,
             maxAgeRating = if (isKids) KIDS_DEFAULT_MAX_AGE else null,
             createdAtMillis = now,
             updatedAtMillis = now,
+            atmosphereKey = ProfileAtmosphere.normalize(atmosphereKey),
+            greetingName = greetingName?.trim()?.takeIf { it.isNotEmpty() },
         )
         val updated = profiles() + profile
         ProfileStore.saveAll(appContext, updated)
         return profile
+    }
+
+    fun duplicate(id: String): UserProfile? {
+        require(::appContext.isInitialized) { "ProfileManager.init() must be called first" }
+        val source = profiles().find { it.id == id } ?: return null
+        val copy = create(
+            name = uniqueCopyName(source.displayName),
+            isKids = source.isKids,
+            avatarKey = nextUnusedAvatar(source.avatarKey),
+            atmosphereKey = source.safeAtmosphere(),
+            greetingName = source.greetingName,
+        )
+        updateProfile(copy.id) {
+            it.copy(
+                accentColorArgb = source.accentColorArgb,
+                maxAgeRating = source.maxAgeRating,
+                notes = source.notes,
+                enabledIntegrations = source.safeIntegrations(),
+                autoLockMinutes = source.autoLockMinutes,
+            )
+        }
+        return profiles().find { it.id == copy.id } ?: copy
     }
 
     fun rename(id: String, newName: String): Boolean {
@@ -126,6 +172,7 @@ object ProfileManager {
         val profile = profiles().find { it.id == id } ?: return false
         if (activeProfileId == id) {
             applyKidsParentalDefaults(profile)
+            touchLastUsed(profile.id)
             return true
         }
 
@@ -142,23 +189,47 @@ object ProfileManager {
     fun setPin(profileId: String, pin: String): Boolean {
         require(::appContext.isInitialized) { "ProfileManager.init() must be called first" }
         if (pin.isEmpty()) return false
-        if (pin.length !in 4..8 || pin.any { !it.isDigit() }) return false
-        return updateProfile(profileId) { it.copy(pinHash = hashPin(pin, profileId)) }
+        if (pin.length !in PIN_MIN_LENGTH..PIN_MAX_LENGTH || pin.any { !it.isDigit() }) return false
+        return updateProfile(profileId) {
+            it.copy(
+                pinHash = hashPin(pin, profileId),
+                pinFailedAttempts = 0,
+                pinLockedUntilMillis = 0L,
+            )
+        }
     }
 
     fun clearPin(profileId: String): Boolean =
-        updateProfile(profileId) { it.copy(pinHash = null) }
+        updateProfile(profileId) {
+            it.copy(pinHash = null, pinFailedAttempts = 0, pinLockedUntilMillis = 0L)
+        }
 
     fun updateAvatar(profileId: String, avatarKey: String): Boolean {
-        require(avatarKey in avatarKeys) { "Unknown avatar key: $avatarKey" }
-        return updateProfile(profileId) { it.copy(avatarKey = avatarKey) }
+        val resolved = if (avatarKey in avatarKeys) avatarKey else return false
+        return updateProfile(profileId) { it.copy(avatarKey = resolved) }
     }
+
+    fun updateAtmosphere(profileId: String, atmosphereKey: String): Boolean =
+        updateProfile(profileId) { it.copy(atmosphereKey = ProfileAtmosphere.normalize(atmosphereKey)) }
+
+    fun updateGreetingName(profileId: String, greetingName: String?): Boolean =
+        updateProfile(profileId) {
+            it.copy(greetingName = greetingName?.trim()?.takeIf { name -> name.isNotEmpty() })
+        }
+
+    fun updateAccentColor(profileId: String, argb: Int?): Boolean =
+        updateProfile(profileId) { it.copy(accentColorArgb = argb) }
 
     fun updateKids(profileId: String, isKids: Boolean): Boolean {
         val ok = updateProfile(profileId) {
             it.copy(
                 isKids = isKids,
                 maxAgeRating = if (isKids) (it.maxAgeRating ?: KIDS_DEFAULT_MAX_AGE) else null,
+                atmosphereKey = if (isKids && it.atmosphereKey == ProfileAtmosphere.DEFAULT) {
+                    "kids"
+                } else {
+                    it.atmosphereKey
+                },
             )
         }
         if (ok && profileId == activeProfileId) {
@@ -176,15 +247,17 @@ object ProfileManager {
      * Empty [UserProfile.enabledIntegrations] means all integrations are enabled (backward compatible).
      * A non-empty set lists only the integrations enabled for that profile.
      */
-    fun isIntegrationEnabled(profile: UserProfile, integration: String): Boolean =
-        profile.enabledIntegrations.isEmpty() || profile.enabledIntegrations.contains(integration)
+    fun isIntegrationEnabled(profile: UserProfile, integration: String): Boolean {
+        val enabled = profile.safeIntegrations()
+        return enabled.isEmpty() || enabled.contains(integration)
+    }
 
     fun setIntegrationEnabled(profileId: String, integration: String, enabled: Boolean): Boolean {
         val profile = profiles().find { it.id == profileId } ?: return false
-        val current = if (profile.enabledIntegrations.isEmpty()) {
+        val current = if (profile.safeIntegrations().isEmpty()) {
             UserProfile.Integration.ALL
         } else {
-            profile.enabledIntegrations
+            profile.safeIntegrations()
         }
         val updated = if (enabled) current + integration else current - integration
         return setEnabledIntegrations(profileId, updated)
@@ -199,10 +272,34 @@ object ProfileManager {
         return updateProfile(profileId) { it.copy(enabledIntegrations = stored) }
     }
 
+    fun isPinLocked(profileId: String): Boolean {
+        val profile = profiles().find { it.id == profileId } ?: return false
+        return profile.pinLockedUntilMillis > System.currentTimeMillis()
+    }
+
+    fun pinLockRemainingMillis(profileId: String): Long {
+        val profile = profiles().find { it.id == profileId } ?: return 0L
+        return (profile.pinLockedUntilMillis - System.currentTimeMillis()).coerceAtLeast(0L)
+    }
+
     fun verifyPin(profileId: String, pin: String): Boolean {
         val profile = profiles().find { it.id == profileId } ?: return false
         val stored = profile.pinHash ?: return false
-        return stored == hashPin(pin, profileId)
+        if (isPinLocked(profileId)) return false
+        if (stored == hashPin(pin, profileId)) {
+            updateProfile(profileId) { it.copy(pinFailedAttempts = 0, pinLockedUntilMillis = 0L) }
+            return true
+        }
+        val attempts = profile.pinFailedAttempts + 1
+        val lockUntil = if (attempts >= PIN_MAX_ATTEMPTS) {
+            System.currentTimeMillis() + PIN_LOCKOUT_MS
+        } else {
+            0L
+        }
+        updateProfile(profileId) {
+            it.copy(pinFailedAttempts = attempts, pinLockedUntilMillis = lockUntil)
+        }
+        return false
     }
 
     fun scopedPrefKey(base: String): String = scopedPrefKeyFor(base, activeProfileId)
@@ -215,8 +312,26 @@ object ProfileManager {
             .digest("$pin$profileId".toByteArray(Charsets.UTF_8))
             .joinToString("") { "%02x".format(it) }
 
+    private fun uniqueCopyName(base: String): String {
+        val names = profiles().map { it.displayName.lowercase() }.toSet()
+        val stem = base.trim().ifEmpty { "Profile" }
+        var n = 2
+        var candidate = "$stem ($n)"
+        while (candidate.lowercase() in names) {
+            n++
+            candidate = "$stem ($n)"
+        }
+        return candidate
+    }
+
+    private fun nextUnusedAvatar(preferred: String): String {
+        val used = profiles().map { it.avatarKey }.toSet()
+        return avatarKeys.firstOrNull { it !in used } ?: preferred
+    }
+
     private fun touchLastUsed(profileId: String) {
-        updateProfile(profileId) { it.copy(updatedAtMillis = System.currentTimeMillis()) }
+        val now = System.currentTimeMillis()
+        updateProfile(profileId) { it.copy(lastUsedAtMillis = now) }
     }
 
     /**

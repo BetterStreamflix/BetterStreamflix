@@ -32,7 +32,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:text="@string/settings_hub_eyebrow"
-                android:textAppearance="@style/TextAppearance.Lumina.Eyebrow"
+                android:textAppearance="@style/TextAppearance.Nocturne.Eyebrow"
                 android:textColor="?attr/colorPrimary" />
 
             <TextView
@@ -41,7 +41,7 @@
                 android:layout_height="wrap_content"
                 android:layout_marginTop="8dp"
                 android:text="@string/settings_hub_title"
-                android:textAppearance="@style/TextAppearance.Lumina.Hero"
+                android:textAppearance="@style/TextAppearance.Nocturne.Hero"
                 android:textColor="?attr/colorOnSurface"
                 android:textSize="32sp" />
 
@@ -58,7 +58,7 @@
                 android:layout_height="wrap_content"
                 android:layout_marginTop="10dp"
                 android:text="@string/settings_hub_subtitle"
-                android:textAppearance="@style/TextAppearance.Lumina.Body"
+                android:textAppearance="@style/TextAppearance.Nocturne.Body"
                 android:textColor="?attr/colorOnSurfaceVariant" />
 
             <TextView
@@ -71,7 +71,7 @@
                 android:paddingTop="4dp"
                 android:paddingEnd="10dp"
                 android:paddingBottom="4dp"
-                android:textAppearance="@style/TextAppearance.Lumina.Caption"
+                android:textAppearance="@style/TextAppearance.Nocturne.Caption"
                 android:textColor="?attr/colorPrimary"
                 android:textSize="12sp"
                 android:visibility="gone"
@@ -100,7 +100,7 @@
                     android:paddingEnd="10dp"
                     android:paddingBottom="4dp"
                     android:text="@string/settings_hub_featured_badge"
-                    android:textAppearance="@style/TextAppearance.Lumina.Eyebrow"
+                    android:textAppearance="@style/TextAppearance.Nocturne.Eyebrow"
                     android:textColor="?attr/colorPrimary"
                     android:textSize="10sp" />
 
@@ -109,7 +109,7 @@
                     android:layout_height="wrap_content"
                     android:layout_marginTop="14dp"
                     android:text="@string/platform_settings_title"
-                    android:textAppearance="@style/TextAppearance.Lumina.Title"
+                    android:textAppearance="@style/TextAppearance.Nocturne.Title"
                     android:textColor="?attr/colorOnSurface" />
 
                 <TextView
@@ -117,7 +117,7 @@
                     android:layout_height="wrap_content"
                     android:layout_marginTop="6dp"
                     android:text="@string/settings_hub_featured_body"
-                    android:textAppearance="@style/TextAppearance.Lumina.Body"
+                    android:textAppearance="@style/TextAppearance.Nocturne.Body"
                     android:textColor="?attr/colorOnSurfaceVariant"
                     android:textSize="13sp" />
 
@@ -129,7 +129,7 @@
                     android:focusable="false"
                     android:gravity="center"
                     android:text="@string/settings_hub_featured_cta"
-                    android:textAppearance="@style/TextAppearance.Lumina.Caption"
+                    android:textAppearance="@style/TextAppearance.Nocturne.Caption"
                     android:textColor="?attr/colorOnPrimary"
                     android:textSize="14sp"
                     android:textStyle="bold" />
@@ -139,7 +139,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="32dp"
-                android:textAppearance="@style/TextAppearance.Lumina.Eyebrow"
+                android:textAppearance="@style/TextAppearance.Nocturne.Eyebrow"
                 android:letterSpacing="0.04"
                 android:text="@string/settings_hub_section_app"
                 android:textAllCaps="true"
@@ -158,7 +158,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="28dp"
-                android:textAppearance="@style/TextAppearance.Lumina.Eyebrow"
+                android:textAppearance="@style/TextAppearance.Nocturne.Eyebrow"
                 android:letterSpacing="0.04"
                 android:text="@string/settings_hub_section_account"
                 android:textAllCaps="true"
@@ -177,7 +177,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="28dp"
-                android:textAppearance="@style/TextAppearance.Lumina.Eyebrow"
+                android:textAppearance="@style/TextAppearance.Nocturne.Eyebrow"
                 android:letterSpacing="0.04"
                 android:text="@string/settings_hub_section_project"
                 android:textAllCaps="true"

@@ -39,10 +39,23 @@ class ProfileHeroPreference @JvmOverloads constructor(
         val meta = buildList {
             profile?.let {
                 add(context.getString(ProfileAvatarStyle.paletteFor(it.avatarKey).titleRes))
+                add(context.getString(com.dskja.betterstreamflix.profiles.ProfileAtmosphere.specFor(it.atmosphereKey).titleRes))
             }
             add(context.getString(R.string.profile_picker_active))
             if (profile?.isKids == true) add(context.getString(R.string.profile_kids_badge_short))
             if (profile?.pinHash != null) add(context.getString(R.string.profile_picker_locked))
+            profile?.let { p ->
+                val stats = com.dskja.betterstreamflix.profiles.ProfileLibraryStats.forProfile(p.id)
+                if (stats.continueWatching > 0) {
+                    add(
+                        context.resources.getQuantityString(
+                            R.plurals.profile_stat_continue,
+                            stats.continueWatching,
+                            stats.continueWatching,
+                        ),
+                    )
+                }
+            }
         }.joinToString(" · ")
         holder.itemView.findViewById<TextView>(R.id.tv_profiles_settings_hero_meta)?.text = meta
     }
