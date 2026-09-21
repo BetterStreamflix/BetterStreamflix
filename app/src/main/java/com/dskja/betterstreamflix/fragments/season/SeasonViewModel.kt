@@ -78,7 +78,9 @@ class SeasonViewModel(
         _state.emit(State.LoadingEpisodes)
 
         try {
-            val episodes = UserPreferences.currentProvider!!
+            val provider = UserPreferences.currentProvider
+                ?: throw Exception("No provider selected")
+            val episodes = provider
                 .getEpisodesBySeason(seasonId)
                 .sortedBy { it.number }
             val ids = episodes.map { it.id }

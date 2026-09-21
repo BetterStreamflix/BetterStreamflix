@@ -1,38 +1,37 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <!--
-      Lumina cinematic dark scheme — aligned with Support/Settings hub.
-      Deeper blacks + restrained crimson accent. DynamicColors may still
-      tint on Android 12+; this is the intentional static identity.
+      Lumina Ink Lock — crimson locked to Support #E50914.
+      Deeper ink blacks; DynamicColors may still tint on 12+.
     -->
-    <color name="m3_primary">#E85A5A</color>
+    <color name="m3_primary">#E50914</color>
     <color name="m3_on_primary">#FFFFFF</color>
-    <color name="m3_primary_container">#5C1A1A</color>
+    <color name="m3_primary_container">#4A0A0E</color>
     <color name="m3_on_primary_container">#FFDAD6</color>
-    <color name="m3_secondary">#C9B8B6</color>
+    <color name="m3_secondary">#C4B5B4</color>
     <color name="m3_on_secondary">#2A1F1E</color>
-    <color name="m3_secondary_container">#413433</color>
+    <color name="m3_secondary_container">#3D3231</color>
     <color name="m3_on_secondary_container">#E6D4D2</color>
-    <color name="m3_tertiary">#D4C0A0</color>
+    <color name="m3_tertiary">#C9B896</color>
     <color name="m3_on_tertiary">#2C2416</color>
-    <color name="m3_tertiary_container">#453828</color>
+    <color name="m3_tertiary_container">#3F3426</color>
     <color name="m3_on_tertiary_container">#F1E0C4</color>
     <color name="m3_error">#FFB4AB</color>
     <color name="m3_on_error">#690005</color>
     <color name="m3_error_container">#93000A</color>
     <color name="m3_on_error_container">#FFDAD6</color>
-    <color name="m3_surface">#0A0A0A</color>
+    <color name="m3_surface">#080808</color>
     <color name="m3_on_surface">#F5F5F5</color>
-    <color name="m3_on_surface_variant">#A3A3A3</color>
-    <color name="m3_surface_dim">#0A0A0A</color>
-    <color name="m3_surface_bright">#2A2A2A</color>
-    <color name="m3_surface_container_lowest">#050505</color>
-    <color name="m3_surface_container_low">#121212</color>
-    <color name="m3_surface_container">#161616</color>
+    <color name="m3_on_surface_variant">#9E9E9E</color>
+    <color name="m3_surface_dim">#080808</color>
+    <color name="m3_surface_bright">#282828</color>
+    <color name="m3_surface_container_lowest">#030303</color>
+    <color name="m3_surface_container_low">#101010</color>
+    <color name="m3_surface_container">#141414</color>
     <color name="m3_surface_container_high">#1A1A1A</color>
     <color name="m3_surface_container_highest">#222222</color>
-    <color name="m3_surface_variant">#2A2A2A</color>
-    <color name="m3_outline">#737373</color>
+    <color name="m3_surface_variant">#282828</color>
+    <color name="m3_outline">#6E6E6E</color>
     <color name="m3_outline_variant">#2A2A2A</color>
     <color name="m3_surface_tint">@color/m3_primary</color>
     <color name="m3_inverse_surface">#F5F5F5</color>
@@ -42,4 +41,24 @@
 
     <color name="exp_on_media">@color/m3_on_surface</color>
     <color name="exp_on_accent">@color/m3_on_primary</color>
+
+    <!-- Soft glass for floating nav -->
+    <color name="exp_nav_glass">#E0141414</color>
+    <color name="exp_nav_glass_stroke">#33FFFFFF</color>
+
+    <!-- Accent presets (Lumina) — Aurora softened for less neon clash -->
+    <color name="exp_ember_primary">#E8724A</color>
+    <color name="exp_ember_on_primary">#1A0A04</color>
+    <color name="exp_ember_primary_container">#5C2A14</color>
+    <color name="exp_ember_on_primary_container">#FFDBCF</color>
+
+    <color name="exp_aurora_primary">#3D9A8E</color>
+    <color name="exp_aurora_on_primary">#003730</color>
+    <color name="exp_aurora_primary_container">#0C3D37</color>
+    <color name="exp_aurora_on_primary_container">#A8E0D6</color>
+
+    <color name="exp_slate_primary">#A8B6BD</color>
+    <color name="exp_slate_on_primary">#1A2226</color>
+    <color name="exp_slate_primary_container">#37474F</color>
+    <color name="exp_slate_on_primary_container">#E0E8EC</color>
 </resources>

@@ -51,9 +51,12 @@ import com.dskja.betterstreamflix.R
 import com.dskja.betterstreamflix.player.PlaybackFailover
 import com.dskja.betterstreamflix.player.PlayerBuilderFactory
 import com.dskja.betterstreamflix.player.SerienStreamBypassHelper
+import com.dskja.betterstreamflix.providers.SerienStreamAuthManager
 import com.dskja.betterstreamflix.utils.CrashReporter
 import com.dskja.betterstreamflix.utils.ExpMotion
+import com.dskja.betterstreamflix.utils.ExpDialogChrome
 import com.dskja.betterstreamflix.utils.ExperimentalMobileDesign
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.dskja.betterstreamflix.activities.tools.BypassWebViewActivity
 import com.dskja.betterstreamflix.database.AppDatabase
 import com.dskja.betterstreamflix.databinding.ContentExoControllerMobileBinding
@@ -162,6 +165,14 @@ class PlayerMobileFragment : Fragment() {
     private var nextEpisodePrefetchTargetId: String? = null
     private var nextEpisodePrefetchJob: Job? = null
     private var nextEpisodeOverlayDismissed = false
+    /** Set once the user leaves the player — blocks further UI/player work. */
+    private var isTearingDown = false
+    private var playerReleased = false
+    private var chooserReceiverRegistered = false
+    private var castNextQueueJob: Job? = null
+    private var stateCollectJob: Job? = null
+    private var subtitleCollectJob: Job? = null
+    private var episodeNavJob: Job? = null
 
     /** Active playback surface: Cast when a session is connected, otherwise ExoPlayer. */
     private fun activePlayer(): Player =
@@ -169,6 +180,7 @@ class PlayerMobileFragment : Fragment() {
         else player
     private val bypassWebViewLauncher =
         registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+            if (isTearingDown || !isAdded) return@registerForActivityResult
             val cookies =
                 result.data?.getStringExtra(BypassWebViewActivity.EXTRA_COOKIE_HEADER)?.trim()
             val resolvedStream =
@@ -177,24 +189,22 @@ class PlayerMobileFragment : Fragment() {
             if (result.resultCode != android.app.Activity.RESULT_OK) {
                 waitingForBypass = false
                 bypassDone = false
-                Toast.makeText(
-                    requireContext(),
-                    getString(R.string.player_bypass_cancelled),
-                    Toast.LENGTH_SHORT,
-                ).show()
-                findNavController().navigateUp()
+                notifyPlayer(
+                    R.string.player_bypass_cancelled,
+                    R.string.player_bypass_qr_title,
+                )
+                safeNavigateUp()
                 return@registerForActivityResult
             }
 
             if (cookies.isNullOrBlank() && resolvedStream.isNullOrBlank()) {
                 waitingForBypass = false
                 bypassDone = false
-                Toast.makeText(
-                    requireContext(),
-                    getString(R.string.bypass_status_complete_bypass_first),
-                    Toast.LENGTH_SHORT,
-                ).show()
-                findNavController().navigateUp()
+                notifyPlayer(
+                    R.string.bypass_status_complete_bypass_first,
+                    R.string.player_bypass_qr_title,
+                )
+                safeNavigateUp()
                 return@registerForActivityResult
             }
 
@@ -202,7 +212,7 @@ class PlayerMobileFragment : Fragment() {
                 ?: buildSerienStreamBypassUrl()
             if (!bypassUrl.isNullOrBlank() && !cookies.isNullOrBlank()) {
                 applyBypassCookies(bypassUrl, cookies)
-                SerienStreamBypassHelper.persistSessionCookiesIfValid(cookies)
+                SerienStreamAuthManager.persist(cookies)
             }
             waitingForBypass = false
             bypassDone = true
@@ -244,16 +254,18 @@ class PlayerMobileFragment : Fragment() {
         ActivityResultContracts.OpenDocument()
     ) { uri ->
         if (uri == null) return@registerForActivityResult
-        requireContext().contentResolver.takePersistableUriPermission(
+        if (!isAdded || !::player.isInitialized) return@registerForActivityResult
+        val ctx = context ?: return@registerForActivityResult
+        ctx.contentResolver.takePersistableUriPermission(
             uri,
             Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION
         )
 
-        val fileName = uri.getFileName(requireContext()) ?: uri.toString()
+        val fileName = uri.getFileName(ctx) ?: uri.toString()
 
         val mediaUri = player.currentMediaItem?.localConfiguration?.uri
         if (mediaUri == null || mediaUri.toString().isBlank()) {
-            Toast.makeText(requireContext(), R.string.player_subtitle_needs_playback, Toast.LENGTH_SHORT).show()
+            notifyPlayer(R.string.player_subtitle_needs_playback, R.string.player_settings_subtitles_title)
             return@registerForActivityResult
         }
 
@@ -338,11 +350,22 @@ class PlayerMobileFragment : Fragment() {
                 filter,
                 ContextCompat.RECEIVER_NOT_EXPORTED
             )
-        } catch (ignored: Exception) {}
+            chooserReceiverRegistered = true
+        } catch (ignored: Exception) {
+            chooserReceiverRegistered = false
+        }
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+        if (ExperimentalMobileDesign.enabled()) {
+            ExpMotion.enterScreen(binding.root)
+            ExperimentalMobileDesign.applyReducedGlass(binding.root)
+            binding.root.findViewById<View>(R.id.layout_next_episode_overlay)
+                ?.setBackgroundResource(ExperimentalMobileDesign.glassCardBackground())
+            binding.root.findViewById<View>(R.id.ll_player_error)
+                ?.setBackgroundResource(ExperimentalMobileDesign.glassCardBackground())
+        }
         initializePlayer(false)
         setupCastControls()
         initializeVideo()
@@ -358,8 +381,10 @@ class PlayerMobileFragment : Fragment() {
         )
 
         // Stato Video
-        viewLifecycleOwner.lifecycleScope.launch { 
-            viewModel.state.flowWithLifecycle(lifecycle, Lifecycle.State.CREATED).collect { state ->
+        stateCollectJob?.cancel()
+        stateCollectJob = viewLifecycleOwner.lifecycleScope.launch { 
+            viewModel.state.flowWithLifecycle(viewLifecycleOwner.lifecycle, Lifecycle.State.STARTED).collect { state ->
+                if (isTearingDown || !isAdded || _binding == null) return@collect
                 when (state) {
                     PlayerViewModel.State.LoadingServers -> {}
                     is PlayerViewModel.State.SuccessLoadingServers -> {
@@ -377,15 +402,13 @@ class PlayerMobileFragment : Fragment() {
                                 val providerName = UserPreferences.currentProvider?.name ?: ""
                                 val isTmdb = providerName.contains("TMDb", ignoreCase = true)
                                 if (servers.isEmpty()) {
-                                    Toast.makeText(
-                                        requireContext(),
+                                    notifyPlayer(
                                         if (isTmdb) {
                                             getString(R.string.player_not_available_lang_message, "Deutsch")
                                         } else {
                                             "Unable to open SerienStream bypass page."
                                         },
-                                        Toast.LENGTH_SHORT,
-                                    ).show()
+                                    )
                                     return@collect
                                 }
                                 // Fall through to normal playback with remaining servers
@@ -398,11 +421,7 @@ class PlayerMobileFragment : Fragment() {
                                 binding.settings.setOnServerSelectedListener { server ->
                                     val selected = state.servers.find { server.id == it.id }
                                     if (selected == null) {
-                                        Toast.makeText(
-                                            requireContext(),
-                                            R.string.player_server_unavailable,
-                                            Toast.LENGTH_SHORT,
-                                        ).show()
+                                        notifyPlayer(R.string.player_server_unavailable, R.string.player_settings_servers_title)
                                         return@setOnServerSelectedListener
                                     }
                                     viewModel.getVideo(selected)
@@ -450,8 +469,8 @@ class PlayerMobileFragment : Fragment() {
                                 } else {
                                     "No servers found for this content."
                                 }
-                                Toast.makeText(requireContext(), message, Toast.LENGTH_LONG).show()
-                                findNavController().navigateUp()
+                                notifyPlayer(message)
+                                safeNavigateUp()
                                 return@collect
                             }
 
@@ -467,11 +486,7 @@ class PlayerMobileFragment : Fragment() {
                             binding.settings.setOnServerSelectedListener { server ->
                                 val selected = state.servers.find { server.id == it.id }
                                 if (selected == null) {
-                                    Toast.makeText(
-                                        requireContext(),
-                                        R.string.player_server_unavailable,
-                                        Toast.LENGTH_SHORT,
-                                    ).show()
+                                    notifyPlayer(R.string.player_server_unavailable, R.string.player_settings_servers_title)
                                     return@setOnServerSelectedListener
                                 }
                                 viewModel.getVideo(selected)
@@ -485,12 +500,20 @@ class PlayerMobileFragment : Fragment() {
                     }
 
                     is PlayerViewModel.State.FailedLoadingServers -> {
-                        Toast.makeText(
-                            requireContext(),
-                            state.error.message ?: "",
-                            Toast.LENGTH_LONG
-                        ).show()
-                        findNavController().navigateUp()
+                        val message = state.error.message?.takeIf { it.isNotBlank() }
+                            ?: getString(R.string.exp_player_error_title)
+                        if (ExperimentalMobileDesign.enabled()) {
+                            ExpDialogChrome.showInfo(
+                                requireContext(),
+                                R.string.exp_player_error_title,
+                                message,
+                            ) { ctx ->
+                                MaterialAlertDialogBuilder(ExpDialogChrome.themedContext(ctx))
+                            }
+                        } else {
+                            Toast.makeText(requireContext(), message, Toast.LENGTH_LONG).show()
+                        }
+                        safeNavigateUp()
                     }
 
                     is PlayerViewModel.State.LoadingVideo -> {
@@ -522,19 +545,21 @@ class PlayerMobileFragment : Fragment() {
                                 externalPlayerAvailable = com.dskja.betterstreamflix.platform.playerbackend.ExternalMpvBackend.canResolve(requireContext()) ||
                                     com.dskja.betterstreamflix.platform.playerbackend.PlayerBackendSelector.shouldHandoffToExternal(),
                                 externalPlayerAlreadyTried = currentExternalPlayerTried,
+                                error = state.error,
                             )
                         ) {
                             is PlaybackFailover.Action.TryNextServer -> {
-                                servers.getOrNull(action.nextIndex)?.let { viewModel.getVideo(it) }
+                                servers.getOrNull(action.nextIndex)?.let {
+                                    showPlayerCue(
+                                        getString(R.string.player_trying_next_server, it.name),
+                                    )
+                                    viewModel.getVideo(it)
+                                }
                             }
                             PlaybackFailover.Action.RetrySoftwareDecoder -> {
                                 currentSoftwareDecoder = true
                                 PlayerSettingsView.Settings.SoftwareDecoder.init(true)
-                                Toast.makeText(
-                                    requireContext(),
-                                    R.string.player_retry_software_decoder,
-                                    Toast.LENGTH_SHORT,
-                                ).show()
+                                showPlayerCue(R.string.player_retry_software_decoder)
                                 viewModel.getVideo(state.server)
                             }
                             PlaybackFailover.Action.TryExternalPlayer -> {
@@ -573,12 +598,7 @@ class PlayerMobileFragment : Fragment() {
                                 "All servers failed",
                                 state.error,
                             )
-                            Toast.makeText(
-                                requireContext(),
-                                message,
-                                Toast.LENGTH_LONG
-                            ).show()
-                            findNavController().navigateUp()
+                            showPlayerError(message)
                             }
                         }
                     }
@@ -587,24 +607,30 @@ class PlayerMobileFragment : Fragment() {
         }
 
         // Stato Sottotitoli
-        viewLifecycleOwner.lifecycleScope.launch {
-            viewModel.subtitleState.flowWithLifecycle(lifecycle, Lifecycle.State.CREATED).collect { state ->
+        subtitleCollectJob?.cancel()
+        subtitleCollectJob = viewLifecycleOwner.lifecycleScope.launch {
+            viewModel.subtitleState.flowWithLifecycle(viewLifecycleOwner.lifecycle, Lifecycle.State.STARTED).collect { state ->
+                if (isTearingDown || !isAdded || _binding == null) return@collect
                 when (state) {
                     PlayerViewModel.SubtitleState.Loading -> {}
                     is PlayerViewModel.SubtitleState.SuccessOpenSubtitles -> {
                         binding.settings.openSubtitles = state.subtitles
                     }
-                    is PlayerViewModel.SubtitleState.FailedOpenSubtitles -> {}
+                    is PlayerViewModel.SubtitleState.FailedOpenSubtitles -> {
+                        notifyPlayer(
+                            getString(
+                                R.string.player_subtitle_search_failed,
+                                state.error.message?.take(80).orEmpty().ifBlank { "OpenSubtitles" },
+                            ),
+                            R.string.player_settings_open_subtitles_title,
+                        )
+                    }
 
                     PlayerViewModel.SubtitleState.DownloadingOpenSubtitle -> {}
                     is PlayerViewModel.SubtitleState.SuccessDownloadingOpenSubtitle -> {
                         val mediaUri = player.currentMediaItem?.localConfiguration?.uri
                         if (mediaUri == null || mediaUri.toString().isBlank()) {
-                            Toast.makeText(
-                                requireContext(),
-                                R.string.player_subtitle_needs_playback,
-                                Toast.LENGTH_SHORT,
-                            ).show()
+                            notifyPlayer(R.string.player_subtitle_needs_playback, R.string.player_settings_subtitles_title)
                             return@collect
                         }
                         val fileName = state.uri.getFileName(requireContext()) ?: state.uri.toString()
@@ -637,23 +663,27 @@ class PlayerMobileFragment : Fragment() {
                         player.play()
                     }
                     is PlayerViewModel.SubtitleState.FailedDownloadingOpenSubtitle -> {
-                        Toast.makeText(requireContext(), "${state.subtitle.subFileName}: ${state.error.message}", Toast.LENGTH_LONG).show()
+                        notifyPlayer("${state.subtitle.subFileName}: ${state.error.message}", R.string.player_settings_open_subtitles_title)
                     }
 
                     is PlayerViewModel.SubtitleState.SuccessSubDLSubtitles -> {
                         binding.settings.subDLSubtitles = state.subtitles
                     }
-                    is PlayerViewModel.SubtitleState.FailedSubDLSubtitles -> {}
+                    is PlayerViewModel.SubtitleState.FailedSubDLSubtitles -> {
+                        notifyPlayer(
+                            getString(
+                                R.string.player_subtitle_search_failed,
+                                state.error.message?.take(80).orEmpty().ifBlank { "SubDL" },
+                            ),
+                            R.string.player_settings_subdl_title,
+                        )
+                    }
 
                     PlayerViewModel.SubtitleState.DownloadingSubDLSubtitle -> {}
                     is PlayerViewModel.SubtitleState.SuccessDownloadingSubDLSubtitle -> {
                         val mediaUri = player.currentMediaItem?.localConfiguration?.uri
                         if (mediaUri == null || mediaUri.toString().isBlank()) {
-                            Toast.makeText(
-                                requireContext(),
-                                R.string.player_subtitle_needs_playback,
-                                Toast.LENGTH_SHORT,
-                            ).show()
+                            notifyPlayer(R.string.player_subtitle_needs_playback, R.string.player_settings_subtitles_title)
                             return@collect
                         }
                         val fileName = state.uri.getFileName(requireContext()) ?: state.uri.toString()
@@ -686,23 +716,30 @@ class PlayerMobileFragment : Fragment() {
                         player.play()
                     }
                     is PlayerViewModel.SubtitleState.FailedDownloadingSubDLSubtitle -> {
-                        Toast.makeText(requireContext(), "${state.subtitle.name}: ${state.error.message}", Toast.LENGTH_LONG).show()
+                        notifyPlayer("${state.subtitle.name}: ${state.error.message}", R.string.player_settings_subdl_title)
                     }
                 }
             }
         }
 
-        viewLifecycleOwner.lifecycleScope.launch {
+        episodeNavJob?.cancel()
+        episodeNavJob = viewLifecycleOwner.lifecycleScope.launch {
                 viewLifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
                     viewModel.playPreviousOrNextEpisode.collect { nextEpisode ->
+                    if (isTearingDown || !isAdded || _binding == null) return@collect
                     releasePlayer()
                     isSetupDone = false
+                    val live = UserPreferences.currentProvider is IptvProvider
                     val action = PlayerMobileFragmentDirections
                         .actionPlayerMobileFragmentSelf(
                             id = nextEpisode.id,
                             videoType = nextEpisode,
                             title = nextEpisode.tvShow.title,
-                            subtitle = "S${nextEpisode.season.number} E${nextEpisode.number}  •  ${nextEpisode.title}",
+                            subtitle = if (live) {
+                                getString(R.string.player_live_channel)
+                            } else {
+                                "S${nextEpisode.season.number} E${nextEpisode.number}  •  ${nextEpisode.title}"
+                            },
                             preferredServerName = currentServer?.name,
                         )
 
@@ -724,7 +761,7 @@ class PlayerMobileFragment : Fragment() {
     }
 
     override fun onPictureInPictureModeChanged(isInPictureInPictureMode: Boolean) {
-        binding.pvPlayer.useController = !isInPictureInPictureMode
+        _binding?.pvPlayer?.useController = !isInPictureInPictureMode
         super.onPictureInPictureModeChanged(isInPictureInPictureMode)
     }
 
@@ -739,49 +776,92 @@ class PlayerMobileFragment : Fragment() {
         super.onStop()
         // Keep local Exo paused only when we are not casting — otherwise Cast owns playback.
         if (::player.isInitialized && !isCasting && !CastPlaybackHub.isCasting) {
-            player.pause()
+            runCatching { player.pause() }
         }
     }
 
     override fun onDestroyView() {
-        super.onDestroyView()
+        // Tear down player/UI while the fragment is still attached. Doing this after
+        // super.onDestroyView() races with OEM back stacks (crash on Zurück).
+        isTearingDown = true
+        val appContext = context?.applicationContext
+        val hostActivity = activity
         runCatching {
             com.dskja.betterstreamflix.platform.player.PlayerPlaybackReporter.resetSession()
         }
+        stateCollectJob?.cancel()
+        subtitleCollectJob?.cancel()
+        episodeNavJob?.cancel()
         castNextQueueJob?.cancel()
         nextEpisodePrefetchJob?.cancel()
-        val window = requireActivity().window
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-            window.attributes.layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_DEFAULT
-        }
-        WindowCompat.getInsetsController(
-            window,
-            window.decorView
-        ).run {
-            systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
-            show(WindowInsetsCompat.Type.systemBars())
-        }
-        requireActivity().requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
+        stateCollectJob = null
+        subtitleCollectJob = null
+        episodeNavJob = null
+        castNextQueueJob = null
+        nextEpisodePrefetchJob = null
+        stopProgressHandler()
+        stopLiveEdgeWatcher()
+        hideNextEpisodeOverlay()
+        waitingForBypass = false
         releasePlayer()
-        // Detach Cast UI but keep an active Chromecast session alive for the mini controller.
-        CastPlaybackHub.detachUi(requireContext().applicationContext)
+        runCatching {
+            appContext?.let { CastPlaybackHub.detachUi(it) }
+        }
         castPlayer = CastPlaybackHub.playerOrNull()
-        try {
-            requireContext().unregisterReceiver(chooserReceiver)
-        } catch (ignored: Exception) {}
+        if (appContext != null && chooserReceiverRegistered) {
+            try {
+                appContext.unregisterReceiver(chooserReceiver)
+            } catch (_: Exception) {
+            }
+            chooserReceiverRegistered = false
+        }
+        hostActivity?.window?.let { window ->
+            runCatching {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                    window.attributes.layoutInDisplayCutoutMode =
+                        WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_DEFAULT
+                }
+                WindowCompat.getInsetsController(
+                    window,
+                    window.decorView
+                ).run {
+                    systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+                    show(WindowInsetsCompat.Type.systemBars())
+                }
+                hostActivity.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
+            }
+        }
         _binding = null
         isSetupDone = false
+        super.onDestroyView()
     }
 
-    fun onBackPressed(): Boolean = when {
-        binding.pvPlayer.isManualZoomEnabled -> {
-            binding.pvPlayer.exitManualZoomMode()
-            true
+    private fun safeNavigateUp() {
+        if (isTearingDown) return
+        if (!isAdded) return
+        isTearingDown = true
+        // Release the player before popping the back stack so ExoPlayer/PlayerView
+        // cannot race OEM destroy sequences after navigateUp().
+        runCatching {
+            stopProgressHandler()
+            stopLiveEdgeWatcher()
+            releasePlayer()
         }
-        binding.settings.isVisible -> {
-            binding.settings.onBackPressed()
+        runCatching { findNavController().navigateUp() }
+    }
+
+    fun onBackPressed(): Boolean {
+        val b = _binding ?: return false
+        return when {
+            b.pvPlayer.isManualZoomEnabled -> {
+                b.pvPlayer.exitManualZoomMode()
+                true
+            }
+            b.settings.isVisible -> {
+                b.settings.onBackPressed()
+            }
+            else -> false
         }
-        else -> false
     }
 
 
@@ -852,51 +932,146 @@ class PlayerMobileFragment : Fragment() {
         }
         setupEpisodeNavigationButtons()
 
+        if (ExperimentalMobileDesign.enabled()) {
+            with(com.dskja.betterstreamflix.utils.ExpPressEffects) {
+                listOf(
+                    binding.pvPlayer.controller.binding.btnExoBack,
+                    binding.pvPlayer.controller.binding.btnExoExternalPlayer,
+                    binding.pvPlayer.controller.binding.exoReplay,
+                    binding.pvPlayer.controller.binding.exoPlayPause,
+                    binding.pvPlayer.controller.binding.exoRew,
+                    binding.pvPlayer.controller.binding.exoFfwd,
+                    binding.pvPlayer.controller.binding.btnCustomPrev,
+                    binding.pvPlayer.controller.binding.btnCustomNext,
+                    binding.pvPlayer.controller.binding.btnExoUnlock,
+                    binding.pvPlayer.controller.binding.btnSkipIntro,
+                    binding.pvPlayer.controller.binding.btnExoLock,
+                    binding.pvPlayer.controller.binding.btnExoPictureInPicture,
+                    binding.pvPlayer.controller.binding.btnExoAspectRatio,
+                    binding.pvPlayer.controller.binding.exoSettings,
+                    binding.pvPlayer.controller.binding.btnGoLive,
+                    binding.btnNextEpisodeAction,
+                    binding.btnNextEpisodeDismiss,
+                ).forEach { it.applyExpPress() }
+                runCatching {
+                    binding.pvPlayer.controller.binding.mediaRouteButton.applyExpPress()
+                }
+            }
+            listOf(
+                binding.pvPlayer.controller.binding.btnExoBack,
+                binding.pvPlayer.controller.binding.btnExoExternalPlayer,
+                binding.pvPlayer.controller.binding.btnExoLock,
+                binding.pvPlayer.controller.binding.btnExoPictureInPicture,
+                binding.pvPlayer.controller.binding.btnExoAspectRatio,
+                binding.pvPlayer.controller.binding.exoSettings,
+            ).forEach { btn ->
+                btn.setBackgroundResource(ExperimentalMobileDesign.iconChipBackground())
+            }
+            runCatching {
+                binding.pvPlayer.controller.binding.mediaRouteButton
+                    .setBackgroundResource(ExperimentalMobileDesign.iconChipBackground())
+            }
+            listOf(
+                binding.pvPlayer.controller.binding.exoPlayPause,
+                binding.pvPlayer.controller.binding.exoRew,
+                binding.pvPlayer.controller.binding.exoFfwd,
+                binding.pvPlayer.controller.binding.exoReplay,
+            ).forEach { btn ->
+                btn.setBackgroundResource(ExperimentalMobileDesign.controlsPillBackground())
+            }
+        }
+
         binding.pvPlayer.controller.binding.btnExoBack.setOnClickListener {
-            findNavController().navigateUp()
+            ExpMotion.hapticTap(it)
+            safeNavigateUp()
         }
 
         updatePlayerHeader()
 
         binding.pvPlayer.controller.binding.btnExoExternalPlayer.setOnClickListener {
-            Toast.makeText(
-                requireContext(),
-                getString(R.string.player_external_player_error_video),
-                Toast.LENGTH_SHORT
-            ).show()
+            ExpMotion.hapticTap(it)
+            notifyPlayer(
+                R.string.player_external_player_error_video,
+                R.string.player_settings_title,
+            )
         }
 
         binding.pvPlayer.controller.binding.exoReplay.setOnClickListener {
+            ExpMotion.hapticTap(it)
             activePlayer().seekTo(0)
         }
 
         binding.pvPlayer.controller.binding.btnExoLock.setOnClickListener {
+            ExpMotion.hapticTap(it)
             binding.pvPlayer.controller.binding.gControlsLock.isGone = true
             binding.pvPlayer.controller.binding.btnExoUnlock.isVisible = true
+            if (ExperimentalMobileDesign.enabled()) {
+                binding.pvPlayer.controller.binding.btnExoUnlock.setBackgroundResource(
+                    ExperimentalMobileDesign.primaryButtonBackground(),
+                )
+                androidx.core.widget.ImageViewCompat.setImageTintList(
+                    binding.pvPlayer.controller.binding.btnExoUnlock,
+                    android.content.res.ColorStateList.valueOf(
+                        com.google.android.material.color.MaterialColors.getColor(
+                            binding.pvPlayer.controller.binding.btnExoUnlock,
+                            com.google.android.material.R.attr.colorOnPrimary,
+                        ),
+                    ),
+                )
+                binding.pvPlayer.controller.binding.btnExoUnlock.contentDescription =
+                    getString(R.string.player_controls_locked_hint)
+                with(com.dskja.betterstreamflix.utils.ExpPressEffects) {
+                    binding.pvPlayer.controller.binding.btnExoUnlock.applyExpPress()
+                }
+                ExpMotion.popIn(binding.pvPlayer.controller.binding.btnExoUnlock)
+            }
         }
 
         binding.pvPlayer.controller.binding.btnExoUnlock.setOnClickListener {
+            ExpMotion.hapticTap(it)
             binding.pvPlayer.controller.binding.gControlsLock.isVisible = true
             binding.pvPlayer.controller.binding.btnExoUnlock.isGone = true
+            if (ExperimentalMobileDesign.enabled()) {
+                val c = binding.pvPlayer.controller.binding
+                c.btnExoUnlock.setBackgroundResource(ExperimentalMobileDesign.iconChipBackground())
+                androidx.core.widget.ImageViewCompat.setImageTintList(
+                    c.btnExoUnlock,
+                    android.content.res.ColorStateList.valueOf(
+                        com.google.android.material.color.MaterialColors.getColor(
+                            c.btnExoUnlock,
+                            androidx.appcompat.R.attr.colorPrimary,
+                        ),
+                    ),
+                )
+                c.btnExoUnlock.contentDescription = getString(R.string.exp_cd_unlock)
+                ExpMotion.revealHeader(c.tvExoTitle, c.tvExoSubtitle)
+                ExpMotion.popIn(c.exoBottomBar)
+                ExpMotion.popIn(c.exoCenterControls)
+            }
         }
 
         binding.pvPlayer.controller.binding.btnExoPictureInPicture.setOnClickListener {
+            ExpMotion.hapticTap(it)
             if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) {
-                Toast.makeText(
-                    requireContext(),
-                    getString(R.string.player_picture_in_picture_not_supported),
-                    Toast.LENGTH_SHORT
-                ).show()
+                notifyPlayer(
+                    R.string.player_picture_in_picture_not_supported,
+                    R.string.player_settings_title,
+                )
             } else {
                 enterPIPMode()
             }
         }
 
         binding.pvPlayer.controller.binding.btnExoAspectRatio.setOnClickListener {
+            ExpMotion.hapticTap(it)
             val newResize = UserPreferences.playerResize.next()
-            zoomToast?.cancel()
-            zoomToast = Toast.makeText(requireContext(), newResize.stringRes, Toast.LENGTH_SHORT)
-            zoomToast?.show()
+            if (ExperimentalMobileDesign.enabled()) {
+                showPlayerCue(newResize.stringRes)
+            } else {
+                zoomToast?.cancel()
+                zoomToast = Toast.makeText(requireContext(), newResize.stringRes, Toast.LENGTH_SHORT)
+                zoomToast?.show()
+            }
 
             UserPreferences.playerResize = newResize
             binding.pvPlayer.controllerShowTimeoutMs = binding.pvPlayer.controllerShowTimeoutMs
@@ -904,6 +1079,7 @@ class PlayerMobileFragment : Fragment() {
         }
 
         binding.pvPlayer.controller.binding.exoSettings.setOnClickListener {
+            ExpMotion.hapticTap(it)
             binding.pvPlayer.controllerShowTimeoutMs = binding.pvPlayer.controllerShowTimeoutMs
             binding.settings.show()
         }
@@ -941,15 +1117,22 @@ class PlayerMobileFragment : Fragment() {
         }
 
         binding.pvPlayer.controller.binding.btnSkipIntro.setOnClickListener {
+            ExpMotion.hapticTap(it)
             activePlayer().seekTo(activePlayer().currentPosition + 85000)
-            it.isGone = true
+            if (ExperimentalMobileDesign.enabled()) {
+                ExpMotion.fadeOutAndHide(it)
+            } else {
+                it.isGone = true
+            }
         }
 
         binding.btnNextEpisodeAction.setOnClickListener {
+            ExpMotion.hapticTap(it)
             hideNextEpisodeOverlay()
             playNextEpisodeAcrossSeasons()
         }
         binding.btnNextEpisodeDismiss.setOnClickListener {
+            ExpMotion.hapticTap(it)
             nextEpisodeOverlayDismissed = true
             hideNextEpisodeOverlay()
         }
@@ -999,6 +1182,10 @@ class PlayerMobileFragment : Fragment() {
     }
 
     fun setupEpisodeNavigationButtons() {
+        if (isLiveTvPlayback()) {
+            setupLiveChannelZapButtons()
+            return
+        }
         val btnPrevious = binding.pvPlayer.controller.binding.btnCustomPrev
         val btnNext = binding.pvPlayer.controller.binding.btnCustomNext
 
@@ -1012,8 +1199,15 @@ class PlayerMobileFragment : Fragment() {
                 return
             }
 
+            val wasGone = button.isGone
             button.isGone = false
+            if (ExperimentalMobileDesign.enabled()) {
+                button.setBackgroundResource(ExperimentalMobileDesign.controlsPillBackground())
+                with(com.dskja.betterstreamflix.utils.ExpPressEffects) { button.applyExpPress() }
+                if (wasGone) ExpMotion.popIn(button)
+            }
             button.setOnClickListener listener@{
+                ExpMotion.hapticTap(button)
                 if (!hasEpisode()) return@listener
 
                 val videoType = args.videoType
@@ -1133,6 +1327,12 @@ class PlayerMobileFragment : Fragment() {
         currentVideo = video
         currentServer = server
         updatePlayerHeader()
+        runCatching {
+            com.dskja.betterstreamflix.platform.plugins.PluginManager
+                .dispatchServerResolved(server)
+            com.dskja.betterstreamflix.platform.plugins.PluginManager
+                .dispatchPlaybackStarted(args.videoType, server.name)
+        }
 
         if (com.dskja.betterstreamflix.platform.playerbackend.PlayerBackendSelector.shouldHandoffToExternal()) {
             currentExternalPlayerTried = true
@@ -1167,9 +1367,24 @@ class PlayerMobileFragment : Fragment() {
 
         val currentPosition = player.currentPosition
 
-        lastCastHeaders = mapOf(
-            "User-Agent" to userAgent,
-        ) + (video.headers ?: emptyMap())
+        lastCastHeaders = buildMap {
+            put("User-Agent", userAgent)
+            video.headers?.forEach { (k, v) -> put(k, v) }
+            // SerienStream/VOE often omit Referer on Video — Chromecast then 404s.
+            if (keys.none { it.equals("Referer", ignoreCase = true) }) {
+                val hoster = server.src.takeIf { it.startsWith("http") }
+                    ?: video.source.takeIf { it.startsWith("http") }
+                if (!hoster.isNullOrBlank()) {
+                    put("Referer", hoster)
+                    runCatching {
+                        val uri = android.net.Uri.parse(hoster)
+                        val host = uri.host
+                        val scheme = uri.scheme ?: "https"
+                        if (!host.isNullOrBlank()) put("Origin", "$scheme://$host")
+                    }
+                }
+            }
+        }
 
         httpDataSource.setDefaultRequestProperties(lastCastHeaders)
 
@@ -1182,12 +1397,10 @@ class PlayerMobileFragment : Fragment() {
 
         val mediaItemBuilder = MediaItem.Builder()
             .setUri(video.source.toUri())
-            .setMimeType(video.type)
+            .setMimeType(com.dskja.betterstreamflix.extractors.StreamMime.coalesce(video.type, video.source))
         if (isLiveTvPlayback()) {
             mediaItemBuilder.setLiveConfiguration(
-                MediaItem.LiveConfiguration.Builder()
-                    .setMaxPlaybackSpeed(1.02f)
-                    .build()
+                com.dskja.betterstreamflix.iptv.IptvLivePlayback.liveConfiguration()
             )
             applyLiveControllerChrome(live = true)
         } else {
@@ -1404,7 +1617,12 @@ class PlayerMobileFragment : Fragment() {
             override fun onPlayerError(error: PlaybackException) {
                 super.onPlayerError(error)
                 Log.e("PlayerMobileFragment", "onPlayerError: ", error)
-                CrashReporter.logNonFatal("PlayerMobileFragment", "onPlayerError", error)
+                if (!com.dskja.betterstreamflix.extractors.ExtractorFailureClassifier
+                        .isExpectedStreamNoise(error)
+                ) {
+                    CrashReporter.logNonFatal("PlayerMobileFragment", "onPlayerError", error)
+                }
+                if (!isAdded || _binding == null) return
 
                 when (
                     val action = PlaybackFailover.decide(
@@ -1416,11 +1634,13 @@ class PlayerMobileFragment : Fragment() {
                         externalPlayerAvailable = com.dskja.betterstreamflix.platform.playerbackend.ExternalMpvBackend.canResolve(requireContext()) ||
                             com.dskja.betterstreamflix.platform.playerbackend.PlayerBackendSelector.shouldHandoffToExternal(),
                         externalPlayerAlreadyTried = currentExternalPlayerTried,
+                        error = error,
                     )
                 ) {
                     is PlaybackFailover.Action.TryNextServer -> {
                         servers.getOrNull(action.nextIndex)?.let {
                             Log.i("PlayerMobileFragment", "Playback failed, trying next server: ${it.name}")
+                            showPlayerCue(getString(R.string.player_trying_next_server, it.name))
                             viewModel.getVideo(it)
                         }
                     }
@@ -1430,11 +1650,7 @@ class PlayerMobileFragment : Fragment() {
                         val video = currentVideo
                         val server = currentServer
                         if (video != null && server != null) {
-                            Toast.makeText(
-                                requireContext(),
-                                R.string.player_retry_software_decoder,
-                                Toast.LENGTH_SHORT,
-                            ).show()
+                            showPlayerCue(R.string.player_retry_software_decoder)
                             displayVideo(video, server)
                         }
                     }
@@ -1450,15 +1666,7 @@ class PlayerMobileFragment : Fragment() {
                         }
                     }
                     PlaybackFailover.Action.GiveUp -> {
-                        if (ExperimentalMobileDesign.enabled()) {
-                            showPlayerError(error.message ?: error.errorCodeName)
-                        } else {
-                            Toast.makeText(
-                                requireContext(),
-                                error.message ?: error.errorCodeName,
-                                Toast.LENGTH_LONG,
-                            ).show()
-                        }
+                        showPlayerError(error.message ?: error.errorCodeName)
                     }
                 }
             }
@@ -1617,8 +1825,453 @@ class PlayerMobileFragment : Fragment() {
             controller.mediaRouteButton.isVisible = !live && UserPreferences.castEnabled
         }
         if (live) {
+            val wasLive = controller.tvLiveIndicator.getTag(R.id.exp_enter_animated_tag) == true
             controller.tvLiveIndicator.text = getString(R.string.player_live_badge)
+            if (!wasLive) {
+                controller.tvLiveIndicator.setTag(R.id.exp_enter_animated_tag, true)
+                if (ExperimentalMobileDesign.enabled()) {
+                    ExpMotion.popIn(controller.tvLiveIndicator)
+                }
+            }
+            if (ExperimentalMobileDesign.enabled()) {
+                runCatching {
+                    controller.tvLiveIndicator.startAnimation(
+                        android.view.animation.AnimationUtils.loadAnimation(requireContext(), R.anim.live_badge_pulse),
+                    )
+                }
+                controller.tvLiveIndicator.setBackgroundResource(
+                    ExperimentalMobileDesign.liveIndicatorBackground(),
+                )
+                controller.tvLiveIndicator.isClickable = true
+                controller.tvLiveIndicator.isFocusable = true
+                with(com.dskja.betterstreamflix.utils.ExpPressEffects) {
+                    controller.tvLiveIndicator.applyExpPress()
+                }
+                controller.tvLiveIndicator.setOnClickListener {
+                    ExpMotion.hapticTap(it)
+                    showLiveChannelGuideSheet()
+                }
+                controller.btnGoLive.setBackgroundResource(
+                    ExperimentalMobileDesign.primaryButtonBackground(),
+                )
+                with(com.dskja.betterstreamflix.utils.ExpPressEffects) {
+                    controller.btnGoLive.applyExpPress()
+                }
+            }
+            controller.btnGoLive.setOnClickListener {
+                ExpMotion.hapticTap(it)
+                if (::player.isInitialized) {
+                    com.dskja.betterstreamflix.iptv.IptvLivePlayback.seekToLiveEdge(player)
+                    controller.btnGoLive.isVisible = false
+                }
+            }
+            refreshLiveChannelMeta()
+            setupLiveChannelZapButtons()
+            ensureLiveChannelGuide()
+            startLiveEdgeWatcher()
+        } else {
+            controller.tvLiveIndicator.clearAnimation()
+            controller.tvLiveIndicator.setTag(R.id.exp_enter_animated_tag, null)
+            controller.btnGoLive.isVisible = false
+            controller.tvLiveChannelMeta.isVisible = false
+            stopLiveEdgeWatcher()
         }
+    }
+
+    private var liveEdgeWatcher: Runnable? = null
+
+    private fun startLiveEdgeWatcher() {
+        stopLiveEdgeWatcher()
+        val handler = binding.pvPlayer.handler ?: return
+        val tick = object : Runnable {
+                override fun run() {
+                if (isTearingDown || !isAdded || _binding == null || playerReleased ||
+                    !::player.isInitialized || !isLiveTvPlayback()
+                ) {
+                    return
+                }
+                val behind = com.dskja.betterstreamflix.iptv.IptvLivePlayback.isBehindLiveEdge(player)
+                val goLive = binding.pvPlayer.controller.binding.btnGoLive
+                val wasVisible = goLive.isVisible
+                goLive.isVisible = behind
+                if (behind && !wasVisible && ExperimentalMobileDesign.enabled()) {
+                    with(com.dskja.betterstreamflix.utils.ExpPressEffects) { goLive.applyExpPress() }
+                    ExpMotion.popIn(goLive)
+                    runCatching {
+                        goLive.startAnimation(
+                            android.view.animation.AnimationUtils.loadAnimation(
+                                requireContext(),
+                                R.anim.live_badge_pulse,
+                            ),
+                        )
+                    }
+                } else if (!behind) {
+                    goLive.clearAnimation()
+                }
+                if (!isTearingDown && isAdded && _binding != null) {
+                    handler.postDelayed(this, 1_500L)
+                }
+            }
+        }
+        liveEdgeWatcher = tick
+        handler.post(tick)
+    }
+
+    private fun stopLiveEdgeWatcher() {
+        liveEdgeWatcher?.let { tick ->
+            _binding?.pvPlayer?.handler?.removeCallbacks(tick)
+                ?: android.os.Handler(android.os.Looper.getMainLooper()).removeCallbacks(tick)
+        }
+        liveEdgeWatcher = null
+    }
+
+    private fun refreshLiveChannelMeta() {
+        val controller = binding.pvPlayer.controller.binding
+        val idx = com.dskja.betterstreamflix.iptv.IptvLiveSession.currentIndex()
+        val channel = com.dskja.betterstreamflix.iptv.IptvLiveSession.current()
+            ?: run {
+                val id = when (val t = args.videoType) {
+                    is Video.Type.Episode -> t.tvShow.id
+                    is Video.Type.Movie -> t.id
+                }
+                com.dskja.betterstreamflix.iptv.IptvLiveSession.Channel(
+                    id = id,
+                    name = resolvePlayerTitle(),
+                )
+            }
+        val wasVisible = controller.tvLiveChannelMeta.isVisible
+        if (idx >= 0) {
+            controller.tvLiveChannelMeta.text = getString(
+                R.string.player_live_channel_meta,
+                idx + 1,
+                channel.name,
+            )
+        } else {
+            controller.tvLiveChannelMeta.text = channel.name
+        }
+        controller.tvLiveChannelMeta.isVisible = true
+        if (ExperimentalMobileDesign.enabled()) {
+            controller.tvLiveChannelMeta.setBackgroundResource(
+                ExperimentalMobileDesign.metaPillBackground(),
+            )
+            if (!wasVisible) ExpMotion.popIn(controller.tvLiveChannelMeta)
+            controller.tvLiveChannelMeta.isClickable = true
+            controller.tvLiveChannelMeta.isFocusable = true
+            with(com.dskja.betterstreamflix.utils.ExpPressEffects) {
+                controller.tvLiveChannelMeta.applyExpPress()
+            }
+            controller.tvLiveChannelMeta.setOnClickListener {
+                ExpMotion.hapticTap(it)
+                showLiveChannelGuideSheet()
+            }
+        }
+    }
+
+    private fun showLiveChannelGuideSheet() {
+        if (!ExperimentalMobileDesign.enabled() || !isLiveTvPlayback()) return
+        val channels = com.dskja.betterstreamflix.iptv.IptvLiveSession.snapshot()
+        if (channels.isEmpty()) {
+            val emptySheet = com.google.android.material.bottomsheet.BottomSheetDialog(requireContext())
+            val emptyRoot = android.widget.LinearLayout(requireContext()).apply {
+                orientation = android.widget.LinearLayout.VERTICAL
+                setBackgroundResource(ExperimentalMobileDesign.bottomSheetBackground())
+                setPadding(20.dp(requireContext()), 20.dp(requireContext()), 20.dp(requireContext()), 28.dp(requireContext()))
+            }
+            ExperimentalMobileDesign.applyReducedGlass(emptyRoot)
+            val emptyIcon = android.widget.ImageView(requireContext()).apply {
+                setImageResource(R.drawable.ic_exp_error)
+                imageTintList = android.content.res.ColorStateList.valueOf(
+                    com.google.android.material.color.MaterialColors.getColor(
+                        this, androidx.appcompat.R.attr.colorPrimary,
+                    ),
+                )
+                layoutParams = android.widget.LinearLayout.LayoutParams(
+                    40.dp(requireContext()),
+                    40.dp(requireContext()),
+                )
+            }
+            val emptyTitle = android.widget.TextView(requireContext()).apply {
+                text = getString(R.string.player_live_channel_guide)
+                setTextAppearance(R.style.TextAppearance_Lumina_Title)
+                setTextColor(
+                    com.google.android.material.color.MaterialColors.getColor(
+                        this, com.google.android.material.R.attr.colorOnSurface,
+                    ),
+                )
+                setPadding(0, 12.dp(requireContext()), 0, 0)
+            }
+            val emptyRule = View(requireContext()).apply {
+                layoutParams = android.widget.LinearLayout.LayoutParams(
+                    40.dp(requireContext()),
+                    3.dp(requireContext()),
+                ).also { it.topMargin = 10.dp(requireContext()) }
+                setBackgroundResource(R.drawable.bg_exp_accent_rule)
+            }
+            val emptyBody = android.widget.TextView(requireContext()).apply {
+                text = getString(R.string.player_live_no_more_channels)
+                setTextAppearance(R.style.TextAppearance_Lumina_Body)
+                setTextColor(
+                    com.google.android.material.color.MaterialColors.getColor(
+                        this, com.google.android.material.R.attr.colorOnSurfaceVariant,
+                    ),
+                )
+                setPadding(0, 12.dp(requireContext()), 0, 16.dp(requireContext()))
+            }
+            val emptyCta = android.widget.TextView(requireContext()).apply {
+                text = getString(android.R.string.ok)
+                setTextAppearance(R.style.TextAppearance_Lumina_Caption)
+                setBackgroundResource(ExperimentalMobileDesign.primaryButtonBackground())
+                setTextColor(
+                    com.google.android.material.color.MaterialColors.getColor(
+                        this, com.google.android.material.R.attr.colorOnPrimary,
+                    ),
+                )
+                setPadding(16.dp(requireContext()), 12.dp(requireContext()), 16.dp(requireContext()), 12.dp(requireContext()))
+                setOnClickListener {
+                    ExpMotion.hapticTap(it)
+                    emptySheet.dismiss()
+                }
+            }
+            with(com.dskja.betterstreamflix.utils.ExpPressEffects) { emptyCta.applyExpPress() }
+            emptyRoot.addView(emptyIcon)
+            emptyRoot.addView(emptyTitle)
+            emptyRoot.addView(emptyRule)
+            emptyRoot.addView(emptyBody)
+            emptyRoot.addView(emptyCta)
+            ExpMotion.enterScreen(emptyRoot)
+            ExpMotion.revealHeader(emptyIcon, emptyTitle, emptyRule, emptyBody)
+            ExpMotion.pulseAccentRule(emptyRule)
+            ExpMotion.popIn(emptyCta)
+            emptySheet.setContentView(emptyRoot)
+            emptySheet.show()
+            return
+        }
+        val currentId = com.dskja.betterstreamflix.iptv.IptvLiveSession.current()?.id
+        val sheet = com.google.android.material.bottomsheet.BottomSheetDialog(requireContext())
+        val root = android.widget.LinearLayout(requireContext()).apply {
+            orientation = android.widget.LinearLayout.VERTICAL
+            setBackgroundResource(ExperimentalMobileDesign.bottomSheetBackground())
+            setPadding(20.dp(requireContext()), 16.dp(requireContext()), 20.dp(requireContext()), 28.dp(requireContext()))
+        }
+        ExperimentalMobileDesign.applyReducedGlass(root)
+        ExpMotion.enterScreen(root)
+        val title = android.widget.TextView(requireContext()).apply {
+            text = getString(R.string.player_live_channel_guide)
+            setTextAppearance(R.style.TextAppearance_Lumina_Title)
+            setPadding(0, 0, 0, 8.dp(requireContext()))
+        }
+        root.addView(title)
+        val rule = View(requireContext()).apply {
+            layoutParams = android.widget.LinearLayout.LayoutParams(40.dp(requireContext()), 3.dp(requireContext()))
+            setBackgroundResource(R.drawable.bg_exp_accent_rule)
+        }
+        root.addView(rule)
+        ExpMotion.revealHeader(title)
+        ExpMotion.pulseAccentRule(rule)
+        val scroll = android.widget.ScrollView(requireContext()).apply {
+            layoutParams = android.widget.LinearLayout.LayoutParams(
+                android.view.ViewGroup.LayoutParams.MATCH_PARENT,
+                (320.dp(requireContext())),
+            )
+        }
+        val list = android.widget.LinearLayout(requireContext()).apply {
+            orientation = android.widget.LinearLayout.VERTICAL
+            setPadding(0, 12.dp(requireContext()), 0, 0)
+        }
+        val rowBg = ExperimentalMobileDesign.optionItemBackground()
+        var currentRow: View? = null
+        channels.forEachIndexed { index, channel ->
+            val row = android.widget.TextView(requireContext()).apply {
+                text = getString(R.string.player_live_channel_meta, index + 1, channel.name)
+                setTextAppearance(R.style.TextAppearance_Lumina_Body)
+                setBackgroundResource(rowBg)
+                setPadding(14.dp(requireContext()), 12.dp(requireContext()), 14.dp(requireContext()), 12.dp(requireContext()))
+                isClickable = true
+                isFocusable = true
+                if (channel.id == currentId) {
+                    isSelected = true
+                    setBackgroundResource(ExperimentalMobileDesign.primaryButtonBackground())
+                    setTextColor(
+                        com.google.android.material.color.MaterialColors.getColor(
+                            this, com.google.android.material.R.attr.colorOnPrimary,
+                        )
+                    )
+                }
+                setOnClickListener {
+                    ExpMotion.hapticTap(it)
+                    sheet.dismiss()
+                    if (channel.id == currentId) return@setOnClickListener
+                    com.dskja.betterstreamflix.iptv.IptvLiveSession.setCurrent(channel.id)
+                    showLiveCue(R.string.player_live_zapping)
+                    viewModel.playLiveChannel(channel)
+                }
+            }
+            with(com.dskja.betterstreamflix.utils.ExpPressEffects) { row.applyExpPress() }
+            val lp = android.widget.LinearLayout.LayoutParams(
+                android.view.ViewGroup.LayoutParams.MATCH_PARENT,
+                android.view.ViewGroup.LayoutParams.WRAP_CONTENT,
+            ).apply { bottomMargin = 8.dp(requireContext()) }
+            list.addView(row, lp)
+            if (channel.id == currentId) currentRow = row
+            if (index < 12 || channel.id == currentId) {
+                row.alpha = 0f
+                row.postDelayed({ ExpMotion.popIn(row) }, 28L * index.coerceAtMost(12))
+            }
+        }
+        scroll.addView(list)
+        root.addView(scroll)
+        sheet.setContentView(root)
+        sheet.show()
+        currentRow?.let { row ->
+            scroll.post {
+                scroll.smoothScrollTo(0, row.top.coerceAtLeast(0))
+            }
+        }
+    }
+
+    private fun ensureLiveChannelGuide() {
+        val provider = UserPreferences.currentProvider ?: return
+        val aroundId = when (val t = args.videoType) {
+            is Video.Type.Episode -> t.tvShow.id.ifBlank { t.id }
+            is Video.Type.Movie -> t.id
+        }
+        com.dskja.betterstreamflix.iptv.IptvLiveSession.setCurrent(aroundId)
+        lifecycleScope.launch(Dispatchers.IO) {
+            com.dskja.betterstreamflix.iptv.IptvLiveSession.ensureLoaded(provider, aroundId)
+            withContext(Dispatchers.Main) {
+                if (!isAdded) return@withContext
+                refreshLiveChannelMeta()
+                setupLiveChannelZapButtons()
+            }
+        }
+    }
+
+    private fun setupLiveChannelZapButtons() {
+        if (!isLiveTvPlayback()) return
+        val btnPrevious = binding.pvPlayer.controller.binding.btnCustomPrev
+        val btnNext = binding.pvPlayer.controller.binding.btnCustomNext
+        val hasPrev = com.dskja.betterstreamflix.iptv.IptvLiveSession.hasPrevious()
+        val hasNext = com.dskja.betterstreamflix.iptv.IptvLiveSession.hasNext()
+        val prevWasGone = btnPrevious.isGone
+        val nextWasGone = btnNext.isGone
+        if (ExperimentalMobileDesign.enabled()) {
+            val pill = ExperimentalMobileDesign.controlsPillBackground()
+            if (hasPrev) {
+                btnPrevious.animate().cancel()
+                btnPrevious.alpha = 1f
+                btnPrevious.isVisible = true
+                btnPrevious.setBackgroundResource(pill)
+                with(com.dskja.betterstreamflix.utils.ExpPressEffects) { btnPrevious.applyExpPress() }
+                if (prevWasGone) ExpMotion.popIn(btnPrevious)
+            } else if (!prevWasGone) {
+                ExpMotion.fadeOutAndHide(btnPrevious)
+            } else {
+                btnPrevious.isGone = true
+            }
+            if (hasNext) {
+                btnNext.animate().cancel()
+                btnNext.alpha = 1f
+                btnNext.isVisible = true
+                btnNext.setBackgroundResource(pill)
+                with(com.dskja.betterstreamflix.utils.ExpPressEffects) { btnNext.applyExpPress() }
+                if (nextWasGone) ExpMotion.popIn(btnNext)
+            } else if (!nextWasGone) {
+                ExpMotion.fadeOutAndHide(btnNext)
+            } else {
+                btnNext.isGone = true
+            }
+        } else {
+            btnPrevious.isGone = !hasPrev
+            btnNext.isGone = !hasNext
+        }
+        btnPrevious.contentDescription = getString(R.string.player_live_prev_channel)
+        btnNext.contentDescription = getString(R.string.player_live_next_channel)
+        btnPrevious.setOnClickListener {
+            ExpMotion.hapticTap(it)
+            val channel = com.dskja.betterstreamflix.iptv.IptvLiveSession.previous()
+            if (channel == null) {
+                showLiveCue(R.string.player_live_no_more_channels)
+                return@setOnClickListener
+            }
+            showLiveCue(R.string.player_live_zapping)
+            viewModel.playLiveChannel(channel)
+        }
+        btnNext.setOnClickListener {
+            ExpMotion.hapticTap(it)
+            val channel = com.dskja.betterstreamflix.iptv.IptvLiveSession.next()
+            if (channel == null) {
+                showLiveCue(R.string.player_live_no_more_channels)
+                return@setOnClickListener
+            }
+            showLiveCue(R.string.player_live_zapping)
+            viewModel.playLiveChannel(channel)
+        }
+    }
+
+    private fun showLiveCue(@androidx.annotation.StringRes messageRes: Int) {
+        showPlayerCue(getString(messageRes))
+    }
+
+    /** Light in-player cue under Exp (failover / live zap / zoom); Toast otherwise. */
+    private fun showPlayerCue(@androidx.annotation.StringRes messageRes: Int) {
+        showPlayerCue(getString(messageRes))
+    }
+
+    private fun showPlayerCue(message: CharSequence) {
+        if (!ExperimentalMobileDesign.enabled()) {
+            Toast.makeText(requireContext(), message, Toast.LENGTH_SHORT).show()
+            return
+        }
+        val host = binding.root as? android.view.ViewGroup ?: run {
+            Toast.makeText(requireContext(), message, Toast.LENGTH_SHORT).show()
+            return
+        }
+        host.findViewWithTag<android.widget.TextView>("exp_live_cue")?.let { existing ->
+            host.removeView(existing)
+        }
+        val density = resources.displayMetrics.density
+        val cue = android.widget.TextView(requireContext()).apply {
+            tag = "exp_live_cue"
+            text = message
+            gravity = android.view.Gravity.CENTER
+            setTextAppearance(R.style.TextAppearance_Lumina_Caption)
+            setBackgroundResource(ExperimentalMobileDesign.metaPillBackground())
+            val padH = (16 * density).toInt()
+            val padV = (10 * density).toInt()
+            setPadding(padH, padV, padH, padV)
+            elevation = 8f * density
+            setTextColor(
+                com.google.android.material.color.MaterialColors.getColor(
+                    this, com.google.android.material.R.attr.colorOnSurface,
+                ),
+            )
+        }
+        val lp = if (host is androidx.constraintlayout.widget.ConstraintLayout) {
+            androidx.constraintlayout.widget.ConstraintLayout.LayoutParams(
+                android.view.ViewGroup.LayoutParams.WRAP_CONTENT,
+                android.view.ViewGroup.LayoutParams.WRAP_CONTENT,
+            ).apply {
+                topToTop = androidx.constraintlayout.widget.ConstraintLayout.LayoutParams.PARENT_ID
+                startToStart = androidx.constraintlayout.widget.ConstraintLayout.LayoutParams.PARENT_ID
+                endToEnd = androidx.constraintlayout.widget.ConstraintLayout.LayoutParams.PARENT_ID
+                topMargin = (72 * density).toInt()
+            }
+        } else {
+            android.view.ViewGroup.MarginLayoutParams(
+                android.view.ViewGroup.LayoutParams.WRAP_CONTENT,
+                android.view.ViewGroup.LayoutParams.WRAP_CONTENT,
+            ).apply {
+                topMargin = (72 * density).toInt()
+                leftMargin = (48 * density).toInt()
+                rightMargin = (48 * density).toInt()
+            }
+        }
+        host.addView(cue, lp)
+        ExpMotion.popIn(cue)
+        cue.postDelayed({
+            ExpMotion.fadeOutAndHide(cue)
+            cue.postDelayed({ runCatching { host.removeView(cue) } }, 280L)
+        }, 1200L)
     }
 
     private fun resolvePlayerTitle(videoType: Video.Type = currentVideoTypeForUi()): String {
@@ -1642,8 +2295,47 @@ class PlayerMobileFragment : Fragment() {
     }
 
     private fun updatePlayerHeader(videoType: Video.Type = currentVideoTypeForUi()) {
-        binding.pvPlayer.controller.binding.tvExoTitle.text = resolvePlayerTitle(videoType)
-        binding.pvPlayer.controller.binding.tvExoSubtitle.text = resolvePlayerSubtitle(videoType)
+        val controller = binding.pvPlayer.controller.binding
+        val title = resolvePlayerTitle(videoType)
+        val subtitle = resolvePlayerSubtitle(videoType)
+        val titleChanged = controller.tvExoTitle.text?.toString() != title
+        val subtitleChanged = controller.tvExoSubtitle.text?.toString() != subtitle
+        controller.tvExoTitle.text = title
+        controller.tvExoSubtitle.text = subtitle
+        if (ExperimentalMobileDesign.enabled()) {
+            val offline = currentServer?.id == PlayerViewModel.OFFLINE_SERVER_ID ||
+                currentServer?.name == PlayerViewModel.OFFLINE_SERVER_NAME
+            if (offline && !isLiveTvPlayback()) {
+                val wasVisible = controller.tvLiveIndicator.isVisible
+                controller.tvLiveIndicator.isVisible = true
+                controller.tvLiveIndicator.text = getString(R.string.downloads_play_offline)
+                controller.tvLiveIndicator.clearAnimation()
+                controller.tvLiveIndicator.setOnClickListener(null)
+                controller.tvLiveIndicator.isClickable = false
+                controller.tvLiveIndicator.setBackgroundResource(
+                    ExperimentalMobileDesign.metaPillBackground(),
+                )
+                if (!wasVisible) ExpMotion.popIn(controller.tvLiveIndicator)
+            } else if (!isLiveTvPlayback()) {
+                controller.tvLiveIndicator.isVisible = false
+                controller.tvLiveIndicator.setOnClickListener(null)
+            }
+        }
+        if (ExperimentalMobileDesign.enabled() && (titleChanged || subtitleChanged)) {
+            // Soft crossfade on episode/channel swaps; full reveal only first time.
+            val first = controller.tvExoTitle.getTag(R.id.exp_enter_animated_tag) != true
+            if (first) {
+                controller.tvExoTitle.setTag(R.id.exp_enter_animated_tag, true)
+                ExpMotion.revealHeader(controller.tvExoTitle, controller.tvExoSubtitle)
+            } else {
+                controller.tvExoTitle.animate().cancel()
+                controller.tvExoSubtitle.animate().cancel()
+                controller.tvExoTitle.alpha = 0.55f
+                controller.tvExoSubtitle.alpha = 0.55f
+                controller.tvExoTitle.animate().alpha(1f).setDuration(180L).start()
+                controller.tvExoSubtitle.animate().alpha(1f).setDuration(180L).start()
+            }
+        }
     }
 
     private fun queueNextEpisodeForContinueWatching(provider: com.dskja.betterstreamflix.providers.Provider) {
@@ -1694,6 +2386,8 @@ class PlayerMobileFragment : Fragment() {
     private fun startProgressHandler() {
         progressHandler = android.os.Handler(android.os.Looper.getMainLooper())
         progressRunnable = Runnable {
+            if (isTearingDown || !isAdded || _binding == null) return@Runnable
+            if (playerReleased || !::player.isInitialized) return@Runnable
             val active = runCatching { activePlayer() }.getOrNull() ?: return@Runnable
             if (active.isPlaying) {
                 if (!isLiveTvPlayback()) {
@@ -1713,7 +2407,9 @@ class PlayerMobileFragment : Fragment() {
                     hideNextEpisodeOverlay()
                 }
             }
-            progressHandler.postDelayed(progressRunnable, 1000)
+            if (isAdded && _binding != null) {
+                progressHandler.postDelayed(progressRunnable, 1000)
+            }
         }
         progressHandler.post(progressRunnable)
     }
@@ -1738,7 +2434,7 @@ class PlayerMobileFragment : Fragment() {
     }
 
     private fun stopProgressHandler() {
-        if (::progressHandler.isInitialized) {
+        if (::progressHandler.isInitialized && ::progressRunnable.isInitialized) {
             progressHandler.removeCallbacks(progressRunnable)
         }
     }
@@ -1819,6 +2515,7 @@ class PlayerMobileFragment : Fragment() {
 
         Glide.with(this)
             .load(nextEpisode.poster ?: nextEpisode.tvShow.poster)
+            .placeholder(R.drawable.glide_fallback_cover)
             .error(R.drawable.glide_fallback_cover)
             .fallback(R.drawable.glide_fallback_cover)
             .centerCrop()
@@ -1826,43 +2523,129 @@ class PlayerMobileFragment : Fragment() {
             .into(binding.ivNextEpisodePoster)
 
         if (binding.layoutNextEpisodeOverlay.isGone) {
-            val fadeIn = android.view.animation.AnimationUtils.loadAnimation(requireContext(), R.anim.fade_in)
-            binding.layoutNextEpisodeOverlay.startAnimation(fadeIn)
-            binding.layoutNextEpisodeOverlay.isVisible = true
+            if (ExperimentalMobileDesign.enabled()) {
+                binding.layoutNextEpisodeOverlay.setBackgroundResource(
+                    ExperimentalMobileDesign.glassCardBackground(),
+                )
+                binding.tvNextEpisodeMeta.setBackgroundResource(
+                    ExperimentalMobileDesign.metaPillBackground(),
+                )
+                binding.tvNextEpisodeCountdown.setBackgroundResource(
+                    ExperimentalMobileDesign.metaPillBackground(),
+                )
+                binding.layoutNextEpisodeOverlay.isVisible = true
+                ExpMotion.revealHeader(
+                    binding.tvNextEpisodeLabel,
+                    binding.root.findViewById(R.id.v_next_episode_rule),
+                    binding.tvNextEpisodeMeta,
+                    binding.tvNextEpisodeTitle,
+                    binding.tvNextEpisodeCountdown,
+                )
+                ExpMotion.pulseAccentRule(binding.root.findViewById(R.id.v_next_episode_rule))
+                with(com.dskja.betterstreamflix.utils.ExpPressEffects) {
+                    binding.btnNextEpisodeAction.applyExpPress()
+                    binding.btnNextEpisodeDismiss.applyExpPress()
+                }
+                binding.btnNextEpisodeAction.setBackgroundResource(
+                    ExperimentalMobileDesign.primaryButtonBackground(),
+                )
+                binding.btnNextEpisodeDismiss.setBackgroundResource(
+                    ExperimentalMobileDesign.chipBackground(),
+                )
+                listOf(
+                    binding.ivNextEpisodePoster,
+                    binding.btnNextEpisodeAction,
+                    binding.btnNextEpisodeDismiss,
+                ).forEachIndexed { index, view ->
+                    view.alpha = 0f
+                    view.postDelayed({ ExpMotion.popIn(view) }, 28L * index)
+                }
+            } else {
+                val fadeIn = android.view.animation.AnimationUtils.loadAnimation(requireContext(), R.anim.fade_in)
+                binding.layoutNextEpisodeOverlay.startAnimation(fadeIn)
+                binding.layoutNextEpisodeOverlay.isVisible = true
+            }
         }
     }
 
     private fun hideNextEpisodeOverlay() {
-        if (_binding == null) return
-        if (binding.layoutNextEpisodeOverlay.isVisible) {
-            val fadeOut = android.view.animation.AnimationUtils.loadAnimation(requireContext(), R.anim.fade_out)
-            binding.layoutNextEpisodeOverlay.startAnimation(fadeOut)
-            binding.layoutNextEpisodeOverlay.isGone = true
+        val b = _binding ?: return
+        if (b.layoutNextEpisodeOverlay.isVisible) {
+            if (ExperimentalMobileDesign.enabled()) {
+                ExpMotion.fadeOutAndHide(b.layoutNextEpisodeOverlay)
+            } else {
+                val ctx = context ?: return
+                val fadeOut = android.view.animation.AnimationUtils.loadAnimation(ctx, R.anim.fade_out)
+                b.layoutNextEpisodeOverlay.startAnimation(fadeOut)
+                b.layoutNextEpisodeOverlay.isGone = true
+            }
         }
     }
 
     private fun showPlayerError(message: String) {
         val root = _binding?.root ?: return
-        val overlay = root.findViewById<View>(R.id.ll_player_error) ?: return
-        root.findViewById<android.widget.TextView>(R.id.tv_player_error_message)?.text = message
-        root.findViewById<View>(R.id.btn_player_error_close)?.setOnClickListener {
-            ExpMotion.hapticTap(it)
-            overlay.isGone = true
-            findNavController().navigateUp()
+        val overlay = root.findViewById<View>(R.id.ll_player_error)
+        if (overlay == null) {
+            notifyPlayer(message)
+            safeNavigateUp()
+            return
         }
-        ExpMotion.fadeInAndShow(overlay)
+        root.findViewById<android.widget.TextView>(R.id.tv_player_error_message)?.text = message
+        root.findViewById<View>(R.id.btn_player_error_close)?.let { close ->
+            if (ExperimentalMobileDesign.enabled()) {
+                with(com.dskja.betterstreamflix.utils.ExpPressEffects) { close.applyExpPress() }
+            }
+            close.setOnClickListener {
+                ExpMotion.hapticTap(it)
+                if (ExperimentalMobileDesign.enabled()) {
+                    ExpMotion.fadeOutAndHide(overlay)
+                    overlay.postDelayed({
+                        if (!isTearingDown && isAdded) safeNavigateUp()
+                    }, 220L)
+                } else {
+                    overlay.isGone = true
+                    safeNavigateUp()
+                }
+            }
+        }
+        if (ExperimentalMobileDesign.enabled()) {
+            overlay.setBackgroundResource(ExperimentalMobileDesign.dialogBackground())
+            ExpMotion.fadeInAndShow(overlay)
+            ExpMotion.revealHeader(
+                root.findViewById(R.id.tv_player_error_title),
+                root.findViewById(R.id.tv_player_error_message),
+            )
+            root.findViewById<View>(R.id.btn_player_error_close)?.let { close ->
+                close.setBackgroundResource(ExperimentalMobileDesign.primaryButtonBackground())
+                ExpMotion.popIn(close)
+            }
+        } else {
+            overlay.isVisible = true
+        }
     }
 
     private fun showSkipIntroButton(show: Boolean) {
-        val btnSkipIntro = binding.pvPlayer.controller.binding.btnSkipIntro
+        val b = _binding ?: return
+        val btnSkipIntro = b.pvPlayer.controller.binding.btnSkipIntro
         if (show && btnSkipIntro.isGone) {
-            val fadeIn = android.view.animation.AnimationUtils.loadAnimation(requireContext(), R.anim.fade_in)
-            btnSkipIntro.startAnimation(fadeIn)
             btnSkipIntro.isVisible = true
+            if (ExperimentalMobileDesign.enabled()) {
+                btnSkipIntro.setBackgroundResource(ExperimentalMobileDesign.controlsPillBackground())
+                ExpMotion.popIn(btnSkipIntro)
+            } else {
+                val ctx = context ?: return
+                val fadeIn = android.view.animation.AnimationUtils.loadAnimation(ctx, R.anim.fade_in)
+                btnSkipIntro.startAnimation(fadeIn)
+            }
         } else if (!show && btnSkipIntro.isVisible) {
-            val fadeOut = android.view.animation.AnimationUtils.loadAnimation(requireContext(), R.anim.fade_out)
-            btnSkipIntro.startAnimation(fadeOut)
-            btnSkipIntro.isGone = true
+            if (ExperimentalMobileDesign.enabled()) {
+                ExpMotion.fadeOutAndHide(btnSkipIntro)
+            } else {
+                val ctx = context ?: return
+                val fadeOut = android.view.animation.AnimationUtils.loadAnimation(ctx, R.anim.fade_out)
+                btnSkipIntro.startAnimation(fadeOut)
+                btnSkipIntro.isGone = true
+            }
         }
     }
 
@@ -1871,14 +2654,17 @@ class PlayerMobileFragment : Fragment() {
     override fun onPause() {
         super.onPause()
         if (::player.isInitialized && !isLiveTvPlayback()) {
-            reportTraktProgress(
-                videoType = args.videoType,
-                positionMs = player.currentPosition,
-                durationMs = player.duration,
-                isPlaying = false,
-            )
+            runCatching {
+                reportTraktProgress(
+                    videoType = args.videoType,
+                    positionMs = player.currentPosition,
+                    durationMs = player.duration,
+                    isPlaying = false,
+                )
+            }
         }
         stopProgressHandler()
+        stopLiveEdgeWatcher()
         hideNextEpisodeOverlay()
     }
 
@@ -1891,16 +2677,18 @@ class PlayerMobileFragment : Fragment() {
             context = requireContext(),
             dataSourceFactory = dataSourceFactory,
             options = PlayerBuilderFactory.Options(
-                extraBuffering = extraBuffering,
+                extraBuffering = extraBuffering && !isLiveTvPlayback(),
                 softwareDecoder = currentSoftwareDecoder,
-                seekIncrementsMs = 10_000L,
+                seekIncrementsMs = if (isLiveTvPlayback()) null else 10_000L,
                 preferStereoAudio = false,
+                liveOptimized = isLiveTvPlayback(),
             ),
         )
     }
 
     private fun initializePlayer(extraBuffering: Boolean, softwareDecoder: Boolean = currentSoftwareDecoder) {
         releasePlayer()
+        playerReleased = false
         currentExtraBuffering = extraBuffering
         currentSoftwareDecoder = softwareDecoder
 
@@ -2028,7 +2816,7 @@ class PlayerMobileFragment : Fragment() {
         }
 
         if (video.source.startsWith("data:", ignoreCase = true) && extracted.isNullOrBlank()) {
-            Toast.makeText(requireContext(), R.string.player_cast_unsupported_stream, Toast.LENGTH_LONG).show()
+            showCastInfo(R.string.player_cast_unsupported_stream)
             return
         }
 
@@ -2045,13 +2833,14 @@ class PlayerMobileFragment : Fragment() {
             extractedFallback = extracted,
             live = isLiveTvPlayback(),
         )
+        if (!CastPlaybackHub.lastWrapUsedProxy && isAdded) {
+            showCastInfo(R.string.player_cast_proxy_unavailable)
+        }
         cp.setMediaItem(castItem, startPosition)
         cp.prepare()
         cp.playWhenReady = playWhenReady
         scheduleCastNextEpisodeQueue()
     }
-
-    private var castNextQueueJob: Job? = null
 
     private fun scheduleCastNextEpisodeQueue() {
         if (!isCasting && !CastPlaybackHub.isCasting) return
@@ -2069,7 +2858,40 @@ class PlayerMobileFragment : Fragment() {
             }
             if (prepared != null && isAdded) {
                 CastQueueCoordinator.enqueueExclusive(prepared.mediaItem)
+            } else if (
+                isAdded &&
+                EpisodeManager.peekNextEpisode() != null &&
+                (UserPreferences.autoplay || UserPreferences.castQueueNextEpisode) &&
+                CastQueueCoordinator.lastFailureMessage != null
+            ) {
+                showCastInfo(R.string.player_cast_queue_failed)
             }
+        }
+    }
+
+
+    private fun notifyPlayer(message: CharSequence, titleRes: Int = R.string.player_settings_title) {
+        ExpDialogChrome.notify(
+            requireContext(),
+            message,
+            titleRes,
+        )
+    }
+
+    private fun notifyPlayer(messageRes: Int, titleRes: Int = R.string.player_settings_title) {
+        notifyPlayer(getString(messageRes), titleRes)
+    }
+
+    private fun showCastInfo(messageRes: Int) {
+        val message = getString(messageRes)
+        if (ExperimentalMobileDesign.enabled()) {
+            ExpDialogChrome.showInfo(
+                requireContext(),
+                R.string.player_cast_content_description,
+                message,
+            ) { ctx -> MaterialAlertDialogBuilder(ExpDialogChrome.themedContext(ctx)) }
+        } else {
+            Toast.makeText(requireContext(), message, Toast.LENGTH_LONG).show()
         }
     }
 
@@ -2143,16 +2965,28 @@ class PlayerMobileFragment : Fragment() {
 
     private fun releasePlayer() {
         stopProgressHandler()
-        binding.pvPlayer.player = null
-        binding.settings.player = null
-        binding.settings.subtitleView = null
-        if (::player.isInitialized) {
+        stopLiveEdgeWatcher()
+        val b = _binding
+        if (b != null) {
+            runCatching {
+                b.pvPlayer.player = null
+                b.settings.player = null
+                b.settings.subtitleView = null
+            }
+            runCatching {
+                com.bumptech.glide.Glide.with(b.root).clear(b.ivNextEpisodePoster)
+            }
+        }
+        if (::player.isInitialized && !playerReleased) {
             playbackListener?.let { runCatching { player.removeListener(it) } }
             playbackListener = null
-            player.release()
+            runCatching { player.stop() }
+            runCatching { player.clearMediaItems() }
+            runCatching { player.release() }
+            playerReleased = true
         }
         if (::mediaSession.isInitialized) {
-            mediaSession.release()
+            runCatching { mediaSession.release() }
         }
     }
 

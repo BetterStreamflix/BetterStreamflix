@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="utf-8"?>
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Base ink -->
+    <item>
+        <shape android:shape="rectangle">
+            <solid android:color="@color/tg_gate_bg_deep" />
+        </shape>
+    </item>
+    <!-- Diagonal cinema depth -->
+    <item>
+        <shape android:shape="rectangle">
+            <gradient
+                android:angle="155"
+                android:centerColor="@color/tg_gate_bg_mid"
+                android:endColor="@color/tg_gate_bg_deep"
+                android:startColor="@color/tg_gate_bg_glow"
+                android:type="linear" />
+        </shape>
+    </item>
+    <!-- Signal bloom from upper center -->
+    <item
+        android:gravity="top|center_horizontal"
+        android:height="420dp"
+        android:width="420dp"
+        android:top="-80dp">
+        <shape android:shape="oval">
+            <gradient
+                android:endColor="#00000000"
+                android:gradientRadius="210dp"
+                android:startColor="@color/tg_gate_telegram_soft"
+                android:type="radial" />
+        </shape>
+    </item>
+    <!-- Soft teal wash top -->
+    <item
+        android:gravity="top|fill_horizontal"
+        android:height="300dp">
+        <shape android:shape="rectangle">
+            <gradient
+                android:angle="270"
+                android:endColor="#00000000"
+                android:startColor="@color/tg_gate_telegram_mist"
+                android:type="linear" />
+        </shape>
+    </item>
+    <!-- Bottom vignette for CTA stage -->
+    <item
+        android:gravity="bottom|fill_horizontal"
+        android:height="280dp">
+        <shape android:shape="rectangle">
+            <gradient
+                android:angle="90"
+                android:endColor="#00000000"
+                android:startColor="@color/tg_gate_scrim"
+                android:type="linear" />
+        </shape>
+    </item>
+</layer-list>

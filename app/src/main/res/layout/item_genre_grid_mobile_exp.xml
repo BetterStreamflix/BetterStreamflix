@@ -4,19 +4,19 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:background="@drawable/bg_exp_provider_card"
+    android:background="@drawable/bg_exp_genre_tile"
     android:foreground="?attr/selectableItemBackground">
 
     <TextView
         android:id="@+id/tv_genre_name"
-        android:fontFamily="@font/manrope"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_margin="8dp"
         android:gravity="center"
         android:minHeight="96dp"
-        android:textColor="?attr/colorPrimary"
-        android:textAppearance="?attr/textAppearanceTitleSmall"
+        android:textAppearance="@style/TextAppearance.Lumina.Title"
+        android:textColor="?attr/colorOnSurface"
+        android:textSize="15sp"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"

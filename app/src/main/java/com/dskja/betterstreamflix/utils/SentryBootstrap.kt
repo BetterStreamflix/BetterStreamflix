@@ -81,6 +81,32 @@ object SentryBootstrap {
                     ) {
                         return@BeforeSendCallback null
                     }
+                    // Drop expected stream / CDN / hoster failures (Sentry noise).
+                    if (values.any { ex ->
+                            val type = ex.type.orEmpty()
+                            val value = ex.value.orEmpty()
+                            type.contains("SentryHttpClientException", ignoreCase = true) ||
+                                type.contains("ExoPlaybackException", ignoreCase = true) ||
+                                type.contains("ParserException", ignoreCase = true) ||
+                                value.contains("No source found", ignoreCase = true) ||
+                                value.contains("status code: 503", ignoreCase = true) ||
+                                value.contains("status code: 502", ignoreCase = true) ||
+                                value.contains("status code: 504", ignoreCase = true) ||
+                                value.contains("#EXTM3U", ignoreCase = true) ||
+                                value.contains("contentIsMalformed", ignoreCase = true) ||
+                                value.contains("Large HTTP payload", ignoreCase = true) ||
+                                value.contains("File IO on Main Thread", ignoreCase = true)
+                        }
+                    ) {
+                        return@BeforeSendCallback null
+                    }
+                    // Drop performance/info breadcrumbs promoted as issues.
+                    val message = event.message?.formatted.orEmpty()
+                    if (message.contains("Large HTTP payload", ignoreCase = true) ||
+                        message.contains("File IO on Main Thread", ignoreCase = true)
+                    ) {
+                        return@BeforeSendCallback null
+                    }
                     scrubEvent(event)
                     event
                 }

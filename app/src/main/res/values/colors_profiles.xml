@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Profiles — ink cinema house, tungsten champagne accent -->
+    <color name="profile_bg">#070709</color>
+    <color name="profile_bg_elevated">#101014</color>
+    <color name="profile_surface">#16161C</color>
+    <color name="profile_surface_soft">#1E1E26</color>
+    <color name="profile_border">#2A2A34</color>
+    <color name="profile_border_focus">#D4A574</color>
+    <color name="profile_text_primary">#F4F0EA</color>
+    <color name="profile_text_secondary">#A39E96</color>
+    <color name="profile_text_tertiary">#6F6A64</color>
+    <color name="profile_accent">#D4A574</color>
+    <color name="profile_accent_pressed">#B8895A</color>
+    <color name="profile_accent_soft">#33D4A574</color>
+    <color name="profile_on_accent">#140F0A</color>
+    <color name="profile_success">#7CB89A</color>
+    <color name="profile_danger">#C45C5C</color>
+    <color name="profile_scrim">#E6070709</color>
+
+    <!-- Avatar palette cores -->
+    <color name="profile_avatar_crimson_a">#8B1020</color>
+    <color name="profile_avatar_crimson_b">#E23A45</color>
+    <color name="profile_avatar_ember_a">#7A3318</color>
+    <color name="profile_avatar_ember_b">#E8904A</color>
+    <color name="profile_avatar_aurora_a">#0E4A44</color>
+    <color name="profile_avatar_aurora_b">#4ECFBE</color>
+    <color name="profile_avatar_slate_a">#2A3038</color>
+    <color name="profile_avatar_slate_b">#8A93A0</color>
+    <color name="profile_avatar_forest_a">#1A3D2C</color>
+    <color name="profile_avatar_forest_b">#4F9A6E</color>
+    <color name="profile_avatar_ocean_a">#12304F</color>
+    <color name="profile_avatar_ocean_b">#3D7CC9</color>
+    <color name="profile_avatar_gold_a">#5C4318</color>
+    <color name="profile_avatar_gold_b">#E0BF6A</color>
+    <color name="profile_avatar_rose_a">#5A2A3C</color>
+    <color name="profile_avatar_rose_b">#D484A8</color>
+</resources>

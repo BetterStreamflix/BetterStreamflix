@@ -21,21 +21,46 @@ object SerienStreamBypassHelper {
         "__ddgid", "__ddgmark", "__ddg_privacy",
     )
 
-    /** Cookie names that indicate a real SerienStream / CF / session pass. */
-    private val AUTH_COOKIE_NAME_EXACT = setOf(
+    /**
+     * Cookie names that indicate a Cloudflare / anti-bot challenge was solved.
+     * These alone are NOT an account login — anonymous visitors get PHPSESSID too.
+     */
+    private val BYPASS_COOKIE_NAME_EXACT = setOf(
         "cf_clearance",
         "ddos_token",
+        "altcha",
         "phpsessid",
         "laravel_session",
         "xsrf-token",
-        "altcha",
+        "ci_session",
     )
-    private val AUTH_COOKIE_NAME_PREFIXES = listOf(
+
+    /** Cookie names that prove a real SerienStream account sign-in. */
+    private val ACCOUNT_COOKIE_NAME_EXACT = setOf(
+        "rememberlogin",
+        "remember_login",
+        "remember_me",
+        "rememberme",
+        "logged_in",
+        "is_logged_in",
+        "user_id",
+        "userid",
+        "serien_user",
+        "ss_auth",
+    )
+    private val ACCOUNT_COOKIE_NAME_PREFIXES = listOf(
         "remember_",
         "remember-",
-        "serien_",
+        "serien_user",
         "login_",
+        "auth_",
+        "user_",
+        "account_",
     )
+
+    /** @deprecated Prefer [BYPASS_COOKIE_NAME_EXACT] / [ACCOUNT_COOKIE_NAME_EXACT]. */
+    private val AUTH_COOKIE_NAME_EXACT = BYPASS_COOKIE_NAME_EXACT + ACCOUNT_COOKIE_NAME_EXACT
+    private val AUTH_COOKIE_NAME_PREFIXES = ACCOUNT_COOKIE_NAME_PREFIXES
 
     fun isSerienStreamHost(url: String): Boolean {
         if (url.startsWith(TMDB_DE_SERIENSTREAM, ignoreCase = true)) return true
@@ -126,25 +151,25 @@ object SerienStreamBypassHelper {
         return byName.values.joinToString("; ")
     }
 
-    /** True when the jar contains a real challenge/login cookie (not just browser noise). */
+    /** True when the jar contains a CF / challenge cookie (not just browser noise). */
     fun looksLikeBypassSolved(cookieHeader: String): Boolean {
         val cleaned = sanitizeSessionCookies(cookieHeader)
         if (cleaned.isBlank()) return false
-        val names = cleaned.split(";")
-            .map { it.trim() }
-            .filter { it.contains("=") }
-            .map { it.substringBefore("=").trim().lowercase(Locale.US) }
-            .filter { it.isNotBlank() }
+        val names = cookieNames(cleaned)
         return names.any { name ->
-            name in AUTH_COOKIE_NAME_EXACT ||
-                AUTH_COOKIE_NAME_PREFIXES.any { name.startsWith(it) }
+            name in BYPASS_COOKIE_NAME_EXACT || name in AUTH_COOKIE_NAME_EXACT
         }
     }
 
-    /** Persist sanitized cookies only when they look like a real session. */
+    /**
+     * Persist for CF bypass playback. Account sign-in must use
+     * [persistAccountSessionCookiesIfValid] so anonymous PHPSESSID never
+     * pretends to be a saved login.
+     */
     fun persistSessionCookiesIfValid(cookieHeader: String): Boolean {
         val cleaned = sanitizeSessionCookies(cookieHeader)
-        if (!looksLikeBypassSolved(cleaned)) {
+        if (cleaned.isBlank()) return false
+        if (!looksLikeBypassSolved(cleaned) && !looksLikeAccountSession(cleaned)) {
             return false
         }
         UserPreferences.serienStreamSessionCookies = cleaned
@@ -152,8 +177,44 @@ object SerienStreamBypassHelper {
         return true
     }
 
+    /** Persist only when cookies prove a real account login (Settings Sign-in). */
+    fun persistAccountSessionCookiesIfValid(cookieHeader: String): Boolean {
+        val cleaned = sanitizeSessionCookies(cookieHeader)
+        if (cleaned.isBlank()) return false
+        if (!looksLikeAccountSession(cleaned)) return false
+        UserPreferences.serienStreamSessionCookies = cleaned
+        applyStoredSessionCookies()
+        return true
+    }
+
+    /**
+     * Strict account-login check. Anonymous CF/PHPSESSID jars must return false —
+     * that was the false "Login gespeichert" bug after opening the warm homepage.
+     */
+    fun looksLikeAccountSession(cookieHeader: String): Boolean {
+        val cleaned = sanitizeSessionCookies(cookieHeader)
+        if (cleaned.isBlank()) return false
+        val names = cookieNames(cleaned)
+        if (names.any { it in ACCOUNT_COOKIE_NAME_EXACT }) return true
+        if (names.any { name -> ACCOUNT_COOKIE_NAME_PREFIXES.any { name.startsWith(it) } }) {
+            return true
+        }
+        // Laravel remember cookie variants sometimes use long opaque names with "remember".
+        val lower = cleaned.lowercase(Locale.US)
+        if (lower.contains("remember_web_") || lower.contains("remember_token")) return true
+        return false
+    }
+
+    private fun cookieNames(cleaned: String): List<String> =
+        cleaned.split(";")
+            .map { it.trim() }
+            .filter { it.contains("=") }
+            .map { it.substringBefore("=").trim().lowercase(Locale.US) }
+            .filter { it.isNotBlank() }
+
     fun clearStoredSessionCookies() {
-        UserPreferences.serienStreamSessionCookies = ""
+        // Full logout: prefs + CookieManager across SerienStream / proxy origins.
+        com.dskja.betterstreamflix.providers.SerienStreamAuthManager.logout()
     }
 
     private fun seedCookieHeader(url: String, cookieHeader: String) {

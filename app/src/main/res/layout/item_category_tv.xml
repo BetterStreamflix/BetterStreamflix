@@ -9,17 +9,27 @@
 
     <TextView
         android:id="@+id/tv_category_title"
-        android:layout_width="0dp"
+        android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginStart="70dp"
         android:layout_marginEnd="70dp"
         android:textColor="#FFFFFF"
         android:textSize="20sp"
         android:textStyle="bold"
-        app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent"
         tools:text="Title" />
+
+    <View
+        android:id="@+id/v_category_rule"
+        android:layout_width="36dp"
+        android:layout_height="3dp"
+        android:layout_marginTop="10dp"
+        android:background="@drawable/bg_exp_accent_rule"
+        android:visibility="gone"
+        app:layout_constraintStart_toStartOf="@id/tv_category_title"
+        app:layout_constraintTop_toBottomOf="@id/tv_category_title"
+        tools:visibility="visible" />
 
     <androidx.leanback.widget.HorizontalGridView
         android:id="@+id/hgv_category"
@@ -34,6 +44,30 @@
         app:focusOutFront="true"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/tv_category_title" />
+        app:layout_constraintTop_toBottomOf="@id/v_category_rule" />
+
+    <View
+        android:id="@+id/v_category_edge_fade_start"
+        android:layout_width="40dp"
+        android:layout_height="0dp"
+        android:background="@drawable/bg_exp_edge_fade_start"
+        android:importantForAccessibility="no"
+        android:visibility="gone"
+        app:layout_constraintBottom_toBottomOf="@id/hgv_category"
+        app:layout_constraintStart_toStartOf="@id/hgv_category"
+        app:layout_constraintTop_toTopOf="@id/hgv_category"
+        tools:visibility="visible" />
+
+    <View
+        android:id="@+id/v_category_edge_fade_end"
+        android:layout_width="48dp"
+        android:layout_height="0dp"
+        android:background="@drawable/bg_exp_edge_fade_end"
+        android:importantForAccessibility="no"
+        android:visibility="gone"
+        app:layout_constraintBottom_toBottomOf="@id/hgv_category"
+        app:layout_constraintEnd_toEndOf="@id/hgv_category"
+        app:layout_constraintTop_toTopOf="@id/hgv_category"
+        tools:visibility="visible" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>

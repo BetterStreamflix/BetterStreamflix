@@ -25,13 +25,17 @@ import com.dskja.betterstreamflix.download.ui.DownloadsAdapter
 import com.dskja.betterstreamflix.download.ui.DownloadsFilter
 import com.dskja.betterstreamflix.download.ui.DownloadsSort
 import com.dskja.betterstreamflix.download.ui.DownloadsViewModel
+import com.dskja.betterstreamflix.fragments.settings.SettingsDeepLink
 import com.dskja.betterstreamflix.models.Video
+import com.dskja.betterstreamflix.utils.ExpDialogChrome
 import com.dskja.betterstreamflix.utils.ExperimentalMobileDesign
 import com.dskja.betterstreamflix.utils.viewModelsFactory
 import com.dskja.betterstreamflix.utils.ExpMotion
 import com.dskja.betterstreamflix.utils.ExpNavAutoHide
 import com.google.android.material.color.MaterialColors
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
@@ -76,29 +80,121 @@ class DownloadsMobileFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         ExpNavAutoHide.attach(binding.root)
         ExpMotion.enterScreen(binding.root)
+        ExperimentalMobileDesign.applyReducedGlass(binding.root)
         ExpMotion.staggerFirstFill(binding.rvDownloads)
         if (ExperimentalMobileDesign.enabled()) {
             ExpMotion.revealHeader(
                 binding.root.findViewById(R.id.tv_downloads_eyebrow),
                 binding.tvDownloadsTitle,
                 binding.root.findViewById(R.id.tv_downloads_tagline),
+                binding.root.findViewById(R.id.v_downloads_rule),
             )
+            ExpMotion.pulseAccentRule(binding.root.findViewById(R.id.v_downloads_rule))
+            binding.btnDownloadsMenu.setBackgroundResource(
+                ExperimentalMobileDesign.iconChipBackground(),
+            )
+            ExpMotion.popIn(binding.btnDownloadsMenu)
+            listOf(
+                binding.chipFilterAll,
+                binding.chipFilterDownloading,
+                binding.chipFilterCompleted,
+                binding.chipFilterFailed,
+            ).forEachIndexed { index, chip ->
+                chip.postDelayed({ ExpMotion.popIn(chip) }, 32L * index)
+            }
         }
         binding.rvDownloads.layoutManager = LinearLayoutManager(requireContext())
         binding.rvDownloads.itemAnimator = null
         binding.rvDownloads.adapter = adapter
-        binding.btnDownloadsMenu.setOnClickListener { showMenu(it) }
-        binding.chipFilterAll.setOnClickListener { viewModel.setFilter(DownloadsFilter.ALL) }
-        binding.chipFilterDownloading.setOnClickListener { viewModel.setFilter(DownloadsFilter.DOWNLOADING) }
-        binding.chipFilterCompleted.setOnClickListener { viewModel.setFilter(DownloadsFilter.COMPLETED) }
-        binding.chipFilterFailed.setOnClickListener { viewModel.setFilter(DownloadsFilter.FAILED) }
+        binding.btnDownloadsMenu.apply {
+            if (ExperimentalMobileDesign.enabled()) {
+                with(com.dskja.betterstreamflix.utils.ExpPressEffects) { applyExpPress() }
+            }
+            setOnClickListener {
+                ExpMotion.hapticTap(it)
+                showMenu(it)
+            }
+        }
+        listOf(
+            binding.chipFilterAll to DownloadsFilter.ALL,
+            binding.chipFilterDownloading to DownloadsFilter.DOWNLOADING,
+            binding.chipFilterCompleted to DownloadsFilter.COMPLETED,
+            binding.chipFilterFailed to DownloadsFilter.FAILED,
+        ).forEach { (chip, filter) ->
+            if (ExperimentalMobileDesign.enabled()) {
+                with(com.dskja.betterstreamflix.utils.ExpPressEffects) { chip.applyExpPress() }
+            }
+            chip.setOnClickListener {
+                ExpMotion.hapticTap(it)
+                viewModel.setFilter(filter)
+            }
+        }
 
         viewLifecycleOwner.lifecycleScope.launch {
-            viewModel.rows.flowWithLifecycle(lifecycle, Lifecycle.State.STARTED).collect { rows ->
+            // Combine filter so empty→empty filter switches still refresh CTA copy
+            // (StateFlow skips equal emptyList emissions).
+            combine(viewModel.rows, viewModel.selectedFilter) { rows, filter -> rows to filter }
+                .flowWithLifecycle(lifecycle, Lifecycle.State.STARTED)
+                .collect { (rows, filter) ->
                 adapter.submitList(rows.toList())
-                binding.tvDownloadsEmpty.isVisible = rows.isEmpty()
+                if (rows.isEmpty()) {
+                    val cta = binding.root.findViewById<View>(R.id.btn_downloads_empty_cta)
+                    val emptyRule = binding.root.findViewById<View>(R.id.v_downloads_empty_rule)
+                    if (ExperimentalMobileDesign.enabled()) {
+                        binding.tvDownloadsEmpty.setBackgroundResource(
+                            ExperimentalMobileDesign.glassCardBackground(),
+                        )
+                    }
+                    if (binding.tvDownloadsEmpty.visibility != View.VISIBLE) {
+                        binding.tvDownloadsEmpty.isVisible = true
+                        emptyRule?.isVisible = ExperimentalMobileDesign.enabled()
+                        if (ExperimentalMobileDesign.enabled()) {
+                            ExpMotion.revealHeader(binding.tvDownloadsEmpty, emptyRule, cta)
+                            ExpMotion.pulseAccentRule(emptyRule)
+                        } else {
+                            ExpMotion.fadeInAndShow(binding.tvDownloadsEmpty)
+                        }
+                    } else {
+                        binding.tvDownloadsEmpty.isVisible = true
+                        emptyRule?.isVisible = ExperimentalMobileDesign.enabled()
+                    }
+                    val filterAll = filter == DownloadsFilter.ALL
+                    binding.root.findViewById<android.widget.TextView>(R.id.btn_downloads_empty_cta)?.let { chip ->
+                        val wasVisible = chip.isVisible
+                        chip.isVisible = true
+                        chip.setText(
+                            if (filterAll) R.string.exp_empty_browse_catalog
+                            else R.string.exp_empty_clear_filter,
+                        )
+                        if (ExperimentalMobileDesign.enabled()) {
+                            chip.setBackgroundResource(ExperimentalMobileDesign.primaryButtonBackground())
+                            with(com.dskja.betterstreamflix.utils.ExpPressEffects) { chip.applyExpPress() }
+                            if (!wasVisible) ExpMotion.popIn(chip)
+                        }
+                        chip.setOnClickListener {
+                            ExpMotion.hapticTap(it)
+                            if (filterAll) {
+                                findNavController().navigate(R.id.home)
+                            } else {
+                                viewModel.setFilter(DownloadsFilter.ALL)
+                            }
+                        }
+                    }
+                } else {
+                    if (ExperimentalMobileDesign.enabled() && binding.tvDownloadsEmpty.isVisible) {
+                        ExpMotion.fadeOutAndHide(binding.tvDownloadsEmpty)
+                        binding.root.findViewById<View>(R.id.v_downloads_empty_rule)
+                            ?.let { ExpMotion.fadeOutAndHide(it) }
+                        binding.root.findViewById<View>(R.id.btn_downloads_empty_cta)
+                            ?.let { ExpMotion.fadeOutAndHide(it) }
+                    } else {
+                        binding.tvDownloadsEmpty.isVisible = false
+                        binding.root.findViewById<View>(R.id.v_downloads_empty_rule)?.isVisible = false
+                        binding.root.findViewById<View>(R.id.btn_downloads_empty_cta)?.isVisible = false
+                    }
+                }
                 binding.tvDownloadsEmpty.setText(
-                    if (viewModel.currentFilter() == DownloadsFilter.ALL) {
+                    if (filter == DownloadsFilter.ALL) {
                         R.string.downloads_empty
                     } else {
                         R.string.downloads_filter_empty
@@ -113,7 +209,16 @@ class DownloadsMobileFragment : Fragment() {
         }
         viewLifecycleOwner.lifecycleScope.launch {
             viewModel.storageLabel.flowWithLifecycle(lifecycle, Lifecycle.State.STARTED).collect {
-                binding.tvDownloadsStorage.text = it
+                val storage = binding.tvDownloadsStorage
+                val wasBlank = storage.text.isNullOrBlank()
+                storage.text = it
+                if (ExperimentalMobileDesign.enabled() && wasBlank && !it.isNullOrBlank()) {
+                    storage.setBackgroundResource(ExperimentalMobileDesign.metaPillBackground())
+                    val padH = (10 * resources.displayMetrics.density).toInt()
+                    val padV = (4 * resources.displayMetrics.density).toInt()
+                    storage.setPadding(padH, padV, padH, padV)
+                    ExpMotion.popIn(storage)
+                }
             }
         }
         viewLifecycleOwner.lifecycleScope.launch {
@@ -148,12 +253,13 @@ class DownloadsMobileFragment : Fragment() {
     }
 
     private fun styleChip(chip: android.widget.TextView, selected: Boolean) {
+        val wasSelected = chip.isSelected
         chip.isSelected = selected
         val exp = ExperimentalMobileDesign.enabled()
         chip.setBackgroundResource(
             when {
-                exp && selected -> R.drawable.bg_exp_button_primary
-                exp -> R.drawable.bg_exp_chip
+                exp && selected -> ExperimentalMobileDesign.primaryButtonBackground()
+                exp -> ExperimentalMobileDesign.chipBackground()
                 selected -> R.drawable.bg_download_filter_chip_selected
                 else -> R.drawable.bg_download_filter_chip
             },
@@ -170,19 +276,68 @@ class DownloadsMobileFragment : Fragment() {
                 else -> 0xFFFFFFFF.toInt()
             },
         )
+        chip.refreshDrawableState()
+        if (exp && selected && !wasSelected) {
+            ExpMotion.popIn(chip)
+            ExpMotion.pulseAccentRule(binding.root.findViewById(R.id.v_downloads_rule))
+        }
+        if (exp) {
+            chip.typeface = if (selected) {
+                android.graphics.Typeface.create("sans-serif-medium", android.graphics.Typeface.BOLD)
+            } else {
+                android.graphics.Typeface.create("sans-serif", android.graphics.Typeface.NORMAL)
+            }
+            chip.letterSpacing = if (selected) 0.02f else 0f
+        }
     }
 
     private fun updateBanner(lowSpace: Boolean, wifiPaused: Boolean) {
+        val banner = binding.tvDownloadsBanner
+        val wasVisible = banner.isVisible
         when {
             wifiPaused -> {
-                binding.tvDownloadsBanner.isVisible = true
-                binding.tvDownloadsBanner.setText(R.string.downloads_wifi_paused)
+                banner.setText(R.string.downloads_wifi_paused)
+                if (ExperimentalMobileDesign.enabled()) {
+                    banner.setTextColor(
+                        com.google.android.material.color.MaterialColors.getColor(
+                            banner, com.google.android.material.R.attr.colorTertiary,
+                        ),
+                    )
+                }
             }
             lowSpace -> {
-                binding.tvDownloadsBanner.isVisible = true
-                binding.tvDownloadsBanner.setText(R.string.downloads_low_space)
+                banner.setText(R.string.downloads_low_space)
+                if (ExperimentalMobileDesign.enabled()) {
+                    banner.setTextColor(
+                        com.google.android.material.color.MaterialColors.getColor(
+                            banner, androidx.appcompat.R.attr.colorError,
+                        ),
+                    )
+                }
             }
-            else -> binding.tvDownloadsBanner.isVisible = false
+            else -> {
+                if (ExperimentalMobileDesign.enabled() && wasVisible) {
+                    ExpMotion.fadeOutAndHide(banner)
+                } else {
+                    banner.isVisible = false
+                }
+                return
+            }
+        }
+        banner.isVisible = true
+        if (ExperimentalMobileDesign.enabled()) {
+            banner.setBackgroundResource(ExperimentalMobileDesign.metaPillBackground())
+            val density = resources.displayMetrics.density
+            banner.setPadding(
+                (14 * density).toInt(),
+                (10 * density).toInt(),
+                (14 * density).toInt(),
+                (10 * density).toInt(),
+            )
+            with(com.dskja.betterstreamflix.utils.ExpPressEffects) { banner.applyExpPress() }
+            if (!wasVisible) {
+                ExpMotion.popIn(banner)
+            }
         }
     }
 
@@ -210,11 +365,20 @@ class DownloadsMobileFragment : Fragment() {
                 when (it.itemId) {
                     1 -> viewModel.pauseAll()
                     2 -> viewModel.resumeAll()
-                    3 -> viewModel.clearCompleted()
-                    4 -> viewModel.clearFailed()
-                    5 -> findNavController().navigate(R.id.settings)
+                    3 -> confirmDestructive(R.string.settings_download_clear_completed_confirm) {
+                        viewModel.clearCompleted()
+                    }
+                    4 -> confirmDestructive(R.string.settings_download_clear_failed_confirm) {
+                        viewModel.clearFailed()
+                    }
+                    5 -> {
+                        SettingsDeepLink.openDownloadsScreen()
+                        findNavController().navigate(R.id.settings)
+                    }
                     6 -> viewModel.retryAllFailed()
-                    7 -> viewModel.clearWatched()
+                    7 -> confirmDestructive(R.string.downloads_action_clear_watched_confirm) {
+                        viewModel.clearWatched()
+                    }
                     10 -> viewModel.setSort(DownloadsSort.NEWEST)
                     11 -> viewModel.setSort(DownloadsSort.TITLE)
                     12 -> viewModel.setSort(DownloadsSort.SIZE)
@@ -223,6 +387,38 @@ class DownloadsMobileFragment : Fragment() {
             }
             show()
         }
+    }
+
+    private fun confirmDestructive(messageRes: Int, onConfirm: () -> Unit) {
+        val builder = if (ExperimentalMobileDesign.enabled()) {
+            com.google.android.material.dialog.MaterialAlertDialogBuilder(requireContext())
+        } else {
+            androidx.appcompat.app.AlertDialog.Builder(requireContext())
+        }
+        val glass = if (ExperimentalMobileDesign.enabled()) {
+            com.dskja.betterstreamflix.utils.ExpDialogChrome.buildGlassMessage(
+                requireContext(),
+                getString(messageRes),
+            )
+        } else {
+            null
+        }
+        if (glass != null) builder.setView(glass.root)
+        else builder.setMessage(messageRes)
+        builder
+            .setPositiveButton(android.R.string.ok) { _, _ -> onConfirm() }
+            .setNegativeButton(android.R.string.cancel, null)
+            .create()
+            .also { dialog ->
+                dialog.setOnShowListener {
+                    if (glass != null) {
+                        com.dskja.betterstreamflix.utils.ExpDialogChrome.polishGlassMessageShown(dialog, glass)
+                    } else {
+                        com.dskja.betterstreamflix.utils.ExpDialogChrome.polishButtons(dialog)
+                    }
+                }
+                dialog.show()
+            }
     }
 
     private fun showItemMenu(row: DownloadRowUiModel.Item, anchor: View) {
@@ -269,7 +465,7 @@ class DownloadsMobileFragment : Fragment() {
                 OfflinePlayback.exportShareUri(requireContext(), row.entity)
             }
             if (uri == null) {
-                Toast.makeText(requireContext(), R.string.download_error_file_missing, Toast.LENGTH_SHORT).show()
+                showDownloadError(R.string.download_error_file_missing)
                 return@launch
             }
             val intent = android.content.Intent(android.content.Intent.ACTION_SEND).apply {
@@ -287,14 +483,14 @@ class DownloadsMobileFragment : Fragment() {
         viewLifecycleOwner.lifecycleScope.launch {
             val videoType = DownloadController.deserializeVideoType(row.entity.videoTypeJson)
             if (videoType == null) {
-                Toast.makeText(requireContext(), R.string.downloads_failed_generic, Toast.LENGTH_SHORT).show()
+                showDownloadError(R.string.downloads_failed_generic)
                 return@launch
             }
             val local = withContext(Dispatchers.IO) {
                 OfflinePlayback.buildLocalVideo(requireContext(), row.entity)
             }
             if (local == null) {
-                Toast.makeText(requireContext(), R.string.download_error_file_missing, Toast.LENGTH_SHORT).show()
+                showDownloadError(R.string.download_error_file_missing)
                 return@launch
             }
             OfflineVideoCache.put(row.entity.contentKey, local)
@@ -311,6 +507,19 @@ class DownloadsMobileFragment : Fragment() {
                     "preferredServerName" to OFFLINE_SERVER,
                 ),
             )
+        }
+    }
+
+    private fun showDownloadError(messageRes: Int) {
+        val message = getString(messageRes)
+        if (ExperimentalMobileDesign.enabled()) {
+            ExpDialogChrome.showInfo(
+                requireContext(),
+                R.string.downloads_title,
+                message,
+            ) { ctx -> MaterialAlertDialogBuilder(ctx) }
+        } else {
+            Toast.makeText(requireContext(), message, Toast.LENGTH_SHORT).show()
         }
     }
 

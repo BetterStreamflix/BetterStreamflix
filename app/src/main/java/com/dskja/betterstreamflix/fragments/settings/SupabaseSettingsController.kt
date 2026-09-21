@@ -5,16 +5,20 @@ import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
-import android.widget.Toast
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.LifecycleCoroutineScope
 import androidx.preference.EditTextPreference
 import androidx.preference.Preference
 import com.dskja.betterstreamflix.R
+import com.dskja.betterstreamflix.utils.ExpDialogChrome
 import com.dskja.betterstreamflix.sync.SupabaseProvider
 import kotlinx.coroutines.launch
 
 object SupabaseSettingsController {
+    private fun notifyUser(context: Context, messageRes: Int, titleRes: Int = R.string.supabase_config_category) {
+        ExpDialogChrome.notify(context, messageRes, titleRes)
+    }
+
     private const val SETUP_INSTRUCTIONS_URL =
         "https://github.com/dskja/BetterStreamflix/blob/main/supabase_installation.md"
 
@@ -38,7 +42,7 @@ object SupabaseSettingsController {
                 .use { it.readText() }
             val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
             clipboard.setPrimaryClip(ClipData.newPlainText("Supabase setup SQL", sql))
-            Toast.makeText(context, R.string.supabase_copy_sql_done, Toast.LENGTH_SHORT).show()
+            notifyUser(context, R.string.supabase_copy_sql_done)
             true
         }
         findPreference("supabase_open_sql")?.setOnPreferenceClickListener {
@@ -76,7 +80,7 @@ object SupabaseSettingsController {
                     refresh()
                     CloudAccountSettingsController.bind(fragment, scope, findPreference)
                 }
-                Toast.makeText(context, R.string.supabase_config_removed, Toast.LENGTH_SHORT).show()
+                notifyUser(context, R.string.supabase_config_removed)
                 return@setOnPreferenceChangeListener false
             }
             val currentKey = SupabaseProvider.getPublicKey(context)
@@ -88,9 +92,9 @@ object SupabaseSettingsController {
                     SupabaseProvider.initialize(context)
                     CloudAccountSettingsController.bind(fragment, scope, findPreference)
                 }
-                Toast.makeText(context, R.string.supabase_config_saved, Toast.LENGTH_SHORT).show()
+                notifyUser(context, R.string.supabase_config_saved)
             }.onFailure {
-                Toast.makeText(context, R.string.supabase_config_invalid, Toast.LENGTH_LONG).show()
+                notifyUser(context, R.string.supabase_config_invalid)
             }
             false
         }
@@ -106,9 +110,9 @@ object SupabaseSettingsController {
                     SupabaseProvider.initialize(context)
                     CloudAccountSettingsController.bind(fragment, scope, findPreference)
                 }
-                Toast.makeText(context, R.string.supabase_config_saved, Toast.LENGTH_SHORT).show()
+                notifyUser(context, R.string.supabase_config_saved)
             }.onFailure {
-                Toast.makeText(context, R.string.supabase_config_invalid, Toast.LENGTH_LONG).show()
+                notifyUser(context, R.string.supabase_config_invalid)
             }
             false
         }

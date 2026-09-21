@@ -22,6 +22,23 @@
         tools:listitem="@layout/item_movie_grid_mobile"
         tools:spanCount="3" />
 
+    <TextView
+        android:id="@+id/tv_people_filmography_empty"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:fontFamily="@font/manrope"
+        android:gravity="center"
+        android:padding="32dp"
+        android:text="@string/people_filmography_empty"
+        android:textColor="?android:attr/textColorSecondary"
+        android:textSize="15sp"
+        android:visibility="gone"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        tools:visibility="visible" />
+
     <include
         android:id="@+id/is_loading"
         layout="@layout/layout_is_loading_mobile"

@@ -406,7 +406,9 @@ class StreamingCommunityProvider(private val _language: String? = null) : Provid
                 if (version != it.version) version = it.version ?: ""
             }
         }
-        val title = res.props!!.title
+        val props = res.props
+            ?: throw Exception("StreamingCommunity: unable to load title details")
+        val title = props.title
         val tmdbMovieDeferred = async { title.tmdbId?.let { TmdbUtils.getMovieById(it, language = language) } }
         val tmdbMovie = tmdbMovieDeferred.await()
 
@@ -419,7 +421,7 @@ class StreamingCommunityProvider(private val _language: String? = null) : Provid
                 People(id = actor.name, name = actor.name, image = tmdbPerson?.image)
             } ?: listOf(), 
             trailer = title.trailers?.find { t -> t.youtubeId != "" }?.youtubeId?.let { yid -> "https://youtube.com/watch?v=$yid" }, 
-            recommendations = res.props.sliders?.find { it.titles.isNotEmpty() }?.titles?.map { 
+            recommendations = props.sliders?.find { it.titles.isNotEmpty() }?.titles?.map { 
                 if (it.type == "movie") Movie(id = it.id + "-" + it.slug, title = it.name, rating = it.score?.toDoubleOrNull(), poster = getImageLink(it.images.find { img -> img.type == "poster" }?.filename))
                 else TvShow(id = it.id + "-" + it.slug, title = it.name, rating = it.score?.toDoubleOrNull(), poster = getImageLink(it.images.find { img -> img.type == "poster" }?.filename))
             } ?: listOf()
@@ -452,7 +454,9 @@ class StreamingCommunityProvider(private val _language: String? = null) : Provid
                 if (version != it.version) version = it.version ?: ""
             }
         }
-        val title = res.props!!.title
+        val props = res.props
+            ?: throw Exception("StreamingCommunity: unable to load title details")
+        val title = props.title
         val tmdbShowDeferred = async { title.tmdbId?.let { TmdbUtils.getTvShowById(it, language = language) } }
         val tmdbShow = tmdbShowDeferred.await()
 
@@ -464,7 +468,7 @@ class StreamingCommunityProvider(private val _language: String? = null) : Provid
                 People(id = actor.name, name = actor.name, image = tmdbPerson?.image)
             } ?: listOf(), 
             trailer = title.trailers?.find { t -> t.youtubeId != "" }?.youtubeId?.let { yid -> "https://youtube.com/watch?v=$yid" }, 
-            recommendations = res.props.sliders?.find { it.titles.isNotEmpty() }?.titles?.map {
+            recommendations = props.sliders?.find { it.titles.isNotEmpty() }?.titles?.map {
                 if (it.type == "movie") Movie(id = it.id + "-" + it.slug, title = it.name, rating = it.score?.toDoubleOrNull(), poster = getImageLink(it.images.find { img -> img.type == "poster" }?.filename))
                 else TvShow(id = it.id + "-" + it.slug, title = it.name, rating = it.score?.toDoubleOrNull(), poster = getImageLink(it.images.find { img -> img.type == "poster" }?.filename))
             } ?: listOf(), 
@@ -488,8 +492,16 @@ class StreamingCommunityProvider(private val _language: String? = null) : Provid
                 if (version != it.version) version = it.version ?: ""
             }
         }
-        return res.props!!.loadedSeason.episodes.map {
-            Episode(id = "${seasonId.substringBefore("-")}?episode_id=${it.id}", number = it.number.toIntOrNull() ?: (res.props!!.loadedSeason.episodes.indexOf(it) + 1), title = it.name, poster = getImageLink(it.images.find { img -> img.type == "cover" }?.filename), overview = it.plot)
+        val props = res.props
+            ?: throw Exception("StreamingCommunity: unable to load season details")
+        return props.loadedSeason.episodes.map {
+            Episode(
+                id = "${seasonId.substringBefore("-")}?episode_id=${it.id}",
+                number = it.number.toIntOrNull() ?: (props.loadedSeason.episodes.indexOf(it) + 1),
+                title = it.name,
+                poster = getImageLink(it.images.find { img -> img.type == "cover" }?.filename),
+                overview = it.plot,
+            )
         }
     }
 

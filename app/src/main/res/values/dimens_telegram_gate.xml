@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <dimen name="tg_gate_pad_h">28dp</dimen>
+    <dimen name="tg_gate_pad_v">24dp</dimen>
+    <dimen name="tg_gate_brand_size">42sp</dimen>
+    <dimen name="tg_gate_headline_size">24sp</dimen>
+    <dimen name="tg_gate_body_size">15sp</dimen>
+    <dimen name="tg_gate_cta_height">58dp</dimen>
+    <dimen name="tg_gate_icon_size">88dp</dimen>
+    <dimen name="tg_gate_hero_size">200dp</dimen>
+    <dimen name="tg_gate_ring_outer">200dp</dimen>
+    <dimen name="tg_gate_ring_mid">156dp</dimen>
+    <dimen name="tg_gate_ring_inner">118dp</dimen>
+    <dimen name="tg_gate_step_dot">8dp</dimen>
+    <dimen name="tg_gate_radius">16dp</dimen>
+    <dimen name="tg_gate_chip_radius">12dp</dimen>
+    <dimen name="tg_gate_orb_large">280dp</dimen>
+    <dimen name="tg_gate_orb_small">160dp</dimen>
+</resources>

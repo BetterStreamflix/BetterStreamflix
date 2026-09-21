@@ -16,6 +16,28 @@
         app:layout_constraintTop_toTopOf="parent"
         tools:ignore="ContentDescription" />
 
+    <TextView
+        android:id="@+id/tv_episode_remaining"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="8dp"
+        android:layout_marginBottom="16dp"
+        android:background="@drawable/bg_meta_pill"
+        android:elevation="6dp"
+        android:fontFamily="@font/manrope"
+        android:paddingStart="8dp"
+        android:paddingTop="3dp"
+        android:paddingEnd="8dp"
+        android:paddingBottom="3dp"
+        android:textColor="#FFFFFF"
+        android:textSize="10sp"
+        android:textStyle="bold"
+        android:visibility="gone"
+        app:layout_constraintBottom_toBottomOf="@id/iv_episode_tv_show_poster"
+        app:layout_constraintStart_toStartOf="@id/iv_episode_tv_show_poster"
+        tools:text="42%"
+        tools:visibility="visible" />
+
     <ProgressBar
         android:id="@+id/pb_episode_progress"
         style="@android:style/Widget.ProgressBar.Horizontal"

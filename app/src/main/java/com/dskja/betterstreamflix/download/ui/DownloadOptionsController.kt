@@ -13,6 +13,7 @@ import android.widget.Spinner
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
@@ -30,6 +31,9 @@ import com.dskja.betterstreamflix.models.Episode
 import com.dskja.betterstreamflix.models.Movie
 import com.dskja.betterstreamflix.models.TvShow
 import com.dskja.betterstreamflix.models.Video
+import com.dskja.betterstreamflix.utils.ExpDialogChrome
+import com.dskja.betterstreamflix.utils.ExpMotion
+import com.dskja.betterstreamflix.utils.ExpSpinnerAdapter
 import com.dskja.betterstreamflix.utils.ExperimentalMobileDesign
 import com.dskja.betterstreamflix.utils.UserPreferences
 import kotlinx.coroutines.Dispatchers
@@ -173,7 +177,11 @@ object DownloadOptionsController {
                 ) {
                     val proceed = confirmCellular(activity)
                     if (!proceed) {
-                        toast(activity, activity.getString(R.string.download_error_wifi))
+                        notifyUser(
+                            activity,
+                            activity.getString(R.string.download_error_wifi),
+                            asInfo = true,
+                        )
                         return
                     }
                 }
@@ -182,18 +190,22 @@ object DownloadOptionsController {
             }
             is DownloadEnqueueOutcome.Started -> {
                 maybeRequestNotifications(activity)
-                toast(activity, activity.getString(R.string.downloads_started))
+                notifyUser(activity, activity.getString(R.string.downloads_started))
             }
             is DownloadEnqueueOutcome.AlreadyActive -> {
-                toast(activity, activity.getString(R.string.downloads_already_active))
+                notifyUser(activity, activity.getString(R.string.downloads_already_active))
                 onNavigateDownloads()
             }
             is DownloadEnqueueOutcome.AlreadyCompleted -> {
-                toast(activity, activity.getString(R.string.downloads_already_completed))
+                notifyUser(activity, activity.getString(R.string.downloads_already_completed))
                 onNavigateDownloads()
             }
             is DownloadEnqueueOutcome.Failed -> {
-                toast(activity, localizedError(activity, outcome.code, outcome.message))
+                notifyUser(
+                    activity,
+                    localizedError(activity, outcome.code, outcome.message),
+                    asInfo = true,
+                )
             }
         }
     }
@@ -219,6 +231,19 @@ object DownloadOptionsController {
             R.string.download_options_storage,
             DownloadStorage.formatBytes(DownloadStorage.freeBytes(activity)),
         )
+        if (ExperimentalMobileDesign.enabled()) {
+            view.setBackgroundResource(ExperimentalMobileDesign.bottomSheetBackground())
+            storageView.setBackgroundResource(ExperimentalMobileDesign.metaPillBackground())
+            val density = activity.resources.displayMetrics.density
+            storageView.setPadding(
+                (12 * density).toInt(),
+                (6 * density).toInt(),
+                (12 * density).toInt(),
+                (6 * density).toInt(),
+            )
+            ExpMotion.revealHeader(titleView, subtitleView, storageView)
+            ExpMotion.popIn(storageView)
+        }
 
         var currentPrepared = prepared
         var trackOptions = prepared.trackOptions.toMutableList()
@@ -227,20 +252,48 @@ object DownloadOptionsController {
         var tracksJob: Job? = null
 
         val serverNames = prepared.servers.map { it.server.name }.ifEmpty { listOf("Auto") }
-        serverSpinner.adapter = ArrayAdapter(
-            activity,
-            android.R.layout.simple_spinner_dropdown_item,
-            serverNames,
-        ).also { it.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item) }
+        val itemLayout = if (ExperimentalMobileDesign.enabled()) {
+            R.layout.item_exp_spinner
+        } else {
+            android.R.layout.simple_spinner_item
+        }
+        val dropdownLayout = if (ExperimentalMobileDesign.enabled()) {
+            R.layout.item_exp_spinner_dropdown
+        } else {
+            android.R.layout.simple_spinner_dropdown_item
+        }
+        serverSpinner.adapter = if (ExperimentalMobileDesign.enabled()) {
+            ExpSpinnerAdapter(
+                activity,
+                itemLayout,
+                dropdownLayout,
+                serverNames,
+            ) { serverSpinner.selectedItemPosition.coerceAtLeast(0) }
+        } else {
+            ArrayAdapter(activity, itemLayout, serverNames).also {
+                it.setDropDownViewResource(dropdownLayout)
+            }
+        }
         serverSpinner.setSelection(serverIndex)
+        if (ExperimentalMobileDesign.enabled()) {
+            serverSpinner.setPopupBackgroundResource(ExperimentalMobileDesign.glassCardBackground())
+            qualitySpinner.setPopupBackgroundResource(ExperimentalMobileDesign.glassCardBackground())
+        }
 
         fun bindQualitySpinner(options: List<DownloadTrackOption>, preferredIndex: Int) {
             val labels = options.map { it.label }.ifEmpty { listOf("Auto") }
-            qualitySpinner.adapter = ArrayAdapter(
-                activity,
-                android.R.layout.simple_spinner_dropdown_item,
-                labels,
-            ).also { it.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item) }
+            qualitySpinner.adapter = if (ExperimentalMobileDesign.enabled()) {
+                ExpSpinnerAdapter(
+                    activity,
+                    itemLayout,
+                    dropdownLayout,
+                    labels,
+                ) { qualitySpinner.selectedItemPosition.coerceAtLeast(0) }
+            } else {
+                ArrayAdapter(activity, itemLayout, labels).also {
+                    it.setDropDownViewResource(dropdownLayout)
+                }
+            }
             qualityIndex = preferredIndex.coerceIn(0, labels.lastIndex.coerceAtLeast(0))
             qualitySpinner.setSelection(qualityIndex)
         }
@@ -253,6 +306,7 @@ object DownloadOptionsController {
             override fun onNothingSelected(parent: AdapterView<*>?) = Unit
         }
 
+        var optionsDialog: androidx.appcompat.app.AlertDialog? = null
         serverSpinner.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
             override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, id: Long) {
                 if (position == serverIndex) return
@@ -260,8 +314,13 @@ object DownloadOptionsController {
                 val candidate = currentPrepared.servers.getOrNull(position) ?: return
                 tracksJob?.cancel()
                 tracksJob = activity.lifecycleScopeOrMain().launch {
-                    loading.visibility = View.VISIBLE
+                    if (ExperimentalMobileDesign.enabled()) {
+                        ExpMotion.fadeInAndShow(loading)
+                    } else {
+                        loading.visibility = View.VISIBLE
+                    }
                     qualitySpinner.isEnabled = false
+                    optionsDialog?.getButton(AlertDialog.BUTTON_POSITIVE)?.isEnabled = false
                     try {
                         val options = withContext(Dispatchers.IO) {
                             DownloadController.prepareTrackOptions(activity, candidate.video)
@@ -272,17 +331,29 @@ object DownloadOptionsController {
                         bindQualitySpinner(options, defaultQualityIndex(options))
                     } finally {
                         qualitySpinner.isEnabled = true
-                        loading.visibility = View.GONE
+                        optionsDialog?.getButton(AlertDialog.BUTTON_POSITIVE)?.isEnabled = true
+                        if (ExperimentalMobileDesign.enabled()) {
+                            ExpMotion.fadeOutAndHide(loading)
+                        } else {
+                            loading.visibility = View.GONE
+                        }
                     }
                 }
             }
             override fun onNothingSelected(parent: AdapterView<*>?) = Unit
         }
 
-        AlertDialog.Builder(activity)
-            .setTitle(R.string.download_options_title)
+        val optionsBuilder = if (ExperimentalMobileDesign.enabled()) {
+            MaterialAlertDialogBuilder(activity)
+        } else {
+            AlertDialog.Builder(activity)
+        }
+        optionsBuilder
             .setView(view)
             .setPositiveButton(R.string.download_options_start) { _, _ ->
+                if (ExperimentalMobileDesign.enabled()) {
+                    ExpMotion.hapticTap(view)
+                }
                 tracksJob?.cancel()
                 activity.lifecycleScopeOrMain().launch {
                     val result = withContext(Dispatchers.IO) {
@@ -297,8 +368,32 @@ object DownloadOptionsController {
                     handleOutcomeActivity(activity, result) {}
                 }
             }
-            .setNegativeButton(android.R.string.cancel) { _, _ -> tracksJob?.cancel() }
+            .setNegativeButton(android.R.string.cancel) { _, _ ->
+                if (ExperimentalMobileDesign.enabled()) {
+                    ExpMotion.hapticTap(view)
+                }
+                tracksJob?.cancel()
+            }
             .setOnCancelListener { tracksJob?.cancel() }
+            .create()
+            .also { dialog ->
+                optionsDialog = dialog
+                dialog.setOnShowListener {
+                    if (ExperimentalMobileDesign.enabled()) {
+                        ExperimentalMobileDesign.applyReducedGlass(view)
+                        ExpMotion.revealHeader(titleView, subtitleView)
+                        ExpMotion.pulseAccentRule(view.findViewById(R.id.v_download_options_rule))
+                        ExpMotion.popIn(view)
+                        com.dskja.betterstreamflix.utils.ExpDialogChrome.polishShown(dialog)
+                        with(com.dskja.betterstreamflix.utils.ExpPressEffects) {
+                            serverSpinner.applyExpPress()
+                            qualitySpinner.applyExpPress()
+                        }
+                        serverSpinner.setBackgroundResource(ExperimentalMobileDesign.spinnerBackground())
+                        qualitySpinner.setBackgroundResource(ExperimentalMobileDesign.spinnerBackground())
+                    }
+                }
+            }
             .show()
     }
 
@@ -315,9 +410,23 @@ object DownloadOptionsController {
     private suspend fun confirmCellular(activity: Activity): Boolean {
         return kotlinx.coroutines.suspendCancellableCoroutine { cont ->
             activity.runOnUiThread {
-                AlertDialog.Builder(activity)
-                    .setTitle(R.string.download_options_cellular_confirm_title)
-                    .setMessage(R.string.download_options_cellular_confirm_message)
+                val builder = if (ExperimentalMobileDesign.enabled()) {
+                    MaterialAlertDialogBuilder(activity)
+                } else {
+                    AlertDialog.Builder(activity)
+                }
+                val glass = if (ExperimentalMobileDesign.enabled()) {
+                    ExpDialogChrome.buildGlassMessage(
+                        activity,
+                        activity.getString(R.string.download_options_cellular_confirm_message),
+                    )
+                } else {
+                    null
+                }
+                builder.setTitle(R.string.download_options_cellular_confirm_title)
+                if (glass != null) builder.setView(glass.root)
+                else builder.setMessage(R.string.download_options_cellular_confirm_message)
+                builder
                     .setPositiveButton(android.R.string.ok) { _, _ ->
                         if (cont.isActive) cont.resume(true) {}
                     }
@@ -327,7 +436,17 @@ object DownloadOptionsController {
                     .setOnCancelListener {
                         if (cont.isActive) cont.resume(false) {}
                     }
-                    .show()
+                    .create()
+                    .also { dialog ->
+                        dialog.setOnShowListener {
+                            if (glass != null) {
+                                ExpDialogChrome.polishGlassMessageShown(dialog, glass)
+                            } else {
+                                ExpDialogChrome.polishButtons(dialog)
+                            }
+                        }
+                        dialog.show()
+                    }
             }
         }
     }
@@ -369,11 +488,27 @@ object DownloadOptionsController {
     }
 
     private fun showPreparing(activity: Activity): AlertDialog {
-        return AlertDialog.Builder(activity)
-            .setMessage(R.string.download_preparing)
+        val builder = if (ExperimentalMobileDesign.enabled()) {
+            MaterialAlertDialogBuilder(activity)
+        } else {
+            AlertDialog.Builder(activity)
+        }
+        val preparing = activity.getString(R.string.download_preparing)
+        val glass = if (ExperimentalMobileDesign.enabled()) {
+            ExpDialogChrome.buildGlassMessage(activity, preparing)
+        } else {
+            null
+        }
+        if (glass != null) builder.setView(glass.root)
+        else builder.setMessage(preparing)
+        return builder
             .setCancelable(false)
             .create()
             .also { dialog ->
+                dialog.setOnShowListener {
+                    if (glass != null) ExpDialogChrome.polishGlassMessageShown(dialog, glass)
+                    else ExpDialogChrome.polishButtons(dialog)
+                }
                 runCatching { dialog.show() }
             }
     }
@@ -382,8 +517,22 @@ object DownloadOptionsController {
         runCatching { if (isShowing) dismiss() }
     }
 
-    private fun toast(context: Context, message: String) {
-        Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+    private fun notifyUser(context: Context, message: String, asInfo: Boolean = false) {
+        if (ExperimentalMobileDesign.enabled()) {
+            if (asInfo) {
+                ExpDialogChrome.showInfo(
+                    context,
+                    R.string.downloads_title,
+                    message,
+                ) { ctx ->
+                    MaterialAlertDialogBuilder(ctx)
+                }
+            } else {
+                ExpDialogChrome.notify(context, message, R.string.downloads_title)
+            }
+        } else {
+            Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+        }
     }
 
     private fun Activity.lifecycleScopeOrMain() =

@@ -1,0 +1,334 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/tg_gate_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/bg_tg_gate_fullscreen"
+    android:clickable="true"
+    android:focusable="true">
+
+    <!-- Ambient atmosphere orbs (motion targets) -->
+    <View
+        android:id="@+id/v_tg_gate_orb_a"
+        android:layout_width="@dimen/tg_gate_orb_large"
+        android:layout_height="@dimen/tg_gate_orb_large"
+        android:layout_gravity="top|end"
+        android:layout_marginTop="-48dp"
+        android:layout_marginEnd="-72dp"
+        android:background="@drawable/bg_tg_gate_orb"
+        android:importantForAccessibility="no" />
+
+    <View
+        android:id="@+id/v_tg_gate_orb_b"
+        android:layout_width="@dimen/tg_gate_orb_small"
+        android:layout_height="@dimen/tg_gate_orb_small"
+        android:layout_gravity="bottom|start"
+        android:layout_marginStart="-48dp"
+        android:layout_marginBottom="120dp"
+        android:background="@drawable/bg_tg_gate_orb"
+        android:importantForAccessibility="no" />
+
+    <androidx.core.widget.NestedScrollView
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:clipToPadding="false"
+        android:fillViewport="true"
+        android:overScrollMode="never"
+        android:scrollbars="none">
+
+        <androidx.constraintlayout.widget.ConstraintLayout
+            android:id="@+id/tg_gate_content"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:paddingStart="@dimen/tg_gate_pad_h"
+            android:paddingTop="@dimen/tg_gate_pad_v"
+            android:paddingEnd="@dimen/tg_gate_pad_h"
+            android:paddingBottom="@dimen/tg_gate_pad_v">
+
+            <!-- Brand: hero-level signal -->
+            <TextView
+                android:id="@+id/tv_tg_gate_brand"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:gravity="center"
+                android:letterSpacing="-0.04"
+                android:text="@string/tg_gate_brand"
+                android:textAppearance="@style/TextAppearance.Lumina.Brand"
+                android:textColor="@color/tg_gate_brand"
+                android:textSize="@dimen/tg_gate_brand_size"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toTopOf="parent" />
+
+            <TextView
+                android:id="@+id/tv_tg_gate_channel"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:letterSpacing="0.08"
+                android:text="@string/tg_gate_channel_chip"
+                android:textAppearance="@style/TextAppearance.Lumina.Caption"
+                android:textColor="@color/tg_gate_telegram_bright"
+                android:textSize="13sp"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toBottomOf="@id/tv_tg_gate_brand"
+                tools:text="@BetterStreamflix" />
+
+            <View
+                android:id="@+id/v_tg_gate_brand_rule"
+                android:layout_width="36dp"
+                android:layout_height="2dp"
+                android:layout_marginTop="14dp"
+                android:background="@color/tg_gate_telegram"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toBottomOf="@id/tv_tg_gate_channel" />
+
+            <!-- Dominant Telegram visual plane -->
+            <FrameLayout
+                android:id="@+id/fl_tg_gate_icon_wrap"
+                android:layout_width="@dimen/tg_gate_hero_size"
+                android:layout_height="@dimen/tg_gate_hero_size"
+                android:layout_marginTop="28dp"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toBottomOf="@id/v_tg_gate_brand_rule">
+
+                <View
+                    android:id="@+id/v_tg_gate_ring_outer"
+                    android:layout_width="@dimen/tg_gate_ring_outer"
+                    android:layout_height="@dimen/tg_gate_ring_outer"
+                    android:layout_gravity="center"
+                    android:background="@drawable/bg_tg_gate_ring_outer"
+                    android:importantForAccessibility="no" />
+
+                <View
+                    android:id="@+id/v_tg_gate_ring_mid"
+                    android:layout_width="@dimen/tg_gate_ring_mid"
+                    android:layout_height="@dimen/tg_gate_ring_mid"
+                    android:layout_gravity="center"
+                    android:background="@drawable/bg_tg_gate_ring_mid"
+                    android:importantForAccessibility="no" />
+
+                <View
+                    android:layout_width="@dimen/tg_gate_ring_inner"
+                    android:layout_height="@dimen/tg_gate_ring_inner"
+                    android:layout_gravity="center"
+                    android:background="@drawable/bg_tg_gate_icon_halo"
+                    android:importantForAccessibility="no" />
+
+                <ImageView
+                    android:id="@+id/iv_tg_gate_icon"
+                    android:layout_width="@dimen/tg_gate_icon_size"
+                    android:layout_height="@dimen/tg_gate_icon_size"
+                    android:layout_gravity="center"
+                    android:contentDescription="@string/tg_gate_telegram_cd"
+                    android:src="@drawable/ic_telegram" />
+            </FrameLayout>
+
+            <TextView
+                android:id="@+id/tv_tg_gate_headline"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="28dp"
+                android:gravity="center"
+                android:letterSpacing="-0.02"
+                android:text="@string/tg_gate_headline"
+                android:textAppearance="@style/TextAppearance.Lumina.Title"
+                android:textColor="@color/tg_gate_text_primary"
+                android:textSize="@dimen/tg_gate_headline_size"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toBottomOf="@id/fl_tg_gate_icon_wrap" />
+
+            <TextView
+                android:id="@+id/tv_tg_gate_body"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="10dp"
+                android:gravity="center"
+                android:lineSpacingExtra="3dp"
+                android:text="@string/tg_gate_body"
+                android:textAppearance="@style/TextAppearance.Lumina.Body"
+                android:textColor="@color/tg_gate_text_secondary"
+                android:textSize="@dimen/tg_gate_body_size"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toBottomOf="@id/tv_tg_gate_headline" />
+
+            <!-- Minimal horizontal progress (one job: show where you are) -->
+            <LinearLayout
+                android:id="@+id/ll_tg_gate_steps"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="28dp"
+                android:gravity="center"
+                android:orientation="horizontal"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toBottomOf="@id/tv_tg_gate_body">
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:gravity="center_horizontal"
+                    android:orientation="vertical">
+
+                    <View
+                        android:id="@+id/v_tg_gate_step1"
+                        android:layout_width="@dimen/tg_gate_step_dot"
+                        android:layout_height="@dimen/tg_gate_step_dot"
+                        android:background="@drawable/bg_tg_gate_step_active" />
+
+                    <TextView
+                        android:id="@+id/tv_tg_gate_step1"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:gravity="center"
+                        android:text="@string/tg_gate_step_open"
+                        android:textAppearance="@style/TextAppearance.Lumina.Caption"
+                        android:textColor="@color/tg_gate_text_primary"
+                        android:textSize="11sp" />
+                </LinearLayout>
+
+                <View
+                    android:layout_width="0dp"
+                    android:layout_height="2dp"
+                    android:layout_gravity="top"
+                    android:layout_marginTop="3dp"
+                    android:layout_weight="0.35"
+                    android:background="@drawable/bg_tg_gate_progress_rail" />
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:gravity="center_horizontal"
+                    android:orientation="vertical">
+
+                    <View
+                        android:id="@+id/v_tg_gate_step2"
+                        android:layout_width="@dimen/tg_gate_step_dot"
+                        android:layout_height="@dimen/tg_gate_step_dot"
+                        android:background="@drawable/bg_tg_gate_step_idle" />
+
+                    <TextView
+                        android:id="@+id/tv_tg_gate_step2"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:gravity="center"
+                        android:text="@string/tg_gate_step_join"
+                        android:textAppearance="@style/TextAppearance.Lumina.Caption"
+                        android:textColor="@color/tg_gate_text_secondary"
+                        android:textSize="11sp" />
+                </LinearLayout>
+
+                <View
+                    android:layout_width="0dp"
+                    android:layout_height="2dp"
+                    android:layout_gravity="top"
+                    android:layout_marginTop="3dp"
+                    android:layout_weight="0.35"
+                    android:background="@drawable/bg_tg_gate_progress_rail" />
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:gravity="center_horizontal"
+                    android:orientation="vertical">
+
+                    <View
+                        android:id="@+id/v_tg_gate_step3"
+                        android:layout_width="@dimen/tg_gate_step_dot"
+                        android:layout_height="@dimen/tg_gate_step_dot"
+                        android:background="@drawable/bg_tg_gate_step_idle" />
+
+                    <TextView
+                        android:id="@+id/tv_tg_gate_step3"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:gravity="center"
+                        android:text="@string/tg_gate_step_confirm"
+                        android:textAppearance="@style/TextAppearance.Lumina.Caption"
+                        android:textColor="@color/tg_gate_text_secondary"
+                        android:textSize="11sp" />
+                </LinearLayout>
+            </LinearLayout>
+
+            <TextView
+                android:id="@+id/btn_tg_gate_open"
+                android:layout_width="0dp"
+                android:layout_height="@dimen/tg_gate_cta_height"
+                android:layout_marginTop="32dp"
+                android:background="@drawable/bg_tg_gate_btn_primary"
+                android:elevation="2dp"
+                android:focusable="true"
+                android:gravity="center"
+                android:text="@string/tg_gate_cta_open"
+                android:textAppearance="@style/TextAppearance.Lumina.Title"
+                android:textColor="@color/tg_gate_on_primary"
+                android:textSize="16sp"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toBottomOf="@id/ll_tg_gate_steps" />
+
+            <TextView
+                android:id="@+id/btn_tg_gate_confirm"
+                android:layout_width="0dp"
+                android:layout_height="@dimen/tg_gate_cta_height"
+                android:layout_marginTop="12dp"
+                android:alpha="0.5"
+                android:background="@drawable/bg_tg_gate_btn_confirm"
+                android:enabled="false"
+                android:focusable="true"
+                android:gravity="center"
+                android:text="@string/tg_gate_cta_confirm"
+                android:textAppearance="@style/TextAppearance.Lumina.Title"
+                android:textColor="@color/tg_gate_text_tertiary"
+                android:textSize="16sp"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toBottomOf="@id/btn_tg_gate_open" />
+
+            <TextView
+                android:id="@+id/tv_tg_gate_hint"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="14dp"
+                android:gravity="center"
+                android:text="@string/tg_gate_hint_open_first"
+                android:textAppearance="@style/TextAppearance.Lumina.Caption"
+                android:textColor="@color/tg_gate_text_tertiary"
+                android:textSize="12sp"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toBottomOf="@id/btn_tg_gate_confirm" />
+
+            <TextView
+                android:id="@+id/btn_tg_gate_debug_skip"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                android:padding="10dp"
+                android:text="@string/tg_gate_debug_skip"
+                android:textColor="@color/tg_gate_text_tertiary"
+                android:textSize="12sp"
+                android:visibility="gone"
+                app:layout_constraintBottom_toBottomOf="parent"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toBottomOf="@id/tv_tg_gate_hint"
+                app:layout_constraintVertical_bias="0"
+                tools:visibility="visible" />
+        </androidx.constraintlayout.widget.ConstraintLayout>
+    </androidx.core.widget.NestedScrollView>
+</FrameLayout>

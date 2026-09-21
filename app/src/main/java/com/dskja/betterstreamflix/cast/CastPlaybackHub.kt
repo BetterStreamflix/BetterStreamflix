@@ -41,6 +41,11 @@ object CastPlaybackHub {
     var lastSubtitle: String? = null
         private set
 
+    /** True when the most recent [wrapForCast] fell back to the raw URL (proxy failed). */
+    @Volatile
+    var lastWrapUsedProxy: Boolean = true
+        private set
+
     private val mainHandler = Handler(Looper.getMainLooper())
     private val queue = CopyOnWriteArrayList<MediaItem>()
     private val sessionStateListeners = CopyOnWriteArrayList<(Boolean) -> Unit>()
@@ -126,8 +131,17 @@ object CastPlaybackHub {
     }
 
     fun wrapForCast(originalUrl: String, headers: Map<String, String>): String {
-        if (originalUrl.startsWith("data:", ignoreCase = true)) return originalUrl
-        val server = ensureProxy(headers) ?: return originalUrl
+        if (originalUrl.startsWith("data:", ignoreCase = true)) {
+            lastWrapUsedProxy = true
+            return originalUrl
+        }
+        val server = ensureProxy(headers)
+        if (server == null) {
+            lastWrapUsedProxy = false
+            Log.w(TAG, "Cast proxy unavailable — streaming raw URL without headers")
+            return originalUrl
+        }
+        lastWrapUsedProxy = true
         return server.wrap(originalUrl)
     }
 

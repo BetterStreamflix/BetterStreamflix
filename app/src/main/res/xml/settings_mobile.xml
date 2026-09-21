@@ -34,11 +34,107 @@
                 android:summary="@string/settings_tmdb_api_key_summary"
                 android:inputType="text"
                 app:iconSpaceReserved="false" />
+
+            <Preference
+                android:key="TMDB_STATUS"
+                android:title="@string/settings_tmdb_status_title"
+                android:summary="@string/settings_tmdb_status_ready"
+                android:selectable="false"
+                app:iconSpaceReserved="false" />
+
+            <Preference
+                android:key="TMDB_TEST_CONNECTION"
+                android:title="@string/settings_tmdb_test_title"
+                android:summary="@string/settings_tmdb_test_summary"
+                app:iconSpaceReserved="false" />
+
+            <Preference
+                android:key="TMDB_CLEAR_CACHE"
+                android:title="@string/settings_tmdb_clear_cache_title"
+                android:summary="@string/settings_tmdb_clear_cache_summary"
+                app:iconSpaceReserved="false" />
+        </PreferenceCategory>
+    </PreferenceScreen>
+
+    <PreferenceScreen
+        android:key="screen_profiles"
+        android:title="@string/settings_screen_profiles_title"
+        android:summary="@string/settings_screen_profiles_summary"
+        android:widgetLayout="@layout/preference_widget_chevron"
+        app:iconSpaceReserved="false">
+
+        <com.dskja.betterstreamflix.fragments.settings.ProfileHeroPreference
+            android:key="PROFILE_HERO"
+            app:iconSpaceReserved="false" />
+
+        <PreferenceCategory
+            android:key="pc_profile_active"
+            android:title="@string/profile_section_active"
+            app:iconSpaceReserved="false">
+
+            <Preference
+                android:key="PROFILE_ACTIVE"
+                android:title="@string/profile_active_title"
+                android:selectable="false"
+                app:iconSpaceReserved="false" />
+
+            <Preference
+                android:key="PROFILE_SWITCH"
+                android:title="@string/profile_switch_title"
+                app:iconSpaceReserved="false" />
+
+            <Preference
+                android:key="PROFILE_CREATE"
+                android:title="@string/profile_create_title"
+                android:summary="@string/profile_create_summary"
+                app:iconSpaceReserved="false" />
+
+            <Preference
+                android:key="PROFILE_RENAME"
+                android:title="@string/profile_rename_title"
+                app:iconSpaceReserved="false" />
+
+            <Preference
+                android:key="PROFILE_DELETE"
+                android:title="@string/profile_delete_title"
+                android:summary="@string/profile_delete_summary"
+                app:iconSpaceReserved="false" />
         </PreferenceCategory>
 
         <PreferenceCategory
-            android:key="pc_library_settings"
-            android:title="@string/settings_category_library"
+            android:key="pc_profile_persona"
+            android:title="@string/profile_section_manage"
+            app:iconSpaceReserved="false">
+
+            <Preference
+                android:key="PROFILE_AVATAR"
+                android:title="@string/profile_avatar_title"
+                android:summary="@string/profile_avatar_choose"
+                android:icon="@drawable/bg_profile_avatar_preview"
+                app:iconSpaceReserved="true" />
+
+            <SwitchPreferenceCompat
+                android:key="PROFILE_KIDS"
+                android:title="@string/profile_kids_title"
+                android:summary="@string/profile_kids_summary"
+                android:defaultValue="false"
+                app:iconSpaceReserved="false" />
+
+            <Preference
+                android:key="PROFILE_PIN"
+                android:title="@string/profile_pin_title"
+                android:summary="@string/profile_pin_summary"
+                app:iconSpaceReserved="false" />
+
+            <Preference
+                android:key="PROFILE_PIN_CLEAR"
+                android:title="@string/profile_pin_clear_title"
+                app:iconSpaceReserved="false" />
+        </PreferenceCategory>
+
+        <PreferenceCategory
+            android:key="pc_profile_library"
+            android:title="@string/profile_section_library"
             app:iconSpaceReserved="false">
 
             <ListPreference
@@ -72,8 +168,8 @@
         </PreferenceCategory>
 
         <PreferenceCategory
-            android:key="pc_parental_control_settings"
-            android:title="@string/settings_category_parental_control"
+            android:key="pc_profile_parental"
+            android:title="@string/profile_section_parental"
             app:iconSpaceReserved="false">
 
             <EditTextPreference
@@ -117,6 +213,61 @@
                 android:summary="@string/settings_parental_unlock_summary"
                 app:iconSpaceReserved="false" />
         </PreferenceCategory>
+
+        <PreferenceCategory
+            android:key="pc_profile_integrations"
+            android:title="@string/profile_section_integrations"
+            app:iconSpaceReserved="false">
+
+            <SwitchPreferenceCompat
+                android:key="PROFILE_INT_TRAKT"
+                android:title="@string/profile_integration_trakt"
+                android:summary="@string/profile_integration_summary"
+                android:defaultValue="true"
+                app:iconSpaceReserved="false" />
+
+            <SwitchPreferenceCompat
+                android:key="PROFILE_INT_JELLYFIN"
+                android:title="@string/profile_integration_jellyfin"
+                android:summary="@string/profile_integration_summary"
+                android:defaultValue="true"
+                app:iconSpaceReserved="false" />
+
+            <SwitchPreferenceCompat
+                android:key="PROFILE_INT_PLEX"
+                android:title="@string/profile_integration_plex"
+                android:summary="@string/profile_integration_summary"
+                android:defaultValue="true"
+                app:iconSpaceReserved="false" />
+
+            <SwitchPreferenceCompat
+                android:key="PROFILE_INT_DEBRID"
+                android:title="@string/profile_integration_debrid"
+                android:summary="@string/profile_integration_summary"
+                android:defaultValue="true"
+                app:iconSpaceReserved="false" />
+
+            <SwitchPreferenceCompat
+                android:key="PROFILE_INT_SIMKL"
+                android:title="@string/profile_integration_simkl"
+                android:summary="@string/profile_integration_summary"
+                android:defaultValue="true"
+                app:iconSpaceReserved="false" />
+
+            <SwitchPreferenceCompat
+                android:key="PROFILE_INT_OPENSUBTITLES"
+                android:title="@string/profile_integration_opensubtitles"
+                android:summary="@string/profile_integration_summary"
+                android:defaultValue="true"
+                app:iconSpaceReserved="false" />
+
+            <SwitchPreferenceCompat
+                android:key="PROFILE_INT_TMDB"
+                android:title="@string/profile_integration_tmdb"
+                android:summary="@string/profile_integration_summary"
+                android:defaultValue="true"
+                app:iconSpaceReserved="false" />
+        </PreferenceCategory>
     </PreferenceScreen>
 
     <PreferenceScreen
@@ -126,12 +277,28 @@
         android:widgetLayout="@layout/preference_widget_chevron"
         app:iconSpaceReserved="false">
 
+        <PreferenceCategory
+            android:title="@string/platform_settings_title"
+            app:iconSpaceReserved="false">
+            <Preference
+                android:key="platform_test_all"
+                android:title="@string/platform_test_all_title"
+                android:summary="@string/platform_test_all_summary"
+                app:iconSpaceReserved="false" />
+        </PreferenceCategory>
+
         <PreferenceScreen
             android:key="screen_platform_player"
             android:title="@string/platform_player_category"
             android:summary="@string/platform_player_backend_summary"
             android:widgetLayout="@layout/preference_widget_chevron"
             app:iconSpaceReserved="false">
+            <Preference
+                android:key="platform_player_status"
+                android:title="@string/platform_status_title"
+                android:summary="@string/platform_status_ready"
+                app:iconSpaceReserved="false"
+                app:selectable="false" />
             <ListPreference
                 android:key="PLAYER_BACKEND"
                 android:title="@string/platform_player_backend_title"
@@ -139,6 +306,18 @@
                 android:entries="@array/player_backend_names"
                 android:entryValues="@array/player_backend_values"
                 android:defaultValue="exo"
+                app:iconSpaceReserved="false" />
+            <Preference
+                android:key="platform_mpv_status"
+                android:title="@string/platform_mpv_status_title"
+                android:summary="@string/platform_mpv_status_summary"
+                app:iconSpaceReserved="false"
+                app:selectable="false" />
+            <SwitchPreferenceCompat
+                android:key="CAST_QUEUE_NEXT_EPISODE"
+                android:title="@string/platform_cast_queue_title"
+                android:summary="@string/platform_cast_queue_summary"
+                android:defaultValue="true"
                 app:iconSpaceReserved="false" />
         </PreferenceScreen>
 
@@ -193,6 +372,17 @@
             android:summary="@string/platform_selfhost_interval_summary"
             android:widgetLayout="@layout/preference_widget_chevron"
             app:iconSpaceReserved="false">
+            <Preference
+                android:key="platform_jellyfin_status"
+                android:title="@string/platform_status_title"
+                android:summary="@string/platform_status_not_configured"
+                app:iconSpaceReserved="false"
+                app:selectable="false" />
+            <Preference
+                android:key="platform_test_jellyfin"
+                android:title="@string/platform_test_jellyfin_title"
+                android:summary="@string/platform_test_jellyfin_summary"
+                app:iconSpaceReserved="false" />
             <EditTextPreference
                 android:key="JELLYFIN_BASE_URL"
                 android:title="@string/platform_jellyfin_url_title"
@@ -249,6 +439,17 @@
             android:summary="@string/platform_test_plex_summary"
             android:widgetLayout="@layout/preference_widget_chevron"
             app:iconSpaceReserved="false">
+            <Preference
+                android:key="platform_plex_status"
+                android:title="@string/platform_status_title"
+                android:summary="@string/platform_status_not_configured"
+                app:iconSpaceReserved="false"
+                app:selectable="false" />
+            <Preference
+                android:key="platform_test_plex"
+                android:title="@string/platform_test_plex_title"
+                android:summary="@string/platform_test_plex_summary"
+                app:iconSpaceReserved="false" />
             <EditTextPreference
                 android:key="PLEX_BASE_URL"
                 android:title="@string/platform_plex_url_title"
@@ -261,6 +462,11 @@
                 android:summary="@string/platform_plex_token_summary"
                 android:inputType="textPassword"
                 app:iconSpaceReserved="false" />
+            <Preference
+                android:key="plex_token_help"
+                android:title="@string/platform_plex_token_help_title"
+                android:summary="@string/platform_plex_token_help_summary"
+                app:iconSpaceReserved="false" />
         </PreferenceScreen>
 
         <PreferenceScreen
@@ -269,6 +475,12 @@
             android:summary="@string/platform_simkl_enabled_summary"
             android:widgetLayout="@layout/preference_widget_chevron"
             app:iconSpaceReserved="false">
+            <Preference
+                android:key="platform_simkl_status"
+                android:title="@string/platform_status_title"
+                android:summary="@string/platform_status_disabled"
+                app:iconSpaceReserved="false"
+                app:selectable="false" />
             <SwitchPreferenceCompat
                 android:key="SIMKL_ENABLED"
                 android:title="@string/platform_simkl_enabled_title"
@@ -287,6 +499,21 @@
                 android:summary="@string/platform_simkl_token_summary"
                 android:inputType="textPassword"
                 app:iconSpaceReserved="false" />
+            <Preference
+                android:key="platform_test_simkl"
+                android:title="@string/platform_test_simkl_title"
+                android:summary="@string/platform_test_simkl_summary"
+                app:iconSpaceReserved="false" />
+            <Preference
+                android:key="simkl_token_help"
+                android:title="@string/platform_simkl_token_help_title"
+                android:summary="@string/platform_simkl_token_help_summary"
+                app:iconSpaceReserved="false" />
+            <Preference
+                android:key="simkl_logout"
+                android:title="@string/platform_simkl_logout_title"
+                android:summary="@string/platform_simkl_logout_summary"
+                app:iconSpaceReserved="false" />
         </PreferenceScreen>
 
         <PreferenceScreen
@@ -295,6 +522,12 @@
             android:summary="@string/platform_opensubtitles_langs_summary"
             android:widgetLayout="@layout/preference_widget_chevron"
             app:iconSpaceReserved="false">
+            <Preference
+                android:key="platform_opensubtitles_status"
+                android:title="@string/platform_status_title"
+                android:summary="@string/platform_status_not_configured"
+                app:iconSpaceReserved="false"
+                app:selectable="false" />
             <EditTextPreference
                 android:key="OPENSUBTITLES_API_KEY"
                 android:title="@string/platform_opensubtitles_key_title"
@@ -307,11 +540,32 @@
                 android:summary="@string/platform_opensubtitles_langs_summary"
                 android:inputType="text"
                 app:iconSpaceReserved="false" />
-            <SwitchPreferenceCompat
-                android:key="CAST_QUEUE_NEXT_EPISODE"
-                android:title="@string/platform_cast_queue_title"
-                android:summary="@string/platform_cast_queue_summary"
-                android:defaultValue="true"
+            <EditTextPreference
+                android:key="opensubtitles_login_user"
+                android:title="@string/platform_opensubtitles_login_user_title"
+                android:summary="@string/platform_opensubtitles_login_user_summary"
+                android:inputType="text"
+                app:iconSpaceReserved="false" />
+            <EditTextPreference
+                android:key="opensubtitles_login_password"
+                android:title="@string/platform_opensubtitles_login_password_title"
+                android:summary="@string/platform_opensubtitles_login_password_summary"
+                android:inputType="textPassword"
+                app:iconSpaceReserved="false" />
+            <Preference
+                android:key="opensubtitles_login_submit"
+                android:title="@string/platform_opensubtitles_login_submit_title"
+                android:summary="@string/platform_opensubtitles_login_submit_summary"
+                app:iconSpaceReserved="false" />
+            <Preference
+                android:key="opensubtitles_logout"
+                android:title="@string/platform_opensubtitles_logout_title"
+                android:summary="@string/platform_opensubtitles_logout_summary"
+                app:iconSpaceReserved="false" />
+            <Preference
+                android:key="platform_test_opensubtitles"
+                android:title="@string/platform_test_opensubtitles_title"
+                android:summary="@string/platform_test_opensubtitles_summary"
                 app:iconSpaceReserved="false" />
         </PreferenceScreen>
 
@@ -321,6 +575,12 @@
             android:summary="@string/platform_debrid_enabled_summary"
             android:widgetLayout="@layout/preference_widget_chevron"
             app:iconSpaceReserved="false">
+            <Preference
+                android:key="platform_debrid_status"
+                android:title="@string/platform_status_title"
+                android:summary="@string/platform_status_disabled"
+                app:iconSpaceReserved="false"
+                app:selectable="false" />
             <SwitchPreferenceCompat
                 android:key="DEBRID_ENABLED"
                 android:title="@string/platform_debrid_enabled_title"
@@ -359,6 +619,11 @@
                 android:summary="@string/platform_torbox_key_summary"
                 android:inputType="textPassword"
                 app:iconSpaceReserved="false" />
+            <Preference
+                android:key="platform_test_debrid"
+                android:title="@string/platform_test_debrid_title"
+                android:summary="@string/platform_test_debrid_summary"
+                app:iconSpaceReserved="false" />
         </PreferenceScreen>
 
         <PreferenceScreen
@@ -379,10 +644,26 @@
                 android:summary="@string/platform_plugin_hide_plex_summary"
                 android:defaultValue="false"
                 app:iconSpaceReserved="false" />
+            <SwitchPreferenceCompat
+                android:key="plugin_disable_demo"
+                android:title="@string/platform_plugin_hide_demo_title"
+                android:summary="@string/platform_plugin_hide_demo_summary"
+                android:defaultValue="false"
+                app:iconSpaceReserved="false" />
             <Preference
                 android:key="platform_plugin_catalog"
                 android:title="@string/platform_plugin_catalog_title"
                 android:summary="@string/platform_plugin_catalog_summary"
+                app:iconSpaceReserved="false" />
+            <Preference
+                android:key="platform_plugin_manage"
+                android:title="@string/platform_plugin_manage_title"
+                android:summary="@string/platform_plugin_manage_summary"
+                app:iconSpaceReserved="false" />
+            <Preference
+                android:key="platform_plugin_extensions"
+                android:title="@string/platform_plugin_extensions_title"
+                android:summary="@string/platform_plugin_extensions_summary"
                 app:iconSpaceReserved="false" />
             <Preference
                 android:key="platform_plugin_install_local"
@@ -393,16 +674,6 @@
                 android:key="platform_plugin_reload"
                 android:title="@string/platform_plugin_reload_title"
                 android:summary="@string/platform_plugin_reload_summary"
-                app:iconSpaceReserved="false" />
-            <Preference
-                android:key="platform_test_jellyfin"
-                android:title="@string/platform_test_jellyfin_title"
-                android:summary="@string/platform_test_jellyfin_summary"
-                app:iconSpaceReserved="false" />
-            <Preference
-                android:key="platform_test_plex"
-                android:title="@string/platform_test_plex_title"
-                android:summary="@string/platform_test_plex_summary"
                 app:iconSpaceReserved="false" />
         </PreferenceScreen>
     </PreferenceScreen>
@@ -587,8 +858,25 @@
                 app:iconSpaceReserved="false" />
 
             <Preference
+                android:key="DOWNLOAD_QUEUE_STATUS"
+                android:title="@string/settings_download_queue_status"
+                android:selectable="false"
+                app:iconSpaceReserved="false" />
+
+            <Preference
+                android:key="DOWNLOAD_RETRY_FAILED"
+                android:title="@string/settings_download_retry_failed"
+                android:summary="@string/settings_download_retry_failed_summary"
+                app:iconSpaceReserved="false" />
+
+            <Preference
                 android:key="DOWNLOAD_CLEAR_COMPLETED"
                 android:title="@string/settings_download_clear_completed"
+                app:iconSpaceReserved="false" />
+
+            <Preference
+                android:key="DOWNLOAD_CLEAR_FAILED"
+                android:title="@string/settings_download_clear_failed"
                 app:iconSpaceReserved="false" />
 
             <Preference
@@ -641,6 +929,63 @@
                 android:summary="@string/settings_experimental_new_design_summary"
                 android:defaultValue="false"
                 app:iconSpaceReserved="false" />
+
+            <PreferenceScreen
+                android:key="screen_lumina_options"
+                android:title="@string/settings_lumina_options_title"
+                android:summary="@string/settings_lumina_options_summary"
+                android:widgetLayout="@layout/preference_widget_chevron"
+                app:iconSpaceReserved="false">
+
+                <PreferenceCategory
+                    android:title="@string/settings_lumina_options_title"
+                    app:iconSpaceReserved="false">
+
+                    <ListPreference
+                        android:key="EXPERIMENTAL_LUMINA_ACCENT"
+                        android:title="@string/settings_lumina_accent_title"
+                        android:summary="%s"
+                        android:entries="@array/lumina_accent_names"
+                        android:entryValues="@array/lumina_accent_values"
+                        android:defaultValue="crimson"
+                        app:iconSpaceReserved="false" />
+
+                    <SwitchPreference
+                        android:key="EXPERIMENTAL_LUMINA_PURE_BLACK"
+                        android:title="@string/settings_lumina_pure_black_title"
+                        android:summary="@string/settings_lumina_pure_black_summary"
+                        android:defaultValue="false"
+                        app:iconSpaceReserved="false" />
+
+                    <SwitchPreference
+                        android:key="EXPERIMENTAL_LUMINA_DYNAMIC_COLORS"
+                        android:title="@string/settings_lumina_dynamic_title"
+                        android:summary="@string/settings_lumina_dynamic_summary"
+                        android:defaultValue="false"
+                        app:iconSpaceReserved="false" />
+
+                    <SwitchPreference
+                        android:key="EXPERIMENTAL_LUMINA_NAV_AUTO_HIDE"
+                        android:title="@string/settings_lumina_nav_autohide_title"
+                        android:summary="@string/settings_lumina_nav_autohide_summary"
+                        android:defaultValue="true"
+                        app:iconSpaceReserved="false" />
+
+                    <SwitchPreference
+                        android:key="EXPERIMENTAL_LUMINA_HERO_PARALLAX"
+                        android:title="@string/settings_lumina_parallax_title"
+                        android:summary="@string/settings_lumina_parallax_summary"
+                        android:defaultValue="true"
+                        app:iconSpaceReserved="false" />
+
+                    <SwitchPreference
+                        android:key="EXPERIMENTAL_LUMINA_REDUCED_GLASS"
+                        android:title="@string/settings_lumina_reduced_glass_title"
+                        android:summary="@string/settings_lumina_reduced_glass_summary"
+                        android:defaultValue="false"
+                        app:iconSpaceReserved="false" />
+                </PreferenceCategory>
+            </PreferenceScreen>
 
             <Preference
                 android:key="p_settings_support_preview"
@@ -700,6 +1045,26 @@
                 android:title="@string/settings_watchlist_import_aniworld"
                 android:summary="@string/settings_watchlist_import_summary"
                 app:iconSpaceReserved="false" />
+        </PreferenceCategory>
+    </PreferenceScreen>
+
+    <PreferenceScreen
+        android:key="screen_serienstream_auth"
+        android:title="@string/serienstream_auth_category_title"
+        android:summary="@string/settings_serienstream_session_login_summary"
+        android:widgetLayout="@layout/preference_widget_chevron"
+        app:iconSpaceReserved="false">
+
+        <PreferenceCategory
+            android:key="pc_serienstream_auth"
+            android:title="@string/serienstream_auth_category_title"
+            app:iconSpaceReserved="false">
+
+            <Preference
+                android:key="SERIENSTREAM_AUTH_STATUS"
+                android:title="@string/serienstream_auth_status_title"
+                android:summary="@string/serienstream_auth_status_signed_out"
+                app:iconSpaceReserved="false" />
 
             <Preference
                 android:key="SERIENSTREAM_SESSION_LOGIN"
@@ -708,9 +1073,35 @@
                 app:iconSpaceReserved="false" />
 
             <Preference
+                android:key="SERIENSTREAM_SESSION_VALIDATE"
+                android:title="@string/serienstream_auth_validate"
+                android:summary="@string/serienstream_auth_validate_summary"
+                app:iconSpaceReserved="false" />
+
+            <Preference
+                android:key="SERIENSTREAM_SESSION_PASTE"
+                android:title="@string/serienstream_auth_paste_title"
+                android:summary="@string/serienstream_auth_paste_summary"
+                app:iconSpaceReserved="false" />
+
+            <Preference
+                android:key="SERIENSTREAM_SESSION_COPY"
+                android:title="@string/serienstream_auth_copy"
+                android:summary="@string/serienstream_auth_copy_summary"
+                app:iconSpaceReserved="false" />
+
+            <Preference
+                android:key="SERIENSTREAM_SESSION_LOGOUT"
+                android:title="@string/serienstream_auth_sign_out"
+                android:summary="@string/serienstream_auth_sign_out_summary"
+                app:iconSpaceReserved="false" />
+
+            <Preference
                 android:key="SERIENSTREAM_SESSION_COOKIES"
                 android:title="@string/settings_serienstream_session_cookies"
                 android:summary="@string/settings_serienstream_session_cookies_summary"
+                android:selectable="false"
+                app:isPreferenceVisible="false"
                 app:iconSpaceReserved="false" />
         </PreferenceCategory>
     </PreferenceScreen>
@@ -723,8 +1114,103 @@
         app:iconSpaceReserved="false">
 
         <PreferenceCategory
+            android:key="pc_connection_status"
+            android:title="@string/connection_section_status"
+            app:iconSpaceReserved="false">
+
+            <Preference
+                android:key="NETWORK_STATUS"
+                android:title="@string/connection_status_title"
+                android:summary="@string/connection_probe_idle"
+                android:selectable="false"
+                app:iconSpaceReserved="false" />
+
+            <Preference
+                android:key="NETWORK_VALIDATED"
+                android:title="@string/connection_validated_title"
+                android:summary="@string/connection_validated_no"
+                android:selectable="false"
+                app:iconSpaceReserved="false" />
+
+            <Preference
+                android:key="NETWORK_DOH_STATUS"
+                android:title="@string/connection_doh_status_title"
+                android:summary="@string/connection_doh_off"
+                android:selectable="false"
+                app:iconSpaceReserved="false" />
+
+            <Preference
+                android:key="NETWORK_PROVIDER_STATUS"
+                android:title="@string/connection_provider_title"
+                android:summary="@string/connection_provider_none"
+                android:selectable="false"
+                app:iconSpaceReserved="false" />
+
+            <Preference
+                android:key="NETWORK_LAST_PROBE"
+                android:title="@string/connection_last_probe_title"
+                android:summary="@string/connection_probe_idle"
+                android:selectable="false"
+                app:iconSpaceReserved="false" />
+
+            <Preference
+                android:key="NETWORK_REFRESH_STATUS"
+                android:title="@string/connection_refresh_status_title"
+                android:summary="@string/connection_refresh_status_summary"
+                app:iconSpaceReserved="false" />
+        </PreferenceCategory>
+
+        <PreferenceCategory
+            android:key="pc_connection_diagnostics"
+            android:title="@string/connection_section_diagnostics"
+            app:iconSpaceReserved="false">
+
+            <Preference
+                android:key="NETWORK_TEST_CONNECTION"
+                android:title="@string/connection_test_full_title"
+                android:summary="@string/connection_test_full_summary"
+                app:iconSpaceReserved="false" />
+
+            <Preference
+                android:key="NETWORK_TEST_DOH"
+                android:title="@string/connection_test_doh_title"
+                android:summary="@string/connection_test_doh_summary"
+                app:iconSpaceReserved="false" />
+
+            <Preference
+                android:key="NETWORK_TEST_PROVIDER"
+                android:title="@string/connection_test_provider_title"
+                android:summary="@string/connection_test_provider_summary"
+                app:iconSpaceReserved="false" />
+
+            <Preference
+                android:key="NETWORK_TEST_SERVICES"
+                android:title="@string/connection_test_services_title"
+                android:summary="@string/connection_test_services_summary"
+                app:iconSpaceReserved="false" />
+
+            <Preference
+                android:key="NETWORK_COPY_LAST_PROBE"
+                android:title="@string/connection_copy_last_title"
+                android:summary="@string/connection_copy_last_summary"
+                app:iconSpaceReserved="false" />
+
+            <Preference
+                android:key="NETWORK_CLEAR_CACHE"
+                android:title="@string/connection_clear_cache_title"
+                android:summary="@string/connection_clear_cache_summary"
+                app:iconSpaceReserved="false" />
+
+            <Preference
+                android:key="NETWORK_CLEAR_COOKIES"
+                android:title="@string/connection_clear_cookies_title"
+                android:summary="@string/connection_clear_cookies_summary"
+                app:iconSpaceReserved="false" />
+        </PreferenceCategory>
+
+        <PreferenceCategory
             android:key="pc_network_settings"
-            android:title="@string/settings_category_network_title"
+            android:title="@string/connection_section_dns"
             app:iconSpaceReserved="false">
 
             <Preference
@@ -744,6 +1230,75 @@
         </PreferenceCategory>
 
         <PreferenceCategory
+            android:key="pc_connection_services"
+            android:title="@string/connection_section_services"
+            app:iconSpaceReserved="false">
+
+            <Preference
+                android:key="NETWORK_INTEGRATIONS_STATUS"
+                android:title="@string/platform_settings_title"
+                android:summary="@string/platform_settings_summary"
+                android:selectable="false"
+                app:iconSpaceReserved="false" />
+
+            <Preference
+                android:key="NETWORK_OPEN_INTEGRATIONS"
+                android:title="@string/connection_open_integrations"
+                android:summary="@string/connection_open_integrations_summary"
+                android:widgetLayout="@layout/preference_widget_chevron"
+                app:iconSpaceReserved="false" />
+
+            <Preference
+                android:key="NETWORK_TMDB_STATUS"
+                android:title="@string/settings_category_tmdb"
+                android:summary="@string/platform_status_ready"
+                android:selectable="false"
+                app:iconSpaceReserved="false" />
+
+            <Preference
+                android:key="NETWORK_OPEN_TMDB"
+                android:title="@string/connection_open_tmdb"
+                android:summary="@string/connection_open_tmdb_summary"
+                android:widgetLayout="@layout/preference_widget_chevron"
+                app:iconSpaceReserved="false" />
+
+            <Preference
+                android:key="NETWORK_OPEN_TRAKT"
+                android:title="@string/platform_trakt_category"
+                android:summary="@string/connection_open_trakt_summary"
+                android:widgetLayout="@layout/preference_widget_chevron"
+                app:iconSpaceReserved="false" />
+
+            <Preference
+                android:key="NETWORK_OPEN_DEBRID"
+                android:title="@string/platform_debrid_category"
+                android:summary="@string/connection_open_debrid_summary"
+                android:widgetLayout="@layout/preference_widget_chevron"
+                app:iconSpaceReserved="false" />
+
+            <Preference
+                android:key="NETWORK_OPEN_JELLYFIN"
+                android:title="@string/platform_jellyfin_category"
+                android:summary="@string/connection_open_jellyfin_summary"
+                android:widgetLayout="@layout/preference_widget_chevron"
+                app:iconSpaceReserved="false" />
+
+            <Preference
+                android:key="NETWORK_OPEN_PLEX"
+                android:title="@string/platform_plex_category"
+                android:summary="@string/connection_open_plex_summary"
+                android:widgetLayout="@layout/preference_widget_chevron"
+                app:iconSpaceReserved="false" />
+
+            <Preference
+                android:key="NETWORK_OPEN_OPENSUBTITLES"
+                android:title="@string/platform_opensubtitles_category"
+                android:summary="@string/connection_open_opensubtitles_summary"
+                android:widgetLayout="@layout/preference_widget_chevron"
+                app:iconSpaceReserved="false" />
+        </PreferenceCategory>
+
+        <PreferenceCategory
             android:key="pc_subdl_settings"
             android:title="@string/settings_category_subdl"
             app:iconSpaceReserved="false">
@@ -753,6 +1308,12 @@
                 android:title="@string/settings_subdl_api_key"
                 android:summary="@string/settings_subdl_api_key_summary"
                 android:inputType="text"
+                app:iconSpaceReserved="false" />
+
+            <Preference
+                android:key="NETWORK_TEST_SUBDL"
+                android:title="@string/connection_test_subdl_title"
+                android:summary="@string/connection_test_subdl_summary"
                 app:iconSpaceReserved="false" />
         </PreferenceCategory>
     </PreferenceScreen>
@@ -826,6 +1387,13 @@
             android:key="pc_serienstream_settings"
             android:title="@string/settings_category_serienstream"
             app:iconSpaceReserved="false">
+
+            <Preference
+                android:key="p_serienstream_account_open"
+                android:title="@string/serienstream_auth_category_title"
+                android:summary="@string/settings_serienstream_session_login_summary"
+                android:widgetLayout="@layout/preference_widget_chevron"
+                app:iconSpaceReserved="false" />
 
             <EditTextPreference
                 android:key="provider_serienstream_domain"

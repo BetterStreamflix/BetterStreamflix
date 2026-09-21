@@ -243,10 +243,18 @@ object FilmPalastProvider : Provider {
             document.select("ul#detail-content-list > li:has(p:matchesOwn(Kategorien, Genre)) a")
                 .map { Genre(id = it.text().trim(), name = it.text().trim()) }
         val directors = document.select("ul#detail-content-list > li:has(p:matchesOwn(Regie)) a")
-            .map { People(id = it.text().trim(), name = it.text().trim()) }
+            .mapNotNull { el ->
+                val name = el.text().trim()
+                if (name.isBlank()) return@mapNotNull null
+                People(id = peopleSearchId(el.attr("href"), name), name = name)
+            }
         val actors =
             document.select("ul#detail-content-list > li:has(p:matchesOwn(Schauspieler)) a")
-                .map { People(id = it.text().trim(), name = it.text().trim()) }
+                .mapNotNull { el ->
+                    val name = el.text().trim()
+                    if (name.isBlank()) return@mapNotNull null
+                    People(id = peopleSearchId(el.attr("href"), name), name = name)
+                }
 
         val tmdbMovie = TmdbUtils.getMovie(title, language = language)
 
@@ -390,9 +398,17 @@ object FilmPalastProvider : Provider {
         val genres = document.select("ul#detail-content-list > li:has(p:matchesOwn(Kategorien, Genre)) a")
             .map { Genre(id = it.text().trim(), name = it.text().trim()) }
         val directors = document.select("ul#detail-content-list > li:has(p:matchesOwn(Regie)) a")
-            .map { People(id = it.text().trim(), name = it.text().trim()) }
+            .mapNotNull { el ->
+                val name = el.text().trim()
+                if (name.isBlank()) return@mapNotNull null
+                People(id = peopleSearchId(el.attr("href"), name), name = name)
+            }
         val actors = document.select("ul#detail-content-list > li:has(p:matchesOwn(Schauspieler)) a")
-            .map { People(id = it.text().trim(), name = it.text().trim()) }
+            .mapNotNull { el ->
+                val name = el.text().trim()
+                if (name.isBlank()) return@mapNotNull null
+                People(id = peopleSearchId(el.attr("href"), name), name = name)
+            }
 
         // Parse seasons and episodes
         val seasons = mutableListOf<Season>()
@@ -543,7 +559,9 @@ object FilmPalastProvider : Provider {
         return episodes
     }
     override suspend fun getPeople(id: String, page: Int): People {
-        val url = "$BASE_URL/search/title/$id"
+        val query = java.net.URLEncoder.encode(id.trim(), Charsets.UTF_8.name())
+            .replace("+", "%20")
+        val url = "$BASE_URL/search/title/$query"
         val document = withSslFallback { it.getPeoplePage(url) }
         val name = document.selectFirst("h1")?.text() ?: ""
         val image = document.selectFirst("img.cover2")?.attr("src")?.let {
@@ -594,6 +612,14 @@ object FilmPalastProvider : Provider {
             image = image,
             filmography = filmography
         )
+    }
+
+    private fun peopleSearchId(href: String, fallbackName: String): String {
+        val fromHref = href.substringAfterLast('/').substringBefore('?').trim()
+        return when {
+            fromHref.isNotBlank() && !fromHref.equals("title", ignoreCase = true) -> fromHref
+            else -> fallbackName.trim()
+        }.ifBlank { fallbackName.trim() }
     }
 
 

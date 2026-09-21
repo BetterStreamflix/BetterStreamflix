@@ -1,7 +1,6 @@
 package com.dskja.betterstreamflix.utils
 
 import android.Manifest
-import android.app.AlertDialog
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
@@ -11,10 +10,12 @@ import android.speech.RecognitionListener
 import android.speech.RecognizerIntent
 import android.speech.SpeechRecognizer
 import android.util.Log
+import androidx.appcompat.app.AlertDialog
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import com.dskja.betterstreamflix.R
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import java.util.*
 
 class VoiceRecognitionHelper(
@@ -45,16 +46,39 @@ class VoiceRecognitionHelper(
             }
 
             fragment.shouldShowRequestPermissionRationale(permission) -> {
-                AlertDialog.Builder(context)
+                val builder = if (ExperimentalMobileDesign.enabled()) {
+                    MaterialAlertDialogBuilder(context)
+                } else {
+                    AlertDialog.Builder(context)
+                }
+                val rationale = context.getString(R.string.voice_permission_rationale)
+                val glass = if (ExperimentalMobileDesign.enabled()) {
+                    ExpDialogChrome.buildGlassMessage(context, rationale)
+                } else {
+                    null
+                }
+                builder
                     .setTitle(context.getString(R.string.voice_permission_title))
-                    .setMessage(context.getString(R.string.voice_permission_rationale))
+                if (glass != null) builder.setView(glass.root)
+                else builder.setMessage(rationale)
+                builder
                     .setPositiveButton(android.R.string.ok) { _, _ ->
                         permissionLauncher.launch(permission)
                     }
                     .setNegativeButton(android.R.string.cancel) { _, _ ->
                         onError(context.getString(R.string.voice_error_permission_denied))
                     }
-                    .show()
+                    .create()
+                    .also { dialog ->
+                        dialog.setOnShowListener {
+                            if (glass != null) {
+                                ExpDialogChrome.polishGlassMessageShown(dialog, glass)
+                            } else {
+                                ExpDialogChrome.polishButtons(dialog)
+                            }
+                        }
+                        dialog.show()
+                    }
             }
 
             else -> permissionLauncher.launch(permission)

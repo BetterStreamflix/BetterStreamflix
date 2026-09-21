@@ -63,6 +63,7 @@ class BypassHttpLandingServer(
         val jsDeepLink = deepLink
             .replace("\\", "\\\\")
             .replace("'", "\\'")
+        val accent = ExperimentalMobileDesign.accentCssHex()
         return """
             <!DOCTYPE html>
             <html lang="de">
@@ -73,12 +74,12 @@ class BypassHttpLandingServer(
               <title>BetterStreamflix TV Bypass</title>
               <style>
                 body{font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,sans-serif;margin:0;padding:24px;background:#111;color:#f5f5f5;line-height:1.45}
-                .card{max-width:520px;margin:0 auto;background:#1c1c1c;border-radius:16px;padding:20px}
+                .card{max-width:520px;margin:0 auto;background:#1c1c1c;border-radius:16px;padding:20px;border:1px solid #2a2a2a}
                 h1{font-size:1.35rem;margin:0 0 12px}
                 p{margin:0 0 12px;color:#ddd}
                 ol{margin:0 0 16px 18px;padding:0}
                 li{margin:0 0 8px}
-                a.button{display:block;text-align:center;background:#e50914;color:#fff;text-decoration:none;padding:14px 16px;border-radius:10px;font-weight:700}
+                a.button{display:block;text-align:center;background:$accent;color:#fff;text-decoration:none;padding:14px 16px;border-radius:10px;font-weight:700}
                 .muted{color:#9a9a9a;font-size:.92rem}
                 code{word-break:break-all;font-size:.8rem;color:#bbb}
               </style>

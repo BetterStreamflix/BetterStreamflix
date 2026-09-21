@@ -18,8 +18,13 @@ import com.dskja.betterstreamflix.models.Movie
 import com.dskja.betterstreamflix.providers.Provider
 import com.dskja.betterstreamflix.utils.UserPreferences
 import com.dskja.betterstreamflix.utils.CacheUtils
+import com.dskja.betterstreamflix.utils.ExpEmptyChrome
+import com.dskja.betterstreamflix.utils.ExpMotion
+import com.dskja.betterstreamflix.utils.ExpPressEffects.applyExpPress
+import com.dskja.betterstreamflix.utils.ExperimentalMobileDesign
 import com.dskja.betterstreamflix.utils.Http409CacheGuard
 import com.dskja.betterstreamflix.utils.viewModelsFactory
+import androidx.navigation.fragment.findNavController
 import kotlinx.coroutines.launch
 
 class MoviesTvFragment : Fragment() {
@@ -53,7 +58,7 @@ class MoviesTvFragment : Fragment() {
                 when (state) {
                     MoviesViewModel.State.Loading -> binding.isLoading.apply {
                         root.visibility = View.VISIBLE
-                        pbIsLoading.visibility = View.VISIBLE
+                        com.dskja.betterstreamflix.utils.ExpPressEffects.showLoadingSkeleton(root, true)
                         gIsLoadingRetry.visibility = View.GONE
                     }
                     MoviesViewModel.State.LoadingMore -> appAdapter.isLoading = true
@@ -62,6 +67,9 @@ class MoviesTvFragment : Fragment() {
                         appAdapter.isLoading = false
                         binding.vgvMovies.visibility = View.VISIBLE
                         binding.isLoading.root.visibility = View.GONE
+                        com.dskja.betterstreamflix.utils.ExpPressEffects.showLoadingSkeleton(
+                            binding.isLoading.root, false,
+                        )
                     }
                     is MoviesViewModel.State.FailedLoading -> {
                         if (http409Guard.handle(requireContext(), state.error) {
@@ -70,21 +78,24 @@ class MoviesTvFragment : Fragment() {
                             }) {
                                 return@collect
                             }
-                        Toast.makeText(
-                            requireContext(),
-                            state.error.message ?: "",
-                            Toast.LENGTH_SHORT
-                        ).show()
+                        if (!com.dskja.betterstreamflix.utils.ExperimentalMobileDesign.enabled()) {
+                            Toast.makeText(
+                                requireContext(),
+                                state.error.message ?: "",
+                                Toast.LENGTH_SHORT
+                            ).show()
+                        }
                         if (appAdapter.isLoading) {
                             appAdapter.isLoading = false
                         } else {
                             binding.isLoading.apply {
-                                pbIsLoading.visibility = View.GONE
+                                com.dskja.betterstreamflix.utils.ExpPressEffects.showLoadingSkeleton(root, false)
                                 gIsLoadingRetry.visibility = View.VISIBLE
+                                com.dskja.betterstreamflix.utils.ExpPressEffects.animateLoadingError(root)
                                 btnIsLoadingRetry.setOnClickListener { viewModel.getMovies() }
                                 btnIsLoadingClearCache.setOnClickListener {
                                     CacheUtils.clearAppCache(requireContext())
-                                    android.widget.Toast.makeText(requireContext(), getString(com.dskja.betterstreamflix.R.string.clear_cache_done), android.widget.Toast.LENGTH_SHORT).show()
+                                    com.dskja.betterstreamflix.utils.ExpDialogChrome.notify(requireContext(), getString(com.dskja.betterstreamflix.R.string.clear_cache_done), com.dskja.betterstreamflix.R.string.loading_error_clear_cache)
                                     viewModel.getMovies()
                                 }
                                 binding.vgvMovies.visibility = View.GONE
@@ -103,6 +114,16 @@ class MoviesTvFragment : Fragment() {
 
 
     private fun initializeMovies() {
+        com.dskja.betterstreamflix.utils.ExpPressEffects.wireLoadingRetry(binding.isLoading.root)
+        if (com.dskja.betterstreamflix.utils.ExperimentalMobileDesign.enabled()) {
+            com.dskja.betterstreamflix.utils.ExpMotion.enterScreen(binding.root)
+            binding.tvMoviesEmpty.setTextColor(
+                com.google.android.material.color.MaterialColors.getColor(
+                    binding.tvMoviesEmpty,
+                    com.google.android.material.R.attr.colorOnSurfaceVariant,
+                ),
+            )
+        }
         binding.vgvMovies.apply {
             adapter = appAdapter.apply {
                 stateRestorationPolicy = RecyclerView.Adapter.StateRestorationPolicy.PREVENT_WHEN_EMPTY
@@ -117,6 +138,17 @@ class MoviesTvFragment : Fragment() {
         appAdapter.submitList(movies.onEach {
             it.itemType = AppAdapter.Type.MOVIE_GRID_TV_ITEM
         })
+
+        val empty = movies.isEmpty()
+        binding.tvMoviesEmpty.visibility = if (empty) View.VISIBLE else View.GONE
+        binding.vgvMovies.visibility = if (empty) View.GONE else View.VISIBLE
+        ExpEmptyChrome.bind(
+            emptyView = binding.tvMoviesEmpty,
+            emptyRule = binding.root.findViewById(R.id.v_movies_empty_rule),
+            emptyCta = binding.root.findViewById(R.id.btn_movies_empty_cta),
+            visible = empty,
+            onCtaClick = { runCatching { findNavController().navigate(R.id.providers) } },
+        )
 
         if (hasMore) {
             appAdapter.setOnLoadMoreListener { viewModel.loadMoreMovies() }

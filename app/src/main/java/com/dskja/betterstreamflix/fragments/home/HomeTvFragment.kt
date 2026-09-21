@@ -26,6 +26,9 @@ import com.dskja.betterstreamflix.models.TvShow
 import com.dskja.betterstreamflix.utils.viewModelsFactory
 import kotlinx.coroutines.Runnable
 import com.dskja.betterstreamflix.utils.CacheUtils
+import com.dskja.betterstreamflix.utils.ExpEmptyChrome
+import com.dskja.betterstreamflix.utils.ExpMotion
+import com.dskja.betterstreamflix.utils.ExperimentalMobileDesign
 import com.dskja.betterstreamflix.utils.Http409CacheGuard
 import kotlinx.coroutines.launch
 import androidx.lifecycle.ViewModel
@@ -70,6 +73,10 @@ class HomeTvFragment : Fragment() {
         super.onViewCreated(view, savedInstanceState)
 
         initializeHome()
+        refreshProfileChip()
+        if (ExperimentalMobileDesign.enabled()) {
+            ExpMotion.enterScreen(binding.root)
+        }
 
         // Lightweight refresh when provider changes
         viewLifecycleOwner.lifecycleScope.launch {
@@ -86,33 +93,38 @@ class HomeTvFragment : Fragment() {
                 when (state) {
                     HomeViewModel.State.Loading -> binding.isLoading.apply {
                         root.visibility = View.VISIBLE
-                        pbIsLoading.visibility = View.VISIBLE
+                        com.dskja.betterstreamflix.utils.ExpPressEffects.showLoadingSkeleton(root, true)
                         gIsLoadingRetry.visibility = View.GONE
+                        hideCatalogWarning()
                     }
                     is HomeViewModel.State.SuccessLoading -> {
                         displayHome(state.categories)
                         binding.vgvHome.visibility = View.VISIBLE
                         binding.isLoading.root.visibility = View.GONE
-                        state.providerWarning?.takeIf { it.isNotBlank() }?.let { warning ->
-                            Toast.makeText(requireContext(), warning, Toast.LENGTH_LONG).show()
-                        }
+                        com.dskja.betterstreamflix.utils.ExpPressEffects.showLoadingSkeleton(
+                            binding.isLoading.root, false,
+                        )
+                        showCatalogWarning(state.providerWarning)
                     }
                     is HomeViewModel.State.FailedLoading -> {
                         if (http409Guard.handle(requireContext(), state.error) { viewModel.getHome() }) {
                                 return@collect
                             }
-                        Toast.makeText(
-                            requireContext(),
-                            state.error.message ?: "",
-                            Toast.LENGTH_SHORT
-                        ).show()
+                        if (!ExperimentalMobileDesign.enabled()) {
+                            Toast.makeText(
+                                requireContext(),
+                                state.error.message ?: "",
+                                Toast.LENGTH_SHORT
+                            ).show()
+                        }
                         binding.isLoading.apply {
-                            pbIsLoading.visibility = View.GONE
+                            com.dskja.betterstreamflix.utils.ExpPressEffects.showLoadingSkeleton(root, false)
                             gIsLoadingRetry.visibility = View.VISIBLE
+                            com.dskja.betterstreamflix.utils.ExpPressEffects.animateLoadingError(root)
                             btnIsLoadingRetry.setOnClickListener { viewModel.getHome() }
                             btnIsLoadingClearCache.setOnClickListener {
                                 CacheUtils.clearAppCache(requireContext())
-                                android.widget.Toast.makeText(requireContext(), getString(com.dskja.betterstreamflix.R.string.clear_cache_done), android.widget.Toast.LENGTH_SHORT).show()
+                                com.dskja.betterstreamflix.utils.ExpDialogChrome.notify(requireContext(), getString(com.dskja.betterstreamflix.R.string.clear_cache_done), com.dskja.betterstreamflix.R.string.loading_error_clear_cache)
                                 viewModel.getHome()
                             }
                             btnIsLoadingErrorDetails.setOnClickListener {
@@ -124,6 +136,11 @@ class HomeTvFragment : Fragment() {
                 }
             }
         }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        refreshProfileChip()
     }
     
     override fun onStart() {
@@ -143,11 +160,64 @@ class HomeTvFragment : Fragment() {
     }
 
     override fun onDestroyView() {
-        super.onDestroyView()
-        appAdapter.onSaveInstanceState(binding.vgvHome)
+        _binding?.let { appAdapter.onSaveInstanceState(it.vgvHome) }
         _binding = null
+        super.onDestroyView()
     }
 
+    private fun showCatalogWarning(warning: String?) {
+        val banner = _binding?.tvHomeCatalogWarning ?: return
+        val text = warning?.takeIf { it.isNotBlank() }
+        if (text == null) {
+            banner.visibility = View.GONE
+            banner.setOnClickListener(null)
+            return
+        }
+        banner.visibility = View.VISIBLE
+        banner.text = text
+        banner.contentDescription = getString(R.string.home_catalog_warning_tap_retry)
+        banner.setOnClickListener { viewModel.getHome() }
+    }
+
+    private fun hideCatalogWarning() {
+        _binding?.tvHomeCatalogWarning?.apply {
+            visibility = View.GONE
+            setOnClickListener(null)
+        }
+    }
+
+    private fun refreshProfileChip() {
+        val chip = _binding?.root?.findViewById<View>(R.id.tv_home_profile_chip) ?: return
+        val profile = com.dskja.betterstreamflix.profiles.ProfileManager.activeProfile()
+        val name = profile?.displayName?.takeIf { it.isNotBlank() }
+            ?: getString(R.string.profile_default)
+        chip.findViewById<android.widget.TextView>(R.id.tv_home_profile_name)?.text = name
+        chip.findViewById<com.dskja.betterstreamflix.profiles.ProfileAvatarView>(R.id.pav_home_profile)
+            ?.bind(
+                avatarKey = profile?.avatarKey
+                    ?: com.dskja.betterstreamflix.profiles.ProfileManager.avatarKeys.first(),
+                displayName = name,
+                textSizeSp = 12f,
+            )
+        chip.visibility = View.VISIBLE
+        if (ExperimentalMobileDesign.enabled()) {
+            chip.setBackgroundResource(ExperimentalMobileDesign.chipBackground())
+            with(com.dskja.betterstreamflix.utils.ExpPressEffects) { chip.applyExpPress() }
+            if (chip.getTag(R.id.exp_enter_animated_tag) != true) {
+                chip.setTag(R.id.exp_enter_animated_tag, true)
+                ExpMotion.popIn(chip)
+            }
+        }
+        chip.setOnClickListener {
+            ExpMotion.hapticTap(it)
+            com.dskja.betterstreamflix.fragments.settings.ProfilesSettingsController.showSwitchDialog(this) {
+                requireActivity().apply {
+                    finish()
+                    startActivity(intent)
+                }
+            }
+        }
+    }
 
     private var swiperHasLastFocus: Boolean = false
     fun updateBackground(uri: String?, swiperHasFocus: Boolean? = false) {
@@ -176,6 +246,7 @@ class HomeTvFragment : Fragment() {
     }
 
     private fun initializeHome() {
+        com.dskja.betterstreamflix.utils.ExpPressEffects.wireLoadingRetry(binding.isLoading.root)
         binding.vgvHome.apply {
             adapter = appAdapter.apply {
                 stateRestorationPolicy = RecyclerView.Adapter.StateRestorationPolicy.PREVENT_WHEN_EMPTY
@@ -298,6 +369,16 @@ class HomeTvFragment : Fragment() {
         }
 
         appAdapter.submitList(homeItems)
+
+        val hasCatalogRows = homeItems.any { it is Category }
+        ExpEmptyChrome.bind(
+            emptyView = binding.root.findViewById(R.id.tv_home_empty),
+            emptyRule = binding.root.findViewById(R.id.v_home_empty_rule),
+            emptyCta = binding.root.findViewById(R.id.btn_home_empty_cta),
+            visible = !hasCatalogRows,
+            tintOnSurfaceVariant = false,
+            onCtaClick = { runCatching { findNavController().navigate(R.id.providers) } },
+        )
     }
 
     fun resetSwiperSchedule() {

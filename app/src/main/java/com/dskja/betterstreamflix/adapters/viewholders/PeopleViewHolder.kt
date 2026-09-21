@@ -7,6 +7,7 @@ import androidx.viewbinding.ViewBinding
 import com.bumptech.glide.Glide
 import com.bumptech.glide.load.resource.drawable.DrawableTransitionOptions
 import com.dskja.betterstreamflix.R
+import com.dskja.betterstreamflix.utils.ExpMotion
 import com.dskja.betterstreamflix.utils.ExpPressEffects.applyExpPress
 import com.dskja.betterstreamflix.utils.ExperimentalMobileDesign
 import com.dskja.betterstreamflix.databinding.ItemPeopleMobileBinding
@@ -31,7 +32,7 @@ class PeopleViewHolder(
 
     private val context = itemView.context
     init {
-        if (ExperimentalMobileDesign.enabled() && _binding is ItemPeopleMobileBinding) {
+        if (ExperimentalMobileDesign.enabled()) {
             itemView.applyExpPress()
         }
     }
@@ -51,6 +52,7 @@ class PeopleViewHolder(
     private fun displayMobileItem(binding: ItemPeopleMobileBinding) {
         binding.root.apply {
             setOnClickListener {
+                ExpMotion.hapticTap(it)
                 when (context.toActivity()?.getCurrentFragment()) {
                     is MovieMobileFragment -> findNavController().navigate(
                         MovieMobileFragmentDirections.actionMovieToPeople(
@@ -81,11 +83,31 @@ class PeopleViewHolder(
         }
 
         binding.tvPeopleName.text = people.name
+        if (ExperimentalMobileDesign.enabled()) {
+            runCatching {
+                (binding.ivPeopleImage as? com.google.android.material.imageview.ShapeableImageView)?.apply {
+                    strokeColor = android.content.res.ColorStateList.valueOf(
+                        com.google.android.material.color.MaterialColors.getColor(
+                            this, androidx.appcompat.R.attr.colorPrimary,
+                        ),
+                    )
+                    strokeWidth = 2.5f * resources.displayMetrics.density
+                }
+            }
+            if (binding.root.getTag(R.id.exp_enter_animated_tag) != true) {
+                binding.root.setTag(R.id.exp_enter_animated_tag, true)
+                ExpMotion.kenBurns(binding.ivPeopleImage, drift = true)
+                ExpMotion.revealHeader(binding.tvPeopleName)
+                ExpMotion.popIn(binding.root)
+                ExpMotion.popIn(binding.ivPeopleImage)
+            }
+        }
     }
 
     private fun displayTvItem(binding: ItemPeopleTvBinding) {
         binding.root.apply {
             setOnClickListener {
+                ExpMotion.hapticTap(it)
                 when (context.toActivity()?.getCurrentFragment()) {
                     is MovieTvFragment -> findNavController().navigate(
                         MovieTvFragmentDirections.actionMovieToPeople(
@@ -104,7 +126,6 @@ class PeopleViewHolder(
                 }
             }
             setOnFocusChangeListener { _, hasFocus ->
-                // Applichiamo l'animazione solo all'immagine, non a tutto il root (che include il testo)
                 val animation = when {
                     hasFocus -> AnimationUtils.loadAnimation(context, R.anim.zoom_in)
                     else -> AnimationUtils.loadAnimation(context, R.anim.zoom_out)
@@ -125,5 +146,24 @@ class PeopleViewHolder(
         }
 
         binding.tvPeopleName.text = people.name
+        if (ExperimentalMobileDesign.enabled()) {
+            runCatching {
+                (binding.ivPeopleImage as? com.google.android.material.imageview.ShapeableImageView)?.apply {
+                    strokeColor = android.content.res.ColorStateList.valueOf(
+                        com.google.android.material.color.MaterialColors.getColor(
+                            this, androidx.appcompat.R.attr.colorPrimary,
+                        ),
+                    )
+                    strokeWidth = 2.5f * resources.displayMetrics.density
+                }
+            }
+            if (binding.root.getTag(R.id.exp_enter_animated_tag) != true) {
+                binding.root.setTag(R.id.exp_enter_animated_tag, true)
+                ExpMotion.kenBurns(binding.ivPeopleImage, drift = true)
+                ExpMotion.revealHeader(binding.tvPeopleName)
+                ExpMotion.popIn(binding.root)
+                ExpMotion.popIn(binding.ivPeopleImage)
+            }
+        }
     }
 }

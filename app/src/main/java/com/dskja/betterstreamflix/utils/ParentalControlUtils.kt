@@ -6,6 +6,7 @@ import com.dskja.betterstreamflix.models.Episode
 import com.dskja.betterstreamflix.models.Movie
 import com.dskja.betterstreamflix.models.Show
 import com.dskja.betterstreamflix.models.TvShow
+import com.dskja.betterstreamflix.profiles.ProfileManager
 import com.dskja.betterstreamflix.providers.Provider
 import com.dskja.betterstreamflix.providers.TmdbProvider
 import kotlinx.coroutines.async
@@ -14,8 +15,18 @@ import kotlinx.coroutines.coroutineScope
 
 object ParentalControlUtils {
 
+    private fun isFilteringActive(): Boolean {
+        if (ProfileManager.isKidsActive()) return true
+        return UserPreferences.isParentalControlActive
+    }
+
+    private fun effectiveMaxAge(): Int? {
+        ProfileManager.effectiveMaxAgeRating()?.let { return it }
+        return UserPreferences.parentalControlMaxAge
+    }
+
     suspend fun filterCategories(categories: List<Category>): List<Category> {
-        if (!UserPreferences.isParentalControlActive) return categories
+        if (!isFilteringActive()) return categories
 
         return categories.mapNotNull { category ->
             val filteredItems = filterItems(category.list)
@@ -36,7 +47,7 @@ object ParentalControlUtils {
     }
 
     suspend fun <T : AppAdapter.Item> filterItems(items: List<T>): List<T> {
-        if (!UserPreferences.isParentalControlActive) return items
+        if (!isFilteringActive()) return items
 
         return coroutineScope {
             val visibility = items.map { item ->
@@ -57,14 +68,17 @@ object ParentalControlUtils {
     }
 
     private suspend fun isAllowedMovie(movie: Movie): Boolean {
-        val maxAge = UserPreferences.parentalControlMaxAge ?: return true
-        val ageRating = resolveMovieAgeRating(movie) ?: return false
+        val maxAge = effectiveMaxAge() ?: return true
+        // Kids profiles hide unrated titles; parental-control PIN mode keeps prior behavior.
+        val ageRating = resolveMovieAgeRating(movie)
+            ?: return !ProfileManager.isKidsActive()
         return ageRating <= maxAge
     }
 
     private suspend fun isAllowedTvShow(tvShow: TvShow): Boolean {
-        val maxAge = UserPreferences.parentalControlMaxAge ?: return true
-        val ageRating = resolveTvShowAgeRating(tvShow) ?: return false
+        val maxAge = effectiveMaxAge() ?: return true
+        val ageRating = resolveTvShowAgeRating(tvShow)
+            ?: return !ProfileManager.isKidsActive()
         return ageRating <= maxAge
     }
 

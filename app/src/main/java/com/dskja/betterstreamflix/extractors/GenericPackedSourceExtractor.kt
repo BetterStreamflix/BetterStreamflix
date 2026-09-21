@@ -68,7 +68,8 @@ abstract class GenericPackedSourceExtractor : Extractor() {
                 "Referer" to "$playbackBaseUrl/",
                 "Origin" to playbackBaseUrl,
                 "User-Agent" to USER_AGENT
-            )
+            ),
+            type = StreamMime.infer(videoSource),
         )
     }
 

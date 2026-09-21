@@ -3,7 +3,9 @@ package com.dskja.betterstreamflix.adapters
 import android.os.Parcelable
 import android.view.LayoutInflater
 import android.view.KeyEvent
+import android.view.View
 import android.view.ViewGroup
+import android.widget.TextView
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.RecyclerView
 import androidx.viewbinding.ViewBinding
@@ -42,7 +44,6 @@ import com.dskja.betterstreamflix.databinding.ItemEpisodeContinueWatchingMobileB
 import com.dskja.betterstreamflix.databinding.ItemEpisodeContinueWatchingTvBinding
 import com.dskja.betterstreamflix.databinding.ItemEpisodeMobileBinding
 import com.dskja.betterstreamflix.databinding.ItemEpisodeTvBinding
-import com.dskja.betterstreamflix.databinding.ItemFavoriteSectionHeaderBinding
 import com.dskja.betterstreamflix.databinding.ItemGenreGridMobileBinding
 import com.dskja.betterstreamflix.databinding.ItemGenreGridTvBinding
 import com.dskja.betterstreamflix.databinding.ItemLoadingBinding
@@ -74,6 +75,7 @@ import com.dskja.betterstreamflix.R
 import com.dskja.betterstreamflix.databinding.ItemSupportBannerMobileBinding
 import com.dskja.betterstreamflix.databinding.ItemSupportBannerTvBinding
 import com.dskja.betterstreamflix.utils.ExperimentalMobileDesign
+import com.dskja.betterstreamflix.utils.ExpMotion
 import com.dskja.betterstreamflix.support.SupportUiBinder
 
 class AppAdapter(
@@ -273,15 +275,13 @@ class AppAdapter(
                 footer!!.binding(parent)
             )
             Type.FAVORITE_SECTION_HEADER -> FavoriteSectionHeaderViewHolder(
-                ItemFavoriteSectionHeaderBinding.bind(
-                    LayoutInflater.from(parent.context).inflate(
-                        ExperimentalMobileDesign.layout(
-                            R.layout.item_favorite_section_header,
-                            R.layout.item_favorite_section_header_exp,
-                        ),
-                        parent,
-                        false,
-                    )
+                LayoutInflater.from(parent.context).inflate(
+                    ExperimentalMobileDesign.layout(
+                        R.layout.item_favorite_section_header,
+                        R.layout.item_favorite_section_header_exp,
+                    ),
+                    parent,
+                    false,
                 )
             )
 
@@ -324,18 +324,18 @@ class AppAdapter(
                 header!!.binding(parent)
             )
 
-            Type.LOADING_ITEM -> LoadingViewHolder(
-                ItemLoadingBinding.bind(
-                    LayoutInflater.from(parent.context).inflate(
-                        ExperimentalMobileDesign.layout(
-                            R.layout.item_loading,
-                            R.layout.item_loading_exp,
-                        ),
-                        parent,
-                        false,
-                    )
+            Type.LOADING_ITEM -> {
+                val layoutRes = ExperimentalMobileDesign.layout(
+                    R.layout.item_loading,
+                    R.layout.item_loading_exp,
                 )
-            )
+                val view = LayoutInflater.from(parent.context).inflate(layoutRes, parent, false)
+                // Bind defensively: exp/classic layouts share required IDs; never crash load-more.
+                val binding = runCatching { ItemLoadingBinding.bind(view) }.getOrNull()
+                LoadingViewHolder(binding ?: object : ViewBinding {
+                    override fun getRoot(): View = view
+                })
+            }
 
             Type.MOVIE_CONTINUE_WATCHING_MOBILE_ITEM,
             Type.MOVIE_MOBILE_ITEM -> MovieViewHolder(
@@ -697,6 +697,7 @@ class AppAdapter(
             is FavoriteSectionHeaderViewHolder -> holder.bind(
                 items[adjustedPosition] as FavoriteSectionHeader
             )
+            is LoadingViewHolder -> holder.bind()
             is SupportBannerViewHolder -> holder.bind(
                 onSupportBannerClickListener,
                 onSupportBannerDismissListener,
@@ -812,6 +813,9 @@ class AppAdapter(
     }
 
     override fun onViewRecycled(holder: RecyclerView.ViewHolder) {
+        if (holder is CategoryViewHolder) {
+            holder.clearSwiper()
+        }
         super.onViewRecycled(holder)
 
         val state = when (holder) {
@@ -825,6 +829,14 @@ class AppAdapter(
             states[holder.layoutPosition] = state
         } else {
             states.remove(holder.layoutPosition)
+        }
+    }
+
+    /** Pause featured auto-advance without tearing down the adapter (Home under detail stack). */
+    fun pauseCategorySwipers(recyclerView: RecyclerView) {
+        for (i in 0 until recyclerView.childCount) {
+            val holder = recyclerView.getChildViewHolder(recyclerView.getChildAt(i))
+            if (holder is CategoryViewHolder) holder.clearSwiper()
         }
     }
 
@@ -1006,10 +1018,21 @@ class AppAdapter(
     )
 
     private class FavoriteSectionHeaderViewHolder(
-        private val binding: ItemFavoriteSectionHeaderBinding,
-    ) : RecyclerView.ViewHolder(binding.root) {
+        itemView: View,
+    ) : RecyclerView.ViewHolder(itemView) {
         fun bind(header: FavoriteSectionHeader) {
-            binding.tvFavoriteSectionTitle.text = header.title
+            itemView.findViewById<TextView>(R.id.tv_favorite_section_title)?.text = header.title
+            if (ExperimentalMobileDesign.enabled()) {
+                itemView.setBackgroundResource(ExperimentalMobileDesign.glassCardBackground())
+                if (itemView.getTag(R.id.exp_enter_animated_tag) != true) {
+                    itemView.setTag(R.id.exp_enter_animated_tag, true)
+                    ExpMotion.revealHeader(
+                        itemView.findViewById(R.id.tv_favorite_section_title),
+                        itemView.findViewById(R.id.v_favorite_section_rule),
+                    )
+                    ExpMotion.pulseAccentRule(itemView.findViewById(R.id.v_favorite_section_rule))
+                }
+            }
         }
     }
 
@@ -1030,11 +1053,45 @@ class AppAdapter(
         )
 
         fun bind(onClick: (() -> Unit)?, onDismiss: (() -> Unit)?) {
-            val open = android.view.View.OnClickListener { onClick?.invoke() }
+            val open = android.view.View.OnClickListener {
+                ExpMotion.hapticTap(it)
+                onClick?.invoke()
+            }
             root.setOnClickListener(open)
             cta.setOnClickListener(open)
-            dismiss.setOnClickListener { onDismiss?.invoke() }
+            dismiss.setOnClickListener {
+                ExpMotion.hapticTap(it)
+                onDismiss?.invoke()
+            }
             SupportUiBinder.applyFocusScale(root)
+            if (ExperimentalMobileDesign.enabled()) {
+                root.setBackgroundResource(ExperimentalMobileDesign.glassCardBackground())
+                with(com.dskja.betterstreamflix.utils.ExpPressEffects) {
+                    root.applyExpPress()
+                    cta.applyExpPress()
+                    dismiss.applyExpPress()
+                }
+                cta.setBackgroundResource(ExperimentalMobileDesign.primaryButtonBackground())
+                dismiss.setBackgroundResource(ExperimentalMobileDesign.iconChipBackground())
+                root.findViewById<android.widget.ImageView>(R.id.iv_support_banner_icon)?.let { icon ->
+                    val primary = com.google.android.material.color.MaterialColors.getColor(
+                        icon,
+                        androidx.appcompat.R.attr.colorPrimary,
+                        icon.context.getColor(R.color.m3_primary),
+                    )
+                    icon.imageTintList = android.content.res.ColorStateList.valueOf(primary)
+                }
+                if (root.getTag(R.id.exp_enter_animated_tag) != true) {
+                    root.setTag(R.id.exp_enter_animated_tag, true)
+                    ExpMotion.revealHeader(
+                        root.findViewById(R.id.tv_support_banner_title),
+                        root.findViewById(R.id.tv_support_banner_subtitle),
+                    )
+                    root.findViewById<View>(R.id.iv_support_banner_icon)?.let { ExpMotion.popIn(it) }
+                    ExpMotion.popIn(cta)
+                    ExpMotion.popIn(dismiss)
+                }
+            }
         }
     }
 
@@ -1047,7 +1104,28 @@ class AppAdapter(
         binding: ViewBinding
     ) : RecyclerView.ViewHolder(
         binding.root
-    )
+    ) {
+        fun bind() {
+            if (ExperimentalMobileDesign.enabled()) {
+                ExperimentalMobileDesign.applyReducedGlass(itemView)
+                val shimmer = itemView.findViewById<View>(R.id.sh_load_more)
+                val spinner = itemView.findViewById<View>(R.id.pb_load_more_is_loading)
+                    ?: itemView.findViewById(R.id.pb_is_loading)
+                if (shimmer != null) {
+                    shimmer.visibility = View.VISIBLE
+                    spinner?.visibility = View.GONE
+                    (shimmer as? com.facebook.shimmer.ShimmerFrameLayout)?.startShimmer()
+                    if (itemView.getTag(R.id.exp_enter_animated_tag) != true) {
+                        itemView.setTag(R.id.exp_enter_animated_tag, true)
+                        ExpMotion.fadeInAndShow(shimmer)
+                    }
+                } else if (itemView.getTag(R.id.exp_enter_animated_tag) != true) {
+                    itemView.setTag(R.id.exp_enter_animated_tag, true)
+                    spinner?.let { ExpMotion.popIn(it) } ?: ExpMotion.popIn(itemView)
+                }
+            }
+        }
+    }
 
     private class FooterViewHolder(
         val binding: ViewBinding

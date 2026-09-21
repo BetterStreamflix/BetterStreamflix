@@ -1,10 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- Hero scrim that dissolves into theme surface (not fixed ink) -->
 <shape xmlns:android="http://schemas.android.com/apk/res/android"
     android:shape="rectangle">
     <gradient
         android:angle="270"
-        android:centerColor="#80101318"
-        android:endColor="#F2101318"
+        android:centerColor="?attr/colorSurfaceContainer"
+        android:endColor="?attr/colorSurface"
         android:startColor="@android:color/transparent"
         android:type="linear" />
 </shape>

@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/settings_nested_header"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:gravity="center_vertical"
+    android:orientation="horizontal"
+    android:paddingStart="4dp"
+    android:paddingTop="6dp"
+    android:paddingEnd="12dp"
+    android:paddingBottom="2dp">
+
+    <ImageView
+        android:id="@+id/btn_settings_nested_back"
+        android:layout_width="40dp"
+        android:layout_height="40dp"
+        android:contentDescription="@string/settings_nested_back"
+        android:padding="8dp"
+        android:src="@drawable/ic_support_back"
+        app:tint="?attr/colorOnSurface"
+        tools:ignore="ContentDescription" />
+
+    <TextView
+        android:id="@+id/tv_settings_nested_title"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="2dp"
+        android:layout_weight="1"
+        android:ellipsize="end"
+        android:maxLines="1"
+        android:textAppearance="@style/TextAppearance.Lumina.Title"
+        android:textColor="?attr/colorOnSurface"
+        android:textSize="18sp"
+        android:textStyle="bold"
+        tools:text="Profiles" />
+</LinearLayout>

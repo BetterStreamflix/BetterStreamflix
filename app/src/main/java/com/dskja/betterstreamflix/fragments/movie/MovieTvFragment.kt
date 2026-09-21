@@ -51,22 +51,28 @@ class MovieTvFragment : Fragment() {
                 when (state) {
                     MovieViewModel.State.Loading -> binding.isLoading.apply {
                         root.visibility = View.VISIBLE
-                        pbIsLoading.visibility = View.VISIBLE
+                        com.dskja.betterstreamflix.utils.ExpPressEffects.showLoadingSkeleton(root, true)
                         gIsLoadingRetry.visibility = View.GONE
                     }
                     is MovieViewModel.State.SuccessLoading -> {
                         displayMovie(state.movie)
                         binding.isLoading.root.visibility = View.GONE
+                        com.dskja.betterstreamflix.utils.ExpPressEffects.showLoadingSkeleton(
+                            binding.isLoading.root, false,
+                        )
                     }
                     is MovieViewModel.State.FailedLoading -> {
-                        Toast.makeText(
-                            requireContext(),
-                            state.error.message ?: "",
-                            Toast.LENGTH_SHORT
-                        ).show()
+                        if (!com.dskja.betterstreamflix.utils.ExperimentalMobileDesign.enabled()) {
+                            Toast.makeText(
+                                requireContext(),
+                                state.error.message ?: "",
+                                Toast.LENGTH_SHORT
+                            ).show()
+                        }
                         binding.isLoading.apply {
-                            pbIsLoading.visibility = View.GONE
+                            com.dskja.betterstreamflix.utils.ExpPressEffects.showLoadingSkeleton(root, false)
                             gIsLoadingRetry.visibility = View.VISIBLE
+                            com.dskja.betterstreamflix.utils.ExpPressEffects.animateLoadingError(root)
                             btnIsLoadingRetry.setOnClickListener {
                                 viewModel.getMovie(args.id)
                             }
@@ -82,9 +88,9 @@ class MovieTvFragment : Fragment() {
     }
 
     override fun onDestroyView() {
-        super.onDestroyView()
-        appAdapter.onSaveInstanceState(binding.vgvMovie)
+        _binding?.let { appAdapter.onSaveInstanceState(it.vgvMovie) }
         _binding = null
+        super.onDestroyView()
     }
 
 

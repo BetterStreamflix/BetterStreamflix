@@ -4,14 +4,14 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="?attr/colorSurface"
+    android:background="@drawable/bg_exp_canvas_atmosphere"
     tools:context=".fragments.movie.MovieMobileFragment">
 
     <ImageView
         android:id="@+id/iv_movie_banner"
         android:layout_width="0dp"
         android:layout_height="0dp"
-        android:foreground="@drawable/bg_home_gradient_exp"
+        android:foreground="?attr/movie_banner_gradient_drawable"
         android:scaleType="centerCrop"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
@@ -42,6 +42,17 @@
         tools:listitem="@layout/content_movie_mobile_exp" />
 
 
+
+    <View
+        android:id="@+id/v_movie_header_fade"
+        android:layout_width="0dp"
+        android:layout_height="88dp"
+        android:background="@drawable/bg_exp_header_fade"
+        android:importantForAccessibility="no"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
+
     <ImageView
         android:id="@+id/iv_detail_back"
         android:layout_width="44dp"
@@ -50,7 +61,7 @@
         android:layout_marginTop="52dp"
         android:background="@drawable/bg_exp_icon_chip"
         android:contentDescription="@string/exp_back"
-        android:elevation="6dp"
+        android:elevation="10dp"
         android:padding="11dp"
         android:src="@drawable/ic_player_back"
         app:layout_constraintStart_toStartOf="parent"

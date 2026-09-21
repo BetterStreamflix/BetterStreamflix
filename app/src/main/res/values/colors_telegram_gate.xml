@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Telegram Join Gate — cinema ink + signal cyan -->
+    <color name="tg_gate_bg_deep">#04070D</color>
+    <color name="tg_gate_bg_mid">#0A1220</color>
+    <color name="tg_gate_bg_glow">#0F2A3F</color>
+    <color name="tg_gate_bg_bloom">#163A55</color>
+    <color name="tg_gate_surface">#101926</color>
+    <color name="tg_gate_surface_elevated">#182334</color>
+    <color name="tg_gate_border">#2C3D55</color>
+    <color name="tg_gate_text_primary">#F5F8FC</color>
+    <color name="tg_gate_text_secondary">#A3B1C4</color>
+    <color name="tg_gate_text_tertiary">#6E7E94</color>
+    <color name="tg_gate_brand">#FFFFFF</color>
+    <color name="tg_gate_telegram">#2AABEE</color>
+    <color name="tg_gate_telegram_bright">#5BC4F5</color>
+    <color name="tg_gate_telegram_pressed">#1A8FC8</color>
+    <color name="tg_gate_telegram_soft">#402AABEE</color>
+    <color name="tg_gate_telegram_mist">#1A2AABEE</color>
+    <color name="tg_gate_success">#3DDC97</color>
+    <color name="tg_gate_success_soft">#263DDC97</color>
+    <color name="tg_gate_on_primary">#FFFFFF</color>
+    <color name="tg_gate_step_idle">#243044</color>
+    <color name="tg_gate_step_active">#2AABEE</color>
+    <color name="tg_gate_step_done">#3DDC97</color>
+    <color name="tg_gate_orb">#332AABEE</color>
+    <color name="tg_gate_scrim">#CC04070D</color>
+</resources>

@@ -19,7 +19,6 @@ import android.webkit.WebViewClient
 import android.widget.Button
 import android.widget.ProgressBar
 import android.widget.TextView
-import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowCompat
@@ -29,6 +28,7 @@ import com.dskja.betterstreamflix.player.SerienStreamBypassHelper
 import com.dskja.betterstreamflix.providers.KinoGerProvider
 import com.dskja.betterstreamflix.providers.SerienStreamProvider
 import com.dskja.betterstreamflix.utils.AppLanguageManager
+import com.dskja.betterstreamflix.utils.ExpDialogChrome
 import com.dskja.betterstreamflix.utils.ExperimentalMobileDesign
 import com.dskja.betterstreamflix.utils.ThemeManager
 import com.google.android.material.color.DynamicColors
@@ -51,6 +51,7 @@ class BypassWebViewActivity : AppCompatActivity() {
     private lateinit var statusView: TextView
     private lateinit var continueButton: Button
     private lateinit var cancelButton: Button
+    private var webViewUserAgent: String = MODERN_UA
     private var isCleaningUp = false
     private var currentPageUrl: String? = null
     private var resolvedStreamUrl: String? = null
@@ -74,7 +75,7 @@ class BypassWebViewActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         setTheme(
             if (ExperimentalMobileDesign.enabled()) {
-                R.style.AppTheme_Mobile_Experimental
+                ExperimentalMobileDesign.themeRes()
             } else {
                 ThemeManager.mobileThemeRes(UserPreferences.selectedTheme)
             }
@@ -83,7 +84,12 @@ class BypassWebViewActivity : AppCompatActivity() {
             DynamicColors.applyToActivityIfAvailable(this)
         }
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_bypass_webview)
+        setContentView(
+            ExperimentalMobileDesign.layout(
+                R.layout.activity_bypass_webview,
+                R.layout.activity_bypass_webview_exp,
+            ),
+        )
         WindowCompat.setDecorFitsSystemWindows(window, false)
 
         ViewCompat.setOnApplyWindowInsetsListener(findViewById(android.R.id.content)) { view, insets ->
@@ -100,20 +106,44 @@ class BypassWebViewActivity : AppCompatActivity() {
         continueButton.isEnabled = false
         statusView.setText(R.string.bypass_status_complete_in_page)
 
+        if (ExperimentalMobileDesign.enabled()) {
+            com.dskja.betterstreamflix.utils.ExpMotion.enterScreen(findViewById(android.R.id.content))
+            ExperimentalMobileDesign.applyReducedGlass(findViewById(android.R.id.content))
+            statusView.setBackgroundResource(ExperimentalMobileDesign.glassCardBackground())
+            continueButton.setBackgroundResource(ExperimentalMobileDesign.primaryButtonBackground())
+            cancelButton.setBackgroundResource(ExperimentalMobileDesign.chipBackground())
+            findViewById<View>(R.id.bypass_footer)?.setBackgroundResource(
+                ExperimentalMobileDesign.navPillBackground(),
+            )
+            com.dskja.betterstreamflix.utils.ExpMotion.revealHeader(
+                findViewById(R.id.tv_bypass_eyebrow),
+                findViewById(R.id.tv_bypass_brand),
+                findViewById(R.id.v_bypass_rule),
+                statusView,
+            )
+            com.dskja.betterstreamflix.utils.ExpMotion.pulseAccentRule(
+                findViewById(R.id.v_bypass_rule),
+            )
+            com.dskja.betterstreamflix.utils.ExpMotion.popIn(continueButton)
+            com.dskja.betterstreamflix.utils.ExpMotion.popIn(cancelButton)
+            with(com.dskja.betterstreamflix.utils.ExpPressEffects) {
+                continueButton.applyExpPress()
+                cancelButton.applyExpPress()
+            }
+        }
+
         cancelButton.setOnClickListener {
+            com.dskja.betterstreamflix.utils.ExpMotion.hapticTap(it)
             setResult(Activity.RESULT_CANCELED)
             finish()
         }
 
         continueButton.setOnClickListener {
+            com.dskja.betterstreamflix.utils.ExpMotion.hapticTap(it)
             val cookies = collectCookieHeader()
             val hasHoster = !resolvedStreamUrl.isNullOrBlank()
             if (!hasHoster && !SerienStreamBypassHelper.looksLikeBypassSolved(cookies)) {
-                Toast.makeText(
-                    this,
-                    getString(R.string.bypass_status_challenge_pending),
-                    Toast.LENGTH_SHORT
-                ).show()
+                notifyBypass(R.string.bypass_status_challenge_pending)
                 return@setOnClickListener
             }
             finishWithResult()
@@ -122,7 +152,7 @@ class BypassWebViewActivity : AppCompatActivity() {
         setupWebView()
 
         if (targetUrl.isBlank()) {
-            Toast.makeText(this, getString(R.string.bypass_status_missing_url), Toast.LENGTH_SHORT).show()
+            notifyBypass(R.string.bypass_status_missing_url)
             setResult(Activity.RESULT_CANCELED)
             finish()
             return
@@ -146,14 +176,18 @@ class BypassWebViewActivity : AppCompatActivity() {
         super.onDestroy()
     }
 
+    private fun notifyBypass(messageRes: Int) {
+        ExpDialogChrome.notify(
+            this,
+            messageRes,
+            R.string.bypass_action_continue,
+        )
+    }
+
     private fun finishWithResult() {
         val cookies = collectCookieHeader()
         if (cookies.isBlank() && resolvedStreamUrl.isNullOrBlank()) {
-            Toast.makeText(
-                this,
-                getString(R.string.bypass_status_complete_bypass_first),
-                Toast.LENGTH_SHORT,
-            ).show()
+            notifyBypass(R.string.bypass_status_complete_bypass_first)
             return
         }
         val data = Intent().putExtra(EXTRA_COOKIE_HEADER, cookies)
@@ -173,6 +207,7 @@ class BypassWebViewActivity : AppCompatActivity() {
             useWideViewPort = true
             mixedContentMode = WebSettings.MIXED_CONTENT_COMPATIBILITY_MODE
             userAgentString = MODERN_UA
+            webViewUserAgent = MODERN_UA
             allowFileAccess = false
             allowContentAccess = false
             javaScriptCanOpenWindowsAutomatically = true
@@ -218,9 +253,10 @@ class BypassWebViewActivity : AppCompatActivity() {
                 view: WebView?,
                 request: WebResourceRequest?,
             ): android.webkit.WebResourceResponse? {
+                // Must not touch WebView APIs off the main thread.
                 val bridged = com.dskja.betterstreamflix.utils.WebViewDohBridge.interceptMainDocument(
                     request,
-                    webView.settings.userAgentString ?: MODERN_UA,
+                    webViewUserAgent,
                 )
                 if (bridged != null) return bridged
                 return super.shouldInterceptRequest(view, request)
@@ -297,11 +333,23 @@ class BypassWebViewActivity : AppCompatActivity() {
         val cookies = collectCookieHeader()
         val solved = SerienStreamBypassHelper.looksLikeBypassSolved(cookies)
         val hasHoster = !resolvedStreamUrl.isNullOrBlank()
+        val wasEnabled = continueButton.isEnabled
         continueButton.isEnabled = solved || hasHoster
+        if (ExperimentalMobileDesign.enabled() && continueButton.isEnabled && !wasEnabled) {
+            com.dskja.betterstreamflix.utils.ExpMotion.popIn(continueButton)
+        }
         statusView.text = when {
             hasHoster || solved -> getString(R.string.bypass_status_completed_continue)
             cookies.isNotBlank() -> getString(R.string.bypass_status_challenge_pending)
             else -> getString(R.string.bypass_status_complete_in_page)
+        }
+        if (ExperimentalMobileDesign.enabled() && (hasHoster || solved)) {
+            if (statusView.getTag(R.id.exp_enter_animated_tag) != true) {
+                statusView.setTag(R.id.exp_enter_animated_tag, true)
+                com.dskja.betterstreamflix.utils.ExpMotion.revealHeader(statusView)
+            }
+        } else if (ExperimentalMobileDesign.enabled()) {
+            statusView.setTag(R.id.exp_enter_animated_tag, null)
         }
 
         if (!currentUrl.isNullOrBlank()) {

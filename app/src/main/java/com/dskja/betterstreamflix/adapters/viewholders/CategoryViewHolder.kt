@@ -32,6 +32,7 @@ import com.dskja.betterstreamflix.models.Show
 import com.dskja.betterstreamflix.models.TvShow
 import com.dskja.betterstreamflix.ui.SpacingItemDecoration
 import com.dskja.betterstreamflix.utils.ExperimentalMobileDesign
+import com.dskja.betterstreamflix.utils.ExpMotion
 import com.dskja.betterstreamflix.utils.dp
 import com.dskja.betterstreamflix.utils.format
 import com.dskja.betterstreamflix.utils.getCurrentFragment
@@ -51,6 +52,23 @@ class CategoryViewHolder(
     private lateinit var category: Category
     private var swiperHandler: Handler? = null
     private var swiperPageCallback: ViewPager2.OnPageChangeCallback? = null
+    private var swiperProgressAnimator: android.animation.ObjectAnimator? = null
+
+    /** Stop auto-advance + page callbacks so recycled holders cannot touch a torn-down NavHost. */
+    fun clearSwiper() {
+        val callback = swiperPageCallback
+        if (callback != null) {
+            val binding = _binding
+            if (binding is ContentCategorySwiperMobileBinding) {
+                runCatching { binding.vpCategorySwiper.unregisterOnPageChangeCallback(callback) }
+            }
+        }
+        swiperPageCallback = null
+        swiperProgressAnimator?.cancel()
+        swiperProgressAnimator = null
+        swiperHandler?.removeCallbacksAndMessages(null)
+        swiperHandler = null
+    }
 
     val childRecyclerView: RecyclerView?
         get() = when (_binding) {
@@ -90,6 +108,48 @@ class CategoryViewHolder(
     ) {
         binding.tvCategoryTitle.text = category.name
 
+        if (ExperimentalMobileDesign.enabled()) {
+            binding.tvCategoryTitle.setBackgroundResource(ExperimentalMobileDesign.chipBackground())
+            binding.tvCategoryTitle.setTextColor(
+                com.google.android.material.color.MaterialColors.getColor(
+                    binding.tvCategoryTitle,
+                    androidx.appcompat.R.attr.colorPrimary,
+                ),
+            )
+            val density = binding.root.resources.displayMetrics.density
+            binding.tvCategoryTitle.layoutParams =
+                binding.tvCategoryTitle.layoutParams.apply {
+                    width = android.view.ViewGroup.LayoutParams.WRAP_CONTENT
+                }
+            binding.tvCategoryTitle.setPadding(
+                (14 * density).toInt(),
+                (7 * density).toInt(),
+                (14 * density).toInt(),
+                (7 * density).toInt(),
+            )
+            with(com.dskja.betterstreamflix.utils.ExpPressEffects) {
+                binding.tvCategoryTitle.applyExpPress()
+            }
+            binding.tvCategoryTitle.setOnClickListener {
+                ExpMotion.hapticTap(it)
+            }
+            binding.root.findViewById<View>(R.id.v_category_rule)?.visibility = View.VISIBLE
+            binding.root.findViewById<View>(R.id.v_category_edge_fade_start)?.visibility = View.VISIBLE
+            binding.root.findViewById<View>(R.id.v_category_edge_fade_end)?.visibility = View.VISIBLE
+            val enterKey = category.name
+            if (binding.root.getTag(R.id.exp_enter_animated_tag) != enterKey) {
+                binding.root.setTag(R.id.exp_enter_animated_tag, enterKey)
+                ExpMotion.revealHeader(
+                    binding.tvCategoryTitle,
+                    binding.root.findViewById(R.id.v_category_rule),
+                )
+                ExpMotion.pulseAccentRule(
+                    binding.root.findViewById(R.id.v_category_rule),
+                )
+                ExpMotion.staggerFirstFill(binding.rvCategory)
+            }
+        }
+
         binding.rvCategory.apply {
             val categoryAdapter = (adapter as? AppAdapter) ?: AppAdapter().also { adapter = it }
             categoryAdapter.apply {
@@ -113,6 +173,42 @@ class CategoryViewHolder(
         onTvShowLongClick: ((TvShow) -> Unit)?,
     ) {
         binding.tvCategoryTitle.text = category.name
+
+        if (ExperimentalMobileDesign.enabled()) {
+            binding.tvCategoryTitle.setBackgroundResource(ExperimentalMobileDesign.chipBackground())
+            binding.tvCategoryTitle.setTextColor(
+                MaterialColors.getColor(
+                    binding.tvCategoryTitle,
+                    androidx.appcompat.R.attr.colorPrimary,
+                ),
+            )
+            val density = binding.root.resources.displayMetrics.density
+            binding.tvCategoryTitle.setPadding(
+                (16 * density).toInt(),
+                (8 * density).toInt(),
+                (16 * density).toInt(),
+                (8 * density).toInt(),
+            )
+            with(com.dskja.betterstreamflix.utils.ExpPressEffects) {
+                binding.tvCategoryTitle.applyExpPress()
+            }
+            binding.root.findViewById<View>(R.id.v_category_rule)?.visibility = View.VISIBLE
+            binding.root.findViewById<View>(R.id.v_category_edge_fade_start)?.visibility = View.VISIBLE
+            binding.root.findViewById<View>(R.id.v_category_edge_fade_end)?.visibility = View.VISIBLE
+            val enterKey = category.name
+            if (binding.root.getTag(R.id.exp_enter_animated_tag) != enterKey) {
+                binding.root.setTag(R.id.exp_enter_animated_tag, enterKey)
+                ExpMotion.revealHeader(
+                    binding.tvCategoryTitle,
+                    binding.root.findViewById(R.id.v_category_rule),
+                )
+                ExpMotion.pulseAccentRule(
+                    binding.root.findViewById(R.id.v_category_rule),
+                )
+                ExpMotion.staggerFirstFill(binding.hgvCategory)
+            }
+        }
+
         binding.hgvCategory.apply {
             setRowHeight(ViewGroup.LayoutParams.WRAP_CONTENT)
 
@@ -141,14 +237,33 @@ class CategoryViewHolder(
     ) {
         binding.tvCategoryTitle.text = category.name
 
-        swiperPageCallback?.let { binding.vpCategorySwiper.unregisterOnPageChangeCallback(it) }
-        swiperPageCallback = null
-        swiperHandler?.removeCallbacksAndMessages(null)
+        clearSwiper()
         val handler = Handler(Looper.getMainLooper())
         swiperHandler = handler
-        handler.postDelayed(8_000) {
-            binding.vpCategorySwiper.currentItem += 1
+        fun restartAutoProgress() {
+            if (!ExperimentalMobileDesign.enabled()) return
+            val bar = binding.root.findViewById<android.widget.ProgressBar>(R.id.pb_swiper_auto_progress)
+                ?: return
+            bar.visibility = View.VISIBLE
+            swiperProgressAnimator?.cancel()
+            bar.progress = 0
+            swiperProgressAnimator = android.animation.ObjectAnimator.ofInt(bar, "progress", 0, 1000)
+                .setDuration(8_000L)
+                .also { it.start() }
         }
+        fun scheduleAdvance() {
+            if (swiperHandler !== handler) return
+            if (bindingAdapterPosition == RecyclerView.NO_POSITION) return
+            if (!itemView.isAttachedToWindow) return
+            restartAutoProgress()
+            handler.postDelayed(8_000) {
+                if (swiperHandler !== handler) return@postDelayed
+                if (bindingAdapterPosition == RecyclerView.NO_POSITION) return@postDelayed
+                if (!itemView.isAttachedToWindow) return@postDelayed
+                runCatching { binding.vpCategorySwiper.currentItem += 1 }
+            }
+        }
+        scheduleAdvance()
 
         val items = listOf(
             listOfNotNull(category.list.lastOrNull()),
@@ -167,6 +282,16 @@ class CategoryViewHolder(
                     if (category.list.isNotEmpty()) {
                         // Infinite loop: [last] + items + [first] — start on first real item.
                         setCurrentItem(1, false)
+                    }
+                    // Defense: ViewPager2 requires match_parent page roots (BETTERSTREAMFLIX-13).
+                    for (i in 0 until childCount) {
+                        getChildAt(i)?.let { child ->
+                            child.layoutParams = (child.layoutParams
+                                ?: ViewGroup.LayoutParams(0, 0)).apply {
+                                width = ViewGroup.LayoutParams.MATCH_PARENT
+                                height = ViewGroup.LayoutParams.MATCH_PARENT
+                            }
+                        }
                     }
                 }
             }
@@ -203,10 +328,17 @@ class CategoryViewHolder(
                     addView(view)
                 }
             }
+            if (exp && getTag(R.id.exp_enter_animated_tag) != true) {
+                setTag(R.id.exp_enter_animated_tag, true)
+                ExpMotion.popIn(this)
+            }
         }
 
         val callback = object : ViewPager2.OnPageChangeCallback() {
             override fun onPageSelected(position: Int) {
+                if (swiperHandler !== handler || bindingAdapterPosition == RecyclerView.NO_POSITION) {
+                    return
+                }
                 val indicatorPosition = when (position) {
                     0 -> category.list.lastIndex
                     items.lastIndex -> 0
@@ -214,9 +346,13 @@ class CategoryViewHolder(
                 }
                 if (exp) {
                     updateExpDots(binding, indicatorPosition)
+                    ExpMotion.hapticTap(binding.vpCategorySwiper)
                     (category.list.getOrNull(indicatorPosition) as? Show)?.let { show ->
-                        (context.toActivity()?.getCurrentFragment() as? HomeMobileFragment)
-                            ?.updateExperimentalHeroArt(show)
+                        val activity = context.toActivity()
+                        if (activity != null && !activity.isFinishing && !activity.isDestroyed) {
+                            (activity.getCurrentFragment() as? HomeMobileFragment)
+                                ?.updateExperimentalHeroArt(show)
+                        }
                         val title = when (show) {
                             is Movie -> show.title
                             is TvShow -> show.title
@@ -228,6 +364,39 @@ class CategoryViewHolder(
                             )
                         }
                     }
+                    binding.vpCategorySwiper.getChildAt(0)
+                        ?.let { it as? RecyclerView }
+                        ?.findViewHolderForAdapterPosition(binding.vpCategorySwiper.currentItem)
+                        ?.itemView
+                        ?.let { page ->
+                            page.findViewById<View>(R.id.tv_swiper_title)?.let {
+                                ExpMotion.revealHeader(it)
+                            }
+                            page.findViewById<View>(R.id.tv_swiper_overview)?.let {
+                                ExpMotion.revealHeader(it)
+                            }
+                            page.findViewById<View>(R.id.btn_swiper_watch_now)?.let { btn ->
+                                btn.setBackgroundResource(
+                                    ExperimentalMobileDesign.primaryButtonBackground(),
+                                )
+                                with(com.dskja.betterstreamflix.utils.ExpPressEffects) {
+                                    btn.applyExpPress()
+                                }
+                                ExpMotion.popIn(btn)
+                            }
+                            page.findViewById<View>(R.id.tv_swiper_quality)?.let { quality ->
+                                quality.setBackgroundResource(
+                                    ExperimentalMobileDesign.metaPillBackground(),
+                                )
+                                ExpMotion.popIn(quality)
+                            }
+                            page.findViewById<View>(R.id.tv_swiper_rating)?.let { rating ->
+                                rating.setBackgroundResource(
+                                    ExperimentalMobileDesign.metaPillBackground(),
+                                )
+                                ExpMotion.popIn(rating)
+                            }
+                        }
                 } else {
                     binding.llDotsIndicator.children.forEachIndexed { index, view ->
                         view.isSelected = (indicatorPosition == index)
@@ -235,12 +404,13 @@ class CategoryViewHolder(
                 }
 
                 handler.removeCallbacksAndMessages(null)
-                handler.postDelayed(8_000) {
-                    binding.vpCategorySwiper.currentItem += 1
-                }
+                scheduleAdvance()
             }
 
             override fun onPageScrollStateChanged(state: Int) {
+                if (swiperHandler !== handler || bindingAdapterPosition == RecyclerView.NO_POSITION) {
+                    return
+                }
                 if (state == ViewPager2.SCROLL_STATE_IDLE) {
                     when (binding.vpCategorySwiper.currentItem) {
                         0 -> binding.vpCategorySwiper.setCurrentItem(
@@ -268,6 +438,25 @@ class CategoryViewHolder(
         )
 
     private fun applyExperimentalSwiperChrome(binding: ContentCategorySwiperMobileBinding) {
+        binding.tvCategoryTitle.setBackgroundResource(ExperimentalMobileDesign.chipBackground())
+        binding.tvCategoryTitle.setTextColor(
+            MaterialColors.getColor(
+                binding.tvCategoryTitle,
+                androidx.appcompat.R.attr.colorPrimary,
+            ),
+        )
+        with(com.dskja.betterstreamflix.utils.ExpPressEffects) {
+            binding.tvCategoryTitle.applyExpPress()
+        }
+        binding.tvCategoryTitle.setOnClickListener {
+            ExpMotion.hapticTap(it)
+        }
+        binding.llDotsIndicator.setBackgroundResource(ExperimentalMobileDesign.chipBackground())
+        if (binding.root.getTag(R.id.exp_enter_animated_tag) != true) {
+            binding.root.setTag(R.id.exp_enter_animated_tag, true)
+            ExpMotion.revealHeader(binding.tvCategoryTitle)
+            ExpMotion.popIn(binding.llDotsIndicator)
+        }
         binding.vpCategorySwiper.setPageTransformer { page, position ->
             val clamped = abs(position).coerceAtMost(1f)
             page.findViewById<View>(R.id.iv_swiper_background)?.apply {
@@ -302,12 +491,33 @@ class CategoryViewHolder(
                 width = if (isActive) activeWidth else dotSize
             }
             view.backgroundTintList = ColorStateList.valueOf(if (isActive) activeColor else inactive)
+            view.animate().cancel()
+            if (isActive) {
+                view.scaleX = 0.7f
+                view.scaleY = 0.7f
+                view.alpha = 0.55f
+                view.animate()
+                    .scaleX(1f)
+                    .scaleY(1f)
+                    .alpha(1f)
+                    .setDuration(220L)
+                    .setInterpolator(android.view.animation.OvershootInterpolator(2.2f))
+                    .start()
+            } else {
+                view.scaleX = 1f
+                view.scaleY = 1f
+                view.alpha = 0.85f
+            }
         }
     }
 
     private fun displayTvSwiper(binding: ContentCategorySwiperTvBinding) {
         binding.tvCategoryTitle.text = category.name
         val selected = category.list.getOrNull(category.selectedIndex) as? Show ?: return
+
+        if (ExperimentalMobileDesign.enabled()) {
+            applyExperimentalTvSwiperChrome(binding)
+        }
 
         fun checkProviderAndRun(show: Show, action: () -> Unit) {
             val providerName = when(show){
@@ -412,7 +622,17 @@ class CategoryViewHolder(
 
 
         binding.btnSwiperWatchNow.apply {
+            if (ExperimentalMobileDesign.enabled()) {
+                setBackgroundResource(ExperimentalMobileDesign.primaryButtonBackground())
+                setTextColor(
+                    MaterialColors.getColor(
+                        this, com.google.android.material.R.attr.colorOnPrimary,
+                    ),
+                )
+                with(com.dskja.betterstreamflix.utils.ExpPressEffects) { applyExpPress() }
+            }
             setOnClickListener {
+                ExpMotion.hapticTap(it)
                 checkProviderAndRun(selected) {
                     findNavController().navigate(
                         when (selected) {
@@ -463,20 +683,106 @@ class CategoryViewHolder(
                 watchHistory != null -> View.VISIBLE
                 else -> View.GONE
             }
+            if (ExperimentalMobileDesign.enabled() && watchHistory != null) {
+                val primary = MaterialColors.getColor(
+                    this, androidx.appcompat.R.attr.colorPrimary,
+                )
+                progressTintList = ColorStateList.valueOf(primary)
+            }
         }
 
         binding.llDotsIndicator.apply {
             removeAllViews()
+            val exp = ExperimentalMobileDesign.enabled()
+            if (exp) {
+                setBackgroundResource(ExperimentalMobileDesign.chipBackground())
+                val pad = (10 * resources.displayMetrics.density).toInt()
+                setPadding(pad, pad / 2, pad, pad / 2)
+            }
+            val activeColor = if (exp) {
+                MaterialColors.getColor(
+                    context, androidx.appcompat.R.attr.colorPrimary, 0xFFFFFFFF.toInt(),
+                )
+            } else {
+                0xFFFFFFFF.toInt()
+            }
+            val inactiveColor = if (exp) {
+                MaterialColors.getColor(
+                    context, com.google.android.material.R.attr.colorOnSurfaceVariant, 0x66FFFFFF,
+                )
+            } else {
+                0x66FFFFFF
+            }
             repeat(category.list.size) { index ->
+                val isActive = category.selectedIndex == index
                 val view = View(context).apply {
-                    layoutParams = LinearLayout.LayoutParams(15, 15).apply {
+                    layoutParams = LinearLayout.LayoutParams(
+                        if (exp && isActive) 28 else 15,
+                        15,
+                    ).apply {
                         setMargins(10, 0, 10, 0)
                     }
-                    setBackgroundResource(R.drawable.bg_dot_indicator)
-                    isSelected = (category.selectedIndex == index)
+                    setBackgroundResource(
+                        if (exp) R.drawable.bg_exp_dot else R.drawable.bg_dot_indicator,
+                    )
+                    backgroundTintList = ColorStateList.valueOf(
+                        if (isActive) activeColor else inactiveColor,
+                    )
+                    isSelected = isActive
                 }
                 addView(view)
             }
+        }
+    }
+
+    private fun applyExperimentalTvSwiperChrome(binding: ContentCategorySwiperTvBinding) {
+        binding.tvCategoryTitle.setBackgroundResource(ExperimentalMobileDesign.chipBackground())
+        binding.tvCategoryTitle.setTextColor(
+            MaterialColors.getColor(
+                binding.tvCategoryTitle,
+                androidx.appcompat.R.attr.colorPrimary,
+            ),
+        )
+        val density = binding.root.resources.displayMetrics.density
+        binding.tvCategoryTitle.setPadding(
+            (16 * density).toInt(),
+            (8 * density).toInt(),
+            (16 * density).toInt(),
+            (8 * density).toInt(),
+        )
+        with(com.dskja.betterstreamflix.utils.ExpPressEffects) {
+            binding.tvCategoryTitle.applyExpPress()
+        }
+        val onSurface = MaterialColors.getColor(
+            binding.tvSwiperTitle, com.google.android.material.R.attr.colorOnSurface,
+        )
+        val onVariant = MaterialColors.getColor(
+            binding.tvSwiperOverview, com.google.android.material.R.attr.colorOnSurfaceVariant,
+        )
+        binding.tvSwiperTitle.setTextColor(onSurface)
+        binding.tvSwiperOverview.setTextColor(onVariant)
+        listOf(
+            binding.tvSwiperTvShowLastEpisode,
+            binding.tvSwiperQuality,
+            binding.tvSwiperReleased,
+            binding.tvSwiperRating,
+        ).forEach { meta ->
+            meta.setBackgroundResource(ExperimentalMobileDesign.metaPillBackground())
+            meta.setTextColor(onSurface)
+            val padH = (12 * density).toInt()
+            val padV = (6 * density).toInt()
+            meta.setPadding(padH, padV, padH, padV)
+        }
+        binding.ivSwiperRatingIcon.imageTintList = ColorStateList.valueOf(
+            MaterialColors.getColor(
+                binding.ivSwiperRatingIcon, androidx.appcompat.R.attr.colorPrimary,
+            ),
+        )
+        if (binding.root.getTag(R.id.exp_enter_animated_tag) != true) {
+            binding.root.setTag(R.id.exp_enter_animated_tag, true)
+            ExpMotion.revealHeader(binding.tvCategoryTitle, binding.tvSwiperTitle)
+            ExpMotion.popIn(binding.btnSwiperWatchNow)
+            ExpMotion.popIn(binding.llDotsIndicator)
         }
     }
 }

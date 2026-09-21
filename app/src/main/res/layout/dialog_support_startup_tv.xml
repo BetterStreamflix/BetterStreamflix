@@ -63,6 +63,13 @@
                     tools:ignore="UseAppTint" />
             </FrameLayout>
 
+            <View
+                android:id="@+id/v_support_startup_accent_rule"
+                android:layout_width="40dp"
+                android:layout_height="3dp"
+                android:layout_marginTop="12dp"
+                android:background="@drawable/bg_exp_accent_rule" />
+
             <TextView
                 android:id="@+id/tv_support_startup_body"
                 android:layout_width="match_parent"

@@ -2,6 +2,7 @@ package com.dskja.betterstreamflix.ui
 
 import android.content.Context
 import android.util.AttributeSet
+import android.util.Log
 import android.view.KeyEvent
 import android.widget.Toast
 import androidx.media3.common.Player
@@ -16,11 +17,32 @@ class PlayerTvView @JvmOverloads constructor(
     defStyle: Int = 0
 ) : PlayerView(context, attrs, defStyle) {
 
+    private var cachedController: PlayerControlView? = null
+
+    /**
+     * Safely resolve Exo PlayerControlView. Never throw — a missing controller must not
+     * crash TV playback to the Android launcher (GitHub #103 class of failures).
+     */
     val controller: PlayerControlView
-        get() = PlayerView::class.java.getDeclaredField("controller").let {
-            it.isAccessible = true
-            it.get(this) as PlayerControlView
+        get() {
+            cachedController?.let { return it }
+            val resolved = runCatching {
+                val field = PlayerView::class.java.getDeclaredField("controller")
+                field.isAccessible = true
+                field.get(this) as? PlayerControlView
+            }.onFailure {
+                Log.w(TAG, "controller reflection failed: ${it.message}")
+            }.getOrNull()
+                ?: findViewById(androidx.media3.ui.R.id.exo_controller)
+            cachedController = resolved
+            if (resolved != null) return resolved
+            // Last resort: inflate a detached control view so callers never crash the TV process.
+            Log.e(TAG, "PlayerControlView missing — using detached fallback")
+            return PlayerControlView(context).also { cachedController = it }
         }
+
+    /** Non-throwing access for hot paths that can no-op when controller is absent. */
+    fun controllerOrNull(): PlayerControlView? = runCatching { controller }.getOrNull()
 
     var isManualZoomEnabled: Boolean = false
         private set
@@ -47,9 +69,57 @@ class PlayerTvView @JvmOverloads constructor(
     }
 
     private fun showZoomToast(message: String, duration: Int = Toast.LENGTH_SHORT) {
+        if (com.dskja.betterstreamflix.utils.ExperimentalMobileDesign.enabled()) {
+            showExpZoomCue(message)
+            return
+        }
         zoomToast?.cancel()
         zoomToast = Toast.makeText(context, message, duration)
         zoomToast?.show()
+    }
+
+    private fun showExpZoomCue(message: String) {
+        val host = this as? android.view.ViewGroup ?: run {
+            zoomToast?.cancel()
+            zoomToast = Toast.makeText(context, message, Toast.LENGTH_SHORT)
+            zoomToast?.show()
+            return
+        }
+        host.findViewWithTag<android.widget.TextView>("exp_zoom_cue")?.let { host.removeView(it) }
+        val density = resources.displayMetrics.density
+        val cue = android.widget.TextView(context).apply {
+            tag = "exp_zoom_cue"
+            text = message
+            gravity = android.view.Gravity.CENTER
+            setTextAppearance(R.style.TextAppearance_Lumina_Caption)
+            setBackgroundResource(
+                com.dskja.betterstreamflix.utils.ExperimentalMobileDesign.metaPillBackground(),
+            )
+            val padH = (16 * density).toInt()
+            val padV = (10 * density).toInt()
+            setPadding(padH, padV, padH, padV)
+            elevation = 8f * density
+            setTextColor(
+                com.google.android.material.color.MaterialColors.getColor(
+                    this, com.google.android.material.R.attr.colorOnSurface,
+                ),
+            )
+        }
+        val lp = android.widget.FrameLayout.LayoutParams(
+            android.view.ViewGroup.LayoutParams.WRAP_CONTENT,
+            android.view.ViewGroup.LayoutParams.WRAP_CONTENT,
+        ).apply {
+            gravity = android.view.Gravity.CENTER_HORIZONTAL or android.view.Gravity.BOTTOM
+            bottomMargin = (72 * density).toInt()
+        }
+        host.addView(cue, lp)
+        com.dskja.betterstreamflix.utils.ExpMotion.popIn(cue)
+        cue.postDelayed({
+            if (cue.parent != null) {
+                com.dskja.betterstreamflix.utils.ExpMotion.fadeOutAndHide(cue)
+                cue.postDelayed({ (cue.parent as? android.view.ViewGroup)?.removeView(cue) }, 220L)
+            }
+        }, 900L)
     }
 
     override fun dispatchKeyEvent(event: KeyEvent): Boolean {
@@ -107,7 +177,8 @@ class PlayerTvView @JvmOverloads constructor(
             return super.dispatchKeyEvent(event)
         }
 
-        if (controller.isVisible) return super.dispatchKeyEvent(event)
+        val controlsVisible = controllerOrNull()?.isVisible == true
+        if (controlsVisible) return super.dispatchKeyEvent(event)
 
         return when (event.keyCode) {
             KeyEvent.KEYCODE_DPAD_LEFT -> {
@@ -125,5 +196,9 @@ class PlayerTvView @JvmOverloads constructor(
             }
             else -> super.dispatchKeyEvent(event)
         }
+    }
+
+    private companion object {
+        const val TAG = "PlayerTvView"
     }
 }

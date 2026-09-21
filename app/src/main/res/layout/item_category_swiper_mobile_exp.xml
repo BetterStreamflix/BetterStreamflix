@@ -10,7 +10,7 @@
         android:id="@+id/iv_swiper_background"
         android:layout_width="0dp"
         android:layout_height="0dp"
-        android:foreground="@drawable/fg_category_swiper_exp"
+        android:foreground="?attr/category_swiper_gradient_drawable"
         android:scaleType="centerCrop"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
@@ -29,16 +29,13 @@
 
     <TextView
         android:id="@+id/tv_swiper_title"
-        android:fontFamily="@font/manrope"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_marginStart="22dp"
         android:layout_marginEnd="56dp"
         android:layout_marginBottom="16dp"
         android:gravity="start"
-        android:letterSpacing="-0.02"
-        android:textColor="?attr/colorOnSurface"
-        android:textSize="28sp"
+        android:textAppearance="@style/TextAppearance.Lumina.Brand"
         app:layout_constraintBottom_toTopOf="@id/barrier1"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
@@ -53,6 +50,7 @@
 
     <TextView
         android:id="@+id/tv_swiper_tv_show_last_episode"
+        android:textAppearance="@style/TextAppearance.Lumina.Caption"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginStart="22dp"
@@ -68,6 +66,7 @@
 
     <TextView
         android:id="@+id/tv_swiper_quality"
+        android:textAppearance="@style/TextAppearance.Lumina.Eyebrow"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginStart="14dp"
@@ -89,11 +88,17 @@
 
     <TextView
         android:id="@+id/tv_swiper_released"
+        android:textAppearance="@style/TextAppearance.Lumina.Caption"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginStart="14dp"
         android:layout_marginBottom="18dp"
-        android:textColor="?attr/colorOnSurfaceVariant"
+        android:background="@drawable/bg_exp_meta_pill"
+        android:paddingStart="8dp"
+        android:paddingTop="2dp"
+        android:paddingEnd="8dp"
+        android:paddingBottom="2dp"
+        android:textColor="?attr/colorOnSecondaryContainer"
         app:layout_constraintBottom_toTopOf="@id/tv_swiper_overview"
         app:layout_constraintEnd_toStartOf="@id/iv_swiper_rating_icon"
         app:layout_constraintStart_toEndOf="@id/tv_swiper_quality"
@@ -117,11 +122,19 @@
 
     <TextView
         android:id="@+id/tv_swiper_rating"
+        android:textAppearance="@style/TextAppearance.Lumina.Eyebrow"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginEnd="22dp"
         android:layout_marginBottom="18dp"
-        android:textColor="?attr/colorOnSurface"
+        android:background="@drawable/bg_exp_meta_pill"
+        android:paddingStart="8dp"
+        android:paddingTop="2dp"
+        android:paddingEnd="8dp"
+        android:paddingBottom="2dp"
+        android:textColor="?attr/colorOnSecondaryContainer"
+        android:textSize="11sp"
+        android:textStyle="bold"
         app:layout_constraintBottom_toTopOf="@id/tv_swiper_overview"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toEndOf="@id/iv_swiper_rating_icon"
@@ -130,6 +143,7 @@
 
     <TextView
         android:id="@+id/tv_swiper_overview"
+        android:textAppearance="@style/TextAppearance.Lumina.Body"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_marginStart="22dp"
@@ -151,7 +165,7 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginStart="22dp"
-        android:layout_marginBottom="48dp"
+        android:layout_marginBottom="28dp"
         android:text="@string/home_swiper_watch_now"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintStart_toStartOf="parent" />
@@ -163,6 +177,7 @@
         android:layout_height="4dp"
         android:layout_marginTop="10dp"
         android:progressDrawable="@drawable/bg_exp_progress_track"
+        android:visibility="gone"
         app:layout_constraintEnd_toEndOf="@id/btn_swiper_watch_now"
         app:layout_constraintStart_toStartOf="@id/btn_swiper_watch_now"
         app:layout_constraintTop_toBottomOf="@id/btn_swiper_watch_now"

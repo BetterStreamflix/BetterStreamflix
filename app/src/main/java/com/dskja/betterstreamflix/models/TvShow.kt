@@ -31,6 +31,9 @@ class TvShow(
     var imdbId: String? = null,
 
     @Ignore
+    var tmdbId: String? = null,
+
+    @Ignore
     var providerName: String? = null,
     @Ignore
     val seasons: List<Season> = listOf(),
@@ -49,6 +52,10 @@ class TvShow(
     var favoritedAtMillis: Long? = null
     var lastPlayedAtMillis: Long? = null
     var lastPlayedEpisodeId: String? = null
+
+    /** TMDb / provider content rating chip (e.g. TV-MA). Not persisted. */
+    @Ignore
+    var contentRating: String? = null
 
     @Ignore
     var lastPlayedEpisode: Episode? = null
@@ -137,6 +144,7 @@ class TvShow(
         poster,
         banner,
         imdbId,
+        tmdbId,
         providerName,
         seasons,
         genres,
@@ -148,6 +156,7 @@ class TvShow(
         lastPlayedAtMillis = this@TvShow.lastPlayedAtMillis
         lastPlayedEpisodeId = this@TvShow.lastPlayedEpisodeId
         lastPlayedEpisode = this@TvShow.lastPlayedEpisode
+        contentRating = this@TvShow.contentRating
     }
 
     override fun equals(other: Any?): Boolean {

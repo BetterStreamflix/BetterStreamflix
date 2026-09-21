@@ -22,7 +22,41 @@ interface ProviderConfigUrl {
     val changeUrlMutex: Mutex
 }
 
-interface IptvProvider : Provider
+interface IptvProvider : Provider {
+    /**
+     * Flat channel guide used by the live player for prev/next zapping.
+     * Default walks [getTvShows] pages; providers with a local M3U cache can override.
+     */
+    suspend fun listLiveChannels(
+        aroundId: String? = null,
+        limit: Int = 250,
+    ): List<com.dskja.betterstreamflix.iptv.IptvLiveSession.Channel> {
+        val out = LinkedHashMap<String, com.dskja.betterstreamflix.iptv.IptvLiveSession.Channel>()
+        var page = 1
+        while (out.size < limit && page <= 12) {
+            val batch = runCatching { getTvShows(page) }.getOrDefault(emptyList())
+            if (batch.isEmpty()) break
+            batch.forEach { show ->
+                out.putIfAbsent(
+                    show.id,
+                    com.dskja.betterstreamflix.iptv.IptvLiveSession.Channel(
+                        id = show.id,
+                        name = show.title,
+                        logo = show.poster,
+                    ),
+                )
+            }
+            page++
+        }
+        val list = out.values.toList()
+        if (aroundId == null) return list.take(limit)
+        val idx = list.indexOfFirst { it.id == aroundId }
+        if (idx < 0) return list.take(limit)
+        val half = limit / 2
+        val start = (idx - half).coerceAtLeast(0)
+        return list.drop(start).take(limit)
+    }
+}
 
 interface Provider {
 
@@ -124,6 +158,11 @@ interface Provider {
             PlutoTvItProvider to ProviderSupport(movies = false, tvShows = true),
             PlutoTvUsProvider to ProviderSupport(movies = false, tvShows = true),
             CineCityProvider to ProviderSupport(movies = false, tvShows = true),
+            FamelackProvider to ProviderSupport(movies = false, tvShows = true),
+            StreamSports99Provider to ProviderSupport(movies = false, tvShows = true),
+            DaddyLiveTvProvider to ProviderSupport(movies = false, tvShows = true),
+            NtvProvider to ProviderSupport(movies = false, tvShows = true),
+            SportsBiteProvider to ProviderSupport(movies = false, tvShows = true),
             CineHaxProvider to ProviderSupport(movies = true, tvShows = true),
             StreamingItaProvider to ProviderSupport(movies = true, tvShows = true),
             AnyMovieProvider to ProviderSupport(movies = true, tvShows = true),

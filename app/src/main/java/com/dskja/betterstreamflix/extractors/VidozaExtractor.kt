@@ -6,6 +6,7 @@ import org.jsoup.nodes.Document
 import retrofit2.Retrofit
 import retrofit2.http.GET
 import retrofit2.http.Url
+import java.net.URL
 
 class VidozaExtractor : Extractor() {
 
@@ -18,9 +19,20 @@ class VidozaExtractor : Extractor() {
         val service = VoeExtractorService.build(mainUrl)
         val source = service.getSource(link.replace(mainUrl, ""))
         val videoUrl = source.select("source").attr("src")
+        if (videoUrl.isBlank()) {
+            throw Exception("Vidoza source not found")
+        }
+        val origin = runCatching {
+            val parsed = URL(link)
+            "${parsed.protocol}://${parsed.host}"
+        }.getOrDefault(mainUrl)
         return Video(
             source = videoUrl,
-            subtitles = listOf()
+            subtitles = listOf(),
+            headers = mapOf(
+                "Referer" to link,
+                "Origin" to origin,
+            ),
         )
     }
 

@@ -28,7 +28,7 @@
         android:layout_height="wrap_content"
         android:layout_marginStart="4dp"
         android:layout_marginEnd="16dp"
-        android:fontFamily="@font/manrope"
+        android:textAppearance="@style/TextAppearance.Lumina.Title"
         android:text="@string/settings_about"
         android:textColor="@color/support_text_primary"
         android:textSize="@dimen/support_text_screen_title"
@@ -58,21 +58,29 @@
             android:paddingEnd="@dimen/support_page_padding">
 
             <TextView
+                android:id="@+id/tv_about_brand"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:fontFamily="@font/manrope"
+                android:textAppearance="@style/TextAppearance.Lumina.Hero"
                 android:letterSpacing="-0.02"
                 android:text="@string/app_name"
                 android:textColor="@color/support_text_primary"
                 android:textSize="34sp"
                 android:textStyle="bold" />
 
+            <View
+                android:id="@+id/v_about_accent_rule"
+                android:layout_width="48dp"
+                android:layout_height="3dp"
+                android:layout_marginTop="12dp"
+                android:background="@drawable/bg_exp_accent_rule" />
+
             <TextView
                 android:id="@+id/tv_about_version"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="6dp"
-                android:fontFamily="@font/manrope"
+                android:textAppearance="@style/TextAppearance.Lumina.Caption"
                 android:textColor="@color/support_text_secondary"
                 android:textSize="@dimen/support_text_secondary"
                 tools:text="Version 1.1.1" />
@@ -81,7 +89,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="8dp"
-                android:fontFamily="@font/manrope"
+                android:textAppearance="@style/TextAppearance.Lumina.Body"
                 android:text="@string/settings_about_maintainer"
                 android:textColor="@color/support_text_secondary"
                 android:textSize="@dimen/support_text_body" />
@@ -90,7 +98,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="20dp"
-                android:fontFamily="@font/manrope"
+                android:textAppearance="@style/TextAppearance.Lumina.Body"
                 android:lineSpacingExtra="3dp"
                 android:text="@string/settings_about_credits_summary"
                 android:textColor="@color/support_text_secondary"
@@ -111,7 +119,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="28dp"
-                android:fontFamily="@font/manrope"
+                android:textAppearance="@style/TextAppearance.Lumina.Body"
                 android:text="@string/about_links_heading"
                 android:textColor="@color/support_text_primary"
                 android:textSize="18sp"
@@ -130,7 +138,7 @@
                     android:layout_height="wrap_content"
                     android:layout_marginStart="14dp"
                     android:layout_weight="1"
-                    android:fontFamily="@font/manrope"
+                    android:textAppearance="@style/TextAppearance.Lumina.Body"
                     android:text="@string/settings_github"
                     android:textColor="@color/support_text_primary"
                     android:textSize="15sp" />
@@ -153,14 +161,14 @@
                     <TextView
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:fontFamily="@font/manrope"
+                        android:textAppearance="@style/TextAppearance.Lumina.Body"
                         android:text="@string/settings_buy_me_a_coffee"
                         android:textColor="@color/support_text_primary"
                         android:textSize="15sp" />
                     <TextView
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:fontFamily="@font/manrope"
+                        android:textAppearance="@style/TextAppearance.Lumina.Body"
                         android:text="@string/settings_buy_me_a_coffee_summary"
                         android:textColor="@color/support_text_secondary"
                         android:textSize="12sp" />
@@ -184,14 +192,14 @@
                     <TextView
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:fontFamily="@font/manrope"
+                        android:textAppearance="@style/TextAppearance.Lumina.Body"
                         android:text="@string/settings_github_sponsors"
                         android:textColor="@color/support_text_primary"
                         android:textSize="15sp" />
                     <TextView
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:fontFamily="@font/manrope"
+                        android:textAppearance="@style/TextAppearance.Lumina.Body"
                         android:text="@string/settings_github_sponsors_summary"
                         android:textColor="@color/support_text_secondary"
                         android:textSize="12sp" />
@@ -215,14 +223,14 @@
                     <TextView
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:fontFamily="@font/manrope"
+                        android:textAppearance="@style/TextAppearance.Lumina.Body"
                         android:text="@string/settings_patreon"
                         android:textColor="@color/support_text_primary"
                         android:textSize="15sp" />
                     <TextView
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:fontFamily="@font/manrope"
+                        android:textAppearance="@style/TextAppearance.Lumina.Caption"
                         android:text="@string/settings_patreon_summary"
                         android:textColor="@color/support_text_secondary"
                         android:textSize="12sp" />
@@ -246,14 +254,14 @@
                     <TextView
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:fontFamily="@font/manrope"
+                        android:textAppearance="@style/TextAppearance.Lumina.Body"
                         android:text="@string/settings_discord"
                         android:textColor="@color/support_text_primary"
                         android:textSize="15sp" />
                     <TextView
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:fontFamily="@font/manrope"
+                        android:textAppearance="@style/TextAppearance.Lumina.Caption"
                         android:text="@string/settings_discord_summary"
                         android:textColor="@color/support_text_secondary"
                         android:textSize="12sp" />
@@ -273,7 +281,7 @@
                     android:layout_height="wrap_content"
                     android:layout_marginStart="14dp"
                     android:layout_weight="1"
-                    android:fontFamily="@font/manrope"
+                    android:textAppearance="@style/TextAppearance.Lumina.Body"
                     android:text="@string/settings_telegram"
                     android:textColor="@color/support_text_primary"
                     android:textSize="15sp" />
@@ -296,14 +304,14 @@
                     <TextView
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:fontFamily="@font/manrope"
+                        android:textAppearance="@style/TextAppearance.Lumina.Body"
                         android:text="@string/settings_about_upstream"
                         android:textColor="@color/support_text_primary"
                         android:textSize="15sp" />
                     <TextView
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:fontFamily="@font/manrope"
+                        android:textAppearance="@style/TextAppearance.Lumina.Body"
                         android:text="github.com/streamflix-reborn2/streamflix"
                         android:textColor="@color/support_text_secondary"
                         android:textSize="12sp" />

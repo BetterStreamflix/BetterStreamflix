@@ -60,6 +60,23 @@
         app:layout_constraintTop_toBottomOf="@id/btn_season_download"
         tools:listitem="@layout/item_episode_mobile" />
 
+    <TextView
+        android:id="@+id/tv_season_empty"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:fontFamily="@font/manrope"
+        android:gravity="center"
+        android:padding="32dp"
+        android:text="@string/season_empty"
+        android:textColor="?android:attr/textColorSecondary"
+        android:textSize="15sp"
+        android:visibility="gone"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/btn_season_download"
+        tools:visibility="visible" />
+
     <include
         android:id="@+id/is_loading"
         layout="@layout/layout_is_loading_mobile"

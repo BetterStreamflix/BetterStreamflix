@@ -42,18 +42,25 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="16dp"
-            android:fontFamily="@font/manrope"
+            android:textAppearance="@style/TextAppearance.Lumina.Body"
             android:text="@string/support_startup_title"
             android:textColor="@color/support_text_primary"
             android:textSize="@dimen/support_text_screen_title"
             android:textStyle="bold" />
+
+        <View
+            android:id="@+id/v_support_startup_accent_rule"
+            android:layout_width="36dp"
+            android:layout_height="3dp"
+            android:layout_marginTop="10dp"
+            android:background="@drawable/bg_exp_accent_rule" />
 
         <TextView
             android:id="@+id/tv_support_startup_body"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="10dp"
-            android:fontFamily="@font/manrope"
+            android:textAppearance="@style/TextAppearance.Lumina.Body"
             android:lineSpacingExtra="3dp"
             android:text="@string/support_startup_body"
             android:textColor="@color/support_text_secondary"
@@ -121,8 +128,8 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="16dp"
-            android:buttonTint="@color/support_accent"
-            android:fontFamily="@font/manrope"
+            android:buttonTint="?attr/colorPrimary"
+            android:textAppearance="@style/TextAppearance.Lumina.Body"
             android:text="@string/support_startup_never_again"
             android:textColor="@color/support_text_tertiary"
             android:textSize="@dimen/support_text_caption" />

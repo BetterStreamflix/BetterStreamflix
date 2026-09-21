@@ -19,6 +19,10 @@ import com.dskja.betterstreamflix.databinding.FragmentProvidersTvBinding
 import com.dskja.betterstreamflix.models.Provider as ModelProvider
 import com.dskja.betterstreamflix.providers.Provider
 import com.dskja.betterstreamflix.ui.SpacingItemDecoration
+import com.dskja.betterstreamflix.utils.ExpEmptyChrome
+import com.dskja.betterstreamflix.utils.ExpMotion
+import com.dskja.betterstreamflix.utils.ExpSpinnerAdapter
+import com.dskja.betterstreamflix.utils.ExperimentalMobileDesign
 import com.dskja.betterstreamflix.utils.UserPreferences
 import kotlinx.coroutines.launch
 import java.util.Locale
@@ -51,23 +55,28 @@ class ProvidersTvFragment : Fragment() {
                 when (state) {
                     ProvidersViewModel.State.Loading -> binding.isLoading.apply {
                         root.visibility = View.VISIBLE
-                        pbIsLoading.visibility = View.VISIBLE
+                        com.dskja.betterstreamflix.utils.ExpPressEffects.showLoadingSkeleton(root, true)
                         gIsLoadingRetry.visibility = View.GONE
                     }
                     is ProvidersViewModel.State.SuccessLoading -> {
                         displayProviders(state.providers)
-                        binding.rvProviders.visibility = View.VISIBLE
                         binding.isLoading.root.visibility = View.GONE
+                        com.dskja.betterstreamflix.utils.ExpPressEffects.showLoadingSkeleton(
+                            binding.isLoading.root, false,
+                        )
                     }
                     is ProvidersViewModel.State.FailedLoading -> {
-                        Toast.makeText(
-                            requireContext(),
-                            state.error.message ?: "",
-                            Toast.LENGTH_SHORT
-                        ).show()
+                        if (!com.dskja.betterstreamflix.utils.ExperimentalMobileDesign.enabled()) {
+                            Toast.makeText(
+                                requireContext(),
+                                state.error.message ?: "",
+                                Toast.LENGTH_SHORT
+                            ).show()
+                        }
                         binding.isLoading.apply {
-                            pbIsLoading.visibility = View.GONE
+                            com.dskja.betterstreamflix.utils.ExpPressEffects.showLoadingSkeleton(root, false)
                             gIsLoadingRetry.visibility = View.VISIBLE
+                            com.dskja.betterstreamflix.utils.ExpPressEffects.animateLoadingError(root)
                             btnIsLoadingRetry.setOnClickListener {
                                 viewModel.getProviders()
                             }
@@ -105,19 +114,64 @@ class ProvidersTvFragment : Fragment() {
                 }
                 .sortedBy { it.name.lowercase() }
 
-            val spinnerAdapter = ArrayAdapter(
-                requireContext(),
-                android.R.layout.simple_spinner_item,
-                mutableListOf(
-                    context.getString(R.string.providers_all_languages),
-                    context.getString(R.string.providers_favorites)
-                ).apply {
-                    addAll(languages.map { it.name })
-                }.toTypedArray()
-            ).also {
-                it.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
+            val labels = mutableListOf(
+                context.getString(R.string.providers_all_languages),
+                context.getString(R.string.providers_favorites),
+            ).apply {
+                addAll(languages.map { it.name })
+            }
+            val spinnerAdapter = if (ExperimentalMobileDesign.enabled()) {
+                ExpSpinnerAdapter(
+                    this.context,
+                    R.layout.item_exp_spinner,
+                    R.layout.item_exp_spinner_dropdown,
+                    labels,
+                ) { selectedItemPosition.coerceAtLeast(0) }
+            } else {
+                ArrayAdapter(
+                    requireContext(),
+                    android.R.layout.simple_spinner_item,
+                    labels.toTypedArray(),
+                ).also {
+                    it.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
+                }
             }
             setAdapter(spinnerAdapter)
+
+            if (ExperimentalMobileDesign.enabled()) {
+                setBackgroundResource(ExperimentalMobileDesign.spinnerBackground())
+                with(com.dskja.betterstreamflix.utils.ExpPressEffects) { applyExpPress() }
+                runCatching {
+                    setPopupBackgroundResource(ExperimentalMobileDesign.glassCardBackground())
+                }
+                val onSurface = com.google.android.material.color.MaterialColors.getColor(
+                    binding.tvProvidersLabel,
+                    com.google.android.material.R.attr.colorOnSurface,
+                )
+                binding.tvProvidersLabel.setTextColor(onSurface)
+                binding.tvProvidersLabel.setTextAppearance(
+                    requireContext(),
+                    R.style.TextAppearance_Lumina_Title,
+                )
+                binding.root.findViewById<android.widget.ImageView>(R.id.iv_providers_language)?.let { langIcon ->
+                    val primary = com.google.android.material.color.MaterialColors.getColor(
+                        langIcon,
+                        androidx.appcompat.R.attr.colorPrimary,
+                    )
+                    langIcon.imageTintList = android.content.res.ColorStateList.valueOf(primary)
+                    langIcon.setBackgroundResource(ExperimentalMobileDesign.iconChipBackground())
+                    if (langIcon.getTag(R.id.exp_enter_animated_tag) != true) {
+                        langIcon.setTag(R.id.exp_enter_animated_tag, true)
+                        com.dskja.betterstreamflix.utils.ExpMotion.popIn(langIcon)
+                    }
+                }
+                if (getTag(R.id.exp_enter_animated_tag) != true) {
+                    setTag(R.id.exp_enter_animated_tag, true)
+                    com.dskja.betterstreamflix.utils.ExpMotion.popIn(this)
+                }
+                com.dskja.betterstreamflix.utils.ExpMotion.revealHeader(binding.tvProvidersLabel)
+                com.dskja.betterstreamflix.utils.ExpMotion.enterScreen(binding.root)
+            }
 
             onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
                 override fun onItemSelected(
@@ -174,7 +228,20 @@ class ProvidersTvFragment : Fragment() {
         appAdapter.submitList(providers.onEach {
             it.itemType = AppAdapter.Type.PROVIDER_TV_ITEM
         })
-
-        binding.rvProviders.requestFocus()
+        val empty = providers.isEmpty()
+        binding.rvProviders.visibility = if (empty) View.GONE else View.VISIBLE
+        ExpEmptyChrome.bind(
+            emptyView = binding.root.findViewById(R.id.tv_providers_empty),
+            emptyRule = binding.root.findViewById(R.id.v_providers_empty_rule),
+            emptyCta = binding.root.findViewById(R.id.btn_providers_empty_cta),
+            visible = empty,
+            tintOnSurfaceVariant = false,
+            onCtaClick = { binding.sProvidersLanguage.setSelection(0) },
+        )
+        if (empty && ExperimentalMobileDesign.enabled()) {
+            binding.root.findViewById<View>(R.id.btn_providers_empty_cta)?.requestFocus()
+        } else if (!empty) {
+            binding.rvProviders.requestFocus()
+        }
     }
 }

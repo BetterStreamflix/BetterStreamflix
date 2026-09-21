@@ -30,6 +30,7 @@ import com.dskja.betterstreamflix.providers.AniWorldProvider
 import com.dskja.betterstreamflix.providers.SerienStreamProvider
 import com.dskja.betterstreamflix.player.SerienStreamBypassHelper
 import com.dskja.betterstreamflix.utils.AppLanguageManager
+import com.dskja.betterstreamflix.utils.ExpDialogChrome
 import com.dskja.betterstreamflix.utils.ExperimentalMobileDesign
 import com.dskja.betterstreamflix.utils.NetworkClient
 import com.dskja.betterstreamflix.utils.ThemeManager
@@ -65,6 +66,9 @@ class WatchlistImportActivity : AppCompatActivity() {
     }
 
     private lateinit var webView: WebView
+    /** Cached on main thread — never read WebView.settings from shouldInterceptRequest. */
+    private var webViewUserAgent: String = NetworkClient.USER_AGENT
+    private var isCleaningUp = false
     private lateinit var progressBar: ProgressBar
     private lateinit var statusView: TextView
     private lateinit var importButton: Button
@@ -72,9 +76,14 @@ class WatchlistImportActivity : AppCompatActivity() {
 
     private val mainHandler = Handler(Looper.getMainLooper())
     private var importing = false
+    private var sessionAutoSaved = false
     private var pageFinishedCallback: ((String?) -> Unit)? = null
     private var lastLoadError: String? = null
     private var warmDomainIndex: Int = 0
+    /** True once the WebView has actually shown `/login` during this session. */
+    private var sawLoginPage = false
+    /** Set after the user submits credentials and leaves `/login`. */
+    private var leftLoginAfterVisit = false
 
     private val saveSessionOnly: Boolean by lazy {
         intent.getBooleanExtra(EXTRA_SAVE_SESSION_ONLY, false)
@@ -100,7 +109,7 @@ class WatchlistImportActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         setTheme(
             if (ExperimentalMobileDesign.enabled()) {
-                R.style.AppTheme_Mobile_Experimental
+                ExperimentalMobileDesign.themeRes()
             } else {
                 ThemeManager.mobileThemeRes(UserPreferences.selectedTheme)
             },
@@ -109,7 +118,12 @@ class WatchlistImportActivity : AppCompatActivity() {
             DynamicColors.applyToActivityIfAvailable(this)
         }
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_watchlist_import)
+        setContentView(
+            ExperimentalMobileDesign.layout(
+                R.layout.activity_watchlist_import,
+                R.layout.activity_watchlist_import_exp,
+            ),
+        )
         WindowCompat.setDecorFitsSystemWindows(window, false)
 
         ViewCompat.setOnApplyWindowInsetsListener(findViewById(android.R.id.content)) { view, insets ->
@@ -124,11 +138,39 @@ class WatchlistImportActivity : AppCompatActivity() {
         importButton = findViewById(R.id.watchlist_import)
         cancelButton = findViewById(R.id.watchlist_cancel)
 
+        if (ExperimentalMobileDesign.enabled()) {
+            val content = findViewById<android.view.View>(android.R.id.content)
+            com.dskja.betterstreamflix.utils.ExpMotion.enterScreen(content)
+            ExperimentalMobileDesign.applyReducedGlass(content)
+            statusView.setBackgroundResource(ExperimentalMobileDesign.glassCardBackground())
+            with(com.dskja.betterstreamflix.utils.ExpPressEffects) {
+                importButton.applyExpPress()
+                cancelButton.applyExpPress()
+            }
+            importButton.setBackgroundResource(ExperimentalMobileDesign.primaryButtonBackground())
+            cancelButton.setBackgroundResource(ExperimentalMobileDesign.chipBackground())
+        }
+
         statusView.setText(R.string.watchlist_import_login_hint)
-        title = if (saveSessionOnly) {
+        val screenTitle = if (saveSessionOnly) {
             getString(R.string.settings_serienstream_session_login)
         } else {
             getString(R.string.settings_watchlist_import_title)
+        }
+        title = screenTitle
+        findViewById<android.widget.TextView>(R.id.tv_watchlist_brand)?.text = screenTitle
+        if (ExperimentalMobileDesign.enabled()) {
+            com.dskja.betterstreamflix.utils.ExpMotion.revealHeader(
+                findViewById(R.id.tv_watchlist_eyebrow),
+                findViewById(R.id.tv_watchlist_brand),
+                findViewById(R.id.v_watchlist_rule),
+                statusView,
+            )
+            com.dskja.betterstreamflix.utils.ExpMotion.pulseAccentRule(
+                findViewById(R.id.v_watchlist_rule),
+            )
+            com.dskja.betterstreamflix.utils.ExpMotion.popIn(importButton)
+            com.dskja.betterstreamflix.utils.ExpMotion.popIn(cancelButton)
         }
         importButton.setText(
             if (saveSessionOnly) {
@@ -140,9 +182,11 @@ class WatchlistImportActivity : AppCompatActivity() {
 
         cancelButton.setOnClickListener {
             if (importing) return@setOnClickListener
+            com.dskja.betterstreamflix.utils.ExpMotion.hapticTap(it)
             finish()
         }
         importButton.setOnClickListener {
+            com.dskja.betterstreamflix.utils.ExpMotion.hapticTap(it)
             if (saveSessionOnly) {
                 saveSessionAndFinish()
             } else {
@@ -229,6 +273,7 @@ class WatchlistImportActivity : AppCompatActivity() {
             // Desktop UA helps SerienStream CF challenges that blank mobile WebViews.
             userAgentString = WatchlistImporter.userAgentFor(source)
                 .ifBlank { NetworkClient.USER_AGENT }
+            webViewUserAgent = userAgentString ?: NetworkClient.USER_AGENT
             allowFileAccess = false
             allowContentAccess = false
             javaScriptCanOpenWindowsAutomatically = true
@@ -240,8 +285,17 @@ class WatchlistImportActivity : AppCompatActivity() {
         webView.webChromeClient = object : WebChromeClient() {
             override fun onProgressChanged(view: WebView?, newProgress: Int) {
                 progressBar.progress = newProgress
-                progressBar.visibility =
-                    if (newProgress in 1..99) android.view.View.VISIBLE else android.view.View.GONE
+                val show = newProgress in 1..99
+                if (ExperimentalMobileDesign.enabled()) {
+                    if (show && progressBar.visibility != android.view.View.VISIBLE) {
+                        com.dskja.betterstreamflix.utils.ExpMotion.fadeInAndShow(progressBar)
+                    } else if (!show && progressBar.visibility == android.view.View.VISIBLE) {
+                        com.dskja.betterstreamflix.utils.ExpMotion.fadeOutAndHide(progressBar)
+                    }
+                } else {
+                    progressBar.visibility =
+                        if (show) android.view.View.VISIBLE else android.view.View.GONE
+                }
             }
         }
         webView.webViewClient = object : WebViewClient() {
@@ -254,9 +308,10 @@ class WatchlistImportActivity : AppCompatActivity() {
                 view: WebView?,
                 request: WebResourceRequest?,
             ): android.webkit.WebResourceResponse? {
+                // Must not touch WebView APIs here (off main thread) — BETTERSTREAMFLIX-T.
                 val bridged = WebViewDohBridge.interceptMainDocument(
                     request,
-                    webView.settings.userAgentString ?: NetworkClient.USER_AGENT,
+                    webViewUserAgent,
                 )
                 if (bridged != null) return bridged
                 return super.shouldInterceptRequest(view, request)
@@ -314,11 +369,7 @@ class WatchlistImportActivity : AppCompatActivity() {
                 lastLoadError = "isp_dns_block"
                 statusView.setText(R.string.watchlist_import_isp_block)
                 importButton.isEnabled = false
-                Toast.makeText(
-                    this,
-                    R.string.watchlist_import_isp_block_toast,
-                    Toast.LENGTH_LONG,
-                ).show()
+                notifyUser(R.string.watchlist_import_isp_block_toast)
                 // Prefer the serien.domains proxy (or next mirror) over a sinkholed hostname.
                 if (source == WatchlistImporter.Source.SERIENSTREAM) {
                     val next = warmDomainIndex + 1
@@ -344,11 +395,27 @@ class WatchlistImportActivity : AppCompatActivity() {
                 SerienStreamBypassHelper.applyCookies(it, cookies)
             }
         }
-        val leftLogin = url != null && !url.contains("/login", ignoreCase = true)
+        val onLogin = url != null && url.contains("/login", ignoreCase = true)
+        if (onLogin) {
+            sawLoginPage = true
+            leftLoginAfterVisit = false
+        } else if (sawLoginPage && url != null) {
+            leftLoginAfterVisit = true
+        }
+        val leftLogin = url != null && !onLogin
         val hasSession = looksLoggedIn(cookies)
         val bypassSolved = source != WatchlistImporter.Source.SERIENSTREAM ||
             SerienStreamBypassHelper.looksLikeBypassSolved(cookies)
-        importButton.isEnabled = leftLogin || hasSession || cookies.isNotBlank()
+        val wasEnabled = importButton.isEnabled
+        // Never enable Import / auto-save from warm homepage cookies alone.
+        importButton.isEnabled = when {
+            saveSessionOnly && source == WatchlistImporter.Source.SERIENSTREAM ->
+                hasSession && leftLoginAfterVisit
+            else -> leftLogin || hasSession || (cookies.isNotBlank() && bypassSolved && sawLoginPage)
+        }
+        if (ExperimentalMobileDesign.enabled() && importButton.isEnabled && !wasEnabled) {
+            com.dskja.betterstreamflix.utils.ExpMotion.popIn(importButton)
+        }
         if (lastLoadError != null && !leftLogin && !hasSession) {
             statusView.text = getString(R.string.watchlist_import_failed, lastLoadError!!)
             return
@@ -360,13 +427,24 @@ class WatchlistImportActivity : AppCompatActivity() {
                 !hasSession -> {
                 statusView.setText(R.string.bypass_status_challenge_pending)
             }
-            leftLogin && hasSession -> {
+            leftLogin && hasSession && leftLoginAfterVisit -> {
                 statusView.setText(R.string.watchlist_import_ready)
+                if (ExperimentalMobileDesign.enabled() &&
+                    statusView.getTag(R.id.exp_enter_animated_tag) != "ready"
+                ) {
+                    statusView.setTag(R.id.exp_enter_animated_tag, "ready")
+                    com.dskja.betterstreamflix.utils.ExpMotion.revealHeader(statusView)
+                }
+                maybeAutoSaveSession()
             }
-            leftLogin -> {
+            leftLogin && sawLoginPage -> {
                 statusView.setText(R.string.watchlist_import_ready_soft)
             }
+            onLogin -> {
+                statusView.setText(R.string.watchlist_import_login_hint)
+            }
             else -> {
+                // Warm homepage / challenge — keep the login hint, never claim ready.
                 statusView.setText(R.string.watchlist_import_login_hint)
             }
         }
@@ -374,22 +452,8 @@ class WatchlistImportActivity : AppCompatActivity() {
 
     private fun looksLoggedIn(cookies: String): Boolean {
         if (cookies.isBlank()) return false
-        val lower = cookies.lowercase()
-        val sessionMarkers = listOf(
-            "remember",
-            "auth",
-            "user",
-            "login",
-            "session",
-            "token",
-            "jwt",
-            "xsrf",
-            "laravel_session",
-        )
-        val parts = cookies.split(';').map { it.trim() }.filter { it.contains('=') }
-        if (parts.size >= 2 && sessionMarkers.any { lower.contains(it) }) return true
-        if (lower.contains("rememberlogin") || lower.contains("remember_login")) return true
-        return parts.size >= 3
+        // Strict: require account cookies. Anonymous PHPSESSID/cf_clearance must not qualify.
+        return SerienStreamBypassHelper.looksLikeAccountSession(cookies)
     }
 
     private fun cookieHeader(): String {
@@ -426,24 +490,49 @@ class WatchlistImportActivity : AppCompatActivity() {
     private fun saveSessionAndFinish() {
         val cookies = cookieHeader()
         if (cookies.isBlank()) {
-            Toast.makeText(this, R.string.watchlist_import_login_hint, Toast.LENGTH_LONG).show()
+            sessionAutoSaved = false
+            notifyUser(R.string.watchlist_import_login_hint)
             return
         }
         SerienStreamBypassHelper.applyCookies("$hostBase/", cookies)
-        val saved = SerienStreamBypassHelper.persistSessionCookiesIfValid(cookies)
+        val saved = if (saveSessionOnly) {
+            com.dskja.betterstreamflix.providers.SerienStreamAuthManager.persistAccountLogin(cookies)
+        } else {
+            com.dskja.betterstreamflix.providers.SerienStreamAuthManager.persist(cookies)
+        }
         if (!saved) {
-            Toast.makeText(this, R.string.watchlist_import_not_logged_in, Toast.LENGTH_LONG).show()
+            sessionAutoSaved = false
+            notifyUser(R.string.watchlist_import_not_logged_in)
             return
         }
-        Toast.makeText(this, R.string.settings_serienstream_session_login_saved, Toast.LENGTH_LONG).show()
-        finish()
+        sessionAutoSaved = true
+        notifyUserAndFinish(R.string.settings_serienstream_session_login_saved)
+    }
+
+    /**
+     * After a successful WebView login the page redirects away from /login with
+     * account cookies. Persist automatically in session-only mode so the user
+     * does not have to tap Save again — but never after a mere warm homepage.
+     */
+    private fun maybeAutoSaveSession() {
+        if (!saveSessionOnly || sessionAutoSaved || importing) return
+        if (!leftLoginAfterVisit) return
+        val cookies = cookieHeader()
+        if (!SerienStreamBypassHelper.looksLikeAccountSession(cookies)) {
+            return
+        }
+        sessionAutoSaved = true
+        webView.postDelayed({
+            if (isFinishing) return@postDelayed
+            saveSessionAndFinish()
+        }, 450L)
     }
 
     private fun runImport() {
         if (importing) return
         val cookies = cookieHeader()
         if (cookies.isBlank()) {
-            Toast.makeText(this, R.string.watchlist_import_login_hint, Toast.LENGTH_LONG).show()
+            notifyUser(R.string.watchlist_import_login_hint)
             return
         }
         // Persist a working SerienStream cookie jar for TV / later sessions.
@@ -452,7 +541,7 @@ class WatchlistImportActivity : AppCompatActivity() {
             webView.url?.takeIf { it.isNotBlank() }?.let {
                 SerienStreamBypassHelper.applyCookies(it, cookies)
             }
-            SerienStreamBypassHelper.persistSessionCookiesIfValid(cookies)
+            com.dskja.betterstreamflix.providers.SerienStreamAuthManager.persist(cookies)
         }
 
         importing = true
@@ -588,14 +677,58 @@ class WatchlistImportActivity : AppCompatActivity() {
         }
     }
 
+
+    private fun notifyUser(message: CharSequence, titleRes: Int = R.string.settings_watchlist_import_title) {
+        ExpDialogChrome.notify(this, message, titleRes) { ctx ->
+            com.google.android.material.dialog.MaterialAlertDialogBuilder(ctx)
+        }
+    }
+
+    private fun notifyUser(messageRes: Int, titleRes: Int = R.string.settings_watchlist_import_title) {
+        notifyUser(getString(messageRes), titleRes)
+    }
+
+    private fun notifyUserAndFinish(
+        message: CharSequence,
+        titleRes: Int = R.string.settings_watchlist_import_title,
+    ) {
+        if (!ExperimentalMobileDesign.enabled()) {
+            Toast.makeText(this, message, Toast.LENGTH_LONG).show()
+            finish()
+            return
+        }
+        val glass = ExpDialogChrome.buildGlassMessage(this, message)
+        com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
+            .setTitle(titleRes)
+            .setView(glass.root)
+            .setPositiveButton(android.R.string.ok, null)
+            .setCancelable(false)
+            .create()
+            .also { dialog ->
+                dialog.setOnShowListener { ExpDialogChrome.polishGlassMessageShown(dialog, glass) }
+                dialog.setOnDismissListener { finish() }
+                dialog.show()
+            }
+    }
+
+    private fun notifyUserAndFinish(
+        messageRes: Int,
+        titleRes: Int = R.string.settings_watchlist_import_title,
+    ) {
+        notifyUserAndFinish(getString(messageRes), titleRes)
+    }
+
     private fun finishWithSuccess(count: Int) {
         statusView.text = getString(R.string.watchlist_import_done, count)
-        Toast.makeText(
-            this,
-            getString(R.string.watchlist_import_done, count),
-            Toast.LENGTH_LONG,
-        ).show()
-        finish()
+        if (ExperimentalMobileDesign.enabled()) {
+            com.dskja.betterstreamflix.utils.ExpMotion.revealHeader(statusView)
+            com.dskja.betterstreamflix.utils.ExpMotion.popIn(statusView)
+            statusView.postDelayed({
+                notifyUserAndFinish(getString(R.string.watchlist_import_done, count))
+            }, 280L)
+            return
+        }
+        notifyUserAndFinish(getString(R.string.watchlist_import_done, count))
     }
 
     private data class PageHtml(val url: String, val html: String)
@@ -694,10 +827,13 @@ class WatchlistImportActivity : AppCompatActivity() {
     }
 
     override fun onDestroy() {
+        isCleaningUp = true
         pageFinishedCallback = null
         mainHandler.removeCallbacksAndMessages(null)
-        runCatching { webView.stopLoading() }
-        runCatching { webView.destroy() }
+        if (::webView.isInitialized) {
+            runCatching { webView.stopLoading() }
+            runCatching { webView.destroy() }
+        }
         super.onDestroy()
     }
 }

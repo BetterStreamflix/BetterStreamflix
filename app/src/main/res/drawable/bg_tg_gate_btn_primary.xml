@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<selector xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:state_pressed="true">
+        <shape android:shape="rectangle">
+            <gradient
+                android:angle="0"
+                android:endColor="@color/tg_gate_telegram_pressed"
+                android:startColor="#1780B4"
+                android:type="linear" />
+            <corners android:radius="@dimen/tg_gate_radius" />
+        </shape>
+    </item>
+    <item android:state_enabled="false">
+        <shape android:shape="rectangle">
+            <solid android:color="@color/tg_gate_step_idle" />
+            <corners android:radius="@dimen/tg_gate_radius" />
+        </shape>
+    </item>
+    <item>
+        <shape android:shape="rectangle">
+            <gradient
+                android:angle="0"
+                android:endColor="@color/tg_gate_telegram"
+                android:startColor="@color/tg_gate_telegram_bright"
+                android:type="linear" />
+            <corners android:radius="@dimen/tg_gate_radius" />
+        </shape>
+    </item>
+</selector>

@@ -1,9 +1,13 @@
 package com.dskja.betterstreamflix.utils
 
+import android.animation.AnimatorSet
+import android.animation.ObjectAnimator
+import android.animation.ValueAnimator
 import android.content.Context
 import android.provider.Settings
 import android.view.HapticFeedbackConstants
 import android.view.View
+import android.view.animation.AccelerateDecelerateInterpolator
 import android.view.animation.AnimationUtils
 import android.view.animation.DecelerateInterpolator
 import android.view.animation.LayoutAnimationController
@@ -164,5 +168,111 @@ object ExpMotion {
                 .setInterpolator(DecelerateInterpolator())
                 .start()
         }
+    }
+
+    /** Soft horizontal shake for invalid PIN / error fields. */
+    fun shake(view: View?) {
+        view ?: return
+        if (!view.motionAllowed()) return
+        view.animate().cancel()
+        view.animate()
+            .translationX(10f)
+            .setDuration(45L)
+            .withEndAction {
+                view.animate()
+                    .translationX(-10f)
+                    .setDuration(45L)
+                    .withEndAction {
+                        view.animate()
+                            .translationX(0f)
+                            .setDuration(45L)
+                            .start()
+                    }
+                    .start()
+            }
+            .start()
+    }
+
+    /** Soft pulse on the accent rule under brand / catalog headers. */
+    fun pulseAccentRule(view: View?) {
+        view ?: return
+        if (!view.motionAllowed()) return
+        view.animate().cancel()
+        view.scaleX = 0.35f
+        view.alpha = 0.35f
+        view.pivotX = 0f
+        view.animate()
+            .scaleX(1f)
+            .alpha(1f)
+            .setDuration(520L)
+            .setInterpolator(DecelerateInterpolator())
+            .start()
+    }
+
+    /** Brand-first home entrance: logo → brand → tagline → rule. */
+    fun brandReveal(logo: View?, brand: View?, tagline: View?, rule: View?) {
+        revealHeader(logo, brand, tagline, rule)
+        pulseAccentRule(rule)
+    }
+
+    /**
+     * Slow cinematic Ken Burns on a full-bleed hero image.
+     * Tags the animator on the view so it can be cancelled on detach.
+     * Set [drift] false when another scroll parallax owns translation.
+     */
+    fun kenBurns(
+        view: View?,
+        scaleFrom: Float = 1f,
+        scaleTo: Float = 1.08f,
+        durationMs: Long = 18_000L,
+        drift: Boolean = true,
+    ) {
+        view ?: return
+        if (!view.motionAllowed()) return
+        (view.getTag(R.id.exp_ken_burns_animator) as? AnimatorSet)?.cancel()
+        view.scaleX = scaleFrom
+        view.scaleY = scaleFrom
+        if (drift) {
+            view.translationX = 0f
+            view.translationY = 0f
+        }
+        val dens = view.resources.displayMetrics.density
+        val sx = ObjectAnimator.ofFloat(view, View.SCALE_X, scaleFrom, scaleTo).apply {
+            duration = durationMs
+            repeatCount = ValueAnimator.INFINITE
+            repeatMode = ValueAnimator.REVERSE
+        }
+        val sy = ObjectAnimator.ofFloat(view, View.SCALE_Y, scaleFrom, scaleTo).apply {
+            duration = durationMs
+            repeatCount = ValueAnimator.INFINITE
+            repeatMode = ValueAnimator.REVERSE
+        }
+        val animators = mutableListOf<android.animation.Animator>(sx, sy)
+        if (drift) {
+            animators += ObjectAnimator.ofFloat(view, View.TRANSLATION_X, 0f, 10f * dens).apply {
+                duration = durationMs
+                repeatCount = ValueAnimator.INFINITE
+                repeatMode = ValueAnimator.REVERSE
+            }
+            animators += ObjectAnimator.ofFloat(view, View.TRANSLATION_Y, 0f, -8f * dens).apply {
+                duration = (durationMs * 1.12f).toLong()
+                repeatCount = ValueAnimator.INFINITE
+                repeatMode = ValueAnimator.REVERSE
+            }
+        }
+        val set = AnimatorSet().apply {
+            interpolator = AccelerateDecelerateInterpolator()
+            playTogether(animators)
+            start()
+        }
+        view.setTag(R.id.exp_ken_burns_animator, set)
+        view.addOnAttachStateChangeListener(object : View.OnAttachStateChangeListener {
+            override fun onViewAttachedToWindow(v: View) = Unit
+            override fun onViewDetachedFromWindow(v: View) {
+                (v.getTag(R.id.exp_ken_burns_animator) as? AnimatorSet)?.cancel()
+                v.setTag(R.id.exp_ken_burns_animator, null)
+                v.removeOnAttachStateChangeListener(this)
+            }
+        })
     }
 }

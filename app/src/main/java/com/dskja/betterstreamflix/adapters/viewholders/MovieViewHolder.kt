@@ -1,6 +1,9 @@
 package com.dskja.betterstreamflix.adapters.viewholders
 
-import android.app.AlertDialog
+import androidx.appcompat.app.AlertDialog
+import androidx.appcompat.app.AlertDialog as AppCompatAlertDialog
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
+import com.dskja.betterstreamflix.utils.ExperimentalMobileDesign
 import android.content.Context
 import android.content.Intent
 import android.content.SharedPreferences
@@ -80,9 +83,9 @@ import com.dskja.betterstreamflix.ui.ShowOptionsMobileDialog
 import com.dskja.betterstreamflix.ui.ShowOptionsTvDialog
 import com.dskja.betterstreamflix.ui.SpacingItemDecoration
 import com.dskja.betterstreamflix.utils.ExpAmbientGlow
+import com.dskja.betterstreamflix.utils.ExpDialogChrome
 import com.dskja.betterstreamflix.utils.ExpMotion
 import com.dskja.betterstreamflix.utils.ExpPressEffects.applyExpPress
-import com.dskja.betterstreamflix.utils.ExperimentalMobileDesign
 import com.dskja.betterstreamflix.utils.dp
 import androidx.preference.Preference
 import com.dskja.betterstreamflix.utils.format
@@ -118,7 +121,9 @@ class MovieViewHolder(
         if (ExperimentalMobileDesign.enabled() &&
             (_binding is ItemMovieMobileBinding ||
                 _binding is ItemMovieGridMobileBinding ||
-                _binding is ItemCategorySwiperMobileBinding)
+                _binding is ItemCategorySwiperMobileBinding ||
+                _binding is ItemMovieTvBinding ||
+                _binding is ItemMovieGridTvBinding)
         ) {
             itemView.applyExpPress()
         }
@@ -197,8 +202,9 @@ class MovieViewHolder(
     }
 
     private fun checkProviderAndRun(action: () -> Unit) {
-        if (!movie.providerName.isNullOrBlank() && movie.providerName != UserPreferences.currentProvider?.name) {
-            Provider.findByName(movie.providerName!!)?.let {
+        val providerName = movie.providerName
+        if (!providerName.isNullOrBlank() && providerName != UserPreferences.currentProvider?.name) {
+            Provider.findByName(providerName)?.let {
                 UserPreferences.currentProvider = it
             }
         }
@@ -236,7 +242,7 @@ class MovieViewHolder(
             else context.getString(R.string.smarttube_beta)
         }.toTypedArray()
 
-        AlertDialog.Builder(context)
+        (if (ExperimentalMobileDesign.enabled()) MaterialAlertDialogBuilder(context) else AlertDialog.Builder(context))
             .setTitle(context.getString(R.string.choose_smarttube_version))
             .setItems(items) { _, which ->
                 val selectedPackage = packages[which]
@@ -248,7 +254,9 @@ class MovieViewHolder(
                 }
                 
                 launchSmartTube(selectedPackage, trailerUrl)
-            }.show()
+            }
+            .create()
+            .also { com.dskja.betterstreamflix.ui.TrailerPlaybackController.polishChooserDialog(it) }
     }
 
     private fun safeLaunchYoutube(intent: Intent) {
@@ -256,7 +264,18 @@ class MovieViewHolder(
             context.startActivity(intent)
         } catch (e: Exception) {
             Log.e(TAG, "Failed to launch YouTube intent", e)
-            Toast.makeText(context, context.getString(R.string.player_external_player_error_video), Toast.LENGTH_SHORT).show()
+            val message = context.getString(R.string.player_external_player_error_video)
+            if (ExperimentalMobileDesign.enabled()) {
+                ExpDialogChrome.showInfo(
+                    context,
+                    R.string.youtube,
+                    message,
+                ) { ctx ->
+                    MaterialAlertDialogBuilder(ctx)
+                }
+            } else {
+                Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+            }
         }
     }
 
@@ -321,7 +340,7 @@ class MovieViewHolder(
                 val stPackages = getInstalledSmartTubePackages()
                 if (stPackages.isNotEmpty()) {
                     Log.d(TAG, "$logPrefix: Showing choice dialog (Ask)")
-                    AlertDialog.Builder(context)
+                    (if (ExperimentalMobileDesign.enabled()) MaterialAlertDialogBuilder(context) else AlertDialog.Builder(context))
                         .setTitle(context.getString(R.string.watch_trailer_with))
                         .setItems(arrayOf(context.getString(R.string.youtube), context.getString(R.string.smarttube))) { _, which ->
                             if (which == 0) {
@@ -337,7 +356,9 @@ class MovieViewHolder(
                                     launchSmartTube(stPackages[0], trailer)
                                 }
                             }
-                        }.show()
+                        }
+                        .create()
+                        .also { com.dskja.betterstreamflix.ui.TrailerPlaybackController.polishChooserDialog(it) }
                 } else {
                     Log.d(TAG, "$logPrefix: SmartTube not found, launching YouTube directly")
                     safeLaunchYoutube(youtubeIntent)
@@ -349,6 +370,7 @@ class MovieViewHolder(
     private fun displayMobileItem(binding: ItemMovieMobileBinding) {
         binding.root.apply {
             setOnClickListener {
+                ExpMotion.hapticTap(it)
                 onMovieClick?.let { listener ->
                     listener(movie)
                     return@setOnClickListener
@@ -356,14 +378,29 @@ class MovieViewHolder(
                 checkProviderAndRun {
                     when (context.toActivity()?.getCurrentFragment()) {
                         is HomeMobileFragment -> {
-                            findNavController().navigate(HomeMobileFragmentDirections.actionHomeToMovie(id = movie.id))
                             if (movie.itemType == AppAdapter.Type.MOVIE_CONTINUE_WATCHING_MOBILE_ITEM) {
-                                findNavController().navigate(MovieMobileFragmentDirections.actionMovieToPlayer(
-                                    id = movie.id,
-                                    title = movie.title,
-                                    subtitle = movie.released?.format("yyyy") ?: "",
-                                    videoType = Video.Type.Movie(id = movie.id, title = movie.title, releaseDate = movie.released?.format("yyyy-MM-dd") ?: "", poster = movie.poster ?: "", imdbId = movie.imdbId),
-                                ))
+                                findNavController().navigate(
+                                    R.id.action_global_player,
+                                    Bundle().apply {
+                                        putString("id", movie.id)
+                                        putString("title", movie.title)
+                                        putString("subtitle", movie.released?.format("yyyy") ?: "")
+                                        putSerializable(
+                                            "videoType",
+                                            Video.Type.Movie(
+                                                id = movie.id,
+                                                title = movie.title,
+                                                releaseDate = movie.released?.format("yyyy-MM-dd") ?: "",
+                                                poster = movie.poster ?: "",
+                                                imdbId = movie.imdbId,
+                                            ),
+                                        )
+                                    },
+                                )
+                            } else {
+                                findNavController().navigate(
+                                    HomeMobileFragmentDirections.actionHomeToMovie(id = movie.id),
+                                )
                             }
                         }
                         is MovieMobileFragment -> findNavController().navigate(MovieMobileFragmentDirections.actionMovieToMovie(id = movie.id))
@@ -390,35 +427,68 @@ class MovieViewHolder(
 
         binding.tvMovieQuality.apply {
             text = movie.quality ?: ""
-            visibility = when {
-                text.isNullOrEmpty() -> View.GONE
-                else -> View.VISIBLE
+            val show = !text.isNullOrEmpty()
+            val wasVisible = visibility == View.VISIBLE
+            visibility = if (show) View.VISIBLE else View.GONE
+            if (ExperimentalMobileDesign.enabled() && show) {
+                setBackgroundResource(ExperimentalMobileDesign.metaPillBackground())
+                if (!wasVisible) ExpMotion.popIn(this)
             }
         }
 
-        binding.tvMovieReleasedYear.text = movie.released?.format("yyyy")
-            ?: context.getString(R.string.movie_item_type)
-
-        binding.pbMovieProgress.apply {
-            val watchHistory = movie.watchHistory
-
-            progress = when {
-                watchHistory != null -> (watchHistory.lastPlaybackPositionMillis * 100 / watchHistory.durationMillis.toDouble()).toInt()
-                else -> 0
+        binding.tvMovieReleasedYear.apply {
+            val year = movie.released?.format("yyyy")
+            text = year ?: context.getString(R.string.movie_item_type)
+            if (ExperimentalMobileDesign.enabled() && !year.isNullOrBlank()) {
+                setBackgroundResource(ExperimentalMobileDesign.metaPillBackground())
+                val wasVisible = visibility == View.VISIBLE
+                visibility = View.VISIBLE
+                if (!wasVisible) ExpMotion.popIn(this)
             }
-            visibility = when {
-                watchHistory != null -> View.VISIBLE
-                else -> View.GONE
+        }
+
+        bindMovieProgress(binding.pbMovieProgress)
+        if (ExperimentalMobileDesign.enabled() &&
+            movie.itemType == AppAdapter.Type.MOVIE_CONTINUE_WATCHING_MOBILE_ITEM
+        ) {
+            ExpMotion.kenBurns(binding.ivMoviePoster)
+            binding.root.findViewById<android.widget.TextView>(R.id.tv_movie_remaining)?.let { remaining ->
+                val watchHistory = movie.watchHistory
+                if (watchHistory != null && watchHistory.durationMillis > 0) {
+                    val pct = (watchHistory.lastPlaybackPositionMillis * 100 /
+                        watchHistory.durationMillis.toDouble()).toInt().coerceIn(0, 99)
+                    remaining.text = context.getString(R.string.continue_watching_percent, pct)
+                    remaining.setBackgroundResource(ExperimentalMobileDesign.metaPillBackground())
+                    val wasVisible = remaining.visibility == View.VISIBLE
+                    remaining.visibility = View.VISIBLE
+                    if (!wasVisible) ExpMotion.popIn(remaining)
+                } else {
+                    remaining.visibility = View.GONE
+                }
             }
+        } else {
+            binding.root.findViewById<View>(R.id.tv_movie_remaining)?.visibility = View.GONE
         }
 
         binding.tvMovieTitle.text = movie.title
+        if (ExperimentalMobileDesign.enabled() &&
+            binding.root.getTag(R.id.exp_enter_animated_tag) != true
+        ) {
+            binding.root.setTag(R.id.exp_enter_animated_tag, true)
+            if (movie.itemType == AppAdapter.Type.MOVIE_CONTINUE_WATCHING_MOBILE_ITEM) {
+                binding.root.setBackgroundResource(ExperimentalMobileDesign.glassCardBackground())
+            }
+            ExpMotion.kenBurns(binding.ivMoviePoster)
+            ExpMotion.revealHeader(binding.tvMovieTitle)
+            ExpMotion.popIn(binding.root)
+        }
     }
 
     private fun displayTvItem(binding: ItemMovieTvBinding) {
         binding.root.apply {
             isFocusable = true
             setOnClickListener {
+                ExpMotion.hapticTap(it)
                 onMovieClick?.let { listener ->
                     listener(movie)
                     return@setOnClickListener
@@ -462,6 +532,7 @@ class MovieViewHolder(
 
 
             setOnLongClickListener {
+                ExpMotion.hapticTap(it)
                 onMovieLongClick?.let { listener ->
                     listener(movie)
                     return@setOnLongClickListener true
@@ -505,17 +576,62 @@ class MovieViewHolder(
                 watchHistory != null -> View.VISIBLE
                 else -> View.GONE
             }
+            if (ExperimentalMobileDesign.enabled() && watchHistory != null) {
+                val primary = com.google.android.material.color.MaterialColors.getColor(
+                    this, androidx.appcompat.R.attr.colorPrimary,
+                )
+                progressTintList = android.content.res.ColorStateList.valueOf(primary)
+            }
         }
         binding.tvMovieQuality.apply {
             text = movie.quality ?: ""
-            visibility = when {
-                text.isNullOrEmpty() -> View.GONE
-                else -> View.VISIBLE
+            val show = !text.isNullOrEmpty()
+            val wasVisible = visibility == View.VISIBLE
+            visibility = if (show) View.VISIBLE else View.GONE
+            if (ExperimentalMobileDesign.enabled() && show) {
+                setBackgroundResource(ExperimentalMobileDesign.metaPillBackground())
+                if (!wasVisible) ExpMotion.popIn(this)
             }
         }
-        binding.tvMovieReleasedYear.text = movie.released?.format("yyyy")
-            ?: context.getString(R.string.movie_item_type)
+        binding.tvMovieReleasedYear.apply {
+            val year = movie.released?.format("yyyy")
+            text = year ?: context.getString(R.string.movie_item_type)
+            if (ExperimentalMobileDesign.enabled() && !year.isNullOrBlank()) {
+                setBackgroundResource(ExperimentalMobileDesign.metaPillBackground())
+            }
+        }
         binding.tvMovieTitle.text = movie.title
+        if (ExperimentalMobileDesign.enabled() &&
+            movie.itemType == AppAdapter.Type.MOVIE_CONTINUE_WATCHING_TV_ITEM
+        ) {
+            binding.root.findViewById<android.widget.TextView>(R.id.tv_movie_remaining)?.let { remaining ->
+                val watchHistory = movie.watchHistory
+                if (watchHistory != null && watchHistory.durationMillis > 0) {
+                    val pct = (watchHistory.lastPlaybackPositionMillis * 100 /
+                        watchHistory.durationMillis.toDouble()).toInt().coerceIn(0, 99)
+                    remaining.text = context.getString(R.string.continue_watching_percent, pct)
+                    remaining.setBackgroundResource(ExperimentalMobileDesign.metaPillBackground())
+                    val wasVisible = remaining.visibility == View.VISIBLE
+                    remaining.visibility = View.VISIBLE
+                    if (!wasVisible) ExpMotion.popIn(remaining)
+                } else {
+                    remaining.visibility = View.GONE
+                }
+            }
+        } else {
+            binding.root.findViewById<View>(R.id.tv_movie_remaining)?.visibility = View.GONE
+        }
+        if (ExperimentalMobileDesign.enabled() &&
+            binding.root.getTag(R.id.exp_enter_animated_tag) != true
+        ) {
+            binding.root.setTag(R.id.exp_enter_animated_tag, true)
+            if (movie.itemType == AppAdapter.Type.MOVIE_CONTINUE_WATCHING_TV_ITEM) {
+                binding.root.setBackgroundResource(ExperimentalMobileDesign.glassCardBackground())
+            }
+            ExpMotion.kenBurns(binding.ivMoviePoster)
+            ExpMotion.revealHeader(binding.tvMovieTitle)
+            ExpMotion.popIn(binding.root)
+        }
     }
 
     private fun displayGridMobileItem(binding: ItemMovieGridMobileBinding) {
@@ -525,6 +641,7 @@ class MovieViewHolder(
             applyMobileSelection(this)
             setOnKeyListener { _, _, event -> onMovieKey?.invoke(movie, event) ?: false }
             setOnClickListener {
+                ExpMotion.hapticTap(it)
                 onMovieClick?.let { listener ->
                     listener(movie)
                     return@setOnClickListener
@@ -557,29 +674,45 @@ class MovieViewHolder(
 
         binding.tvMovieQuality.apply {
             text = movie.quality ?: ""
-            visibility = when {
-                text.isNullOrEmpty() -> View.GONE
-                else -> View.VISIBLE
+            val show = !text.isNullOrEmpty()
+            val wasVisible = visibility == View.VISIBLE
+            visibility = if (show) View.VISIBLE else View.GONE
+            if (ExperimentalMobileDesign.enabled() && show) {
+                setBackgroundResource(ExperimentalMobileDesign.metaPillBackground())
+                if (!wasVisible) ExpMotion.popIn(this)
             }
         }
 
-        binding.tvMovieReleasedYear.text = movie.released?.format("yyyy")
-            ?: context.getString(R.string.movie_item_type)
-
-        binding.pbMovieProgress.apply {
-            val watchHistory = movie.watchHistory
-
-            progress = when {
-                watchHistory != null -> (watchHistory.lastPlaybackPositionMillis * 100 / watchHistory.durationMillis.toDouble()).toInt()
-                else -> 0
-            }
-            visibility = when {
-                watchHistory != null -> View.VISIBLE
-                else -> View.GONE
+        binding.tvMovieReleasedYear.apply {
+            val year = movie.released?.format("yyyy")
+            text = year
+            if (ExperimentalMobileDesign.enabled() && !year.isNullOrBlank()) {
+                setBackgroundResource(ExperimentalMobileDesign.metaPillBackground())
+                setPadding(
+                    (6 * context.resources.displayMetrics.density).toInt(),
+                    (2 * context.resources.displayMetrics.density).toInt(),
+                    (6 * context.resources.displayMetrics.density).toInt(),
+                    (2 * context.resources.displayMetrics.density).toInt(),
+                )
+                val wasVisible = visibility == View.VISIBLE
+                visibility = View.VISIBLE
+                if (!wasVisible) ExpMotion.popIn(this)
+            } else {
+                visibility = View.GONE
             }
         }
+
+        bindMovieProgress(binding.pbMovieProgress)
 
         binding.tvMovieTitle.text = movie.title
+        if (ExperimentalMobileDesign.enabled() &&
+            binding.root.getTag(R.id.exp_enter_animated_tag) != true
+        ) {
+            binding.root.setTag(R.id.exp_enter_animated_tag, true)
+            ExpMotion.kenBurns(binding.ivMoviePoster)
+            ExpMotion.revealHeader(binding.tvMovieTitle)
+            ExpMotion.popIn(binding.root)
+        }
     }
 
     private fun displayGridTvItem(binding: ItemMovieGridTvBinding) {
@@ -589,6 +722,7 @@ class MovieViewHolder(
             isActivated = itemSelected
             setOnKeyListener { _, _, event -> onMovieKey?.invoke(movie, event) ?: false }
             setOnClickListener {
+                ExpMotion.hapticTap(it)
                 onMovieClick?.let { listener ->
                     listener(movie)
                     return@setOnClickListener
@@ -606,6 +740,7 @@ class MovieViewHolder(
             }
 
             setOnLongClickListener {
+                ExpMotion.hapticTap(it)
                 onMovieLongClick?.let { listener ->
                     listener(movie)
                     return@setOnLongClickListener true
@@ -638,30 +773,70 @@ class MovieViewHolder(
                 watchHistory != null -> View.VISIBLE
                 else -> View.GONE
             }
+            if (ExperimentalMobileDesign.enabled() && watchHistory != null) {
+                val primary = com.google.android.material.color.MaterialColors.getColor(
+                    this, androidx.appcompat.R.attr.colorPrimary,
+                )
+                progressTintList = android.content.res.ColorStateList.valueOf(primary)
+            }
         }
         binding.tvMovieQuality.apply {
             text = movie.quality ?: ""
-            visibility = when {
-                text.isNullOrEmpty() -> View.GONE
-                else -> View.VISIBLE
+            val show = !text.isNullOrEmpty()
+            val wasVisible = visibility == View.VISIBLE
+            visibility = if (show) View.VISIBLE else View.GONE
+            if (ExperimentalMobileDesign.enabled() && show) {
+                setBackgroundResource(ExperimentalMobileDesign.metaPillBackground())
+                if (!wasVisible) ExpMotion.popIn(this)
             }
         }
-        binding.tvMovieReleasedYear.text = movie.released?.format("yyyy")
-            ?: context.getString(R.string.movie_item_type)
+        binding.tvMovieReleasedYear.apply {
+            val year = movie.released?.format("yyyy")
+            text = year ?: context.getString(R.string.movie_item_type)
+            if (ExperimentalMobileDesign.enabled() && !year.isNullOrBlank()) {
+                setBackgroundResource(ExperimentalMobileDesign.metaPillBackground())
+            }
+        }
         binding.tvMovieTitle.text = movie.title
+        if (ExperimentalMobileDesign.enabled() &&
+            binding.root.getTag(R.id.exp_enter_animated_tag) != true
+        ) {
+            binding.root.setTag(R.id.exp_enter_animated_tag, true)
+            ExpMotion.kenBurns(binding.ivMoviePoster)
+            ExpMotion.revealHeader(binding.tvMovieTitle)
+            ExpMotion.popIn(binding.root)
+        }
     }
 
     private fun applyMobileSelection(view: View) {
         if (itemSelected) {
-            val width = (4 * context.resources.displayMetrics.density).toInt()
+            val width = (3 * context.resources.displayMetrics.density).toInt()
+            val stroke = if (ExperimentalMobileDesign.enabled()) {
+                com.google.android.material.color.MaterialColors.getColor(
+                    view,
+                    androidx.appcompat.R.attr.colorPrimary,
+                )
+            } else {
+                ContextCompat.getColor(context, R.color.favorite_selected)
+            }
             view.background = GradientDrawable().apply {
                 setColor(Color.TRANSPARENT)
-                setStroke(width, ContextCompat.getColor(context, R.color.favorite_selected))
+                setStroke(width, stroke)
+                if (ExperimentalMobileDesign.enabled()) {
+                    cornerRadius = 10f * context.resources.displayMetrics.density
+                }
             }
             view.setPadding(width, width, width, width)
+            if (ExperimentalMobileDesign.enabled() &&
+                view.getTag(R.id.exp_enter_animated_tag) != "selected"
+            ) {
+                view.setTag(R.id.exp_enter_animated_tag, "selected")
+                ExpMotion.popIn(view)
+            }
         } else {
             view.background = null
             view.setPadding(0, 0, 0, 0)
+            view.setTag(R.id.exp_enter_animated_tag, null)
         }
     }
     private fun movieDownloadContentKey(): String? {
@@ -674,7 +849,18 @@ class MovieViewHolder(
     private fun setRibbonVisible(view: View, visible: Boolean) {
         val wasVisible = view.visibility == View.VISIBLE
         view.visibility = if (visible) View.VISIBLE else View.GONE
-        if (visible && !wasVisible) ExpMotion.popIn(view)
+        if (visible && ExperimentalMobileDesign.enabled()) {
+            view.setBackgroundResource(ExperimentalMobileDesign.iconChipBackground())
+            val pad = (4 * context.resources.displayMetrics.density).toInt()
+            view.setPadding(pad, pad, pad, pad)
+            if (!wasVisible || view.getTag(R.id.exp_enter_animated_tag) != true) {
+                view.setTag(R.id.exp_enter_animated_tag, true)
+                if (!wasVisible) ExpMotion.popIn(view)
+            }
+        } else if (!visible) {
+            view.background = null
+            view.setTag(R.id.exp_enter_animated_tag, null)
+        }
     }
 
     private fun bindRibbons(favoriteRibbon: View, watchedRibbon: View, downloadRibbon: View? = null) {
@@ -722,33 +908,56 @@ class MovieViewHolder(
             centerCrop()
             transition(DrawableTransitionOptions.withCrossFade())
         }
+        if (ExperimentalMobileDesign.enabled()) {
+            ExpMotion.kenBurns(binding.ivSwiperBackground)
+        }
 
         binding.tvSwiperTitle.text = movie.title
         itemView.contentDescription = movie.title
+        if (ExperimentalMobileDesign.enabled() &&
+            binding.root.getTag(R.id.exp_enter_animated_tag) != true
+        ) {
+            binding.root.setTag(R.id.exp_enter_animated_tag, true)
+            ExpMotion.revealHeader(binding.tvSwiperTitle, binding.tvSwiperOverview)
+        }
 
-        binding.tvSwiperTvShowLastEpisode.text = context.getString(R.string.movie_item_type)
+        binding.tvSwiperTvShowLastEpisode.apply {
+            text = context.getString(R.string.movie_item_type)
+            if (ExperimentalMobileDesign.enabled()) {
+                setBackgroundResource(ExperimentalMobileDesign.metaPillBackground())
+            }
+        }
 
         binding.tvSwiperQuality.apply {
             text = movie.quality
-            visibility = when {
-                text.isNullOrEmpty() -> View.GONE
-                else -> View.VISIBLE
+            val show = !text.isNullOrEmpty()
+            val wasVisible = visibility == View.VISIBLE
+            visibility = if (show) View.VISIBLE else View.GONE
+            if (show && ExperimentalMobileDesign.enabled()) {
+                setBackgroundResource(ExperimentalMobileDesign.metaPillBackground())
+                if (!wasVisible) ExpMotion.popIn(this)
             }
         }
 
         binding.tvSwiperReleased.apply {
             text = movie.released?.format("yyyy")
-            visibility = when {
-                text.isNullOrEmpty() -> View.GONE
-                else -> View.VISIBLE
+            val show = !text.isNullOrEmpty()
+            val wasVisible = visibility == View.VISIBLE
+            visibility = if (show) View.VISIBLE else View.GONE
+            if (show && ExperimentalMobileDesign.enabled()) {
+                setBackgroundResource(ExperimentalMobileDesign.metaPillBackground())
+                if (!wasVisible) ExpMotion.popIn(this)
             }
         }
 
         binding.tvSwiperRating.apply {
             text = movie.rating?.let { String.format(Locale.ROOT, "%.1f", it) } ?: "N/A"
-            visibility = when {
-                text.isNullOrEmpty() -> View.GONE
-                else -> View.VISIBLE
+            val show = !text.isNullOrEmpty()
+            val wasVisible = visibility == View.VISIBLE
+            visibility = if (show) View.VISIBLE else View.GONE
+            if (show && ExperimentalMobileDesign.enabled()) {
+                setBackgroundResource(ExperimentalMobileDesign.metaPillBackground())
+                if (!wasVisible) ExpMotion.popIn(this)
             }
         }
 
@@ -756,6 +965,7 @@ class MovieViewHolder(
 
         binding.tvSwiperOverview.apply {
             setOnClickListener {
+                ExpMotion.hapticTap(it)
                 maxLines = when (maxLines) {
                     2 -> Int.MAX_VALUE
                     else -> 2
@@ -766,6 +976,10 @@ class MovieViewHolder(
         }
 
         binding.btnSwiperWatchNow.apply {
+            if (ExperimentalMobileDesign.enabled()) {
+                setBackgroundResource(ExperimentalMobileDesign.primaryButtonBackground())
+                applyExpPress()
+            }
             setOnClickListener {
                 ExpMotion.hapticTap(it)
                 findNavController().navigate(
@@ -813,21 +1027,51 @@ class MovieViewHolder(
 
         binding.tvMovieTitle.text = movie.title
 
-        binding.tvMovieRating.text = movie.rating?.let { String.format(Locale.ROOT, "%.1f", it) } ?: "N/A"
+        if (ExperimentalMobileDesign.enabled() &&
+            binding.root.getTag(R.id.exp_enter_animated_tag) != true
+        ) {
+            binding.root.setTag(R.id.exp_enter_animated_tag, true)
+            ExpMotion.revealHeader(
+                binding.tvMovieTitle,
+                binding.root.findViewById(R.id.v_movie_title_rule),
+            )
+            ExpMotion.pulseAccentRule(binding.root.findViewById(R.id.v_movie_title_rule))
+            ExpMotion.revealHeader(
+                binding.btnMovieWatchNow,
+                binding.btnMovieTrailer,
+                binding.btnMovieDownload,
+            )
+        }
+
+        binding.tvMovieRating.apply {
+            text = movie.rating?.let { String.format(Locale.ROOT, "%.1f", it) } ?: "N/A"
+            if (ExperimentalMobileDesign.enabled()) {
+                setBackgroundResource(ExperimentalMobileDesign.metaPillBackground())
+                val wasVisible = visibility == View.VISIBLE
+                visibility = View.VISIBLE
+                if (!wasVisible) ExpMotion.popIn(this)
+            }
+        }
 
         binding.tvMovieQuality.apply {
             text = movie.quality
-            visibility = when {
-                text.isNullOrEmpty() -> View.GONE
-                else -> View.VISIBLE
+            val show = !text.isNullOrEmpty()
+            val wasVisible = visibility == View.VISIBLE
+            visibility = if (show) View.VISIBLE else View.GONE
+            if (ExperimentalMobileDesign.enabled() && show) {
+                setBackgroundResource(ExperimentalMobileDesign.metaPillBackground())
+                if (!wasVisible) ExpMotion.popIn(this)
             }
         }
 
         binding.tvMovieReleased.apply {
             text = movie.released?.format("yyyy")
-            visibility = when {
-                text.isNullOrEmpty() -> View.GONE
-                else -> View.VISIBLE
+            val show = !text.isNullOrEmpty()
+            val wasVisible = visibility == View.VISIBLE
+            visibility = if (show) View.VISIBLE else View.GONE
+            if (ExperimentalMobileDesign.enabled() && show) {
+                setBackgroundResource(ExperimentalMobileDesign.metaPillBackground())
+                if (!wasVisible) ExpMotion.popIn(this)
             }
         }
 
@@ -844,28 +1088,80 @@ class MovieViewHolder(
                     else -> context.getString(R.string.movie_runtime_minutes, minutes)
                 }
             }
-            visibility = when {
-                text.isNullOrEmpty() -> View.GONE
-                else -> View.VISIBLE
+            val show = !text.isNullOrEmpty()
+            val wasVisible = visibility == View.VISIBLE
+            visibility = if (show) View.VISIBLE else View.GONE
+            if (ExperimentalMobileDesign.enabled() && show) {
+                setBackgroundResource(ExperimentalMobileDesign.metaPillBackground())
+                if (!wasVisible) ExpMotion.popIn(this)
             }
         }
 
         binding.tvMovieGenres.apply {
             text = movie.genres.joinToString(", ") { it.name }
-            visibility = when {
-                movie.genres.isEmpty() -> View.GONE
-                else -> View.VISIBLE
+            val show = movie.genres.isNotEmpty()
+            val wasVisible = visibility == View.VISIBLE
+            visibility = if (show) View.VISIBLE else View.GONE
+            if (ExperimentalMobileDesign.enabled() && show) {
+                setBackgroundResource(ExperimentalMobileDesign.chipBackground())
+                if (!wasVisible) ExpMotion.popIn(this)
+            }
+            if (movie.genres.isNotEmpty()) {
+                if (ExperimentalMobileDesign.enabled()) applyExpPress()
+                setOnClickListener {
+                    ExpMotion.hapticTap(it)
+                    val genre = movie.genres.first()
+                    checkProviderAndRun {
+                        if (context.toActivity()?.getCurrentFragment() is MovieMobileFragment) {
+                            findNavController().navigate(
+                                MovieMobileFragmentDirections.actionMovieToGenre(
+                                    id = genre.id,
+                                    name = genre.name,
+                                )
+                            )
+                        }
+                    }
+                }
+            } else {
+                setOnClickListener(null)
             }
         }
 
-        binding.tvMovieOverview.text = movie.overview
+        binding.tvMovieOverview.apply {
+            text = movie.overview
+            if (ExperimentalMobileDesign.enabled() &&
+                !movie.overview.isNullOrBlank()
+            ) {
+                maxLines = 5
+                ellipsize = android.text.TextUtils.TruncateAt.END
+                if (getTag(R.id.exp_enter_animated_tag) != true) {
+                    setTag(R.id.exp_enter_animated_tag, true)
+                    ExpMotion.revealHeader(this)
+                }
+                var expanded = false
+                setOnClickListener {
+                    ExpMotion.hapticTap(it)
+                    expanded = !expanded
+                    maxLines = if (expanded) Integer.MAX_VALUE else 5
+                    if (expanded) ExpMotion.revealHeader(this)
+                    animate().alpha(0.82f).setDuration(90L).withEndAction {
+                        animate().alpha(1f).setDuration(140L).start()
+                    }.start()
+                }
+            }
+        }
 
         binding.btnMovieWatchNow.apply {
             val contentKey = movieDownloadContentKey()
-            text = if (contentKey != null && OfflineBadgeStore.isCompleted(context, contentKey)) {
+            val playOffline = contentKey != null && OfflineBadgeStore.isCompleted(context, contentKey)
+            text = if (playOffline) {
                 context.getString(R.string.downloads_play_offline)
             } else {
                 context.getString(R.string.movie_watch_now)
+            }
+            if (ExperimentalMobileDesign.enabled()) {
+                setBackgroundResource(ExperimentalMobileDesign.primaryButtonBackground())
+                applyExpPress()
             }
             setOnClickListener {
                 ExpMotion.hapticTap(it)
@@ -877,6 +1173,11 @@ class MovieViewHolder(
                         title = movie.title,
                         subtitle = movie.released?.format("yyyy") ?: "",
                         videoType = Video.Type.Movie(id = movie.id, title = movie.title, releaseDate = movie.released?.format("yyyy-MM-dd") ?: "", poster = movie.poster ?: movie.banner ?: "", imdbId = movie.imdbId),
+                        preferredServerName = if (playOffline) {
+                            com.dskja.betterstreamflix.fragments.player.PlayerViewModel.OFFLINE_SERVER_NAME
+                        } else {
+                            null
+                        },
                     ))
                 }
             }
@@ -897,17 +1198,108 @@ class MovieViewHolder(
 
         binding.btnMovieTrailer.apply {
             val trailer = movie.trailer
-            setOnClickListener {
-                if (trailer != null) handleTrailerClick(trailer, "MovieMobile")
+            val show = trailer != null
+            val wasVisible = visibility == View.VISIBLE
+            visibility = if (show) View.VISIBLE else View.GONE
+            if (ExperimentalMobileDesign.enabled()) {
+                setBackgroundResource(ExperimentalMobileDesign.chipBackground())
+                applyExpPress()
+                if (show && !wasVisible) ExpMotion.popIn(this)
             }
-            visibility = if (trailer != null) View.VISIBLE else View.GONE
+            setOnClickListener {
+                ExpMotion.hapticTap(it)
+                if (trailer != null) {
+                    val fragment = context.toActivity()?.getCurrentFragment() as? Fragment
+                    if (fragment != null) {
+                        com.dskja.betterstreamflix.ui.TrailerPlaybackController.play(fragment, trailer)
+                    } else {
+                        handleTrailerClick(trailer, "MovieMobile")
+                    }
+                }
+            }
         }
 
         binding.btnMovieDownload.apply {
+            if (ExperimentalMobileDesign.enabled()) {
+                setBackgroundResource(ExperimentalMobileDesign.chipBackground())
+                applyExpPress()
+            }
             setOnClickListener {
+                ExpMotion.hapticTap(it)
                 checkProviderAndRun {
                     val fragment = context.toActivity()?.getCurrentFragment() as? Fragment ?: return@checkProviderAndRun
                     DownloadOptionsController.enqueueMovie(fragment, movie)
+                }
+            }
+        }
+
+        binding.root.findViewById<android.widget.TextView>(R.id.tv_movie_certification)?.apply {
+            val cert = movie.contentRating
+            text = cert
+            val show = !cert.isNullOrBlank()
+            val wasVisible = visibility == View.VISIBLE
+            visibility = if (show) View.VISIBLE else View.GONE
+            if (ExperimentalMobileDesign.enabled() && show) {
+                setBackgroundResource(ExperimentalMobileDesign.metaPillBackground())
+                if (!wasVisible) ExpMotion.popIn(this)
+            }
+        }
+
+        binding.root.findViewById<android.widget.TextView>(R.id.btn_movie_share)?.let { shareBtn ->
+            if (ExperimentalMobileDesign.enabled()) {
+                shareBtn.setBackgroundResource(ExperimentalMobileDesign.chipBackground())
+                shareBtn.applyExpPress()
+            }
+            shareBtn.setOnClickListener {
+                ExpMotion.hapticTap(it)
+                val share = Intent(Intent.ACTION_SEND).apply {
+                    type = "text/plain"
+                    putExtra(Intent.EXTRA_SUBJECT, movie.title)
+                    putExtra(
+                        Intent.EXTRA_TEXT,
+                        buildString {
+                            append(movie.title)
+                            movie.released?.format("yyyy")?.let { year -> append(" ($year)") }
+                            movie.overview?.takeIf { it.isNotBlank() }?.let { overview -> append("\n\n").append(overview.take(280)) }
+                            movie.trailer?.let { trailer -> append("\n").append(trailer) }
+                        },
+                    )
+                }
+                context.startActivity(Intent.createChooser(share, context.getString(R.string.detail_share)))
+            }
+        }
+
+        binding.root.findViewById<android.widget.TextView>(R.id.btn_movie_watched)?.apply {
+            text = if (movie.isWatched) {
+                context.getString(R.string.option_show_unwatched)
+            } else {
+                context.getString(R.string.option_show_watched)
+            }
+            if (ExperimentalMobileDesign.enabled()) {
+                setBackgroundResource(ExperimentalMobileDesign.chipBackground())
+                applyExpPress()
+            }
+            setOnClickListener {
+                ExpMotion.hapticTap(it)
+                checkProviderAndRun {
+                    itemView.findViewTreeLifecycleOwner()?.lifecycleScope?.launch(Dispatchers.IO) {
+                        val dao = database.movieDao()
+                        val current = dao.getById(movie.id)
+                        val target = !(current?.isWatched ?: movie.isWatched)
+                        val updated = (current ?: movie).copy().apply {
+                            isWatched = target
+                            watchedDate = if (target) java.util.Calendar.getInstance() else null
+                        }
+                        dao.save(updated)
+                        withContext(Dispatchers.Main) {
+                            movie.isWatched = target
+                            text = if (target) {
+                                context.getString(R.string.option_show_unwatched)
+                            } else {
+                                context.getString(R.string.option_show_watched)
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -919,33 +1311,82 @@ class MovieViewHolder(
                 false -> R.drawable.ic_favorite_disable
             }
 
-            setOnClickListener {
-                ExpMotion.hapticTap(it)
-                checkProviderAndRun {
-                    itemView.findViewTreeLifecycleOwner()?.lifecycleScope?.launch(Dispatchers.IO) {
-                        val dao = database.movieDao()
-                        val current = dao.getById(movie.id)?.isFavorite ?: false
-                        val newValue = !current
-                        val resolvedMovie = ArtworkRepair.resolveMovieForFavorite(context, movie, newValue)
-
-                        dao.upsertFavorite(resolvedMovie, newValue)
-
-                        withContext(Dispatchers.Main) {
-                            movie.poster = resolvedMovie.poster
-                            movie.banner = resolvedMovie.banner
-                            movie.isFavorite = newValue
-                            setImageDrawable(
-                                ContextCompat.getDrawable(context, newValue.drawable())
+            if (ExperimentalMobileDesign.enabled()) {
+                setBackgroundResource(ExperimentalMobileDesign.iconChipBackground())
+                applyExpPress()
+                fun tintFor(favorite: Boolean) {
+                    imageTintList = android.content.res.ColorStateList.valueOf(
+                        if (favorite) {
+                            com.google.android.material.color.MaterialColors.getColor(
+                                this,
+                                androidx.appcompat.R.attr.colorPrimary,
                             )
-                            ExpMotion.popIn(binding.btnMovieFavorite)
+                        } else {
+                            com.google.android.material.color.MaterialColors.getColor(
+                                this,
+                                com.google.android.material.R.attr.colorOnSurfaceVariant,
+                            )
+                        },
+                    )
+                }
+                tintFor(movie.isFavorite)
+                setOnClickListener {
+                    ExpMotion.hapticTap(it)
+                    checkProviderAndRun {
+                        itemView.findViewTreeLifecycleOwner()?.lifecycleScope?.launch(Dispatchers.IO) {
+                            val dao = database.movieDao()
+                            val current = dao.getById(movie.id)?.isFavorite ?: false
+                            val newValue = !current
+                            val resolvedMovie = ArtworkRepair.resolveMovieForFavorite(context, movie, newValue)
+
+                            dao.upsertFavorite(resolvedMovie, newValue)
+
+                            withContext(Dispatchers.Main) {
+                                movie.poster = resolvedMovie.poster
+                                movie.banner = resolvedMovie.banner
+                                movie.isFavorite = newValue
+                                setImageDrawable(
+                                    ContextCompat.getDrawable(context, newValue.drawable())
+                                )
+                                tintFor(newValue)
+                                ExpMotion.popIn(binding.btnMovieFavorite)
+                            }
                         }
                     }
                 }
-            }
 
-            setImageDrawable(
-                ContextCompat.getDrawable(context, movie.isFavorite.drawable())
-            )
+                setImageDrawable(
+                    ContextCompat.getDrawable(context, movie.isFavorite.drawable())
+                )
+            } else {
+                setOnClickListener {
+                    ExpMotion.hapticTap(it)
+                    checkProviderAndRun {
+                        itemView.findViewTreeLifecycleOwner()?.lifecycleScope?.launch(Dispatchers.IO) {
+                            val dao = database.movieDao()
+                            val current = dao.getById(movie.id)?.isFavorite ?: false
+                            val newValue = !current
+                            val resolvedMovie = ArtworkRepair.resolveMovieForFavorite(context, movie, newValue)
+
+                            dao.upsertFavorite(resolvedMovie, newValue)
+
+                            withContext(Dispatchers.Main) {
+                                movie.poster = resolvedMovie.poster
+                                movie.banner = resolvedMovie.banner
+                                movie.isFavorite = newValue
+                                setImageDrawable(
+                                    ContextCompat.getDrawable(context, newValue.drawable())
+                                )
+                                ExpMotion.popIn(binding.btnMovieFavorite)
+                            }
+                        }
+                    }
+                }
+
+                setImageDrawable(
+                    ContextCompat.getDrawable(context, movie.isFavorite.drawable())
+                )
+            }
         }
     }
 
@@ -1009,20 +1450,57 @@ class MovieViewHolder(
 
         binding.tvMovieOverview.text = movie.overview
 
+        if (ExperimentalMobileDesign.enabled()) {
+            val onSurface = com.google.android.material.color.MaterialColors.getColor(
+                binding.tvMovieTitle, com.google.android.material.R.attr.colorOnSurface,
+            )
+            val onVariant = com.google.android.material.color.MaterialColors.getColor(
+                binding.tvMovieOverview, com.google.android.material.R.attr.colorOnSurfaceVariant,
+            )
+            binding.tvMovieTitle.setTextColor(onSurface)
+            binding.tvMovieOverview.setTextColor(onVariant)
+            listOf(
+                binding.tvMovieRating,
+                binding.tvMovieQuality,
+                binding.tvMovieReleased,
+                binding.tvMovieRuntime,
+            ).forEach { meta ->
+                if (meta.visibility == View.VISIBLE) {
+                    meta.setBackgroundResource(ExperimentalMobileDesign.metaPillBackground())
+                    meta.setTextColor(onSurface)
+                }
+            }
+            if (binding.root.getTag(R.id.exp_enter_animated_tag) != true) {
+                binding.root.setTag(R.id.exp_enter_animated_tag, true)
+                ExpMotion.revealHeader(binding.tvMovieTitle, binding.tvMovieOverview)
+            }
+        }
+
         binding.btnMovieWatchNow.apply {
             val contentKey = movieDownloadContentKey()
-            text = if (contentKey != null && OfflineBadgeStore.isCompleted(context, contentKey)) {
+            val playOffline = contentKey != null && OfflineBadgeStore.isCompleted(context, contentKey)
+            text = if (playOffline) {
                 context.getString(R.string.downloads_play_offline)
             } else {
                 context.getString(R.string.movie_watch_now)
             }
+            if (ExperimentalMobileDesign.enabled()) {
+                setBackgroundResource(ExperimentalMobileDesign.primaryButtonBackground())
+                applyExpPress()
+            }
             setOnClickListener {
+                ExpMotion.hapticTap(it)
                 checkProviderAndRun {
                     findNavController().navigate(MovieTvFragmentDirections.actionMovieToPlayer(
                         id = movie.id,
                         title = movie.title,
                         subtitle = movie.released?.format("yyyy") ?: "",
                         videoType = Video.Type.Movie(id = movie.id, title = movie.title, releaseDate = movie.released?.format("yyyy-MM-dd") ?: "", poster = movie.poster ?: movie.banner ?: "", imdbId = movie.imdbId),
+                        preferredServerName = if (playOffline) {
+                            com.dskja.betterstreamflix.fragments.player.PlayerViewModel.OFFLINE_SERVER_NAME
+                        } else {
+                            null
+                        },
                     ))
                 }
             }
@@ -1043,14 +1521,31 @@ class MovieViewHolder(
 
         binding.btnMovieTrailer.apply {
             val trailer = movie.trailer
+            if (ExperimentalMobileDesign.enabled() && trailer != null) {
+                setBackgroundResource(ExperimentalMobileDesign.chipBackground())
+                applyExpPress()
+            }
             setOnClickListener {
-                if (trailer != null) handleTrailerClick(trailer, "MovieTv")
+                ExpMotion.hapticTap(it)
+                if (trailer != null) {
+                    val fragment = context.toActivity()?.getCurrentFragment() as? Fragment
+                    if (fragment != null) {
+                        com.dskja.betterstreamflix.ui.TrailerPlaybackController.play(fragment, trailer)
+                    } else {
+                        handleTrailerClick(trailer, "MovieTv")
+                    }
+                }
             }
             visibility = if (trailer != null) View.VISIBLE else View.GONE
         }
 
         binding.btnMovieDownload.apply {
+            if (ExperimentalMobileDesign.enabled()) {
+                setBackgroundResource(ExperimentalMobileDesign.chipBackground())
+                applyExpPress()
+            }
             setOnClickListener {
+                ExpMotion.hapticTap(it)
                 checkProviderAndRun {
                     val fragment = context.toActivity()?.getCurrentFragment() as? Fragment ?: return@checkProviderAndRun
                     DownloadOptionsController.enqueueMovie(fragment, movie)
@@ -1063,6 +1558,11 @@ class MovieViewHolder(
             fun Boolean.drawable() = when (this) {
                 true -> R.drawable.ic_favorite_enable
                 false -> R.drawable.ic_favorite_disable
+            }
+
+            if (ExperimentalMobileDesign.enabled()) {
+                setBackgroundResource(ExperimentalMobileDesign.iconChipBackground())
+                applyExpPress()
             }
 
             setOnClickListener {
@@ -1096,6 +1596,17 @@ class MovieViewHolder(
     }
 
     private fun displayCastMobile(binding: ContentMovieCastMobileBinding) {
+        if (ExperimentalMobileDesign.enabled() &&
+            binding.root.getTag(R.id.exp_enter_animated_tag) != true
+        ) {
+            binding.root.setTag(R.id.exp_enter_animated_tag, true)
+            ExpMotion.revealHeader(
+                binding.root.findViewById(R.id.tv_movie_cast_label),
+                binding.root.findViewById(R.id.v_movie_cast_rule),
+            )
+            ExpMotion.pulseAccentRule(binding.root.findViewById(R.id.v_movie_cast_rule))
+            ExpMotion.staggerFirstFill(binding.rvMovieCast)
+        }
         binding.rvMovieCast.apply {
             adapter = AppAdapter().apply {
                 submitList(movie.cast.onEach {
@@ -1109,6 +1620,24 @@ class MovieViewHolder(
     }
 
     private fun displayCastTv(binding: ContentMovieCastTvBinding) {
+        if (ExperimentalMobileDesign.enabled()) {
+            binding.tvMovieCastLabel.setTextColor(
+                com.google.android.material.color.MaterialColors.getColor(
+                    binding.tvMovieCastLabel,
+                    androidx.appcompat.R.attr.colorPrimary,
+                ),
+            )
+            binding.root.findViewById<View>(R.id.v_movie_cast_rule)?.visibility = View.VISIBLE
+            if (binding.root.getTag(R.id.exp_enter_animated_tag) != true) {
+                binding.root.setTag(R.id.exp_enter_animated_tag, true)
+                ExpMotion.revealHeader(
+                    binding.tvMovieCastLabel,
+                    binding.root.findViewById(R.id.v_movie_cast_rule),
+                )
+                ExpMotion.pulseAccentRule(binding.root.findViewById(R.id.v_movie_cast_rule))
+                ExpMotion.staggerFirstFill(binding.hgvMovieCast)
+            }
+        }
         binding.hgvMovieCast.apply {
             setRowHeight(ViewGroup.LayoutParams.WRAP_CONTENT)
             adapter = AppAdapter().apply {
@@ -1121,13 +1650,57 @@ class MovieViewHolder(
     }
 
     private fun displayDirectorsMobile(binding: ContentMovieDirectorsMobileBinding) {
+        if (ExperimentalMobileDesign.enabled() &&
+            binding.root.getTag(R.id.exp_enter_animated_tag) != true
+        ) {
+            binding.root.setTag(R.id.exp_enter_animated_tag, true)
+            ExpMotion.revealHeader(
+                binding.root.findViewById(R.id.tv_movie_directors_label),
+                binding.root.findViewById(R.id.v_movie_directors_rule),
+            )
+            ExpMotion.pulseAccentRule(binding.root.findViewById(R.id.v_movie_directors_rule))
+        }
         binding.rvMovieDirectors.text = movie.directors.joinToString (separator =", ") { it.name }
     }
     private fun displayDirectorsTv(binding: ContentMovieDirectorsTvBinding) {
-        binding.rvMovieDirectors.text = movie.directors.joinToString (separator =", ") { it.name }
+        if (ExperimentalMobileDesign.enabled()) {
+            binding.tvMovieDirectorsLabel.setTextColor(
+                com.google.android.material.color.MaterialColors.getColor(
+                    binding.tvMovieDirectorsLabel,
+                    androidx.appcompat.R.attr.colorPrimary,
+                ),
+            )
+            binding.rvMovieDirectors.setTextColor(
+                com.google.android.material.color.MaterialColors.getColor(
+                    binding.rvMovieDirectors,
+                    com.google.android.material.R.attr.colorOnSurfaceVariant,
+                ),
+            )
+            binding.root.findViewById<View>(R.id.v_movie_directors_rule)?.visibility = View.VISIBLE
+            if (binding.root.getTag(R.id.exp_enter_animated_tag) != true) {
+                binding.root.setTag(R.id.exp_enter_animated_tag, true)
+                ExpMotion.revealHeader(
+                    binding.tvMovieDirectorsLabel,
+                    binding.root.findViewById(R.id.v_movie_directors_rule),
+                )
+                ExpMotion.pulseAccentRule(binding.root.findViewById(R.id.v_movie_directors_rule))
+            }
+        }
+        binding.rvMovieDirectors.text = movie.directors.joinToString(separator = ", ") { it.name }
     }
 
     private fun displayRecommendationsMobile(binding: ContentMovieRecommendationsMobileBinding) {
+        if (ExperimentalMobileDesign.enabled() &&
+            binding.root.getTag(R.id.exp_enter_animated_tag) != true
+        ) {
+            binding.root.setTag(R.id.exp_enter_animated_tag, true)
+            ExpMotion.revealHeader(
+                binding.root.findViewById(R.id.tv_movie_recommendations_label),
+                binding.root.findViewById(R.id.v_movie_recommendations_rule),
+            )
+            ExpMotion.pulseAccentRule(binding.root.findViewById(R.id.v_movie_recommendations_rule))
+            ExpMotion.staggerFirstFill(binding.rvMovieRecommendations)
+        }
         binding.rvMovieRecommendations.apply {
             adapter = AppAdapter().apply {
                 submitList(movie.recommendations.onEach {
@@ -1144,6 +1717,26 @@ class MovieViewHolder(
     }
 
     private fun displayRecommendationsTv(binding: ContentMovieRecommendationsTvBinding) {
+        if (ExperimentalMobileDesign.enabled()) {
+            binding.tvMovieRecommendationsLabel.setTextColor(
+                com.google.android.material.color.MaterialColors.getColor(
+                    binding.tvMovieRecommendationsLabel,
+                    androidx.appcompat.R.attr.colorPrimary,
+                ),
+            )
+            binding.root.findViewById<View>(R.id.v_movie_recommendations_rule)?.visibility = View.VISIBLE
+            if (binding.root.getTag(R.id.exp_enter_animated_tag) != true) {
+                binding.root.setTag(R.id.exp_enter_animated_tag, true)
+                ExpMotion.revealHeader(
+                    binding.tvMovieRecommendationsLabel,
+                    binding.root.findViewById(R.id.v_movie_recommendations_rule),
+                )
+                ExpMotion.pulseAccentRule(
+                    binding.root.findViewById(R.id.v_movie_recommendations_rule),
+                )
+                ExpMotion.staggerFirstFill(binding.hgvMovieRecommendations)
+            }
+        }
         binding.hgvMovieRecommendations.apply {
             setRowHeight(ViewGroup.LayoutParams.WRAP_CONTENT)
             adapter = AppAdapter().apply {
@@ -1157,4 +1750,24 @@ class MovieViewHolder(
             setItemSpacing(20)
         }
     }
+
+    private fun bindMovieProgress(bar: android.widget.ProgressBar) {
+        val watchHistory = movie.watchHistory
+        val target = when {
+            watchHistory != null && watchHistory.durationMillis > 0 ->
+                (watchHistory.lastPlaybackPositionMillis * 100 / watchHistory.durationMillis.toDouble()).toInt()
+            else -> 0
+        }
+        val show = watchHistory != null && watchHistory.durationMillis > 0
+        val wasVisible = bar.visibility == View.VISIBLE
+        bar.visibility = if (show) View.VISIBLE else View.GONE
+        if (show && ExperimentalMobileDesign.enabled() && (!wasVisible || bar.progress != target)) {
+            android.animation.ObjectAnimator.ofInt(bar, "progress", 0, target)
+                .setDuration(420L)
+                .start()
+        } else {
+            bar.progress = target
+        }
+    }
+
 }

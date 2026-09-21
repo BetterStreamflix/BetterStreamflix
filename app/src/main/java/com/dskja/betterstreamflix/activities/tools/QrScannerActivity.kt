@@ -24,6 +24,7 @@ import android.os.HandlerThread
 import android.util.Size
 import android.view.Surface
 import android.view.TextureView
+import android.view.View
 import android.widget.Toast
 import androidx.annotation.RequiresApi
 import androidx.activity.result.contract.ActivityResultContracts
@@ -40,9 +41,11 @@ import com.google.zxing.common.HybridBinarizer
 import com.dskja.betterstreamflix.R
 import com.dskja.betterstreamflix.databinding.ActivityQrScannerBinding
 import com.dskja.betterstreamflix.utils.AppLanguageManager
+import com.dskja.betterstreamflix.utils.ExpDialogChrome
 import com.dskja.betterstreamflix.utils.ExperimentalMobileDesign
 import com.dskja.betterstreamflix.utils.ThemeManager
 import com.google.android.material.color.DynamicColors
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.dskja.betterstreamflix.utils.UserPreferences
 import java.util.concurrent.Executor
 import java.util.concurrent.atomic.AtomicBoolean
@@ -95,12 +98,10 @@ class QrScannerActivity : AppCompatActivity() {
             isOpeningCamera = false
             camera.close()
             cameraDevice = null
-            Toast.makeText(
-                this@QrScannerActivity,
-                getString(R.string.settings_scan_resolver_failed),
-                Toast.LENGTH_SHORT
-            ).show()
-            finish()
+            notifyUser(
+                R.string.settings_scan_resolver_failed,
+                finishAfter = true,
+            )
         }
     }
 
@@ -110,12 +111,10 @@ class QrScannerActivity : AppCompatActivity() {
         if (isGranted) {
             openCameraIfReady()
         } else {
-            Toast.makeText(
-                this,
-                getString(R.string.settings_scan_resolver_camera_permission_denied),
-                Toast.LENGTH_SHORT
-            ).show()
-            finish()
+            notifyUser(
+                R.string.settings_scan_resolver_camera_permission_denied,
+                finishAfter = true,
+            )
         }
     }
 
@@ -126,7 +125,7 @@ class QrScannerActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         setTheme(
             if (ExperimentalMobileDesign.enabled()) {
-                R.style.AppTheme_Mobile_Experimental
+                ExperimentalMobileDesign.themeRes()
             } else {
                 ThemeManager.mobileThemeRes(UserPreferences.selectedTheme)
             }
@@ -137,22 +136,55 @@ class QrScannerActivity : AppCompatActivity() {
 
         super.onCreate(savedInstanceState)
 
-        binding = ActivityQrScannerBinding.inflate(layoutInflater)
+        binding = ActivityQrScannerBinding.bind(
+            layoutInflater.inflate(
+                ExperimentalMobileDesign.layout(
+                    R.layout.activity_qr_scanner,
+                    R.layout.activity_qr_scanner_exp,
+                ),
+                null,
+                false,
+            ),
+        )
         setContentView(binding.root)
         applyThemeWindowChrome()
 
         cameraManager = getSystemService(CameraManager::class.java)
 
-        binding.qrScannerClose.setOnClickListener { finish() }
+        if (ExperimentalMobileDesign.enabled()) {
+            com.dskja.betterstreamflix.utils.ExpMotion.enterScreen(binding.root)
+            ExperimentalMobileDesign.applyReducedGlass(binding.root)
+            with(com.dskja.betterstreamflix.utils.ExpPressEffects) {
+                binding.qrScannerClose.applyExpPress()
+            }
+            binding.qrScannerClose.setBackgroundResource(ExperimentalMobileDesign.iconChipBackground())
+            com.dskja.betterstreamflix.utils.ExpMotion.revealHeader(
+                binding.root.findViewById(R.id.tv_qr_scanner_title),
+                binding.root.findViewById(R.id.ll_qr_scanner_header),
+            )
+            binding.root.findViewById<View>(R.id.fl_qr_scanner_frame)?.let {
+                com.dskja.betterstreamflix.utils.ExpMotion.popIn(it)
+            }
+            binding.root.findViewById<View>(R.id.ll_qr_scanner_header)?.setBackgroundResource(
+                ExperimentalMobileDesign.navPillBackground(),
+            )
+            binding.root.findViewById<View>(R.id.tv_qr_scanner_hint)?.let {
+                it.setBackgroundResource(ExperimentalMobileDesign.glassCardBackground())
+                com.dskja.betterstreamflix.utils.ExpMotion.popIn(it)
+            }
+        }
+
+        binding.qrScannerClose.setOnClickListener {
+            com.dskja.betterstreamflix.utils.ExpMotion.hapticTap(it)
+            finish()
+        }
         binding.qrScannerPreview.surfaceTextureListener = textureListener
 
         if (!packageManager.hasSystemFeature(PackageManager.FEATURE_CAMERA_ANY)) {
-            Toast.makeText(
-                this,
-                getString(R.string.settings_scan_resolver_camera_unavailable),
-                Toast.LENGTH_SHORT
-            ).show()
-            finish()
+            notifyUser(
+                R.string.settings_scan_resolver_camera_unavailable,
+                finishAfter = true,
+            )
         }
     }
 
@@ -186,12 +218,10 @@ class QrScannerActivity : AppCompatActivity() {
 
         val manager = cameraManager ?: return
         val cameraId = selectedCameraId ?: selectBackCamera(manager) ?: run {
-            Toast.makeText(
-                this,
-                getString(R.string.settings_scan_resolver_camera_unavailable),
-                Toast.LENGTH_SHORT
-            ).show()
-            finish()
+            notifyUser(
+                R.string.settings_scan_resolver_camera_unavailable,
+                finishAfter = true,
+            )
             return
         }
 
@@ -244,12 +274,10 @@ class QrScannerActivity : AppCompatActivity() {
             }
 
             override fun onConfigureFailed(session: CameraCaptureSession) {
-                Toast.makeText(
-                    this@QrScannerActivity,
-                    getString(R.string.settings_scan_resolver_failed),
-                    Toast.LENGTH_SHORT
-                ).show()
-                finish()
+                notifyUser(
+                    R.string.settings_scan_resolver_failed,
+                    finishAfter = true,
+                )
             }
         }
 
@@ -346,11 +374,62 @@ class QrScannerActivity : AppCompatActivity() {
     private fun deliverResult(result: String) {
         if (!resultDelivered.compareAndSet(false, true)) return
 
+        if (com.dskja.betterstreamflix.utils.ExperimentalMobileDesign.enabled()) {
+            com.dskja.betterstreamflix.utils.ExpMotion.hapticTap(findViewById(android.R.id.content))
+            findViewById<View>(R.id.fl_qr_scanner_frame)?.let { frame ->
+                frame.animate()
+                    .scaleX(1.06f)
+                    .scaleY(1.06f)
+                    .setDuration(90L)
+                    .withEndAction {
+                        frame.animate().scaleX(1f).scaleY(1f).setDuration(120L).start()
+                        setResult(
+                            Activity.RESULT_OK,
+                            Intent().putExtra(EXTRA_QR_VALUE, result)
+                        )
+                        finish()
+                    }
+                    .start()
+                return
+            }
+        }
+
         setResult(
             Activity.RESULT_OK,
             Intent().putExtra(EXTRA_QR_VALUE, result)
         )
         finish()
+    }
+
+    private fun notifyUser(
+        messageRes: Int,
+        titleRes: Int = R.string.settings_scan_resolver_qr_title,
+        finishAfter: Boolean = false,
+    ) {
+        val message = getString(messageRes)
+        if (!ExperimentalMobileDesign.enabled()) {
+            Toast.makeText(this, message, Toast.LENGTH_SHORT).show()
+            if (finishAfter) finish()
+            return
+        }
+        if (finishAfter) {
+            val glass = ExpDialogChrome.buildGlassMessage(this, message)
+            MaterialAlertDialogBuilder(this)
+                .setTitle(titleRes)
+                .setView(glass.root)
+                .setPositiveButton(android.R.string.ok, null)
+                .setCancelable(false)
+                .create()
+                .also { dialog ->
+                    dialog.setOnShowListener { ExpDialogChrome.polishGlassMessageShown(dialog, glass) }
+                    dialog.setOnDismissListener { finish() }
+                    dialog.show()
+                }
+            return
+        }
+        ExpDialogChrome.notify(this, message, titleRes) { ctx ->
+            MaterialAlertDialogBuilder(ctx)
+        }
     }
 
     private fun applyThemeWindowChrome() {
@@ -359,7 +438,15 @@ class QrScannerActivity : AppCompatActivity() {
 
     @Suppress("DEPRECATION")
     private fun applySystemBarColors() {
-        val systemBar = ThemeManager.palette(UserPreferences.selectedTheme).systemBar
+        val systemBar = if (ExperimentalMobileDesign.enabled()) {
+            com.google.android.material.color.MaterialColors.getColor(
+                this,
+                com.google.android.material.R.attr.colorSurface,
+                0xFF0B0B0F.toInt(),
+            )
+        } else {
+            ThemeManager.palette(UserPreferences.selectedTheme).systemBar
+        }
         window.statusBarColor = systemBar
         window.navigationBarColor = systemBar
     }

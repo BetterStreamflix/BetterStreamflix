@@ -85,6 +85,15 @@ class CastStreamProxyServer(
         val requestBuilder = Request.Builder().url(target).get()
         val mergedHeaders = linkedMapOf("User-Agent" to userAgent)
         mergedHeaders.putAll(defaultHeaders)
+        // Chromecast cannot send custom headers; VOE/SerienStream CDNs 404 without Referer.
+        if (mergedHeaders.keys.none { it.equals("Referer", ignoreCase = true) }) {
+            runCatching {
+                val uri = java.net.URI(target)
+                val origin = "${uri.scheme}://${uri.host}/"
+                mergedHeaders["Referer"] = origin
+                mergedHeaders.putIfAbsent("Origin", "${uri.scheme}://${uri.host}")
+            }
+        }
         session.headers["range"]?.let { mergedHeaders["Range"] = it }
         session.headers["accept"]?.let { mergedHeaders.putIfAbsent("Accept", it) }
         mergedHeaders.forEach { (key, value) ->

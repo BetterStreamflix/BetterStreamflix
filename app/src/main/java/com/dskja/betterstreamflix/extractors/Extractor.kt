@@ -116,6 +116,7 @@ abstract class Extractor {
             StreamrubyExtractor(),
             VidaraExtractor(),
             FirestreamExtractor(),
+            MeinecloudExtractor(),
             VidsonicExtractor(),
             HxfileExtractor(),
             ZillaExtractor(),
@@ -129,15 +130,24 @@ abstract class Extractor {
             // Transient hoster flaps are common — retry once before surfacing failure.
             repeat(2) { attempt ->
                 try {
-                    return extractOnce(link, server)
+                    val video = extractOnce(link, server)
+                    // Ensure HLS/DASH get a MIME so ExoPlayer does not sniff HTML error pages as progressive.
+                    val mime = StreamMime.coalesce(video.type, video.source)
+                    return if (mime != null && mime != video.type) video.copy(type = mime) else video
                 } catch (e: Exception) {
                     lastError = e
                     Log.w("Extractor", "extract attempt ${attempt + 1} failed for $link: ${e.message}")
+                    // Permanent empty responses — do not burn a second attempt.
+                    if (ExtractorFailureClassifier.isPermanent(e)) throw e
                     if (attempt == 0) delay(350)
                 }
             }
             throw lastError ?: Exception("No extractors found for URL: $link")
         }
+
+        @Deprecated("Use ExtractorFailureClassifier.isPermanent", ReplaceWith("ExtractorFailureClassifier.isPermanent(error)"))
+        fun isPermanentExtractFailure(error: Throwable): Boolean =
+            ExtractorFailureClassifier.isPermanent(error)
 
         private suspend fun extractOnce(link: String, server: Video.Server? = null): Video {
             var finalLink = link

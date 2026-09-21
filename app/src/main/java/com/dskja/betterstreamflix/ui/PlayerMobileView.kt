@@ -101,9 +101,57 @@ class PlayerMobileView @JvmOverloads constructor(
     }
 
     private fun showZoomToast(message: String, duration: Int = Toast.LENGTH_SHORT) {
+        if (com.dskja.betterstreamflix.utils.ExperimentalMobileDesign.enabled()) {
+            showExpZoomCue(message)
+            return
+        }
         zoomToast?.cancel()
         zoomToast = Toast.makeText(context, message, duration)
         zoomToast?.show()
+    }
+
+    private fun showExpZoomCue(message: String) {
+        val host = this as? ViewGroup ?: run {
+            zoomToast?.cancel()
+            zoomToast = Toast.makeText(context, message, Toast.LENGTH_SHORT)
+            zoomToast?.show()
+            return
+        }
+        host.findViewWithTag<android.widget.TextView>("exp_zoom_cue")?.let { host.removeView(it) }
+        val density = resources.displayMetrics.density
+        val cue = android.widget.TextView(context).apply {
+            tag = "exp_zoom_cue"
+            text = message
+            gravity = android.view.Gravity.CENTER
+            setTextAppearance(R.style.TextAppearance_Lumina_Caption)
+            setBackgroundResource(
+                com.dskja.betterstreamflix.utils.ExperimentalMobileDesign.metaPillBackground(),
+            )
+            val padH = (16 * density).toInt()
+            val padV = (10 * density).toInt()
+            setPadding(padH, padV, padH, padV)
+            elevation = 8f * density
+            setTextColor(
+                com.google.android.material.color.MaterialColors.getColor(
+                    this, com.google.android.material.R.attr.colorOnSurface,
+                ),
+            )
+        }
+        val lp = android.widget.FrameLayout.LayoutParams(
+            ViewGroup.LayoutParams.WRAP_CONTENT,
+            ViewGroup.LayoutParams.WRAP_CONTENT,
+        ).apply {
+            gravity = android.view.Gravity.CENTER_HORIZONTAL or android.view.Gravity.BOTTOM
+            bottomMargin = (96 * density).toInt()
+        }
+        host.addView(cue, lp)
+        com.dskja.betterstreamflix.utils.ExpMotion.popIn(cue)
+        cue.postDelayed({
+            if (cue.parent != null) {
+                com.dskja.betterstreamflix.utils.ExpMotion.fadeOutAndHide(cue)
+                cue.postDelayed({ (cue.parent as? ViewGroup)?.removeView(cue) }, 220L)
+            }
+        }, 900L)
     }
 
     override fun performClick(): Boolean {

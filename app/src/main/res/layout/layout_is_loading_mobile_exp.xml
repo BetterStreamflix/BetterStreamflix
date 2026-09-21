@@ -4,7 +4,7 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="?attr/colorSurface"
+    android:background="@drawable/bg_exp_canvas_atmosphere"
     android:clickable="true"
     android:focusable="true"
     android:visibility="visible"
@@ -107,34 +107,61 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent" />
 
-    <TextView
-        android:id="@+id/tv_is_loading_error"
-        android:fontFamily="@font/manrope"
-        android:layout_width="wrap_content"
+    <LinearLayout
+        android:id="@+id/ll_is_loading_error_card"
+        android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:drawableTop="@drawable/ic_exp_error"
-        android:drawablePadding="16dp"
-        android:gravity="center"
-        android:text="@string/loading_error_title"
-        android:textColor="?attr/colorOnSurface"
-        android:textSize="22sp"
+        android:layout_marginStart="28dp"
+        android:layout_marginEnd="28dp"
+        android:background="@drawable/bg_exp_glass_card"
+        android:gravity="center_horizontal"
+        android:orientation="vertical"
+        android:paddingStart="24dp"
+        android:paddingTop="28dp"
+        android:paddingEnd="24dp"
+        android:paddingBottom="24dp"
         app:layout_constraintBottom_toTopOf="@id/btn_is_loading_retry"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintVertical_chainStyle="packed" />
+        app:layout_constraintVertical_chainStyle="packed"
+        app:layout_constraintWidth_max="380dp">
+
+        <TextView
+            android:id="@+id/tv_is_loading_error"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:drawableTop="@drawable/ic_exp_error"
+            android:drawablePadding="14dp"
+            android:drawableTint="?attr/colorPrimary"
+            android:gravity="center"
+            android:text="@string/loading_error_title"
+            android:textAppearance="@style/TextAppearance.Lumina.Brand"
+            android:textSize="22sp" />
+
+        <TextView
+            android:id="@+id/tv_is_loading_error_body"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:gravity="center"
+            android:text="@string/loading_error_body"
+            android:textAppearance="@style/TextAppearance.Lumina.Body"
+            android:textColor="?attr/colorOnSurfaceVariant"
+            android:textSize="14sp" />
+    </LinearLayout>
 
     <TextView
         android:id="@+id/btn_is_loading_retry"
         style="@style/AppTheme.Widget.Mobile.Button.Exp"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginTop="24dp"
+        android:layout_marginTop="22dp"
         android:text="@string/loading_error_retry"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/tv_is_loading_error" />
+        app:layout_constraintTop_toBottomOf="@id/ll_is_loading_error_card" />
 
     <TextView
         android:id="@+id/btn_is_loading_clear_cache"
@@ -163,7 +190,7 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:visibility="gone"
-        app:constraint_referenced_ids="tv_is_loading_error,btn_is_loading_retry,btn_is_loading_clear_cache,btn_is_loading_error_details"
+        app:constraint_referenced_ids="ll_is_loading_error_card,btn_is_loading_retry,btn_is_loading_clear_cache,btn_is_loading_error_details"
         tools:visibility="visible" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>

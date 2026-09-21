@@ -27,6 +27,9 @@ class Movie(
     var imdbId: String? = null,
 
     @Ignore
+    var tmdbId: String? = null,
+
+    @Ignore
     var providerName: String? = null,
 
     @Ignore
@@ -43,6 +46,10 @@ class Movie(
     var released = released?.toCalendar()
     var favoritedAtMillis: Long? = null
     var lastPlayedAtMillis: Long? = null
+
+    /** TMDb / provider content rating chip (e.g. PG-13, TV-MA). Not persisted. */
+    @Ignore
+    var contentRating: String? = null
 
     override var isWatched: Boolean = false
     override var watchedDate: Calendar? = null
@@ -105,6 +112,7 @@ class Movie(
         poster,
         banner,
         imdbId,
+        tmdbId,
         providerName,
         genres,
         directors,
@@ -113,6 +121,7 @@ class Movie(
         isFavorite,
     ).apply {
         lastPlayedAtMillis = this@Movie.lastPlayedAtMillis
+        contentRating = this@Movie.contentRating
     }
 
     override fun equals(other: Any?): Boolean {

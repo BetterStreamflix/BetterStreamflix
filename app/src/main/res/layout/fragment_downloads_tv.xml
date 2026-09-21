@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:padding="24dp">
@@ -52,75 +53,104 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@id/tv_downloads_storage" />
 
-    <LinearLayout
-        android:id="@+id/ll_downloads_filters"
+    <HorizontalScrollView
+        android:id="@+id/hsv_downloads_filters"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:orientation="horizontal"
         android:paddingTop="12dp"
+        android:scrollbars="none"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@id/tv_downloads_banner">
 
-        <TextView
-            android:id="@+id/chip_filter_all"
+        <LinearLayout
+            android:id="@+id/ll_downloads_filters"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginEnd="8dp"
-            android:background="@drawable/bg_download_filter_chip"
-            android:focusable="true"
-            android:paddingStart="16dp"
-            android:paddingTop="10dp"
-            android:paddingEnd="16dp"
-            android:paddingBottom="10dp"
-            android:text="@string/downloads_filter_all"
-            android:textColor="#FFFFFFFF"
-            android:textSize="14sp" />
+            android:orientation="horizontal">
 
-        <TextView
-            android:id="@+id/chip_filter_downloading"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginEnd="8dp"
-            android:background="@drawable/bg_download_filter_chip"
-            android:focusable="true"
-            android:paddingStart="16dp"
-            android:paddingTop="10dp"
-            android:paddingEnd="16dp"
-            android:paddingBottom="10dp"
-            android:text="@string/downloads_filter_downloading"
-            android:textColor="#FFFFFFFF"
-            android:textSize="14sp" />
+            <TextView
+                android:id="@+id/chip_filter_all"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginEnd="8dp"
+                android:background="@drawable/bg_download_filter_chip"
+                android:focusable="true"
+                android:paddingStart="16dp"
+                android:paddingTop="10dp"
+                android:paddingEnd="16dp"
+                android:paddingBottom="10dp"
+                android:text="@string/downloads_filter_all"
+                android:textColor="#FFFFFFFF"
+                android:textSize="14sp" />
 
-        <TextView
-            android:id="@+id/chip_filter_completed"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginEnd="8dp"
-            android:background="@drawable/bg_download_filter_chip"
-            android:focusable="true"
-            android:paddingStart="16dp"
-            android:paddingTop="10dp"
-            android:paddingEnd="16dp"
-            android:paddingBottom="10dp"
-            android:text="@string/downloads_filter_completed"
-            android:textColor="#FFFFFFFF"
-            android:textSize="14sp" />
+            <TextView
+                android:id="@+id/chip_filter_downloading"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginEnd="8dp"
+                android:background="@drawable/bg_download_filter_chip"
+                android:focusable="true"
+                android:paddingStart="16dp"
+                android:paddingTop="10dp"
+                android:paddingEnd="16dp"
+                android:paddingBottom="10dp"
+                android:text="@string/downloads_filter_downloading"
+                android:textColor="#FFFFFFFF"
+                android:textSize="14sp" />
 
-        <TextView
-            android:id="@+id/chip_filter_failed"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:background="@drawable/bg_download_filter_chip"
-            android:focusable="true"
-            android:paddingStart="16dp"
-            android:paddingTop="10dp"
-            android:paddingEnd="16dp"
-            android:paddingBottom="10dp"
-            android:text="@string/downloads_filter_failed"
-            android:textColor="#FFFFFFFF"
-            android:textSize="14sp" />
-    </LinearLayout>
+            <TextView
+                android:id="@+id/chip_filter_completed"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginEnd="8dp"
+                android:background="@drawable/bg_download_filter_chip"
+                android:focusable="true"
+                android:paddingStart="16dp"
+                android:paddingTop="10dp"
+                android:paddingEnd="16dp"
+                android:paddingBottom="10dp"
+                android:text="@string/downloads_filter_completed"
+                android:textColor="#FFFFFFFF"
+                android:textSize="14sp" />
+
+            <TextView
+                android:id="@+id/chip_filter_failed"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:background="@drawable/bg_download_filter_chip"
+                android:focusable="true"
+                android:paddingStart="16dp"
+                android:paddingTop="10dp"
+                android:paddingEnd="16dp"
+                android:paddingBottom="10dp"
+                android:text="@string/downloads_filter_failed"
+                android:textColor="#FFFFFFFF"
+                android:textSize="14sp" />
+        </LinearLayout>
+    </HorizontalScrollView>
+
+    <View
+        android:id="@+id/v_downloads_filters_edge_fade_start"
+        android:layout_width="28dp"
+        android:layout_height="0dp"
+        android:background="@drawable/bg_exp_edge_fade_start"
+        android:importantForAccessibility="no"
+        android:visibility="gone"
+        app:layout_constraintBottom_toBottomOf="@id/hsv_downloads_filters"
+        app:layout_constraintStart_toStartOf="@id/hsv_downloads_filters"
+        app:layout_constraintTop_toTopOf="@id/hsv_downloads_filters" />
+
+    <View
+        android:id="@+id/v_downloads_filters_edge_fade_end"
+        android:layout_width="36dp"
+        android:layout_height="0dp"
+        android:background="@drawable/bg_exp_edge_fade_end"
+        android:importantForAccessibility="no"
+        android:visibility="gone"
+        app:layout_constraintBottom_toBottomOf="@id/hsv_downloads_filters"
+        app:layout_constraintEnd_toEndOf="@id/hsv_downloads_filters"
+        app:layout_constraintTop_toTopOf="@id/hsv_downloads_filters" />
 
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/rv_downloads"
@@ -131,19 +161,52 @@
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/ll_downloads_filters" />
+        app:layout_constraintTop_toBottomOf="@id/hsv_downloads_filters" />
 
     <TextView
         android:id="@+id/tv_downloads_empty"
-        android:layout_width="wrap_content"
+        android:layout_width="0dp"
         android:layout_height="wrap_content"
+        android:gravity="center"
+        android:padding="48dp"
         android:text="@string/downloads_empty"
-        android:textColor="#99FFFFFF"
-        android:textSize="16sp"
+        android:textColor="#B3FFFFFF"
+        android:textSize="18sp"
         android:visibility="gone"
-        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintBottom_toTopOf="@id/v_downloads_empty_rule"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent" />
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintVertical_chainStyle="packed"
+        app:layout_constraintWidth_max="520dp"
+        tools:visibility="visible" />
+
+    <View
+        android:id="@+id/v_downloads_empty_rule"
+        android:layout_width="36dp"
+        android:layout_height="3dp"
+        android:layout_marginTop="14dp"
+        android:background="@drawable/bg_exp_accent_rule"
+        android:visibility="gone"
+        app:layout_constraintBottom_toTopOf="@id/btn_downloads_empty_cta"
+        app:layout_constraintEnd_toEndOf="@id/tv_downloads_empty"
+        app:layout_constraintStart_toStartOf="@id/tv_downloads_empty"
+        app:layout_constraintTop_toBottomOf="@id/tv_downloads_empty"
+        tools:visibility="visible" />
+
+    <TextView
+        android:id="@+id/btn_downloads_empty_cta"
+        style="@style/AppTheme.Widget.Tv.Button"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="14dp"
+        android:focusable="true"
+        android:text="@string/exp_empty_browse_catalog"
+        android:visibility="gone"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="@id/tv_downloads_empty"
+        app:layout_constraintStart_toStartOf="@id/tv_downloads_empty"
+        app:layout_constraintTop_toBottomOf="@id/v_downloads_empty_rule"
+        tools:visibility="visible" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>

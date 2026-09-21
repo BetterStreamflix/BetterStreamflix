@@ -14,7 +14,6 @@
         android:layout_marginStart="22dp"
         android:layout_marginTop="26dp"
         android:layout_marginEnd="22dp"
-        android:fontFamily="@font/manrope"
         android:letterSpacing="0.12"
         android:text="@string/exp_catalog_eyebrow"
         android:textAllCaps="true"
@@ -31,23 +30,33 @@
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_marginTop="6dp"
-        android:fontFamily="@font/manrope"
-        android:letterSpacing="-0.03"
+        android:layout_marginEnd="8dp"
         android:text="@string/main_menu_movies"
         android:textAppearance="@style/TextAppearance.Lumina.Hero"
-        android:textColor="?attr/colorOnSurface"
-        android:textSize="34sp"
-        android:textStyle="bold"
-        app:layout_constraintEnd_toEndOf="@id/tv_movies_eyebrow"
+        app:layout_constraintEnd_toStartOf="@id/tv_movies_sort_chip"
         app:layout_constraintStart_toStartOf="@id/tv_movies_eyebrow"
         app:layout_constraintTop_toBottomOf="@id/tv_movies_eyebrow" />
+
+    <TextView
+        android:id="@+id/tv_movies_sort_chip"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginEnd="22dp"
+        android:background="@drawable/bg_exp_chip"
+        android:paddingHorizontal="12dp"
+        android:paddingVertical="6dp"
+        android:text="@string/catalog_sort_default"
+        android:textAppearance="@style/TextAppearance.Lumina.Caption"
+        android:textColor="?attr/colorOnSurface"
+        app:layout_constraintBottom_toBottomOf="@id/tv_movies_brand"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toTopOf="@id/tv_movies_brand" />
 
     <TextView
         android:id="@+id/tv_movies_tagline"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_marginTop="8dp"
-        android:fontFamily="@font/manrope"
         android:text="@string/exp_movies_tagline"
         android:textAppearance="@style/TextAppearance.Lumina.Body"
         android:textColor="?attr/colorOnSurfaceVariant"
@@ -64,6 +73,17 @@
         android:background="@drawable/bg_exp_accent_rule"
         app:layout_constraintStart_toStartOf="@id/tv_movies_brand"
         app:layout_constraintTop_toBottomOf="@id/tv_movies_tagline" />
+
+    <View
+        android:id="@+id/v_movies_header_fade"
+        android:layout_width="0dp"
+        android:layout_height="40dp"
+        android:layout_marginTop="10dp"
+        android:background="@drawable/bg_exp_header_fade"
+        android:elevation="2dp"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/v_movies_rule" />
 
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/rv_movies"
@@ -83,6 +103,64 @@
         app:layout_constraintTop_toTopOf="parent"
         app:spanCount="3"
         tools:listitem="@layout/item_movie_grid_mobile_exp" />
+
+        <TextView
+        android:id="@+id/tv_movies_empty"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="32dp"
+        android:layout_marginEnd="32dp"
+        android:background="@drawable/bg_exp_glass_card"
+        android:drawableTop="@drawable/ic_exp_error"
+        android:drawablePadding="18dp"
+        android:drawableTint="?attr/colorPrimary"
+        android:gravity="center"
+        android:padding="32dp"
+        android:text="@string/movies_empty"
+        android:textAppearance="@style/TextAppearance.Lumina.Body"
+        android:visibility="gone"
+        app:layout_constraintBottom_toTopOf="@id/v_movies_empty_rule"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintVertical_chainStyle="packed"
+        app:layout_constraintWidth_max="360dp"
+        tools:visibility="visible" />
+
+    
+    <View
+        android:id="@+id/v_movies_empty_rule"
+        android:layout_width="36dp"
+        android:layout_height="3dp"
+        android:layout_marginTop="14dp"
+        android:background="@drawable/bg_exp_accent_rule"
+        android:visibility="gone"
+        app:layout_constraintBottom_toTopOf="@id/btn_movies_empty_cta"
+        app:layout_constraintEnd_toEndOf="@id/tv_movies_empty"
+        app:layout_constraintStart_toStartOf="@id/tv_movies_empty"
+        app:layout_constraintTop_toBottomOf="@id/tv_movies_empty"
+        tools:visibility="visible" />
+
+<TextView
+        android:id="@+id/btn_movies_empty_cta"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="14dp"
+        android:background="@drawable/bg_exp_button_primary"
+        android:paddingStart="18dp"
+        android:paddingTop="10dp"
+        android:paddingEnd="18dp"
+        android:paddingBottom="10dp"
+        android:text="@string/exp_empty_choose_provider"
+        android:textAllCaps="false"
+        android:textAppearance="@style/TextAppearance.Lumina.Caption"
+        android:textColor="?attr/colorOnPrimary"
+        android:visibility="gone"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="@id/tv_movies_empty"
+        app:layout_constraintStart_toStartOf="@id/tv_movies_empty"
+        app:layout_constraintTop_toBottomOf="@id/v_movies_empty_rule"
+        tools:visibility="visible" />
 
     <include
         android:id="@+id/is_loading"

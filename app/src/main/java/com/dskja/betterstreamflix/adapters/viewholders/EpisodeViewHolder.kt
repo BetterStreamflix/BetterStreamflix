@@ -12,6 +12,7 @@ import com.bumptech.glide.Glide
 import com.bumptech.glide.load.resource.drawable.DrawableTransitionOptions
 import com.dskja.betterstreamflix.R
 import com.dskja.betterstreamflix.utils.ExpPressEffects.applyExpPress
+import com.dskja.betterstreamflix.utils.ExpMotion
 import com.dskja.betterstreamflix.utils.ExperimentalMobileDesign
 import com.dskja.betterstreamflix.databinding.ItemEpisodeContinueWatchingMobileBinding
 import com.dskja.betterstreamflix.databinding.ItemEpisodeContinueWatchingTvBinding
@@ -48,7 +49,13 @@ class EpisodeViewHolder(
 
     private val context = itemView.context
     init {
-        if (ExperimentalMobileDesign.enabled() && (_binding is ItemEpisodeMobileBinding || _binding is ItemEpisodeContinueWatchingMobileBinding)) {
+        if (ExperimentalMobileDesign.enabled() && (
+                _binding is ItemEpisodeMobileBinding ||
+                    _binding is ItemEpisodeContinueWatchingMobileBinding ||
+                    _binding is ItemEpisodeTvBinding ||
+                    _binding is ItemEpisodeContinueWatchingTvBinding
+                )
+        ) {
             itemView.applyExpPress()
         }
     }
@@ -71,6 +78,7 @@ class EpisodeViewHolder(
     private fun displayMobileItem(binding: ItemEpisodeMobileBinding) {
         binding.root.apply {
             setOnClickListener {
+                ExpMotion.hapticTap(it)
                 findNavController().navigate(
                     SeasonMobileFragmentDirections.actionSeasonToPlayer(
                         id = episode.id,
@@ -112,10 +120,12 @@ class EpisodeViewHolder(
                                 title = episode.season?.title,
                             ),
                         ),
+                        preferredServerName = preferredOfflineServerName(),
                     )
                 )
             }
             setOnLongClickListener {
+                ExpMotion.hapticTap(it)
                 ShowOptionsMobileDialog(context, episode)
                     .show()
                 true
@@ -130,29 +140,35 @@ class EpisodeViewHolder(
                 .centerCrop()
                 .transition(DrawableTransitionOptions.withCrossFade())
                 .into(this)
+            if (ExperimentalMobileDesign.enabled()) {
+                ExpMotion.kenBurns(this)
+            }
         }
-        binding.ivEpisodeWatchedRibbon.visibility = if (episode.isWatched) View.VISIBLE else View.GONE
+        binding.ivEpisodeWatchedRibbon.let { ribbon ->
+            val wasVisible = ribbon.visibility == View.VISIBLE
+            ribbon.visibility = if (episode.isWatched) View.VISIBLE else View.GONE
+            if (ExperimentalMobileDesign.enabled() && episode.isWatched) {
+                ribbon.setBackgroundResource(ExperimentalMobileDesign.iconChipBackground())
+                val pad = (4 * context.resources.displayMetrics.density).toInt()
+                ribbon.setPadding(pad, pad, pad, pad)
+                if (!wasVisible) ExpMotion.popIn(ribbon)
+            } else if (!episode.isWatched) {
+                ribbon.background = null
+            }
+        }
         bindDownloadRibbon(binding.ivEpisodeDownloadRibbon)
 
-        binding.pbEpisodeProgress.apply {
-            val watchHistory = episode.watchHistory
-
-            progress = when {
-                watchHistory != null -> (watchHistory.lastPlaybackPositionMillis * 100 / watchHistory.durationMillis.toDouble()).toInt()
-                episode.isWatched -> 100
-                else -> 0
-            }
-            visibility = when {
-                watchHistory != null -> View.VISIBLE
-                episode.isWatched -> View.VISIBLE
-                else -> View.GONE
-            }
-        }
+        bindEpisodeProgress(binding.pbEpisodeProgress)
+        // Remaining % pill is Continue Watching only — hide if recycled from a CW-styled bind.
+        binding.root.findViewById<View>(R.id.tv_episode_remaining)?.visibility = View.GONE
 
         binding.tvEpisodeInfo.text = context.getString(
             R.string.episode_number,
             episode.number
         )
+        if (ExperimentalMobileDesign.enabled()) {
+            binding.tvEpisodeInfo.setBackgroundResource(ExperimentalMobileDesign.metaPillBackground())
+        }
 
         binding.tvEpisodeTitle.text = episode.title ?: context.getString(
             R.string.episode_number,
@@ -161,17 +177,41 @@ class EpisodeViewHolder(
 
         binding.tvEpisodeReleased.apply {
             text = episode.released?.let { " • ${it.format("yyyy-MM-dd")}" }
-            visibility = when {
-                text.isNullOrEmpty() -> View.GONE
-                else -> View.VISIBLE
+            val show = !text.isNullOrEmpty()
+            val wasVisible = visibility == View.VISIBLE
+            visibility = if (show) View.VISIBLE else View.GONE
+            if (ExperimentalMobileDesign.enabled() && show) {
+                setBackgroundResource(ExperimentalMobileDesign.metaPillBackground())
+                if (!wasVisible) ExpMotion.popIn(this)
             }
         }
-        binding.tvEpisodeOverview.text = episode.overview ?: ""
+        binding.tvEpisodeOverview.apply {
+            text = episode.overview ?: ""
+            if (ExperimentalMobileDesign.enabled() && !episode.overview.isNullOrBlank()) {
+                maxLines = 3
+                ellipsize = android.text.TextUtils.TruncateAt.END
+                var expanded = false
+                setOnClickListener {
+                    ExpMotion.hapticTap(it)
+                    expanded = !expanded
+                    maxLines = if (expanded) Integer.MAX_VALUE else 3
+                    if (expanded) ExpMotion.revealHeader(this)
+                }
+            }
+        }
+        if (ExperimentalMobileDesign.enabled() &&
+            binding.root.getTag(R.id.exp_enter_animated_tag) != true
+        ) {
+            binding.root.setTag(R.id.exp_enter_animated_tag, true)
+            binding.root.setBackgroundResource(ExperimentalMobileDesign.glassCardBackground())
+            ExpMotion.revealHeader(binding.tvEpisodeInfo, binding.tvEpisodeTitle)
+        }
     }
 
     private fun displayTvItem(binding: ItemEpisodeTvBinding) {
         binding.root.apply {
             setOnClickListener {
+                ExpMotion.hapticTap(it)
                 findNavController().navigate(
                     SeasonTvFragmentDirections.actionSeasonToPlayer(
                         id = episode.id,
@@ -213,10 +253,12 @@ class EpisodeViewHolder(
                                 title = episode.season?.title,
                             ),
                         ),
+                        preferredServerName = preferredOfflineServerName(),
                     )
                 )
             }
             setOnLongClickListener {
+                ExpMotion.hapticTap(it)
                 ShowOptionsTvDialog(context, episode)
                     .show()
                 true
@@ -241,23 +283,21 @@ class EpisodeViewHolder(
                 .transition(DrawableTransitionOptions.withCrossFade())
                 .into(this)
         }
-        binding.ivEpisodeWatchedRibbon.visibility = if (episode.isWatched) View.VISIBLE else View.GONE
-        bindDownloadRibbon(binding.ivEpisodeDownloadRibbon)
-
-        binding.pbEpisodeProgress.apply {
-            val watchHistory = episode.watchHistory
-
-            progress = when {
-                watchHistory != null -> (watchHistory.lastPlaybackPositionMillis * 100 / watchHistory.durationMillis.toDouble()).toInt()
-                episode.isWatched -> 100
-                else -> 0
-            }
-            visibility = when {
-                watchHistory != null -> View.VISIBLE
-                episode.isWatched -> View.VISIBLE
-                else -> View.GONE
+        binding.ivEpisodeWatchedRibbon.let { ribbon ->
+            val wasVisible = ribbon.visibility == View.VISIBLE
+            ribbon.visibility = if (episode.isWatched) View.VISIBLE else View.GONE
+            if (ExperimentalMobileDesign.enabled() && episode.isWatched) {
+                ribbon.setBackgroundResource(ExperimentalMobileDesign.iconChipBackground())
+                val pad = (4 * context.resources.displayMetrics.density).toInt()
+                ribbon.setPadding(pad, pad, pad, pad)
+                if (!wasVisible) ExpMotion.popIn(ribbon)
+            } else if (!episode.isWatched) {
+                ribbon.background = null
             }
         }
+        bindDownloadRibbon(binding.ivEpisodeDownloadRibbon)
+
+        bindEpisodeProgress(binding.pbEpisodeProgress)
 
         binding.tvEpisodeInfo.text = context.getString(
             R.string.episode_number,
@@ -269,14 +309,42 @@ class EpisodeViewHolder(
             episode.number
         )
 
+        if (ExperimentalMobileDesign.enabled()) {
+            val onSurface = com.google.android.material.color.MaterialColors.getColor(
+                binding.tvEpisodeTitle, com.google.android.material.R.attr.colorOnSurface,
+            )
+            val onVariant = com.google.android.material.color.MaterialColors.getColor(
+                binding.tvEpisodeInfo, com.google.android.material.R.attr.colorOnSurfaceVariant,
+            )
+            binding.tvEpisodeTitle.setTextColor(onSurface)
+            binding.tvEpisodeInfo.setTextColor(onVariant)
+            binding.tvEpisodeOverview.setTextColor(onVariant)
+            binding.tvEpisodeInfo.setBackgroundResource(ExperimentalMobileDesign.metaPillBackground())
+            val primary = com.google.android.material.color.MaterialColors.getColor(
+                binding.pbEpisodeProgress, androidx.appcompat.R.attr.colorPrimary,
+            )
+            binding.pbEpisodeProgress.progressTintList =
+                android.content.res.ColorStateList.valueOf(primary)
+        }
+
         binding.tvEpisodeReleased.apply {
             text = episode.released?.format("EEEE - MMMM dd, yyyy")
-            visibility = when {
-                text.isNullOrEmpty() -> View.GONE
-                else -> View.VISIBLE
+            val show = !text.isNullOrEmpty()
+            val wasVisible = visibility == View.VISIBLE
+            visibility = if (show) View.VISIBLE else View.GONE
+            if (ExperimentalMobileDesign.enabled() && show) {
+                setBackgroundResource(ExperimentalMobileDesign.metaPillBackground())
+                if (!wasVisible) ExpMotion.popIn(this)
             }
         }
         binding.tvEpisodeOverview.text = episode.overview ?: ""
+        if (ExperimentalMobileDesign.enabled() &&
+            binding.root.getTag(R.id.exp_enter_animated_tag) != true
+        ) {
+            binding.root.setTag(R.id.exp_enter_animated_tag, true)
+            binding.root.setBackgroundResource(ExperimentalMobileDesign.glassCardBackground())
+            ExpMotion.revealHeader(binding.tvEpisodeInfo, binding.tvEpisodeTitle)
+        }
     }
 
     private fun checkProviderAndRun(action: () -> Unit) {
@@ -292,60 +360,64 @@ class EpisodeViewHolder(
     private fun displayContinueWatchingMobileItem(binding: ItemEpisodeContinueWatchingMobileBinding) {
         binding.root.apply {
             setOnClickListener {
+                ExpMotion.hapticTap(it)
+                // Go straight to player (parity with continue-watching movies) — no detail detour.
                 checkProviderAndRun {
-                findNavController().navigate(
-                    HomeMobileFragmentDirections.actionHomeToTvShow(
-                        id = episode.tvShow?.id ?: "",
-                        poster = episode.tvShow?.poster,
-                        banner = episode.tvShow?.banner,
-                    )
-                )
-                findNavController().navigate(
-                    TvShowMobileFragmentDirections.actionTvShowToPlayer(
-                        id = episode.id,
-                        title = episode.tvShow?.title ?: "",
-                        subtitle = episode.season?.takeIf { it.number != 0 }?.let { season ->
-                            context.getString(
-                                R.string.player_subtitle_tv_show,
-                                season.number,
-                                episode.number,
-                                episode.title ?: context.getString(
-                                    R.string.episode_number,
-                                    episode.number
-                                )
-                            )
-                        } ?: context.getString(
-                            R.string.player_subtitle_tv_show_episode_only,
+                    val subtitle = episode.season?.takeIf { it.number != 0 }?.let { season ->
+                        context.getString(
+                            R.string.player_subtitle_tv_show,
+                            season.number,
                             episode.number,
                             episode.title ?: context.getString(
                                 R.string.episode_number,
                                 episode.number
                             )
-                        ),
-                        videoType = Video.Type.Episode(
-                            id = episode.id,
-                            number = episode.number,
-                            title = episode.title,
-                            poster = episode.poster,
-                            overview = episode.overview,
-                            tvShow = Video.Type.Episode.TvShow(
-                                id = episode.tvShow?.id ?: "",
-                                title = episode.tvShow?.title ?: "",
-                                poster = episode.tvShow?.poster,
-                                banner = episode.tvShow?.banner,
-                                releaseDate = episode.tvShow?.released?.format("yyyy-MM-dd"),
-                                imdbId = episode.tvShow?.imdbId,
-                            ),
-                            season = Video.Type.Episode.Season(
-                                number = episode.season?.number ?: 0,
-                                title = episode.season?.title,
-                            ),
-                        ),
+                        )
+                    } ?: context.getString(
+                        R.string.player_subtitle_tv_show_episode_only,
+                        episode.number,
+                        episode.title ?: context.getString(
+                            R.string.episode_number,
+                            episode.number
+                        )
                     )
-                )
+                    findNavController().navigate(
+                        R.id.action_global_player,
+                        android.os.Bundle().apply {
+                            putString("id", episode.id)
+                            putString("title", episode.tvShow?.title ?: "")
+                            putString("subtitle", subtitle)
+                            putSerializable(
+                                "videoType",
+                                Video.Type.Episode(
+                                    id = episode.id,
+                                    number = episode.number,
+                                    title = episode.title,
+                                    poster = episode.poster,
+                                    overview = episode.overview,
+                                    tvShow = Video.Type.Episode.TvShow(
+                                        id = episode.tvShow?.id ?: "",
+                                        title = episode.tvShow?.title ?: "",
+                                        poster = episode.tvShow?.poster,
+                                        banner = episode.tvShow?.banner,
+                                        releaseDate = episode.tvShow?.released?.format("yyyy-MM-dd"),
+                                        imdbId = episode.tvShow?.imdbId,
+                                    ),
+                                    season = Video.Type.Episode.Season(
+                                        number = episode.season?.number ?: 0,
+                                        title = episode.season?.title,
+                                    ),
+                                ),
+                            )
+                            preferredOfflineServerName()?.let {
+                                putString("preferredServerName", it)
+                            }
+                        },
+                    )
                 }
             }
             setOnLongClickListener {
+                ExpMotion.hapticTap(it)
                 ShowOptionsMobileDialog(context, episode)
                     .show()
                 true
@@ -355,20 +427,13 @@ class EpisodeViewHolder(
         binding.ivEpisodeTvShowPoster.apply {
             clipToOutline = true
             loadContinueWatchingArtwork()
-        }
-
-        binding.pbEpisodeProgress.apply {
-            val watchHistory = episode.watchHistory
-
-            progress = when {
-                watchHistory != null -> (watchHistory.lastPlaybackPositionMillis * 100 / watchHistory.durationMillis.toDouble()).toInt()
-                else -> 0
-            }
-            visibility = when {
-                watchHistory != null -> View.VISIBLE
-                else -> View.GONE
+            if (ExperimentalMobileDesign.enabled()) {
+                ExpMotion.kenBurns(this)
             }
         }
+
+        bindEpisodeProgress(binding.pbEpisodeProgress)
+        bindEpisodeRemainingPill(binding.root)
 
         binding.tvEpisodeTvShowTitle.text = episode.tvShow?.title ?: ""
 
@@ -390,11 +455,25 @@ class EpisodeViewHolder(
                 episode.number
             )
         )
+        if (ExperimentalMobileDesign.enabled()) {
+            binding.root.setBackgroundResource(ExperimentalMobileDesign.glassCardBackground())
+            binding.tvEpisodeInfo.setBackgroundResource(ExperimentalMobileDesign.metaPillBackground())
+            if (binding.root.getTag(R.id.exp_enter_animated_tag) != true) {
+                binding.root.setTag(R.id.exp_enter_animated_tag, true)
+                ExpMotion.revealHeader(binding.tvEpisodeTvShowTitle, binding.tvEpisodeInfo)
+                ExpMotion.popIn(binding.root)
+            }
+        }
     }
 
     private fun displayContinueWatchingTvItem(binding: ItemEpisodeContinueWatchingTvBinding) {
         binding.root.apply {
+            if (ExperimentalMobileDesign.enabled()) {
+                setBackgroundResource(ExperimentalMobileDesign.glassCardBackground())
+                applyExpPress()
+            }
             setOnClickListener {
+                ExpMotion.hapticTap(it)
                 checkProviderAndRun {
                 findNavController().navigate(
                     HomeTvFragmentDirections.actionHomeToTvShow(
@@ -444,11 +523,13 @@ class EpisodeViewHolder(
                                 title = episode.season?.title,
                             ),
                         ),
+                        preferredServerName = preferredOfflineServerName(),
                     )
                 )
                 }
             }
             setOnLongClickListener {
+                ExpMotion.hapticTap(it)
                 ShowOptionsTvDialog(context, episode)
                     .show()
                 true
@@ -476,22 +557,13 @@ class EpisodeViewHolder(
         binding.ivEpisodeTvShowPoster.apply {
             clipToOutline = true
             loadContinueWatchingArtwork(withFallback = true)
-        }
-
-        binding.pbEpisodeProgress.apply {
-            val watchHistory = episode.watchHistory
-
-            progress = when {
-                watchHistory != null -> (watchHistory.lastPlaybackPositionMillis * 100 / watchHistory.durationMillis.toDouble()).toInt()
-                episode.isWatched -> 100
-                else -> 0
-            }
-            visibility = when {
-                watchHistory != null -> View.VISIBLE
-                episode.isWatched -> View.VISIBLE
-                else -> View.GONE
+            if (ExperimentalMobileDesign.enabled()) {
+                ExpMotion.kenBurns(this)
             }
         }
+
+        bindEpisodeProgress(binding.pbEpisodeProgress)
+        bindEpisodeRemainingPill(binding.root)
 
         binding.tvEpisodeTvShowTitle.text = episode.tvShow?.title ?: ""
 
@@ -513,6 +585,33 @@ class EpisodeViewHolder(
                 episode.number
             )
         )
+
+        if (ExperimentalMobileDesign.enabled()) {
+            val onSurface = com.google.android.material.color.MaterialColors.getColor(
+                binding.tvEpisodeTvShowTitle, com.google.android.material.R.attr.colorOnSurface,
+            )
+            val onVariant = com.google.android.material.color.MaterialColors.getColor(
+                binding.tvEpisodeInfo, com.google.android.material.R.attr.colorOnSurfaceVariant,
+            )
+            binding.tvEpisodeTvShowTitle.setTextColor(onSurface)
+            binding.tvEpisodeInfo.setTextColor(onVariant)
+            binding.tvEpisodeInfo.setBackgroundResource(ExperimentalMobileDesign.metaPillBackground())
+            val primary = com.google.android.material.color.MaterialColors.getColor(
+                binding.pbEpisodeProgress, androidx.appcompat.R.attr.colorPrimary,
+            )
+            val track = com.google.android.material.color.MaterialColors.getColor(
+                binding.pbEpisodeProgress, com.google.android.material.R.attr.colorSurfaceVariant,
+            )
+            binding.pbEpisodeProgress.progressTintList =
+                android.content.res.ColorStateList.valueOf(primary)
+            binding.pbEpisodeProgress.progressBackgroundTintList =
+                android.content.res.ColorStateList.valueOf(track)
+            if (binding.root.getTag(R.id.exp_enter_animated_tag) != true) {
+                binding.root.setTag(R.id.exp_enter_animated_tag, true)
+                ExpMotion.revealHeader(binding.tvEpisodeTvShowTitle, binding.tvEpisodeInfo)
+                ExpMotion.popIn(binding.root)
+            }
+        }
     }
 
     private fun episodeDownloadContentKey(): String? {
@@ -528,15 +627,29 @@ class EpisodeViewHolder(
         )
     }
 
+    private fun preferredOfflineServerName(): String? {
+        val contentKey = episodeDownloadContentKey() ?: return null
+        return if (OfflineBadgeStore.isCompleted(context, contentKey)) {
+            com.dskja.betterstreamflix.fragments.player.PlayerViewModel.OFFLINE_SERVER_NAME
+        } else {
+            null
+        }
+    }
+
     private fun bindDownloadRibbon(downloadRibbon: View) {
         val boundEpisodeId = episode.id
         val contentKey = episodeDownloadContentKey()
-        downloadRibbon.visibility =
-            if (contentKey != null && OfflineBadgeStore.isCompleted(context, contentKey)) {
-                View.VISIBLE
-            } else {
-                View.GONE
-            }
+        val show = contentKey != null && OfflineBadgeStore.isCompleted(context, contentKey)
+        val wasVisible = downloadRibbon.visibility == View.VISIBLE
+        downloadRibbon.visibility = if (show) View.VISIBLE else View.GONE
+        if (show && ExperimentalMobileDesign.enabled()) {
+            downloadRibbon.setBackgroundResource(ExperimentalMobileDesign.iconChipBackground())
+            val pad = (4 * context.resources.displayMetrics.density).toInt()
+            downloadRibbon.setPadding(pad, pad, pad, pad)
+            if (!wasVisible) ExpMotion.popIn(downloadRibbon)
+        } else if (!show) {
+            downloadRibbon.background = null
+        }
 
         downloadRibbonJob?.cancel()
         val lifecycleOwner = itemView.findViewTreeLifecycleOwner()
@@ -546,8 +659,17 @@ class EpisodeViewHolder(
             OfflineBadgeStore.completedKeys(context).collect { keys ->
                 if (episode.id != boundEpisodeId) return@collect
                 val key = episodeDownloadContentKey()
-                downloadRibbon.visibility =
-                    if (key != null && keys.contains(key)) View.VISIBLE else View.GONE
+                val visible = key != null && keys.contains(key)
+                val was = downloadRibbon.visibility == View.VISIBLE
+                downloadRibbon.visibility = if (visible) View.VISIBLE else View.GONE
+                if (visible && ExperimentalMobileDesign.enabled()) {
+                    downloadRibbon.setBackgroundResource(ExperimentalMobileDesign.iconChipBackground())
+                    val pad = (4 * context.resources.displayMetrics.density).toInt()
+                    downloadRibbon.setPadding(pad, pad, pad, pad)
+                    if (!was) ExpMotion.popIn(downloadRibbon)
+                } else if (!visible) {
+                    downloadRibbon.background = null
+                }
             }
         }
     }
@@ -576,4 +698,54 @@ class EpisodeViewHolder(
             transition(DrawableTransitionOptions.withCrossFade())
         }
     }
+
+
+    private fun bindEpisodeRemainingPill(root: View) {
+        val remaining = root.findViewById<android.widget.TextView>(R.id.tv_episode_remaining) ?: return
+        val watchHistory = episode.watchHistory
+        if (watchHistory != null && watchHistory.durationMillis > 0 && ExperimentalMobileDesign.enabled()) {
+            val pct = (watchHistory.lastPlaybackPositionMillis * 100 /
+                watchHistory.durationMillis.toDouble()).toInt().coerceIn(0, 99)
+            remaining.text = context.getString(R.string.continue_watching_percent, pct)
+            remaining.setBackgroundResource(ExperimentalMobileDesign.metaPillBackground())
+            val density = context.resources.displayMetrics.density
+            remaining.setPadding(
+                (8 * density).toInt(),
+                (2 * density).toInt(),
+                (8 * density).toInt(),
+                (2 * density).toInt(),
+            )
+            val wasVisible = remaining.visibility == View.VISIBLE
+            remaining.visibility = View.VISIBLE
+            if (!wasVisible) ExpMotion.popIn(remaining)
+        } else if (watchHistory != null && watchHistory.durationMillis > 0) {
+            val pct = (watchHistory.lastPlaybackPositionMillis * 100 /
+                watchHistory.durationMillis.toDouble()).toInt().coerceIn(0, 99)
+            remaining.text = context.getString(R.string.continue_watching_percent, pct)
+            remaining.visibility = View.VISIBLE
+        } else {
+            remaining.visibility = View.GONE
+        }
+    }
+
+    private fun bindEpisodeProgress(bar: android.widget.ProgressBar) {
+        val watchHistory = episode.watchHistory
+        val target = when {
+            watchHistory != null && watchHistory.durationMillis > 0 ->
+                (watchHistory.lastPlaybackPositionMillis * 100 / watchHistory.durationMillis.toDouble()).toInt()
+            episode.isWatched -> 100
+            else -> 0
+        }
+        val show = (watchHistory != null && watchHistory.durationMillis > 0) || episode.isWatched
+        val wasVisible = bar.visibility == View.VISIBLE
+        bar.visibility = if (show) View.VISIBLE else View.GONE
+        if (show && ExperimentalMobileDesign.enabled() && (!wasVisible || bar.progress != target)) {
+            android.animation.ObjectAnimator.ofInt(bar, "progress", 0, target)
+                .setDuration(420L)
+                .start()
+        } else {
+            bar.progress = target
+        }
+    }
+
 }

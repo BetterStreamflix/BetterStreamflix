@@ -25,6 +25,42 @@ object TMDb3 {
 
     fun rebuildService() {
         service = ApiService.build()
+        TmdbCache.clear()
+    }
+
+    /** Effective API key: user preference, else BuildConfig. */
+    fun effectiveApiKey(): String =
+        UserPreferences.tmdbApiKey.ifBlank { BuildConfig.TMDB_API_KEY }.trim()
+            .takeUnless { it.isBlank() || it == "null" }
+            .orEmpty()
+
+    fun hasApiKey(): Boolean = effectiveApiKey().isNotEmpty()
+
+    /** Lightweight connectivity check used by Settings. */
+    suspend fun ping(): Boolean = runCatching {
+        if (!hasApiKey()) return false
+        MovieLists.popular(page = 1, language = "en").results.isNotEmpty()
+    }.getOrDefault(false)
+
+    /** Non-null results for MultiItem pages (filters Gson nulls from bad media_type). */
+    fun <T : Any> PageResult<T?>.compactResults(): List<T> = results.filterNotNull()
+
+    object Find {
+        suspend fun byImdbId(
+            imdbId: String,
+            language: String? = null,
+        ): FindResult {
+            val clean = imdbId.trim()
+            if (clean.isBlank()) return FindResult()
+            val params = mapOf(
+                Params.Key.LANGUAGE to language,
+                Params.Key.EXTERNAL_SOURCE to "imdb_id",
+            )
+            return service.findByExternalId(
+                externalId = clean,
+                params = params.filterNotNullValues(),
+            )
+        }
     }
 
     object Discover {
@@ -371,6 +407,32 @@ object TMDb3 {
                 params = params.filterNotNullValues(),
             )
         }
+
+        suspend fun nowPlaying(
+            language: String? = null,
+            page: Int? = null,
+            region: String? = null,
+        ): PageResult<Movie> {
+            val params = mapOf(
+                Params.Key.LANGUAGE to language,
+                Params.Key.PAGE to page?.toString(),
+                Params.Key.REGION to region,
+            )
+            return service.getNowPlayingMovies(params = params.filterNotNullValues())
+        }
+
+        suspend fun upcoming(
+            language: String? = null,
+            page: Int? = null,
+            region: String? = null,
+        ): PageResult<Movie> {
+            val params = mapOf(
+                Params.Key.LANGUAGE to language,
+                Params.Key.PAGE to page?.toString(),
+                Params.Key.REGION to region,
+            )
+            return service.getUpcomingMovies(params = params.filterNotNullValues())
+        }
     }
 
     object Movies {
@@ -704,6 +766,17 @@ object TMDb3 {
                 params = params.filterNotNullValues(),
             )
         }
+
+        suspend fun onTheAir(
+            language: String? = null,
+            page: Int? = null,
+        ): PageResult<Tv> {
+            val params = mapOf(
+                Params.Key.LANGUAGE to language,
+                Params.Key.PAGE to page?.toString(),
+            )
+            return service.getOnTheAirTv(params = params.filterNotNullValues())
+        }
     }
 
     object TvSeries {
@@ -869,6 +942,7 @@ object TMDb3 {
             const val CERTIFICATION_COUNTRY = "certification_country"
             const val CERTIFICATION_GTE = "certification.gte"
             const val CERTIFICATION_LTE = "certification.lte"
+            const val EXTERNAL_SOURCE = "external_source"
             const val FIRST_AIR_DATE_GTE = "first_air_date.gte"
             const val FIRST_AIR_DATE_LTE = "first_air_date.lte"
             const val FIRST_AIR_DATE_YEAR = "first_air_date_year"
@@ -1067,12 +1141,29 @@ object TMDb3 {
             @QueryMap params: Map<String, String> = emptyMap(),
         ): PageResult<Movie>
 
+        @GET("movie/now_playing")
+        suspend fun getNowPlayingMovies(
+            @QueryMap params: Map<String, String> = emptyMap(),
+        ): PageResult<Movie>
+
+        @GET("movie/upcoming")
+        suspend fun getUpcomingMovies(
+            @QueryMap params: Map<String, String> = emptyMap(),
+        ): PageResult<Movie>
+
 
         @GET("movie/{movie_id}")
         suspend fun getMovieDetails(
             @Path("movie_id") movieId: Int,
             @QueryMap params: Map<String, String> = emptyMap(),
         ): Movie.Detail
+
+
+        @GET("find/{external_id}")
+        suspend fun findByExternalId(
+            @Path("external_id") externalId: String,
+            @QueryMap params: Map<String, String> = emptyMap(),
+        ): FindResult
 
 
         @GET("person/{person_id}")
@@ -1110,6 +1201,11 @@ object TMDb3 {
 
         @GET("tv/airing_today")
         suspend fun getAiringTodayTv(
+            @QueryMap params: Map<String, String> = emptyMap(),
+        ): PageResult<Tv>
+
+        @GET("tv/on_the_air")
+        suspend fun getOnTheAirTv(
             @QueryMap params: Map<String, String> = emptyMap(),
         ): PageResult<Tv>
 
@@ -1151,6 +1247,14 @@ object TMDb3 {
         @SerializedName("total_results") val totalResults: Int,
     )
 
+    data class FindResult(
+        @SerializedName("movie_results") val movieResults: List<Movie> = emptyList(),
+        @SerializedName("tv_results") val tvResults: List<Tv> = emptyList(),
+        @SerializedName("person_results") val personResults: List<Person> = emptyList(),
+        @SerializedName("tv_episode_results") val tvEpisodeResults: List<JsonObject> = emptyList(),
+        @SerializedName("tv_season_results") val tvSeasonResults: List<JsonObject> = emptyList(),
+    )
+
     data class GenresResponse(
         val genres: List<Genre>,
     )
@@ -1174,14 +1278,23 @@ object TMDb3 {
                 typeOfT: Type?,
                 context: JsonDeserializationContext?
             ): MultiItem? {
-                val jsonObject = json?.asJsonObject ?: JsonObject()
+                val jsonObject = json?.takeIf { it.isJsonObject }?.asJsonObject ?: return null
+                val mediaType = jsonObject.get("media_type")
+                    ?.takeIf { it.isJsonPrimitive }
+                    ?.asString
+                    .orEmpty()
 
-                return when (jsonObject.get("media_type")?.asString ?: "") {
-                    "movie" -> Gson().fromJson(json, Movie::class.java)
-                    "person" -> Gson().fromJson(json, Person::class.java)
-                    "tv" -> Gson().fromJson(json, Tv::class.java)
-                    else -> null
-                }
+                return runCatching {
+                    when (mediaType) {
+                        "movie" -> context?.deserialize(json, Movie::class.java)
+                            ?: Gson().fromJson(json, Movie::class.java)
+                        "person" -> context?.deserialize(json, Person::class.java)
+                            ?: Gson().fromJson(json, Person::class.java)
+                        "tv" -> context?.deserialize(json, Tv::class.java)
+                            ?: Gson().fromJson(json, Tv::class.java)
+                        else -> null
+                    }
+                }.getOrNull()
             }
         }
     }
@@ -1245,18 +1358,18 @@ object TMDb3 {
     data class Movie(
         @SerializedName("poster_path") val posterPath: String?,
         @SerializedName("adult") val adult: Boolean = false,
-        @SerializedName("overview") val overview: String,
+        @SerializedName("overview") val overview: String = "",
         @SerializedName("release_date") val releaseDate: String? = null,
-        @SerializedName("genre_ids") val genresIds: List<Int>,
+        @SerializedName("genre_ids") val genresIds: List<Int> = emptyList(),
         @SerializedName("id") val id: Int,
-        @SerializedName("original_title") val originalTitle: String,
-        @SerializedName("original_language") val originalLanguage: String,
-        @SerializedName("title") val title: String,
+        @SerializedName("original_title") val originalTitle: String = "",
+        @SerializedName("original_language") val originalLanguage: String = "",
+        @SerializedName("title") val title: String = "",
         @SerializedName("backdrop_path") val backdropPath: String?,
-        @SerializedName("popularity") val popularity: Float,
-        @SerializedName("vote_count") val voteCount: Int,
-        @SerializedName("video") val video: Boolean,
-        @SerializedName("vote_average") val voteAverage: Float,
+        @SerializedName("popularity") val popularity: Float = 0f,
+        @SerializedName("vote_count") val voteCount: Int = 0,
+        @SerializedName("video") val video: Boolean = false,
+        @SerializedName("vote_average") val voteAverage: Float = 0f,
     ) : MultiItem() {
 
         enum class ReleaseType(val value: Int) {
@@ -1352,19 +1465,19 @@ object TMDb3 {
 
     data class Tv(
         @SerializedName("poster_path") val posterPath: String?,
-        @SerializedName("popularity") val popularity: Float,
+        @SerializedName("popularity") val popularity: Float = 0f,
         @SerializedName("id") val id: Int,
         @SerializedName("adult") val adult: Boolean = false,
         @SerializedName("backdrop_path") val backdropPath: String?,
-        @SerializedName("vote_average") val voteAverage: Float,
-        @SerializedName("overview") val overview: String,
+        @SerializedName("vote_average") val voteAverage: Float = 0f,
+        @SerializedName("overview") val overview: String = "",
         @SerializedName("first_air_date") val firstAirDate: String? = null,
-        @SerializedName("origin_country") val originCountry: List<String>,
-        @SerializedName("genre_ids") val genresIds: List<Int>,
-        @SerializedName("original_language") val originalLanguage: String,
-        @SerializedName("vote_count") val voteCount: Int,
-        @SerializedName("name") val name: String,
-        @SerializedName("original_name") val originalName: String,
+        @SerializedName("origin_country") val originCountry: List<String> = emptyList(),
+        @SerializedName("genre_ids") val genresIds: List<Int> = emptyList(),
+        @SerializedName("original_language") val originalLanguage: String = "",
+        @SerializedName("vote_count") val voteCount: Int = 0,
+        @SerializedName("name") val name: String = "",
+        @SerializedName("original_name") val originalName: String = "",
     ) : MultiItem() {
 
         enum class Status(val value: String, val id: Int) {

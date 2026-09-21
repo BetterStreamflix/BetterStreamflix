@@ -88,6 +88,15 @@ class PlayerViewModel(
     fun playNextEpisode() =
         playEpisode(Direction.NEXT)
 
+    fun playLiveChannel(channel: com.dskja.betterstreamflix.iptv.IptvLiveSession.Channel) {
+        val episode = com.dskja.betterstreamflix.iptv.IptvLiveSession.toEpisodeType(channel)
+        com.dskja.betterstreamflix.iptv.IptvLiveSession.setCurrent(channel.id)
+        playEpisode(episode)
+        viewModelScope.launch {
+            _playPreviousOrNextEpisode.emit(episode)
+        }
+    }
+
     fun autoplayNextEpisode() {
         if (UserPreferences.autoplay) {
             playEpisode(Direction.NEXT)
@@ -114,11 +123,13 @@ class PlayerViewModel(
                 return@launch
             }
 
-            val servers = UserPreferences.currentProvider!!.getServers(id, videoType)
+            val provider = UserPreferences.currentProvider
+                ?: throw Exception("No provider selected")
+            val servers = provider.getServers(id, videoType)
             if (servers.isEmpty()) throw Exception("No servers found")
             
             // LOG POTENZIATO: Mostra tutti i server disponibili per il player
-            Log.i("BetterStreamflix", "[SERVERS LIST] -> Provider: ${UserPreferences.currentProvider!!.name}")
+            Log.i("BetterStreamflix", "[SERVERS LIST] -> Provider: ${provider.name}")
             Log.i("BetterStreamflix", "[SERVERS LIST] -> Found ${servers.size} servers: ${servers.joinToString { it.name }}")
 
             Log.d("PlayerViewModel", "Ricerca server completata: ${servers.size} server trovati")
@@ -140,11 +151,13 @@ class PlayerViewModel(
                 _state.emit(State.SuccessLoadingVideo(cached, server))
                 return@launch
             }
+            val provider = UserPreferences.currentProvider
+                ?: throw Exception("No provider selected")
             val video = ProviderSmoke.withProviderTimeout(
                 timeoutMs = ProviderSmoke.SERVERS_TIMEOUT_MS,
                 label = "getVideo(${server.name})",
             ) {
-                UserPreferences.currentProvider!!.getVideo(server)
+                provider.getVideo(server)
             }
             if (video.source.isBlank()) throw Exception("No source found")
 
@@ -152,7 +165,7 @@ class PlayerViewModel(
             // Se il provider non ha già impostato un default (es. i "forced" in spagnolo),
             // allora proviamo ad attivare l'ultimo sottotitolo usato dall'utente.
             // MA: se siamo su un provider spagnolo e non ci sono forced, non dobbiamo attivare nulla.
-            val currentProviderLang = UserPreferences.currentProvider?.language ?: ""
+            val currentProviderLang = provider.language
             val hasDefaultAlready = video.subtitles.any { it.default }
 
             if (!hasDefaultAlready && currentProviderLang != "es") {
@@ -167,7 +180,11 @@ class PlayerViewModel(
             _state.emit(State.SuccessLoadingVideo(video, server))
         } catch (e: Exception) {
             Log.e("PlayerViewModel", "Errore estrazione video: ", e)
-            CrashReporter.logNonFatal("PlayerViewModel", "getVideo failed: ${server.name}", e)
+            // Permanent hoster misses (404 / unpack / deleted) are expected failover noise —
+            // keep local logs but do not flood Sentry (BETTERSTREAMFLIX-10 / -12).
+            if (!com.dskja.betterstreamflix.extractors.ExtractorFailureClassifier.isPermanent(e)) {
+                CrashReporter.logNonFatal("PlayerViewModel", "getVideo failed: ${server.name}", e)
+            }
             _state.emit(State.FailedLoadingVideo(e, server))
         }
     }
@@ -203,6 +220,14 @@ class PlayerViewModel(
     fun getSubtitles(videoType: Video.Type) = viewModelScope.launch(Dispatchers.IO) {
         Log.d("PlayerViewModel", "Inizio ricerca sottotitoli")
         _subtitleState.emit(SubtitleState.Loading)
+
+        // Offline playback already carries sidecar subs — skip OpenSubtitles/SubDL net.
+        if (resolveOffline(videoType) != null) {
+            Log.d("PlayerViewModel", "Offline playback — skipping remote subtitle search")
+            _subtitleState.emit(SubtitleState.SuccessOpenSubtitles(emptyList()))
+            _subtitleState.emit(SubtitleState.SuccessSubDLSubtitles(emptyList()))
+            return@launch
+        }
 
         launch {
             try {

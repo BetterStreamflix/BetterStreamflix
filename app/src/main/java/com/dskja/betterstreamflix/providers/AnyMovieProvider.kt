@@ -17,6 +17,7 @@ import com.dskja.betterstreamflix.models.Season
 import com.dskja.betterstreamflix.models.TvShow
 import com.dskja.betterstreamflix.models.Video
 import com.dskja.betterstreamflix.utils.DnsResolver
+import com.dskja.betterstreamflix.utils.NetworkClient
 import okhttp3.OkHttpClient
 import org.json.JSONObject
 import org.jsoup.Jsoup
@@ -54,7 +55,29 @@ object AnyMovieProvider : Provider, ProviderConfigUrl {
 
 
     override suspend fun getHome(): List<Category> {
-        val document = service.getHome()
+        val document = try {
+            service.getHome()
+        } catch (e: javax.net.ssl.SSLHandshakeException) {
+            throw Exception(
+                "AnyMovie SSL trust failed for $URL — try Connection & Services → clear cookies/cache, or switch DNS over HTTPS.",
+                e,
+            )
+        } catch (e: java.security.cert.CertPathValidatorException) {
+            throw Exception(
+                "AnyMovie SSL trust failed for $URL — try Connection & Services → clear cookies/cache, or switch DNS over HTTPS.",
+                e,
+            )
+        } catch (e: Exception) {
+            val ssl = generateSequence(e as Throwable?) { it?.cause }
+                .any { it is javax.net.ssl.SSLException || it is java.security.cert.CertificateException }
+            if (ssl) {
+                throw Exception(
+                    "AnyMovie SSL trust failed for $URL — try Connection & Services → clear cookies/cache, or switch DNS over HTTPS.",
+                    e,
+                )
+            }
+            throw e
+        }
 
         Regex("\"nonce\":\"(.*?)\"").find(document.toString())
             ?.groupValues?.get(1)
@@ -988,7 +1011,7 @@ object AnyMovieProvider : Provider, ProviderConfigUrl {
 
         companion object {
             fun build(): AllMoviesForYouService {
-                val client = OkHttpClient.Builder()
+                val client = NetworkClient.trustAll.newBuilder()
                     .dns(DnsResolver.doh)
                     .readTimeout(30, TimeUnit.SECONDS)
                     .connectTimeout(30, TimeUnit.SECONDS)

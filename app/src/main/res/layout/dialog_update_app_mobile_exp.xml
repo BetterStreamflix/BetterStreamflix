@@ -8,7 +8,7 @@
 
     <TextView
         android:id="@+id/tv_update_title"
-        android:fontFamily="@font/manrope"
+        android:textAppearance="@style/TextAppearance.Lumina.Brand"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_marginStart="20dp"
@@ -23,23 +23,34 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent" />
 
-    <TextView
-        android:id="@+id/tv_update_message"
-        android:layout_width="0dp"
-        android:layout_height="wrap_content"
-        android:layout_marginStart="20dp"
-        android:layout_marginTop="6dp"
-        android:layout_marginEnd="20dp"
-        android:gravity="center"
-        android:text="@string/update_message"
-        android:textColor="?attr/colorOnSurfaceVariant"
+    <View
+        android:id="@+id/v_update_title_rule"
+        android:layout_width="40dp"
+        android:layout_height="2dp"
+        android:layout_marginTop="10dp"
+        android:background="@drawable/bg_exp_accent_rule"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@id/tv_update_title" />
 
     <TextView
+        android:id="@+id/tv_update_message"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="20dp"
+        android:layout_marginTop="10dp"
+        android:layout_marginEnd="20dp"
+        android:gravity="center"
+        android:text="@string/update_message"
+        android:textAppearance="@style/TextAppearance.Lumina.Body"
+        android:textColor="?attr/colorOnSurfaceVariant"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/v_update_title_rule" />
+
+    <TextView
         android:id="@+id/tv_update_current_version_label"
-        android:fontFamily="@font/manrope"
+        android:textAppearance="@style/TextAppearance.Lumina.Eyebrow"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_marginStart="16dp"
@@ -57,7 +68,7 @@
 
     <TextView
         android:id="@+id/tv_update_current_version"
-        android:fontFamily="@font/manrope"
+        android:textAppearance="@style/TextAppearance.Lumina.Title"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_marginStart="16dp"
@@ -85,7 +96,7 @@
 
     <TextView
         android:id="@+id/tv_update_new_version_label"
-        android:fontFamily="@font/manrope"
+        android:textAppearance="@style/TextAppearance.Lumina.Eyebrow"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_marginStart="16dp"
@@ -104,7 +115,7 @@
 
     <TextView
         android:id="@+id/tv_update_new_version"
-        android:fontFamily="@font/manrope"
+        android:textAppearance="@style/TextAppearance.Lumina.Title"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_marginStart="16dp"
@@ -119,7 +130,7 @@
 
     <TextView
         android:id="@+id/tv_update_release_notes_label"
-        android:fontFamily="@font/manrope"
+        android:textAppearance="@style/TextAppearance.Lumina.Eyebrow"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_marginStart="20dp"
@@ -151,10 +162,10 @@
 
         <TextView
             android:id="@+id/tv_update_release_notes"
-        android:fontFamily="@font/manrope"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:lineSpacingExtra="3dp"
+            android:textAppearance="@style/TextAppearance.Lumina.Caption"
             android:textColor="?attr/colorOnSurfaceVariant"
             android:textSize="12sp"
             tools:text="- Bug fixes" />
@@ -183,31 +194,30 @@
         app:layout_constraintTop_toBottomOf="@id/barrier1"
         tools:visibility="visible" />
 
-    <Button
+    <com.google.android.material.button.MaterialButton
         android:id="@+id/btn_update_cancel"
-        style="?android:attr/buttonBarButtonStyle"
+        style="@style/AppTheme.Widget.Mobile.Button.Exp.Secondary"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginTop="16dp"
-        android:layout_marginEnd="2dp"
+        android:layout_marginEnd="8dp"
         android:layout_marginBottom="16dp"
+        android:minWidth="0dp"
         android:text="@string/update_later"
-        android:textColor="?attr/colorOnSurfaceVariant"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toStartOf="@id/btn_update"
         app:layout_constraintTop_toBottomOf="@id/pb_update_is_loading" />
 
-    <Button
+    <com.google.android.material.button.MaterialButton
         android:id="@+id/btn_update"
-        style="?android:attr/buttonBarButtonStyle"
+        style="@style/AppTheme.Widget.Mobile.Button.Exp"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginTop="16dp"
         android:layout_marginEnd="20dp"
         android:layout_marginBottom="16dp"
+        android:minWidth="0dp"
         android:text="@string/update"
-        android:textColor="?attr/colorPrimary"
-        android:textStyle="bold"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintTop_toBottomOf="@id/pb_update_is_loading" />

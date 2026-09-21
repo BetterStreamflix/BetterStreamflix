@@ -1,7 +1,6 @@
 package com.dskja.betterstreamflix.utils
 
 import android.content.Context
-import android.widget.Toast
 import com.dskja.betterstreamflix.R
 import retrofit2.HttpException
 
@@ -26,11 +25,11 @@ class Http409CacheGuard {
         }
         cleared = true
         CacheUtils.clearAppCache(context)
-        Toast.makeText(
+        ExpDialogChrome.notify(
             context,
-            context.getString(R.string.clear_cache_done_409),
-            Toast.LENGTH_SHORT,
-        ).show()
+            R.string.clear_cache_done_409,
+            R.string.loading_error_clear_cache,
+        )
         retry()
         return true
     }

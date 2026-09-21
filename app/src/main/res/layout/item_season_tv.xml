@@ -4,10 +4,12 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="wrap_content"
     android:layout_height="wrap_content"
+    android:background="@drawable/bg_exp_glass_card"
+    android:clipChildren="false"
+    android:clipToPadding="false"
     android:focusable="true"
     android:focusableInTouchMode="true"
-    android:clipChildren="false"
-    android:clipToPadding="false">
+    android:padding="8dp">
 
     <ImageView
         android:id="@+id/iv_season_poster"
@@ -41,7 +43,7 @@
         android:id="@+id/tv_season_title"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:layout_marginTop="20dp"
+        android:layout_marginTop="16dp"
         android:gravity="center"
         android:textColor="#FFFFFF"
         android:textSize="16sp"

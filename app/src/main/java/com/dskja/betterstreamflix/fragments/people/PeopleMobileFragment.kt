@@ -9,6 +9,7 @@ import androidx.fragment.app.Fragment
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.flowWithLifecycle
 import androidx.lifecycle.lifecycleScope
+import androidx.navigation.fragment.findNavController
 import androidx.navigation.fragment.navArgs
 import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.RecyclerView
@@ -26,7 +27,9 @@ import com.dskja.betterstreamflix.ui.SpacingItemDecoration
 import com.dskja.betterstreamflix.utils.CacheUtils
 import com.dskja.betterstreamflix.utils.Http409CacheGuard
 import com.dskja.betterstreamflix.utils.ExpNavAutoHide
+import com.dskja.betterstreamflix.utils.ExpEmptyChrome
 import com.dskja.betterstreamflix.utils.ExpMotion
+import com.dskja.betterstreamflix.utils.ExpPressEffects.applyExpPress
 import com.dskja.betterstreamflix.utils.ExperimentalMobileDesign
 import com.dskja.betterstreamflix.utils.LoggingUtils
 import com.dskja.betterstreamflix.utils.dp
@@ -68,8 +71,24 @@ class PeopleMobileFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         ExpNavAutoHide.attach(binding.root)
+        com.dskja.betterstreamflix.utils.ExpPressEffects.wireLoadingRetry(binding.isLoading.root)
         ExpMotion.enterScreen(binding.root)
+        ExperimentalMobileDesign.applyReducedGlass(binding.root)
         ExpMotion.staggerFirstFill(binding.rvPeople)
+        binding.root.findViewById<View>(R.id.iv_detail_back)?.also { back ->
+            androidx.appcompat.widget.TooltipCompat.setTooltipText(
+                back, back.context.getString(R.string.exp_back),
+            )
+        if (ExperimentalMobileDesign.enabled()) {
+                back.setBackgroundResource(ExperimentalMobileDesign.iconChipBackground())
+                with(com.dskja.betterstreamflix.utils.ExpPressEffects) { back.applyExpPress() }
+                ExpMotion.popIn(back)
+            }
+            back.setOnClickListener {
+                ExpMotion.hapticTap(it)
+                findNavController().navigateUp()
+            }
+        }
 
         initializePeople()
 
@@ -78,7 +97,7 @@ class PeopleMobileFragment : Fragment() {
                 when (state) {
                     PeopleViewModel.State.Loading -> binding.isLoading.apply {
                         ExpMotion.fadeInAndShow(root)
-                        pbIsLoading.visibility = View.VISIBLE
+                        com.dskja.betterstreamflix.utils.ExpPressEffects.showLoadingSkeleton(root, true)
                         gIsLoadingRetry.visibility = View.GONE
                     }
                     PeopleViewModel.State.LoadingMore -> appAdapter.isLoading = true
@@ -91,22 +110,25 @@ class PeopleMobileFragment : Fragment() {
                         if (http409Guard.handle(requireContext(), state.error) { viewModel.getPeople(args.id) }) {
                                 return@collect
                             }
-                        Toast.makeText(
-                            requireContext(),
-                            state.error.message ?: "",
-                            Toast.LENGTH_SHORT
-                        ).show()
+                        if (!ExperimentalMobileDesign.enabled()) {
+                            Toast.makeText(
+                                requireContext(),
+                                state.error.message ?: "",
+                                Toast.LENGTH_SHORT
+                            ).show()
+                        }
                         if (appAdapter.isLoading) {
                             appAdapter.isLoading = false
                         } else {
                             binding.isLoading.apply {
-                                pbIsLoading.visibility = View.GONE
+                                com.dskja.betterstreamflix.utils.ExpPressEffects.showLoadingSkeleton(root, false)
                                 gIsLoadingRetry.visibility = View.VISIBLE
+                                com.dskja.betterstreamflix.utils.ExpPressEffects.animateLoadingError(root)
                                 val doRetry = { viewModel.getPeople(args.id) }
                                 btnIsLoadingRetry.setOnClickListener { doRetry() }
                                 btnIsLoadingClearCache.setOnClickListener {
                                     CacheUtils.clearAppCache(requireContext())
-                                    android.widget.Toast.makeText(requireContext(), getString(com.dskja.betterstreamflix.R.string.clear_cache_done), android.widget.Toast.LENGTH_SHORT).show()
+                                    com.dskja.betterstreamflix.utils.ExpDialogChrome.notify(requireContext(), getString(com.dskja.betterstreamflix.R.string.clear_cache_done), com.dskja.betterstreamflix.R.string.loading_error_clear_cache)
                                     doRetry()
                                 }
                                 btnIsLoadingErrorDetails.setOnClickListener {
@@ -175,11 +197,62 @@ class PeopleMobileFragment : Fragment() {
 
                 binding.tvPeopleName.text = people.name.takeIf { it.isNotEmpty() } ?: args.name
 
+                if (ExperimentalMobileDesign.enabled() &&
+                    binding.root.getTag(R.id.exp_enter_animated_tag) != true
+                ) {
+                    binding.root.setTag(R.id.exp_enter_animated_tag, true)
+                    ExpMotion.kenBurns(binding.ivPeopleImage)
+                    ExpMotion.revealHeader(
+                        binding.root.findViewById(R.id.tv_people_eyebrow),
+                        binding.tvPeopleName,
+                        binding.root.findViewById(R.id.v_people_rule),
+                    )
+                    ExpMotion.pulseAccentRule(binding.root.findViewById(R.id.v_people_rule))
+                    binding.root.findViewById<View>(R.id.tv_people_filmography_label)?.let { label ->
+                        label.visibility = View.VISIBLE
+                        ExpMotion.revealHeader(label)
+                    }
+                    ExpMotion.pulseAccentRule(
+                        binding.root.findViewById(R.id.v_people_filmography_rule),
+                    )
+                    binding.root.findViewById<View>(R.id.v_people_ring)?.let { ring ->
+                        ring.animate().cancel()
+                        ring.scaleX = 0.92f
+                        ring.scaleY = 0.92f
+                        ring.alpha = 0.55f
+                        ring.animate()
+                            .scaleX(1f)
+                            .scaleY(1f)
+                            .alpha(1f)
+                            .setDuration(480L)
+                            .start()
+                    }
+                } else if (ExperimentalMobileDesign.enabled()) {
+                    binding.root.findViewById<View>(R.id.tv_people_filmography_label)?.visibility =
+                        View.VISIBLE
+                }
+
                 binding.tvPeopleBirthday.text = people.birthday?.format("MMMM dd, yyyy")
 
                 binding.gPeopleBirthday.visibility = when {
                     binding.tvPeopleBirthday.text.isNullOrEmpty() -> View.GONE
                     else -> View.VISIBLE
+                }
+                if (ExperimentalMobileDesign.enabled() &&
+                    binding.gPeopleBirthday.visibility == View.VISIBLE &&
+                    binding.gPeopleBirthday.getTag(R.id.exp_enter_animated_tag) != true
+                ) {
+                    binding.gPeopleBirthday.setTag(R.id.exp_enter_animated_tag, true)
+                    val padH = (8 * resources.displayMetrics.density).toInt()
+                    val padV = (3 * resources.displayMetrics.density).toInt()
+                    binding.tvPeopleBirthday.setBackgroundResource(
+                        ExperimentalMobileDesign.metaPillBackground(),
+                    )
+                    binding.tvPeopleBirthday.setPadding(padH, padV, padH, padV)
+                    ExpMotion.revealHeader(
+                        binding.root.findViewById(R.id.tv_people_birthday_label),
+                        binding.tvPeopleBirthday,
+                    )
                 }
 
                 binding.tvPeopleDeathday.text = people.deathday?.format("MMMM dd, yyyy")
@@ -188,12 +261,44 @@ class PeopleMobileFragment : Fragment() {
                     binding.tvPeopleDeathday.text.isNullOrEmpty() -> View.GONE
                     else -> View.VISIBLE
                 }
+                if (ExperimentalMobileDesign.enabled() &&
+                    binding.gPeopleDeathday.visibility == View.VISIBLE &&
+                    binding.gPeopleDeathday.getTag(R.id.exp_enter_animated_tag) != true
+                ) {
+                    binding.gPeopleDeathday.setTag(R.id.exp_enter_animated_tag, true)
+                    val padH = (8 * resources.displayMetrics.density).toInt()
+                    val padV = (3 * resources.displayMetrics.density).toInt()
+                    binding.tvPeopleDeathday.setBackgroundResource(
+                        ExperimentalMobileDesign.metaPillBackground(),
+                    )
+                    binding.tvPeopleDeathday.setPadding(padH, padV, padH, padV)
+                    ExpMotion.revealHeader(
+                        binding.root.findViewById(R.id.tv_people_deathday_label),
+                        binding.tvPeopleDeathday,
+                    )
+                }
 
                 binding.tvPeopleBirthplace.text = people.placeOfBirth
 
                 binding.gPeopleBirthplace.visibility = when {
                     binding.tvPeopleBirthplace.text.isNullOrEmpty() -> View.GONE
                     else -> View.VISIBLE
+                }
+                if (ExperimentalMobileDesign.enabled() &&
+                    binding.gPeopleBirthplace.visibility == View.VISIBLE &&
+                    binding.gPeopleBirthplace.getTag(R.id.exp_enter_animated_tag) != true
+                ) {
+                    binding.gPeopleBirthplace.setTag(R.id.exp_enter_animated_tag, true)
+                    val padH = (8 * resources.displayMetrics.density).toInt()
+                    val padV = (3 * resources.displayMetrics.density).toInt()
+                    binding.tvPeopleBirthplace.setBackgroundResource(
+                        ExperimentalMobileDesign.metaPillBackground(),
+                    )
+                    binding.tvPeopleBirthplace.setPadding(padH, padV, padH, padV)
+                    ExpMotion.revealHeader(
+                        binding.root.findViewById(R.id.tv_people_birthplace_label),
+                        binding.tvPeopleBirthplace,
+                    )
                 }
 
                 binding.tvPeopleBiography.apply {
@@ -202,15 +307,22 @@ class PeopleMobileFragment : Fragment() {
                 }
 
                 binding.tvPeopleBiographyReadMore.apply {
+                    if (ExperimentalMobileDesign.enabled()) {
+                        setBackgroundResource(ExperimentalMobileDesign.chipBackground())
+                        with(com.dskja.betterstreamflix.utils.ExpPressEffects) { applyExpPress() }
+                    }
                     setOnClickListener {
+                        ExpMotion.hapticTap(it)
                         binding.tvPeopleBiography.maxLines = Int.MAX_VALUE
                         binding.tvPeopleBiographyReadMore.visibility = View.GONE
                     }
 
                     binding.tvPeopleBiography.post {
-                        visibility = when {
-                            binding.tvPeopleBiography.lineCount > 7 -> View.VISIBLE
-                            else -> View.GONE
+                        val show = binding.tvPeopleBiography.lineCount > 7
+                        val wasVisible = visibility == View.VISIBLE
+                        visibility = if (show) View.VISIBLE else View.GONE
+                        if (ExperimentalMobileDesign.enabled() && show && !wasVisible) {
+                            ExpMotion.popIn(this)
                         }
                     }
                 }
@@ -218,6 +330,15 @@ class PeopleMobileFragment : Fragment() {
                 binding.gPeopleBiography.visibility = when {
                     binding.tvPeopleBiography.text.isNullOrEmpty() -> View.GONE
                     else -> View.VISIBLE
+                }
+                if (ExperimentalMobileDesign.enabled() && binding.gPeopleBiography.visibility == View.VISIBLE) {
+                    binding.tvPeopleBiography.setBackgroundResource(
+                        ExperimentalMobileDesign.glassCardBackground(),
+                    )
+                    ExpMotion.revealHeader(
+                        binding.tvPeopleBiographyLabel,
+                        binding.tvPeopleBiography,
+                    )
                 }
             }
         )
@@ -228,6 +349,15 @@ class PeopleMobileFragment : Fragment() {
                 is TvShow -> it.itemType = AppAdapter.Type.TV_SHOW_GRID_MOBILE_ITEM
             }
         })
+
+        ExpEmptyChrome.bind(
+            emptyView = binding.root.findViewById(R.id.tv_people_filmography_empty),
+            emptyRule = binding.root.findViewById(R.id.v_people_empty_rule),
+            emptyCta = binding.root.findViewById(R.id.btn_people_empty_cta),
+            visible = people.filmography.isEmpty(),
+            tintOnSurfaceVariant = false,
+            onCtaClick = { requireActivity().onBackPressedDispatcher.onBackPressed() },
+        )
 
         if (hasMore) {
             appAdapter.setOnLoadMoreListener { viewModel.loadMorePeopleFilmography() }

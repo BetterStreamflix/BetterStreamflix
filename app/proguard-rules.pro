@@ -65,6 +65,11 @@
 -keep class com.dskja.betterstreamflix.models.** { *; }
 -keep class com.dskja.betterstreamflix.extractors.** { *; }
 -keep class com.dskja.betterstreamflix.sync.** { *; }
+-keep class com.dskja.betterstreamflix.profiles.** { *; }
+
+# Gson TypeToken anonymous subclasses (HomeCacheStore / providers / workers)
+-keep,allowobfuscation,allowshrinking class com.google.gson.reflect.TypeToken
+-keep,allowobfuscation,allowshrinking class * extends com.google.gson.reflect.TypeToken
 
 # JNI
 -keepclasseswithmembernames class * {

@@ -140,8 +140,14 @@ class PlayerGestureHelper(
 
     private fun handleBrightness(delta: Float) {
         hideJob?.cancel()
+        val wasGone = brightnessLayout.visibility != View.VISIBLE
         brightnessLayout.visibility = View.VISIBLE
         volumeLayout.visibility = View.GONE
+        if (ExperimentalMobileDesign.enabled() && wasGone) {
+            ExpMotion.hapticTap(brightnessLayout)
+            brightnessLayout.setBackgroundResource(ExperimentalMobileDesign.controlsPillBackground())
+            ExpMotion.popIn(brightnessLayout)
+        }
 
         val window = (context as? android.app.Activity)?.window ?: return
         val layoutParams = window.attributes
@@ -169,8 +175,14 @@ class PlayerGestureHelper(
 
     private fun handleVolume(delta: Float) {
         hideJob?.cancel()
+        val wasGone = volumeLayout.visibility != View.VISIBLE
         volumeLayout.visibility = View.VISIBLE
         brightnessLayout.visibility = View.GONE
+        if (ExperimentalMobileDesign.enabled() && wasGone) {
+            ExpMotion.hapticTap(volumeLayout)
+            volumeLayout.setBackgroundResource(ExperimentalMobileDesign.controlsPillBackground())
+            ExpMotion.popIn(volumeLayout)
+        }
 
         val volumeChange = (delta / sensitivity) * maxVolume
         currentVolumeFloat += volumeChange
@@ -190,8 +202,21 @@ class PlayerGestureHelper(
         hideJob?.cancel()
         hideJob = CoroutineScope(Dispatchers.Main).launch {
             delay(1000)
-            brightnessLayout.visibility = View.GONE
-            volumeLayout.visibility = View.GONE
+            if (ExperimentalMobileDesign.enabled()) {
+                if (brightnessLayout.visibility == View.VISIBLE) {
+                    ExpMotion.fadeOutAndHide(brightnessLayout)
+                } else {
+                    brightnessLayout.visibility = View.GONE
+                }
+                if (volumeLayout.visibility == View.VISIBLE) {
+                    ExpMotion.fadeOutAndHide(volumeLayout)
+                } else {
+                    volumeLayout.visibility = View.GONE
+                }
+            } else {
+                brightnessLayout.visibility = View.GONE
+                volumeLayout.visibility = View.GONE
+            }
         }
     }
 }

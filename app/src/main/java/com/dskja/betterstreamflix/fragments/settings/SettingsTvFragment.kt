@@ -19,13 +19,14 @@ import android.util.Log
 import android.util.TypedValue
 import android.view.Gravity
 import android.view.LayoutInflater
+import android.view.View
+import android.view.ViewGroup
+import android.view.inputmethod.EditorInfo
 import android.widget.EditText
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.TextView
-import android.view.View
-import android.view.inputmethod.EditorInfo
 import android.widget.Toast
 import androidx.activity.OnBackPressedCallback
 import androidx.activity.result.contract.ActivityResultContracts
@@ -71,8 +72,11 @@ import com.dskja.betterstreamflix.player.SerienStreamBypassHelper
 import com.dskja.betterstreamflix.utils.BypassWebSocketEndpointHelper
 import com.dskja.betterstreamflix.utils.AppLanguageManager
 import com.dskja.betterstreamflix.utils.CrashReporter
-import com.dskja.betterstreamflix.utils.DnsResolver
 import com.dskja.betterstreamflix.utils.ExperimentalMobileDesign
+import com.dskja.betterstreamflix.utils.ExpDialogChrome
+import com.dskja.betterstreamflix.utils.ExpMotion
+import com.dskja.betterstreamflix.utils.ExpPressEffects
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.dskja.betterstreamflix.utils.ProviderChangeNotifier
 import com.dskja.betterstreamflix.ui.UserDataNotifier
 import com.dskja.betterstreamflix.utils.QrUtils
@@ -111,7 +115,7 @@ class SettingsTvFragment : LeanbackPreferenceFragmentCompat() {
     private lateinit var episodeDao: EpisodeDao
     private lateinit var seasonDao: SeasonDao
     private lateinit var backupRestoreManager: BackupRestoreManager
-    private var backupLoadingDialog: AlertDialog? = null
+    private var backupLoadingDialog: androidx.appcompat.app.AlertDialog? = null
     private var settingsHubController: SettingsHubController? = null
 
     private val exportBackupLauncher = registerForActivityResult(
@@ -219,15 +223,76 @@ class SettingsTvFragment : LeanbackPreferenceFragmentCompat() {
         return super.onPreferenceTreeClick(preference)
     }
 
+    private fun expAlertBuilder(
+        @Suppress("UNUSED_PARAMETER") context: android.content.Context = requireContext(),
+    ): androidx.appcompat.app.AlertDialog.Builder =
+        if (ExperimentalMobileDesign.enabled()) {
+            MaterialAlertDialogBuilder(context)
+        } else {
+            androidx.appcompat.app.AlertDialog.Builder(context)
+        }
+
     override fun onDisplayPreferenceDialog(preference: Preference) {
-        if (preference.key == "PARENTAL_CONTROL_PIN" || preference.key == "PARENTAL_CONTROL_ADMIN_PIN") {
+        if (preference.key == "PARENTAL_CONTROL_PIN" ||
+            preference.key == "PARENTAL_CONTROL_ADMIN_PIN" ||
+            preference.key == "PROFILE_PIN"
+        ) {
             return
         }
+        if (childFragmentManager.isStateSaved) return
         super.onDisplayPreferenceDialog(preference)
+        if (ExperimentalMobileDesign.enabled()) {
+            view?.post {
+                val dialog = (childFragmentManager
+                    .findFragmentByTag("androidx.preference.PreferenceFragment.DIALOG")
+                    as? androidx.fragment.app.DialogFragment)?.dialog
+                if (dialog != null) {
+                    com.dskja.betterstreamflix.utils.ExpDialogChrome.polishShown(dialog)
+                    dialog.window?.setBackgroundDrawableResource(
+                        ExperimentalMobileDesign.dialogBackground(),
+                    )
+                    dialog.window?.decorView?.let { decor ->
+                        ExperimentalMobileDesign.applyReducedGlass(decor)
+                        com.dskja.betterstreamflix.utils.ExpMotion.enterScreen(decor)
+                    }
+                }
+            }
+        }
     }
 
     private fun applyScreenTitle() {
         activity?.title = currentScreenState.title ?: getString(R.string.player_settings_title)
+    }
+
+    private fun injectNestedBackPreference() {
+        val screen = preferenceScreen ?: return
+        findPreference<Preference>("SETTINGS_NESTED_BACK")?.let { screen.removePreference(it) }
+        val nestedKey = currentScreenState.rootKey ?: return
+        if (nestedKey == "screen_platform") return
+        val screenTitle = currentScreenState.title
+            ?: getString(R.string.player_settings_title)
+        val back = object : Preference(requireContext()) {
+            override fun onBindViewHolder(holder: androidx.preference.PreferenceViewHolder) {
+                super.onBindViewHolder(holder)
+                holder.itemView.findViewById<android.widget.TextView>(R.id.tv_settings_nested_title)
+                    ?.text = screenTitle
+                holder.itemView.findViewById<android.view.View>(R.id.btn_settings_nested_back)
+                    ?.setOnClickListener { performClick() }
+            }
+        }.apply {
+            key = "SETTINGS_NESTED_BACK"
+            layoutResource = R.layout.header_settings_nested_back
+            isSelectable = true
+            order = Int.MIN_VALUE / 2
+            setOnPreferenceClickListener {
+                if (screenBackStack.isEmpty()) return@setOnPreferenceClickListener true
+                currentScreenState = screenBackStack.removeLast()
+                settingsBackCallback.isEnabled = screenBackStack.isNotEmpty()
+                renderCurrentScreen()
+                true
+            }
+        }
+        screen.addPreference(back)
     }
 
     private fun openNestedSettingsScreen(key: String, title: String) {
@@ -251,7 +316,7 @@ class SettingsTvFragment : LeanbackPreferenceFragmentCompat() {
                 runCatching { findNavController().navigate(R.id.support) }
             },
             onOpenAbout = {
-                runCatching { findNavController().navigate(R.id.support) }
+                runCatching { findNavController().navigate(R.id.settings_about) }
             },
         ).also { settingsHubController = it }
         controller.attach(view)
@@ -272,12 +337,32 @@ class SettingsTvFragment : LeanbackPreferenceFragmentCompat() {
             }
             setPreferencesFromResource(R.xml.settings_tv, null)
         }
+        // BETTERSTREAMFLIX-K: nested screens must not keep cross-screen dependencies.
+        SettingsPreferenceSanitizer.clearBrokenDependencies(preferenceScreen)
+        injectNestedBackPreference()
         if (::backupRestoreManager.isInitialized) {
             displaySettings()
         }
         applyScreenTitle()
         view?.let { ensureSettingsHub(it) }
         settingsHubController?.updateVisibility()
+        if (ExperimentalMobileDesign.enabled()) {
+            view?.let { root ->
+                if (root.getTag(R.id.exp_enter_animated_tag) != true) {
+                    root.setTag(R.id.exp_enter_animated_tag, true)
+                    ExpMotion.enterScreen(root)
+                }
+            }
+            if (currentScreenState.rootKey != null) {
+                listView?.let { list ->
+                    ExpMotion.startAnimation(list, R.anim.support_fade_slide_up)
+                    if (list.getTag(R.id.exp_enter_animated_tag) != currentScreenState.rootKey) {
+                        list.setTag(R.id.exp_enter_animated_tag, currentScreenState.rootKey)
+                        ExpMotion.staggerFirstFill(list)
+                    }
+                }
+            }
+        }
         if (currentScreenState.rootKey != null || !ExperimentalMobileDesign.enabled()) {
             view?.post { listView?.requestFocus() }
         }
@@ -287,9 +372,17 @@ class SettingsTvFragment : LeanbackPreferenceFragmentCompat() {
         super.onViewCreated(view, savedInstanceState)
         SettingsListStyler.attach(view, isTv = true)
         ensureSettingsHub(view)
+        consumeSettingsDeepLink()
         if (currentScreenState.rootKey != null || !ExperimentalMobileDesign.enabled()) {
             view.post { listView?.requestFocus() }
         }
+    }
+
+    private fun consumeSettingsDeepLink() {
+        val key = SettingsDeepLink.consumePendingScreenKey() ?: return
+        val title = findPreference<PreferenceScreen>(key)?.title?.toString()
+            ?: getString(R.string.settings_screen_downloads)
+        view?.post { openNestedSettingsScreen(key, title) }
     }
 
     override fun onDestroyView() {
@@ -307,6 +400,41 @@ class SettingsTvFragment : LeanbackPreferenceFragmentCompat() {
         PlatformSettingsController.bind(this, lifecycleScope) { key ->
             findPreference(key)
         }
+        ProfilesSettingsController.bind(
+            fragment = this,
+            scope = lifecycleScope,
+            findPreference = { key -> findPreference(key) },
+            onProfileSwitched = {
+                requireActivity().apply {
+                    finish()
+                    startActivity(Intent(this, MainTvActivity::class.java))
+                }
+            },
+        )
+        ConnectionServicesController.bind(
+            fragment = this,
+            scope = lifecycleScope,
+            findPreference = { key -> findPreference(key) },
+            openScreen = { key ->
+                val title = findPreference<Preference>(key)?.title?.toString()
+                    ?: getString(R.string.settings_category_network_title)
+                openNestedSettingsScreen(key, title)
+            },
+            onDohChanged = {
+                if (UserPreferences.currentProvider is StreamingCommunityProvider) {
+                    viewLifecycleOwner.lifecycleScope.launch {
+                        (UserPreferences.currentProvider as StreamingCommunityProvider).rebuildService()
+                        requireActivity().apply {
+                            finish()
+                            startActivity(Intent(this, this::class.java))
+                        }
+                    }
+                } else {
+                    showSettingsInfo(getString(R.string.doh_provider_updated))
+                }
+            },
+            onWebSocketBypassTest = { showWebSocketBypassTestDialog() },
+        )
 
         findPreference<EditTextPreference>("provider_streamingcommunity_domain")?.apply {
             val currentValue = UserPreferences.streamingcommunityDomain
@@ -324,7 +452,7 @@ class SettingsTvFragment : LeanbackPreferenceFragmentCompat() {
                 preference.summary = effectiveDomain
                 if (effectiveDomain != typed) {
                     findPreference<EditTextPreference>("provider_streamingcommunity_domain")?.text = null
-                    Toast.makeText(requireContext(), getString(R.string.settings_streamingcommunity_domain_blocked), Toast.LENGTH_LONG).show()
+                    showSettingsInfo(getString(R.string.settings_streamingcommunity_domain_blocked))
                 }
                 if (UserPreferences.currentProvider is StreamingCommunityProvider) {
                     viewLifecycleOwner.lifecycleScope.launch {
@@ -345,7 +473,7 @@ class SettingsTvFragment : LeanbackPreferenceFragmentCompat() {
                 summary = DEFAULT_DOMAIN_VALUE
                 text = null
             }
-            Toast.makeText(requireContext(), getString(R.string.settings_streamingcommunity_domain_reset_done), Toast.LENGTH_SHORT).show()
+            showSettingsInfo(getString(R.string.settings_streamingcommunity_domain_reset_done))
             if (UserPreferences.currentProvider is StreamingCommunityProvider) {
                 viewLifecycleOwner.lifecycleScope.launch {
                     (UserPreferences.currentProvider as StreamingCommunityProvider).rebuildService()
@@ -390,7 +518,7 @@ class SettingsTvFragment : LeanbackPreferenceFragmentCompat() {
                 summary = getString(R.string.settings_serienstream_domain_current, DEFAULT_SERIENSTREAM_DOMAIN_VALUE)
                 text = null
             }
-            Toast.makeText(requireContext(), getString(R.string.settings_serienstream_domain_reset_done), Toast.LENGTH_SHORT).show()
+            showSettingsInfo(getString(R.string.settings_serienstream_domain_reset_done))
             if (UserPreferences.currentProvider is SerienStreamProvider) {
                 viewLifecycleOwner.lifecycleScope.launch {
                     SerienStreamProvider.reloadService()
@@ -426,7 +554,7 @@ class SettingsTvFragment : LeanbackPreferenceFragmentCompat() {
                 summary = DEFAULT_MOFLIX_DOMAIN_VALUE
                 text = null
             }
-            Toast.makeText(requireContext(), getString(R.string.settings_moflix_domain_reset_done), Toast.LENGTH_SHORT).show()
+            showSettingsInfo(getString(R.string.settings_moflix_domain_reset_done))
             true
         }
 
@@ -478,6 +606,19 @@ class SettingsTvFragment : LeanbackPreferenceFragmentCompat() {
         GuardaFlixAuthSettingsController.bind(this, lifecycleScope) { key ->
             findPreference(key)
         }
+        SerienStreamAuthSettingsController.bind(this, lifecycleScope) { key ->
+            findPreference(key)
+        }
+        TmdbSettingsController.bind(this, lifecycleScope) { key ->
+            findPreference(key)
+        }
+        findPreference<Preference>("p_serienstream_account_open")?.setOnPreferenceClickListener {
+            openNestedSettingsScreen(
+                "screen_serienstream_auth",
+                getString(R.string.serienstream_auth_category_title),
+            )
+            true
+        }
 
         findPreference<EditTextPreference>("TMDB_API_KEY")?.apply {
             summary = if (UserPreferences.tmdbApiKey.isEmpty()) getString(R.string.settings_tmdb_api_key_summary) else UserPreferences.tmdbApiKey
@@ -491,7 +632,10 @@ class SettingsTvFragment : LeanbackPreferenceFragmentCompat() {
                 } else {
                     getString(R.string.settings_tmdb_api_key_success)
                 }
-                Toast.makeText(requireContext(), message, Toast.LENGTH_SHORT).show()
+                showSettingsInfo(message)
+                TmdbSettingsController.bind(this@SettingsTvFragment, lifecycleScope) { key ->
+                    findPreference(key)
+                }
                 true
             }
         }
@@ -511,7 +655,7 @@ class SettingsTvFragment : LeanbackPreferenceFragmentCompat() {
                         getString(R.string.settings_enable_tmdb_disabled)
                     }
 
-                    Toast.makeText(requireContext(), message, Toast.LENGTH_SHORT).show()
+                    showSettingsInfo(message)
                 }
 
                 if (!enabled && UserPreferences.parentalControlPin.isNotBlank()) {
@@ -538,36 +682,66 @@ class SettingsTvFragment : LeanbackPreferenceFragmentCompat() {
         }
 
         findPreference<Preference>("SEND_SENTRY_FEEDBACK")?.setOnPreferenceClickListener {
-            val input = EditText(requireContext()).apply {
+            val ctx = requireContext()
+            val density = resources.displayMetrics.density
+            val input = EditText(ctx).apply {
                 hint = getString(R.string.settings_send_sentry_feedback_hint)
                 minLines = 3
-                setPadding(48, 32, 48, 32)
+                if (ExperimentalMobileDesign.enabled()) {
+                    setBackgroundResource(ExperimentalMobileDesign.searchFieldBackground())
+                    setPadding(48, 36, 48, 36)
+                    setTextAppearance(R.style.TextAppearance_Lumina_Body)
+                } else {
+                    setPadding(48, 32, 48, 32)
+                }
             }
-            AlertDialog.Builder(requireContext())
+            val glass = if (ExperimentalMobileDesign.enabled()) {
+                ExpDialogChrome.buildGlassMessage(
+                    ctx,
+                    getString(R.string.settings_send_sentry_feedback_hint),
+                ).also { g ->
+                    g.root.addView(
+                        input,
+                        LinearLayout.LayoutParams(
+                            LinearLayout.LayoutParams.MATCH_PARENT,
+                            LinearLayout.LayoutParams.WRAP_CONTENT,
+                        ).also { it.topMargin = (12 * density).toInt() },
+                    )
+                }
+            } else {
+                null
+            }
+            val builder = expAlertBuilder()
                 .setTitle(R.string.settings_send_sentry_feedback_title)
-                .setView(input)
+            if (glass != null) builder.setView(glass.root)
+            else builder.setView(input)
+            builder
                 .setPositiveButton(android.R.string.ok) { _, _ ->
                     val text = input.text?.toString().orEmpty()
                     if (text.isBlank()) {
-                        Toast.makeText(
-                            requireContext(),
-                            R.string.settings_send_sentry_feedback_empty,
-                            Toast.LENGTH_SHORT,
-                        ).show()
+                        showSettingsInfo(getString(R.string.settings_send_sentry_feedback_empty))
                     } else {
                         com.dskja.betterstreamflix.utils.SentryBootstrap.captureFeedback(
                             message = text,
                             email = com.dskja.betterstreamflix.sync.CloudSyncManager.currentUserEmail(),
                         )
-                        Toast.makeText(
-                            requireContext(),
-                            R.string.settings_send_sentry_feedback_sent,
-                            Toast.LENGTH_SHORT,
-                        ).show()
+                        showSettingsInfo(getString(R.string.settings_send_sentry_feedback_sent))
                     }
                 }
                 .setNegativeButton(android.R.string.cancel, null)
-                .show()
+                .create()
+                .also { dialog ->
+                    dialog.setOnShowListener {
+                        if (glass != null) {
+                            ExpDialogChrome.polishGlassMessageShown(dialog, glass)
+                            with(ExpPressEffects) { input.applyExpPress() }
+                            ExpMotion.popIn(input)
+                        } else {
+                            ExpDialogChrome.polishButtons(dialog)
+                        }
+                    }
+                    dialog.show()
+                }
             true
         }
 
@@ -581,11 +755,7 @@ class SettingsTvFragment : LeanbackPreferenceFragmentCompat() {
                 preference.summary = preference.entry
                 UserDataNotifier.notifyChanged()
                 ProviderChangeNotifier.notifyProviderChanged()
-                Toast.makeText(
-                    requireContext(),
-                    R.string.settings_library_scope_updated,
-                    Toast.LENGTH_SHORT
-                ).show()
+                showSettingsInfo(getString(R.string.settings_library_scope_updated))
                 true
             }
         }
@@ -609,9 +779,17 @@ class SettingsTvFragment : LeanbackPreferenceFragmentCompat() {
         }
 
         findPreference<Preference>("CLEAR_RECENTLY_WATCHED")?.setOnPreferenceClickListener {
-            AlertDialog.Builder(requireContext())
+            val message = getString(R.string.settings_clear_recently_watched_confirm_message)
+            val glass = if (ExperimentalMobileDesign.enabled()) {
+                ExpDialogChrome.buildGlassMessage(requireContext(), message)
+            } else {
+                null
+            }
+            val builder = expAlertBuilder()
                 .setTitle(R.string.settings_clear_recently_watched_title)
-                .setMessage(R.string.settings_clear_recently_watched_confirm_message)
+            if (glass != null) builder.setView(glass.root)
+            else builder.setMessage(message)
+            builder
                 .setPositiveButton(android.R.string.ok) { _, _ ->
                     viewLifecycleOwner.lifecycleScope.launch {
                         withContext(Dispatchers.IO) {
@@ -621,42 +799,34 @@ class SettingsTvFragment : LeanbackPreferenceFragmentCompat() {
                         }
                         UserDataNotifier.notifyChanged()
                         ProviderChangeNotifier.notifyProviderChanged()
-                        Toast.makeText(
-                            requireContext(),
-                            R.string.settings_clear_recently_watched_toast,
-                            Toast.LENGTH_SHORT
-                        ).show()
+                        showSettingsInfo(getString(R.string.settings_clear_recently_watched_toast))
                     }
                 }
                 .setNegativeButton(android.R.string.cancel, null)
-                .show()
+                .create()
+                .also { dialog ->
+                    dialog.setOnShowListener {
+                        if (glass != null) ExpDialogChrome.polishGlassMessageShown(dialog, glass)
+                        else ExpDialogChrome.polishButtons(dialog)
+                    }
+                    dialog.show()
+                }
             true
         }
 
         setupParentalControlPreferences()
 
-        findPreference<EditTextPreference>("SUBDL_API_KEY")?.apply {
-            summary = if (UserPreferences.subdlApiKey.isEmpty()) getString(R.string.settings_subdl_api_key_summary) else UserPreferences.subdlApiKey
-            text = UserPreferences.subdlApiKey
-            setOnPreferenceChangeListener { _, newValue ->
-                val newKey = (newValue as String).trim()
-                UserPreferences.subdlApiKey = newKey
-                summary = if (newKey.isEmpty()) getString(R.string.settings_subdl_api_key_summary) else newKey
-                val message = if (newKey.isEmpty()) {
-                    getString(R.string.settings_subdl_api_key_reset)
-                } else {
-                    getString(R.string.settings_subdl_api_key_success)
-                }
-                Toast.makeText(requireContext(), message, Toast.LENGTH_SHORT).show()
-                true
-            }
-        }
-
         findPreference<Preference>("p_settings_support")?.apply {
             val titleStr = getString(R.string.support_settings_entry_title)
             val spannableTitle = SpannableString(titleStr)
             spannableTitle.setSpan(
-                ForegroundColorSpan(android.graphics.Color.parseColor("#E50914")),
+                ForegroundColorSpan(
+                    com.google.android.material.color.MaterialColors.getColor(
+                        requireContext(),
+                        androidx.appcompat.R.attr.colorPrimary,
+                        requireContext().getColor(R.color.m3_primary),
+                    ),
+                ),
                 0,
                 titleStr.length,
                 0,
@@ -670,35 +840,44 @@ class SettingsTvFragment : LeanbackPreferenceFragmentCompat() {
             }
         }
 
-        findPreference<androidx.preference.SwitchPreference>("EXPERIMENTAL_NEW_APP_DESIGN")?.apply {
-            isChecked = UserPreferences.experimentalNewAppDesign
-            setOnPreferenceChangeListener { _, newValue ->
-                UserPreferences.experimentalNewAppDesign = newValue as Boolean
-                requireActivity().apply {
-                    finish()
-                    startActivity(Intent(this, com.dskja.betterstreamflix.activities.main.MainTvActivity::class.java))
-                }
-                true
-            }
-        }
+        bindExperimentalDesignGate()
+        bindExperimentalDesignPreference()
+        bindLuminaOptions()
 
         findPreference<Preference>("p_settings_about")?.apply {
-            val palette = ThemeManager.palette(UserPreferences.selectedTheme)
             val titleStr = getString(R.string.settings_about)
-            val spannableTitle = SpannableString(titleStr)
-            spannableTitle.setSpan(ForegroundColorSpan(palette.tvHeaderPrimary), 0, titleStr.length, 0)
-            title = spannableTitle
-            
             val summaryStr = getString(R.string.settings_about_version_name, BuildConfig.VERSION_NAME)
-            val spannableSummary = SpannableString(summaryStr)
-            spannableSummary.setSpan(ForegroundColorSpan(palette.tvHeaderSecondary), 0, summaryStr.length, 0)
-            summary = spannableSummary
+            if (ExperimentalMobileDesign.enabled()) {
+                val primary = com.google.android.material.color.MaterialColors.getColor(
+                    requireContext(),
+                    com.google.android.material.R.attr.colorOnSurface,
+                    requireContext().getColor(R.color.m3_on_surface),
+                )
+                val secondary = com.google.android.material.color.MaterialColors.getColor(
+                    requireContext(),
+                    com.google.android.material.R.attr.colorOnSurfaceVariant,
+                    requireContext().getColor(R.color.m3_on_surface_variant),
+                )
+                val spannableTitle = SpannableString(titleStr)
+                spannableTitle.setSpan(ForegroundColorSpan(primary), 0, titleStr.length, 0)
+                title = spannableTitle
+                val spannableSummary = SpannableString(summaryStr)
+                spannableSummary.setSpan(ForegroundColorSpan(secondary), 0, summaryStr.length, 0)
+                summary = spannableSummary
+            } else {
+                val palette = ThemeManager.palette(UserPreferences.selectedTheme)
+                val spannableTitle = SpannableString(titleStr)
+                spannableTitle.setSpan(ForegroundColorSpan(palette.tvHeaderPrimary), 0, titleStr.length, 0)
+                title = spannableTitle
+                val spannableSummary = SpannableString(summaryStr)
+                spannableSummary.setSpan(ForegroundColorSpan(palette.tvHeaderSecondary), 0, summaryStr.length, 0)
+                summary = spannableSummary
+            }
 
             isSelectable = true
             setOnPreferenceClickListener {
-                // About is embedded as preference XML on TV — open Support hub as the polished surface.
                 runCatching {
-                    findNavController().navigate(R.id.support)
+                    findNavController().navigate(R.id.settings_about)
                 }
                 true
             }
@@ -747,128 +926,8 @@ class SettingsTvFragment : LeanbackPreferenceFragmentCompat() {
             true
         }
 
-        findPreference<ListPreference>("DOWNLOAD_STORAGE_LOCATION")?.apply {
-            value = UserPreferences.downloadStorageLocation.name
-            summaryProvider = ListPreference.SimpleSummaryProvider.getInstance()
-            setOnPreferenceChangeListener { _, newValue ->
-                val location = DownloadStorageLocation.fromKey(newValue as String)
-                if (location != UserPreferences.downloadStorageLocation) {
-                    UserPreferences.downloadStorageLocation = location
-                    StreamflixDownloadManager.release()
-                    findPreference<Preference>("DOWNLOAD_STORAGE_PATH")?.summary =
-                        DownloadStorage.absolutePathSummary(requireContext())
-                    findPreference<Preference>("DOWNLOAD_STORAGE_USED")?.summary =
-                        DownloadStorage.formatBytes(DownloadStorage.usedBytes(requireContext()))
-                    Toast.makeText(
-                        requireContext(),
-                        R.string.settings_download_storage_changed,
-                        Toast.LENGTH_LONG,
-                    ).show()
-                }
-                true
-            }
-        }
-        findPreference<Preference>("DOWNLOAD_STORAGE_PATH")?.summary =
-            DownloadStorage.absolutePathSummary(requireContext())
-
-        findPreference<SwitchPreference>("DOWNLOAD_WIFI_ONLY")?.apply {
-            isChecked = UserPreferences.downloadWifiOnly
-            setOnPreferenceChangeListener { _, newValue ->
-                UserPreferences.downloadWifiOnly = newValue as Boolean
-                true
-            }
-        }
-
-        findPreference<ListPreference>("DOWNLOAD_QUALITY_PRESET")?.apply {
-            value = UserPreferences.downloadQualityPreset.name
-            summaryProvider = ListPreference.SimpleSummaryProvider.getInstance()
-            setOnPreferenceChangeListener { _, newValue ->
-                UserPreferences.downloadQualityPreset =
-                    DownloadQualityPreset.fromKey(newValue as String)
-                true
-            }
-        }
-
-        findPreference<ListPreference>("DOWNLOAD_MAX_CONCURRENT")?.apply {
-            value = UserPreferences.downloadMaxConcurrent.toString()
-            summaryProvider = ListPreference.SimpleSummaryProvider.getInstance()
-            setOnPreferenceChangeListener { _, newValue ->
-                val max = (newValue as String).toIntOrNull() ?: 2
-                UserPreferences.downloadMaxConcurrent = max
-                StreamflixDownloadManager.setMaxParallel(requireContext(), max)
-                true
-            }
-        }
-
-        findPreference<SwitchPreference>("DOWNLOAD_NOTIFY_COMPLETE")?.apply {
-            isChecked = UserPreferences.downloadNotifyComplete
-            setOnPreferenceChangeListener { _, newValue ->
-                UserPreferences.downloadNotifyComplete = newValue as Boolean
-                true
-            }
-        }
-
-        findPreference<SwitchPreference>("DOWNLOAD_FILTER_CURRENT_PROVIDER")?.apply {
-            isChecked = UserPreferences.downloadFilterCurrentProvider
-            setOnPreferenceChangeListener { _, newValue ->
-                UserPreferences.downloadFilterCurrentProvider = newValue as Boolean
-                true
-            }
-        }
-
-        findPreference<EditTextPreference>("DOWNLOAD_SOFT_LIMIT_GB")?.apply {
-            text = UserPreferences.downloadSoftLimitGb.toString()
-            summaryProvider = Preference.SummaryProvider<EditTextPreference> { pref ->
-                "${pref.text ?: UserPreferences.downloadSoftLimitGb} GB"
-            }
-            setOnPreferenceChangeListener { _, newValue ->
-                UserPreferences.downloadSoftLimitGb =
-                    (newValue as String).toIntOrNull() ?: 20
-                true
-            }
-        }
-
-        findPreference<SwitchPreference>("DOWNLOAD_SMART_ENABLED")?.apply {
-            isChecked = UserPreferences.downloadSmartEnabled
-            setOnPreferenceChangeListener { _, newValue ->
-                UserPreferences.downloadSmartEnabled = newValue as Boolean
-                true
-            }
-        }
-
-        findPreference<SwitchPreference>("DOWNLOAD_AUTO_DELETE_WATCHED")?.apply {
-            isChecked = UserPreferences.downloadAutoDeleteWatched
-            setOnPreferenceChangeListener { _, newValue ->
-                UserPreferences.downloadAutoDeleteWatched = newValue as Boolean
-                true
-            }
-        }
-
-        findPreference<Preference>("DOWNLOAD_STORAGE_USED")?.summary =
-            DownloadStorage.formatBytes(DownloadStorage.usedBytes(requireContext()))
-
-        findPreference<Preference>("DOWNLOAD_CLEAR_COMPLETED")?.setOnPreferenceClickListener {
-            lifecycleScope.launch {
-                DownloadRepository.get(requireContext()).clearCompleted()
-                findPreference<Preference>("DOWNLOAD_STORAGE_USED")?.summary =
-                    DownloadStorage.formatBytes(DownloadStorage.usedBytes(requireContext()))
-            }
-            true
-        }
-
-        findPreference<Preference>("DOWNLOAD_CLEAR_ALL")?.setOnPreferenceClickListener {
-            android.app.AlertDialog.Builder(requireContext())
-                .setMessage(R.string.settings_download_clear_all_confirm)
-                .setPositiveButton(android.R.string.ok) { _, _ ->
-                    lifecycleScope.launch {
-                        DownloadRepository.get(requireContext()).clearAll()
-                        findPreference<Preference>("DOWNLOAD_STORAGE_USED")?.summary =
-                            DownloadStorage.formatBytes(DownloadStorage.usedBytes(requireContext()))
-                    }
-                }
-                .setNegativeButton(android.R.string.cancel, null)
-                .show()
-            true
+        DownloadsSettingsController.bind(this, lifecycleScope) { key ->
+            findPreference(key)
         }
 
         findPreference<SwitchPreference>("FORCE_EXTRA_BUFFERING")?.apply {
@@ -922,7 +981,7 @@ class SettingsTvFragment : LeanbackPreferenceFragmentCompat() {
                 if (isVisible) {
                     autoUpdateVal = UserPreferences
                         .getProviderCache(
-                            provider!!, UserPreferences
+                            provider ?: return@apply, UserPreferences
                                 .PROVIDER_AUTOUPDATE
                         ) != "false"
                     isChecked = autoUpdateVal
@@ -1010,51 +1069,23 @@ class SettingsTvFragment : LeanbackPreferenceFragmentCompat() {
             findPreference<Preference>("provider_autoupdate_now")?.apply {
                 isVisible = portalProvider != null
                 setOnPreferenceClickListener {
+                    val cfg = configProvider ?: return@setOnPreferenceClickListener true
                     viewLifecycleOwner.lifecycleScope.launch {
                         findPreference<EditTextPreference>("provider_url")?.summary =
-                            configProvider!!.onChangeUrl(true)
+                            cfg.onChangeUrl(true)
                     }
                     true
                 }
             }
         }
 
-        findPreference<ListPreference>("p_doh_provider_url")?.apply {
-            value = UserPreferences.dohProviderUrl
-            summary = entry
-            setOnPreferenceChangeListener { preference, newValue ->
-                val newUrl = newValue as String
-                UserPreferences.dohProviderUrl = newUrl
-                DnsResolver.setDnsUrl(newUrl)
-                if (preference is ListPreference) {
-                    val index = preference.findIndexOfValue(newUrl)
-                    if (index >= 0 && preference.entries != null && index < preference.entries.size) {
-                        preference.summary = preference.entries[index]
-                    } else {
-                        preference.summary = null
-                    }
-                }
-                if (UserPreferences.currentProvider is StreamingCommunityProvider) {
-                    viewLifecycleOwner.lifecycleScope.launch {
-                        (UserPreferences.currentProvider as StreamingCommunityProvider).rebuildService()
-                        requireActivity().apply {
-                            finish()
-                            startActivity(Intent(this, this::class.java))
-                        }
-                    }
-                } else {
-                    Toast.makeText(requireContext(), getString(R.string.doh_provider_updated), Toast.LENGTH_LONG).show()
-                }
-                true
-            }
-        }
-
         findPreference<SwitchPreference>("pc_frenchstream_new_interface")?.apply {
-            isVisible = UserPreferences.currentProvider is FrenchStreamProvider
-            if (isVisible) {
+            val frenchProvider = UserPreferences.currentProvider as? FrenchStreamProvider
+            isVisible = frenchProvider != null
+            if (frenchProvider != null) {
                 val useNewInterface = UserPreferences
                     .getProviderCache(
-                        UserPreferences.currentProvider!!, UserPreferences
+                        frenchProvider, UserPreferences
                             .PROVIDER_NEW_INTERFACE
                     ) != "false"
                 isChecked = useNewInterface
@@ -1072,148 +1103,12 @@ class SettingsTvFragment : LeanbackPreferenceFragmentCompat() {
 
         val networkSettingsCategory = findPreference<PreferenceCategory>("pc_network_settings")
         if (networkSettingsCategory != null) {
-            val originalTitle = getString(R.string.settings_category_network_title)
+            val originalTitle = getString(R.string.connection_section_dns)
             val currentProviderName = UserPreferences.currentProvider?.name
             if (currentProviderName != null && currentProviderName.isNotEmpty()) {
-                networkSettingsCategory.title = "$originalTitle $currentProviderName"
+                networkSettingsCategory.title = "$originalTitle · $currentProviderName"
             } else {
                 networkSettingsCategory.title = originalTitle
-            }
-
-            // Available in release too: some TV sticks report a non-LAN IP (VPN/docker),
-            // so users need to set the phone-reachable address manually.
-            if (findPreference<EditTextPreference>("BYPASS_WS_ADVERTISED_HOST") == null) {
-                val hostPreference = EditTextPreference(requireContext()).apply {
-                    key = "BYPASS_WS_ADVERTISED_HOST"
-                    title = getString(R.string.settings_bypass_advertised_host)
-                    dialogTitle = getString(R.string.settings_bypass_advertised_host)
-                    summary = if (UserPreferences.bypassWsAdvertisedHost.isBlank()) {
-                        getString(R.string.settings_bypass_advertised_host_auto)
-                    } else {
-                        UserPreferences.bypassWsAdvertisedHost
-                    }
-                    text = UserPreferences.bypassWsAdvertisedHost
-                    setOnBindEditTextListener { editText ->
-                        editText.setSingleLine()
-                        editText.hint = "192.168.1.50"
-                        editText.setText(UserPreferences.bypassWsAdvertisedHost)
-                        editText.setSelection(editText.text?.length ?: 0)
-                    }
-                    setOnPreferenceChangeListener { preference, newValue ->
-                        val value = (newValue as String).trim()
-                        UserPreferences.bypassWsAdvertisedHost = value
-                        preference.summary = if (value.isBlank()) {
-                            getString(R.string.settings_bypass_advertised_host_auto)
-                        } else {
-                            value
-                        }
-                        true
-                    }
-                }
-                networkSettingsCategory.addPreference(hostPreference)
-            }
-
-            if (findPreference<Preference>("SERIENSTREAM_SESSION_LOGIN") == null) {
-                val loginPreference = Preference(requireContext()).apply {
-                    key = "SERIENSTREAM_SESSION_LOGIN"
-                    title = getString(R.string.settings_serienstream_session_login)
-                    summary = getString(R.string.settings_serienstream_session_login_summary)
-                    setOnPreferenceClickListener {
-                        startActivity(
-                            android.content.Intent(
-                                requireContext(),
-                                com.dskja.betterstreamflix.activities.tools.WatchlistImportActivity::class.java,
-                            )
-                                .putExtra(
-                                    com.dskja.betterstreamflix.activities.tools.WatchlistImportActivity.EXTRA_SOURCE,
-                                    com.dskja.betterstreamflix.activities.tools.WatchlistImportActivity.SOURCE_SERIENSTREAM,
-                                )
-                                .putExtra(
-                                    com.dskja.betterstreamflix.activities.tools.WatchlistImportActivity.EXTRA_SAVE_SESSION_ONLY,
-                                    true,
-                                ),
-                        )
-                        true
-                    }
-                }
-                networkSettingsCategory.addPreference(loginPreference)
-            }
-
-            if (findPreference<Preference>("SERIENSTREAM_SESSION_COOKIES") == null) {
-                val cookiePreference = Preference(requireContext()).apply {
-                    key = "SERIENSTREAM_SESSION_COOKIES"
-                    title = getString(R.string.settings_serienstream_session_cookies)
-                    fun refreshSummary() {
-                        val raw = UserPreferences.serienStreamSessionCookies
-                        val cookies = SerienStreamBypassHelper.sanitizeSessionCookies(raw)
-                        if (cookies != raw) {
-                            UserPreferences.serienStreamSessionCookies = cookies
-                        }
-                        summary = if (cookies.isBlank() || !SerienStreamBypassHelper.looksLikeBypassSolved(cookies)) {
-                            if (cookies.isNotBlank()) {
-                                UserPreferences.serienStreamSessionCookies = ""
-                            }
-                            getString(R.string.settings_serienstream_session_cookies_empty)
-                        } else {
-                            getString(
-                                R.string.settings_serienstream_session_cookies_set,
-                                cookies.length,
-                            )
-                        }
-                    }
-                    refreshSummary()
-                    setOnPreferenceClickListener {
-                        val cookies = SerienStreamBypassHelper.sanitizeSessionCookies(
-                            UserPreferences.serienStreamSessionCookies,
-                        )
-                        if (cookies.isBlank()) {
-                            startActivity(
-                                android.content.Intent(
-                                    requireContext(),
-                                    com.dskja.betterstreamflix.activities.tools.WatchlistImportActivity::class.java,
-                                )
-                                    .putExtra(
-                                        com.dskja.betterstreamflix.activities.tools.WatchlistImportActivity.EXTRA_SOURCE,
-                                        com.dskja.betterstreamflix.activities.tools.WatchlistImportActivity.SOURCE_SERIENSTREAM,
-                                    )
-                                    .putExtra(
-                                        com.dskja.betterstreamflix.activities.tools.WatchlistImportActivity.EXTRA_SAVE_SESSION_ONLY,
-                                        true,
-                                    ),
-                            )
-                        } else {
-                            androidx.appcompat.app.AlertDialog.Builder(requireContext())
-                                .setTitle(R.string.settings_serienstream_session_cookies_clear_title)
-                                .setMessage(cookies.take(240))
-                                .setPositiveButton(android.R.string.ok) { _, _ ->
-                                    SerienStreamBypassHelper.clearStoredSessionCookies()
-                                    refreshSummary()
-                                    Toast.makeText(
-                                        requireContext(),
-                                        R.string.settings_serienstream_session_cookies_cleared,
-                                        Toast.LENGTH_SHORT,
-                                    ).show()
-                                }
-                                .setNegativeButton(android.R.string.cancel, null)
-                                .show()
-                        }
-                        true
-                    }
-                }
-                networkSettingsCategory.addPreference(cookiePreference)
-            }
-
-            if (BuildConfig.DEBUG && findPreference<Preference>("test_websocket_bypass") == null) {
-                val testPreference = Preference(requireContext()).apply {
-                    key = "test_websocket_bypass"
-                    title = "Test WebSocket bypass"
-                    summary = "Generate a QR code for the mobile resolver flow"
-                    setOnPreferenceClickListener {
-                        showWebSocketBypassTestDialog()
-                        true
-                    }
-                }
-                networkSettingsCategory.addPreference(testPreference)
             }
         }
 
@@ -1281,7 +1176,7 @@ class SettingsTvFragment : LeanbackPreferenceFragmentCompat() {
                 .edit()
                 .remove("preferred_smarttube_package")
                 .apply()
-            Toast.makeText(requireContext(), R.string.settings_trailer_player_reset, Toast.LENGTH_SHORT).show()
+            showSettingsInfo(getString(R.string.settings_trailer_player_reset))
             true
         }
 
@@ -1316,25 +1211,42 @@ class SettingsTvFragment : LeanbackPreferenceFragmentCompat() {
         }
 
         findPreference<Preference>("key_backup_refresh_cache_tv")?.setOnPreferenceClickListener {
-            AlertDialog.Builder(requireContext())
+            val message = getString(R.string.settings_refresh_cache_message)
+            val glass = if (ExperimentalMobileDesign.enabled()) {
+                ExpDialogChrome.buildGlassMessage(requireContext(), message)
+            } else {
+                null
+            }
+            val builder = expAlertBuilder()
                 .setTitle(R.string.settings_refresh_cache_confirm)
-                .setMessage(R.string.settings_refresh_cache_message)
+            if (glass != null) builder.setView(glass.root)
+            else builder.setMessage(message)
+            builder
                 .setPositiveButton(android.R.string.ok) { _, _ ->
                     viewLifecycleOwner.lifecycleScope.launch {
-                        val refreshed = backupRestoreManager.refreshCachesFromDatabase()
-                        Toast.makeText(
-                            requireContext(),
-                            if (refreshed) {
-                                R.string.settings_refresh_cache_success
-                            } else {
-                                R.string.settings_refresh_cache_success
-                            },
-                            Toast.LENGTH_SHORT
-                        ).show()
+                        backupRestoreManager.refreshCachesFromDatabase()
+                        val success = getString(R.string.settings_refresh_cache_success)
+                        if (ExperimentalMobileDesign.enabled()) {
+                            ExpDialogChrome.showInfo(
+                                requireContext(),
+                                R.string.settings_refresh_cache_confirm,
+                                success,
+                                ::expAlertBuilder,
+                            )
+                        } else {
+                            Toast.makeText(requireContext(), success, Toast.LENGTH_SHORT).show()
+                        }
                     }
                 }
                 .setNegativeButton(android.R.string.cancel, null)
-                .show()
+                .create()
+                .also { dialog ->
+                    dialog.setOnShowListener {
+                        if (glass != null) ExpDialogChrome.polishGlassMessageShown(dialog, glass)
+                        else ExpDialogChrome.polishButtons(dialog)
+                    }
+                    dialog.show()
+                }
             true
         }
 
@@ -1351,6 +1263,20 @@ class SettingsTvFragment : LeanbackPreferenceFragmentCompat() {
         }
     }
 
+    private fun showBackupResult(message: String) {
+        if (!isAdded) return
+        if (ExperimentalMobileDesign.enabled()) {
+            ExpDialogChrome.showInfo(
+                requireContext(),
+                R.string.backup_export_title,
+                message,
+                ::expAlertBuilder,
+            )
+        } else {
+            Toast.makeText(requireContext(), message, Toast.LENGTH_LONG).show()
+        }
+    }
+
     private suspend fun performBackupExport(uri: Uri) {
         withBackupLoading(R.string.backup_export_title) {
             val jsonData = withContext(Dispatchers.IO) {
@@ -1360,16 +1286,16 @@ class SettingsTvFragment : LeanbackPreferenceFragmentCompat() {
                 try {
                     requireContext().contentResolver.openOutputStream(uri)?.use { outputStream ->
                         outputStream.writer().use { it.write(jsonData) }
-                        Toast.makeText(requireContext(), getString(R.string.backup_export_success), Toast.LENGTH_LONG).show()
+                        showBackupResult(getString(R.string.backup_export_success))
                     } ?: run {
-                        Toast.makeText(requireContext(), getString(R.string.backup_export_error_write), Toast.LENGTH_LONG).show()
+                        showBackupResult(getString(R.string.backup_export_error_write))
                     }
                 } catch (e: IOException) {
-                    Toast.makeText(requireContext(), getString(R.string.backup_export_error_write), Toast.LENGTH_LONG).show()
+                    showBackupResult(getString(R.string.backup_export_error_write))
                     Log.e("BackupExportTV", "Error writing backup file", e)
                 }
             } else {
-                Toast.makeText(requireContext(), getString(R.string.backup_data_not_generated), Toast.LENGTH_LONG).show()
+                showBackupResult(getString(R.string.backup_data_not_generated))
             }
         }
     }
@@ -1390,16 +1316,15 @@ class SettingsTvFragment : LeanbackPreferenceFragmentCompat() {
                     val success = withContext(Dispatchers.IO) {
                         backupRestoreManager.importUserData(jsonData)
                     }
-                    if (success) {
-                        Toast.makeText(requireContext(), getString(R.string.backup_import_success), Toast.LENGTH_LONG).show()
-                    } else {
-                        Toast.makeText(requireContext(), getString(R.string.backup_import_error), Toast.LENGTH_LONG).show()
-                    }
+                    showBackupResult(
+                        if (success) getString(R.string.backup_import_success)
+                        else getString(R.string.backup_import_error),
+                    )
                 } else {
-                    Toast.makeText(requireContext(), getString(R.string.backup_import_empty_file), Toast.LENGTH_LONG).show()
+                    showBackupResult(getString(R.string.backup_import_empty_file))
                 }
             } catch (e: Exception) {
-                Toast.makeText(requireContext(), getString(R.string.backup_import_read_error), Toast.LENGTH_LONG).show()
+                showBackupResult(getString(R.string.backup_import_read_error))
                 Log.e("BackupImportTV", "Error reading/processing backup file", e)
             }
         }
@@ -1413,7 +1338,7 @@ class SettingsTvFragment : LeanbackPreferenceFragmentCompat() {
                     exportBackupLauncher.launch(fileName)
                 } catch (error: ActivityNotFoundException) {
                     Log.w("BackupExportTV", "No document picker available, using local fallback", error)
-                    Toast.makeText(requireContext(), getString(R.string.backup_picker_unavailable), Toast.LENGTH_LONG).show()
+                    showBackupResult(getString(R.string.backup_picker_unavailable))
                     exportBackupToLocalFile(fileName)
                 }
             }
@@ -1427,12 +1352,10 @@ class SettingsTvFragment : LeanbackPreferenceFragmentCompat() {
             }
         }
 
-        AlertDialog.Builder(requireContext())
-            .setTitle(R.string.backup_export_title)
-            .setItems(options.map { it.first }.toTypedArray()) { _, which ->
-                options[which].second.invoke()
-            }
-            .show()
+        showPolishedListChooser(
+            titleRes = R.string.backup_export_title,
+            options = options,
+        )
     }
 
     private fun showBackupImportOptions() {
@@ -1443,7 +1366,7 @@ class SettingsTvFragment : LeanbackPreferenceFragmentCompat() {
                     importBackupLauncher.launch(arrayOf("application/json"))
                 } catch (error: ActivityNotFoundException) {
                     Log.w("BackupImportTV", "No document picker available, using local fallback", error)
-                    Toast.makeText(requireContext(), getString(R.string.backup_picker_unavailable), Toast.LENGTH_LONG).show()
+                    showBackupResult(getString(R.string.backup_picker_unavailable))
                     showLocalBackupPicker()
                 }
             }
@@ -1452,12 +1375,10 @@ class SettingsTvFragment : LeanbackPreferenceFragmentCompat() {
             showLocalBackupPicker()
         }
 
-        AlertDialog.Builder(requireContext())
-            .setTitle(R.string.backup_import_title)
-            .setItems(options.map { it.first }.toTypedArray()) { _, which ->
-                options[which].second.invoke()
-            }
-            .show()
+        showPolishedListChooser(
+            titleRes = R.string.backup_import_title,
+            options = options,
+        )
     }
 
     private fun showDatabaseBackupExportOptions(fileName: String) {
@@ -1468,7 +1389,7 @@ class SettingsTvFragment : LeanbackPreferenceFragmentCompat() {
                     exportDbBackupLauncher.launch(fileName)
                 } catch (error: ActivityNotFoundException) {
                     Log.w("BackupExportTV", "No document picker available for DB zip, using local fallback", error)
-                    Toast.makeText(requireContext(), getString(R.string.backup_picker_unavailable), Toast.LENGTH_LONG).show()
+                    showBackupResult(getString(R.string.backup_picker_unavailable))
                     exportDatabaseBackupToLocalFile(fileName)
                 }
             }
@@ -1482,12 +1403,10 @@ class SettingsTvFragment : LeanbackPreferenceFragmentCompat() {
             }
         }
 
-        AlertDialog.Builder(requireContext())
-            .setTitle(R.string.backup_db_export_option)
-            .setItems(options.map { it.first }.toTypedArray()) { _, which ->
-                options[which].second.invoke()
-            }
-            .show()
+        showPolishedListChooser(
+            titleRes = R.string.backup_db_export_option,
+            options = options,
+        )
     }
 
     private fun showDatabaseBackupImportOptions() {
@@ -1498,7 +1417,7 @@ class SettingsTvFragment : LeanbackPreferenceFragmentCompat() {
                     importDbBackupLauncher.launch(arrayOf("application/zip"))
                 } catch (error: ActivityNotFoundException) {
                     Log.w("BackupImportTV", "No document picker available for DB zip, using local fallback", error)
-                    Toast.makeText(requireContext(), getString(R.string.backup_picker_unavailable), Toast.LENGTH_LONG).show()
+                    showBackupResult(getString(R.string.backup_picker_unavailable))
                     showLocalDatabaseBackupPicker()
                 }
             }
@@ -1507,12 +1426,55 @@ class SettingsTvFragment : LeanbackPreferenceFragmentCompat() {
             showLocalDatabaseBackupPicker()
         }
 
-        AlertDialog.Builder(requireContext())
-            .setTitle(R.string.backup_db_import_option)
+        showPolishedListChooser(
+            titleRes = R.string.backup_db_import_option,
+            options = options,
+        )
+    }
+
+    private fun showPolishedListChooser(
+        titleRes: Int,
+        options: List<Pair<String, () -> Unit>>,
+    ) {
+        expAlertBuilder()
+            .setTitle(titleRes)
             .setItems(options.map { it.first }.toTypedArray()) { _, which ->
                 options[which].second.invoke()
             }
-            .show()
+            .create()
+            .also { dialog ->
+                dialog.setOnShowListener {
+                    ExpDialogChrome.polishShown(dialog)
+                    if (!ExperimentalMobileDesign.enabled()) return@setOnShowListener
+                    val list = dialog.listView ?: return@setOnShowListener
+                    list.divider = null
+                    list.dividerHeight = 0
+                    list.post {
+                        for (i in 0 until list.childCount) {
+                            val row = list.getChildAt(i) ?: continue
+                            with(ExpPressEffects) { row.applyExpPress() }
+                            row.postDelayed({ ExpMotion.popIn(row) }, 28L * i)
+                        }
+                    }
+                    val parent = list.parent as? ViewGroup ?: return@setOnShowListener
+                    if (parent.findViewWithTag<View>("exp_backup_rule") != null) return@setOnShowListener
+                    val density = list.resources.displayMetrics.density
+                    val rule = View(list.context).apply {
+                        tag = "exp_backup_rule"
+                        layoutParams = LinearLayout.LayoutParams(
+                            (36 * density).toInt(),
+                            (3 * density).toInt(),
+                        ).also {
+                            it.marginStart = (24 * density).toInt()
+                            it.bottomMargin = (4 * density).toInt()
+                        }
+                        setBackgroundResource(R.drawable.bg_exp_accent_rule)
+                    }
+                    parent.addView(rule, parent.indexOfChild(list).coerceAtLeast(0))
+                    ExpMotion.pulseAccentRule(rule)
+                }
+                dialog.show()
+            }
     }
 
     private fun exportBackupToLocalFile(fileName: String) {
@@ -1522,7 +1484,7 @@ class SettingsTvFragment : LeanbackPreferenceFragmentCompat() {
                     backupRestoreManager.exportUserData()
                 }
                 if (jsonData.isNullOrBlank()) {
-                    Toast.makeText(requireContext(), getString(R.string.backup_data_not_generated), Toast.LENGTH_LONG).show()
+                    showBackupResult(getString(R.string.backup_data_not_generated))
                     return@withBackupLoading
                 }
 
@@ -1533,13 +1495,9 @@ class SettingsTvFragment : LeanbackPreferenceFragmentCompat() {
                             writeText(jsonData)
                         }
                     }
-                    Toast.makeText(
-                        requireContext(),
-                        getString(R.string.backup_export_saved_to, file.absolutePath),
-                        Toast.LENGTH_LONG
-                    ).show()
+                    showBackupResult(getString(R.string.backup_export_saved_to, file.absolutePath))
                 }.onFailure { error ->
-                    Toast.makeText(requireContext(), getString(R.string.backup_export_error_write), Toast.LENGTH_LONG).show()
+                    showBackupResult(getString(R.string.backup_export_error_write))
                     Log.e("BackupExportTV", "Error writing local backup file", error)
                 }
             }
@@ -1553,7 +1511,7 @@ class SettingsTvFragment : LeanbackPreferenceFragmentCompat() {
                     backupRestoreManager.exportUserData()
                 }
                 if (jsonData.isNullOrBlank()) {
-                    Toast.makeText(requireContext(), getString(R.string.backup_data_not_generated), Toast.LENGTH_LONG).show()
+                    showBackupResult(getString(R.string.backup_data_not_generated))
                     return@withBackupLoading
                 }
 
@@ -1569,13 +1527,9 @@ class SettingsTvFragment : LeanbackPreferenceFragmentCompat() {
                         outputStream.writer().use { it.write(jsonData) }
                     } ?: error("Unable to open output stream")
 
-                    Toast.makeText(
-                        requireContext(),
-                        getString(R.string.backup_export_saved_to, "Downloads/BetterStreamflix/$fileName"),
-                        Toast.LENGTH_LONG
-                    ).show()
+                    showBackupResult(getString(R.string.backup_export_saved_to, "Downloads/BetterStreamflix/$fileName"))
                 }.onFailure { error ->
-                    Toast.makeText(requireContext(), getString(R.string.backup_export_error_write), Toast.LENGTH_LONG).show()
+                    showBackupResult(getString(R.string.backup_export_error_write))
                     Log.e("BackupExportTV", "Error writing backup to downloads", error)
                 }
             }
@@ -1589,7 +1543,7 @@ class SettingsTvFragment : LeanbackPreferenceFragmentCompat() {
                     backupRestoreManager.exportDatabaseZip()
                 }
                 if (zipData == null || zipData.isEmpty()) {
-                    Toast.makeText(requireContext(), getString(R.string.backup_data_not_generated), Toast.LENGTH_LONG).show()
+                    showBackupResult(getString(R.string.backup_data_not_generated))
                     return@withBackupLoading
                 }
 
@@ -1600,13 +1554,9 @@ class SettingsTvFragment : LeanbackPreferenceFragmentCompat() {
                             writeBytes(zipData)
                         }
                     }
-                    Toast.makeText(
-                        requireContext(),
-                        getString(R.string.backup_export_saved_to, file.absolutePath),
-                        Toast.LENGTH_LONG
-                    ).show()
+                    showBackupResult(getString(R.string.backup_export_saved_to, file.absolutePath))
                 }.onFailure { error ->
-                    Toast.makeText(requireContext(), getString(R.string.backup_export_error_write), Toast.LENGTH_LONG).show()
+                    showBackupResult(getString(R.string.backup_export_error_write))
                     Log.e("BackupExportTV", "Error writing local database backup file", error)
                 }
             }
@@ -1620,7 +1570,7 @@ class SettingsTvFragment : LeanbackPreferenceFragmentCompat() {
                     backupRestoreManager.exportDatabaseZip()
                 }
                 if (zipData == null || zipData.isEmpty()) {
-                    Toast.makeText(requireContext(), getString(R.string.backup_data_not_generated), Toast.LENGTH_LONG).show()
+                    showBackupResult(getString(R.string.backup_data_not_generated))
                     return@withBackupLoading
                 }
 
@@ -1636,13 +1586,9 @@ class SettingsTvFragment : LeanbackPreferenceFragmentCompat() {
                         outputStream.write(zipData)
                     } ?: error("Unable to open output stream")
 
-                    Toast.makeText(
-                        requireContext(),
-                        getString(R.string.backup_export_saved_to, "Downloads/BetterStreamflix/$fileName"),
-                        Toast.LENGTH_LONG
-                    ).show()
+                    showBackupResult(getString(R.string.backup_export_saved_to, "Downloads/BetterStreamflix/$fileName"))
                 }.onFailure { error ->
-                    Toast.makeText(requireContext(), getString(R.string.backup_export_error_write), Toast.LENGTH_LONG).show()
+                    showBackupResult(getString(R.string.backup_export_error_write))
                     Log.e("BackupExportTV", "Error writing database backup to downloads", error)
                 }
             }
@@ -1659,13 +1605,13 @@ class SettingsTvFragment : LeanbackPreferenceFragmentCompat() {
                     requireContext().contentResolver.openOutputStream(uri)?.use { outputStream ->
                         outputStream.write(zipData)
                     } ?: error("Unable to open output stream")
-                    Toast.makeText(requireContext(), getString(R.string.backup_db_export_success), Toast.LENGTH_LONG).show()
+                    showBackupResult(getString(R.string.backup_db_export_success))
                 } catch (error: IOException) {
-                    Toast.makeText(requireContext(), getString(R.string.backup_export_error_write), Toast.LENGTH_LONG).show()
+                    showBackupResult(getString(R.string.backup_export_error_write))
                     Log.e("BackupExportTV", "Error writing database backup", error)
                 }
             } else {
-                Toast.makeText(requireContext(), getString(R.string.backup_data_not_generated), Toast.LENGTH_LONG).show()
+                showBackupResult(getString(R.string.backup_data_not_generated))
             }
         }
     }
@@ -1677,19 +1623,18 @@ class SettingsTvFragment : LeanbackPreferenceFragmentCompat() {
                     requireContext().contentResolver.openInputStream(uri)?.use { it.readBytes() }
                 }
                 if (bytes == null || bytes.isEmpty()) {
-                    Toast.makeText(requireContext(), getString(R.string.backup_import_empty_file), Toast.LENGTH_LONG).show()
+                    showBackupResult(getString(R.string.backup_import_empty_file))
                     return@withBackupLoading
                 }
                 val success = withContext(Dispatchers.IO) {
                     backupRestoreManager.importDatabaseZip(bytes)
                 }
-                Toast.makeText(
-                    requireContext(),
-                    if (success) getString(R.string.backup_db_import_success) else getString(R.string.backup_import_error),
-                    Toast.LENGTH_LONG
-                ).show()
+                showBackupResult(
+                    if (success) getString(R.string.backup_db_import_success)
+                    else getString(R.string.backup_import_error),
+                )
             } catch (error: Exception) {
-                Toast.makeText(requireContext(), getString(R.string.backup_import_read_error), Toast.LENGTH_LONG).show()
+                showBackupResult(getString(R.string.backup_import_read_error))
                 Log.e("BackupImportTV", "Error reading database backup file", error)
             }
         }
@@ -1702,16 +1647,20 @@ class SettingsTvFragment : LeanbackPreferenceFragmentCompat() {
             .orEmpty()
 
         if (backups.isEmpty()) {
-            Toast.makeText(requireContext(), getString(R.string.backup_import_no_local_files), Toast.LENGTH_LONG).show()
+            showBackupResult(getString(R.string.backup_import_no_local_files))
             return
         }
 
-        AlertDialog.Builder(requireContext())
+        expAlertBuilder()
             .setTitle(R.string.backup_import_local_option)
             .setItems(backups.map(::buildBackupListLabel).toTypedArray()) { _, which ->
                 showLocalBackupFileActions(backups[which])
             }
-            .show()
+            .create()
+            .also { dialog ->
+                com.dskja.betterstreamflix.ui.TrailerPlaybackController.polishChooserDialog(dialog)
+                dialog.show()
+            }
     }
 
     private fun showLocalDatabaseBackupPicker() {
@@ -1721,16 +1670,20 @@ class SettingsTvFragment : LeanbackPreferenceFragmentCompat() {
             .orEmpty()
 
         if (backups.isEmpty()) {
-            Toast.makeText(requireContext(), getString(R.string.backup_import_no_local_files), Toast.LENGTH_LONG).show()
+            showBackupResult(getString(R.string.backup_import_no_local_files))
             return
         }
 
-        AlertDialog.Builder(requireContext())
+        expAlertBuilder()
             .setTitle(R.string.backup_db_import_option)
             .setItems(backups.map(::buildBackupListLabel).toTypedArray()) { _, which ->
                 showLocalDatabaseBackupFileActions(backups[which])
             }
-            .show()
+            .create()
+            .also { dialog ->
+                com.dskja.betterstreamflix.ui.TrailerPlaybackController.polishChooserDialog(dialog)
+                dialog.show()
+            }
     }
 
     private fun showLocalBackupFileActions(file: File) {
@@ -1739,7 +1692,7 @@ class SettingsTvFragment : LeanbackPreferenceFragmentCompat() {
             getString(R.string.backup_delete_action),
         )
 
-        AlertDialog.Builder(requireContext())
+        expAlertBuilder()
             .setTitle(file.name)
             .setItems(options) { _, which ->
                 when (which) {
@@ -1748,7 +1701,11 @@ class SettingsTvFragment : LeanbackPreferenceFragmentCompat() {
                 }
             }
             .setNegativeButton(android.R.string.cancel, null)
-            .show()
+            .create()
+            .also { dialog ->
+                com.dskja.betterstreamflix.ui.TrailerPlaybackController.polishChooserDialog(dialog)
+                dialog.show()
+            }
     }
 
     private fun showLocalDatabaseBackupFileActions(file: File) {
@@ -1757,7 +1714,7 @@ class SettingsTvFragment : LeanbackPreferenceFragmentCompat() {
             getString(R.string.backup_delete_action),
         )
 
-        AlertDialog.Builder(requireContext())
+        expAlertBuilder()
             .setTitle(file.name)
             .setItems(options) { _, which ->
                 when (which) {
@@ -1766,13 +1723,25 @@ class SettingsTvFragment : LeanbackPreferenceFragmentCompat() {
                 }
             }
             .setNegativeButton(android.R.string.cancel, null)
-            .show()
+            .create()
+            .also { dialog ->
+                com.dskja.betterstreamflix.ui.TrailerPlaybackController.polishChooserDialog(dialog)
+                dialog.show()
+            }
     }
 
     private fun confirmDeleteLocalBackup(file: File) {
-        AlertDialog.Builder(requireContext())
+        val message = getString(R.string.backup_delete_confirm_message, file.name)
+        val glass = if (ExperimentalMobileDesign.enabled()) {
+            ExpDialogChrome.buildGlassMessage(requireContext(), message)
+        } else {
+            null
+        }
+        val builder = expAlertBuilder()
             .setTitle(R.string.backup_delete_confirm_title)
-            .setMessage(getString(R.string.backup_delete_confirm_message, file.name))
+        if (glass != null) builder.setView(glass.root)
+        else builder.setMessage(message)
+        builder
             .setPositiveButton(R.string.backup_delete_action) { _, _ ->
                 runCatching { file.delete() }
                     .onSuccess { deleted ->
@@ -1781,18 +1750,25 @@ class SettingsTvFragment : LeanbackPreferenceFragmentCompat() {
                         } else {
                             R.string.backup_delete_error
                         }
-                        Toast.makeText(requireContext(), getString(messageRes), Toast.LENGTH_LONG).show()
+                        showBackupResult(getString(messageRes))
                         if (deleted) {
                             showLocalBackupPicker()
                         }
                     }
                     .onFailure { error ->
-                        Toast.makeText(requireContext(), getString(R.string.backup_delete_error), Toast.LENGTH_LONG).show()
+                        showBackupResult(getString(R.string.backup_delete_error))
                         Log.e("BackupDeleteTV", "Error deleting local backup file", error)
                     }
             }
             .setNegativeButton(android.R.string.cancel, null)
-            .show()
+            .create()
+            .also { dialog ->
+                dialog.setOnShowListener {
+                    if (glass != null) ExpDialogChrome.polishGlassMessageShown(dialog, glass)
+                    else ExpDialogChrome.polishButtons(dialog)
+                }
+                dialog.show()
+            }
     }
 
     private fun importBackupFromFile(file: File) {
@@ -1803,19 +1779,19 @@ class SettingsTvFragment : LeanbackPreferenceFragmentCompat() {
                         file.readText()
                     }
                     if (jsonData.isBlank()) {
-                        Toast.makeText(requireContext(), getString(R.string.backup_import_empty_file), Toast.LENGTH_LONG).show()
+                        showBackupResult(getString(R.string.backup_import_empty_file))
                         return@withBackupLoading
                     }
                     val success = withContext(Dispatchers.IO) {
                         backupRestoreManager.importUserData(jsonData)
                     }
                     if (success) {
-                        Toast.makeText(requireContext(), getString(R.string.backup_import_success), Toast.LENGTH_LONG).show()
+                        showBackupResult(getString(R.string.backup_import_success))
                     } else {
-                        Toast.makeText(requireContext(), getString(R.string.backup_import_error), Toast.LENGTH_LONG).show()
+                        showBackupResult(getString(R.string.backup_import_error))
                     }
                 }.onFailure { error ->
-                    Toast.makeText(requireContext(), getString(R.string.backup_import_read_error), Toast.LENGTH_LONG).show()
+                    showBackupResult(getString(R.string.backup_import_read_error))
                     Log.e("BackupImportTV", "Error importing local backup file", error)
                 }
             }
@@ -1830,19 +1806,18 @@ class SettingsTvFragment : LeanbackPreferenceFragmentCompat() {
                         file.readBytes()
                     }
                     if (bytes.isEmpty()) {
-                        Toast.makeText(requireContext(), getString(R.string.backup_import_empty_file), Toast.LENGTH_LONG).show()
+                        showBackupResult(getString(R.string.backup_import_empty_file))
                         return@withBackupLoading
                     }
                     val success = withContext(Dispatchers.IO) {
                         backupRestoreManager.importDatabaseZip(bytes)
                     }
-                    Toast.makeText(
-                        requireContext(),
-                        if (success) getString(R.string.backup_db_import_success) else getString(R.string.backup_import_error),
-                        Toast.LENGTH_LONG
-                    ).show()
+                    showBackupResult(
+                        if (success) getString(R.string.backup_db_import_success)
+                        else getString(R.string.backup_import_error),
+                    )
                 }.onFailure { error ->
-                    Toast.makeText(requireContext(), getString(R.string.backup_import_read_error), Toast.LENGTH_LONG).show()
+                    showBackupResult(getString(R.string.backup_import_read_error))
                     Log.e("BackupImportTV", "Error importing local database backup file", error)
                 }
             }
@@ -1870,19 +1845,29 @@ class SettingsTvFragment : LeanbackPreferenceFragmentCompat() {
         }
 
         val contentView = LayoutInflater.from(requireContext()).inflate(
-            R.layout.layout_is_loading_tv,
+            ExperimentalMobileDesign.layout(
+                R.layout.layout_is_loading_tv,
+                R.layout.layout_is_loading_mobile_exp,
+            ),
             null
         )
         contentView.findViewById<TextView>(R.id.tv_is_loading_error)?.visibility = View.GONE
         contentView.findViewById<Group>(R.id.g_is_loading_retry)?.visibility = View.GONE
 
-        backupLoadingDialog = AlertDialog.Builder(requireContext())
+        backupLoadingDialog = expAlertBuilder()
             .setTitle(titleRes)
             .setView(contentView)
             .setCancelable(false)
             .create()
             .apply {
                 setCanceledOnTouchOutside(false)
+                if (ExperimentalMobileDesign.enabled()) {
+                    ExperimentalMobileDesign.applyReducedGlass(contentView)
+                    window?.setBackgroundDrawableResource(ExperimentalMobileDesign.dialogBackground())
+                    ExpMotion.enterScreen(contentView)
+                    ExpDialogChrome.polishShown(this)
+                    contentView.findViewById<View>(R.id.pb_is_loading)?.let { ExpMotion.popIn(it) }
+                }
                 show()
             }
     }
@@ -2014,7 +1999,7 @@ class SettingsTvFragment : LeanbackPreferenceFragmentCompat() {
                 UserPreferences.parentalControlMaxAge = null
                 maxAgePreference?.value = ""
                 UserPreferences.unlockParentalControls()
-                Toast.makeText(requireContext(), getString(R.string.settings_parental_pin_removed), Toast.LENGTH_SHORT).show()
+                showSettingsInfo(getString(R.string.settings_parental_pin_removed))
                 ProviderChangeNotifier.notifyProviderChanged()
                 updateParentalControlPreferenceState()
             }
@@ -2024,7 +2009,7 @@ class SettingsTvFragment : LeanbackPreferenceFragmentCompat() {
         removeAdminPinPreference?.setOnPreferenceClickListener {
             changeAdminSettingWithPinCheck {
                 UserPreferences.parentalControlAdminPin = ""
-                Toast.makeText(requireContext(), getString(R.string.settings_parental_admin_pin_removed), Toast.LENGTH_SHORT).show()
+                showSettingsInfo(getString(R.string.settings_parental_admin_pin_removed))
                 updateParentalControlPreferenceState()
             }
             true
@@ -2033,7 +2018,7 @@ class SettingsTvFragment : LeanbackPreferenceFragmentCompat() {
         maxAgePreference?.setOnPreferenceChangeListener { _, newValue ->
             if (!UserPreferences.enableTmdb) return@setOnPreferenceChangeListener false
             if (UserPreferences.parentalControlPin.isBlank()) {
-                Toast.makeText(requireContext(), getString(R.string.settings_parental_set_pin_first), Toast.LENGTH_SHORT).show()
+                showSettingsInfo(getString(R.string.settings_parental_set_pin_first))
                 return@setOnPreferenceChangeListener false
             }
 
@@ -2043,7 +2028,7 @@ class SettingsTvFragment : LeanbackPreferenceFragmentCompat() {
             changeParentalSettingWithPinCheck {
                 UserPreferences.parentalControlMaxAge = newMaxAge
                 maxAgePreference.value = newMaxAgeValue
-                Toast.makeText(requireContext(), getString(R.string.settings_parental_max_age_saved), Toast.LENGTH_SHORT).show()
+                showSettingsInfo(getString(R.string.settings_parental_max_age_saved))
                 ProviderChangeNotifier.notifyProviderChanged()
                 updateParentalControlPreferenceState()
             }
@@ -2053,11 +2038,11 @@ class SettingsTvFragment : LeanbackPreferenceFragmentCompat() {
 
         unlockPreference?.setOnPreferenceClickListener {
             if (UserPreferences.parentalControlAdminPin.isBlank()) {
-                Toast.makeText(requireContext(), getString(R.string.settings_parental_set_admin_pin_first), Toast.LENGTH_SHORT).show()
+                showSettingsInfo(getString(R.string.settings_parental_set_admin_pin_first))
             } else {
                 promptForAdminPin {
                     UserPreferences.unlockParentalControls()
-                    Toast.makeText(requireContext(), getString(R.string.settings_parental_unlocked), Toast.LENGTH_SHORT).show()
+                    showSettingsInfo(getString(R.string.settings_parental_unlocked))
                     updateParentalControlPreferenceState()
                 }
             }
@@ -2143,19 +2128,26 @@ class SettingsTvFragment : LeanbackPreferenceFragmentCompat() {
         }
     }
 
+    private fun showSettingsInfo(message: CharSequence, titleRes: Int = R.string.settings_parental_pin_title) {
+        if (!isAdded) return
+        if (ExperimentalMobileDesign.enabled()) {
+            ExpDialogChrome.showInfo(requireContext(), titleRes, message, ::expAlertBuilder)
+        } else {
+            Toast.makeText(requireContext(), message, Toast.LENGTH_SHORT).show()
+        }
+    }
+
     private fun changeParentalSettingWithPinCheck(onVerified: () -> Unit) {
         when {
             UserPreferences.parentalControlHardLocked -> {
-                Toast.makeText(requireContext(), getString(R.string.settings_parental_locked_hard), Toast.LENGTH_SHORT).show()
+                showSettingsInfo(getString(R.string.settings_parental_locked_hard))
                 updateParentalControlPreferenceState()
                 return
             }
             UserPreferences.isParentalControlTemporarilyLocked -> {
-                Toast.makeText(
-                    requireContext(),
+                showSettingsInfo(
                     getString(R.string.settings_parental_locked_temporary, lockRemainingMinutes()),
-                    Toast.LENGTH_SHORT
-                ).show()
+                )
                 updateParentalControlPreferenceState()
                 return
             }
@@ -2207,7 +2199,7 @@ class SettingsTvFragment : LeanbackPreferenceFragmentCompat() {
     private fun promptForAdminPin(onVerified: () -> Unit) {
         val currentAdminPin = UserPreferences.parentalControlAdminPin
         if (currentAdminPin.isBlank()) {
-            Toast.makeText(requireContext(), getString(R.string.settings_parental_set_admin_pin_first), Toast.LENGTH_SHORT).show()
+            showSettingsInfo(getString(R.string.settings_parental_set_admin_pin_first))
             return
         }
 
@@ -2228,7 +2220,7 @@ class SettingsTvFragment : LeanbackPreferenceFragmentCompat() {
 
     private fun showParentalPinEditor(maxAgePreference: ListPreference?) {
         if (!UserPreferences.enableTmdb) {
-            Toast.makeText(requireContext(), getString(R.string.settings_parental_requires_tmdb), Toast.LENGTH_SHORT).show()
+            showSettingsInfo(getString(R.string.settings_parental_requires_tmdb))
             return
         }
 
@@ -2248,7 +2240,7 @@ class SettingsTvFragment : LeanbackPreferenceFragmentCompat() {
                             UserPreferences.parentalControlMaxAge = null
                             maxAgePreference?.value = ""
                             UserPreferences.unlockParentalControls()
-                            Toast.makeText(requireContext(), getString(R.string.settings_parental_pin_removed), Toast.LENGTH_SHORT).show()
+                            showSettingsInfo(getString(R.string.settings_parental_pin_removed))
                             ProviderChangeNotifier.notifyProviderChanged()
                             updateParentalControlPreferenceState()
                             null
@@ -2256,7 +2248,7 @@ class SettingsTvFragment : LeanbackPreferenceFragmentCompat() {
                         newPin.length < 4 -> getString(R.string.settings_parental_pin_too_short)
                         else -> {
                             UserPreferences.parentalControlPin = newPin
-                            Toast.makeText(requireContext(), getString(R.string.settings_parental_pin_saved), Toast.LENGTH_SHORT).show()
+                            showSettingsInfo(getString(R.string.settings_parental_pin_saved))
                             ProviderChangeNotifier.notifyProviderChanged()
                             updateParentalControlPreferenceState()
                             null
@@ -2281,14 +2273,14 @@ class SettingsTvFragment : LeanbackPreferenceFragmentCompat() {
                     when {
                         newPin.isBlank() -> {
                             UserPreferences.parentalControlAdminPin = ""
-                            Toast.makeText(requireContext(), getString(R.string.settings_parental_admin_pin_removed), Toast.LENGTH_SHORT).show()
+                            showSettingsInfo(getString(R.string.settings_parental_admin_pin_removed))
                             updateParentalControlPreferenceState()
                             null
                         }
                         newPin.length < 4 -> getString(R.string.settings_parental_pin_too_short)
                         else -> {
                             UserPreferences.parentalControlAdminPin = newPin
-                            Toast.makeText(requireContext(), getString(R.string.settings_parental_admin_pin_saved), Toast.LENGTH_SHORT).show()
+                            showSettingsInfo(getString(R.string.settings_parental_admin_pin_saved))
                             updateParentalControlPreferenceState()
                             null
                         }
@@ -2307,28 +2299,73 @@ class SettingsTvFragment : LeanbackPreferenceFragmentCompat() {
             inputType = InputType.TYPE_CLASS_NUMBER or InputType.TYPE_NUMBER_VARIATION_PASSWORD
             imeOptions = EditorInfo.IME_ACTION_DONE
             hint = getString(R.string.settings_parental_pin_hint)
+            if (ExperimentalMobileDesign.enabled()) {
+                setBackgroundResource(ExperimentalMobileDesign.searchFieldBackground())
+                setPadding(48, 36, 48, 36)
+                setTextAppearance(R.style.TextAppearance_Lumina_Body)
+            }
         }
 
-        val dialog = AlertDialog.Builder(requireContext())
-            .setTitle(titleRes)
-            .setMessage(messageRes)
-            .setView(input)
-            .setPositiveButton(android.R.string.ok, null)
-            .setNegativeButton(android.R.string.cancel, null)
-            .create()
-
-        dialog.setOnShowListener {
-            dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
-                input.error = null
-                val errorMessage = onSubmit(input.text?.toString()?.trim().orEmpty())
-                if (errorMessage == null) {
-                    dialog.dismiss()
-                } else {
-                    input.setText("")
-                    input.error = errorMessage
-                    input.requestFocus()
+        val dialog = if (ExperimentalMobileDesign.enabled()) {
+            val glass = ExpDialogChrome.buildGlassMessage(requireContext(), getString(messageRes))
+            val density = resources.displayMetrics.density
+            glass.root.addView(
+                input,
+                LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT,
+                ).also { it.topMargin = (12 * density).toInt() },
+            )
+            expAlertBuilder()
+                .setTitle(titleRes)
+                .setView(glass.root)
+                .setPositiveButton(android.R.string.ok, null)
+                .setNegativeButton(android.R.string.cancel, null)
+                .create()
+                .also { dialog ->
+                    dialog.setOnShowListener {
+                        ExpDialogChrome.polishGlassMessageShown(dialog, glass)
+                        with(ExpPressEffects) { input.applyExpPress() }
+                        ExpMotion.popIn(input)
+                        dialog.getButton(androidx.appcompat.app.AlertDialog.BUTTON_POSITIVE)
+                            .setOnClickListener {
+                                input.error = null
+                                val errorMessage = onSubmit(input.text?.toString()?.trim().orEmpty())
+                                if (errorMessage == null) {
+                                    dialog.dismiss()
+                                } else {
+                                    input.setText("")
+                                    input.error = errorMessage
+                                    ExpMotion.shake(input)
+                                    input.requestFocus()
+                                }
+                            }
+                    }
                 }
-            }
+        } else {
+            expAlertBuilder()
+                .setTitle(titleRes)
+                .setMessage(messageRes)
+                .setView(input)
+                .setPositiveButton(android.R.string.ok, null)
+                .setNegativeButton(android.R.string.cancel, null)
+                .create()
+                .also { dialog ->
+                    dialog.setOnShowListener {
+                        dialog.getButton(androidx.appcompat.app.AlertDialog.BUTTON_POSITIVE)
+                            .setOnClickListener {
+                                input.error = null
+                                val errorMessage = onSubmit(input.text?.toString()?.trim().orEmpty())
+                                if (errorMessage == null) {
+                                    dialog.dismiss()
+                                } else {
+                                    input.setText("")
+                                    input.error = errorMessage
+                                    input.requestFocus()
+                                }
+                            }
+                    }
+                }
         }
 
         dialog.show()
@@ -2344,36 +2381,90 @@ class SettingsTvFragment : LeanbackPreferenceFragmentCompat() {
             inputType = InputType.TYPE_CLASS_NUMBER or InputType.TYPE_NUMBER_VARIATION_PASSWORD
             imeOptions = EditorInfo.IME_ACTION_DONE
             hint = getString(R.string.settings_parental_pin_hint)
+            if (ExperimentalMobileDesign.enabled()) {
+                setBackgroundResource(ExperimentalMobileDesign.searchFieldBackground())
+                setPadding(48, 36, 48, 36)
+                setTextAppearance(R.style.TextAppearance_Lumina_Body)
+            }
         }
 
-        val dialog = AlertDialog.Builder(requireContext())
-            .setTitle(titleRes)
-            .setMessage(messageRes)
-            .setView(input)
-            .setPositiveButton(android.R.string.ok, null)
-            .setNegativeButton(android.R.string.cancel, null)
-            .create()
+        val dialog = if (ExperimentalMobileDesign.enabled()) {
+            val glass = ExpDialogChrome.buildGlassMessage(requireContext(), getString(messageRes))
+            val density = resources.displayMetrics.density
+            glass.root.addView(
+                input,
+                LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT,
+                ).also { it.topMargin = (12 * density).toInt() },
+            )
+            expAlertBuilder()
+                .setTitle(titleRes)
+                .setView(glass.root)
+                .setPositiveButton(android.R.string.ok, null)
+                .setNegativeButton(android.R.string.cancel, null)
+                .create()
+                .also { dialog ->
+                    dialog.setOnShowListener {
+                        ExpDialogChrome.polishGlassMessageShown(dialog, glass)
+                        with(ExpPressEffects) { input.applyExpPress() }
+                        ExpMotion.popIn(input)
+                        dialog.getButton(androidx.appcompat.app.AlertDialog.BUTTON_POSITIVE)
+                            .setOnClickListener {
+                                input.error = null
+                                val newValue = input.text?.toString()?.trim().orEmpty()
+                                if (newValue.isBlank() && !allowBlank) {
+                                    input.setText("")
+                                    input.error = getString(R.string.settings_parental_pin_too_short)
+                                    ExpMotion.shake(input)
+                                    input.requestFocus()
+                                    return@setOnClickListener
+                                }
 
-        dialog.setOnShowListener {
-            dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
-                input.error = null
-                val newValue = input.text?.toString()?.trim().orEmpty()
-                if (newValue.isBlank() && !allowBlank) {
-                    input.setText("")
-                    input.error = getString(R.string.settings_parental_pin_too_short)
-                    input.requestFocus()
-                    return@setOnClickListener
+                                val errorMessage = onSubmit(newValue)
+                                if (errorMessage == null) {
+                                    dialog.dismiss()
+                                } else {
+                                    input.setText("")
+                                    input.error = errorMessage
+                                    ExpMotion.shake(input)
+                                    input.requestFocus()
+                                }
+                            }
+                    }
                 }
+        } else {
+            expAlertBuilder()
+                .setTitle(titleRes)
+                .setMessage(messageRes)
+                .setView(input)
+                .setPositiveButton(android.R.string.ok, null)
+                .setNegativeButton(android.R.string.cancel, null)
+                .create()
+                .also { dialog ->
+                    dialog.setOnShowListener {
+                        dialog.getButton(androidx.appcompat.app.AlertDialog.BUTTON_POSITIVE)
+                            .setOnClickListener {
+                                input.error = null
+                                val newValue = input.text?.toString()?.trim().orEmpty()
+                                if (newValue.isBlank() && !allowBlank) {
+                                    input.setText("")
+                                    input.error = getString(R.string.settings_parental_pin_too_short)
+                                    input.requestFocus()
+                                    return@setOnClickListener
+                                }
 
-                val errorMessage = onSubmit(newValue)
-                if (errorMessage == null) {
-                    dialog.dismiss()
-                } else {
-                    input.setText("")
-                    input.error = errorMessage
-                    input.requestFocus()
+                                val errorMessage = onSubmit(newValue)
+                                if (errorMessage == null) {
+                                    dialog.dismiss()
+                                } else {
+                                    input.setText("")
+                                    input.error = errorMessage
+                                    input.requestFocus()
+                                }
+                            }
+                    }
                 }
-            }
         }
 
         dialog.show()
@@ -2384,11 +2475,83 @@ class SettingsTvFragment : LeanbackPreferenceFragmentCompat() {
         return ((millis + 60_000L - 1L) / 60_000L).toInt().coerceAtLeast(1)
     }
 
+    private fun bindExperimentalDesignGate() {
+        if (!ExperimentalMobileDesign.isAvailable() && UserPreferences.experimentalNewAppDesign) {
+            UserPreferences.experimentalNewAppDesign = false
+        }
+        findPreference<Preference>("screen_lumina_options")?.isVisible = ExperimentalMobileDesign.isAvailable()
+    }
+
+    private fun bindExperimentalDesignPreference() {
+        findPreference<androidx.preference.SwitchPreference>("EXPERIMENTAL_NEW_APP_DESIGN")?.apply {
+            val available = ExperimentalMobileDesign.isAvailable()
+            isEnabled = available
+            isChecked = available && UserPreferences.experimentalNewAppDesign
+            summary = ExperimentalMobileDesign.summary(requireContext())
+            setOnPreferenceChangeListener { _, newValue ->
+                if (!available) return@setOnPreferenceChangeListener false
+                UserPreferences.experimentalNewAppDesign = newValue as Boolean
+                requireActivity().apply {
+                    finish()
+                    startActivity(Intent(this, MainTvActivity::class.java))
+                }
+                true
+            }
+        }
+    }
+
+    private fun bindLuminaOptions() {
+        val luminaOn = ExperimentalMobileDesign.enabled()
+        findPreference<Preference>("screen_lumina_options")?.isVisible =
+            ExperimentalMobileDesign.isAvailable() && luminaOn
+        (findPreference("EXPERIMENTAL_LUMINA_ACCENT") as? androidx.preference.ListPreference)?.apply {
+            value = UserPreferences.experimentalLuminaAccent
+            summaryProvider = androidx.preference.ListPreference.SimpleSummaryProvider.getInstance()
+            isEnabled = luminaOn
+            setOnPreferenceChangeListener { _, newValue ->
+                UserPreferences.experimentalLuminaAccent = newValue.toString()
+                true
+            }
+        }
+        listOf(
+            "EXPERIMENTAL_LUMINA_PURE_BLACK" to { v: Boolean -> UserPreferences.experimentalLuminaPureBlack = v },
+            "EXPERIMENTAL_LUMINA_DYNAMIC_COLORS" to { v: Boolean -> UserPreferences.experimentalLuminaDynamicColors = v },
+            "EXPERIMENTAL_LUMINA_NAV_AUTO_HIDE" to { v: Boolean -> UserPreferences.experimentalLuminaNavAutoHide = v },
+            "EXPERIMENTAL_LUMINA_HERO_PARALLAX" to { v: Boolean -> UserPreferences.experimentalLuminaHeroParallax = v },
+            "EXPERIMENTAL_LUMINA_REDUCED_GLASS" to { v: Boolean -> UserPreferences.experimentalLuminaReducedGlass = v },
+        ).forEach { (key, setter) ->
+            findPreference<androidx.preference.SwitchPreference>(key)?.apply {
+                isChecked = when (key) {
+                    "EXPERIMENTAL_LUMINA_PURE_BLACK" -> UserPreferences.experimentalLuminaPureBlack
+                    "EXPERIMENTAL_LUMINA_DYNAMIC_COLORS" -> UserPreferences.experimentalLuminaDynamicColors
+                    "EXPERIMENTAL_LUMINA_NAV_AUTO_HIDE" -> UserPreferences.experimentalLuminaNavAutoHide
+                    "EXPERIMENTAL_LUMINA_HERO_PARALLAX" -> UserPreferences.experimentalLuminaHeroParallax
+                    else -> UserPreferences.experimentalLuminaReducedGlass
+                }
+                isEnabled = luminaOn
+                setOnPreferenceChangeListener { _, newValue ->
+                    setter(newValue as Boolean)
+                    true
+                }
+            }
+        }
+    }
+
     override fun onResume() {
         super.onResume()
         applyScreenTitle()
         updateOverviewLabels()
         updateProviderVisibilityState()
+        PlatformSettingsController.refresh(this) { key -> findPreference(key) }
+        ProfilesSettingsController.refresh(
+            findPreference = { key -> findPreference(key) },
+            context = requireContext(),
+        )
+        ConnectionServicesController.refresh(
+            findPreference = { key -> findPreference(key) },
+            context = requireContext(),
+        )
+        settingsHubController?.updateVisibility()
 
         findPreference<EditTextPreference>("provider_streamingcommunity_domain")?.apply {
             val currentValue = UserPreferences.streamingcommunityDomain
@@ -2405,30 +2568,15 @@ class SettingsTvFragment : LeanbackPreferenceFragmentCompat() {
             text = UserPreferences.tmdbApiKey
         }
 
-        findPreference<EditTextPreference>("SUBDL_API_KEY")?.apply {
-            summary = if (UserPreferences.subdlApiKey.isEmpty()) getString(R.string.settings_subdl_api_key_summary) else UserPreferences.subdlApiKey
-            text = UserPreferences.subdlApiKey
-        }
-
-        findPreference<EditTextPreference>("BYPASS_WS_ADVERTISED_HOST")?.apply {
-            val currentValue = UserPreferences.bypassWsAdvertisedHost
-            summary = if (currentValue.isBlank()) "Auto (device IP)" else currentValue
-            text = currentValue
-        }
-
-        findPreference<ListPreference>("p_doh_provider_url")?.apply {
-            summary = entry
-        }
-
         findPreference<ListPreference>("APP_LANGUAGE")?.value =
             AppLanguageManager.getSelectedLanguage(requireContext())
 
         val networkSettingsCategory = findPreference<PreferenceCategory>("pc_network_settings")
         if (networkSettingsCategory != null) {
-            val originalTitle = getString(R.string.settings_category_network_title)
+            val originalTitle = getString(R.string.connection_section_dns)
             val currentProviderName = UserPreferences.currentProvider?.name
             if (currentProviderName != null && currentProviderName.isNotEmpty()) {
-                networkSettingsCategory.title = "$originalTitle $currentProviderName"
+                networkSettingsCategory.title = "$originalTitle · $currentProviderName"
             } else {
                 networkSettingsCategory.title = originalTitle
             }
@@ -2436,24 +2584,11 @@ class SettingsTvFragment : LeanbackPreferenceFragmentCompat() {
         findPreference<SwitchPreference>("AUTOPLAY")?.isChecked = UserPreferences.autoplay
         findPreference<SwitchPreference>("FORCE_EXTRA_BUFFERING")?.isChecked = UserPreferences.forceExtraBuffering
         findPreference<SwitchPreference>("SERVER_AUTO_SUBTITLES_DISABLED")?.isChecked = UserPreferences.serverAutoSubtitlesDisabled
-        findPreference<SwitchPreference>("DOWNLOAD_WIFI_ONLY")?.isChecked = UserPreferences.downloadWifiOnly
-        findPreference<SwitchPreference>("DOWNLOAD_SMART_ENABLED")?.isChecked = UserPreferences.downloadSmartEnabled
-        findPreference<SwitchPreference>("DOWNLOAD_AUTO_DELETE_WATCHED")?.isChecked = UserPreferences.downloadAutoDeleteWatched
-        findPreference<SwitchPreference>("DOWNLOAD_NOTIFY_COMPLETE")?.isChecked = UserPreferences.downloadNotifyComplete
-        findPreference<SwitchPreference>("DOWNLOAD_FILTER_CURRENT_PROVIDER")?.isChecked =
-            UserPreferences.downloadFilterCurrentProvider
-        findPreference<ListPreference>("DOWNLOAD_QUALITY_PRESET")?.value =
-            UserPreferences.downloadQualityPreset.name
-        findPreference<ListPreference>("DOWNLOAD_MAX_CONCURRENT")?.value =
-            UserPreferences.downloadMaxConcurrent.toString()
-        findPreference<EditTextPreference>("DOWNLOAD_SOFT_LIMIT_GB")?.text =
-            UserPreferences.downloadSoftLimitGb.toString()
-        findPreference<Preference>("DOWNLOAD_STORAGE_USED")?.summary =
-            DownloadStorage.formatBytes(DownloadStorage.usedBytes(requireContext()))
-        findPreference<Preference>("DOWNLOAD_STORAGE_PATH")?.summary =
-            DownloadStorage.absolutePathSummary(requireContext())
-        findPreference<ListPreference>("DOWNLOAD_STORAGE_LOCATION")?.value =
-            UserPreferences.downloadStorageLocation.name
+        DownloadsSettingsController.refresh(
+            findPreference = { key -> findPreference(key) },
+            context = requireContext(),
+            scope = lifecycleScope,
+        )
         
         val bufferPref: EditTextPreference? = findPreference("p_settings_autoplay_buffer") 
         bufferPref?.summaryProvider = Preference.SummaryProvider<EditTextPreference> { pref ->
@@ -2465,21 +2600,50 @@ class SettingsTvFragment : LeanbackPreferenceFragmentCompat() {
 
     private fun showWebSocketBypassTestDialog() {
         val defaultUrl = UserPreferences.currentProvider?.baseUrl ?: UserPreferences.cuevanaDomain.let { "https://$it" }
+        val density = resources.displayMetrics.density
         val input = EditText(requireContext()).apply {
             setText(defaultUrl)
             inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_URI
             imeOptions = EditorInfo.IME_ACTION_DONE
             setSingleLine()
+            if (ExperimentalMobileDesign.enabled()) {
+                setBackgroundResource(ExperimentalMobileDesign.searchFieldBackground())
+                setPadding(48, 36, 48, 36)
+                setTextAppearance(R.style.TextAppearance_Lumina_Body)
+            }
         }
-
-        AlertDialog.Builder(requireContext())
+        val message = "Enter the URL that the mobile resolver should open."
+        val glass = if (ExperimentalMobileDesign.enabled()) {
+            ExpDialogChrome.buildGlassMessage(requireContext(), message).also { g ->
+                g.root.addView(
+                    input,
+                    LinearLayout.LayoutParams(
+                        LinearLayout.LayoutParams.MATCH_PARENT,
+                        LinearLayout.LayoutParams.WRAP_CONTENT,
+                    ).also { it.topMargin = (12 * density).toInt() },
+                )
+            }
+        } else {
+            null
+        }
+        val builder = expAlertBuilder()
             .setTitle("Test WebSocket bypass")
-            .setMessage("Enter the URL that the mobile resolver should open.")
-            .setView(input)
+        if (glass != null) builder.setView(glass.root)
+        else builder.setMessage(message).setView(input)
+        builder
             .setPositiveButton(android.R.string.ok) { _, _ ->
                 val targetUrl = input.text?.toString()?.trim().orEmpty()
                 if (targetUrl.isBlank()) {
-                    Toast.makeText(requireContext(), "URL is required", Toast.LENGTH_SHORT).show()
+                    if (ExperimentalMobileDesign.enabled()) {
+                        ExpDialogChrome.showInfo(
+                            requireContext(),
+                            "Test WebSocket bypass",
+                            "URL is required",
+                            ::expAlertBuilder,
+                        )
+                    } else {
+                        Toast.makeText(requireContext(), "URL is required", Toast.LENGTH_SHORT).show()
+                    }
                     return@setPositiveButton
                 }
 
@@ -2488,14 +2652,35 @@ class SettingsTvFragment : LeanbackPreferenceFragmentCompat() {
                 }
 
                 if (session == null) {
-                    Toast.makeText(requireContext(), "Unable to start local websocket server", Toast.LENGTH_LONG).show()
+                    if (ExperimentalMobileDesign.enabled()) {
+                        ExpDialogChrome.showInfo(
+                            requireContext(),
+                            "Test WebSocket bypass",
+                            "Unable to start local websocket server",
+                            ::expAlertBuilder,
+                        )
+                    } else {
+                        Toast.makeText(requireContext(), "Unable to start local websocket server", Toast.LENGTH_LONG).show()
+                    }
                     return@setPositiveButton
                 }
 
                 showWebSocketBypassQrDialog(session.deepLink, session.wsUrl, targetUrl)
             }
             .setNegativeButton(android.R.string.cancel, null)
-            .show()
+            .create()
+            .also { dialog ->
+                dialog.setOnShowListener {
+                    if (glass != null) {
+                        ExpDialogChrome.polishGlassMessageShown(dialog, glass)
+                        with(ExpPressEffects) { input.applyExpPress() }
+                        ExpMotion.popIn(input)
+                    } else {
+                        ExpDialogChrome.polishButtons(dialog)
+                    }
+                }
+                dialog.show()
+            }
     }
 
     private fun showWebSocketBypassQrDialog(
@@ -2568,11 +2753,17 @@ class SettingsTvFragment : LeanbackPreferenceFragmentCompat() {
             addView(container)
         }
 
-        val dialog = AlertDialog.Builder(requireContext())
+        val dialog = expAlertBuilder()
             .setTitle("WebSocket bypass QR")
             .setView(scrollView)
             .setPositiveButton(android.R.string.ok, null)
-            .show()
+            .create()
+        dialog.setOnShowListener {
+            if (ExperimentalMobileDesign.enabled()) {
+                ExpDialogChrome.polishShown(dialog)
+            }
+        }
+        dialog.show()
 
         dialog.window?.setLayout(dialogWidth, LinearLayout.LayoutParams.WRAP_CONTENT)
     }

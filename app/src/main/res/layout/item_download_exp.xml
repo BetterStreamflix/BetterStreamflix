@@ -5,7 +5,7 @@
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:layout_marginBottom="10dp"
-    android:background="@drawable/bg_exp_provider_card"
+    android:background="@drawable/bg_exp_glass_card"
     android:focusable="true"
     android:padding="12dp"
     android:foreground="?attr/selectableItemBackground">
@@ -24,7 +24,7 @@
 
     <TextView
         android:id="@+id/tv_download_title"
-        android:fontFamily="@font/manrope"
+        android:textAppearance="@style/TextAppearance.Lumina.Title"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:ellipsize="end"
@@ -40,7 +40,7 @@
 
     <TextView
         android:id="@+id/tv_download_subtitle"
-        android:fontFamily="@font/manrope"
+        android:textAppearance="@style/TextAppearance.Lumina.Body"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:ellipsize="end"
@@ -68,7 +68,7 @@
 
     <TextView
         android:id="@+id/tv_download_progress"
-        android:fontFamily="@font/manrope"
+        android:textAppearance="@style/TextAppearance.Lumina.Caption"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:paddingStart="14dp"
@@ -92,10 +92,9 @@
 
         <TextView
             android:id="@+id/btn_download_primary"
-        android:fontFamily="@font/manrope"
-            android:layout_width="wrap_content"
+                    android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:background="@drawable/bg_exp_chip"
+            android:background="@drawable/bg_exp_button_primary"
             android:focusable="true"
             android:paddingStart="16dp"
             android:paddingTop="9dp"
@@ -103,14 +102,14 @@
             android:paddingBottom="9dp"
             android:text="@string/downloads_action_pause"
             android:textAllCaps="false"
-            android:textColor="?attr/colorPrimary"
+            android:textAppearance="@style/TextAppearance.Lumina.Caption"
+            android:textColor="?attr/colorOnPrimary"
             android:textSize="13sp"
             android:textStyle="bold" />
 
         <TextView
             android:id="@+id/btn_download_delete"
-        android:fontFamily="@font/manrope"
-            android:layout_width="wrap_content"
+                    android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginStart="8dp"
             android:background="@drawable/bg_exp_chip"
@@ -121,6 +120,7 @@
             android:paddingBottom="9dp"
             android:text="@string/downloads_action_delete"
             android:textAllCaps="false"
+            android:textAppearance="@style/TextAppearance.Lumina.Caption"
             android:textColor="?attr/colorError"
             android:textSize="13sp"
             android:textStyle="bold" />

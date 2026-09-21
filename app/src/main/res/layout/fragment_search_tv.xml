@@ -82,6 +82,51 @@
 
     </androidx.constraintlayout.widget.ConstraintLayout>
 
+    <HorizontalScrollView
+        android:id="@+id/hsv_search_recent"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="12dp"
+        android:clipToPadding="false"
+        android:paddingStart="4dp"
+        android:paddingEnd="4dp"
+        android:scrollbars="none"
+        android:visibility="gone"
+        app:layout_constraintEnd_toEndOf="@id/cl_search"
+        app:layout_constraintStart_toStartOf="@id/cl_search"
+        app:layout_constraintTop_toBottomOf="@id/cl_search"
+        tools:visibility="visible">
+
+        <LinearLayout
+            android:id="@+id/ll_search_recent"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:gravity="center_vertical"
+            android:orientation="horizontal" />
+    </HorizontalScrollView>
+
+    <View
+        android:id="@+id/v_search_recent_edge_fade_start"
+        android:layout_width="28dp"
+        android:layout_height="0dp"
+        android:background="@drawable/bg_exp_edge_fade_start"
+        android:importantForAccessibility="no"
+        android:visibility="gone"
+        app:layout_constraintBottom_toBottomOf="@id/hsv_search_recent"
+        app:layout_constraintStart_toStartOf="@id/hsv_search_recent"
+        app:layout_constraintTop_toTopOf="@id/hsv_search_recent" />
+
+    <View
+        android:id="@+id/v_search_recent_edge_fade_end"
+        android:layout_width="36dp"
+        android:layout_height="0dp"
+        android:background="@drawable/bg_exp_edge_fade_end"
+        android:importantForAccessibility="no"
+        android:visibility="gone"
+        app:layout_constraintBottom_toBottomOf="@id/hsv_search_recent"
+        app:layout_constraintEnd_toEndOf="@id/hsv_search_recent"
+        app:layout_constraintTop_toTopOf="@id/hsv_search_recent" />
+
     <LinearLayout
         android:id="@+id/ll_global_search"
         android:layout_width="0dp"
@@ -96,7 +141,7 @@
         android:nextFocusDown="@id/vgv_search"
         app:layout_constraintEnd_toEndOf="@id/cl_search"
         app:layout_constraintStart_toStartOf="@id/cl_search"
-        app:layout_constraintTop_toBottomOf="@id/cl_search">
+        app:layout_constraintTop_toBottomOf="@id/hsv_search_recent">
 
         <TextView
             android:id="@+id/tv_global_search"
@@ -130,6 +175,53 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@id/ll_global_search"
         tools:listitem="@layout/item_movie_tv" />
+
+    <TextView
+        android:id="@+id/tv_search_empty"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:fontFamily="@font/manrope"
+        android:gravity="center"
+        android:padding="32dp"
+        android:text="@string/search_no_results"
+        android:textColor="@android:color/darker_gray"
+        android:textSize="18sp"
+        android:visibility="gone"
+        app:layout_constraintBottom_toTopOf="@id/v_search_empty_rule"
+        app:layout_constraintEnd_toEndOf="@id/vgv_search"
+        app:layout_constraintStart_toStartOf="@id/vgv_search"
+        app:layout_constraintTop_toTopOf="@id/vgv_search"
+        app:layout_constraintVertical_chainStyle="packed"
+        app:layout_constraintWidth_max="520dp"
+        tools:visibility="visible" />
+
+    <View
+        android:id="@+id/v_search_empty_rule"
+        android:layout_width="36dp"
+        android:layout_height="3dp"
+        android:layout_marginTop="14dp"
+        android:background="@drawable/bg_exp_accent_rule"
+        android:visibility="gone"
+        app:layout_constraintBottom_toTopOf="@id/btn_search_empty_cta"
+        app:layout_constraintEnd_toEndOf="@id/tv_search_empty"
+        app:layout_constraintStart_toStartOf="@id/tv_search_empty"
+        app:layout_constraintTop_toBottomOf="@id/tv_search_empty"
+        tools:visibility="visible" />
+
+    <TextView
+        android:id="@+id/btn_search_empty_cta"
+        style="@style/AppTheme.Widget.Tv.Button"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="14dp"
+        android:focusable="true"
+        android:text="@string/exp_empty_clear_search"
+        android:visibility="gone"
+        app:layout_constraintBottom_toBottomOf="@id/vgv_search"
+        app:layout_constraintEnd_toEndOf="@id/tv_search_empty"
+        app:layout_constraintStart_toStartOf="@id/tv_search_empty"
+        app:layout_constraintTop_toBottomOf="@id/v_search_empty_rule"
+        tools:visibility="visible" />
 
     <include
         android:id="@+id/is_loading"

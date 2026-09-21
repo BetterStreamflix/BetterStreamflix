@@ -19,8 +19,13 @@ import com.dskja.betterstreamflix.models.Genre
 import com.dskja.betterstreamflix.models.Movie
 import com.dskja.betterstreamflix.models.TvShow
 import com.dskja.betterstreamflix.utils.CacheUtils
+import com.dskja.betterstreamflix.utils.ExpEmptyChrome
+import com.dskja.betterstreamflix.utils.ExpMotion
+import com.dskja.betterstreamflix.utils.ExpPressEffects.applyExpPress
+import com.dskja.betterstreamflix.utils.ExperimentalMobileDesign
 import com.dskja.betterstreamflix.utils.Http409CacheGuard
 import com.dskja.betterstreamflix.utils.viewModelsFactory
+import androidx.navigation.fragment.findNavController
 import kotlinx.coroutines.launch
 
 class GenreTvFragment : Fragment() {
@@ -55,7 +60,7 @@ class GenreTvFragment : Fragment() {
                 when (state) {
                     GenreViewModel.State.Loading -> binding.isLoading.apply {
                         root.visibility = View.VISIBLE
-                        pbIsLoading.visibility = View.VISIBLE
+                        com.dskja.betterstreamflix.utils.ExpPressEffects.showLoadingSkeleton(root, true)
                         gIsLoadingRetry.visibility = View.GONE
                     }
                     GenreViewModel.State.LoadingMore -> appAdapter.isLoading = true
@@ -63,6 +68,9 @@ class GenreTvFragment : Fragment() {
                         displayGenre(state.genre, state.hasMore)
                         appAdapter.isLoading = false
                         binding.isLoading.root.visibility = View.GONE
+                        com.dskja.betterstreamflix.utils.ExpPressEffects.showLoadingSkeleton(
+                            binding.isLoading.root, false,
+                        )
                     }
                     is GenreViewModel.State.FailedLoading -> {
                         if (http409Guard.handle(requireContext(), state.error) {
@@ -71,21 +79,24 @@ class GenreTvFragment : Fragment() {
                             }) {
                                 return@collect
                             }
-                        Toast.makeText(
-                            requireContext(),
-                            state.error.message ?: "",
-                            Toast.LENGTH_SHORT
-                        ).show()
+                        if (!com.dskja.betterstreamflix.utils.ExperimentalMobileDesign.enabled()) {
+                            Toast.makeText(
+                                requireContext(),
+                                state.error.message ?: "",
+                                Toast.LENGTH_SHORT
+                            ).show()
+                        }
                         if (appAdapter.isLoading) {
                             appAdapter.isLoading = false
                         } else {
                             binding.isLoading.apply {
-                                pbIsLoading.visibility = View.GONE
+                                com.dskja.betterstreamflix.utils.ExpPressEffects.showLoadingSkeleton(root, false)
                                 gIsLoadingRetry.visibility = View.VISIBLE
+                                com.dskja.betterstreamflix.utils.ExpPressEffects.animateLoadingError(root)
                                 btnIsLoadingRetry.setOnClickListener { viewModel.getGenre(args.id) }
                                 btnIsLoadingClearCache.setOnClickListener {
                                     CacheUtils.clearAppCache(requireContext())
-                                    android.widget.Toast.makeText(requireContext(), getString(com.dskja.betterstreamflix.R.string.clear_cache_done), android.widget.Toast.LENGTH_SHORT).show()
+                                    com.dskja.betterstreamflix.utils.ExpDialogChrome.notify(requireContext(), getString(com.dskja.betterstreamflix.R.string.clear_cache_done), com.dskja.betterstreamflix.R.string.loading_error_clear_cache)
                                     viewModel.getGenre(args.id)
                                 }
                                 btnIsLoadingRetry.requestFocus()
@@ -104,6 +115,17 @@ class GenreTvFragment : Fragment() {
 
 
     private fun initializeGenre() {
+        com.dskja.betterstreamflix.utils.ExpPressEffects.wireLoadingRetry(binding.isLoading.root)
+        if (com.dskja.betterstreamflix.utils.ExperimentalMobileDesign.enabled()) {
+            com.dskja.betterstreamflix.utils.ExpMotion.enterScreen(binding.root)
+            binding.tvGenreName.setTextColor(
+                com.google.android.material.color.MaterialColors.getColor(
+                    binding.tvGenreName,
+                    com.google.android.material.R.attr.colorOnSurface,
+                ),
+            )
+            com.dskja.betterstreamflix.utils.ExpMotion.revealHeader(binding.tvGenreName)
+        }
         binding.vgvGenre.apply {
             adapter = appAdapter.apply {
                 stateRestorationPolicy = RecyclerView.Adapter.StateRestorationPolicy.PREVENT_WHEN_EMPTY
@@ -124,6 +146,18 @@ class GenreTvFragment : Fragment() {
                 is TvShow -> it.itemType = AppAdapter.Type.TV_SHOW_GRID_TV_ITEM
             }
         })
+
+        binding.tvGenreEmpty.visibility =
+            if (genre.shows.isEmpty()) View.VISIBLE else View.GONE
+        binding.vgvGenre.visibility =
+            if (genre.shows.isEmpty()) View.GONE else View.VISIBLE
+        ExpEmptyChrome.bind(
+            emptyView = binding.tvGenreEmpty,
+            emptyRule = binding.root.findViewById(R.id.v_genre_empty_rule),
+            emptyCta = binding.root.findViewById(R.id.btn_genre_empty_cta),
+            visible = genre.shows.isEmpty(),
+            onCtaClick = { findNavController().navigateUp() },
+        )
 
         if (hasMore) {
             appAdapter.setOnLoadMoreListener { viewModel.loadMoreGenreShows() }

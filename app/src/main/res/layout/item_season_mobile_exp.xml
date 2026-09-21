@@ -4,21 +4,23 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="wrap_content"
     android:layout_height="wrap_content"
-    android:foreground="?attr/selectableItemBackground">
+    android:background="@drawable/bg_exp_glass_card"
+    android:foreground="?attr/selectableItemBackground"
+    android:padding="7dp">
 
     <com.google.android.material.imageview.ShapeableImageView
         android:id="@+id/iv_season_poster"
-        android:foreground="@drawable/bg_exp_poster_scrim"
         android:layout_width="0dp"
         android:layout_height="200dp"
-        android:background="?attr/colorSurfaceContainer"
+        android:background="@drawable/bg_exp_skeleton"
+        android:foreground="@drawable/bg_exp_poster_scrim"
         android:scaleType="centerCrop"
         app:layout_constraintDimensionRatio="2:3"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent"
         app:shapeAppearanceOverlay="@style/ShapeAppearance.Lumina.PosterSmall"
-        app:strokeColor="?attr/colorOutlineVariant"
+        app:strokeColor="#66FFFFFF"
         app:strokeWidth="1dp"
         tools:ignore="ContentDescription" />
 
@@ -37,17 +39,16 @@
 
     <TextView
         android:id="@+id/tv_season_title"
-        android:fontFamily="@font/manrope"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_marginTop="9dp"
         android:gravity="center"
+        android:textAppearance="@style/TextAppearance.Lumina.Caption"
         android:textColor="?attr/colorOnSurface"
-        
+        android:textStyle="bold"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@id/iv_season_poster"
-        tools:text="Season #" 
-        android:textAppearance="?attr/textAppearanceTitleSmall"/>
+        tools:text="Season #" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>
