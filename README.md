@@ -111,8 +111,36 @@ git clone https://github.com/dskja/BetterStreamflix.git
 
 ## Development
 
-1. Select the device that you want to run the app on
-2. Click **Run**
+### Fast local loop (recommended)
+
+Do **not** wait for CI release APKs while iterating. Use a local debug install — after the first build, small Kotlin/XML changes usually take seconds to a couple of minutes.
+
+1. Open the project in Android Studio
+2. Create `local.properties` (SDK path is auto-filled by Android Studio). Optional keys:
+   - `APP_LAYOUT=mobile` or `APP_LAYOUT=tv` (omit for universal)
+   - API keys as needed (`TMDB_API_KEY`, …)
+3. Select an emulator or USB device
+4. Click **Run** (debug) — or from the CLI:
+
+```bash
+./scripts/build-debug.sh              # universal debug APK
+./scripts/build-debug.sh mobile       # mobile-only
+./scripts/build-debug.sh tv install   # TV-only + adb install -r
+./gradlew :app:installDebug           # Android Studio equivalent
+```
+
+Debug APK output: `app/build/outputs/apk/debug/`.  
+Debug builds skip R8 minify/shrink and use application id `com.dskja.betterstreamflix.debug`.
+
+### When to use CI APKs
+
+| Workflow | When it runs | What you get | Typical wait |
+| --- | --- | --- | --- |
+| **Build APKs** | every push / PR (code changes) | 3 debug APKs (universal / mobile / TV) | ~5–10 min |
+| **PR CI** | PRs + `main` / `dskja/**` | string check, unit tests, assembleDebug | ~5–10 min |
+| **Build & Release APK** | `main`, tags `v*`, or manual dispatch | 3 signed release APKs (R8) | ~10–15 min (parallel) |
+
+Signed release builds no longer run on every feature-branch push. For a signed APK on a branch, run **Actions → Build & Release APK → Run workflow**.
 
 ## Contributing
 

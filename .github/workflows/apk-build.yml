@@ -1,9 +1,18 @@
 name: Build APKs
 
-# Debug APKs on every commit — artifacts only, no GitHub Release.
+# Debug APKs for day-to-day testing — artifacts only, no GitHub Release.
+# Prefer these over "Build & Release APK" while iterating (much faster, no R8).
 on:
   push:
+    paths-ignore:
+      - '**.md'
+      - 'LICENSE'
+      - '.gitignore'
   pull_request:
+    paths-ignore:
+      - '**.md'
+      - 'LICENSE'
+      - '.gitignore'
   workflow_dispatch:
 
 concurrency:
@@ -37,6 +46,11 @@ jobs:
         with:
           distribution: temurin
           java-version: 17
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          cache-read-only: ${{ github.ref != 'refs/heads/main' }}
 
       - name: Access optional secrets
         env:
@@ -94,7 +108,7 @@ jobs:
           cat local.properties
 
       - name: Assemble debug APK
-        run: ./gradlew :app:assembleDebug --stacktrace --no-daemon
+        run: ./gradlew :app:assembleDebug --stacktrace
 
       - name: Package APK
         run: |
