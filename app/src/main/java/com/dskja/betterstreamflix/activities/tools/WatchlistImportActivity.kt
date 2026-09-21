@@ -77,6 +77,7 @@ class WatchlistImportActivity : AppCompatActivity() {
     private val mainHandler = Handler(Looper.getMainLooper())
     private var importing = false
     private var sessionAutoSaved = false
+    private var lastPageHtml: String = ""
     private var pageFinishedCallback: ((String?) -> Unit)? = null
     private var lastLoadError: String? = null
     private var warmDomainIndex: Int = 0
@@ -84,6 +85,10 @@ class WatchlistImportActivity : AppCompatActivity() {
     private var sawLoginPage = false
     /** Set after the user submits credentials and leaves `/login`. */
     private var leftLoginAfterVisit = false
+    /** Last main-frame URL observed by login-state detection. */
+    private var lastPageUrl: String? = null
+    /** Avoid hammering /account while waiting for SSR auth chrome after login. */
+    private var accountVerifyRequested = false
 
     private val saveSessionOnly: Boolean by lazy {
         intent.getBooleanExtra(EXTRA_SAVE_SESSION_ONLY, false)
@@ -206,8 +211,14 @@ class WatchlistImportActivity : AppCompatActivity() {
 
         hostBase = resolveHostBase()
         setupWebView()
-        // Warm the site first (challenge cookies), then open login. Fail over domains if blank.
-        warmAndOpenLogin()
+        if (saveSessionOnly) {
+            // Login-only: never warm the homepage (trailers / YouTube links).
+            statusView.setText(R.string.watchlist_import_login_hint)
+            webView.loadUrl(startUrl)
+        } else {
+            // Warm the site first (challenge cookies), then open login.
+            warmAndOpenLogin()
+        }
     }
 
     private fun warmAndOpenLogin(domainIndex: Int = 0) {
@@ -260,6 +271,35 @@ class WatchlistImportActivity : AppCompatActivity() {
         }
     }
 
+    private fun isAllowedLoginNavigation(url: String): Boolean {
+        val lower = url.lowercase()
+        if (lower.startsWith("about:") || lower.startsWith("data:") || lower.startsWith("javascript:")) {
+            return true
+        }
+        if (lower.startsWith("intent:") || lower.startsWith("market:") || lower.startsWith("vnd.")) {
+            return false
+        }
+        if (lower.contains("youtube.com") || lower.contains("youtu.be") ||
+            lower.contains("youtube-nocookie.com") || lower.contains("googlevideo.com") ||
+            lower.contains("ytimg.com")
+        ) {
+            return false
+        }
+        val host = runCatching { android.net.Uri.parse(url).host }.getOrNull()
+            ?.lowercase()
+            ?.removePrefix("www.")
+            .orEmpty()
+        if (host.isBlank()) return false
+        if (host == "challenges.cloudflare.com" || host.endsWith(".cloudflare.com")) return true
+        if (host.contains("ddos-guard")) return true
+        return when (source) {
+            WatchlistImporter.Source.SERIENSTREAM ->
+                SerienStreamProvider.isSerienStreamHost(url)
+            WatchlistImporter.Source.ANIWORLD ->
+                host == "aniworld.to" || host.endsWith(".aniworld.to")
+        }
+    }
+
     private fun setupWebView() {
         webView.setBackgroundColor(android.graphics.Color.WHITE)
         webView.settings.apply {
@@ -276,7 +316,6 @@ class WatchlistImportActivity : AppCompatActivity() {
             webViewUserAgent = userAgentString ?: NetworkClient.USER_AGENT
             allowFileAccess = false
             allowContentAccess = false
-            javaScriptCanOpenWindowsAutomatically = true
             setSupportMultipleWindows(false)
             mediaPlaybackRequiresUserGesture = true
             cacheMode = WebSettings.LOAD_DEFAULT
@@ -302,12 +341,40 @@ class WatchlistImportActivity : AppCompatActivity() {
             override fun shouldOverrideUrlLoading(
                 view: WebView?,
                 request: WebResourceRequest?,
-            ): Boolean = false
+            ): Boolean {
+                val url = request?.url?.toString().orEmpty()
+                if (url.isBlank()) return false
+                if (isAllowedLoginNavigation(url)) return false
+                Log.w(TAG, "blocked off-site navigation: $url")
+                return true
+            }
+
+            @Deprecated("Deprecated in Java")
+            override fun shouldOverrideUrlLoading(view: WebView?, url: String?): Boolean {
+                val target = url.orEmpty()
+                if (target.isBlank()) return false
+                if (isAllowedLoginNavigation(target)) return false
+                Log.w(TAG, "blocked off-site navigation (legacy): $target")
+                return true
+            }
 
             override fun shouldInterceptRequest(
                 view: WebView?,
                 request: WebResourceRequest?,
             ): android.webkit.WebResourceResponse? {
+                val host = request?.url?.host?.lowercase()?.removePrefix("www.").orEmpty()
+                if (host.contains("youtube") || host.contains("youtu.be") ||
+                    host.contains("googlevideo") || host.contains("ytimg")
+                ) {
+                    return android.webkit.WebResourceResponse(
+                        "text/plain",
+                        "utf-8",
+                        204,
+                        "No Content",
+                        emptyMap(),
+                        java.io.ByteArrayInputStream(ByteArray(0)),
+                    )
+                }
                 // Must not touch WebView APIs here (off main thread) — BETTERSTREAMFLIX-T.
                 val bridged = WebViewDohBridge.interceptMainDocument(
                     request,
@@ -359,12 +426,7 @@ class WatchlistImportActivity : AppCompatActivity() {
         webView.evaluateJavascript(
             "(function(){try{return document.documentElement.outerHTML||'';}catch(e){return ''}})();"
         ) { raw ->
-            val html = raw
-                ?.removePrefix("\"")
-                ?.removeSuffix("\"")
-                ?.replace("\\n", "\n")
-                ?.replace("\\\"", "\"")
-                ?.replace("\\u003C", "<")
+            val html = decodeJavascriptValue(raw)
             if (WebViewDohBridge.isCopyrightBlockPage(html)) {
                 lastLoadError = "isp_dns_block"
                 statusView.setText(R.string.watchlist_import_isp_block)
@@ -381,13 +443,15 @@ class WatchlistImportActivity : AppCompatActivity() {
                 }
                 return@evaluateJavascript
             }
-            updateLoginState(url)
+            updateLoginState(url, html.orEmpty())
             pageFinishedCallback?.invoke(url)
         }
     }
 
-    private fun updateLoginState(url: String?) {
+    private fun updateLoginState(url: String?, html: String = lastPageHtml) {
         if (importing) return
+        if (html.isNotBlank()) lastPageHtml = html
+        if (!url.isNullOrBlank()) lastPageUrl = url
         val cookies = cookieHeader()
         if (source == WatchlistImporter.Source.SERIENSTREAM && cookies.isNotBlank()) {
             SerienStreamBypassHelper.applyCookies("$hostBase/", cookies)
@@ -399,11 +463,12 @@ class WatchlistImportActivity : AppCompatActivity() {
         if (onLogin) {
             sawLoginPage = true
             leftLoginAfterVisit = false
+            accountVerifyRequested = false
         } else if (sawLoginPage && url != null) {
             leftLoginAfterVisit = true
         }
         val leftLogin = url != null && !onLogin
-        val hasSession = looksLoggedIn(cookies)
+        val hasSession = looksLoggedIn(cookies, lastPageHtml, url)
         val bypassSolved = source != WatchlistImporter.Source.SERIENSTREAM ||
             SerienStreamBypassHelper.looksLikeBypassSolved(cookies)
         val wasEnabled = importButton.isEnabled
@@ -437,6 +502,14 @@ class WatchlistImportActivity : AppCompatActivity() {
                 }
                 maybeAutoSaveSession()
             }
+            leftLogin && sawLoginPage &&
+                source == WatchlistImporter.Source.SERIENSTREAM &&
+                SerienStreamBypassHelper.hasWebSessionCookie(cookies) &&
+                !hasSession -> {
+                // Login redirect landed but SSR chrome not proven yet — probe /account.
+                statusView.setText(R.string.watchlist_import_ready_soft)
+                maybeVerifyAccountAfterLogin(url)
+            }
             leftLogin && sawLoginPage -> {
                 statusView.setText(R.string.watchlist_import_ready_soft)
             }
@@ -450,10 +523,35 @@ class WatchlistImportActivity : AppCompatActivity() {
         }
     }
 
-    private fun looksLoggedIn(cookies: String): Boolean {
+    private fun looksLoggedIn(
+        cookies: String,
+        html: String = lastPageHtml,
+        pageUrl: String? = lastPageUrl,
+    ): Boolean {
         if (cookies.isBlank()) return false
-        // Strict: require account cookies. Anonymous PHPSESSID/cf_clearance must not qualify.
-        return SerienStreamBypassHelper.looksLikeAccountSession(cookies)
+        return SerienStreamBypassHelper.looksLikeAuthenticatedSession(
+            cookieHeader = cookies,
+            html = html,
+            leftLoginAfterVisit = leftLoginAfterVisit,
+            pageUrl = pageUrl,
+        )
+    }
+
+    /**
+     * After a credential submit, SerienStream may land on `/` before auth chrome
+     * is obvious. One soft navigation to `/account` confirms the Laravel session.
+     */
+    private fun maybeVerifyAccountAfterLogin(currentUrl: String?) {
+        if (!saveSessionOnly || accountVerifyRequested || sessionAutoSaved) return
+        if (!leftLoginAfterVisit) return
+        val alreadyOnAccount = currentUrl.orEmpty().contains("/account", ignoreCase = true)
+        if (alreadyOnAccount) return
+        accountVerifyRequested = true
+        webView.postDelayed({
+            if (isFinishing || sessionAutoSaved) return@postDelayed
+            if (!leftLoginAfterVisit) return@postDelayed
+            runCatching { webView.loadUrl("$hostBase/account") }
+        }, 700L)
     }
 
     private fun cookieHeader(): String {
@@ -496,7 +594,12 @@ class WatchlistImportActivity : AppCompatActivity() {
         }
         SerienStreamBypassHelper.applyCookies("$hostBase/", cookies)
         val saved = if (saveSessionOnly) {
-            com.dskja.betterstreamflix.providers.SerienStreamAuthManager.persistAccountLogin(cookies)
+            com.dskja.betterstreamflix.providers.SerienStreamAuthManager.persistAccountLogin(
+                cookieHeader = cookies,
+                htmlProof = lastPageHtml,
+                leftLoginAfterVisit = leftLoginAfterVisit,
+                pageUrl = lastPageUrl ?: webView.url,
+            )
         } else {
             com.dskja.betterstreamflix.providers.SerienStreamAuthManager.persist(cookies)
         }
@@ -518,7 +621,13 @@ class WatchlistImportActivity : AppCompatActivity() {
         if (!saveSessionOnly || sessionAutoSaved || importing) return
         if (!leftLoginAfterVisit) return
         val cookies = cookieHeader()
-        if (!SerienStreamBypassHelper.looksLikeAccountSession(cookies)) {
+        if (!SerienStreamBypassHelper.looksLikeAuthenticatedSession(
+                cookieHeader = cookies,
+                html = lastPageHtml,
+                leftLoginAfterVisit = true,
+                pageUrl = lastPageUrl ?: webView.url,
+            )
+        ) {
             return
         }
         sessionAutoSaved = true
@@ -832,6 +941,10 @@ class WatchlistImportActivity : AppCompatActivity() {
         mainHandler.removeCallbacksAndMessages(null)
         if (::webView.isInitialized) {
             runCatching { webView.stopLoading() }
+            runCatching { webView.loadUrl("about:blank") }
+            runCatching {
+                (webView.parent as? android.view.ViewGroup)?.removeView(webView)
+            }
             runCatching { webView.destroy() }
         }
         super.onDestroy()

@@ -55,7 +55,14 @@ object HomeCatalogPipeline {
     }
 
     private fun normalizeCategory(provider: Provider, category: Category): Category? {
-        val name = category.name.trim()
+        val rawName = category.name.trim()
+        val name = when {
+            rawName.equals(Category.FEATURED, ignoreCase = true) -> Category.FEATURED
+            rawName.equals("Featured", ignoreCase = true) -> Category.FEATURED
+            rawName.contains("Featured", ignoreCase = true) &&
+                rawName.length <= 24 -> Category.FEATURED
+            else -> rawName
+        }
         val cap = if (name == Category.FEATURED) MAX_FEATURED_ITEMS else MAX_ITEMS_PER_CATEGORY
         val seen = LinkedHashSet<String>()
         val items = category.list.mapNotNull { item ->
@@ -110,7 +117,17 @@ object HomeCatalogPipeline {
     ): List<Category> {
         val featured = categories.firstOrNull { it.name == Category.FEATURED }
         if (featured != null && featured.list.isNotEmpty()) {
-            return categories
+            // Always clone FEATURED rows even when the provider already sent the
+            // shelf — shared Movie/TvShow refs with other shelves mutate itemType
+            // (poster ↔ swiper) and crash ViewPager2 (BETTERSTREAMFLIX-13).
+            val cloned = cloneShowItems(featured.list)
+            return categories.map { cat ->
+                if (cat.name == Category.FEATURED) {
+                    Category(name = Category.FEATURED, list = cloned)
+                } else {
+                    cat
+                }
+            }
         }
 
         val donor = categories.firstOrNull {
@@ -119,21 +136,11 @@ object HomeCatalogPipeline {
         } ?: return categories
 
         warnings.add("Featured shelf synthesized from “${donor.name.ifBlank { "catalog" }}”")
-        // Clone so FEATURED and the donor shelf never share mutable itemType
-        // (shared refs caused ViewPager2 match_parent crashes — BETTERSTREAMFLIX-13).
-        val featuredItems = donor.list
-            .filter { it is Movie || it is TvShow }
-            .take(MAX_FEATURED_ITEMS)
-            .map { item ->
-                when (item) {
-                    is Movie -> item.copy()
-                    is TvShow -> item.copy()
-                    else -> item
-                }
-            }
+        val featuredItems = cloneShowItems(
+            donor.list.filter { it is Movie || it is TvShow }.take(MAX_FEATURED_ITEMS),
+        )
         val rest = categories.filterNot { it === donor }
             .filter { it.name != Category.FEATURED }
-        // Keep donor as a named shelf too when it had a real title.
         val keepDonor = donor.name.isNotBlank()
         return buildList {
             add(Category(name = Category.FEATURED, list = featuredItems))
@@ -141,6 +148,42 @@ object HomeCatalogPipeline {
             addAll(rest)
         }
     }
+
+    fun cloneShowItems(items: List<AppAdapter.Item>): List<AppAdapter.Item> =
+        items.map { item ->
+            when (item) {
+                is Movie -> item.copy()
+                is TvShow -> item.copy()
+                else -> item
+            }
+        }
+
+    /**
+     * Home bind helper: restore FEATURED if filters dropped it, then clone
+     * every featured Movie/TvShow so shelf rows can mutate [AppAdapter.Item.itemType]
+     * without crashing the ViewPager2 hero (BETTERSTREAMFLIX-13).
+     */
+    fun isolateFeatured(categories: List<Category>): List<Category> {
+        val visible = categories.filter { it.list.isNotEmpty() }
+        val ensured = ensureFeatured(visible, mutableListOf())
+        return ensured.map { cat ->
+            if (cat.name != Category.FEATURED) {
+                cat
+            } else {
+                Category(
+                    name = Category.FEATURED,
+                    list = cloneShowItems(
+                        cat.list.filter { it is Movie || it is TvShow }
+                            .take(MAX_FEATURED_ITEMS),
+                    ),
+                )
+            }
+        }.filter { it.list.isNotEmpty() }
+    }
+
+    /** Public: restore FEATURED after parental / live-DB filters drop it. */
+    fun ensureFeaturedShelf(categories: List<Category>): List<Category> =
+        ensureFeatured(categories, mutableListOf())
 
     private fun mergeDuplicateShelfNames(categories: List<Category>): List<Category> {
         val order = LinkedHashMap<String, MutableList<AppAdapter.Item>>()

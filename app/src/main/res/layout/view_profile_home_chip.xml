@@ -26,7 +26,7 @@
         android:layout_marginStart="8dp"
         android:ellipsize="end"
         android:maxLines="1"
-        android:maxWidth="96dp"
+        android:maxWidth="56dp"
         android:textAppearance="@style/TextAppearance.Lumina.Caption"
         android:textColor="?attr/colorOnSurface"
         android:textStyle="bold"

@@ -40,7 +40,7 @@ class PeopleTvFragment : Fragment() {
     private val binding get() = _binding!!
 
     private val args by navArgs<PeopleTvFragmentArgs>()
-    private val database by lazy { AppDatabase.getInstance(requireContext()) }
+    private val database get() = AppDatabase.getInstance(requireContext())
     private val viewModel by viewModelsFactory { PeopleViewModel(args.id, database) }
 
     private val appAdapter = AppAdapter()

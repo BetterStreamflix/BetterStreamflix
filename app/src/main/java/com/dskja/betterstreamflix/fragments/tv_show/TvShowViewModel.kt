@@ -229,7 +229,7 @@ class TvShowViewModel(
         try {
             val provider = UserPreferences.currentProvider
                 ?: throw IllegalStateException("No provider selected")
-            val tvShow = provider.getTvShow(id)
+            val tvShow = com.dskja.betterstreamflix.utils.ShowLookup.tvShow(provider, id)
             val pluginEnriched = runCatching {
                 com.dskja.betterstreamflix.platform.plugins.PluginManager
                     .enrichTvShow(provider, tvShow)

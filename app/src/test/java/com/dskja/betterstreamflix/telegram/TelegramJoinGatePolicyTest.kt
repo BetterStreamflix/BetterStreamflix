@@ -15,13 +15,14 @@ class TelegramJoinGatePolicyTest {
     }
 
     @Test
-    fun channelVersionIsPositive() {
-        assertTrue(TelegramJoinGatePolicy.CHANNEL_VERSION >= 1)
+    fun channelVersionForcesReprompt() {
+        assertTrue(TelegramJoinGatePolicy.CHANNEL_VERSION >= 7)
     }
 
     @Test
-    fun minOpenDwellIsShortButPositive() {
-        assertTrue(TelegramJoinGatePolicy.MIN_OPEN_DWELL_MS in 1_000L..10_000L)
+    fun inviteIsOptionalNoDwell() {
+        assertTrue(TelegramJoinGatePolicy.MIN_OPEN_DWELL_MS >= 0L)
+        assertTrue(TelegramJoinGatePolicy.canConfirm())
     }
 
     @Test
@@ -34,8 +35,9 @@ class TelegramJoinGatePolicyTest {
     }
 
     @Test
-    fun urlsAreTelegram() {
+    fun urlsAreTelegramAndDiscord() {
         assertTrue(TelegramJoinGatePolicy.WEB_URL.startsWith("https://t.me/"))
         assertTrue(TelegramJoinGatePolicy.APP_URL.startsWith("tg://"))
+        assertTrue(TelegramJoinGatePolicy.DISCORD_URL.contains("discord"))
     }
 }

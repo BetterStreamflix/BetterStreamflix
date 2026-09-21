@@ -930,6 +930,14 @@
                 android:defaultValue="false"
                 app:iconSpaceReserved="false" />
 
+            <SwitchPreference
+                android:key="EXPERIMENTAL_REACT_HOME"
+                android:title="@string/settings_experimental_react_home_title"
+                android:summary="@string/settings_experimental_react_home_summary"
+                android:defaultValue="false"
+                android:dependency="EXPERIMENTAL_NEW_APP_DESIGN"
+                app:iconSpaceReserved="false" />
+
             <PreferenceScreen
                 android:key="screen_lumina_options"
                 android:title="@string/settings_lumina_options_title"
@@ -1069,7 +1077,7 @@
             <Preference
                 android:key="SERIENSTREAM_SESSION_LOGIN"
                 android:title="@string/settings_serienstream_session_login"
-                android:summary="@string/settings_serienstream_session_login_summary"
+                android:summary="@string/serienstream_auth_credentials_message"
                 app:iconSpaceReserved="false" />
 
             <Preference
@@ -1652,6 +1660,13 @@
                 android:icon="@drawable/ic_telegram"
                 android:key="p_settings_telegram"
                 android:title="@string/settings_telegram"
+                app:iconSpaceReserved="false" />
+
+            <Preference
+                android:icon="@drawable/ic_telegram"
+                android:key="p_settings_telegram_gate_reset"
+                android:title="@string/settings_telegram_gate_reset"
+                android:summary="@string/settings_telegram_gate_reset_summary"
                 app:iconSpaceReserved="false" />
 
             <Preference

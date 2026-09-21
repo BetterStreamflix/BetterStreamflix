@@ -240,10 +240,12 @@ data class MediaServer(
 ) : Parcelable
 
 private val MediaMetadata.Builder.extras: Bundle?
-    get() = this.javaClass.getDeclaredField("extras").let {
-        it.isAccessible = true
-        it.get(this) as Bundle?
-    }
+    get() = runCatching {
+        this.javaClass.getDeclaredField("extras").let {
+            it.isAccessible = true
+            it.get(this) as Bundle?
+        }
+    }.getOrNull()
 
 val MediaMetadata.mediaServerId: String?
     get() = this.extras

@@ -2551,6 +2551,7 @@ class SettingsTvFragment : LeanbackPreferenceFragmentCompat() {
             findPreference = { key -> findPreference(key) },
             context = requireContext(),
         )
+        SerienStreamAuthSettingsController.refresh { key -> findPreference(key) }
         settingsHubController?.updateVisibility()
 
         findPreference<EditTextPreference>("provider_streamingcommunity_domain")?.apply {

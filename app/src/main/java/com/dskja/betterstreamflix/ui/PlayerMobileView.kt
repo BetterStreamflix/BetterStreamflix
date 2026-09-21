@@ -2,6 +2,7 @@ package com.dskja.betterstreamflix.ui
 
 import android.content.Context
 import android.util.AttributeSet
+import android.util.Log
 import android.view.GestureDetector
 import android.view.MotionEvent
 import android.view.View
@@ -19,11 +20,31 @@ class PlayerMobileView @JvmOverloads constructor(
     defStyle: Int = 0
 ) : PlayerView(context, attrs, defStyle) {
 
+    private var cachedController: PlayerControlView? = null
+
+    /**
+     * Safely resolve Exo PlayerControlView. Never throw — OEM/Media3 misses must not
+     * crash mobile playback (parity with [PlayerTvView] / GitHub #103).
+     */
     val controller: PlayerControlView
-        get() = PlayerView::class.java.getDeclaredField("controller").let {
-            it.isAccessible = true
-            it.get(this) as PlayerControlView
+        get() {
+            cachedController?.let { return it }
+            val resolved = runCatching {
+                val field = PlayerView::class.java.getDeclaredField("controller")
+                field.isAccessible = true
+                field.get(this) as? PlayerControlView
+            }.onFailure {
+                Log.w(TAG, "controller reflection failed: ${it.message}")
+            }.getOrNull()
+                ?: findViewById(androidx.media3.ui.R.id.exo_controller)
+            cachedController = resolved
+            if (resolved != null) return resolved
+            Log.e(TAG, "PlayerControlView missing — using detached fallback")
+            return PlayerControlView(context).also { cachedController = it }
         }
+
+    /** Non-throwing access for hot paths that can no-op when controller is absent. */
+    fun controllerOrNull(): PlayerControlView? = runCatching { controller }.getOrNull()
 
     var isManualZoomEnabled: Boolean = false
         private set
@@ -167,5 +188,9 @@ class PlayerMobileView @JvmOverloads constructor(
             return true
         }
         return super.onTouchEvent(event)
+    }
+
+    companion object {
+        private const val TAG = "PlayerMobileView"
     }
 }

@@ -190,14 +190,20 @@
     </style>
 
     <style name="TelegramJoinGateTheme" parent="Theme.AppCompat.Dialog">
-        <item name="android:windowBackground">@color/tg_gate_bg_deep</item>
+        <item name="android:windowBackground">@drawable/bg_tg_gate_fullscreen</item>
         <item name="android:backgroundDimEnabled">true</item>
         <item name="android:backgroundDimAmount">1</item>
         <item name="android:windowNoTitle">true</item>
         <item name="android:windowIsFloating">false</item>
         <item name="android:windowFullscreen">true</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+        <item name="android:windowDrawsSystemBarBackgrounds">true</item>
         <item name="colorAccent">@color/tg_gate_telegram</item>
         <item name="colorControlActivated">@color/tg_gate_telegram</item>
+        <item name="colorPrimary">@color/tg_gate_telegram</item>
+        <item name="colorOnSurface">@color/tg_gate_text_primary</item>
+        <item name="colorOnSurfaceVariant">@color/tg_gate_text_secondary</item>
     </style>
 
     <style name="TelegramJoinGateActivityTheme" parent="Theme.AppCompat.NoActionBar">

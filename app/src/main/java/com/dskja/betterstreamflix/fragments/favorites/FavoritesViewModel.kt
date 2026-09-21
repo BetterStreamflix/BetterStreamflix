@@ -17,12 +17,12 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flowOn
-import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.mapLatest
 import kotlinx.coroutines.launch
 
 class FavoritesViewModel(
-    database: AppDatabase,
+    @Suppress("UNUSED_PARAMETER")
+    database: AppDatabase? = null,
     private val providerName: String,
 ) : ViewModel() {
 
@@ -62,11 +62,7 @@ class FavoritesViewModel(
     private var currentSections: List<FavoriteSection> = emptyList()
 
     @OptIn(ExperimentalCoroutinesApi::class)
-    private val favorites = combine(
-        database.movieDao().getFavorites().map { },
-        database.tvShowDao().getFavorites().map { },
-        libraryRefresh,
-    ) { _, _, tick -> tick }
+    private val favorites = libraryRefresh
         .mapLatest {
             CrossProviderLibrary.loadHomeHistory(BetterStreamflixApp.instance.applicationContext)
         }

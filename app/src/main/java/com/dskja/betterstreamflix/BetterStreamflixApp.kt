@@ -152,10 +152,20 @@ class BetterStreamflixApp : Application() {
 
     override fun onTrimMemory(level: Int) {
         super.onTrimMemory(level)
+        if (level >= TRIM_MEMORY_RUNNING_MODERATE) {
+            runCatching {
+                com.bumptech.glide.Glide.get(this).clearMemory()
+            }
+        }
         if (level >= TRIM_MEMORY_RUNNING_LOW &&
             !DeviceCapabilities.shouldUseConstrainedPlayback(this)
         ) {
             CacheUtils.clearAppCache(this)
+            applicationScope.launch(Dispatchers.IO) {
+                runCatching {
+                    com.bumptech.glide.Glide.get(this@BetterStreamflixApp).clearDiskCache()
+                }
+            }
         }
     }
 }

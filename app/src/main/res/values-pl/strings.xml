@@ -85,6 +85,7 @@
     <string name="people_birthplace">Miejsce urodzenia</string>
     <string name="people_biography">Biografia</string>
     <string name="people_read_more">Czytaj wiecej &gt;</string>
+    <string name="people_read_less">Pokaż mniej</string>
 
     <string name="player_picture_in_picture_not_supported">Tryb PiP nie jest obslugiwany na tym urzadzeniu</string>
     <string name="player_external_player_title">Odtworz za pomoca</string>

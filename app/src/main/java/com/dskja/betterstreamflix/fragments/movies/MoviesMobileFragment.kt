@@ -36,7 +36,7 @@ class MoviesMobileFragment : Fragment() {
     private var _binding: FragmentMoviesMobileBinding? = null
     private val binding get() = _binding!!
 
-    private val database by lazy { AppDatabase.getInstance(requireContext()) }
+    private val database get() = AppDatabase.getInstance(requireContext())
     private val viewModel by viewModelsFactory { MoviesViewModel(database) }
 
     private val appAdapter = AppAdapter()

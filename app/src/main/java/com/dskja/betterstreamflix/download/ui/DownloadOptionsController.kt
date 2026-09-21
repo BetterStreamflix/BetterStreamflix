@@ -120,6 +120,70 @@ object DownloadOptionsController {
         }
     }
 
+    fun offerTvShowDownload(
+        fragment: Fragment,
+        tvShow: TvShow,
+        episodeToWatch: Episode?,
+    ) {
+        val context = fragment.requireContext()
+        val seasons = tvShow.seasons.filter { it.episodes.isNotEmpty() }
+        data class Choice(val label: String, val run: () -> Unit)
+        val choices = buildList {
+            episodeToWatch?.let { episode ->
+                val seasonNo = episode.season?.number
+                    ?: tvShow.seasons.firstOrNull { season ->
+                        season.episodes.any { it.id == episode.id }
+                    }?.number
+                    ?: 1
+                add(
+                    Choice(
+                        context.getString(
+                            R.string.detail_download_episode_short,
+                            seasonNo,
+                            episode.number,
+                        ),
+                    ) { enqueueEpisode(fragment, episode) },
+                )
+            }
+            seasons.forEach { season ->
+                add(
+                    Choice(
+                        context.getString(
+                            R.string.detail_download_season_count,
+                            season.number,
+                            season.episodes.size,
+                        ),
+                    ) { enqueueSeason(fragment, tvShow, season.number, season.episodes) },
+                )
+            }
+        }
+        when {
+            choices.isEmpty() -> ExpDialogChrome.notify(
+                context,
+                R.string.detail_download_season,
+                R.string.season_download,
+            )
+            choices.size == 1 -> choices.first().run()
+            else -> {
+                val dialog = (
+                    if (ExperimentalMobileDesign.enabled()) {
+                        MaterialAlertDialogBuilder(context)
+                    } else {
+                        AlertDialog.Builder(context)
+                    }
+                    )
+                    .setTitle(R.string.option_show_download)
+                    .setItems(choices.map { it.label }.toTypedArray()) { _, which ->
+                        choices.getOrNull(which)?.run?.invoke()
+                    }
+                    .setNegativeButton(android.R.string.cancel, null)
+                    .create()
+                dialog.setOnShowListener { ExpDialogChrome.polishButtons(dialog) }
+                dialog.show()
+            }
+        }
+    }
+
     fun enqueueSeason(
         fragment: Fragment,
         tvShow: TvShow,

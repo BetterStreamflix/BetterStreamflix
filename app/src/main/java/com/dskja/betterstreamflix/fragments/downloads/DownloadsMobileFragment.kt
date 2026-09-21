@@ -27,8 +27,10 @@ import com.dskja.betterstreamflix.download.ui.DownloadsSort
 import com.dskja.betterstreamflix.download.ui.DownloadsViewModel
 import com.dskja.betterstreamflix.fragments.settings.SettingsDeepLink
 import com.dskja.betterstreamflix.models.Video
+import com.dskja.betterstreamflix.providers.Provider
 import com.dskja.betterstreamflix.utils.ExpDialogChrome
 import com.dskja.betterstreamflix.utils.ExperimentalMobileDesign
+import com.dskja.betterstreamflix.utils.UserPreferences
 import com.dskja.betterstreamflix.utils.viewModelsFactory
 import com.dskja.betterstreamflix.utils.ExpMotion
 import com.dskja.betterstreamflix.utils.ExpNavAutoHide
@@ -237,6 +239,7 @@ class DownloadsMobileFragment : Fragment() {
 
     override fun onResume() {
         super.onResume()
+        viewModel.refreshWifiPreference()
         viewModel.startLiveProgress()
     }
 
@@ -486,6 +489,7 @@ class DownloadsMobileFragment : Fragment() {
                 showDownloadError(R.string.downloads_failed_generic)
                 return@launch
             }
+            activateDownloadProvider(row.entity.providerName)
             val local = withContext(Dispatchers.IO) {
                 OfflinePlayback.buildLocalVideo(requireContext(), row.entity)
             }
@@ -526,6 +530,7 @@ class DownloadsMobileFragment : Fragment() {
     private fun retry(row: DownloadRowUiModel.Item) {
         viewLifecycleOwner.lifecycleScope.launch {
             val videoType = DownloadController.deserializeVideoType(row.entity.videoTypeJson) ?: return@launch
+            activateDownloadProvider(row.entity.providerName)
             viewModel.remove(row.id)
             when (videoType) {
                 is Video.Type.Movie -> {
@@ -533,6 +538,7 @@ class DownloadsMobileFragment : Fragment() {
                         id = videoType.id,
                         title = videoType.title,
                         poster = videoType.poster,
+                        providerName = row.entity.providerName,
                     )
                     DownloadOptionsController.enqueueMovie(this@DownloadsMobileFragment, movie)
                 }
@@ -547,6 +553,7 @@ class DownloadsMobileFragment : Fragment() {
                             id = videoType.tvShow.id,
                             title = videoType.tvShow.title,
                             poster = videoType.tvShow.poster,
+                            providerName = row.entity.providerName,
                         ),
                         season = com.dskja.betterstreamflix.models.Season(
                             id = "",
@@ -558,6 +565,12 @@ class DownloadsMobileFragment : Fragment() {
                 }
             }
         }
+    }
+
+    /** Prefer the download's stamped provider so autoplay/retry resolve the right catalog. */
+    private fun activateDownloadProvider(providerName: String?) {
+        val name = providerName?.takeIf { it.isNotBlank() } ?: return
+        Provider.findByName(name)?.let { UserPreferences.currentProvider = it }
     }
 
     override fun onDestroyView() {

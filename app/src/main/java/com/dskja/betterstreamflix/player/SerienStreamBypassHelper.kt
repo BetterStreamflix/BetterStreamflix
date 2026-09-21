@@ -7,6 +7,7 @@ import com.dskja.betterstreamflix.providers.SerienStreamEndpoints
 import com.dskja.betterstreamflix.providers.SerienStreamProvider
 import com.dskja.betterstreamflix.providers.TmdbProvider
 import com.dskja.betterstreamflix.utils.UserPreferences
+import com.dskja.betterstreamflix.watchlist.WatchlistImporter
 import java.util.Locale
 
 /** Shared SerienStream / CF bypass helpers used by mobile WebView and TV QR paths. */
@@ -33,6 +34,13 @@ object SerienStreamBypassHelper {
         "laravel_session",
         "xsrf-token",
         "ci_session",
+    )
+
+    /** Real anti-bot clearance — required to skip the interactive CF WebView/QR. */
+    private val CLEARANCE_COOKIE_NAME_EXACT = setOf(
+        "cf_clearance",
+        "ddos_token",
+        "altcha",
     )
 
     /** Cookie names that prove a real SerienStream account sign-in. */
@@ -162,9 +170,42 @@ object SerienStreamBypassHelper {
     }
 
     /**
+     * True when a real anti-bot clearance cookie is present.
+     * Bare `laravel_session` / `PHPSESSID` must NOT skip the interactive CF bypass.
+     */
+    fun looksLikeClearanceSolved(cookieHeader: String): Boolean {
+        val names = cookieNames(sanitizeSessionCookies(cookieHeader))
+        return names.any { it in CLEARANCE_COOKIE_NAME_EXACT }
+    }
+
+    /**
+     * Merge two cookie jars by name (later values win). Keeps account session
+     * cookies when a CF bypass jar only carries clearance tokens.
+     */
+    fun mergeCookieHeaders(existing: String, incoming: String): String {
+        val byName = linkedMapOf<String, String>()
+        fun putAll(header: String) {
+            sanitizeSessionCookies(header)
+                .split(";")
+                .map { it.trim() }
+                .filter { it.contains("=") }
+                .forEach { cookie ->
+                    val name = cookie.substringBefore("=").trim().lowercase(Locale.US)
+                    if (name.isNotBlank()) byName[name] = cookie
+                }
+        }
+        putAll(existing)
+        putAll(incoming)
+        return byName.values.joinToString("; ")
+    }
+
+    /**
      * Persist for CF bypass playback. Account sign-in must use
      * [persistAccountSessionCookiesIfValid] so anonymous PHPSESSID never
      * pretends to be a saved login.
+     *
+     * Merges into any existing jar so a player CF bypass cannot wipe a
+     * previously confirmed Laravel account session.
      */
     fun persistSessionCookiesIfValid(cookieHeader: String): Boolean {
         val cleaned = sanitizeSessionCookies(cookieHeader)
@@ -172,17 +213,31 @@ object SerienStreamBypassHelper {
         if (!looksLikeBypassSolved(cleaned) && !looksLikeAccountSession(cleaned)) {
             return false
         }
-        UserPreferences.serienStreamSessionCookies = cleaned
+        val merged = mergeCookieHeaders(UserPreferences.serienStreamSessionCookies, cleaned)
+        UserPreferences.serienStreamSessionCookies = merged
         applyStoredSessionCookies()
         return true
     }
 
     /** Persist only when cookies prove a real account login (Settings Sign-in). */
-    fun persistAccountSessionCookiesIfValid(cookieHeader: String): Boolean {
+    fun persistAccountSessionCookiesIfValid(
+        cookieHeader: String,
+        htmlProof: String? = null,
+        leftLoginAfterVisit: Boolean = false,
+        pageUrl: String? = null,
+    ): Boolean {
         val cleaned = sanitizeSessionCookies(cookieHeader)
         if (cleaned.isBlank()) return false
-        if (!looksLikeAccountSession(cleaned)) return false
-        UserPreferences.serienStreamSessionCookies = cleaned
+        val ok = looksLikeAccountSession(cleaned) ||
+            looksLikeAuthenticatedSession(
+                cookieHeader = cleaned,
+                html = htmlProof,
+                leftLoginAfterVisit = leftLoginAfterVisit,
+                pageUrl = pageUrl,
+            )
+        if (!ok) return false
+        val merged = mergeCookieHeaders(UserPreferences.serienStreamSessionCookies, cleaned)
+        UserPreferences.serienStreamSessionCookies = merged
         applyStoredSessionCookies()
         return true
     }
@@ -190,6 +245,10 @@ object SerienStreamBypassHelper {
     /**
      * Strict account-login check. Anonymous CF/PHPSESSID jars must return false —
      * that was the false "Login gespeichert" bug after opening the warm homepage.
+     *
+     * SerienStream is Laravel: a successful sign-in often only sets `laravel_session`
+     * (+ `XSRF-TOKEN`) unless "remember me" is checked. Callers that have page HTML
+     * after leaving `/login` must also use [looksLikeAuthenticatedSession].
      */
     fun looksLikeAccountSession(cookieHeader: String): Boolean {
         val cleaned = sanitizeSessionCookies(cookieHeader)
@@ -203,6 +262,83 @@ object SerienStreamBypassHelper {
         val lower = cleaned.lowercase(Locale.US)
         if (lower.contains("remember_web_") || lower.contains("remember_token")) return true
         return false
+    }
+
+    /** True when the jar has a Laravel / PHP session cookie (not proof of account alone). */
+    fun hasWebSessionCookie(cookieHeader: String): Boolean {
+        val names = cookieNames(sanitizeSessionCookies(cookieHeader))
+        return names.any {
+            it == "laravel_session" ||
+                it == "phpsessid" ||
+                it == "ci_session" ||
+                it.endsWith("_session")
+        }
+    }
+
+    /**
+     * HTML proof that the user is signed in.
+     *
+     * SerienStream SSR exposes auth via `#chat-root data-auth="1"` and nav
+     * Abmelden / account links. Do **not** reject on bare `href="/login"` —
+     * the public footer (and chat labels) keep login URLs even when signed in.
+     * The login form itself has no "remember me", so Laravel only sets
+     * `laravel_session`; HTML proof is required for that path.
+     */
+    fun looksLikeLoggedInHtml(html: String): Boolean {
+        if (html.isBlank()) return false
+        if (WatchlistImporter.looksLikeChallengePage(html)) return false
+        val lower = html.lowercase(Locale.US)
+        // Strongest SSR signal — check before password-form heuristics so account
+        // settings pages (password change) are not misclassified as login.
+        if (lower.contains("data-auth=\"1\"") || lower.contains("data-auth='1'")) {
+            return true
+        }
+        if (Regex("""data-user-id=["'](?!["'])[^"']+["']""").containsMatchIn(lower)) {
+            return true
+        }
+        if (WatchlistImporter.looksLikeLoginPage(html)) return false
+        val hasLogout =
+            lower.contains("href=\"/logout") ||
+                lower.contains("href='/logout") ||
+                lower.contains(">abmelden<") ||
+                lower.contains(">abmelden <") ||
+                lower.contains("abmelden</a>") ||
+                lower.contains("/logout\"") ||
+                lower.contains("/logout'")
+        if (hasLogout) return true
+        val hasAccountChrome =
+            (lower.contains("href=\"/account") || lower.contains("href='/account")) &&
+                (
+                    lower.contains("mein konto") ||
+                        lower.contains("watchlist") ||
+                        lower.contains("merkliste") ||
+                        lower.contains("einstellungen")
+                    )
+        return hasAccountChrome
+    }
+
+    /**
+     * Account cookies **or** (session cookie + logged-in HTML after a real /login visit).
+     * Prevents warm-homepage false positives while accepting Laravel sessions without remember-me.
+     *
+     * [pageUrl] helps when the WebView lands on `/account` after login but HTML
+     * markers are still settling.
+     */
+    fun looksLikeAuthenticatedSession(
+        cookieHeader: String,
+        html: String? = null,
+        leftLoginAfterVisit: Boolean = false,
+        pageUrl: String? = null,
+    ): Boolean {
+        if (looksLikeAccountSession(cookieHeader)) return true
+        if (!leftLoginAfterVisit) return false
+        if (!hasWebSessionCookie(cookieHeader)) return false
+        val url = pageUrl.orEmpty().lowercase(Locale.US)
+        if (url.contains("/account") && !url.contains("/login")) {
+            return true
+        }
+        if (html.isNullOrBlank()) return false
+        return looksLikeLoggedInHtml(html)
     }
 
     private fun cookieNames(cleaned: String): List<String> =

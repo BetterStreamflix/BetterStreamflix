@@ -2,24 +2,28 @@ package com.dskja.betterstreamflix.telegram
 
 import com.dskja.betterstreamflix.support.SupportUrls
 import com.dskja.betterstreamflix.utils.UserPreferences
-import java.util.concurrent.TimeUnit
 
 /**
- * Soft Telegram join-gate policy (mobile only).
+ * Optional community invite (mobile only).
  *
- * Flow: LOCKED → OPENED (user launched Telegram) → UNLOCKED (user confirmed).
- * Unlock is permanent for the current [CHANNEL_VERSION]. Bumping the version
- * re-locks everyone so a channel migration can re-prompt.
+ * Shown once per [CHANNEL_VERSION] until the user dismisses / continues.
+ * Joining Telegram or Discord is optional — Close always works.
  */
 object TelegramJoinGatePolicy {
 
     const val CHANNEL_HANDLE = "BetterStreamflix"
-    const val CHANNEL_VERSION = 1
+    /**
+     * Bump to re-prompt installs that previously dismissed an older invite.
+     * v7: optional community invite (Telegram + Discord), dismissible, live metadata.
+     */
+    const val CHANNEL_VERSION = 7
     const val WEB_URL = SupportUrls.TELEGRAM_URL
     const val APP_URL = SupportUrls.TELEGRAM_APP_URL
+    const val DISCORD_URL = SupportUrls.DISCORD_URL
 
-    /** Minimum time the user must have "opened" Telegram before confirm is allowed. */
-    val MIN_OPEN_DWELL_MS: Long = TimeUnit.SECONDS.toMillis(2)
+    /** Kept for older tests / debug — invite is no longer a multi-step gate. */
+    @Deprecated("Invite is dismissible; no dwell required")
+    val MIN_OPEN_DWELL_MS: Long = 0L
 
     enum class Phase {
         LOCKED,
@@ -27,11 +31,7 @@ object TelegramJoinGatePolicy {
         UNLOCKED,
     }
 
-    fun phase(nowMs: Long = System.currentTimeMillis()): Phase {
-        if (isUnlocked()) return Phase.UNLOCKED
-        if (hasFreshOpen(nowMs)) return Phase.OPENED
-        return Phase.LOCKED
-    }
+    fun phase(): Phase = if (isUnlocked()) Phase.UNLOCKED else Phase.LOCKED
 
     fun shouldShowGate(): Boolean = !isUnlocked()
 
@@ -43,21 +43,20 @@ object TelegramJoinGatePolicy {
     fun hasFreshOpen(nowMs: Long = System.currentTimeMillis()): Boolean {
         val at = UserPreferences.telegramJoinGateOpenedAtMs
         if (at <= 0L) return false
-        // Open remains valid for the rest of this install session window (7 days).
-        return nowMs - at <= TimeUnit.DAYS.toMillis(7)
+        return nowMs - at <= java.util.concurrent.TimeUnit.DAYS.toMillis(7)
     }
 
-    fun canConfirm(nowMs: Long = System.currentTimeMillis()): Boolean {
-        if (isUnlocked()) return true
-        val at = UserPreferences.telegramJoinGateOpenedAtMs
-        if (at <= 0L) return false
-        return nowMs - at >= MIN_OPEN_DWELL_MS
-    }
+    fun canConfirm(nowMs: Long = System.currentTimeMillis()): Boolean = true
 
     fun markOpened(nowMs: Long = System.currentTimeMillis()) {
         UserPreferences.telegramJoinGateOpenedAtMs = nowMs
         UserPreferences.telegramJoinGateOpenCount =
             (UserPreferences.telegramJoinGateOpenCount + 1).coerceAtMost(10_000)
+    }
+
+    /** User closed the invite without being forced to join. */
+    fun markDismissed(nowMs: Long = System.currentTimeMillis()) {
+        markUnlocked(nowMs)
     }
 
     fun markUnlocked(nowMs: Long = System.currentTimeMillis()) {
@@ -71,7 +70,7 @@ object TelegramJoinGatePolicy {
         }
     }
 
-    /** DEBUG / tests only — clears unlock so the gate shows again. */
+    /** DEBUG / tests only — clears dismiss so the invite shows again. */
     fun resetForDebug() {
         UserPreferences.telegramJoinGateUnlocked = false
         UserPreferences.telegramJoinGateUnlockedAtMs = 0L

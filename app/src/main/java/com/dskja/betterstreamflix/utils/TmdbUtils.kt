@@ -23,24 +23,71 @@ object TmdbUtils {
     private val tvAgeCache = ConcurrentHashMap<String, Int>()
 
     /**
-     * Resolve a TMDb person id for providers that enrich cast with TMDb credits
-     * but have no local people pages. Filmography is omitted — TMDb show ids are
-     * not valid on HTML providers.
+     * Resolve a TMDb person (biography + combined credits). Filmography uses TMDb
+     * ids so [ShowLookup] can map them onto the current provider when opened.
      */
     suspend fun getPeopleById(personId: Int, language: String? = null): People? {
         return runCatching {
-            val detail = TMDb3.People.details(personId = personId, language = language)
+            val detail = TMDb3.People.details(
+                personId = personId,
+                appendToResponse = listOf(TMDb3.Params.AppendToResponse.Person.COMBINED_CREDITS),
+                language = language,
+            )
             People(
                 id = detail.id.toString(),
                 name = detail.name,
                 image = detail.profilePath?.w500,
-                biography = detail.biography,
-                placeOfBirth = detail.placeOfBirth,
+                biography = detail.biography?.takeIf { it.isNotBlank() },
+                placeOfBirth = detail.placeOfBirth?.takeIf { it.isNotBlank() },
                 birthday = detail.birthday,
                 deathday = detail.deathday,
-                filmography = emptyList(),
+                filmography = filmographyFromCredits(detail.combinedCredits),
             )
         }.getOrNull()
+    }
+
+    private fun filmographyFromCredits(
+        credits: TMDb3.Person.Credits<TMDb3.MultiItem>?,
+    ): List<Show> {
+        val seen = LinkedHashSet<String>()
+        return credits?.cast.orEmpty().mapNotNull { multi ->
+            when (multi) {
+                is TMDb3.Movie -> {
+                    val key = "m:${multi.id}"
+                    if (!seen.add(key) || multi.title.isBlank()) return@mapNotNull null
+                    Movie(
+                        id = multi.id.toString(),
+                        title = multi.title,
+                        overview = multi.overview,
+                        released = multi.releaseDate,
+                        rating = multi.voteAverage.toDouble(),
+                        poster = multi.posterPath?.w500,
+                        banner = multi.backdropPath?.original,
+                        tmdbId = multi.id.toString(),
+                    )
+                }
+                is TMDb3.Tv -> {
+                    val key = "t:${multi.id}"
+                    if (!seen.add(key) || multi.name.isBlank()) return@mapNotNull null
+                    TvShow(
+                        id = multi.id.toString(),
+                        title = multi.name,
+                        overview = multi.overview,
+                        released = multi.firstAirDate,
+                        rating = multi.voteAverage.toDouble(),
+                        poster = multi.posterPath?.w500,
+                        banner = multi.backdropPath?.original,
+                        tmdbId = multi.id.toString(),
+                    )
+                }
+                else -> null
+            }
+        }.sortedByDescending {
+            when (it) {
+                is Movie -> it.released
+                is TvShow -> it.released
+            }
+        }
     }
 
     suspend fun getMovie(title: String, year: Int? = null, language: String? = null): Movie? {

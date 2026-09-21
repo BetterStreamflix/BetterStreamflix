@@ -47,8 +47,10 @@ object SerienStreamAuthManager {
         val cookies = SerienStreamBypassHelper.sanitizeSessionCookies(
             UserPreferences.serienStreamSessionCookies,
         )
-        // Settings "signed in" requires a real account cookie — CF/PHPSESSID alone is not enough.
-        return SerienStreamBypassHelper.looksLikeAccountSession(cookies)
+        if (SerienStreamBypassHelper.looksLikeAccountSession(cookies)) return true
+        // Laravel sessions persisted after HTML-proven WebView login (no remember-me cookie).
+        return UserPreferences.serienStreamAccountConfirmed &&
+            SerienStreamBypassHelper.hasWebSessionCookie(cookies)
     }
 
     fun hasBypassSession(): Boolean {
@@ -106,12 +108,28 @@ object SerienStreamAuthManager {
         return true
     }
 
-    /** Settings Sign-in: only accept a real account session. */
-    fun persistAccountLogin(cookieHeader: String, displayName: String? = null): Boolean {
-        val ok = SerienStreamBypassHelper.persistAccountSessionCookiesIfValid(cookieHeader)
+    /** Settings Sign-in: only accept a real account session (cookie and/or HTML proof). */
+    fun persistAccountLogin(
+        cookieHeader: String,
+        displayName: String? = null,
+        htmlProof: String? = null,
+        leftLoginAfterVisit: Boolean = false,
+        pageUrl: String? = null,
+    ): Boolean {
+        val ok = SerienStreamBypassHelper.persistAccountSessionCookiesIfValid(
+            cookieHeader = cookieHeader,
+            htmlProof = htmlProof,
+            leftLoginAfterVisit = leftLoginAfterVisit,
+            pageUrl = pageUrl,
+        )
         if (!ok) return false
+        UserPreferences.serienStreamAccountConfirmed = true
         if (!displayName.isNullOrBlank()) {
             UserPreferences.serienStreamSessionDisplayName = displayName.trim()
+        } else if (!htmlProof.isNullOrBlank()) {
+            parseDisplayName(htmlProof)?.let {
+                UserPreferences.serienStreamSessionDisplayName = it
+            }
         }
         UserPreferences.serienStreamSessionValidatedAtMs = 0L
         UserPreferences.serienStreamSessionValidatedOk = false
@@ -121,10 +139,19 @@ object SerienStreamAuthManager {
 
     fun pasteCookies(raw: String): Boolean {
         val cleaned = SerienStreamBypassHelper.sanitizeSessionCookies(raw)
-        if (!SerienStreamBypassHelper.looksLikeBypassSolved(cleaned)) {
+        if (!SerienStreamBypassHelper.looksLikeBypassSolved(cleaned) &&
+            !SerienStreamBypassHelper.looksLikeAccountSession(cleaned) &&
+            !SerienStreamBypassHelper.hasWebSessionCookie(cleaned)
+        ) {
             return false
         }
-        return persist(cleaned)
+        val saved = persist(cleaned)
+        // Only remember-me / explicit account cookies confirm sign-in from paste.
+        // A bare laravel_session is anonymous until WebView HTML proof or validate.
+        if (saved && SerienStreamBypassHelper.looksLikeAccountSession(cleaned)) {
+            UserPreferences.serienStreamAccountConfirmed = true
+        }
+        return saved
     }
 
     fun exportCookieHeader(): String {
@@ -140,14 +167,18 @@ object SerienStreamAuthManager {
         val existing = exportCookieHeader()
         UserPreferences.serienStreamSessionCookies = ""
         UserPreferences.serienStreamSessionDisplayName = ""
+        UserPreferences.serienStreamAccountConfirmed = false
         UserPreferences.serienStreamSessionValidatedAtMs = 0L
         UserPreferences.serienStreamSessionValidatedOk = false
         clearCookieManager(existing)
     }
 
     /**
-     * Probe `/account` (and `/`) with the current cookie jar.
+     * Probe `/account` (and watchlist) with the current cookie jar.
      * Updates validation timestamps and optional display name.
+     *
+     * Never treats the public homepage (`/`) as proof — anonymous visitors
+     * always get a 200 there.
      */
     suspend fun validateSession(): ValidationResult = withContext(Dispatchers.IO) {
         val snap = snapshot()
@@ -164,7 +195,8 @@ object SerienStreamAuthManager {
         seedRuntimeCookies()
         val base = SerienStreamProvider.baseUrl.trimEnd('/')
         val clients = listOf(NetworkClient.default, NetworkClient.trustAll)
-        val urls = listOf("$base/account", "$base/", "$base/account/watchlist")
+        // Account endpoints only — bare `/` is always OK for guests.
+        val urls = listOf("$base/account", "$base/account/watchlist")
 
         var lastDetail = "unreachable"
         var challenge = false
@@ -196,39 +228,68 @@ object SerienStreamAuthManager {
                 response.use { resp ->
                     val body = resp.body?.string().orEmpty()
                     val finalUrl = resp.request.url.toString()
-                    if (WatchlistImporter.looksLikeChallengePage(body)) {
-                        challenge = true
-                        lastDetail = "challenge"
-                        return@use
-                    }
-                    if (WatchlistImporter.looksLikeLoginPage(body, finalUrl)) {
-                        login = true
-                        lastDetail = "login"
-                        return@use
-                    }
-                    if (resp.isSuccessful && body.isNotBlank()) {
-                        val scraped = parseDisplayName(body)
-                        if (!scraped.isNullOrBlank()) {
-                            displayName = scraped
-                            UserPreferences.serienStreamSessionDisplayName = scraped
+                    when (val verdict = evaluateAccountProbe(finalUrl, body, resp.isSuccessful)) {
+                        AccountProbeVerdict.CHALLENGE -> {
+                            challenge = true
+                            lastDetail = "challenge"
+                            return@withContext ValidationResult(
+                                ok = false,
+                                displayName = displayName,
+                                challengeActive = true,
+                                redirectedToLogin = false,
+                                detail = "challenge",
+                            )
                         }
-                        UserPreferences.serienStreamSessionValidatedAtMs = System.currentTimeMillis()
-                        UserPreferences.serienStreamSessionValidatedOk = true
-                        return@withContext ValidationResult(
-                            ok = true,
-                            displayName = displayName,
-                            challengeActive = false,
-                            redirectedToLogin = false,
-                            detail = "ok",
-                        )
+                        AccountProbeVerdict.LOGIN -> {
+                            login = true
+                            lastDetail = "login"
+                            // Dead session — don't keep Settings/UI stuck on "signed in".
+                            UserPreferences.serienStreamAccountConfirmed = false
+                            UserPreferences.serienStreamSessionValidatedOk = false
+                            UserPreferences.serienStreamSessionValidatedAtMs =
+                                System.currentTimeMillis()
+                            return@withContext ValidationResult(
+                                ok = false,
+                                displayName = displayName,
+                                challengeActive = false,
+                                redirectedToLogin = true,
+                                detail = "login",
+                            )
+                        }
+                        AccountProbeVerdict.OK -> {
+                            val scraped = parseDisplayName(body)
+                            if (!scraped.isNullOrBlank()) {
+                                displayName = scraped
+                                UserPreferences.serienStreamSessionDisplayName = scraped
+                            }
+                            UserPreferences.serienStreamSessionValidatedAtMs =
+                                System.currentTimeMillis()
+                            UserPreferences.serienStreamSessionValidatedOk = true
+                            UserPreferences.serienStreamAccountConfirmed = true
+                            return@withContext ValidationResult(
+                                ok = true,
+                                displayName = displayName,
+                                challengeActive = false,
+                                redirectedToLogin = false,
+                                detail = "ok",
+                            )
+                        }
+                        AccountProbeVerdict.NOT_AUTHENTICATED -> {
+                            lastDetail = "not_authenticated"
+                        }
+                        AccountProbeVerdict.HTTP_ERROR -> {
+                            lastDetail = "http_${resp.code}"
+                        }
                     }
-                    lastDetail = "http_${resp.code}"
                 }
             }
         }
 
         UserPreferences.serienStreamSessionValidatedAtMs = System.currentTimeMillis()
         UserPreferences.serienStreamSessionValidatedOk = false
+        if (login || lastDetail == "not_authenticated") {
+            UserPreferences.serienStreamAccountConfirmed = false
+        }
         ValidationResult(
             ok = false,
             displayName = displayName,
@@ -236,6 +297,42 @@ object SerienStreamAuthManager {
             redirectedToLogin = login,
             detail = lastDetail,
         )
+    }
+
+    enum class AccountProbeVerdict {
+        OK,
+        LOGIN,
+        CHALLENGE,
+        NOT_AUTHENTICATED,
+        HTTP_ERROR,
+    }
+
+    /**
+     * Pure probe evaluation used by [validateSession] (and unit tests).
+     * Success requires clear logged-in HTML chrome. Bare public pages and
+     * guest /account shells without auth markers never pass.
+     */
+    fun evaluateAccountProbe(
+        finalUrl: String,
+        body: String,
+        httpSuccessful: Boolean,
+    ): AccountProbeVerdict {
+        if (WatchlistImporter.looksLikeChallengePage(body)) {
+            return AccountProbeVerdict.CHALLENGE
+        }
+        // Prefer strong logged-in HTML before login-form heuristics so /account
+        // password-change forms do not false-fail a valid session.
+        val htmlOk = SerienStreamBypassHelper.looksLikeLoggedInHtml(body)
+        if (htmlOk) {
+            return AccountProbeVerdict.OK
+        }
+        if (WatchlistImporter.looksLikeLoginPage(body, finalUrl)) {
+            return AccountProbeVerdict.LOGIN
+        }
+        if (!httpSuccessful || body.isBlank()) {
+            return AccountProbeVerdict.HTTP_ERROR
+        }
+        return AccountProbeVerdict.NOT_AUTHENTICATED
     }
 
     fun parseDisplayName(html: String): String? {
@@ -279,6 +376,126 @@ object SerienStreamAuthManager {
             WatchlistImporter.looksLikeChallengePage(text) ||
             text.contains("just a moment", ignoreCase = true) ||
             text.contains("access denied", ignoreCase = true)
+    }
+
+    data class CredentialLoginResult(
+        val ok: Boolean,
+        val displayName: String? = null,
+        val challengeActive: Boolean = false,
+        val error: String? = null,
+    )
+
+    /** Extract Laravel / SerienStream CSRF token from the login HTML. */
+    fun parseLoginCsrfToken(html: String): String? {
+        if (html.isBlank()) return null
+        val patterns = listOf(
+            Regex("""<input[^>]+name=["']_token["'][^>]+value=["']([^"']+)["']""", RegexOption.IGNORE_CASE),
+            Regex("""<input[^>]+value=["']([^"']+)["'][^>]+name=["']_token["']""", RegexOption.IGNORE_CASE),
+            Regex("""<meta[^>]+name=["']csrf-token["'][^>]+content=["']([^"']+)["']""", RegexOption.IGNORE_CASE),
+            Regex("""<meta[^>]+content=["']([^"']+)["'][^>]+name=["']csrf-token["']""", RegexOption.IGNORE_CASE),
+        )
+        return patterns.firstNotNullOfOrNull { pattern ->
+            pattern.find(html)?.groupValues?.getOrNull(1)?.trim()?.takeIf { it.length >= 8 }
+        }
+    }
+
+    /**
+     * GuardaFlix-style in-app email/password login. Falls back to the WebView
+     * flow when Cloudflare is in front of `/login`.
+     */
+    suspend fun loginWithCredentials(
+        email: String,
+        password: String,
+    ): CredentialLoginResult = withContext(Dispatchers.IO) {
+        val trimmed = email.trim()
+        if (trimmed.length < 3 || password.length < 4) {
+            return@withContext CredentialLoginResult(ok = false, error = "invalid")
+        }
+        seedRuntimeCookies()
+        val base = SerienStreamProvider.baseUrl.trimEnd('/')
+        val loginUrl = "$base/login"
+        val clients = listOf(NetworkClient.default, NetworkClient.trustAll)
+        var lastError = "unreachable"
+        for (client in clients) {
+            val getResp = runCatching {
+                client.newCall(
+                    Request.Builder()
+                        .url(loginUrl)
+                        .header("User-Agent", NetworkClient.USER_AGENT)
+                        .header("Accept", "text/html,application/xhtml+xml")
+                        .get()
+                        .build(),
+                ).execute()
+            }.getOrNull() ?: continue
+            val getBody = getResp.use { it.body?.string().orEmpty() }
+            if (WatchlistImporter.looksLikeChallengePage(getBody)) {
+                return@withContext CredentialLoginResult(
+                    ok = false,
+                    challengeActive = true,
+                    error = "challenge",
+                )
+            }
+            val token = parseLoginCsrfToken(getBody)
+            val form = okhttp3.FormBody.Builder()
+                .add("email", trimmed)
+                .add("password", password)
+                .add("remember", "on")
+                .apply {
+                    if (!token.isNullOrBlank()) add("_token", token)
+                }
+                .build()
+            val postResp = runCatching {
+                client.newCall(
+                    Request.Builder()
+                        .url(loginUrl)
+                        .header("User-Agent", NetworkClient.USER_AGENT)
+                        .header("Accept", "text/html,application/xhtml+xml")
+                        .header("Origin", base)
+                        .header("Referer", loginUrl)
+                        .post(form)
+                        .build(),
+                ).execute()
+            }.getOrNull() ?: continue
+            val postSnap = postResp.use { resp ->
+                Triple(
+                    resp.body?.string().orEmpty(),
+                    resp.request.url.toString(),
+                    resp.headers("Set-Cookie").joinToString("; ") { it.substringBefore(';') },
+                )
+            }
+            val postBody = postSnap.first
+            val finalUrl = postSnap.second
+            val setCookies = postSnap.third
+            if (WatchlistImporter.looksLikeChallengePage(postBody)) {
+                return@withContext CredentialLoginResult(
+                    ok = false,
+                    challengeActive = true,
+                    error = "challenge",
+                )
+            }
+            val managerCookies = runCatching {
+                android.webkit.CookieManager.getInstance().getCookie("$base/")
+            }.getOrNull().orEmpty()
+            val cookieHeader = listOf(managerCookies, setCookies)
+                .filter { it.isNotBlank() }
+                .joinToString("; ")
+            val htmlOk = SerienStreamBypassHelper.looksLikeLoggedInHtml(postBody) ||
+                (!WatchlistImporter.looksLikeLoginPage(postBody, finalUrl) &&
+                    SerienStreamBypassHelper.hasWebSessionCookie(cookieHeader))
+            if (htmlOk) {
+                val name = parseDisplayName(postBody)
+                persistAccountLogin(
+                    cookieHeader = cookieHeader,
+                    displayName = name,
+                    htmlProof = postBody,
+                    leftLoginAfterVisit = true,
+                    pageUrl = finalUrl,
+                )
+                return@withContext CredentialLoginResult(ok = true, displayName = name)
+            }
+            lastError = "login"
+        }
+        CredentialLoginResult(ok = false, error = lastError)
     }
 
     private fun clearCookieManager(cookieHeader: String) {

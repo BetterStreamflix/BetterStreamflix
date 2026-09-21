@@ -1,22 +1,22 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Profiles — ink cinema house, tungsten champagne accent -->
-    <color name="profile_bg">#070709</color>
-    <color name="profile_bg_elevated">#101014</color>
-    <color name="profile_surface">#16161C</color>
-    <color name="profile_surface_soft">#1E1E26</color>
-    <color name="profile_border">#2A2A34</color>
-    <color name="profile_border_focus">#D4A574</color>
-    <color name="profile_text_primary">#F4F0EA</color>
-    <color name="profile_text_secondary">#A39E96</color>
-    <color name="profile_text_tertiary">#6F6A64</color>
-    <color name="profile_accent">#D4A574</color>
-    <color name="profile_accent_pressed">#B8895A</color>
-    <color name="profile_accent_soft">#33D4A574</color>
-    <color name="profile_on_accent">#140F0A</color>
-    <color name="profile_success">#7CB89A</color>
+    <!-- Profiles — cinema ink + signal cyan (matches app, no gold) -->
+    <color name="profile_bg">#07070D</color>
+    <color name="profile_bg_elevated">#0E1218</color>
+    <color name="profile_surface">#141A24</color>
+    <color name="profile_surface_soft">#1A2230</color>
+    <color name="profile_border">#2C3D55</color>
+    <color name="profile_border_focus">#2AABEE</color>
+    <color name="profile_text_primary">#F5F8FC</color>
+    <color name="profile_text_secondary">#A3B1C4</color>
+    <color name="profile_text_tertiary">#6E7E94</color>
+    <color name="profile_accent">#2AABEE</color>
+    <color name="profile_accent_pressed">#1A8FC8</color>
+    <color name="profile_accent_soft">#332AABEE</color>
+    <color name="profile_on_accent">#FFFFFF</color>
+    <color name="profile_success">#3DDC97</color>
     <color name="profile_danger">#C45C5C</color>
-    <color name="profile_scrim">#E6070709</color>
+    <color name="profile_scrim">#E604070D</color>
 
     <!-- Avatar palette cores -->
     <color name="profile_avatar_crimson_a">#8B1020</color>
@@ -31,8 +31,8 @@
     <color name="profile_avatar_forest_b">#4F9A6E</color>
     <color name="profile_avatar_ocean_a">#12304F</color>
     <color name="profile_avatar_ocean_b">#3D7CC9</color>
-    <color name="profile_avatar_gold_a">#5C4318</color>
-    <color name="profile_avatar_gold_b">#E0BF6A</color>
+    <color name="profile_avatar_gold_a">#0F2A3F</color>
+    <color name="profile_avatar_gold_b">#2AABEE</color>
     <color name="profile_avatar_rose_a">#5A2A3C</color>
     <color name="profile_avatar_rose_b">#D484A8</color>
 </resources>

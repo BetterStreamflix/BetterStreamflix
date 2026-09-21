@@ -7,6 +7,7 @@ import com.dskja.betterstreamflix.database.AppDatabase
 import com.dskja.betterstreamflix.models.Movie
 import com.dskja.betterstreamflix.models.People
 import com.dskja.betterstreamflix.models.TvShow
+import com.dskja.betterstreamflix.utils.format
 import com.dskja.betterstreamflix.utils.UserPreferences
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -100,30 +101,26 @@ class PeopleViewModel(private val id: String, database: AppDatabase) : ViewModel
             val provider = UserPreferences.currentProvider
                 ?: throw Exception("No provider selected")
             val people = try {
-                provider.getPeople(id)
+                val loaded = provider.getPeople(id)
+                val providerHadCredits = loaded.filmography.isNotEmpty()
+                val enriched = enrichPeopleFromTmdb(loaded, id, provider.language)
+                page = 1
+                _state.emit(
+                    State.SuccessLoading(
+                        people = enriched,
+                        hasMore = providerHadCredits,
+                    ),
+                )
+                return@launch
             } catch (primary: Exception) {
-                // TMDb numeric person ids (from enrichment) 404 on HTML providers —
-                // fall back to TMDb person details when the id looks numeric.
-                // Skip filmography: TMDb show ids are not valid on HTML providers.
-                if (id.all { it.isDigit() }) {
+                // TMDb numeric person ids (from enrichment) 404 on HTML providers.
+                val tmdbId = id.toIntOrNull()
+                if (tmdbId != null) {
                     Log.w("PeopleViewModel", "Provider getPeople failed for $id, trying TMDb", primary)
-                    com.dskja.betterstreamflix.utils.TMDb3.People.details(
-                        personId = id.toInt(),
+                    com.dskja.betterstreamflix.utils.TmdbUtils.getPeopleById(
+                        personId = tmdbId,
                         language = provider.language,
-                    ).let { person ->
-                        People(
-                            id = person.id.toString(),
-                            name = person.name,
-                            image = person.profilePath?.let {
-                                "https://image.tmdb.org/t/p/w500/$it"
-                            },
-                            biography = person.biography,
-                            placeOfBirth = person.placeOfBirth,
-                            birthday = person.birthday,
-                            deathday = person.deathday,
-                            filmography = emptyList(),
-                        )
-                    }
+                    ) ?: throw primary
                 } else {
                     throw primary
                 }
@@ -134,7 +131,7 @@ class PeopleViewModel(private val id: String, database: AppDatabase) : ViewModel
             _state.emit(
                 State.SuccessLoading(
                     people = people,
-                    hasMore = people.filmography.isNotEmpty(),
+                    hasMore = false,
                 ),
             )
         } catch (e: Exception) {
@@ -170,5 +167,53 @@ class PeopleViewModel(private val id: String, database: AppDatabase) : ViewModel
                 _state.emit(currentState.copy(hasMore = false))
             }
         }
+    }
+
+    private suspend fun enrichPeopleFromTmdb(
+        people: People,
+        id: String,
+        language: String?,
+    ): People {
+        val needsCredits = people.filmography.isEmpty()
+        val needsBio = people.biography.isNullOrBlank() ||
+            people.image.isNullOrBlank() ||
+            people.placeOfBirth.isNullOrBlank()
+        if (!needsCredits && !needsBio) return people
+        val tmdbId = id.toIntOrNull() ?: return people
+        val tmdb = com.dskja.betterstreamflix.utils.TmdbUtils.getPeopleById(tmdbId, language)
+            ?: return people
+        return people.copy(
+            name = people.name.ifBlank { tmdb.name },
+            image = people.image ?: tmdb.image,
+            biography = people.biography?.takeIf { it.isNotBlank() } ?: tmdb.biography,
+            placeOfBirth = people.placeOfBirth?.takeIf { it.isNotBlank() } ?: tmdb.placeOfBirth,
+            birthday = (people.birthday ?: tmdb.birthday)?.format("yyyy-MM-dd"),
+            deathday = (people.deathday ?: tmdb.deathday)?.format("yyyy-MM-dd"),
+            filmography = mergeFilmography(people.filmography, tmdb.filmography),
+        )
+    }
+
+    private fun mergeFilmography(
+        primary: List<com.dskja.betterstreamflix.models.Show>,
+        extra: List<com.dskja.betterstreamflix.models.Show>,
+    ): List<com.dskja.betterstreamflix.models.Show> {
+        if (extra.isEmpty()) return primary
+        if (primary.isEmpty()) return extra
+        val seenIds = HashSet<String>()
+        val seenTitles = HashSet<String>()
+        fun keyOf(show: com.dskja.betterstreamflix.models.Show): Pair<String, String> = when (show) {
+            is Movie -> (show.tmdbId ?: show.id) to show.title.lowercase()
+            is TvShow -> (show.tmdbId ?: show.id) to show.title.lowercase()
+            else -> "" to ""
+        }
+        val merged = ArrayList<com.dskja.betterstreamflix.models.Show>(primary.size + extra.size)
+        (primary + extra).forEach { show ->
+            val (id, title) = keyOf(show)
+            if (id.isBlank() && title.isBlank()) return@forEach
+            if (id.isNotBlank() && !seenIds.add(id)) return@forEach
+            if (title.isNotBlank() && !seenTitles.add(title)) return@forEach
+            merged.add(show)
+        }
+        return merged
     }
 }

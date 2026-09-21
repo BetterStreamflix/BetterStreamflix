@@ -42,7 +42,7 @@ class SeasonTvFragment : Fragment() {
     private val binding get() = _binding!!
 
     private val args by navArgs<SeasonTvFragmentArgs>()
-    private val database by lazy { AppDatabase.getInstance(requireContext()) }
+    private val database get() = AppDatabase.getInstance(requireContext())
     private val viewModel by viewModelsFactory {
         SeasonViewModel(
             args.seasonId,

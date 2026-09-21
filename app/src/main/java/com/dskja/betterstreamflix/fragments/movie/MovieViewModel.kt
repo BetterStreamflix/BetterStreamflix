@@ -3,6 +3,7 @@ package com.dskja.betterstreamflix.fragments.movie
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.dskja.betterstreamflix.BetterStreamflixApp
 import com.dskja.betterstreamflix.database.AppDatabase
 import com.dskja.betterstreamflix.models.Movie
 import com.dskja.betterstreamflix.models.TvShow
@@ -18,13 +19,23 @@ import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.transformLatest
 import kotlinx.coroutines.launch
 
-class MovieViewModel(id: String, private val database: AppDatabase) : ViewModel() {
+class MovieViewModel(
+    id: String,
+    @Suppress("UNUSED_PARAMETER") database: AppDatabase? = null,
+) : ViewModel() {
+
+    private fun liveDb(): AppDatabase =
+        AppDatabase.getInstance(BetterStreamflixApp.instance.applicationContext)
 
     private val _state = MutableStateFlow<State>(State.Loading)
     @OptIn(ExperimentalCoroutinesApi::class)
     val state: Flow<State> = combine(
         _state,
-        database.movieDao().getByIdAsFlow(id),
+        _state.transformLatest {
+            val db = runCatching { liveDb() }.getOrNull()
+            if (db == null) emit(null)
+            else emitAll(db.movieDao().getByIdAsFlow(id))
+        },
         _state.transformLatest { state ->
             when (state) {
                 is State.SuccessLoading -> {
@@ -33,7 +44,9 @@ class MovieViewModel(id: String, private val database: AppDatabase) : ViewModel(
                     if (movies.isEmpty()) {
                         emit(emptyList())
                     } else {
-                        emitAll(database.movieDao().getByIds(movies.map { it.id }))
+                        val db = runCatching { liveDb() }.getOrNull()
+                        if (db == null) emit(emptyList())
+                        else emitAll(db.movieDao().getByIds(movies.map { it.id }))
                     }
                 }
                 else -> emit(emptyList<Movie>())
@@ -47,7 +60,9 @@ class MovieViewModel(id: String, private val database: AppDatabase) : ViewModel(
                     if (tvShows.isEmpty()) {
                         emit(emptyList())
                     } else {
-                        emitAll(database.tvShowDao().getByIds(tvShows.map { it.id }))
+                        val db = runCatching { liveDb() }.getOrNull()
+                        if (db == null) emit(emptyList())
+                        else emitAll(db.tvShowDao().getByIds(tvShows.map { it.id }))
                     }
                 }
                 else -> emit(emptyList<TvShow>())
@@ -92,14 +107,13 @@ class MovieViewModel(id: String, private val database: AppDatabase) : ViewModel(
         getMovie(id)
     }
 
-
     fun getMovie(id: String) = viewModelScope.launch(Dispatchers.IO) {
         _state.emit(State.Loading)
 
         try {
             val provider = UserPreferences.currentProvider
                 ?: throw IllegalStateException("No provider selected")
-            val movie = provider.getMovie(id)
+            val movie = com.dskja.betterstreamflix.utils.ShowLookup.movie(provider, id)
             val pluginEnriched = runCatching {
                 com.dskja.betterstreamflix.platform.plugins.PluginManager
                     .enrichMovie(provider, movie)
@@ -108,10 +122,11 @@ class MovieViewModel(id: String, private val database: AppDatabase) : ViewModel(
                 com.dskja.betterstreamflix.utils.TmdbUtils.enrichMovieDetail(pluginEnriched)
             }.getOrDefault(pluginEnriched)
 
-            database.movieDao().getById(id)?.let { movieDb ->
+            val db = runCatching { liveDb() }.getOrNull()
+            db?.movieDao()?.getById(id)?.let { movieDb ->
                 enriched.merge(movieDb)
             }
-            database.movieDao().insert(enriched)
+            db?.movieDao()?.insert(enriched)
 
             _state.emit(State.SuccessLoading(enriched))
         } catch (e: Exception) {

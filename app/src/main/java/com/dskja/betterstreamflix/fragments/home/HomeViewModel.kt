@@ -39,7 +39,13 @@ import kotlinx.coroutines.flow.transformLatest
 import kotlinx.coroutines.launch
 import java.util.concurrent.ConcurrentHashMap
 
-class HomeViewModel(database: AppDatabase) : ViewModel() {
+class HomeViewModel(
+    @Suppress("UNUSED_PARAMETER")
+    database: AppDatabase? = null,
+) : ViewModel() {
+
+    private fun liveDatabase(): AppDatabase =
+        AppDatabase.getInstance(BetterStreamflixApp.instance.applicationContext)
 
     private data class HomeHistory(
         val continueWatching: List<AppAdapter.Item>,
@@ -104,7 +110,12 @@ class HomeViewModel(database: AppDatabase) : ViewModel() {
                     if (movies.isEmpty()) {
                         emit(emptyList())
                     } else {
-                        emitAll(database.movieDao().getByIds(movies.map { it.id }))
+                        val db = runCatching { liveDatabase() }.getOrNull()
+                        if (db == null) {
+                            emit(emptyList())
+                        } else {
+                            emitAll(db.movieDao().getByIds(movies.map { it.id }))
+                        }
                     }
                 }
                 else -> emit(emptyList<Movie>())
@@ -121,7 +132,12 @@ class HomeViewModel(database: AppDatabase) : ViewModel() {
                     if (tvShows.isEmpty()) {
                         emit(emptyList())
                     } else {
-                        emitAll(database.tvShowDao().getByIds(tvShows.map { it.id }))
+                        val db = runCatching { liveDatabase() }.getOrNull()
+                        if (db == null) {
+                            emit(emptyList())
+                        } else {
+                            emitAll(db.tvShowDao().getByIds(tvShows.map { it.id }))
+                        }
                     }
                 }
                 else -> emit(emptyList<TvShow>())
@@ -181,13 +197,7 @@ class HomeViewModel(database: AppDatabase) : ViewModel() {
                                         else -> 0L
                                     }
                                 }
-                                .distinctBy {
-                                    when (it) {
-                                        is Episode -> it.tvShow?.id
-                                        is Movie -> it.id
-                                        else -> null
-                                    }
-                                },
+                                .distinctBy { continueWatchingKey(it) },
                             remoteExtras = state.categories
                                 .filter {
                                     com.dskja.betterstreamflix.platform.ContinueWatchingMerger
@@ -223,7 +233,10 @@ class HomeViewModel(database: AppDatabase) : ViewModel() {
                         )
                     })
 
-                State.SuccessLoading(categories, providerWarning = state.providerWarning)
+                State.SuccessLoading(
+                    HomeCatalogPipeline.ensureFeaturedShelf(categories),
+                    providerWarning = state.providerWarning,
+                )
             }
 
             else -> state
@@ -423,10 +436,9 @@ class HomeViewModel(database: AppDatabase) : ViewModel() {
 
     private fun loadUserDataCache(provider: Provider) {
         val appContext = BetterStreamflixApp.instance.applicationContext
-        val cached = UserDataCache.read(appContext, provider)
-        _userDataCache.value = cached
-
         viewModelScope.launch(Dispatchers.IO) {
+            val cached = UserDataCache.read(appContext, provider)
+            _userDataCache.value = cached
             val db = AppDatabase.getInstance(appContext)
             val moviesDeferred = async { db.movieDao().getFavorites().first() }
             val tvShowsDeferred = async { db.tvShowDao().getFavorites().first() }

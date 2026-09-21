@@ -446,6 +446,14 @@ object UserPreferences {
         get() = Key.EXPERIMENTAL_NEW_APP_DESIGN.getBoolean() ?: false
         set(value) = Key.EXPERIMENTAL_NEW_APP_DESIGN.setBoolean(value)
 
+    /**
+     * Opt-in React/Vite home shell (DEBUG + Lumina only). Default off so the native
+     * Featured ViewPager carousel stays active.
+     */
+    var experimentalReactHome: Boolean
+        get() = Key.EXPERIMENTAL_REACT_HOME.getBoolean() ?: false
+        set(value) = Key.EXPERIMENTAL_REACT_HOME.setBoolean(value)
+
     /** Lumina accent palette: crimson | ember | aurora | slate */
     var experimentalLuminaAccent: String
         get() = Key.EXPERIMENTAL_LUMINA_ACCENT.getString() ?: "crimson"
@@ -725,6 +733,14 @@ object UserPreferences {
     var serienStreamSessionDisplayName: String
         get() = Key.SERIENSTREAM_SESSION_DISPLAY_NAME.getString() ?: ""
         set(value) = Key.SERIENSTREAM_SESSION_DISPLAY_NAME.setString(value.trim())
+
+    /**
+     * True after WebView HTML proved a real login (Laravel session without remember-me)
+     * or after a successful account validation probe.
+     */
+    var serienStreamAccountConfirmed: Boolean
+        get() = Key.SERIENSTREAM_ACCOUNT_CONFIRMED.getBoolean() ?: false
+        set(value) = Key.SERIENSTREAM_ACCOUNT_CONFIRMED.setBoolean(value)
 
     /** Epoch millis of the last SerienStream session validation probe (0 = never). */
     var serienStreamSessionValidatedAtMs: Long
@@ -1124,6 +1140,7 @@ object UserPreferences {
         PARENTAL_CONTROL_HARD_LOCKED,
         SELECTED_THEME,
         EXPERIMENTAL_NEW_APP_DESIGN,
+        EXPERIMENTAL_REACT_HOME,
         EXPERIMENTAL_LUMINA_ACCENT,
         EXPERIMENTAL_LUMINA_PURE_BLACK,
         EXPERIMENTAL_LUMINA_DYNAMIC_COLORS,
@@ -1151,6 +1168,7 @@ object UserPreferences {
         BYPASS_WS_ADVERTISED_HOST,
         SERIENSTREAM_SESSION_COOKIES,
         SERIENSTREAM_SESSION_DISPLAY_NAME,
+        SERIENSTREAM_ACCOUNT_CONFIRMED,
         SERIENSTREAM_SESSION_VALIDATED_AT,
         SERIENSTREAM_SESSION_VALIDATED_OK,
         UPDATE_CHECK_ENABLED,

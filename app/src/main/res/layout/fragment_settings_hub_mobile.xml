@@ -61,6 +61,23 @@
                 android:textAppearance="@style/TextAppearance.Lumina.Body"
                 android:textColor="?attr/colorOnSurfaceVariant" />
 
+            <TextView
+                android:id="@+id/tv_settings_hub_provider"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:background="@drawable/bg_exp_chip"
+                android:paddingStart="10dp"
+                android:paddingTop="4dp"
+                android:paddingEnd="10dp"
+                android:paddingBottom="4dp"
+                android:textAppearance="@style/TextAppearance.Lumina.Caption"
+                android:textColor="?attr/colorPrimary"
+                android:textSize="12sp"
+                android:visibility="gone"
+                tools:text="Watching via SerienStream"
+                tools:visibility="visible" />
+
             <!-- Featured integrations -->
             <LinearLayout
                 android:id="@+id/card_settings_featured"
@@ -99,7 +116,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="6dp"
-                    android:text="@string/platform_settings_summary"
+                    android:text="@string/settings_hub_featured_body"
                     android:textAppearance="@style/TextAppearance.Lumina.Body"
                     android:textColor="?attr/colorOnSurfaceVariant"
                     android:textSize="13sp" />

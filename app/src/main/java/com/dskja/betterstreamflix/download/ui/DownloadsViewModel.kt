@@ -40,11 +40,19 @@ class DownloadsViewModel(
 
     val lowSpace: StateFlow<Boolean> = MutableStateFlow(DownloadStorage.isLowSpace(appContext))
 
+    private val wifiOnlyPreferenceTick = MutableStateFlow(0)
+
+    /** Call from Downloads onResume so the Wi‑Fi-only banner tracks Settings toggles. */
+    fun refreshWifiPreference() {
+        wifiOnlyPreferenceTick.value = wifiOnlyPreferenceTick.value + 1
+    }
+
     val wifiPaused: StateFlow<Boolean> = combine(
         DownloadConnectivityMonitor.status,
-        MutableStateFlow(UserPreferences.downloadWifiOnly),
-    ) { status, wifiOnly ->
-        wifiOnly && status.type == com.dskja.betterstreamflix.download.DownloadNetworkType.CELLULAR
+        wifiOnlyPreferenceTick,
+    ) { status, _ ->
+        UserPreferences.downloadWifiOnly &&
+            status.type == com.dskja.betterstreamflix.download.DownloadNetworkType.CELLULAR
     }.stateIn(viewModelScope, SharingStarted.Eagerly, false)
 
     val rows: StateFlow<List<DownloadRowUiModel>> = combine(

@@ -14,7 +14,6 @@ import com.bumptech.glide.Glide
 import com.bumptech.glide.load.resource.drawable.DrawableTransitionOptions
 import com.dskja.betterstreamflix.R
 import com.dskja.betterstreamflix.adapters.AppAdapter
-import com.dskja.betterstreamflix.database.AppDatabase
 import com.dskja.betterstreamflix.databinding.FragmentHomeMobileBinding
 import com.dskja.betterstreamflix.models.Category
 import com.dskja.betterstreamflix.models.Episode
@@ -32,6 +31,7 @@ import com.dskja.betterstreamflix.utils.ExpEmptyChrome
 import com.dskja.betterstreamflix.utils.ExpMotion
 import com.dskja.betterstreamflix.utils.ExpNavAutoHide
 import com.dskja.betterstreamflix.utils.ExperimentalMobileDesign
+import com.dskja.betterstreamflix.utils.HomeCatalogPipeline
 import com.dskja.betterstreamflix.utils.LoggingUtils
 import com.dskja.betterstreamflix.utils.ProviderChangeNotifier
 import com.dskja.betterstreamflix.experimental.ExperimentalReactShell
@@ -50,16 +50,17 @@ class HomeMobileFragment : Fragment() {
     private var reactShell: ExperimentalReactShell? = null
     private var reactMode = false
 
-    private val viewModel: HomeViewModel by lazy {
-        val providerKey = UserPreferences.currentProvider?.name ?: "default"
-        val factory = object : ViewModelProvider.Factory {
-            override fun <T : ViewModel> create(modelClass: Class<T>): T {
-                @Suppress("UNCHECKED_CAST")
-                return HomeViewModel(AppDatabase.getInstance(requireContext())) as T
+    private val viewModel: HomeViewModel
+        get() {
+            val providerKey = UserPreferences.currentProvider?.name ?: "default"
+            val factory = object : ViewModelProvider.Factory {
+                override fun <T : ViewModel> create(modelClass: Class<T>): T {
+                    @Suppress("UNCHECKED_CAST")
+                    return HomeViewModel() as T
+                }
             }
+            return ViewModelProvider(this, factory)[providerKey, HomeViewModel::class.java]
         }
-        ViewModelProvider(this, factory).get(providerKey, HomeViewModel::class.java)
-    }
 
     private val appAdapter = AppAdapter()
 
@@ -157,18 +158,13 @@ class HomeMobileFragment : Fragment() {
         }
         refreshProviderLogo()
         refreshProfileChip()
-        // Rebind featured swiper after pause so auto-advance resumes safely.
-        val featuredPos = appAdapter.items.indexOfFirst {
-            it is Category && it.name == Category.FEATURED
-        }
-        if (featuredPos >= 0) {
-            appAdapter.notifyItemChanged(featuredPos)
-        }
+        // Soft-resume featured auto-advance — avoid notifyItemChanged (full rebind glitches).
+        _binding?.rvHome?.let { appAdapter.resumeCategorySwipers(it) }
     }
 
     override fun onPause() {
         if (!reactMode) {
-            // Hard-stop featured auto-advance while Home is under the detail back stack
+            // Soft-pause featured auto-advance while Home is under the detail back stack
             // (prevents BETTERSTREAMFLIX-1 NavHost NPEs from delayed page callbacks).
             _binding?.rvHome?.let { appAdapter.pauseCategorySwipers(it) }
         }
@@ -239,6 +235,12 @@ class HomeMobileFragment : Fragment() {
             adapter = appAdapter.apply {
                 stateRestorationPolicy = RecyclerView.Adapter.StateRestorationPolicy.PREVENT_WHEN_EMPTY
             }
+            setHasFixedSize(true)
+            setItemViewCacheSize(8)
+            // Shared pools for poster rows reduce inflate churn while scrolling home.
+            recycledViewPool.setMaxRecycledViews(AppAdapter.Type.MOVIE_MOBILE_ITEM.ordinal, 12)
+            recycledViewPool.setMaxRecycledViews(AppAdapter.Type.TV_SHOW_MOBILE_ITEM.ordinal, 12)
+            recycledViewPool.setMaxRecycledViews(AppAdapter.Type.CATEGORY_MOBILE_ITEM.ordinal, 6)
             addItemDecoration(
                 SpacingItemDecoration(20.dp(requireContext()))
             )
@@ -467,7 +469,7 @@ class HomeMobileFragment : Fragment() {
         }
 
         val homeItems = mutableListOf<AppAdapter.Item>()
-        val visibleCategories = categories.filter { it.list.isNotEmpty() }
+        val visibleCategories = HomeCatalogPipeline.isolateFeatured(categories)
         visibleCategories.onEach { category ->
             if (category.name != Category.FEATURED && category.name != getString(R.string.home_continue_watching)) {
                 category.list.onEach { show ->
@@ -485,25 +487,28 @@ class HomeMobileFragment : Fragment() {
             }
         }
 
-        // Re-apply SWIPER types after shelf assignment. FEATURED may share Movie/TvShow
-        // instances with a donor shelf; overwriting itemType to wrap_content poster layouts
-        // crashes ViewPager2 (BETTERSTREAMFLIX-13).
-        categories
-            .find { it.name == Category.FEATURED }
-            ?.list
-            ?.forEach { show ->
+        // Stamp SWIPER types only on the isolated FEATURED clones — never on
+        // original shelf rows (BETTERSTREAMFLIX-13).
+        visibleCategories
+            .filter { it.name == Category.FEATURED }
+            .flatMap { it.list }
+            .forEach { show ->
                 when (show) {
                     is Movie -> show.itemType = AppAdapter.Type.MOVIE_SWIPER_MOBILE_ITEM
                     is TvShow -> show.itemType = AppAdapter.Type.TV_SHOW_SWIPER_MOBILE_ITEM
                 }
             }
 
+        val hasContinueWatching = categories.any {
+            it.name == getString(R.string.home_continue_watching) && it.list.isNotEmpty()
+        }
         visibleCategories.forEachIndexed { index, category ->
             homeItems.add(category)
             // Place the support card after featured / continue watching — never first.
+            // CW was already renamed to the localized title above; do not check the
+            // English Category.CONTINUE_WATCHING constant here.
             val insertAfter = category.name == getString(R.string.home_continue_watching) ||
-                (category.name == Category.FEATURED &&
-                    categories.none { it.name == Category.CONTINUE_WATCHING && it.list.isNotEmpty() })
+                (category.name == Category.FEATURED && !hasContinueWatching)
             if (insertAfter &&
                 !UserPreferences.homeSupportCardDismissed &&
                 homeItems.none { it is com.dskja.betterstreamflix.support.SupportBannerItem }
@@ -585,8 +590,9 @@ class HomeMobileFragment : Fragment() {
                         dataSource: com.bumptech.glide.load.DataSource,
                         isFirstResource: Boolean,
                     ): Boolean {
+                        val root = _binding?.root ?: return false
                         val bitmap = (resource as? android.graphics.drawable.BitmapDrawable)?.bitmap
-                        binding.root.findViewById<View>(R.id.v_home_glow)?.let { glow ->
+                        root.findViewById<View>(R.id.v_home_glow)?.let { glow ->
                             // Soft static tint only — avoid re-triggering glow fade on every swipe.
                             if (glow.tag != art) {
                                 glow.tag = art

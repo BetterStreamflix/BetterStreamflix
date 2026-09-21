@@ -56,6 +56,18 @@ object DeviceCapabilities {
             isLowRamDevice(context)
     }
 
+    /** Soften home motion (ken-burns, swiper progress) on constrained devices. */
+    fun shouldReduceHomeEffects(context: Context): Boolean {
+        return isLowRamDevice(context) ||
+            shouldUseConstrainedPlayback(context) ||
+            (Build.VERSION.SDK_INT >= 17 &&
+                android.provider.Settings.Global.getFloat(
+                    context.contentResolver,
+                    android.provider.Settings.Global.ANIMATOR_DURATION_SCALE,
+                    1f,
+                ) == 0f)
+    }
+
     /**
      * ISO-639 language tags ExoPlayer understands for preferred audio selection.
      * TMDb/HLS streams often label tracks as `eng`/`spa` rather than `en`/`es`.

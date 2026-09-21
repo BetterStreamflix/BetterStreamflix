@@ -93,5 +93,5 @@
         android:maxLines="1"
         android:textColor="@color/profile_text_tertiary"
         android:textSize="11sp"
-        tools:text="Active · Gold" />
+        tools:text="Active · Signal" />
 </LinearLayout>

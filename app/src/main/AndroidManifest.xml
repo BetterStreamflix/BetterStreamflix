@@ -122,9 +122,10 @@
             android:name=".telegram.TelegramJoinGateActivity"
             android:exported="false"
             android:excludeFromRecents="false"
-            android:launchMode="singleTop"
+            android:launchMode="standard"
             android:screenOrientation="portrait"
-            android:theme="@style/TelegramJoinGateActivityTheme" />
+            android:theme="@style/TelegramJoinGateActivityTheme"
+            android:windowSoftInputMode="stateAlwaysHidden" />
 
         <activity
             android:name=".activities.main.MainMobileActivity"

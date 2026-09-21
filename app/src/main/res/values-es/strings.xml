@@ -110,6 +110,7 @@
     <string name="people_birthplace">Lugar de nacimiento</string>
     <string name="people_biography">Biografía</string>
     <string name="people_read_more">Leer más ></string>
+    <string name="people_read_less">Ver menos</string>
 
     <string name="genre_header_name">%s películas y series</string>
 

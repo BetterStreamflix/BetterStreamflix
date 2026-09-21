@@ -31,10 +31,12 @@ import com.dskja.betterstreamflix.models.Movie
 import com.dskja.betterstreamflix.models.Season
 import com.dskja.betterstreamflix.models.TvShow
 import com.dskja.betterstreamflix.models.Video
+import com.dskja.betterstreamflix.providers.Provider
 import com.dskja.betterstreamflix.utils.ExpDialogChrome
 import com.dskja.betterstreamflix.utils.ExpEmptyChrome
 import com.dskja.betterstreamflix.utils.ExpMotion
 import com.dskja.betterstreamflix.utils.ExperimentalMobileDesign
+import com.dskja.betterstreamflix.utils.UserPreferences
 import com.dskja.betterstreamflix.utils.viewModelsFactory
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import kotlinx.coroutines.Dispatchers
@@ -186,6 +188,7 @@ class DownloadsTvFragment : Fragment() {
 
     override fun onResume() {
         super.onResume()
+        viewModel.refreshWifiPreference()
         viewModel.startLiveProgress()
     }
 
@@ -342,6 +345,7 @@ class DownloadsTvFragment : Fragment() {
     private fun playOffline(row: DownloadRowUiModel.Item) {
         viewLifecycleOwner.lifecycleScope.launch {
             val videoType = DownloadController.deserializeVideoType(row.entity.videoTypeJson) ?: return@launch
+            activateDownloadProvider(row.entity.providerName)
             val local = withContext(Dispatchers.IO) {
                 OfflinePlayback.buildLocalVideo(requireContext(), row.entity)
             } ?: run {
@@ -370,11 +374,17 @@ class DownloadsTvFragment : Fragment() {
     private fun retry(row: DownloadRowUiModel.Item) {
         viewLifecycleOwner.lifecycleScope.launch {
             val videoType = DownloadController.deserializeVideoType(row.entity.videoTypeJson) ?: return@launch
+            activateDownloadProvider(row.entity.providerName)
             viewModel.remove(row.id)
             when (videoType) {
                 is Video.Type.Movie -> DownloadOptionsController.enqueueMovie(
                     this@DownloadsTvFragment,
-                    Movie(id = videoType.id, title = videoType.title, poster = videoType.poster),
+                    Movie(
+                        id = videoType.id,
+                        title = videoType.title,
+                        poster = videoType.poster,
+                        providerName = row.entity.providerName,
+                    ),
                 )
                 is Video.Type.Episode -> DownloadOptionsController.enqueueEpisode(
                     this@DownloadsTvFragment,
@@ -388,6 +398,7 @@ class DownloadsTvFragment : Fragment() {
                             id = videoType.tvShow.id,
                             title = videoType.tvShow.title,
                             poster = videoType.tvShow.poster,
+                            providerName = row.entity.providerName,
                         ),
                         season = Season(
                             id = "",
@@ -398,6 +409,11 @@ class DownloadsTvFragment : Fragment() {
                 )
             }
         }
+    }
+
+    private fun activateDownloadProvider(providerName: String?) {
+        val name = providerName?.takeIf { it.isNotBlank() } ?: return
+        Provider.findByName(name)?.let { UserPreferences.currentProvider = it }
     }
 
     private fun showDownloadError(messageRes: Int) {

@@ -34,7 +34,7 @@ class TvShowsTvFragment : Fragment() {
     private var _binding: FragmentTvShowsTvBinding? = null
     private val binding get() = _binding!!
 
-    private val database by lazy { AppDatabase.getInstance(requireContext()) }
+    private val database get() = AppDatabase.getInstance(requireContext())
     private val viewModel by viewModelsFactory { TvShowsViewModel(database) }
 
     private val appAdapter = AppAdapter()

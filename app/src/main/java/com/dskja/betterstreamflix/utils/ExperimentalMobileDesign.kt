@@ -30,13 +30,20 @@ object ExperimentalMobileDesign {
 
     fun enabled(): Boolean = isAvailable() && UserPreferences.experimentalNewAppDesign
 
-    /** React Lumina shell for Home (and future surfaces). */
-    fun useReactShell(): Boolean = enabled()
+    /**
+     * React Lumina home is a separate opt-in. When Lumina is on but React home is off,
+     * the native Featured ViewPager carousel is used (preferred / default).
+     */
+    fun useReactShell(): Boolean =
+        enabled() && UserPreferences.experimentalReactHome
 
     /** Call once at app start to clear stale Lumina prefs in release builds. */
     fun enforceAvailabilityGate() {
         if (!isAvailable() && UserPreferences.experimentalNewAppDesign) {
             UserPreferences.experimentalNewAppDesign = false
+        }
+        if (!isAvailable() && UserPreferences.experimentalReactHome) {
+            UserPreferences.experimentalReactHome = false
         }
     }
     fun layout(defaultRes: Int, experimentalRes: Int): Int =

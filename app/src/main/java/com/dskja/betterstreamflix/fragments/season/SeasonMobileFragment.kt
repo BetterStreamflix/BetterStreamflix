@@ -42,7 +42,7 @@ class SeasonMobileFragment : Fragment() {
     private val binding get() = _binding!!
 
     private val args by navArgs<SeasonMobileFragmentArgs>()
-    private val database by lazy { AppDatabase.getInstance(requireContext()) }
+    private val database get() = AppDatabase.getInstance(requireContext())
     private val viewModel by viewModelsFactory {
         SeasonViewModel(
             args.seasonId,
@@ -264,6 +264,15 @@ class SeasonMobileFragment : Fragment() {
         appAdapter.submitList(episodes.onEach { episode ->
             episode.itemType = AppAdapter.Type.EPISODE_MOBILE_ITEM
         })
+        if (episodes.isNotEmpty()) {
+            binding.btnSeasonDownload.text = getString(
+                R.string.detail_download_season_count,
+                args.seasonNumber.coerceAtLeast(1),
+                episodes.size,
+            )
+        } else {
+            binding.btnSeasonDownload.setText(R.string.season_download)
+        }
 
         val empty = episodes.isEmpty()
         ExpEmptyChrome.bind(

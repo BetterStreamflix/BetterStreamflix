@@ -256,15 +256,17 @@ object GuardaFlixAuthSettingsController {
         progress.show()
         scope.launch {
             val result = withContext(Dispatchers.IO) { action() }
-            progress.dismiss()
+            if (!fragment.isAdded) return@launch
+            if (progress.isShowing) progress.dismiss()
             refresh()
+            val ctx = fragment.context ?: return@launch
             val message = if (result.ok) {
                 fragment.getString(R.string.guardaflix_auth_success)
             } else {
                 result.error?.takeIf { it.isNotBlank() }
                     ?: fragment.getString(R.string.guardaflix_auth_failed)
             }
-            ExpDialogChrome.notify(fragment.requireContext(), message)
+            ExpDialogChrome.notify(ctx, message)
         }
     }
 }

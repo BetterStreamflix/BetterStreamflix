@@ -34,6 +34,21 @@ object SerienStreamAuthSettingsController {
             AlertDialog.Builder(context)
         }
 
+    /** Call from Settings onResume after returning from WebView sign-in. */
+    fun refresh(findPreference: (String) -> Preference?) {
+        val status = findPreference("SERIENSTREAM_AUTH_STATUS") ?: return
+        val snap = SerienStreamAuthManager.snapshot()
+        // Fragment context is not always available here — keep prior summary shape via tag.
+        val host = status.context
+        status.summary = buildStatusSummary(host, snap)
+        findPreference("SERIENSTREAM_SESSION_VALIDATE")?.isVisible = snap.isLoggedIn
+        findPreference("SERIENSTREAM_SESSION_COPY")?.isVisible = snap.isLoggedIn
+        findPreference("SERIENSTREAM_SESSION_LOGOUT")?.isVisible = snap.isLoggedIn
+        findPreference("SERIENSTREAM_SESSION_LOGIN")?.isVisible = true
+        findPreference("SERIENSTREAM_SESSION_PASTE")?.isVisible = true
+        findPreference("SERIENSTREAM_SESSION_COOKIES")?.isVisible = false
+    }
+
 
     fun bind(
         fragment: Fragment,
@@ -51,7 +66,7 @@ object SerienStreamAuthSettingsController {
         val logout = findPreference("SERIENSTREAM_SESSION_LOGOUT")
         val legacyCookies = findPreference("SERIENSTREAM_SESSION_COOKIES")
 
-        fun refresh() {
+        fun refreshUi() {
             val snap = SerienStreamAuthManager.snapshot()
             status?.summary = buildStatusSummary(fragment, snap)
             login?.isVisible = true
@@ -63,14 +78,7 @@ object SerienStreamAuthSettingsController {
         }
 
         login?.setOnPreferenceClickListener {
-            fragment.startActivity(
-                Intent(fragment.requireContext(), WatchlistImportActivity::class.java)
-                    .putExtra(
-                        WatchlistImportActivity.EXTRA_SOURCE,
-                        WatchlistImportActivity.SOURCE_SERIENSTREAM,
-                    )
-                    .putExtra(WatchlistImportActivity.EXTRA_SAVE_SESSION_ONLY, true),
-            )
+            showCredentialsDialog(fragment, scope) { refreshUi() }
             true
         }
 
@@ -100,7 +108,7 @@ object SerienStreamAuthSettingsController {
                 if (fragment.isAdded && progress.isShowing) {
                     progress.dismiss()
                 }
-                refresh()
+                refreshUi()
                 if (!fragment.isAdded) return@launch
                 val message = when {
                     result.ok && !result.displayName.isNullOrBlank() ->
@@ -128,7 +136,7 @@ object SerienStreamAuthSettingsController {
         paste?.setOnPreferenceClickListener {
             showPasteDialog(fragment) { raw ->
                 val ok = SerienStreamAuthManager.pasteCookies(raw)
-                refresh()
+                refreshUi()
                 ExpDialogChrome.notify(
                     fragment.requireContext(),
                     if (ok) R.string.settings_serienstream_session_login_saved
@@ -177,7 +185,7 @@ object SerienStreamAuthSettingsController {
             builder
                 .setPositiveButton(R.string.serienstream_auth_sign_out) { _, _ ->
                     SerienStreamAuthManager.logout()
-                    refresh()
+                    refreshUi()
                     ExpDialogChrome.notify(
                         fragment.requireContext(),
                         R.string.settings_serienstream_session_cookies_cleared,
@@ -205,39 +213,207 @@ object SerienStreamAuthSettingsController {
             true
         }
 
-        refresh()
+        refreshUi()
+    }
+
+    private fun openBrowserLogin(fragment: Fragment) {
+        fragment.startActivity(
+            Intent(fragment.requireContext(), WatchlistImportActivity::class.java)
+                .putExtra(
+                    WatchlistImportActivity.EXTRA_SOURCE,
+                    WatchlistImportActivity.SOURCE_SERIENSTREAM,
+                )
+                .putExtra(WatchlistImportActivity.EXTRA_SAVE_SESSION_ONLY, true),
+        )
+    }
+
+    private fun showCredentialsDialog(
+        fragment: Fragment,
+        scope: LifecycleCoroutineScope,
+        refreshUi: () -> Unit,
+    ) {
+        val context = fragment.requireContext()
+        val density = context.resources.displayMetrics.density
+        val padding = (24 * density).toInt()
+        val fieldGap = (10 * density).toInt()
+        val exp = ExperimentalMobileDesign.enabled()
+        fun styledField(block: android.widget.EditText.() -> Unit) = android.widget.EditText(context).apply {
+            isSingleLine = true
+            if (exp) {
+                setBackgroundResource(ExperimentalMobileDesign.searchFieldBackground())
+                setPadding(padding, padding, padding, padding)
+                setTextAppearance(R.style.TextAppearance_Lumina_Body)
+            }
+            block()
+        }
+        val email = styledField {
+            hint = context.getString(R.string.serienstream_auth_email_hint)
+            inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_EMAIL_ADDRESS
+        }
+        val password = styledField {
+            hint = context.getString(R.string.serienstream_auth_password_hint)
+            inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD
+            transformationMethod = android.text.method.PasswordTransformationMethod.getInstance()
+        }
+        val glass = if (exp) {
+            ExpDialogChrome.buildGlassMessage(
+                context,
+                context.getString(R.string.serienstream_auth_credentials_message),
+            )
+        } else {
+            null
+        }
+        val contentView = if (glass != null) {
+            glass.root.addView(
+                email,
+                android.widget.LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT,
+                    ViewGroup.LayoutParams.WRAP_CONTENT,
+                ).also { it.topMargin = fieldGap },
+            )
+            glass.root.addView(
+                password,
+                android.widget.LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT,
+                    ViewGroup.LayoutParams.WRAP_CONTENT,
+                ).also { it.topMargin = fieldGap },
+            )
+            glass.root
+        } else {
+            android.widget.LinearLayout(context).apply {
+                orientation = android.widget.LinearLayout.VERTICAL
+                setPadding(padding, padding / 2, padding, 0)
+                addView(email, ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+                addView(password, ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+            }
+        }
+        val dialog = alertBuilder(context)
+            .setTitle(R.string.settings_serienstream_session_login)
+            .setView(contentView)
+            .setNeutralButton(R.string.serienstream_auth_browser_login, null)
+            .setNegativeButton(android.R.string.cancel, null)
+            .setPositiveButton(R.string.settings_serienstream_session_login, null)
+            .create()
+        dialog.setOnShowListener {
+            if (glass != null) {
+                ExpDialogChrome.polishGlassMessageShown(dialog, glass)
+            } else {
+                ExpDialogChrome.polishShown(dialog)
+            }
+            dialog.getButton(AlertDialog.BUTTON_NEUTRAL).setOnClickListener {
+                dialog.dismiss()
+                openBrowserLogin(fragment)
+            }
+            dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
+                val emailValue = email.text.toString().trim()
+                val passwordValue = password.text.toString()
+                if (emailValue.length < 3 || passwordValue.length < 4) {
+                    ExpDialogChrome.notify(context, R.string.serienstream_auth_credentials_invalid)
+                    return@setOnClickListener
+                }
+                dialog.dismiss()
+                runCredentialLogin(fragment, scope, refreshUi, emailValue, passwordValue)
+            }
+        }
+        dialog.show()
+    }
+
+    private fun runCredentialLogin(
+        fragment: Fragment,
+        scope: LifecycleCoroutineScope,
+        refreshUi: () -> Unit,
+        email: String,
+        password: String,
+    ) {
+        val context = fragment.requireContext()
+        val glass = if (ExperimentalMobileDesign.enabled()) {
+            ExpDialogChrome.buildGlassMessage(
+                context,
+                context.getString(R.string.serienstream_auth_credentials_progress),
+            )
+        } else {
+            null
+        }
+        val builder = alertBuilder(context)
+            .setTitle(R.string.settings_serienstream_session_login)
+            .setCancelable(false)
+        if (glass != null) builder.setView(glass.root)
+        else builder.setMessage(R.string.serienstream_auth_credentials_progress)
+        val progress = builder.create()
+        progress.setOnShowListener {
+            if (glass != null) ExpDialogChrome.polishGlassMessageShown(progress, glass)
+            else ExpDialogChrome.polishButtons(progress)
+        }
+        progress.show()
+        scope.launch {
+            val result = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                SerienStreamAuthManager.loginWithCredentials(email, password)
+            }
+            if (!fragment.isAdded) return@launch
+            if (progress.isShowing) progress.dismiss()
+            refreshUi()
+            when {
+                result.ok -> {
+                    val message = if (!result.displayName.isNullOrBlank()) {
+                        fragment.getString(
+                            R.string.serienstream_auth_validate_ok_named,
+                            result.displayName,
+                        )
+                    } else {
+                        fragment.getString(R.string.settings_serienstream_session_login_saved)
+                    }
+                    ExpDialogChrome.notify(fragment.requireContext(), message)
+                }
+                result.challengeActive -> {
+                    ExpDialogChrome.notify(
+                        fragment.requireContext(),
+                        R.string.serienstream_auth_credentials_challenge,
+                    )
+                    openBrowserLogin(fragment)
+                }
+                else -> ExpDialogChrome.notify(
+                    fragment.requireContext(),
+                    R.string.serienstream_auth_credentials_failed,
+                )
+            }
+        }
     }
 
     private fun buildStatusSummary(
         fragment: Fragment,
         snap: SerienStreamAuthManager.SessionSnapshot,
+    ): String = buildStatusSummary(fragment.requireContext(), snap)
+
+    private fun buildStatusSummary(
+        context: Context,
+        snap: SerienStreamAuthManager.SessionSnapshot,
     ): String {
         if (!snap.isLoggedIn) {
-            return fragment.getString(R.string.serienstream_auth_status_signed_out)
+            return context.getString(R.string.serienstream_auth_status_signed_out)
         }
         val namePart = snap.displayName?.takeIf { it.isNotBlank() }
-            ?: fragment.getString(R.string.serienstream_auth_status_signed_in)
-        val cookiePart = fragment.getString(
+            ?: context.getString(R.string.serienstream_auth_status_signed_in)
+        val cookiePart = context.getString(
             R.string.serienstream_auth_status_cookies,
             snap.cookieCount,
             snap.domain,
         )
         val validatedPart = when {
             snap.lastValidatedAtMs == null ->
-                fragment.getString(R.string.serienstream_auth_status_not_validated)
+                context.getString(R.string.serienstream_auth_status_not_validated)
             snap.lastValidatedOk == true -> {
                 val whenText = DateFormat.getDateTimeInstance(
                     DateFormat.SHORT,
                     DateFormat.SHORT,
                 ).format(Date(snap.lastValidatedAtMs))
-                fragment.getString(R.string.serienstream_auth_status_validated_ok, whenText)
+                context.getString(R.string.serienstream_auth_status_validated_ok, whenText)
             }
             else -> {
                 val whenText = DateFormat.getDateTimeInstance(
                     DateFormat.SHORT,
                     DateFormat.SHORT,
                 ).format(Date(snap.lastValidatedAtMs))
-                fragment.getString(R.string.serienstream_auth_status_validated_fail, whenText)
+                context.getString(R.string.serienstream_auth_status_validated_fail, whenText)
             }
         }
         return "$namePart\n$cookiePart\n$validatedPart"

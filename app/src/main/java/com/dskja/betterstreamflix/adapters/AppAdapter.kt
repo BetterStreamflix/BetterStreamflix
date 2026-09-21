@@ -836,7 +836,15 @@ class AppAdapter(
     fun pauseCategorySwipers(recyclerView: RecyclerView) {
         for (i in 0 until recyclerView.childCount) {
             val holder = recyclerView.getChildViewHolder(recyclerView.getChildAt(i))
-            if (holder is CategoryViewHolder) holder.clearSwiper()
+            if (holder is CategoryViewHolder) holder.pauseSwiper()
+        }
+    }
+
+    /** Resume featured auto-advance after returning to Home. */
+    fun resumeCategorySwipers(recyclerView: RecyclerView) {
+        for (i in 0 until recyclerView.childCount) {
+            val holder = recyclerView.getChildViewHolder(recyclerView.getChildAt(i))
+            if (holder is CategoryViewHolder) holder.resumeSwiper()
         }
     }
 
