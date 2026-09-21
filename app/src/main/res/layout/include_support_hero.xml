@@ -24,7 +24,7 @@
         android:layout_marginTop="18dp"
         android:letterSpacing="-0.02"
         android:text="@string/support_hero_title"
-        android:textAppearance="@style/TextAppearance.Lumina.Brand"
+        android:textAppearance="@style/TextAppearance.Nocturne.Brand"
         android:textColor="@color/support_text_primary"
         android:textSize="@dimen/support_text_hero"
         android:textStyle="bold" />
@@ -43,7 +43,7 @@
         android:layout_marginTop="10dp"
         android:lineSpacingExtra="3dp"
         android:text="@string/support_hero_body"
-        android:textAppearance="@style/TextAppearance.Lumina.Body"
+        android:textAppearance="@style/TextAppearance.Nocturne.Body"
         android:textColor="@color/support_text_secondary"
         android:textSize="@dimen/support_text_body" />
 
@@ -66,7 +66,7 @@
             android:paddingStart="16dp"
             android:paddingEnd="16dp"
             android:text="@string/support_hero_cta_primary"
-            android:textAppearance="@style/TextAppearance.Lumina.Caption"
+            android:textAppearance="@style/TextAppearance.Nocturne.Caption"
             android:textColor="@color/support_on_accent"
             android:textSize="@dimen/support_text_cta"
             android:textStyle="bold" />
@@ -84,7 +84,7 @@
             android:paddingStart="14dp"
             android:paddingEnd="14dp"
             android:text="@string/support_hero_cta_secondary"
-            android:textAppearance="@style/TextAppearance.Lumina.Caption"
+            android:textAppearance="@style/TextAppearance.Nocturne.Caption"
             android:textColor="@color/support_text_primary"
             android:textSize="@dimen/support_text_cta" />
     </LinearLayout>

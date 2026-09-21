@@ -30,8 +30,6 @@ import com.dskja.betterstreamflix.providers.SerienStreamProvider
 import com.dskja.betterstreamflix.utils.AppLanguageManager
 import com.dskja.betterstreamflix.utils.ExpDialogChrome
 import com.dskja.betterstreamflix.utils.ExperimentalMobileDesign
-import com.dskja.betterstreamflix.utils.ThemeManager
-import com.google.android.material.color.DynamicColors
 import com.dskja.betterstreamflix.utils.UserPreferences
 
 class BypassWebViewActivity : AppCompatActivity() {
@@ -73,16 +71,8 @@ class BypassWebViewActivity : AppCompatActivity() {
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
-        setTheme(
-            if (ExperimentalMobileDesign.enabled()) {
-                ExperimentalMobileDesign.themeRes()
-            } else {
-                ThemeManager.mobileThemeRes(UserPreferences.selectedTheme)
-            }
-        )
-        if (ExperimentalMobileDesign.enabled()) {
-            DynamicColors.applyToActivityIfAvailable(this)
-        }
+        setTheme(ExperimentalMobileDesign.themeRes())
+        ExperimentalMobileDesign.applyDynamicColors(this)
         super.onCreate(savedInstanceState)
         setContentView(
             ExperimentalMobileDesign.layout(

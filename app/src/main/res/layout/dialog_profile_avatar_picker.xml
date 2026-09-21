@@ -14,7 +14,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:text="@string/profile_avatar_title"
-        android:textAppearance="@style/TextAppearance.Lumina.Title"
+        android:textAppearance="@style/TextAppearance.Nocturne.Title"
         android:textColor="@color/profile_text_primary"
         android:textSize="20sp"
         android:textStyle="bold" />
@@ -24,7 +24,7 @@
         android:layout_height="wrap_content"
         android:layout_marginTop="6dp"
         android:text="@string/profile_avatar_choose"
-        android:textAppearance="@style/TextAppearance.Lumina.Body"
+        android:textAppearance="@style/TextAppearance.Nocturne.Body"
         android:textColor="@color/profile_text_secondary"
         android:textSize="13sp" />
 
@@ -41,7 +41,7 @@
         android:layout_height="wrap_content"
         android:layout_marginTop="10dp"
         android:gravity="center"
-        android:textAppearance="@style/TextAppearance.Lumina.Caption"
+        android:textAppearance="@style/TextAppearance.Nocturne.Caption"
         android:textColor="@color/profile_accent"
         android:textSize="13sp"
         android:textStyle="bold"
@@ -78,7 +78,7 @@
             android:paddingStart="16dp"
             android:paddingEnd="16dp"
             android:text="@android:string/cancel"
-            android:textAppearance="@style/TextAppearance.Lumina.Caption"
+            android:textAppearance="@style/TextAppearance.Nocturne.Caption"
             android:textColor="@color/profile_text_secondary"
             android:textSize="14sp"
             android:textStyle="bold" />
@@ -94,7 +94,7 @@
             android:paddingStart="18dp"
             android:paddingEnd="18dp"
             android:text="@android:string/ok"
-            android:textAppearance="@style/TextAppearance.Lumina.Caption"
+            android:textAppearance="@style/TextAppearance.Nocturne.Caption"
             android:textColor="@color/profile_on_accent"
             android:textSize="14sp"
             android:textStyle="bold" />

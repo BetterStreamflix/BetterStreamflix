@@ -35,8 +35,8 @@
     <string name="main_menu_all_channels">Tutti i canali</string>
     <string name="main_menu_settings">Impostazioni</string>
     <string name="main_menu_theme_change">Cambia Tema</string>
-    <string name="theme_default">Predefinito</string>
-    <string name="theme_nero_amoled_oled">Nero Amoled/Oled</string>
+    <string name="theme_default">Nocturne Copper</string>
+    <string name="theme_nero_amoled_oled">Nocturne AMOLED</string>
 
     <string name="search_input_hint">Cerca film, serie TV</string>
     <string name="search_input_hint_iptv">Cerca canali</string>
@@ -539,10 +539,10 @@
     <string name="backup_delete_success">Backup eliminato.</string>
     <string name="backup_delete_error">Impossibile eliminare il backup.</string>
     <string name="theme_sunset_cinema">Sunset Cinema</string>
-    <string name="theme_steel_blue">Steel Blue</string>
-    <string name="theme_forest_night">Forest Night</string>
+    <string name="theme_steel_blue">Nocturne Ink</string>
+    <string name="theme_forest_night">Nocturne Moss</string>
     <string name="theme_crimson_noir">Crimson Noir</string>
-    <string name="theme_midnight_violet">Midnight Violet</string>
+    <string name="theme_midnight_violet">Nocturne Violet</string>
     <string name="theme_nord_frost">Nord Frost</string>
     <string name="theme_emerald_luxe">Emerald Luxe</string>
     <string name="theme_retro_neon">Retro Neon</string>

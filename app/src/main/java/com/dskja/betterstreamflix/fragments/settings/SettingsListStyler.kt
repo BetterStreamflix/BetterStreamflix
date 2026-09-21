@@ -40,14 +40,10 @@ object SettingsListStyler {
         val recyclerView = findRecyclerView(root) ?: return
         if (recyclerView.getTag(R.id.settings_list_styler_tag) == true) return
 
-        val experimental = UserPreferences.experimentalNewAppDesign
-        val backgroundColor = if (experimental) {
-            com.google.android.material.color.MaterialColors.getColor(
-                root, com.google.android.material.R.attr.colorSurface, 0xFF0B0B0F.toInt(),
-            )
-        } else {
-            resolveThemeColor(root, R.attr.app_background_color, 0xFF181818.toInt())
-        }
+        val experimental = true
+        val backgroundColor = com.google.android.material.color.MaterialColors.getColor(
+            root, com.google.android.material.R.attr.colorSurface, 0xFF0C0A08.toInt(),
+        )
         root.setBackgroundColor(backgroundColor)
         recyclerView.setTag(R.id.settings_list_styler_tag, true)
         recyclerView.clipToPadding = false
@@ -94,11 +90,7 @@ object SettingsListStyler {
     }
 
     private fun styleRow(view: View, isTv: Boolean) {
-        if (UserPreferences.experimentalNewAppDesign) {
-            styleExperimentalRow(view, isTv)
-        } else {
-            styleClassicRow(view, isTv)
-        }
+        styleExperimentalRow(view, isTv)
     }
 
     private fun styleExperimentalRow(view: View, isTv: Boolean) {

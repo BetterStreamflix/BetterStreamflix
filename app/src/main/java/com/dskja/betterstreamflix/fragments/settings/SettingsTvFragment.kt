@@ -1187,7 +1187,7 @@ class SettingsTvFragment : LeanbackPreferenceFragmentCompat() {
 
             setOnPreferenceChangeListener { _, newValue ->
                 val newTheme = newValue as String
-                UserPreferences.selectedTheme = newTheme
+                ThemeManager.applyLook(newTheme)
 
                 // Apply the theme and restart the activity
                 restartMainTvWithoutAnimation()
@@ -2476,43 +2476,17 @@ class SettingsTvFragment : LeanbackPreferenceFragmentCompat() {
     }
 
     private fun bindExperimentalDesignGate() {
-        if (!ExperimentalMobileDesign.isAvailable() && UserPreferences.experimentalNewAppDesign) {
-            UserPreferences.experimentalNewAppDesign = false
-        }
-        findPreference<Preference>("screen_lumina_options")?.isVisible = ExperimentalMobileDesign.isAvailable()
+        findPreference<Preference>("screen_lumina_options")?.isVisible = true
+        findPreference<Preference>("EXPERIMENTAL_NEW_APP_DESIGN")?.isVisible = false
     }
 
     private fun bindExperimentalDesignPreference() {
-        findPreference<androidx.preference.SwitchPreference>("EXPERIMENTAL_NEW_APP_DESIGN")?.apply {
-            val available = ExperimentalMobileDesign.isAvailable()
-            isEnabled = available
-            isChecked = available && UserPreferences.experimentalNewAppDesign
-            summary = ExperimentalMobileDesign.summary(requireContext())
-            setOnPreferenceChangeListener { _, newValue ->
-                if (!available) return@setOnPreferenceChangeListener false
-                UserPreferences.experimentalNewAppDesign = newValue as Boolean
-                requireActivity().apply {
-                    finish()
-                    startActivity(Intent(this, MainTvActivity::class.java))
-                }
-                true
-            }
-        }
+        findPreference<androidx.preference.SwitchPreference>("EXPERIMENTAL_NEW_APP_DESIGN")?.isVisible = false
     }
 
     private fun bindLuminaOptions() {
-        val luminaOn = ExperimentalMobileDesign.enabled()
-        findPreference<Preference>("screen_lumina_options")?.isVisible =
-            ExperimentalMobileDesign.isAvailable() && luminaOn
-        (findPreference("EXPERIMENTAL_LUMINA_ACCENT") as? androidx.preference.ListPreference)?.apply {
-            value = UserPreferences.experimentalLuminaAccent
-            summaryProvider = androidx.preference.ListPreference.SimpleSummaryProvider.getInstance()
-            isEnabled = luminaOn
-            setOnPreferenceChangeListener { _, newValue ->
-                UserPreferences.experimentalLuminaAccent = newValue.toString()
-                true
-            }
-        }
+        findPreference<Preference>("screen_lumina_options")?.isVisible = true
+        (findPreference("EXPERIMENTAL_LUMINA_ACCENT") as? androidx.preference.ListPreference)?.isVisible = false
         listOf(
             "EXPERIMENTAL_LUMINA_PURE_BLACK" to { v: Boolean -> UserPreferences.experimentalLuminaPureBlack = v },
             "EXPERIMENTAL_LUMINA_DYNAMIC_COLORS" to { v: Boolean -> UserPreferences.experimentalLuminaDynamicColors = v },
@@ -2528,7 +2502,7 @@ class SettingsTvFragment : LeanbackPreferenceFragmentCompat() {
                     "EXPERIMENTAL_LUMINA_HERO_PARALLAX" -> UserPreferences.experimentalLuminaHeroParallax
                     else -> UserPreferences.experimentalLuminaReducedGlass
                 }
-                isEnabled = luminaOn
+                isEnabled = true
                 setOnPreferenceChangeListener { _, newValue ->
                     setter(newValue as Boolean)
                     true

@@ -23,6 +23,7 @@ import androidx.lifecycle.LifecycleCoroutineScope
 import androidx.preference.Preference
 import androidx.preference.SwitchPreferenceCompat
 import com.dskja.betterstreamflix.R
+import com.dskja.betterstreamflix.profiles.ProfileAtmosphere
 import com.dskja.betterstreamflix.profiles.ProfileAvatarStyle
 import com.dskja.betterstreamflix.profiles.ProfileAvatarView
 import com.dskja.betterstreamflix.profiles.ProfileManager
@@ -89,6 +90,19 @@ object ProfilesSettingsController {
             true
         }
 
+        findPreference("PROFILE_DUPLICATE")?.setOnPreferenceClickListener {
+            val created = ProfileManager.duplicate(ProfileManager.activeProfileId)
+            if (created != null) {
+                notifyUser(
+                    context,
+                    fragment.getString(R.string.profile_duplicated_toast, created.displayName),
+                    R.string.profile_duplicate_title,
+                )
+                refresh(findPreference, context, fragment)
+            }
+            true
+        }
+
         findPreference("PROFILE_RENAME")?.setOnPreferenceClickListener {
             showRenameDialog(fragment, findPreference)
             true
@@ -102,6 +116,16 @@ object ProfilesSettingsController {
         findPreference("PROFILE_AVATAR")?.setOnPreferenceClickListener {
             showAvatarPicker(fragment, findPreference)
             true
+        }
+
+        (findPreference("PROFILE_ATMOSPHERE") as? androidx.preference.ListPreference)?.apply {
+            value = ProfileManager.activeProfile()?.safeAtmosphere() ?: ProfileAtmosphere.DEFAULT
+            summaryProvider = androidx.preference.ListPreference.SimpleSummaryProvider.getInstance()
+            setOnPreferenceChangeListener { _, newValue ->
+                ProfileManager.updateAtmosphere(ProfileManager.activeProfileId, newValue.toString())
+                refresh(findPreference, context, fragment)
+                true
+            }
         }
 
         findPreference("PROFILE_KIDS")?.let { pref ->
@@ -164,6 +188,10 @@ object ProfilesSettingsController {
                 DrawableCompat.setTint(preview, ProfileAvatarStyle.colorFor(key))
                 icon = preview
             }
+        }
+
+        (findPreference("PROFILE_ATMOSPHERE") as? androidx.preference.ListPreference)?.apply {
+            value = profile?.safeAtmosphere() ?: ProfileAtmosphere.DEFAULT
         }
 
         (findPreference("PROFILE_KIDS") as? SwitchPreferenceCompat)?.isChecked = profile?.isKids == true

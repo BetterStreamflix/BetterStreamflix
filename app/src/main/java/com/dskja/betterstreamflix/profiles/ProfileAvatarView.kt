@@ -90,7 +90,7 @@ class ProfileAvatarView @JvmOverloads constructor(
     }
 
     private class MotifOrbView(context: Context) : android.view.View(context) {
-        var palette: ProfileAvatarStyle.Palette = ProfileAvatarStyle.paletteFor("crimson")
+        var palette: ProfileAvatarStyle.Palette = ProfileAvatarStyle.paletteFor("copper")
 
         private val fillPaint = Paint(Paint.ANTI_ALIAS_FLAG)
         private val glossPaint = Paint(Paint.ANTI_ALIAS_FLAG)
@@ -158,6 +158,13 @@ class ProfileAvatarView @JvmOverloads constructor(
                     canvas.drawLine(
                         cx - r * 0.32f, cy - r * 0.32f,
                         cx + r * 0.32f, cy + r * 0.32f, motifPaint,
+                    )
+                }
+                ProfileAvatarStyle.Motif.CRESCENT -> {
+                    canvas.drawArc(
+                        cx - r * 0.55f, cy - r * 0.55f,
+                        cx + r * 0.35f, cy + r * 0.55f,
+                        300f, 220f, false, motifPaint,
                     )
                 }
             }

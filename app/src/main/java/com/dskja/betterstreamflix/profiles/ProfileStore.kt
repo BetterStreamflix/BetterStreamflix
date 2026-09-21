@@ -8,7 +8,7 @@ import com.google.gson.Gson
 object ProfileStore {
 
     const val DEFAULT_PROFILE_ID = "default"
-    private const val DEFAULT_AVATAR_KEY = "crimson"
+    private const val DEFAULT_AVATAR_KEY = "copper"
 
     private const val PREFS = "beta_profiles"
     private const val KEY_PROFILES = "profiles_json"
@@ -23,8 +23,27 @@ object ProfileStore {
         val raw = prefs(context).getString(KEY_PROFILES, null) ?: return emptyList()
         // Array deserialization stays R8/ProGuard-safe (no open TypeToken generics).
         return runCatching {
-            gson.fromJson(raw, Array<UserProfile>::class.java)?.toList().orEmpty()
+            gson.fromJson(raw, Array<UserProfile>::class.java)
+                ?.map { sanitize(it) }
+                .orEmpty()
         }.getOrDefault(emptyList())
+    }
+
+    internal fun sanitize(profile: UserProfile): UserProfile {
+        val integrations = profile.safeIntegrations()
+        val name = profile.displayName.trim().ifEmpty { "Profile" }
+        return profile.copy(
+            displayName = name,
+            avatarKey = profile.avatarKey.ifBlank { DEFAULT_AVATAR_KEY },
+            enabledIntegrations = integrations,
+            atmosphereKey = ProfileAtmosphere.normalize(profile.atmosphereKey),
+            greetingName = profile.greetingName?.trim()?.takeIf { it.isNotEmpty() },
+            notes = profile.notes?.trim()?.takeIf { it.isNotEmpty() },
+            lastUsedAtMillis = profile.lastUsedAtMillis.coerceAtLeast(0L),
+            pinFailedAttempts = profile.pinFailedAttempts.coerceAtLeast(0),
+            pinLockedUntilMillis = profile.pinLockedUntilMillis.coerceAtLeast(0L),
+            autoLockMinutes = profile.autoLockMinutes?.coerceIn(0, 240),
+        )
     }
 
     fun saveAll(context: Context, profiles: List<UserProfile>) {

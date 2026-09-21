@@ -30,7 +30,7 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent"
         app:layout_constraintWidth_percent="0.46"
-        app:shapeAppearanceOverlay="@style/ShapeAppearance.Lumina.Card"
+        app:shapeAppearanceOverlay="@style/ShapeAppearance.Nocturne.Card"
         app:strokeColor="?attr/colorOutlineVariant"
         app:strokeWidth="1dp" />
 
@@ -72,7 +72,7 @@
         android:layout_marginTop="28dp"
         android:layout_marginEnd="20dp"
         android:gravity="center"
-        android:textAppearance="@style/TextAppearance.Lumina.Brand"
+        android:textAppearance="@style/TextAppearance.Nocturne.Brand"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@id/iv_movie_poster"
@@ -106,7 +106,7 @@
 
     <TextView
         android:id="@+id/tv_movie_rating"
-        android:textAppearance="@style/TextAppearance.Lumina.Eyebrow"
+        android:textAppearance="@style/TextAppearance.Nocturne.Eyebrow"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginTop="12dp"
@@ -126,7 +126,7 @@
 
     <TextView
         android:id="@+id/tv_movie_quality"
-        android:textAppearance="@style/TextAppearance.Lumina.Eyebrow"
+        android:textAppearance="@style/TextAppearance.Nocturne.Eyebrow"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginStart="16dp"
@@ -149,7 +149,7 @@
 
     <TextView
         android:id="@+id/tv_movie_certification"
-        android:textAppearance="@style/TextAppearance.Lumina.Eyebrow"
+        android:textAppearance="@style/TextAppearance.Nocturne.Eyebrow"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginStart="12dp"
@@ -173,7 +173,7 @@
 
     <TextView
         android:id="@+id/tv_movie_released"
-        android:textAppearance="@style/TextAppearance.Lumina.Caption"
+        android:textAppearance="@style/TextAppearance.Nocturne.Caption"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginStart="16dp"
@@ -188,7 +188,7 @@
 
     <TextView
         android:id="@+id/tv_movie_runtime"
-        android:textAppearance="@style/TextAppearance.Lumina.Caption"
+        android:textAppearance="@style/TextAppearance.Nocturne.Caption"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginStart="16dp"
@@ -210,7 +210,7 @@
 
     <TextView
         android:id="@+id/tv_movie_genres"
-        android:textAppearance="@style/TextAppearance.Lumina.Caption"
+        android:textAppearance="@style/TextAppearance.Nocturne.Caption"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_marginStart="20dp"
@@ -293,7 +293,7 @@
 
     <TextView
         android:id="@+id/tv_movie_overview"
-        android:textAppearance="@style/TextAppearance.Lumina.Body"
+        android:textAppearance="@style/TextAppearance.Nocturne.Body"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_marginStart="22dp"
@@ -318,7 +318,7 @@
         android:paddingTop="4dp"
         android:paddingBottom="4dp"
         android:text="@string/detail_overview_more"
-        android:textAppearance="@style/TextAppearance.Lumina.Caption"
+        android:textAppearance="@style/TextAppearance.Nocturne.Caption"
         android:textColor="?attr/colorPrimary"
         android:textStyle="bold"
         android:visibility="gone"
