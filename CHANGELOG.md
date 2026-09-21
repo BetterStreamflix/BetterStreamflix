@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- CI: signed release APKs only on `main` / tags / manual dispatch (not every `dskja/**` push); parallel matrix + Gradle cache; debug APK workflow skips markdown-only changes
+- Docs: README Development section explains fast local debug loop vs CI APKs; add `scripts/build-debug.sh`
+
 ### Added
 - Profile Atelier redesign: Syne brand, tungsten accents, gradient orbs with motifs, premium picker/create/PIN, home chip orbs, Settings hero
 - Full-screen cinematic Profile Picker (avatar grid, kids badge, PIN gate, create/manage) from Home chip + Settings
