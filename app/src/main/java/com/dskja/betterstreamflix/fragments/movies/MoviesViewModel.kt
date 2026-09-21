@@ -82,8 +82,10 @@ class MoviesViewModel(database: AppDatabase) : ViewModel() {
         _state.emit(State.Loading)
 
         try {
+            val provider = UserPreferences.currentProvider
+                ?: throw Exception("No provider selected")
             val movies = ParentalControlUtils.filterItems(
-                UserPreferences.currentProvider!!.getMovies()
+                provider.getMovies()
             ).filterIsInstance<Movie>().let { CatalogSort.movies(it) }
 
             page = 1
@@ -101,8 +103,10 @@ class MoviesViewModel(database: AppDatabase) : ViewModel() {
             _state.emit(State.LoadingMore)
 
             try {
+                val provider = UserPreferences.currentProvider
+                    ?: throw Exception("No provider selected")
                 val movies = ParentalControlUtils.filterItems(
-                    UserPreferences.currentProvider!!.getMovies(page + 1)
+                    provider.getMovies(page + 1)
                 ).filterIsInstance<Movie>().let { CatalogSort.movies(it) }
 
                 page += 1

@@ -32,6 +32,7 @@ object CastQueueCoordinator {
         subtitleConfigurations: List<MediaItem.SubtitleConfiguration> = emptyList(),
         headers: Map<String, String> = emptyMap(),
     ): NextCastItem? = withContext(Dispatchers.IO) {
+        lastFailureMessage = null
         if (currentVideoType !is Video.Type.Episode) return@withContext null
         if (!UserPreferences.autoplay && !UserPreferences.castQueueNextEpisode) return@withContext null
         val next = EpisodeManager.peekNextEpisode() ?: return@withContext null
@@ -78,9 +79,17 @@ object CastQueueCoordinator {
             )
             NextCastItem(mediaItem = item, episode = nextType, video = video, server = server)
         }.onFailure {
+            lastFailureMessage = it.message ?: "unknown"
             Log.w(TAG, "Cast next enqueue failed: ${it.message}")
-        }.getOrNull()
+        }.getOrNull()?.also {
+            lastFailureMessage = null
+        }
     }
+
+    /** Last prepare failure message, cleared on success. */
+    @Volatile
+    var lastFailureMessage: String? = null
+        private set
 
     fun enqueueExclusive(item: MediaItem) {
         CastPlaybackHub.clearQueue()

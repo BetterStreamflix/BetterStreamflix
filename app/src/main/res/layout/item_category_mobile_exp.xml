@@ -12,17 +12,19 @@
 
     <TextView
         android:id="@+id/tv_category_title"
-        android:fontFamily="@font/manrope"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_marginStart="22dp"
         android:layout_marginEnd="22dp"
-        android:textColor="?attr/colorOnSurface"
+        android:letterSpacing="0.08"
+        android:textAllCaps="true"
+        android:textAppearance="@style/TextAppearance.Lumina.Eyebrow"
+        android:textColor="?attr/colorPrimary"
+        android:textSize="12sp"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent"
-        tools:text="Title"
-        android:textAppearance="?attr/textAppearanceTitleLarge"/>
+        tools:text="Title" />
 
     <View
         android:id="@+id/v_category_rule"
@@ -41,12 +43,32 @@
         android:clipChildren="false"
         android:clipToPadding="false"
         android:orientation="horizontal"
-        android:paddingStart="14dp"
-        android:paddingEnd="14dp"
+        android:paddingStart="22dp"
+        android:paddingEnd="28dp"
         app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@id/v_category_rule"
         tools:listitem="@layout/item_movie_mobile_exp" />
+
+    <View
+        android:id="@+id/v_category_edge_fade_start"
+        android:layout_width="28dp"
+        android:layout_height="0dp"
+        android:background="@drawable/bg_exp_edge_fade_start"
+        android:importantForAccessibility="no"
+        app:layout_constraintBottom_toBottomOf="@id/rv_category"
+        app:layout_constraintStart_toStartOf="@id/rv_category"
+        app:layout_constraintTop_toTopOf="@id/rv_category" />
+
+    <View
+        android:id="@+id/v_category_edge_fade_end"
+        android:layout_width="36dp"
+        android:layout_height="0dp"
+        android:background="@drawable/bg_exp_edge_fade_end"
+        android:importantForAccessibility="no"
+        app:layout_constraintBottom_toBottomOf="@id/rv_category"
+        app:layout_constraintEnd_toEndOf="@id/rv_category"
+        app:layout_constraintTop_toTopOf="@id/rv_category" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>

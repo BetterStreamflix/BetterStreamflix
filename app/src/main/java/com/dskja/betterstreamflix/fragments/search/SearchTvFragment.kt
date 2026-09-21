@@ -26,6 +26,10 @@ import com.dskja.betterstreamflix.models.Genre
 import com.dskja.betterstreamflix.models.Movie
 import com.dskja.betterstreamflix.models.TvShow
 import com.dskja.betterstreamflix.utils.CacheUtils
+import com.dskja.betterstreamflix.utils.ExpDialogChrome
+import com.dskja.betterstreamflix.utils.ExpEmptyChrome
+import com.dskja.betterstreamflix.utils.ExpMotion
+import com.dskja.betterstreamflix.utils.ExperimentalMobileDesign
 import com.dskja.betterstreamflix.utils.Http409CacheGuard
 import com.dskja.betterstreamflix.utils.LoggingUtils
 import com.dskja.betterstreamflix.utils.UserPreferences
@@ -78,11 +82,19 @@ class SearchTvFragment : Fragment() {
 
         val targetProvider = Provider.providers.keys.find { it.name == targetName } ?: return
         UserPreferences.currentProvider = targetProvider
-        Toast.makeText(
-            requireContext(),
-            getString(R.string.switching_to_provider, targetName),
-            Toast.LENGTH_SHORT,
-        ).show()
+        if (ExperimentalMobileDesign.enabled()) {
+            ExpDialogChrome.notify(
+                requireContext(),
+                getString(R.string.switching_to_provider, targetName),
+                R.string.search_input_hint,
+            )
+        } else {
+            Toast.makeText(
+                requireContext(),
+                getString(R.string.switching_to_provider, targetName),
+                Toast.LENGTH_SHORT,
+            ).show()
+        }
     }
 
     override fun onCreateView(
@@ -104,9 +116,12 @@ class SearchTvFragment : Fragment() {
                     is State.Searching, is State.GlobalSearching -> {
                         binding.isLoading.apply {
                             root.visibility = View.VISIBLE
-                            pbIsLoading.visibility = View.VISIBLE
+                            com.dskja.betterstreamflix.utils.ExpPressEffects.showLoadingSkeleton(root, true)
                             gIsLoadingRetry.visibility = View.GONE
                         }
+                        binding.root.findViewById<View>(R.id.tv_search_empty)?.visibility = View.GONE
+                        binding.root.findViewById<View>(R.id.v_search_empty_rule)?.visibility = View.GONE
+                        binding.root.findViewById<View>(R.id.btn_search_empty_cta)?.visibility = View.GONE
                         appAdapter.isLoading = false
                         appAdapter.setOnLoadMoreListener(null)
                     }
@@ -116,12 +131,18 @@ class SearchTvFragment : Fragment() {
                         appAdapter.isLoading = false
                         binding.vgvSearch.visibility = View.VISIBLE
                         binding.isLoading.root.visibility = View.GONE
+                        com.dskja.betterstreamflix.utils.ExpPressEffects.showLoadingSkeleton(
+                            binding.isLoading.root, false,
+                        )
                     }
                     is State.SuccessGlobalSearching -> {
                         displayGlobalSearch(state.providerResults)
                         appAdapter.isLoading = false
                         binding.vgvSearch.visibility = View.VISIBLE
                         binding.isLoading.root.visibility = View.GONE
+                        com.dskja.betterstreamflix.utils.ExpPressEffects.showLoadingSkeleton(
+                            binding.isLoading.root, false,
+                        )
                     }
                     is State.FailedSearching -> {
                         if (http409Guard.handle(requireContext(), state.error) {
@@ -130,17 +151,20 @@ class SearchTvFragment : Fragment() {
                             }) {
                             return@collect
                         }
-                        Toast.makeText(requireContext(), state.error.message ?: "", Toast.LENGTH_SHORT).show()
+                        if (!ExperimentalMobileDesign.enabled()) {
+                            Toast.makeText(requireContext(), state.error.message ?: "", Toast.LENGTH_SHORT).show()
+                        }
                         if (appAdapter.isLoading) {
                             appAdapter.isLoading = false
                         } else {
                             binding.isLoading.apply {
-                                pbIsLoading.visibility = View.GONE
+                                com.dskja.betterstreamflix.utils.ExpPressEffects.showLoadingSkeleton(root, false)
                                 gIsLoadingRetry.visibility = View.VISIBLE
+                                com.dskja.betterstreamflix.utils.ExpPressEffects.animateLoadingError(root)
                                 btnIsLoadingRetry.setOnClickListener { viewModel.search(viewModel.query) }
                                 btnIsLoadingClearCache.setOnClickListener {
                                     CacheUtils.clearAppCache(requireContext())
-                                    Toast.makeText(requireContext(), getString(R.string.clear_cache_done), Toast.LENGTH_SHORT).show()
+                                    ExpDialogChrome.notify(requireContext(), R.string.clear_cache_done, R.string.loading_error_clear_cache)
                                     viewModel.search(viewModel.query)
                                 }
                                 btnIsLoadingErrorDetails.setOnClickListener {
@@ -158,8 +182,10 @@ class SearchTvFragment : Fragment() {
     }
 
     override fun onDestroyView() {
+        if (::voiceHelper.isInitialized) {
+            runCatching { voiceHelper.stopRecognition() }
+        }
         super.onDestroyView()
-        voiceHelper.stopRecognition()
         _binding = null
     }
 
@@ -169,14 +195,29 @@ class SearchTvFragment : Fragment() {
 
         if (isGlobalSearchChecked) {
             if (query.isBlank()) {
-                Toast.makeText(requireContext(), getString(R.string.search_empty_query), Toast.LENGTH_SHORT).show()
+                if (ExperimentalMobileDesign.enabled()) {
+                    ExpDialogChrome.showInfo(
+                        requireContext(),
+                        R.string.search_input_hint,
+                        getString(R.string.search_empty_query),
+                    ) { ctx ->
+                        com.google.android.material.dialog.MaterialAlertDialogBuilder(ctx)
+                    }
+                } else {
+                    Toast.makeText(requireContext(), getString(R.string.search_empty_query), Toast.LENGTH_SHORT).show()
+                }
                 return true
             }
+            SearchRecentStore.remember(requireContext(), query)
             val currentLanguage = UserPreferences.currentProvider?.language ?: "es"
             viewModel.searchGlobal(query, currentLanguage)
         } else {
+            if (query.isNotBlank()) {
+                SearchRecentStore.remember(requireContext(), query)
+            }
             viewModel.search(query)
         }
+        refreshRecentSearches()
         return true
     }
 
@@ -256,25 +297,85 @@ class SearchTvFragment : Fragment() {
             onResult = { query ->
                 binding.btnSearchVoice.clearAnimation()
                 binding.etSearch.setText(query)
+                if (query.isNotBlank()) {
+                    SearchRecentStore.remember(requireContext(), query)
+                }
                 viewModel.search(query)
+                refreshRecentSearches()
             },
             onError = { msg ->
-                Toast.makeText(requireContext(), msg, Toast.LENGTH_SHORT).show()
+                com.dskja.betterstreamflix.utils.ExpDialogChrome.notify(
+                    requireContext(),
+                    msg,
+                    R.string.voice_search,
+                )
                 binding.btnSearchVoice.clearAnimation()
-                        val isIptv = UserPreferences.currentProvider is IptvProvider
-        val hintStringRes = if (isIptv) R.string.search_input_hint_iptv else R.string.search_input_hint
-        binding.etSearch.hint = getString(hintStringRes)
+                val isIptv = UserPreferences.currentProvider is IptvProvider
+                val hintStringRes =
+                    if (isIptv) R.string.search_input_hint_iptv else R.string.search_input_hint
+                binding.etSearch.hint = getString(hintStringRes)
             },
             onListeningStateChanged = { isListening ->
-                binding.btnSearchVoice.startAnimation(blink)
-                binding.etSearch.hint = getString(R.string.voice_prompt)
+                if (isListening) {
+                    binding.btnSearchVoice.startAnimation(blink)
+                    binding.etSearch.hint = getString(R.string.voice_prompt)
+                } else {
+                    binding.btnSearchVoice.clearAnimation()
+                    val isIptv = UserPreferences.currentProvider is IptvProvider
+                    val hintStringRes =
+                        if (isIptv) R.string.search_input_hint_iptv else R.string.search_input_hint
+                    binding.etSearch.hint = getString(hintStringRes)
+                }
             }
         )
 
         binding.btnSearchVoice.apply {
             requestFocus()
             visibility = if (voiceHelper.isAvailable()) View.VISIBLE else View.GONE
-            setOnClickListener { if (!voiceHelper.isListening) voiceHelper.startWithPermissionCheck() }
+            setOnClickListener {
+                if (ExperimentalMobileDesign.enabled()) ExpMotion.hapticTap(it)
+                if (!voiceHelper.isListening) voiceHelper.startWithPermissionCheck()
+            }
+        }
+
+        if (ExperimentalMobileDesign.enabled()) {
+            binding.root.findViewById<View>(R.id.cl_search)
+                ?.setBackgroundResource(ExperimentalMobileDesign.searchFieldBackground())
+            binding.btnSearchClear.setBackgroundResource(ExperimentalMobileDesign.iconChipBackground())
+            binding.btnSearchVoice.setBackgroundResource(ExperimentalMobileDesign.iconChipBackground())
+            binding.llGlobalSearch.setBackgroundResource(ExperimentalMobileDesign.glassCardBackground())
+            val onSurface = com.google.android.material.color.MaterialColors.getColor(
+                binding.tvGlobalSearch,
+                com.google.android.material.R.attr.colorOnSurface,
+            )
+            val onVariant = com.google.android.material.color.MaterialColors.getColor(
+                binding.etSearch,
+                com.google.android.material.R.attr.colorOnSurfaceVariant,
+            )
+            binding.tvGlobalSearch.setTextColor(onSurface)
+            binding.tvGlobalSearch.setTextAppearance(
+                requireContext(),
+                R.style.TextAppearance_Lumina_Body,
+            )
+            binding.etSearch.setTextColor(onSurface)
+            binding.etSearch.setHintTextColor(onVariant)
+            binding.etSearch.compoundDrawableTintList =
+                android.content.res.ColorStateList.valueOf(onSurface)
+            binding.btnSearchClear.imageTintList =
+                android.content.res.ColorStateList.valueOf(onSurface)
+            binding.btnSearchVoice.imageTintList =
+                android.content.res.ColorStateList.valueOf(onSurface)
+            with(com.dskja.betterstreamflix.utils.ExpPressEffects) {
+                binding.btnSearchClear.applyExpPress()
+                binding.btnSearchVoice.applyExpPress()
+                binding.llGlobalSearch.applyExpPress()
+                binding.etSearch.applyExpPress()
+            }
+            ExpMotion.popIn(binding.btnSearchClear)
+            ExpMotion.popIn(binding.llGlobalSearch)
+            if (binding.btnSearchVoice.visibility == View.VISIBLE) {
+                ExpMotion.popIn(binding.btnSearchVoice)
+            }
         }
 
         listOf(binding.btnSearchClear, binding.btnSearchVoice, binding.llGlobalSearch).forEach { view ->
@@ -289,9 +390,10 @@ class SearchTvFragment : Fragment() {
 
         binding.btnSearchClear.setOnClickListener {
             binding.etSearch.setText("")
-                    val isIptv = UserPreferences.currentProvider is IptvProvider
-        val hintStringRes = if (isIptv) R.string.search_input_hint_iptv else R.string.search_input_hint
-        binding.etSearch.hint = getString(hintStringRes)
+            val isIptv = UserPreferences.currentProvider is IptvProvider
+            val hintStringRes =
+                if (isIptv) R.string.search_input_hint_iptv else R.string.search_input_hint
+            binding.etSearch.hint = getString(hintStringRes)
             viewModel.search("")
         }
 
@@ -314,7 +416,133 @@ class SearchTvFragment : Fragment() {
             })
         }
 
+        refreshRecentSearches()
         binding.root.requestFocus()
+    }
+
+    private fun refreshRecentSearches() {
+        val strip = binding.root.findViewById<View>(R.id.hsv_search_recent) ?: return
+        val row = binding.root.findViewById<android.widget.LinearLayout>(R.id.ll_search_recent) ?: return
+        val recent = SearchRecentStore.list(requireContext())
+        if (recent.isEmpty()) {
+            strip.visibility = View.GONE
+            row.removeAllViews()
+            binding.root.findViewById<View>(R.id.v_search_recent_edge_fade_start)?.visibility = View.GONE
+            binding.root.findViewById<View>(R.id.v_search_recent_edge_fade_end)?.visibility = View.GONE
+            binding.etSearch.nextFocusDownId = binding.llGlobalSearch.id
+            binding.llGlobalSearch.nextFocusUpId = binding.etSearch.id
+            return
+        }
+        strip.visibility = View.VISIBLE
+        val showFades = ExperimentalMobileDesign.enabled()
+        binding.root.findViewById<View>(R.id.v_search_recent_edge_fade_start)?.visibility =
+            if (showFades) View.VISIBLE else View.GONE
+        binding.root.findViewById<View>(R.id.v_search_recent_edge_fade_end)?.visibility =
+            if (showFades) View.VISIBLE else View.GONE
+        row.removeAllViews()
+        val padH = (16 * resources.displayMetrics.density).toInt()
+        val padV = (10 * resources.displayMetrics.density).toInt()
+        val gap = (10 * resources.displayMetrics.density).toInt()
+
+        val label = android.widget.TextView(requireContext()).apply {
+            text = getString(R.string.search_recent_title)
+            if (ExperimentalMobileDesign.enabled()) {
+                setTextAppearance(R.style.TextAppearance_Lumina_Caption)
+                setTextColor(
+                    com.google.android.material.color.MaterialColors.getColor(
+                        this, com.google.android.material.R.attr.colorOnSurfaceVariant,
+                    ),
+                )
+            } else {
+                setTextColor(0x99FFFFFF.toInt())
+                textSize = 14f
+            }
+            setPadding(0, padV, gap, padV)
+        }
+        row.addView(label)
+
+        var firstChip: View? = null
+        recent.forEach { query ->
+            val chip = android.widget.TextView(requireContext()).apply {
+                id = View.generateViewId()
+                text = query
+                textSize = 15f
+                if (ExperimentalMobileDesign.enabled()) {
+                    setTextAppearance(R.style.TextAppearance_Lumina_Caption)
+                    setBackgroundResource(ExperimentalMobileDesign.chipBackground())
+                    setTextColor(
+                        com.google.android.material.color.MaterialColors.getColor(
+                            this, com.google.android.material.R.attr.colorOnSurfaceVariant,
+                        ),
+                    )
+                } else {
+                    setTextColor(0xFFFFFFFF.toInt())
+                    setBackgroundResource(R.drawable.bg_btn_exoplayer_tv)
+                }
+                setPadding(padH, padV, padH, padV)
+                isClickable = true
+                isFocusable = true
+                isFocusableInTouchMode = true
+                setOnClickListener {
+                    if (ExperimentalMobileDesign.enabled()) ExpMotion.hapticTap(it)
+                    binding.etSearch.setText(query)
+                    SearchRecentStore.remember(requireContext(), query)
+                    if (isGlobalSearchChecked) {
+                        val lang = UserPreferences.currentProvider?.language ?: "es"
+                        viewModel.searchGlobal(query, lang)
+                    } else {
+                        viewModel.search(query)
+                    }
+                    refreshRecentSearches()
+                }
+            }
+            if (ExperimentalMobileDesign.enabled()) {
+                with(com.dskja.betterstreamflix.utils.ExpPressEffects) { chip.applyExpPress() }
+            }
+            if (firstChip == null) firstChip = chip
+            val lp = android.widget.LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT,
+            ).apply { marginEnd = gap }
+            row.addView(chip, lp)
+        }
+
+        val clear = android.widget.TextView(requireContext()).apply {
+            text = getString(R.string.search_recent_clear)
+            textSize = 14f
+            if (ExperimentalMobileDesign.enabled()) {
+                setTextAppearance(R.style.TextAppearance_Lumina_Caption)
+                setBackgroundResource(ExperimentalMobileDesign.chipBackground())
+                setTextColor(
+                    com.google.android.material.color.MaterialColors.getColor(
+                        this, androidx.appcompat.R.attr.colorPrimary,
+                    ),
+                )
+            } else {
+                setTextColor(0xB3FFFFFF.toInt())
+            }
+            setPadding(padH, padV, padH, padV)
+            contentDescription = getString(R.string.search_recent_clear_cd)
+            isClickable = true
+            isFocusable = true
+            isFocusableInTouchMode = true
+            setOnClickListener {
+                if (ExperimentalMobileDesign.enabled()) ExpMotion.hapticTap(it)
+                SearchRecentStore.clear(requireContext())
+                refreshRecentSearches()
+            }
+        }
+        if (ExperimentalMobileDesign.enabled()) {
+            with(com.dskja.betterstreamflix.utils.ExpPressEffects) { clear.applyExpPress() }
+        }
+        row.addView(clear)
+
+        firstChip?.let { chip ->
+            binding.etSearch.nextFocusDownId = chip.id
+            chip.nextFocusUpId = binding.etSearch.id
+            chip.nextFocusDownId = binding.llGlobalSearch.id
+            binding.llGlobalSearch.nextFocusUpId = chip.id
+        }
     }
 
     private fun focusSearchContent(): Boolean {
@@ -341,6 +569,21 @@ class SearchTvFragment : Fragment() {
                 is TvShow -> it.itemType = AppAdapter.Type.TV_SHOW_GRID_TV_ITEM
             }
         })
+
+        binding.root.findViewById<View>(R.id.tv_search_empty)?.let { emptyView ->
+            val showEmpty = list.isEmpty() && viewModel.query.isNotBlank()
+            ExpEmptyChrome.bind(
+                emptyView = emptyView,
+                emptyRule = binding.root.findViewById(R.id.v_search_empty_rule),
+                emptyCta = binding.root.findViewById(R.id.btn_search_empty_cta),
+                visible = showEmpty,
+                onCtaClick = {
+                    binding.etSearch.setText("")
+                    viewModel.search("")
+                    binding.etSearch.requestFocus()
+                },
+            )
+        }
 
         if (hasMore && viewModel.query != "") {
             appAdapter.setOnLoadMoreListener { viewModel.loadMore() }
@@ -377,5 +620,8 @@ class SearchTvFragment : Fragment() {
         binding.vgvSearch.setNumColumns(currentGridColumns) // La lista de categorías es una sola columna vertical
         appAdapter.submitList(categories)
         appAdapter.setOnLoadMoreListener(null)
+        binding.root.findViewById<View>(R.id.tv_search_empty)?.visibility = View.GONE
+        binding.root.findViewById<View>(R.id.v_search_empty_rule)?.visibility = View.GONE
+        binding.root.findViewById<View>(R.id.btn_search_empty_cta)?.visibility = View.GONE
     }
 }

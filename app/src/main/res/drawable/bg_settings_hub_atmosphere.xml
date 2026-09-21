@@ -2,16 +2,16 @@
 <layer-list xmlns:android="http://schemas.android.com/apk/res/android">
     <item>
         <shape android:shape="rectangle">
-            <solid android:color="@color/support_bg" />
+            <solid android:color="?attr/colorSurface" />
         </shape>
     </item>
     <item>
         <shape android:shape="rectangle">
             <gradient
                 android:angle="135"
-                android:centerColor="#120A0A"
-                android:endColor="@color/support_bg"
-                android:startColor="#1A0C0C"
+                android:centerColor="?attr/colorSurfaceContainer"
+                android:endColor="?attr/colorSurface"
+                android:startColor="?attr/colorSurfaceContainerHigh"
                 android:type="linear" />
         </shape>
     </item>
@@ -22,7 +22,7 @@
             <gradient
                 android:angle="270"
                 android:endColor="#00000000"
-                android:startColor="@color/support_accent_soft"
+                android:startColor="?attr/colorPrimaryContainer"
                 android:type="linear" />
         </shape>
     </item>

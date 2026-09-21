@@ -5,7 +5,7 @@
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:layout_marginBottom="8dp"
-    android:background="@drawable/bg_support_card_focusable"
+    android:background="@drawable/bg_exp_provider_card"
     android:focusable="true"
     android:minHeight="72dp"
     android:orientation="horizontal"
@@ -18,7 +18,7 @@
         android:layout_width="40dp"
         android:layout_height="40dp"
         android:layout_gravity="center_vertical"
-        android:background="@drawable/bg_support_icon_chip">
+        android:background="@drawable/bg_exp_icon_chip">
 
         <ImageView
             android:id="@+id/iv_settings_hub_card_icon"
@@ -42,8 +42,8 @@
             android:id="@+id/tv_settings_hub_card_title"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:fontFamily="@font/manrope"
-            android:textColor="@color/support_text_primary"
+            android:textAppearance="@style/TextAppearance.Lumina.Title"
+            android:textColor="?attr/colorOnSurface"
             android:textSize="15sp"
             android:textStyle="bold"
             tools:text="Playback" />
@@ -54,9 +54,9 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="3dp"
             android:ellipsize="end"
-            android:fontFamily="@font/manrope"
+            android:textAppearance="@style/TextAppearance.Lumina.Caption"
             android:maxLines="2"
-            android:textColor="@color/support_text_secondary"
+            android:textColor="?attr/colorOnSurfaceVariant"
             android:textSize="12sp"
             tools:text="Autoplay, buffering and player behavior" />
     </LinearLayout>
@@ -67,8 +67,8 @@
         android:layout_gravity="center_vertical"
         android:layout_marginStart="6dp"
         android:importantForAccessibility="no"
-        android:rotation="180"
-        android:src="@drawable/ic_support_back"
-        android:tint="@color/support_text_tertiary"
+        android:rotation="270"
+        android:src="@drawable/ic_exp_chevron_down"
+        android:tint="?attr/colorPrimary"
         tools:ignore="ContentDescription,UseAppTint" />
 </LinearLayout>

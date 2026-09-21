@@ -17,51 +17,104 @@ class VoeExtractor : Extractor() {
 
     override val name = "VOE"
     override val mainUrl = "https://voe.sx/"
-    override val aliasUrls = listOf("https://jilliandescribecompany.com", "https://mikaylaarealike.com","https://christopheruntilpoint.com","https://walterprettytheir.com","https://crystaltreatmenteast.com","https://lauradaydo.com","https://lancewhosedifficult.com", "https://dianaavoidthey.com", "https://jefferycontrolmodel.com", "https://charlestoughrace.com", "https://richardquestionbuilding.com","https://jessicayeahcatch.com","https://juliewomanwish.com","https://rebeccapracticeloss.com","https://johnbeyondnation.com")
+    override val aliasUrls = listOf(
+        "https://jilliandescribecompany.com",
+        "https://mikaylaarealike.com",
+        "https://christopheruntilpoint.com",
+        "https://walterprettytheir.com",
+        "https://crystaltreatmenteast.com",
+        "https://lauradaydo.com",
+        "https://lancewhosedifficult.com",
+        "https://dianaavoidthey.com",
+        "https://jefferycontrolmodel.com",
+        "https://charlestoughrace.com",
+        "https://richardquestionbuilding.com",
+        "https://jessicayeahcatch.com",
+        "https://juliewomanwish.com",
+        "https://rebeccapracticeloss.com",
+        "https://johnbeyondnation.com",
+        "https://voe.sx",
+        "https://voe-unblock.com",
+        "https://voeunblock.com",
+        "https://voeun-block.net",
+        "https://unblockvoe.net",
+        "https://voe.bar",
+        "https://voe.li",
+    )
+    // VOE rotates random English domains; catch canonical + unblock mirrors by host stem.
+    override val rotatingDomain = listOf(
+        Regex("""(?i)^voe[.\-/]"""),
+        Regex("""(?i)(^|\.)voe-?(un)?block"""),
+        Regex("""(?i)(^|\.)unblockvoe"""),
+    )
 
     override suspend fun extract(link: String): Video {
-        val service = VoeExtractorService.build(mainUrl, link)
+        try {
+            val service = VoeExtractorService.build(mainUrl, link)
 
-        // Extract path from original link (handles both mainUrl and alias URLs)
-        val parsedUrl = URL(link)
-        val originalPath = parsedUrl.path + if (parsedUrl.query != null) "?${parsedUrl.query}" else ""
+            // Extract path from original link (handles both mainUrl and alias URLs)
+            val parsedUrl = URL(link)
+            val originalPath = parsedUrl.path + if (parsedUrl.query != null) "?${parsedUrl.query}" else ""
 
-        val source = service.getSource(originalPath)
-        val scriptTag = source.selectFirst("script[type=application/json]")
-        val encodedStringInScriptTag = scriptTag?.data()?.trim().orEmpty()
-        val encodedString = DecryptHelper.findEncodedRegex(source.html())
-        val decryptedContent = if (encodedString != null) {
-            DecryptHelper.decrypt(encodedString)
-        } else {
-            DecryptHelper.decrypt(encodedStringInScriptTag)
-        }
+            val source = service.getSource(originalPath)
+            val scriptTag = source.selectFirst("script[type=application/json]")
+            val encodedStringInScriptTag = scriptTag?.data()?.trim().orEmpty()
+            val encodedString = DecryptHelper.findEncodedRegex(source.html())
+            val decryptedContent = if (encodedString != null) {
+                DecryptHelper.decrypt(encodedString)
+            } else {
+                DecryptHelper.decrypt(encodedStringInScriptTag)
+            }
 
-        val m3u8 = decryptedContent.get("source")?.asString.orEmpty()
+            val m3u8 = decryptedContent.get("source")?.asString.orEmpty()
+            if (m3u8.isBlank()) {
+                throw Exception("VOE source not found")
+            }
 
-        val baseSubtitleScript = source.selectFirst("script")?.data()?:""
-        var baseSubtitle = ""
-        if (baseSubtitleScript.isNotBlank()) {
-            val regex = Regex("""var\s+base\s*=\s*['"]([^'"]+)['"]""")
-            baseSubtitle = regex.find(baseSubtitleScript)?.groupValues?.get(1)?:""
-        }
+            val baseSubtitleScript = source.selectFirst("script")?.data() ?: ""
+            var baseSubtitle = ""
+            if (baseSubtitleScript.isNotBlank()) {
+                val regex = Regex("""var\s+base\s*=\s*['"]([^'"]+)['"]""")
+                baseSubtitle = regex.find(baseSubtitleScript)?.groupValues?.get(1) ?: ""
+            }
 
-        val subtitles = decryptedContent.getAsJsonArray("captions")
-        .map { caption ->
-            val obj = caption.asJsonObject
-                var file = obj.get("file").asString
-
-            Video.Subtitle(
-                file = if (file.startsWith("http")) file else baseSubtitle + file,
-                label = obj.get("label").asString,
-                initialDefault = obj.get("default").asBoolean,
-                default = if (UserPreferences.serverAutoSubtitlesDisabled) false else obj.get("default").asBoolean
+            val captions = decryptedContent.getAsJsonArray("captions")
+            val subtitles = if (captions != null) {
+                captions.map { caption ->
+                    val obj = caption.asJsonObject
+                    val file = obj.get("file").asString
+                    Video.Subtitle(
+                        file = if (file.startsWith("http")) file else baseSubtitle + file,
+                        label = obj.get("label").asString,
+                        initialDefault = obj.get("default").asBoolean,
+                        default = if (UserPreferences.serverAutoSubtitlesDisabled) false else obj.get("default").asBoolean
+                    )
+                }
+            } else {
+                emptyList()
+            }
+            return Video(
+                source = m3u8,
+                subtitles = subtitles,
+                useServerSubtitleSetting = true,
+                headers = mapOf(
+                    "Referer" to link,
+                    "Origin" to "${parsedUrl.protocol}://${parsedUrl.host}",
+                    "User-Agent" to "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+                ),
             )
+        } catch (e: Exception) {
+            // Dead VOE embeds (HTTP 404 / megakino stale links) — soft-fail so failover
+            // can hop to the next hoster without burning a second extract retry.
+            val httpCode = (e as? retrofit2.HttpException)?.code()
+            val looks404 = httpCode == 404 ||
+                e.message?.contains("404") == true ||
+                e.message?.contains("Not Found", ignoreCase = true) == true
+            if (looks404) {
+                throw Exception("VOE source not found (404)", e)
+            }
+            throw e
         }
-        return Video(
-            source = m3u8,
-            subtitles = subtitles,
-            useServerSubtitleSetting = true
-        )
     }
 
 

@@ -50,6 +50,13 @@ object CrashReporter {
                 },
             )
         }
+        // Expected stream/CDN/hoster noise stays local — do not flood Sentry.
+        if (com.dskja.betterstreamflix.extractors.ExtractorFailureClassifier.isExpectedStreamNoise(error) ||
+            message.contains("No source found", ignoreCase = true) ||
+            message.contains("getVideo failed", ignoreCase = true)
+        ) {
+            return
+        }
         runCatching {
             if (error != null) {
                 io.sentry.Sentry.captureException(error) { scope ->

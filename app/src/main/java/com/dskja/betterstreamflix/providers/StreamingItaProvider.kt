@@ -326,12 +326,17 @@ object StreamingItaProvider : Provider, ProviderConfigUrl {
             trailer = tmdbTvShow?.trailer ?: document.selectFirst("#trailer iframe, #trailer .embed iframe")?.attr("src")?.let { normalizeUrl(it) }?.let { mapTrailerToWatchUrl(it) },
             seasons = seasons,
             genres = tmdbTvShow?.genres ?: document.select("div.sgeneros a[rel=tag]").map { Genre(it.text(), it.text()) },
-            cast = tmdbTvShow?.cast ?: document.select("#cast h2:matches(^Cast$) + .persons .person").map { el ->
+            cast = document.select("#cast h2:matches(^Cast$) + .persons .person").map { el ->
                 val anchor = el.selectFirst(".data .name a")
                 val name = anchor?.text() ?: el.selectFirst("[itemprop=name]")?.attr("content") ?: ""
                 val img = el.selectFirst(".img img")?.attr("src")
                 val href = anchor?.attr("href")
-                People(id = href ?: name, name = name, image = img)
+                val tmdbPerson = tmdbTvShow?.cast?.find { it.name.equals(name, ignoreCase = true) }
+                People(
+                    id = href ?: name,
+                    name = name,
+                    image = tmdbPerson?.image ?: img,
+                )
             },
             released = tmdbTvShow?.released?.let { "${it.get(java.util.Calendar.YEAR)}-${it.get(java.util.Calendar.MONTH) + 1}-${it.get(java.util.Calendar.DAY_OF_MONTH)}" },
             runtime = tmdbTvShow?.runtime,

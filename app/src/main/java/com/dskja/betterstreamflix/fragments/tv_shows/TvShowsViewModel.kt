@@ -83,8 +83,10 @@ class TvShowsViewModel(database: AppDatabase) : ViewModel() {
         _state.emit(State.Loading)
 
         try {
+            val provider = UserPreferences.currentProvider
+                ?: throw Exception("No provider selected")
             val tvShows = ParentalControlUtils.filterItems(
-                UserPreferences.currentProvider!!.getTvShows()
+                provider.getTvShows()
             ).filterIsInstance<TvShow>().let { CatalogSort.tvShows(it) }
 
             page = 1
@@ -102,8 +104,10 @@ class TvShowsViewModel(database: AppDatabase) : ViewModel() {
             _state.emit(State.LoadingMore)
 
             try {
+                val provider = UserPreferences.currentProvider
+                    ?: throw Exception("No provider selected")
                 val tvShows = ParentalControlUtils.filterItems(
-                    UserPreferences.currentProvider!!.getTvShows(page + 1)
+                    provider.getTvShows(page + 1)
                 ).filterIsInstance<TvShow>().let { CatalogSort.tvShows(it) }
 
                 page += 1

@@ -28,94 +28,112 @@
     </style>
 
     <style name="AppTheme.Widget.Mobile.Button.Exp" parent="AppTheme.Mobile">
-        <item name="android:background">@drawable/bg_exp_button_primary</item>
+        <item name="android:background">@drawable/bg_exp_button_liquid_primary</item>
+        <item name="android:textAppearance">@style/TextAppearance.Lumina.Caption</item>
         <item name="android:fontFamily">@font/manrope</item>
-        <item name="android:paddingTop">14dp</item>
-        <item name="android:paddingBottom">14dp</item>
-        <item name="android:paddingStart">28dp</item>
-        <item name="android:paddingEnd">28dp</item>
+        <item name="android:paddingTop">15dp</item>
+        <item name="android:paddingBottom">15dp</item>
+        <item name="android:paddingStart">22dp</item>
+        <item name="android:paddingEnd">22dp</item>
         <item name="android:textAllCaps">false</item>
         <item name="android:textColor">@color/exp_on_accent</item>
         <item name="android:textStyle">bold</item>
         <item name="android:letterSpacing">0.01</item>
         <item name="android:textSize">14sp</item>
-        <item name="android:elevation">4dp</item>
+        <item name="android:elevation">0dp</item>
+        <item name="android:minHeight">48dp</item>
     </style>
 
     <style name="AppTheme.Widget.Mobile.Button.Exp.Secondary" parent="AppTheme.Widget.Mobile.Button.Exp">
-        <item name="android:background">@drawable/bg_exp_button_secondary</item>
+        <item name="android:background">@drawable/bg_exp_button_liquid_secondary</item>
         <item name="android:textColor">@color/exp_on_media</item>
         <item name="android:elevation">0dp</item>
+        <item name="android:paddingTop">12dp</item>
+        <item name="android:paddingBottom">12dp</item>
+        <item name="android:paddingStart">16dp</item>
+        <item name="android:paddingEnd">16dp</item>
     </style>
 
     <style name="AppTheme.Widget.Mobile.Button.Exp.OnMedia" parent="AppTheme.Widget.Mobile.Button.Exp">
-        <item name="android:background">@drawable/bg_exp_button_primary</item>
+        <item name="android:background">@drawable/bg_exp_button_liquid_primary</item>
         <item name="android:textColor">@color/exp_on_accent</item>
     </style>
 
     <style name="AppTheme.Widget.Mobile.Button.Exp.OnMedia.Secondary" parent="AppTheme.Widget.Mobile.Button.Exp.Secondary">
-        <item name="android:background">@drawable/bg_exp_button_on_media_secondary</item>
+        <item name="android:background">@drawable/bg_exp_button_liquid_secondary</item>
         <item name="android:textColor">@color/exp_on_media</item>
     </style>
 
-    <!-- Lumina type scale — Manrope everywhere for cohesion with Support/Settings hub -->
-    <style name="TextAppearance.Lumina.Hero" parent="TextAppearance.Material3.HeadlineLarge">
-        <item name="android:fontFamily">@font/manrope</item>
-        <item name="fontFamily">@font/manrope</item>
+    <!--
+      Lumina Ink Lock type ladder
+      Syne  → brand / hero (display identity)
+      Outfit → section titles
+      Manrope → body, captions, eyebrows, nav
+    -->
+    <!--
+      Parent AppCompat (not Material3) so classic AppTheme.Mobile / AppTheme.Tv
+      can inflate Lumina type without unresolved M3 TextAppearance attrs.
+      colorOnSurface* must still exist on the activity theme (see themes.xml).
+    -->
+    <style name="TextAppearance.Lumina.Hero" parent="TextAppearance.AppCompat.Large">
+        <item name="android:fontFamily">@font/syne</item>
+        <item name="fontFamily">@font/syne</item>
         <item name="android:textSize">34sp</item>
+        <item name="android:textStyle">bold</item>
+        <item name="android:letterSpacing">-0.04</item>
+        <item name="android:textColor">?attr/colorOnSurface</item>
+    </style>
+
+    <style name="TextAppearance.Lumina.Brand" parent="TextAppearance.AppCompat.Large">
+        <item name="android:fontFamily">@font/syne</item>
+        <item name="fontFamily">@font/syne</item>
+        <item name="android:textSize">28sp</item>
         <item name="android:textStyle">bold</item>
         <item name="android:letterSpacing">-0.03</item>
         <item name="android:textColor">?attr/colorOnSurface</item>
     </style>
 
-    <style name="TextAppearance.Lumina.Brand" parent="TextAppearance.Material3.HeadlineMedium">
-        <item name="android:fontFamily">@font/manrope</item>
-        <item name="fontFamily">@font/manrope</item>
-        <item name="android:textSize">28sp</item>
-        <item name="android:textStyle">bold</item>
-        <item name="android:letterSpacing">-0.02</item>
-        <item name="android:textColor">?attr/colorOnSurface</item>
-    </style>
-
-    <style name="TextAppearance.Lumina.Title" parent="TextAppearance.Material3.TitleLarge">
-        <item name="android:fontFamily">@font/manrope</item>
-        <item name="fontFamily">@font/manrope</item>
+    <style name="TextAppearance.Lumina.Title" parent="TextAppearance.AppCompat.Title">
+        <item name="android:fontFamily">@font/outfit</item>
+        <item name="fontFamily">@font/outfit</item>
         <item name="android:textSize">20sp</item>
         <item name="android:textStyle">bold</item>
-        <item name="android:letterSpacing">-0.01</item>
+        <item name="android:letterSpacing">-0.015</item>
         <item name="android:textColor">?attr/colorOnSurface</item>
     </style>
 
-    <style name="TextAppearance.Lumina.Eyebrow" parent="TextAppearance.Material3.LabelMedium">
+    <style name="TextAppearance.Lumina.Eyebrow" parent="TextAppearance.AppCompat.Caption">
         <item name="android:fontFamily">@font/manrope</item>
         <item name="fontFamily">@font/manrope</item>
         <item name="android:textSize">11sp</item>
         <item name="android:textStyle">bold</item>
-        <item name="android:letterSpacing">0.12</item>
+        <item name="android:letterSpacing">0.14</item>
         <item name="android:textAllCaps">true</item>
         <item name="android:textColor">?attr/colorPrimary</item>
     </style>
 
-    <style name="TextAppearance.Lumina.Body" parent="TextAppearance.Material3.BodyMedium">
+    <style name="TextAppearance.Lumina.Body" parent="TextAppearance.AppCompat.Body1">
         <item name="android:fontFamily">@font/manrope</item>
         <item name="fontFamily">@font/manrope</item>
         <item name="android:textSize">14sp</item>
+        <item name="android:lineSpacingMultiplier">1.25</item>
         <item name="android:textColor">?attr/colorOnSurfaceVariant</item>
     </style>
 
-    <style name="TextAppearance.Lumina.Caption" parent="TextAppearance.Material3.BodySmall">
+    <style name="TextAppearance.Lumina.Caption" parent="TextAppearance.AppCompat.Caption">
         <item name="android:fontFamily">@font/manrope</item>
         <item name="fontFamily">@font/manrope</item>
         <item name="android:textSize">12sp</item>
         <item name="android:textColor">?attr/colorOnSurfaceVariant</item>
     </style>
 
-    <style name="TextAppearance.Lumina.NavLabel" parent="TextAppearance.Material3.LabelSmall">
+    <style name="TextAppearance.Lumina.NavLabel" parent="TextAppearance.AppCompat.Caption">
         <item name="android:fontFamily">@font/manrope_family</item>
         <item name="fontFamily">@font/manrope_family</item>
         <item name="android:textSize">10sp</item>
         <item name="android:textStyle">bold</item>
-        <item name="android:letterSpacing">0.06</item>
+        <item name="android:letterSpacing">0.08</item>
+        <item name="android:textColor">?attr/colorOnSurfaceVariant</item>
     </style>
 
     <!-- Material You shape scale: small 8 / medium 12 / large 16 / xl 28 -->
@@ -162,12 +180,43 @@
         <item name="android:backgroundDimAmount">0.72</item>
         <item name="android:windowNoTitle">true</item>
         <item name="android:windowIsFloating">true</item>
-        <item name="colorAccent">@color/support_accent</item>
+        <item name="colorAccent">?attr/colorPrimary</item>
+        <item name="colorControlActivated">?attr/colorPrimary</item>
     </style>
 
     <style name="SupportDialogAnimation">
         <item name="android:windowEnterAnimation">@anim/support_dialog_enter</item>
         <item name="android:windowExitAnimation">@anim/support_dialog_exit</item>
+    </style>
+
+    <style name="TelegramJoinGateTheme" parent="Theme.AppCompat.Dialog">
+        <item name="android:windowBackground">@color/tg_gate_bg_deep</item>
+        <item name="android:backgroundDimEnabled">true</item>
+        <item name="android:backgroundDimAmount">1</item>
+        <item name="android:windowNoTitle">true</item>
+        <item name="android:windowIsFloating">false</item>
+        <item name="android:windowFullscreen">true</item>
+        <item name="colorAccent">@color/tg_gate_telegram</item>
+        <item name="colorControlActivated">@color/tg_gate_telegram</item>
+    </style>
+
+    <style name="TelegramJoinGateActivityTheme" parent="Theme.AppCompat.NoActionBar">
+        <item name="android:windowBackground">@drawable/bg_tg_gate_fullscreen</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+        <item name="android:windowFullscreen">false</item>
+        <item name="android:windowDrawsSystemBarBackgrounds">true</item>
+        <item name="android:windowAnimationStyle">@style/TelegramJoinGateAnimation</item>
+        <item name="colorAccent">@color/tg_gate_telegram</item>
+        <item name="colorControlActivated">@color/tg_gate_telegram</item>
+        <item name="colorPrimary">@color/tg_gate_telegram</item>
+        <item name="colorOnSurface">@color/tg_gate_text_primary</item>
+        <item name="colorOnSurfaceVariant">@color/tg_gate_text_secondary</item>
+    </style>
+
+    <style name="TelegramJoinGateAnimation">
+        <item name="android:windowEnterAnimation">@anim/tg_gate_enter</item>
+        <item name="android:windowExitAnimation">@anim/tg_gate_exit</item>
     </style>
 
     <style name="AboutLinkRow">

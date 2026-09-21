@@ -67,20 +67,41 @@ internal object SeasonSwitcher {
                 return@launch
             }
 
+            val wasGone = spinner.visibility != View.VISIBLE
             spinner.visibility = View.VISIBLE
+            if (com.dskja.betterstreamflix.utils.ExperimentalMobileDesign.enabled()) {
+                with(com.dskja.betterstreamflix.utils.ExpPressEffects) { spinner.applyExpPress() }
+                if (wasGone) {
+                    com.dskja.betterstreamflix.utils.ExpMotion.popIn(spinner)
+                }
+                runCatching {
+                    spinner.setPopupBackgroundResource(
+                        com.dskja.betterstreamflix.utils.ExperimentalMobileDesign.glassCardBackground(),
+                    )
+                }
+            }
             val labels = seasons.map { season ->
                 season.title?.takeIf { it.isNotBlank() }
                     ?: fragment.getString(R.string.season_number, season.number)
             }
-            spinner.adapter = ArrayAdapter(
-                fragment.requireContext(),
-                android.R.layout.simple_spinner_dropdown_item,
-                labels,
-            )
             val selectedIndex = seasons.indexOfFirst { it.id == currentSeasonId }
                 .takeIf { it >= 0 }
                 ?: seasons.indexOfFirst { it.number == currentSeasonNumber }
                     .coerceAtLeast(0)
+            spinner.adapter = if (com.dskja.betterstreamflix.utils.ExperimentalMobileDesign.enabled()) {
+                com.dskja.betterstreamflix.utils.ExpSpinnerAdapter(
+                    fragment.requireContext(),
+                    R.layout.item_exp_spinner,
+                    R.layout.item_exp_spinner_dropdown,
+                    labels,
+                ) { spinner.selectedItemPosition.coerceAtLeast(0) }
+            } else {
+                ArrayAdapter(
+                    fragment.requireContext(),
+                    android.R.layout.simple_spinner_item,
+                    labels,
+                ).also { it.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item) }
+            }
             spinner.setSelection(selectedIndex, false)
 
             spinner.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
@@ -92,6 +113,7 @@ internal object SeasonSwitcher {
                 ) {
                     val season = seasons.getOrNull(position) ?: return
                     if (season.id == currentSeasonId) return
+                    com.dskja.betterstreamflix.utils.ExpMotion.hapticTap(spinner)
                     val title = season.title?.takeIf { it.isNotBlank() }
                         ?: fragment.getString(R.string.season_number, season.number)
                     fragment.findNavController().navigate(

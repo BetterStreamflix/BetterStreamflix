@@ -24,6 +24,7 @@ import com.dskja.betterstreamflix.ui.SpacingItemDecoration
 import com.dskja.betterstreamflix.utils.CacheUtils
 import com.dskja.betterstreamflix.utils.Http409CacheGuard
 import com.dskja.betterstreamflix.utils.ExpNavAutoHide
+import com.dskja.betterstreamflix.utils.ExpEmptyChrome
 import com.dskja.betterstreamflix.utils.ExpMotion
 import com.dskja.betterstreamflix.utils.ExperimentalMobileDesign
 import com.dskja.betterstreamflix.utils.dp
@@ -64,7 +65,9 @@ class GenreMobileFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         ExpNavAutoHide.attach(binding.root)
+        com.dskja.betterstreamflix.utils.ExpPressEffects.wireLoadingRetry(binding.isLoading.root)
         ExpMotion.enterScreen(binding.root)
+        ExperimentalMobileDesign.applyReducedGlass(binding.root)
         ExpMotion.staggerFirstFill(binding.rvGenre)
 
         initializeGenre()
@@ -73,8 +76,11 @@ class GenreMobileFragment : Fragment() {
             viewModel.state.flowWithLifecycle(lifecycle, Lifecycle.State.STARTED).collect { state ->
                 when (state) {
                     GenreViewModel.State.Loading -> binding.isLoading.apply {
+                        binding.root.findViewById<View>(R.id.tv_genre_empty)?.visibility = View.GONE
+                        binding.root.findViewById<View>(R.id.v_genre_empty_rule)?.visibility = View.GONE
+                        binding.root.findViewById<View>(R.id.btn_genre_empty_cta)?.visibility = View.GONE
                         ExpMotion.fadeInAndShow(root)
-                        pbIsLoading.visibility = View.VISIBLE
+                        com.dskja.betterstreamflix.utils.ExpPressEffects.showLoadingSkeleton(root, true)
                         gIsLoadingRetry.visibility = View.GONE
                     }
                     GenreViewModel.State.LoadingMore -> appAdapter.isLoading = true
@@ -87,23 +93,29 @@ class GenreMobileFragment : Fragment() {
                         if (http409Guard.handle(requireContext(), state.error) { viewModel.getGenre(args.id) }) {
                                 return@collect
                             }
-                        Toast.makeText(
-                            requireContext(),
-                            state.error.message ?: "",
-                            Toast.LENGTH_SHORT
-                        ).show()
+                        if (!ExperimentalMobileDesign.enabled()) {
+                            Toast.makeText(
+                                requireContext(),
+                                state.error.message ?: "",
+                                Toast.LENGTH_SHORT
+                            ).show()
+                        }
                         if (appAdapter.isLoading) {
                             appAdapter.isLoading = false
                         } else {
                             binding.isLoading.apply {
-                                pbIsLoading.visibility = View.GONE
+                                com.dskja.betterstreamflix.utils.ExpPressEffects.showLoadingSkeleton(root, false)
                                 gIsLoadingRetry.visibility = View.VISIBLE
+                                com.dskja.betterstreamflix.utils.ExpPressEffects.animateLoadingError(root)
                                 val doRetry = { viewModel.getGenre(args.id) }
                                 btnIsLoadingRetry.setOnClickListener { doRetry() }
                                 btnIsLoadingClearCache.setOnClickListener {
                                     CacheUtils.clearAppCache(requireContext())
-                                    android.widget.Toast.makeText(requireContext(), getString(com.dskja.betterstreamflix.R.string.clear_cache_done), android.widget.Toast.LENGTH_SHORT).show()
+                                    com.dskja.betterstreamflix.utils.ExpDialogChrome.notify(requireContext(), getString(com.dskja.betterstreamflix.R.string.clear_cache_done), com.dskja.betterstreamflix.R.string.loading_error_clear_cache)
                                     doRetry()
+                                }
+                                btnIsLoadingErrorDetails.setOnClickListener {
+                                    com.dskja.betterstreamflix.utils.LoggingUtils.showErrorDialog(requireContext(), state.error)
                                 }
                             }
                         }
@@ -157,6 +169,49 @@ class GenreMobileFragment : Fragment() {
             },
             bind = { binding ->
                 binding.tvGenreName.text = genre.name.takeIf { it.isNotEmpty() } ?: args.name
+                if (ExperimentalMobileDesign.enabled()) {
+                    binding.root.findViewById<android.widget.TextView>(R.id.tv_genre_tagline)?.let { tagline ->
+                        tagline.text = binding.root.context.getString(
+                            R.string.exp_genre_count,
+                            genre.shows.size,
+                        )
+                        tagline.setBackgroundResource(ExperimentalMobileDesign.metaPillBackground())
+                        val density = binding.root.resources.displayMetrics.density
+                        tagline.setPadding(
+                            (12 * density).toInt(),
+                            (6 * density).toInt(),
+                            (12 * density).toInt(),
+                            (6 * density).toInt(),
+                        )
+                        tagline.layoutParams = tagline.layoutParams.apply {
+                            width = android.view.ViewGroup.LayoutParams.WRAP_CONTENT
+                        }
+                    }
+                    binding.root.findViewById<android.widget.TextView>(R.id.tv_genre_eyebrow)?.let { eyebrow ->
+                        eyebrow.setBackgroundResource(ExperimentalMobileDesign.chipBackground())
+                        val density = binding.root.resources.displayMetrics.density
+                        eyebrow.setPadding(
+                            (10 * density).toInt(),
+                            (4 * density).toInt(),
+                            (10 * density).toInt(),
+                            (4 * density).toInt(),
+                        )
+                        eyebrow.layoutParams = eyebrow.layoutParams.apply {
+                            width = android.view.ViewGroup.LayoutParams.WRAP_CONTENT
+                        }
+                    }
+                    if (binding.root.getTag(R.id.exp_enter_animated_tag) != true) {
+                        binding.root.setTag(R.id.exp_enter_animated_tag, true)
+                        ExpMotion.revealHeader(
+                            binding.root.findViewById(R.id.tv_genre_eyebrow),
+                            binding.tvGenreName,
+                            binding.root.findViewById(R.id.tv_genre_tagline),
+                            binding.root.findViewById(R.id.v_genre_rule),
+                            binding.root.findViewById(R.id.v_genre_header_fade),
+                        )
+                        ExpMotion.pulseAccentRule(binding.root.findViewById(R.id.v_genre_rule))
+                    }
+                }
             }
         )
 
@@ -166,6 +221,15 @@ class GenreMobileFragment : Fragment() {
                 is TvShow -> it.itemType = AppAdapter.Type.TV_SHOW_GRID_MOBILE_ITEM
             }
         })
+
+        ExpEmptyChrome.bind(
+            emptyView = binding.root.findViewById(R.id.tv_genre_empty),
+            emptyRule = binding.root.findViewById(R.id.v_genre_empty_rule),
+            emptyCta = binding.root.findViewById(R.id.btn_genre_empty_cta),
+            visible = genre.shows.isEmpty(),
+            tintOnSurfaceVariant = false,
+            onCtaClick = { requireActivity().onBackPressedDispatcher.onBackPressed() },
+        )
 
         if (hasMore) {
             appAdapter.setOnLoadMoreListener { viewModel.loadMoreGenreShows() }

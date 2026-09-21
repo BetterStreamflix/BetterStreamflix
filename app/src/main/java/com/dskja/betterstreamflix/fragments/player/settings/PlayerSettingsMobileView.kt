@@ -12,6 +12,8 @@ import androidx.recyclerview.widget.RecyclerView
 import com.dskja.betterstreamflix.R
 import com.dskja.betterstreamflix.databinding.ItemSettingMobileBinding
 import com.dskja.betterstreamflix.databinding.ViewPlayerSettingsMobileBinding
+import com.dskja.betterstreamflix.utils.ExpMotion
+import com.dskja.betterstreamflix.utils.ExpPressEffects
 import com.dskja.betterstreamflix.utils.ExperimentalMobileDesign
 import com.dskja.betterstreamflix.utils.dp
 import com.dskja.betterstreamflix.utils.margin
@@ -65,10 +67,20 @@ class PlayerSettingsMobileView @JvmOverloads constructor(
     }
 
     init {
+        if (ExperimentalMobileDesign.enabled()) {
+            with(ExpPressEffects) {
+                binding.btnSettingsClose.applyExpPress()
+                binding.btnSettingsBack.applyExpPress()
+            }
+            binding.btnSettingsClose.setBackgroundResource(ExperimentalMobileDesign.iconChipBackground())
+            binding.btnSettingsBack.setBackgroundResource(ExperimentalMobileDesign.iconChipBackground())
+        }
         binding.btnSettingsClose.setOnClickListener {
+            ExpMotion.hapticTap(it)
             hide()
         }
         binding.btnSettingsBack.setOnClickListener {
+            ExpMotion.hapticTap(it)
             onBackPressed()
         }
     }
@@ -103,9 +115,27 @@ class PlayerSettingsMobileView @JvmOverloads constructor(
         return true
     }
 
-    fun show() {
-        this.visibility = View.VISIBLE
+    private var lastRevealedSetting: Setting? = null
 
+    fun show() {
+        if (ExperimentalMobileDesign.enabled()) {
+            ExpMotion.enterScreen(this)
+            binding.root.getChildAt(0)?.let { panel ->
+                panel.setBackgroundResource(ExperimentalMobileDesign.dialogBackground())
+                ExperimentalMobileDesign.applyReducedGlass(panel)
+            } ?: ExperimentalMobileDesign.applyReducedGlass(binding.root)
+            ExpMotion.revealHeader(
+                binding.tvSettingsHeader,
+                binding.root.findViewById(R.id.v_player_settings_rule),
+            )
+            ExpMotion.pulseAccentRule(
+                binding.root.findViewById(R.id.v_player_settings_rule),
+            )
+            ExpMotion.popIn(binding.btnSettingsClose)
+            lastRevealedSetting = null
+        } else {
+            this.visibility = View.VISIBLE
+        }
         displaySettings(Setting.MAIN)
     }
 
@@ -144,6 +174,14 @@ class PlayerSettingsMobileView @JvmOverloads constructor(
                 Setting.MANUAL_ZOOM -> context.getString(R.string.player_settings_manual_zoom_label)
             }
         }
+        if (ExperimentalMobileDesign.enabled() && lastRevealedSetting != setting) {
+            lastRevealedSetting = setting
+            ExpMotion.revealHeader(binding.tvSettingsHeader)
+            ExpMotion.pulseAccentRule(binding.root.findViewById(R.id.v_player_settings_rule))
+            if (setting != Setting.MAIN) {
+                ExpMotion.popIn(binding.btnSettingsBack)
+            }
+        }
 
         binding.btnSettingsBack.visibility = if (setting == Setting.MAIN) View.GONE else View.VISIBLE
 
@@ -173,6 +211,10 @@ class PlayerSettingsMobileView @JvmOverloads constructor(
             Setting.KEEP_SCREEN_ON -> keepScreenOnAdapter
             Setting.MANUAL_ZOOM -> settingsAdapter
         }
+        if (ExperimentalMobileDesign.enabled()) {
+            ExpMotion.staggerFirstFill(binding.rvSettings)
+            binding.rvSettings.scheduleLayoutAnimation()
+        }
 
         if (setting == Setting.SUBTITLE_OFFSET) {
             scrollToSelectedSubtitleOffset()
@@ -194,7 +236,12 @@ class PlayerSettingsMobileView @JvmOverloads constructor(
     }
 
     fun hide() {
-        this.visibility = View.GONE
+        lastRevealedSetting = null
+        if (ExperimentalMobileDesign.enabled() && visibility == View.VISIBLE) {
+            ExpMotion.fadeOutAndHide(this)
+        } else {
+            this.visibility = View.GONE
+        }
     }
 
 
@@ -230,6 +277,13 @@ class PlayerSettingsMobileView @JvmOverloads constructor(
         private val binding: ItemSettingMobileBinding,
     ) : RecyclerView.ViewHolder(binding.root) {
 
+        init {
+            if (ExperimentalMobileDesign.enabled()) {
+                with(ExpPressEffects) { binding.root.applyExpPress() }
+                binding.root.setBackgroundResource(ExperimentalMobileDesign.optionItemBackground())
+            }
+        }
+
         fun displaySettings(item: Item) {
             binding.root.apply {
                 when (item) {
@@ -239,6 +293,7 @@ class PlayerSettingsMobileView @JvmOverloads constructor(
                     else -> margin(bottom = 0, top = 0)
                 }
                 setOnClickListener {
+                    ExpMotion.hapticTap(it)
                     when (item) {
                         is Settings -> {
                             when (item) {
@@ -474,6 +529,17 @@ class PlayerSettingsMobileView @JvmOverloads constructor(
                         Settings.Download -> R.drawable.ic_player_settings_download
                     })
                 )
+                if (ExperimentalMobileDesign.enabled()) {
+                    androidx.core.widget.ImageViewCompat.setImageTintList(
+                        binding.ivSettingIcon,
+                        ColorStateList.valueOf(
+                            com.google.android.material.color.MaterialColors.getColor(
+                                binding.ivSettingIcon,
+                                androidx.appcompat.R.attr.colorPrimary,
+                            ),
+                        ),
+                    )
+                }
             }
 
             binding.tvSettingMainText.apply {
@@ -646,6 +712,7 @@ class PlayerSettingsMobileView @JvmOverloads constructor(
             }
 
             binding.ivSettingIsSelected.apply {
+                val wasVisible = visibility == View.VISIBLE
                 visibility = when (item) {
                     is Settings.Quality -> when {
                         item.isSelected -> View.VISIBLE
@@ -751,6 +818,17 @@ class PlayerSettingsMobileView @JvmOverloads constructor(
 
                     else -> View.GONE
                 }
+                if (ExperimentalMobileDesign.enabled() && visibility == View.VISIBLE && !wasVisible) {
+                    ExpMotion.popIn(this)
+                }
+            }
+
+            if (ExperimentalMobileDesign.enabled()) {
+                val selected = binding.ivSettingIsSelected.visibility == View.VISIBLE
+                binding.root.setBackgroundResource(
+                    if (selected) ExperimentalMobileDesign.chipBackground()
+                    else ExperimentalMobileDesign.optionItemBackground(),
+                )
             }
 
             binding.ivSettingEnter.apply {
@@ -786,6 +864,9 @@ class PlayerSettingsMobileView @JvmOverloads constructor(
                     }
 
                     else -> View.GONE
+                }
+                if (ExperimentalMobileDesign.enabled() && visibility == View.VISIBLE) {
+                    ExpMotion.popIn(this)
                 }
             }
         }

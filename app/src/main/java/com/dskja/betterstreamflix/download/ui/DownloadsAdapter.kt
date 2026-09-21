@@ -96,10 +96,30 @@ class DownloadsAdapter(
         private val title: TextView = view.findViewById(R.id.tv_download_header)
         fun bind(item: DownloadRowUiModel.Header) {
             title.text = item.title
+            if (com.dskja.betterstreamflix.utils.ExperimentalMobileDesign.enabled()) {
+                itemView.setBackgroundResource(
+                    com.dskja.betterstreamflix.utils.ExperimentalMobileDesign.glassCardBackground(),
+                )
+                if (itemView.getTag(R.id.exp_enter_animated_tag) != true) {
+                    itemView.setTag(R.id.exp_enter_animated_tag, true)
+                    com.dskja.betterstreamflix.utils.ExpMotion.revealHeader(
+                        title,
+                        itemView.findViewById(R.id.v_download_header_rule),
+                    )
+                    com.dskja.betterstreamflix.utils.ExpMotion.pulseAccentRule(
+                        itemView.findViewById(R.id.v_download_header_rule),
+                    )
+                }
+            }
         }
     }
 
     inner class PackVH(view: View) : RecyclerView.ViewHolder(view) {
+        init {
+            if (com.dskja.betterstreamflix.utils.ExperimentalMobileDesign.enabled()) {
+                with(com.dskja.betterstreamflix.utils.ExpPressEffects) { view.applyExpPress() }
+            }
+        }
         private val title: TextView = view.findViewById(R.id.tv_download_season_title)
         private val subtitle: TextView = view.findViewById(R.id.tv_download_season_subtitle)
         private val progress: ProgressBar = view.findViewById(R.id.pb_download_season)
@@ -112,8 +132,29 @@ class DownloadsAdapter(
                 pack.totalEpisodes,
             )
             progress.max = pack.totalEpisodes.coerceAtLeast(1)
-            progress.progress = pack.completedEpisodes
+            val target = pack.completedEpisodes
+            if (com.dskja.betterstreamflix.utils.ExperimentalMobileDesign.enabled() &&
+                itemView.getTag(R.id.exp_enter_animated_tag) != true
+            ) {
+                itemView.setTag(R.id.exp_enter_animated_tag, true)
+                itemView.setBackgroundResource(
+                    com.dskja.betterstreamflix.utils.ExperimentalMobileDesign.glassCardBackground(),
+                )
+                ExpMotion.revealHeader(title, subtitle)
+                ExpMotion.popIn(itemView)
+                android.animation.ObjectAnimator.ofInt(progress, "progress", 0, target)
+                    .setDuration(420L)
+                    .start()
+            } else {
+                if (com.dskja.betterstreamflix.utils.ExperimentalMobileDesign.enabled()) {
+                    itemView.setBackgroundResource(
+                        com.dskja.betterstreamflix.utils.ExperimentalMobileDesign.glassCardBackground(),
+                    )
+                }
+                progress.progress = target
+            }
             itemView.setOnLongClickListener {
+                ExpMotion.hapticTap(it)
                 onPackMore(item, it)
                 true
             }
@@ -145,7 +186,10 @@ class DownloadsAdapter(
             Glide.with(poster).load(item.entity.posterUrl).centerCrop().into(poster)
             bindProgress(item)
             bindPrimaryAction(item)
-            actionDelete.setOnClickListener { onDelete(item) }
+            actionDelete.setOnClickListener {
+                ExpMotion.hapticTap(it)
+                onDelete(item)
+            }
             actionPrimary.setOnClickListener {
                 ExpMotion.hapticTap(it)
                 when (item.state) {
@@ -159,7 +203,37 @@ class DownloadsAdapter(
                     DownloadItemState.REMOVING -> Unit
                 }
             }
+            if (com.dskja.betterstreamflix.utils.ExperimentalMobileDesign.enabled()) {
+                itemView.setBackgroundResource(
+                    com.dskja.betterstreamflix.utils.ExperimentalMobileDesign.glassCardBackground(),
+                )
+                subtitle.setBackgroundResource(
+                    com.dskja.betterstreamflix.utils.ExperimentalMobileDesign.metaPillBackground(),
+                )
+                val density = itemView.resources.displayMetrics.density
+                subtitle.setPadding(
+                    (8 * density).toInt(),
+                    (3 * density).toInt(),
+                    (8 * density).toInt(),
+                    (3 * density).toInt(),
+                )
+                actionPrimary.setBackgroundResource(
+                    com.dskja.betterstreamflix.utils.ExperimentalMobileDesign.primaryButtonBackground(),
+                )
+                actionDelete.setBackgroundResource(
+                    com.dskja.betterstreamflix.utils.ExperimentalMobileDesign.chipBackground(),
+                )
+                with(com.dskja.betterstreamflix.utils.ExpPressEffects) {
+                    actionPrimary.applyExpPress()
+                    actionDelete.applyExpPress()
+                }
+                if (itemView.getTag(R.id.exp_enter_animated_tag) != true) {
+                    itemView.setTag(R.id.exp_enter_animated_tag, true)
+                    ExpMotion.popIn(itemView)
+                }
+            }
             itemView.setOnLongClickListener {
+                ExpMotion.hapticTap(it)
                 onItemMore(item, it)
                 true
             }
@@ -183,12 +257,24 @@ class DownloadsAdapter(
 
         fun bindProgress(item: DownloadRowUiModel.Item) {
             val pct = item.entity.progressPct.coerceIn(0, 100)
+            val wasFailed = progressLine.getTag(R.id.exp_enter_animated_tag) == "failed"
             progress.isIndeterminate = item.state == DownloadItemState.PREPARING ||
                 (item.state.isActive && pct <= 0 && item.entity.bytesDownloaded <= 0L)
             if (!progress.isIndeterminate) {
-                progress.progress = pct
+                if (com.dskja.betterstreamflix.utils.ExperimentalMobileDesign.enabled() &&
+                    progress.visibility == View.VISIBLE
+                ) {
+                    progress.animate().cancel()
+                    progress.progress = pct
+                } else {
+                    progress.progress = pct
+                }
             }
-            progressLine.text = item.progressText
+            progressLine.text = if (item.state == DownloadItemState.FAILED) {
+                item.failedSummary(itemView.context)
+            } else {
+                item.progressText
+            }
             progressLine.contentDescription = itemView.context.getString(
                 R.string.downloads_progress_a11y,
                 pct,
@@ -197,6 +283,36 @@ class DownloadsAdapter(
                 View.GONE
             } else {
                 View.VISIBLE
+            }
+            if (com.dskja.betterstreamflix.utils.ExperimentalMobileDesign.enabled() &&
+                item.state == DownloadItemState.FAILED &&
+                !wasFailed
+            ) {
+                progressLine.setTag(R.id.exp_enter_animated_tag, "failed")
+                progressLine.setTextColor(
+                    com.google.android.material.color.MaterialColors.getColor(
+                        progressLine, androidx.appcompat.R.attr.colorError,
+                    )
+                )
+                com.dskja.betterstreamflix.utils.ExpMotion.popIn(progressLine)
+                com.dskja.betterstreamflix.utils.ExpMotion.popIn(actionPrimary)
+            } else if (item.state != DownloadItemState.FAILED) {
+                progressLine.setTag(R.id.exp_enter_animated_tag, null)
+                if (com.dskja.betterstreamflix.utils.ExperimentalMobileDesign.enabled()) {
+                    val onVariant = com.google.android.material.color.MaterialColors.getColor(
+                        progressLine,
+                        com.google.android.material.R.attr.colorOnSurfaceVariant,
+                    )
+                    progressLine.setTextColor(onVariant)
+                    val primary = com.google.android.material.color.MaterialColors.getColor(
+                        progress,
+                        androidx.appcompat.R.attr.colorPrimary,
+                    )
+                    progress.progressTintList =
+                        android.content.res.ColorStateList.valueOf(primary)
+                    progress.indeterminateTintList =
+                        android.content.res.ColorStateList.valueOf(primary)
+                }
             }
         }
     }

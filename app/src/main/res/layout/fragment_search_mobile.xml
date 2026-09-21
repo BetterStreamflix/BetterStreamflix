@@ -88,6 +88,29 @@
         app:layout_constraintStart_toStartOf="@id/cl_search"
         app:layout_constraintTop_toBottomOf="@id/cl_search" />
 
+    <HorizontalScrollView
+        android:id="@+id/hsv_search_recent"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="10dp"
+        android:clipToPadding="false"
+        android:paddingStart="2dp"
+        android:paddingEnd="2dp"
+        android:scrollbars="none"
+        android:visibility="gone"
+        app:layout_constraintEnd_toEndOf="@id/cl_search"
+        app:layout_constraintStart_toStartOf="@id/cl_search"
+        app:layout_constraintTop_toBottomOf="@id/sw_global_search"
+        tools:visibility="visible">
+
+        <LinearLayout
+            android:id="@+id/ll_search_recent"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:gravity="center_vertical"
+            android:orientation="horizontal" />
+    </HorizontalScrollView>
+
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/rv_search"
         android:layout_width="0dp"
@@ -101,9 +124,26 @@
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/sw_global_search"
+        app:layout_constraintTop_toBottomOf="@id/hsv_search_recent"
         app:spanCount="3"
         tools:listitem="@layout/item_movie_mobile" />
+
+    <TextView
+        android:id="@+id/tv_search_empty"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:fontFamily="@font/manrope"
+        android:gravity="center"
+        android:padding="24dp"
+        android:text="@string/search_no_results"
+        android:textColor="?android:attr/textColorSecondary"
+        android:textSize="15sp"
+        android:visibility="gone"
+        app:layout_constraintBottom_toBottomOf="@id/rv_search"
+        app:layout_constraintEnd_toEndOf="@id/rv_search"
+        app:layout_constraintStart_toStartOf="@id/rv_search"
+        app:layout_constraintTop_toTopOf="@id/rv_search"
+        tools:visibility="visible" />
 
     <include
         android:id="@+id/is_loading"

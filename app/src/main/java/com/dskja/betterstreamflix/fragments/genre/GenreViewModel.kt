@@ -108,7 +108,9 @@ class GenreViewModel(private val id: String, database: AppDatabase) : ViewModel(
         _state.emit(State.Loading)
 
         try {
-            val genre = UserPreferences.currentProvider!!.getGenre(id).let {
+            val provider = UserPreferences.currentProvider
+                ?: throw Exception("No provider selected")
+            val genre = provider.getGenre(id).let {
                 it.copy(shows = ParentalControlUtils.filterShows(it.shows))
             }
 
@@ -127,7 +129,9 @@ class GenreViewModel(private val id: String, database: AppDatabase) : ViewModel(
             _state.emit(State.LoadingMore)
 
             try {
-                val genre = UserPreferences.currentProvider!!.getGenre(id, page + 1).let {
+                val provider = UserPreferences.currentProvider
+                    ?: throw Exception("No provider selected")
+                val genre = provider.getGenre(id, page + 1).let {
                     it.copy(shows = ParentalControlUtils.filterShows(it.shows))
                 }
 

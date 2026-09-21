@@ -5,6 +5,7 @@ import com.dskja.betterstreamflix.models.Genre
 import com.dskja.betterstreamflix.models.Movie
 import com.dskja.betterstreamflix.models.People
 import com.dskja.betterstreamflix.models.Season
+import com.dskja.betterstreamflix.models.Show
 import com.dskja.betterstreamflix.models.TvShow
 import com.dskja.betterstreamflix.utils.TMDb3.original
 import com.dskja.betterstreamflix.utils.TMDb3.w500
@@ -21,24 +22,83 @@ object TmdbUtils {
     private val movieAgeCache = ConcurrentHashMap<String, Int>()
     private val tvAgeCache = ConcurrentHashMap<String, Int>()
 
+    /**
+     * Resolve a TMDb person id for providers that enrich cast with TMDb credits
+     * but have no local people pages. Filmography is omitted — TMDb show ids are
+     * not valid on HTML providers.
+     */
+    suspend fun getPeopleById(personId: Int, language: String? = null): People? {
+        return runCatching {
+            val detail = TMDb3.People.details(personId = personId, language = language)
+            People(
+                id = detail.id.toString(),
+                name = detail.name,
+                image = detail.profilePath?.w500,
+                biography = detail.biography,
+                placeOfBirth = detail.placeOfBirth,
+                birthday = detail.birthday,
+                deathday = detail.deathday,
+                filmography = emptyList(),
+            )
+        }.getOrNull()
+    }
+
     suspend fun getMovie(title: String, year: Int? = null, language: String? = null): Movie? {
         if (!UserPreferences.enableTmdb) return null
         return try {
             val effectiveYear = year ?: extractYear(title)
-            val movie = findBestMovieMatch(title, effectiveYear, language) ?: return null
+            val cacheKey = buildLookupCacheKey("movie-match", title, effectiveYear, language)
+            if (TmdbCache.hasSearchMovie(cacheKey)) {
+                val cachedId = TmdbCache.getSearchMovieId(cacheKey) ?: return null
+                return getMovieById(cachedId, language)
+            }
+            val movie = findBestMovieMatch(title, effectiveYear, language)
+            TmdbCache.putSearchMovieId(cacheKey, movie?.id)
+            movie?.let { getMovieById(it.id, language) }
+        } catch (_: Exception) { null }
+    }
 
+    suspend fun getMovieById(tmdbId: Int, language: String? = null): Movie? {
+        if (!UserPreferences.enableTmdb) return null
+        TmdbCache.getMovie(tmdbId)?.let { cached ->
+            return Movie(
+                id = cached.id.toString(),
+                title = cached.title,
+                overview = cached.overview,
+                released = cached.released,
+                runtime = cached.runtime,
+                trailer = cached.trailer,
+                rating = cached.rating,
+                poster = cached.poster,
+                banner = cached.banner,
+                imdbId = cached.imdbId,
+                tmdbId = cached.id.toString(),
+                genres = cached.genres.map { Genre(it.first, it.second) },
+                cast = cached.cast.map { People(it.first, it.second, it.third) },
+                directors = cached.directors.map { People(it.first, it.second, it.third) },
+                recommendations = cached.recommendations.map { it.toShow() },
+            ).also { it.contentRating = cached.contentRating }
+        }
+        return try {
             val details = TMDb3.Movies.details(
-                movieId = movie.id,
+                movieId = tmdbId,
                 appendToResponse = listOf(
                     TMDb3.Params.AppendToResponse.Movie.CREDITS,
                     TMDb3.Params.AppendToResponse.Movie.RECOMMENDATIONS,
                     TMDb3.Params.AppendToResponse.Movie.VIDEOS,
                     TMDb3.Params.AppendToResponse.Movie.EXTERNAL_IDS,
+                    TMDb3.Params.AppendToResponse.Movie.RELEASES_DATES,
                 ),
                 language = language
             )
-
-            Movie(
+            val directors = details.credits?.crew
+                ?.filter { it.job.equals("Director", ignoreCase = true) }
+                ?.distinctBy { it.id }
+                ?.map { People(it.id.toString(), it.name, it.profilePath?.w500) }
+                .orEmpty()
+            val recommendations = mapRecommendations(details.recommendations?.results)
+            val contentRating = extractMovieCertification(details, language)
+            val result = Movie(
                 id = details.id.toString(),
                 title = details.title,
                 overview = details.overview,
@@ -52,30 +112,147 @@ object TmdbUtils {
                 poster = details.posterPath?.original,
                 banner = details.backdropPath?.original,
                 imdbId = details.externalIds?.imdbId,
+                tmdbId = details.id.toString(),
                 genres = details.genres.map { Genre(it.id.toString(), it.name) },
                 cast = details.credits?.cast?.map { People(it.id.toString(), it.name, it.profilePath?.w500) } ?: listOf(),
+                directors = directors,
+                recommendations = recommendations,
+            ).also { it.contentRating = contentRating }
+            TmdbCache.putMovie(
+                TmdbCache.CachedMovie(
+                    id = details.id,
+                    title = result.title,
+                    overview = result.overview,
+                    released = details.releaseDate,
+                    runtime = result.runtime,
+                    trailer = result.trailer,
+                    rating = result.rating,
+                    poster = result.poster,
+                    banner = result.banner,
+                    imdbId = result.imdbId,
+                    contentRating = contentRating,
+                    genres = result.genres.map { it.id to it.name },
+                    cast = result.cast.map { Triple(it.id, it.name, it.image) },
+                    directors = directors.map { Triple(it.id, it.name, it.image) },
+                    recommendations = recommendations.mapNotNull { show ->
+                        when (show) {
+                            is Movie -> TmdbCache.CachedShowRef(
+                                id = show.tmdbId?.toIntOrNull() ?: show.id.toIntOrNull() ?: return@mapNotNull null,
+                                isTv = false,
+                                title = show.title,
+                                overview = show.overview,
+                                released = show.released?.format("yyyy-MM-dd"),
+                                rating = show.rating,
+                                poster = show.poster,
+                                banner = show.banner,
+                            )
+                            is TvShow -> TmdbCache.CachedShowRef(
+                                id = show.tmdbId?.toIntOrNull() ?: show.id.toIntOrNull() ?: return@mapNotNull null,
+                                isTv = true,
+                                title = show.title,
+                                overview = show.overview,
+                                released = show.released?.format("yyyy-MM-dd"),
+                                rating = show.rating,
+                                poster = show.poster,
+                                banner = show.banner,
+                            )
+                            else -> null
+                        }
+                    },
+                ),
             )
+            result
         } catch (_: Exception) { null }
+    }
+
+    suspend fun getMovieByImdbId(imdbId: String, language: String? = null): Movie? {
+        if (!UserPreferences.enableTmdb) return null
+        val clean = imdbId.trim()
+        if (clean.isBlank()) return null
+        if (TmdbCache.hasFindImdbMovie(clean)) {
+            val id = TmdbCache.getFindImdbMovie(clean) ?: return null
+            return getMovieById(id, language)
+        }
+        return try {
+            val found = TMDb3.Find.byImdbId(clean, language).movieResults.firstOrNull()
+            TmdbCache.putFindImdbMovie(clean, found?.id)
+            found?.let { getMovieById(it.id, language) }
+        } catch (_: Exception) {
+            TmdbCache.putFindImdbMovie(clean, null)
+            null
+        }
     }
 
     suspend fun getTvShow(title: String, year: Int? = null, language: String? = null): TvShow? {
         if (!UserPreferences.enableTmdb) return null
         return try {
             val effectiveYear = year ?: extractYear(title)
-            val tv = findBestTvMatch(title, effectiveYear, language) ?: return null
+            val cacheKey = buildLookupCacheKey("tv-match", title, effectiveYear, language)
+            if (TmdbCache.hasSearchTv(cacheKey)) {
+                val cachedId = TmdbCache.getSearchTvId(cacheKey) ?: return null
+                return getTvShowById(cachedId, language)
+            }
+            val tv = findBestTvMatch(title, effectiveYear, language)
+            TmdbCache.putSearchTvId(cacheKey, tv?.id)
+            tv?.let { getTvShowById(it.id, language) }
+        } catch (_: Exception) { null }
+    }
 
+    suspend fun getTvShowById(tmdbId: Int, language: String? = null): TvShow? {
+        if (!UserPreferences.enableTmdb) return null
+        TmdbCache.getTv(tmdbId)?.let { cached ->
+            return TvShow(
+                id = cached.id.toString(),
+                title = cached.title,
+                overview = cached.overview,
+                released = cached.released,
+                trailer = cached.trailer,
+                rating = cached.rating,
+                poster = cached.poster,
+                banner = cached.banner,
+                imdbId = cached.imdbId,
+                tmdbId = cached.id.toString(),
+                seasons = cached.seasons.map {
+                    Season(
+                        id = "${cached.id}-${it.number}",
+                        number = it.number,
+                        title = it.title,
+                        poster = it.poster,
+                    )
+                },
+                genres = cached.genres.map { Genre(it.first, it.second) },
+                cast = cached.cast.map { People(it.first, it.second, it.third) },
+                directors = cached.directors.map { People(it.first, it.second, it.third) },
+                recommendations = cached.recommendations.map { it.toShow() },
+            ).also { it.contentRating = cached.contentRating }
+        }
+        return try {
             val details = TMDb3.TvSeries.details(
-                seriesId = tv.id,
+                seriesId = tmdbId,
                 appendToResponse = listOf(
                     TMDb3.Params.AppendToResponse.Tv.CREDITS,
                     TMDb3.Params.AppendToResponse.Tv.RECOMMENDATIONS,
                     TMDb3.Params.AppendToResponse.Tv.VIDEOS,
                     TMDb3.Params.AppendToResponse.Tv.EXTERNAL_IDS,
+                    TMDb3.Params.AppendToResponse.Tv.CONTENT_RATING,
                 ),
                 language = language
             )
-
-            TvShow(
+            val directors = details.credits?.crew
+                ?.filter {
+                    it.job.equals("Director", ignoreCase = true) ||
+                        it.job.equals("Series Director", ignoreCase = true)
+                }
+                ?.distinctBy { it.id }
+                ?.map { People(it.id.toString(), it.name, it.profilePath?.w500) }
+                .orEmpty()
+                .ifEmpty {
+                    details.createdBy?.map { People(it.id.toString(), it.name, it.profilePath?.w500) }
+                        .orEmpty()
+                }
+            val recommendations = mapRecommendations(details.recommendations?.results)
+            val contentRating = extractTvCertification(details, language)
+            val result = TvShow(
                 id = details.id.toString(),
                 title = details.name,
                 overview = details.overview,
@@ -88,6 +265,7 @@ object TmdbUtils {
                 poster = details.posterPath?.original,
                 banner = details.backdropPath?.original,
                 imdbId = details.externalIds?.imdbId,
+                tmdbId = details.id.toString(),
                 seasons = details.seasons.map {
                     Season(
                         id = "${details.id}-${it.seasonNumber}",
@@ -98,8 +276,151 @@ object TmdbUtils {
                 },
                 genres = details.genres.map { Genre(it.id.toString(), it.name) },
                 cast = details.credits?.cast?.map { People(it.id.toString(), it.name, it.profilePath?.w500) } ?: listOf(),
+                directors = directors,
+                recommendations = recommendations,
+            ).also { it.contentRating = contentRating }
+            TmdbCache.putTv(
+                TmdbCache.CachedTv(
+                    id = details.id,
+                    title = result.title,
+                    overview = result.overview,
+                    released = details.firstAirDate,
+                    trailer = result.trailer,
+                    rating = result.rating,
+                    poster = result.poster,
+                    banner = result.banner,
+                    imdbId = result.imdbId,
+                    contentRating = contentRating,
+                    seasons = result.seasons.map {
+                        TmdbCache.SeasonCache(it.number, it.title, it.poster)
+                    },
+                    genres = result.genres.map { it.id to it.name },
+                    cast = result.cast.map { Triple(it.id, it.name, it.image) },
+                    directors = directors.map { Triple(it.id, it.name, it.image) },
+                    recommendations = recommendations.mapNotNull { show ->
+                        when (show) {
+                            is Movie -> TmdbCache.CachedShowRef(
+                                id = show.tmdbId?.toIntOrNull() ?: show.id.toIntOrNull() ?: return@mapNotNull null,
+                                isTv = false,
+                                title = show.title,
+                                overview = show.overview,
+                                released = show.released?.format("yyyy-MM-dd"),
+                                rating = show.rating,
+                                poster = show.poster,
+                                banner = show.banner,
+                            )
+                            is TvShow -> TmdbCache.CachedShowRef(
+                                id = show.tmdbId?.toIntOrNull() ?: show.id.toIntOrNull() ?: return@mapNotNull null,
+                                isTv = true,
+                                title = show.title,
+                                overview = show.overview,
+                                released = show.released?.format("yyyy-MM-dd"),
+                                rating = show.rating,
+                                poster = show.poster,
+                                banner = show.banner,
+                            )
+                            else -> null
+                        }
+                    },
+                ),
             )
+            result
         } catch (_: Exception) { null }
+    }
+
+    /**
+     * Fills gaps on a provider movie for high-end detail pages:
+     * directors, cast, recommendations, trailer, content rating, artwork.
+     * Preserves provider ids and already-populated fields.
+     */
+    suspend fun enrichMovieDetail(movie: Movie, language: String? = null): Movie {
+        if (!UserPreferences.enableTmdb) return movie
+        val lang = language ?: UserPreferences.currentProvider?.language
+        val year = movie.released?.format("yyyy")?.toIntOrNull()
+        val tmdb = when {
+            !movie.tmdbId.isNullOrBlank() -> movie.tmdbId!!.toIntOrNull()?.let { getMovieById(it, lang) }
+            !movie.imdbId.isNullOrBlank() -> getMovieByImdbId(movie.imdbId!!, lang)
+            else -> null
+        } ?: getMovie(movie.title, year = year, language = lang) ?: return movie
+
+        return movie.copy(
+            overview = movie.overview?.takeIf { it.isNotBlank() } ?: tmdb.overview,
+            runtime = movie.runtime ?: tmdb.runtime,
+            trailer = movie.trailer?.takeIf { it.isNotBlank() } ?: tmdb.trailer,
+            rating = movie.rating ?: tmdb.rating,
+            poster = movie.poster?.takeIf { it.isNotBlank() } ?: tmdb.poster,
+            banner = movie.banner?.takeIf { it.isNotBlank() } ?: tmdb.banner,
+            imdbId = movie.imdbId ?: tmdb.imdbId,
+            genres = movie.genres.ifEmpty { tmdb.genres },
+            directors = movie.directors.ifEmpty { tmdb.directors },
+            cast = movie.cast.ifEmpty { tmdb.cast },
+            recommendations = movie.recommendations.ifEmpty { tmdb.recommendations },
+        ).apply {
+            tmdbId = movie.tmdbId ?: tmdb.tmdbId
+            contentRating = movie.contentRating ?: tmdb.contentRating
+            providerName = movie.providerName
+            isFavorite = movie.isFavorite
+            isWatched = movie.isWatched
+            watchedDate = movie.watchedDate
+            lastPlayedAtMillis = movie.lastPlayedAtMillis
+            watchHistory = movie.watchHistory
+        }
+    }
+
+    /**
+     * Fills gaps on a provider TV show for high-end detail pages.
+     * Does not replace seasons/episodes from the provider.
+     */
+    suspend fun enrichTvShowDetail(tvShow: TvShow, language: String? = null): TvShow {
+        if (!UserPreferences.enableTmdb) return tvShow
+        val lang = language ?: UserPreferences.currentProvider?.language
+        val year = tvShow.released?.format("yyyy")?.toIntOrNull()
+        val tmdb = when {
+            !tvShow.tmdbId.isNullOrBlank() -> tvShow.tmdbId!!.toIntOrNull()?.let { getTvShowById(it, lang) }
+            !tvShow.imdbId.isNullOrBlank() -> getTvShowByImdbId(tvShow.imdbId!!, lang)
+            else -> null
+        } ?: getTvShow(tvShow.title, year = year, language = lang) ?: return tvShow
+
+        return tvShow.copy(
+            overview = tvShow.overview?.takeIf { it.isNotBlank() } ?: tmdb.overview,
+            runtime = tvShow.runtime ?: tmdb.runtime,
+            trailer = tvShow.trailer?.takeIf { it.isNotBlank() } ?: tmdb.trailer,
+            rating = tvShow.rating ?: tmdb.rating,
+            poster = tvShow.poster?.takeIf { it.isNotBlank() } ?: tmdb.poster,
+            banner = tvShow.banner?.takeIf { it.isNotBlank() } ?: tmdb.banner,
+            imdbId = tvShow.imdbId ?: tmdb.imdbId,
+            genres = tvShow.genres.ifEmpty { tmdb.genres },
+            directors = tvShow.directors.ifEmpty { tmdb.directors },
+            cast = tvShow.cast.ifEmpty { tmdb.cast },
+            recommendations = tvShow.recommendations.ifEmpty { tmdb.recommendations },
+            seasons = tvShow.seasons,
+        ).apply {
+            tmdbId = tvShow.tmdbId ?: tmdb.tmdbId
+            contentRating = tvShow.contentRating ?: tmdb.contentRating
+            providerName = tvShow.providerName
+            isFavorite = tvShow.isFavorite
+            lastPlayedAtMillis = tvShow.lastPlayedAtMillis
+            lastPlayedEpisodeId = tvShow.lastPlayedEpisodeId
+            lastPlayedEpisode = tvShow.lastPlayedEpisode
+        }
+    }
+
+    suspend fun getTvShowByImdbId(imdbId: String, language: String? = null): TvShow? {
+        if (!UserPreferences.enableTmdb) return null
+        val clean = imdbId.trim()
+        if (clean.isBlank()) return null
+        if (TmdbCache.hasFindImdbTv(clean)) {
+            val id = TmdbCache.getFindImdbTv(clean) ?: return null
+            return getTvShowById(id, language)
+        }
+        return try {
+            val found = TMDb3.Find.byImdbId(clean, language).tvResults.firstOrNull()
+            TmdbCache.putFindImdbTv(clean, found?.id)
+            found?.let { getTvShowById(it.id, language) }
+        } catch (_: Exception) {
+            TmdbCache.putFindImdbTv(clean, null)
+            null
+        }
     }
 
     suspend fun getEpisodesBySeason(tvShowId: String, seasonNumber: Int, language: String? = null): List<Episode> {
@@ -156,40 +477,6 @@ object TmdbUtils {
         return ageRating
     }
 
-    suspend fun getMovieById(id: Int, language: String? = null): Movie? {
-        if (!UserPreferences.enableTmdb) return null
-        return try {
-            val details = TMDb3.Movies.details(
-                movieId = id,
-                appendToResponse = listOf(
-                    TMDb3.Params.AppendToResponse.Movie.CREDITS,
-                    TMDb3.Params.AppendToResponse.Movie.RECOMMENDATIONS,
-                    TMDb3.Params.AppendToResponse.Movie.VIDEOS,
-                    TMDb3.Params.AppendToResponse.Movie.EXTERNAL_IDS,
-                ),
-                language = language
-            )
-
-            Movie(
-                id = details.id.toString(),
-                title = details.title,
-                overview = details.overview,
-                released = details.releaseDate,
-                runtime = details.runtime,
-                trailer = details.videos?.results
-                    ?.sortedBy { it.publishedAt ?: "" }
-                    ?.firstOrNull { it.site == TMDb3.Video.VideoSite.YOUTUBE }
-                    ?.let { "https://www.youtube.com/watch?v=${it.key}" },
-                rating = details.voteAverage.toDouble(),
-                poster = details.posterPath?.original,
-                banner = details.backdropPath?.original,
-                imdbId = details.externalIds?.imdbId,
-                genres = details.genres.map { Genre(it.id.toString(), it.name) },
-                cast = details.credits?.cast?.map { People(it.id.toString(), it.name, it.profilePath?.w500) } ?: listOf(),
-            )
-        } catch (_: Exception) { null }
-    }
-
     suspend fun getMovieAgeRatingById(id: Int, language: String? = null): Int? {
         if (!UserPreferences.enableTmdb) return null
 
@@ -208,47 +495,6 @@ object TmdbUtils {
 
         movieAgeCache[cacheKey] = encodeAgeRatingCacheValue(ageRating)
         return ageRating
-    }
-
-    suspend fun getTvShowById(id: Int, language: String? = null): TvShow? {
-        if (!UserPreferences.enableTmdb) return null
-        return try {
-            val details = TMDb3.TvSeries.details(
-                seriesId = id,
-                appendToResponse = listOf(
-                    TMDb3.Params.AppendToResponse.Tv.CREDITS,
-                    TMDb3.Params.AppendToResponse.Tv.RECOMMENDATIONS,
-                    TMDb3.Params.AppendToResponse.Tv.VIDEOS,
-                    TMDb3.Params.AppendToResponse.Tv.EXTERNAL_IDS,
-                ),
-                language = language
-            )
-
-            TvShow(
-                id = details.id.toString(),
-                title = details.name,
-                overview = details.overview,
-                released = details.firstAirDate,
-                trailer = details.videos?.results
-                    ?.sortedBy { it.publishedAt ?: "" }
-                    ?.firstOrNull { it.site == TMDb3.Video.VideoSite.YOUTUBE }
-                    ?.let { "https://www.youtube.com/watch?v=${it.key}" },
-                rating = details.voteAverage.toDouble(),
-                poster = details.posterPath?.original,
-                banner = details.backdropPath?.original,
-                imdbId = details.externalIds?.imdbId,
-                seasons = details.seasons.map {
-                    Season(
-                        id = "${details.id}-${it.seasonNumber}",
-                        number = it.seasonNumber,
-                        title = it.name,
-                        poster = it.posterPath?.w500,
-                    )
-                },
-                genres = details.genres.map { Genre(it.id.toString(), it.name) },
-                cast = details.credits?.cast?.map { People(it.id.toString(), it.name, it.profilePath?.w500) } ?: listOf(),
-            )
-        } catch (_: Exception) { null }
     }
 
     suspend fun getTvShowAgeRatingById(id: Int, language: String? = null): Int? {
@@ -596,6 +842,91 @@ object TmdbUtils {
     private fun decodeAgeRatingCacheValue(value: Int): Int? {
         return value.takeUnless { it == UNKNOWN_AGE_RATING }
     }
+
+    private fun extractMovieCertification(details: TMDb3.Movie.Detail, language: String?): String? {
+        val releaseDates = details.releaseDates?.results.orEmpty()
+        buildPreferredCertificationCountries(language).forEach { countryCode ->
+            releaseDates
+                .firstOrNull { it.iso3166.equals(countryCode, ignoreCase = true) }
+                ?.releaseDates
+                ?.mapNotNull { it.certification?.trim()?.takeIf { c -> c.isNotEmpty() } }
+                ?.firstOrNull()
+                ?.let { return it }
+        }
+        return releaseDates
+            .asSequence()
+            .flatMap { it.releaseDates.asSequence() }
+            .mapNotNull { it.certification?.trim()?.takeIf { c -> c.isNotEmpty() } }
+            .firstOrNull()
+    }
+
+    private fun extractTvCertification(details: TMDb3.Tv.Detail, language: String?): String? {
+        val contentRatings = details.contentRatings?.results.orEmpty()
+        buildPreferredCertificationCountries(language).forEach { countryCode ->
+            contentRatings
+                .firstOrNull { it.iso3166.equals(countryCode, ignoreCase = true) }
+                ?.rating?.trim()?.takeIf { it.isNotEmpty() }
+                ?.let { return it }
+        }
+        return contentRatings
+            .asSequence()
+            .mapNotNull { it.rating?.trim()?.takeIf { r -> r.isNotEmpty() } }
+            .firstOrNull()
+    }
+
+    private fun mapRecommendations(results: List<TMDb3.MultiItem>?): List<Show> {
+        if (results.isNullOrEmpty()) return emptyList()
+        return results.mapNotNull { multi ->
+            when (multi) {
+                is TMDb3.Movie -> Movie(
+                    id = multi.id.toString(),
+                    title = multi.title,
+                    overview = multi.overview,
+                    released = multi.releaseDate,
+                    rating = multi.voteAverage.toDouble(),
+                    poster = multi.posterPath?.w500,
+                    banner = multi.backdropPath?.original,
+                    tmdbId = multi.id.toString(),
+                )
+                is TMDb3.Tv -> TvShow(
+                    id = multi.id.toString(),
+                    title = multi.name,
+                    overview = multi.overview,
+                    released = multi.firstAirDate,
+                    rating = multi.voteAverage.toDouble(),
+                    poster = multi.posterPath?.w500,
+                    banner = multi.backdropPath?.original,
+                    tmdbId = multi.id.toString(),
+                )
+                else -> null
+            }
+        }.take(20)
+    }
+
+    private fun TmdbCache.CachedShowRef.toShow(): Show =
+        if (isTv) {
+            TvShow(
+                id = id.toString(),
+                title = title,
+                overview = overview,
+                released = released,
+                rating = rating,
+                poster = poster,
+                banner = banner,
+                tmdbId = id.toString(),
+            )
+        } else {
+            Movie(
+                id = id.toString(),
+                title = title,
+                overview = overview,
+                released = released,
+                rating = rating,
+                poster = poster,
+                banner = banner,
+                tmdbId = id.toString(),
+            )
+        }
 
     private fun extractMovieAgeRating(details: TMDb3.Movie.Detail, language: String?): Int? {
         val releaseDates = details.releaseDates?.results.orEmpty()

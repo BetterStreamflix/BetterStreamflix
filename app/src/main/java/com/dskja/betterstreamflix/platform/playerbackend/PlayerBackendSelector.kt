@@ -5,11 +5,11 @@ import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.util.Log
-import android.widget.Toast
 import androidx.media3.datasource.DataSource
 import androidx.media3.exoplayer.ExoPlayer
 import com.dskja.betterstreamflix.R
 import com.dskja.betterstreamflix.player.PlayerBuilderFactory
+import com.dskja.betterstreamflix.utils.ExpDialogChrome
 import com.dskja.betterstreamflix.utils.UserPreferences
 
 object ExoPlayerBackend : PlayerBackend {
@@ -120,11 +120,11 @@ object ExternalMpvBackend : PlayerBackend {
             true
         } catch (e: Exception) {
             Log.w(TAG, "No external player: ${e.message}")
-            Toast.makeText(
+            ExpDialogChrome.notify(
                 context,
-                context.getString(R.string.platform_mpv_not_installed),
-                Toast.LENGTH_LONG,
-            ).show()
+                R.string.platform_mpv_not_installed,
+                R.string.player_settings_title,
+            )
             false
         }
     }

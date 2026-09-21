@@ -99,24 +99,44 @@ class CloseloadExtractor : Extractor() {
                 when (op) {
                     "atob" -> {
                         try {
-                            resultBytes = if (resultStr != null) {
+                            val bytes = if (resultStr != null) {
                                 safeB64Decode(resultStr)
                             } else {
-                                safeB64DecodeBytes(resultBytes!!)
+                                val prior = resultBytes ?: run {
+                                    success = false
+                                    break
+                                }
+                                safeB64DecodeBytes(prior)
                             }
-                            resultStr = String(resultBytes, Charsets.ISO_8859_1)
+                            resultBytes = bytes
+                            resultStr = String(bytes, Charsets.ISO_8859_1)
                         } catch (e: Exception) {
                             success = false
                             break
                         }
                     }
                     "reverse" -> {
-                        resultStr = resultStr?.reversed() ?: String(resultBytes!!, Charsets.ISO_8859_1).reversed()
+                        val priorBytes = resultBytes
+                        resultStr = resultStr?.reversed()
+                            ?: priorBytes?.let { String(it, Charsets.ISO_8859_1).reversed() }
+                            ?: run {
+                                success = false
+                                break
+                            }
                         resultBytes = null
                     }
                     "rot" -> {
-                        val rotOffset = param!!
-                        val currentStr = resultStr ?: String(resultBytes!!, Charsets.ISO_8859_1)
+                        val rotOffset = param ?: run {
+                            success = false
+                            break
+                        }
+                        val priorBytes = resultBytes
+                        val currentStr = resultStr
+                            ?: priorBytes?.let { String(it, Charsets.ISO_8859_1) }
+                            ?: run {
+                                success = false
+                                break
+                            }
                         val rotResult = StringBuilder()
                         for (c in currentStr) {
                             if (c in 'a'..'z') {
@@ -135,7 +155,9 @@ class CloseloadExtractor : Extractor() {
             
             if (!success) continue
             
-            val finalBytes = resultBytes ?: resultStr!!.toByteArray(Charsets.ISO_8859_1)
+            val finalBytes = resultBytes
+                ?: resultStr?.toByteArray(Charsets.ISO_8859_1)
+                ?: continue
             var acc = accInit
             val unmix = StringBuilder()
             for (b in finalBytes) {

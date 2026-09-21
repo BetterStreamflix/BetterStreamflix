@@ -28,7 +28,7 @@
         android:layout_height="wrap_content"
         android:layout_marginStart="4dp"
         android:layout_marginEnd="16dp"
-        android:fontFamily="@font/manrope"
+        android:textAppearance="@style/TextAppearance.Lumina.Title"
         android:text="@string/support_hub_title"
         android:textColor="@color/support_text_primary"
         android:textSize="@dimen/support_text_screen_title"
@@ -45,13 +45,25 @@
         android:layout_marginStart="@dimen/support_page_padding"
         android:layout_marginTop="4dp"
         android:layout_marginEnd="@dimen/support_page_padding"
-        android:fontFamily="@font/manrope"
+        android:textAppearance="@style/TextAppearance.Lumina.Caption"
         android:text="@string/support_hub_subtitle"
         android:textColor="@color/support_text_secondary"
         android:textSize="@dimen/support_text_secondary"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@id/btn_support_back" />
+
+    <View
+        android:id="@+id/v_support_accent_rule"
+        android:layout_width="40dp"
+        android:layout_height="3dp"
+        android:layout_marginStart="@dimen/support_page_padding"
+        android:layout_marginTop="10dp"
+        android:background="@drawable/bg_exp_accent_rule"
+        android:visibility="gone"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/tv_support_subtitle"
+        tools:visibility="visible" />
 
     <androidx.core.widget.NestedScrollView
         android:id="@+id/sv_support"
@@ -64,7 +76,7 @@
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/tv_support_subtitle">
+        app:layout_constraintTop_toBottomOf="@id/v_support_accent_rule">
 
         <LinearLayout
             android:layout_width="match_parent"
@@ -84,17 +96,18 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="@dimen/support_section_spacing"
-                android:fontFamily="@font/manrope"
+                android:textAppearance="@style/TextAppearance.Lumina.Body"
                 android:lineSpacingExtra="2dp"
                 android:text="@string/support_hub_intro"
                 android:textColor="@color/support_text_secondary"
                 android:textSize="@dimen/support_text_body" />
 
             <TextView
+                android:id="@+id/tv_support_options_title"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="@dimen/support_section_spacing"
-                android:fontFamily="@font/manrope"
+                android:textAppearance="@style/TextAppearance.Lumina.Body"
                 android:text="@string/support_options_title"
                 android:textColor="@color/support_text_primary"
                 android:textSize="@dimen/support_text_section"
@@ -110,10 +123,11 @@
                 android:dividerPadding="0dp" />
 
             <TextView
+                android:id="@+id/tv_support_transparency_title"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="@dimen/support_section_spacing"
-                android:fontFamily="@font/manrope"
+                android:textAppearance="@style/TextAppearance.Lumina.Body"
                 android:text="@string/support_transparency_title"
                 android:textColor="@color/support_text_primary"
                 android:textSize="@dimen/support_text_section"
@@ -132,7 +146,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:drawablePadding="10dp"
-                    android:fontFamily="@font/manrope"
+                    android:textAppearance="@style/TextAppearance.Lumina.Body"
                     android:text="@string/support_transparency_item_development"
                     android:textColor="@color/support_text_secondary"
                     android:textSize="@dimen/support_text_body" />
@@ -141,7 +155,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="8dp"
-                    android:fontFamily="@font/manrope"
+                    android:textAppearance="@style/TextAppearance.Lumina.Body"
                     android:text="@string/support_transparency_item_bugs"
                     android:textColor="@color/support_text_secondary"
                     android:textSize="@dimen/support_text_body" />
@@ -150,7 +164,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="8dp"
-                    android:fontFamily="@font/manrope"
+                    android:textAppearance="@style/TextAppearance.Lumina.Body"
                     android:text="@string/support_transparency_item_features"
                     android:textColor="@color/support_text_secondary"
                     android:textSize="@dimen/support_text_body" />
@@ -159,7 +173,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="8dp"
-                    android:fontFamily="@font/manrope"
+                    android:textAppearance="@style/TextAppearance.Lumina.Body"
                     android:text="@string/support_transparency_item_maintenance"
                     android:textColor="@color/support_text_secondary"
                     android:textSize="@dimen/support_text_body" />
@@ -168,9 +182,85 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="8dp"
-                    android:fontFamily="@font/manrope"
+                    android:textAppearance="@style/TextAppearance.Lumina.Body"
                     android:text="@string/support_transparency_item_community"
                     android:textColor="@color/support_text_secondary"
+                    android:textSize="@dimen/support_text_body" />
+            </LinearLayout>
+
+            <TextView
+                android:id="@+id/tv_support_impact_title"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="@dimen/support_section_spacing"
+                android:textAppearance="@style/TextAppearance.Lumina.Body"
+                android:text="@string/support_impact_title"
+                android:textColor="@color/support_text_primary"
+                android:textSize="@dimen/support_text_section"
+                android:textStyle="bold" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:textAppearance="@style/TextAppearance.Lumina.Body"
+                android:text="@string/support_impact_subtitle"
+                android:textColor="@color/support_text_secondary"
+                android:textSize="@dimen/support_text_secondary" />
+
+            <LinearLayout
+                android:id="@+id/ll_support_impact"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:orientation="vertical" />
+
+            <TextView
+                android:id="@+id/tv_support_faq_title"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="@dimen/support_section_spacing"
+                android:textAppearance="@style/TextAppearance.Lumina.Body"
+                android:text="@string/support_faq_title"
+                android:textColor="@color/support_text_primary"
+                android:textSize="@dimen/support_text_section"
+                android:textStyle="bold" />
+
+            <LinearLayout
+                android:id="@+id/ll_support_faq"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:orientation="vertical" />
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="@dimen/support_section_spacing"
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+
+                <TextView
+                    android:id="@+id/tv_support_issues"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:textAppearance="@style/TextAppearance.Lumina.Body"
+                    android:paddingTop="8dp"
+                    android:paddingBottom="8dp"
+                    android:text="@string/support_link_issues"
+                    android:textColor="?attr/colorPrimary"
+                    android:textSize="@dimen/support_text_body" />
+
+                <TextView
+                    android:id="@+id/tv_support_releases"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:textAppearance="@style/TextAppearance.Lumina.Body"
+                    android:paddingTop="8dp"
+                    android:paddingBottom="8dp"
+                    android:text="@string/support_link_releases"
+                    android:textColor="?attr/colorPrimary"
                     android:textSize="@dimen/support_text_body" />
             </LinearLayout>
 
@@ -178,12 +268,12 @@
                 android:id="@+id/tv_support_details_link"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="20dp"
-                android:fontFamily="@font/manrope"
+                android:layout_marginTop="8dp"
+                android:textAppearance="@style/TextAppearance.Lumina.Body"
                 android:paddingTop="8dp"
                 android:paddingBottom="8dp"
                 android:text="@string/support_details_title"
-                android:textColor="@color/support_accent"
+                android:textColor="?attr/colorPrimary"
                 android:textSize="@dimen/support_text_body" />
         </LinearLayout>
     </androidx.core.widget.NestedScrollView>

@@ -62,29 +62,35 @@ class TvShowTvFragment : Fragment() {
                 when (state) {
                     TvShowViewModel.State.Loading -> binding.isLoading.apply {
                         root.visibility = View.VISIBLE
-                        pbIsLoading.visibility = View.VISIBLE
+                        com.dskja.betterstreamflix.utils.ExpPressEffects.showLoadingSkeleton(root, true)
                         gIsLoadingRetry.visibility = View.GONE
                     }
                     is TvShowViewModel.State.SuccessLoading -> {
                         displayTvShow(state.tvShow)
                         binding.isLoading.root.visibility = View.GONE
+                        com.dskja.betterstreamflix.utils.ExpPressEffects.showLoadingSkeleton(
+                            binding.isLoading.root, false,
+                        )
                     }
                     is TvShowViewModel.State.FailedLoading -> {
                         if (http409Guard.handle(requireContext(), state.error) { viewModel.getTvShow(args.id) }) {
                                 return@collect
                             }
-                        Toast.makeText(
-                            requireContext(),
-                            state.error.message ?: "",
-                            Toast.LENGTH_SHORT
-                        ).show()
+                        if (!com.dskja.betterstreamflix.utils.ExperimentalMobileDesign.enabled()) {
+                            Toast.makeText(
+                                requireContext(),
+                                state.error.message ?: "",
+                                Toast.LENGTH_SHORT
+                            ).show()
+                        }
                         binding.isLoading.apply {
-                            pbIsLoading.visibility = View.GONE
+                            com.dskja.betterstreamflix.utils.ExpPressEffects.showLoadingSkeleton(root, false)
                             gIsLoadingRetry.visibility = View.VISIBLE
+                            com.dskja.betterstreamflix.utils.ExpPressEffects.animateLoadingError(root)
                             btnIsLoadingRetry.setOnClickListener { viewModel.getTvShow(args.id) }
                             btnIsLoadingClearCache.setOnClickListener {
                                 CacheUtils.clearAppCache(requireContext())
-                                android.widget.Toast.makeText(requireContext(), getString(com.dskja.betterstreamflix.R.string.clear_cache_done), android.widget.Toast.LENGTH_SHORT).show()
+                                com.dskja.betterstreamflix.utils.ExpDialogChrome.notify(requireContext(), getString(com.dskja.betterstreamflix.R.string.clear_cache_done), com.dskja.betterstreamflix.R.string.loading_error_clear_cache)
                                 viewModel.getTvShow(args.id)
                             }
                             btnIsLoadingErrorDetails.setOnClickListener {
@@ -99,9 +105,9 @@ class TvShowTvFragment : Fragment() {
     }
 
     override fun onDestroyView() {
-        super.onDestroyView()
-        appAdapter.onSaveInstanceState(binding.vgvTvShow)
+        _binding?.let { appAdapter.onSaveInstanceState(it.vgvTvShow) }
         _binding = null
+        super.onDestroyView()
     }
 
 

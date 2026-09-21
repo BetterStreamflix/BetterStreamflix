@@ -11,6 +11,7 @@ import com.dskja.betterstreamflix.utils.UserPreferences
 import com.dskja.betterstreamflix.utils.TMDb3
 import com.dskja.betterstreamflix.utils.TMDb3.original
 import com.dskja.betterstreamflix.utils.TMDb3.w500
+import com.dskja.betterstreamflix.utils.TmdbUtils
 import com.dskja.betterstreamflix.utils.WebViewResolver
 import org.json.JSONArray
 import org.json.JSONObject
@@ -483,6 +484,12 @@ object PoseidonHD2Provider : Provider {
     }
 
     override suspend fun getPeople(id: String, page: Int): People {
+        if (page > 1) return People(id, "")
+        val tmdbId = id.toIntOrNull()
+        if (tmdbId != null) {
+            return TmdbUtils.getPeopleById(tmdbId, language = language)
+                ?: People(id = id, name = "", filmography = emptyList())
+        }
         throw Exception("Function not available for Poseidonhd2")
     }
 

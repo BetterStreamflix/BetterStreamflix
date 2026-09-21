@@ -66,13 +66,28 @@ class TvShowMobileFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         ExpNavAutoHide.attach(binding.root)
+        com.dskja.betterstreamflix.utils.ExpPressEffects.wireLoadingRetry(binding.isLoading.root)
         ExpMotion.enterScreen(binding.root)
+        ExperimentalMobileDesign.applyReducedGlass(binding.root)
+        if (ExperimentalMobileDesign.enabled()) {
+            ExpMotion.staggerFirstFill(binding.rvTvShow)
+            ExpMotion.kenBurns(
+                binding.ivTvShowBanner,
+                drift = !ExperimentalMobileDesign.heroParallax(),
+            )
+        }
         binding.root.findViewById<View>(com.dskja.betterstreamflix.R.id.iv_detail_back)
             ?.also { back ->
                 androidx.appcompat.widget.TooltipCompat.setTooltipText(
                     back, back.context.getString(com.dskja.betterstreamflix.R.string.exp_back))
+                if (ExperimentalMobileDesign.enabled()) {
+                    back.setBackgroundResource(ExperimentalMobileDesign.iconChipBackground())
+                    with(com.dskja.betterstreamflix.utils.ExpPressEffects) { back.applyExpPress() }
+                    ExpMotion.popIn(back)
+                }
             }
             ?.setOnClickListener {
+                ExpMotion.hapticTap(it)
                 androidx.navigation.Navigation.findNavController(binding.root).navigateUp()
             }
 
@@ -83,7 +98,7 @@ class TvShowMobileFragment : Fragment() {
                 when (state) {
                     TvShowViewModel.State.Loading -> binding.isLoading.apply {
                         ExpMotion.fadeInAndShow(root)
-                        pbIsLoading.visibility = View.VISIBLE
+                        com.dskja.betterstreamflix.utils.ExpPressEffects.showLoadingSkeleton(root, true)
                         gIsLoadingRetry.visibility = View.GONE
                     }
                     is TvShowViewModel.State.SuccessLoading -> {
@@ -94,19 +109,22 @@ class TvShowMobileFragment : Fragment() {
                         if (http409Guard.handle(requireContext(), state.error) { viewModel.getTvShow(args.id) }) {
                                 return@collect
                             }
-                        Toast.makeText(
-                            requireContext(),
-                            state.error.message ?: "",
-                            Toast.LENGTH_SHORT
-                        ).show()
+                        if (!com.dskja.betterstreamflix.utils.ExperimentalMobileDesign.enabled()) {
+                            Toast.makeText(
+                                requireContext(),
+                                state.error.message ?: "",
+                                Toast.LENGTH_SHORT
+                            ).show()
+                        }
                             binding.isLoading.apply {
-                            pbIsLoading.visibility = View.GONE
+                            com.dskja.betterstreamflix.utils.ExpPressEffects.showLoadingSkeleton(root, false)
                             gIsLoadingRetry.visibility = View.VISIBLE
+                            com.dskja.betterstreamflix.utils.ExpPressEffects.animateLoadingError(root)
                                 val doRetry = { viewModel.getTvShow(args.id) }
                                 btnIsLoadingRetry.setOnClickListener { doRetry() }
                                 btnIsLoadingClearCache.setOnClickListener {
                                     CacheUtils.clearAppCache(requireContext())
-                                    android.widget.Toast.makeText(requireContext(), getString(com.dskja.betterstreamflix.R.string.clear_cache_done), android.widget.Toast.LENGTH_SHORT).show()
+                                    com.dskja.betterstreamflix.utils.ExpDialogChrome.notify(requireContext(), getString(com.dskja.betterstreamflix.R.string.clear_cache_done), com.dskja.betterstreamflix.R.string.loading_error_clear_cache)
                                     doRetry()
                                 }
                                 btnIsLoadingErrorDetails.setOnClickListener {
@@ -120,11 +138,13 @@ class TvShowMobileFragment : Fragment() {
     }
 
     override fun onDestroyView() {
-        super.onDestroyView()
-        appAdapter.onSaveInstanceState(binding.rvTvShow)
+        _binding?.let { appAdapter.onSaveInstanceState(it.rvTvShow) }
         _binding = null
+        super.onDestroyView()
     }
 
+
+    private var detailScrollOffset = 0
 
     private fun initializeTvShow() {
         binding.rvTvShow.apply {
@@ -134,6 +154,16 @@ class TvShowMobileFragment : Fragment() {
             addItemDecoration(
                 SpacingItemDecoration(20.dp(requireContext()))
             )
+            if (ExperimentalMobileDesign.enabled()) {
+                addOnScrollListener(object : RecyclerView.OnScrollListener() {
+                    override fun onScrolled(recyclerView: RecyclerView, dx: Int, dy: Int) {
+                        detailScrollOffset += dy
+                        val parallax = (detailScrollOffset * 0.42f).coerceIn(0f, 720f)
+                        binding.ivTvShowBanner.translationY = -parallax
+                        binding.ivTvShowBanner.alpha = (1f - parallax / 900f).coerceIn(0.55f, 1f)
+                    }
+                })
+            }
         }
     }
 

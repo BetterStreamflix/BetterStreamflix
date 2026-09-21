@@ -549,6 +549,12 @@ object KinoGerProvider : Provider, ProviderConfigUrl {
     }
 
     override suspend fun getPeople(id: String, page: Int): People {
+        if (page > 1) return People(id, "")
+        val tmdbId = id.toIntOrNull()
+        if (tmdbId != null) {
+            return TmdbUtils.getPeopleById(tmdbId, language = language)
+                ?: People(id = id, name = "", filmography = emptyList())
+        }
         return People(id = id, name = id.substringAfterLast('/').ifBlank { "Unknown" }, filmography = emptyList())
     }
 

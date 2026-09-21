@@ -131,7 +131,17 @@ class VideasyExtractor : Extractor() {
             .build()
 
         val response = client.newCall(request).execute()
-        val encData = response.body?.string() ?: throw Exception("Failed to get encrypted data")
+        val encData = response.body?.string().orEmpty()
+        if (!response.isSuccessful) {
+            throw Exception("Videasy sources failed HTTP ${response.code}")
+        }
+        if (encData.isBlank()) {
+            throw Exception("Videasy sources returned empty body")
+        }
+        // Upstream sometimes returns HTML/JSON error pages instead of ciphertext.
+        if (encData.trimStart().startsWith("<") || encData.trimStart().startsWith("{")) {
+            throw Exception("Videasy sources returned non-ciphertext payload")
+        }
 
         val tmdbId = link.split("tmdbId=").getOrNull(1)?.split("&")?.getOrNull(0).orEmpty()
 
@@ -146,18 +156,31 @@ class VideasyExtractor : Extractor() {
             .build()
 
         val decResponse = client.newCall(decRequest).execute()
-        val decBody = decResponse.body?.string() ?: "{}"
-        val decJson = JSONObject(decBody)
-        val result = decJson.optString("result")
+        val decBody = decResponse.body?.string().orEmpty()
+        if (!decResponse.isSuccessful) {
+            throw Exception("Videasy decrypt failed HTTP ${decResponse.code}")
+        }
+        if (decBody.isBlank()) {
+            throw Exception("Videasy decrypt returned empty body")
+        }
+        val decJson = runCatching { JSONObject(decBody) }.getOrElse {
+            throw Exception("Videasy decrypt returned invalid JSON")
+        }
+        val result = decJson.optString("result").trim()
+        if (result.isBlank()) {
+            throw Exception("Videasy decrypt returned empty result")
+        }
 
-        val resultJson = JSONObject(result)
+        val resultJson = runCatching { JSONObject(result) }.getOrElse {
+            throw Exception("Videasy decrypt result is not JSON")
+        }
         val sources = resultJson.optJSONArray("sources")
         val subtitles = mutableListOf<Video.Subtitle>()
 
         val tracks = resultJson.optJSONArray("subtitles")
         if (tracks != null) {
             for (i in 0 until tracks.length()) {
-                val track = tracks.getJSONObject(i)
+                val track = tracks.optJSONObject(i) ?: continue
                 val label = track.optString("lang", "Unknown")
                 val url = track.optString("url")
                 if (url.isNotEmpty()) {
@@ -172,15 +195,21 @@ class VideasyExtractor : Extractor() {
         }
 
         if (sources != null && sources.length() > 0) {
-            val source = sources.getJSONObject(0)
+            val source = sources.optJSONObject(0)
+                ?: throw Exception("Videasy sources[0] missing")
+            val url = source.optString("url").trim()
+            if (url.isBlank()) {
+                throw Exception("Videasy source URL empty")
+            }
 
             val config = englishServers.find { link.contains("/${it.endpoint}/") }
-            // Cypher returns MP4; other Videasy endpoints are HLS.
+            // Cypher returns MP4; other Videasy endpoints are HLS — still coalesce from URL.
             val isMp4Server = config?.name == "Cypher"
-            val mimeType = if (isMp4Server) MimeTypes.VIDEO_MP4 else MimeTypes.APPLICATION_M3U8
+            val explicit = if (isMp4Server) MimeTypes.VIDEO_MP4 else MimeTypes.APPLICATION_M3U8
+            val mimeType = StreamMime.coalesce(explicit, url) ?: explicit
 
             return Video(
-                source = source.optString("url"),
+                source = url,
                 type = mimeType,
                 subtitles = subtitles,
                 headers = mapOf("Referer" to "https://player.videasy.net/")

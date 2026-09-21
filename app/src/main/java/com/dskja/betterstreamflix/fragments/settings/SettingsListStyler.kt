@@ -18,7 +18,7 @@ import com.dskja.betterstreamflix.R
 import com.dskja.betterstreamflix.utils.ThemeManager
 import com.dskja.betterstreamflix.utils.UserPreferences
 
-internal object SettingsListStyler {
+object SettingsListStyler {
     private data class DefaultRowStyle(
         val background: Drawable?,
         val minHeight: Int,
@@ -42,7 +42,9 @@ internal object SettingsListStyler {
 
         val experimental = UserPreferences.experimentalNewAppDesign
         val backgroundColor = if (experimental) {
-            ContextCompat.getColor(root.context, R.color.support_bg)
+            com.google.android.material.color.MaterialColors.getColor(
+                root, com.google.android.material.R.attr.colorSurface, 0xFF0B0B0F.toInt(),
+            )
         } else {
             resolveThemeColor(root, R.attr.app_background_color, 0xFF181818.toInt())
         }
@@ -105,6 +107,8 @@ internal object SettingsListStyler {
         val icon = view.findViewById<ImageView>(android.R.id.icon)
         val layoutParams = view.layoutParams as? ViewGroup.MarginLayoutParams
         val context = view.context
+        val outfit = ResourcesCompat.getFont(context, R.font.outfit)
+            ?: Typeface.create("sans-serif-medium", Typeface.BOLD)
         val manrope = ResourcesCompat.getFont(context, R.font.manrope)
             ?: Typeface.create("sans-serif-medium", Typeface.NORMAL)
 
@@ -127,51 +131,91 @@ internal object SettingsListStyler {
             view.minimumHeight = 0
             view.setPadding(0, context.dp(4), 0, context.dp(2))
             title.typeface = manrope
-            title.setTextColor(ContextCompat.getColor(context, R.color.support_text_primary))
-            title.setTextSize(TypedValue.COMPLEX_UNIT_SP, if (isTv) 18f else 15f)
-            title.letterSpacing = 0.02f
+            title.setTextColor(
+                com.google.android.material.color.MaterialColors.getColor(
+                    title, androidx.appcompat.R.attr.colorPrimary,
+                ),
+            )
+            title.setTextSize(TypedValue.COMPLEX_UNIT_SP, if (isTv) 13f else 11f)
+            title.letterSpacing = 0.14f
+            title.isAllCaps = true
             summary?.visibility = View.GONE
+            if (view.getTag(R.id.settings_list_styler_tag) != true) {
+                view.setTag(R.id.settings_list_styler_tag, true)
+                com.dskja.betterstreamflix.utils.ExpMotion.revealHeader(title)
+            }
             return
         }
 
-        val surface = ContextCompat.getColor(context, R.color.support_card_bg)
-        val border = ContextCompat.getColor(context, R.color.support_card_border)
-        val accent = ContextCompat.getColor(context, R.color.support_accent)
+        val surface = com.google.android.material.color.MaterialColors.getColor(
+            view, com.google.android.material.R.attr.colorSurfaceContainer,
+        )
+        val border = com.google.android.material.color.MaterialColors.getColor(
+            view, com.google.android.material.R.attr.colorOutlineVariant,
+        )
+        val accent = com.google.android.material.color.MaterialColors.getColor(
+            view, androidx.appcompat.R.attr.colorPrimary,
+        )
         val highlight = ColorUtils.blendARGB(surface, accent, 0.16f)
-        val highlightBorder = ContextCompat.getColor(context, R.color.support_card_border_focus)
+        val highlightBorder = ColorUtils.blendARGB(border, accent, 0.35f)
 
         layoutParams?.setMargins(
             context.dp(if (isTv) 28 else 16),
-            context.dp(if (isTv) 8 else 5),
+            context.dp(if (isTv) 6 else 3),
             context.dp(if (isTv) 28 else 16),
-            context.dp(if (isTv) 8 else 5),
+            context.dp(if (isTv) 6 else 3),
         )
         view.layoutParams = layoutParams
-        view.background = createRowBackground(
-            view = view,
-            isTv = isTv,
-            defaultColor = surface,
-            defaultStrokeColor = border,
-            activeColor = highlight,
-            activeStrokeColor = highlightBorder,
-            radiusDp = if (isTv) 18 else 14,
-        )
-        view.minimumHeight = context.dp(if (isTv) 84 else 68)
+        if (com.dskja.betterstreamflix.utils.ExperimentalMobileDesign.reducedGlass()) {
+            view.setBackgroundResource(
+                com.dskja.betterstreamflix.utils.ExperimentalMobileDesign.glassCardBackground(),
+            )
+        } else {
+            view.background = createRowBackground(
+                view = view,
+                isTv = isTv,
+                defaultColor = ColorUtils.setAlphaComponent(surface, 0xCC),
+                defaultStrokeColor = ColorUtils.setAlphaComponent(border, 0x55),
+                activeColor = highlight,
+                activeStrokeColor = highlightBorder,
+                radiusDp = if (isTv) 16 else 12,
+            )
+        }
+        view.minimumHeight = context.dp(if (isTv) 76 else 58)
         view.setPadding(
-            context.dp(if (isTv) 24 else 16),
-            context.dp(if (isTv) 16 else 14),
-            context.dp(if (isTv) 24 else 16),
-            context.dp(if (isTv) 16 else 14),
+            context.dp(if (isTv) 22 else 14),
+            context.dp(if (isTv) 14 else 12),
+            context.dp(if (isTv) 22 else 14),
+            context.dp(if (isTv) 14 else 12),
         )
 
-        title.typeface = manrope
-        title.setTextColor(ContextCompat.getColor(context, R.color.support_text_primary))
+        title.typeface = outfit
+        val isLuminaGate = title.text?.toString() ==
+            context.getString(R.string.settings_experimental_new_design_title)
+        if (isLuminaGate) {
+            view.setBackgroundResource(
+                com.dskja.betterstreamflix.utils.ExperimentalMobileDesign.glassCardBackground(),
+            )
+            title.setTextColor(accent)
+        } else {
+            title.setTextColor(
+                com.google.android.material.color.MaterialColors.getColor(
+                    view,
+                    com.google.android.material.R.attr.colorOnSurface,
+                ),
+            )
+        }
         title.setTextSize(TypedValue.COMPLEX_UNIT_SP, if (isTv) 18f else 15f)
-        title.letterSpacing = -0.01f
+        title.letterSpacing = -0.015f
 
         summary?.apply {
             typeface = manrope
-            setTextColor(ContextCompat.getColor(context, R.color.support_text_secondary))
+            setTextColor(
+                com.google.android.material.color.MaterialColors.getColor(
+                    this,
+                    com.google.android.material.R.attr.colorOnSurfaceVariant,
+                ),
+            )
             setTextSize(TypedValue.COMPLEX_UNIT_SP, if (isTv) 14f else 12.5f)
             maxLines = 3
             visibility = if (text.isNullOrBlank()) View.GONE else View.VISIBLE
@@ -179,6 +223,33 @@ internal object SettingsListStyler {
 
         icon?.drawable?.let {
             icon.imageTintList = ColorStateList.valueOf(accent)
+        }
+
+        widgetFrame?.let { frame ->
+            for (i in 0 until frame.childCount) {
+                when (val child = frame.getChildAt(i)) {
+                    is android.widget.CompoundButton -> {
+                        child.buttonTintList = ColorStateList.valueOf(accent)
+                        if (child is androidx.appcompat.widget.SwitchCompat) {
+                            child.thumbTintList = ColorStateList.valueOf(accent)
+                            child.trackTintList = ColorStateList.valueOf(
+                                ColorUtils.setAlphaComponent(accent, 0x66),
+                            )
+                        }
+                    }
+                }
+            }
+        }
+
+        with(com.dskja.betterstreamflix.utils.ExpPressEffects) { view.applyExpPress() }
+        if (view.getTag(R.id.exp_enter_animated_tag) != true) {
+            view.setTag(R.id.exp_enter_animated_tag, true)
+            val parent = view.parent as? RecyclerView
+            val adapterPos = parent?.getChildAdapterPosition(view)?.takeIf { it >= 0 }
+            val index = adapterPos ?: parent?.indexOfChild(view)?.coerceAtLeast(0) ?: 0
+            view.postDelayed({
+                com.dskja.betterstreamflix.utils.ExpMotion.popIn(view)
+            }, 32L * index.coerceAtMost(12))
         }
     }
 

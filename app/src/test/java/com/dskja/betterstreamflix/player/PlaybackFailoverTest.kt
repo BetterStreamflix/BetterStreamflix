@@ -95,4 +95,27 @@ class PlaybackFailoverTest {
         )
         assertEquals(PlaybackFailover.Action.TryNextServer(1), action)
     }
+
+    @Test
+    fun decoderCapabilityPrefersSoftwareOverNextServer() {
+        val error = Exception("MediaCodecVideoRenderer error format_supported=NO_EXCEEDS_CAPABILITIES")
+        val action = PlaybackFailover.decide(
+            currentServerIndex = 0,
+            serverCount = 3,
+            playbackAlreadyStarted = true,
+            softwareDecoderAlreadyEnabled = false,
+            allowMidPlaybackFailover = true,
+            error = error,
+        )
+        assertEquals(PlaybackFailover.Action.RetrySoftwareDecoder, action)
+    }
+
+    @Test
+    fun isDecoderCapabilityFailureDetectsExceedsCapabilities() {
+        assertTrue(
+            PlaybackFailover.isDecoderCapabilityFailure(
+                Exception("format_supported=NO_EXCEEDS_CAPABILITIES"),
+            ),
+        )
+    }
 }

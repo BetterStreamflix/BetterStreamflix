@@ -4,40 +4,67 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:paddingTop="24dp"
-    android:paddingBottom="4dp"
-    android:foreground="?attr/selectableItemBackground">
+    android:foreground="?attr/selectableItemBackground"
+    android:paddingTop="26dp"
+    android:paddingBottom="6dp">
 
     <TextView
         android:id="@+id/tv_movie_directors_label"
-        android:fontFamily="@font/manrope"
-        android:layout_width="wrap_content"
+        android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_marginStart="22dp"
-        android:letterSpacing="0.12"
+        android:layout_marginEnd="22dp"
+        android:letterSpacing="0.01"
         android:text="@string/movie_directors"
-        android:textAllCaps="true"
-        android:textColor="?attr/colorPrimary"
-        android:textSize="11sp"
-        android:textStyle="bold"
-        app:layout_constraintBottom_toBottomOf="@id/rv_movie_directors"
+        android:textAppearance="@style/TextAppearance.Lumina.Title"
+        app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="@id/rv_movie_directors" />
+        app:layout_constraintTop_toTopOf="parent" />
+
+    <View
+        android:id="@+id/v_movie_directors_rule"
+        android:layout_width="36dp"
+        android:layout_height="3dp"
+        android:layout_marginTop="9dp"
+        android:background="@drawable/bg_exp_accent_rule"
+        app:layout_constraintStart_toStartOf="@id/tv_movie_directors_label"
+        app:layout_constraintTop_toBottomOf="@id/tv_movie_directors_label" />
 
     <TextView
         android:id="@+id/rv_movie_directors"
-        android:fontFamily="@font/manrope"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:layout_marginStart="18dp"
+        android:layout_marginStart="22dp"
+        android:layout_marginTop="14dp"
         android:layout_marginEnd="22dp"
         android:ellipsize="end"
         android:maxLines="3"
+        android:textAppearance="@style/TextAppearance.Lumina.Body"
         android:textColor="?attr/colorOnSurface"
-        android:textSize="16sp"
+        android:textSize="15sp"
         app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toEndOf="@id/tv_movie_directors_label"
-        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/tv_movie_directors_label"
         tools:text="Director" />
 
+
+    <View
+        android:id="@+id/v_movie_dirs_edge_fade_start"
+        android:layout_width="28dp"
+        android:layout_height="0dp"
+        android:background="@drawable/bg_exp_edge_fade_start"
+        android:importantForAccessibility="no"
+        app:layout_constraintBottom_toBottomOf="@id/rv_movie_directors"
+        app:layout_constraintStart_toStartOf="@id/rv_movie_directors"
+        app:layout_constraintTop_toTopOf="@id/rv_movie_directors" />
+
+    <View
+        android:id="@+id/v_movie_dirs_edge_fade_end"
+        android:layout_width="36dp"
+        android:layout_height="0dp"
+        android:background="@drawable/bg_exp_edge_fade_end"
+        android:importantForAccessibility="no"
+        app:layout_constraintBottom_toBottomOf="@id/rv_movie_directors"
+        app:layout_constraintEnd_toEndOf="@id/rv_movie_directors"
+        app:layout_constraintTop_toTopOf="@id/rv_movie_directors" />
 </androidx.constraintlayout.widget.ConstraintLayout>

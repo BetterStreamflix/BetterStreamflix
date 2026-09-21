@@ -17,10 +17,22 @@ import com.dskja.betterstreamflix.R
 import com.dskja.betterstreamflix.sync.CloudSyncManager
 import com.dskja.betterstreamflix.sync.CloudSyncProgress
 import com.dskja.betterstreamflix.sync.SupabaseProvider
+import com.dskja.betterstreamflix.utils.ExpDialogChrome
+import com.dskja.betterstreamflix.utils.ExpMotion
+import com.dskja.betterstreamflix.utils.ExpPressEffects
+import com.dskja.betterstreamflix.utils.ExperimentalMobileDesign
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
 
 object CloudAccountSettingsController {
+
+    private fun alertBuilder(context: android.content.Context) =
+        if (com.dskja.betterstreamflix.utils.ExperimentalMobileDesign.enabled()) {
+            com.google.android.material.dialog.MaterialAlertDialogBuilder(context)
+        } else {
+            AlertDialog.Builder(context)
+        }
+
     fun bind(
         fragment: Fragment,
         scope: LifecycleCoroutineScope,
@@ -79,10 +91,36 @@ object CloudAccountSettingsController {
         }
 
         signOut?.setOnPreferenceClickListener {
-            runAction(fragment, scope, ::refresh) {
-                CloudSyncManager.signOut(fragment.requireContext())
-                R.string.cloud_sync_sign_out_success
+            val ctx = fragment.requireContext()
+            val email = CloudSyncManager.currentUserEmail()
+            val message = email?.let {
+                fragment.getString(R.string.cloud_sync_signed_in_as, it)
+            } ?: fragment.getString(R.string.cloud_sync_signed_out)
+            val glass = if (ExperimentalMobileDesign.enabled()) {
+                ExpDialogChrome.buildGlassMessage(ctx, message)
+            } else {
+                null
             }
+            val builder = alertBuilder(ctx)
+                .setTitle(R.string.cloud_sync_sign_out)
+            if (glass != null) builder.setView(glass.root)
+            else builder.setMessage(message)
+            builder
+                .setPositiveButton(R.string.cloud_sync_sign_out) { _, _ ->
+                    runAction(fragment, scope, ::refresh) {
+                        CloudSyncManager.signOut(fragment.requireContext())
+                        R.string.cloud_sync_sign_out_success
+                    }
+                }
+                .setNegativeButton(android.R.string.cancel, null)
+                .create()
+                .also { dialog ->
+                    dialog.setOnShowListener {
+                        if (glass != null) ExpDialogChrome.polishGlassMessageShown(dialog, glass)
+                        else ExpDialogChrome.polishButtons(dialog)
+                    }
+                    dialog.show()
+                }
             true
         }
 
@@ -103,36 +141,86 @@ object CloudAccountSettingsController {
         onSubmit: (String, String) -> Unit,
     ) {
         val context = fragment.requireContext()
-        val padding = (24 * context.resources.displayMetrics.density).toInt()
+        val density = context.resources.displayMetrics.density
+        val padding = (24 * density).toInt()
+        val fieldGap = (10 * density).toInt()
+        val exp = ExperimentalMobileDesign.enabled()
         val email = EditText(context).apply {
             hint = context.getString(R.string.cloud_sync_email_hint)
             inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_EMAIL_ADDRESS
             isSingleLine = true
+            if (exp) {
+                setBackgroundResource(ExperimentalMobileDesign.searchFieldBackground())
+                setPadding(padding, padding, padding, padding)
+                setTextAppearance(R.style.TextAppearance_Lumina_Body)
+            }
         }
         val password = EditText(context).apply {
             hint = context.getString(R.string.cloud_sync_password_hint)
             isSingleLine = true
             inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD
             transformationMethod = PasswordTransformationMethod.getInstance()
+            if (exp) {
+                setBackgroundResource(ExperimentalMobileDesign.searchFieldBackground())
+                setPadding(padding, padding, padding, padding)
+                setTextAppearance(R.style.TextAppearance_Lumina_Body)
+            }
         }
-        val content = LinearLayout(context).apply {
-            orientation = LinearLayout.VERTICAL
-            setPadding(padding, padding / 2, padding, 0)
-            addView(email, ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
-            addView(password, ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+        val glass = if (exp) {
+            ExpDialogChrome.buildGlassMessage(
+                context,
+                context.getString(R.string.cloud_sync_email_hint),
+            )
+        } else {
+            null
         }
-        val dialog = AlertDialog.Builder(context)
+        val contentView = if (glass != null) {
+            glass.root.addView(
+                email,
+                LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT,
+                    ViewGroup.LayoutParams.WRAP_CONTENT,
+                ).also { it.topMargin = fieldGap },
+            )
+            glass.root.addView(
+                password,
+                LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT,
+                    ViewGroup.LayoutParams.WRAP_CONTENT,
+                ).also { it.topMargin = fieldGap },
+            )
+            glass.root
+        } else {
+            LinearLayout(context).apply {
+                orientation = LinearLayout.VERTICAL
+                setPadding(padding, padding / 2, padding, 0)
+                addView(email, ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+                addView(password, ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+            }
+        }
+        val dialog = alertBuilder(context)
             .setTitle(titleRes)
-            .setView(content)
+            .setView(contentView)
             .setNegativeButton(android.R.string.cancel, null)
             .setPositiveButton(titleRes, null)
             .create()
         dialog.setOnShowListener {
+            if (glass != null) {
+                ExpDialogChrome.polishGlassMessageShown(dialog, glass)
+                with(ExpPressEffects) {
+                    email.applyExpPress()
+                    password.applyExpPress()
+                }
+                ExpMotion.popIn(email)
+                email.postDelayed({ ExpMotion.popIn(password) }, 40L)
+            } else {
+                ExpDialogChrome.polishShown(dialog)
+            }
             dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
                 val emailValue = email.text.toString().trim()
                 val passwordValue = password.text.toString()
                 if (!emailValue.contains('@') || passwordValue.length < 6) {
-                    Toast.makeText(context, R.string.cloud_sync_invalid_credentials, Toast.LENGTH_LONG).show()
+                    ExpDialogChrome.notify(context, R.string.cloud_sync_invalid_credentials)
                     return@setOnClickListener
                 }
                 dialog.dismiss()
@@ -149,23 +237,35 @@ object CloudAccountSettingsController {
         action: suspend ((CloudSyncProgress) -> Unit) -> Int,
     ) {
         val context = fragment.requireContext()
-        val padding = (24 * context.resources.displayMetrics.density).toInt()
+        val density = context.resources.displayMetrics.density
+        val padding = (24 * density).toInt()
         val progressBar = ProgressBar(
             context,
             null,
             android.R.attr.progressBarStyleHorizontal,
-        )
+        ).apply {
+            if (ExperimentalMobileDesign.enabled()) {
+                progressTintList = android.content.res.ColorStateList.valueOf(
+                    com.google.android.material.color.MaterialColors.getColor(
+                        this,
+                        androidx.appcompat.R.attr.colorPrimary,
+                    ),
+                )
+            }
+        }
         val message = TextView(context).apply {
             setText(R.string.cloud_sync_progress_connecting)
+            if (ExperimentalMobileDesign.enabled()) {
+                setTextAppearance(R.style.TextAppearance_Lumina_Body)
+            }
         }
-        val content = LinearLayout(context).apply {
+        val row = LinearLayout(context).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
-            setPadding(padding, padding, padding, padding)
             addView(
                 progressBar,
                 LinearLayout.LayoutParams(
-                    (72 * context.resources.displayMetrics.density).toInt(),
+                    (72 * density).toInt(),
                     ViewGroup.LayoutParams.WRAP_CONTENT,
                 ),
             )
@@ -176,16 +276,42 @@ object CloudAccountSettingsController {
                     ViewGroup.LayoutParams.WRAP_CONTENT,
                     1f,
                 ).apply {
-                    marginStart = padding
+                    marginStart = padding / 2
                 },
             )
         }
-        val dialog = AlertDialog.Builder(context)
+        val glass = if (ExperimentalMobileDesign.enabled()) {
+            ExpDialogChrome.buildGlassMessage(
+                context,
+                context.getString(R.string.cloud_sync_progress_connecting),
+            ).also { g ->
+                g.body.visibility = android.view.View.GONE
+                g.root.addView(
+                    row,
+                    LinearLayout.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT,
+                        ViewGroup.LayoutParams.WRAP_CONTENT,
+                    ).also { it.topMargin = (4 * density).toInt() },
+                )
+            }
+        } else {
+            null
+        }
+        val contentView = glass?.root ?: LinearLayout(context).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(padding, padding, padding, padding)
+            addView(row)
+        }
+        val dialog = alertBuilder(context)
             .setTitle(R.string.cloud_sync_progress_title)
-            .setView(content)
+            .setView(contentView)
             .setCancelable(false)
             .create()
         dialog.setCanceledOnTouchOutside(false)
+        dialog.setOnShowListener {
+            if (glass != null) ExpDialogChrome.polishGlassMessageShown(dialog, glass)
+            else ExpDialogChrome.polishButtons(dialog)
+        }
         dialog.show()
 
         scope.launch {
@@ -195,11 +321,10 @@ object CloudAccountSettingsController {
                 }
                 dialog.dismiss()
                 refresh()
-                Toast.makeText(
+                ExpDialogChrome.notify(
                     fragment.requireContext(),
                     resultMessage,
-                    Toast.LENGTH_LONG,
-                ).show()
+                )
             } catch (cancellation: CancellationException) {
                 throw cancellation
             } catch (error: Throwable) {
@@ -268,7 +393,7 @@ object CloudAccountSettingsController {
             runCatching { action() }
                 .onSuccess { message ->
                     refresh()
-                    Toast.makeText(fragment.requireContext(), message, Toast.LENGTH_LONG).show()
+                    ExpDialogChrome.notify(fragment.requireContext(), message)
                 }
                 .onFailure { error ->
                     showError(fragment, error)
@@ -277,13 +402,12 @@ object CloudAccountSettingsController {
     }
 
     private fun showError(fragment: Fragment, error: Throwable) {
-        Toast.makeText(
+        ExpDialogChrome.notify(
             fragment.requireContext(),
             fragment.getString(
                 R.string.cloud_sync_error,
                 error.message ?: error.javaClass.simpleName,
             ),
-            Toast.LENGTH_LONG,
-        ).show()
+        )
     }
 }

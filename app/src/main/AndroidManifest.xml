@@ -119,6 +119,14 @@
             android:theme="@style/AppTheme.Mobile" />
 
         <activity
+            android:name=".telegram.TelegramJoinGateActivity"
+            android:exported="false"
+            android:excludeFromRecents="false"
+            android:launchMode="singleTop"
+            android:screenOrientation="portrait"
+            android:theme="@style/TelegramJoinGateActivityTheme" />
+
+        <activity
             android:name=".activities.main.MainMobileActivity"
             android:configChanges="orientation|screenLayout|screenSize|smallestScreenSize"
             android:exported="true"

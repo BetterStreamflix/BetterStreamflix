@@ -90,23 +90,27 @@ fun Context.hideKeyboard(view: View) {
 
 fun Context.toActivity(): FragmentActivity? = this as? FragmentActivity
 
-fun FragmentActivity.getCurrentFragment(): Fragment? = when (this) {
-    is MainMobileActivity -> {
-        val navHostFragment = this.supportFragmentManager
-            .findFragmentById(R.id.nav_main_fragment) as? NavHostFragment
-            ?: return null
-        navHostFragment.childFragmentManager.fragments.firstOrNull()
-    }
+fun FragmentActivity.getCurrentFragment(): Fragment? = runCatching {
+        when (this) {
+            is MainMobileActivity -> {
+                val navHostFragment = this.supportFragmentManager
+                    .findFragmentById(R.id.nav_main_fragment) as? NavHostFragment
+                    ?: return@runCatching null
+                navHostFragment.childFragmentManager.primaryNavigationFragment
+                    ?: navHostFragment.childFragmentManager.fragments.firstOrNull { it.isAdded }
+            }
 
-    is MainTvActivity -> {
-        val navHostFragment = this.supportFragmentManager
-            .findFragmentById(R.id.nav_main_fragment) as? NavHostFragment
-            ?: return null
-        navHostFragment.childFragmentManager.fragments.firstOrNull()
-    }
+            is MainTvActivity -> {
+                val navHostFragment = this.supportFragmentManager
+                    .findFragmentById(R.id.nav_main_fragment) as? NavHostFragment
+                    ?: return@runCatching null
+                navHostFragment.childFragmentManager.primaryNavigationFragment
+                    ?: navHostFragment.childFragmentManager.fragments.firstOrNull { it.isAdded }
+            }
 
-    else -> null
-}
+            else -> null
+        }
+    }.getOrNull()
 
 suspend fun <T> retry(retries: Int, predicate: suspend (attempt: Int) -> T): T {
     require(retries > 0) { "Expected positive amount of retries, but had $retries" }

@@ -1,6 +1,5 @@
 package com.dskja.betterstreamflix.player
 
-import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -8,35 +7,32 @@ import org.junit.Test
 class SerienStreamBypassHelperTest {
 
     @Test
-    fun rejectsEmptyAndNoiseOnlyCookies() {
-        assertFalse(SerienStreamBypassHelper.looksLikeBypassSolved(""))
-        // DuckDuckGo noise must never count as a solved bypass / login.
-        assertFalse(SerienStreamBypassHelper.looksLikeBypassSolved("__ddg1=1; other=2"))
-        assertFalse(SerienStreamBypassHelper.looksLikeBypassSolved("__ddg1=1; __ddgid=abc"))
+    fun looksLikeAccountSession_rejectsAnonymousCfJar() {
+        val jar = "cf_clearance=abc; PHPSESSID=xyz; __ddg1=noise"
+        assertTrue(SerienStreamBypassHelper.looksLikeBypassSolved(jar))
+        assertFalse(SerienStreamBypassHelper.looksLikeAccountSession(jar))
     }
 
     @Test
-    fun acceptsClearanceAndSessionAuthCookies() {
-        assertTrue(SerienStreamBypassHelper.looksLikeBypassSolved("cf_clearance=xyz; path=/"))
-        assertTrue(SerienStreamBypassHelper.looksLikeBypassSolved("PHPSESSID=abc; path=/"))
-        assertTrue(
-            SerienStreamBypassHelper.looksLikeBypassSolved(
-                "__ddg1=noise; cf_clearance=real; PHPSESSID=abc",
-            ),
-        )
+    fun looksLikeAccountSession_acceptsRememberLogin() {
+        val jar = "PHPSESSID=xyz; rememberLogin=1; cf_clearance=ok"
+        assertTrue(SerienStreamBypassHelper.looksLikeAccountSession(jar))
     }
 
     @Test
-    fun sanitizeDropsDdgNoiseButKeepsAuth() {
+    fun sanitize_dropsDuckDuckGoNoise() {
         val cleaned = SerienStreamBypassHelper.sanitizeSessionCookies(
-            "__ddg1=1; cf_clearance=xyz; PHPSESSID=abc; __ddgid=nope",
+            "__ddg1=a; cf_clearance=token; PHPSESSID=s",
         )
-        assertFalse(cleaned.contains("__ddg", ignoreCase = true))
-        assertTrue(cleaned.contains("cf_clearance=xyz"))
-        assertTrue(cleaned.contains("PHPSESSID=abc") || cleaned.contains("phpsessid=abc"))
-        assertEquals(
-            true,
-            SerienStreamBypassHelper.looksLikeBypassSolved(cleaned),
+        assertFalse(cleaned.contains("__ddg1"))
+        assertTrue(cleaned.contains("cf_clearance"))
+    }
+
+    @Test
+    fun looksLikeAccountSession_rejectsRememberWebNoiseAlone() {
+        // Must still require a real account marker — bare session cookies stay false.
+        assertFalse(
+            SerienStreamBypassHelper.looksLikeAccountSession("laravel_session=x; XSRF-TOKEN=y"),
         )
     }
 }

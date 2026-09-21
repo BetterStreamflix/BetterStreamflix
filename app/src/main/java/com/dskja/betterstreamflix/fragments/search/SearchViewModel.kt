@@ -124,10 +124,20 @@ class SearchViewModel(database: AppDatabase) : ViewModel() {
             _state.emit(State.Searching)
 
             try {
-                val results = ParentalControlUtils.filterItems(UserPreferences.currentProvider!!.search(query))
+                val provider = UserPreferences.currentProvider
+                    ?: run {
+                        _state.emit(State.FailedSearching(Exception("No provider selected")))
+                        return@launch
+                    }
+                val results = ParentalControlUtils.filterItems(provider.search(query))
+                val addonHits = runCatching {
+                    com.dskja.betterstreamflix.platform.plugins.PluginManager
+                        .collectSearchResults(provider, query, page = 1)
+                }.getOrDefault(emptyList())
+                val merged = (results + addonHits).distinctBy { it.searchIdentityKey() }
                 this@SearchViewModel.query = query
                 page = 1
-                _state.emit(State.SuccessSearching(results, results.isNotEmpty()))
+                _state.emit(State.SuccessSearching(merged, merged.isNotEmpty()))
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
@@ -144,8 +154,13 @@ class SearchViewModel(database: AppDatabase) : ViewModel() {
             if (currentState is State.SuccessSearching) {
                 _state.emit(State.SearchingMore)
                 try {
+                    val provider = UserPreferences.currentProvider
+                        ?: run {
+                            _state.emit(State.FailedSearching(Exception("No provider selected")))
+                            return@launch
+                        }
                     val results = ParentalControlUtils.filterItems(
-                        UserPreferences.currentProvider!!.search(query, page + 1)
+                        provider.search(query, page + 1)
                     )
                     val existingKeys = currentState.results
                         .asSequence()

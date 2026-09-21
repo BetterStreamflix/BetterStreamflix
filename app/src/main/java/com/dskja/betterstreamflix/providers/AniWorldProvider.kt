@@ -295,25 +295,21 @@ object AniWorldProvider : Provider, ProviderConfigUrl {
                         ?: "",
                 )
             },
-            directors = document.select(".cast li[itemprop='director']").map {
-                People(
-                    id = it.selectFirst("a")
-                        ?.attr("href")?.substringAfter("/animes/")
-                        ?: "",
-                    name = it.selectFirst("span")
-                        ?.text()
-                        ?: ""
+            directors = document.select(".cast li[itemprop='director']").mapNotNull {
+                val id = getPeopleIdFromLink(
+                    it.selectFirst("a")?.attr("href").orEmpty(),
                 )
+                val name = it.selectFirst("span")?.text().orEmpty()
+                if (id.isBlank() || name.isBlank()) return@mapNotNull null
+                People(id = id, name = name)
             },
-            cast = document.select(".cast li[itemprop='actor']").map {
-                People(
-                    id = it.selectFirst("a")
-                        ?.attr("href")?.substringAfter("/animes/")
-                        ?: "",
-                    name = it.selectFirst("span")
-                        ?.text()
-                        ?: "",
+            cast = document.select(".cast li[itemprop='actor']").mapNotNull {
+                val id = getPeopleIdFromLink(
+                    it.selectFirst("a")?.attr("href").orEmpty(),
                 )
+                val name = it.selectFirst("span")?.text().orEmpty()
+                if (id.isBlank() || name.isBlank()) return@mapNotNull null
+                People(id = id, name = name)
             },
         )
 
@@ -398,21 +394,33 @@ object AniWorldProvider : Provider, ProviderConfigUrl {
     override suspend fun getPeople(id: String, page: Int): People {
         if (page > 1) return People(id, "")
 
-        val document = service.getPeople(id)
+        val peopleId = normalizePeopleId(id)
+        if (peopleId.isBlank()) return People(id, "")
+        val document = service.getPeople(peopleId)
 
         val people = People(
-            id = id,
+            id = peopleId,
             name = document.selectFirst("h1 strong")
                 ?.text()
+                ?: document.selectFirst("h1")?.text()
                 ?: "",
+            image = document.selectFirst(".seriesCoverBox img, .person-image img, img")
+                ?.attr("data-src")
+                ?.takeIf { it.isNotBlank() }
+                ?.let { if (it.startsWith("http")) it else URL + it },
+            biography = document.selectFirst("p.seri_des, .series-description p, span.description-text")
+                ?.let { el -> el.attr("data-full-description").ifBlank { el.text() } }
+                ?.takeIf { it.isNotBlank() },
 
-            filmography = document.select(".seriesListContainer > div").map {
+            filmography = document.select(".seriesListContainer > div").mapNotNull {
+                val showId = it.selectFirst("a")
+                    ?.attr("href")?.substringAfter("/anime/stream/")
+                    .orEmpty()
+                val title = it.selectFirst("h3")?.text().orEmpty()
+                if (showId.isBlank() || title.isBlank()) return@mapNotNull null
                 TvShow(
-                    id = it.selectFirst("a")
-                        ?.attr("href")?.substringAfter("/anime/stream/")
-                        ?: "",
-                    title = it.selectFirst("h3")
-                        ?.text() ?: "",
+                    id = showId,
+                    title = title,
                     poster = it.selectFirst("img")
                         ?.attr("data-src")?.let { src -> URL + src },
                 )
@@ -420,6 +428,30 @@ object AniWorldProvider : Provider, ProviderConfigUrl {
         )
 
         return people
+    }
+
+    private fun getPeopleIdFromLink(link: String): String {
+        return normalizePeopleId(link)
+    }
+
+    private fun normalizePeopleId(raw: String): String {
+        val href = raw.trim()
+        if (href.isBlank()) return ""
+        return when {
+            href.contains("/animes/", ignoreCase = true) ->
+                href.substringAfter("/animes/", missingDelimiterValue = "")
+                    .substringBefore('?')
+                    .trim('/')
+            href.contains("/cast/", ignoreCase = true) ->
+                href.substringAfter("/cast/", missingDelimiterValue = "")
+                    .substringBefore('?')
+                    .trim('/')
+            href.contains("/person/", ignoreCase = true) ->
+                href.substringAfter("/person/", missingDelimiterValue = "")
+                    .substringBefore('?')
+                    .trim('/')
+            else -> href.substringAfterLast('/').substringBefore('?').trim()
+        }
     }
 
     override suspend fun getServers(id: String, videoType: Video.Type): List<Video.Server> {

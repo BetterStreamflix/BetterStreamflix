@@ -5,7 +5,6 @@ import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
 import android.view.View
-import android.widget.Toast
 import androidx.activity.OnBackPressedCallback
 import androidx.activity.viewModels
 import androidx.fragment.app.FragmentActivity
@@ -160,7 +159,11 @@ class MainTvActivity : FragmentActivity() {
                     }
                     MainViewModel.State.InstallingUpdate -> if (::updateAppDialog.isInitialized) updateAppDialog.isLoading = true
                     is MainViewModel.State.FailedUpdate -> {
-                        Toast.makeText(this@MainTvActivity, state.error.message ?: "Update failed", Toast.LENGTH_SHORT).show()
+                        com.dskja.betterstreamflix.utils.ExpDialogChrome.notify(
+                            this@MainTvActivity,
+                            state.error.message ?: "Update failed",
+                            R.string.update_title,
+                        )
                     }
                     else -> {}
                 }
@@ -171,7 +174,13 @@ class MainTvActivity : FragmentActivity() {
             override fun handleOnBackPressed() {
                 when (navController.currentDestination?.id) {
                     R.id.home -> if (binding.navMain.hasFocus()) finish() else binding.navMain.requestFocus()
-                    R.id.settings, R.id.search, R.id.movies, R.id.tv_shows, R.id.favorites, R.id.downloads -> {
+                    R.id.settings -> {
+                        if (!navController.navigateUp()) {
+                            navigateToProviderHome(navController)
+                        }
+                        binding.navMain.requestFocus()
+                    }
+                    R.id.search, R.id.movies, R.id.tv_shows, R.id.favorites, R.id.downloads -> {
                         navigateToProviderHome(navController)
                         binding.navMain.requestFocus()
                     }

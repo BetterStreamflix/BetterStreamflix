@@ -1,7 +1,9 @@
 package com.dskja.betterstreamflix.providers
 
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withContext
 
 import com.dskja.betterstreamflix.utils.UserPreferences
 import com.dskja.betterstreamflix.utils.M3uChannelIdCodec
@@ -86,19 +88,20 @@ object PlutoTvEsProvider : IptvProvider, ProviderConfigUrl {
     }
 
 
-    private fun getAllChannels(): List<M3UChannel> {
+    private suspend fun getAllChannels(): List<M3UChannel> = withContext(Dispatchers.IO) {
         val now = System.currentTimeMillis()
-        if (cachedChannels != null && (now - lastFetchTime) < CACHE_DURATION) return cachedChannels!!
+        val cached = cachedChannels
+        if (cached != null && (now - lastFetchTime) < CACHE_DURATION) return@withContext cached
 
-        return try {
+        try {
             val request = Request.Builder().url(PLAYLIST_URL).build()
-            val body = client.newCall(request).execute().body?.string() ?: return emptyList()
+            val body = client.newCall(request).execute().body?.string() ?: return@withContext emptyList()
             val channels = parseM3U(body)
             cachedChannels = channels
             lastFetchTime = now
             channels
         } catch (e: Exception) {
-            Log.e(TAG, "❌ Error obteniendo M3U: ${e.message}")
+            Log.e(TAG, "Pluto M3U fetch failed: ${e.message}")
             cachedChannels ?: emptyList()
         }
     }
@@ -109,8 +112,8 @@ object PlutoTvEsProvider : IptvProvider, ProviderConfigUrl {
 
         // 1. Agrupamos todos los canales por su "group-title"
         val channelCategories = channels
-            .filter { it.group != null && it.group.isNotEmpty() }
-            .groupBy { it.group!! }
+            .mapNotNull { ch -> ch.group?.takeIf { g -> g.isNotEmpty() }?.let { g -> g to ch } }
+            .groupBy({ it.first }, { it.second })
             .map { (groupName, channelList) ->
                 Category(
                     name = groupName,
@@ -224,9 +227,15 @@ object PlutoTvEsProvider : IptvProvider, ProviderConfigUrl {
     }
 
     override suspend fun getVideo(server: Video.Server): Video {
+        if (server.id == "creador-info" || server.id == "apoyo-nando") {
+            throw Exception("Pluto info card is not playable")
+        }
         val payload = M3uChannelIdCodec.decode(server.id)
+        if (payload.url.isBlank() || !payload.url.startsWith("http")) {
+            throw Exception("Pluto channel URL missing or invalid")
+        }
         val headers = M3uChannelIdCodec.playbackHeaders(server.id)
-        Log.d(TAG, "🎬 Reproduciendo: ${payload.url} headers=${headers.keys}")
+        Log.d(TAG, "Playing Pluto: ${payload.url} headers=${headers.keys}")
         return Video(
             source = payload.url,
             subtitles = emptyList(),

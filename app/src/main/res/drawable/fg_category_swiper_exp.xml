@@ -1,10 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- Category swiper foreground veil — theme surface, not hardcoded ink -->
 <shape xmlns:android="http://schemas.android.com/apk/res/android"
     android:shape="rectangle">
     <gradient
         android:angle="270"
-        android:centerColor="#59101318"
-        android:endColor="#F2101318"
-        android:startColor="#00101318"
-        android:type="linear" />
+        android:centerColor="?attr/colorSurfaceContainer"
+        android:endColor="?attr/colorSurface"
+        android:startColor="@android:color/transparent"
+        android:type="linear"
+        android:centerY="0.45" />
 </shape>

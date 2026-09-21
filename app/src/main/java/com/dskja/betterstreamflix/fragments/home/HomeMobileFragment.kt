@@ -20,21 +20,26 @@ import com.dskja.betterstreamflix.models.Category
 import com.dskja.betterstreamflix.models.Episode
 import com.dskja.betterstreamflix.models.Movie
 import com.dskja.betterstreamflix.models.TvShow
+import com.dskja.betterstreamflix.fragments.settings.ProfilesSettingsController
+import com.dskja.betterstreamflix.profiles.ProfileManager
 import com.dskja.betterstreamflix.ui.SpacingItemDecoration
 import com.dskja.betterstreamflix.utils.UserPreferences
 import com.dskja.betterstreamflix.utils.dp
 import com.dskja.betterstreamflix.utils.CacheUtils
 import com.dskja.betterstreamflix.utils.Http409CacheGuard
 import com.dskja.betterstreamflix.utils.ExpAmbientGlow
+import com.dskja.betterstreamflix.utils.ExpEmptyChrome
 import com.dskja.betterstreamflix.utils.ExpMotion
 import com.dskja.betterstreamflix.utils.ExpNavAutoHide
 import com.dskja.betterstreamflix.utils.ExperimentalMobileDesign
 import com.dskja.betterstreamflix.utils.LoggingUtils
 import com.dskja.betterstreamflix.utils.ProviderChangeNotifier
+import com.dskja.betterstreamflix.experimental.ExperimentalReactShell
 import kotlinx.coroutines.launch
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.recyclerview.widget.RecyclerView
+import androidx.core.os.bundleOf
 
 class HomeMobileFragment : Fragment() {
 
@@ -42,6 +47,8 @@ class HomeMobileFragment : Fragment() {
 
     private var _binding: FragmentHomeMobileBinding? = null
     private val binding get() = _binding!!
+    private var reactShell: ExperimentalReactShell? = null
+    private var reactMode = false
 
     private val viewModel: HomeViewModel by lazy {
         val providerKey = UserPreferences.currentProvider?.name ?: "default"
@@ -61,6 +68,11 @@ class HomeMobileFragment : Fragment() {
         container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View {
+        if (ExperimentalMobileDesign.useReactShell()) {
+            reactMode = true
+            return inflater.inflate(R.layout.fragment_experimental_react_host, container, false)
+        }
+        reactMode = false
         val layoutRes = ExperimentalMobileDesign.layout(
             R.layout.fragment_home_mobile,
             R.layout.fragment_home_mobile_exp,
@@ -72,6 +84,11 @@ class HomeMobileFragment : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+
+        if (reactMode) {
+            setupReactHome(view)
+            return
+        }
 
         initializeHome()
 
@@ -91,33 +108,35 @@ class HomeMobileFragment : Fragment() {
                 when (state) {
                     HomeViewModel.State.Loading -> binding.isLoading.apply {
                         ExpMotion.fadeInAndShow(root)
-                        pbIsLoading.visibility = View.VISIBLE
+                        com.dskja.betterstreamflix.utils.ExpPressEffects.showLoadingSkeleton(root, true)
                         gIsLoadingRetry.visibility = View.GONE
+                        hideCatalogWarning()
                     }
                     is HomeViewModel.State.SuccessLoading -> {
                         displayHome(state.categories)
                         ExpMotion.fadeOutAndHide(binding.isLoading.root)
-                        state.providerWarning?.takeIf { it.isNotBlank() }?.let { warning ->
-                            Toast.makeText(requireContext(), warning, Toast.LENGTH_LONG).show()
-                        }
+                        showCatalogWarning(state.providerWarning)
                     }
                     is HomeViewModel.State.FailedLoading -> {
                         if (http409Guard.handle(requireContext(), state.error) { viewModel.getHome() }) {
                                 return@collect
                             }
-                        Toast.makeText(
-                            requireContext(),
-                            state.error.message ?: "",
-                            Toast.LENGTH_SHORT
-                        ).show()
+                        if (!ExperimentalMobileDesign.enabled()) {
+                            Toast.makeText(
+                                requireContext(),
+                                state.error.message ?: "",
+                                Toast.LENGTH_SHORT
+                            ).show()
+                        }
                         binding.isLoading.apply {
-                            pbIsLoading.visibility = View.GONE
+                            com.dskja.betterstreamflix.utils.ExpPressEffects.showLoadingSkeleton(root, false)
                             gIsLoadingRetry.visibility = View.VISIBLE
+                            com.dskja.betterstreamflix.utils.ExpPressEffects.animateLoadingError(root)
                             val doRetry = { viewModel.getHome() }
                             btnIsLoadingRetry.setOnClickListener { doRetry() }
                             btnIsLoadingClearCache.setOnClickListener {
                                 CacheUtils.clearAppCache(requireContext())
-                                android.widget.Toast.makeText(requireContext(), getString(com.dskja.betterstreamflix.R.string.clear_cache_done), android.widget.Toast.LENGTH_SHORT).show()
+                                com.dskja.betterstreamflix.utils.ExpDialogChrome.notify(requireContext(), getString(com.dskja.betterstreamflix.R.string.clear_cache_done), com.dskja.betterstreamflix.R.string.loading_error_clear_cache)
                                 doRetry()
                             }
                             btnIsLoadingErrorDetails.setOnClickListener {
@@ -132,13 +151,86 @@ class HomeMobileFragment : Fragment() {
 
     override fun onResume() {
         super.onResume()
+        if (reactMode) {
+            reactShell?.pushBootstrap()
+            return
+        }
         refreshProviderLogo()
+        refreshProfileChip()
+        // Rebind featured swiper after pause so auto-advance resumes safely.
+        val featuredPos = appAdapter.items.indexOfFirst {
+            it is Category && it.name == Category.FEATURED
+        }
+        if (featuredPos >= 0) {
+            appAdapter.notifyItemChanged(featuredPos)
+        }
+    }
+
+    override fun onPause() {
+        if (!reactMode) {
+            // Hard-stop featured auto-advance while Home is under the detail back stack
+            // (prevents BETTERSTREAMFLIX-1 NavHost NPEs from delayed page callbacks).
+            _binding?.rvHome?.let { appAdapter.pauseCategorySwipers(it) }
+        }
+        super.onPause()
     }
 
     override fun onDestroyView() {
-        super.onDestroyView()
-        appAdapter.onSaveInstanceState(binding.rvHome)
+        reactShell?.detach()
+        reactShell = null
+        _binding?.let { appAdapter.onSaveInstanceState(it.rvHome) }
         _binding = null
+        super.onDestroyView()
+    }
+
+    private fun setupReactHome(root: View) {
+        val shell = ExperimentalReactShell(
+            fragment = this,
+            onNavigate = { dest ->
+                when (dest) {
+                    "search" -> runCatching { findNavController().navigate(R.id.search) }
+                    "settings" -> runCatching { findNavController().navigate(R.id.settings) }
+                    "live" -> runCatching { findNavController().navigate(R.id.providers) }
+                    else -> Unit
+                }
+            },
+            onOpenShow = { id, kind ->
+                if (id.isBlank()) return@ExperimentalReactShell
+                runCatching {
+                    if (kind == "movie") {
+                        findNavController().navigate(
+                            R.id.action_home_to_movie,
+                            bundleOf("id" to id),
+                        )
+                    } else {
+                        findNavController().navigate(
+                            R.id.action_home_to_tv_show,
+                            bundleOf("id" to id),
+                        )
+                    }
+                }
+            },
+        )
+        reactShell = shell
+        shell.attach(root)
+
+        viewLifecycleOwner.lifecycleScope.launch {
+            ProviderChangeNotifier.providerChangeFlow
+                .flowWithLifecycle(lifecycle, Lifecycle.State.STARTED)
+                .collect { viewModel.getHome() }
+        }
+        viewModel.getHome()
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewModel.state.flowWithLifecycle(lifecycle, Lifecycle.State.STARTED).collect { state ->
+                when (state) {
+                    is HomeViewModel.State.SuccessLoading ->
+                        reactShell?.pushCatalog(state.categories)
+                    is HomeViewModel.State.FailedLoading ->
+                        reactShell?.pushStatus(state.error.message ?: "Catalog failed")
+                    else -> Unit
+                }
+            }
+        }
     }
 
 
@@ -153,10 +245,15 @@ class HomeMobileFragment : Fragment() {
         }
 
         refreshProviderLogo()
+        refreshProfileChip()
         binding.ivProviderLogo.apply {
             isClickable = true
             isFocusable = true
+            if (ExperimentalMobileDesign.enabled()) {
+                with(com.dskja.betterstreamflix.utils.ExpPressEffects) { applyExpPress() }
+            }
             setOnClickListener {
+                ExpMotion.hapticTap(it)
                 findNavController().navigate(R.id.providers)
             }
         }
@@ -166,8 +263,25 @@ class HomeMobileFragment : Fragment() {
             if (ExperimentalMobileDesign.enabled()) View.VISIBLE else View.GONE
 
         if (ExperimentalMobileDesign.enabled()) {
-            applyExperimentalParallax()
+            if (ExperimentalMobileDesign.heroParallax()) {
+                applyExperimentalParallax()
+            }
             ExpNavAutoHide.attach(binding.root)
+        com.dskja.betterstreamflix.utils.ExpPressEffects.wireLoadingRetry(binding.isLoading.root)
+            refreshProviderChip()
+            ExpMotion.brandReveal(
+                binding.ivProviderLogo,
+                binding.root.findViewById(R.id.tv_home_brand),
+                binding.root.findViewById(R.id.tv_home_tagline),
+                binding.root.findViewById(R.id.v_home_brand_rule),
+            )
+            ExpMotion.enterScreen(binding.root)
+            ExperimentalMobileDesign.applyReducedGlass(binding.root)
+            ExpMotion.kenBurns(
+                binding.ivHomeBackground,
+                drift = !ExperimentalMobileDesign.heroParallax(),
+            )
+            ExpMotion.staggerFirstFill(binding.rvHome)
         }
     }
 
@@ -180,6 +294,49 @@ class HomeMobileFragment : Fragment() {
             .error(R.drawable.ic_provider_default_logo)
             .fitCenter()
             .into(logoView)
+        refreshProviderChip()
+    }
+
+    private fun refreshProviderChip() {
+        // Ink Lock: provider identity is the logo only — keep the hero uncluttered.
+        if (!ExperimentalMobileDesign.enabled()) return
+        _binding?.root?.findViewById<android.widget.TextView>(R.id.tv_home_provider_chip)
+            ?.visibility = View.GONE
+    }
+
+    private var lastProfileChipKey: String? = null
+
+    private fun refreshProfileChip() {
+        val chip = _binding?.root?.findViewById<View>(R.id.tv_home_profile_chip) ?: return
+        val profile = ProfileManager.activeProfile()
+        val name = profile?.displayName?.takeIf { it.isNotBlank() }
+            ?: getString(R.string.profile_default)
+        chip.findViewById<android.widget.TextView>(R.id.tv_home_profile_name)?.text = name
+        chip.findViewById<com.dskja.betterstreamflix.profiles.ProfileAvatarView>(R.id.pav_home_profile)
+            ?.bind(
+                avatarKey = profile?.avatarKey ?: ProfileManager.avatarKeys.first(),
+                displayName = name,
+                textSizeSp = 11f,
+            )
+        chip.visibility = View.VISIBLE
+        val chipKey = "${profile?.id.orEmpty()}|$name|${profile?.avatarKey.orEmpty()}"
+        if (ExperimentalMobileDesign.enabled()) {
+            with(com.dskja.betterstreamflix.utils.ExpPressEffects) { chip.applyExpPress() }
+            chip.setBackgroundResource(ExperimentalMobileDesign.chipBackground())
+            if (lastProfileChipKey == null || lastProfileChipKey != chipKey) {
+                ExpMotion.popIn(chip)
+            }
+        }
+        lastProfileChipKey = chipKey
+        chip.setOnClickListener {
+            ExpMotion.hapticTap(it)
+            ProfilesSettingsController.showSwitchDialog(this) {
+                requireActivity().apply {
+                    finish()
+                    startActivity(intent)
+                }
+            }
+        }
     }
 
     private var heroScrollOffset = 0
@@ -195,20 +352,67 @@ class HomeMobileFragment : Fragment() {
                     ?.translationY = -parallax
                 val brandDrift = -parallax * 0.5f
                 val brandAlpha = (1f - parallax / 340f).coerceIn(0f, 1f)
-                binding.root.findViewById<View>(R.id.tv_home_brand)?.apply {
-                    translationY = brandDrift
-                    alpha = brandAlpha
-                }
-                binding.root.findViewById<View>(R.id.tv_home_tagline)?.apply {
-                    translationY = brandDrift
-                    alpha = brandAlpha
-                }
-                binding.root.findViewById<View>(R.id.v_home_brand_rule)?.apply {
-                    translationY = brandDrift
-                    alpha = brandAlpha
+                listOf(
+                    R.id.tv_home_brand,
+                    R.id.tv_home_tagline,
+                    R.id.v_home_brand_rule,
+                    R.id.iv_provider_logo,
+                    R.id.tv_home_profile_chip,
+                ).forEach { id ->
+                    binding.root.findViewById<View>(id)?.apply {
+                        translationY = brandDrift
+                        alpha = brandAlpha
+                    }
                 }
             }
         })
+    }
+
+    private fun showCatalogWarning(warning: String?) {
+        val banner = _binding?.root?.findViewById<android.widget.TextView>(R.id.tv_home_catalog_warning)
+            ?: return
+        val text = warning?.takeIf { it.isNotBlank() }
+        if (text == null) {
+            banner.visibility = View.GONE
+            banner.setOnClickListener(null)
+            return
+        }
+        banner.text = text
+        banner.contentDescription = getString(R.string.home_catalog_warning_tap_retry)
+        if (ExperimentalMobileDesign.enabled()) {
+            banner.setBackgroundResource(ExperimentalMobileDesign.metaPillBackground())
+            val density = banner.resources.displayMetrics.density
+            banner.setPadding(
+                (14 * density).toInt(),
+                (10 * density).toInt(),
+                (14 * density).toInt(),
+                (10 * density).toInt(),
+            )
+            with(com.dskja.betterstreamflix.utils.ExpPressEffects) { banner.applyExpPress() }
+            if (banner.visibility != View.VISIBLE) {
+                banner.visibility = View.VISIBLE
+                ExpMotion.popIn(banner)
+            } else {
+                banner.visibility = View.VISIBLE
+            }
+        } else {
+            banner.visibility = View.VISIBLE
+        }
+        banner.setOnClickListener {
+            ExpMotion.hapticTap(it)
+            viewModel.getHome()
+        }
+    }
+
+    private fun hideCatalogWarning() {
+        _binding?.root?.findViewById<android.widget.TextView>(R.id.tv_home_catalog_warning)?.apply {
+            if (ExperimentalMobileDesign.enabled() && visibility == View.VISIBLE) {
+                ExpMotion.fadeOutAndHide(this)
+            } else {
+                visibility = View.GONE
+            }
+            setOnClickListener(null)
+        }
     }
 
     private fun displayHome(categories: List<Category>) {
@@ -263,41 +467,54 @@ class HomeMobileFragment : Fragment() {
         }
 
         val homeItems = mutableListOf<AppAdapter.Item>()
-        categories
-            .filter { it.list.isNotEmpty() }
-            .onEach { category ->
-                if (category.name != Category.FEATURED && category.name != getString(R.string.home_continue_watching)) {
-                    category.list.onEach { show ->
-                        when (show) {
-                            is Episode -> show.itemType = AppAdapter.Type.EPISODE_MOBILE_ITEM
-                            is Movie -> show.itemType = AppAdapter.Type.MOVIE_MOBILE_ITEM
-                            is TvShow -> show.itemType = AppAdapter.Type.TV_SHOW_MOBILE_ITEM
-                        }
+        val visibleCategories = categories.filter { it.list.isNotEmpty() }
+        visibleCategories.onEach { category ->
+            if (category.name != Category.FEATURED && category.name != getString(R.string.home_continue_watching)) {
+                category.list.onEach { show ->
+                    when (show) {
+                        is Episode -> show.itemType = AppAdapter.Type.EPISODE_MOBILE_ITEM
+                        is Movie -> show.itemType = AppAdapter.Type.MOVIE_MOBILE_ITEM
+                        is TvShow -> show.itemType = AppAdapter.Type.TV_SHOW_MOBILE_ITEM
                     }
                 }
-                category.itemSpacing = 10.dp(requireContext())
-                category.itemType = when (category.name) {
-                    Category.FEATURED -> AppAdapter.Type.CATEGORY_MOBILE_SWIPER
-                    else -> AppAdapter.Type.CATEGORY_MOBILE_ITEM
+            }
+            category.itemSpacing = 10.dp(requireContext())
+            category.itemType = when (category.name) {
+                Category.FEATURED -> AppAdapter.Type.CATEGORY_MOBILE_SWIPER
+                else -> AppAdapter.Type.CATEGORY_MOBILE_ITEM
+            }
+        }
+
+        // Re-apply SWIPER types after shelf assignment. FEATURED may share Movie/TvShow
+        // instances with a donor shelf; overwriting itemType to wrap_content poster layouts
+        // crashes ViewPager2 (BETTERSTREAMFLIX-13).
+        categories
+            .find { it.name == Category.FEATURED }
+            ?.list
+            ?.forEach { show ->
+                when (show) {
+                    is Movie -> show.itemType = AppAdapter.Type.MOVIE_SWIPER_MOBILE_ITEM
+                    is TvShow -> show.itemType = AppAdapter.Type.TV_SHOW_SWIPER_MOBILE_ITEM
                 }
             }
-            .forEachIndexed { index, category ->
-                homeItems.add(category)
-                // Place the support card after featured / continue watching — never first.
-                val insertAfter = category.name == getString(R.string.home_continue_watching) ||
-                    (category.name == Category.FEATURED &&
-                        categories.none { it.name == Category.CONTINUE_WATCHING && it.list.isNotEmpty() })
-                if (insertAfter &&
-                    !UserPreferences.homeSupportCardDismissed &&
-                    homeItems.none { it is com.dskja.betterstreamflix.support.SupportBannerItem }
-                ) {
-                    homeItems.add(
-                        com.dskja.betterstreamflix.support.SupportBannerItem().apply {
-                            itemType = AppAdapter.Type.SUPPORT_BANNER_MOBILE_ITEM
-                        }
-                    )
-                }
+
+        visibleCategories.forEachIndexed { index, category ->
+            homeItems.add(category)
+            // Place the support card after featured / continue watching — never first.
+            val insertAfter = category.name == getString(R.string.home_continue_watching) ||
+                (category.name == Category.FEATURED &&
+                    categories.none { it.name == Category.CONTINUE_WATCHING && it.list.isNotEmpty() })
+            if (insertAfter &&
+                !UserPreferences.homeSupportCardDismissed &&
+                homeItems.none { it is com.dskja.betterstreamflix.support.SupportBannerItem }
+            ) {
+                homeItems.add(
+                    com.dskja.betterstreamflix.support.SupportBannerItem().apply {
+                        itemType = AppAdapter.Type.SUPPORT_BANNER_MOBILE_ITEM
+                    }
+                )
             }
+        }
 
         // Fallback: if no featured/continue rows, append near the top after first category.
         if (!UserPreferences.homeSupportCardDismissed &&
@@ -314,12 +531,20 @@ class HomeMobileFragment : Fragment() {
 
         appAdapter.submitList(homeItems)
 
+        val hasCatalogRows = homeItems.any { it is Category }
+        ExpEmptyChrome.bind(
+            emptyView = binding.root.findViewById(R.id.tv_home_empty),
+            emptyRule = binding.root.findViewById(R.id.v_home_empty_rule),
+            emptyCta = binding.root.findViewById(R.id.btn_home_empty_cta),
+            visible = !hasCatalogRows,
+            tintOnSurfaceVariant = false,
+            onCtaClick = { findNavController().navigate(R.id.providers) },
+        )
+
         if (ExperimentalMobileDesign.enabled()) {
             // One-shot enter only — skip continuous kenburns on the hero (expensive on mid devices).
             ExpMotion.startAnimation(binding.rvHome, R.anim.exp_fade_slide_up)
-            binding.root.findViewById<View>(R.id.tv_home_brand)?.let {
-                ExpMotion.startAnimation(it, R.anim.exp_brand_reveal)
-            }
+            ExpMotion.pulseAccentRule(binding.root.findViewById(R.id.v_home_brand_rule))
         }
     }
 
@@ -375,6 +600,14 @@ class HomeMobileFragment : Fragment() {
             // Kenburns removed: continuous scale animation caused jank on home scroll.
         } else {
             binding.ivHomeBackground.setImageResource(R.drawable.bg_exp_lumina_sky)
+            binding.root.findViewById<View>(R.id.v_home_glow)?.let { glow ->
+                glow.tag = null
+                val primary = com.google.android.material.color.MaterialColors.getColor(
+                    glow,
+                    androidx.appcompat.R.attr.colorPrimary,
+                )
+                ExpAmbientGlow.applyColor(primary, glow)
+            }
         }
     }
 }

@@ -19,6 +19,7 @@ import com.dskja.betterstreamflix.models.Season
 import com.dskja.betterstreamflix.models.TvShow
 import com.dskja.betterstreamflix.models.Video
 import com.dskja.betterstreamflix.utils.NetworkClient
+import com.dskja.betterstreamflix.utils.TMDb3
 import com.dskja.betterstreamflix.utils.TmdbUtils
 import com.dskja.betterstreamflix.utils.UserPreferences
 import kotlinx.coroutines.CoroutineScope
@@ -294,6 +295,19 @@ object SerienStreamProvider : Provider {
         return normalizeShowId(link.pathSegments().firstOrNull().orEmpty())
     }
 
+    private fun getPeopleIdFromLink(link: String): String {
+        val segments = link.pathSegments()
+        if (segments.isEmpty()) return ""
+        // Actor pages live under /cast/<slug> — keep the full relative path for @GET("{peopleId}").
+        if (segments.first().equals("cast", ignoreCase = true) ||
+            segments.first().equals("person", ignoreCase = true) ||
+            segments.first().equals("actor", ignoreCase = true)
+        ) {
+            return segments.joinToString("/")
+        }
+        return segments.joinToString("/")
+    }
+
     private fun getSeasonIdFromLink(link: String): String {
         val segments = link.pathSegments()
         val justTvShowId = normalizeShowId(segments.getOrNull(0).orEmpty())
@@ -502,11 +516,13 @@ object SerienStreamProvider : Provider {
             0.0
         }
         
-        val localCast = document.select(".series-group:contains(Besetzung) a").map {
-            val actorName = it.text()
+        val localCast = document.select(".series-group:contains(Besetzung) a").mapNotNull {
+            val actorName = it.text().trim()
+            val peopleId = getPeopleIdFromLink(it.attr("href"))
+            if (actorName.isBlank() || peopleId.isBlank()) return@mapNotNull null
             val tmdbPerson = tmdbTvShow?.cast?.find { person -> person.name.equals(actorName, ignoreCase = true) }
             People(
-                id = getTvShowIdFromLink(it.attr("href")),
+                id = peopleId,
                 name = actorName,
                 image = tmdbPerson?.image
             )
@@ -519,10 +535,13 @@ object SerienStreamProvider : Provider {
                 ?: document.selectFirst("a.small.text-muted")?.text() ?: "",
             rating = tmdbTvShow?.rating ?: localRating,
             runtime = tmdbTvShow?.runtime,
-            directors = document.select(".series-group:contains(Regisseur) a").map {
+            directors = document.select(".series-group:contains(Regisseur) a").mapNotNull {
+                val name = it.text().trim()
+                val peopleId = getPeopleIdFromLink(it.attr("href"))
+                if (name.isBlank() || peopleId.isBlank()) return@mapNotNull null
                 People(
-                    id = getTvShowIdFromLink(it.attr("href")),
-                    name = it.text()
+                    id = peopleId,
+                    name = name
                 )
             },
             cast = localCast,
@@ -610,16 +629,80 @@ object SerienStreamProvider : Provider {
 
     override suspend fun getPeople(id: String, page: Int): People {
         if (page > 1) return People(id, "")
-        val document = withDomainAndSslFallback { it.getPeople(id) }
-        return People(id = id,
-            name = document.selectFirst("h1 strong")?.text() ?: "",
-            filmography = document.select("div.row.g-3 > div").map {
-                TvShow(
-                    id = it.selectFirst("a")?.attr("href")?.let { it1 -> getTvShowIdFromLink(it1) } ?: "",
-                    title = it.selectFirst("h6 a")?.text() ?: "",
-                    poster = it.selectFirst("img")?.let { img -> img.attr("data-src").takeIf { it.isNotEmpty() } ?: img.attr("src") }
+        val peopleId = id.trim().trimStart('/')
+            .removePrefix("serie/")
+            .ifBlank { id }
+        val document = withDomainAndSslFallback { it.getPeople(peopleId) }
+        val name = document.selectFirst("h1 strong")?.text()
+            ?: document.selectFirst("h1")?.text()
+            ?: ""
+        val localImage = document.selectFirst(".seriesCoverBox img, .person-image img, img.series-cover, .cast-image img")
+            ?.let { img ->
+                img.attr("data-src").ifBlank { img.attr("src") }
+            }
+            ?.takeIf { it.isNotBlank() }
+            ?.let { normalizeImageUrl(it) }
+        val localBio = document.selectFirst(
+            ".series-description p, .person-description, span.description-text, .about-text, .series-group:contains(Biografie) p",
+        )?.text()?.takeIf { it.isNotBlank() }
+
+        val filmography = document.select("div.row.g-3 > div").mapNotNull { card ->
+            val href = card.selectFirst("a")?.attr("href").orEmpty()
+            val title = card.selectFirst("h6 a")?.text()
+                ?: card.selectFirst("h6")?.text()
+                ?: return@mapNotNull null
+            val poster = card.selectFirst("img")?.let { img ->
+                img.attr("data-src").takeIf { it.isNotEmpty() } ?: img.attr("src")
+            }?.let { normalizeImageUrl(it) }
+            val lowerHref = href.lowercase()
+            if (lowerHref.contains("/filme") || lowerHref.contains("/movie") || lowerHref.contains("/film/")) {
+                Movie(
+                    id = getTvShowIdFromLink(href),
+                    title = title,
+                    poster = poster,
                 )
-            })
+            } else {
+                TvShow(
+                    id = getTvShowIdFromLink(href),
+                    title = title,
+                    poster = poster,
+                )
+            }
+        }
+
+        var people = People(
+            id = peopleId,
+            name = name,
+            image = localImage,
+            biography = localBio,
+            filmography = filmography,
+        )
+
+        // Enrich empty bio/image via TMDb person search when possible.
+        if ((people.image.isNullOrBlank() || people.biography.isNullOrBlank()) && name.isNotBlank()) {
+            runCatching {
+                val peopleResults = TMDb3.Search.multi(query = name, language = language, page = 1)
+                    .results
+                    .filterIsInstance<TMDb3.Person>()
+                val match = peopleResults.firstOrNull { it.name.equals(name, ignoreCase = true) }
+                    ?: peopleResults.firstOrNull()
+                val detail = match?.let {
+                    TMDb3.People.details(personId = it.id, language = language)
+                }
+                if (detail != null) {
+                    people = people.copy(
+                        image = people.image ?: detail.profilePath?.let { path ->
+                            "https://image.tmdb.org/t/p/w500/$path"
+                        },
+                        biography = people.biography?.takeIf { it.isNotBlank() } ?: detail.biography,
+                        placeOfBirth = people.placeOfBirth ?: detail.placeOfBirth,
+                        birthday = detail.birthday,
+                        deathday = detail.deathday,
+                    )
+                }
+            }
+        }
+        return people
     }
 
     override suspend fun getServers(id: String, videoType: Video.Type): List<Video.Server> {

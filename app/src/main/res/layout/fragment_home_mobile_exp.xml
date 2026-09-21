@@ -49,7 +49,7 @@
         android:layout_height="0dp"
         android:clipToPadding="false"
         android:orientation="vertical"
-        android:paddingTop="108dp"
+        android:paddingTop="128dp"
         android:paddingBottom="110dp"
         app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager"
         app:layout_constraintBottom_toBottomOf="parent"
@@ -68,14 +68,10 @@
         android:layout_marginEnd="14dp"
         android:elevation="10dp"
         android:ellipsize="end"
-        android:fontFamily="@font/manrope"
-        android:letterSpacing="-0.03"
         android:maxLines="2"
         android:text="@string/app_name"
         android:textAppearance="@style/TextAppearance.Lumina.Hero"
-        android:textColor="?attr/colorOnSurface"
         android:textSize="32sp"
-        android:textStyle="bold"
         app:layout_constraintEnd_toStartOf="@id/btn_home_search_spacer"
         app:layout_constraintStart_toEndOf="@id/iv_provider_logo"
         app:layout_constraintTop_toTopOf="parent" />
@@ -86,27 +82,48 @@
         android:layout_height="wrap_content"
         android:layout_marginTop="10dp"
         android:elevation="10dp"
-        android:fontFamily="@font/manrope"
-        android:letterSpacing="0.14"
         android:text="@string/exp_home_tagline"
-        android:textAllCaps="true"
         android:textAppearance="@style/TextAppearance.Lumina.Eyebrow"
         android:textColor="?attr/colorOnSurfaceVariant"
-        android:textSize="11sp"
-        android:textStyle="bold"
         app:layout_constraintEnd_toEndOf="@id/tv_home_brand"
         app:layout_constraintStart_toStartOf="@id/tv_home_brand"
         app:layout_constraintTop_toBottomOf="@id/tv_home_brand" />
+
+    <!-- Provider identity lives on the logo; chip kept for a11y/tools but off the hero. -->
+    <TextView
+        android:id="@+id/tv_home_provider_chip"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:elevation="10dp"
+        android:ellipsize="end"
+        android:maxLines="1"
+        android:textAppearance="@style/TextAppearance.Lumina.Caption"
+        android:visibility="gone"
+        app:layout_constraintStart_toStartOf="@id/tv_home_brand"
+        app:layout_constraintTop_toBottomOf="@id/v_home_brand_rule"
+        tools:text="Watching via SerienStream"
+        tools:visibility="gone" />
 
     <View
         android:id="@+id/v_home_brand_rule"
         android:layout_width="52dp"
         android:layout_height="3dp"
-        android:layout_marginTop="16dp"
+        android:layout_marginTop="14dp"
         android:background="@drawable/bg_exp_accent_rule"
         android:elevation="10dp"
         app:layout_constraintStart_toStartOf="@id/tv_home_brand"
         app:layout_constraintTop_toBottomOf="@id/tv_home_tagline" />
+
+    <View
+        android:id="@+id/v_home_header_fade"
+        android:layout_width="0dp"
+        android:layout_height="48dp"
+        android:layout_marginTop="10dp"
+        android:background="@drawable/bg_exp_header_fade"
+        android:elevation="8dp"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/v_home_brand_rule" />
 
     <!-- Keeps brand clear of the activity search chip on the right. -->
     <Space
@@ -117,6 +134,16 @@
         android:layout_marginEnd="16dp"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintTop_toTopOf="parent" />
+
+    <include
+        android:id="@+id/tv_home_profile_chip"
+        layout="@layout/view_profile_home_chip"
+        android:layout_width="wrap_content"
+        android:layout_height="36dp"
+        android:layout_marginEnd="8dp"
+        app:layout_constraintBottom_toBottomOf="@id/btn_home_search_spacer"
+        app:layout_constraintEnd_toStartOf="@id/btn_home_search_spacer"
+        app:layout_constraintTop_toTopOf="@id/btn_home_search_spacer" />
 
     <ImageView
         android:id="@+id/iv_provider_logo"
@@ -135,6 +162,90 @@
         app:layout_constraintDimensionRatio="1:1"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent" />
+
+    <TextView
+        android:id="@+id/tv_home_catalog_warning"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="18dp"
+        android:layout_marginTop="12dp"
+        android:layout_marginEnd="18dp"
+        android:background="@drawable/bg_exp_glass_card"
+        android:clickable="true"
+        android:elevation="14dp"
+        android:ellipsize="end"
+        android:focusable="true"
+        android:textAppearance="@style/TextAppearance.Lumina.Caption"
+        android:maxLines="2"
+        android:paddingStart="14dp"
+        android:paddingTop="10dp"
+        android:paddingEnd="14dp"
+        android:paddingBottom="10dp"
+        android:textColor="?attr/colorOnSurface"
+        android:textSize="12sp"
+        android:visibility="gone"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/v_home_brand_rule"
+        tools:text="Catalog unavailable — showing cache"
+        tools:visibility="visible" />
+
+        <TextView
+        android:id="@+id/tv_home_empty"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="32dp"
+        android:layout_marginEnd="32dp"
+        android:background="@drawable/bg_exp_glass_card"
+        android:drawableTop="@drawable/ic_exp_error"
+        android:drawablePadding="18dp"
+        android:drawableTint="?attr/colorPrimary"
+        android:gravity="center"
+        android:padding="32dp"
+        android:text="@string/home_empty"
+        android:textAppearance="@style/TextAppearance.Lumina.Body"
+        android:visibility="gone"
+        app:layout_constraintBottom_toTopOf="@id/v_home_empty_rule"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintVertical_chainStyle="packed"
+        app:layout_constraintWidth_max="360dp"
+        tools:visibility="visible" />
+
+    <View
+        android:id="@+id/v_home_empty_rule"
+        android:layout_width="36dp"
+        android:layout_height="3dp"
+        android:layout_marginTop="14dp"
+        android:background="@drawable/bg_exp_accent_rule"
+        android:visibility="gone"
+        app:layout_constraintBottom_toTopOf="@id/btn_home_empty_cta"
+        app:layout_constraintEnd_toEndOf="@id/tv_home_empty"
+        app:layout_constraintStart_toStartOf="@id/tv_home_empty"
+        app:layout_constraintTop_toBottomOf="@id/tv_home_empty"
+        tools:visibility="visible" />
+
+    <TextView
+        android:id="@+id/btn_home_empty_cta"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="14dp"
+        android:background="@drawable/bg_exp_button_primary"
+        android:paddingStart="18dp"
+        android:paddingTop="10dp"
+        android:paddingEnd="18dp"
+        android:paddingBottom="10dp"
+        android:text="@string/exp_empty_choose_provider"
+        android:textAllCaps="false"
+        android:textAppearance="@style/TextAppearance.Lumina.Caption"
+        android:textColor="?attr/colorOnPrimary"
+        android:visibility="gone"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="@id/tv_home_empty"
+        app:layout_constraintStart_toStartOf="@id/tv_home_empty"
+        app:layout_constraintTop_toBottomOf="@id/v_home_empty_rule"
+        tools:visibility="visible" />
 
     <include
         android:id="@+id/is_loading"

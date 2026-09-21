@@ -21,9 +21,15 @@ import com.dskja.betterstreamflix.download.ui.DownloadOptionsController
 import com.dskja.betterstreamflix.models.Episode
 import com.dskja.betterstreamflix.models.TvShow
 import com.dskja.betterstreamflix.utils.CacheUtils
+import com.dskja.betterstreamflix.utils.ExpDialogChrome
+import com.dskja.betterstreamflix.utils.ExpEmptyChrome
+import com.dskja.betterstreamflix.utils.ExpMotion
+import com.dskja.betterstreamflix.utils.ExperimentalMobileDesign
 import com.dskja.betterstreamflix.utils.Http409CacheGuard
 import com.dskja.betterstreamflix.utils.LoggingUtils
 import com.dskja.betterstreamflix.utils.viewModelsFactory
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
+import androidx.core.view.isVisible
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -68,13 +74,16 @@ class SeasonTvFragment : Fragment() {
                 when (state) {
                     SeasonViewModel.State.LoadingEpisodes -> binding.isLoading.apply {
                         root.visibility = View.VISIBLE
-                        pbIsLoading.visibility = View.VISIBLE
+                        com.dskja.betterstreamflix.utils.ExpPressEffects.showLoadingSkeleton(root, true)
                         gIsLoadingRetry.visibility = View.GONE
                     }
 
                     is SeasonViewModel.State.SuccessLoadingEpisodes -> {
                         displaySeason(state.episodes)
                         binding.isLoading.root.visibility = View.GONE
+                        com.dskja.betterstreamflix.utils.ExpPressEffects.showLoadingSkeleton(
+                            binding.isLoading.root, false,
+                        )
                     }
 
                     is SeasonViewModel.State.FailedLoadingEpisodes -> {
@@ -82,18 +91,21 @@ class SeasonTvFragment : Fragment() {
                         if (http409Guard.handle(requireContext(), state.error) { viewModel.getSeasonEpisodes(args.seasonId) }) {
                                 return@collect
                             }
-                        Toast.makeText(
-                            requireContext(),
-                            state.error.message ?: "",
-                            Toast.LENGTH_SHORT
-                        ).show()
+                        if (!ExperimentalMobileDesign.enabled()) {
+                            Toast.makeText(
+                                requireContext(),
+                                state.error.message ?: "",
+                                Toast.LENGTH_SHORT
+                            ).show()
+                        }
                         binding.isLoading.apply {
-                            pbIsLoading.visibility = View.GONE
+                            com.dskja.betterstreamflix.utils.ExpPressEffects.showLoadingSkeleton(root, false)
                             gIsLoadingRetry.visibility = View.VISIBLE
+                            com.dskja.betterstreamflix.utils.ExpPressEffects.animateLoadingError(root)
                             btnIsLoadingRetry.setOnClickListener { viewModel.getSeasonEpisodes(args.seasonId) }
                             btnIsLoadingClearCache.setOnClickListener {
                                 CacheUtils.clearAppCache(requireContext())
-                                android.widget.Toast.makeText(requireContext(), getString(com.dskja.betterstreamflix.R.string.clear_cache_done), android.widget.Toast.LENGTH_SHORT).show()
+                                com.dskja.betterstreamflix.utils.ExpDialogChrome.notify(requireContext(), getString(com.dskja.betterstreamflix.R.string.clear_cache_done), com.dskja.betterstreamflix.R.string.loading_error_clear_cache)
                                 viewModel.getSeasonEpisodes(args.seasonId)
                             }
                             btnIsLoadingErrorDetails.setOnClickListener {
@@ -129,12 +141,61 @@ class SeasonTvFragment : Fragment() {
             currentSeasonTitle = args.seasonTitle,
         )
 
+        if (ExperimentalMobileDesign.enabled()) {
+            ExpMotion.enterScreen(binding.root)
+            binding.tvSeasonTitle.setTextColor(
+                com.google.android.material.color.MaterialColors.getColor(
+                    binding.tvSeasonTitle,
+                    com.google.android.material.R.attr.colorOnSurface,
+                ),
+            )
+            binding.root.findViewById<View>(R.id.v_season_title_rule)?.visibility = View.VISIBLE
+            ExpMotion.revealHeader(
+                binding.tvSeasonTitle,
+                binding.root.findViewById(R.id.v_season_title_rule),
+            )
+            ExpMotion.pulseAccentRule(binding.root.findViewById(R.id.v_season_title_rule))
+            with(com.dskja.betterstreamflix.utils.ExpPressEffects) {
+                binding.spSeasonPicker.applyExpPress()
+                binding.btnSeasonDownload.applyExpPress()
+            }
+            binding.spSeasonPicker.setBackgroundResource(ExperimentalMobileDesign.spinnerBackground())
+            binding.btnSeasonDownload.setBackgroundResource(ExperimentalMobileDesign.primaryButtonBackground())
+            ExpMotion.popIn(binding.spSeasonPicker)
+            ExpMotion.popIn(binding.btnSeasonDownload)
+        }
+
         binding.btnSeasonDownload.setOnClickListener {
+            if (ExperimentalMobileDesign.enabled()) ExpMotion.hapticTap(it)
             val episodes = loadedEpisodes
-            if (episodes.isEmpty()) return@setOnClickListener
-            AlertDialog.Builder(requireContext())
-                .setMessage(getString(R.string.season_download_confirm, episodes.size))
+            if (episodes.isEmpty()) {
+                if (ExperimentalMobileDesign.enabled()) {
+                    ExpDialogChrome.showInfo(
+                        requireContext(),
+                        R.string.season_download,
+                        getString(R.string.season_download_empty),
+                    ) { ctx -> MaterialAlertDialogBuilder(ctx) }
+                } else {
+                    Toast.makeText(requireContext(), R.string.season_download_empty, Toast.LENGTH_SHORT).show()
+                }
+                return@setOnClickListener
+            }
+            val confirm = if (ExperimentalMobileDesign.enabled()) {
+                MaterialAlertDialogBuilder(requireContext())
+            } else {
+                AlertDialog.Builder(requireContext())
+            }
+            val confirmMessage = getString(R.string.season_download_confirm, episodes.size)
+            val glass = if (ExperimentalMobileDesign.enabled()) {
+                ExpDialogChrome.buildGlassMessage(requireContext(), confirmMessage)
+            } else {
+                null
+            }
+            if (glass != null) confirm.setView(glass.root)
+            else confirm.setMessage(confirmMessage)
+            confirm
                 .setPositiveButton(android.R.string.ok) { _, _ ->
+                    if (ExperimentalMobileDesign.enabled()) ExpMotion.hapticTap(binding.root)
                     viewLifecycleOwner.lifecycleScope.launch {
                         val tvShow = withContext(Dispatchers.IO) {
                             database.tvShowDao().getById(args.tvShowId)
@@ -153,7 +214,17 @@ class SeasonTvFragment : Fragment() {
                     }
                 }
                 .setNegativeButton(android.R.string.cancel, null)
-                .show()
+                .create()
+                .also { dialog ->
+                    dialog.setOnShowListener {
+                        if (glass != null) ExpDialogChrome.polishGlassMessageShown(dialog, glass)
+                        else ExpDialogChrome.polishButtons(dialog)
+                        if (ExperimentalMobileDesign.enabled()) {
+                            dialog.window?.decorView?.let { ExpMotion.enterScreen(it) }
+                        }
+                    }
+                    dialog.show()
+                }
         }
 
         binding.hgvEpisodes.apply {
@@ -172,6 +243,19 @@ class SeasonTvFragment : Fragment() {
             episode.itemType = AppAdapter.Type.EPISODE_TV_ITEM
         }
 
+        val empty = episodes.isEmpty()
+        ExpEmptyChrome.bind(
+            emptyView = binding.tvSeasonEmpty,
+            emptyRule = binding.root.findViewById(R.id.v_season_empty_rule),
+            emptyCta = binding.root.findViewById(R.id.btn_season_empty_cta),
+            visible = empty,
+            tintOnSurfaceVariant = false,
+            onCtaClick = { requireActivity().onBackPressedDispatcher.onBackPressed() },
+        )
+        binding.hgvEpisodes.visibility = if (empty) View.GONE else View.VISIBLE
+        binding.btnSeasonDownload.isEnabled = !empty
+        binding.btnSeasonDownload.alpha = if (empty) 0.4f else 1f
+
         val lastWatchedIndex = episodes
             .filter { it.watchHistory != null }
             .sortedByDescending { it.watchHistory?.lastEngagementTimeUtcMillis }
@@ -181,7 +265,7 @@ class SeasonTvFragment : Fragment() {
 
         appAdapter.submitList(preparedEpisodes)
 
-        if (focusedEpisodeIndex == null) {
+        if (!empty && focusedEpisodeIndex == null) {
             val scrollIndex = when {
                 lastWatchedIndex == -1 -> 0
                 lastWatchedIndex < episodes.lastIndex -> lastWatchedIndex + 1

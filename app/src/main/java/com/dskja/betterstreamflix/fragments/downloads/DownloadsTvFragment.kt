@@ -25,13 +25,20 @@ import com.dskja.betterstreamflix.download.ui.DownloadsAdapter
 import com.dskja.betterstreamflix.download.ui.DownloadsFilter
 import com.dskja.betterstreamflix.download.ui.DownloadsSort
 import com.dskja.betterstreamflix.download.ui.DownloadsViewModel
+import com.dskja.betterstreamflix.fragments.settings.SettingsDeepLink
 import com.dskja.betterstreamflix.models.Episode
 import com.dskja.betterstreamflix.models.Movie
 import com.dskja.betterstreamflix.models.Season
 import com.dskja.betterstreamflix.models.TvShow
 import com.dskja.betterstreamflix.models.Video
+import com.dskja.betterstreamflix.utils.ExpDialogChrome
+import com.dskja.betterstreamflix.utils.ExpEmptyChrome
+import com.dskja.betterstreamflix.utils.ExpMotion
+import com.dskja.betterstreamflix.utils.ExperimentalMobileDesign
 import com.dskja.betterstreamflix.utils.viewModelsFactory
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
@@ -74,20 +81,84 @@ class DownloadsTvFragment : Fragment() {
         binding.chipFilterCompleted.setOnClickListener { viewModel.setFilter(DownloadsFilter.COMPLETED) }
         binding.chipFilterFailed.setOnClickListener { viewModel.setFilter(DownloadsFilter.FAILED) }
 
+        if (ExperimentalMobileDesign.enabled()) {
+            ExpMotion.enterScreen(binding.root)
+            val onSurface = com.google.android.material.color.MaterialColors.getColor(
+                binding.tvDownloadsTitle,
+                com.google.android.material.R.attr.colorOnSurface,
+            )
+            val onVariant = com.google.android.material.color.MaterialColors.getColor(
+                binding.tvDownloadsStorage,
+                com.google.android.material.R.attr.colorOnSurfaceVariant,
+            )
+            val error = com.google.android.material.color.MaterialColors.getColor(
+                binding.tvDownloadsBanner,
+                androidx.appcompat.R.attr.colorError,
+            )
+            binding.tvDownloadsTitle.setTextColor(onSurface)
+            binding.tvDownloadsStorage.setTextColor(onVariant)
+            binding.tvDownloadsBanner.setTextColor(error)
+            binding.btnDownloadsMenu.imageTintList =
+                android.content.res.ColorStateList.valueOf(onSurface)
+            binding.btnDownloadsMenu.setBackgroundResource(
+                ExperimentalMobileDesign.iconChipBackground(),
+            )
+            with(com.dskja.betterstreamflix.utils.ExpPressEffects) {
+                binding.btnDownloadsMenu.applyExpPress()
+            }
+            ExpMotion.revealHeader(binding.tvDownloadsTitle, binding.tvDownloadsStorage)
+            binding.root.findViewById<View>(R.id.v_downloads_filters_edge_fade_start)?.isVisible = true
+            binding.root.findViewById<View>(R.id.v_downloads_filters_edge_fade_end)?.isVisible = true
+        } else {
+            binding.root.findViewById<View>(R.id.v_downloads_filters_edge_fade_start)?.isVisible = false
+            binding.root.findViewById<View>(R.id.v_downloads_filters_edge_fade_end)?.isVisible = false
+        }
+
         viewLifecycleOwner.lifecycleScope.launch {
-            viewModel.rows.flowWithLifecycle(lifecycle, Lifecycle.State.STARTED).collect { rows ->
+            // Combine filter so empty→empty filter switches still refresh CTA copy
+            // (StateFlow skips equal emptyList emissions).
+            combine(viewModel.rows, viewModel.selectedFilter) { rows, filter -> rows to filter }
+                .flowWithLifecycle(lifecycle, Lifecycle.State.STARTED)
+                .collect { (rows, filter) ->
                 adapter.submitList(rows.toList())
                 val empty = rows.isEmpty()
                 binding.tvDownloadsEmpty.isVisible = empty
                 binding.tvDownloadsEmpty.setText(
-                    if (viewModel.currentFilter() == DownloadsFilter.ALL) {
+                    if (filter == DownloadsFilter.ALL) {
                         R.string.downloads_empty
                     } else {
                         R.string.downloads_filter_empty
                     },
                 )
+                val emptyCta = binding.root.findViewById<android.widget.TextView>(
+                    R.id.btn_downloads_empty_cta,
+                )
+                val filterAll = filter == DownloadsFilter.ALL
+                if (empty && ExperimentalMobileDesign.enabled()) {
+                    emptyCta?.setText(
+                        if (filterAll) R.string.exp_empty_browse_catalog
+                        else R.string.exp_empty_clear_filter,
+                    )
+                }
+                ExpEmptyChrome.bind(
+                    emptyView = binding.tvDownloadsEmpty,
+                    emptyRule = binding.root.findViewById(R.id.v_downloads_empty_rule),
+                    emptyCta = emptyCta,
+                    visible = empty,
+                    tintOnSurfaceVariant = false,
+                    onCtaClick = {
+                        if (filterAll) {
+                            runCatching { findNavController().navigate(R.id.home) }
+                        } else {
+                            viewModel.setFilter(DownloadsFilter.ALL)
+                        }
+                    },
+                )
+                if (!empty) {
+                    binding.tvDownloadsEmpty.setTag(R.id.exp_enter_animated_tag, null)
+                }
                 if (empty && binding.rvDownloads.hasFocus()) {
-                    binding.chipFilterAll.requestFocus()
+                    emptyCta?.requestFocus() ?: binding.chipFilterAll.requestFocus()
                 }
             }
         }
@@ -131,14 +202,42 @@ class DownloadsTvFragment : Fragment() {
     }
 
     private fun styleChip(chip: android.widget.TextView, selected: Boolean) {
+        val wasSelected = chip.isSelected
         chip.isSelected = selected
+        val exp = ExperimentalMobileDesign.enabled()
         chip.setBackgroundResource(
-            if (selected) R.drawable.bg_download_filter_chip_selected
-            else R.drawable.bg_download_filter_chip,
+            when {
+                exp && selected -> ExperimentalMobileDesign.primaryButtonBackground()
+                exp -> ExperimentalMobileDesign.chipBackground()
+                selected -> R.drawable.bg_download_filter_chip_selected
+                else -> R.drawable.bg_download_filter_chip
+            },
         )
         chip.setTextColor(
-            if (selected) 0xFF111111.toInt() else 0xFFFFFFFF.toInt(),
+            when {
+                exp && selected -> com.google.android.material.color.MaterialColors.getColor(
+                    chip, com.google.android.material.R.attr.colorOnPrimary,
+                )
+                exp -> com.google.android.material.color.MaterialColors.getColor(
+                    chip, com.google.android.material.R.attr.colorOnSurfaceVariant,
+                )
+                selected -> 0xFF111111.toInt()
+                else -> 0xFFFFFFFF.toInt()
+            },
         )
+        chip.refreshDrawableState()
+        if (exp && selected && !wasSelected) {
+            com.dskja.betterstreamflix.utils.ExpMotion.popIn(chip)
+        }
+        if (exp) {
+            with(com.dskja.betterstreamflix.utils.ExpPressEffects) { chip.applyExpPress() }
+            chip.typeface = if (selected) {
+                android.graphics.Typeface.create("sans-serif-medium", android.graphics.Typeface.BOLD)
+            } else {
+                android.graphics.Typeface.create("sans-serif", android.graphics.Typeface.NORMAL)
+            }
+            chip.letterSpacing = if (selected) 0.02f else 0f
+        }
     }
 
     private fun showMenu(anchor: View) {
@@ -160,12 +259,17 @@ class DownloadsTvFragment : Fragment() {
                 .setCheckable(true)
                 .setChecked(viewModel.currentSort() == DownloadsSort.SIZE)
             sortMenu.setGroupCheckable(0, true, true)
+            menu.add(0, 5, 7, R.string.downloads_action_settings)
             setOnMenuItemClickListener {
                 when (it.itemId) {
                     1 -> viewModel.pauseAll()
                     2 -> viewModel.resumeAll()
                     3 -> viewModel.clearCompleted()
                     4 -> viewModel.clearFailed()
+                    5 -> {
+                        SettingsDeepLink.openDownloadsScreen()
+                        findNavController().navigate(R.id.settings)
+                    }
                     6 -> viewModel.retryAllFailed()
                     7 -> viewModel.clearWatched()
                     10 -> viewModel.setSort(DownloadsSort.NEWEST)
@@ -221,7 +325,7 @@ class DownloadsTvFragment : Fragment() {
             val uri = withContext(Dispatchers.IO) {
                 OfflinePlayback.exportShareUri(requireContext(), row.entity)
             } ?: run {
-                Toast.makeText(requireContext(), R.string.download_error_file_missing, Toast.LENGTH_SHORT).show()
+                showDownloadError(R.string.download_error_file_missing)
                 return@launch
             }
             val intent = android.content.Intent(android.content.Intent.ACTION_SEND).apply {
@@ -241,7 +345,7 @@ class DownloadsTvFragment : Fragment() {
             val local = withContext(Dispatchers.IO) {
                 OfflinePlayback.buildLocalVideo(requireContext(), row.entity)
             } ?: run {
-                Toast.makeText(requireContext(), R.string.download_error_file_missing, Toast.LENGTH_SHORT).show()
+                showDownloadError(R.string.download_error_file_missing)
                 return@launch
             }
             OfflineVideoCache.put(row.entity.contentKey, local)
@@ -293,6 +397,19 @@ class DownloadsTvFragment : Fragment() {
                     ),
                 )
             }
+        }
+    }
+
+    private fun showDownloadError(messageRes: Int) {
+        val message = getString(messageRes)
+        if (ExperimentalMobileDesign.enabled()) {
+            ExpDialogChrome.showInfo(
+                requireContext(),
+                R.string.downloads_title,
+                message,
+            ) { ctx -> MaterialAlertDialogBuilder(ctx) }
+        } else {
+            Toast.makeText(requireContext(), message, Toast.LENGTH_SHORT).show()
         }
     }
 

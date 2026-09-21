@@ -10,20 +10,19 @@
 
     <TextView
         android:id="@+id/tv_tv_show_recommendations_label"
-        android:fontFamily="@font/manrope"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
+        android:textAppearance="@style/TextAppearance.Lumina.Title"
         android:layout_marginStart="22dp"
         android:layout_marginEnd="22dp"
         android:letterSpacing="0.01"
         android:text="@string/tv_show_you_may_also_like"
-        android:textColor="?attr/colorOnSurface"
-        android:textSize="19sp"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent" />
 
     <View
+        android:id="@+id/v_tv_show_recommendations_rule"
         android:layout_width="36dp"
         android:layout_height="3dp"
         android:layout_marginTop="9dp"
@@ -39,12 +38,32 @@
         android:clipChildren="false"
         android:clipToPadding="false"
         android:orientation="horizontal"
-        android:paddingStart="18dp"
-        android:paddingEnd="18dp"
+        android:paddingStart="22dp"
+        android:paddingEnd="28dp"
         app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@id/tv_tv_show_recommendations_label"
         tools:listitem="@layout/item_tv_show_mobile_exp" />
 
+
+    <View
+        android:id="@+id/v_tv_show_recs_edge_fade_start"
+        android:layout_width="28dp"
+        android:layout_height="0dp"
+        android:background="@drawable/bg_exp_edge_fade_start"
+        android:importantForAccessibility="no"
+        app:layout_constraintBottom_toBottomOf="@id/rv_tv_show_recommendations"
+        app:layout_constraintStart_toStartOf="@id/rv_tv_show_recommendations"
+        app:layout_constraintTop_toTopOf="@id/rv_tv_show_recommendations" />
+
+    <View
+        android:id="@+id/v_tv_show_recs_edge_fade_end"
+        android:layout_width="36dp"
+        android:layout_height="0dp"
+        android:background="@drawable/bg_exp_edge_fade_end"
+        android:importantForAccessibility="no"
+        app:layout_constraintBottom_toBottomOf="@id/rv_tv_show_recommendations"
+        app:layout_constraintEnd_toEndOf="@id/rv_tv_show_recommendations"
+        app:layout_constraintTop_toTopOf="@id/rv_tv_show_recommendations" />
 </androidx.constraintlayout.widget.ConstraintLayout>

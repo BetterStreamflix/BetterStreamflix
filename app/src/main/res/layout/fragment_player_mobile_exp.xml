@@ -4,7 +4,7 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#000000"
+    android:background="?attr/colorSurface"
     tools:context=".fragments.player.PlayerMobileFragment">
 
     <com.dskja.betterstreamflix.ui.PlayerMobileView
@@ -52,12 +52,15 @@
         app:layout_constraintEnd_toStartOf="@id/settings"
         tools:visibility="visible">
 
-        <ImageView
+        <com.google.android.material.imageview.ShapeableImageView
             android:id="@+id/iv_next_episode_poster"
             android:layout_width="86dp"
             android:layout_height="50dp"
             android:contentDescription="@null"
             android:scaleType="centerCrop"
+            app:shapeAppearanceOverlay="@style/ShapeAppearance.Lumina.PosterSmall"
+            app:strokeColor="?attr/colorOutlineVariant"
+            app:strokeWidth="1dp"
             tools:src="@drawable/glide_fallback_cover" />
 
         <LinearLayout
@@ -71,16 +74,20 @@
                 android:id="@+id/tv_next_episode_label"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:letterSpacing="0.14"
                 android:text="@string/player_next_episode_up_next"
-                android:textAllCaps="true"
-                android:textColor="?attr/colorPrimary"
-                android:textSize="9sp"
-                android:textStyle="bold" />
+                android:textAppearance="@style/TextAppearance.Lumina.Eyebrow"
+                android:textSize="9sp" />
+
+            <View
+                android:id="@+id/v_next_episode_rule"
+                android:layout_width="28dp"
+                android:layout_height="2dp"
+                android:layout_marginTop="6dp"
+                android:background="@drawable/bg_exp_accent_rule" />
 
             <TextView
                 android:id="@+id/tv_next_episode_meta"
-        android:fontFamily="@font/manrope"
+        android:textAppearance="@style/TextAppearance.Lumina.Caption"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="3dp"
@@ -91,7 +98,7 @@
 
             <TextView
                 android:id="@+id/tv_next_episode_title"
-        android:fontFamily="@font/manrope"
+        android:textAppearance="@style/TextAppearance.Lumina.Title"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="2dp"
@@ -103,7 +110,7 @@
 
             <TextView
                 android:id="@+id/tv_next_episode_countdown"
-        android:fontFamily="@font/manrope"
+        android:textAppearance="@style/TextAppearance.Lumina.Caption"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="4dp"
@@ -114,7 +121,7 @@
 
             <TextView
                 android:id="@+id/btn_next_episode_action"
-        android:fontFamily="@font/manrope"
+        android:textAppearance="@style/TextAppearance.Lumina.Caption"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="9dp"
@@ -132,16 +139,17 @@
 
             <TextView
                 android:id="@+id/btn_next_episode_dismiss"
-        android:fontFamily="@font/manrope"
+                android:textAppearance="@style/TextAppearance.Lumina.Caption"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="7dp"
+                android:background="@drawable/bg_exp_chip"
                 android:clickable="true"
                 android:focusable="true"
-                android:paddingStart="4dp"
-                android:paddingTop="2dp"
-                android:paddingEnd="4dp"
-                android:paddingBottom="2dp"
+                android:paddingStart="10dp"
+                android:paddingTop="4dp"
+                android:paddingEnd="10dp"
+                android:paddingBottom="4dp"
                 android:text="@string/player_next_episode_dismiss"
                 android:textColor="?attr/colorOnSurfaceVariant"
                 android:textSize="10sp"
@@ -169,27 +177,26 @@
             android:layout_width="40dp"
             android:layout_height="40dp"
             android:src="@drawable/ic_exp_error"
+            app:tint="?attr/colorPrimary"
             tools:ignore="ContentDescription" />
 
         <TextView
             android:id="@+id/tv_player_error_title"
-        android:fontFamily="@font/manrope"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="14dp"
             android:text="@string/exp_player_error_title"
-            android:textAppearance="?attr/textAppearanceTitleMedium"
+            android:textAppearance="@style/TextAppearance.Lumina.Title"
             android:textColor="?attr/colorOnSurface" />
 
         <TextView
             android:id="@+id/tv_player_error_message"
-        android:fontFamily="@font/manrope"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="8dp"
             android:gravity="center"
+            android:textAppearance="@style/TextAppearance.Lumina.Body"
             android:textColor="?attr/colorOnSurfaceVariant"
-            android:textAppearance="?attr/textAppearanceBodyMedium"
             tools:text="Error message" />
 
         <TextView
@@ -221,7 +228,7 @@
 
         <TextView
             android:id="@+id/tv_brightness_percentage"
-        android:fontFamily="@font/manrope"
+        android:textAppearance="@style/TextAppearance.Lumina.Caption"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:fontFeatureSettings="tnum"
@@ -269,7 +276,7 @@
 
         <TextView
             android:id="@+id/tv_volume_percentage"
-        android:fontFamily="@font/manrope"
+        android:textAppearance="@style/TextAppearance.Lumina.Caption"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:fontFeatureSettings="tnum"

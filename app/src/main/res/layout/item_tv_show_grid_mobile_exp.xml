@@ -39,6 +39,19 @@
         tools:visibility="visible" />
 
     <ImageView
+        android:id="@+id/iv_tv_show_download_ribbon"
+        android:layout_width="20dp"
+        android:layout_height="20dp"
+        android:layout_margin="7dp"
+        android:elevation="2dp"
+        android:src="@drawable/ic_offline_badge"
+        android:visibility="gone"
+        app:layout_constraintEnd_toEndOf="@id/iv_tv_show_poster"
+        app:layout_constraintTop_toTopOf="@id/iv_tv_show_poster"
+        tools:ignore="ContentDescription"
+        tools:visibility="visible" />
+
+    <ImageView
         android:id="@+id/iv_tv_show_watched_ribbon"
         android:layout_width="20dp"
         android:layout_height="20dp"
@@ -53,6 +66,7 @@
 
     <TextView
         android:id="@+id/tv_tv_show_quality"
+        android:textAppearance="@style/TextAppearance.Lumina.Caption"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginTop="7dp"
@@ -67,19 +81,25 @@
         android:textSize="9sp"
         android:textStyle="bold"
         app:layout_constraintEnd_toEndOf="@id/iv_tv_show_poster"
-        app:layout_constraintTop_toTopOf="@id/iv_tv_show_poster"
+        app:layout_constraintTop_toBottomOf="@id/iv_tv_show_download_ribbon"
+        app:layout_goneMarginTop="7dp"
         tools:text="HD"
         tools:visibility="visible" />
 
     <TextView
         android:id="@+id/tv_tv_show_last_episode"
-        android:fontFamily="@font/manrope"
+        android:textAppearance="@style/TextAppearance.Lumina.Caption"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginEnd="7dp"
-        android:padding="2dp"
-        android:textColor="?attr/colorOnSurfaceVariant"
-        android:textSize="10sp"
+        android:background="@drawable/bg_exp_meta_pill"
+        android:paddingStart="6dp"
+        android:paddingTop="2dp"
+        android:paddingEnd="6dp"
+        android:paddingBottom="2dp"
+        android:textColor="?attr/colorOnSecondaryContainer"
+        android:textSize="9sp"
+        android:textStyle="bold"
         app:layout_constraintEnd_toEndOf="@id/iv_tv_show_poster"
         app:layout_constraintTop_toBottomOf="@id/tv_tv_show_quality"
         app:layout_goneMarginTop="6dp"
@@ -101,7 +121,6 @@
 
     <TextView
         android:id="@+id/tv_tv_show_title"
-        android:fontFamily="@font/manrope"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_marginTop="9dp"
@@ -113,6 +132,7 @@
         app:layout_constraintStart_toStartOf="@id/iv_tv_show_poster"
         app:layout_constraintTop_toBottomOf="@id/iv_tv_show_poster"
         tools:text="Title" 
-        android:textAppearance="?attr/textAppearanceTitleSmall"/>
+        android:textAppearance="@style/TextAppearance.Lumina.Title"
+        android:textSize="13sp"/>
 
 </androidx.constraintlayout.widget.ConstraintLayout>

@@ -4,4 +4,7 @@
     <item name="settings_row_style_kind" type="id" />
     <item name="settings_row_defaults" type="id" />
     <item name="exp_nav_autohide_tag" type="id" />
+    <item name="exp_ken_burns_animator" type="id" />
+    <item name="exp_enter_animated_tag" type="id" />
+    <item name="exp_search_recent_queries_tag" type="id" />
 </resources>

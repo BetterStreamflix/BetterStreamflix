@@ -8,6 +8,8 @@ import android.view.animation.AnimationUtils
 import android.widget.LinearLayout
 import com.dskja.betterstreamflix.R
 import com.dskja.betterstreamflix.databinding.ItemSupportProviderCardBinding
+import com.dskja.betterstreamflix.utils.ExpMotion
+import com.dskja.betterstreamflix.utils.ExpPressEffects.applyExpPress
 import com.dskja.betterstreamflix.utils.ExperimentalMobileDesign
 
 object SupportUiBinder {
@@ -27,11 +29,38 @@ object SupportUiBinder {
             card.tvSupportProviderDescription.setText(provider.descriptionRes)
             card.btnSupportProviderCta.setText(provider.ctaRes)
             val open = View.OnClickListener {
+                ExpMotion.hapticTap(it)
                 SupportLinkOpener.openProvider(context, provider)
             }
             card.root.setOnClickListener(open)
             card.btnSupportProviderCta.setOnClickListener(open)
-            applyFocusScale(card.root)
+            wireInteractive(card.root)
+            if (ExperimentalMobileDesign.enabled()) {
+                card.root.setBackgroundResource(ExperimentalMobileDesign.glassCardBackground())
+                (card.ivSupportProviderIcon.parent as? View)?.setBackgroundResource(
+                    ExperimentalMobileDesign.iconChipBackground(),
+                )
+                val primary = com.google.android.material.color.MaterialColors.getColor(
+                    card.root,
+                    androidx.appcompat.R.attr.colorPrimary,
+                )
+                val onSurface = com.google.android.material.color.MaterialColors.getColor(
+                    card.root,
+                    com.google.android.material.R.attr.colorOnSurface,
+                )
+                val onVariant = com.google.android.material.color.MaterialColors.getColor(
+                    card.root,
+                    com.google.android.material.R.attr.colorOnSurfaceVariant,
+                )
+                card.ivSupportProviderIcon.imageTintList =
+                    android.content.res.ColorStateList.valueOf(primary)
+                card.tvSupportProviderTitle.setTextColor(onSurface)
+                card.tvSupportProviderDescription.setTextColor(onVariant)
+                card.btnSupportProviderCta.setBackgroundResource(
+                    ExperimentalMobileDesign.primaryButtonBackground(),
+                )
+                card.btnSupportProviderCta.applyExpPress()
+            }
 
             val lp = if (horizontal) {
                 LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f).apply {
@@ -48,10 +77,22 @@ object SupportUiBinder {
             container.addView(card.root, lp)
 
             if (animate) {
-                val anim = AnimationUtils.loadAnimation(context, R.anim.support_fade_slide_up)
-                anim.startOffset = (index * 40L)
-                card.root.startAnimation(anim)
+                if (ExperimentalMobileDesign.enabled()) {
+                    card.root.postDelayed({ ExpMotion.popIn(card.root) }, 40L * index)
+                } else {
+                    val anim = AnimationUtils.loadAnimation(context, R.anim.support_fade_slide_up)
+                    anim.startOffset = (index * 40L)
+                    card.root.startAnimation(anim)
+                }
             }
+        }
+    }
+
+    fun wireInteractive(view: View) {
+        if (ExperimentalMobileDesign.enabled()) {
+            view.applyExpPress()
+        } else {
+            applyFocusScale(view)
         }
     }
 

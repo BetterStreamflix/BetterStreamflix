@@ -54,14 +54,12 @@
 
     <TextView
         android:id="@+id/tv_provider_name"
-        android:fontFamily="@font/manrope"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_marginTop="10dp"
         android:gravity="center"
-        android:textColor="?attr/colorOnSurface"
+        android:textAppearance="@style/TextAppearance.Lumina.Title"
         android:textSize="13sp"
-        android:textStyle="bold"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@id/iv_provider_logo"
@@ -69,16 +67,39 @@
 
     <TextView
         android:id="@+id/tv_provider_language"
-        android:fontFamily="@font/manrope"
-        android:layout_width="0dp"
+        android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginTop="3dp"
         android:gravity="center"
-        android:textColor="?attr/colorOnSurfaceVariant"
-        android:textSize="11sp"
+        android:paddingStart="8dp"
+        android:paddingTop="2dp"
+        android:paddingEnd="8dp"
+        android:paddingBottom="2dp"
+        android:textAppearance="@style/TextAppearance.Lumina.Caption"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@id/tv_provider_name"
         tools:text="Provider language" />
+
+    <TextView
+        android:id="@+id/tv_provider_health_pill"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="6dp"
+        android:background="@drawable/bg_exp_meta_pill"
+        android:paddingStart="8dp"
+        android:paddingTop="2dp"
+        android:paddingEnd="8dp"
+        android:paddingBottom="2dp"
+        android:textAllCaps="true"
+        android:textAppearance="@style/TextAppearance.Lumina.Eyebrow"
+        android:textColor="?attr/colorOnSecondaryContainer"
+        android:textSize="10sp"
+        android:visibility="gone"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/tv_provider_language"
+        tools:text="Unstable"
+        tools:visibility="visible" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>

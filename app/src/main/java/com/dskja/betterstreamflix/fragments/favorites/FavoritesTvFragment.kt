@@ -1,6 +1,5 @@
 package com.dskja.betterstreamflix.fragments.favorites
 
-import android.app.AlertDialog
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
@@ -15,6 +14,7 @@ import androidx.fragment.app.Fragment
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.flowWithLifecycle
 import androidx.lifecycle.lifecycleScope
+import androidx.navigation.fragment.findNavController
 import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.dskja.betterstreamflix.R
@@ -25,9 +25,14 @@ import com.dskja.betterstreamflix.models.Movie
 import com.dskja.betterstreamflix.models.TvShow
 import com.dskja.betterstreamflix.ui.ShowOptionsTvDialog
 import com.dskja.betterstreamflix.ui.SpacingItemDecoration
+import com.dskja.betterstreamflix.utils.ExpDialogChrome
+import com.dskja.betterstreamflix.utils.ExpEmptyChrome
+import com.dskja.betterstreamflix.utils.ExpMotion
+import com.dskja.betterstreamflix.utils.ExperimentalMobileDesign
 import com.dskja.betterstreamflix.utils.UserPreferences
 import com.dskja.betterstreamflix.utils.dp
 import com.dskja.betterstreamflix.utils.viewModelsFactory
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import kotlinx.coroutines.launch
 
 class FavoritesTvFragment : Fragment() {
@@ -95,6 +100,30 @@ class FavoritesTvFragment : Fragment() {
         }
         binding.btnFavoritesReorder.setOnClickListener { showSortDialog() }
         binding.btnFavoritesReorderMode.setOnClickListener { setRearrangeMode(!rearrangeMode) }
+        if (ExperimentalMobileDesign.enabled()) {
+            ExpMotion.enterScreen(binding.root)
+            binding.btnFavoritesReorder.setBackgroundResource(ExperimentalMobileDesign.chipBackground())
+            binding.btnFavoritesReorderMode.setBackgroundResource(ExperimentalMobileDesign.chipBackground())
+            val onSurface = com.google.android.material.color.MaterialColors.getColor(
+                binding.btnFavoritesReorder,
+                com.google.android.material.R.attr.colorOnSurface,
+            )
+            binding.btnFavoritesReorder.setTextColor(onSurface)
+            binding.btnFavoritesReorderMode.setTextColor(onSurface)
+            with(com.dskja.betterstreamflix.utils.ExpPressEffects) {
+                binding.btnFavoritesReorder.applyExpPress()
+                binding.btnFavoritesReorderMode.applyExpPress()
+            }
+            ExpMotion.popIn(binding.btnFavoritesReorder)
+            ExpMotion.popIn(binding.btnFavoritesReorderMode)
+            binding.root.findViewById<android.widget.TextView>(R.id.tv_favorites_empty)?.let { empty ->
+                empty.setTextColor(
+                    com.google.android.material.color.MaterialColors.getColor(
+                        empty, com.google.android.material.R.attr.colorOnSurfaceVariant,
+                    ),
+                )
+            }
+        }
         requireActivity().onBackPressedDispatcher.addCallback(viewLifecycleOwner, rearrangeBackCallback)
         setRearrangeMode(false)
         binding.root.requestFocus()
@@ -114,6 +143,7 @@ class FavoritesTvFragment : Fragment() {
             isSelected = enabled
             text = getString(if (enabled) R.string.favorites_rearrange_off else R.string.favorites_rearrange_on)
         }
+        binding.btnFavoritesReorder.isEnabled = !enabled && appAdapter.items.isNotEmpty()
         configureAdapterInteractions()
         appAdapter.notifyDataSetChanged()
         if (!enabled) {
@@ -330,7 +360,21 @@ class FavoritesTvFragment : Fragment() {
         }
         binding.tvFavoritesEmpty.isVisible = gridItems.isEmpty()
         binding.rvFavorites.isVisible = gridItems.isNotEmpty()
-        binding.btnFavoritesReorder.isEnabled = gridItems.isNotEmpty()
+        binding.btnFavoritesReorder.isEnabled = gridItems.isNotEmpty() && !rearrangeMode
+        ExpEmptyChrome.bind(
+            emptyView = binding.tvFavoritesEmpty,
+            emptyRule = binding.root.findViewById(R.id.v_favorites_empty_rule),
+            emptyCta = binding.root.findViewById(R.id.btn_favorites_empty_cta),
+            visible = gridItems.isEmpty(),
+            onCtaClick = { runCatching { findNavController().navigate(R.id.search) } },
+        )
+        if (gridItems.isEmpty() && ExperimentalMobileDesign.enabled()) {
+            binding.btnFavoritesReorder.isVisible = false
+            binding.btnFavoritesReorderMode.isVisible = false
+        } else if (ExperimentalMobileDesign.enabled()) {
+            binding.btnFavoritesReorder.isVisible = gridItems.isNotEmpty()
+            binding.btnFavoritesReorderMode.isVisible = gridItems.isNotEmpty()
+        }
         appAdapter.submitList(gridItems)
     }
 
@@ -342,15 +386,66 @@ class FavoritesTvFragment : Fragment() {
             getString(R.string.favorites_sort_title_ascending),
             getString(R.string.favorites_sort_title_descending),
         )
-        AlertDialog.Builder(requireContext())
-            .setTitle(R.string.favorites_sort_title)
+        val builder = if (ExperimentalMobileDesign.enabled()) {
+            MaterialAlertDialogBuilder(requireContext())
+        } else {
+            androidx.appcompat.app.AlertDialog.Builder(requireContext())
+        }
+        if (ExperimentalMobileDesign.enabled()) {
+            val titleBox = android.widget.LinearLayout(requireContext()).apply {
+                orientation = android.widget.LinearLayout.VERTICAL
+                val pad = (20 * resources.displayMetrics.density).toInt()
+                setPadding(pad, pad, pad, (8 * resources.displayMetrics.density).toInt())
+            }
+            val titleView = android.widget.TextView(requireContext()).apply {
+                text = getString(R.string.favorites_sort_title)
+                setTextAppearance(R.style.TextAppearance_Lumina_Title)
+                setTextColor(
+                    com.google.android.material.color.MaterialColors.getColor(
+                        this,
+                        com.google.android.material.R.attr.colorOnSurface,
+                    ),
+                )
+            }
+            val rule = View(requireContext()).apply {
+                layoutParams = android.widget.LinearLayout.LayoutParams(
+                    (36 * resources.displayMetrics.density).toInt(),
+                    (3 * resources.displayMetrics.density).toInt(),
+                ).also { it.topMargin = (10 * resources.displayMetrics.density).toInt() }
+                setBackgroundResource(R.drawable.bg_exp_accent_rule)
+            }
+            titleBox.addView(titleView)
+            titleBox.addView(rule)
+            builder.setCustomTitle(titleBox)
+            ExpMotion.pulseAccentRule(rule)
+        } else {
+            builder.setTitle(R.string.favorites_sort_title)
+        }
+        builder
             .setSingleChoiceItems(labels, modes.indexOf(viewModel.currentSortMode())) { dialog, which ->
+                if (ExperimentalMobileDesign.enabled()) ExpMotion.hapticTap(binding.root)
                 if (modes[which] != FavoritesViewModel.SortMode.MANUAL) setRearrangeMode(false)
                 viewModel.setSortMode(modes[which])
                 dialog.dismiss()
             }
             .setNegativeButton(R.string.option_cancel, null)
-            .show()
+            .create()
+            .also { dialog ->
+                dialog.setOnShowListener {
+                    ExpDialogChrome.polishShown(dialog)
+                    if (ExperimentalMobileDesign.enabled()) {
+                        dialog.window?.decorView?.let { ExpMotion.enterScreen(it) }
+                        dialog.listView?.post {
+                            val list = dialog.listView ?: return@post
+                            for (i in 0 until list.childCount) {
+                                val row = list.getChildAt(i) ?: continue
+                                row.postDelayed({ ExpMotion.popIn(row) }, 28L * i)
+                            }
+                        }
+                    }
+                }
+                dialog.show()
+            }
     }
 
     override fun onDestroyView() {

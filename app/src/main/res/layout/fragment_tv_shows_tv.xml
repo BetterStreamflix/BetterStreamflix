@@ -22,6 +22,52 @@
         app:numberOfColumns="6"
         tools:listitem="@layout/item_tv_show_grid" />
 
+    <TextView
+        android:id="@+id/tv_tv_shows_empty"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:gravity="center"
+        android:padding="48dp"
+        android:text="@string/tv_shows_empty"
+        android:textColor="#B3FFFFFF"
+        android:textSize="18sp"
+        android:visibility="gone"
+        app:layout_constraintBottom_toTopOf="@id/v_tv_shows_empty_rule"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintVertical_chainStyle="packed"
+        app:layout_constraintWidth_max="520dp"
+        tools:visibility="visible" />
+
+    <View
+        android:id="@+id/v_tv_shows_empty_rule"
+        android:layout_width="36dp"
+        android:layout_height="3dp"
+        android:layout_marginTop="14dp"
+        android:background="@drawable/bg_exp_accent_rule"
+        android:visibility="gone"
+        app:layout_constraintBottom_toTopOf="@id/btn_tv_shows_empty_cta"
+        app:layout_constraintEnd_toEndOf="@id/tv_tv_shows_empty"
+        app:layout_constraintStart_toStartOf="@id/tv_tv_shows_empty"
+        app:layout_constraintTop_toBottomOf="@id/tv_tv_shows_empty"
+        tools:visibility="visible" />
+
+    <TextView
+        android:id="@+id/btn_tv_shows_empty_cta"
+        style="@style/AppTheme.Widget.Tv.Button"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="14dp"
+        android:focusable="true"
+        android:text="@string/exp_empty_choose_provider"
+        android:visibility="gone"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="@id/tv_tv_shows_empty"
+        app:layout_constraintStart_toStartOf="@id/tv_tv_shows_empty"
+        app:layout_constraintTop_toBottomOf="@id/v_tv_shows_empty_rule"
+        tools:visibility="visible" />
+
     <include
         android:id="@+id/is_loading"
         layout="@layout/layout_is_loading_tv"

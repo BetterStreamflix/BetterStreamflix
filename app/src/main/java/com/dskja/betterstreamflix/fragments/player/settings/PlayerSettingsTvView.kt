@@ -14,6 +14,9 @@ import com.dskja.betterstreamflix.R
 import com.dskja.betterstreamflix.databinding.ItemSettingTvBinding
 import com.dskja.betterstreamflix.databinding.ViewPlayerSettingsTvBinding
 import com.dskja.betterstreamflix.ui.SpacingItemDecoration
+import com.dskja.betterstreamflix.utils.ExpMotion
+import com.dskja.betterstreamflix.utils.ExpPressEffects
+import com.dskja.betterstreamflix.utils.ExperimentalMobileDesign
 import com.dskja.betterstreamflix.utils.dp
 import com.dskja.betterstreamflix.utils.margin
 import com.dskja.betterstreamflix.utils.UserPreferences
@@ -61,6 +64,12 @@ class PlayerSettingsTvView @JvmOverloads constructor(
 
     init {
         binding.rvSettings.addItemDecoration(SpacingItemDecoration(6.dp(context)))
+        if (ExperimentalMobileDesign.enabled()) {
+            binding.root.getChildAt(0)?.let { panel ->
+                panel.setBackgroundResource(ExperimentalMobileDesign.dialogBackground())
+                ExperimentalMobileDesign.applyReducedGlass(panel)
+            }
+        }
     }
 
     fun onBackPressed(): Boolean {
@@ -101,8 +110,16 @@ class PlayerSettingsTvView @JvmOverloads constructor(
     }
 
 
+    private var lastRevealedSetting: Setting? = null
+
     fun show() {
         this.visibility = View.VISIBLE
+        if (ExperimentalMobileDesign.enabled()) {
+            ExpMotion.enterScreen(this)
+            ExperimentalMobileDesign.applyReducedGlass(binding.root)
+            ExpMotion.revealHeader(binding.tvSettingsHeader)
+            lastRevealedSetting = null
+        }
 
         displaySettings(Setting.MAIN)
     }
@@ -142,6 +159,10 @@ class PlayerSettingsTvView @JvmOverloads constructor(
                 Setting.MANUAL_ZOOM -> context.getString(R.string.player_settings_manual_zoom_label)
             }
         }
+        if (ExperimentalMobileDesign.enabled() && lastRevealedSetting != setting) {
+            lastRevealedSetting = setting
+            ExpMotion.revealHeader(binding.tvSettingsHeader)
+        }
 
         binding.rvSettings.adapter = when (setting) {
             Setting.MAIN -> settingsAdapter
@@ -166,6 +187,10 @@ class PlayerSettingsTvView @JvmOverloads constructor(
             Setting.SERVERS -> serversAdapter
             Setting.CAPTION_STYLE_MARGIN -> marginAdapter
             else -> settingsAdapter
+        }
+        if (ExperimentalMobileDesign.enabled()) {
+            ExpMotion.staggerFirstFill(binding.rvSettings)
+            binding.rvSettings.scheduleLayoutAnimation()
         }
 
         if (setting == Setting.SUBTITLE_OFFSET) {
@@ -198,7 +223,12 @@ class PlayerSettingsTvView @JvmOverloads constructor(
     }
 
     fun hide() {
-        this.visibility = View.GONE
+        lastRevealedSetting = null
+        if (ExperimentalMobileDesign.enabled() && visibility == View.VISIBLE) {
+            ExpMotion.fadeOutAndHide(this)
+        } else {
+            this.visibility = View.GONE
+        }
     }
 
 
@@ -229,6 +259,13 @@ class PlayerSettingsTvView @JvmOverloads constructor(
         private val binding: ItemSettingTvBinding,
     ) : RecyclerView.ViewHolder(binding.root) {
 
+        init {
+            if (ExperimentalMobileDesign.enabled()) {
+                with(ExpPressEffects) { binding.root.applyExpPress() }
+                binding.root.setBackgroundResource(ExperimentalMobileDesign.optionItemBackground())
+            }
+        }
+
         fun displaySettings(item: Item) {
             binding.root.apply {
                 when (item) {
@@ -238,6 +275,7 @@ class PlayerSettingsTvView @JvmOverloads constructor(
                     else -> margin(bottom = 0, top = 0)
                 }
                 setOnClickListener {
+                    ExpMotion.hapticTap(it)
                     when (item) {
                         is Settings -> {
                             when (item) {
@@ -484,6 +522,17 @@ class PlayerSettingsTvView @JvmOverloads constructor(
                             )
                             else -> {}
                         }
+                        if (ExperimentalMobileDesign.enabled()) {
+                            androidx.core.widget.ImageViewCompat.setImageTintList(
+                                this,
+                                ColorStateList.valueOf(
+                                    com.google.android.material.color.MaterialColors.getColor(
+                                        this,
+                                        androidx.appcompat.R.attr.colorPrimary,
+                                    ),
+                                ),
+                            )
+                        }
                         visibility = View.VISIBLE
                     }
 
@@ -679,6 +728,7 @@ class PlayerSettingsTvView @JvmOverloads constructor(
             }
 
             binding.ivSettingIsSelected.apply {
+                val wasVisible = visibility == View.VISIBLE
                 visibility = when (item) {
                     is Settings.Quality -> when {
                         item.isSelected -> View.VISIBLE
@@ -774,6 +824,17 @@ class PlayerSettingsTvView @JvmOverloads constructor(
 
                     else -> View.GONE
                 }
+                if (ExperimentalMobileDesign.enabled() && visibility == View.VISIBLE && !wasVisible) {
+                    ExpMotion.popIn(this)
+                }
+            }
+
+            if (ExperimentalMobileDesign.enabled()) {
+                val selected = binding.ivSettingIsSelected.visibility == View.VISIBLE
+                binding.root.setBackgroundResource(
+                    if (selected) ExperimentalMobileDesign.chipBackground()
+                    else ExperimentalMobileDesign.optionItemBackground(),
+                )
             }
 
             binding.ivSettingEnter.apply {
@@ -807,6 +868,9 @@ class PlayerSettingsTvView @JvmOverloads constructor(
                     }
 
                     else -> View.GONE
+                }
+                if (ExperimentalMobileDesign.enabled() && visibility == View.VISIBLE) {
+                    ExpMotion.popIn(this)
                 }
             }
         }

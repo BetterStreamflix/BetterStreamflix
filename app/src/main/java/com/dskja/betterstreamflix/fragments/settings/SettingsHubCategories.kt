@@ -70,29 +70,52 @@ internal object SettingsHubCategories {
         ),
     )
 
-    fun accountCards(): List<SettingsHubCard> = listOf(
-        SettingsHubCard(
-            id = "cloud",
-            titleRes = R.string.cloud_sync_title,
-            summaryRes = R.string.cloud_sync_screen_summary,
-            iconRes = R.drawable.ic_refresh,
-            target = SettingsHubTarget.PreferenceScreen("screen_cloud_sync"),
-        ),
-        SettingsHubCard(
-            id = "watchlist",
-            titleRes = R.string.settings_watchlist_import_title,
-            summaryRes = R.string.settings_watchlist_import_summary,
-            iconRes = R.drawable.ic_favorite_enable,
-            target = SettingsHubTarget.PreferenceScreen("screen_watchlist_import"),
-        ),
-        SettingsHubCard(
-            id = "backup",
-            titleRes = R.string.backup_category_title,
-            summaryRes = R.string.settings_screen_backup_summary,
-            iconRes = R.drawable.ic_player_settings_download,
-            target = SettingsHubTarget.PreferenceScreen("screen_backup"),
-        ),
-    )
+    fun accountCards(): List<SettingsHubCard> {
+        val cards = mutableListOf(
+            SettingsHubCard(
+                id = "profiles",
+                titleRes = R.string.settings_screen_profiles_title,
+                summaryRes = R.string.settings_screen_profiles_summary,
+                iconRes = R.drawable.ic_person_placeholder,
+                target = SettingsHubTarget.PreferenceScreen("screen_profiles"),
+            ),
+            SettingsHubCard(
+                id = "cloud",
+                titleRes = R.string.cloud_sync_title,
+                summaryRes = R.string.cloud_sync_screen_summary,
+                iconRes = R.drawable.ic_refresh,
+                target = SettingsHubTarget.PreferenceScreen("screen_cloud_sync"),
+            ),
+        )
+        if (com.dskja.betterstreamflix.utils.UserPreferences.currentProvider
+                is com.dskja.betterstreamflix.providers.SerienStreamProvider
+        ) {
+            cards += SettingsHubCard(
+                id = "serienstream_auth",
+                titleRes = R.string.serienstream_auth_category_title,
+                summaryRes = R.string.settings_serienstream_session_login_summary,
+                iconRes = R.drawable.ic_providers_language,
+                target = SettingsHubTarget.PreferenceScreen("screen_serienstream_auth"),
+            )
+        }
+        cards += listOf(
+            SettingsHubCard(
+                id = "watchlist",
+                titleRes = R.string.settings_watchlist_import_title,
+                summaryRes = R.string.settings_watchlist_import_summary,
+                iconRes = R.drawable.ic_favorite_enable,
+                target = SettingsHubTarget.PreferenceScreen("screen_watchlist_import"),
+            ),
+            SettingsHubCard(
+                id = "backup",
+                titleRes = R.string.backup_category_title,
+                summaryRes = R.string.settings_screen_backup_summary,
+                iconRes = R.drawable.ic_player_settings_download,
+                target = SettingsHubTarget.PreferenceScreen("screen_backup"),
+            ),
+        )
+        return cards
+    }
 
     fun projectCards(): List<SettingsHubCard> = listOf(
         SettingsHubCard(

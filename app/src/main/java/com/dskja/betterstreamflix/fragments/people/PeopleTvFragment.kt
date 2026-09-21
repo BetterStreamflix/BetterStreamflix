@@ -21,10 +21,15 @@ import com.dskja.betterstreamflix.models.Movie
 import com.dskja.betterstreamflix.models.People
 import com.dskja.betterstreamflix.models.TvShow
 import com.dskja.betterstreamflix.utils.CacheUtils
+import com.dskja.betterstreamflix.utils.ExpEmptyChrome
+import com.dskja.betterstreamflix.utils.ExpMotion
+import com.dskja.betterstreamflix.utils.ExpPressEffects.applyExpPress
+import com.dskja.betterstreamflix.utils.ExperimentalMobileDesign
 import com.dskja.betterstreamflix.utils.Http409CacheGuard
 import com.dskja.betterstreamflix.utils.LoggingUtils
 import com.dskja.betterstreamflix.utils.format
 import com.dskja.betterstreamflix.utils.viewModelsFactory
+import androidx.navigation.fragment.findNavController
 import kotlinx.coroutines.launch
 
 class PeopleTvFragment : Fragment() {
@@ -59,7 +64,7 @@ class PeopleTvFragment : Fragment() {
                 when (state) {
                     PeopleViewModel.State.Loading -> binding.isLoading.apply {
                         root.visibility = View.VISIBLE
-                        pbIsLoading.visibility = View.VISIBLE
+                        com.dskja.betterstreamflix.utils.ExpPressEffects.showLoadingSkeleton(root, true)
                         gIsLoadingRetry.visibility = View.GONE
                     }
                     PeopleViewModel.State.LoadingMore -> appAdapter.isLoading = true
@@ -67,6 +72,9 @@ class PeopleTvFragment : Fragment() {
                         displayPeople(state.people, state.hasMore)
                         appAdapter.isLoading = false
                         binding.isLoading.root.visibility = View.GONE
+                        com.dskja.betterstreamflix.utils.ExpPressEffects.showLoadingSkeleton(
+                            binding.isLoading.root, false,
+                        )
                     }
                     is PeopleViewModel.State.FailedLoading -> {
                         if (http409Guard.handle(requireContext(), state.error) {
@@ -75,21 +83,24 @@ class PeopleTvFragment : Fragment() {
                             }) {
                                 return@collect
                             }
-                        Toast.makeText(
-                            requireContext(),
-                            state.error.message ?: "",
-                            Toast.LENGTH_SHORT
-                        ).show()
+                        if (!com.dskja.betterstreamflix.utils.ExperimentalMobileDesign.enabled()) {
+                            Toast.makeText(
+                                requireContext(),
+                                state.error.message ?: "",
+                                Toast.LENGTH_SHORT
+                            ).show()
+                        }
                         if (appAdapter.isLoading) {
                             appAdapter.isLoading = false
                         } else {
                             binding.isLoading.apply {
-                                pbIsLoading.visibility = View.GONE
+                                com.dskja.betterstreamflix.utils.ExpPressEffects.showLoadingSkeleton(root, false)
                                 gIsLoadingRetry.visibility = View.VISIBLE
+                                com.dskja.betterstreamflix.utils.ExpPressEffects.animateLoadingError(root)
                                 btnIsLoadingRetry.setOnClickListener { viewModel.getPeople(args.id) }
                                 btnIsLoadingClearCache.setOnClickListener {
                                     CacheUtils.clearAppCache(requireContext())
-                                    android.widget.Toast.makeText(requireContext(), getString(com.dskja.betterstreamflix.R.string.clear_cache_done), android.widget.Toast.LENGTH_SHORT).show()
+                                    com.dskja.betterstreamflix.utils.ExpDialogChrome.notify(requireContext(), getString(com.dskja.betterstreamflix.R.string.clear_cache_done), com.dskja.betterstreamflix.R.string.loading_error_clear_cache)
                                     viewModel.getPeople(args.id)
                                 }
                                 btnIsLoadingErrorDetails.setOnClickListener {
@@ -111,6 +122,30 @@ class PeopleTvFragment : Fragment() {
 
 
     private fun initializePeople() {
+        com.dskja.betterstreamflix.utils.ExpPressEffects.wireLoadingRetry(binding.isLoading.root)
+        if (ExperimentalMobileDesign.enabled()) {
+            ExpMotion.enterScreen(binding.root)
+            val onSurface = com.google.android.material.color.MaterialColors.getColor(
+                binding.tvPeopleName,
+                com.google.android.material.R.attr.colorOnSurface,
+            )
+            val onVariant = com.google.android.material.color.MaterialColors.getColor(
+                binding.tvPeopleBirthday,
+                com.google.android.material.R.attr.colorOnSurfaceVariant,
+            )
+            binding.tvPeopleName.setTextColor(onSurface)
+            listOf(
+                binding.tvPeopleBirthdayLabel,
+                binding.tvPeopleDeathdayLabel,
+                binding.tvPeopleBirthplaceLabel,
+            ).forEach { it.setTextColor(onSurface) }
+            listOf(
+                binding.tvPeopleBirthday,
+                binding.tvPeopleDeathday,
+                binding.tvPeopleBirthplace,
+            ).forEach { it.setTextColor(onVariant) }
+            ExpMotion.revealHeader(binding.tvPeopleName)
+        }
         binding.vgvPeopleFilmography.apply {
             adapter = appAdapter.apply {
                 stateRestorationPolicy = RecyclerView.Adapter.StateRestorationPolicy.PREVENT_WHEN_EMPTY
@@ -159,6 +194,19 @@ class PeopleTvFragment : Fragment() {
                 is TvShow -> it.itemType = AppAdapter.Type.TV_SHOW_GRID_TV_ITEM
             }
         })
+
+        val empty = people.filmography.isEmpty()
+        binding.tvPeopleFilmographyEmpty.visibility = if (empty) View.VISIBLE else View.GONE
+        binding.vgvPeopleFilmography.visibility = if (empty) View.GONE else View.VISIBLE
+        val emptyRule = binding.root.findViewById<View>(R.id.v_people_filmography_empty_rule)
+        val emptyCta = binding.root.findViewById<View>(R.id.btn_people_filmography_empty_cta)
+        ExpEmptyChrome.bind(
+            emptyView = binding.tvPeopleFilmographyEmpty,
+            emptyRule = emptyRule,
+            emptyCta = emptyCta,
+            visible = empty,
+            onCtaClick = { findNavController().navigateUp() },
+        )
 
         if (hasMore) {
             appAdapter.setOnLoadMoreListener { viewModel.loadMorePeopleFilmography() }

@@ -25,14 +25,22 @@
             tools:ignore="UseAppTint" />
 
         <TextView
+            android:id="@+id/tv_support_preview_title"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="12dp"
-            android:fontFamily="@font/manrope"
+            android:textAppearance="@style/TextAppearance.Lumina.Body"
             android:text="@string/support_preview_title"
             android:textColor="@color/support_text_primary"
             android:textSize="@dimen/support_text_screen_title"
             android:textStyle="bold" />
+
+        <View
+            android:id="@+id/v_support_preview_accent_rule"
+            android:layout_width="36dp"
+            android:layout_height="3dp"
+            android:layout_marginTop="10dp"
+            android:background="@drawable/bg_exp_accent_rule" />
 
         <include
             android:id="@+id/preview_hero"
@@ -53,6 +61,40 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="16dp"
+            android:orientation="vertical" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="24dp"
+            android:textAppearance="@style/TextAppearance.Lumina.Body"
+            android:text="@string/support_impact_title"
+            android:textColor="@color/support_text_primary"
+            android:textSize="@dimen/support_text_section"
+            android:textStyle="bold" />
+
+        <LinearLayout
+            android:id="@+id/ll_preview_impact"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:orientation="vertical" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="24dp"
+            android:textAppearance="@style/TextAppearance.Lumina.Body"
+            android:text="@string/support_faq_title"
+            android:textColor="@color/support_text_primary"
+            android:textSize="@dimen/support_text_section"
+            android:textStyle="bold" />
+
+        <LinearLayout
+            android:id="@+id/ll_preview_faq"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
             android:orientation="vertical" />
     </LinearLayout>
 </androidx.core.widget.NestedScrollView>

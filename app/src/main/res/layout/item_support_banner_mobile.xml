@@ -26,7 +26,7 @@
             android:contentDescription="@null"
             android:importantForAccessibility="no"
             android:src="@drawable/ic_support_heart"
-            android:tint="@color/support_accent"
+            android:tint="?attr/colorPrimary"
             tools:ignore="ContentDescription,UseAppTint" />
 
         <LinearLayout
@@ -41,7 +41,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:ellipsize="end"
-                android:fontFamily="@font/manrope"
+                android:textAppearance="@style/TextAppearance.Lumina.Body"
                 android:maxLines="1"
                 android:text="@string/support_banner_title"
                 android:textColor="@color/support_text_primary"
@@ -54,7 +54,7 @@
                 android:layout_height="wrap_content"
                 android:layout_marginTop="2dp"
                 android:ellipsize="end"
-                android:fontFamily="@font/manrope"
+                android:textAppearance="@style/TextAppearance.Lumina.Body"
                 android:maxLines="2"
                 android:text="@string/support_banner_subtitle"
                 android:textColor="@color/support_text_secondary"

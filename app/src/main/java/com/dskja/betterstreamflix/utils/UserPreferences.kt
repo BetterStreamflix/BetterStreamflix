@@ -16,6 +16,7 @@ import com.dskja.betterstreamflix.providers.Provider.Companion.providers
 import com.dskja.betterstreamflix.providers.TmdbProvider
 import androidx.core.content.edit
 import com.dskja.betterstreamflix.database.AppDatabase
+import com.dskja.betterstreamflix.profiles.ProfileManager
 import org.json.JSONObject
 import org.json.JSONArray
 
@@ -187,7 +188,7 @@ object UserPreferences {
     var downloadSoftLimitGb: Int
         get() = Key.DOWNLOAD_SOFT_LIMIT_GB.getInt() ?: 20
         set(value) {
-            Key.DOWNLOAD_SOFT_LIMIT_GB.setInt(value.coerceAtLeast(1))
+            Key.DOWNLOAD_SOFT_LIMIT_GB.setInt(value.coerceIn(0, 500))
         }
 
     var downloadStorageLocation: DownloadStorageLocation
@@ -445,6 +446,31 @@ object UserPreferences {
         get() = Key.EXPERIMENTAL_NEW_APP_DESIGN.getBoolean() ?: false
         set(value) = Key.EXPERIMENTAL_NEW_APP_DESIGN.setBoolean(value)
 
+    /** Lumina accent palette: crimson | ember | aurora | slate */
+    var experimentalLuminaAccent: String
+        get() = Key.EXPERIMENTAL_LUMINA_ACCENT.getString() ?: "crimson"
+        set(value) = Key.EXPERIMENTAL_LUMINA_ACCENT.setString(value)
+
+    var experimentalLuminaPureBlack: Boolean
+        get() = Key.EXPERIMENTAL_LUMINA_PURE_BLACK.getBoolean() ?: false
+        set(value) = Key.EXPERIMENTAL_LUMINA_PURE_BLACK.setBoolean(value)
+
+    var experimentalLuminaDynamicColors: Boolean
+        get() = Key.EXPERIMENTAL_LUMINA_DYNAMIC_COLORS.getBoolean() ?: false
+        set(value) = Key.EXPERIMENTAL_LUMINA_DYNAMIC_COLORS.setBoolean(value)
+
+    var experimentalLuminaNavAutoHide: Boolean
+        get() = Key.EXPERIMENTAL_LUMINA_NAV_AUTO_HIDE.getBoolean() ?: true
+        set(value) = Key.EXPERIMENTAL_LUMINA_NAV_AUTO_HIDE.setBoolean(value)
+
+    var experimentalLuminaHeroParallax: Boolean
+        get() = Key.EXPERIMENTAL_LUMINA_HERO_PARALLAX.getBoolean() ?: true
+        set(value) = Key.EXPERIMENTAL_LUMINA_HERO_PARALLAX.setBoolean(value)
+
+    var experimentalLuminaReducedGlass: Boolean
+        get() = Key.EXPERIMENTAL_LUMINA_REDUCED_GLASS.getBoolean() ?: false
+        set(value) = Key.EXPERIMENTAL_LUMINA_REDUCED_GLASS.setBoolean(value)
+
     /**
      * When true, the startup support presentation is never shown.
      * Default false → show once until the user opts out.
@@ -457,6 +483,57 @@ object UserPreferences {
     var homeSupportCardDismissed: Boolean
         get() = Key.HOME_SUPPORT_CARD_DISMISSED.getBoolean() ?: false
         set(value) = Key.HOME_SUPPORT_CARD_DISMISSED.setBoolean(value)
+
+    /** Epoch ms of last Support startup soft-prompt (0 = never). */
+    var supportStartupLastShownAtMs: Long
+        get() = Key.SUPPORT_STARTUP_LAST_SHOWN_AT_MS.getLong() ?: 0L
+        set(value) = Key.SUPPORT_STARTUP_LAST_SHOWN_AT_MS.setLong(value)
+
+    var supportStartupShowCount: Int
+        get() = Key.SUPPORT_STARTUP_SHOW_COUNT.getInt() ?: 0
+        set(value) = Key.SUPPORT_STARTUP_SHOW_COUNT.setInt(value)
+
+    var supportHubLastVisitedAtMs: Long
+        get() = Key.SUPPORT_HUB_LAST_VISITED_AT_MS.getLong() ?: 0L
+        set(value) = Key.SUPPORT_HUB_LAST_VISITED_AT_MS.setLong(value)
+
+    var supportHubVisitCount: Int
+        get() = Key.SUPPORT_HUB_VISIT_COUNT.getInt() ?: 0
+        set(value) = Key.SUPPORT_HUB_VISIT_COUNT.setInt(value)
+
+    /** Persisted soft thanks pending flag (survives process death). */
+    var supportAppreciationPending: Boolean
+        get() = Key.SUPPORT_APPRECIATION_PENDING.getBoolean() ?: false
+        set(value) = Key.SUPPORT_APPRECIATION_PENDING.setBoolean(value)
+
+    var supportAppreciationPendingAtMs: Long
+        get() = Key.SUPPORT_APPRECIATION_PENDING_AT_MS.getLong() ?: 0L
+        set(value) = Key.SUPPORT_APPRECIATION_PENDING_AT_MS.setLong(value)
+
+    /** Soft Telegram join gate — permanent unlock for current channel version. */
+    var telegramJoinGateUnlocked: Boolean
+        get() = Key.TELEGRAM_JOIN_GATE_UNLOCKED.getBoolean() ?: false
+        set(value) = Key.TELEGRAM_JOIN_GATE_UNLOCKED.setBoolean(value)
+
+    var telegramJoinGateUnlockedAtMs: Long
+        get() = Key.TELEGRAM_JOIN_GATE_UNLOCKED_AT_MS.getLong() ?: 0L
+        set(value) = Key.TELEGRAM_JOIN_GATE_UNLOCKED_AT_MS.setLong(value)
+
+    var telegramJoinGateOpenedAtMs: Long
+        get() = Key.TELEGRAM_JOIN_GATE_OPENED_AT_MS.getLong() ?: 0L
+        set(value) = Key.TELEGRAM_JOIN_GATE_OPENED_AT_MS.setLong(value)
+
+    var telegramJoinGateOpenCount: Int
+        get() = Key.TELEGRAM_JOIN_GATE_OPEN_COUNT.getInt() ?: 0
+        set(value) = Key.TELEGRAM_JOIN_GATE_OPEN_COUNT.setInt(value)
+
+    var telegramJoinGateConfirmCount: Int
+        get() = Key.TELEGRAM_JOIN_GATE_CONFIRM_COUNT.getInt() ?: 0
+        set(value) = Key.TELEGRAM_JOIN_GATE_CONFIRM_COUNT.setInt(value)
+
+    var telegramJoinGateChannelVersion: Int
+        get() = Key.TELEGRAM_JOIN_GATE_CHANNEL_VERSION.getInt() ?: 0
+        set(value) = Key.TELEGRAM_JOIN_GATE_CHANNEL_VERSION.setInt(value)
 
     var catalogSortMode: CatalogSortMode
         get() = CatalogSortMode.fromKey(Key.CATALOG_SORT_MODE.getString())
@@ -496,16 +573,16 @@ object UserPreferences {
 
     /** When false, Home hides the Continue Watching row. */
     var showContinueWatching: Boolean
-        get() = Key.SHOW_CONTINUE_WATCHING.getBoolean() ?: true
+        get() = profileScopedBoolean(Key.SHOW_CONTINUE_WATCHING) ?: true
         set(value) {
-            Key.SHOW_CONTINUE_WATCHING.setBoolean(value)
+            setProfileScopedBoolean(Key.SHOW_CONTINUE_WATCHING, value)
         }
 
     /** When false, Home hides the Recently Watched row. */
     var showRecentlyWatched: Boolean
-        get() = Key.SHOW_RECENTLY_WATCHED.getBoolean() ?: true
+        get() = profileScopedBoolean(Key.SHOW_RECENTLY_WATCHED) ?: true
         set(value) {
-            Key.SHOW_RECENTLY_WATCHED.setBoolean(value)
+            setProfileScopedBoolean(Key.SHOW_RECENTLY_WATCHED, value)
         }
 
     /** When true, chronically brittle providers appear in the provider picker. */
@@ -528,48 +605,48 @@ object UserPreferences {
     }
 
     var libraryScope: LibraryScope
-        get() = LibraryScope.fromKey(Key.LIBRARY_SCOPE.getString())
+        get() = LibraryScope.fromKey(profileScopedString(Key.LIBRARY_SCOPE))
         set(value) {
-            Key.LIBRARY_SCOPE.setString(value.key)
+            setProfileScopedString(Key.LIBRARY_SCOPE, value.key)
         }
 
     val isCrossProviderLibrary: Boolean
         get() = libraryScope == LibraryScope.CROSS_PROVIDER
 
     var parentalControlPin: String
-        get() = Key.PARENTAL_CONTROL_PIN.getString() ?: ""
+        get() = profileScopedString(Key.PARENTAL_CONTROL_PIN) ?: ""
         set(value) {
-            Key.PARENTAL_CONTROL_PIN.setString(value.trim())
+            setProfileScopedString(Key.PARENTAL_CONTROL_PIN, value.trim())
         }
 
     var parentalControlAdminPin: String
-        get() = Key.PARENTAL_CONTROL_ADMIN_PIN.getString() ?: ""
+        get() = profileScopedString(Key.PARENTAL_CONTROL_ADMIN_PIN) ?: ""
         set(value) {
-            Key.PARENTAL_CONTROL_ADMIN_PIN.setString(value.trim())
+            setProfileScopedString(Key.PARENTAL_CONTROL_ADMIN_PIN, value.trim())
         }
 
     var parentalControlMaxAge: Int?
-        get() = Key.PARENTAL_CONTROL_MAX_AGE.getInt()
+        get() = profileScopedInt(Key.PARENTAL_CONTROL_MAX_AGE)
         set(value) {
-            Key.PARENTAL_CONTROL_MAX_AGE.setInt(value)
+            setProfileScopedInt(Key.PARENTAL_CONTROL_MAX_AGE, value)
         }
 
     var parentalControlFailedAttempts: Int
-        get() = Key.PARENTAL_CONTROL_FAILED_ATTEMPTS.getInt() ?: 0
+        get() = profileScopedInt(Key.PARENTAL_CONTROL_FAILED_ATTEMPTS) ?: 0
         set(value) {
-            Key.PARENTAL_CONTROL_FAILED_ATTEMPTS.setInt(value)
+            setProfileScopedInt(Key.PARENTAL_CONTROL_FAILED_ATTEMPTS, value)
         }
 
     var parentalControlLockedUntilMillis: Long
-        get() = Key.PARENTAL_CONTROL_LOCKED_UNTIL.getLong() ?: 0L
+        get() = profileScopedLong(Key.PARENTAL_CONTROL_LOCKED_UNTIL) ?: 0L
         set(value) {
-            Key.PARENTAL_CONTROL_LOCKED_UNTIL.setLong(value)
+            setProfileScopedLong(Key.PARENTAL_CONTROL_LOCKED_UNTIL, value)
         }
 
     var parentalControlHardLocked: Boolean
-        get() = Key.PARENTAL_CONTROL_HARD_LOCKED.getBoolean() ?: false
+        get() = profileScopedBoolean(Key.PARENTAL_CONTROL_HARD_LOCKED) ?: false
         set(value) {
-            Key.PARENTAL_CONTROL_HARD_LOCKED.setBoolean(value)
+            setProfileScopedBoolean(Key.PARENTAL_CONTROL_HARD_LOCKED, value)
         }
 
     val isParentalControlActive: Boolean
@@ -643,6 +720,20 @@ object UserPreferences {
                 .sanitizeSessionCookies(value)
             Key.SERIENSTREAM_SESSION_COOKIES.setString(cleaned)
         }
+
+    /** Optional display name scraped from SerienStream `/account` after validation. */
+    var serienStreamSessionDisplayName: String
+        get() = Key.SERIENSTREAM_SESSION_DISPLAY_NAME.getString() ?: ""
+        set(value) = Key.SERIENSTREAM_SESSION_DISPLAY_NAME.setString(value.trim())
+
+    /** Epoch millis of the last SerienStream session validation probe (0 = never). */
+    var serienStreamSessionValidatedAtMs: Long
+        get() = Key.SERIENSTREAM_SESSION_VALIDATED_AT.getLong() ?: 0L
+        set(value) = Key.SERIENSTREAM_SESSION_VALIDATED_AT.setLong(value.coerceAtLeast(0L))
+
+    var serienStreamSessionValidatedOk: Boolean
+        get() = Key.SERIENSTREAM_SESSION_VALIDATED_OK.getBoolean() ?: false
+        set(value) = Key.SERIENSTREAM_SESSION_VALIDATED_OK.setBoolean(value)
 
     enum class PlayerResize(
         val stringRes: Int,
@@ -932,6 +1023,61 @@ object UserPreferences {
         prefs.edit { putString("FAVORITE_SORT_MODE_$providerName", mode) }
     }
 
+    private fun profileScopedBoolean(key: Key): Boolean? {
+        val scoped = ProfileManager.scopedPrefKey(key.name)
+        return when {
+            prefs.contains(scoped) -> prefs.getBoolean(scoped, false)
+            scoped != key.name && prefs.contains(key.name) -> prefs.getBoolean(key.name, false)
+            else -> null
+        }
+    }
+
+    private fun setProfileScopedBoolean(key: Key, value: Boolean) {
+        prefs.edit { putBoolean(ProfileManager.scopedPrefKey(key.name), value) }
+    }
+
+    private fun profileScopedString(key: Key): String? {
+        val scoped = ProfileManager.scopedPrefKey(key.name)
+        return when {
+            prefs.contains(scoped) -> prefs.getString(scoped, null)
+            scoped != key.name && prefs.contains(key.name) -> prefs.getString(key.name, null)
+            else -> null
+        }
+    }
+
+    private fun setProfileScopedString(key: Key, value: String) {
+        prefs.edit { putString(ProfileManager.scopedPrefKey(key.name), value) }
+    }
+
+    private fun profileScopedInt(key: Key): Int? {
+        val scoped = ProfileManager.scopedPrefKey(key.name)
+        return when {
+            prefs.contains(scoped) -> prefs.getInt(scoped, 0)
+            scoped != key.name && prefs.contains(key.name) -> prefs.getInt(key.name, 0)
+            else -> null
+        }
+    }
+
+    private fun setProfileScopedInt(key: Key, value: Int?) {
+        val scoped = ProfileManager.scopedPrefKey(key.name)
+        prefs.edit {
+            if (value == null) remove(scoped) else putInt(scoped, value)
+        }
+    }
+
+    private fun profileScopedLong(key: Key): Long? {
+        val scoped = ProfileManager.scopedPrefKey(key.name)
+        return when {
+            prefs.contains(scoped) -> prefs.getLong(scoped, 0L)
+            scoped != key.name && prefs.contains(key.name) -> prefs.getLong(key.name, 0L)
+            else -> null
+        }
+    }
+
+    private fun setProfileScopedLong(key: Key, value: Long) {
+        prefs.edit { putLong(ProfileManager.scopedPrefKey(key.name), value) }
+    }
+
     private enum class Key {
         APP_LAYOUT,
         CURRENT_LANGUAGE,
@@ -978,14 +1124,35 @@ object UserPreferences {
         PARENTAL_CONTROL_HARD_LOCKED,
         SELECTED_THEME,
         EXPERIMENTAL_NEW_APP_DESIGN,
+        EXPERIMENTAL_LUMINA_ACCENT,
+        EXPERIMENTAL_LUMINA_PURE_BLACK,
+        EXPERIMENTAL_LUMINA_DYNAMIC_COLORS,
+        EXPERIMENTAL_LUMINA_NAV_AUTO_HIDE,
+        EXPERIMENTAL_LUMINA_HERO_PARALLAX,
+        EXPERIMENTAL_LUMINA_REDUCED_GLASS,
         NEVER_SHOW_SUPPORT_ON_START,
         HOME_SUPPORT_CARD_DISMISSED,
+        SUPPORT_STARTUP_LAST_SHOWN_AT_MS,
+        SUPPORT_STARTUP_SHOW_COUNT,
+        SUPPORT_HUB_LAST_VISITED_AT_MS,
+        SUPPORT_HUB_VISIT_COUNT,
+        SUPPORT_APPRECIATION_PENDING,
+        SUPPORT_APPRECIATION_PENDING_AT_MS,
+        TELEGRAM_JOIN_GATE_UNLOCKED,
+        TELEGRAM_JOIN_GATE_UNLOCKED_AT_MS,
+        TELEGRAM_JOIN_GATE_OPENED_AT_MS,
+        TELEGRAM_JOIN_GATE_OPEN_COUNT,
+        TELEGRAM_JOIN_GATE_CONFIRM_COUNT,
+        TELEGRAM_JOIN_GATE_CHANNEL_VERSION,
         CATALOG_SORT_MODE,
         CAST_ENABLED,
         CAST_SUBTITLES_ENABLED,
         CAST_KEEP_SCREEN_AWAKE,
         BYPASS_WS_ADVERTISED_HOST,
         SERIENSTREAM_SESSION_COOKIES,
+        SERIENSTREAM_SESSION_DISPLAY_NAME,
+        SERIENSTREAM_SESSION_VALIDATED_AT,
+        SERIENSTREAM_SESSION_VALIDATED_OK,
         UPDATE_CHECK_ENABLED,
         PROVIDER_LANGUAGE,
         FAVORITE_PROVIDERS,

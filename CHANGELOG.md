@@ -7,9 +7,105 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Profile Atelier redesign: Syne brand, tungsten accents, gradient orbs with motifs, premium picker/create/PIN, home chip orbs, Settings hero
+- Full-screen cinematic Profile Picker (avatar grid, kids badge, PIN gate, create/manage) from Home chip + Settings
+- Settings hub Profiles card shows live “Name · N profiles” summary
+- In-app trailer dialog redesign: 16:9 WebView, loading/error states, YouTube fallback, Shorts URL parsing
+- Home empty-state when catalog + continue-watching + favorites are all empty (classic/exp mobile + TV)
+- Quarantined/unstable provider soft-confirm before switch; mobile server-fail GiveUp uses error overlay; favorites/downloads classic+TV empty polish
+- TV player focusable error overlay (parity with mobile classic GiveUp UX)
+- People filmography empty-states; episode/TV-detail offline `__offline__` preferred server; Videasy permanent soft-fail + Closeload null-safe unpack
+- Movies / TV Shows catalog empty-states (classic + experimental mobile + TV)
+- TV Search recent-history chips (parity with mobile) + Cast next-episode queue failure toast
+- Season empty-state (mobile classic/exp + TV) with disabled download CTA + toast; broader permanent soft-fail for dead hosters (Veev/StreamWish/Streamtape/Uqload)
+- Null-safe `currentProvider` in Player/Genre/Season/Movies/TvShows/People ViewModels (no more `!!` crash if provider cleared mid-session)
+- Cast mini controller stays visible while browsing (hidden only on the full player); proxy-unavailable toast when Cast falls back to raw URLs
+- Genre TV empty-state; VOE HTTP 404 soft-fail (no wasted retry, failover hops next hoster)
+- Detail “Play offline” passes `__offline__` preferred server; offline playback skips OpenSubtitles/SubDL network search
+- Genre empty-state on classic + experimental mobile genre browse; AnyMovie SSL failures surface actionable Connection & Services guidance
+- Providers + player harden wave: Videasy empty/500/HTML guards, MediaCodec exceeds-capabilities → software decoder first (BETTERSTREAMFLIX-D), continue-watching episode % badge + direct-to-player, provider health labels in picker
+- Search recent history chips (last 8 queries) on classic + experimental mobile Search
+- Search polish wave: classic mobile + TV empty-result states, safer SearchViewModel without provider `!!`, voice listening stop restores hint
+- Playback failover deep wave: richer StreamMime HLS path/query hints, Nekostream rotating domains + HTML body skip, TV `texture_view` surface, hardened `PlayerTvView` controller access
+- Extractors + player UX wave: dedicated `FirestreamExtractor` (mirror expand + packed fallback), VOE/Filemoon rotating-domain matching, classic mobile player error overlay, subtitle search failure toasts, TV home profile chip, FAILED download rows show classified errors
+- Playback quality wave: dedicated `MeinecloudExtractor`, `StreamMime` HLS/DASH inference for ExoPlayer, home profile switcher chip, next-server failover toasts
+- Profiles (Beta): multi-profile system with isolated Room DBs / UserDataCache, profile PIN, kids mode, avatar styles, per-profile library/parental prefs and integration toggles; new Settings → Profiles hub (Library + Parental moved out of TMDb/Content)
+- Massive Connection & Services upgrade: shared `ConnectionServicesController` + `ConnectionDiagnostics` (DNS/DoH/HTTP/provider/SubDL/integration sweep), live status rows (network, validated path, DoH, active provider, last probe), full/service/provider/SubDL probes with copy-to-clipboard reports, Integrations shortcuts (Trakt/Debrid/Jellyfin/Plex/TMDb/OpenSubtitles), TV bypass host in XML, cache/cookie clear, Mobile QR scanner wiring
+- Massive Downloads + Settings polish: shared `DownloadsSettingsController`, live queue/storage summaries, soft-limit clamp (0–500 GB), retry-failed with full server re-resolve, clear-failed action, richer storage chip (used/free/limit), localized quality labels, stronger error classification (429/5xx)
+- Massive experimental detail pages: in-app YouTube trailer player (`TrailerPlaybackController`), TMDb detail enrichment (`enrichMovieDetail`/`enrichTvShowDetail` for directors/cast/similar/cert/trailer), certification chips, share + watched CTAs, TV download CTA, genre-chip navigation, expandable overviews, hero banner parallax on Movie/TV details
+- Massive Integrations upgrade: shared `IntegrationStatus` + `IntegrationProbes`, live hub card summaries (“N of M connected”), per-service status rows, hardened Jellyfin/Plex/Debrid/Simkl/OpenSubtitles connection tests, OpenSubtitles login/JWT UI, Debrid credential visibility by provider, Cast queue moved to Player, Plex/Simkl help links, MPV install status, Settings onResume refresh after OAuth
+- Massive providers + home upgrade: shared `HomeCatalogPipeline` (FEATURED synthesis, providerName stamp, absolute artwork URLs, empty-shelf drop, dedupe), home circuit breaker in `ProviderSmoke`, persistent catalog warning banner (Mobile/TV, tap to retry), `ProviderDefaults` stubs, healthier provider picker ranking, expanded quarantine/smoke lists
+- Home cache now persists `providerName` so stale-while-revalidate shelves keep ownership across process death
+- Massive IPTV live player: channel guide session with prev/next zapping, Go Live edge seek, pulsing LIVE badge, channel meta chrome, live-tuned ExoPlayer buffers + Media3 LiveConfiguration, IPTV-Org/Spain channel list overrides
+- Massive TMDb upgrade: in-memory detail/IMDb/search cache, Find-by-IMDb enrichment, home shelves (Now Playing / Upcoming / On The Air / Airing Today / Top Rated), `tmdbId` on models, provider enable gate, Settings status + connection test + cache clear
+- Massive Support system expansion: smart startup cooldown (5 days / max 8), durable appreciation thanks across process death, Impact goals + FAQ on Mobile/TV hubs, Issues/Releases links, Details Telegram + impact, Preview wires hero/impact/FAQ, Thanks → Discord
+- Lumina experimental design upgrade: accent palettes (Crimson/Ember/Aurora/Slate), pure-black OLED surfaces, optional Material You tint, nav auto-hide / hero parallax / reduced-glass toggles, stronger home brand reveal + provider chip
+- SerienStream account system: status, WebView sign-in, session validate, paste/copy cookies, full logout (prefs + CookieManager), startup cookie seed, Settings hub card (`screen_serienstream_auth`)
+- Massive plugin/addon system: `PluginManager` lifecycle, host facade, home/search/metadata/playback/extractor/subtitle/settings extension hooks, `LoadedPluginFacade` for LOCAL APKs, Demo Addon v1.1, manage/enable/uninstall UI, soft reload, diagnostics event ring
+
 ### Fixed
+- Home featured ViewPager2 crash when FEATURED shared Movie/TvShow instances with donor shelves (BETTERSTREAMFLIX-13)
+- SerienStream/VOE Cast 404s: playback Referer/Origin on VOE/Vidoza/MixDrop + Cast proxy Referer fallback + player header injection
+- Pluto TV M3U fetch no longer blocks the main thread; safer channel grouping and non-playable info-card guards
+- MixDrop “Source not found” / Dropload “Unpack failed” skip wasted extract retry and stop flooding Sentry (BETTERSTREAMFLIX-10 / -12)
+- Fully empty Home (no shelves) no longer shows a blank screen
+- Mobile all-servers-failed GiveUp now shows the player error overlay (parity with TV + mid-playback path)
+- Quarantined / circuit-open providers require confirm before hard restart
+- Settings FrenchStream toggle no longer uses `currentProvider!!`
+- WatchNextUtils null-safe when no provider selected
+- Dood / Closeload / Okru / VidGuard permanent extract misses skip wasted retry
+- Favorites + Downloads classic/TV empty states match experimental polish
+- TV player GiveUp no longer toast-only / silent black screen — focusable error overlay with Close
+- People pages with empty filmography no longer show a blank grid under the bio header
+- Episode / continue-watching / TV Watch-now now pass `__offline__` when a completed download exists
+- Videasy empty/404/410/non-ciphertext misses skip the wasted extract retry
+- Closeload malformed packed-JS no longer NPEs on `!!` during unpack
+- Empty Movies / TV Shows catalogs no longer show a blank grid
+- Cast next-episode prefetch failures now surface a toast instead of dying silently
+- Dead hosters (Veev “Video removed”, StreamWish script/m3u8 miss, Streamtape botlink, Uqload eval miss) no longer burn a wasted extract retry
+- Catalog/player ViewModels no longer NPE when `currentProvider` is cleared mid-session
+- Empty seasons no longer show a blank list with a silent Download tap
+- Cast mini controller never shown after leaving player while still casting
+- VOE / megakino stale embeds returning HTTP 404 (BETTERSTREAMFLIX-B): soft-fail as permanent extract miss
+- Movie detail “Play offline” CTA no longer re-resolves online servers when a completed download exists
+- Offline playback no longer hits OpenSubtitles/SubDL over the network
+- AnyMovie SSL handshake soft-fails with actionable guidance (BETTERSTREAMFLIX-R)
+- Genre browse empty results no longer show a blank grid
+- Videasy decrypt empty/`JSONObject("")` and HTTP 500 sources (BETTERSTREAMFLIX-4 / -E): reject blank/HTML ciphertext before decrypt
+- MediaCodec `NO_EXCEEDS_CAPABILITIES` (BETTERSTREAMFLIX-D): PlaybackFailover prefers software decoder over hopping hosters
+- Continue-watching episodes open player directly (no TV-show detour) and show progress % badge
+- `getCurrentFragment` fully null-safe + prefers primaryNavigationFragment (BETTERSTREAMFLIX-1)
+- SearchViewModel no longer NPEs when no provider is selected (`currentProvider!!` removed)
+- Voice search listening state now stops blink/restores hint when recognition ends (mobile + TV)
+- Search `onDestroyView` no longer crashes if voice helper was never initialized
+- Android TV crash-to-home risk (#103 / Xiaomi): player surface `surface_view` → `texture_view`; `PlayerTvView.controller` no longer hard-crashes on reflection miss
+- Classic mobile GiveUp path always shows player error overlay (not only experimental UI)
+- StreamMime deeper HLS detection for CDN URLs without `.m3u8` (BETTERSTREAMFLIX-X progressive sniff)
+- Firestream / `firestream.site` “No extractors found” (BETTERSTREAMFLIX-C): dedicated extractor expands mirrors then unpacks; MIME on packed sources
+- Home featured swiper hard-stop on pause + attach guards (BETTERSTREAMFLIX-1 recurrence): pause auto-advance while Home is under the detail stack
+- Classic player error overlay was missing outside experimental UI — `showPlayerError` no longer no-ops
+- OpenSubtitles / SubDL search failures now surface a toast instead of silent empty handlers
+- Meinecloud / `meinecloud.click` “No extractors found” (BETTERSTREAMFLIX-8): dedicated extractor expands mirrors then unpacks
+- ExoPlayer UnrecognizedInputFormat on HLS without MIME (BETTERSTREAMFLIX-X/9 risk): infer `application/x-mpegURL` from URL
+- Nekostream empty sources no longer burn a second extract retry; clearer “try another server” message
+- Home featured swiper crash after leave (BETTERSTREAMFLIX-1): clear ViewPager auto-advance on recycle
+- SerienStream / AniWorld sign-in & watchlist import crash (BETTERSTREAMFLIX-T): WebView UA no longer read off the interceptor thread
+- Movie/TV detail open InflateException (BETTERSTREAMFLIX-W): M3 theme attrs removed from default detail content layouts
+- Continue-watching movie tap no longer double-navigates with wrong Directions; provider/`episodeToWatch` null paths hardened
+- TMDb home shelves mixing Discover movie+TV in one `awaitAll` (BETTERSTREAMFLIX-Q ClassCast risk)
+- Lumina Experimental UI gated as Broken in release builds (still available in debug APKs)
+- Jellyfin/Plex “Test connection” lived under Plugins and almost always reported OK; probes now live on their own screens and verify real identity endpoints
+- Debrid `isAuthenticated()` now hits provider account APIs instead of only checking non-empty keys
+- Settings → Miscellaneous hardened against BETTERSTREAMFLIX-K recurrence: dependency sanitizer on nested PreferenceScreens + regression tests that `screen_more` never keeps cross-screen `android:dependency`
+- Home soft-fail no longer relies on Toast-only warnings — catalog issues stay visible until retry succeeds
+- Videasy decrypt empty/`JSONObject("")` crash (BETTERSTREAMFLIX-4)
+- TMDb trending ClassCastException on incomplete MultiItem JSON (BETTERSTREAMFLIX-Q)
+- AnyMovie SSL trust-anchor failures use NetworkClient.trustAll (BETTERSTREAMFLIX-R)
+- Nekostream null Gson body no longer NPEs mid-candidate loop
 - Settings crash opening “More”: Preference dependency `EXPERIMENTAL_NEW_APP_DESIGN` was resolved across nested PreferenceScreens (Sentry BETTERSTREAMFLIX-K)
 - Settings: Support UI Preview lives next to Experimental Design under Appearance (same PreferenceScreen); TV Experimental Design also under Appearance; nested screen inflate failures fall back to Settings root
+- TV bypass QR / deep-link: accept `betterstreamflix://resolve` and HTTP landing QR in the in-app scanner and MainMobileActivity
 - Download resume no longer fatals when Android blocks background service starts (Sentry BETTERSTREAMFLIX-J / -M)
 - Player ExoPlayer listeners no longer stack on every `displayVideo` (TV + mobile)
 - Mobile player server-select `!!` NPE on blank SerienStream bypass fallthrough

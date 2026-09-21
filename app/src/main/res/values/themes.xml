@@ -1,9 +1,33 @@
 <resources>
 
+    <!--
+      Classic mobile shell stays on AppCompat, but shared Lumina layouts
+      (profile chip, support dialogs, about) resolve Material color attrs.
+      Without these, TextAppearance.Lumina.* / ?attr/colorOnSurface inflate
+      crashes at startup (Sentry BETTERSTREAMFLIX-14 / -15).
+    -->
     <style name="AppTheme.Mobile" parent="Theme.AppCompat">
         <item name="windowActionBar">false</item>
         <item name="windowNoTitle">true</item>
         <item name="app_background_color">#181818</item>
+        <item name="colorPrimary">@color/m3_primary</item>
+        <item name="colorOnPrimary">@color/m3_on_primary</item>
+        <item name="colorPrimaryContainer">@color/m3_primary_container</item>
+        <item name="colorOnPrimaryContainer">@color/m3_on_primary_container</item>
+        <item name="colorSecondary">@color/m3_secondary</item>
+        <item name="colorOnSecondary">@color/m3_on_secondary</item>
+        <item name="colorSurface">@color/m3_surface</item>
+        <item name="colorOnSurface">@color/m3_on_surface</item>
+        <item name="colorOnSurfaceVariant">@color/m3_on_surface_variant</item>
+        <item name="colorSurfaceVariant">@color/m3_surface_variant</item>
+        <item name="colorError">@color/m3_error</item>
+        <item name="colorOnError">@color/m3_on_error</item>
+        <item name="colorOutline">@color/m3_outline</item>
+        <item name="colorAccent">@color/m3_primary</item>
+        <item name="colorControlActivated">@color/m3_primary</item>
+        <item name="colorControlNormal">@color/m3_on_surface_variant</item>
+        <item name="android:textColorPrimary">@color/m3_on_surface</item>
+        <item name="android:textColorSecondary">@color/m3_on_surface_variant</item>
         <item name="home_gradient_drawable">@drawable/bg_home_gradient_default</item>
         <item name="movie_banner_gradient_drawable">@drawable/bg_movie_banner_gradient_default</item>
         <item name="tv_show_banner_gradient_drawable">@drawable/bg_tv_show_banner_gradient_default</item>
@@ -17,7 +41,7 @@
     <style name="BottomNavLabelStyleExp" parent="Widget.Design.BottomNavigationView">
         <item name="android:textSize">10sp</item>
         <item name="android:fontFamily">@font/manrope_family</item>
-        <item name="android:letterSpacing">0.06</item>
+        <item name="android:letterSpacing">0.08</item>
         <item name="android:textStyle">bold</item>
     </style>
 
@@ -74,9 +98,14 @@
         <item name="materialAlertDialogTheme">@style/ThemeOverlay.Exp.MaterialAlertDialog</item>
         <item name="textAppearanceHeadlineLarge">@style/TextAppearance.Lumina.Hero</item>
         <item name="textAppearanceHeadlineMedium">@style/TextAppearance.Lumina.Brand</item>
+        <item name="textAppearanceHeadlineSmall">@style/TextAppearance.Lumina.Title</item>
         <item name="textAppearanceTitleLarge">@style/TextAppearance.Lumina.Title</item>
+        <item name="textAppearanceTitleMedium">@style/TextAppearance.Lumina.Title</item>
+        <item name="textAppearanceTitleSmall">@style/TextAppearance.Lumina.Caption</item>
         <item name="textAppearanceBodyMedium">@style/TextAppearance.Lumina.Body</item>
         <item name="textAppearanceBodyLarge">@style/TextAppearance.Lumina.Body</item>
+        <item name="textAppearanceBodySmall">@style/TextAppearance.Lumina.Caption</item>
+        <item name="textAppearanceLabelLarge">@style/TextAppearance.Lumina.Caption</item>
         <item name="textAppearanceLabelMedium">@style/TextAppearance.Lumina.Eyebrow</item>
         <item name="textAppearanceLabelSmall">@style/TextAppearance.Lumina.NavLabel</item>
         <item name="fontFamily">@font/manrope_family</item>
@@ -87,21 +116,116 @@
         <item name="category_swiper_gradient_drawable">@drawable/fg_category_swiper_exp</item>
     </style>
 
-    <style name="PreferenceThemeOverlay.Exp" parent="PreferenceThemeOverlay">
-        <item name="android:windowBackground">@color/support_bg</item>
-        <item name="android:colorBackground">@color/support_bg</item>
-        <item name="android:textColorPrimary">@color/support_text_primary</item>
-        <item name="android:textColorSecondary">@color/support_text_secondary</item>
-        <item name="android:fontFamily">@font/manrope</item>
-        <item name="fontFamily">@font/manrope</item>
-        <item name="colorAccent">@color/support_accent</item>
-        <item name="colorControlActivated">@color/support_accent</item>
+    <!-- Lumina accent: Ember (warm copper) -->
+    <style name="AppTheme.Mobile.Experimental.Ember" parent="AppTheme.Mobile.Experimental">
+        <item name="colorPrimary">@color/exp_ember_primary</item>
+        <item name="colorOnPrimary">@color/exp_ember_on_primary</item>
+        <item name="colorPrimaryContainer">@color/exp_ember_primary_container</item>
+        <item name="colorOnPrimaryContainer">@color/exp_ember_on_primary_container</item>
+        <item name="colorAccent">@color/exp_ember_primary</item>
+        <item name="colorControlActivated">@color/exp_ember_primary</item>
+        <item name="colorControlHighlight">@color/exp_ember_primary_container</item>
     </style>
 
-    <style name="Theme.Exp.Dialog.Alert" parent="Theme.Material3.Dark.Dialog.Alert" />
+    <!-- Lumina accent: Aurora (cool teal) -->
+    <style name="AppTheme.Mobile.Experimental.Aurora" parent="AppTheme.Mobile.Experimental">
+        <item name="colorPrimary">@color/exp_aurora_primary</item>
+        <item name="colorOnPrimary">@color/exp_aurora_on_primary</item>
+        <item name="colorPrimaryContainer">@color/exp_aurora_primary_container</item>
+        <item name="colorOnPrimaryContainer">@color/exp_aurora_on_primary_container</item>
+        <item name="colorAccent">@color/exp_aurora_primary</item>
+        <item name="colorControlActivated">@color/exp_aurora_primary</item>
+        <item name="colorControlHighlight">@color/exp_aurora_primary_container</item>
+    </style>
+
+    <!-- Lumina accent: Slate (cool silver) -->
+    <style name="AppTheme.Mobile.Experimental.Slate" parent="AppTheme.Mobile.Experimental">
+        <item name="colorPrimary">@color/exp_slate_primary</item>
+        <item name="colorOnPrimary">@color/exp_slate_on_primary</item>
+        <item name="colorPrimaryContainer">@color/exp_slate_primary_container</item>
+        <item name="colorOnPrimaryContainer">@color/exp_slate_on_primary_container</item>
+        <item name="colorAccent">@color/exp_slate_primary</item>
+        <item name="colorControlActivated">@color/exp_slate_primary</item>
+        <item name="colorControlHighlight">@color/exp_slate_primary_container</item>
+    </style>
+
+    <style name="AppTheme.Mobile.Experimental.PureBlack" parent="AppTheme.Mobile.Experimental">
+        <item name="colorSurface">#000000</item>
+        <item name="android:windowBackground">#000000</item>
+        <item name="android:colorBackground">#000000</item>
+        <item name="app_background_color">#000000</item>
+        <item name="colorSurfaceContainerLowest">#000000</item>
+        <item name="colorSurfaceContainerLow">#0A0A0A</item>
+        <item name="colorSurfaceContainer">#101010</item>
+        <item name="colorSurfaceContainerHigh">#161616</item>
+        <item name="colorSurfaceContainerHighest">#1C1C1C</item>
+    </style>
+
+    <style name="AppTheme.Mobile.Experimental.Ember.PureBlack" parent="AppTheme.Mobile.Experimental.Ember">
+        <item name="colorSurface">#000000</item>
+        <item name="android:windowBackground">#000000</item>
+        <item name="android:colorBackground">#000000</item>
+        <item name="app_background_color">#000000</item>
+        <item name="colorSurfaceContainerLowest">#000000</item>
+        <item name="colorSurfaceContainerLow">#0A0A0A</item>
+        <item name="colorSurfaceContainer">#101010</item>
+        <item name="colorSurfaceContainerHigh">#161616</item>
+        <item name="colorSurfaceContainerHighest">#1C1C1C</item>
+    </style>
+
+    <style name="AppTheme.Mobile.Experimental.Aurora.PureBlack" parent="AppTheme.Mobile.Experimental.Aurora">
+        <item name="colorSurface">#000000</item>
+        <item name="android:windowBackground">#000000</item>
+        <item name="android:colorBackground">#000000</item>
+        <item name="app_background_color">#000000</item>
+        <item name="colorSurfaceContainerLowest">#000000</item>
+        <item name="colorSurfaceContainerLow">#0A0A0A</item>
+        <item name="colorSurfaceContainer">#101010</item>
+        <item name="colorSurfaceContainerHigh">#161616</item>
+        <item name="colorSurfaceContainerHighest">#1C1C1C</item>
+    </style>
+
+    <style name="AppTheme.Mobile.Experimental.Slate.PureBlack" parent="AppTheme.Mobile.Experimental.Slate">
+        <item name="colorSurface">#000000</item>
+        <item name="android:windowBackground">#000000</item>
+        <item name="android:colorBackground">#000000</item>
+        <item name="app_background_color">#000000</item>
+        <item name="colorSurfaceContainerLowest">#000000</item>
+        <item name="colorSurfaceContainerLow">#0A0A0A</item>
+        <item name="colorSurfaceContainer">#101010</item>
+        <item name="colorSurfaceContainerHigh">#161616</item>
+        <item name="colorSurfaceContainerHighest">#1C1C1C</item>
+    </style>
+
+    <style name="PreferenceThemeOverlay.Exp" parent="PreferenceThemeOverlay">
+        <item name="android:windowBackground">@color/m3_surface</item>
+        <item name="android:colorBackground">@color/m3_surface</item>
+        <item name="android:textColorPrimary">?attr/colorOnSurface</item>
+        <item name="android:textColorSecondary">?attr/colorOnSurfaceVariant</item>
+        <item name="android:fontFamily">@font/manrope</item>
+        <item name="fontFamily">@font/manrope</item>
+        <item name="colorAccent">?attr/colorPrimary</item>
+        <item name="colorControlActivated">?attr/colorPrimary</item>
+        <item name="textAppearanceListItem">@style/TextAppearance.Lumina.Title</item>
+        <item name="textAppearanceListItemSecondary">@style/TextAppearance.Lumina.Caption</item>
+    </style>
+
+    <style name="Theme.Exp.Dialog.Alert" parent="Theme.Material3.Dark.Dialog.Alert">
+        <item name="android:fontFamily">@font/manrope</item>
+        <item name="fontFamily">@font/manrope</item>
+        <item name="materialAlertDialogTitleTextStyle">@style/TextAppearance.Lumina.Title</item>
+        <item name="materialAlertDialogBodyTextStyle">@style/TextAppearance.Lumina.Body</item>
+        <item name="colorPrimary">?attr/colorPrimary</item>
+        <item name="colorAccent">?attr/colorPrimary</item>
+        <item name="colorControlActivated">?attr/colorPrimary</item>
+    </style>
 
     <style name="ThemeOverlay.Exp.MaterialAlertDialog" parent="ThemeOverlay.Material3.MaterialAlertDialog">
         <item name="colorSurface">@color/m3_surface_container_high</item>
+        <item name="colorPrimary">?attr/colorPrimary</item>
+        <item name="colorAccent">?attr/colorPrimary</item>
+        <item name="materialAlertDialogTitleTextStyle">@style/TextAppearance.Lumina.Title</item>
+        <item name="materialAlertDialogBodyTextStyle">@style/TextAppearance.Lumina.Body</item>
     </style>
 
     <!-- Tema Nero Amoled/Oled per Mobile -->
@@ -228,9 +352,23 @@
         <item name="app_background_color">#181818</item>
         <item name="preferenceTheme">@style/PreferenceThemeOverlayLeanback</item>
         <item name="alertDialogTheme">@style/Theme.AppCompat.Dialog.Alert</item>
+        <!-- Material color attrs for shared Lumina layouts (profile chip, support). -->
+        <item name="colorPrimary">@color/m3_primary</item>
+        <item name="colorOnPrimary">@color/m3_on_primary</item>
+        <item name="colorPrimaryContainer">@color/m3_primary_container</item>
+        <item name="colorOnPrimaryContainer">@color/m3_on_primary_container</item>
+        <item name="colorSurface">@color/m3_surface</item>
+        <item name="colorOnSurface">@color/m3_on_surface</item>
+        <item name="colorOnSurfaceVariant">@color/m3_on_surface_variant</item>
+        <item name="colorSurfaceVariant">@color/m3_surface_variant</item>
+        <item name="colorError">@color/m3_error</item>
+        <item name="colorOnError">@color/m3_on_error</item>
+        <item name="colorOutline">@color/m3_outline</item>
         <item name="colorAccent">#FFFFFF</item>
         <item name="colorControlActivated">#FFFFFF</item>
         <item name="colorControlNormal">#BDBDBD</item>
+        <item name="android:textColorPrimary">@color/m3_on_surface</item>
+        <item name="android:textColorSecondary">@color/m3_on_surface_variant</item>
         <item name="android:windowBackground">@drawable/bg_splash_screen</item>
         <item name="home_gradient_drawable">@drawable/bg_home_gradient_default</item>
         <item name="movie_banner_gradient_drawable">@drawable/bg_movie_banner_gradient_default</item>
@@ -239,7 +377,7 @@
     </style>
 
     <!-- Tema Nero Amoled/Oled per TV (Nero Puro #000000) -->
-    <style name="AppTheme.NeroAmoledOled" parent="Theme.Leanback">
+    <style name="AppTheme.NeroAmoledOled" parent="AppTheme.Tv">
         <item name="app_background_color">#000000</item>
         <item name="android:windowBackground">@drawable/bg_splash_screen_amoled</item>
         <item name="android:colorBackground">#000000</item>
@@ -262,7 +400,7 @@
         <item name="category_swiper_gradient_drawable">@drawable/fg_category_swiper_amoled</item>
     </style>
 
-    <style name="AppTheme.SunsetCinema" parent="Theme.Leanback">
+    <style name="AppTheme.SunsetCinema" parent="AppTheme.Tv">
         <item name="app_background_color">#201410</item>
         <item name="preferenceTheme">@style/PreferenceThemeOverlayLeanback</item>
         <item name="alertDialogTheme">@style/Theme.AppCompat.Dialog.Alert</item>
@@ -282,7 +420,7 @@
         <item name="category_swiper_gradient_drawable">@drawable/fg_category_swiper_sunset</item>
     </style>
 
-    <style name="AppTheme.SteelBlue" parent="Theme.Leanback">
+    <style name="AppTheme.SteelBlue" parent="AppTheme.Tv">
         <item name="app_background_color">#141C25</item>
         <item name="preferenceTheme">@style/PreferenceThemeOverlayLeanback</item>
         <item name="alertDialogTheme">@style/Theme.AppCompat.Dialog.Alert</item>
@@ -302,7 +440,7 @@
         <item name="category_swiper_gradient_drawable">@drawable/fg_category_swiper_steel</item>
     </style>
 
-    <style name="AppTheme.ForestNight" parent="Theme.Leanback">
+    <style name="AppTheme.ForestNight" parent="AppTheme.Tv">
         <item name="app_background_color">#101816</item>
         <item name="preferenceTheme">@style/PreferenceThemeOverlayLeanback</item>
         <item name="alertDialogTheme">@style/Theme.AppCompat.Dialog.Alert</item>
@@ -322,7 +460,7 @@
         <item name="category_swiper_gradient_drawable">@drawable/fg_category_swiper_forest</item>
     </style>
 
-    <style name="AppTheme.CrimsonNoir" parent="Theme.Leanback">
+    <style name="AppTheme.CrimsonNoir" parent="AppTheme.Tv">
         <item name="app_background_color">#1C1014</item>
         <item name="preferenceTheme">@style/PreferenceThemeOverlayLeanback</item>
         <item name="alertDialogTheme">@style/Theme.AppCompat.Dialog.Alert</item>
@@ -342,7 +480,7 @@
         <item name="category_swiper_gradient_drawable">@drawable/fg_category_swiper_crimson</item>
     </style>
 
-    <style name="AppTheme.MidnightViolet" parent="Theme.Leanback">
+    <style name="AppTheme.MidnightViolet" parent="AppTheme.Tv">
         <item name="app_background_color">#151523</item>
         <item name="preferenceTheme">@style/PreferenceThemeOverlayLeanback</item>
         <item name="alertDialogTheme">@style/Theme.AppCompat.Dialog.Alert</item>
@@ -362,7 +500,7 @@
         <item name="category_swiper_gradient_drawable">@drawable/fg_category_swiper_violet</item>
     </style>
 
-    <style name="AppTheme.NordFrost" parent="Theme.Leanback">
+    <style name="AppTheme.NordFrost" parent="AppTheme.Tv">
         <item name="app_background_color">#182029</item>
         <item name="preferenceTheme">@style/PreferenceThemeOverlayLeanback</item>
         <item name="alertDialogTheme">@style/Theme.AppCompat.Dialog.Alert</item>
@@ -382,7 +520,7 @@
         <item name="category_swiper_gradient_drawable">@drawable/fg_category_swiper_nord</item>
     </style>
 
-    <style name="AppTheme.EmeraldLuxe" parent="Theme.Leanback">
+    <style name="AppTheme.EmeraldLuxe" parent="AppTheme.Tv">
         <item name="app_background_color">#11201B</item>
         <item name="preferenceTheme">@style/PreferenceThemeOverlayLeanback</item>
         <item name="alertDialogTheme">@style/Theme.AppCompat.Dialog.Alert</item>
@@ -402,7 +540,7 @@
         <item name="category_swiper_gradient_drawable">@drawable/fg_category_swiper_emerald</item>
     </style>
 
-    <style name="AppTheme.RetroNeon" parent="Theme.Leanback">
+    <style name="AppTheme.RetroNeon" parent="AppTheme.Tv">
         <item name="app_background_color">#16161D</item>
         <item name="preferenceTheme">@style/PreferenceThemeOverlayLeanback</item>
         <item name="alertDialogTheme">@style/Theme.AppCompat.Dialog.Alert</item>
@@ -432,6 +570,11 @@
 
     <style name="AppTheme.SplashScreen" parent="Theme.AppCompat">
         <item name="android:windowBackground">@drawable/bg_splash_screen</item>
+        <!-- Bridge Material attrs if any early inflate uses Lumina styles under splash. -->
+        <item name="colorPrimary">@color/m3_primary</item>
+        <item name="colorOnSurface">@color/m3_on_surface</item>
+        <item name="colorOnSurfaceVariant">@color/m3_on_surface_variant</item>
+        <item name="colorSurface">@color/m3_surface</item>
     </style>
 
 </resources>

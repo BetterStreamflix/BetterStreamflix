@@ -257,9 +257,16 @@
         android:name="com.dskja.betterstreamflix.fragments.settings.SettingsTvFragment"
         android:label="fragment_settings_tv">
         <action
+            android:id="@+id/action_settings_to_settings_about"
+            app:destination="@id/settings_about" />
+        <action
             android:id="@+id/action_settings_to_support"
             app:destination="@id/support" />
     </fragment>
+    <fragment
+        android:id="@+id/settings_about"
+        android:name="com.dskja.betterstreamflix.fragments.settings.about.SettingsAboutTvFragment"
+        android:label="fragment_settings_about_tv" />
     <fragment
         android:id="@+id/support"
         android:name="com.dskja.betterstreamflix.fragments.support.SupportTvFragment"

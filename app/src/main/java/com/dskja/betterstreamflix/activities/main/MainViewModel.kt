@@ -54,8 +54,8 @@ class MainViewModel : ViewModel() {
 
             _state.emit(State.SuccessCheckingUpdate(newReleases, asset))
         } catch (e: Exception) {
+            // Background check failures must stay silent — no toast / dialog on cold start.
             Log.e("MainViewModel", "checkUpdate: ", e)
-            _state.emit(State.FailedUpdate(e))
         }
     }
 

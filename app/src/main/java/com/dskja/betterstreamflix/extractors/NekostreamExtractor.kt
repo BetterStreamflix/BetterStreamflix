@@ -18,6 +18,14 @@ class NekostreamExtractor : Extractor() {
         "https://vidwish.live",
         "https://megaplay.live",
         "https://aniplaynow.live",
+        "https://megaplay.io",
+        "https://vidtube.to",
+    )
+    override val rotatingDomain = listOf(
+        Regex("""(?i)^vidtube[.\-/]"""),
+        Regex("""(?i)(^|\.)megaplay(\.|/)"""),
+        Regex("""(?i)^vidwish[.\-/]"""),
+        Regex("""(?i)^aniplaynow[.\-/]"""),
     )
 
     private val client = OkHttpClient.Builder()
@@ -80,10 +88,22 @@ class NekostreamExtractor : Extractor() {
                     accept = "application/json, text/javascript, */*; q=0.01",
                     requestedWith = true,
                 )
-                val sources = Gson().fromJson(sourcesBody, SourcesResponse::class.java)
+                val sources = runCatching {
+                    Gson().fromJson(sourcesBody, SourcesResponse::class.java)
+                }.getOrNull()
+                if (sources == null) {
+                    // Empty / non-JSON body — try next candidate URL.
+                    if (sourcesBody.isBlank() || sourcesBody.trimStart().startsWith("<")) {
+                        lastError = Exception("Nekostream empty or HTML sources body")
+                    }
+                    continue
+                }
                 val source = sources.sources?.file
                     ?: sources.sources?.list?.firstOrNull { !it.file.isNullOrBlank() }?.file
-                    ?: continue
+                if (source.isNullOrBlank()) {
+                    lastError = Exception("Nekostream source not found — try another server")
+                    continue
+                }
 
                 return Video(
                     source = source,
@@ -115,7 +135,7 @@ class NekostreamExtractor : Extractor() {
             }
         }
 
-        throw lastError ?: Exception("Nekostream source not found")
+        throw lastError ?: Exception("Nekostream source not found — try another server")
     }
 
     private fun normalizeStreamPageUrl(link: String): String {

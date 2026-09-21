@@ -1,5 +1,6 @@
 package com.dskja.betterstreamflix.download.ui
 
+import com.dskja.betterstreamflix.download.DownloadErrorCode
 import com.dskja.betterstreamflix.download.DownloadItemEntity
 import com.dskja.betterstreamflix.download.DownloadItemState
 import com.dskja.betterstreamflix.download.DownloadKind
@@ -17,6 +18,19 @@ sealed class DownloadRowUiModel {
         val isMovie: Boolean get() = entity.kind == DownloadKind.MOVIE.name
         val progressText: String
             get() {
+                if (state == DownloadItemState.FAILED) {
+                    val code = runCatching {
+                        DownloadErrorCode.valueOf(entity.errorCode.orEmpty())
+                    }.getOrNull()
+                    val msg = entity.errorMessage?.takeIf { it.isNotBlank() }.orEmpty()
+                    return when {
+                        code != null && code != DownloadErrorCode.UNKNOWN ->
+                            "Failed · ${code.name.lowercase().replace('_', ' ')}" +
+                                if (msg.isNotBlank()) " · $msg" else ""
+                        msg.isNotBlank() -> "Failed · $msg"
+                        else -> "Failed"
+                    }
+                }
                 val used = DownloadStorage.formatBytes(entity.bytesDownloaded)
                 val total = if (entity.contentLength > 0) {
                     DownloadStorage.formatBytes(entity.contentLength)
@@ -36,6 +50,19 @@ sealed class DownloadRowUiModel {
                 }
                 return "${entity.progressPct}% · $used / $total · $speed/s · ~$eta"
             }
+
+        /** Localized failure line for the Downloads list (falls back to [progressText]). */
+        fun failedSummary(context: android.content.Context): String {
+            if (state != DownloadItemState.FAILED) return progressText
+            val code = runCatching {
+                DownloadErrorCode.valueOf(entity.errorCode.orEmpty())
+            }.getOrNull() ?: DownloadErrorCode.UNKNOWN
+            return DownloadOptionsController.localizedError(
+                context,
+                code,
+                entity.errorMessage.orEmpty(),
+            )
+        }
     }
 
     data class SeasonPack(

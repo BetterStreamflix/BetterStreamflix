@@ -12,7 +12,6 @@
         android:layout_height="wrap_content"
         android:layout_marginStart="22dp"
         android:layout_marginTop="22dp"
-        android:fontFamily="@font/manrope"
         android:letterSpacing="0.12"
         android:text="@string/exp_catalog_eyebrow"
         android:textAllCaps="true"
@@ -29,13 +28,8 @@
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_marginTop="6dp"
-        android:fontFamily="@font/manrope"
-        android:letterSpacing="-0.03"
         android:text="@string/main_menu_favorites"
         android:textAppearance="@style/TextAppearance.Lumina.Hero"
-        android:textColor="?attr/colorOnSurface"
-        android:textSize="34sp"
-        android:textStyle="bold"
         app:layout_constraintEnd_toStartOf="@id/btn_favorites_reorder_mode"
         app:layout_constraintStart_toStartOf="@id/tv_favorites_eyebrow"
         app:layout_constraintTop_toBottomOf="@id/tv_favorites_eyebrow"
@@ -46,7 +40,6 @@
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_marginTop="6dp"
-        android:fontFamily="@font/manrope"
         android:text="@string/exp_favorites_tagline"
         android:textAppearance="@style/TextAppearance.Lumina.Body"
         android:textColor="?attr/colorOnSurfaceVariant"
@@ -92,6 +85,17 @@
         app:layout_constraintStart_toStartOf="@id/tv_favorites_brand"
         app:layout_constraintTop_toBottomOf="@id/tv_favorites_tagline" />
 
+    <View
+        android:id="@+id/v_favorites_header_fade"
+        android:layout_width="0dp"
+        android:layout_height="36dp"
+        android:layout_marginTop="8dp"
+        android:background="@drawable/bg_exp_header_fade"
+        android:elevation="2dp"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/v_favorites_rule" />
+
     <androidx.constraintlayout.widget.Barrier
         android:id="@+id/favorites_actions_bottom"
         android:layout_width="wrap_content"
@@ -116,20 +120,62 @@
 
     <TextView
         android:id="@+id/tv_favorites_empty"
-        android:fontFamily="@font/manrope"
-        android:layout_width="wrap_content"
+        android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:drawableTop="@drawable/ic_favorite_disable"
+        android:layout_marginStart="32dp"
+        android:layout_marginEnd="32dp"
+        android:background="@drawable/bg_exp_glass_card"
+        android:drawableTop="@drawable/ic_exp_error"
         android:drawablePadding="18dp"
-        android:drawableTint="?attr/colorOnSurfaceVariant"
+        android:drawableTint="?attr/colorPrimary"
         android:gravity="center"
+        android:paddingStart="28dp"
+        android:paddingTop="36dp"
+        android:paddingEnd="28dp"
+        android:paddingBottom="36dp"
         android:text="@string/favorites_empty"
-        android:textAppearance="?attr/textAppearanceBodyLarge"
-        android:textColor="?attr/colorOnSurfaceVariant"
+        android:textAppearance="@style/TextAppearance.Lumina.Body"
         android:visibility="gone"
-        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintBottom_toTopOf="@id/v_favorites_empty_rule"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent" />
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintVertical_chainStyle="packed"
+        app:layout_constraintWidth_max="360dp"
+        tools:visibility="visible" />
+
+    <View
+        android:id="@+id/v_favorites_empty_rule"
+        android:layout_width="36dp"
+        android:layout_height="3dp"
+        android:layout_marginTop="14dp"
+        android:background="@drawable/bg_exp_accent_rule"
+        android:visibility="gone"
+        app:layout_constraintBottom_toTopOf="@id/btn_favorites_empty_cta"
+        app:layout_constraintEnd_toEndOf="@id/tv_favorites_empty"
+        app:layout_constraintStart_toStartOf="@id/tv_favorites_empty"
+        app:layout_constraintTop_toBottomOf="@id/tv_favorites_empty"
+        tools:visibility="visible" />
+
+    <TextView
+        android:id="@+id/btn_favorites_empty_cta"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="14dp"
+        android:background="@drawable/bg_exp_button_primary"
+        android:paddingStart="18dp"
+        android:paddingTop="10dp"
+        android:paddingEnd="18dp"
+        android:paddingBottom="10dp"
+        android:text="@string/exp_empty_browse_catalog"
+        android:textAllCaps="false"
+        android:textAppearance="@style/TextAppearance.Lumina.Caption"
+        android:textColor="?attr/colorOnPrimary"
+        android:visibility="gone"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="@id/tv_favorites_empty"
+        app:layout_constraintStart_toStartOf="@id/tv_favorites_empty"
+        app:layout_constraintTop_toBottomOf="@id/v_favorites_empty_rule"
+        tools:visibility="visible" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>
