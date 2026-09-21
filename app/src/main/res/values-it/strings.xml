@@ -102,6 +102,7 @@
     <string name="people_birthplace">Luogo di nascita</string>
     <string name="people_biography">Biografia</string>
     <string name="people_read_more">Vedi Altro ></string>
+    <string name="people_read_less">Mostra meno</string>
 
     <string name="genre_header_name">%s Film e Serie TV</string>
 

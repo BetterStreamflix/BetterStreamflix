@@ -44,6 +44,7 @@ import kotlinx.coroutines.withContext
 import androidx.fragment.app.Fragment
 import com.dskja.betterstreamflix.download.DownloadContentKey
 import com.dskja.betterstreamflix.download.OfflineBadgeStore
+import com.dskja.betterstreamflix.download.DetailDownloadLabels
 import com.dskja.betterstreamflix.download.ui.DownloadOptionsController
 import com.dskja.betterstreamflix.fragments.movie.MovieMobileFragmentDirections
 import com.dskja.betterstreamflix.fragments.player.PlayerViewModel
@@ -785,7 +786,9 @@ class TvShowViewHolder(
         binding.ivSwiperBackground.loadTvShowBanner(tvShow) {
             centerCrop().transition(DrawableTransitionOptions.withCrossFade())
         }
-        if (ExperimentalMobileDesign.enabled()) {
+        if (ExperimentalMobileDesign.enabled() &&
+            !com.dskja.betterstreamflix.utils.DeviceCapabilities.shouldReduceHomeEffects(binding.root.context)
+        ) {
             ExpMotion.kenBurns(binding.ivSwiperBackground)
         }
         binding.tvSwiperTitle.text = tvShow.title
@@ -1032,23 +1035,35 @@ class TvShowViewHolder(
 
         binding.tvTvShowOverview.apply {
             text = tvShow.overview
-            if (ExperimentalMobileDesign.enabled() && !tvShow.overview.isNullOrBlank()) {
-                maxLines = 5
-                ellipsize = android.text.TextUtils.TruncateAt.END
-                if (getTag(R.id.exp_enter_animated_tag) != true) {
-                    setTag(R.id.exp_enter_animated_tag, true)
-                    ExpMotion.revealHeader(this)
+            val more = binding.root.findViewById<android.widget.TextView>(R.id.tv_tv_show_overview_more)
+            val hasText = !tvShow.overview.isNullOrBlank()
+            maxLines = 5
+            ellipsize = android.text.TextUtils.TruncateAt.END
+            var expanded = false
+            fun applyExpand(open: Boolean) {
+                expanded = open
+                maxLines = if (open) Integer.MAX_VALUE else 5
+                more?.text = context.getString(
+                    if (open) R.string.detail_overview_less else R.string.detail_overview_more,
+                )
+            }
+            val toggle = View.OnClickListener {
+                ExpMotion.hapticTap(it)
+                applyExpand(!expanded)
+            }
+            if (hasText) {
+                setOnClickListener(toggle)
+                more?.setOnClickListener(toggle)
+                post {
+                    val overflowing = lineCount > 5 ||
+                        (text?.length ?: 0) > 160 ||
+                        (layout != null && maxLines == 5 && layout.getEllipsisCount(lineCount.coerceAtLeast(1) - 1) > 0)
+                    more?.visibility = if (overflowing) View.VISIBLE else View.GONE
+                    if (!overflowing) setOnClickListener(null)
                 }
-                var expanded = false
-                setOnClickListener {
-                    ExpMotion.hapticTap(it)
-                    expanded = !expanded
-                    maxLines = if (expanded) Integer.MAX_VALUE else 5
-                    if (expanded) ExpMotion.revealHeader(this)
-                    animate().alpha(0.82f).setDuration(90L).withEndAction {
-                        animate().alpha(1f).setDuration(140L).start()
-                    }.start()
-                }
+            } else {
+                more?.visibility = View.GONE
+                setOnClickListener(null)
             }
         }
         val episodeToWatch = tvShow.episodeToWatch
@@ -1136,30 +1151,19 @@ class TvShowViewHolder(
                 downloadBtn.setBackgroundResource(ExperimentalMobileDesign.chipBackground())
                 downloadBtn.applyExpPress()
             }
+            val seasonForDownload = tvShow.seasons.firstOrNull { it.episodes.isNotEmpty() }
+            downloadBtn.text = DetailDownloadLabels.seriesButton(
+                context,
+                tvShow,
+                episodeToWatch,
+                seasonForDownload,
+            )
+            downloadBtn.maxLines = 2
             downloadBtn.setOnClickListener {
                 ExpMotion.hapticTap(it)
                 checkProviderAndRun {
                     val fragment = context.toActivity()?.getCurrentFragment() as? Fragment ?: return@checkProviderAndRun
-                    when {
-                        episodeToWatch != null -> DownloadOptionsController.enqueueEpisode(fragment, episodeToWatch)
-                        else -> {
-                            val season = tvShow.seasons.firstOrNull { it.episodes.isNotEmpty() }
-                            if (season != null) {
-                                DownloadOptionsController.enqueueSeason(
-                                    fragment,
-                                    tvShow,
-                                    season.number,
-                                    season.episodes,
-                                )
-                            } else {
-                                ExpDialogChrome.notify(
-                                    context,
-                                    R.string.detail_download_season,
-                                    R.string.season_download,
-                                )
-                            }
-                        }
-                    }
+                    DownloadOptionsController.offerTvShowDownload(fragment, tvShow, episodeToWatch)
                 }
             }
         }
@@ -1176,9 +1180,8 @@ class TvShowViewHolder(
             }
         }
 
-        binding.root.findViewById<android.widget.TextView>(R.id.btn_tv_show_share)?.let { shareBtn ->
+        binding.root.findViewById<View>(R.id.btn_tv_show_share)?.let { shareBtn ->
             if (ExperimentalMobileDesign.enabled()) {
-                shareBtn.setBackgroundResource(ExperimentalMobileDesign.chipBackground())
                 shareBtn.applyExpPress()
             }
             shareBtn.setOnClickListener {

@@ -319,12 +319,11 @@ object CloudAccountSettingsController {
                 val resultMessage = action { progress ->
                     updateProgress(fragment, progressBar, message, progress)
                 }
-                dialog.dismiss()
+                if (!fragment.isAdded) return@launch
+                if (dialog.isShowing) dialog.dismiss()
                 refresh()
-                ExpDialogChrome.notify(
-                    fragment.requireContext(),
-                    resultMessage,
-                )
+                val ctx = fragment.context ?: return@launch
+                ExpDialogChrome.notify(ctx, resultMessage)
             } catch (cancellation: CancellationException) {
                 throw cancellation
             } catch (error: Throwable) {
@@ -392,18 +391,21 @@ object CloudAccountSettingsController {
         scope.launch {
             runCatching { action() }
                 .onSuccess { message ->
+                    if (!fragment.isAdded) return@onSuccess
                     refresh()
-                    ExpDialogChrome.notify(fragment.requireContext(), message)
+                    val ctx = fragment.context ?: return@onSuccess
+                    ExpDialogChrome.notify(ctx, message)
                 }
                 .onFailure { error ->
-                    showError(fragment, error)
+                    if (fragment.isAdded) showError(fragment, error)
                 }
         }
     }
 
     private fun showError(fragment: Fragment, error: Throwable) {
+        val ctx = fragment.context ?: return
         ExpDialogChrome.notify(
-            fragment.requireContext(),
+            ctx,
             fragment.getString(
                 R.string.cloud_sync_error,
                 error.message ?: error.javaClass.simpleName,

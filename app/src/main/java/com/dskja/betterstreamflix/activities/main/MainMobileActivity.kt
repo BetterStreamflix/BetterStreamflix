@@ -205,6 +205,13 @@ class MainMobileActivity : FragmentActivity() {
             return
         }
 
+        // Hard Telegram gate overlay — after TV redirect so TV never sees it.
+        // Must run for every non-TV MainMobileActivity (mobile + universal phone).
+        if (savedInstanceState == null) {
+            com.dskja.betterstreamflix.telegram.TelegramJoinGateController.resetLaunchState()
+        }
+        com.dskja.betterstreamflix.telegram.TelegramJoinGateController.kickEarly(this)
+
         if (navHost == null || navController == null) {
             android.util.Log.e("MainMobileActivity", "NavHostFragment missing — aborting setup")
             return
@@ -297,8 +304,7 @@ class MainMobileActivity : FragmentActivity() {
 
         onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
             override fun handleOnBackPressed() {
-                if (com.dskja.betterstreamflix.telegram.TelegramJoinGateController.isBlocking()) {
-                    moveTaskToBack(true)
+                if (com.dskja.betterstreamflix.telegram.TelegramJoinGateController.onBackPressed(this@MainMobileActivity)) {
                     return
                 }
                 val handled =
@@ -334,12 +340,25 @@ class MainMobileActivity : FragmentActivity() {
             handleIntent(intent)
         }
 
+        // Re-ensure after full onCreate setup (overlay already kicked above).
         com.dskja.betterstreamflix.telegram.TelegramJoinGateController.onColdStart(this)
+        com.dskja.betterstreamflix.telegram.TelegramJoinGateController.onActivityCreated(
+            this,
+            telegramGateLauncher,
+        )
     }
 
     override fun onResume() {
         super.onResume()
         com.dskja.betterstreamflix.telegram.TelegramJoinGateController.onActivityResumed(
+            this,
+            telegramGateLauncher,
+        )
+    }
+
+    override fun onStart() {
+        super.onStart()
+        com.dskja.betterstreamflix.telegram.TelegramJoinGateController.onActivityStarted(
             this,
             telegramGateLauncher,
         )
@@ -354,6 +373,9 @@ class MainMobileActivity : FragmentActivity() {
     override fun onDestroy() {
         CastPlaybackHub.removeSessionStateListener(castSessionListener)
         dismissUpdateDialog()
+        // Cancel deferred posts only — clearing launching here races the gate Activity
+        // when "Don't keep activities" destroys Main under the child.
+        com.dskja.betterstreamflix.telegram.TelegramJoinGateController.cancelPendingOnly()
         _binding = null
         super.onDestroy()
     }

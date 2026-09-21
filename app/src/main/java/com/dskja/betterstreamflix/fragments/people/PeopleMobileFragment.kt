@@ -45,7 +45,7 @@ class PeopleMobileFragment : Fragment() {
     private val binding get() = _binding!!
 
     private val args by navArgs<PeopleMobileFragmentArgs>()
-    private val database by lazy { AppDatabase.getInstance(requireContext()) }
+    private val database get() = AppDatabase.getInstance(requireContext())
     private val viewModel by viewModelsFactory { PeopleViewModel(args.id, database) }
 
     private val appAdapter = AppAdapter()
@@ -302,8 +302,9 @@ class PeopleMobileFragment : Fragment() {
                 }
 
                 binding.tvPeopleBiography.apply {
-                    maxLines = 7
                     text = people.biography
+                    maxLines = Int.MAX_VALUE
+                    ellipsize = null
                 }
 
                 binding.tvPeopleBiographyReadMore.apply {
@@ -311,17 +312,30 @@ class PeopleMobileFragment : Fragment() {
                         setBackgroundResource(ExperimentalMobileDesign.chipBackground())
                         with(com.dskja.betterstreamflix.utils.ExpPressEffects) { applyExpPress() }
                     }
+                    var expanded = false
+                    fun applyExpand(open: Boolean) {
+                        expanded = open
+                        binding.tvPeopleBiography.maxLines = if (open) Int.MAX_VALUE else 7
+                        binding.tvPeopleBiography.ellipsize =
+                            if (open) null else android.text.TextUtils.TruncateAt.END
+                        text = context.getString(
+                            if (open) R.string.people_read_less else R.string.people_read_more,
+                        )
+                    }
                     setOnClickListener {
                         ExpMotion.hapticTap(it)
-                        binding.tvPeopleBiography.maxLines = Int.MAX_VALUE
-                        binding.tvPeopleBiographyReadMore.visibility = View.GONE
+                        applyExpand(!expanded)
                     }
-
+                    applyExpand(false)
                     binding.tvPeopleBiography.post {
-                        val show = binding.tvPeopleBiography.lineCount > 7
+                        val overflowing = binding.tvPeopleBiography.lineCount > 7
                         val wasVisible = visibility == View.VISIBLE
-                        visibility = if (show) View.VISIBLE else View.GONE
-                        if (ExperimentalMobileDesign.enabled() && show && !wasVisible) {
+                        visibility = if (overflowing) View.VISIBLE else View.GONE
+                        if (!overflowing) {
+                            binding.tvPeopleBiography.maxLines = Int.MAX_VALUE
+                            binding.tvPeopleBiography.ellipsize = null
+                        }
+                        if (ExperimentalMobileDesign.enabled() && overflowing && !wasVisible) {
                             ExpMotion.popIn(this)
                         }
                     }

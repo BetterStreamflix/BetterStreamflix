@@ -19,7 +19,12 @@ import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.transformLatest
 import kotlinx.coroutines.launch
 
-class TvShowsViewModel(database: AppDatabase) : ViewModel() {
+class TvShowsViewModel(
+    @Suppress("UNUSED_PARAMETER") database: AppDatabase? = null,
+) : ViewModel() {
+
+    private fun liveDb(): AppDatabase =
+        AppDatabase.getInstance(com.dskja.betterstreamflix.BetterStreamflixApp.instance.applicationContext)
 
     private val _state = MutableStateFlow<State>(State.Loading)
     
@@ -40,7 +45,9 @@ class TvShowsViewModel(database: AppDatabase) : ViewModel() {
                     if (state.tvShows.isEmpty()) {
                         emit(emptyList())
                     } else {
-                        emitAll(database.tvShowDao().getByIds(state.tvShows.map { it.id }))
+                        val db = runCatching { liveDb() }.getOrNull()
+                        if (db == null) emit(emptyList())
+                        else emitAll(db.tvShowDao().getByIds(state.tvShows.map { it.id }))
                     }
                 }
                 else -> emit(emptyList<TvShow>())

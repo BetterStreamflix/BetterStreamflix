@@ -17,7 +17,6 @@ import com.bumptech.glide.Glide
 import com.bumptech.glide.load.resource.drawable.DrawableTransitionOptions
 import com.dskja.betterstreamflix.R
 import com.dskja.betterstreamflix.adapters.AppAdapter
-import com.dskja.betterstreamflix.database.AppDatabase
 import com.dskja.betterstreamflix.databinding.FragmentHomeTvBinding
 import com.dskja.betterstreamflix.models.Category
 import com.dskja.betterstreamflix.models.Episode
@@ -36,6 +35,7 @@ import androidx.lifecycle.ViewModelProvider
 import com.dskja.betterstreamflix.utils.LoggingUtils
 import com.dskja.betterstreamflix.utils.UserPreferences
 import com.dskja.betterstreamflix.utils.ProviderChangeNotifier
+import com.dskja.betterstreamflix.utils.HomeCatalogPipeline
 
 class HomeTvFragment : Fragment() {
 
@@ -44,16 +44,17 @@ class HomeTvFragment : Fragment() {
     private var _binding: FragmentHomeTvBinding? = null
     private val binding get() = _binding!!
 
-    private val viewModel: HomeViewModel by lazy {
-        val providerKey = UserPreferences.currentProvider?.name ?: "default"
-        val factory = object : ViewModelProvider.Factory {
-            override fun <T : ViewModel> create(modelClass: Class<T>): T {
-                @Suppress("UNCHECKED_CAST")
-                return HomeViewModel(AppDatabase.getInstance(requireContext())) as T
+    private val viewModel: HomeViewModel
+        get() {
+            val providerKey = UserPreferences.currentProvider?.name ?: "default"
+            val factory = object : ViewModelProvider.Factory {
+                override fun <T : ViewModel> create(modelClass: Class<T>): T {
+                    @Suppress("UNCHECKED_CAST")
+                    return HomeViewModel() as T
+                }
             }
+            return ViewModelProvider(this, factory)[providerKey, HomeViewModel::class.java]
         }
-        ViewModelProvider(this, factory).get(providerKey, HomeViewModel::class.java)
-    }
 
     private val appAdapter = AppAdapter()
 
@@ -160,6 +161,7 @@ class HomeTvFragment : Fragment() {
     }
 
     override fun onDestroyView() {
+        swiperHandler.removeCallbacksAndMessages(null)
         _binding?.let { appAdapter.onSaveInstanceState(it.vgvHome) }
         _binding = null
         super.onDestroyView()
@@ -321,10 +323,15 @@ class HomeTvFragment : Fragment() {
         }
 
         val homeItems = mutableListOf<AppAdapter.Item>()
-        categories
-            .filter { it.list.isNotEmpty() }
+        val hasContinueWatching = categories.any {
+            it.name == getString(R.string.home_continue_watching) && it.list.isNotEmpty()
+        }
+        val visibleCategories = HomeCatalogPipeline.isolateFeatured(categories)
+        visibleCategories
             .onEach { category ->
-                if (category.name != getString(R.string.home_continue_watching)) {
+                if (category.name != Category.FEATURED &&
+                    category.name != getString(R.string.home_continue_watching)
+                ) {
                     category.list.forEach { show ->
                         when (show) {
                             is Episode -> show.itemType = AppAdapter.Type.EPISODE_TV_ITEM
@@ -339,11 +346,12 @@ class HomeTvFragment : Fragment() {
                     else -> AppAdapter.Type.CATEGORY_TV_ITEM
                 }
             }
+        visibleCategories
             .forEach { category ->
                 homeItems.add(category)
+                // CW was already renamed to the localized title; don't use the English constant.
                 val insertAfter = category.name == getString(R.string.home_continue_watching) ||
-                    (category.name == Category.FEATURED &&
-                        categories.none { it.name == Category.CONTINUE_WATCHING && it.list.isNotEmpty() })
+                    (category.name == Category.FEATURED && !hasContinueWatching)
                 if (insertAfter &&
                     !UserPreferences.homeSupportCardDismissed &&
                     homeItems.none { it is com.dskja.betterstreamflix.support.SupportBannerItem }
@@ -394,8 +402,14 @@ class HomeTvFragment : Fragment() {
                     .filterIsInstance<Category>()
                     .find { it.name == Category.FEATURED }
                     ?.let { category ->
-                        category.selectedIndex = (category.selectedIndex + 1) % category.list.size
-                        
+                        if (category.list.isEmpty()) {
+                            return@let null
+                        }
+                        if (category.list.size > 1) {
+                            category.selectedIndex =
+                                (category.selectedIndex + 1) % category.list.size
+                        }
+
                         // Update background when swiper rotates automatically
                         val currentItem = category.list.getOrNull(category.selectedIndex)
                         val poster = when (currentItem) {

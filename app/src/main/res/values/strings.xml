@@ -95,6 +95,12 @@
     <string name="detail_overview_more">Show more</string>
     <string name="detail_overview_less">Show less</string>
     <string name="detail_download_season">Download season</string>
+    <string name="detail_download_episode_short">Download S%1$dE%2$d</string>
+    <string name="detail_download_season_count">Download season %1$d · %2$d episodes</string>
+    <string name="detail_download_series">Download series · %d episodes</string>
+    <string name="detail_download_coverage">Downloaded %1$d of %2$d</string>
+    <string name="detail_download_offline">Saved offline</string>
+    <string name="people_read_less">Show less</string>
     <string name="favorites_empty">You have no favorites yet</string>
     <string name="favorites_reorder_categories">Sort favorites</string>
     <string name="favorites_sort_title">Sort favorites</string>
@@ -317,6 +323,9 @@
     <string name="settings_about_version_name">Version %s</string>
     <string name="settings_help">Help</string>
     <string name="settings_telegram">Telegram channel</string>
+    <string name="settings_telegram_gate_reset">Reset community invite</string>
+    <string name="settings_telegram_gate_reset_summary">Debug only — clear dismiss and show the invite again</string>
+    <string name="settings_telegram_gate_reset_done">Invite reset — opening…</string>
     <string name="settings_telegram_not_found">Telegram not found.</string>
     <string name="settings_bypass_advertised_host">Bypass advertised host</string>
     <string name="settings_bypass_advertised_host_auto">Auto (device IP)</string>
@@ -329,6 +338,14 @@
     <string name="settings_serienstream_session_login">Sign in to SerienStream</string>
     <string name="settings_serienstream_session_login_summary">Open login, sign in once — cookies are saved automatically (works with VPN; no QR / same Wi‑Fi needed)</string>
     <string name="settings_serienstream_session_login_saved">SerienStream login saved</string>
+    <string name="serienstream_auth_email_hint">Email</string>
+    <string name="serienstream_auth_password_hint">Password</string>
+    <string name="serienstream_auth_credentials_message">Sign in with your SerienStream account. Cloudflare challenges still use the in-app browser.</string>
+    <string name="serienstream_auth_credentials_invalid">Enter a valid email and password</string>
+    <string name="serienstream_auth_credentials_progress">Signing in…</string>
+    <string name="serienstream_auth_credentials_failed">Sign-in failed. Check the details or use the in-app browser.</string>
+    <string name="serienstream_auth_credentials_challenge">Cloudflare is in the way — opening the in-app login.</string>
+    <string name="serienstream_auth_browser_login">In-app browser</string>
     <string name="serienstream_auth_category_title">SerienStream account</string>
     <string name="serienstream_auth_status_title">Account status</string>
     <string name="serienstream_auth_status_signed_out">Not signed in — sign in once or paste session cookies</string>
@@ -348,8 +365,8 @@
     <string name="serienstream_auth_validate_failed">Could not verify the session (network / domain)</string>
     <string name="serienstream_auth_paste_title">Paste session cookies</string>
     <string name="serienstream_auth_paste_summary">Paste a Cookie header from a browser or phone (VPN / no shared Wi‑Fi)</string>
-    <string name="serienstream_auth_paste_message">Paste name=value pairs separated by semicolons (cf_clearance, PHPSESSID, …).</string>
-    <string name="serienstream_auth_paste_hint">cf_clearance=…; PHPSESSID=…</string>
+    <string name="serienstream_auth_paste_message">Paste name=value pairs separated by semicolons (laravel_session, XSRF-TOKEN; optional cf_clearance).</string>
+    <string name="serienstream_auth_paste_hint">laravel_session=…; XSRF-TOKEN=…</string>
     <string name="serienstream_auth_paste_save">Save cookies</string>
     <string name="serienstream_auth_paste_invalid">Those cookies do not look like a SerienStream login</string>
     <string name="serienstream_auth_copy">Copy session cookies</string>
@@ -407,6 +424,7 @@
     <string name="profile_atelier_brand">BetterStreamflix</string>
     <string name="profile_picker_eyebrow">Who\'s watching?</string>
     <string name="profile_picker_title">Who\'s watching?</string>
+    <string name="profile_picker_close">Close</string>
     <string name="profile_picker_subtitle">Every profile has its own history, library and parental rules</string>
     <string name="profile_picker_manage">Manage in Settings</string>
     <string name="profile_picker_manage_hint">Open Settings → Profiles to rename, PIN or delete</string>
@@ -422,7 +440,7 @@
     <string name="profile_avatar_slate_noir">Slate</string>
     <string name="profile_avatar_forest_grove">Forest</string>
     <string name="profile_avatar_ocean_depth">Ocean</string>
-    <string name="profile_avatar_gold_atelier">Gold</string>
+    <string name="profile_avatar_gold_atelier">Signal</string>
     <string name="profile_avatar_rose_velvet">Rose</string>
     <string name="settings_nested_back">Back</string>
     <string name="profile_settings_hero_eyebrow">Profiles</string>
@@ -784,8 +802,11 @@
 
     <string name="settings_category_appearance">Appearance</string>
     <string name="settings_experimental_new_design_title">Lumina · Experimental UI</string>
-    <string name="settings_experimental_new_design_summary">React cinematic shell with native playback bridge, floating dock, and motion. Restarts the app. Off by default.</string>
+    <string name="settings_experimental_new_design_summary">Cinematic native shell (Featured carousel, glass, motion). Restarts the app. Off by default. Debug builds only.</string>
+    <string name="settings_experimental_react_home_title">React home shell</string>
+    <string name="settings_experimental_react_home_summary">Replace native Home with the experimental React/Vite shell. Featured carousel stays on native Home when this is off.</string>
     <string name="settings_experimental_broken_summary">Broken — temporarily disabled in release builds while Lumina is rebuilt. Available in debug APKs.</string>
+    <string name="home_featured_title">Featured</string>
     <string name="exp_home_provider_chip">Watching via %1$s</string>
     <string name="exp_opt_dynamic_short">Material You</string>
     <string name="exp_opt_react_shell_short">React shell</string>
@@ -810,13 +831,15 @@
     <string name="settings_experimental_lumina_active_summary_extra">Lumina on · %1$s · %2$s</string>
     <string name="settings_experimental_lumina_active_summary">Lumina on · %1$s accent. Open Lumina options to refine.</string>
     <string name="settings_hub_eyebrow">Settings</string>
-    <string name="settings_hub_title">Control center</string>
-    <string name="settings_hub_subtitle">Integrations, playback, account and project — clear sections, one tap away.</string>
+    <string name="settings_hub_title">Settings</string>
+    <string name="settings_hub_subtitle">Playback, downloads, profiles and connections — grouped the way you actually use them.</string>
+    <string name="settings_hub_featured_body">Sign in to SerienStream, Trakt, Jellyfin, Plex and debrid from one place.</string>
+    <string name="settings_hub_provider_fmt">Watching via %1$s</string>
     <string name="platform_hub_subtitle">Connect Trakt, Jellyfin, Plex, Debrid and more. Each service has its own screen.</string>
     <string name="platform_hub_section_services">Services</string>
     <string name="platform_hub_overview">%1$d of %2$d services connected</string>
-    <string name="settings_hub_featured_badge">New</string>
-    <string name="settings_hub_featured_cta">Open integrations</string>
+    <string name="settings_hub_featured_badge">Connections</string>
+    <string name="settings_hub_featured_cta">Open connections</string>
     <string name="settings_hub_section_app">App</string>
     <string name="settings_hub_section_account">Account</string>
     <string name="settings_hub_section_project">Project</string>
@@ -1192,22 +1215,45 @@
     <string name="support_startup_never_again">Never show again on start</string>
     <string name="support_startup_close_cd">Close</string>
 
-    <!-- Telegram Join Gate (mobile soft gate) -->
+    <!-- Community invite (mobile, optional) -->
     <string name="tg_gate_brand">BetterStreamflix</string>
-    <string name="tg_gate_headline">Join the official channel</string>
-    <string name="tg_gate_body">Updates, releases, and support — one tap to join the community.</string>
+    <string name="tg_gate_headline">Stay in the loop</string>
+    <string name="tg_gate_body">Official updates, releases, and chat — join Telegram or Discord, or continue without joining.</string>
     <string name="tg_gate_channel_chip">@%1$s</string>
     <string name="tg_gate_step_open">Open</string>
     <string name="tg_gate_step_join">Join</string>
     <string name="tg_gate_step_confirm">Confirm</string>
     <string name="tg_gate_cta_open">Open Telegram</string>
     <string name="tg_gate_cta_open_again">Open Telegram again</string>
+    <string name="tg_gate_cta_open_short">Open</string>
     <string name="tg_gate_cta_confirm">I joined — continue</string>
+    <string name="tg_gate_cta_continue">Continue without joining</string>
+    <string name="tg_gate_cta_copy_link">Copy channel link</string>
+    <string name="tg_gate_link_copied">Channel link copied</string>
+    <string name="tg_gate_benefit_updates">Release notes &amp; APK drops first</string>
+    <string name="tg_gate_benefit_support">Direct support when something breaks</string>
+    <string name="tg_gate_benefit_community">News before it hits the store</string>
+    <string name="tg_gate_status_locked">Step 1 of 3 — open Telegram</string>
+    <string name="tg_gate_status_opened">Step 2 of 3 — join @%1$s</string>
+    <string name="tg_gate_status_ready">Step 3 of 3 — confirm and enter %1$s</string>
     <string name="tg_gate_hint_open_first">Open Telegram, join the channel, then come back.</string>
-    <string name="tg_gate_hint_join_then_return">Join @BetterStreamflix, then return here to continue.</string>
-    <string name="tg_gate_hint_confirm">Ready — confirm to enter BetterStreamflix.</string>
+    <string name="tg_gate_hint_join_then_return">Join @%1$s, then return here to continue.</string>
+    <string name="tg_gate_hint_confirm">Ready — confirm to enter %1$s.</string>
+    <string name="tg_gate_hint_optional">Optional — you can always find these links in Settings.</string>
+    <string name="tg_gate_open_failed">Could not open Telegram. Install Telegram or try again.</string>
+    <string name="tg_gate_discord_open_failed">Could not open Discord. Install Discord or try again.</string>
     <string name="tg_gate_telegram_cd">Telegram</string>
-    <string name="tg_gate_debug_skip">Skip gate (debug)</string>
+    <string name="tg_gate_discord_cd">Discord</string>
+    <string name="tg_gate_close_cd">Close</string>
+    <string name="tg_gate_telegram_title">Telegram channel</string>
+    <string name="tg_gate_discord_title">Discord community</string>
+    <string name="tg_gate_discord_handle">discord.gg/R4F72rMUZ8</string>
+    <string name="tg_gate_members_loading">Loading…</string>
+    <string name="tg_gate_members_unavailable">Members unavailable</string>
+    <string name="tg_gate_subscribers_count">%1$s subscribers</string>
+    <string name="tg_gate_members_count">%1$s members</string>
+    <string name="tg_gate_discord_members_online">%1$s members · %2$s online</string>
+    <string name="tg_gate_debug_skip">Skip invite (debug)</string>
 
     <string name="support_banner_title">Help Keep BetterStreamflix Alive</string>
     <string name="support_banner_subtitle">Support development • Get new features • Keep it community driven</string>

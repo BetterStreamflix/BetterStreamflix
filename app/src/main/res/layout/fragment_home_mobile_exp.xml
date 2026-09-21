@@ -72,7 +72,7 @@
         android:text="@string/app_name"
         android:textAppearance="@style/TextAppearance.Lumina.Hero"
         android:textSize="32sp"
-        app:layout_constraintEnd_toStartOf="@id/btn_home_search_spacer"
+        app:layout_constraintEnd_toStartOf="@id/tv_home_profile_chip"
         app:layout_constraintStart_toEndOf="@id/iv_provider_logo"
         app:layout_constraintTop_toTopOf="parent" />
 
@@ -125,13 +125,13 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@id/v_home_brand_rule" />
 
-    <!-- Keeps brand clear of the activity search chip on the right. -->
+    <!-- Keeps brand and profile clear of the activity search chip on the right. -->
     <Space
         android:id="@+id/btn_home_search_spacer"
-        android:layout_width="56dp"
-        android:layout_height="46dp"
+        android:layout_width="108dp"
+        android:layout_height="48dp"
         android:layout_marginTop="12dp"
-        android:layout_marginEnd="16dp"
+        android:layout_marginEnd="12dp"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintTop_toTopOf="parent" />
 
@@ -141,9 +141,12 @@
         android:layout_width="wrap_content"
         android:layout_height="36dp"
         android:layout_marginEnd="8dp"
-        app:layout_constraintBottom_toBottomOf="@id/btn_home_search_spacer"
+        app:layout_constrainedWidth="true"
+        app:layout_constraintBottom_toBottomOf="@id/tv_home_brand"
         app:layout_constraintEnd_toStartOf="@id/btn_home_search_spacer"
-        app:layout_constraintTop_toTopOf="@id/btn_home_search_spacer" />
+        app:layout_constraintHorizontal_bias="1"
+        app:layout_constraintStart_toEndOf="@id/iv_provider_logo"
+        app:layout_constraintTop_toTopOf="@id/tv_home_brand" />
 
     <ImageView
         android:id="@+id/iv_provider_logo"

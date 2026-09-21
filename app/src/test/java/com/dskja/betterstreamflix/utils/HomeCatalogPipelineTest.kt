@@ -107,4 +107,46 @@ class HomeCatalogPipelineTest {
         assertEquals(1, hits.size)
         assertEquals(2, hits.first().list.size)
     }
+
+    @Test
+    fun featuredItemsAreClonedFromSharedProviderRefs() {
+        val shared = Movie(id = "shared", title = "Shared")
+        val result = HomeCatalogPipeline.process(
+            provider,
+            listOf(
+                Category(name = Category.FEATURED, list = listOf(shared)),
+                Category(name = "Latest", list = listOf(shared)),
+            ),
+        )
+        val featured = result.categories.first { it.name == Category.FEATURED }
+            .list.filterIsInstance<Movie>().first()
+        val latest = result.categories.first { it.name == "Latest" }
+            .list.filterIsInstance<Movie>().first()
+        assertTrue(
+            "FEATURED must not share identity with shelf rows (BETTERSTREAMFLIX-13)",
+            featured !== latest && featured !== shared,
+        )
+        assertEquals("shared", featured.id)
+        assertEquals("shared", latest.id)
+    }
+
+    @Test
+    fun isolateFeaturedAlwaysClonesAndKeepsShelfRows() {
+        val shared = Movie(id = "hero", title = "Hero")
+        val isolated = HomeCatalogPipeline.isolateFeatured(
+            listOf(
+                Category(name = "Latest", list = listOf(shared)),
+            ),
+        )
+        val featured = isolated.first { it.name == Category.FEATURED }
+            .list.filterIsInstance<Movie>().first()
+        val latest = isolated.first { it.name == "Latest" }
+            .list.filterIsInstance<Movie>().first()
+        assertTrue(featured !== latest)
+        assertTrue(featured !== shared)
+        assertEquals("hero", featured.id)
+        latest.itemType = AppAdapter.Type.MOVIE_MOBILE_ITEM
+        featured.itemType = AppAdapter.Type.MOVIE_SWIPER_MOBILE_ITEM
+        assertTrue(latest.itemType != featured.itemType)
+    }
 }

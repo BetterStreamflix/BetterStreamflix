@@ -19,7 +19,6 @@ import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.dskja.betterstreamflix.R
 import com.dskja.betterstreamflix.adapters.AppAdapter
-import com.dskja.betterstreamflix.database.AppDatabase
 import com.dskja.betterstreamflix.databinding.FragmentFavoritesTvBinding
 import com.dskja.betterstreamflix.models.Movie
 import com.dskja.betterstreamflix.models.TvShow
@@ -31,7 +30,6 @@ import com.dskja.betterstreamflix.utils.ExpMotion
 import com.dskja.betterstreamflix.utils.ExperimentalMobileDesign
 import com.dskja.betterstreamflix.utils.UserPreferences
 import com.dskja.betterstreamflix.utils.dp
-import com.dskja.betterstreamflix.utils.viewModelsFactory
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import kotlinx.coroutines.launch
 
@@ -53,9 +51,17 @@ class FavoritesTvFragment : Fragment() {
         }
     }
     private val providerName get() = UserPreferences.currentProvider?.name.orEmpty()
-    private val viewModel by viewModelsFactory {
-        FavoritesViewModel(AppDatabase.getInstance(requireContext()), providerName)
-    }
+    private val viewModel: FavoritesViewModel
+        get() {
+            val key = providerName.ifBlank { "default" }
+            val factory = object : androidx.lifecycle.ViewModelProvider.Factory {
+                override fun <T : androidx.lifecycle.ViewModel> create(modelClass: Class<T>): T {
+                    @Suppress("UNCHECKED_CAST")
+                    return FavoritesViewModel(providerName = key) as T
+                }
+            }
+            return androidx.lifecycle.ViewModelProvider(this, factory)[key, FavoritesViewModel::class.java]
+        }
 
     override fun onCreateView(
         inflater: LayoutInflater,

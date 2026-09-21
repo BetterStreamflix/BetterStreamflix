@@ -31,6 +31,7 @@ import com.dskja.betterstreamflix.models.Movie
 import com.dskja.betterstreamflix.models.Show
 import com.dskja.betterstreamflix.models.TvShow
 import com.dskja.betterstreamflix.ui.SpacingItemDecoration
+import com.dskja.betterstreamflix.utils.DeviceCapabilities
 import com.dskja.betterstreamflix.utils.ExperimentalMobileDesign
 import com.dskja.betterstreamflix.utils.ExpMotion
 import com.dskja.betterstreamflix.utils.dp
@@ -235,13 +236,30 @@ class CategoryViewHolder(
         onMovieLongClick: ((Movie) -> Unit)?,
         onTvShowLongClick: ((TvShow) -> Unit)?,
     ) {
-        binding.tvCategoryTitle.text = category.name
+        val featuredLabel = category.name.ifBlank {
+            binding.root.resources.getString(R.string.home_featured_title)
+        }
+        binding.tvCategoryTitle.text = featuredLabel
 
         clearSwiper()
         val handler = Handler(Looper.getMainLooper())
         swiperHandler = handler
+
+        val source = category.list
+        val useLoop = source.size > 1
+        val items = if (useLoop) {
+            listOf(
+                listOfNotNull(source.lastOrNull()),
+                source,
+                listOfNotNull(source.firstOrNull()),
+            ).flatten()
+        } else {
+            source
+        }
+
         fun restartAutoProgress() {
             if (!ExperimentalMobileDesign.enabled()) return
+            if (DeviceCapabilities.shouldReduceHomeEffects(binding.root.context)) return
             val bar = binding.root.findViewById<android.widget.ProgressBar>(R.id.pb_swiper_auto_progress)
                 ?: return
             bar.visibility = View.VISIBLE
@@ -252,6 +270,7 @@ class CategoryViewHolder(
                 .also { it.start() }
         }
         fun scheduleAdvance() {
+            if (!useLoop) return
             if (swiperHandler !== handler) return
             if (bindingAdapterPosition == RecyclerView.NO_POSITION) return
             if (!itemView.isAttachedToWindow) return
@@ -263,39 +282,36 @@ class CategoryViewHolder(
                 runCatching { binding.vpCategorySwiper.currentItem += 1 }
             }
         }
-        scheduleAdvance()
 
-        val items = listOf(
-            listOfNotNull(category.list.lastOrNull()),
-            category.list,
-            listOfNotNull(category.list.firstOrNull()),
-        ).flatten()
+        val pagerAdapter = AppAdapter().apply {
+            this.onMovieClickListener = onMovieClick
+            this.onTvShowClickListener = onTvShowClick
+            this.onMovieLongClickListener = onMovieLongClick
+            this.onTvShowLongClickListener = onTvShowLongClick
+        }
         binding.vpCategorySwiper.apply {
-            adapter = AppAdapter().apply {
-                this.onMovieClickListener = onMovieClick
-                this.onTvShowClickListener = onTvShowClick
-                this.onMovieLongClickListener = onMovieLongClick
-                this.onTvShowLongClickListener = onTvShowLongClick
-                submitList(category.list)
-                post {
-                    (adapter as AppAdapter).submitList(items)
-                    if (category.list.isNotEmpty()) {
-                        // Infinite loop: [last] + items + [first] — start on first real item.
-                        setCurrentItem(1, false)
-                    }
-                    // Defense: ViewPager2 requires match_parent page roots (BETTERSTREAMFLIX-13).
-                    for (i in 0 until childCount) {
-                        getChildAt(i)?.let { child ->
-                            child.layoutParams = (child.layoutParams
-                                ?: ViewGroup.LayoutParams(0, 0)).apply {
-                                width = ViewGroup.LayoutParams.MATCH_PARENT
-                                height = ViewGroup.LayoutParams.MATCH_PARENT
-                            }
+            offscreenPageLimit = 1
+            adapter = pagerAdapter
+            // Single submit with loop pages — dual submitList raced DiffUtil vs setCurrentItem.
+            pagerAdapter.submitList(items)
+            if (source.isNotEmpty()) {
+                setCurrentItem(if (useLoop) 1 else 0, false)
+            }
+            // Defense: ViewPager2 requires match_parent page roots (BETTERSTREAMFLIX-13).
+            post {
+                for (i in 0 until childCount) {
+                    getChildAt(i)?.let { child ->
+                        child.layoutParams = (child.layoutParams
+                            ?: ViewGroup.LayoutParams(0, 0)).apply {
+                            width = ViewGroup.LayoutParams.MATCH_PARENT
+                            height = ViewGroup.LayoutParams.MATCH_PARENT
                         }
                     }
                 }
             }
         }
+
+        scheduleAdvance()
 
         val exp = ExperimentalMobileDesign.enabled()
         if (exp) {
@@ -304,10 +320,15 @@ class CategoryViewHolder(
 
         binding.llDotsIndicator.apply {
             removeAllViews()
+            if (source.isEmpty()) {
+                visibility = View.GONE
+            } else {
+                visibility = View.VISIBLE
+            }
             if (exp) {
                 val dotSize = 6.dp(context)
                 val dotMargin = 5.dp(context)
-                repeat(category.list.size) {
+                repeat(source.size) {
                     val view = View(context).apply {
                         layoutParams = LinearLayout.LayoutParams(dotSize, dotSize).apply {
                             setMargins(dotMargin, 0, dotMargin, 0)
@@ -318,7 +339,7 @@ class CategoryViewHolder(
                     addView(view)
                 }
             } else {
-                repeat(category.list.size) {
+                repeat(source.size) {
                     val view = View(context).apply {
                         layoutParams = LinearLayout.LayoutParams(15, 15).apply {
                             setMargins(10, 0, 10, 0)
@@ -339,15 +360,19 @@ class CategoryViewHolder(
                 if (swiperHandler !== handler || bindingAdapterPosition == RecyclerView.NO_POSITION) {
                     return
                 }
-                val indicatorPosition = when (position) {
-                    0 -> category.list.lastIndex
-                    items.lastIndex -> 0
-                    else -> position - 1
+                val indicatorPosition = if (!useLoop) {
+                    position.coerceIn(0, (source.lastIndex).coerceAtLeast(0))
+                } else {
+                    when (position) {
+                        0 -> source.lastIndex
+                        items.lastIndex -> 0
+                        else -> position - 1
+                    }
                 }
                 if (exp) {
                     updateExpDots(binding, indicatorPosition)
                     ExpMotion.hapticTap(binding.vpCategorySwiper)
-                    (category.list.getOrNull(indicatorPosition) as? Show)?.let { show ->
+                    (source.getOrNull(indicatorPosition) as? Show)?.let { show ->
                         val activity = context.toActivity()
                         if (activity != null && !activity.isFinishing && !activity.isDestroyed) {
                             (activity.getCurrentFragment() as? HomeMobileFragment)
@@ -408,6 +433,7 @@ class CategoryViewHolder(
             }
 
             override fun onPageScrollStateChanged(state: Int) {
+                if (!useLoop) return
                 if (swiperHandler !== handler || bindingAdapterPosition == RecyclerView.NO_POSITION) {
                     return
                 }
@@ -427,6 +453,49 @@ class CategoryViewHolder(
         }
         swiperPageCallback = callback
         binding.vpCategorySwiper.registerOnPageChangeCallback(callback)
+        if (exp && source.isNotEmpty()) {
+            updateExpDots(binding, 0)
+        } else if (source.isNotEmpty()) {
+            binding.llDotsIndicator.children.forEachIndexed { index, view ->
+                view.isSelected = index == 0
+            }
+        }
+    }
+
+    /** Resume auto-advance after Home returns to foreground (no full rebind). */
+    fun resumeSwiper() {
+        val binding = _binding as? ContentCategorySwiperMobileBinding ?: return
+        val handler = swiperHandler ?: return
+        if (!itemView.isAttachedToWindow) return
+        if (!::category.isInitialized || category.list.size <= 1) return
+        handler.removeCallbacksAndMessages(null)
+        // Restart progress chrome the same way scheduleAdvance does after page changes.
+        if (ExperimentalMobileDesign.enabled() &&
+            !DeviceCapabilities.shouldReduceHomeEffects(binding.root.context)
+        ) {
+            val bar = binding.root.findViewById<android.widget.ProgressBar>(R.id.pb_swiper_auto_progress)
+            if (bar != null) {
+                bar.visibility = View.VISIBLE
+                swiperProgressAnimator?.cancel()
+                bar.progress = 0
+                swiperProgressAnimator =
+                    android.animation.ObjectAnimator.ofInt(bar, "progress", 0, 1000)
+                        .setDuration(8_000L)
+                        .also { it.start() }
+            }
+        }
+        handler.postDelayed(8_000) {
+            if (swiperHandler !== handler) return@postDelayed
+            if (bindingAdapterPosition == RecyclerView.NO_POSITION) return@postDelayed
+            if (!itemView.isAttachedToWindow) return@postDelayed
+            runCatching { binding.vpCategorySwiper.currentItem += 1 }
+        }
+    }
+
+    /** Soft-pause auto-advance (keep ViewPager + page callback alive). */
+    fun pauseSwiper() {
+        swiperProgressAnimator?.cancel()
+        swiperHandler?.removeCallbacksAndMessages(null)
     }
 
     private val expDotInactive: Int
@@ -512,8 +581,16 @@ class CategoryViewHolder(
     }
 
     private fun displayTvSwiper(binding: ContentCategorySwiperTvBinding) {
-        binding.tvCategoryTitle.text = category.name
-        val selected = category.list.getOrNull(category.selectedIndex) as? Show ?: return
+        binding.tvCategoryTitle.text = category.name.ifBlank {
+            binding.root.resources.getString(R.string.home_featured_title)
+        }
+        val selected = category.list.getOrNull(
+            category.selectedIndex.coerceIn(0, (category.list.size - 1).coerceAtLeast(0)),
+        ) as? Show
+        if (selected == null) {
+            binding.tvSwiperTitle.text = ""
+            return
+        }
 
         if (ExperimentalMobileDesign.enabled()) {
             applyExperimentalTvSwiperChrome(binding)
@@ -653,9 +730,13 @@ class CategoryViewHolder(
                             when (val fragment = context.toActivity()?.getCurrentFragment()) {
                                 is HomeTvFragment -> fragment.resetSwiperSchedule()
                             }
-                            category.selectedIndex = (category.selectedIndex + 1) % category.list.size
+                            if (category.list.isEmpty()) return@setOnKeyListener true
+                            if (category.list.size > 1) {
+                                category.selectedIndex =
+                                    (category.selectedIndex + 1) % category.list.size
+                            }
                             when (val fragment = context.toActivity()?.getCurrentFragment()) {
-                                is HomeTvFragment -> when (val it = category.list[category.selectedIndex]) {
+                                is HomeTvFragment -> when (val it = category.list.getOrNull(category.selectedIndex)) {
                                     is Movie -> fragment.updateBackground(it.banner, true)
                                     is TvShow -> fragment.updateBackground(it.banner, true)
                                 }

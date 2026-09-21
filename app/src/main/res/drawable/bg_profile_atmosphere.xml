@@ -5,7 +5,7 @@
             <solid android:color="@color/profile_bg" />
         </shape>
     </item>
-    <!-- Soft tungsten wash from top -->
+    <!-- Soft cyan wash from top -->
     <item
         android:gravity="top|fill_horizontal"
         android:height="280dp">
@@ -22,9 +22,9 @@
         <shape android:shape="rectangle">
             <gradient
                 android:angle="145"
-                android:centerColor="#0C0C10"
+                android:centerColor="#0A1220"
                 android:endColor="@color/profile_bg"
-                android:startColor="#141218"
+                android:startColor="#0F2A3F"
                 android:type="linear" />
         </shape>
     </item>

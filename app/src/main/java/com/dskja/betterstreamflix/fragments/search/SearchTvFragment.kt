@@ -48,7 +48,7 @@ class SearchTvFragment : Fragment() {
         private var _binding: FragmentSearchTvBinding? = null
     private val binding get() = _binding!!
 
-    private val database by lazy { AppDatabase.getInstance(requireContext()) }
+    private val database get() = AppDatabase.getInstance(requireContext())
     private val viewModel by viewModelsFactory { SearchViewModel(database) }
     private var isGlobalSearchChecked: Boolean = false
     private var currentGridColumns: Int = 1

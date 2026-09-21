@@ -474,58 +474,57 @@ class EpisodeViewHolder(
             }
             setOnClickListener {
                 ExpMotion.hapticTap(it)
+                // Go straight to player (parity with mobile continue-watching) — no detail detour.
                 checkProviderAndRun {
-                findNavController().navigate(
-                    HomeTvFragmentDirections.actionHomeToTvShow(
-                        id = episode.tvShow?.id ?: "",
-                        poster = episode.tvShow?.poster,
-                        banner = episode.tvShow?.banner,
-                    )
-                )
-                findNavController().navigate(
-                    TvShowTvFragmentDirections.actionTvShowToPlayer(
-                        id = episode.id,
-                        title = episode.tvShow?.title ?: "",
-                        subtitle = episode.season?.takeIf { it.number != 0 }?.let { season ->
-                            context.getString(
-                                R.string.player_subtitle_tv_show,
-                                season.number,
-                                episode.number,
-                                episode.title ?: context.getString(
-                                    R.string.episode_number,
-                                    episode.number
-                                )
-                            )
-                        } ?: context.getString(
-                            R.string.player_subtitle_tv_show_episode_only,
+                    val subtitle = episode.season?.takeIf { it.number != 0 }?.let { season ->
+                        context.getString(
+                            R.string.player_subtitle_tv_show,
+                            season.number,
                             episode.number,
                             episode.title ?: context.getString(
                                 R.string.episode_number,
                                 episode.number
                             )
-                        ),
-                        videoType = Video.Type.Episode(
-                            id = episode.id,
-                            number = episode.number,
-                            title = episode.title,
-                            poster = episode.poster,
-                            overview = episode.overview,
-                            tvShow = Video.Type.Episode.TvShow(
-                                id = episode.tvShow?.id ?: "",
-                                title = episode.tvShow?.title ?: "",
-                                poster = episode.tvShow?.poster,
-                                banner = episode.tvShow?.banner,
-                                releaseDate = episode.tvShow?.released?.format("yyyy-MM-dd"),
-                                imdbId = episode.tvShow?.imdbId,
-                            ),
-                            season = Video.Type.Episode.Season(
-                                number = episode.season?.number ?: 0,
-                                title = episode.season?.title,
-                            ),
-                        ),
-                        preferredServerName = preferredOfflineServerName(),
+                        )
+                    } ?: context.getString(
+                        R.string.player_subtitle_tv_show_episode_only,
+                        episode.number,
+                        episode.title ?: context.getString(
+                            R.string.episode_number,
+                            episode.number
+                        )
                     )
-                )
+                    findNavController().navigate(
+                        R.id.action_global_player,
+                        android.os.Bundle().apply {
+                            putString("id", episode.id)
+                            putString("title", episode.tvShow?.title ?: "")
+                            putString("subtitle", subtitle)
+                            putSerializable(
+                                "videoType",
+                                Video.Type.Episode(
+                                    id = episode.id,
+                                    number = episode.number,
+                                    title = episode.title,
+                                    poster = episode.poster,
+                                    overview = episode.overview,
+                                    tvShow = Video.Type.Episode.TvShow(
+                                        id = episode.tvShow?.id ?: "",
+                                        title = episode.tvShow?.title ?: "",
+                                        poster = episode.tvShow?.poster,
+                                        banner = episode.tvShow?.banner,
+                                        releaseDate = episode.tvShow?.released?.format("yyyy-MM-dd"),
+                                        imdbId = episode.tvShow?.imdbId,
+                                    ),
+                                    season = Video.Type.Episode.Season(
+                                        number = episode.season?.number ?: 0,
+                                        title = episode.season?.title,
+                                    ),
+                                ),
+                            )
+                            putString("preferredServerName", preferredOfflineServerName())
+                        },
+                    )
                 }
             }
             setOnLongClickListener {
@@ -615,7 +614,10 @@ class EpisodeViewHolder(
     }
 
     private fun episodeDownloadContentKey(): String? {
-        val providerName = UserPreferences.currentProvider?.name ?: return null
+        val providerName = episode.tvShow?.providerName
+            ?.takeIf { it.isNotBlank() }
+            ?: UserPreferences.currentProvider?.name
+            ?: return null
         val tvShowId = episode.tvShow?.id ?: return null
         val seasonNumber = episode.season?.number ?: return null
         return DownloadContentKey.episode(

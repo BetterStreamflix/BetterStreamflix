@@ -16,14 +16,12 @@ import androidx.recyclerview.widget.RecyclerView
 import androidx.navigation.fragment.findNavController
 import com.dskja.betterstreamflix.R
 import com.dskja.betterstreamflix.adapters.AppAdapter
-import com.dskja.betterstreamflix.database.AppDatabase
 import com.dskja.betterstreamflix.databinding.FragmentFavoritesMobileBinding
 import com.dskja.betterstreamflix.models.Movie
 import com.dskja.betterstreamflix.models.TvShow
 import com.dskja.betterstreamflix.ui.SpacingItemDecoration
 import com.dskja.betterstreamflix.utils.UserPreferences
 import com.dskja.betterstreamflix.utils.dp
-import com.dskja.betterstreamflix.utils.viewModelsFactory
 import com.dskja.betterstreamflix.utils.ExperimentalMobileDesign
 import com.dskja.betterstreamflix.utils.ExpEmptyChrome
 import com.dskja.betterstreamflix.utils.ExpMotion
@@ -38,9 +36,17 @@ class FavoritesMobileFragment : Fragment() {
     private var rearrangeMode = false
     private val selectedItems = mutableSetOf<String>()
     private val providerName get() = UserPreferences.currentProvider?.name.orEmpty()
-    private val viewModel by viewModelsFactory {
-        FavoritesViewModel(AppDatabase.getInstance(requireContext()), providerName)
-    }
+    private val viewModel: FavoritesViewModel
+        get() {
+            val key = providerName.ifBlank { "default" }
+            val factory = object : androidx.lifecycle.ViewModelProvider.Factory {
+                override fun <T : androidx.lifecycle.ViewModel> create(modelClass: Class<T>): T {
+                    @Suppress("UNCHECKED_CAST")
+                    return FavoritesViewModel(providerName = key) as T
+                }
+            }
+            return androidx.lifecycle.ViewModelProvider(this, factory)[key, FavoritesViewModel::class.java]
+        }
 
     override fun onCreateView(
         inflater: LayoutInflater,

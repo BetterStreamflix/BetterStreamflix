@@ -3,6 +3,7 @@ package com.dskja.betterstreamflix.adapters.viewholders
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AlertDialog as AppCompatAlertDialog
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
+import com.dskja.betterstreamflix.utils.DeviceCapabilities
 import com.dskja.betterstreamflix.utils.ExperimentalMobileDesign
 import android.content.Context
 import android.content.Intent
@@ -908,7 +909,9 @@ class MovieViewHolder(
             centerCrop()
             transition(DrawableTransitionOptions.withCrossFade())
         }
-        if (ExperimentalMobileDesign.enabled()) {
+        if (ExperimentalMobileDesign.enabled() &&
+            !DeviceCapabilities.shouldReduceHomeEffects(binding.root.context)
+        ) {
             ExpMotion.kenBurns(binding.ivSwiperBackground)
         }
 
@@ -1129,25 +1132,35 @@ class MovieViewHolder(
 
         binding.tvMovieOverview.apply {
             text = movie.overview
-            if (ExperimentalMobileDesign.enabled() &&
-                !movie.overview.isNullOrBlank()
-            ) {
-                maxLines = 5
-                ellipsize = android.text.TextUtils.TruncateAt.END
-                if (getTag(R.id.exp_enter_animated_tag) != true) {
-                    setTag(R.id.exp_enter_animated_tag, true)
-                    ExpMotion.revealHeader(this)
+            val more = binding.root.findViewById<android.widget.TextView>(R.id.tv_movie_overview_more)
+            val hasText = !movie.overview.isNullOrBlank()
+            maxLines = 5
+            ellipsize = android.text.TextUtils.TruncateAt.END
+            var expanded = false
+            fun applyExpand(open: Boolean) {
+                expanded = open
+                maxLines = if (open) Integer.MAX_VALUE else 5
+                more?.text = context.getString(
+                    if (open) R.string.detail_overview_less else R.string.detail_overview_more,
+                )
+            }
+            val toggle = View.OnClickListener {
+                ExpMotion.hapticTap(it)
+                applyExpand(!expanded)
+            }
+            if (hasText) {
+                setOnClickListener(toggle)
+                more?.setOnClickListener(toggle)
+                post {
+                    val overflowing = lineCount > 5 ||
+                        (text?.length ?: 0) > 160 ||
+                        (layout != null && maxLines == 5 && layout.getEllipsisCount(lineCount.coerceAtLeast(1) - 1) > 0)
+                    more?.visibility = if (overflowing) View.VISIBLE else View.GONE
+                    if (!overflowing) setOnClickListener(null)
                 }
-                var expanded = false
-                setOnClickListener {
-                    ExpMotion.hapticTap(it)
-                    expanded = !expanded
-                    maxLines = if (expanded) Integer.MAX_VALUE else 5
-                    if (expanded) ExpMotion.revealHeader(this)
-                    animate().alpha(0.82f).setDuration(90L).withEndAction {
-                        animate().alpha(1f).setDuration(140L).start()
-                    }.start()
-                }
+            } else {
+                more?.visibility = View.GONE
+                setOnClickListener(null)
             }
         }
 
@@ -1224,6 +1237,7 @@ class MovieViewHolder(
                 setBackgroundResource(ExperimentalMobileDesign.chipBackground())
                 applyExpPress()
             }
+            text = com.dskja.betterstreamflix.download.DetailDownloadLabels.movieButton(context, movie)
             setOnClickListener {
                 ExpMotion.hapticTap(it)
                 checkProviderAndRun {
@@ -1245,9 +1259,8 @@ class MovieViewHolder(
             }
         }
 
-        binding.root.findViewById<android.widget.TextView>(R.id.btn_movie_share)?.let { shareBtn ->
+        binding.root.findViewById<View>(R.id.btn_movie_share)?.let { shareBtn ->
             if (ExperimentalMobileDesign.enabled()) {
-                shareBtn.setBackgroundResource(ExperimentalMobileDesign.chipBackground())
                 shareBtn.applyExpPress()
             }
             shareBtn.setOnClickListener {
@@ -1544,6 +1557,7 @@ class MovieViewHolder(
                 setBackgroundResource(ExperimentalMobileDesign.chipBackground())
                 applyExpPress()
             }
+            text = com.dskja.betterstreamflix.download.DetailDownloadLabels.movieButton(context, movie)
             setOnClickListener {
                 ExpMotion.hapticTap(it)
                 checkProviderAndRun {

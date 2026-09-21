@@ -116,14 +116,15 @@ class VoiceRecognitionHelper(
                 }
 
                 override fun onError(error: Int) {
+                    if (!fragment.isAdded) return
                     onListeningStateChanged(false)
                     isListening = false
 
                     val msg = when (error) {
-                        SpeechRecognizer.ERROR_NO_MATCH -> fragment.getString(R.string.voice_error_no_match)
-                        SpeechRecognizer.ERROR_NETWORK_TIMEOUT -> fragment.getString(R.string.voice_error_timeout)
-                        SpeechRecognizer.ERROR_AUDIO -> fragment.getString(R.string.voice_error_audio)
-                        else -> fragment.getString(R.string.voice_error_generic)
+                        SpeechRecognizer.ERROR_NO_MATCH -> context.getString(R.string.voice_error_no_match)
+                        SpeechRecognizer.ERROR_NETWORK_TIMEOUT -> context.getString(R.string.voice_error_timeout)
+                        SpeechRecognizer.ERROR_AUDIO -> context.getString(R.string.voice_error_audio)
+                        else -> context.getString(R.string.voice_error_generic)
                     }
                     onError(msg)
 
@@ -131,6 +132,7 @@ class VoiceRecognitionHelper(
                 }
 
                 override fun onResults(results: Bundle?) {
+                    if (!fragment.isAdded) return
                     onListeningStateChanged(false)
                     isListening = false
 

@@ -36,7 +36,12 @@ class SettingsPreferenceSanitizerTest {
             "support preview must not sit under Miscellaneous (screen_more)",
             previewAt < moreAt,
         )
-        assertFalse(xml.contains("""android:dependency="EXPERIMENTAL_NEW_APP_DESIGN""""))
+        // Only the support-preview row must stay free of this dependency —
+        // other experimental toggles may legitimately depend on the master switch.
+        val previewBlock = xml.substring(previewAt, (previewAt + 400).coerceAtMost(xml.length))
+        assertFalse(
+            previewBlock.contains("""android:dependency="EXPERIMENTAL_NEW_APP_DESIGN""""),
+        )
     }
 
     @Test

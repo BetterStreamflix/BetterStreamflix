@@ -79,10 +79,10 @@ object ProfileAvatarStyle {
         Palette(
             key = "gold",
             titleRes = R.string.profile_avatar_gold_atelier,
-            start = 0xFF5C4318.toInt(),
-            end = 0xFFE0BF6A.toInt(),
-            highlight = 0x66FFE9B0.toInt(),
-            onOrb = 0xFFFFF8E8.toInt(),
+            start = 0xFF0F2A3F.toInt(),
+            end = 0xFF2AABEE.toInt(),
+            highlight = 0x665BC4F5.toInt(),
+            onOrb = 0xFFF5F8FC.toInt(),
             motif = Motif.SPARK,
         ),
         Palette(

@@ -410,6 +410,8 @@ object TrailerPlaybackController {
             webView?.apply {
                 stopLoading()
                 loadUrl("about:blank")
+                runCatching { clearHistory() }
+                (parent as? android.view.ViewGroup)?.removeView(this)
                 destroy()
             }
             webView = null

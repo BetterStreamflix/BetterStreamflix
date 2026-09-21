@@ -154,9 +154,9 @@
         android:text="@string/people_read_more"
         android:textColor="#FFFFFF"
         android:textStyle="bold"
-        app:layout_constraintBottom_toBottomOf="@id/tv_people_biography"
         app:layout_constraintEnd_toEndOf="@id/tv_people_biography"
         app:layout_constraintStart_toStartOf="@id/tv_people_biography"
+        app:layout_constraintTop_toBottomOf="@id/tv_people_biography"
         tools:visibility="visible" />
 
     <androidx.constraintlayout.widget.Group

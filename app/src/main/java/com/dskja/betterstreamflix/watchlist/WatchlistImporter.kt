@@ -98,6 +98,8 @@ object WatchlistImporter {
     fun looksLikeLoginPage(html: String, finalUrl: String? = null): Boolean {
         val url = finalUrl.orEmpty().lowercase()
         if (url.contains("/login")) return true
+        // Account / settings pages often include password fields — not a login wall.
+        if (url.contains("/account") && !url.contains("/login")) return false
         val lower = html.lowercase()
         if (lower.contains("ddos-guard") || lower.contains("cf-browser-verification")) {
             return false // challenge, not login — handled separately

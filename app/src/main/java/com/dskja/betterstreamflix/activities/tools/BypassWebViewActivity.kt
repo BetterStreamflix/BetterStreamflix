@@ -171,6 +171,10 @@ class BypassWebViewActivity : AppCompatActivity() {
             runCatching { webView.stopLoading() }
             runCatching { webView.webChromeClient = WebChromeClient() }
             runCatching { webView.webViewClient = WebViewClient() }
+            runCatching { webView.loadUrl("about:blank") }
+            runCatching {
+                (webView.parent as? android.view.ViewGroup)?.removeView(webView)
+            }
             runCatching { webView.destroy() }
         }
         super.onDestroy()

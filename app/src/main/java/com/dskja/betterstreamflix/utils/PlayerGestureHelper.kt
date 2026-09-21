@@ -184,7 +184,7 @@ class PlayerGestureHelper(
             ExpMotion.popIn(volumeLayout)
         }
 
-        val volumeChange = (delta / sensitivity) * maxVolume
+        val volumeChange = (delta / sensitivity) * maxVolume.coerceAtLeast(1)
         currentVolumeFloat += volumeChange
         
         if (currentVolumeFloat < 0f) currentVolumeFloat = 0f
@@ -193,7 +193,8 @@ class PlayerGestureHelper(
         val newVolume = currentVolumeFloat.toInt()
         audioManager.setStreamVolume(AudioManager.STREAM_MUSIC, newVolume, 0)
         
-        val progress = (currentVolumeFloat / maxVolume * 100).toInt()
+        val denom = maxVolume.coerceAtLeast(1)
+        val progress = (currentVolumeFloat / denom * 100).toInt()
         volumeBar.progress = progress
         volumeText.text = "$progress%"
     }
@@ -218,5 +219,15 @@ class PlayerGestureHelper(
                 volumeLayout.visibility = View.GONE
             }
         }
+    }
+
+    /** Cancel pending hide jobs — call from player onDestroyView. */
+    fun release() {
+        hideJob?.cancel()
+        hideJob = null
+        brightnessLayout.animate().cancel()
+        volumeLayout.animate().cancel()
+        brightnessLayout.visibility = View.GONE
+        volumeLayout.visibility = View.GONE
     }
 }

@@ -36,7 +36,7 @@ class GenreTvFragment : Fragment() {
     private val binding get() = _binding!!
 
     private val args by navArgs<GenreTvFragmentArgs>()
-    private val database by lazy { AppDatabase.getInstance(requireContext()) }
+    private val database get() = AppDatabase.getInstance(requireContext())
     private val viewModel by viewModelsFactory { GenreViewModel(args.id, database) }
 
     private val appAdapter = AppAdapter()

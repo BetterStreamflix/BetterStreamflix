@@ -48,7 +48,7 @@ class SearchMobileFragment : Fragment() {
     private var _binding: FragmentSearchMobileBinding? = null
     private val binding get() = _binding!!
 
-    private val database by lazy { AppDatabase.getInstance(requireContext()) }
+    private val database get() = AppDatabase.getInstance(requireContext())
     private val viewModel by viewModelsFactory { SearchViewModel(database) }
 
     private var appAdapter = AppAdapter()

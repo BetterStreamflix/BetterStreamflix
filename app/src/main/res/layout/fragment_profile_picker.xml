@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:id="@+id/profile_picker_root"
     android:layout_width="match_parent"
@@ -25,6 +26,17 @@
             android:paddingStart="24dp"
             android:paddingTop="56dp"
             android:paddingEnd="24dp">
+
+            <ImageView
+                android:id="@+id/btn_profile_picker_close"
+                android:layout_width="44dp"
+                android:layout_height="44dp"
+                android:layout_gravity="start"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="@string/profile_picker_close"
+                android:padding="10dp"
+                android:src="@drawable/ic_profile_close"
+                app:tint="@color/profile_text_secondary" />
 
             <ImageView
                 android:id="@+id/iv_profile_picker_logo"
@@ -85,24 +97,13 @@
                 android:layout_height="wrap_content"
                 android:layout_marginTop="36dp">
 
-                <HorizontalScrollView
-                    android:id="@+id/hsv_profile_picker"
+                <LinearLayout
+                    android:id="@+id/ll_profile_picker_row"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:clipToPadding="false"
-                    android:overScrollMode="never"
-                    android:paddingStart="4dp"
-                    android:paddingEnd="4dp"
-                    android:scrollbars="none">
-
-                    <LinearLayout
-                        android:id="@+id/ll_profile_picker_row"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:gravity="center"
-                        android:orientation="horizontal"
-                        android:paddingBottom="8dp" />
-                </HorizontalScrollView>
+                    android:gravity="center_horizontal"
+                    android:orientation="vertical"
+                    android:paddingBottom="8dp" />
             </FrameLayout>
 
             <LinearLayout

@@ -21,6 +21,21 @@
         tools:layout_height="0dp" />
 
     <ImageView
+        android:id="@+id/btn_tv_show_share"
+        android:layout_width="wrap_content"
+        android:layout_height="0dp"
+        android:layout_marginEnd="4dp"
+        android:contentDescription="@string/detail_share"
+        android:padding="10dp"
+        android:src="@drawable/ic_detail_share"
+        android:tint="@drawable/color_button_text"
+        app:layout_constraintBottom_toBottomOf="@id/btn_tv_show_favorite"
+        app:layout_constraintDimensionRatio="1:1"
+        app:layout_constraintEnd_toStartOf="@id/btn_tv_show_favorite"
+        app:layout_constraintTop_toTopOf="@id/btn_tv_show_favorite"
+        tools:ignore="UseAppTint" />
+
+    <ImageView
         android:id="@+id/btn_tv_show_favorite"
         android:layout_width="wrap_content"
         android:layout_height="0dp"
@@ -208,30 +223,33 @@
         android:layout_marginTop="26dp"
         android:layout_marginEnd="10dp"
         android:text="@string/tv_show_trailer"
-        app:layout_constraintEnd_toStartOf="@id/btn_tv_show_download"
+        app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toEndOf="@id/btn_tv_show_watch_now"
         app:layout_constraintTop_toBottomOf="@id/tv_tv_show_genres"
         app:layout_goneMarginEnd="10dp" />
-
-    <TextView
-        android:id="@+id/btn_tv_show_download"
-        style="@style/AppTheme.Widget.Mobile.Button.Exp.Secondary"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginStart="16dp"
-        android:layout_marginTop="28dp"
-        android:layout_marginEnd="10dp"
-        android:text="@string/option_show_download"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toEndOf="@id/btn_tv_show_trailer"
-        app:layout_constraintTop_toBottomOf="@id/tv_tv_show_genres" />
 
     <androidx.constraintlayout.widget.Barrier
         android:id="@+id/barrier2"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         app:barrierDirection="bottom"
-        app:constraint_referenced_ids="btn_tv_show_watch_now,pb_tv_show_progress_episode,btn_tv_show_trailer,btn_tv_show_download" />
+        app:constraint_referenced_ids="btn_tv_show_watch_now,pb_tv_show_progress_episode,btn_tv_show_trailer" />
+
+    <TextView
+        android:id="@+id/btn_tv_show_download"
+        style="@style/AppTheme.Widget.Mobile.Button.Secondary"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="10dp"
+        android:layout_marginTop="12dp"
+        android:layout_marginEnd="10dp"
+        android:ellipsize="end"
+        android:gravity="center"
+        android:maxLines="2"
+        android:text="@string/option_show_download"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/barrier2" />
 
     <TextView
         android:id="@+id/tv_tv_show_overview"
@@ -242,30 +260,35 @@
         android:layout_marginEnd="10dp"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/barrier2"
+        app:layout_constraintTop_toBottomOf="@id/btn_tv_show_download"
         tools:text="Overview"
         android:maxLines="5"
         android:ellipsize="end" />
+
+    <TextView
+        android:id="@+id/tv_tv_show_overview_more"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="10dp"
+        android:layout_marginTop="6dp"
+        android:minHeight="32dp"
+        android:paddingTop="4dp"
+        android:paddingBottom="4dp"
+        android:text="@string/detail_overview_more"
+        android:textColor="?attr/colorPrimary"
+        android:textStyle="bold"
+        android:visibility="gone"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/tv_tv_show_overview"
+        tools:visibility="visible" />
 
     <LinearLayout
         android:id="@+id/ll_tv_show_detail_actions"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:layout_marginStart="22dp"
-        android:layout_marginTop="16dp"
-        android:layout_marginEnd="22dp"
-        android:gravity="center"
-        android:orientation="horizontal"
+        android:visibility="gone"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/tv_tv_show_overview">
-
-        <TextView
-            android:id="@+id/btn_tv_show_share"
-            style="@style/AppTheme.Widget.Mobile.Button.Secondary"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="@string/detail_share" />
-    </LinearLayout>
+        app:layout_constraintTop_toBottomOf="@id/tv_tv_show_overview_more" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>

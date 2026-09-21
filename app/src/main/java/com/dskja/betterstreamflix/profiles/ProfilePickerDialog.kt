@@ -32,12 +32,14 @@ class ProfilePickerDialog : DialogFragment() {
     override fun onCreateDialog(savedInstanceState: Bundle?): Dialog {
         val dialog = Dialog(requireContext(), android.R.style.Theme_Black_NoTitleBar_Fullscreen)
         dialog.window?.apply {
-            setBackgroundDrawable(ColorDrawable(Color.BLACK))
+            setBackgroundDrawable(ColorDrawable(requireContext().getColor(R.color.profile_bg)))
             setLayout(
                 WindowManager.LayoutParams.MATCH_PARENT,
                 WindowManager.LayoutParams.MATCH_PARENT,
             )
         }
+        isCancelable = true
+        dialog.setCanceledOnTouchOutside(true)
         return dialog
     }
 
@@ -66,6 +68,10 @@ class ProfilePickerDialog : DialogFragment() {
             ExpMotion.popIn(view.findViewById(R.id.btn_profile_picker_manage))
         }
         bindProfiles(view)
+        view.findViewById<View>(R.id.btn_profile_picker_close)?.setOnClickListener {
+            ExpMotion.hapticTap(it)
+            dismissAllowingStateLoss()
+        }
         view.findViewById<TextView>(R.id.btn_profile_picker_create).setOnClickListener {
             ExpMotion.hapticTap(it)
             dismissAllowingStateLoss()
@@ -91,105 +97,123 @@ class ProfilePickerDialog : DialogFragment() {
     }
 
     private fun bindProfiles(root: View) {
-        val row = root.findViewById<LinearLayout>(R.id.ll_profile_picker_row)
-        row.removeAllViews()
+        val column = root.findViewById<LinearLayout>(R.id.ll_profile_picker_row)
+        column.removeAllViews()
         val inflater = LayoutInflater.from(requireContext())
         val profiles = ProfileManager.profiles()
         val activeId = ProfileManager.activeProfileId
         val density = resources.displayMetrics.density
-        val single = profiles.size <= 1
-        row.layoutParams = (row.layoutParams as? ViewGroup.MarginLayoutParams)?.apply {
-            width = if (single) ViewGroup.LayoutParams.MATCH_PARENT else ViewGroup.LayoutParams.WRAP_CONTENT
-        } ?: LinearLayout.LayoutParams(
-            if (single) ViewGroup.LayoutParams.MATCH_PARENT else ViewGroup.LayoutParams.WRAP_CONTENT,
-            ViewGroup.LayoutParams.WRAP_CONTENT,
-        )
-        row.gravity = if (single) android.view.Gravity.CENTER else android.view.Gravity.CENTER_VERTICAL
+        val perRow = if (profiles.size <= 2) profiles.size.coerceAtLeast(1) else 3
 
-        profiles.forEachIndexed { index, profile ->
-            val item = inflater.inflate(R.layout.item_profile_picker, row, false)
-            val lp = LinearLayout.LayoutParams(
-                (132 * density).toInt(),
-                ViewGroup.LayoutParams.WRAP_CONTENT,
-            )
-            item.layoutParams = lp
-
-            item.findViewById<ProfileAvatarView>(R.id.pav_profile_avatar)
-                .bind(profile, textSizeSp = 30f)
-            item.findViewById<TextView>(R.id.tv_profile_name).text = profile.displayName
-            item.findViewById<View>(R.id.v_profile_active_ring).apply {
-                val wasVisible = visibility == View.VISIBLE
-                visibility = if (profile.id == activeId) View.VISIBLE else View.GONE
-                if (ExperimentalMobileDesign.enabled() && visibility == View.VISIBLE) {
-                    val primary = com.google.android.material.color.MaterialColors.getColor(
-                        this,
-                        androidx.appcompat.R.attr.colorPrimary,
-                        context.getColor(R.color.m3_primary),
-                    )
-                    background?.mutate()?.setTint(primary)
-                }
-                if (visibility == View.VISIBLE && !wasVisible) ExpMotion.popIn(this)
+        if (profiles.isEmpty()) {
+            val empty = TextView(requireContext()).apply {
+                text = getString(R.string.profile_create_subtitle)
+                gravity = android.view.Gravity.CENTER
+                setTextColor(context.getColor(R.color.profile_text_secondary))
+                textSize = 14f
+                setPadding(16, 24, 16, 24)
             }
-            item.findViewById<TextView>(R.id.tv_profile_kids_badge).apply {
-                val wasVisible = visibility == View.VISIBLE
-                visibility = if (profile.isKids) View.VISIBLE else View.GONE
-                if (ExperimentalMobileDesign.enabled() && visibility == View.VISIBLE) {
-                    val primary = com.google.android.material.color.MaterialColors.getColor(
-                        this,
-                        androidx.appcompat.R.attr.colorPrimary,
-                        context.getColor(R.color.m3_primary),
-                    )
-                    setTextColor(primary)
-                    background?.mutate()?.setTint(primary)
-                }
-                if (visibility == View.VISIBLE && !wasVisible) ExpMotion.popIn(this)
-            }
-            item.findViewById<TextView>(R.id.tv_profile_lock).apply {
-                val wasVisible = visibility == View.VISIBLE
-                visibility = if (profile.pinHash != null) View.VISIBLE else View.GONE
-                if (ExperimentalMobileDesign.enabled() && visibility == View.VISIBLE) {
-                    val primary = com.google.android.material.color.MaterialColors.getColor(
-                        this,
-                        androidx.appcompat.R.attr.colorPrimary,
-                        context.getColor(R.color.m3_primary),
-                    )
-                    setTextColor(primary)
-                    background?.mutate()?.setTint(primary)
-                }
-                if (visibility == View.VISIBLE && !wasVisible) ExpMotion.popIn(this)
-            }
-
-            val paletteTitle = getString(ProfileAvatarStyle.paletteFor(profile.avatarKey).titleRes)
-            val meta = buildList {
-                if (profile.id == activeId) add(getString(R.string.profile_picker_active))
-                add(paletteTitle)
-            }.joinToString(" · ")
-            item.findViewById<TextView>(R.id.tv_profile_meta).text = meta
-
-            item.alpha = 0f
-            item.translationY = 18f * density
-            item.animate()
-                .alpha(1f)
-                .translationY(0f)
-                .setStartDelay(40L * index)
-                .setDuration(320L)
-                .start()
-
-            item.setOnClickListener {
-                ExpMotion.hapticTap(it)
-                if (profile.id == activeId) {
-                    dismissAllowingStateLoss()
-                    return@setOnClickListener
-                }
-                if (profile.pinHash != null) {
-                    showPinDialog(profile) { completeSwitch(profile) }
-                } else {
-                    completeSwitch(profile)
-                }
-            }
-            with(com.dskja.betterstreamflix.utils.ExpPressEffects) { item.applyExpPress() }
-            row.addView(item)
+            column.addView(empty)
+            return
         }
+
+        profiles.chunked(perRow).forEach { group ->
+            val row = LinearLayout(requireContext()).apply {
+                orientation = LinearLayout.HORIZONTAL
+                gravity = android.view.Gravity.CENTER
+                layoutParams = LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT,
+                    ViewGroup.LayoutParams.WRAP_CONTENT,
+                )
+            }
+            group.forEachIndexed { index, profile ->
+                val item = inflater.inflate(R.layout.item_profile_picker, row, false)
+                item.layoutParams = LinearLayout.LayoutParams(
+                    0,
+                    ViewGroup.LayoutParams.WRAP_CONTENT,
+                    1f,
+                )
+                bindProfileItem(item, profile, activeId)
+                item.alpha = 0f
+                item.translationY = 18f * density
+                item.animate()
+                    .alpha(1f)
+                    .translationY(0f)
+                    .setStartDelay(40L * index)
+                    .setDuration(320L)
+                    .start()
+                row.addView(item)
+            }
+            column.addView(row)
+        }
+    }
+
+    private fun bindProfileItem(item: View, profile: UserProfile, activeId: String) {
+        item.findViewById<ProfileAvatarView>(R.id.pav_profile_avatar)
+            .bind(profile, textSizeSp = 30f)
+        item.findViewById<TextView>(R.id.tv_profile_name).text = profile.displayName
+        item.findViewById<View>(R.id.v_profile_active_ring).apply {
+            val wasVisible = visibility == View.VISIBLE
+            visibility = if (profile.id == activeId) View.VISIBLE else View.GONE
+            if (ExperimentalMobileDesign.enabled() && visibility == View.VISIBLE) {
+                val primary = com.google.android.material.color.MaterialColors.getColor(
+                    this,
+                    androidx.appcompat.R.attr.colorPrimary,
+                    context.getColor(R.color.m3_primary),
+                )
+                background?.mutate()?.setTint(primary)
+            }
+            if (visibility == View.VISIBLE && !wasVisible) ExpMotion.popIn(this)
+        }
+        item.findViewById<TextView>(R.id.tv_profile_kids_badge).apply {
+            val wasVisible = visibility == View.VISIBLE
+            visibility = if (profile.isKids) View.VISIBLE else View.GONE
+            if (ExperimentalMobileDesign.enabled() && visibility == View.VISIBLE) {
+                val primary = com.google.android.material.color.MaterialColors.getColor(
+                    this,
+                    androidx.appcompat.R.attr.colorPrimary,
+                    context.getColor(R.color.m3_primary),
+                )
+                setTextColor(primary)
+                background?.mutate()?.setTint(primary)
+            }
+            if (visibility == View.VISIBLE && !wasVisible) ExpMotion.popIn(this)
+        }
+        item.findViewById<TextView>(R.id.tv_profile_lock).apply {
+            val wasVisible = visibility == View.VISIBLE
+            visibility = if (profile.pinHash != null) View.VISIBLE else View.GONE
+            if (ExperimentalMobileDesign.enabled() && visibility == View.VISIBLE) {
+                val primary = com.google.android.material.color.MaterialColors.getColor(
+                    this,
+                    androidx.appcompat.R.attr.colorPrimary,
+                    context.getColor(R.color.m3_primary),
+                )
+                setTextColor(primary)
+                background?.mutate()?.setTint(primary)
+            }
+            if (visibility == View.VISIBLE && !wasVisible) ExpMotion.popIn(this)
+        }
+
+        val paletteTitle = getString(ProfileAvatarStyle.paletteFor(profile.avatarKey).titleRes)
+        val meta = buildList {
+            if (profile.id == activeId) add(getString(R.string.profile_picker_active))
+            add(paletteTitle)
+        }.joinToString(" · ")
+        item.findViewById<TextView>(R.id.tv_profile_meta).text = meta
+
+        item.setOnClickListener {
+            ExpMotion.hapticTap(it)
+            if (profile.id == activeId) {
+                dismissAllowingStateLoss()
+                return@setOnClickListener
+            }
+            if (profile.pinHash != null) {
+                showPinDialog(profile) { completeSwitch(profile) }
+            } else {
+                completeSwitch(profile)
+            }
+        }
+        with(com.dskja.betterstreamflix.utils.ExpPressEffects) { item.applyExpPress() }
     }
 
     private fun showPinDialog(profile: UserProfile, onVerified: () -> Unit) {
@@ -287,7 +311,10 @@ class ProfilePickerDialog : DialogFragment() {
         ) {
             if (!fragment.isAdded || fragment.childFragmentManager.isStateSaved) return
             val existing = fragment.childFragmentManager.findFragmentByTag(TAG)
-            if (existing != null) return
+            if (existing is DialogFragment) {
+                if (existing.dialog?.isShowing == true) return
+                existing.dismissAllowingStateLoss()
+            }
             ProfilePickerDialog().apply {
                 onProfileSwitched = onSwitched
                 onManageProfiles = onManage

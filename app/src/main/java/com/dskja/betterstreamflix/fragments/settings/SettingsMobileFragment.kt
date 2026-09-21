@@ -729,6 +729,24 @@ class SettingsMobileFragment : PreferenceFragmentCompat() {
             true
         }
 
+        findPreference<Preference>("p_settings_telegram_gate_reset")?.let { pref ->
+            pref.isVisible = BuildConfig.DEBUG
+            pref.setOnPreferenceClickListener {
+                com.dskja.betterstreamflix.telegram.TelegramJoinGatePolicy.resetForDebug()
+                com.dskja.betterstreamflix.telegram.TelegramJoinGateController.resetLaunchState()
+                android.widget.Toast.makeText(
+                    requireContext(),
+                    R.string.settings_telegram_gate_reset_done,
+                    android.widget.Toast.LENGTH_SHORT,
+                ).show()
+                val host = activity
+                if (host is androidx.fragment.app.FragmentActivity) {
+                    com.dskja.betterstreamflix.telegram.TelegramJoinGateOverlay.show(host)
+                }
+                true
+            }
+        }
+
         findPreference<Preference>("p_settings_buy_me_a_coffee")?.setOnPreferenceClickListener {
             com.dskja.betterstreamflix.support.SupportLinkOpener.openProvider(
                 requireContext(),
@@ -2058,6 +2076,7 @@ class SettingsMobileFragment : PreferenceFragmentCompat() {
             findPreference = { key -> findPreference(key) },
             context = requireContext(),
         )
+        SerienStreamAuthSettingsController.refresh { key -> findPreference(key) }
         settingsHubController?.updateVisibility()
 
         findPreference<EditTextPreference>("provider_streamingcommunity_domain")?.apply {
@@ -2107,6 +2126,25 @@ class SettingsMobileFragment : PreferenceFragmentCompat() {
             setOnPreferenceChangeListener { _, newValue ->
                 if (!available) return@setOnPreferenceChangeListener false
                 UserPreferences.experimentalNewAppDesign = newValue as Boolean
+                if (!(newValue as Boolean)) {
+                    UserPreferences.experimentalReactHome = false
+                }
+                requireActivity().apply {
+                    finish()
+                    startActivity(Intent(this, MainMobileActivity::class.java))
+                }
+                true
+            }
+        }
+        findPreference<SwitchPreference>("EXPERIMENTAL_REACT_HOME")?.apply {
+            val available = ExperimentalMobileDesign.isAvailable()
+            val luminaOn = available && UserPreferences.experimentalNewAppDesign
+            isVisible = available
+            isEnabled = luminaOn
+            isChecked = luminaOn && UserPreferences.experimentalReactHome
+            setOnPreferenceChangeListener { _, newValue ->
+                if (!luminaOn) return@setOnPreferenceChangeListener false
+                UserPreferences.experimentalReactHome = newValue as Boolean
                 requireActivity().apply {
                     finish()
                     startActivity(Intent(this, MainMobileActivity::class.java))

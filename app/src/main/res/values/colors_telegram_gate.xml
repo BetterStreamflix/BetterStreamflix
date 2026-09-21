@@ -5,8 +5,6 @@
     <color name="tg_gate_bg_mid">#0A1220</color>
     <color name="tg_gate_bg_glow">#0F2A3F</color>
     <color name="tg_gate_bg_bloom">#163A55</color>
-    <color name="tg_gate_surface">#101926</color>
-    <color name="tg_gate_surface_elevated">#182334</color>
     <color name="tg_gate_border">#2C3D55</color>
     <color name="tg_gate_text_primary">#F5F8FC</color>
     <color name="tg_gate_text_secondary">#A3B1C4</color>
@@ -25,4 +23,9 @@
     <color name="tg_gate_step_done">#3DDC97</color>
     <color name="tg_gate_orb">#332AABEE</color>
     <color name="tg_gate_scrim">#CC04070D</color>
+    <!-- Discord accents — only on Discord CTA / orb, not page chrome -->
+    <color name="tg_gate_discord">#5865F2</color>
+    <color name="tg_gate_discord_bright">#8B93F7</color>
+    <color name="tg_gate_discord_pressed">#4752C4</color>
+    <color name="tg_gate_discord_orb">#335865F2</color>
 </resources>

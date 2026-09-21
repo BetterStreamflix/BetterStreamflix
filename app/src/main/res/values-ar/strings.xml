@@ -92,6 +92,7 @@
 	<string name="people_birthplace">مكان الميلاد</string>
 	<string name="people_biography">السيرة الذاتية</string>
 	<string name="people_read_more">قراءة المزيد ></string>
+	<string name="people_read_less">عرض أقل</string>
 
 	<string name="genre_header_name">أفلام ومسلسلات %s</string>
 

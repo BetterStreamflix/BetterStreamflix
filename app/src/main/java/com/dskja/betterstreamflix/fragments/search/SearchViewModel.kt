@@ -45,7 +45,12 @@ data class ProviderResult(
 }
 
 
-class SearchViewModel(database: AppDatabase) : ViewModel() {
+class SearchViewModel(
+    @Suppress("UNUSED_PARAMETER") database: AppDatabase? = null,
+) : ViewModel() {
+
+    private fun liveDb(): AppDatabase =
+        AppDatabase.getInstance(com.dskja.betterstreamflix.BetterStreamflixApp.instance.applicationContext)
 
     private val _state = MutableStateFlow<State>(State.Searching)
     @OptIn(ExperimentalCoroutinesApi::class)
@@ -59,7 +64,9 @@ class SearchViewModel(database: AppDatabase) : ViewModel() {
                     if (movies.isEmpty()) {
                         emit(emptyList())
                     } else {
-                        emitAll(database.movieDao().getByIds(movies.map { it.id }))
+                        val db = runCatching { liveDb() }.getOrNull()
+                        if (db == null) emit(emptyList())
+                        else emitAll(db.movieDao().getByIds(movies.map { it.id }))
                     }
                 }
                 else -> emit(emptyList<Movie>())
@@ -73,7 +80,9 @@ class SearchViewModel(database: AppDatabase) : ViewModel() {
                     if (tvShows.isEmpty()) {
                         emit(emptyList())
                     } else {
-                        emitAll(database.tvShowDao().getByIds(tvShows.map { it.id }))
+                        val db = runCatching { liveDb() }.getOrNull()
+                        if (db == null) emit(emptyList())
+                        else emitAll(db.tvShowDao().getByIds(tvShows.map { it.id }))
                     }
                 }
                 else -> emit(emptyList<TvShow>())
@@ -118,8 +127,10 @@ class SearchViewModel(database: AppDatabase) : ViewModel() {
     }
 
     fun search(query: String) {
-        // Cancel the in-flight request so stale results can't overwrite newer ones.
+        // Cancel every in-flight search path so stale pages / global hits can't overwrite.
         searchJob?.cancel()
+        loadMoreJob?.cancel()
+        globalSearchJob?.cancel()
         searchJob = viewModelScope.launch(Dispatchers.IO) {
             _state.emit(State.Searching)
 
@@ -149,6 +160,8 @@ class SearchViewModel(database: AppDatabase) : ViewModel() {
 
     fun loadMore() {
         if (loadMoreJob?.isActive == true) return
+        if (searchJob?.isActive == true || globalSearchJob?.isActive == true) return
+        val requestedQuery = query
         loadMoreJob = viewModelScope.launch(Dispatchers.IO) {
             val currentState = _state.value
             if (currentState is State.SuccessSearching) {
@@ -160,8 +173,10 @@ class SearchViewModel(database: AppDatabase) : ViewModel() {
                             return@launch
                         }
                     val results = ParentalControlUtils.filterItems(
-                        provider.search(query, page + 1)
+                        provider.search(requestedQuery, page + 1)
                     )
+                    // Drop if the user started a newer search while we were loading.
+                    if (query != requestedQuery) return@launch
                     val existingKeys = currentState.results
                         .asSequence()
                         .map { it.searchIdentityKey() }
@@ -186,6 +201,8 @@ class SearchViewModel(database: AppDatabase) : ViewModel() {
 
     // FUNCIÓN DE BÚSQUEDA GLOBAL AÑADIDA
     fun searchGlobal(query: String, currentLanguage: String) {
+        searchJob?.cancel()
+        loadMoreJob?.cancel()
         globalSearchJob?.cancel()
         globalSearchJob = viewModelScope.launch(Dispatchers.IO) {
             _state.emit(State.GlobalSearching)
@@ -206,6 +223,7 @@ class SearchViewModel(database: AppDatabase) : ViewModel() {
             _state.emit(State.SuccessGlobalSearching(initialResults))
 
             val mutableResults = initialResults.toMutableList()
+            val resultsLock = Any()
 
             val stateComparator = compareBy<ProviderResult> { providerResult ->
                 when (val state = providerResult.state) {
@@ -217,7 +235,7 @@ class SearchViewModel(database: AppDatabase) : ViewModel() {
 
             targetProviders.forEachIndexed { index, provider ->
                 launch {
-                    try {
+                    val next = try {
                         val results = ParentalControlUtils.filterItems(provider.search(query).onEach { item ->
                             // ========= ¡AQUÍ ESTÁ LA MAGIA! =========
                             // Le ponemos el sello a cada resultado
@@ -227,15 +245,19 @@ class SearchViewModel(database: AppDatabase) : ViewModel() {
                             }
                             // =======================================
                         })
-                        mutableResults[index] = ProviderResult(provider, ProviderResult.State.Success(results))
+                        ProviderResult(provider, ProviderResult.State.Success(results))
                     } catch (e: CancellationException) {
                         throw e
                     } catch (e: Exception) {
                         Log.e("SearchViewModel", "searchGlobal for ${provider.name}: ", e)
-                        mutableResults[index] = ProviderResult(provider, ProviderResult.State.Error(e))
+                        ProviderResult(provider, ProviderResult.State.Error(e))
                     }
 
-                    _state.emit(State.SuccessGlobalSearching(mutableResults.sortedWith(stateComparator)))
+                    val snapshot = synchronized(resultsLock) {
+                        mutableResults[index] = next
+                        mutableResults.toList().sortedWith(stateComparator)
+                    }
+                    _state.emit(State.SuccessGlobalSearching(snapshot))
                 }
             }
         }

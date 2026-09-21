@@ -35,9 +35,16 @@ abstract class PlayerSettingsView @JvmOverloads constructor(
     defStyleAttr: Int = 0
 ) : ConstraintLayout(context, attrs, defStyleAttr) {
 
+    private var playerEventsListener: Player.Listener? = null
+
     var player: ExoPlayer? = null
         set(value) {
             if (field === value) return
+
+            field?.let { previous ->
+                playerEventsListener?.let { previous.removeListener(it) }
+            }
+            playerEventsListener = null
 
             value?.let {
                 Settings.Server.init(it)
@@ -45,26 +52,29 @@ abstract class PlayerSettingsView @JvmOverloads constructor(
                 Settings.Audio.init(it, resources)
                 Settings.Subtitle.init(it, resources)
                 Settings.Speed.refresh(it)
-            }
 
-            value?.addListener(object : Player.Listener {
-                override fun onEvents(player: Player, events: Player.Events) {
-                    if (events.contains(Player.EVENT_PLAYLIST_METADATA_CHANGED)) {
-                        Settings.Server.init(value)
-                    }
-                    if (events.contains(Player.EVENT_MEDIA_ITEM_TRANSITION)) {
-                        Settings.Server.refresh(value)
-                    }
-                    if (events.contains(Player.EVENT_TRACKS_CHANGED)) {
-                        Settings.Quality.init(value, resources)
-                        Settings.Audio.init(value, resources)
-                        Settings.Subtitle.init(value, resources)
-                    }
-                    if (events.contains(Player.EVENT_PLAYBACK_PARAMETERS_CHANGED)) {
-                        Settings.Speed.refresh(value)
+                val listener = object : Player.Listener {
+                    override fun onEvents(player: Player, events: Player.Events) {
+                        val current = field ?: return
+                        if (events.contains(Player.EVENT_PLAYLIST_METADATA_CHANGED)) {
+                            Settings.Server.init(current)
+                        }
+                        if (events.contains(Player.EVENT_MEDIA_ITEM_TRANSITION)) {
+                            Settings.Server.refresh(current)
+                        }
+                        if (events.contains(Player.EVENT_TRACKS_CHANGED)) {
+                            Settings.Quality.init(current, resources)
+                            Settings.Audio.init(current, resources)
+                            Settings.Subtitle.init(current, resources)
+                        }
+                        if (events.contains(Player.EVENT_PLAYBACK_PARAMETERS_CHANGED)) {
+                            Settings.Speed.refresh(current)
+                        }
                     }
                 }
-            })
+                playerEventsListener = listener
+                it.addListener(listener)
+            }
 
             field = value
         }

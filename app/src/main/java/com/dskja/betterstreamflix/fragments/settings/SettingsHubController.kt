@@ -122,6 +122,15 @@ internal class SettingsHubController(
                 binding.tvSettingsHubEyebrow.setText(R.string.settings_hub_eyebrow)
                 binding.tvSettingsHubTitle.setText(R.string.settings_hub_title)
                 binding.tvSettingsHubSubtitle.setText(R.string.settings_hub_subtitle)
+                val providerName = com.dskja.betterstreamflix.utils.UserPreferences.currentProvider?.name
+                binding.tvSettingsHubProvider.apply {
+                    if (providerName.isNullOrBlank()) {
+                        visibility = View.GONE
+                    } else {
+                        visibility = View.VISIBLE
+                        text = fragment.getString(R.string.settings_hub_provider_fmt, providerName)
+                    }
+                }
                 binding.cardSettingsFeatured.visibility = View.VISIBLE
                 binding.cardSettingsFeatured.setOnClickListener {
                     ExpMotion.hapticTap(it)
@@ -151,6 +160,7 @@ internal class SettingsHubController(
                 binding.tvSettingsHubTitle.setText(R.string.platform_settings_title)
                 binding.tvSettingsHubSubtitle.text = PlatformHubCategories.hubSubtitle(fragment.requireContext())
                 binding.cardSettingsFeatured.visibility = View.GONE
+                binding.tvSettingsHubProvider.visibility = View.GONE
                 setSectionLabel(binding, R.id.ll_settings_hub_app, R.string.platform_hub_section_services, true)
                 setSectionLabel(binding, R.id.ll_settings_hub_account, 0, false)
                 setSectionLabel(binding, R.id.ll_settings_hub_project, 0, false)
