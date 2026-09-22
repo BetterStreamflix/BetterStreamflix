@@ -16,7 +16,6 @@
     <item name="fl_qr_scanner_frame" type="id" />
     <item name="iv_tv_show_download_ribbon" type="id" />
     <item name="ll_qr_scanner_header" type="id" />
-    <item name="pb_swiper_auto_progress" type="id" />
     <item name="sh_load_more" type="id" />
     <item name="sv_crash_log_body" type="id" />
     <item name="tv_bypass_brand" type="id" />

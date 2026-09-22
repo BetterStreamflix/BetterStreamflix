@@ -54,7 +54,7 @@ class Season(
         if (number != other.number) return false
         if (title != other.title) return false
         if (poster != other.poster) return false
-        if (tvShow != other.tvShow) return false
+        if (tvShow?.id != other.tvShow?.id) return false
         if (episodes != other.episodes) return false
         if (!::itemType.isInitialized || !other::itemType.isInitialized) return false
         return itemType == other.itemType
@@ -65,7 +65,7 @@ class Season(
         result = 31 * result + number
         result = 31 * result + (title?.hashCode() ?: 0)
         result = 31 * result + (poster?.hashCode() ?: 0)
-        result = 31 * result + (tvShow?.hashCode() ?: 0)
+        result = 31 * result + (tvShow?.id?.hashCode() ?: 0)
         result = 31 * result + episodes.hashCode()
         result = 31 * result + (if (::itemType.isInitialized) itemType.hashCode() else 0)
         return result

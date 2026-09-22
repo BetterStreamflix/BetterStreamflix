@@ -45,7 +45,8 @@ class ProfileAvatarStyleTest {
     }
 
     @Test
-    fun all_returnsEightSignals() {
-        assertEquals(8, ProfileAvatarStyle.all().size)
+    fun all_returnsTwentySignals() {
+        assertEquals(20, ProfileAvatarStyle.all().size)
+        assertEquals(ProfileManager.avatarKeys.size, ProfileAvatarStyle.all().size)
     }
 }

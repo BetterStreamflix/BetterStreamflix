@@ -23,6 +23,18 @@ object ProfileManager {
         "ocean",
         "gold",
         "rose",
+        "violet",
+        "mint",
+        "indigo",
+        "copper",
+        "arctic",
+        "sunset",
+        "neon",
+        "cobalt",
+        "magenta",
+        "charcoal",
+        "teal",
+        "peach",
     )
 
     private lateinit var appContext: Context

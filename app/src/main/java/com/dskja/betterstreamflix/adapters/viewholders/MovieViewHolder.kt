@@ -25,9 +25,9 @@ import androidx.recyclerview.widget.RecyclerView
 import androidx.viewbinding.ViewBinding
 import android.graphics.drawable.Drawable
 import android.widget.TextView
-import androidx.core.widget.TextViewCompat
 import com.bumptech.glide.Glide
 import com.bumptech.glide.load.DataSource
+import com.bumptech.glide.load.engine.DiskCacheStrategy
 import com.bumptech.glide.load.engine.GlideException
 import com.bumptech.glide.load.resource.drawable.DrawableTransitionOptions
 import com.bumptech.glide.request.RequestListener
@@ -677,6 +677,8 @@ class MovieViewHolder(
                         is MoviesMobileFragment -> findNavController().navigate(MoviesMobileFragmentDirections.actionMoviesToMovie(id = movie.id))
                         is PeopleMobileFragment -> findNavController().navigate(PeopleMobileFragmentDirections.actionPeopleToMovie(id = movie.id))
                         is SearchMobileFragment -> findNavController().navigate(SearchMobileFragmentDirections.actionSearchToMovie(id = movie.id))
+                        is MovieMobileFragment -> findNavController().navigate(MovieMobileFragmentDirections.actionMovieToMovie(id = movie.id))
+                        is TvShowMobileFragment -> findNavController().navigate(TvShowMobileFragmentDirections.actionTvShowToMovie(id = movie.id))
                         is FavoritesMobileFragment -> findNavController().navigate(FavoritesMobileFragmentDirections.actionFavoritesToMovie(id = movie.id))
                     }
                 }
@@ -758,6 +760,8 @@ class MovieViewHolder(
                         is MoviesTvFragment -> findNavController().navigate(MoviesTvFragmentDirections.actionMoviesToMovie(id = movie.id))
                         is GenreTvFragment -> findNavController().navigate(GenreTvFragmentDirections.actionGenreToMovie(id = movie.id))
                         is SearchTvFragment -> findNavController().navigate(SearchTvFragmentDirections.actionSearchToMovie(id = movie.id))
+                        is MovieTvFragment -> findNavController().navigate(MovieTvFragmentDirections.actionMovieToMovie(id = movie.id))
+                        is TvShowTvFragment -> findNavController().navigate(TvShowTvFragmentDirections.actionTvShowToMovie(id = movie.id))
                         is PeopleTvFragment -> findNavController().navigate(PeopleTvFragmentDirections.actionPeopleToMovie(id = movie.id))
                         is FavoritesTvFragment -> findNavController().navigate(FavoritesTvFragmentDirections.actionFavoritesToMovie(id = movie.id))
                     }
@@ -1029,6 +1033,7 @@ class MovieViewHolder(
             binding.tvMovieTitle.visibility = View.GONE
             Glide.with(logoView)
                 .load(logoUrl)
+                .diskCacheStrategy(DiskCacheStrategy.AUTOMATIC)
                 .fitCenter()
                 .listener(object : RequestListener<Drawable> {
                     override fun onLoadFailed(
@@ -1060,6 +1065,15 @@ class MovieViewHolder(
             logoView.setImageDrawable(null)
             logoView.visibility = View.GONE
             binding.tvMovieTitle.visibility = View.VISIBLE
+            resolveHeroLogoIfBlank(
+                logoView = logoView,
+                titleView = binding.tvMovieTitle,
+                title = movie.title,
+                year = movie.released?.format("yyyy")?.toIntOrNull(),
+                isTv = false,
+                tmdbId = movie.tmdbId,
+                imdbId = movie.imdbId,
+            ) { movie.logo = it }
         }
 
         if (ExperimentalMobileDesign.enabled() &&
@@ -1221,16 +1235,7 @@ class MovieViewHolder(
 
         binding.btnMovieTrailer.apply {
             val trailer = movie.trailer
-            text = ""
-            val playIcon = ContextCompat.getDrawable(context, R.drawable.ic_trailer_play)
-            TextViewCompat.setCompoundDrawablesRelativeWithIntrinsicBounds(
-                this,
-                null,
-                playIcon,
-                null,
-                null,
-            )
-            visibility = if (trailer != null || !movie.tmdbId.isNullOrBlank()) {
+            visibility = if (!trailer.isNullOrBlank() || !movie.tmdbId.isNullOrBlank()) {
                 View.VISIBLE
             } else {
                 View.GONE
@@ -1238,7 +1243,7 @@ class MovieViewHolder(
             applyExpPress()
             setOnClickListener {
                 ExpMotion.hapticTap(it)
-                if (trailer != null) {
+                if (!trailer.isNullOrBlank()) {
                     val fragment = context.toActivity()?.getCurrentFragment() as? Fragment
                     if (fragment != null) {
                         com.dskja.betterstreamflix.ui.TrailerPlaybackController.play(fragment, trailer)
@@ -1506,13 +1511,13 @@ class MovieViewHolder(
 
         binding.btnMovieTrailer.apply {
             val trailer = movie.trailer
-            if (ExperimentalMobileDesign.enabled() && trailer != null) {
+            if (ExperimentalMobileDesign.enabled() && !trailer.isNullOrBlank()) {
                 setBackgroundResource(ExperimentalMobileDesign.chipBackground())
                 applyExpPress()
             }
             setOnClickListener {
                 ExpMotion.hapticTap(it)
-                if (trailer != null) {
+                if (!trailer.isNullOrBlank()) {
                     val fragment = context.toActivity()?.getCurrentFragment() as? Fragment
                     if (fragment != null) {
                         com.dskja.betterstreamflix.ui.TrailerPlaybackController.play(fragment, trailer)
@@ -1521,7 +1526,7 @@ class MovieViewHolder(
                     }
                 }
             }
-            visibility = if (trailer != null) View.VISIBLE else View.GONE
+            visibility = if (!trailer.isNullOrBlank()) View.VISIBLE else View.GONE
         }
 
         binding.btnMovieDownload.apply {
@@ -1836,7 +1841,7 @@ class MovieViewHolder(
                 )
                 row.tvDetailTrailerTitle.text = title
                 row.tvDetailTrailerMeta.text = type
-                row.tvDetailTrailerDesc.text = type
+                row.tvDetailTrailerDesc.visibility = View.GONE
                 val ytId = TrailerPlaybackController.youtubeVideoId(url)
                 if (ytId != null) {
                     Glide.with(row.ivDetailTrailerThumb)
@@ -1874,42 +1879,95 @@ class MovieViewHolder(
 
         itemView.findViewTreeLifecycleOwner()?.lifecycleScope?.launch {
             val remote = withContext(Dispatchers.IO) {
-                TmdbUtils.listYoutubeTrailers(movie.tmdbId, isTv = false)
+                TmdbUtils.listYoutubeTrailers(
+                    tmdbId = movie.tmdbId,
+                    isTv = false,
+                    title = movie.title,
+                    year = movie.released?.format("yyyy")?.toIntOrNull(),
+                    imdbId = movie.imdbId,
+                )
             }
-            val trailers = when {
-                remote.isNotEmpty() -> remote
-                seed.isNotEmpty() -> seed
-                else -> emptyList()
-            }
+            val trailers = (seed + remote).distinctBy { it.second }
             bindRows(trailers)
         }
     }
 
     private fun displayAboutMobile(binding: ContentDetailAboutMobileBinding) {
         binding.root.tag = DETAIL_SECTION_ABOUT
-        binding.tvDetailAboutOverview.text = movie.overview.orEmpty()
-        val castNames = movie.cast.map { it.name }.filter { it.isNotBlank() }
-        val directorNames = movie.directors.map { it.name }.filter { it.isNotBlank() }
-        binding.tvDetailAboutFeaturing.apply {
-            if (castNames.isEmpty()) visibility = View.GONE
-            else {
-                visibility = View.VISIBLE
-                text = context.getString(R.string.detail_featuring_fmt, castNames.take(4).joinToString(", "))
+        val overview = movie.overview.orEmpty()
+        binding.tvDetailAboutOverview.text = overview
+        binding.tvDetailAboutOverview.visibility =
+            if (overview.isBlank()) View.GONE else View.VISIBLE
+        binding.tvDetailAboutOverviewLabel.visibility =
+            if (overview.isBlank()) View.GONE else View.VISIBLE
+
+        binding.tvDetailAboutFeaturingLabel.visibility = View.GONE
+        binding.tvDetailAboutFeaturing.visibility = View.GONE
+        binding.tvDetailAboutDirectorsLabel.visibility = View.GONE
+        binding.tvDetailAboutDirectors.visibility = View.GONE
+        binding.tvDetailAboutCastLabel.visibility = View.GONE
+        binding.tvDetailAboutCast.visibility = View.GONE
+    }
+
+    /** When catalogue left logo blank, resolve TMDb artwork and update the hero. */
+    private fun resolveHeroLogoIfBlank(
+        logoView: android.widget.ImageView,
+        titleView: TextView,
+        title: String,
+        year: Int?,
+        isTv: Boolean,
+        tmdbId: String?,
+        imdbId: String?,
+        onResolved: (String) -> Unit,
+    ) {
+        val owner = itemView.findViewTreeLifecycleOwner() ?: return
+        owner.lifecycleScope.launch {
+            val logo = withContext(Dispatchers.IO) {
+                runCatching {
+                    TmdbUtils.resolveTitleLogo(
+                        title = title,
+                        year = year,
+                        isTv = isTv,
+                        tmdbId = tmdbId,
+                        imdbId = imdbId,
+                    )
+                }.getOrNull()
             }
-        }
-        binding.tvDetailAboutDirectors.apply {
-            if (directorNames.isEmpty()) visibility = View.GONE
-            else {
-                visibility = View.VISIBLE
-                text = context.getString(R.string.detail_directors_fmt, directorNames.joinToString(", "))
-            }
-        }
-        binding.tvDetailAboutCast.apply {
-            if (castNames.isEmpty()) visibility = View.GONE
-            else {
-                visibility = View.VISIBLE
-                text = context.getString(R.string.detail_actors_fmt, castNames.joinToString(", "))
-            }
+            if (logo.isNullOrBlank()) return@launch
+            onResolved(logo)
+            if (!::movie.isInitialized || movie.title != title) return@launch
+            val url = ArtworkUrls.preferOriginal(logo) ?: ArtworkUrls.preferHero(logo) ?: return@launch
+            logoView.visibility = View.VISIBLE
+            titleView.visibility = View.GONE
+            Glide.with(logoView)
+                .load(url)
+                .diskCacheStrategy(DiskCacheStrategy.AUTOMATIC)
+                .fitCenter()
+                .listener(object : RequestListener<Drawable> {
+                    override fun onLoadFailed(
+                        e: GlideException?,
+                        model: Any?,
+                        target: Target<Drawable>,
+                        isFirstResource: Boolean,
+                    ): Boolean {
+                        logoView.visibility = View.GONE
+                        titleView.visibility = View.VISIBLE
+                        return false
+                    }
+
+                    override fun onResourceReady(
+                        resource: Drawable,
+                        model: Any,
+                        target: Target<Drawable>?,
+                        dataSource: DataSource,
+                        isFirstResource: Boolean,
+                    ): Boolean {
+                        logoView.visibility = View.VISIBLE
+                        titleView.visibility = View.GONE
+                        return false
+                    }
+                })
+                .into(logoView)
         }
     }
 

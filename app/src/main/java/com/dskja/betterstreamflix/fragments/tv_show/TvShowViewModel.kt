@@ -14,6 +14,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.emitAll
 import kotlinx.coroutines.flow.first
@@ -180,6 +182,7 @@ class TvShowViewModel(
     }
 
     private val _seasonState = MutableStateFlow<SeasonState>(SeasonState.Loading)
+    val seasonState: StateFlow<SeasonState> = _seasonState.asStateFlow()
 
     sealed class SeasonState {
         data object Loading :  SeasonState()
@@ -302,6 +305,8 @@ class TvShowViewModel(
             com.dskja.betterstreamflix.utils.TmdbUtils.enrichTvShowDetail(base, language)
         }.getOrDefault(base)
     }
+
+    fun loadSeasonEpisodes(tvShow: TvShow, season: Season) = getSeason(tvShow, season)
 
     private fun getSeason(tvShow: TvShow, season: Season) = viewModelScope.launch(Dispatchers.IO) {
         _seasonState.emit(SeasonState.Loading)

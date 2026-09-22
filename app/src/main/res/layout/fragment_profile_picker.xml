@@ -109,4 +109,14 @@
                 tools:ignore="UnusedAttribute" />
         </LinearLayout>
     </androidx.core.widget.NestedScrollView>
+
+    <!-- In-screen create/edit form — swaps over the picker, not a floating AlertDialog. -->
+    <FrameLayout
+        android:id="@+id/fl_profile_editor"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="#FF000000"
+        android:clickable="true"
+        android:focusable="true"
+        android:visibility="gone" />
 </FrameLayout>

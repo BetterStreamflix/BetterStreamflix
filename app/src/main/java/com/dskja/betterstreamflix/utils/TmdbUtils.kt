@@ -26,7 +26,8 @@ object TmdbUtils {
 
     /**
      * Picks the title logo that best matches the UI language, preferring a language hit,
-     * then English, then language-less artwork, and finally the highest voted file.
+     * then English, then language-less artwork, and finally the highest-voted file.
+     * Skips SVG. Prefers higher vote_count within a language tier.
      */
     private fun pickBestLogo(
         logos: List<TMDb3.Images.FileImage>?,
@@ -47,8 +48,8 @@ object TmdbUtils {
             ?.sortedWith(
                 compareBy(
                     { rank(it) },
-                    { -(it.voteAverage ?: 0f) },
                     { -(it.voteCount ?: 0) },
+                    { -(it.voteAverage ?: 0f) },
                 )
             )
             ?.firstOrNull()
@@ -56,76 +57,139 @@ object TmdbUtils {
             ?.original
     }
 
+    private fun includeLanguageList(language: String?): String {
+        val lang = language?.take(2)?.lowercase()?.takeIf { it.isNotBlank() }
+        return if (lang == null || lang == "en") "en,null" else "$lang,en,null"
+    }
+
     private suspend fun getMovieLogo(tmdbId: Int, language: String?): String? {
-        movieLogoCache[tmdbId]?.let { return it.takeIf { cached -> cached.isNotEmpty() } }
+        movieLogoCache[tmdbId]?.let { return it }
         val logo = runCatching {
             TMDb3.Movies.details(
                 movieId = tmdbId,
                 appendToResponse = listOf(TMDb3.Params.AppendToResponse.Movie.IMAGES),
+                includeImageLanguage = includeLanguageList(language),
             ).images?.logos
         }.getOrNull()?.let { pickBestLogo(it, language) }
-        movieLogoCache[tmdbId] = logo.orEmpty()
+        if (!logo.isNullOrBlank()) {
+            movieLogoCache[tmdbId] = logo
+        }
         return logo
     }
 
     private suspend fun getTvShowLogo(tmdbId: Int, language: String?): String? {
-        tvLogoCache[tmdbId]?.let { return it.takeIf { cached -> cached.isNotEmpty() } }
+        tvLogoCache[tmdbId]?.let { return it }
         val logo = runCatching {
             TMDb3.TvSeries.details(
                 seriesId = tmdbId,
                 appendToResponse = listOf(TMDb3.Params.AppendToResponse.Tv.IMAGES),
+                includeImageLanguage = includeLanguageList(language),
             ).images?.logos
         }.getOrNull()?.let { pickBestLogo(it, language) }
-        tvLogoCache[tmdbId] = logo.orEmpty()
+        if (!logo.isNullOrBlank()) {
+            tvLogoCache[tmdbId] = logo
+        }
         return logo
     }
 
     /**
      * Resolves a title logo for surfaces that only know the title (Featured card).
-     * Uses the TMDb id when the caller already has one, otherwise matches by title/year.
+     * Uses the TMDb id when the caller already has one, otherwise matches by title/year,
+     * then without year, then a direct search fallback. Optional [imdbId] is tried next.
      */
     suspend fun resolveTitleLogo(
         title: String,
         year: Int? = null,
         isTv: Boolean = false,
         tmdbId: String? = null,
+        imdbId: String? = null,
         language: String? = null,
     ): String? {
         if (!UserPreferences.enableTmdb) return null
         val lang = language ?: UserPreferences.currentProvider?.language
         val effectiveYear = year ?: extractYear(title)
+        val normalizedQuery = titleNormalizer(title)
         val id = tmdbId?.trim()?.toIntOrNull()
+            ?: runCatching {
+                val cleanImdb = imdbId?.trim()?.takeIf { it.isNotBlank() }
+                when {
+                    cleanImdb != null && isTv ->
+                        getTvShowByImdbId(cleanImdb, lang)?.tmdbId?.toIntOrNull()
+                    cleanImdb != null ->
+                        getMovieByImdbId(cleanImdb, lang)?.tmdbId?.toIntOrNull()
+                    else -> null
+                }
+            }.getOrNull()
             ?: runCatching {
                 if (isTv) {
                     findBestTvMatch(title, effectiveYear, lang)?.id
+                        ?: effectiveYear?.let { findBestTvMatch(title, year = null, lang)?.id }
+                        ?: searchTvDirect(normalizedQuery.ifBlank { title }, lang)?.id
                 } else {
                     findBestMovieMatch(title, effectiveYear, lang)?.id
+                        ?: effectiveYear?.let { findBestMovieMatch(title, year = null, lang)?.id }
+                        ?: searchMovieDirect(normalizedQuery.ifBlank { title }, lang)?.id
                 }
             }.getOrNull()
             ?: return null
         return if (isTv) getTvShowLogo(id, lang) else getMovieLogo(id, lang)
     }
 
+    /** Direct [TMDb3.Search.movie] when scored matching returns nothing. */
+    private suspend fun searchMovieDirect(query: String, language: String?): TMDb3.Movie? {
+        if (query.isBlank()) return null
+        return runCatching {
+            TMDb3.Search.movie(query = query, language = language).results
+                .maxByOrNull { it.voteCount }
+        }.getOrNull()
+    }
+
+    /** Direct [TMDb3.Search.tv] when scored matching returns nothing. */
+    private suspend fun searchTvDirect(query: String, language: String?): TMDb3.Tv? {
+        if (query.isBlank()) return null
+        return runCatching {
+            TMDb3.Search.tv(query = query, language = language).results
+                .maxByOrNull { it.voteCount }
+        }.getOrNull()
+    }
+
     /**
      * YouTube trailers/teasers for a title: (title, watch URL, type label).
-     * Uses the same videos append pattern as [getMovieById] / [getTvShowById].
+     * Resolves a TMDb id via [tmdbId], [imdbId], or title+year when needed.
      */
     suspend fun listYoutubeTrailers(
-        tmdbId: String?,
+        tmdbId: String? = null,
         isTv: Boolean,
+        title: String? = null,
+        year: Int? = null,
+        imdbId: String? = null,
     ): List<Triple<String, String, String>> {
         if (!UserPreferences.enableTmdb) return emptyList()
-        val id = tmdbId?.trim()?.toIntOrNull() ?: return emptyList()
+        val lang = UserPreferences.currentProvider?.language
+        val id = tmdbId?.trim()?.toIntOrNull()
+            ?: runCatching {
+                val cleanImdb = imdbId?.trim()?.takeIf { it.isNotBlank() }
+                when {
+                    cleanImdb != null && isTv -> getTvShowByImdbId(cleanImdb, lang)?.tmdbId?.toIntOrNull()
+                    cleanImdb != null -> getMovieByImdbId(cleanImdb, lang)?.tmdbId?.toIntOrNull()
+                    !title.isNullOrBlank() && isTv -> findBestTvMatch(title, year ?: extractYear(title), lang)?.id
+                    !title.isNullOrBlank() -> findBestMovieMatch(title, year ?: extractYear(title), lang)?.id
+                    else -> null
+                }
+            }.getOrNull()
+            ?: return emptyList()
         return runCatching {
             val videos = if (isTv) {
                 TMDb3.TvSeries.details(
                     seriesId = id,
                     appendToResponse = listOf(TMDb3.Params.AppendToResponse.Tv.VIDEOS),
+                    includeVideoLanguage = includeLanguageList(lang),
                 ).videos?.results
             } else {
                 TMDb3.Movies.details(
                     movieId = id,
                     appendToResponse = listOf(TMDb3.Params.AppendToResponse.Movie.VIDEOS),
+                    includeVideoLanguage = includeLanguageList(lang),
                 ).videos?.results
             }.orEmpty()
             videos
@@ -304,7 +368,10 @@ object TmdbUtils {
                 cast = cached.cast.map { People(it.first, it.second, it.third) },
                 directors = cached.directors.map { People(it.first, it.second, it.third) },
                 recommendations = cached.recommendations.map { it.toShow() },
-            ).also { it.contentRating = cached.contentRating }
+            ).also {
+                it.contentRating = cached.contentRating
+                it.logo = cached.logo
+            }
         }
         return try {
             val details = TMDb3.Movies.details(
@@ -317,7 +384,9 @@ object TmdbUtils {
                     TMDb3.Params.AppendToResponse.Movie.RELEASES_DATES,
                     TMDb3.Params.AppendToResponse.Movie.IMAGES,
                 ),
-                language = language
+                language = language,
+                includeImageLanguage = includeLanguageList(language),
+                includeVideoLanguage = includeLanguageList(language),
             )
             val directors = details.credits?.crew
                 ?.filter { it.job.equals("Director", ignoreCase = true) }
@@ -327,7 +396,9 @@ object TmdbUtils {
             val recommendations = mapRecommendations(details.recommendations?.results)
             val contentRating = extractMovieCertification(details, language)
             val logo = pickBestLogo(details.images?.logos, language)
-            movieLogoCache[tmdbId] = logo.orEmpty()
+            if (!logo.isNullOrBlank()) {
+                movieLogoCache[tmdbId] = logo
+            }
             val result = Movie(
                 id = details.id.toString(),
                 title = details.title,
@@ -361,6 +432,7 @@ object TmdbUtils {
                     banner = result.banner,
                     imdbId = result.imdbId,
                     contentRating = contentRating,
+                    logo = logo,
                     genres = result.genres.map { it.id to it.name },
                     cast = result.cast.map { Triple(it.id, it.name, it.image) },
                     directors = directors.map { Triple(it.id, it.name, it.image) },
@@ -454,7 +526,10 @@ object TmdbUtils {
                 cast = cached.cast.map { People(it.first, it.second, it.third) },
                 directors = cached.directors.map { People(it.first, it.second, it.third) },
                 recommendations = cached.recommendations.map { it.toShow() },
-            ).also { it.contentRating = cached.contentRating }
+            ).also {
+                it.contentRating = cached.contentRating
+                it.logo = cached.logo
+            }
         }
         return try {
             val details = TMDb3.TvSeries.details(
@@ -467,7 +542,9 @@ object TmdbUtils {
                     TMDb3.Params.AppendToResponse.Tv.CONTENT_RATING,
                     TMDb3.Params.AppendToResponse.Tv.IMAGES,
                 ),
-                language = language
+                language = language,
+                includeImageLanguage = includeLanguageList(language),
+                includeVideoLanguage = includeLanguageList(language),
             )
             val directors = details.credits?.crew
                 ?.filter {
@@ -484,7 +561,9 @@ object TmdbUtils {
             val recommendations = mapRecommendations(details.recommendations?.results)
             val contentRating = extractTvCertification(details, language)
             val logo = pickBestLogo(details.images?.logos, language)
-            tvLogoCache[tmdbId] = logo.orEmpty()
+            if (!logo.isNullOrBlank()) {
+                tvLogoCache[tmdbId] = logo
+            }
             val result = TvShow(
                 id = details.id.toString(),
                 title = details.name,
@@ -524,6 +603,7 @@ object TmdbUtils {
                     banner = result.banner,
                     imdbId = result.imdbId,
                     contentRating = contentRating,
+                    logo = logo,
                     seasons = result.seasons.map {
                         TmdbCache.SeasonCache(it.number, it.title, it.poster)
                     },
@@ -1039,9 +1119,11 @@ object TmdbUtils {
             .replace(Regex("\\s*Staffel\\s+\\d+\\s*$", RegexOption.IGNORE_CASE), "")
             .replace(Regex("\\s*Season\\s+\\d+\\s*$", RegexOption.IGNORE_CASE), "")
             .replace(Regex("\\s*S\\d{1,2}\\s*$", RegexOption.IGNORE_CASE), "")
+            .replace(Regex("\\s*(episode|ep|part|pt)\\.?\\s*\\d+\\s*$", RegexOption.IGNORE_CASE), "")
             .trim()
+        val normalized = titleNormalizer(withoutSeason)
 
-        return listOf(trimmed, withoutTrailingYear, withoutDecorators, withoutSeason)
+        return listOf(trimmed, withoutTrailingYear, withoutDecorators, withoutSeason, normalized)
             .filter { it.isNotBlank() }
             .distinct()
     }
@@ -1052,17 +1134,27 @@ object TmdbUtils {
             ?.toIntOrNull()
     }
 
-    private fun normalizeTitle(value: String): String {
+    /**
+     * Strips punctuation, leading "the", and trailing episode/season junk so
+     * catalogue titles like "One Last Stick" / "The X: Episode 2" still match TMDb.
+     */
+    fun titleNormalizer(value: String): String {
         val ascii = Normalizer.normalize(value, Normalizer.Form.NFD)
             .replace(Regex("\\p{Mn}+"), "")
-
         return ascii
             .lowercase()
             .replace("&", " and ")
+            .replace(Regex("\\s*\\((19|20)\\d{2}\\)\\s*"), " ")
+            .replace(Regex("\\s*(staffel|season)\\s+\\d+\\b"), " ")
+            .replace(Regex("\\s*(episode|ep|part|pt)\\.?\\s*\\d+\\b"), " ")
+            .replace(Regex("\\bs\\d{1,2}e?\\d{0,2}\\b"), " ")
             .replace(Regex("[^a-z0-9]+"), " ")
+            .replace(Regex("^the\\s+"), "")
             .trim()
             .replace(Regex("\\s+"), " ")
     }
+
+    private fun normalizeTitle(value: String): String = titleNormalizer(value)
 
     private fun overlapScore(left: String, right: String): Double {
         val leftWords = left.split(" ").filter { it.isNotBlank() }.toSet()

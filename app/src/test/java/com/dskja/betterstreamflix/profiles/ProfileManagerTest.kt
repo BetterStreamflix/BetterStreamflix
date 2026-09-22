@@ -49,7 +49,11 @@ class ProfileManagerTest {
     @Test
     fun avatarKeys_containsExpectedPalette() {
         assertEquals(
-            listOf("crimson", "ember", "aurora", "slate", "forest", "ocean", "gold", "rose"),
+            listOf(
+                "crimson", "ember", "aurora", "slate", "forest", "ocean", "gold", "rose",
+                "violet", "mint", "indigo", "copper", "arctic", "sunset", "neon",
+                "cobalt", "magenta", "charcoal", "teal", "peach",
+            ),
             ProfileManager.avatarKeys,
         )
     }

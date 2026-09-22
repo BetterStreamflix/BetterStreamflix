@@ -4,9 +4,9 @@
     android:id="@+id/trailer_dialog_root"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:background="@drawable/bg_exp_bottom_sheet"
+    android:background="#FF0A0A0C"
     android:orientation="vertical"
-    android:paddingBottom="12dp">
+    android:paddingBottom="16dp">
 
     <LinearLayout
         android:layout_width="match_parent"
@@ -14,18 +14,20 @@
         android:gravity="center_vertical"
         android:orientation="horizontal"
         android:paddingStart="16dp"
-        android:paddingTop="14dp"
+        android:paddingTop="12dp"
         android:paddingEnd="8dp"
-        android:paddingBottom="10dp">
+        android:paddingBottom="8dp">
 
         <TextView
             android:id="@+id/tv_trailer_title"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:textAppearance="@style/TextAppearance.Lumina.Title"
+            android:ellipsize="end"
+            android:fontFamily="@font/manrope"
+            android:maxLines="1"
             android:text="@string/movie_trailer"
-            android:textColor="?attr/colorOnSurface"
+            android:textColor="#FFFFFFFF"
             android:textSize="16sp"
             android:textStyle="bold" />
 
@@ -33,39 +35,40 @@
             android:id="@+id/btn_trailer_youtube"
             android:layout_width="40dp"
             android:layout_height="40dp"
-            android:background="@drawable/bg_exp_icon_chip"
-            android:contentDescription="@string/youtube"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="@string/trailer_open_in_youtube"
             android:padding="8dp"
-            android:src="@drawable/ic_exp_play"
-            android:tint="?attr/colorPrimary"
+            android:src="@drawable/ic_trailer_play"
+            android:tint="#FFFFFFFF"
             tools:ignore="UseAppTint" />
 
         <ImageButton
             android:id="@+id/btn_trailer_close"
             android:layout_width="40dp"
             android:layout_height="40dp"
-            android:background="@drawable/bg_exp_icon_chip"
+            android:background="?attr/selectableItemBackgroundBorderless"
             android:contentDescription="@string/exp_cd_close"
             android:padding="8dp"
             android:src="@android:drawable/ic_menu_close_clear_cancel"
-            android:tint="?attr/colorOnSurfaceVariant"
+            android:tint="#CCFFFFFF"
             tools:ignore="UseAppTint" />
     </LinearLayout>
 
     <View
         android:id="@+id/v_trailer_accent_rule"
-        android:layout_width="40dp"
-        android:layout_height="3dp"
+        android:layout_width="36dp"
+        android:layout_height="2dp"
         android:layout_marginStart="16dp"
-        android:layout_marginBottom="8dp"
-        android:background="@drawable/bg_exp_accent_rule" />
+        android:layout_marginBottom="10dp"
+        android:background="#E6FFFFFF"
+        android:visibility="gone" />
 
     <FrameLayout
         android:id="@+id/fl_trailer_player"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:background="#FF000000"
-        android:minHeight="220dp">
+        android:minHeight="200dp">
 
         <WebView
             android:id="@+id/wv_trailer"
@@ -74,39 +77,84 @@
 
         <ProgressBar
             android:id="@+id/pb_trailer_loading"
-            android:layout_width="36dp"
-            android:layout_height="36dp"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
             android:layout_gravity="center"
             android:indeterminate="true"
-            android:indeterminateTint="?attr/colorPrimary" />
+            android:indeterminateTint="#FFFFFFFF" />
 
-        <TextView
-            android:id="@+id/tv_trailer_error"
+        <LinearLayout
+            android:id="@+id/ll_trailer_error"
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_gravity="center"
-            android:textAppearance="@style/TextAppearance.Lumina.Caption"
+            android:layout_height="match_parent"
             android:gravity="center"
+            android:orientation="vertical"
             android:padding="24dp"
-            android:text="@string/trailer_in_app_error"
-            android:textColor="?attr/colorOnSurfaceVariant"
-            android:textSize="13sp"
-            android:visibility="gone" />
+            android:visibility="gone">
+
+            <TextView
+                android:id="@+id/tv_trailer_error"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:fontFamily="@font/manrope"
+                android:gravity="center"
+                android:lineSpacingExtra="3dp"
+                android:text="@string/trailer_in_app_error"
+                android:textColor="#B3FFFFFF"
+                android:textSize="14sp" />
+
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                android:gravity="center"
+                android:orientation="horizontal">
+
+                <TextView
+                    android:id="@+id/btn_trailer_retry"
+                    android:layout_width="wrap_content"
+                    android:layout_height="40dp"
+                    android:background="@drawable/bg_featured_cta_secondary"
+                    android:fontFamily="@font/manrope"
+                    android:gravity="center"
+                    android:paddingStart="18dp"
+                    android:paddingEnd="18dp"
+                    android:text="@string/loading_error_retry"
+                    android:textColor="#FFFFFFFF"
+                    android:textSize="13sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:id="@+id/btn_trailer_error_youtube"
+                    android:layout_width="wrap_content"
+                    android:layout_height="40dp"
+                    android:layout_marginStart="10dp"
+                    android:background="@drawable/bg_featured_cta_primary"
+                    android:fontFamily="@font/manrope"
+                    android:gravity="center"
+                    android:paddingStart="18dp"
+                    android:paddingEnd="18dp"
+                    android:text="@string/trailer_open_in_youtube"
+                    android:textColor="#121218"
+                    android:textSize="13sp"
+                    android:textStyle="bold" />
+            </LinearLayout>
+        </LinearLayout>
     </FrameLayout>
 
     <TextView
         android:id="@+id/btn_trailer_open_external"
-        android:textAppearance="@style/TextAppearance.Lumina.Caption"
         android:layout_width="match_parent"
         android:layout_height="44dp"
         android:layout_marginStart="16dp"
-        android:layout_marginTop="12dp"
+        android:layout_marginTop="14dp"
         android:layout_marginEnd="16dp"
-        android:background="@drawable/bg_exp_button_primary"
+        android:background="@drawable/bg_featured_cta_secondary"
         android:focusable="true"
+        android:fontFamily="@font/manrope"
         android:gravity="center"
         android:text="@string/trailer_open_in_youtube"
-        android:textColor="?attr/colorOnPrimary"
+        android:textColor="#FFFFFFFF"
         android:textSize="13sp"
         android:textStyle="bold" />
 </LinearLayout>
