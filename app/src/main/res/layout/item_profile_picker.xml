@@ -66,6 +66,18 @@
             android:textStyle="bold"
             android:visibility="gone"
             tools:visibility="visible" />
+
+        <ImageView
+            android:id="@+id/iv_profile_edit_badge"
+            android:layout_width="36dp"
+            android:layout_height="36dp"
+            android:layout_gravity="center"
+            android:background="@drawable/bg_profile_badge"
+            android:contentDescription="@string/profile_edit_profiles"
+            android:padding="8dp"
+            android:src="@drawable/ic_edit"
+            android:visibility="gone"
+            tools:visibility="visible" />
     </FrameLayout>
 
     <TextView

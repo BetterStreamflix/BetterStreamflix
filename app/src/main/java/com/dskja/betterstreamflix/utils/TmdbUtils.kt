@@ -29,7 +29,7 @@ object TmdbUtils {
      * then English, then language-less artwork, and finally the highest voted file.
      */
     private fun pickBestLogo(
-        logos: List<TMDb3.Images.FileImage>,
+        logos: List<TMDb3.Images.FileImage>?,
         language: String?,
     ): String? {
         val wanted = language?.take(2)?.lowercase()
@@ -43,15 +43,15 @@ object TmdbUtils {
             }
         }
         return logos
-            .filterNot { it.filePath.endsWith(".svg", ignoreCase = true) }
-            .sortedWith(
+            ?.filterNot { it.filePath.endsWith(".svg", ignoreCase = true) }
+            ?.sortedWith(
                 compareBy(
                     { rank(it) },
                     { -(it.voteAverage ?: 0f) },
                     { -(it.voteCount ?: 0) },
                 )
             )
-            .firstOrNull()
+            ?.firstOrNull()
             ?.filePath
             ?.original
     }
@@ -62,7 +62,7 @@ object TmdbUtils {
             TMDb3.Movies.details(
                 movieId = tmdbId,
                 appendToResponse = listOf(TMDb3.Params.AppendToResponse.Movie.IMAGES),
-            ).images?.logos.orEmpty()
+            ).images?.logos
         }.getOrNull()?.let { pickBestLogo(it, language) }
         movieLogoCache[tmdbId] = logo.orEmpty()
         return logo
@@ -74,7 +74,7 @@ object TmdbUtils {
             TMDb3.TvSeries.details(
                 seriesId = tmdbId,
                 appendToResponse = listOf(TMDb3.Params.AppendToResponse.Tv.IMAGES),
-            ).images?.logos.orEmpty()
+            ).images?.logos
         }.getOrNull()?.let { pickBestLogo(it, language) }
         tvLogoCache[tmdbId] = logo.orEmpty()
         return logo
@@ -104,6 +104,82 @@ object TmdbUtils {
             }.getOrNull()
             ?: return null
         return if (isTv) getTvShowLogo(id, lang) else getMovieLogo(id, lang)
+    }
+
+    /**
+     * YouTube trailers/teasers for a title: (title, watch URL, type label).
+     * Uses the same videos append pattern as [getMovieById] / [getTvShowById].
+     */
+    suspend fun listYoutubeTrailers(
+        tmdbId: String?,
+        isTv: Boolean,
+    ): List<Triple<String, String, String>> {
+        if (!UserPreferences.enableTmdb) return emptyList()
+        val id = tmdbId?.trim()?.toIntOrNull() ?: return emptyList()
+        return runCatching {
+            val videos = if (isTv) {
+                TMDb3.TvSeries.details(
+                    seriesId = id,
+                    appendToResponse = listOf(TMDb3.Params.AppendToResponse.Tv.VIDEOS),
+                ).videos?.results
+            } else {
+                TMDb3.Movies.details(
+                    movieId = id,
+                    appendToResponse = listOf(TMDb3.Params.AppendToResponse.Movie.VIDEOS),
+                ).videos?.results
+            }.orEmpty()
+            videos
+                .asSequence()
+                .filter { it.site == TMDb3.Video.VideoSite.YOUTUBE && !it.key.isNullOrBlank() }
+                .sortedWith(
+                    compareBy<TMDb3.Video>(
+                        {
+                            when (it.type) {
+                                TMDb3.Video.VideoType.TRAILER -> 0
+                                TMDb3.Video.VideoType.TEASER -> 1
+                                TMDb3.Video.VideoType.CLIP -> 2
+                                else -> 3
+                            }
+                        },
+                        { it.publishedAt.orEmpty() },
+                    ),
+                )
+                .map { video ->
+                    Triple(
+                        video.name?.takeIf { it.isNotBlank() } ?: "Trailer",
+                        "https://www.youtube.com/watch?v=${video.key}",
+                        video.type?.value ?: "Trailer",
+                    )
+                }
+                .distinctBy { it.second }
+                .take(5)
+                .toList()
+        }.getOrDefault(emptyList())
+    }
+
+    /**
+     * Prefers official trailers, then teasers, then clips, then any YouTube video.
+     * Within a type, earlier [TMDb3.Video.publishedAt] wins.
+     */
+    private fun pickBestYoutubeTrailerUrl(videos: List<TMDb3.Video>?): String? {
+        return videos
+            ?.asSequence()
+            ?.filter { it.site == TMDb3.Video.VideoSite.YOUTUBE && !it.key.isNullOrBlank() }
+            ?.sortedWith(
+                compareBy(
+                    {
+                        when (it.type) {
+                            TMDb3.Video.VideoType.TRAILER -> 0
+                            TMDb3.Video.VideoType.TEASER -> 1
+                            TMDb3.Video.VideoType.CLIP -> 2
+                            else -> 3
+                        }
+                    },
+                    { it.publishedAt.orEmpty() },
+                ),
+            )
+            ?.firstOrNull()
+            ?.let { "https://www.youtube.com/watch?v=${it.key}" }
     }
 
     /**
@@ -239,6 +315,7 @@ object TmdbUtils {
                     TMDb3.Params.AppendToResponse.Movie.VIDEOS,
                     TMDb3.Params.AppendToResponse.Movie.EXTERNAL_IDS,
                     TMDb3.Params.AppendToResponse.Movie.RELEASES_DATES,
+                    TMDb3.Params.AppendToResponse.Movie.IMAGES,
                 ),
                 language = language
             )
@@ -249,16 +326,15 @@ object TmdbUtils {
                 .orEmpty()
             val recommendations = mapRecommendations(details.recommendations?.results)
             val contentRating = extractMovieCertification(details, language)
+            val logo = pickBestLogo(details.images?.logos, language)
+            movieLogoCache[tmdbId] = logo.orEmpty()
             val result = Movie(
                 id = details.id.toString(),
                 title = details.title,
                 overview = details.overview,
                 released = details.releaseDate,
                 runtime = details.runtime,
-                trailer = details.videos?.results
-                    ?.sortedBy { it.publishedAt ?: "" }
-                    ?.firstOrNull { it.site == TMDb3.Video.VideoSite.YOUTUBE }
-                    ?.let { "https://www.youtube.com/watch?v=${it.key}" },
+                trailer = pickBestYoutubeTrailerUrl(details.videos?.results),
                 rating = details.voteAverage.toDouble(),
                 poster = details.posterPath?.original,
                 banner = details.backdropPath?.original,
@@ -268,7 +344,10 @@ object TmdbUtils {
                 cast = details.credits?.cast?.map { People(it.id.toString(), it.name, it.profilePath?.w500) } ?: listOf(),
                 directors = directors,
                 recommendations = recommendations,
-            ).also { it.contentRating = contentRating }
+            ).also {
+                it.contentRating = contentRating
+                it.logo = logo
+            }
             TmdbCache.putMovie(
                 TmdbCache.CachedMovie(
                     id = details.id,
@@ -386,6 +465,7 @@ object TmdbUtils {
                     TMDb3.Params.AppendToResponse.Tv.VIDEOS,
                     TMDb3.Params.AppendToResponse.Tv.EXTERNAL_IDS,
                     TMDb3.Params.AppendToResponse.Tv.CONTENT_RATING,
+                    TMDb3.Params.AppendToResponse.Tv.IMAGES,
                 ),
                 language = language
             )
@@ -403,15 +483,14 @@ object TmdbUtils {
                 }
             val recommendations = mapRecommendations(details.recommendations?.results)
             val contentRating = extractTvCertification(details, language)
+            val logo = pickBestLogo(details.images?.logos, language)
+            tvLogoCache[tmdbId] = logo.orEmpty()
             val result = TvShow(
                 id = details.id.toString(),
                 title = details.name,
                 overview = details.overview,
                 released = details.firstAirDate,
-                trailer = details.videos?.results
-                    ?.sortedBy { it.publishedAt ?: "" }
-                    ?.firstOrNull { it.site == TMDb3.Video.VideoSite.YOUTUBE }
-                    ?.let { "https://www.youtube.com/watch?v=${it.key}" },
+                trailer = pickBestYoutubeTrailerUrl(details.videos?.results),
                 rating = details.voteAverage.toDouble(),
                 poster = details.posterPath?.original,
                 banner = details.backdropPath?.original,
@@ -429,7 +508,10 @@ object TmdbUtils {
                 cast = details.credits?.cast?.map { People(it.id.toString(), it.name, it.profilePath?.w500) } ?: listOf(),
                 directors = directors,
                 recommendations = recommendations,
-            ).also { it.contentRating = contentRating }
+            ).also {
+                it.contentRating = contentRating
+                it.logo = logo
+            }
             TmdbCache.putTv(
                 TmdbCache.CachedTv(
                     id = details.id,

@@ -7,7 +7,6 @@
     android:elevation="16dp"
     android:minHeight="56dp">
 
-    <!-- Fades in only after scroll; never covers the hero at the top. -->
     <View
         android:id="@+id/v_detail_header_scrim"
         android:layout_width="match_parent"
@@ -71,14 +70,22 @@
                 tools:visibility="visible" />
         </FrameLayout>
 
+        <!-- Kept for binding compatibility; list lives next to Watch Now. -->
         <ImageView
             android:id="@+id/btn_detail_list"
+            android:layout_width="0dp"
+            android:layout_height="0dp"
+            android:contentDescription="@string/detail_add_to_list"
+            android:src="@drawable/ic_list_add"
+            android:visibility="gone" />
+
+        <androidx.mediarouter.app.MediaRouteButton
+            android:id="@+id/btn_detail_cast"
             android:layout_width="48dp"
             android:layout_height="48dp"
-            android:background="@android:color/transparent"
-            android:contentDescription="@string/detail_add_to_list"
-            android:padding="12dp"
-            android:src="@drawable/ic_list_add" />
+            android:contentDescription="@string/player_cast_content_description"
+            android:mediaRouteTypes="user"
+            android:padding="10dp" />
 
         <ImageView
             android:id="@+id/btn_detail_watched"

@@ -52,7 +52,7 @@ object PluginManager {
     fun start(context: Context) {
         appContext = context.applicationContext
         PluginRegistry.bootstrapBuiltins()
-        DemoAddonPlugin.register()
+        // DemoAddonPlugin.register() — demo addon disabled; leave unregistered
         PluginCatalog.registerLocalStubs(context.applicationContext)
         val loads = PluginApkLoader.loadInstalled(context.applicationContext)
         loads.filter { !it.success }.forEach { lastErrors[it.pluginId] = it.message }
@@ -69,7 +69,7 @@ object PluginManager {
     /** Soft reload: keep builtins + LOCAL APKs; never wipe the registry first. */
     fun reload(context: Context = requireContext()): Int {
         PluginRegistry.ensureBuiltins()
-        DemoAddonPlugin.register()
+        // DemoAddonPlugin.register() — demo addon disabled; leave unregistered
         PluginCatalog.registerLocalStubs(context)
         val loads = PluginApkLoader.loadInstalled(context)
         loads.forEach { result ->

@@ -10,6 +10,7 @@ import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
 import com.bumptech.glide.Glide
 import com.bumptech.glide.load.DataSource
+import com.bumptech.glide.load.engine.DiskCacheStrategy
 import com.bumptech.glide.load.engine.GlideException
 import com.bumptech.glide.request.RequestListener
 import com.bumptech.glide.request.target.Target
@@ -29,7 +30,7 @@ import kotlinx.coroutines.withContext
 /**
  * Overlay chrome for movie / TV detail pages.
  *
- * At the top of the page only Back + Add-to-list float over the hero.
+ * At the top of the page only Back + Cast float over the hero.
  * After the user scrolls, a soft bar fades in with the TMDb title logo centered.
  */
 object DetailHeaderController {
@@ -43,6 +44,21 @@ object DetailHeaderController {
         back.setOnClickListener {
             ExpMotion.hapticTap(it)
             androidx.navigation.Navigation.findNavController(root).navigateUp()
+        }
+    }
+
+
+    fun wireCast(fragment: Fragment, root: View) {
+        val button = root.findViewById<androidx.mediarouter.app.MediaRouteButton>(R.id.btn_detail_cast) ?: return
+        runCatching {
+            com.dskja.betterstreamflix.cast.CastPlaybackHub.ensureCastContext(fragment.requireContext())
+            com.google.android.gms.cast.framework.CastButtonFactory.setUpMediaRouteButton(
+                fragment.requireContext(),
+                button,
+            )
+            button.visibility = View.VISIBLE
+        }.onFailure {
+            button.visibility = View.GONE
         }
     }
 
@@ -60,31 +76,7 @@ object DetailHeaderController {
             ) { movie.logo = it }
         }
         onScrolled(root, 0)
-
-        val listIcon = root.findViewById<ImageView>(R.id.btn_detail_list) ?: return
-        listIcon.background = null
-        applyListState(listIcon, movie.isFavorite, animate = false)
-        listIcon.setOnClickListener {
-            ExpMotion.hapticTap(it)
-            fragment.viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
-                val dao = AppDatabase.getInstance(context).movieDao()
-                val target = !(dao.getById(movie.id)?.isFavorite ?: movie.isFavorite)
-                val resolved = ArtworkRepair.resolveMovieForFavorite(context, movie, target)
-                dao.upsertFavorite(resolved, target)
-                com.dskja.betterstreamflix.platform.simkl.SimklSyncHooks.onListToggle(
-                    add = target,
-                    imdbId = movie.imdbId,
-                    tmdbId = movie.tmdbId,
-                    isTv = false,
-                )
-                withContext(Dispatchers.Main) {
-                    movie.poster = resolved.poster
-                    movie.banner = resolved.banner
-                    movie.isFavorite = target
-                    applyListState(listIcon, target, animate = true)
-                }
-            }
-        }
+        root.findViewById<ImageView>(R.id.btn_detail_list)?.visibility = View.GONE
     }
 
     fun bindTvShow(fragment: Fragment, root: View, tvShow: TvShow) {
@@ -101,31 +93,7 @@ object DetailHeaderController {
             ) { tvShow.logo = it }
         }
         onScrolled(root, 0)
-
-        val listIcon = root.findViewById<ImageView>(R.id.btn_detail_list) ?: return
-        listIcon.background = null
-        applyListState(listIcon, tvShow.isFavorite, animate = false)
-        listIcon.setOnClickListener {
-            ExpMotion.hapticTap(it)
-            fragment.viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
-                val dao = AppDatabase.getInstance(context).tvShowDao()
-                val target = !(dao.getById(tvShow.id)?.isFavorite ?: tvShow.isFavorite)
-                val resolved = ArtworkRepair.resolveTvShowForFavorite(context, tvShow, target)
-                dao.upsertFavorite(resolved, target)
-                com.dskja.betterstreamflix.platform.simkl.SimklSyncHooks.onListToggle(
-                    add = target,
-                    imdbId = tvShow.imdbId,
-                    tmdbId = tvShow.tmdbId,
-                    isTv = true,
-                )
-                withContext(Dispatchers.Main) {
-                    tvShow.poster = resolved.poster
-                    tvShow.banner = resolved.banner
-                    tvShow.isFavorite = target
-                    applyListState(listIcon, target, animate = true)
-                }
-            }
-        }
+        root.findViewById<ImageView>(R.id.btn_detail_list)?.visibility = View.GONE
     }
 
     /** Soft bar + centered logo fade in only after the hero scrolls away. */
@@ -183,7 +151,7 @@ object DetailHeaderController {
     private fun bindTitleChrome(root: View, title: String, logoUrl: String?) {
         root.findViewById<TextView>(R.id.tv_detail_header_title)?.text = title
         val logo = root.findViewById<ImageView>(R.id.iv_detail_header_logo) ?: return
-        val url = ArtworkUrls.preferOriginal(logoUrl) ?: ArtworkUrls.preferHero(logoUrl)
+        val url = ArtworkUrls.preferHero(logoUrl) ?: ArtworkUrls.preferOriginal(logoUrl)
         if (url.isNullOrBlank()) {
             logo.setImageDrawable(null)
             logo.tag = false
@@ -191,6 +159,7 @@ object DetailHeaderController {
         }
         Glide.with(logo)
             .load(url)
+            .diskCacheStrategy(DiskCacheStrategy.AUTOMATIC)
             .fitCenter()
             .listener(object : RequestListener<Drawable> {
                 override fun onLoadFailed(

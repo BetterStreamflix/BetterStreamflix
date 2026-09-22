@@ -4,23 +4,25 @@ import android.app.Dialog
 import android.graphics.Color
 import android.graphics.drawable.ColorDrawable
 import android.os.Bundle
+import android.text.InputType
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.view.WindowManager
+import android.view.inputmethod.EditorInfo
 import android.widget.CheckBox
 import android.widget.EditText
+import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
-import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
-import com.google.android.material.dialog.MaterialAlertDialogBuilder
-import com.dskja.betterstreamflix.utils.ExperimentalMobileDesign
-import com.dskja.betterstreamflix.utils.ExpDialogChrome
 import androidx.fragment.app.DialogFragment
 import androidx.fragment.app.Fragment
 import com.dskja.betterstreamflix.R
+import com.dskja.betterstreamflix.utils.ExpDialogChrome
 import com.dskja.betterstreamflix.utils.ExpMotion
+import com.dskja.betterstreamflix.utils.ExperimentalMobileDesign
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
 
 /** Centered profile switcher popup with avatar orbs and optional PIN gate. */
 class ProfilePickerDialog : DialogFragment() {
@@ -28,6 +30,9 @@ class ProfilePickerDialog : DialogFragment() {
     var onProfileSwitched: (() -> Unit)? = null
     var onManageProfiles: (() -> Unit)? = null
     var onCreateProfile: (() -> Unit)? = null
+
+    private var manageMode = false
+    private var startInManageMode = false
 
     override fun onCreateDialog(savedInstanceState: Bundle?): Dialog {
         val dialog = Dialog(requireContext(), R.style.ProfilePickerDialogTheme)
@@ -46,14 +51,12 @@ class ProfilePickerDialog : DialogFragment() {
 
     override fun onStart() {
         super.onStart()
-        val metrics = resources.displayMetrics
         dialog?.window?.setLayout(
             WindowManager.LayoutParams.MATCH_PARENT,
             WindowManager.LayoutParams.MATCH_PARENT,
         )
     }
 
-    /** Keeps the card a popup: it never grows past 70% of the screen height. */
     private fun capCardHeight(view: View) {
         val scroll = view.findViewById<View>(R.id.sv_profile_picker) ?: return
         val maxHeight = (resources.displayMetrics.heightPixels * 0.7f).toInt()
@@ -73,6 +76,7 @@ class ProfilePickerDialog : DialogFragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+        if (startInManageMode) manageMode = true
         ExpMotion.enterScreen(view)
         if (ExperimentalMobileDesign.enabled()) {
             ExperimentalMobileDesign.applyReducedGlass(view)
@@ -89,6 +93,7 @@ class ProfilePickerDialog : DialogFragment() {
             ExpMotion.popIn(view.findViewById(R.id.btn_profile_picker_create))
             ExpMotion.popIn(view.findViewById(R.id.btn_profile_picker_manage))
         }
+        applyManageChrome(view)
         bindProfiles(view)
         view.findViewById<View>(R.id.btn_profile_picker_close)?.setOnClickListener {
             ExpMotion.hapticTap(it)
@@ -101,8 +106,7 @@ class ProfilePickerDialog : DialogFragment() {
         }
         view.findViewById<TextView>(R.id.btn_profile_picker_manage).setOnClickListener {
             ExpMotion.hapticTap(it)
-            dismissAllowingStateLoss()
-            onManageProfiles?.invoke()
+            enterManageMode(!manageMode)
         }
         with(com.dskja.betterstreamflix.utils.ExpPressEffects) {
             view.findViewById<View>(R.id.btn_profile_picker_create)?.applyExpPress()
@@ -117,6 +121,23 @@ class ProfilePickerDialog : DialogFragment() {
         ExpMotion.pulseAccentRule(view.findViewById(R.id.v_profile_picker_rule))
         ExpMotion.startAnimation(view.findViewById(R.id.sv_profile_picker), R.anim.support_fade_slide_up)
         capCardHeight(view)
+    }
+
+    fun enterManageMode(enabled: Boolean = true) {
+        manageMode = enabled
+        view?.let {
+            applyManageChrome(it)
+            bindProfiles(it)
+        }
+    }
+
+    private fun applyManageChrome(root: View) {
+        root.findViewById<TextView>(R.id.btn_profile_picker_manage)?.text =
+            getString(if (manageMode) R.string.profile_done else R.string.profile_edit_profiles)
+        root.findViewById<TextView>(R.id.tv_profile_picker_title)?.text =
+            getString(
+                if (manageMode) R.string.profile_manage_title else R.string.profile_picker_title,
+            )
     }
 
     private fun bindProfiles(root: View) {
@@ -152,7 +173,6 @@ class ProfilePickerDialog : DialogFragment() {
                 .start()
             row.addView(item)
         }
-        // Add Profile tile
         val add = LinearLayout(requireContext()).apply {
             orientation = LinearLayout.VERTICAL
             gravity = android.view.Gravity.CENTER_HORIZONTAL
@@ -175,7 +195,7 @@ class ProfilePickerDialog : DialogFragment() {
                 text = "+"
                 textSize = 40f
                 setTextColor(0xFFFFFFFF.toInt())
-                setBackgroundResource(R.drawable.bg_detail_square_chip)
+                setBackgroundResource(R.drawable.bg_profile_add_orb)
             })
             addView(TextView(context).apply {
                 layoutParams = LinearLayout.LayoutParams(
@@ -189,8 +209,14 @@ class ProfilePickerDialog : DialogFragment() {
             })
             setOnClickListener {
                 ExpMotion.hapticTap(it)
-                dismissAllowingStateLoss()
-                onCreateProfile?.invoke()
+                if (manageMode) {
+                    showCreateDialog(this@ProfilePickerDialog) {
+                        view?.let(::bindProfiles)
+                    }
+                } else {
+                    dismissAllowingStateLoss()
+                    onCreateProfile?.invoke()
+                }
             }
         }
         row.addView(add)
@@ -203,7 +229,7 @@ class ProfilePickerDialog : DialogFragment() {
         item.findViewById<TextView>(R.id.tv_profile_name).text = profile.displayName
         item.findViewById<View>(R.id.v_profile_active_ring).apply {
             val wasVisible = visibility == View.VISIBLE
-            visibility = if (profile.id == activeId) View.VISIBLE else View.GONE
+            visibility = if (!manageMode && profile.id == activeId) View.VISIBLE else View.GONE
             if (ExperimentalMobileDesign.enabled() && visibility == View.VISIBLE) {
                 val primary = com.google.android.material.color.MaterialColors.getColor(
                     this,
@@ -217,11 +243,19 @@ class ProfilePickerDialog : DialogFragment() {
         item.findViewById<TextView>(R.id.tv_profile_kids_badge).visibility = View.GONE
         item.findViewById<TextView>(R.id.tv_profile_meta).visibility = View.GONE
         item.findViewById<TextView>(R.id.tv_profile_lock).apply {
-            visibility = if (profile.pinHash != null) View.VISIBLE else View.GONE
+            visibility = if (!manageMode && profile.pinHash != null) View.VISIBLE else View.GONE
+        }
+        item.findViewById<ImageView>(R.id.iv_profile_edit_badge).apply {
+            visibility = if (manageMode) View.VISIBLE else View.GONE
+            if (manageMode) ExpMotion.popIn(this)
         }
 
         item.setOnClickListener {
             ExpMotion.hapticTap(it)
+            if (manageMode) {
+                showEditProfileDialog(profile)
+                return@setOnClickListener
+            }
             if (profile.id == activeId) {
                 dismissAllowingStateLoss()
                 return@setOnClickListener
@@ -233,6 +267,102 @@ class ProfilePickerDialog : DialogFragment() {
             }
         }
         with(com.dskja.betterstreamflix.utils.ExpPressEffects) { item.applyExpPress() }
+    }
+
+    private fun showEditProfileDialog(profile: UserProfile) {
+        val context = requireContext()
+        val view = LayoutInflater.from(context).inflate(R.layout.dialog_profile_create, null, false)
+        view.findViewById<TextView>(R.id.tv_profile_create_title)
+            ?.setText(R.string.profile_edit_title)
+        val nameInput = view.findViewById<EditText>(R.id.et_profile_create_name).apply {
+            setText(profile.displayName)
+            inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_CAP_WORDS
+            imeOptions = EditorInfo.IME_ACTION_DONE
+            setSelection(text?.length ?: 0)
+        }
+        view.findViewById<CheckBox>(R.id.cb_profile_create_kids)?.visibility = View.GONE
+        val avatarRow = view.findViewById<LinearLayout>(R.id.ll_profile_create_avatars)
+        val avatarLabel = view.findViewById<TextView>(R.id.tv_profile_create_avatar_label)
+        var selected = profile.avatarKey
+
+        fun refreshAvatarRow() {
+            avatarRow.removeAllViews()
+            val density = context.resources.displayMetrics.density
+            ProfileAvatarStyle.all().forEach { palette ->
+                val orb = ProfileAvatarView(context).apply {
+                    layoutParams = LinearLayout.LayoutParams(
+                        (56 * density).toInt(),
+                        (56 * density).toInt(),
+                    ).also {
+                        val m = (10 * density).toInt()
+                        it.setMargins(0, 0, m, 0)
+                    }
+                    bind(palette.key, ProfileAvatarStyle.initialFor(palette.key), textSizeSp = 16f)
+                    isSelected = palette.key == selected
+                    foreground = context.getDrawable(R.drawable.bg_profile_avatar_select_ring)
+                    if (ExperimentalMobileDesign.enabled()) {
+                        with(com.dskja.betterstreamflix.utils.ExpPressEffects) { applyExpPress() }
+                    }
+                    setOnClickListener {
+                        ExpMotion.hapticTap(it)
+                        selected = palette.key
+                        refreshAvatarRow()
+                    }
+                }
+                avatarRow.addView(orb)
+            }
+            avatarLabel.setText(ProfileAvatarStyle.paletteFor(selected).titleRes)
+        }
+        refreshAvatarRow()
+
+        val dialog = (
+            if (ExperimentalMobileDesign.enabled()) MaterialAlertDialogBuilder(context)
+            else AlertDialog.Builder(context)
+        ).setView(view).create()
+        dialog.window?.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
+        val cancel = view.findViewById<TextView>(R.id.btn_profile_create_cancel)
+        val ok = view.findViewById<TextView>(R.id.btn_profile_create_ok)
+        if (ExperimentalMobileDesign.enabled()) {
+            with(com.dskja.betterstreamflix.utils.ExpPressEffects) {
+                cancel.applyExpPress()
+                ok.applyExpPress()
+                nameInput.applyExpPress()
+            }
+            cancel.setBackgroundResource(ExperimentalMobileDesign.chipBackground())
+            ok.setBackgroundResource(ExperimentalMobileDesign.primaryButtonBackground())
+        }
+        cancel.setOnClickListener {
+            ExpMotion.hapticTap(it)
+            dialog.dismiss()
+        }
+        ok.setOnClickListener {
+            ExpMotion.hapticTap(it)
+            val name = nameInput.text?.toString()?.trim().orEmpty()
+            if (name.isEmpty()) {
+                ExpDialogChrome.notify(context, R.string.profile_name_empty, R.string.profile_rename_title)
+                return@setOnClickListener
+            }
+            ProfileManager.rename(profile.id, name)
+            ProfileManager.updateAvatar(profile.id, selected)
+            dialog.dismiss()
+            this.view?.let(::bindProfiles)
+        }
+        dialog.setOnShowListener {
+            if (ExperimentalMobileDesign.enabled()) {
+                ExperimentalMobileDesign.applyReducedGlass(view)
+                view.setBackgroundResource(ExperimentalMobileDesign.dialogBackground())
+                ExpDialogChrome.polishShown(dialog)
+                nameInput.setBackgroundResource(ExperimentalMobileDesign.searchFieldBackground())
+                ExpMotion.revealHeader(
+                    view.findViewById(R.id.tv_profile_create_title),
+                    view.findViewById(R.id.v_profile_create_rule),
+                    avatarLabel,
+                )
+                ExpMotion.pulseAccentRule(view.findViewById(R.id.v_profile_create_rule))
+            }
+        }
+        dialog.show()
+        nameInput.requestFocus()
     }
 
     private fun showPinDialog(profile: UserProfile, onVerified: () -> Unit) {
@@ -247,9 +377,7 @@ class ProfilePickerDialog : DialogFragment() {
         val dialog = (
             if (ExperimentalMobileDesign.enabled()) MaterialAlertDialogBuilder(context)
             else AlertDialog.Builder(context)
-        )
-            .setView(view)
-            .create()
+        ).setView(view).create()
         dialog.window?.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
 
         view.findViewById<TextView>(R.id.btn_profile_pin_cancel).setOnClickListener {
@@ -273,7 +401,7 @@ class ProfilePickerDialog : DialogFragment() {
             }
         }
         dialog.setOnShowListener {
-            if (com.dskja.betterstreamflix.utils.ExperimentalMobileDesign.enabled()) {
+            if (ExperimentalMobileDesign.enabled()) {
                 ExperimentalMobileDesign.applyReducedGlass(view)
                 view.setBackgroundResource(ExperimentalMobileDesign.dialogBackground())
                 ExpMotion.enterScreen(view)
@@ -283,24 +411,12 @@ class ProfilePickerDialog : DialogFragment() {
                     ?.setBackgroundResource(ExperimentalMobileDesign.chipBackground())
                 view.findViewById<TextView>(R.id.btn_profile_pin_ok)
                     ?.setBackgroundResource(ExperimentalMobileDesign.primaryButtonBackground())
-                com.dskja.betterstreamflix.utils.ExpMotion.revealHeader(
+                ExpMotion.revealHeader(
                     view.findViewById(R.id.pav_profile_pin_avatar),
                     view.findViewById(R.id.tv_profile_pin_title),
                     view.findViewById(R.id.v_profile_pin_rule),
                 )
                 ExpMotion.pulseAccentRule(view.findViewById(R.id.v_profile_pin_rule))
-                listOf(
-                    R.id.et_profile_pin,
-                    R.id.btn_profile_pin_cancel,
-                    R.id.btn_profile_pin_ok,
-                ).forEachIndexed { index, id ->
-                    view.findViewById<View>(id)?.let { row ->
-                        with(com.dskja.betterstreamflix.utils.ExpPressEffects) { row.applyExpPress() }
-                        row.postDelayed({
-                            com.dskja.betterstreamflix.utils.ExpMotion.popIn(row)
-                        }, 40L * index)
-                    }
-                }
             }
         }
         dialog.show()
@@ -327,10 +443,17 @@ class ProfilePickerDialog : DialogFragment() {
             onSwitched: (() -> Unit)? = null,
             onManage: (() -> Unit)? = null,
             onCreate: (() -> Unit)? = null,
+            startInManageMode: Boolean = false,
         ) {
             if (!fragment.isAdded || fragment.childFragmentManager.isStateSaved) return
             val existing = fragment.childFragmentManager.findFragmentByTag(TAG)
-            if (existing is DialogFragment) {
+            if (existing is ProfilePickerDialog) {
+                if (existing.dialog?.isShowing == true) {
+                    if (startInManageMode) existing.enterManageMode(true)
+                    return
+                }
+                existing.dismissAllowingStateLoss()
+            } else if (existing is DialogFragment) {
                 if (existing.dialog?.isShowing == true) return
                 existing.dismissAllowingStateLoss()
             }
@@ -338,6 +461,7 @@ class ProfilePickerDialog : DialogFragment() {
                 onProfileSwitched = onSwitched
                 onManageProfiles = onManage
                 onCreateProfile = onCreate
+                this.startInManageMode = startInManageMode
             }.show(fragment.childFragmentManager, TAG)
         }
 
@@ -371,11 +495,11 @@ class ProfilePickerDialog : DialogFragment() {
                         bind(palette.key, ProfileAvatarStyle.initialFor(palette.key), textSizeSp = 16f)
                         isSelected = palette.key == selected
                         foreground = context.getDrawable(R.drawable.bg_profile_avatar_select_ring)
-                        if (com.dskja.betterstreamflix.utils.ExperimentalMobileDesign.enabled()) {
+                        if (ExperimentalMobileDesign.enabled()) {
                             with(com.dskja.betterstreamflix.utils.ExpPressEffects) { applyExpPress() }
                         }
                         setOnClickListener {
-                            com.dskja.betterstreamflix.utils.ExpMotion.hapticTap(it)
+                            ExpMotion.hapticTap(it)
                             selected = palette.key
                             refreshAvatarRow()
                         }
@@ -393,7 +517,7 @@ class ProfilePickerDialog : DialogFragment() {
             dialog.window?.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
             val cancel = view.findViewById<TextView>(R.id.btn_profile_create_cancel)
             val ok = view.findViewById<TextView>(R.id.btn_profile_create_ok)
-            if (com.dskja.betterstreamflix.utils.ExperimentalMobileDesign.enabled()) {
+            if (ExperimentalMobileDesign.enabled()) {
                 with(com.dskja.betterstreamflix.utils.ExpPressEffects) {
                     cancel.applyExpPress()
                     ok.applyExpPress()
@@ -404,11 +528,11 @@ class ProfilePickerDialog : DialogFragment() {
                 ok.setBackgroundResource(ExperimentalMobileDesign.primaryButtonBackground())
             }
             cancel.setOnClickListener {
-                com.dskja.betterstreamflix.utils.ExpMotion.hapticTap(it)
+                ExpMotion.hapticTap(it)
                 dialog.dismiss()
             }
             ok.setOnClickListener {
-                com.dskja.betterstreamflix.utils.ExpMotion.hapticTap(it)
+                ExpMotion.hapticTap(it)
                 val name = nameInput.text?.toString()?.trim().orEmpty()
                 if (name.isEmpty()) {
                     ExpDialogChrome.notify(context, R.string.profile_name_empty, R.string.profile_rename_title)
@@ -428,22 +552,17 @@ class ProfilePickerDialog : DialogFragment() {
                 onCreated?.invoke(created)
             }
             dialog.setOnShowListener {
-                if (com.dskja.betterstreamflix.utils.ExperimentalMobileDesign.enabled()) {
+                if (ExperimentalMobileDesign.enabled()) {
                     ExperimentalMobileDesign.applyReducedGlass(view)
                     view.setBackgroundResource(ExperimentalMobileDesign.dialogBackground())
                     ExpDialogChrome.polishShown(dialog)
                     nameInput.setBackgroundResource(ExperimentalMobileDesign.searchFieldBackground())
-                    com.dskja.betterstreamflix.utils.ExpMotion.revealHeader(
+                    ExpMotion.revealHeader(
                         view.findViewById(R.id.tv_profile_create_title),
                         view.findViewById(R.id.v_profile_create_rule),
                         avatarLabel,
                     )
                     ExpMotion.pulseAccentRule(view.findViewById(R.id.v_profile_create_rule))
-                    listOf(nameInput, kidsCheck, avatarRow, cancel, ok).forEachIndexed { index, row ->
-                        row.postDelayed({
-                            com.dskja.betterstreamflix.utils.ExpMotion.popIn(row)
-                        }, 36L * index)
-                    }
                 }
             }
             dialog.show()

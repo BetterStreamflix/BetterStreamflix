@@ -18,6 +18,7 @@ import com.dskja.betterstreamflix.database.AppDatabase
 import com.dskja.betterstreamflix.databinding.FragmentMovieMobileBinding
 import com.dskja.betterstreamflix.models.Movie
 import com.dskja.betterstreamflix.ui.DetailHeaderController
+import com.dskja.betterstreamflix.ui.DetailTab
 import com.dskja.betterstreamflix.ui.SpacingItemDecoration
 import com.dskja.betterstreamflix.utils.CacheUtils
 import com.dskja.betterstreamflix.utils.ExpNavAutoHide
@@ -39,6 +40,8 @@ class MovieMobileFragment : Fragment() {
     private val viewModel by viewModelsFactory { MovieViewModel(args.id, database) }
 
     private val appAdapter = AppAdapter()
+    private var currentMovie: Movie? = null
+    private var selectedTab: DetailTab = DetailTab.SIMILAR
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -69,6 +72,15 @@ class MovieMobileFragment : Fragment() {
             )
         }
         DetailHeaderController.wireBack(binding.root)
+        DetailHeaderController.wireCast(this, binding.root)
+        appAdapter.onDetailTabSelectedListener = { tab ->
+            if (selectedTab != tab) {
+                selectedTab = tab
+                appAdapter.selectedDetailTab = tab
+                rebuildBody(scrollTabsToTop = true)
+            }
+        }
+        appAdapter.selectedDetailTab = selectedTab
 
         initializeMovie()
 
@@ -170,27 +182,64 @@ class MovieMobileFragment : Fragment() {
     private var lastContentSignature: List<Any?>? = null
 
     private fun displayMovie(movie: Movie) {
-        binding.ivMovieBanner.loadMovieBanner(movie, hero = false) {
-            centerCrop()
+        currentMovie = movie
+        binding.ivMovieBanner.loadMovieBanner(movie, hero = true) {
+            fitCenter()
             transition(DrawableTransitionOptions.withCrossFade())
         }
+        prefetchLogo(movie.logo)
         DetailHeaderController.bindMovie(this, binding.root, movie)
+        DetailHeaderController.wireCast(this, binding.root)
 
         val signature = contentSignature(movie)
-        if (lastContentSignature == signature) {
-            DetailHeaderController.refreshListState(binding.root, movie.isFavorite)
-            return
+        if (lastContentSignature != signature) {
+            lastContentSignature = signature
+            selectedTab = if (movie.recommendations.isNotEmpty()) DetailTab.SIMILAR else DetailTab.ABOUT
+            appAdapter.selectedDetailTab = selectedTab
         }
-        lastContentSignature = signature
+        rebuildBody(scrollTabsToTop = false)
+    }
 
-        appAdapter.submitList(listOfNotNull(
-            movie.apply { itemType = AppAdapter.Type.MOVIE_MOBILE },
-            movie.copy().apply { itemType = AppAdapter.Type.MOVIE_TABS_MOBILE },
-            movie.takeIf { it.recommendations.isNotEmpty() }
-                ?.copy()
-                ?.apply { itemType = AppAdapter.Type.MOVIE_RECOMMENDATIONS_MOBILE },
-            movie.copy().apply { itemType = AppAdapter.Type.MOVIE_TRAILER_MOBILE },
-            movie.copy().apply { itemType = AppAdapter.Type.MOVIE_ABOUT_MOBILE },
-        ))
+    private fun prefetchLogo(logoUrl: String?) {
+        val url = com.dskja.betterstreamflix.utils.ArtworkUrls.preferHero(logoUrl)
+            ?: com.dskja.betterstreamflix.utils.ArtworkUrls.preferOriginal(logoUrl)
+            ?: return
+        com.bumptech.glide.Glide.with(this)
+            .load(url)
+            .diskCacheStrategy(com.bumptech.glide.load.engine.DiskCacheStrategy.AUTOMATIC)
+            .preload()
+    }
+
+    private fun rebuildBody(scrollTabsToTop: Boolean) {
+        val movie = currentMovie ?: return
+        val body: List<AppAdapter.Item> = when (selectedTab) {
+            DetailTab.SIMILAR -> listOfNotNull(
+                movie.takeIf { it.recommendations.isNotEmpty() }
+                    ?.copy()
+                    ?.apply { itemType = AppAdapter.Type.MOVIE_RECOMMENDATIONS_MOBILE },
+            )
+            DetailTab.TRAILER -> listOf(
+                movie.copy().apply { itemType = AppAdapter.Type.MOVIE_TRAILER_MOBILE },
+            )
+            DetailTab.ABOUT -> listOfNotNull(
+                movie.copy().apply { itemType = AppAdapter.Type.MOVIE_ABOUT_MOBILE },
+                movie.takeIf { it.cast.isNotEmpty() }
+                    ?.copy()
+                    ?.apply { itemType = AppAdapter.Type.MOVIE_CAST_MOBILE },
+                movie.takeIf { it.directors.isNotEmpty() }
+                    ?.copy()
+                    ?.apply { itemType = AppAdapter.Type.MOVIE_DIRECTORS_MOBILE },
+            )
+            DetailTab.EPISODES -> emptyList()
+        }
+        appAdapter.submitList(
+            listOfNotNull(
+                movie.apply { itemType = AppAdapter.Type.MOVIE_MOBILE },
+                movie.copy().apply { itemType = AppAdapter.Type.MOVIE_TABS_MOBILE },
+            ) + body,
+        )
+        if (scrollTabsToTop) {
+            binding.rvMovie.post { binding.rvMovie.smoothScrollToPosition(1) }
+        }
     }
 }

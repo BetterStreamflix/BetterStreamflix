@@ -91,7 +91,8 @@ class PluginManagerTest {
     }
 
     @Test
-    fun demoAddonSearchOnlyForPluginQueries() = runBlocking {
+    fun demoAddonIsForceDisabledAndSearchReturnsNothing() = runBlocking {
+        assertFalse(DemoAddonPlugin.isEnabled())
         val provider = object : com.dskja.betterstreamflix.providers.Provider {
             override val name = "Test"
             override val baseUrl = "https://example.com"
@@ -116,8 +117,7 @@ class PluginManagerTest {
             override suspend fun getVideo(server: com.dskja.betterstreamflix.models.Video.Server) =
                 error("n/a")
         }
-        val hits = DemoAddonPlugin.search(provider, "plugin system", 1)
-        assertEquals(1, hits.size)
+        assertTrue(DemoAddonPlugin.search(provider, "plugin system", 1).isEmpty())
         assertTrue(DemoAddonPlugin.search(provider, "matrix", 1).isEmpty())
     }
 }
