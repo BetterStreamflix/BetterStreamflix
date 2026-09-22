@@ -46,10 +46,7 @@ class MoviesMobileFragment : Fragment() {
         container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View {
-        val layoutRes = ExperimentalMobileDesign.layout(
-            R.layout.fragment_movies_mobile,
-            R.layout.fragment_movies_mobile_exp,
-        )
+        val layoutRes = R.layout.fragment_movies_mobile
         val root = inflater.inflate(layoutRes, container, false)
         _binding = FragmentMoviesMobileBinding.bind(root)
         return binding.root

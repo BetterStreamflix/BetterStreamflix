@@ -39,30 +39,21 @@ class DownloadsAdapter(
         return when (viewType) {
             TYPE_HEADER -> HeaderVH(
                 inflater.inflate(
-                    ExperimentalMobileDesign.layout(
-                        R.layout.item_download_header,
-                        R.layout.item_download_header_exp,
-                    ),
+                    R.layout.item_download_header,
                     parent,
                     false,
                 )
             )
             TYPE_PACK -> PackVH(
                 inflater.inflate(
-                    ExperimentalMobileDesign.layout(
-                        R.layout.item_download_season,
-                        R.layout.item_download_season_exp,
-                    ),
+                    R.layout.item_download_season,
                     parent,
                     false,
                 )
             )
             else -> ItemVH(
                 inflater.inflate(
-                    ExperimentalMobileDesign.layout(
-                        R.layout.item_download,
-                        R.layout.item_download_exp,
-                    ),
+                    R.layout.item_download,
                     parent,
                     false,
                 )

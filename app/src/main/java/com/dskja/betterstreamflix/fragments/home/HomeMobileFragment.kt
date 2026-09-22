@@ -34,12 +34,10 @@ import com.dskja.betterstreamflix.utils.ExperimentalMobileDesign
 import com.dskja.betterstreamflix.utils.HomeCatalogPipeline
 import com.dskja.betterstreamflix.utils.LoggingUtils
 import com.dskja.betterstreamflix.utils.ProviderChangeNotifier
-import com.dskja.betterstreamflix.experimental.ExperimentalReactShell
 import kotlinx.coroutines.launch
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.recyclerview.widget.RecyclerView
-import androidx.core.os.bundleOf
 
 class HomeMobileFragment : Fragment() {
 
@@ -47,9 +45,6 @@ class HomeMobileFragment : Fragment() {
 
     private var _binding: FragmentHomeMobileBinding? = null
     private val binding get() = _binding!!
-    private var reactShell: ExperimentalReactShell? = null
-    private var reactMode = false
-
     private val viewModel: HomeViewModel
         get() {
             val providerKey = UserPreferences.currentProvider?.name ?: "default"
@@ -69,15 +64,7 @@ class HomeMobileFragment : Fragment() {
         container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View {
-        if (ExperimentalMobileDesign.useReactShell()) {
-            reactMode = true
-            return inflater.inflate(R.layout.fragment_experimental_react_host, container, false)
-        }
-        reactMode = false
-        val layoutRes = ExperimentalMobileDesign.layout(
-            R.layout.fragment_home_mobile,
-            R.layout.fragment_home_mobile_exp,
-        )
+        val layoutRes = R.layout.fragment_home_mobile
         val root = inflater.inflate(layoutRes, container, false)
         _binding = FragmentHomeMobileBinding.bind(root)
         return binding.root
@@ -85,11 +72,6 @@ class HomeMobileFragment : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-
-        if (reactMode) {
-            setupReactHome(view)
-            return
-        }
 
         initializeHome()
 
@@ -152,10 +134,6 @@ class HomeMobileFragment : Fragment() {
 
     override fun onResume() {
         super.onResume()
-        if (reactMode) {
-            reactShell?.pushBootstrap()
-            return
-        }
         refreshProviderLogo()
         refreshProfileChip()
         // Soft-resume featured auto-advance — avoid notifyItemChanged (full rebind glitches).
@@ -163,72 +141,17 @@ class HomeMobileFragment : Fragment() {
     }
 
     override fun onPause() {
-        if (!reactMode) {
-            // Soft-pause featured auto-advance while Home is under the detail back stack
-            // (prevents BETTERSTREAMFLIX-1 NavHost NPEs from delayed page callbacks).
-            _binding?.rvHome?.let { appAdapter.pauseCategorySwipers(it) }
-        }
+        // Soft-pause featured auto-advance while Home is under the detail back stack
+        // (prevents BETTERSTREAMFLIX-1 NavHost NPEs from delayed page callbacks).
+        _binding?.rvHome?.let { appAdapter.pauseCategorySwipers(it) }
         super.onPause()
     }
 
     override fun onDestroyView() {
-        reactShell?.detach()
-        reactShell = null
         _binding?.let { appAdapter.onSaveInstanceState(it.rvHome) }
         _binding = null
         super.onDestroyView()
     }
-
-    private fun setupReactHome(root: View) {
-        val shell = ExperimentalReactShell(
-            fragment = this,
-            onNavigate = { dest ->
-                when (dest) {
-                    "search" -> runCatching { findNavController().navigate(R.id.search) }
-                    "settings" -> runCatching { findNavController().navigate(R.id.settings) }
-                    "live" -> runCatching { findNavController().navigate(R.id.providers) }
-                    else -> Unit
-                }
-            },
-            onOpenShow = { id, kind ->
-                if (id.isBlank()) return@ExperimentalReactShell
-                runCatching {
-                    if (kind == "movie") {
-                        findNavController().navigate(
-                            R.id.action_home_to_movie,
-                            bundleOf("id" to id),
-                        )
-                    } else {
-                        findNavController().navigate(
-                            R.id.action_home_to_tv_show,
-                            bundleOf("id" to id),
-                        )
-                    }
-                }
-            },
-        )
-        reactShell = shell
-        shell.attach(root)
-
-        viewLifecycleOwner.lifecycleScope.launch {
-            ProviderChangeNotifier.providerChangeFlow
-                .flowWithLifecycle(lifecycle, Lifecycle.State.STARTED)
-                .collect { viewModel.getHome() }
-        }
-        viewModel.getHome()
-        viewLifecycleOwner.lifecycleScope.launch {
-            viewModel.state.flowWithLifecycle(lifecycle, Lifecycle.State.STARTED).collect { state ->
-                when (state) {
-                    is HomeViewModel.State.SuccessLoading ->
-                        reactShell?.pushCatalog(state.categories)
-                    is HomeViewModel.State.FailedLoading ->
-                        reactShell?.pushStatus(state.error.message ?: "Catalog failed")
-                    else -> Unit
-                }
-            }
-        }
-    }
-
 
     private fun initializeHome() {
         binding.rvHome.apply {

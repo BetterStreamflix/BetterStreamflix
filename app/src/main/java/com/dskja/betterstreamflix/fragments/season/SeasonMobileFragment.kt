@@ -62,10 +62,7 @@ class SeasonMobileFragment : Fragment() {
     ): View {
         _binding = FragmentSeasonMobileBinding.bind(
             inflater.inflate(
-                ExperimentalMobileDesign.layout(
-                    R.layout.fragment_season_mobile,
-                    R.layout.fragment_season_mobile_exp,
-                ),
+                R.layout.fragment_season_mobile,
                 container,
                 false,
             )

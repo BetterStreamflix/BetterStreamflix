@@ -55,10 +55,7 @@ class FavoritesMobileFragment : Fragment() {
     ): View {
         _binding = FragmentFavoritesMobileBinding.bind(
             inflater.inflate(
-                ExperimentalMobileDesign.layout(
-                    R.layout.fragment_favorites_mobile,
-                    R.layout.fragment_favorites_mobile_exp,
-                ),
+                R.layout.fragment_favorites_mobile,
                 container,
                 false,
             )

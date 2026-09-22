@@ -26,10 +26,7 @@ class PlayerSettingsMobileView @JvmOverloads constructor(
 
     val binding = ViewPlayerSettingsMobileBinding.bind(
         LayoutInflater.from(context).inflate(
-            ExperimentalMobileDesign.layout(
-                R.layout.view_player_settings_mobile,
-                R.layout.view_player_settings_mobile_exp,
-            ),
+            R.layout.view_player_settings_mobile,
             this,
             true,
         )
@@ -255,10 +252,7 @@ class PlayerSettingsMobileView @JvmOverloads constructor(
                 settingsView,
                 ItemSettingMobileBinding.bind(
                     LayoutInflater.from(parent.context).inflate(
-                        ExperimentalMobileDesign.layout(
-                            R.layout.item_setting_mobile,
-                            R.layout.item_setting_mobile_exp,
-                        ),
+                        R.layout.item_setting_mobile,
                         parent,
                         false,
                     )

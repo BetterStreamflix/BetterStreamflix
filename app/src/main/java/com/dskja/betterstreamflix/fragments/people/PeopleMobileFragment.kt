@@ -57,10 +57,7 @@ class PeopleMobileFragment : Fragment() {
     ): View {
         _binding = FragmentPeopleMobileBinding.bind(
             inflater.inflate(
-                ExperimentalMobileDesign.layout(
-                    R.layout.fragment_people_mobile,
-                    R.layout.fragment_people_mobile_exp,
-                ),
+                R.layout.fragment_people_mobile,
                 container,
                 false,
             )
@@ -175,10 +172,7 @@ class PeopleMobileFragment : Fragment() {
             binding = { parent ->
                 HeaderPeopleMobileBinding.bind(
                     LayoutInflater.from(parent.context).inflate(
-                        ExperimentalMobileDesign.layout(
-                            R.layout.header_people_mobile,
-                            R.layout.header_people_mobile_exp,
-                        ),
+                        R.layout.header_people_mobile,
                         parent,
                         false,
                     )

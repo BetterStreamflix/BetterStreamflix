@@ -46,10 +46,7 @@ class MovieMobileFragment : Fragment() {
     ): View {
         _binding = FragmentMovieMobileBinding.bind(
             inflater.inflate(
-                ExperimentalMobileDesign.layout(
-                    R.layout.fragment_movie_mobile,
-                    R.layout.fragment_movie_mobile_exp,
-                ),
+                R.layout.fragment_movie_mobile,
                 container,
                 false,
             )

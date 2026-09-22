@@ -21,7 +21,6 @@ import com.dskja.betterstreamflix.providers.Provider
 import com.dskja.betterstreamflix.ui.SpacingItemDecoration
 import com.dskja.betterstreamflix.utils.ExpEmptyChrome
 import com.dskja.betterstreamflix.utils.ExpMotion
-import com.dskja.betterstreamflix.utils.ExpSpinnerAdapter
 import com.dskja.betterstreamflix.utils.ExperimentalMobileDesign
 import com.dskja.betterstreamflix.utils.UserPreferences
 import kotlinx.coroutines.launch
@@ -120,21 +119,12 @@ class ProvidersTvFragment : Fragment() {
             ).apply {
                 addAll(languages.map { it.name })
             }
-            val spinnerAdapter = if (ExperimentalMobileDesign.enabled()) {
-                ExpSpinnerAdapter(
-                    this.context,
-                    R.layout.item_exp_spinner,
-                    R.layout.item_exp_spinner_dropdown,
-                    labels,
-                ) { selectedItemPosition.coerceAtLeast(0) }
-            } else {
-                ArrayAdapter(
-                    requireContext(),
-                    android.R.layout.simple_spinner_item,
-                    labels.toTypedArray(),
-                ).also {
-                    it.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
-                }
+            val spinnerAdapter = ArrayAdapter(
+                requireContext(),
+                android.R.layout.simple_spinner_item,
+                labels.toTypedArray(),
+            ).also {
+                it.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
             }
             setAdapter(spinnerAdapter)
 

@@ -2,15 +2,12 @@ package com.dskja.betterstreamflix.utils
 
 import android.app.Activity
 import android.content.Context
-import com.dskja.betterstreamflix.BuildConfig
 import com.dskja.betterstreamflix.R
 import com.google.android.material.color.DynamicColors
 
 /**
- * Lumina — off-by-default cinematic mobile shell.
- *
- * DEBUG builds can enable the React/Vite shell (assets/experimental) plus the
- * legacy XML glass layouts for screens that are not yet ported.
+ * Retired. The app always uses the original layouts.
+ * [enabled] stays false so leftover call sites cannot swap in another shell.
  */
 object ExperimentalMobileDesign {
 
@@ -26,28 +23,23 @@ object ExperimentalMobileDesign {
         }
     }
 
-    fun isAvailable(): Boolean = BuildConfig.DEBUG
+    /** Retired. The original UI is the only shell. */
+    fun isAvailable(): Boolean = false
 
-    fun enabled(): Boolean = isAvailable() && UserPreferences.experimentalNewAppDesign
+    fun enabled(): Boolean = false
 
-    /**
-     * React Lumina home is a separate opt-in. When Lumina is on but React home is off,
-     * the native Featured ViewPager carousel is used (preferred / default).
-     */
-    fun useReactShell(): Boolean =
-        enabled() && UserPreferences.experimentalReactHome
+    fun useReactShell(): Boolean = false
 
-    /** Call once at app start to clear stale Lumina prefs in release builds. */
+    /** Clear leftover experimental prefs from older installs. */
     fun enforceAvailabilityGate() {
-        if (!isAvailable() && UserPreferences.experimentalNewAppDesign) {
+        if (UserPreferences.experimentalNewAppDesign) {
             UserPreferences.experimentalNewAppDesign = false
         }
-        if (!isAvailable() && UserPreferences.experimentalReactHome) {
+        if (UserPreferences.experimentalReactHome) {
             UserPreferences.experimentalReactHome = false
         }
     }
-    fun layout(defaultRes: Int, experimentalRes: Int): Int =
-        if (enabled()) experimentalRes else defaultRes
+    fun layout(defaultRes: Int, @Suppress("UNUSED_PARAMETER") experimentalRes: Int): Int = defaultRes
 
     fun accent(): Accent = Accent.fromKey(UserPreferences.experimentalLuminaAccent)
 

@@ -46,10 +46,7 @@ class ProvidersMobileFragment : Fragment() {
     ): View {
         _binding = FragmentProvidersMobileBinding.bind(
             inflater.inflate(
-                ExperimentalMobileDesign.layout(
-                    R.layout.fragment_providers_mobile,
-                    R.layout.fragment_providers_mobile_exp,
-                ),
+                R.layout.fragment_providers_mobile,
                 container,
                 false,
             )
@@ -150,21 +147,12 @@ class ProvidersMobileFragment : Fragment() {
             ).apply {
                 addAll(languages.map { it.name })
             }
-            val spinnerAdapter = if (ExperimentalMobileDesign.enabled()) {
-                com.dskja.betterstreamflix.utils.ExpSpinnerAdapter(
-                    this.context,
-                    R.layout.item_exp_spinner,
-                    R.layout.item_exp_spinner_dropdown,
-                    labels,
-                ) { selectedItemPosition.coerceAtLeast(0) }
-            } else {
-                ArrayAdapter(
-                    this.context,
-                    android.R.layout.simple_spinner_item,
-                    labels.toTypedArray(),
-                ).also {
-                    it.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
-                }
+            val spinnerAdapter = ArrayAdapter(
+                this.context,
+                android.R.layout.simple_spinner_item,
+                labels.toTypedArray(),
+            ).also {
+                it.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
             }
             setAdapter(spinnerAdapter)
 

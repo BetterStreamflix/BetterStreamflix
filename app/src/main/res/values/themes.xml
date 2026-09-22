@@ -110,10 +110,10 @@
         <item name="textAppearanceLabelSmall">@style/TextAppearance.Lumina.NavLabel</item>
         <item name="fontFamily">@font/manrope_family</item>
         <item name="android:fontFamily">@font/manrope_family</item>
-        <item name="home_gradient_drawable">@drawable/bg_home_gradient_exp</item>
-        <item name="movie_banner_gradient_drawable">@drawable/bg_home_gradient_exp</item>
-        <item name="tv_show_banner_gradient_drawable">@drawable/bg_home_gradient_exp</item>
-        <item name="category_swiper_gradient_drawable">@drawable/fg_category_swiper_exp</item>
+        <item name="home_gradient_drawable">@drawable/bg_home_gradient_default</item>
+        <item name="movie_banner_gradient_drawable">@drawable/bg_movie_banner_gradient_default</item>
+        <item name="tv_show_banner_gradient_drawable">@drawable/bg_tv_show_banner_gradient_default</item>
+        <item name="category_swiper_gradient_drawable">@drawable/fg_category_swiper_default</item>
     </style>
 
     <!-- Lumina accent: Ember (warm copper) -->

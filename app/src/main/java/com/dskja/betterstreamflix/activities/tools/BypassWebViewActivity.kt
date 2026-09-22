@@ -85,10 +85,7 @@ class BypassWebViewActivity : AppCompatActivity() {
         }
         super.onCreate(savedInstanceState)
         setContentView(
-            ExperimentalMobileDesign.layout(
-                R.layout.activity_bypass_webview,
-                R.layout.activity_bypass_webview_exp,
-            ),
+            R.layout.activity_bypass_webview,
         )
         WindowCompat.setDecorFitsSystemWindows(window, false)
 

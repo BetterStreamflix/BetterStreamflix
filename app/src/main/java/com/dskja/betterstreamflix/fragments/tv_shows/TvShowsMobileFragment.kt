@@ -46,10 +46,7 @@ class TvShowsMobileFragment : Fragment() {
         container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View {
-        val layoutRes = ExperimentalMobileDesign.layout(
-            R.layout.fragment_tv_shows_mobile,
-            R.layout.fragment_tv_shows_mobile_exp,
-        )
+        val layoutRes = R.layout.fragment_tv_shows_mobile
         val root = inflater.inflate(layoutRes, container, false)
         _binding = FragmentTvShowsMobileBinding.bind(root)
         return binding.root
