@@ -5,7 +5,6 @@ import com.dskja.betterstreamflix.models.Category
 import com.dskja.betterstreamflix.models.Movie
 import com.dskja.betterstreamflix.models.Video
 import com.dskja.betterstreamflix.providers.Provider
-import com.dskja.betterstreamflix.utils.UserPreferences
 
 /**
  * Built-in demo addon that ships with the app to showcase the plugin extension surface
@@ -59,8 +58,7 @@ object DemoAddonPlugin :
         error("Demo Addon does not expose a Provider — it contributes extension hooks only")
     }
 
-    override fun isEnabled(): Boolean =
-        runCatching { !UserPreferences.isPluginDisabled(ID) }.getOrDefault(true)
+    override fun isEnabled(): Boolean = false
 
     override fun onAttach(host: PluginHost) {
         this.host = host

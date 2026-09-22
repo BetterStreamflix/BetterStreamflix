@@ -18,6 +18,7 @@ import com.dskja.betterstreamflix.database.AppDatabase
 import com.dskja.betterstreamflix.databinding.FragmentTvShowMobileBinding
 import com.dskja.betterstreamflix.models.TvShow
 import com.dskja.betterstreamflix.ui.DetailHeaderController
+import com.dskja.betterstreamflix.ui.DetailTab
 import com.dskja.betterstreamflix.ui.SpacingItemDecoration
 import com.dskja.betterstreamflix.utils.CacheUtils
 import com.dskja.betterstreamflix.utils.Http409CacheGuard
@@ -49,6 +50,8 @@ class TvShowMobileFragment : Fragment() {
     }
 
     private val appAdapter = AppAdapter()
+    private var currentTvShow: TvShow? = null
+    private var selectedTab: DetailTab = DetailTab.EPISODES
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -75,6 +78,15 @@ class TvShowMobileFragment : Fragment() {
             )
         }
         DetailHeaderController.wireBack(binding.root)
+        DetailHeaderController.wireCast(this, binding.root)
+        appAdapter.onDetailTabSelectedListener = { tab ->
+            if (selectedTab != tab) {
+                selectedTab = tab
+                appAdapter.selectedDetailTab = tab
+                rebuildBody(scrollTabsToTop = true)
+            }
+        }
+        appAdapter.selectedDetailTab = selectedTab
 
         initializeTvShow()
 
@@ -180,30 +192,61 @@ class TvShowMobileFragment : Fragment() {
     private var lastContentSignature: List<Any?>? = null
 
     private fun displayTvShow(tvShow: TvShow) {
-        binding.ivTvShowBanner.loadTvShowBanner(tvShow, hero = false) {
-            centerCrop()
+        currentTvShow = tvShow
+        binding.ivTvShowBanner.loadTvShowBanner(tvShow, hero = true) {
+            fitCenter()
             transition(DrawableTransitionOptions.withCrossFade())
         }
         DetailHeaderController.bindTvShow(this, binding.root, tvShow)
+        DetailHeaderController.wireCast(this, binding.root)
 
         val signature = contentSignature(tvShow)
-        if (lastContentSignature == signature) {
-            DetailHeaderController.refreshListState(binding.root, tvShow.isFavorite)
-            return
+        if (lastContentSignature != signature) {
+            lastContentSignature = signature
+            selectedTab = when {
+                tvShow.seasons.isNotEmpty() -> DetailTab.EPISODES
+                tvShow.recommendations.isNotEmpty() -> DetailTab.SIMILAR
+                else -> DetailTab.ABOUT
+            }
+            appAdapter.selectedDetailTab = selectedTab
         }
-        lastContentSignature = signature
+        rebuildBody(scrollTabsToTop = false)
+    }
 
-        appAdapter.submitList(listOfNotNull(
-            tvShow.apply { itemType = AppAdapter.Type.TV_SHOW_MOBILE },
-            tvShow.copy().apply { itemType = AppAdapter.Type.TV_SHOW_TABS_MOBILE },
-            tvShow.takeIf { it.seasons.isNotEmpty() }
-                ?.copy()
-                ?.apply { itemType = AppAdapter.Type.TV_SHOW_SEASONS_MOBILE },
-            tvShow.takeIf { it.recommendations.isNotEmpty() }
-                ?.copy()
-                ?.apply { itemType = AppAdapter.Type.TV_SHOW_RECOMMENDATIONS_MOBILE },
-            tvShow.copy().apply { itemType = AppAdapter.Type.TV_SHOW_TRAILER_MOBILE },
-            tvShow.copy().apply { itemType = AppAdapter.Type.TV_SHOW_ABOUT_MOBILE },
-        ))
+    private fun rebuildBody(scrollTabsToTop: Boolean) {
+        val tvShow = currentTvShow ?: return
+        val body: List<AppAdapter.Item> = when (selectedTab) {
+            DetailTab.EPISODES -> listOfNotNull(
+                tvShow.takeIf { it.seasons.isNotEmpty() }
+                    ?.copy()
+                    ?.apply { itemType = AppAdapter.Type.TV_SHOW_SEASONS_MOBILE },
+            )
+            DetailTab.SIMILAR -> listOfNotNull(
+                tvShow.takeIf { it.recommendations.isNotEmpty() }
+                    ?.copy()
+                    ?.apply { itemType = AppAdapter.Type.TV_SHOW_RECOMMENDATIONS_MOBILE },
+            )
+            DetailTab.TRAILER -> listOf(
+                tvShow.copy().apply { itemType = AppAdapter.Type.TV_SHOW_TRAILER_MOBILE },
+            )
+            DetailTab.ABOUT -> listOfNotNull(
+                tvShow.copy().apply { itemType = AppAdapter.Type.TV_SHOW_ABOUT_MOBILE },
+                tvShow.takeIf { it.cast.isNotEmpty() }
+                    ?.copy()
+                    ?.apply { itemType = AppAdapter.Type.TV_SHOW_CAST_MOBILE },
+                tvShow.takeIf { it.directors.isNotEmpty() }
+                    ?.copy()
+                    ?.apply { itemType = AppAdapter.Type.TV_SHOW_DIRECTORS_MOBILE },
+            )
+        }
+        appAdapter.submitList(
+            listOfNotNull(
+                tvShow.apply { itemType = AppAdapter.Type.TV_SHOW_MOBILE },
+                tvShow.copy().apply { itemType = AppAdapter.Type.TV_SHOW_TABS_MOBILE },
+            ) + body,
+        )
+        if (scrollTabsToTop) {
+            binding.rvTvShow.post { binding.rvTvShow.smoothScrollToPosition(1) }
+        }
     }
 }

@@ -1,6 +1,5 @@
 package com.dskja.betterstreamflix.fragments.favorites
 
-import androidx.appcompat.app.AlertDialog
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
@@ -95,14 +94,6 @@ class FavoritesMobileFragment : Fragment() {
         binding.btnFavoritesRemove.setOnClickListener {
             ExpMotion.hapticTap(it)
             removeSelectedFavorites()
-        }
-        binding.btnFavoritesReorderMode.setOnClickListener {
-            ExpMotion.hapticTap(it)
-            setRearrangeMode(!rearrangeMode)
-        }
-        binding.btnFavoritesReorder.setOnClickListener {
-            ExpMotion.hapticTap(it)
-            showSortDialog()
         }
         setRearrangeMode(false)
 
@@ -365,76 +356,6 @@ class FavoritesMobileFragment : Fragment() {
         binding.rvFavorites.isVisible = gridItems.isNotEmpty()
         binding.btnFavoritesEdit.isVisible = gridItems.isNotEmpty() && !rearrangeMode
         appAdapter.submitList(gridItems)
-    }
-
-    private fun showSortDialog() {
-        val modes = FavoritesViewModel.SortMode.entries
-        val labels = arrayOf(
-            getString(R.string.favorites_sort_manual),
-            getString(R.string.favorites_sort_recent),
-            getString(R.string.favorites_sort_title_ascending),
-            getString(R.string.favorites_sort_title_descending),
-        )
-        val builder = if (ExperimentalMobileDesign.enabled()) {
-            com.google.android.material.dialog.MaterialAlertDialogBuilder(requireContext())
-        } else {
-            AlertDialog.Builder(requireContext())
-        }
-        if (ExperimentalMobileDesign.enabled()) {
-            val titleBox = android.widget.LinearLayout(requireContext()).apply {
-                orientation = android.widget.LinearLayout.VERTICAL
-                val pad = (20 * resources.displayMetrics.density).toInt()
-                setPadding(pad, pad, pad, (8 * resources.displayMetrics.density).toInt())
-            }
-            val titleView = android.widget.TextView(requireContext()).apply {
-                text = getString(R.string.favorites_sort_title)
-                setTextAppearance(R.style.TextAppearance_Lumina_Title)
-                setTextColor(
-                    com.google.android.material.color.MaterialColors.getColor(
-                        this,
-                        com.google.android.material.R.attr.colorOnSurface,
-                    ),
-                )
-            }
-            val rule = View(requireContext()).apply {
-                layoutParams = android.widget.LinearLayout.LayoutParams(
-                    (36 * resources.displayMetrics.density).toInt(),
-                    (3 * resources.displayMetrics.density).toInt(),
-                ).also { it.topMargin = (10 * resources.displayMetrics.density).toInt() }
-                setBackgroundResource(R.drawable.bg_exp_accent_rule)
-            }
-            titleBox.addView(titleView)
-            titleBox.addView(rule)
-            builder.setCustomTitle(titleBox)
-            ExpMotion.pulseAccentRule(rule)
-        } else {
-            builder.setTitle(R.string.favorites_sort_title)
-        }
-        builder
-            .setSingleChoiceItems(labels, modes.indexOf(viewModel.currentSortMode())) { dialog, which ->
-                ExpMotion.hapticTap(binding.root)
-                if (modes[which] != FavoritesViewModel.SortMode.MANUAL) setRearrangeMode(false)
-                viewModel.setSortMode(modes[which])
-                dialog.dismiss()
-            }
-            .setNegativeButton(R.string.option_cancel, null)
-            .create()
-            .also { dialog ->
-                dialog.setOnShowListener {
-                    com.dskja.betterstreamflix.utils.ExpDialogChrome.polishShown(dialog)
-                    if (ExperimentalMobileDesign.enabled()) {
-                        dialog.window?.decorView?.let { ExpMotion.enterScreen(it) }
-                        dialog.listView?.post {
-                            val list = dialog.listView ?: return@post
-                            for (i in 0 until list.childCount) {
-                                val row = list.getChildAt(i) ?: continue
-                                row.postDelayed({ ExpMotion.popIn(row) }, 28L * i)
-                            }
-                        }
-                    }
-                }
-                dialog.show()
-            }
     }
 
     override fun onDestroyView() {

@@ -108,6 +108,9 @@ class AppAdapter(
     var onProviderClickListener: ((Provider) -> Unit)? = null
     var onSupportBannerClickListener: (() -> Unit)? = null
     var onSupportBannerDismissListener: (() -> Unit)? = null
+    var onDetailTabSelectedListener: ((com.dskja.betterstreamflix.ui.DetailTab) -> Unit)? = null
+    var selectedDetailTab: com.dskja.betterstreamflix.ui.DetailTab =
+        com.dskja.betterstreamflix.ui.DetailTab.SIMILAR
     // ---------------------------------
     interface Item {
         var itemType: Type

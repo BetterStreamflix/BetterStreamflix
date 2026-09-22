@@ -5,7 +5,7 @@
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:paddingStart="12dp"
-    android:paddingTop="52dp"
+    android:paddingTop="72dp"
     android:paddingEnd="12dp"
     android:paddingBottom="4dp">
 

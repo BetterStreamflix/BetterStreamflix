@@ -73,10 +73,10 @@ internal object SettingsHubCategories {
     fun accountCards(): List<SettingsHubCard> {
         val cards = mutableListOf(
             SettingsHubCard(
-                id = "profiles",
-                titleRes = R.string.settings_screen_profiles_title,
-                summaryRes = R.string.settings_screen_profiles_summary,
-                iconRes = R.drawable.ic_person_placeholder,
+                id = "library_parental",
+                titleRes = R.string.settings_screen_library_title,
+                summaryRes = R.string.settings_screen_library_summary,
+                iconRes = R.drawable.ic_favorite_enable,
                 target = SettingsHubTarget.PreferenceScreen("screen_profiles"),
             ),
             SettingsHubCard(

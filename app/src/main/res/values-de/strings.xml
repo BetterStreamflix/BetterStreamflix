@@ -43,7 +43,7 @@
     <string name="detail_tab_similar">Das könnte dir auch gefallen</string>
     <string name="detail_tab_trailer">Trailer</string>
     <string name="detail_tab_about">Info</string>
-    <string name="detail_trailer_empty">Kein Trailer verfügbar</string>
+    <string name="detail_trailer_empty">Noch keine Trailer für diesen Titel gefunden</string>
     <string name="detail_featuring_fmt">Mit: %1$s</string>
     <string name="detail_directors_fmt">Regie: %1$s</string>
     <string name="detail_actors_fmt">Schauspieler: %1$s</string>
@@ -369,6 +369,8 @@
     <string name="settings_section_content_title">TMDb &amp; Katalog</string>
     <string name="settings_screen_profiles_title">Profile</string>
     <string name="settings_screen_profiles_summary">Avatare, PIN, Kids-Modus und Integrationen</string>
+    <string name="settings_screen_library_title">Bibliothek &amp; Jugendschutz</string>
+    <string name="settings_screen_library_summary">Startzeilen, Bibliotheksbereich und Jugendschutz</string>
     <string name="profile_atelier_brand">BetterStreamflix</string>
     <string name="profile_picker_eyebrow">Wer schaut?</string>
     <string name="profile_picker_title">Wer schaut?</string>
@@ -383,7 +385,7 @@
     <string name="profile_choose_avatar">Avatar wählen</string>
     <string name="profile_name_label">Profilname</string>
     <string name="profile_picker_manage">In Einstellungen verwalten</string>
-    <string name="profile_picker_manage_hint">Öffne Einstellungen → Profile zum Umbenennen, PIN oder Löschen</string>
+    <string name="profile_picker_manage_hint">Tippe auf Profile bearbeiten, um umzubenennen, PIN zu setzen oder zu löschen</string>
     <string name="profile_picker_active">Aktiv</string>
     <string name="profile_picker_locked">PIN</string>
     <string name="profile_picker_lock_glyph">⌁</string>
@@ -425,6 +427,11 @@
     <string name="profile_avatar_rose">Rose</string>
     <string name="profile_pin_title">Profil-PIN</string>
     <string name="profile_pin_summary">Optionale Sperre vor dem Wechsel zu diesem Profil</string>
+    <string name="profile_pin_optional_hint">Optionale PIN (4–8 Ziffern)</string>
+    <string name="profile_pin_change_hint">Neue PIN (leer lassen zum Behalten)</string>
+    <string name="profile_pin_invalid_format">PIN muss 4–8 Ziffern haben</string>
+    <string name="profile_advanced">Erweitert</string>
+    <string name="profile_advanced_hide">Erweitert ausblenden</string>
     <string name="profile_pin_clear_title">Profil-PIN löschen</string>
     <string name="profile_pin_set">PIN ist gesetzt</string>
     <string name="profile_pin_not_set">Keine PIN — zum Setzen tippen</string>

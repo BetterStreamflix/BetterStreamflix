@@ -12,6 +12,7 @@ import android.os.Bundle
 import android.util.Log
 import android.view.View
 import android.view.ViewGroup
+import android.view.LayoutInflater
 import android.view.animation.AnimationUtils
 import android.widget.Toast
 import androidx.core.content.ContextCompat
@@ -44,6 +45,8 @@ import com.dskja.betterstreamflix.databinding.ContentMovieMobileBinding
 import com.dskja.betterstreamflix.databinding.ContentDetailAboutMobileBinding
 import com.dskja.betterstreamflix.databinding.ContentDetailTrailerMobileBinding
 import com.dskja.betterstreamflix.databinding.ContentDetailTabsMobileBinding
+import com.dskja.betterstreamflix.databinding.ItemDetailTrailerRowMobileBinding
+import com.dskja.betterstreamflix.utils.TmdbUtils
 import com.dskja.betterstreamflix.databinding.ContentMovieRecommendationsMobileBinding
 import com.dskja.betterstreamflix.databinding.ContentMovieRecommendationsTvBinding
 import com.dskja.betterstreamflix.databinding.ContentMovieTvBinding
@@ -94,6 +97,7 @@ import com.dskja.betterstreamflix.ui.ShowOptionsMobileDialog
 import com.dskja.betterstreamflix.ui.ShowOptionsTvDialog
 import com.dskja.betterstreamflix.ui.SpacingItemDecoration
 import com.dskja.betterstreamflix.ui.TrailerPlaybackController
+import com.dskja.betterstreamflix.ui.DetailTab
 import androidx.recyclerview.widget.GridLayoutManager
 import com.dskja.betterstreamflix.utils.ExpAmbientGlow
 import com.dskja.betterstreamflix.utils.ExpDialogChrome
@@ -1226,8 +1230,11 @@ class MovieViewHolder(
                 null,
                 null,
             )
-            val show = trailer != null
-            visibility = if (show) View.VISIBLE else View.GONE
+            visibility = if (trailer != null || !movie.tmdbId.isNullOrBlank()) {
+                View.VISIBLE
+            } else {
+                View.GONE
+            }
             applyExpPress()
             setOnClickListener {
                 ExpMotion.hapticTap(it)
@@ -1238,6 +1245,10 @@ class MovieViewHolder(
                     } else {
                         handleTrailerClick(trailer, "MovieMobile")
                     }
+                } else {
+                    (bindingAdapter as? AppAdapter)?.onDetailTabSelectedListener?.invoke(
+                        com.dskja.betterstreamflix.ui.DetailTab.TRAILER,
+                    )
                 }
             }
         }
@@ -1764,7 +1775,9 @@ class MovieViewHolder(
 
     private fun displayTabsMobile(binding: ContentDetailTabsMobileBinding) {
         binding.tabDetailEpisodes.visibility = View.GONE
-        fun select(active: View) {
+        val adapter = bindingAdapter as? AppAdapter
+        val selected = adapter?.selectedDetailTab ?: DetailTab.SIMILAR
+        fun select(active: android.view.View) {
             listOf(
                 binding.tabDetailEpisodes,
                 binding.tabDetailSimilar,
@@ -1776,74 +1789,100 @@ class MovieViewHolder(
                 tab.setBackgroundResource(if (on) R.drawable.bg_detail_tab_underline else 0)
             }
         }
-        fun scrollToSection(tag: String, type: AppAdapter.Type) {
-            val rv = itemView.parent as? RecyclerView ?: return
-            val adapter = (bindingAdapter as? AppAdapter) ?: (rv.adapter as? AppAdapter) ?: return
-            for (i in 0 until rv.childCount) {
-                val child = rv.getChildAt(i)
-                if (child.tag == tag) {
-                    val pos = rv.getChildAdapterPosition(child)
-                    if (pos != RecyclerView.NO_POSITION) {
-                        rv.smoothScrollToPosition(pos)
-                        return
-                    }
-                }
-            }
-            val index = adapter.items.indexOfFirst { it.itemType == type }
-            if (index >= 0) rv.smoothScrollToPosition(index)
+        val active = when (selected) {
+            com.dskja.betterstreamflix.ui.DetailTab.EPISODES -> binding.tabDetailEpisodes
+            com.dskja.betterstreamflix.ui.DetailTab.SIMILAR -> binding.tabDetailSimilar
+            com.dskja.betterstreamflix.ui.DetailTab.TRAILER -> binding.tabDetailTrailer
+            com.dskja.betterstreamflix.ui.DetailTab.ABOUT -> binding.tabDetailAbout
         }
+        select(active)
+
         binding.tabDetailSimilar.setOnClickListener {
             ExpMotion.hapticTap(it)
             select(binding.tabDetailSimilar)
-            scrollToSection(DETAIL_SECTION_RECOMMENDATIONS, AppAdapter.Type.MOVIE_RECOMMENDATIONS_MOBILE)
+            adapter?.onDetailTabSelectedListener?.invoke(com.dskja.betterstreamflix.ui.DetailTab.SIMILAR)
         }
         binding.tabDetailTrailer.setOnClickListener {
             ExpMotion.hapticTap(it)
             select(binding.tabDetailTrailer)
-            scrollToSection(DETAIL_SECTION_TRAILER, AppAdapter.Type.MOVIE_TRAILER_MOBILE)
+            adapter?.onDetailTabSelectedListener?.invoke(com.dskja.betterstreamflix.ui.DetailTab.TRAILER)
         }
         binding.tabDetailAbout.setOnClickListener {
             ExpMotion.hapticTap(it)
             select(binding.tabDetailAbout)
-            scrollToSection(DETAIL_SECTION_ABOUT, AppAdapter.Type.MOVIE_ABOUT_MOBILE)
+            adapter?.onDetailTabSelectedListener?.invoke(com.dskja.betterstreamflix.ui.DetailTab.ABOUT)
         }
-        select(binding.tabDetailSimilar)
     }
 
     private fun displayTrailerMobile(binding: ContentDetailTrailerMobileBinding) {
         binding.root.tag = DETAIL_SECTION_TRAILER
-        val trailer = movie.trailer
-        if (trailer.isNullOrBlank()) {
-            binding.llDetailTrailerRow.visibility = View.GONE
-            binding.tvDetailTrailerEmpty.visibility = View.VISIBLE
-            return
-        }
-        binding.llDetailTrailerRow.visibility = View.VISIBLE
+        binding.llDetailTrailerList.removeAllViews()
+        binding.llDetailTrailerRow.visibility = View.GONE
         binding.tvDetailTrailerEmpty.visibility = View.GONE
-        val trailerLabel = context.getString(R.string.movie_trailer)
-        binding.tvDetailTrailerTitle.text = "${movie.title} $trailerLabel"
-        binding.tvDetailTrailerMeta.text = trailerLabel
-        binding.tvDetailTrailerDesc.text = trailerLabel
-        val ytId = TrailerPlaybackController.youtubeVideoId(trailer)
-        if (ytId != null) {
-            Glide.with(binding.ivDetailTrailerThumb)
-                .load("https://img.youtube.com/vi/$ytId/hqdefault.jpg")
-                .centerCrop()
-                .into(binding.ivDetailTrailerThumb)
-        } else {
-            binding.ivDetailTrailerThumb.setImageDrawable(null)
-        }
-        val play = View.OnClickListener {
-            ExpMotion.hapticTap(it)
-            val fragment = context.toActivity()?.getCurrentFragment() as? Fragment
-            if (fragment != null) {
-                TrailerPlaybackController.play(fragment, trailer)
-            } else {
-                handleTrailerClick(trailer, "MovieTrailerSection")
+
+        fun bindRows(trailers: List<Triple<String, String, String>>) {
+            binding.llDetailTrailerList.removeAllViews()
+            if (trailers.isEmpty()) {
+                binding.tvDetailTrailerEmpty.visibility = View.VISIBLE
+                return
+            }
+            binding.tvDetailTrailerEmpty.visibility = View.GONE
+            val inflater = LayoutInflater.from(context)
+            trailers.take(5).forEach { (title, url, type) ->
+                val row = ItemDetailTrailerRowMobileBinding.inflate(
+                    inflater,
+                    binding.llDetailTrailerList,
+                    false,
+                )
+                row.tvDetailTrailerTitle.text = title
+                row.tvDetailTrailerMeta.text = type
+                row.tvDetailTrailerDesc.text = type
+                val ytId = TrailerPlaybackController.youtubeVideoId(url)
+                if (ytId != null) {
+                    Glide.with(row.ivDetailTrailerThumb)
+                        .load("https://img.youtube.com/vi/$ytId/hqdefault.jpg")
+                        .centerCrop()
+                        .into(row.ivDetailTrailerThumb)
+                } else {
+                    row.ivDetailTrailerThumb.setImageDrawable(null)
+                }
+                val play = View.OnClickListener {
+                    ExpMotion.hapticTap(it)
+                    val fragment = context.toActivity()?.getCurrentFragment() as? Fragment
+                    if (fragment != null) {
+                        TrailerPlaybackController.play(fragment, url)
+                    } else {
+                        handleTrailerClick(url, "MovieTrailerSection")
+                    }
+                }
+                row.root.setOnClickListener(play)
+                row.ivDetailTrailerPlay.setOnClickListener(play)
+                binding.llDetailTrailerList.addView(row.root)
             }
         }
-        binding.llDetailTrailerRow.setOnClickListener(play)
-        binding.ivDetailTrailerPlay.setOnClickListener(play)
+
+        val seed = movie.trailer?.takeIf { it.isNotBlank() }?.let { url ->
+            listOf(
+                Triple(
+                    "${movie.title} ${context.getString(R.string.movie_trailer)}",
+                    url,
+                    context.getString(R.string.movie_trailer),
+                ),
+            )
+        }.orEmpty()
+        if (seed.isNotEmpty()) bindRows(seed)
+
+        itemView.findViewTreeLifecycleOwner()?.lifecycleScope?.launch {
+            val remote = withContext(Dispatchers.IO) {
+                TmdbUtils.listYoutubeTrailers(movie.tmdbId, isTv = false)
+            }
+            val trailers = when {
+                remote.isNotEmpty() -> remote
+                seed.isNotEmpty() -> seed
+                else -> emptyList()
+            }
+            bindRows(trailers)
+        }
     }
 
     private fun displayAboutMobile(binding: ContentDetailAboutMobileBinding) {

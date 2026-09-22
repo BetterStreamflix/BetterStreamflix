@@ -58,79 +58,10 @@
 
     <PreferenceScreen
         android:key="screen_profiles"
-        android:title="@string/settings_screen_profiles_title"
-        android:summary="@string/settings_screen_profiles_summary"
+        android:title="@string/settings_screen_library_title"
+        android:summary="@string/settings_screen_library_summary"
         android:widgetLayout="@layout/preference_widget_chevron"
         app:iconSpaceReserved="false">
-
-        <com.dskja.betterstreamflix.fragments.settings.ProfileHeroPreference
-            android:key="PROFILE_HERO"
-            app:iconSpaceReserved="false" />
-
-        <PreferenceCategory
-            android:key="pc_profile_active"
-            android:title="@string/profile_section_active"
-            app:iconSpaceReserved="false">
-
-            <Preference
-                android:key="PROFILE_ACTIVE"
-                android:title="@string/profile_active_title"
-                android:selectable="false"
-                app:iconSpaceReserved="false" />
-
-            <Preference
-                android:key="PROFILE_SWITCH"
-                android:title="@string/profile_switch_title"
-                app:iconSpaceReserved="false" />
-
-            <Preference
-                android:key="PROFILE_CREATE"
-                android:title="@string/profile_create_title"
-                android:summary="@string/profile_create_summary"
-                app:iconSpaceReserved="false" />
-
-            <Preference
-                android:key="PROFILE_RENAME"
-                android:title="@string/profile_rename_title"
-                app:iconSpaceReserved="false" />
-
-            <Preference
-                android:key="PROFILE_DELETE"
-                android:title="@string/profile_delete_title"
-                android:summary="@string/profile_delete_summary"
-                app:iconSpaceReserved="false" />
-        </PreferenceCategory>
-
-        <PreferenceCategory
-            android:key="pc_profile_persona"
-            android:title="@string/profile_section_manage"
-            app:iconSpaceReserved="false">
-
-            <Preference
-                android:key="PROFILE_AVATAR"
-                android:title="@string/profile_avatar_title"
-                android:summary="@string/profile_avatar_choose"
-                android:icon="@drawable/bg_profile_avatar_preview"
-                app:iconSpaceReserved="true" />
-
-            <SwitchPreferenceCompat
-                android:key="PROFILE_KIDS"
-                android:title="@string/profile_kids_title"
-                android:summary="@string/profile_kids_summary"
-                android:defaultValue="false"
-                app:iconSpaceReserved="false" />
-
-            <Preference
-                android:key="PROFILE_PIN"
-                android:title="@string/profile_pin_title"
-                android:summary="@string/profile_pin_summary"
-                app:iconSpaceReserved="false" />
-
-            <Preference
-                android:key="PROFILE_PIN_CLEAR"
-                android:title="@string/profile_pin_clear_title"
-                app:iconSpaceReserved="false" />
-        </PreferenceCategory>
 
         <PreferenceCategory
             android:key="pc_profile_library"
@@ -211,61 +142,6 @@
                 android:key="PARENTAL_CONTROL_UNLOCK"
                 android:title="@string/settings_parental_unlock_title"
                 android:summary="@string/settings_parental_unlock_summary"
-                app:iconSpaceReserved="false" />
-        </PreferenceCategory>
-
-        <PreferenceCategory
-            android:key="pc_profile_integrations"
-            android:title="@string/profile_section_integrations"
-            app:iconSpaceReserved="false">
-
-            <SwitchPreferenceCompat
-                android:key="PROFILE_INT_TRAKT"
-                android:title="@string/profile_integration_trakt"
-                android:summary="@string/profile_integration_summary"
-                android:defaultValue="true"
-                app:iconSpaceReserved="false" />
-
-            <SwitchPreferenceCompat
-                android:key="PROFILE_INT_JELLYFIN"
-                android:title="@string/profile_integration_jellyfin"
-                android:summary="@string/profile_integration_summary"
-                android:defaultValue="true"
-                app:iconSpaceReserved="false" />
-
-            <SwitchPreferenceCompat
-                android:key="PROFILE_INT_PLEX"
-                android:title="@string/profile_integration_plex"
-                android:summary="@string/profile_integration_summary"
-                android:defaultValue="true"
-                app:iconSpaceReserved="false" />
-
-            <SwitchPreferenceCompat
-                android:key="PROFILE_INT_DEBRID"
-                android:title="@string/profile_integration_debrid"
-                android:summary="@string/profile_integration_summary"
-                android:defaultValue="true"
-                app:iconSpaceReserved="false" />
-
-            <SwitchPreferenceCompat
-                android:key="PROFILE_INT_SIMKL"
-                android:title="@string/profile_integration_simkl"
-                android:summary="@string/profile_integration_summary"
-                android:defaultValue="true"
-                app:iconSpaceReserved="false" />
-
-            <SwitchPreferenceCompat
-                android:key="PROFILE_INT_OPENSUBTITLES"
-                android:title="@string/profile_integration_opensubtitles"
-                android:summary="@string/profile_integration_summary"
-                android:defaultValue="true"
-                app:iconSpaceReserved="false" />
-
-            <SwitchPreferenceCompat
-                android:key="PROFILE_INT_TMDB"
-                android:title="@string/profile_integration_tmdb"
-                android:summary="@string/profile_integration_summary"
-                android:defaultValue="true"
                 app:iconSpaceReserved="false" />
         </PreferenceCategory>
     </PreferenceScreen>

@@ -139,6 +139,7 @@ object PluginSettingsController {
         }
 
         (findPreference("plugin_disable_demo") as? SwitchPreferenceCompat)?.apply {
+            isVisible = false
             isChecked = UserPreferences.isPluginDisabled(
                 com.dskja.betterstreamflix.platform.plugins.DemoAddonPlugin.ID,
             )

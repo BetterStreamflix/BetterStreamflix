@@ -108,7 +108,7 @@
     <string name="detail_tab_similar">You May Also Like</string>
     <string name="detail_tab_trailer">Trailer</string>
     <string name="detail_tab_about">About</string>
-    <string name="detail_trailer_empty">No trailer available</string>
+    <string name="detail_trailer_empty">No trailers found for this title yet</string>
     <string name="detail_featuring_fmt">Featuring: %1$s</string>
     <string name="detail_directors_fmt">Director: %1$s</string>
     <string name="detail_actors_fmt">Actors: %1$s</string>
@@ -447,6 +447,8 @@
     <string name="settings_screen_content_summary">TMDb enrichment, API key and provider quarantine</string>
     <string name="settings_screen_profiles_title">Profiles</string>
     <string name="settings_screen_profiles_summary">Avatars, PIN locks, kids mode and integrations</string>
+    <string name="settings_screen_library_title">Library &amp; parental</string>
+    <string name="settings_screen_library_summary">Home rows, library scope and parental controls</string>
     <string name="profile_atelier_brand">BetterStreamflix</string>
     <string name="profile_picker_eyebrow">Who\'s watching?</string>
     <string name="profile_picker_title">Who\'s watching?</string>
@@ -461,7 +463,7 @@
     <string name="profile_choose_avatar">Choose Avatar</string>
     <string name="profile_name_label">Profile Name</string>
     <string name="profile_picker_manage">Manage in Settings</string>
-    <string name="profile_picker_manage_hint">Open Settings → Profiles to rename, PIN or delete</string>
+    <string name="profile_picker_manage_hint">Tap Edit Profiles to rename, set a PIN or delete</string>
     <string name="profile_picker_active">Active</string>
     <string name="profile_picker_locked">PIN</string>
     <string name="profile_picker_lock_glyph">⌁</string>
@@ -503,6 +505,11 @@
     <string name="profile_avatar_rose">Rose</string>
     <string name="profile_pin_title">Profile PIN</string>
     <string name="profile_pin_summary">Optional lock before switching to this profile</string>
+    <string name="profile_pin_optional_hint">Optional PIN (4–8 digits)</string>
+    <string name="profile_pin_change_hint">New PIN (leave empty to keep)</string>
+    <string name="profile_pin_invalid_format">PIN must be 4–8 digits</string>
+    <string name="profile_advanced">Advanced</string>
+    <string name="profile_advanced_hide">Hide advanced</string>
     <string name="profile_pin_clear_title">Clear profile PIN</string>
     <string name="profile_pin_set">PIN is set</string>
     <string name="profile_pin_not_set">No PIN — tap to set</string>

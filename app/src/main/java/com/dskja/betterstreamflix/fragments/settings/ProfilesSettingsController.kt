@@ -193,20 +193,19 @@ object ProfilesSettingsController {
 
     fun showSwitchDialog(
         fragment: Fragment,
+        startInManageMode: Boolean = false,
         onProfileSwitched: (() -> Unit)? = null,
     ) {
         ProfilePickerDialog.show(
             fragment = fragment,
             onSwitched = onProfileSwitched,
-            onManage = {
-                notifyUser(
-                    fragment.requireContext(),
-                    fragment.getString(R.string.profile_picker_manage_hint),
-                )
-            },
+            onManage = null,
             onCreate = {
-                showCreateDialog(fragment, { null }, onProfileSwitched)
+                ProfilePickerDialog.showCreateDialog(fragment) { created ->
+                    promptSwitchAfterCreate(fragment, { null }, created, onProfileSwitched)
+                }
             },
+            startInManageMode = startInManageMode,
         )
     }
 
@@ -225,9 +224,46 @@ object ProfilesSettingsController {
                 refresh(findPreference, fragment.requireContext(), fragment)
             },
             onCreate = {
-                showCreateDialog(fragment, findPreference, onProfileSwitched)
+                ProfilePickerDialog.showCreateDialog(fragment) { created ->
+                    promptSwitchAfterCreate(fragment, findPreference, created, onProfileSwitched)
+                }
             },
         )
+    }
+
+    private fun promptSwitchAfterCreate(
+        fragment: Fragment,
+        findPreference: (String) -> Preference?,
+        created: UserProfile,
+        onProfileSwitched: (() -> Unit)?,
+    ) {
+        val ctx = fragment.requireContext()
+        val glass = if (ExperimentalMobileDesign.enabled()) {
+            ExpDialogChrome.buildGlassMessage(
+                ctx,
+                fragment.getString(R.string.profile_switch_prompt, created.displayName),
+            )
+        } else {
+            null
+        }
+        val builder = alertBuilder(ctx)
+        if (glass != null) builder.setView(glass.root)
+        else builder.setMessage(fragment.getString(R.string.profile_switch_prompt, created.displayName))
+        builder
+            .setPositiveButton(android.R.string.ok) { _, _ ->
+                performSwitch(fragment, findPreference, created, onProfileSwitched)
+            }
+            .setNegativeButton(android.R.string.cancel) { _, _ ->
+                refresh(findPreference, fragment.requireContext(), fragment)
+            }
+            .create()
+            .also { dialog ->
+                dialog.setOnShowListener {
+                    if (glass != null) ExpDialogChrome.polishGlassMessageShown(dialog, glass)
+                    else ExpDialogChrome.polishButtons(dialog)
+                }
+                dialog.show()
+            }
     }
 
     private fun showCreateDialog(
@@ -236,33 +272,7 @@ object ProfilesSettingsController {
         onProfileSwitched: (() -> Unit)?,
     ) {
         ProfilePickerDialog.showCreateDialog(fragment) { created ->
-            val ctx = fragment.requireContext()
-            val glass = if (ExperimentalMobileDesign.enabled()) {
-                ExpDialogChrome.buildGlassMessage(
-                    ctx,
-                    fragment.getString(R.string.profile_switch_prompt, created.displayName),
-                )
-            } else {
-                null
-            }
-            val builder = alertBuilder(ctx)
-            if (glass != null) builder.setView(glass.root)
-            else builder.setMessage(fragment.getString(R.string.profile_switch_prompt, created.displayName))
-            builder
-                .setPositiveButton(android.R.string.ok) { _, _ ->
-                    performSwitch(fragment, findPreference, created, onProfileSwitched)
-                }
-                .setNegativeButton(android.R.string.cancel) { _, _ ->
-                    refresh(findPreference, fragment.requireContext(), fragment)
-                }
-                .create()
-                .also { dialog ->
-                    dialog.setOnShowListener {
-                        if (glass != null) ExpDialogChrome.polishGlassMessageShown(dialog, glass)
-                        else ExpDialogChrome.polishButtons(dialog)
-                    }
-                    dialog.show()
-                }
+            promptSwitchAfterCreate(fragment, findPreference, created, onProfileSwitched)
         }
     }
 
