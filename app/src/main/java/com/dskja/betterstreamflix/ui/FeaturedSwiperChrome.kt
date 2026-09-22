@@ -157,7 +157,7 @@ object FeaturedSwiperChrome {
 
     fun bindListButton(button: TextView, inList: Boolean, animate: Boolean = false) {
         button.text = button.context.getString(
-            if (inList) R.string.detail_remove_from_list else R.string.detail_add_to_list,
+            if (inList) R.string.home_swiper_in_my_list else R.string.home_swiper_my_list,
         )
         val icon = ContextCompat.getDrawable(
             button.context,

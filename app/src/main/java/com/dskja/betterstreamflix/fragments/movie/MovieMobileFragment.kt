@@ -185,18 +185,12 @@ class MovieMobileFragment : Fragment() {
 
         appAdapter.submitList(listOfNotNull(
             movie.apply { itemType = AppAdapter.Type.MOVIE_MOBILE },
-
-            movie.takeIf { it.directors.isNotEmpty() }
-                ?.copy()
-                ?.apply { itemType = AppAdapter.Type.MOVIE_DIRECTORS_MOBILE },
-
-            movie.takeIf { it.cast.isNotEmpty() }
-                ?.copy()
-                ?.apply { itemType = AppAdapter.Type.MOVIE_CAST_MOBILE },
-
+            movie.copy().apply { itemType = AppAdapter.Type.MOVIE_TABS_MOBILE },
             movie.takeIf { it.recommendations.isNotEmpty() }
                 ?.copy()
                 ?.apply { itemType = AppAdapter.Type.MOVIE_RECOMMENDATIONS_MOBILE },
+            movie.copy().apply { itemType = AppAdapter.Type.MOVIE_TRAILER_MOBILE },
+            movie.copy().apply { itemType = AppAdapter.Type.MOVIE_ABOUT_MOBILE },
         ))
     }
 }

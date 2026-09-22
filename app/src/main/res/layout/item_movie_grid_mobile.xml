@@ -123,10 +123,23 @@
         android:gravity="center_horizontal"
         android:lines="2"
         android:textColor="#FFFFFF"
+        android:visibility="gone"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@id/iv_movie_poster"
         tools:text="Title" />
+
+    <View
+        android:id="@+id/v_movie_select_ring"
+        android:layout_width="26dp"
+        android:layout_height="26dp"
+        android:layout_margin="8dp"
+        android:background="@drawable/bg_mylist_select_ring"
+        android:elevation="4dp"
+        android:visibility="gone"
+        app:layout_constraintEnd_toEndOf="@id/iv_movie_poster"
+        app:layout_constraintTop_toTopOf="@id/iv_movie_poster"
+        tools:visibility="visible" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>

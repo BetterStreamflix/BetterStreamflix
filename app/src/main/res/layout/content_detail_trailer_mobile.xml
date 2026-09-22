@@ -1,0 +1,96 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:paddingStart="16dp"
+    android:paddingTop="12dp"
+    android:paddingEnd="16dp"
+    android:paddingBottom="20dp">
+
+    <LinearLayout
+        android:id="@+id/ll_detail_trailer_row"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center_vertical"
+        android:orientation="horizontal">
+
+        <FrameLayout
+            android:layout_width="148dp"
+            android:layout_height="84dp">
+
+            <ImageView
+                android:id="@+id/iv_detail_trailer_thumb"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:background="#FF1A1A1A"
+                android:scaleType="centerCrop"
+                tools:ignore="ContentDescription" />
+
+            <ImageView
+                android:id="@+id/iv_detail_trailer_play"
+                android:layout_width="36dp"
+                android:layout_height="36dp"
+                android:layout_gravity="center"
+                android:background="@drawable/bg_mylist_select_ring"
+                android:padding="8dp"
+                android:src="@drawable/ic_featured_play"
+                tools:ignore="ContentDescription" />
+        </FrameLayout>
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="12dp"
+            android:layout_weight="1"
+            android:orientation="vertical">
+
+            <TextView
+                android:id="@+id/tv_detail_trailer_title"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:ellipsize="end"
+                android:fontFamily="@font/manrope"
+                android:maxLines="2"
+                android:textColor="#FFFFFF"
+                android:textSize="14sp"
+                android:textStyle="bold"
+                tools:text="Official Trailer" />
+
+            <TextView
+                android:id="@+id/tv_detail_trailer_meta"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:fontFamily="@font/manrope"
+                android:textColor="#8AFFFFFF"
+                android:textSize="12sp"
+                tools:text="Trailer" />
+
+            <TextView
+                android:id="@+id/tv_detail_trailer_desc"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:ellipsize="end"
+                android:fontFamily="@font/manrope"
+                android:maxLines="2"
+                android:textColor="#8AFFFFFF"
+                android:textSize="12sp"
+                tools:text="Official Trailer" />
+        </LinearLayout>
+    </LinearLayout>
+
+    <TextView
+        android:id="@+id/tv_detail_trailer_empty"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:fontFamily="@font/manrope"
+        android:gravity="center"
+        android:padding="24dp"
+        android:text="@string/detail_trailer_empty"
+        android:textColor="#8AFFFFFF"
+        android:textSize="14sp"
+        android:visibility="gone" />
+</LinearLayout>
