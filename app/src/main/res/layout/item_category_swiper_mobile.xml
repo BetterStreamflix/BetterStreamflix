@@ -3,13 +3,14 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
-    android:layout_height="match_parent">
+    android:layout_height="match_parent"
+    android:background="#FF000000">
 
+    <!-- centerCrop on a 16:9 card shows the full backdrop without tall-card zoom. -->
     <ImageView
         android:id="@+id/iv_swiper_background"
         android:layout_width="0dp"
         android:layout_height="0dp"
-        android:foreground="?attr/category_swiper_gradient_drawable"
         android:scaleType="centerCrop"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
@@ -17,146 +18,177 @@
         app:layout_constraintTop_toTopOf="parent"
         tools:ignore="ContentDescription" />
 
+    <View
+        android:id="@+id/v_swiper_scrim_top"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:visibility="gone"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
+
+    <View
+        android:id="@+id/v_swiper_scrim_bottom"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:background="@drawable/bg_featured_scrim_bottom"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHeight_percent="0.55"
+        app:layout_constraintStart_toStartOf="parent" />
+
+    <ImageView
+        android:id="@+id/iv_swiper_logo"
+        android:layout_width="0dp"
+        android:layout_height="72dp"
+        android:layout_marginStart="40dp"
+        android:layout_marginEnd="40dp"
+        android:adjustViewBounds="true"
+        android:importantForAccessibility="no"
+        android:scaleType="fitCenter"
+        android:visibility="gone"
+        app:layout_constraintBottom_toTopOf="@id/ll_swiper_actions"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintVertical_bias="0.58"
+        tools:visibility="visible" />
+
     <TextView
         android:id="@+id/tv_swiper_title"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:layout_marginStart="10dp"
-        android:layout_marginEnd="10dp"
-        android:layout_marginBottom="10dp"
+        android:layout_marginStart="28dp"
+        android:layout_marginEnd="28dp"
+        android:fontFamily="@font/manrope"
         android:gravity="center"
+        android:shadowColor="#CC000000"
+        android:shadowDx="0"
+        android:shadowDy="2"
+        android:shadowRadius="10"
         android:textColor="#FFFFFF"
-        android:textSize="20sp"
+        android:textSize="24sp"
         android:textStyle="bold"
-        app:layout_constraintBottom_toTopOf="@id/barrier1"
+        app:layout_constraintBottom_toTopOf="@id/ll_swiper_actions"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintVertical_bias="0.58"
         tools:text="Title" />
 
-    <androidx.constraintlayout.widget.Barrier
-        android:id="@+id/barrier1"
-        android:layout_width="wrap_content"
+    <LinearLayout
+        android:id="@+id/ll_swiper_actions"
+        android:layout_width="0dp"
         android:layout_height="wrap_content"
-        app:barrierDirection="top"
-        app:constraint_referenced_ids="tv_swiper_rating,tv_swiper_quality,tv_swiper_released,tv_swiper_tv_show_last_episode" />
+        android:layout_marginStart="20dp"
+        android:layout_marginEnd="20dp"
+        android:layout_marginBottom="18dp"
+        android:gravity="center"
+        android:orientation="horizontal"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent">
+
+        <TextView
+            android:id="@+id/btn_swiper_watch_now"
+            android:layout_width="0dp"
+            android:layout_height="44dp"
+            android:layout_marginEnd="8dp"
+            android:layout_weight="1"
+            android:background="@drawable/bg_featured_cta_primary"
+            android:drawablePadding="8dp"
+            android:fontFamily="@font/manrope"
+            android:gravity="center"
+            android:paddingStart="14dp"
+            android:paddingEnd="14dp"
+            android:text="@string/home_swiper_watch_now"
+            android:textColor="#121218"
+            android:textSize="14sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/btn_swiper_add_to_list"
+            android:layout_width="0dp"
+            android:layout_height="44dp"
+            android:layout_marginStart="8dp"
+            android:layout_weight="1"
+            android:background="@drawable/bg_featured_cta_secondary"
+            android:drawablePadding="8dp"
+            android:fontFamily="@font/manrope"
+            android:gravity="center"
+            android:paddingStart="12dp"
+            android:paddingEnd="12dp"
+            android:text="@string/detail_add_to_list"
+            android:textColor="#FFFFFF"
+            android:textSize="14sp"
+            android:textStyle="bold" />
+    </LinearLayout>
+
+    <!-- Kept gone so older ViewHolder branches and page transformers still compile. -->
+    <TextView
+        android:id="@+id/tv_swiper_overview"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:visibility="gone"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
 
     <TextView
         android:id="@+id/tv_swiper_tv_show_last_episode"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginStart="10dp"
-        android:layout_marginBottom="16dp"
-        app:layout_constraintBottom_toTopOf="@id/tv_swiper_overview"
-        app:layout_constraintEnd_toStartOf="@id/tv_swiper_quality"
-        app:layout_constraintHorizontal_chainStyle="packed"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:visibility="gone"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/barrier1"
-        tools:text="S1 E1" />
+        app:layout_constraintTop_toTopOf="parent" />
 
     <TextView
         android:id="@+id/tv_swiper_quality"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginStart="16dp"
-        android:layout_marginBottom="16dp"
-        android:textAllCaps="true"
-        android:textColor="#FFFFFF"
-        android:textStyle="bold"
-        app:layout_constraintBottom_toTopOf="@id/tv_swiper_overview"
-        app:layout_constraintEnd_toStartOf="@id/tv_swiper_released"
-        app:layout_constraintStart_toEndOf="@id/tv_swiper_tv_show_last_episode"
-        app:layout_constraintTop_toBottomOf="@id/barrier1"
-        tools:text="HD"
-        tools:visibility="visible" />
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:visibility="gone"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
 
     <TextView
         android:id="@+id/tv_swiper_released"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginStart="16dp"
-        android:layout_marginBottom="16dp"
-        app:layout_constraintBottom_toTopOf="@id/tv_swiper_overview"
-        app:layout_constraintEnd_toStartOf="@id/iv_swiper_rating_icon"
-        app:layout_constraintStart_toEndOf="@id/tv_swiper_quality"
-        app:layout_constraintTop_toBottomOf="@id/barrier1"
-        tools:text="yyyy"
-        tools:visibility="visible" />
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:visibility="gone"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
 
     <ImageView
         android:id="@+id/iv_swiper_rating_icon"
         android:layout_width="0dp"
         android:layout_height="0dp"
-        android:layout_marginStart="16dp"
-        android:src="@drawable/ic_star"
-        android:tint="#C0C0C0"
-        app:layout_constraintBottom_toBottomOf="@id/tv_swiper_rating"
-        app:layout_constraintDimensionRatio="1:1"
-        app:layout_constraintEnd_toStartOf="@id/tv_swiper_rating"
-        app:layout_constraintStart_toEndOf="@id/tv_swiper_released"
-        app:layout_constraintTop_toTopOf="@id/tv_swiper_rating"
-        tools:ignore="ContentDescription,UseAppTint" />
+        android:visibility="gone"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        tools:ignore="ContentDescription" />
 
     <TextView
         android:id="@+id/tv_swiper_rating"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginEnd="10dp"
-        android:layout_marginBottom="16dp"
-        android:textColor="#FFFFFF"
-        app:layout_constraintBottom_toTopOf="@id/tv_swiper_overview"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toEndOf="@id/iv_swiper_rating_icon"
-        app:layout_constraintTop_toBottomOf="@id/barrier1"
-        tools:text="#.#" />
-
-    <TextView
-        android:id="@+id/tv_swiper_overview"
         android:layout_width="0dp"
-        android:layout_height="wrap_content"
-        android:layout_marginStart="10dp"
-        android:layout_marginEnd="10dp"
-        android:layout_marginBottom="26dp"
-        android:ellipsize="end"
-        android:gravity="center"
-        android:maxLines="2"
-        app:layout_constraintBottom_toTopOf="@id/btn_swiper_watch_now"
-        app:layout_constraintEnd_toEndOf="parent"
+        android:layout_height="0dp"
+        android:visibility="gone"
         app:layout_constraintStart_toStartOf="parent"
-        tools:text="Overview" />
-
-    <TextView
-        android:id="@+id/btn_swiper_watch_now"
-        style="@style/AppTheme.Widget.Mobile.Button"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginStart="10dp"
-        android:layout_marginEnd="10dp"
-        android:layout_marginBottom="30dp"
-        android:text="@string/home_swiper_watch_now"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent" />
+        app:layout_constraintTop_toTopOf="parent" />
 
     <ProgressBar
         android:id="@+id/pb_swiper_progress"
         style="@android:style/Widget.ProgressBar.Horizontal"
         android:layout_width="0dp"
-        android:layout_height="4dp"
-        android:layout_marginStart="16dp"
-        android:layout_marginTop="10dp"
-        android:layout_marginEnd="16dp"
-        android:backgroundTint="#CC646464"
-        android:progressTint="#FFFFFF"
-        app:layout_constraintEnd_toEndOf="@id/btn_swiper_watch_now"
-        app:layout_constraintStart_toStartOf="@id/btn_swiper_watch_now"
-        app:layout_constraintTop_toBottomOf="@id/btn_swiper_watch_now"
-        tools:progress="80" />
+        android:layout_height="0dp"
+        android:visibility="gone"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
 
     <LinearLayout
         android:id="@+id/ll_dots_indicator"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginEnd="16dp"
+        android:layout_marginBottom="12dp"
         android:orientation="horizontal"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent" />

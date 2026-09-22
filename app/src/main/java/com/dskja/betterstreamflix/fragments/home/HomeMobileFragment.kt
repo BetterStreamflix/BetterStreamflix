@@ -19,8 +19,7 @@ import com.dskja.betterstreamflix.models.Category
 import com.dskja.betterstreamflix.models.Episode
 import com.dskja.betterstreamflix.models.Movie
 import com.dskja.betterstreamflix.models.TvShow
-import com.dskja.betterstreamflix.fragments.settings.ProfilesSettingsController
-import com.dskja.betterstreamflix.profiles.ProfileManager
+import com.dskja.betterstreamflix.ui.HomeProfileChip
 import com.dskja.betterstreamflix.ui.SpacingItemDecoration
 import com.dskja.betterstreamflix.utils.UserPreferences
 import com.dskja.betterstreamflix.utils.dp
@@ -229,42 +228,8 @@ class HomeMobileFragment : Fragment() {
             ?.visibility = View.GONE
     }
 
-    private var lastProfileChipKey: String? = null
-
     private fun refreshProfileChip() {
-        val chip = _binding?.root?.findViewById<View>(R.id.tv_home_profile_chip) ?: return
-        val profile = ProfileManager.activeProfile()
-        val name = profile?.displayName?.takeIf { it.isNotBlank() }
-            ?: getString(R.string.profile_default)
-        // The chip is avatar-only; the name lives in the tooltip and content description.
-        chip.findViewById<android.widget.TextView>(R.id.tv_home_profile_name)?.visibility = View.GONE
-        chip.findViewById<com.dskja.betterstreamflix.profiles.ProfileAvatarView>(R.id.pav_home_profile)
-            ?.bind(
-                avatarKey = profile?.avatarKey ?: ProfileManager.avatarKeys.first(),
-                displayName = name,
-                textSizeSp = 12f,
-            )
-        chip.contentDescription = name
-        androidx.appcompat.widget.TooltipCompat.setTooltipText(chip, name)
-        chip.visibility = View.VISIBLE
-        val chipKey = "${profile?.id.orEmpty()}|$name|${profile?.avatarKey.orEmpty()}"
-        if (ExperimentalMobileDesign.enabled()) {
-            with(com.dskja.betterstreamflix.utils.ExpPressEffects) { chip.applyExpPress() }
-            chip.setBackgroundResource(ExperimentalMobileDesign.chipBackground())
-            if (lastProfileChipKey == null || lastProfileChipKey != chipKey) {
-                ExpMotion.popIn(chip)
-            }
-        }
-        lastProfileChipKey = chipKey
-        chip.setOnClickListener {
-            ExpMotion.hapticTap(it)
-            ProfilesSettingsController.showSwitchDialog(this) {
-                requireActivity().apply {
-                    finish()
-                    startActivity(intent)
-                }
-            }
-        }
+        HomeProfileChip.refresh(this, _binding?.root)
     }
 
     private var heroScrollOffset = 0

@@ -177,6 +177,7 @@ class PeopleViewModel(private val id: String, database: AppDatabase) : ViewModel
         val needsCredits = people.filmography.isEmpty()
         val needsBio = people.biography.isNullOrBlank() ||
             people.image.isNullOrBlank() ||
+            people.birthday == null ||
             people.placeOfBirth.isNullOrBlank()
         if (!needsCredits && !needsBio) return people
         val tmdbId = id.toIntOrNull() ?: return people
@@ -184,11 +185,14 @@ class PeopleViewModel(private val id: String, database: AppDatabase) : ViewModel
             ?: return people
         return people.copy(
             name = people.name.ifBlank { tmdb.name },
-            image = people.image ?: tmdb.image,
+            // TMDb serves the full-size portrait; providers usually only have a thumbnail.
+            image = tmdb.image ?: people.image,
             biography = people.biography?.takeIf { it.isNotBlank() } ?: tmdb.biography,
             placeOfBirth = people.placeOfBirth?.takeIf { it.isNotBlank() } ?: tmdb.placeOfBirth,
             birthday = (people.birthday ?: tmdb.birthday)?.format("yyyy-MM-dd"),
             deathday = (people.deathday ?: tmdb.deathday)?.format("yyyy-MM-dd"),
+            knownForDepartment = people.knownForDepartment?.takeIf { it.isNotBlank() }
+                ?: tmdb.knownForDepartment,
             filmography = mergeFilmography(people.filmography, tmdb.filmography),
         )
     }

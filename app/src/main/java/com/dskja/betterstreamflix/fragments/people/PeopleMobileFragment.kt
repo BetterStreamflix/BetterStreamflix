@@ -29,7 +29,6 @@ import com.dskja.betterstreamflix.utils.Http409CacheGuard
 import com.dskja.betterstreamflix.utils.ExpNavAutoHide
 import com.dskja.betterstreamflix.utils.ExpEmptyChrome
 import com.dskja.betterstreamflix.utils.ExpMotion
-import com.dskja.betterstreamflix.utils.ExpPressEffects.applyExpPress
 import com.dskja.betterstreamflix.utils.ExperimentalMobileDesign
 import com.dskja.betterstreamflix.utils.LoggingUtils
 import com.dskja.betterstreamflix.utils.dp
@@ -80,9 +79,7 @@ class PeopleMobileFragment : Fragment() {
             androidx.appcompat.widget.TooltipCompat.setTooltipText(
                 back, back.context.getString(R.string.exp_back),
             )
-        if (ExperimentalMobileDesign.enabled()) {
-                back.setBackgroundResource(ExperimentalMobileDesign.iconChipBackground())
-                with(com.dskja.betterstreamflix.utils.ExpPressEffects) { back.applyExpPress() }
+            if (ExperimentalMobileDesign.enabled()) {
                 ExpMotion.popIn(back)
             }
             back.setOnClickListener {
@@ -183,10 +180,34 @@ class PeopleMobileFragment : Fragment() {
                 )
             },
             bind = { binding ->
+                val portraitUrl = com.dskja.betterstreamflix.utils.ArtworkUrls.preferOriginal(
+                    people.image ?: args.image,
+                )
+                val backdropUrl = people.filmography.firstOrNull()?.let { show ->
+                    when (show) {
+                        is Movie -> show.banner ?: show.poster
+                        is TvShow -> show.banner ?: show.poster
+                        else -> null
+                    }
+                }?.let(com.dskja.betterstreamflix.utils.ArtworkUrls::preferHero)
+
+                binding.ivPeopleBackdrop.apply {
+                    if (backdropUrl.isNullOrBlank()) {
+                        setImageDrawable(null)
+                        setBackgroundColor(0xFF121218.toInt())
+                    } else {
+                        Glide.with(context)
+                            .load(backdropUrl)
+                            .centerCrop()
+                            .transition(DrawableTransitionOptions.withCrossFade())
+                            .into(this)
+                    }
+                }
+
                 binding.ivPeopleImage.apply {
                     clipToOutline = true
                     Glide.with(context)
-                        .load(people.image ?: args.image)
+                        .load(portraitUrl)
                         .placeholder(R.drawable.ic_person_placeholder)
                         .centerCrop()
                         .transition(DrawableTransitionOptions.withCrossFade())
@@ -195,13 +216,19 @@ class PeopleMobileFragment : Fragment() {
 
                 binding.tvPeopleName.text = people.name.takeIf { it.isNotEmpty() } ?: args.name
 
+                binding.tvPeopleDepartment.apply {
+                    val department = people.knownForDepartment?.takeIf { it.isNotBlank() }
+                    text = department
+                    visibility = if (department == null) View.GONE else View.VISIBLE
+                }
+
                 if (ExperimentalMobileDesign.enabled() &&
                     binding.root.getTag(R.id.exp_enter_animated_tag) != true
                 ) {
                     binding.root.setTag(R.id.exp_enter_animated_tag, true)
                     ExpMotion.kenBurns(binding.ivPeopleImage)
                     ExpMotion.revealHeader(
-                        binding.root.findViewById(R.id.tv_people_eyebrow),
+                        binding.tvPeopleDepartment,
                         binding.tvPeopleName,
                         binding.root.findViewById(R.id.v_people_rule),
                     )
@@ -213,18 +240,6 @@ class PeopleMobileFragment : Fragment() {
                     ExpMotion.pulseAccentRule(
                         binding.root.findViewById(R.id.v_people_filmography_rule),
                     )
-                    binding.root.findViewById<View>(R.id.v_people_ring)?.let { ring ->
-                        ring.animate().cancel()
-                        ring.scaleX = 0.92f
-                        ring.scaleY = 0.92f
-                        ring.alpha = 0.55f
-                        ring.animate()
-                            .scaleX(1f)
-                            .scaleY(1f)
-                            .alpha(1f)
-                            .setDuration(480L)
-                            .start()
-                    }
                 } else if (ExperimentalMobileDesign.enabled()) {
                     binding.root.findViewById<View>(R.id.tv_people_filmography_label)?.visibility =
                         View.VISIBLE
@@ -236,44 +251,14 @@ class PeopleMobileFragment : Fragment() {
                     binding.tvPeopleBirthday.text.isNullOrEmpty() -> View.GONE
                     else -> View.VISIBLE
                 }
-                if (ExperimentalMobileDesign.enabled() &&
-                    binding.gPeopleBirthday.visibility == View.VISIBLE &&
-                    binding.gPeopleBirthday.getTag(R.id.exp_enter_animated_tag) != true
-                ) {
-                    binding.gPeopleBirthday.setTag(R.id.exp_enter_animated_tag, true)
-                    val padH = (8 * resources.displayMetrics.density).toInt()
-                    val padV = (3 * resources.displayMetrics.density).toInt()
-                    binding.tvPeopleBirthday.setBackgroundResource(
-                        ExperimentalMobileDesign.metaPillBackground(),
-                    )
-                    binding.tvPeopleBirthday.setPadding(padH, padV, padH, padV)
-                    ExpMotion.revealHeader(
-                        binding.root.findViewById(R.id.tv_people_birthday_label),
-                        binding.tvPeopleBirthday,
-                    )
-                }
 
-                binding.tvPeopleDeathday.text = people.deathday?.format("MMMM dd, yyyy")
+                binding.tvPeopleDeathday.text = people.deathday
+                    ?.format("MMMM dd, yyyy")
+                    ?.let { getString(R.string.people_deathday) + " · " + it }
 
                 binding.gPeopleDeathday.visibility = when {
                     binding.tvPeopleDeathday.text.isNullOrEmpty() -> View.GONE
                     else -> View.VISIBLE
-                }
-                if (ExperimentalMobileDesign.enabled() &&
-                    binding.gPeopleDeathday.visibility == View.VISIBLE &&
-                    binding.gPeopleDeathday.getTag(R.id.exp_enter_animated_tag) != true
-                ) {
-                    binding.gPeopleDeathday.setTag(R.id.exp_enter_animated_tag, true)
-                    val padH = (8 * resources.displayMetrics.density).toInt()
-                    val padV = (3 * resources.displayMetrics.density).toInt()
-                    binding.tvPeopleDeathday.setBackgroundResource(
-                        ExperimentalMobileDesign.metaPillBackground(),
-                    )
-                    binding.tvPeopleDeathday.setPadding(padH, padV, padH, padV)
-                    ExpMotion.revealHeader(
-                        binding.root.findViewById(R.id.tv_people_deathday_label),
-                        binding.tvPeopleDeathday,
-                    )
                 }
 
                 binding.tvPeopleBirthplace.text = people.placeOfBirth
@@ -282,21 +267,12 @@ class PeopleMobileFragment : Fragment() {
                     binding.tvPeopleBirthplace.text.isNullOrEmpty() -> View.GONE
                     else -> View.VISIBLE
                 }
-                if (ExperimentalMobileDesign.enabled() &&
-                    binding.gPeopleBirthplace.visibility == View.VISIBLE &&
-                    binding.gPeopleBirthplace.getTag(R.id.exp_enter_animated_tag) != true
-                ) {
-                    binding.gPeopleBirthplace.setTag(R.id.exp_enter_animated_tag, true)
-                    val padH = (8 * resources.displayMetrics.density).toInt()
-                    val padV = (3 * resources.displayMetrics.density).toInt()
-                    binding.tvPeopleBirthplace.setBackgroundResource(
-                        ExperimentalMobileDesign.metaPillBackground(),
-                    )
-                    binding.tvPeopleBirthplace.setPadding(padH, padV, padH, padV)
-                    ExpMotion.revealHeader(
-                        binding.root.findViewById(R.id.tv_people_birthplace_label),
-                        binding.tvPeopleBirthplace,
-                    )
+
+                // The separator only earns its place when both halves of the line are there.
+                binding.tvPeopleMetaDot.visibility = when {
+                    binding.gPeopleBirthday.visibility == View.VISIBLE &&
+                        binding.gPeopleBirthplace.visibility == View.VISIBLE -> View.VISIBLE
+                    else -> View.GONE
                 }
 
                 binding.tvPeopleBiography.apply {

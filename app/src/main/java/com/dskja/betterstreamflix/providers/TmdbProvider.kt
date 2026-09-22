@@ -847,40 +847,47 @@ class TmdbProvider(override val language: String) : Provider {
                 birthday = person.birthday,
                 deathday = person.deathday,
 
-                filmography = person.combinedCredits?.cast
-                    ?.mapNotNull { multi ->
+                filmography = person.combinedCredits?.let { credits ->
+                    val seen = LinkedHashSet<String>()
+                    (credits.cast + credits.crew).mapNotNull { multi ->
                         when (multi) {
-                            is TMDb3.Movie -> Movie(
-                                id = multi.id.toString(),
-                                title = multi.title,
-                                overview = multi.overview,
-                                released = multi.releaseDate,
-                                rating = multi.voteAverage.toDouble(),
-                                poster = multi.posterPath?.w500,
-                                banner = multi.backdropPath?.original,
-                            )
+                            is TMDb3.Movie -> {
+                                val key = "m:${multi.id}"
+                                if (!seen.add(key) || multi.title.isBlank()) return@mapNotNull null
+                                Movie(
+                                    id = multi.id.toString(),
+                                    title = multi.title,
+                                    overview = multi.overview,
+                                    released = multi.releaseDate,
+                                    rating = multi.voteAverage.toDouble(),
+                                    poster = multi.posterPath?.w500,
+                                    banner = multi.backdropPath?.original,
+                                    tmdbId = multi.id.toString(),
+                                ) to multi.popularity
+                            }
 
-                            is TMDb3.Tv -> TvShow(
-                                id = multi.id.toString(),
-                                title = multi.name,
-                                overview = multi.overview,
-                                released = multi.firstAirDate,
-                                rating = multi.voteAverage.toDouble(),
-                                poster = multi.posterPath?.w500,
-                                banner = multi.backdropPath?.original,
-                            )
+                            is TMDb3.Tv -> {
+                                val key = "t:${multi.id}"
+                                if (!seen.add(key) || multi.name.isBlank()) return@mapNotNull null
+                                TvShow(
+                                    id = multi.id.toString(),
+                                    title = multi.name,
+                                    overview = multi.overview,
+                                    released = multi.firstAirDate,
+                                    rating = multi.voteAverage.toDouble(),
+                                    poster = multi.posterPath?.w500,
+                                    banner = multi.backdropPath?.original,
+                                    tmdbId = multi.id.toString(),
+                                ) to (multi.popularity ?: 0f)
+                            }
 
-                        else -> null
-                    }
-                }
-                    ?.sortedBy {
-                        when (it) {
-                            is Movie -> it.released
-                            is TvShow -> it.released
+                            else -> null
                         }
                     }
-                    ?.reversed()
-                    ?: listOf()
+                        .sortedByDescending { it.second }
+                        .map { it.first }
+                } ?: listOf(),
+                knownForDepartment = person.knownForDepartment?.value,
             )
         }
 

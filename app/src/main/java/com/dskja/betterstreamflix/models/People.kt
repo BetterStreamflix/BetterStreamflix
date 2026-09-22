@@ -15,6 +15,7 @@ class People(
     deathday: String? = null,
 
     val filmography: List<Show> = listOf(),
+    val knownForDepartment: String? = null,
 ) : AppAdapter.Item {
 
     val birthday: Calendar? = birthday?.toCalendar()
@@ -32,6 +33,7 @@ class People(
         birthday: String? = this.birthday?.format("yyyy-MM-dd"),
         deathday: String? = this.deathday?.format("yyyy-MM-dd"),
         filmography: List<Show> = this.filmography,
+        knownForDepartment: String? = this.knownForDepartment,
     ) = People(
         id,
         name,
@@ -41,6 +43,7 @@ class People(
         birthday,
         deathday,
         filmography,
+        knownForDepartment,
     )
 
     override fun equals(other: Any?): Boolean {
@@ -57,6 +60,7 @@ class People(
         if (birthday != other.birthday) return false
         if (deathday != other.deathday) return false
         if (filmography != other.filmography) return false
+        if (knownForDepartment != other.knownForDepartment) return false
         if (!::itemType.isInitialized || !other::itemType.isInitialized) return false
         return itemType == other.itemType
     }
@@ -70,6 +74,7 @@ class People(
         result = 31 * result + (birthday?.hashCode() ?: 0)
         result = 31 * result + (deathday?.hashCode() ?: 0)
         result = 31 * result + filmography.hashCode()
+        result = 31 * result + (knownForDepartment?.hashCode() ?: 0)
         result = 31 * result + (if (::itemType.isInitialized) itemType.hashCode() else 0)
         return result
     }

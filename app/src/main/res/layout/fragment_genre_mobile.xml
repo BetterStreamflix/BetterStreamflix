@@ -8,18 +8,17 @@
 
     <ImageView
         android:id="@+id/iv_detail_back"
-        android:layout_width="40dp"
-        android:layout_height="40dp"
-        android:layout_marginStart="12dp"
-        android:layout_marginTop="16dp"
-        android:background="@drawable/bg_detail_icon_chip"
+        android:layout_width="48dp"
+        android:layout_height="48dp"
+        android:layout_marginStart="4dp"
+        android:layout_marginTop="8dp"
+        android:background="@android:color/transparent"
         android:contentDescription="@string/exp_back"
         android:elevation="12dp"
-        android:padding="9dp"
-        android:src="@drawable/ic_player_back"
+        android:padding="12dp"
+        android:src="@drawable/ic_nav_back"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent"
-        app:tint="#FFFFFF" />
+        app:layout_constraintTop_toTopOf="parent" />
 
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/rv_genre"

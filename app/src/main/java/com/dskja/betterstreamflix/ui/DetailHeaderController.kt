@@ -1,32 +1,33 @@
 package com.dskja.betterstreamflix.ui
 
-import android.content.Intent
 import android.view.View
 import android.widget.ImageView
+import android.widget.TextView
 import androidx.appcompat.widget.TooltipCompat
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
+import com.bumptech.glide.Glide
 import com.dskja.betterstreamflix.R
 import com.dskja.betterstreamflix.database.AppDatabase
-import com.dskja.betterstreamflix.download.ui.DownloadOptionsController
 import com.dskja.betterstreamflix.models.Movie
 import com.dskja.betterstreamflix.models.TvShow
 import com.dskja.betterstreamflix.utils.ArtworkRepair
+import com.dskja.betterstreamflix.utils.ArtworkUrls
 import com.dskja.betterstreamflix.utils.ExpMotion
-import com.dskja.betterstreamflix.utils.format
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 /**
- * Overlay header shared by the movie and TV show detail pages: back, download,
- * list toggle and share. The list toggle is backed by the favorite column.
+ * Overlay header shared by the movie and TV show detail pages: solid black bar
+ * with back (left), title logo (center), and list toggle (right).
  */
 object DetailHeaderController {
 
     fun wireBack(root: View) {
         val back = root.findViewById<View>(R.id.iv_detail_back) ?: return
+        back.background = null
         TooltipCompat.setTooltipText(back, back.context.getString(R.string.exp_back))
         back.setOnClickListener {
             ExpMotion.hapticTap(it)
@@ -36,17 +37,11 @@ object DetailHeaderController {
 
     fun bindMovie(fragment: Fragment, root: View, movie: Movie) {
         val context = root.context
-        bindShare(root, movie.title, movie.released?.format("yyyy"), movie.overview, movie.trailer)
-
-        root.findViewById<ImageView>(R.id.btn_detail_download)?.apply {
-            TooltipCompat.setTooltipText(this, context.getString(R.string.detail_download))
-            setOnClickListener {
-                ExpMotion.hapticTap(it)
-                DownloadOptionsController.enqueueMovie(fragment, movie)
-            }
-        }
+        bindTitleChrome(root, movie.title, movie.logo)
+        ensureSolidBar(root)
 
         val listIcon = root.findViewById<ImageView>(R.id.btn_detail_list) ?: return
+        listIcon.background = null
         applyListState(listIcon, movie.isFavorite, animate = false)
         listIcon.setOnClickListener {
             ExpMotion.hapticTap(it)
@@ -67,17 +62,11 @@ object DetailHeaderController {
 
     fun bindTvShow(fragment: Fragment, root: View, tvShow: TvShow) {
         val context = root.context
-        bindShare(root, tvShow.title, tvShow.released?.format("yyyy"), tvShow.overview, tvShow.trailer)
-
-        root.findViewById<ImageView>(R.id.btn_detail_download)?.apply {
-            TooltipCompat.setTooltipText(this, context.getString(R.string.detail_download))
-            setOnClickListener {
-                ExpMotion.hapticTap(it)
-                DownloadOptionsController.offerTvShowDownload(fragment, tvShow, tvShow.episodeToWatch)
-            }
-        }
+        bindTitleChrome(root, tvShow.title, tvShow.logo)
+        ensureSolidBar(root)
 
         val listIcon = root.findViewById<ImageView>(R.id.btn_detail_list) ?: return
+        listIcon.background = null
         applyListState(listIcon, tvShow.isFavorite, animate = false)
         listIcon.setOnClickListener {
             ExpMotion.hapticTap(it)
@@ -96,10 +85,57 @@ object DetailHeaderController {
         }
     }
 
-    /** Refreshes only the list icon so a favorite change never re-submits the page list. */
+    /**
+     * Kept for scroll listeners; the bar stays solid black and the logo stays
+     * visible so scrolling never darkens page content behind a tall scrim.
+     */
+    fun onScrolled(root: View, @Suppress("UNUSED_PARAMETER") scrollY: Int) {
+        ensureSolidBar(root)
+        applyTitleVisibility(root)
+    }
+
     fun refreshListState(root: View, inList: Boolean) {
         root.findViewById<ImageView>(R.id.btn_detail_list)
             ?.let { applyListState(it, inList, animate = false) }
+    }
+
+    private fun ensureSolidBar(root: View) {
+        root.findViewById<View>(R.id.v_detail_header_scrim)?.alpha = 1f
+    }
+
+    private fun bindTitleChrome(root: View, title: String, logoUrl: String?) {
+        root.findViewById<TextView>(R.id.tv_detail_header_title)?.text = title
+        val logo = root.findViewById<ImageView>(R.id.iv_detail_header_logo) ?: return
+        val url = ArtworkUrls.preferOriginal(logoUrl) ?: ArtworkUrls.preferHero(logoUrl)
+        if (url.isNullOrBlank()) {
+            logo.setImageDrawable(null)
+            logo.tag = false
+            applyTitleVisibility(root)
+            return
+        }
+        Glide.with(logo)
+            .load(url)
+            .fitCenter()
+            .into(logo)
+        logo.tag = true
+        applyTitleVisibility(root)
+    }
+
+    private fun applyTitleVisibility(root: View) {
+        val logo = root.findViewById<ImageView>(R.id.iv_detail_header_logo)
+        val title = root.findViewById<TextView>(R.id.tv_detail_header_title)
+        val showLogo = logo?.tag == true
+        if (showLogo) {
+            logo?.visibility = View.VISIBLE
+            logo?.alpha = 1f
+            title?.visibility = View.INVISIBLE
+            title?.alpha = 0f
+        } else {
+            logo?.visibility = View.INVISIBLE
+            logo?.alpha = 0f
+            title?.visibility = View.VISIBLE
+            title?.alpha = 1f
+        }
     }
 
     private fun applyListState(icon: ImageView, inList: Boolean, animate: Boolean) {
@@ -115,36 +151,5 @@ object DetailHeaderController {
         icon.contentDescription = description
         TooltipCompat.setTooltipText(icon, description)
         if (animate) ExpMotion.softScale(icon)
-    }
-
-    private fun bindShare(
-        root: View,
-        title: String,
-        year: String?,
-        overview: String?,
-        trailer: String?,
-    ) {
-        val share = root.findViewById<ImageView>(R.id.btn_detail_share) ?: return
-        TooltipCompat.setTooltipText(share, share.context.getString(R.string.detail_share))
-        share.setOnClickListener {
-            ExpMotion.hapticTap(it)
-            val intent = Intent(Intent.ACTION_SEND).apply {
-                type = "text/plain"
-                putExtra(Intent.EXTRA_SUBJECT, title)
-                putExtra(
-                    Intent.EXTRA_TEXT,
-                    buildString {
-                        append(title)
-                        year?.let { append(" ($it)") }
-                        overview?.takeIf { text -> text.isNotBlank() }
-                            ?.let { text -> append("\n\n").append(text.take(280)) }
-                        trailer?.let { url -> append("\n").append(url) }
-                    },
-                )
-            }
-            share.context.startActivity(
-                Intent.createChooser(intent, share.context.getString(R.string.detail_share))
-            )
-        }
     }
 }

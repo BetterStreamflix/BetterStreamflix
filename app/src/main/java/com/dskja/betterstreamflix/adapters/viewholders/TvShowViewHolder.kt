@@ -66,6 +66,7 @@ import com.dskja.betterstreamflix.models.Movie
 import com.dskja.betterstreamflix.models.Season
 import com.dskja.betterstreamflix.models.TvShow
 import com.dskja.betterstreamflix.models.Video
+import com.dskja.betterstreamflix.ui.FeaturedSwiperChrome
 import com.dskja.betterstreamflix.ui.SpacingItemDecoration
 import com.dskja.betterstreamflix.ui.ShowOptionsMobileDialog
 import com.dskja.betterstreamflix.ui.ShowOptionsTvDialog
@@ -784,58 +785,21 @@ class TvShowViewHolder(
 
     private fun displaySwiperMobileItem(binding: ItemCategorySwiperMobileBinding) {
         binding.ivSwiperBackground.loadTvShowBanner(tvShow) {
-            centerCrop().transition(DrawableTransitionOptions.withCrossFade())
+            override(FeaturedSwiperChrome.ARTWORK_WIDTH, FeaturedSwiperChrome.ARTWORK_HEIGHT)
+                .centerCrop()
+                .transition(DrawableTransitionOptions.withCrossFade())
         }
-        if (ExperimentalMobileDesign.enabled() &&
-            !com.dskja.betterstreamflix.utils.DeviceCapabilities.shouldReduceHomeEffects(binding.root.context)
-        ) {
-            ExpMotion.kenBurns(binding.ivSwiperBackground)
-        }
-        binding.tvSwiperTitle.text = tvShow.title
+
         itemView.contentDescription = tvShow.title
-        if (ExperimentalMobileDesign.enabled() &&
-            binding.root.getTag(R.id.exp_enter_animated_tag) != true
-        ) {
-            binding.root.setTag(R.id.exp_enter_animated_tag, true)
-            ExpMotion.revealHeader(binding.tvSwiperTitle, binding.tvSwiperOverview)
-        }
-        bindEpisodeBadge(binding.tvSwiperTvShowLastEpisode)
-        
-        binding.tvSwiperQuality.apply {
-            text = tvShow.quality
-            val show = !text.isNullOrEmpty()
-            val wasVisible = isVisible
-            isVisible = show
-            if (show && ExperimentalMobileDesign.enabled()) {
-                setBackgroundResource(ExperimentalMobileDesign.metaPillBackground())
-                if (!wasVisible) ExpMotion.popIn(this)
-            }
-        }
+        FeaturedSwiperChrome.resolveAndBindLogo(binding, tvShow)
 
-        binding.tvSwiperReleased.apply {
-            text = tvShow.released?.format("yyyy")
-            val show = !text.isNullOrEmpty()
-            val wasVisible = isVisible
-            isVisible = show
-            if (show && ExperimentalMobileDesign.enabled()) {
-                setBackgroundResource(ExperimentalMobileDesign.metaPillBackground())
-                if (!wasVisible) ExpMotion.popIn(this)
-            }
-        }
-
-        binding.tvSwiperRating.apply {
-            text = tvShow.rating?.let { String.format(Locale.ROOT, "%.1f", it) }
-            val show = !text.isNullOrEmpty()
-            val wasVisible = isVisible
-            isVisible = show
-            if (show && ExperimentalMobileDesign.enabled()) {
-                setBackgroundResource(ExperimentalMobileDesign.metaPillBackground())
-                if (!wasVisible) ExpMotion.popIn(this)
-            }
-        }
-        binding.ivSwiperRatingIcon.isVisible = binding.tvSwiperRating.isVisible
-
-        binding.tvSwiperOverview.text = tvShow.overview
+        binding.tvSwiperOverview.visibility = View.GONE
+        binding.tvSwiperTvShowLastEpisode.visibility = View.GONE
+        binding.tvSwiperQuality.visibility = View.GONE
+        binding.tvSwiperReleased.visibility = View.GONE
+        binding.tvSwiperRating.visibility = View.GONE
+        binding.ivSwiperRatingIcon.visibility = View.GONE
+        binding.pbSwiperProgress.visibility = View.GONE
 
         val openTvShow = View.OnClickListener {
             ExpMotion.hapticTap(it)
@@ -847,14 +811,31 @@ class TvShowViewHolder(
         }
 
         binding.btnSwiperWatchNow.apply {
-            if (ExperimentalMobileDesign.enabled()) {
-                setBackgroundResource(ExperimentalMobileDesign.primaryButtonBackground())
-                applyExpPress()
-            }
+            FeaturedSwiperChrome.wireWatchButton(this)
+            applyExpPress()
             setOnClickListener(openTvShow)
         }
 
-        // The whole featured card opens the detail page, not just the button.
+        FeaturedSwiperChrome.bindListButton(binding.btnSwiperAddToList, tvShow.isFavorite)
+        binding.btnSwiperAddToList.apply {
+            applyExpPress()
+            setOnClickListener {
+                ExpMotion.hapticTap(it)
+                itemView.findViewTreeLifecycleOwner()?.lifecycleScope?.launch(Dispatchers.IO) {
+                    val dao = database.tvShowDao()
+                    val target = !(dao.getById(tvShow.id)?.isFavorite ?: tvShow.isFavorite)
+                    val resolved = ArtworkRepair.resolveTvShowForFavorite(context, tvShow, target)
+                    dao.upsertFavorite(resolved, target)
+                    withContext(Dispatchers.Main) {
+                        tvShow.isFavorite = target
+                        tvShow.poster = resolved.poster
+                        tvShow.banner = resolved.banner
+                        FeaturedSwiperChrome.bindListButton(this@apply, target, animate = true)
+                    }
+                }
+            }
+        }
+
         binding.root.setOnClickListener(openTvShow)
         binding.ivSwiperBackground.apply {
             isClickable = true
@@ -953,7 +934,7 @@ class TvShowViewHolder(
             } else {
                 logoView.visibility = View.VISIBLE
                 com.bumptech.glide.Glide.with(logoView)
-                    .load(logo)
+                    .load(com.dskja.betterstreamflix.utils.ArtworkUrls.preferHero(logo))
                     .transition(DrawableTransitionOptions.withCrossFade())
                     .into(logoView)
             }

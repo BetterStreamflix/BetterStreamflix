@@ -24,7 +24,7 @@
         android:layout_height="0dp"
         android:clipToPadding="false"
         android:orientation="vertical"
-        android:paddingTop="64dp"
+        android:paddingTop="0dp"
         app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
@@ -43,48 +43,49 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent" />
 
+    <!-- Floating chrome over Featured — no solid bar. -->
+    <ImageView
+        android:id="@+id/iv_provider_logo"
+        android:layout_width="36dp"
+        android:layout_height="0dp"
+        android:layout_marginStart="14dp"
+        android:layout_marginTop="10dp"
+        android:background="@drawable/bg_provider_logo_home_mobile"
+        android:clickable="true"
+        android:contentDescription="@string/providers_choose_title"
+        android:duplicateParentState="true"
+        android:elevation="10dp"
+        android:focusable="true"
+        android:padding="5dp"
+        app:layout_constraintDimensionRatio="1:1"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
+
     <include
         android:id="@+id/tv_home_profile_chip"
         layout="@layout/view_profile_home_chip"
         android:layout_width="wrap_content"
         android:layout_height="32dp"
         android:layout_marginEnd="12dp"
+        android:elevation="10dp"
         app:layout_constraintBottom_toBottomOf="@id/iv_provider_logo"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintTop_toTopOf="@id/iv_provider_logo" />
 
-    <!-- Leaves room for the activity search chip so it does not cover the profile. -->
     <Space
         android:id="@+id/btn_home_search_spacer"
-        android:layout_width="56dp"
-        android:layout_height="40dp"
+        android:layout_width="48dp"
+        android:layout_height="36dp"
         app:layout_constraintBottom_toBottomOf="@id/iv_provider_logo"
         app:layout_constraintEnd_toStartOf="@id/tv_home_profile_chip"
         app:layout_constraintTop_toTopOf="@id/iv_provider_logo" />
-
-    <ImageView
-        android:id="@+id/iv_provider_logo"
-        android:layout_width="40dp"
-        android:layout_height="0dp"
-        android:background="@drawable/bg_provider_logo_home_mobile"
-        android:layout_marginStart="16dp"
-        android:layout_marginTop="8dp"
-        android:clickable="true"
-        android:contentDescription="@string/providers_choose_title"
-        android:duplicateParentState="true"
-        android:elevation="8dp"
-        android:focusable="true"
-        android:padding="6dp"
-        app:layout_constraintDimensionRatio="1:1"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent" />
 
     <TextView
         android:id="@+id/tv_home_catalog_warning"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_marginStart="16dp"
-        android:layout_marginTop="10dp"
+        android:layout_marginTop="8dp"
         android:layout_marginEnd="16dp"
         android:background="@drawable/bg_home_catalog_warning"
         android:clickable="true"

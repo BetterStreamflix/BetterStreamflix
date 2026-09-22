@@ -265,8 +265,42 @@ class TvShowViewModel(
             _state.emit(State.SuccessLoading(orderedTvShow))
         } catch (e: Exception) {
             Log.e("TvShowViewModel", "getTvShow: ", e)
-            _state.emit(State.FailedLoading(e))
+            val fallback = metadataOnlyFallback(id)
+            if (fallback != null) {
+                Log.w("TvShowViewModel", "Showing metadata-only page for $id after a provider failure")
+                _state.emit(State.SuccessLoading(fallback))
+            } else {
+                _state.emit(State.FailedLoading(e))
+            }
         }
+    }
+
+    /**
+     * Provider outages (HTTP 5xx) should still render the page: fall back to the
+     * cached row or TMDb metadata, with no episodes attached.
+     */
+    private suspend fun metadataOnlyFallback(id: String): TvShow? {
+        val language = UserPreferences.currentProvider?.language
+        val cached = runCatching { database.tvShowDao().getById(id) }.getOrNull()
+        val base = cached
+            ?: id.toIntOrNull()?.let {
+                runCatching {
+                    com.dskja.betterstreamflix.utils.TmdbUtils.getTvShowById(it, language)
+                }.getOrNull()
+            }
+            ?: com.dskja.betterstreamflix.utils.ShowLookup.humanizeSlug(id)?.let { title ->
+                runCatching {
+                    com.dskja.betterstreamflix.utils.TmdbUtils.getTvShow(
+                        title,
+                        year = com.dskja.betterstreamflix.utils.ShowLookup.yearFromSlug(id),
+                        language = language,
+                    )
+                }.getOrNull()
+            }
+            ?: return null
+        return runCatching {
+            com.dskja.betterstreamflix.utils.TmdbUtils.enrichTvShowDetail(base, language)
+        }.getOrDefault(base)
     }
 
     private fun getSeason(tvShow: TvShow, season: Season) = viewModelScope.launch(Dispatchers.IO) {

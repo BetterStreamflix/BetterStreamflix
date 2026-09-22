@@ -165,13 +165,23 @@ fun ImageView.loadMoviePoster(
     }
 }
 
+/**
+ * [hero] keeps the wide w1280 size for cards; detail pages pass `false` to get
+ * the original file, which stays sharp behind a full-screen banner.
+ */
 fun ImageView.loadMovieBanner(
     movie: Movie,
+    hero: Boolean = true,
     configure: RequestBuilder<Drawable>.() -> RequestBuilder<Drawable> = { this },
 ) {
-    loadRecoverableArtwork(movie.banner ?: movie.poster, configure) { staleUrl, onUpdated ->
+    val url = ArtworkUrls.bannerOrPoster(movie.banner, movie.poster, hero = hero)
+    loadRecoverableArtwork(url, configure) { staleUrl, onUpdated ->
         ArtworkRepairCoordinator.repairMovieArtwork(this, movie, staleUrl) { refreshedMovie ->
-            val refreshedUrl = refreshedMovie.banner ?: refreshedMovie.poster
+            val refreshedUrl = ArtworkUrls.bannerOrPoster(
+                refreshedMovie.banner,
+                refreshedMovie.poster,
+                hero = hero,
+            )
             if (!refreshedUrl.isNullOrBlank() && refreshedUrl != staleUrl) {
                 onUpdated(refreshedUrl)
             }
@@ -196,11 +206,17 @@ fun ImageView.loadTvShowPoster(
 
 fun ImageView.loadTvShowBanner(
     tvShow: TvShow,
+    hero: Boolean = true,
     configure: RequestBuilder<Drawable>.() -> RequestBuilder<Drawable> = { this },
 ) {
-    loadRecoverableArtwork(tvShow.banner ?: tvShow.poster, configure) { staleUrl, onUpdated ->
+    val url = ArtworkUrls.bannerOrPoster(tvShow.banner, tvShow.poster, hero = hero)
+    loadRecoverableArtwork(url, configure) { staleUrl, onUpdated ->
         ArtworkRepairCoordinator.repairTvShowArtwork(this, tvShow, staleUrl) { refreshedTvShow ->
-            val refreshedUrl = refreshedTvShow.banner ?: refreshedTvShow.poster
+            val refreshedUrl = ArtworkUrls.bannerOrPoster(
+                refreshedTvShow.banner,
+                refreshedTvShow.poster,
+                hero = hero,
+            )
             if (!refreshedUrl.isNullOrBlank() && refreshedUrl != staleUrl) {
                 onUpdated(refreshedUrl)
             }

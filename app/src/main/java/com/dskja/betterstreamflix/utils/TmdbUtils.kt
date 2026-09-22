@@ -81,8 +81,35 @@ object TmdbUtils {
     }
 
     /**
+     * Resolves a title logo for surfaces that only know the title (Featured card).
+     * Uses the TMDb id when the caller already has one, otherwise matches by title/year.
+     */
+    suspend fun resolveTitleLogo(
+        title: String,
+        year: Int? = null,
+        isTv: Boolean = false,
+        tmdbId: String? = null,
+        language: String? = null,
+    ): String? {
+        if (!UserPreferences.enableTmdb) return null
+        val lang = language ?: UserPreferences.currentProvider?.language
+        val effectiveYear = year ?: extractYear(title)
+        val id = tmdbId?.trim()?.toIntOrNull()
+            ?: runCatching {
+                if (isTv) {
+                    findBestTvMatch(title, effectiveYear, lang)?.id
+                } else {
+                    findBestMovieMatch(title, effectiveYear, lang)?.id
+                }
+            }.getOrNull()
+            ?: return null
+        return if (isTv) getTvShowLogo(id, lang) else getMovieLogo(id, lang)
+    }
+
+    /**
      * Resolve a TMDb person (biography + combined credits). Filmography uses TMDb
      * ids so [ShowLookup] can map them onto the current provider when opened.
+     * Includes both cast and crew so directors / writers get their credits too.
      */
     suspend fun getPeopleById(personId: Int, language: String? = null): People? {
         return runCatching {
@@ -94,12 +121,13 @@ object TmdbUtils {
             People(
                 id = detail.id.toString(),
                 name = detail.name,
-                image = detail.profilePath?.w500,
+                image = detail.profilePath?.original,
                 biography = detail.biography?.takeIf { it.isNotBlank() },
                 placeOfBirth = detail.placeOfBirth?.takeIf { it.isNotBlank() },
                 birthday = detail.birthday,
                 deathday = detail.deathday,
                 filmography = filmographyFromCredits(detail.combinedCredits),
+                knownForDepartment = detail.knownForDepartment?.value,
             )
         }.getOrNull()
     }
@@ -107,45 +135,63 @@ object TmdbUtils {
     private fun filmographyFromCredits(
         credits: TMDb3.Person.Credits<TMDb3.MultiItem>?,
     ): List<Show> {
-        val seen = LinkedHashSet<String>()
-        return credits?.cast.orEmpty().mapNotNull { multi ->
-            when (multi) {
+        data class Ranked(val show: Show, val popularity: Float, val vote: Float)
+
+        fun toRanked(multi: TMDb3.MultiItem): Ranked? {
+            return when (multi) {
                 is TMDb3.Movie -> {
-                    val key = "m:${multi.id}"
-                    if (!seen.add(key) || multi.title.isBlank()) return@mapNotNull null
-                    Movie(
-                        id = multi.id.toString(),
-                        title = multi.title,
-                        overview = multi.overview,
-                        released = multi.releaseDate,
-                        rating = multi.voteAverage.toDouble(),
-                        poster = multi.posterPath?.w500,
-                        banner = multi.backdropPath?.original,
-                        tmdbId = multi.id.toString(),
+                    if (multi.title.isBlank()) return null
+                    Ranked(
+                        show = Movie(
+                            id = multi.id.toString(),
+                            title = multi.title,
+                            overview = multi.overview,
+                            released = multi.releaseDate,
+                            rating = multi.voteAverage.toDouble(),
+                            poster = multi.posterPath?.w500,
+                            banner = multi.backdropPath?.original,
+                            tmdbId = multi.id.toString(),
+                        ),
+                        popularity = multi.popularity,
+                        vote = multi.voteAverage,
                     )
                 }
                 is TMDb3.Tv -> {
-                    val key = "t:${multi.id}"
-                    if (!seen.add(key) || multi.name.isBlank()) return@mapNotNull null
-                    TvShow(
-                        id = multi.id.toString(),
-                        title = multi.name,
-                        overview = multi.overview,
-                        released = multi.firstAirDate,
-                        rating = multi.voteAverage.toDouble(),
-                        poster = multi.posterPath?.w500,
-                        banner = multi.backdropPath?.original,
-                        tmdbId = multi.id.toString(),
+                    if (multi.name.isBlank()) return null
+                    Ranked(
+                        show = TvShow(
+                            id = multi.id.toString(),
+                            title = multi.name,
+                            overview = multi.overview,
+                            released = multi.firstAirDate,
+                            rating = multi.voteAverage.toDouble(),
+                            poster = multi.posterPath?.w500,
+                            banner = multi.backdropPath?.original,
+                            tmdbId = multi.id.toString(),
+                        ),
+                        popularity = multi.popularity ?: 0f,
+                        vote = multi.voteAverage,
                     )
                 }
                 else -> null
             }
-        }.sortedByDescending {
-            when (it) {
-                is Movie -> it.released
-                is TvShow -> it.released
-            }
         }
+
+        val seen = LinkedHashSet<String>()
+        return (credits?.cast.orEmpty() + credits?.crew.orEmpty())
+            .mapNotNull(::toRanked)
+            .sortedWith(
+                compareByDescending<Ranked> { it.popularity }
+                    .thenByDescending { it.vote },
+            )
+            .mapNotNull { ranked ->
+                val key = when (val show = ranked.show) {
+                    is Movie -> "m:${show.tmdbId ?: show.id}"
+                    is TvShow -> "t:${show.tmdbId ?: show.id}"
+                    else -> return@mapNotNull null
+                }
+                if (!seen.add(key)) null else ranked.show
+            }
     }
 
     suspend fun getMovie(title: String, year: Int? = null, language: String? = null): Movie? {
@@ -437,6 +483,7 @@ object TmdbUtils {
      * Fills gaps on a provider movie for high-end detail pages:
      * directors, cast, recommendations, trailer, content rating, artwork.
      * Preserves provider ids and already-populated fields.
+     * Prefers TMDb artwork when the provider only left a blank or placeholder.
      */
     suspend fun enrichMovieDetail(movie: Movie, language: String? = null): Movie {
         if (!UserPreferences.enableTmdb) return movie
@@ -469,7 +516,8 @@ object TmdbUtils {
             watchedDate = movie.watchedDate
             lastPlayedAtMillis = movie.lastPlayedAtMillis
             watchHistory = movie.watchHistory
-            logo = movie.logo
+            logo = movie.logo?.takeIf { it.isNotBlank() }
+                ?: tmdb.logo
                 ?: tmdbId?.toIntOrNull()?.let { getMovieLogo(it, lang) }
         }
     }
@@ -509,7 +557,8 @@ object TmdbUtils {
             lastPlayedAtMillis = tvShow.lastPlayedAtMillis
             lastPlayedEpisodeId = tvShow.lastPlayedEpisodeId
             lastPlayedEpisode = tvShow.lastPlayedEpisode
-            logo = tvShow.logo
+            logo = tvShow.logo?.takeIf { it.isNotBlank() }
+                ?: tmdb.logo
                 ?: tmdbId?.toIntOrNull()?.let { getTvShowLogo(it, lang) }
         }
     }

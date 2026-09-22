@@ -4,6 +4,7 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:background="?attr/app_background_color"
     tools:context=".fragments.tv_show.TvShowMobileFragment">
 
     <ImageView
@@ -12,7 +13,7 @@
         android:layout_height="0dp"
         android:foreground="?attr/tv_show_banner_gradient_drawable"
         android:scaleType="centerCrop"
-        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintDimensionRatio="H,16:10"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent"
