@@ -87,6 +87,19 @@ object ExpMotion {
             .start()
     }
 
+    /** Toggle feedback that stays inside the view bounds, unlike [popIn]'s overshoot. */
+    fun softScale(view: View) {
+        if (!view.motionAllowed()) return
+        view.animate().cancel()
+        view.scaleX = 0.88f
+        view.scaleY = 0.88f
+        view.animate()
+            .scaleX(1f)
+            .scaleY(1f)
+            .setDuration(180)
+            .start()
+    }
+
     /** Fragment-enter motion: soft fade + slight rise. */
     fun enterScreen(root: View, duration: Long = 260) {
         if (!root.motionAllowed()) return

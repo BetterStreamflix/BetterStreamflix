@@ -43,7 +43,7 @@ object PelisflixHdProvider : Provider, ProviderConfigUrl {
     }
     override val language = "es"
     override val logo: String
-        get() = "$baseUrl/cat/logo-mini.png"
+        get() = "https://www.google.com/s2/favicons?domain=pelisflixhd1.top&sz=128"
 
     private const val USER_AGENT =
         "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36"

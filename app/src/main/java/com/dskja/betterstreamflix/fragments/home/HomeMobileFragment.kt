@@ -236,13 +236,16 @@ class HomeMobileFragment : Fragment() {
         val profile = ProfileManager.activeProfile()
         val name = profile?.displayName?.takeIf { it.isNotBlank() }
             ?: getString(R.string.profile_default)
-        chip.findViewById<android.widget.TextView>(R.id.tv_home_profile_name)?.text = name
+        // The chip is avatar-only; the name lives in the tooltip and content description.
+        chip.findViewById<android.widget.TextView>(R.id.tv_home_profile_name)?.visibility = View.GONE
         chip.findViewById<com.dskja.betterstreamflix.profiles.ProfileAvatarView>(R.id.pav_home_profile)
             ?.bind(
                 avatarKey = profile?.avatarKey ?: ProfileManager.avatarKeys.first(),
                 displayName = name,
-                textSizeSp = 11f,
+                textSizeSp = 12f,
             )
+        chip.contentDescription = name
+        androidx.appcompat.widget.TooltipCompat.setTooltipText(chip, name)
         chip.visibility = View.VISIBLE
         val chipKey = "${profile?.id.orEmpty()}|$name|${profile?.avatarKey.orEmpty()}"
         if (ExperimentalMobileDesign.enabled()) {

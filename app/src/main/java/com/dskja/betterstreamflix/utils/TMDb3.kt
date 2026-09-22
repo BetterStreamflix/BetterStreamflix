@@ -1909,7 +1909,8 @@ object TMDb3 {
     data class Images(
         @SerializedName("id") val id: Int? = null,
         @SerializedName("posters") val posters: List<FileImage> = emptyList(),
-        @SerializedName("backdrops") val backdrops: List<FileImage> = emptyList()
+        @SerializedName("backdrops") val backdrops: List<FileImage> = emptyList(),
+        @SerializedName("logos") val logos: List<FileImage> = emptyList()
     ) {
 
         data class FileImage(

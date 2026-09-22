@@ -25,7 +25,7 @@
         android:layout_width="48dp"
         android:layout_height="48dp"
         android:layout_marginTop="4dp"
-        android:layout_marginEnd="8dp"
+        android:layout_marginEnd="56dp"
         android:background="?attr/selectableItemBackgroundBorderless"
         android:contentDescription="@string/main_menu_search"
         android:elevation="8dp"

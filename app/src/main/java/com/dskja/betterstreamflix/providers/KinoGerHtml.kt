@@ -148,6 +148,21 @@ internal object KinoGerHtml {
             }
     }
 
+    /** Genre / category links surfaced in the sidebar widgets, if the template has one. */
+    fun parseSidebarGenres(document: Document, absoluteUrl: (String) -> String): List<Pair<String, String>> {
+        return document.select(
+            ".sidebar a[href*=/genre/], .side-block a[href*=/genre/], " +
+                "a[href*=/genres/], .cat-list a[href], .genre-list a[href]",
+        )
+            .mapNotNull { a ->
+                val href = a.attr("href").trim()
+                val name = a.text().trim()
+                if (href.isBlank() || name.isBlank()) return@mapNotNull null
+                absoluteUrl(href) to name
+            }
+            .distinctBy { it.first }
+    }
+
     fun parseMovieListSidebar(document: Document, absoluteUrl: (String) -> String): List<AppAdapter.Item> {
         return document.select(".movieList > a[href*=.html]")
             .mapNotNull { a ->

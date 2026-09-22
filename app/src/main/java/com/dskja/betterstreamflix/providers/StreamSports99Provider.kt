@@ -251,11 +251,12 @@ object StreamSports99Provider : IptvProvider, ProviderConfigUrl {
     override suspend fun getVideo(server: Video.Server): Video = withContext(Dispatchers.IO) {
         val payload = M3uChannelIdCodec.decode(server.id)
         val playerUrl = payload.url.ifBlank { server.src.ifBlank { server.id } }
-        val html = fetchHtml(playerUrl, referer = "$baseUrl/") ?: return@withContext Video("")
+        val html = fetchHtml(playerUrl, referer = "$baseUrl/")
+            ?: throw Exception("StreamSports99: could not load player page for ${server.name}")
         val m3u8 = LiveStreamHtmlExtractor.extractM3u8(html)
         if (m3u8.isNullOrBlank()) {
             Log.e(TAG, "No m3u8 in player page")
-            return@withContext Video("")
+            throw Exception("StreamSports99: no m3u8 stream found for ${server.name} (channel may be offline)")
         }
         Video(
             source = m3u8,

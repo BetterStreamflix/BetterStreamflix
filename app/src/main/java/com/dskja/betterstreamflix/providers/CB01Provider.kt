@@ -234,10 +234,33 @@ object CB01Provider : Provider, ProviderConfigUrl {
         )
     }
 
+    private fun parseSliderItem(el: Element): Movie? {
+        val titleAnchor = el.selectFirst("a[href]") ?: return null
+        val href = titleAnchor.attr("href").trim()
+        val rawTitle = el.selectFirst("h2, h3, .slide-title, .caption-title")?.text()?.trim()
+            ?.ifBlank { titleAnchor.attr("title").trim() }
+            ?: titleAnchor.attr("title").trim()
+        if (href.isBlank() || rawTitle.isBlank()) return null
+        val title = cleanTitle(rawTitle)
+        val poster = el.selectFirst("img[src]")?.attr("src")
+        if (title.isBlank()) return null
+        return Movie(id = href, title = title, poster = poster, banner = poster)
+    }
+
     override suspend fun getHome(): List<Category> {
         val doc = service.getHome()
 
         val categories = mutableListOf<Category>()
+
+        // Featured hero slider — Sequex WP theme markup varies by mirror, try the
+        // common slider classes before falling back to pipeline-synthesized FEATURED.
+        val slides = doc.select(
+            ".sequex-slider .slide, .rev_slider li, #rev_slider li, " +
+                ".hesperiden-slider .item, .main-slider .slide, .slider-item",
+        ).mapNotNull { parseSliderItem(it) }.distinctBy { it.id }
+        if (slides.isNotEmpty()) {
+            categories.add(Category(name = Category.FEATURED, list = slides))
+        }
 
         val movies = doc.select("div.card.mp-post.horizontal").mapNotNull { parseHomeMovie(it) }
         if (movies.isNotEmpty()) {
@@ -247,6 +270,14 @@ object CB01Provider : Provider, ProviderConfigUrl {
         val latestMovies = doc.select("#rpwe_widget-2 ul.rpwe-ul li.rpwe-li").mapNotNull { parseLatestMovie(it) }
         if (latestMovies.isNotEmpty()) {
             categories.add(Category(name = "Ultimi Film Aggiunti", list = latestMovies))
+        }
+
+        runCatching {
+            val tvDoc = service.getTvShows()
+            val tvShows = tvDoc.select("div.card.mp-post.horizontal").mapNotNull { parseHomeTvShow(it) }
+            if (tvShows.isNotEmpty()) {
+                categories.add(Category(name = "SerieTV", list = tvShows))
+            }
         }
 
         return categories

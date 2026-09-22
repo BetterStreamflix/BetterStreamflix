@@ -3,32 +3,25 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:id="@+id/profile_home_chip_root"
     android:layout_width="wrap_content"
-    android:layout_height="36dp"
+    android:layout_height="32dp"
     android:background="@drawable/bg_profile_home_chip"
     android:clickable="true"
     android:contentDescription="@string/profile_switch_title"
     android:elevation="12dp"
     android:focusable="true"
-    android:gravity="center_vertical"
-    android:orientation="horizontal"
-    android:paddingStart="4dp"
-    android:paddingEnd="12dp">
+    android:gravity="center"
+    android:orientation="horizontal">
 
     <com.dskja.betterstreamflix.profiles.ProfileAvatarView
         android:id="@+id/pav_home_profile"
-        android:layout_width="28dp"
-        android:layout_height="28dp" />
+        android:layout_width="32dp"
+        android:layout_height="32dp" />
 
+    <!-- Kept for binding compatibility; the chip shows the avatar only. -->
     <TextView
         android:id="@+id/tv_home_profile_name"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginStart="8dp"
-        android:ellipsize="end"
-        android:maxLines="1"
-        android:maxWidth="56dp"
-        android:textAppearance="@style/TextAppearance.Lumina.Caption"
-        android:textColor="?attr/colorOnSurface"
-        android:textStyle="bold"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:visibility="gone"
         tools:text="Alex" />
 </LinearLayout>

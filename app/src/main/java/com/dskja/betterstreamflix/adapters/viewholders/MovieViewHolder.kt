@@ -978,19 +978,28 @@ class MovieViewHolder(
             text = movie.overview
         }
 
+        val openMovie = View.OnClickListener { view ->
+            ExpMotion.hapticTap(view)
+            view.findNavController().navigate(
+                HomeMobileFragmentDirections.actionHomeToMovie(
+                    id = movie.id,
+                )
+            )
+        }
+
         binding.btnSwiperWatchNow.apply {
             if (ExperimentalMobileDesign.enabled()) {
                 setBackgroundResource(ExperimentalMobileDesign.primaryButtonBackground())
                 applyExpPress()
             }
-            setOnClickListener {
-                ExpMotion.hapticTap(it)
-                findNavController().navigate(
-                    HomeMobileFragmentDirections.actionHomeToMovie(
-                        id = movie.id,
-                    )
-                )
-            }
+            setOnClickListener(openMovie)
+        }
+
+        // The whole featured card opens the detail page, not just the button.
+        binding.root.setOnClickListener(openMovie)
+        binding.ivSwiperBackground.apply {
+            isClickable = true
+            setOnClickListener(openMovie)
         }
 
         binding.pbSwiperProgress.apply {
@@ -1029,6 +1038,20 @@ class MovieViewHolder(
         }
 
         binding.tvMovieTitle.text = movie.title
+
+        binding.root.findViewById<android.widget.ImageView>(R.id.iv_movie_logo)?.let { logoView ->
+            val logo = movie.logo
+            if (logo.isNullOrBlank()) {
+                logoView.visibility = View.GONE
+                logoView.setImageDrawable(null)
+            } else {
+                logoView.visibility = View.VISIBLE
+                com.bumptech.glide.Glide.with(logoView)
+                    .load(logo)
+                    .transition(DrawableTransitionOptions.withCrossFade())
+                    .into(logoView)
+            }
+        }
 
         if (ExperimentalMobileDesign.enabled() &&
             binding.root.getTag(R.id.exp_enter_animated_tag) != true
@@ -1101,7 +1124,6 @@ class MovieViewHolder(
         }
 
         binding.tvMovieGenres.apply {
-            text = movie.genres.joinToString(", ") { it.name }
             val show = movie.genres.isNotEmpty()
             val wasVisible = visibility == View.VISIBLE
             visibility = if (show) View.VISIBLE else View.GONE
@@ -1110,22 +1132,44 @@ class MovieViewHolder(
                 if (!wasVisible) ExpMotion.popIn(this)
             }
             if (movie.genres.isNotEmpty()) {
-                if (ExperimentalMobileDesign.enabled()) applyExpPress()
-                setOnClickListener {
-                    ExpMotion.hapticTap(it)
-                    val genre = movie.genres.first()
-                    checkProviderAndRun {
-                        if (context.toActivity()?.getCurrentFragment() is MovieMobileFragment) {
-                            findNavController().navigate(
-                                MovieMobileFragmentDirections.actionMovieToGenre(
-                                    id = genre.id,
-                                    name = genre.name,
-                                )
-                            )
-                        }
-                    }
+                val spanned = android.text.SpannableStringBuilder()
+                movie.genres.forEachIndexed { index, genre ->
+                    if (index > 0) spanned.append("  ·  ")
+                    val start = spanned.length
+                    spanned.append(genre.name)
+                    spanned.setSpan(
+                        object : android.text.style.ClickableSpan() {
+                            override fun onClick(widget: View) {
+                                ExpMotion.hapticTap(widget)
+                                checkProviderAndRun {
+                                    if (context.toActivity()?.getCurrentFragment() is MovieMobileFragment) {
+                                        findNavController().navigate(
+                                            MovieMobileFragmentDirections.actionMovieToGenre(
+                                                id = genre.id,
+                                                name = genre.name,
+                                            )
+                                        )
+                                    }
+                                }
+                            }
+
+                            override fun updateDrawState(ds: android.text.TextPaint) {
+                                ds.isUnderlineText = false
+                                ds.color = currentTextColor
+                            }
+                        },
+                        start,
+                        spanned.length,
+                        android.text.Spanned.SPAN_EXCLUSIVE_EXCLUSIVE,
+                    )
                 }
+                text = spanned
+                movementMethod = android.text.method.LinkMovementMethod.getInstance()
+                highlightColor = android.graphics.Color.TRANSPARENT
+                setOnClickListener(null)
             } else {
+                text = ""
+                movementMethod = null
                 setOnClickListener(null)
             }
         }
@@ -1215,7 +1259,6 @@ class MovieViewHolder(
             val wasVisible = visibility == View.VISIBLE
             visibility = if (show) View.VISIBLE else View.GONE
             if (ExperimentalMobileDesign.enabled()) {
-                setBackgroundResource(ExperimentalMobileDesign.chipBackground())
                 applyExpPress()
                 if (show && !wasVisible) ExpMotion.popIn(this)
             }
@@ -1234,10 +1277,11 @@ class MovieViewHolder(
 
         binding.btnMovieDownload.apply {
             if (ExperimentalMobileDesign.enabled()) {
-                setBackgroundResource(ExperimentalMobileDesign.chipBackground())
                 applyExpPress()
             }
-            text = com.dskja.betterstreamflix.download.DetailDownloadLabels.movieButton(context, movie)
+            contentDescription =
+                com.dskja.betterstreamflix.download.DetailDownloadLabels.movieButton(context, movie)
+            androidx.appcompat.widget.TooltipCompat.setTooltipText(this, contentDescription)
             setOnClickListener {
                 ExpMotion.hapticTap(it)
                 checkProviderAndRun {
@@ -1289,7 +1333,6 @@ class MovieViewHolder(
                 context.getString(R.string.option_show_watched)
             }
             if (ExperimentalMobileDesign.enabled()) {
-                setBackgroundResource(ExperimentalMobileDesign.chipBackground())
                 applyExpPress()
             }
             setOnClickListener {
@@ -1317,88 +1360,45 @@ class MovieViewHolder(
             }
         }
 
+        // The list toggle lives on the sticky detail header; this stays wired as a fallback.
         binding.btnMovieFavorite.apply {
-
             fun Boolean.drawable() = when (this) {
-                true -> R.drawable.ic_favorite_enable
-                false -> R.drawable.ic_favorite_disable
+                true -> R.drawable.ic_list_added
+                false -> R.drawable.ic_list_add
+            }
+
+            fun applyState(inList: Boolean) {
+                setImageDrawable(ContextCompat.getDrawable(context, inList.drawable()))
+                contentDescription = context.getString(
+                    if (inList) R.string.option_show_unfavorite else R.string.option_show_favorite,
+                )
             }
 
             if (ExperimentalMobileDesign.enabled()) {
                 setBackgroundResource(ExperimentalMobileDesign.iconChipBackground())
                 applyExpPress()
-                fun tintFor(favorite: Boolean) {
-                    imageTintList = android.content.res.ColorStateList.valueOf(
-                        if (favorite) {
-                            com.google.android.material.color.MaterialColors.getColor(
-                                this,
-                                androidx.appcompat.R.attr.colorPrimary,
-                            )
-                        } else {
-                            com.google.android.material.color.MaterialColors.getColor(
-                                this,
-                                com.google.android.material.R.attr.colorOnSurfaceVariant,
-                            )
-                        },
-                    )
-                }
-                tintFor(movie.isFavorite)
-                setOnClickListener {
-                    ExpMotion.hapticTap(it)
-                    checkProviderAndRun {
-                        itemView.findViewTreeLifecycleOwner()?.lifecycleScope?.launch(Dispatchers.IO) {
-                            val dao = database.movieDao()
-                            val current = dao.getById(movie.id)?.isFavorite ?: false
-                            val newValue = !current
-                            val resolvedMovie = ArtworkRepair.resolveMovieForFavorite(context, movie, newValue)
+            }
+            applyState(movie.isFavorite)
+            setOnClickListener {
+                ExpMotion.hapticTap(it)
+                checkProviderAndRun {
+                    itemView.findViewTreeLifecycleOwner()?.lifecycleScope?.launch(Dispatchers.IO) {
+                        val dao = database.movieDao()
+                        val newValue = !(dao.getById(movie.id)?.isFavorite ?: false)
+                        val resolvedMovie =
+                            ArtworkRepair.resolveMovieForFavorite(context, movie, newValue)
 
-                            dao.upsertFavorite(resolvedMovie, newValue)
+                        dao.upsertFavorite(resolvedMovie, newValue)
 
-                            withContext(Dispatchers.Main) {
-                                movie.poster = resolvedMovie.poster
-                                movie.banner = resolvedMovie.banner
-                                movie.isFavorite = newValue
-                                setImageDrawable(
-                                    ContextCompat.getDrawable(context, newValue.drawable())
-                                )
-                                tintFor(newValue)
-                                ExpMotion.popIn(binding.btnMovieFavorite)
-                            }
+                        withContext(Dispatchers.Main) {
+                            movie.poster = resolvedMovie.poster
+                            movie.banner = resolvedMovie.banner
+                            movie.isFavorite = newValue
+                            applyState(newValue)
+                            ExpMotion.softScale(binding.btnMovieFavorite)
                         }
                     }
                 }
-
-                setImageDrawable(
-                    ContextCompat.getDrawable(context, movie.isFavorite.drawable())
-                )
-            } else {
-                setOnClickListener {
-                    ExpMotion.hapticTap(it)
-                    checkProviderAndRun {
-                        itemView.findViewTreeLifecycleOwner()?.lifecycleScope?.launch(Dispatchers.IO) {
-                            val dao = database.movieDao()
-                            val current = dao.getById(movie.id)?.isFavorite ?: false
-                            val newValue = !current
-                            val resolvedMovie = ArtworkRepair.resolveMovieForFavorite(context, movie, newValue)
-
-                            dao.upsertFavorite(resolvedMovie, newValue)
-
-                            withContext(Dispatchers.Main) {
-                                movie.poster = resolvedMovie.poster
-                                movie.banner = resolvedMovie.banner
-                                movie.isFavorite = newValue
-                                setImageDrawable(
-                                    ContextCompat.getDrawable(context, newValue.drawable())
-                                )
-                                ExpMotion.popIn(binding.btnMovieFavorite)
-                            }
-                        }
-                    }
-                }
-
-                setImageDrawable(
-                    ContextCompat.getDrawable(context, movie.isFavorite.drawable())
-                )
             }
         }
     }
@@ -1674,7 +1674,16 @@ class MovieViewHolder(
             )
             ExpMotion.pulseAccentRule(binding.root.findViewById(R.id.v_movie_directors_rule))
         }
-        binding.rvMovieDirectors.text = movie.directors.joinToString (separator =", ") { it.name }
+        binding.rvMovieDirectors.apply {
+            adapter = AppAdapter().apply {
+                submitList(movie.directors.onEach {
+                    it.itemType = AppAdapter.Type.PEOPLE_MOBILE_ITEM
+                })
+            }
+            if (itemDecorationCount == 0) {
+                addItemDecoration(SpacingItemDecoration(20.dp(context)))
+            }
+        }
     }
     private fun displayDirectorsTv(binding: ContentMovieDirectorsTvBinding) {
         if (ExperimentalMobileDesign.enabled()) {

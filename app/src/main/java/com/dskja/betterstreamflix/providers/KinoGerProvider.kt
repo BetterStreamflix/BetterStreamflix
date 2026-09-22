@@ -352,19 +352,43 @@ object KinoGerProvider : Provider, ProviderConfigUrl {
         if (featured.isEmpty() && latest.isEmpty() && sidebar.isEmpty()) {
             throw Exception("KinoGer home returned no titles (site layout may have changed or CF blocked the scrape).")
         }
-        return buildList {
-            if (featured.isNotEmpty()) {
-                add(Category(name = Category.FEATURED, list = featured))
-            } else if (latest.isNotEmpty()) {
-                add(Category(name = Category.FEATURED, list = latest))
-            }
-            if (latest.isNotEmpty() && featured.isNotEmpty()) {
-                add(Category(name = "Neueste", list = latest))
-            }
-            if (sidebar.isNotEmpty()) {
-                add(Category(name = "Beliebt", list = sidebar))
+        val categories = mutableListOf<Category>()
+        if (featured.isNotEmpty()) {
+            categories.add(Category(name = Category.FEATURED, list = featured))
+        } else if (latest.isNotEmpty()) {
+            categories.add(Category(name = Category.FEATURED, list = latest))
+        }
+        if (latest.isNotEmpty() && featured.isNotEmpty()) {
+            categories.add(Category(name = "Neueste", list = latest))
+        }
+        if (sidebar.isNotEmpty()) {
+            categories.add(Category(name = "Beliebt", list = sidebar))
+        }
+
+        // Additional home shelves beyond the homepage layout: "im Kino" listing,
+        // plus genre category shelves surfaced in the sidebar, if the template has one.
+        runCatching {
+            val kinoDoc = getDocument(absoluteUrl("/aktuelle-kinofilme-im-kino/"))
+            val kinoItems = parseShorts(kinoDoc)
+            if (kinoItems.isNotEmpty()) {
+                categories.add(Category(name = "Aktuelle Kinofilme", list = kinoItems))
             }
         }
+
+        runCatching {
+            val genreLinks = KinoGerHtml.parseSidebarGenres(document, ::absoluteUrl).take(3)
+            genreLinks.forEach { (url, genreName) ->
+                runCatching {
+                    val genreDoc = getDocument(url)
+                    val items = parseShorts(genreDoc)
+                    if (items.isNotEmpty()) {
+                        categories.add(Category(name = genreName, list = items))
+                    }
+                }
+            }
+        }
+
+        return categories
     }
 
     override suspend fun search(query: String, page: Int): List<AppAdapter.Item> {

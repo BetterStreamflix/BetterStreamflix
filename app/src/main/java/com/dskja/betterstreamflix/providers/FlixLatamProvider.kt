@@ -45,7 +45,7 @@ object FlixLatamProvider : Provider, ProviderConfigUrl {
         baseUrl
     }
     override val language = "es"
-    override val logo = "https://images2.imgbox.com/94/59/1ClPdx5Z_o.jpg"
+    override val logo = "https://www.google.com/s2/favicons?domain=flixlatam.com&sz=128"
 
     private var service = FlixLatamService.build(defaultBaseUrl)
     private val json = Json { ignoreUnknownKeys = true }

@@ -64,7 +64,7 @@
         android:id="@+id/fl_trailer_player"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:background="?attr/colorSurface"
+        android:background="#FF000000"
         android:minHeight="220dp">
 
         <WebView

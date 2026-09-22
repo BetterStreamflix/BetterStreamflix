@@ -5,6 +5,7 @@ import kotlinx.coroutines.sync.withLock
 
 import com.dskja.betterstreamflix.utils.UserPreferences
 
+import android.util.Log
 import com.tanasi.retrofit_jsoup.converter.JsoupConverterFactory
 import com.dskja.betterstreamflix.adapters.AppAdapter
 import com.dskja.betterstreamflix.extractors.Extractor
@@ -36,6 +37,8 @@ import java.util.concurrent.TimeUnit
 
 object AnyMovieProvider : Provider, ProviderConfigUrl {
 
+    private const val TAG = "AnyMovieProvider"
+
     private const val URL = "https://anymovie.cc/"
     override val defaultBaseUrl = "https://anymovie.cc/"
     override val baseUrl: String
@@ -46,7 +49,7 @@ object AnyMovieProvider : Provider, ProviderConfigUrl {
         baseUrl
     }
     override val name = "AnyMovie"
-    override val logo = "$URL/wp-content/uploads/2023/08/AM-LOGO-1.png"
+    override val logo = "https://www.google.com/s2/favicons?domain=anymovie.cc&sz=128"
     override val language = "en"
 
     private var _wpsearch = ""
@@ -246,6 +249,28 @@ object AnyMovieProvider : Provider, ProviderConfigUrl {
             )
 
             categories.add(category)
+        }
+
+        if (categories.all { it.list.isEmpty() }) {
+            Log.w(TAG, "getHome: home-slider/section.section selectors returned nothing, trying article.movies fallback")
+            val fallback = document.select("article.movies").mapNotNull {
+                val id = it.selectFirst("a")
+                    ?.attr("href")
+                    ?.substringBeforeLast("/")?.substringAfterLast("/") ?: return@mapNotNull null
+                val title = it.selectFirst("h2.entry-title")?.text() ?: return@mapNotNull null
+                val poster = it.selectFirst("div.post-thumbnail img")?.attr("src")?.toSafeUrl()
+                val href = it.selectFirst("a")?.attr("href") ?: ""
+                when {
+                    href.contains("/movies/") -> Movie(id = id, title = title, poster = poster)
+                    href.contains("/series/") -> TvShow(id = id, title = title, poster = poster)
+                    else -> null
+                }
+            }
+            if (fallback.isNotEmpty()) {
+                categories.add(Category(name = Category.FEATURED, list = fallback))
+            } else {
+                Log.w(TAG, "getHome: no items found with primary or fallback selectors")
+            }
         }
 
         return categories

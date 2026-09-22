@@ -21,6 +21,64 @@ object TmdbUtils {
     private const val UNKNOWN_AGE_RATING = Int.MIN_VALUE
     private val movieAgeCache = ConcurrentHashMap<String, Int>()
     private val tvAgeCache = ConcurrentHashMap<String, Int>()
+    private val movieLogoCache = ConcurrentHashMap<Int, String>()
+    private val tvLogoCache = ConcurrentHashMap<Int, String>()
+
+    /**
+     * Picks the title logo that best matches the UI language, preferring a language hit,
+     * then English, then language-less artwork, and finally the highest voted file.
+     */
+    private fun pickBestLogo(
+        logos: List<TMDb3.Images.FileImage>,
+        language: String?,
+    ): String? {
+        val wanted = language?.take(2)?.lowercase()
+        fun rank(image: TMDb3.Images.FileImage): Int {
+            val iso = image.iso639?.lowercase()
+            return when {
+                wanted != null && iso == wanted -> 0
+                iso == "en" -> 1
+                iso.isNullOrBlank() -> 2
+                else -> 3
+            }
+        }
+        return logos
+            .filterNot { it.filePath.endsWith(".svg", ignoreCase = true) }
+            .sortedWith(
+                compareBy(
+                    { rank(it) },
+                    { -(it.voteAverage ?: 0f) },
+                    { -(it.voteCount ?: 0) },
+                )
+            )
+            .firstOrNull()
+            ?.filePath
+            ?.original
+    }
+
+    private suspend fun getMovieLogo(tmdbId: Int, language: String?): String? {
+        movieLogoCache[tmdbId]?.let { return it.takeIf { cached -> cached.isNotEmpty() } }
+        val logo = runCatching {
+            TMDb3.Movies.details(
+                movieId = tmdbId,
+                appendToResponse = listOf(TMDb3.Params.AppendToResponse.Movie.IMAGES),
+            ).images?.logos.orEmpty()
+        }.getOrNull()?.let { pickBestLogo(it, language) }
+        movieLogoCache[tmdbId] = logo.orEmpty()
+        return logo
+    }
+
+    private suspend fun getTvShowLogo(tmdbId: Int, language: String?): String? {
+        tvLogoCache[tmdbId]?.let { return it.takeIf { cached -> cached.isNotEmpty() } }
+        val logo = runCatching {
+            TMDb3.TvSeries.details(
+                seriesId = tmdbId,
+                appendToResponse = listOf(TMDb3.Params.AppendToResponse.Tv.IMAGES),
+            ).images?.logos.orEmpty()
+        }.getOrNull()?.let { pickBestLogo(it, language) }
+        tvLogoCache[tmdbId] = logo.orEmpty()
+        return logo
+    }
 
     /**
      * Resolve a TMDb person (biography + combined credits). Filmography uses TMDb
@@ -411,6 +469,8 @@ object TmdbUtils {
             watchedDate = movie.watchedDate
             lastPlayedAtMillis = movie.lastPlayedAtMillis
             watchHistory = movie.watchHistory
+            logo = movie.logo
+                ?: tmdbId?.toIntOrNull()?.let { getMovieLogo(it, lang) }
         }
     }
 
@@ -449,6 +509,8 @@ object TmdbUtils {
             lastPlayedAtMillis = tvShow.lastPlayedAtMillis
             lastPlayedEpisodeId = tvShow.lastPlayedEpisodeId
             lastPlayedEpisode = tvShow.lastPlayedEpisode
+            logo = tvShow.logo
+                ?: tmdbId?.toIntOrNull()?.let { getTvShowLogo(it, lang) }
         }
     }
 

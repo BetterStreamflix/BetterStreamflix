@@ -36,7 +36,7 @@ object Cine24hProvider : Provider, ProviderConfigUrl {
         baseUrl
     }
     override val language = "es"
-    override val logo = "https://i.ibb.co/kgjcsFmj/Image-1.png"
+    override val logo = "https://www.google.com/s2/favicons?domain=cine24h.online&sz=128"
 
     private var webViewResolver: WebViewResolver? = null
     private val providerMutex = Mutex()
@@ -192,12 +192,19 @@ object Cine24hProvider : Provider, ProviderConfigUrl {
             if (tvShows.isNotEmpty()) categories.add(Category("Series", tvShows))
 
             if (categories.isEmpty()) {
-                throw Exception(
-                    "Cine24h no devolvió contenido en $baseUrl (captcha/forbidden/redirect). " +
-                        "No working mirror found from this network."
-                )
+                // Soft-fail: CF/captcha blocks are expected noise from datacenter IPs — log
+                // and return an empty home instead of throwing (avoids flooding Sentry).
+                Log.w(TAG, "[Provider] Cine24h no devolvió contenido en $baseUrl (captcha/forbidden/redirect)")
+                return@withLock emptyList()
             }
         } catch (e: Exception) {
+            val isBlocked = e.message.orEmpty().contains("bloqueado", ignoreCase = true) ||
+                e.message.orEmpty().contains("captcha", ignoreCase = true) ||
+                e.message.orEmpty().contains("Cloudflare", ignoreCase = true)
+            if (isBlocked) {
+                Log.w(TAG, "[Provider] Cine24h home blocked, soft-failing: ${e.message}")
+                return@withLock emptyList()
+            }
             Log.e(TAG, "[Provider] Error loading home", e)
             throw e
         }

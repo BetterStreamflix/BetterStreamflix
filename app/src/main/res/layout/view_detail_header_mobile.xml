@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:elevation="12dp"
+    android:gravity="center_vertical"
+    android:orientation="horizontal"
+    android:paddingStart="8dp"
+    android:paddingTop="16dp"
+    android:paddingEnd="8dp"
+    android:paddingBottom="8dp">
+
+    <ImageView
+        android:id="@+id/iv_detail_back"
+        android:layout_width="40dp"
+        android:layout_height="40dp"
+        android:background="@drawable/bg_detail_icon_chip"
+        android:contentDescription="@string/exp_back"
+        android:padding="9dp"
+        android:src="@drawable/ic_player_back"
+        app:tint="#FFFFFF" />
+
+    <Space
+        android:layout_width="0dp"
+        android:layout_height="1dp"
+        android:layout_weight="1" />
+
+    <ImageView
+        android:id="@+id/btn_detail_download"
+        android:layout_width="40dp"
+        android:layout_height="40dp"
+        android:layout_marginStart="8dp"
+        android:background="@drawable/bg_detail_icon_chip"
+        android:contentDescription="@string/detail_download"
+        android:padding="9dp"
+        android:src="@drawable/ic_player_settings_download"
+        app:tint="#FFFFFF" />
+
+    <ImageView
+        android:id="@+id/btn_detail_list"
+        android:layout_width="40dp"
+        android:layout_height="40dp"
+        android:layout_marginStart="8dp"
+        android:background="@drawable/bg_detail_icon_chip"
+        android:contentDescription="@string/detail_add_to_list"
+        android:padding="9dp"
+        android:src="@drawable/ic_list_add"
+        app:tint="#FFFFFF" />
+
+    <ImageView
+        android:id="@+id/btn_detail_share"
+        android:layout_width="40dp"
+        android:layout_height="40dp"
+        android:layout_marginStart="8dp"
+        android:background="@drawable/bg_detail_icon_chip"
+        android:contentDescription="@string/detail_share"
+        android:padding="10dp"
+        android:src="@drawable/ic_detail_share"
+        app:tint="#FFFFFF" />
+
+</LinearLayout>

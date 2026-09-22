@@ -17,6 +17,7 @@ import com.dskja.betterstreamflix.adapters.AppAdapter
 import com.dskja.betterstreamflix.database.AppDatabase
 import com.dskja.betterstreamflix.databinding.FragmentMovieMobileBinding
 import com.dskja.betterstreamflix.models.Movie
+import com.dskja.betterstreamflix.ui.DetailHeaderController
 import com.dskja.betterstreamflix.ui.SpacingItemDecoration
 import com.dskja.betterstreamflix.utils.CacheUtils
 import com.dskja.betterstreamflix.utils.ExpNavAutoHide
@@ -67,20 +68,7 @@ class MovieMobileFragment : Fragment() {
                 drift = !ExperimentalMobileDesign.heroParallax(),
             )
         }
-        binding.root.findViewById<View>(com.dskja.betterstreamflix.R.id.iv_detail_back)
-            ?.also { back ->
-                androidx.appcompat.widget.TooltipCompat.setTooltipText(
-                    back, back.context.getString(com.dskja.betterstreamflix.R.string.exp_back))
-                if (ExperimentalMobileDesign.enabled()) {
-                    back.setBackgroundResource(ExperimentalMobileDesign.iconChipBackground())
-                    with(com.dskja.betterstreamflix.utils.ExpPressEffects) { back.applyExpPress() }
-                    ExpMotion.popIn(back)
-                }
-            }
-            ?.setOnClickListener {
-                ExpMotion.hapticTap(it)
-                androidx.navigation.Navigation.findNavController(binding.root).navigateUp()
-            }
+        DetailHeaderController.wireBack(binding.root)
 
         initializeMovie()
 
@@ -154,10 +142,43 @@ class MovieMobileFragment : Fragment() {
         }
     }
 
+    /**
+     * Everything the detail list renders, except the list/favorite state. When only that
+     * changes we refresh the header icon instead of re-submitting and jumping the page.
+     */
+    private fun contentSignature(movie: Movie) = listOf(
+        movie.id,
+        movie.title,
+        movie.overview,
+        movie.poster,
+        movie.banner,
+        movie.logo,
+        movie.trailer,
+        movie.quality,
+        movie.rating,
+        movie.runtime,
+        movie.isWatched,
+        movie.watchHistory,
+        movie.genres.size,
+        movie.directors.size,
+        movie.cast.size,
+        movie.recommendations.size,
+    )
+
+    private var lastContentSignature: List<Any?>? = null
+
     private fun displayMovie(movie: Movie) {
         binding.ivMovieBanner.loadMovieBanner(movie) {
             transition(DrawableTransitionOptions.withCrossFade())
         }
+        DetailHeaderController.bindMovie(this, binding.root, movie)
+
+        val signature = contentSignature(movie)
+        if (lastContentSignature == signature) {
+            DetailHeaderController.refreshListState(binding.root, movie.isFavorite)
+            return
+        }
+        lastContentSignature = signature
 
         appAdapter.submitList(listOfNotNull(
             movie.apply { itemType = AppAdapter.Type.MOVIE_MOBILE },

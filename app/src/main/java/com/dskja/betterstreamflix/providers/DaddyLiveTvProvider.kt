@@ -281,7 +281,8 @@ object DaddyLiveTvProvider : IptvProvider, ProviderConfigUrl {
         val watchReferer = pageUrl
             .replace(Regex("""/(plus|watch|stream|cast|player|casting|hub)/stream-(\d+)\.php"""), "/watch.php?id=$2")
             .ifBlank { "$baseUrl/" }
-        val pageHtml = fetchHtml(pageUrl, referer = watchReferer) ?: return@withContext Video("")
+        val pageHtml = fetchHtml(pageUrl, referer = watchReferer)
+            ?: throw Exception("DaddyLive TV: could not load ${server.name} page (try another server)")
         val embedUrl = LiveStreamHtmlExtractor.extractEmbedUrl(pageHtml)
             ?: Regex("""https?://[a-zA-Z0-9.-]+/embed/[a-zA-Z0-9_./-]+""").find(pageHtml)?.value
         if (embedUrl.isNullOrBlank()) {
@@ -292,13 +293,14 @@ object DaddyLiveTvProvider : IptvProvider, ProviderConfigUrl {
                 )
             }
             Log.e(TAG, "No embed on $pageUrl")
-            return@withContext Video("")
+            throw Exception("DaddyLive TV: no embed found for ${server.name} (try another server)")
         }
-        val embedHtml = fetchHtml(embedUrl, referer = pageUrl) ?: return@withContext Video("")
+        val embedHtml = fetchHtml(embedUrl, referer = pageUrl)
+            ?: throw Exception("DaddyLive TV: could not load embed for ${server.name}")
         val m3u8 = LiveStreamHtmlExtractor.extractM3u8(embedHtml)
         if (m3u8.isNullOrBlank()) {
             Log.e(TAG, "No m3u8 in embed $embedUrl")
-            return@withContext Video("")
+            throw Exception("DaddyLive TV: no m3u8 stream found for ${server.name} (try another server)")
         }
         val embedOrigin = Regex("""^(https?://[^/]+)""").find(embedUrl)?.groupValues?.getOrNull(1)
             ?: baseUrl

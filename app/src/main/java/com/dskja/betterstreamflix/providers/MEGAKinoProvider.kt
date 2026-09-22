@@ -316,6 +316,23 @@ object MEGAKinoProvider : Provider, ProviderConfigUrl {
             if (fallback.isNotEmpty()) {
                 categories.add(Category(name = Category.FEATURED, list = fallback))
             }
+
+            // Homepage had no usable section.sect shelves — pull dedicated
+            // Movies/Series listing pages so home isn't a single flat shelf.
+            runCatching {
+                val filmsDoc = getService().getFilms()
+                val movies = parseContentItems(filmsDoc).filterIsInstance<Movie>()
+                if (movies.isNotEmpty()) {
+                    categories.add(Category(name = "Filme", list = movies))
+                }
+            }
+            runCatching {
+                val serialsDoc = getService().getSerials()
+                val shows = parseContentItems(serialsDoc).filterIsInstance<TvShow>()
+                if (shows.isNotEmpty()) {
+                    categories.add(Category(name = "Serien", list = shows))
+                }
+            }
         }
 
         return categories

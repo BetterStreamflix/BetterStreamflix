@@ -388,8 +388,11 @@ object SportsBiteProvider : IptvProvider, ProviderConfigUrl {
         val embedUrl = server.src.ifBlank {
             M3uChannelIdCodec.decode(server.id).url
         }
-        if (!embedUrl.startsWith("http")) return@withContext Video("")
-        val html = fetchHtml(embedUrl) ?: return@withContext Video("")
+        if (!embedUrl.startsWith("http")) {
+            throw Exception("SportsBite: invalid embed URL for ${server.name}")
+        }
+        val html = fetchHtml(embedUrl)
+            ?: throw Exception("SportsBite: could not load embed page for ${server.name}")
         var m3u8 = LiveStreamHtmlExtractor.extractM3u8(html)
         if (m3u8.isNullOrBlank()) {
             val nested = LiveStreamHtmlExtractor.extractEmbedUrl(html)
@@ -409,7 +412,7 @@ object SportsBiteProvider : IptvProvider, ProviderConfigUrl {
         }
         if (m3u8.isNullOrBlank()) {
             Log.e(TAG, "No m3u8 for $embedUrl")
-            return@withContext Video("")
+            throw Exception("SportsBite: no m3u8 stream found for ${server.name} (source may be offline)")
         }
         Video(
             source = m3u8,

@@ -51,6 +51,10 @@ class Movie(
     @Ignore
     var contentRating: String? = null
 
+    /** TMDb title logo artwork used on the detail header. Not persisted. */
+    @Ignore
+    var logo: String? = null
+
     override var isWatched: Boolean = false
     override var watchedDate: Calendar? = null
 
@@ -122,6 +126,7 @@ class Movie(
     ).apply {
         lastPlayedAtMillis = this@Movie.lastPlayedAtMillis
         contentRating = this@Movie.contentRating
+        logo = this@Movie.logo
     }
 
     override fun equals(other: Any?): Boolean {

@@ -22,7 +22,7 @@ import androidx.fragment.app.Fragment
 import com.dskja.betterstreamflix.R
 import com.dskja.betterstreamflix.utils.ExpMotion
 
-/** Full-screen profile switcher with avatar orbs and optional PIN gate. */
+/** Centered profile switcher popup with avatar orbs and optional PIN gate. */
 class ProfilePickerDialog : DialogFragment() {
 
     var onProfileSwitched: (() -> Unit)? = null
@@ -30,17 +30,39 @@ class ProfilePickerDialog : DialogFragment() {
     var onCreateProfile: (() -> Unit)? = null
 
     override fun onCreateDialog(savedInstanceState: Bundle?): Dialog {
-        val dialog = Dialog(requireContext(), android.R.style.Theme_Black_NoTitleBar_Fullscreen)
+        val dialog = Dialog(requireContext(), R.style.ProfilePickerDialogTheme)
         dialog.window?.apply {
-            setBackgroundDrawable(ColorDrawable(requireContext().getColor(R.color.profile_bg)))
+            setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
             setLayout(
                 WindowManager.LayoutParams.MATCH_PARENT,
-                WindowManager.LayoutParams.MATCH_PARENT,
+                WindowManager.LayoutParams.WRAP_CONTENT,
             )
+            setDimAmount(0.65f)
         }
         isCancelable = true
         dialog.setCanceledOnTouchOutside(true)
         return dialog
+    }
+
+    override fun onStart() {
+        super.onStart()
+        val metrics = resources.displayMetrics
+        dialog?.window?.setLayout(
+            (metrics.widthPixels * 0.92f).toInt(),
+            WindowManager.LayoutParams.WRAP_CONTENT,
+        )
+    }
+
+    /** Keeps the card a popup: it never grows past 70% of the screen height. */
+    private fun capCardHeight(view: View) {
+        val scroll = view.findViewById<View>(R.id.sv_profile_picker) ?: return
+        val maxHeight = (resources.displayMetrics.heightPixels * 0.7f).toInt()
+        scroll.post {
+            if (scroll.height > maxHeight) {
+                scroll.layoutParams = scroll.layoutParams.apply { height = maxHeight }
+                scroll.requestLayout()
+            }
+        }
     }
 
     override fun onCreateView(
@@ -94,6 +116,7 @@ class ProfilePickerDialog : DialogFragment() {
         )
         ExpMotion.pulseAccentRule(view.findViewById(R.id.v_profile_picker_rule))
         ExpMotion.startAnimation(view.findViewById(R.id.sv_profile_picker), R.anim.support_fade_slide_up)
+        capCardHeight(view)
     }
 
     private fun bindProfiles(root: View) {
