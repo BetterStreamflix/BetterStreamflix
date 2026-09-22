@@ -240,6 +240,8 @@ class CategoryViewHolder(
             binding.root.resources.getString(R.string.home_featured_title)
         }
         binding.tvCategoryTitle.text = featuredLabel
+        // Featured is edge-to-edge artwork; a label above it would break the bleed.
+        binding.tvCategoryTitle.visibility = View.GONE
 
         clearSwiper()
         val handler = Handler(Looper.getMainLooper())
@@ -394,32 +396,23 @@ class CategoryViewHolder(
                         ?.findViewHolderForAdapterPosition(binding.vpCategorySwiper.currentItem)
                         ?.itemView
                         ?.let { page ->
-                            page.findViewById<View>(R.id.tv_swiper_title)?.let {
-                                ExpMotion.revealHeader(it)
+                            page.findViewById<View>(R.id.iv_swiper_logo)?.let {
+                                if (it.visibility == View.VISIBLE) ExpMotion.revealHeader(it)
                             }
-                            page.findViewById<View>(R.id.tv_swiper_overview)?.let {
-                                ExpMotion.revealHeader(it)
+                            page.findViewById<View>(R.id.tv_swiper_title)?.let {
+                                if (it.visibility == View.VISIBLE) ExpMotion.revealHeader(it)
                             }
                             page.findViewById<View>(R.id.btn_swiper_watch_now)?.let { btn ->
-                                btn.setBackgroundResource(
-                                    ExperimentalMobileDesign.primaryButtonBackground(),
-                                )
                                 with(com.dskja.betterstreamflix.utils.ExpPressEffects) {
                                     btn.applyExpPress()
                                 }
                                 ExpMotion.popIn(btn)
                             }
-                            page.findViewById<View>(R.id.tv_swiper_quality)?.let { quality ->
-                                quality.setBackgroundResource(
-                                    ExperimentalMobileDesign.metaPillBackground(),
-                                )
-                                ExpMotion.popIn(quality)
-                            }
-                            page.findViewById<View>(R.id.tv_swiper_rating)?.let { rating ->
-                                rating.setBackgroundResource(
-                                    ExperimentalMobileDesign.metaPillBackground(),
-                                )
-                                ExpMotion.popIn(rating)
+                            page.findViewById<View>(R.id.btn_swiper_add_to_list)?.let { btn ->
+                                with(com.dskja.betterstreamflix.utils.ExpPressEffects) {
+                                    btn.applyExpPress()
+                                }
+                                ExpMotion.popIn(btn)
                             }
                         }
                 } else {
@@ -526,16 +519,24 @@ class CategoryViewHolder(
             ExpMotion.revealHeader(binding.tvCategoryTitle)
             ExpMotion.popIn(binding.llDotsIndicator)
         }
+        // Soft parallax only — no scale zoom on the cover.
         binding.vpCategorySwiper.setPageTransformer { page, position ->
             val clamped = abs(position).coerceAtMost(1f)
             page.findViewById<View>(R.id.iv_swiper_background)?.apply {
-                translationX = -position * page.width * 0.25f
-                scaleX = 1f + clamped * 0.05f
-                scaleY = scaleX
+                translationX = -position * page.width * 0.12f
+                scaleX = 1f
+                scaleY = 1f
             }
-            page.findViewById<View>(R.id.tv_swiper_title)?.apply {
-                alpha = (1f - clamped * 1.2f).coerceAtLeast(0f)
-                translationY = position * page.width * 0.05f
+            val titleAlpha = (1f - clamped * 1.2f).coerceAtLeast(0f)
+            listOf(
+                R.id.tv_swiper_title,
+                R.id.iv_swiper_logo,
+                R.id.ll_swiper_actions,
+            ).forEach { id ->
+                page.findViewById<View>(id)?.apply {
+                    alpha = titleAlpha
+                    translationY = 0f
+                }
             }
         }
     }

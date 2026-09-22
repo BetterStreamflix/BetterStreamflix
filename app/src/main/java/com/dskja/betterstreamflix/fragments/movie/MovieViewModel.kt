@@ -8,6 +8,7 @@ import com.dskja.betterstreamflix.database.AppDatabase
 import com.dskja.betterstreamflix.models.Movie
 import com.dskja.betterstreamflix.models.TvShow
 import com.dskja.betterstreamflix.utils.EpisodeManager
+import com.dskja.betterstreamflix.utils.ShowLookup
 import com.dskja.betterstreamflix.utils.UserPreferences
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -131,7 +132,41 @@ class MovieViewModel(
             _state.emit(State.SuccessLoading(enriched))
         } catch (e: Exception) {
             Log.e("MovieViewModel", "getMovie: ", e)
-            _state.emit(State.FailedLoading(e))
+            val fallback = metadataOnlyFallback(id)
+            if (fallback != null) {
+                Log.w("MovieViewModel", "Showing metadata-only page for $id after a provider failure")
+                _state.emit(State.SuccessLoading(fallback))
+            } else {
+                _state.emit(State.FailedLoading(e))
+            }
         }
+    }
+
+    /**
+     * Provider outages (HTTP 5xx) should still render the page: fall back to the
+     * cached row or TMDb metadata, with no servers attached.
+     */
+    private suspend fun metadataOnlyFallback(id: String): Movie? {
+        val language = UserPreferences.currentProvider?.language
+        val cached = runCatching { liveDb().movieDao().getById(id) }.getOrNull()
+        val base = cached
+            ?: id.toIntOrNull()?.let {
+                runCatching {
+                    com.dskja.betterstreamflix.utils.TmdbUtils.getMovieById(it, language)
+                }.getOrNull()
+            }
+            ?: ShowLookup.humanizeSlug(id)?.let { title ->
+                runCatching {
+                    com.dskja.betterstreamflix.utils.TmdbUtils.getMovie(
+                        title,
+                        year = ShowLookup.yearFromSlug(id),
+                        language = language,
+                    )
+                }.getOrNull()
+            }
+            ?: return null
+        return runCatching {
+            com.dskja.betterstreamflix.utils.TmdbUtils.enrichMovieDetail(base, language)
+        }.getOrDefault(base)
     }
 }

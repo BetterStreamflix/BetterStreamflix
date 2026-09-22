@@ -132,6 +132,8 @@ class TvShowMobileFragment : Fragment() {
     private var detailScrollOffset = 0
 
     private fun initializeTvShow() {
+        detailScrollOffset = 0
+        DetailHeaderController.onScrolled(binding.root, 0)
         binding.rvTvShow.apply {
             adapter = appAdapter.apply {
                 stateRestorationPolicy = RecyclerView.Adapter.StateRestorationPolicy.PREVENT_WHEN_EMPTY
@@ -139,16 +141,16 @@ class TvShowMobileFragment : Fragment() {
             addItemDecoration(
                 SpacingItemDecoration(20.dp(requireContext()))
             )
-            if (ExperimentalMobileDesign.enabled()) {
-                addOnScrollListener(object : RecyclerView.OnScrollListener() {
-                    override fun onScrolled(recyclerView: RecyclerView, dx: Int, dy: Int) {
-                        detailScrollOffset += dy
-                        val parallax = (detailScrollOffset * 0.42f).coerceIn(0f, 720f)
+            addOnScrollListener(object : RecyclerView.OnScrollListener() {
+                override fun onScrolled(recyclerView: RecyclerView, dx: Int, dy: Int) {
+                    detailScrollOffset = (detailScrollOffset + dy).coerceAtLeast(0)
+                    DetailHeaderController.onScrolled(binding.root, detailScrollOffset)
+                    if (ExperimentalMobileDesign.enabled()) {
+                        val parallax = (detailScrollOffset * 0.28f).coerceIn(0f, 420f)
                         binding.ivTvShowBanner.translationY = -parallax
-                        binding.ivTvShowBanner.alpha = (1f - parallax / 900f).coerceIn(0.55f, 1f)
                     }
-                })
-            }
+                }
+            })
         }
     }
 
@@ -178,7 +180,8 @@ class TvShowMobileFragment : Fragment() {
     private var lastContentSignature: List<Any?>? = null
 
     private fun displayTvShow(tvShow: TvShow) {
-        binding.ivTvShowBanner.loadTvShowBanner(tvShow) {
+        binding.ivTvShowBanner.loadTvShowBanner(tvShow, hero = false) {
+            centerCrop()
             transition(DrawableTransitionOptions.withCrossFade())
         }
         DetailHeaderController.bindTvShow(this, binding.root, tvShow)

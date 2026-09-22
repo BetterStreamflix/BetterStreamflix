@@ -17,6 +17,7 @@ import com.dskja.betterstreamflix.database.AppDatabase
 import com.dskja.betterstreamflix.databinding.FragmentMoviesMobileBinding
 import com.dskja.betterstreamflix.models.Movie
 import com.dskja.betterstreamflix.providers.Provider
+import com.dskja.betterstreamflix.ui.HomeProfileChip
 import com.dskja.betterstreamflix.ui.SpacingItemDecoration
 import com.dskja.betterstreamflix.utils.UserPreferences
 import com.dskja.betterstreamflix.utils.dp
@@ -75,6 +76,7 @@ class MoviesMobileFragment : Fragment() {
         }
 
         initializeMovies()
+        HomeProfileChip.refresh(this, binding.root)
 
         viewLifecycleOwner.lifecycleScope.launch {
             viewModel.state.flowWithLifecycle(lifecycle, Lifecycle.State.STARTED).collect { state ->
@@ -124,6 +126,11 @@ class MoviesMobileFragment : Fragment() {
                 }
             }
         }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        HomeProfileChip.refresh(this, _binding?.root)
     }
 
     override fun onDestroyView() {

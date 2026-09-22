@@ -4,141 +4,200 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:paddingBottom="24dp">
+    android:paddingBottom="16dp">
 
     <ImageView
-        android:id="@+id/iv_people_image"
-        android:layout_width="100dp"
-        android:layout_height="0dp"
-        android:layout_marginTop="32dp"
-        android:background="@drawable/bg_item_people_image"
-        app:layout_constraintDimensionRatio="1:1"
+        android:id="@+id/iv_people_backdrop"
+        android:layout_width="0dp"
+        android:layout_height="220dp"
+        android:scaleType="centerCrop"
+        android:importantForAccessibility="no"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent"
-        tools:clipToOutline="true"
+        tools:ignore="ContentDescription" />
+
+    <View
+        android:id="@+id/v_people_backdrop_scrim"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:background="@drawable/bg_people_header_scrim"
+        app:layout_constraintBottom_toBottomOf="@id/iv_people_backdrop"
+        app:layout_constraintEnd_toEndOf="@id/iv_people_backdrop"
+        app:layout_constraintStart_toStartOf="@id/iv_people_backdrop"
+        app:layout_constraintTop_toTopOf="@id/iv_people_backdrop" />
+
+    <com.google.android.material.imageview.ShapeableImageView
+        android:id="@+id/iv_people_image"
+        android:layout_width="132dp"
+        android:layout_height="176dp"
+        android:layout_marginTop="72dp"
+        android:background="#1AFFFFFF"
+        android:scaleType="centerCrop"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        app:shapeAppearanceOverlay="@style/ShapeAppearance.Lumina.Poster"
         tools:ignore="ContentDescription"
         tools:src="@drawable/ic_person_placeholder" />
+
+    <TextView
+        android:id="@+id/tv_people_department"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="14dp"
+        android:background="@drawable/bg_people_department_chip"
+        android:fontFamily="@font/manrope"
+        android:paddingStart="12dp"
+        android:paddingTop="4dp"
+        android:paddingEnd="12dp"
+        android:paddingBottom="4dp"
+        android:textColor="#E6FFFFFF"
+        android:textSize="12sp"
+        android:textStyle="bold"
+        android:visibility="gone"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/iv_people_image"
+        tools:text="Directing"
+        tools:visibility="visible" />
 
     <TextView
         android:id="@+id/tv_people_name"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:layout_marginTop="32dp"
+        android:layout_marginStart="20dp"
+        android:layout_marginTop="10dp"
+        android:layout_marginEnd="20dp"
+        android:fontFamily="@font/manrope"
         android:gravity="center"
+        android:letterSpacing="-0.01"
         android:textColor="#FFFFFF"
-        android:textSize="24sp"
+        android:textSize="28sp"
         android:textStyle="bold"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/iv_people_image"
+        app:layout_constraintTop_toBottomOf="@id/tv_people_department"
         tools:text="People name" />
 
-    <TextView
-        android:id="@+id/tv_people_birthday_label"
-        android:layout_width="0dp"
-        android:layout_height="wrap_content"
+    <View
+        android:id="@+id/v_people_rule"
+        android:layout_width="44dp"
+        android:layout_height="3dp"
         android:layout_marginTop="10dp"
-        android:text="@string/people_birthday"
-        android:textColor="#FFFFFF"
-        android:textStyle="bold"
+        android:background="?attr/colorPrimary"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@id/tv_people_name" />
 
+    <!-- Birthday · birthplace read as one subdued line instead of stacked labels. -->
     <TextView
         android:id="@+id/tv_people_birthday"
-        android:layout_width="0dp"
+        android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:textColor="#FFFFFF"
-        app:layout_constraintEnd_toEndOf="parent"
+        android:layout_marginTop="14dp"
+        android:fontFamily="@font/manrope"
+        android:textColor="#B3FFFFFF"
+        android:textSize="14sp"
+        app:layout_constraintEnd_toStartOf="@id/tv_people_meta_dot"
+        app:layout_constraintHorizontal_chainStyle="packed"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/tv_people_birthday_label"
-        tools:text="Birthday" />
+        app:layout_constraintTop_toBottomOf="@id/v_people_rule"
+        tools:text="March 12, 1968" />
+
+    <TextView
+        android:id="@+id/tv_people_meta_dot"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:paddingStart="6dp"
+        android:paddingEnd="6dp"
+        android:text="@string/people_meta_dot"
+        android:textColor="#66FFFFFF"
+        android:textSize="14sp"
+        android:visibility="gone"
+        app:layout_constraintBaseline_toBaselineOf="@id/tv_people_birthday"
+        app:layout_constraintEnd_toStartOf="@id/tv_people_birthplace"
+        app:layout_constraintStart_toEndOf="@id/tv_people_birthday"
+        tools:visibility="visible" />
+
+    <TextView
+        android:id="@+id/tv_people_birthplace"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:ellipsize="end"
+        android:fontFamily="@font/manrope"
+        android:maxLines="1"
+        android:textColor="#B3FFFFFF"
+        android:textSize="14sp"
+        app:layout_constraintBaseline_toBaselineOf="@id/tv_people_birthday"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toEndOf="@id/tv_people_meta_dot"
+        tools:text="Los Angeles, California" />
 
     <androidx.constraintlayout.widget.Group
         android:id="@+id/g_people_birthday"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        app:constraint_referenced_ids="tv_people_birthday_label,tv_people_birthday"
+        app:constraint_referenced_ids="tv_people_birthday"
         tools:visibility="visible" />
-
-    <TextView
-        android:id="@+id/tv_people_deathday_label"
-        android:layout_width="0dp"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="10dp"
-        android:text="@string/people_deathday"
-        android:textColor="#FFFFFF"
-        android:textStyle="bold"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/tv_people_birthday" />
-
-    <TextView
-        android:id="@+id/tv_people_deathday"
-        android:layout_width="0dp"
-        android:layout_height="wrap_content"
-        android:textColor="#FFFFFF"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/tv_people_deathday_label"
-        tools:text="Day of death" />
-
-    <androidx.constraintlayout.widget.Group
-        android:id="@+id/g_people_deathday"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        app:constraint_referenced_ids="tv_people_deathday_label,tv_people_deathday"
-        tools:visibility="visible" />
-
-    <TextView
-        android:id="@+id/tv_people_birthplace_label"
-        android:layout_width="0dp"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="10dp"
-        android:text="@string/people_birthplace"
-        android:textColor="#FFFFFF"
-        android:textStyle="bold"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/tv_people_deathday" />
-
-    <TextView
-        android:id="@+id/tv_people_birthplace"
-        android:layout_width="0dp"
-        android:layout_height="wrap_content"
-        android:textColor="#FFFFFF"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/tv_people_birthplace_label"
-        tools:text="Place of birth" />
 
     <androidx.constraintlayout.widget.Group
         android:id="@+id/g_people_birthplace"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        app:constraint_referenced_ids="tv_people_birthplace_label,tv_people_birthplace"
+        app:constraint_referenced_ids="tv_people_birthplace"
+        tools:visibility="visible" />
+
+    <TextView
+        android:id="@+id/tv_people_deathday"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="16dp"
+        android:layout_marginTop="4dp"
+        android:layout_marginEnd="16dp"
+        android:fontFamily="@font/manrope"
+        android:gravity="center"
+        android:textColor="#B3FFFFFF"
+        android:textSize="14sp"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/tv_people_birthday"
+        tools:text="Died · June 2, 2004" />
+
+    <androidx.constraintlayout.widget.Group
+        android:id="@+id/g_people_deathday"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        app:constraint_referenced_ids="tv_people_deathday"
         tools:visibility="visible" />
 
     <TextView
         android:id="@+id/tv_people_biography_label"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:layout_marginTop="16dp"
+        android:layout_marginStart="16dp"
+        android:layout_marginTop="22dp"
+        android:layout_marginEnd="16dp"
+        android:fontFamily="@font/manrope"
         android:text="@string/people_biography"
         android:textColor="#FFFFFF"
-        android:textSize="18sp"
+        android:textSize="16sp"
         android:textStyle="bold"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/tv_people_birthplace" />
+        app:layout_constraintTop_toBottomOf="@id/tv_people_deathday" />
 
     <TextView
         android:id="@+id/tv_people_biography"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:textColor="#FFFFFF"
+        android:layout_marginStart="16dp"
+        android:layout_marginTop="8dp"
+        android:layout_marginEnd="16dp"
+        android:fontFamily="@font/manrope"
+        android:lineSpacingExtra="4dp"
+        android:textColor="#D9FFFFFF"
+        android:textSize="14sp"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@id/tv_people_biography_label"
@@ -146,16 +205,17 @@
 
     <TextView
         android:id="@+id/tv_people_biography_read_more"
-        android:layout_width="0dp"
+        android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginTop="4dp"
+        android:layout_marginTop="6dp"
+        android:layout_marginEnd="16dp"
         android:background="@drawable/bg_button_read_more"
-        android:gravity="end"
+        android:fontFamily="@font/manrope"
         android:text="@string/people_read_more"
         android:textColor="#FFFFFF"
+        android:textSize="13sp"
         android:textStyle="bold"
-        app:layout_constraintEnd_toEndOf="@id/tv_people_biography"
-        app:layout_constraintStart_toStartOf="@id/tv_people_biography"
+        app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintTop_toBottomOf="@id/tv_people_biography"
         tools:visibility="visible" />
 
@@ -165,5 +225,31 @@
         android:layout_height="wrap_content"
         app:constraint_referenced_ids="tv_people_biography_label,tv_people_biography,tv_people_biography_read_more"
         tools:visibility="visible" />
+
+    <TextView
+        android:id="@id/tv_people_filmography_label"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="16dp"
+        android:layout_marginTop="24dp"
+        android:layout_marginEnd="16dp"
+        android:fontFamily="@font/manrope"
+        android:text="@string/people_known_for"
+        android:textColor="#FFFFFF"
+        android:textSize="16sp"
+        android:textStyle="bold"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/tv_people_biography_read_more" />
+
+    <View
+        android:id="@id/v_people_filmography_rule"
+        android:layout_width="44dp"
+        android:layout_height="3dp"
+        android:layout_marginStart="16dp"
+        android:layout_marginTop="8dp"
+        android:background="?attr/colorPrimary"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/tv_people_filmography_label" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>

@@ -80,10 +80,6 @@ class SeasonMobileFragment : Fragment() {
             ?.also { back ->
                 androidx.appcompat.widget.TooltipCompat.setTooltipText(
                     back, back.context.getString(com.dskja.betterstreamflix.R.string.exp_back))
-                if (ExperimentalMobileDesign.enabled()) {
-                    back.setBackgroundResource(ExperimentalMobileDesign.iconChipBackground())
-                    with(com.dskja.betterstreamflix.utils.ExpPressEffects) { back.applyExpPress() }
-                }
             }
             ?.setOnClickListener {
                 ExpMotion.hapticTap(it)

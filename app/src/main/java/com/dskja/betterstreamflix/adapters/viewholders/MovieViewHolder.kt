@@ -3,7 +3,6 @@ package com.dskja.betterstreamflix.adapters.viewholders
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AlertDialog as AppCompatAlertDialog
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
-import com.dskja.betterstreamflix.utils.DeviceCapabilities
 import com.dskja.betterstreamflix.utils.ExperimentalMobileDesign
 import android.content.Context
 import android.content.Intent
@@ -80,6 +79,7 @@ import com.dskja.betterstreamflix.fragments.tv_shows.TvShowsTvFragmentDirections
 import com.dskja.betterstreamflix.models.Movie
 import com.dskja.betterstreamflix.models.TvShow
 import com.dskja.betterstreamflix.models.Video
+import com.dskja.betterstreamflix.ui.FeaturedSwiperChrome
 import com.dskja.betterstreamflix.ui.ShowOptionsMobileDialog
 import com.dskja.betterstreamflix.ui.ShowOptionsTvDialog
 import com.dskja.betterstreamflix.ui.SpacingItemDecoration
@@ -906,113 +906,60 @@ class MovieViewHolder(
 
     private fun displaySwiperMobileItem(binding: ItemCategorySwiperMobileBinding) {
         binding.ivSwiperBackground.loadMovieBanner(movie) {
-            centerCrop()
-            transition(DrawableTransitionOptions.withCrossFade())
-        }
-        if (ExperimentalMobileDesign.enabled() &&
-            !DeviceCapabilities.shouldReduceHomeEffects(binding.root.context)
-        ) {
-            ExpMotion.kenBurns(binding.ivSwiperBackground)
+            override(FeaturedSwiperChrome.ARTWORK_WIDTH, FeaturedSwiperChrome.ARTWORK_HEIGHT)
+                .centerCrop()
+                .transition(DrawableTransitionOptions.withCrossFade())
         }
 
-        binding.tvSwiperTitle.text = movie.title
         itemView.contentDescription = movie.title
-        if (ExperimentalMobileDesign.enabled() &&
-            binding.root.getTag(R.id.exp_enter_animated_tag) != true
-        ) {
-            binding.root.setTag(R.id.exp_enter_animated_tag, true)
-            ExpMotion.revealHeader(binding.tvSwiperTitle, binding.tvSwiperOverview)
-        }
+        FeaturedSwiperChrome.resolveAndBindLogo(binding, movie)
 
-        binding.tvSwiperTvShowLastEpisode.apply {
-            text = context.getString(R.string.movie_item_type)
-            if (ExperimentalMobileDesign.enabled()) {
-                setBackgroundResource(ExperimentalMobileDesign.metaPillBackground())
-            }
-        }
-
-        binding.tvSwiperQuality.apply {
-            text = movie.quality
-            val show = !text.isNullOrEmpty()
-            val wasVisible = visibility == View.VISIBLE
-            visibility = if (show) View.VISIBLE else View.GONE
-            if (show && ExperimentalMobileDesign.enabled()) {
-                setBackgroundResource(ExperimentalMobileDesign.metaPillBackground())
-                if (!wasVisible) ExpMotion.popIn(this)
-            }
-        }
-
-        binding.tvSwiperReleased.apply {
-            text = movie.released?.format("yyyy")
-            val show = !text.isNullOrEmpty()
-            val wasVisible = visibility == View.VISIBLE
-            visibility = if (show) View.VISIBLE else View.GONE
-            if (show && ExperimentalMobileDesign.enabled()) {
-                setBackgroundResource(ExperimentalMobileDesign.metaPillBackground())
-                if (!wasVisible) ExpMotion.popIn(this)
-            }
-        }
-
-        binding.tvSwiperRating.apply {
-            text = movie.rating?.let { String.format(Locale.ROOT, "%.1f", it) } ?: "N/A"
-            val show = !text.isNullOrEmpty()
-            val wasVisible = visibility == View.VISIBLE
-            visibility = if (show) View.VISIBLE else View.GONE
-            if (show && ExperimentalMobileDesign.enabled()) {
-                setBackgroundResource(ExperimentalMobileDesign.metaPillBackground())
-                if (!wasVisible) ExpMotion.popIn(this)
-            }
-        }
-
-        binding.ivSwiperRatingIcon.visibility = binding.tvSwiperRating.visibility
-
-        binding.tvSwiperOverview.apply {
-            setOnClickListener {
-                ExpMotion.hapticTap(it)
-                maxLines = when (maxLines) {
-                    2 -> Int.MAX_VALUE
-                    else -> 2
-                }
-            }
-
-            text = movie.overview
-        }
+        // Retired meta chrome — keep gone so recycled views never flash old pills.
+        binding.tvSwiperOverview.visibility = View.GONE
+        binding.tvSwiperTvShowLastEpisode.visibility = View.GONE
+        binding.tvSwiperQuality.visibility = View.GONE
+        binding.tvSwiperReleased.visibility = View.GONE
+        binding.tvSwiperRating.visibility = View.GONE
+        binding.ivSwiperRatingIcon.visibility = View.GONE
+        binding.pbSwiperProgress.visibility = View.GONE
 
         val openMovie = View.OnClickListener { view ->
             ExpMotion.hapticTap(view)
             view.findNavController().navigate(
-                HomeMobileFragmentDirections.actionHomeToMovie(
-                    id = movie.id,
-                )
+                HomeMobileFragmentDirections.actionHomeToMovie(id = movie.id)
             )
         }
 
         binding.btnSwiperWatchNow.apply {
-            if (ExperimentalMobileDesign.enabled()) {
-                setBackgroundResource(ExperimentalMobileDesign.primaryButtonBackground())
-                applyExpPress()
-            }
+            FeaturedSwiperChrome.wireWatchButton(this)
+            applyExpPress()
             setOnClickListener(openMovie)
         }
 
-        // The whole featured card opens the detail page, not just the button.
+        FeaturedSwiperChrome.bindListButton(binding.btnSwiperAddToList, movie.isFavorite)
+        binding.btnSwiperAddToList.apply {
+            applyExpPress()
+            setOnClickListener {
+                ExpMotion.hapticTap(it)
+                itemView.findViewTreeLifecycleOwner()?.lifecycleScope?.launch(Dispatchers.IO) {
+                    val dao = database.movieDao()
+                    val target = !(dao.getById(movie.id)?.isFavorite ?: movie.isFavorite)
+                    val resolved = ArtworkRepair.resolveMovieForFavorite(context, movie, target)
+                    dao.upsertFavorite(resolved, target)
+                    withContext(Dispatchers.Main) {
+                        movie.isFavorite = target
+                        movie.poster = resolved.poster
+                        movie.banner = resolved.banner
+                        FeaturedSwiperChrome.bindListButton(this@apply, target, animate = true)
+                    }
+                }
+            }
+        }
+
         binding.root.setOnClickListener(openMovie)
         binding.ivSwiperBackground.apply {
             isClickable = true
             setOnClickListener(openMovie)
-        }
-
-        binding.pbSwiperProgress.apply {
-            val watchHistory = movie.watchHistory
-
-            progress = when {
-                watchHistory != null -> (watchHistory.lastPlaybackPositionMillis * 100 / watchHistory.durationMillis.toDouble()).toInt()
-                else -> 0
-            }
-            visibility = when {
-                watchHistory != null -> View.VISIBLE
-                else -> View.GONE
-            }
         }
     }
 
@@ -1047,7 +994,7 @@ class MovieViewHolder(
             } else {
                 logoView.visibility = View.VISIBLE
                 com.bumptech.glide.Glide.with(logoView)
-                    .load(logo)
+                    .load(com.dskja.betterstreamflix.utils.ArtworkUrls.preferHero(logo))
                     .transition(DrawableTransitionOptions.withCrossFade())
                     .into(logoView)
             }

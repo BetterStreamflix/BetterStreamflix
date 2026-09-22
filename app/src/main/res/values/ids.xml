@@ -7,6 +7,7 @@
     <item name="exp_ken_burns_animator" type="id" />
     <item name="exp_enter_animated_tag" type="id" />
     <item name="exp_search_recent_queries_tag" type="id" />
+    <item name="profile_chip_key_tag" type="id" />
     <!-- View ids that only existed on removed experimental layouts.
          Kept so leftover, unreachable branches still compile. -->
     <item name="bv_main_nav" type="id" />
