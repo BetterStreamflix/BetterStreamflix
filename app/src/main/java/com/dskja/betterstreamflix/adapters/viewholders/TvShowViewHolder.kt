@@ -25,9 +25,9 @@ import androidx.viewbinding.ViewBinding
 import com.dskja.betterstreamflix.providers.IptvProvider
 import android.graphics.drawable.Drawable
 import android.widget.TextView
-import androidx.core.widget.TextViewCompat
 import com.bumptech.glide.Glide
 import com.bumptech.glide.load.DataSource
+import com.bumptech.glide.load.engine.DiskCacheStrategy
 import com.bumptech.glide.load.engine.GlideException
 import com.bumptech.glide.load.resource.drawable.DrawableTransitionOptions
 import com.bumptech.glide.request.RequestListener
@@ -128,7 +128,7 @@ class TvShowViewHolder(
 
     val childRecyclerView: RecyclerView?
         get() = when (_binding) {
-            is ContentTvShowSeasonsMobileBinding -> _binding.rvTvShowSeasons
+            is ContentTvShowSeasonsMobileBinding -> _binding.rvTvShowEpisodes
             is ContentTvShowSeasonsTvBinding -> _binding.hgvTvShowSeasons
             is ContentTvShowCastMobileBinding -> _binding.rvTvShowCast
             is ContentTvShowCastTvBinding -> _binding.hgvTvShowCast
@@ -960,6 +960,7 @@ class TvShowViewHolder(
             binding.tvTvShowTitle.visibility = View.GONE
             Glide.with(logoView)
                 .load(logoUrl)
+                .diskCacheStrategy(DiskCacheStrategy.AUTOMATIC)
                 .fitCenter()
                 .listener(object : RequestListener<Drawable> {
                     override fun onLoadFailed(
@@ -991,6 +992,15 @@ class TvShowViewHolder(
             logoView.setImageDrawable(null)
             logoView.visibility = View.GONE
             binding.tvTvShowTitle.visibility = View.VISIBLE
+            resolveHeroLogoIfBlank(
+                logoView = logoView,
+                titleView = binding.tvTvShowTitle,
+                title = tvShow.title,
+                year = tvShow.released?.format("yyyy")?.toIntOrNull(),
+                isTv = true,
+                tmdbId = tvShow.tmdbId,
+                imdbId = tvShow.imdbId,
+            ) { tvShow.logo = it }
         }
 
         if (ExperimentalMobileDesign.enabled() &&
@@ -1208,20 +1218,11 @@ class TvShowViewHolder(
 
         binding.btnTvShowTrailer.apply {
             val trailer = tvShow.trailer
-            text = ""
-            val playIcon = ContextCompat.getDrawable(context, R.drawable.ic_trailer_play)
-            TextViewCompat.setCompoundDrawablesRelativeWithIntrinsicBounds(
-                this,
-                null,
-                playIcon,
-                null,
-                null,
-            )
-            isVisible = trailer != null || !tvShow.tmdbId.isNullOrBlank()
+            isVisible = !trailer.isNullOrBlank() || !tvShow.tmdbId.isNullOrBlank()
             applyExpPress()
             setOnClickListener {
                 ExpMotion.hapticTap(it)
-                if (trailer != null) {
+                if (!trailer.isNullOrBlank()) {
                     val fragment = context.toActivity()?.getCurrentFragment() as? Fragment
                     if (fragment != null) {
                         TrailerPlaybackController.play(fragment, trailer)
@@ -1494,13 +1495,13 @@ class TvShowViewHolder(
 
         binding.btnTvShowTrailer.apply {
             val trailer = tvShow.trailer
-            if (ExperimentalMobileDesign.enabled() && trailer != null) {
+            if (ExperimentalMobileDesign.enabled() && !trailer.isNullOrBlank()) {
                 setBackgroundResource(ExperimentalMobileDesign.chipBackground())
                 applyExpPress()
             }
             setOnClickListener {
                 ExpMotion.hapticTap(it)
-                if (trailer != null) {
+                if (!trailer.isNullOrBlank()) {
                     val fragment = context.toActivity()?.getCurrentFragment() as? Fragment
                     if (fragment != null) {
                         TrailerPlaybackController.play(fragment, trailer)
@@ -1509,7 +1510,7 @@ class TvShowViewHolder(
                     }
                 }
             }
-            isVisible = trailer != null
+            isVisible = !trailer.isNullOrBlank()
         }
 
         binding.btnTvShowFavorite.apply {
@@ -1555,21 +1556,183 @@ class TvShowViewHolder(
 
     private fun displaySeasonsMobile(binding: ContentTvShowSeasonsMobileBinding) {
         binding.root.tag = DETAIL_SECTION_SEASONS
+
+        val seasons = tvShow.seasons
+        if (seasons.isEmpty()) {
+            binding.btnTvShowSeasonPicker.visibility = View.GONE
+            binding.rvTvShowEpisodes.visibility = View.GONE
+            binding.pbTvShowEpisodesLoading.visibility = View.GONE
+            binding.tvTvShowEpisodesEmpty.visibility = View.VISIBLE
+            return
+        }
+
+        val selectedSeason = resolveSelectedSeason(seasons)
+        selectedSeasonIdByShow[tvShow.id] = selectedSeason.id
+
+        binding.btnTvShowSeasonPicker.apply {
+            visibility = View.VISIBLE
+            text = selectedSeason.title
+                ?: context.getString(R.string.season_number, selectedSeason.number)
+            setOnClickListener {
+                ExpMotion.hapticTap(it)
+                showSeasonPicker(binding, seasons)
+            }
+            if (ExperimentalMobileDesign.enabled()) {
+                applyExpPress()
+            }
+        }
+
         if (ExperimentalMobileDesign.enabled() &&
             binding.root.getTag(R.id.exp_enter_animated_tag) != true
         ) {
             binding.root.setTag(R.id.exp_enter_animated_tag, true)
-            ExpMotion.revealHeader(
-                binding.root.findViewById(R.id.tv_tv_show_seasons_label),
-                binding.root.findViewById(R.id.v_tv_show_seasons_rule),
-            )
-            ExpMotion.pulseAccentRule(binding.root.findViewById(R.id.v_tv_show_seasons_rule))
-            ExpMotion.staggerFirstFill(binding.rvTvShowSeasons)
+            ExpMotion.popIn(binding.btnTvShowSeasonPicker)
+            ExpMotion.staggerFirstFill(binding.rvTvShowEpisodes)
         }
-        binding.rvTvShowSeasons.apply {
-            adapter = AppAdapter().apply { submitList(tvShow.seasons.onEach { it.itemType = AppAdapter.Type.SEASON_MOBILE_ITEM }) }
-            if (itemDecorationCount == 0) {
-                addItemDecoration(SpacingItemDecoration(10.dp(context)))
+
+        bindSeasonEpisodes(binding, selectedSeason)
+    }
+
+    private fun resolveSelectedSeason(seasons: List<Season>): Season {
+        val rememberedId = selectedSeasonIdByShow[tvShow.id]
+        if (rememberedId != null) {
+            seasons.firstOrNull { it.id == rememberedId }?.let { return it }
+        }
+        // Prefer the season that contains the next episode to watch, else first non-zero.
+        val episodeSeasonId = tvShow.episodeToWatch?.season?.id
+        if (episodeSeasonId != null) {
+            seasons.firstOrNull { it.id == episodeSeasonId }?.let { return it }
+        }
+        return seasons.firstOrNull { it.number != 0 } ?: seasons.first()
+    }
+
+    private fun showSeasonPicker(
+        binding: ContentTvShowSeasonsMobileBinding,
+        seasons: List<Season>,
+    ) {
+        val labels = seasons.map { season ->
+            season.title ?: context.getString(R.string.season_number, season.number)
+        }.toTypedArray()
+        val selectedIndex = seasons.indexOfFirst { it.id == selectedSeasonIdByShow[tvShow.id] }
+            .coerceAtLeast(0)
+        val builder = if (ExperimentalMobileDesign.enabled()) {
+            MaterialAlertDialogBuilder(context)
+        } else {
+            AlertDialog.Builder(context)
+        }
+        builder
+            .setTitle(R.string.tv_show_seasons)
+            .setSingleChoiceItems(labels, selectedIndex) { dialog, which ->
+                val season = seasons.getOrNull(which) ?: return@setSingleChoiceItems
+                selectedSeasonIdByShow[tvShow.id] = season.id
+                binding.btnTvShowSeasonPicker.text = labels[which]
+                bindSeasonEpisodes(binding, season)
+                dialog.dismiss()
+            }
+            .setNegativeButton(android.R.string.cancel, null)
+            .show()
+    }
+
+    private fun bindSeasonEpisodes(
+        binding: ContentTvShowSeasonsMobileBinding,
+        season: Season,
+    ) {
+        val episodes = season.episodes.sortedBy { it.number }
+        val adapter = (binding.rvTvShowEpisodes.adapter as? AppAdapter) ?: AppAdapter().also {
+            binding.rvTvShowEpisodes.adapter = it
+            if (binding.rvTvShowEpisodes.itemDecorationCount == 0) {
+                binding.rvTvShowEpisodes.addItemDecoration(SpacingItemDecoration(8.dp(context)))
+            }
+        }
+
+        when {
+            episodes.isNotEmpty() -> {
+                loadingSeasonIds.remove(season.id)
+                binding.pbTvShowEpisodesLoading.visibility = View.GONE
+                binding.tvTvShowEpisodesEmpty.visibility = View.GONE
+                binding.rvTvShowEpisodes.visibility = View.VISIBLE
+                adapter.submitList(
+                    episodes.onEach { episode ->
+                        val show = episode.tvShow ?: tvShow
+                        if (show.contentRating.isNullOrBlank()) {
+                            show.contentRating = tvShow.contentRating
+                        }
+                        episode.tvShow = show
+                        episode.season = episode.season ?: season
+                        episode.itemType = AppAdapter.Type.EPISODE_DETAIL_MOBILE_ITEM
+                    },
+                )
+                binding.rvTvShowEpisodes.post {
+                    binding.rvTvShowEpisodes.requestLayout()
+                    (binding.rvTvShowEpisodes.parent as? View)?.requestLayout()
+                }
+            }
+            loadingSeasonIds.contains(season.id) -> {
+                binding.rvTvShowEpisodes.visibility = View.GONE
+                binding.tvTvShowEpisodesEmpty.visibility = View.GONE
+                binding.pbTvShowEpisodesLoading.visibility = View.VISIBLE
+                adapter.submitList(emptyList())
+            }
+            else -> {
+                binding.rvTvShowEpisodes.visibility = View.GONE
+                binding.tvTvShowEpisodesEmpty.visibility = View.GONE
+                binding.pbTvShowEpisodesLoading.visibility = View.VISIBLE
+                adapter.submitList(emptyList())
+                requestSeasonEpisodes(binding, season)
+            }
+        }
+    }
+
+    private fun requestSeasonEpisodes(
+        binding: ContentTvShowSeasonsMobileBinding,
+        season: Season,
+    ) {
+        if (!loadingSeasonIds.add(season.id)) return
+        val fragment = context.toActivity()?.getCurrentFragment() as? TvShowMobileFragment
+        if (fragment != null) {
+            fragment.loadSeasonEpisodes(season)
+            // When episodes land via ViewModel flow, the section rebinds.
+            // Clear loading flag after a short window so a failed load can show empty.
+            itemView.findViewTreeLifecycleOwner()?.lifecycleScope?.launch {
+                kotlinx.coroutines.delay(12_000)
+                loadingSeasonIds.remove(season.id)
+                if (selectedSeasonIdByShow[tvShow.id] == season.id &&
+                    season.episodes.isEmpty() &&
+                    binding.pbTvShowEpisodesLoading.isVisible
+                ) {
+                    binding.pbTvShowEpisodesLoading.visibility = View.GONE
+                    binding.tvTvShowEpisodesEmpty.visibility = View.VISIBLE
+                }
+            }
+            return
+        }
+
+        // Fallback: load directly if fragment isn't available.
+        itemView.findViewTreeLifecycleOwner()?.lifecycleScope?.launch {
+            val loaded = withContext(Dispatchers.IO) {
+                runCatching {
+                    val provider = UserPreferences.currentProvider
+                        ?: return@runCatching emptyList<Episode>()
+                    val episodes = provider.getEpisodesBySeason(season.id)
+                    val episodeMap = episodes.associateBy { it.id }
+                    episodes.map { it.id }.chunked(400).forEach { chunk ->
+                        database.episodeDao().getByIds(chunk).forEach { db ->
+                            episodeMap[db.id]?.merge(db)
+                        }
+                    }
+                    episodes.forEach {
+                        it.tvShow = tvShow
+                        it.season = season
+                    }
+                    database.episodeDao().insertAll(episodes)
+                    episodes
+                }.getOrDefault(emptyList())
+            }
+            loadingSeasonIds.remove(season.id)
+            season.episodes = loaded
+            tvShow.seasons.firstOrNull { it.id == season.id }?.episodes = loaded
+            if (selectedSeasonIdByShow[tvShow.id] == season.id) {
+                bindSeasonEpisodes(binding, season)
             }
         }
     }
@@ -1838,7 +2001,7 @@ class TvShowViewHolder(
                 )
                 row.tvDetailTrailerTitle.text = title
                 row.tvDetailTrailerMeta.text = type
-                row.tvDetailTrailerDesc.text = type
+                row.tvDetailTrailerDesc.visibility = View.GONE
                 val ytId = TrailerPlaybackController.youtubeVideoId(url)
                 if (ytId != null) {
                     Glide.with(row.ivDetailTrailerThumb)
@@ -1876,42 +2039,95 @@ class TvShowViewHolder(
 
         itemView.findViewTreeLifecycleOwner()?.lifecycleScope?.launch {
             val remote = withContext(Dispatchers.IO) {
-                TmdbUtils.listYoutubeTrailers(tvShow.tmdbId, isTv = true)
+                TmdbUtils.listYoutubeTrailers(
+                    tmdbId = tvShow.tmdbId,
+                    isTv = true,
+                    title = tvShow.title,
+                    year = tvShow.released?.format("yyyy")?.toIntOrNull(),
+                    imdbId = tvShow.imdbId,
+                )
             }
-            val trailers = when {
-                remote.isNotEmpty() -> remote
-                seed.isNotEmpty() -> seed
-                else -> emptyList()
-            }
+            val trailers = (seed + remote).distinctBy { it.second }
             bindRows(trailers)
         }
     }
 
     private fun displayAboutMobile(binding: ContentDetailAboutMobileBinding) {
         binding.root.tag = DETAIL_SECTION_ABOUT
-        binding.tvDetailAboutOverview.text = tvShow.overview.orEmpty()
-        val castNames = tvShow.cast.map { it.name }.filter { it.isNotBlank() }
-        val directorNames = tvShow.directors.map { it.name }.filter { it.isNotBlank() }
-        binding.tvDetailAboutFeaturing.apply {
-            if (castNames.isEmpty()) visibility = View.GONE
-            else {
-                visibility = View.VISIBLE
-                text = context.getString(R.string.detail_featuring_fmt, castNames.take(4).joinToString(", "))
+        val overview = tvShow.overview.orEmpty()
+        binding.tvDetailAboutOverview.text = overview
+        binding.tvDetailAboutOverview.visibility =
+            if (overview.isBlank()) View.GONE else View.VISIBLE
+        binding.tvDetailAboutOverviewLabel.visibility =
+            if (overview.isBlank()) View.GONE else View.VISIBLE
+
+        binding.tvDetailAboutFeaturingLabel.visibility = View.GONE
+        binding.tvDetailAboutFeaturing.visibility = View.GONE
+        binding.tvDetailAboutDirectorsLabel.visibility = View.GONE
+        binding.tvDetailAboutDirectors.visibility = View.GONE
+        binding.tvDetailAboutCastLabel.visibility = View.GONE
+        binding.tvDetailAboutCast.visibility = View.GONE
+    }
+
+    /** When catalogue left logo blank, resolve TMDb artwork and update the hero. */
+    private fun resolveHeroLogoIfBlank(
+        logoView: android.widget.ImageView,
+        titleView: android.widget.TextView,
+        title: String,
+        year: Int?,
+        isTv: Boolean,
+        tmdbId: String?,
+        imdbId: String?,
+        onResolved: (String) -> Unit,
+    ) {
+        val owner = itemView.findViewTreeLifecycleOwner() ?: return
+        owner.lifecycleScope.launch {
+            val logo = withContext(Dispatchers.IO) {
+                runCatching {
+                    TmdbUtils.resolveTitleLogo(
+                        title = title,
+                        year = year,
+                        isTv = isTv,
+                        tmdbId = tmdbId,
+                        imdbId = imdbId,
+                    )
+                }.getOrNull()
             }
-        }
-        binding.tvDetailAboutDirectors.apply {
-            if (directorNames.isEmpty()) visibility = View.GONE
-            else {
-                visibility = View.VISIBLE
-                text = context.getString(R.string.detail_directors_fmt, directorNames.joinToString(", "))
-            }
-        }
-        binding.tvDetailAboutCast.apply {
-            if (castNames.isEmpty()) visibility = View.GONE
-            else {
-                visibility = View.VISIBLE
-                text = context.getString(R.string.detail_actors_fmt, castNames.joinToString(", "))
-            }
+            if (logo.isNullOrBlank()) return@launch
+            onResolved(logo)
+            if (!::tvShow.isInitialized || tvShow.title != title) return@launch
+            val url = ArtworkUrls.preferOriginal(logo) ?: ArtworkUrls.preferHero(logo) ?: return@launch
+            logoView.visibility = View.VISIBLE
+            titleView.visibility = View.GONE
+            Glide.with(logoView)
+                .load(url)
+                .diskCacheStrategy(DiskCacheStrategy.AUTOMATIC)
+                .fitCenter()
+                .listener(object : RequestListener<Drawable> {
+                    override fun onLoadFailed(
+                        e: GlideException?,
+                        model: Any?,
+                        target: Target<Drawable>,
+                        isFirstResource: Boolean,
+                    ): Boolean {
+                        logoView.visibility = View.GONE
+                        titleView.visibility = View.VISIBLE
+                        return false
+                    }
+
+                    override fun onResourceReady(
+                        resource: Drawable,
+                        model: Any,
+                        target: Target<Drawable>?,
+                        dataSource: DataSource,
+                        isFirstResource: Boolean,
+                    ): Boolean {
+                        logoView.visibility = View.VISIBLE
+                        titleView.visibility = View.GONE
+                        return false
+                    }
+                })
+                .into(logoView)
         }
     }
 
@@ -1920,6 +2136,9 @@ class TvShowViewHolder(
         const val DETAIL_SECTION_RECOMMENDATIONS = "detail_section_recommendations"
         const val DETAIL_SECTION_TRAILER = "detail_section_trailer"
         const val DETAIL_SECTION_ABOUT = "detail_section_about"
+
+        private val selectedSeasonIdByShow = mutableMapOf<String, String>()
+        private val loadingSeasonIds = mutableSetOf<String>()
     }
 
 }

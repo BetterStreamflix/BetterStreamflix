@@ -12,6 +12,7 @@ import androidx.lifecycle.lifecycleScope
 import com.bumptech.glide.Glide
 import com.bumptech.glide.load.DataSource
 import com.bumptech.glide.load.engine.GlideException
+import com.bumptech.glide.load.engine.DiskCacheStrategy
 import com.bumptech.glide.request.RequestListener
 import com.bumptech.glide.request.target.Target
 import com.dskja.betterstreamflix.R
@@ -42,9 +43,9 @@ object FeaturedSwiperChrome {
     fun bindLogo(binding: ItemCategorySwiperMobileBinding, logoUrl: String?, title: String) {
         binding.tvSwiperTitle.text = title
         binding.root.setTag(TITLE_TAG, title)
-        val url = ArtworkUrls.preferOriginal(logoUrl) ?: ArtworkUrls.preferHero(logoUrl)
+        val primary = ArtworkUrls.preferHero(logoUrl) ?: ArtworkUrls.preferOriginal(logoUrl)
         val logo = binding.ivSwiperLogo
-        if (url.isNullOrBlank()) {
+        if (primary.isNullOrBlank()) {
             Glide.with(logo).clear(logo)
             logo.setImageDrawable(null)
             logo.visibility = View.GONE
@@ -53,36 +54,52 @@ object FeaturedSwiperChrome {
         }
         logo.visibility = View.VISIBLE
         binding.tvSwiperTitle.visibility = View.GONE
-        Glide.with(logo)
-            .load(url)
-            .fitCenter()
-            .listener(object : RequestListener<Drawable> {
-                override fun onLoadFailed(
-                    e: GlideException?,
-                    model: Any?,
-                    target: Target<Drawable>,
-                    isFirstResource: Boolean,
-                ): Boolean {
-                    if (binding.root.getTag(TITLE_TAG) != title) return false
-                    logo.visibility = View.GONE
-                    binding.tvSwiperTitle.visibility = View.VISIBLE
-                    return false
-                }
+        val alternate = ArtworkUrls.preferOriginal(logoUrl)
+        fun load(url: String?, isRetry: Boolean) {
+            if (url.isNullOrBlank()) {
+                if (binding.root.getTag(TITLE_TAG) != title) return
+                logo.visibility = View.GONE
+                binding.tvSwiperTitle.visibility = View.VISIBLE
+                return
+            }
+            Glide.with(logo)
+                .load(url)
+                .diskCacheStrategy(DiskCacheStrategy.AUTOMATIC)
+                .fitCenter()
+                .listener(object : RequestListener<Drawable> {
+                    override fun onLoadFailed(
+                        e: GlideException?,
+                        model: Any?,
+                        target: Target<Drawable>,
+                        isFirstResource: Boolean,
+                    ): Boolean {
+                        if (binding.root.getTag(TITLE_TAG) != title) return false
+                        val retryUrl = alternate?.takeIf { !isRetry && it != url }
+                        if (retryUrl != null) {
+                            load(retryUrl, true)
+                            return true
+                        }
+                        logo.visibility = View.GONE
+                        binding.tvSwiperTitle.visibility = View.VISIBLE
+                        return false
+                    }
 
-                override fun onResourceReady(
-                    resource: Drawable,
-                    model: Any,
-                    target: Target<Drawable>?,
-                    dataSource: DataSource,
-                    isFirstResource: Boolean,
-                ): Boolean {
-                    if (binding.root.getTag(TITLE_TAG) != title) return false
-                    logo.visibility = View.VISIBLE
-                    binding.tvSwiperTitle.visibility = View.GONE
-                    return false
-                }
-            })
-            .into(logo)
+                    override fun onResourceReady(
+                        resource: Drawable,
+                        model: Any,
+                        target: Target<Drawable>?,
+                        dataSource: DataSource,
+                        isFirstResource: Boolean,
+                    ): Boolean {
+                        if (binding.root.getTag(TITLE_TAG) != title) return false
+                        logo.visibility = View.VISIBLE
+                        binding.tvSwiperTitle.visibility = View.GONE
+                        return false
+                    }
+                })
+                .into(logo)
+        }
+        load(primary, false)
     }
 
     /** Always resolves the TMDb title logo for Featured (catalogue rows rarely ship one). */
@@ -94,7 +111,7 @@ object FeaturedSwiperChrome {
             year = movie.released?.format("yyyy")?.toIntOrNull(),
             isTv = false,
             tmdbId = movie.tmdbId,
-            skipIfBound = !movie.logo.isNullOrBlank(),
+            imdbId = movie.imdbId,
         ) { movie.logo = it }
     }
 
@@ -107,7 +124,7 @@ object FeaturedSwiperChrome {
             year = tvShow.released?.format("yyyy")?.toIntOrNull(),
             isTv = true,
             tmdbId = tvShow.tmdbId,
-            skipIfBound = !tvShow.logo.isNullOrBlank(),
+            imdbId = tvShow.imdbId,
         ) { tvShow.logo = it }
     }
 
@@ -117,11 +134,10 @@ object FeaturedSwiperChrome {
         year: Int?,
         isTv: Boolean,
         tmdbId: String?,
-        skipIfBound: Boolean,
+        imdbId: String? = null,
         onResolved: (String) -> Unit,
     ) {
         if (title.isBlank()) return
-        if (skipIfBound) return
 
         fun start() {
             val owner = binding.root.findViewTreeLifecycleOwner()
@@ -137,6 +153,7 @@ object FeaturedSwiperChrome {
                             year = year,
                             isTv = isTv,
                             tmdbId = tmdbId,
+                            imdbId = imdbId,
                         )
                     }.getOrNull()
                 }

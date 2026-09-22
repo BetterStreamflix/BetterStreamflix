@@ -40,9 +40,10 @@
     <ImageView
         android:id="@+id/iv_swiper_logo"
         android:layout_width="0dp"
-        android:layout_height="96dp"
-        android:layout_marginStart="36dp"
-        android:layout_marginEnd="36dp"
+        android:layout_height="56dp"
+        android:layout_marginStart="32dp"
+        android:layout_marginEnd="32dp"
+        android:layout_marginBottom="8dp"
         android:adjustViewBounds="true"
         android:importantForAccessibility="no"
         android:scaleType="fitCenter"
@@ -50,8 +51,7 @@
         app:layout_constraintBottom_toTopOf="@id/tv_swiper_status"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintVertical_bias="0.48"
+        app:layout_constraintWidth_percent="0.7"
         tools:visibility="visible" />
 
     <TextView
@@ -60,6 +60,7 @@
         android:layout_height="wrap_content"
         android:layout_marginStart="28dp"
         android:layout_marginEnd="28dp"
+        android:layout_marginBottom="8dp"
         android:fontFamily="@font/manrope"
         android:gravity="center"
         android:shadowColor="#CC000000"
@@ -72,8 +73,7 @@
         app:layout_constraintBottom_toTopOf="@id/tv_swiper_status"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintVertical_bias="0.48"
+        app:layout_constraintWidth_percent="0.7"
         tools:text="Title" />
 
     <TextView
@@ -82,7 +82,7 @@
         android:layout_height="wrap_content"
         android:layout_marginStart="28dp"
         android:layout_marginEnd="28dp"
-        android:layout_marginBottom="6dp"
+        android:layout_marginBottom="2dp"
         android:fontFamily="@font/manrope"
         android:gravity="center"
         android:textColor="#FFFFFF"
@@ -98,7 +98,7 @@
         android:layout_height="wrap_content"
         android:layout_marginStart="28dp"
         android:layout_marginEnd="28dp"
-        android:layout_marginBottom="12dp"
+        android:layout_marginBottom="8dp"
         android:fontFamily="@font/manrope"
         android:gravity="center"
         android:textAllCaps="true"
@@ -116,7 +116,7 @@
         android:layout_height="wrap_content"
         android:layout_marginStart="20dp"
         android:layout_marginEnd="20dp"
-        android:layout_marginBottom="18dp"
+        android:layout_marginBottom="16dp"
         android:gravity="center"
         android:orientation="horizontal"
         app:layout_constraintBottom_toBottomOf="parent"
@@ -217,14 +217,14 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent" />
 
+    <!-- Dots live on content_category_swiper_mobile under the card; stub kept for binding. -->
     <LinearLayout
         android:id="@+id/ll_dots_indicator"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginEnd="16dp"
-        android:layout_marginBottom="12dp"
         android:orientation="horizontal"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintEnd_toEndOf="parent" />
+        android:visibility="gone"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>

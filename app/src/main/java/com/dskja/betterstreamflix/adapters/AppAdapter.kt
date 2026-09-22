@@ -45,6 +45,7 @@ import com.dskja.betterstreamflix.databinding.ItemCategorySwiperMobileBinding
 import com.dskja.betterstreamflix.databinding.ItemCategoryTvBinding
 import com.dskja.betterstreamflix.databinding.ItemEpisodeContinueWatchingMobileBinding
 import com.dskja.betterstreamflix.databinding.ItemEpisodeContinueWatchingTvBinding
+import com.dskja.betterstreamflix.databinding.ItemEpisodeDetailMobileBinding
 import com.dskja.betterstreamflix.databinding.ItemEpisodeMobileBinding
 import com.dskja.betterstreamflix.databinding.ItemEpisodeTvBinding
 import com.dskja.betterstreamflix.databinding.ItemGenreGridMobileBinding
@@ -124,6 +125,7 @@ class AppAdapter(
         CATEGORY_TV_SWIPER,
 
         EPISODE_MOBILE_ITEM,
+        EPISODE_DETAIL_MOBILE_ITEM,
         EPISODE_TV_ITEM,
         EPISODE_CONTINUE_WATCHING_MOBILE_ITEM,
         EPISODE_CONTINUE_WATCHING_TV_ITEM,
@@ -244,6 +246,15 @@ class AppAdapter(
                 ItemEpisodeMobileBinding.bind(
                     LayoutInflater.from(parent.context).inflate(
                         R.layout.item_episode_mobile,
+                        parent,
+                        false,
+                    )
+                )
+            )
+            Type.EPISODE_DETAIL_MOBILE_ITEM -> EpisodeViewHolder(
+                ItemEpisodeDetailMobileBinding.bind(
+                    LayoutInflater.from(parent.context).inflate(
+                        R.layout.item_episode_detail_mobile,
                         parent,
                         false,
                     )

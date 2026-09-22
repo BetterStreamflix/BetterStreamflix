@@ -16,15 +16,18 @@ import com.dskja.betterstreamflix.utils.ExpMotion
 import com.dskja.betterstreamflix.utils.ExperimentalMobileDesign
 import com.dskja.betterstreamflix.databinding.ItemEpisodeContinueWatchingMobileBinding
 import com.dskja.betterstreamflix.databinding.ItemEpisodeContinueWatchingTvBinding
+import com.dskja.betterstreamflix.databinding.ItemEpisodeDetailMobileBinding
 import com.dskja.betterstreamflix.databinding.ItemEpisodeMobileBinding
 import com.dskja.betterstreamflix.databinding.ItemEpisodeTvBinding
 import com.dskja.betterstreamflix.download.DownloadContentKey
 import com.dskja.betterstreamflix.download.OfflineBadgeStore
+import com.dskja.betterstreamflix.download.ui.DownloadOptionsController
 import com.dskja.betterstreamflix.fragments.home.HomeMobileFragmentDirections
 import com.dskja.betterstreamflix.fragments.home.HomeTvFragment
 import com.dskja.betterstreamflix.fragments.home.HomeTvFragmentDirections
 import com.dskja.betterstreamflix.fragments.season.SeasonMobileFragmentDirections
 import com.dskja.betterstreamflix.fragments.season.SeasonTvFragmentDirections
+import com.dskja.betterstreamflix.fragments.tv_show.TvShowMobileFragment
 import com.dskja.betterstreamflix.fragments.tv_show.TvShowMobileFragmentDirections
 import com.dskja.betterstreamflix.fragments.tv_show.TvShowTvFragmentDirections
 import com.dskja.betterstreamflix.models.Episode
@@ -38,8 +41,10 @@ import com.dskja.betterstreamflix.utils.format
 import com.dskja.betterstreamflix.utils.getCurrentFragment
 import com.dskja.betterstreamflix.utils.loadTvShowCardArtwork
 import com.dskja.betterstreamflix.utils.toActivity
+import androidx.fragment.app.Fragment
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
+import java.util.Locale
 
 class EpisodeViewHolder(
     private val _binding: ViewBinding
@@ -51,6 +56,7 @@ class EpisodeViewHolder(
     init {
         if (ExperimentalMobileDesign.enabled() && (
                 _binding is ItemEpisodeMobileBinding ||
+                    _binding is ItemEpisodeDetailMobileBinding ||
                     _binding is ItemEpisodeContinueWatchingMobileBinding ||
                     _binding is ItemEpisodeTvBinding ||
                     _binding is ItemEpisodeContinueWatchingTvBinding
@@ -68,6 +74,7 @@ class EpisodeViewHolder(
 
         when (_binding) {
             is ItemEpisodeMobileBinding -> displayMobileItem(_binding)
+            is ItemEpisodeDetailMobileBinding -> displayDetailMobileItem(_binding)
             is ItemEpisodeTvBinding -> displayTvItem(_binding)
             is ItemEpisodeContinueWatchingMobileBinding -> displayContinueWatchingMobileItem(_binding)
             is ItemEpisodeContinueWatchingTvBinding -> displayContinueWatchingTvItem(_binding)
@@ -199,12 +206,155 @@ class EpisodeViewHolder(
                 }
             }
         }
-        if (ExperimentalMobileDesign.enabled() &&
+            if (ExperimentalMobileDesign.enabled() &&
             binding.root.getTag(R.id.exp_enter_animated_tag) != true
         ) {
             binding.root.setTag(R.id.exp_enter_animated_tag, true)
             binding.root.setBackgroundResource(ExperimentalMobileDesign.glassCardBackground())
             ExpMotion.revealHeader(binding.tvEpisodeInfo, binding.tvEpisodeTitle)
+        }
+    }
+
+    private fun displayDetailMobileItem(binding: ItemEpisodeDetailMobileBinding) {
+        binding.root.setOnClickListener {
+            ExpMotion.hapticTap(it)
+            navigateToPlayer()
+        }
+        binding.root.setOnLongClickListener {
+            ExpMotion.hapticTap(it)
+            ShowOptionsMobileDialog(context, episode).show()
+            true
+        }
+
+        binding.ivEpisodePoster.apply {
+            clipToOutline = true
+            Glide.with(context)
+                .load(episode.poster)
+                .error(R.drawable.glide_fallback_cover)
+                .centerCrop()
+                .transition(DrawableTransitionOptions.withCrossFade())
+                .into(this)
+        }
+
+        binding.ivEpisodeWatchedRibbon.visibility =
+            if (episode.isWatched) View.VISIBLE else View.GONE
+        bindDownloadRibbon(binding.ivEpisodeDownloadRibbon)
+        bindEpisodeProgress(binding.pbEpisodeProgress)
+
+        val title = episode.title ?: context.getString(R.string.episode_number, episode.number)
+        binding.tvEpisodeTitle.text = "${episode.number}. $title"
+
+        binding.tvEpisodeMeta.text = buildDetailMetaLine()
+        binding.tvEpisodeMeta.visibility =
+            if (binding.tvEpisodeMeta.text.isNullOrBlank()) View.GONE else View.VISIBLE
+
+        val ageBadge = contentRatingBadge(episode.tvShow?.contentRating)
+        binding.tvEpisodeAgeRating.apply {
+            text = ageBadge
+            visibility = if (ageBadge.isNullOrEmpty()) View.GONE else View.VISIBLE
+        }
+
+        binding.tvEpisodeOverview.apply {
+            text = episode.overview.orEmpty()
+            visibility = if (episode.overview.isNullOrBlank()) View.GONE else View.VISIBLE
+            maxLines = 3
+            ellipsize = android.text.TextUtils.TruncateAt.END
+            var expanded = false
+            setOnClickListener {
+                ExpMotion.hapticTap(it)
+                expanded = !expanded
+                maxLines = if (expanded) Integer.MAX_VALUE else 3
+            }
+        }
+
+        binding.btnEpisodeDownload.setOnClickListener {
+            ExpMotion.hapticTap(it)
+            val fragment = context.toActivity()?.getCurrentFragment() as? Fragment ?: return@setOnClickListener
+            DownloadOptionsController.enqueueEpisode(fragment, episode)
+        }
+    }
+
+    private fun buildDetailMetaLine(): String {
+        val runtimeMinutes = episode.watchHistory?.durationMillis
+            ?.takeIf { it > 0 }
+            ?.let { (it / 60_000L).toInt().coerceAtLeast(1) }
+            ?: episode.tvShow?.runtime
+        val runtime = runtimeMinutes?.takeIf { it > 0 }?.let { minutes ->
+            val hours = minutes / 60
+            val rem = minutes % 60
+            when {
+                hours > 0 && rem == 0 -> "${hours}h"
+                hours > 0 -> "${hours}h ${rem}m"
+                else -> "${rem}m"
+            }
+        }
+        val date = episode.released?.format("MMM d, yyyy")
+        return listOfNotNull(runtime, date).joinToString("  ")
+    }
+
+    private fun contentRatingBadge(raw: String?): String? {
+        val cert = raw?.trim().orEmpty()
+        if (cert.isEmpty()) return null
+        val digits = cert.filter { it.isDigit() }
+        return when {
+            digits.isNotEmpty() -> digits.take(2)
+            else -> cert.take(3).uppercase(Locale.getDefault())
+        }
+    }
+
+    private fun navigateToPlayer() {
+        val subtitle = episode.season?.takeIf { it.number != 0 }?.let { season ->
+            context.getString(
+                R.string.player_subtitle_tv_show,
+                season.number,
+                episode.number,
+                episode.title ?: context.getString(R.string.episode_number, episode.number),
+            )
+        } ?: context.getString(
+            R.string.player_subtitle_tv_show_episode_only,
+            episode.number,
+            episode.title ?: context.getString(R.string.episode_number, episode.number),
+        )
+        val videoType = Video.Type.Episode(
+            id = episode.id,
+            number = episode.number,
+            title = episode.title,
+            poster = episode.poster,
+            overview = episode.overview,
+            tvShow = Video.Type.Episode.TvShow(
+                id = episode.tvShow?.id ?: "",
+                title = episode.tvShow?.title ?: "",
+                poster = episode.tvShow?.poster,
+                banner = episode.tvShow?.banner,
+                releaseDate = episode.tvShow?.released?.format("yyyy-MM-dd"),
+                imdbId = episode.tvShow?.imdbId,
+            ),
+            season = Video.Type.Episode.Season(
+                number = episode.season?.number ?: 0,
+                title = episode.season?.title,
+            ),
+        )
+        val preferredServer = preferredOfflineServerName()
+        val nav = itemView.findNavController()
+        when (context.toActivity()?.getCurrentFragment()) {
+            is TvShowMobileFragment -> nav.navigate(
+                TvShowMobileFragmentDirections.actionTvShowToPlayer(
+                    id = episode.id,
+                    title = episode.tvShow?.title ?: "",
+                    subtitle = subtitle,
+                    videoType = videoType,
+                    preferredServerName = preferredServer,
+                ),
+            )
+            else -> nav.navigate(
+                SeasonMobileFragmentDirections.actionSeasonToPlayer(
+                    id = episode.id,
+                    title = episode.tvShow?.title ?: "",
+                    subtitle = subtitle,
+                    videoType = videoType,
+                    preferredServerName = preferredServer,
+                ),
+            )
         }
     }
 

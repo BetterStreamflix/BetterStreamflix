@@ -4,11 +4,11 @@ import android.app.Dialog
 import android.content.ActivityNotFoundException
 import android.content.Context
 import android.content.Intent
-import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Bundle
 import android.util.Log
 import android.view.LayoutInflater
+import android.view.View
 import android.view.ViewGroup
 import android.webkit.WebChromeClient
 import android.webkit.WebResourceError
@@ -18,6 +18,7 @@ import android.webkit.WebView
 import android.webkit.WebViewClient
 import android.widget.FrameLayout
 import android.widget.ImageButton
+import android.widget.LinearLayout
 import android.widget.ProgressBar
 import android.widget.TextView
 import androidx.appcompat.app.AlertDialog
@@ -30,8 +31,6 @@ import com.dskja.betterstreamflix.utils.ExpMotion
 import com.dskja.betterstreamflix.utils.ExpPressEffects
 import com.dskja.betterstreamflix.utils.ExperimentalMobileDesign
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
-import android.view.View
-import android.widget.LinearLayout
 
 /**
  * Unified trailer playback for Movie/TV detail pages.
@@ -278,41 +277,43 @@ object TrailerPlaybackController {
 
     class InAppTrailerDialog : androidx.fragment.app.DialogFragment() {
         private var webView: WebView? = null
+        private var videoId: String = ""
+        private var watchUrl: String = ""
 
         override fun onCreateDialog(savedInstanceState: Bundle?): Dialog {
-            val videoId = requireArguments().getString(ARG_ID).orEmpty()
+            videoId = requireArguments().getString(ARG_ID).orEmpty()
             val fallback = requireArguments().getString(ARG_URL).orEmpty()
-            val watchUrl = fallback.ifBlank { "https://www.youtube.com/watch?v=$videoId" }
+            watchUrl = fallback.ifBlank { "https://www.youtube.com/watch?v=$videoId" }
 
             val root = LayoutInflater.from(requireContext())
                 .inflate(R.layout.dialog_in_app_trailer, null, false)
             val web = root.findViewById<WebView>(R.id.wv_trailer)
             val loading = root.findViewById<ProgressBar>(R.id.pb_trailer_loading)
-            val error = root.findViewById<TextView>(R.id.tv_trailer_error)
+            val errorPanel = root.findViewById<View>(R.id.ll_trailer_error)
             webView = web
 
             val metrics = resources.displayMetrics
-            val width = metrics.widthPixels
-            // Prefer a wide 16:9 plane; cap so dialog still fits on short landscape phones.
-            val height = (width * 9 / 16).coerceIn(
+            // Near full-width immersive plane with side inset; keep 16:9.
+            val dialogWidth = (metrics.widthPixels * 0.96f).toInt()
+            val playerHeight = (dialogWidth * 9 / 16).coerceIn(
                 (200 * metrics.density).toInt(),
-                (metrics.heightPixels * 0.7f).toInt(),
+                (metrics.heightPixels * 0.72f).toInt(),
             )
-            web.layoutParams = FrameLayout.LayoutParams(
+            val playerParams = FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
-                height,
+                playerHeight,
             )
+            web.layoutParams = playerParams
+            root.findViewById<FrameLayout>(R.id.fl_trailer_player).minimumHeight = playerHeight
 
-            web.settings.javaScriptEnabled = true
-            web.settings.domStorageEnabled = true
-            web.settings.mediaPlaybackRequiresUserGesture = false
-            web.settings.mixedContentMode = WebSettings.MIXED_CONTENT_COMPATIBILITY_MODE
-            web.settings.loadWithOverviewMode = true
-            web.settings.useWideViewPort = true
+            configureWebView(web)
             web.webChromeClient = WebChromeClient()
             web.webViewClient = object : WebViewClient() {
                 override fun onPageFinished(view: WebView?, url: String?) {
-                    loading.visibility = android.view.View.GONE
+                    if (errorPanel.visibility != View.VISIBLE) {
+                        loading.visibility = View.GONE
+                        web.visibility = View.VISIBLE
+                    }
                 }
 
                 override fun onReceivedError(
@@ -321,49 +322,45 @@ object TrailerPlaybackController {
                     resourceError: WebResourceError?,
                 ) {
                     if (request?.isForMainFrame == true) {
-                        loading.visibility = android.view.View.GONE
-                        val wasVisible = error.visibility == android.view.View.VISIBLE
-                        error.visibility = android.view.View.VISIBLE
-                        web.visibility = android.view.View.INVISIBLE
-                        if (com.dskja.betterstreamflix.utils.ExperimentalMobileDesign.enabled() && !wasVisible) {
-                            com.dskja.betterstreamflix.utils.ExpMotion.popIn(error)
-                        }
+                        showError(loading, web, errorPanel)
                     }
                 }
             }
-            web.loadDataWithBaseURL(
-                "https://www.youtube-nocookie.com",
-                embedHtml(videoId),
-                "text/html",
-                "utf-8",
-                null,
-            )
+            loadEmbed(web, loading, errorPanel)
+
+            fun openExternal() {
+                openYoutube(requireContext(), watchUrl)
+            }
 
             root.findViewById<ImageButton>(R.id.btn_trailer_close).setOnClickListener {
-                com.dskja.betterstreamflix.utils.ExpMotion.hapticTap(it)
+                ExpMotion.hapticTap(it)
                 dismissAllowingStateLoss()
             }
             root.findViewById<ImageButton>(R.id.btn_trailer_youtube).setOnClickListener {
-                com.dskja.betterstreamflix.utils.ExpMotion.hapticTap(it)
-                openYoutube(requireContext(), watchUrl)
+                ExpMotion.hapticTap(it)
+                openExternal()
             }
             root.findViewById<TextView>(R.id.btn_trailer_open_external).setOnClickListener {
-                com.dskja.betterstreamflix.utils.ExpMotion.hapticTap(it)
-                openYoutube(requireContext(), watchUrl)
+                ExpMotion.hapticTap(it)
+                openExternal()
                 dismissAllowingStateLoss()
             }
-            if (com.dskja.betterstreamflix.utils.ExperimentalMobileDesign.enabled()) {
-            root.findViewById<TextView>(R.id.btn_trailer_open_external)?.setBackgroundResource(
-                    com.dskja.betterstreamflix.utils.ExperimentalMobileDesign.primaryButtonBackground(),
-                )
-                root.findViewById<ImageButton>(R.id.btn_trailer_close)?.setBackgroundResource(
-                    com.dskja.betterstreamflix.utils.ExperimentalMobileDesign.iconChipBackground(),
-                )
-                root.findViewById<ImageButton>(R.id.btn_trailer_youtube)?.setBackgroundResource(
-                    com.dskja.betterstreamflix.utils.ExperimentalMobileDesign.iconChipBackground(),
-                )
-                with(com.dskja.betterstreamflix.utils.ExpPressEffects) {
+            root.findViewById<TextView>(R.id.btn_trailer_retry).setOnClickListener {
+                ExpMotion.hapticTap(it)
+                loadEmbed(web, loading, errorPanel)
+            }
+            root.findViewById<TextView>(R.id.btn_trailer_error_youtube).setOnClickListener {
+                ExpMotion.hapticTap(it)
+                openExternal()
+                dismissAllowingStateLoss()
+            }
+
+            if (ExperimentalMobileDesign.enabled()) {
+                root.findViewById<View>(R.id.v_trailer_accent_rule)?.visibility = View.VISIBLE
+                with(ExpPressEffects) {
                     root.findViewById<TextView>(R.id.btn_trailer_open_external)?.applyExpPress()
+                    root.findViewById<TextView>(R.id.btn_trailer_retry)?.applyExpPress()
+                    root.findViewById<TextView>(R.id.btn_trailer_error_youtube)?.applyExpPress()
                     root.findViewById<ImageButton>(R.id.btn_trailer_close)?.applyExpPress()
                     root.findViewById<ImageButton>(R.id.btn_trailer_youtube)?.applyExpPress()
                 }
@@ -376,35 +373,62 @@ object TrailerPlaybackController {
                     dialog.setOnDismissListener { destroyWeb() }
                     dialog.setOnShowListener {
                         dialog.window?.apply {
-                            setLayout(
-                                ViewGroup.LayoutParams.MATCH_PARENT,
-                                ViewGroup.LayoutParams.WRAP_CONTENT,
-                            )
+                            setLayout(dialogWidth, ViewGroup.LayoutParams.WRAP_CONTENT)
                             setBackgroundDrawableResource(android.R.color.transparent)
-                            setDimAmount(0.82f)
+                            setDimAmount(0.88f)
                         }
-                        if (com.dskja.betterstreamflix.utils.ExperimentalMobileDesign.enabled()) {
-                            root.setBackgroundResource(
-                                com.dskja.betterstreamflix.utils.ExperimentalMobileDesign.bottomSheetBackground(),
-                            )
-                            com.dskja.betterstreamflix.utils.ExperimentalMobileDesign.applyReducedGlass(root)
-                            com.dskja.betterstreamflix.utils.ExpMotion.enterScreen(root)
-                            com.dskja.betterstreamflix.utils.ExpMotion.revealHeader(
+                        if (ExperimentalMobileDesign.enabled()) {
+                            ExpMotion.enterScreen(root)
+                            ExpMotion.revealHeader(
                                 root.findViewById(R.id.tv_trailer_title),
                                 root.findViewById(R.id.v_trailer_accent_rule),
                             )
-                            com.dskja.betterstreamflix.utils.ExpMotion.pulseAccentRule(
+                            ExpMotion.pulseAccentRule(
                                 root.findViewById(R.id.v_trailer_accent_rule),
                             )
-                            com.dskja.betterstreamflix.utils.ExpMotion.popIn(
-                                root.findViewById(R.id.btn_trailer_close),
-                            )
-                            com.dskja.betterstreamflix.utils.ExpMotion.popIn(
-                                root.findViewById(R.id.btn_trailer_open_external),
-                            )
+                            ExpMotion.popIn(root.findViewById(R.id.btn_trailer_close))
+                            ExpMotion.popIn(root.findViewById(R.id.btn_trailer_open_external))
                         }
                     }
                 }
+        }
+
+        private fun configureWebView(web: WebView) {
+            web.setLayerType(View.LAYER_TYPE_HARDWARE, null)
+            web.settings.apply {
+                javaScriptEnabled = true
+                domStorageEnabled = true
+                mediaPlaybackRequiresUserGesture = false
+                mixedContentMode = WebSettings.MIXED_CONTENT_COMPATIBILITY_MODE
+                loadWithOverviewMode = true
+                useWideViewPort = true
+                cacheMode = WebSettings.LOAD_DEFAULT
+                allowContentAccess = true
+                allowFileAccess = false
+            }
+        }
+
+        private fun loadEmbed(web: WebView, loading: ProgressBar, errorPanel: View) {
+            errorPanel.visibility = View.GONE
+            web.visibility = View.VISIBLE
+            loading.visibility = View.VISIBLE
+            web.loadDataWithBaseURL(
+                "https://www.youtube-nocookie.com",
+                embedHtml(videoId),
+                "text/html",
+                "utf-8",
+                null,
+            )
+        }
+
+        private fun showError(loading: ProgressBar, web: WebView, errorPanel: View) {
+            loading.visibility = View.GONE
+            web.visibility = View.INVISIBLE
+            val wasVisible = errorPanel.visibility == View.VISIBLE
+            errorPanel.visibility = View.VISIBLE
+            if (ExperimentalMobileDesign.enabled() && !wasVisible) {
+                ExpMotion.popIn(errorPanel)
+            }
         }
 
         private fun destroyWeb() {
@@ -412,7 +436,7 @@ object TrailerPlaybackController {
                 stopLoading()
                 loadUrl("about:blank")
                 runCatching { clearHistory() }
-                (parent as? android.view.ViewGroup)?.removeView(this)
+                (parent as? ViewGroup)?.removeView(this)
                 destroy()
             }
             webView = null
@@ -427,11 +451,14 @@ object TrailerPlaybackController {
             <!DOCTYPE html><html><head>
             <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1"/>
             <style>html,body{margin:0;padding:0;background:#000;height:100%;overflow:hidden;}
-            .wrap{position:relative;width:100%;height:100%;}
+            .wrap{position:absolute;inset:0;width:100%;height:100%;}
             iframe{position:absolute;top:0;left:0;width:100%;height:100%;border:0;}</style>
             </head><body><div class="wrap">
-            <iframe src="https://www.youtube-nocookie.com/embed/$videoId?autoplay=1&rel=0&modestbranding=1&playsinline=1"
-              allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowfullscreen></iframe>
+            <iframe
+              src="https://www.youtube-nocookie.com/embed/$videoId?autoplay=1&amp;rel=0&amp;modestbranding=1&amp;playsinline=1&amp;fs=1"
+              allow="autoplay; encrypted-media; picture-in-picture; fullscreen"
+              allowfullscreen
+              referrerpolicy="strict-origin-when-cross-origin"></iframe>
             </div></body></html>
         """.trimIndent()
 
@@ -447,3 +474,4 @@ object TrailerPlaybackController {
         }
     }
 }
+

@@ -135,10 +135,12 @@
             app:argType="string" />
         <argument
             android:name="poster"
+            android:defaultValue="@null"
             app:argType="string"
             app:nullable="true" />
         <argument
             android:name="banner"
+            android:defaultValue="@null"
             app:argType="string"
             app:nullable="true" />
         <action
@@ -176,10 +178,12 @@
             app:argType="string" />
         <argument
             android:name="tvShowPoster"
+            android:defaultValue="@null"
             app:argType="string"
             app:nullable="true" />
         <argument
             android:name="tvShowBanner"
+            android:defaultValue="@null"
             app:argType="string"
             app:nullable="true" />
         <argument
@@ -190,6 +194,7 @@
             app:argType="integer" />
         <argument
             android:name="seasonTitle"
+            android:defaultValue="@null"
             app:argType="string"
             app:nullable="true" />
     </fragment>

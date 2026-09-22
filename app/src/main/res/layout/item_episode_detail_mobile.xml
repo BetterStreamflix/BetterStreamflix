@@ -1,0 +1,165 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:paddingTop="10dp"
+    android:paddingBottom="14dp">
+
+    <FrameLayout
+        android:id="@+id/fl_episode_thumb"
+        android:layout_width="148dp"
+        android:layout_height="84dp"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent">
+
+        <ImageView
+            android:id="@+id/iv_episode_poster"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:background="#FF1A1A1A"
+            android:scaleType="centerCrop"
+            tools:ignore="ContentDescription" />
+
+        <ImageView
+            android:id="@+id/iv_episode_play"
+            android:layout_width="36dp"
+            android:layout_height="36dp"
+            android:layout_gravity="center"
+            android:background="@drawable/bg_mylist_select_ring"
+            android:padding="8dp"
+            android:src="@drawable/ic_trailer_play"
+            tools:ignore="ContentDescription" />
+
+        <TextView
+            android:id="@+id/tv_episode_age_rating"
+            android:layout_width="22dp"
+            android:layout_height="22dp"
+            android:layout_gravity="top|end"
+            android:layout_margin="6dp"
+            android:background="@drawable/bg_cert_badge"
+            android:fontFamily="@font/manrope"
+            android:gravity="center"
+            android:textColor="#FFFFFF"
+            android:textSize="10sp"
+            android:textStyle="bold"
+            android:visibility="gone"
+            tools:text="16"
+            tools:visibility="visible" />
+
+        <ImageView
+            android:id="@+id/iv_episode_download_ribbon"
+            android:layout_width="20dp"
+            android:layout_height="20dp"
+            android:layout_gravity="top|start"
+            android:layout_margin="6dp"
+            android:elevation="2dp"
+            android:src="@drawable/ic_offline_badge"
+            android:visibility="gone"
+            tools:ignore="ContentDescription" />
+
+        <ImageView
+            android:id="@+id/iv_episode_watched_ribbon"
+            android:layout_width="20dp"
+            android:layout_height="20dp"
+            android:layout_gravity="bottom|end"
+            android:layout_margin="6dp"
+            android:elevation="2dp"
+            android:src="@drawable/ic_watched"
+            android:visibility="gone"
+            tools:ignore="ContentDescription" />
+
+        <ProgressBar
+            android:id="@+id/pb_episode_progress"
+            style="@android:style/Widget.ProgressBar.Horizontal"
+            android:layout_width="match_parent"
+            android:layout_height="3dp"
+            android:layout_gravity="bottom"
+            android:backgroundTint="#CC646464"
+            android:progressTint="#FFFFFF"
+            android:visibility="gone"
+            tools:progress="40"
+            tools:visibility="visible" />
+    </FrameLayout>
+
+    <TextView
+        android:id="@+id/tv_episode_title"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="12dp"
+        android:layout_marginEnd="8dp"
+        android:ellipsize="end"
+        android:fontFamily="@font/manrope"
+        android:maxLines="2"
+        android:textColor="#FFFFFF"
+        android:textSize="15sp"
+        android:textStyle="bold"
+        app:layout_constraintEnd_toStartOf="@id/btn_episode_download"
+        app:layout_constraintStart_toEndOf="@id/fl_episode_thumb"
+        app:layout_constraintTop_toTopOf="@id/fl_episode_thumb"
+        tools:text="1. Stick or Twist" />
+
+    <ImageView
+        android:id="@+id/btn_episode_download"
+        android:layout_width="28dp"
+        android:layout_height="28dp"
+        android:contentDescription="@string/season_download"
+        android:padding="2dp"
+        android:src="@drawable/ic_menu_downloads"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toTopOf="@id/tv_episode_title"
+        app:tint="#FFFFFF"
+        tools:ignore="ContentDescription" />
+
+    <TextView
+        android:id="@+id/tv_episode_meta"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="12dp"
+        android:layout_marginTop="4dp"
+        android:layout_marginEnd="8dp"
+        android:ellipsize="end"
+        android:fontFamily="@font/manrope"
+        android:maxLines="1"
+        android:textColor="#8AFFFFFF"
+        android:textSize="12sp"
+        app:layout_constraintEnd_toStartOf="@id/btn_episode_download"
+        app:layout_constraintStart_toEndOf="@id/fl_episode_thumb"
+        app:layout_constraintTop_toBottomOf="@id/tv_episode_title"
+        tools:text="1h  Mar 30, 2025" />
+
+    <!-- Legacy ids kept for EpisodeViewHolder paths that still touch them. -->
+    <TextView
+        android:id="@+id/tv_episode_info"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:visibility="gone"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
+
+    <TextView
+        android:id="@+id/tv_episode_released"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:visibility="gone"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
+
+    <TextView
+        android:id="@+id/tv_episode_overview"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="10dp"
+        android:ellipsize="end"
+        android:fontFamily="@font/manrope"
+        android:lineSpacingExtra="2dp"
+        android:maxLines="3"
+        android:textColor="#8AFFFFFF"
+        android:textSize="13sp"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/fl_episode_thumb"
+        tools:text="Two decades after leaving the family business to Harry Da Souza, Conrad Harrigan calls him back to London…" />
+
+</androidx.constraintlayout.widget.ConstraintLayout>

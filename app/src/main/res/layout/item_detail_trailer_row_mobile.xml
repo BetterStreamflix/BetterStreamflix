@@ -4,14 +4,15 @@
     android:id="@+id/ll_detail_trailer_row"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
+    android:background="?attr/selectableItemBackground"
     android:gravity="center_vertical"
     android:orientation="horizontal"
-    android:paddingTop="6dp"
-    android:paddingBottom="6dp">
+    android:paddingTop="8dp"
+    android:paddingBottom="8dp">
 
     <FrameLayout
-        android:layout_width="148dp"
-        android:layout_height="84dp">
+        android:layout_width="156dp"
+        android:layout_height="88dp">
 
         <ImageView
             android:id="@+id/iv_detail_trailer_thumb"
@@ -21,21 +22,27 @@
             android:scaleType="centerCrop"
             tools:ignore="ContentDescription" />
 
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:background="#33000000" />
+
         <ImageView
             android:id="@+id/iv_detail_trailer_play"
-            android:layout_width="36dp"
-            android:layout_height="36dp"
+            android:layout_width="44dp"
+            android:layout_height="44dp"
             android:layout_gravity="center"
-            android:background="@drawable/bg_mylist_select_ring"
-            android:padding="8dp"
-            android:src="@drawable/ic_featured_play"
+            android:background="@drawable/bg_trailer_play_overlay"
+            android:contentDescription="@string/movie_trailer"
+            android:padding="12dp"
+            android:src="@drawable/ic_trailer_play"
             tools:ignore="ContentDescription" />
     </FrameLayout>
 
     <LinearLayout
         android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:layout_marginStart="12dp"
+        android:layout_marginStart="14dp"
         android:layout_weight="1"
         android:orientation="vertical">
 
@@ -57,8 +64,10 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="4dp"
             android:fontFamily="@font/manrope"
-            android:textColor="#8AFFFFFF"
-            android:textSize="12sp"
+            android:textAllCaps="true"
+            android:textColor="#99FFFFFF"
+            android:textSize="11sp"
+            android:textStyle="bold"
             tools:text="Trailer" />
 
         <TextView
@@ -71,6 +80,7 @@
             android:maxLines="2"
             android:textColor="#8AFFFFFF"
             android:textSize="12sp"
+            android:visibility="gone"
             tools:text="Official Trailer" />
     </LinearLayout>
 </LinearLayout>

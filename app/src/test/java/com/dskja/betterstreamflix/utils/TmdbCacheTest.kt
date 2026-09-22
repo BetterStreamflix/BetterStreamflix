@@ -28,6 +28,7 @@ class TmdbCacheTest {
             banner = "https://image.tmdb.org/t/p/original/b.jpg",
             imdbId = "tt0137523",
             contentRating = "R",
+            logo = "https://image.tmdb.org/t/p/original/logo.png",
             genres = listOf("18" to "Drama"),
             cast = listOf(Triple("287", "Brad Pitt", null)),
             directors = listOf(Triple("1", "David Fincher", null)),
@@ -49,6 +50,7 @@ class TmdbCacheTest {
         assertEquals("Fight Club", loaded?.title)
         assertEquals("tt0137523", loaded?.imdbId)
         assertEquals("R", loaded?.contentRating)
+        assertEquals("https://image.tmdb.org/t/p/original/logo.png", loaded?.logo)
         assertEquals(1, loaded?.genres?.size)
         assertEquals(1, loaded?.directors?.size)
         assertEquals(1, loaded?.recommendations?.size)
@@ -68,6 +70,7 @@ class TmdbCacheTest {
             banner = "b",
             imdbId = "tt0903747",
             contentRating = "TV-MA",
+            logo = "https://image.tmdb.org/t/p/original/tvlogo.png",
             seasons = listOf(TmdbCache.SeasonCache(1, "Season 1", null)),
             genres = listOf("18" to "Drama"),
             cast = emptyList(),
@@ -89,6 +92,7 @@ class TmdbCacheTest {
         assertEquals("Breaking Bad", TmdbCache.getTv(1396)?.title)
         assertEquals(1, TmdbCache.getTv(1396)?.seasons?.size)
         assertEquals("TV-MA", TmdbCache.getTv(1396)?.contentRating)
+        assertEquals("https://image.tmdb.org/t/p/original/tvlogo.png", TmdbCache.getTv(1396)?.logo)
         assertEquals(1, TmdbCache.getTv(1396)?.directors?.size)
         assertEquals("Better Call Saul", TmdbCache.getTv(1396)?.recommendations?.first()?.title)
     }

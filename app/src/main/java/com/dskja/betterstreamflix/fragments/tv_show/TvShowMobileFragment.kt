@@ -16,6 +16,7 @@ import com.dskja.betterstreamflix.R
 import com.dskja.betterstreamflix.adapters.AppAdapter
 import com.dskja.betterstreamflix.database.AppDatabase
 import com.dskja.betterstreamflix.databinding.FragmentTvShowMobileBinding
+import com.dskja.betterstreamflix.models.Season
 import com.dskja.betterstreamflix.models.TvShow
 import com.dskja.betterstreamflix.ui.DetailHeaderController
 import com.dskja.betterstreamflix.ui.DetailTab
@@ -132,6 +133,21 @@ class TvShowMobileFragment : Fragment() {
                 }
             }
         }
+
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewModel.seasonState.flowWithLifecycle(lifecycle, Lifecycle.State.STARTED).collect { seasonState ->
+                when (seasonState) {
+                    is TvShowViewModel.SeasonState.SuccessLoading -> {
+                        val tvShow = currentTvShow ?: return@collect
+                        tvShow.seasons.firstOrNull { it.id == seasonState.season.id }
+                            ?.episodes = seasonState.episodes
+                        seasonState.season.episodes = seasonState.episodes
+                        rebuildBody(scrollTabsToTop = false)
+                    }
+                    else -> Unit
+                }
+            }
+        }
     }
 
     override fun onDestroyView() {
@@ -183,6 +199,8 @@ class TvShowMobileFragment : Fragment() {
         tvShow.runtime,
         tvShow.lastPlayedEpisodeId,
         tvShow.seasons.size,
+        tvShow.seasons.sumOf { it.episodes.size },
+        tvShow.seasons.map { "${it.id}:${it.episodes.size}" },
         tvShow.genres.size,
         tvShow.directors.size,
         tvShow.cast.size,
@@ -211,6 +229,11 @@ class TvShowMobileFragment : Fragment() {
             appAdapter.selectedDetailTab = selectedTab
         }
         rebuildBody(scrollTabsToTop = false)
+    }
+
+    fun loadSeasonEpisodes(season: Season) {
+        val tvShow = currentTvShow ?: return
+        viewModel.loadSeasonEpisodes(tvShow, season)
     }
 
     private fun rebuildBody(scrollTabsToTop: Boolean) {

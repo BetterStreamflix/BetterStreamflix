@@ -5,15 +5,15 @@
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:paddingStart="12dp"
-    android:paddingTop="72dp"
+    android:paddingTop="52dp"
     android:paddingEnd="12dp"
-    android:paddingBottom="4dp">
+    android:paddingBottom="10dp">
 
     <!-- Tall cover card; centerCrop fills edge-to-edge without letterbox bars. -->
     <FrameLayout
         android:id="@+id/fl_category_swiper_card"
         android:layout_width="0dp"
-        android:layout_height="380dp"
+        android:layout_height="480dp"
         android:background="@drawable/bg_featured_card"
         android:clipToOutline="true"
         android:outlineProvider="background"
@@ -46,15 +46,31 @@
         tools:text="Featured"
         tools:visibility="gone" />
 
+    <ProgressBar
+        android:id="@+id/pb_swiper_auto_progress"
+        style="@android:style/Widget.ProgressBar.Horizontal"
+        android:layout_width="0dp"
+        android:layout_height="2dp"
+        android:layout_marginTop="6dp"
+        android:indeterminate="false"
+        android:max="1000"
+        android:progress="0"
+        android:progressBackgroundTint="#33FFFFFF"
+        android:progressTint="#FFFFFFFF"
+        android:visibility="gone"
+        app:layout_constraintEnd_toEndOf="@id/fl_category_swiper_card"
+        app:layout_constraintStart_toStartOf="@id/fl_category_swiper_card"
+        app:layout_constraintTop_toBottomOf="@id/fl_category_swiper_card" />
+
     <LinearLayout
         android:id="@+id/ll_dots_indicator"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginBottom="10dp"
-        android:elevation="10dp"
+        android:layout_marginTop="10dp"
+        android:gravity="center"
         android:orientation="horizontal"
-        app:layout_constraintBottom_toBottomOf="@id/fl_category_swiper_card"
         app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent" />
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/pb_swiper_auto_progress" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>

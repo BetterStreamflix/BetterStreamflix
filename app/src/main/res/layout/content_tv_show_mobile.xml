@@ -118,16 +118,16 @@
             android:padding="12dp"
             android:src="@drawable/ic_list_add" />
 
-        <TextView
+        <ImageView
             android:id="@+id/btn_tv_show_trailer"
             android:layout_width="48dp"
             android:layout_height="48dp"
             android:layout_marginEnd="8dp"
             android:background="@drawable/bg_detail_square_chip"
             android:contentDescription="@string/tv_show_trailer"
-            android:gravity="center"
-            android:text=""
-            android:textColor="#FFFFFF" />
+            android:padding="14dp"
+            android:scaleType="fitCenter"
+            android:src="@drawable/ic_trailer_play" />
 
         <ImageView
             android:id="@+id/btn_tv_show_download"

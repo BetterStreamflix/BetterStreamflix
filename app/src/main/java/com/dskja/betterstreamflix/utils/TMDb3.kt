@@ -441,10 +441,14 @@ object TMDb3 {
             movieId: Int,
             appendToResponse: List<Params.AppendToResponse.Movie>? = null,
             language: String? = null,
+            includeImageLanguage: String? = null,
+            includeVideoLanguage: String? = null,
         ): Movie.Detail {
             val params = mapOf(
                 Params.Key.APPEND_TO_RESPONSE to appendToResponse?.joinToString(",") { it.value },
                 Params.Key.LANGUAGE to language,
+                Params.Key.INCLUDE_IMAGE_LANGUAGE to includeImageLanguage,
+                Params.Key.INCLUDE_VIDEO_LANGUAGE to includeVideoLanguage,
             )
             return service.getMovieDetails(
                 movieId = movieId,
@@ -785,10 +789,14 @@ object TMDb3 {
             seriesId: Int,
             appendToResponse: List<Params.AppendToResponse.Tv>? = null,
             language: String? = null,
+            includeImageLanguage: String? = null,
+            includeVideoLanguage: String? = null,
         ): Tv.Detail {
             val params = mapOf(
                 Params.Key.APPEND_TO_RESPONSE to appendToResponse?.joinToString(",") { it.value },
                 Params.Key.LANGUAGE to language,
+                Params.Key.INCLUDE_IMAGE_LANGUAGE to includeImageLanguage,
+                Params.Key.INCLUDE_VIDEO_LANGUAGE to includeVideoLanguage,
             )
             return service.getTvDetails(
                 seriesId = seriesId,
@@ -949,6 +957,8 @@ object TMDb3 {
             const val INCLUDE_ADULT = "include_adult"
             const val INCLUDE_NULL_FIRST_AIR_DATES = "include_null_first_air_dates"
             const val INCLUDE_VIDEO = "include_video"
+            const val INCLUDE_IMAGE_LANGUAGE = "include_image_language"
+            const val INCLUDE_VIDEO_LANGUAGE = "include_video_language"
             const val LANGUAGE = "language"
             const val PAGE = "page"
             const val PRIMARY_RELEASE_DATE_GTE = "primary_release_date.gte"

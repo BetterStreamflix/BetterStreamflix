@@ -86,8 +86,8 @@ class Episode(
         if (number != other.number) return false
         if (title != other.title) return false
         if (poster != other.poster) return false
-        if (tvShow != other.tvShow) return false
-        if (season != other.season) return false
+        if (tvShow?.id != other.tvShow?.id) return false
+        if (season?.id != other.season?.id) return false
         if (released != other.released) return false
         if (overview != other.overview) return false
         if (isWatched != other.isWatched) return false
@@ -102,8 +102,8 @@ class Episode(
         result = 31 * result + number
         result = 31 * result + (title?.hashCode() ?: 0)
         result = 31 * result + (poster?.hashCode() ?: 0)
-        result = 31 * result + (tvShow?.hashCode() ?: 0)
-        result = 31 * result + (season?.hashCode() ?: 0)
+        result = 31 * result + (tvShow?.id?.hashCode() ?: 0)
+        result = 31 * result + (season?.id?.hashCode() ?: 0)
         result = 31 * result + (released?.hashCode() ?: 0)
         result = 31 * result + (overview?.hashCode() ?: 0)
         result = 31 * result + isWatched.hashCode()
