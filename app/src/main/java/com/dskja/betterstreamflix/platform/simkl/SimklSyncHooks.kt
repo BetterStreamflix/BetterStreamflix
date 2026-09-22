@@ -58,7 +58,36 @@ object SimklSyncHooks {
                     season = season,
                     episode = episode,
                 )
+                if (action == SimklScrobbler.Action.STOP) {
+                    SimklClient.markWatched(
+                        imdbId = imdbId,
+                        tmdbId = tmdbId,
+                        season = season,
+                        episode = episode,
+                    )
+                }
             }.onFailure { Log.w(TAG, "scrobble failed: ${it.message}") }
+        }
+    }
+
+    /** Mirrors My Lists toggles onto Simkl plantowatch when configured. */
+    fun onListToggle(
+        add: Boolean,
+        imdbId: String?,
+        tmdbId: String? = null,
+        isTv: Boolean = false,
+    ) {
+        if (!SimklConfig.configured()) return
+        if (imdbId.isNullOrBlank() && tmdbId.isNullOrBlank()) return
+        scope.launch {
+            runCatching {
+                SimklClient.syncWatchlist(
+                    add = add,
+                    imdbId = imdbId,
+                    tmdbId = tmdbId,
+                    isTv = isTv,
+                )
+            }.onFailure { Log.w(TAG, "watchlist sync failed: ${it.message}") }
         }
     }
 

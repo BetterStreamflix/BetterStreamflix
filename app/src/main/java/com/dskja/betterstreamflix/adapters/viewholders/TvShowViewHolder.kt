@@ -786,7 +786,7 @@ class TvShowViewHolder(
     private fun displaySwiperMobileItem(binding: ItemCategorySwiperMobileBinding) {
         binding.ivSwiperBackground.loadTvShowBanner(tvShow) {
             override(FeaturedSwiperChrome.ARTWORK_WIDTH, FeaturedSwiperChrome.ARTWORK_HEIGHT)
-                .fitCenter()
+                .centerCrop()
                 .transition(DrawableTransitionOptions.withCrossFade())
         }
 
@@ -826,6 +826,12 @@ class TvShowViewHolder(
                     val target = !(dao.getById(tvShow.id)?.isFavorite ?: tvShow.isFavorite)
                     val resolved = ArtworkRepair.resolveTvShowForFavorite(context, tvShow, target)
                     dao.upsertFavorite(resolved, target)
+                    com.dskja.betterstreamflix.platform.simkl.SimklSyncHooks.onListToggle(
+                        add = target,
+                        imdbId = tvShow.imdbId,
+                        tmdbId = tvShow.tmdbId,
+                        isTv = true,
+                    )
                     withContext(Dispatchers.Main) {
                         tvShow.isFavorite = target
                         tvShow.poster = resolved.poster
@@ -927,18 +933,12 @@ class TvShowViewHolder(
         binding.tvTvShowTitle.text = tvShow.title
 
         binding.root.findViewById<android.widget.ImageView>(R.id.iv_tv_show_logo)?.let { logoView ->
-            val logo = tvShow.logo
-            if (logo.isNullOrBlank()) {
-                logoView.visibility = View.GONE
-                logoView.setImageDrawable(null)
-            } else {
-                logoView.visibility = View.VISIBLE
-                com.bumptech.glide.Glide.with(logoView)
-                    .load(com.dskja.betterstreamflix.utils.ArtworkUrls.preferHero(logo))
-                    .transition(DrawableTransitionOptions.withCrossFade())
-                    .into(logoView)
-            }
+            // Title logo belongs in the collapsing header only — never duplicate it here.
+            logoView.visibility = View.GONE
+            logoView.setImageDrawable(null)
         }
+
+        binding.tvTvShowTitle.visibility = View.VISIBLE
 
         if (ExperimentalMobileDesign.enabled() &&
             binding.root.getTag(R.id.exp_enter_animated_tag) != true

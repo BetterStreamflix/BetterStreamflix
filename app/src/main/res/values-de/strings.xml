@@ -61,6 +61,7 @@
     <string name="provider_health_unstable">instabil</string>
     <string name="provider_health_flaky">unzuverlässig</string>
     <string name="genre_empty">In diesem Genre ist noch nichts</string>
+    <string name="genre_section_label">Genre</string>
     <string name="season_empty">Keine Episoden in dieser Staffel</string>
     <string name="season_download_empty">Nichts zum Herunterladen</string>
     <string name="movies_empty">Keine Filme verfügbar</string>
@@ -126,7 +127,8 @@
     <string name="episode_number">Episode %d</string>
 
     <string name="people_birthday">Geburtstag</string>
-    <string name="people_deathday">Todestag</string>
+    <string name="people_deathday">Gestorben</string>
+    <string name="people_born">Geboren</string>
     <string name="people_birthplace">Geburtsort</string>
     <string name="people_biography">Biografie</string>
     <string name="people_read_more">Mehr lesen &gt;</string>

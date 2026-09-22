@@ -6,44 +6,73 @@
     android:paddingBottom="4dp">
 
     <TextView
-        android:id="@+id/tv_downloads_title"
-        android:layout_width="0dp"
+        android:id="@+id/tv_downloads_eyebrow"
+        android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:paddingStart="16dp"
-        android:paddingTop="14dp"
-        android:paddingEnd="8dp"
-        android:text="@string/downloads_title"
-        android:textColor="#FFFFFFFF"
-        android:textSize="22sp"
+        android:layout_marginStart="16dp"
+        android:layout_marginTop="14dp"
+        android:fontFamily="@font/manrope"
+        android:letterSpacing="0.1"
+        android:text="@string/app_name"
+        android:textAllCaps="true"
+        android:textColor="#8AFFFFFF"
+        android:textSize="11sp"
         android:textStyle="bold"
-        app:layout_constraintEnd_toStartOf="@id/btn_downloads_menu"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent" />
 
+    <TextView
+        android:id="@+id/tv_downloads_title"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="4dp"
+        android:fontFamily="@font/manrope"
+        android:paddingStart="16dp"
+        android:paddingEnd="8dp"
+        android:text="@string/downloads_title"
+        android:textColor="#FFFFFFFF"
+        android:textSize="26sp"
+        android:textStyle="bold"
+        app:layout_constraintEnd_toStartOf="@id/btn_downloads_menu"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/tv_downloads_eyebrow" />
+
     <ImageButton
         android:id="@+id/btn_downloads_menu"
-        android:layout_width="48dp"
-        android:layout_height="48dp"
+        android:layout_width="44dp"
+        android:layout_height="44dp"
+        android:layout_marginEnd="4dp"
         android:background="?attr/selectableItemBackgroundBorderless"
         android:contentDescription="@string/downloads_action_settings"
         android:src="@drawable/ic_menu_settings"
+        app:layout_constraintBottom_toBottomOf="@id/tv_downloads_title"
         app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintTop_toTopOf="@id/tv_downloads_title"
         app:tint="#FFFFFFFF" />
+
+    <View
+        android:id="@+id/v_downloads_rule"
+        android:layout_width="36dp"
+        android:layout_height="3dp"
+        android:layout_marginStart="16dp"
+        android:layout_marginTop="10dp"
+        android:background="?attr/colorPrimary"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/tv_downloads_title" />
 
     <TextView
         android:id="@+id/tv_downloads_storage"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:paddingStart="16dp"
-        android:paddingTop="2dp"
+        android:paddingTop="8dp"
         android:paddingEnd="16dp"
         android:paddingBottom="6dp"
         android:textColor="#B3FFFFFF"
         android:textSize="13sp"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/tv_downloads_title" />
+        app:layout_constraintTop_toBottomOf="@id/v_downloads_rule" />
 
     <TextView
         android:id="@+id/tv_downloads_banner"

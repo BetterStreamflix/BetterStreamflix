@@ -183,21 +183,15 @@ class PeopleMobileFragment : Fragment() {
                 val portraitUrl = com.dskja.betterstreamflix.utils.ArtworkUrls.preferOriginal(
                     people.image ?: args.image,
                 )
-                val backdropUrl = people.filmography.firstOrNull()?.let { show ->
-                    when (show) {
-                        is Movie -> show.banner ?: show.poster
-                        is TvShow -> show.banner ?: show.poster
-                        else -> null
-                    }
-                }?.let(com.dskja.betterstreamflix.utils.ArtworkUrls::preferHero)
 
+                // Atmosphere uses the same portrait (soft + cropped), not a random film still.
                 binding.ivPeopleBackdrop.apply {
-                    if (backdropUrl.isNullOrBlank()) {
+                    if (portraitUrl.isNullOrBlank()) {
                         setImageDrawable(null)
                         setBackgroundColor(0xFF121218.toInt())
                     } else {
                         Glide.with(context)
-                            .load(backdropUrl)
+                            .load(portraitUrl)
                             .centerCrop()
                             .transition(DrawableTransitionOptions.withCrossFade())
                             .into(this)
@@ -245,40 +239,30 @@ class PeopleMobileFragment : Fragment() {
                         View.VISIBLE
                 }
 
-                binding.tvPeopleBirthday.text = people.birthday?.format("MMMM dd, yyyy")
-
-                binding.gPeopleBirthday.visibility = when {
-                    binding.tvPeopleBirthday.text.isNullOrEmpty() -> View.GONE
-                    else -> View.VISIBLE
+                val born = people.birthday?.format("d MMM yyyy")
+                val place = people.placeOfBirth?.takeIf { it.isNotBlank() }
+                binding.tvPeopleBirthday.text = when {
+                    born != null && place != null ->
+                        getString(R.string.people_born) + " " + born + " · " + place
+                    born != null -> getString(R.string.people_born) + " " + born
+                    place != null -> place
+                    else -> ""
                 }
+                binding.gPeopleBirthday.visibility =
+                    if (binding.tvPeopleBirthday.text.isNullOrEmpty()) View.GONE else View.VISIBLE
+                binding.gPeopleBirthplace.visibility = View.GONE
+                binding.tvPeopleMetaDot.visibility = View.GONE
 
                 binding.tvPeopleDeathday.text = people.deathday
-                    ?.format("MMMM dd, yyyy")
-                    ?.let { getString(R.string.people_deathday) + " · " + it }
-
-                binding.gPeopleDeathday.visibility = when {
-                    binding.tvPeopleDeathday.text.isNullOrEmpty() -> View.GONE
-                    else -> View.VISIBLE
-                }
-
-                binding.tvPeopleBirthplace.text = people.placeOfBirth
-
-                binding.gPeopleBirthplace.visibility = when {
-                    binding.tvPeopleBirthplace.text.isNullOrEmpty() -> View.GONE
-                    else -> View.VISIBLE
-                }
-
-                // The separator only earns its place when both halves of the line are there.
-                binding.tvPeopleMetaDot.visibility = when {
-                    binding.gPeopleBirthday.visibility == View.VISIBLE &&
-                        binding.gPeopleBirthplace.visibility == View.VISIBLE -> View.VISIBLE
-                    else -> View.GONE
-                }
+                    ?.format("d MMM yyyy")
+                    ?.let { getString(R.string.people_deathday) + " " + it }
+                binding.gPeopleDeathday.visibility =
+                    if (binding.tvPeopleDeathday.text.isNullOrEmpty()) View.GONE else View.VISIBLE
 
                 binding.tvPeopleBiography.apply {
                     text = people.biography
-                    maxLines = Int.MAX_VALUE
-                    ellipsize = null
+                    maxLines = COLLAPSED_BIOGRAPHY_LINES
+                    ellipsize = android.text.TextUtils.TruncateAt.END
                 }
 
                 binding.tvPeopleBiographyReadMore.apply {
@@ -304,7 +288,8 @@ class PeopleMobileFragment : Fragment() {
                     applyExpand(false)
                     binding.tvPeopleBiography.post {
                         val overflowing =
-                            binding.tvPeopleBiography.lineCount > COLLAPSED_BIOGRAPHY_LINES
+                            binding.tvPeopleBiography.lineCount > COLLAPSED_BIOGRAPHY_LINES ||
+                                (people.biography?.length ?: 0) > 220
                         val wasVisible = visibility == View.VISIBLE
                         visibility = if (overflowing) View.VISIBLE else View.GONE
                         if (!overflowing) {
