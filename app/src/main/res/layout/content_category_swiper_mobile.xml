@@ -4,20 +4,19 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:paddingStart="14dp"
+    android:paddingStart="12dp"
     android:paddingTop="6dp"
-    android:paddingEnd="14dp"
+    android:paddingEnd="12dp"
     android:paddingBottom="4dp">
 
-    <!-- 16:9 card so the cover fills without the tall-crop zoom. -->
+    <!-- Tall rounded card; fitCenter letterboxes the cover so it is not cropped/zoomed. -->
     <FrameLayout
         android:id="@+id/fl_category_swiper_card"
         android:layout_width="0dp"
-        android:layout_height="0dp"
+        android:layout_height="420dp"
         android:background="@drawable/bg_featured_card"
         android:clipToOutline="true"
         android:outlineProvider="background"
-        app:layout_constraintDimensionRatio="H,16:9"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent">

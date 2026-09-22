@@ -6,12 +6,12 @@
     android:layout_height="match_parent"
     android:background="#FF000000">
 
-    <!-- centerCrop on a 16:9 card shows the full backdrop without tall-card zoom. -->
+    <!-- fitCenter keeps the whole backdrop visible on the tall rounded card. -->
     <ImageView
         android:id="@+id/iv_swiper_background"
         android:layout_width="0dp"
         android:layout_height="0dp"
-        android:scaleType="centerCrop"
+        android:scaleType="fitCenter"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
@@ -40,9 +40,9 @@
     <ImageView
         android:id="@+id/iv_swiper_logo"
         android:layout_width="0dp"
-        android:layout_height="72dp"
-        android:layout_marginStart="40dp"
-        android:layout_marginEnd="40dp"
+        android:layout_height="96dp"
+        android:layout_marginStart="36dp"
+        android:layout_marginEnd="36dp"
         android:adjustViewBounds="true"
         android:importantForAccessibility="no"
         android:scaleType="fitCenter"
@@ -51,7 +51,7 @@
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintVertical_bias="0.58"
+        app:layout_constraintVertical_bias="0.48"
         tools:visibility="visible" />
 
     <TextView
@@ -67,13 +67,13 @@
         android:shadowDy="2"
         android:shadowRadius="10"
         android:textColor="#FFFFFF"
-        android:textSize="24sp"
+        android:textSize="26sp"
         android:textStyle="bold"
         app:layout_constraintBottom_toTopOf="@id/ll_swiper_actions"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintVertical_bias="0.58"
+        app:layout_constraintVertical_bias="0.48"
         tools:text="Title" />
 
     <LinearLayout

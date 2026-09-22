@@ -907,7 +907,7 @@ class MovieViewHolder(
     private fun displaySwiperMobileItem(binding: ItemCategorySwiperMobileBinding) {
         binding.ivSwiperBackground.loadMovieBanner(movie) {
             override(FeaturedSwiperChrome.ARTWORK_WIDTH, FeaturedSwiperChrome.ARTWORK_HEIGHT)
-                .centerCrop()
+                .fitCenter()
                 .transition(DrawableTransitionOptions.withCrossFade())
         }
 
