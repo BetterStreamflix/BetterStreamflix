@@ -1,5 +1,6 @@
 package com.dskja.betterstreamflix.ui
 
+import android.graphics.drawable.Drawable
 import android.view.View
 import android.widget.ImageView
 import android.widget.TextView
@@ -8,6 +9,10 @@ import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
 import com.bumptech.glide.Glide
+import com.bumptech.glide.load.DataSource
+import com.bumptech.glide.load.engine.GlideException
+import com.bumptech.glide.request.RequestListener
+import com.bumptech.glide.request.target.Target
 import com.dskja.betterstreamflix.R
 import com.dskja.betterstreamflix.database.AppDatabase
 import com.dskja.betterstreamflix.models.Movie
@@ -15,13 +20,15 @@ import com.dskja.betterstreamflix.models.TvShow
 import com.dskja.betterstreamflix.utils.ArtworkRepair
 import com.dskja.betterstreamflix.utils.ArtworkUrls
 import com.dskja.betterstreamflix.utils.ExpMotion
+import com.dskja.betterstreamflix.utils.TmdbUtils
+import com.dskja.betterstreamflix.utils.format
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 /**
  * Overlay header shared by the movie and TV show detail pages: solid black bar
- * with back (left), title logo (center), and list toggle (right).
+ * with back (left), TMDb title logo (center), and list toggle (right).
  */
 object DetailHeaderController {
 
@@ -38,7 +45,16 @@ object DetailHeaderController {
     fun bindMovie(fragment: Fragment, root: View, movie: Movie) {
         val context = root.context
         bindTitleChrome(root, movie.title, movie.logo)
-        ensureSolidBar(root)
+        if (movie.logo.isNullOrBlank()) {
+            resolveLogo(
+                fragment = fragment,
+                root = root,
+                title = movie.title,
+                year = movie.released?.format("yyyy")?.toIntOrNull(),
+                isTv = false,
+                tmdbId = movie.tmdbId,
+            ) { movie.logo = it }
+        }
 
         val listIcon = root.findViewById<ImageView>(R.id.btn_detail_list) ?: return
         listIcon.background = null
@@ -63,7 +79,16 @@ object DetailHeaderController {
     fun bindTvShow(fragment: Fragment, root: View, tvShow: TvShow) {
         val context = root.context
         bindTitleChrome(root, tvShow.title, tvShow.logo)
-        ensureSolidBar(root)
+        if (tvShow.logo.isNullOrBlank()) {
+            resolveLogo(
+                fragment = fragment,
+                root = root,
+                title = tvShow.title,
+                year = tvShow.released?.format("yyyy")?.toIntOrNull(),
+                isTv = true,
+                tmdbId = tvShow.tmdbId,
+            ) { tvShow.logo = it }
+        }
 
         val listIcon = root.findViewById<ImageView>(R.id.btn_detail_list) ?: return
         listIcon.background = null
@@ -85,22 +110,39 @@ object DetailHeaderController {
         }
     }
 
-    /**
-     * Kept for scroll listeners; the bar stays solid black and the logo stays
-     * visible so scrolling never darkens page content behind a tall scrim.
-     */
-    fun onScrolled(root: View, @Suppress("UNUSED_PARAMETER") scrollY: Int) {
-        ensureSolidBar(root)
-        applyTitleVisibility(root)
-    }
+    /** No-op kept for scroll listeners; the bar is a fixed-height black strip. */
+    fun onScrolled(@Suppress("UNUSED_PARAMETER") root: View, @Suppress("UNUSED_PARAMETER") scrollY: Int) = Unit
 
     fun refreshListState(root: View, inList: Boolean) {
         root.findViewById<ImageView>(R.id.btn_detail_list)
             ?.let { applyListState(it, inList, animate = false) }
     }
 
-    private fun ensureSolidBar(root: View) {
-        root.findViewById<View>(R.id.v_detail_header_scrim)?.alpha = 1f
+    private fun resolveLogo(
+        fragment: Fragment,
+        root: View,
+        title: String,
+        year: Int?,
+        isTv: Boolean,
+        tmdbId: String?,
+        onResolved: (String) -> Unit,
+    ) {
+        fragment.viewLifecycleOwner.lifecycleScope.launch {
+            val logo = withContext(Dispatchers.IO) {
+                runCatching {
+                    TmdbUtils.resolveTitleLogo(
+                        title = title,
+                        year = year,
+                        isTv = isTv,
+                        tmdbId = tmdbId,
+                    )
+                }.getOrNull()
+            }
+            if (logo.isNullOrBlank()) return@launch
+            onResolved(logo)
+            val currentTitle = root.findViewById<TextView>(R.id.tv_detail_header_title)?.text?.toString()
+            if (currentTitle == title) bindTitleChrome(root, title, logo)
+        }
     }
 
     private fun bindTitleChrome(root: View, title: String, logoUrl: String?) {
@@ -116,6 +158,30 @@ object DetailHeaderController {
         Glide.with(logo)
             .load(url)
             .fitCenter()
+            .listener(object : RequestListener<Drawable> {
+                override fun onLoadFailed(
+                    e: GlideException?,
+                    model: Any?,
+                    target: Target<Drawable>,
+                    isFirstResource: Boolean,
+                ): Boolean {
+                    logo.tag = false
+                    applyTitleVisibility(root)
+                    return false
+                }
+
+                override fun onResourceReady(
+                    resource: Drawable,
+                    model: Any,
+                    target: Target<Drawable>?,
+                    dataSource: DataSource,
+                    isFirstResource: Boolean,
+                ): Boolean {
+                    logo.tag = true
+                    applyTitleVisibility(root)
+                    return false
+                }
+            })
             .into(logo)
         logo.tag = true
         applyTitleVisibility(root)

@@ -786,7 +786,7 @@ class TvShowViewHolder(
     private fun displaySwiperMobileItem(binding: ItemCategorySwiperMobileBinding) {
         binding.ivSwiperBackground.loadTvShowBanner(tvShow) {
             override(FeaturedSwiperChrome.ARTWORK_WIDTH, FeaturedSwiperChrome.ARTWORK_HEIGHT)
-                .centerCrop()
+                .fitCenter()
                 .transition(DrawableTransitionOptions.withCrossFade())
         }
 
