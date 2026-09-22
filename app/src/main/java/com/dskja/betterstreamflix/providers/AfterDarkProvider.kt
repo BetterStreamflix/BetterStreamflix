@@ -54,7 +54,7 @@ object AfterDarkProvider : Provider, ProviderPortalUrl, ProviderConfigUrl {
             return cacheURL.ifEmpty { field }
         }
 
-    override val logo = "https://images2.imgbox.com/f5/45/6Es7LVQ6_o.png"
+    override val logo = "https://www.google.com/s2/favicons?domain=afterdark.rest&sz=128"
     override val language = "fr"
     override val changeUrlMutex = Mutex()
 

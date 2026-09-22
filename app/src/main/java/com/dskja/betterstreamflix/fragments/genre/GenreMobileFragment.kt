@@ -9,6 +9,7 @@ import androidx.fragment.app.Fragment
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.flowWithLifecycle
 import androidx.lifecycle.lifecycleScope
+import androidx.navigation.fragment.findNavController
 import androidx.navigation.fragment.navArgs
 import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.RecyclerView
@@ -20,6 +21,7 @@ import com.dskja.betterstreamflix.databinding.HeaderGenreMobileBinding
 import com.dskja.betterstreamflix.models.Genre
 import com.dskja.betterstreamflix.models.Movie
 import com.dskja.betterstreamflix.models.TvShow
+import com.dskja.betterstreamflix.ui.DetailHeaderController
 import com.dskja.betterstreamflix.ui.SpacingItemDecoration
 import com.dskja.betterstreamflix.utils.CacheUtils
 import com.dskja.betterstreamflix.utils.Http409CacheGuard
@@ -40,7 +42,7 @@ class GenreMobileFragment : Fragment() {
 
     private val args by navArgs<GenreMobileFragmentArgs>()
     private val database get() = AppDatabase.getInstance(requireContext())
-    private val viewModel by viewModelsFactory { GenreViewModel(args.id, database) }
+    private val viewModel by viewModelsFactory { GenreViewModel(args.id, database, args.name) }
 
     private val appAdapter = AppAdapter()
 
@@ -66,6 +68,7 @@ class GenreMobileFragment : Fragment() {
         ExpMotion.enterScreen(binding.root)
         ExperimentalMobileDesign.applyReducedGlass(binding.root)
         ExpMotion.staggerFirstFill(binding.rvGenre)
+        DetailHeaderController.wireBack(binding.root)
 
         initializeGenre()
 
@@ -216,14 +219,24 @@ class GenreMobileFragment : Fragment() {
             }
         })
 
+        val isEmpty = genre.shows.isEmpty()
         ExpEmptyChrome.bind(
             emptyView = binding.root.findViewById(R.id.tv_genre_empty),
             emptyRule = binding.root.findViewById(R.id.v_genre_empty_rule),
             emptyCta = binding.root.findViewById(R.id.btn_genre_empty_cta),
-            visible = genre.shows.isEmpty(),
+            visible = isEmpty,
             tintOnSurfaceVariant = false,
             onCtaClick = { requireActivity().onBackPressedDispatcher.onBackPressed() },
         )
+        binding.root.findViewById<View>(R.id.v_genre_empty_rule)?.visibility =
+            if (isEmpty) View.VISIBLE else View.GONE
+        binding.root.findViewById<View>(R.id.btn_genre_empty_cta)?.apply {
+            visibility = if (isEmpty) View.VISIBLE else View.GONE
+            setOnClickListener {
+                ExpMotion.hapticTap(it)
+                findNavController().navigateUp()
+            }
+        }
 
         if (hasMore) {
             appAdapter.setOnLoadMoreListener { viewModel.loadMoreGenreShows() }

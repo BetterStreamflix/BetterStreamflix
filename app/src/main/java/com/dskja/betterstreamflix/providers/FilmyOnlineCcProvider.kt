@@ -53,7 +53,7 @@ object FilmyOnlineCcProvider : Provider, ProviderConfigUrl {
     override suspend fun onChangeUrl(forceRefresh: Boolean): String = changeUrlMutex.withLock {
         baseUrl
     }
-    override val logo = "$baseUrl/favicon/icon-144x144.png?v=1703232212"
+    override val logo = "https://www.google.com/s2/favicons?domain=filmyonline.cc&sz=128"
     override val language = "pl"
 
     private var webViewResolver: WebViewResolver? = null
@@ -163,24 +163,15 @@ object FilmyOnlineCcProvider : Provider, ProviderConfigUrl {
             extractHomeCategories(root)
         }.getOrElse { error ->
             Log.w(TAG, "Bootstrap home failed: ${error.message}")
-            if (error.message.orEmpty().contains("Cloudflare", ignoreCase = true) ||
-                error.message.orEmpty().contains("clearance", ignoreCase = true)
-            ) {
-                throw Exception(
-                    "FilmyOnline Cloudflare blocks $baseUrl. " +
-                        "Open the provider once to refresh clearance, then retry. (${error.message})"
-                )
-            }
+            // Soft-fail: Cloudflare/clearance blocks are expected noise from datacenter IPs —
+            // log and return an empty home instead of throwing (avoids flooding Sentry).
             emptyList()
         }
 
         if (bootstrapCategories.isNotEmpty()) return bootstrapCategories
 
-        Log.d(TAG, "Bootstrap home categories were empty")
-        throw Exception(
-            "FilmyOnline home empty at $baseUrl (API/bootstrap blocked or Cloudflare). " +
-                "Refresh clearance in-app or change the provider URL."
-        )
+        Log.w(TAG, "Bootstrap home categories were empty at $baseUrl (API/bootstrap blocked or Cloudflare)")
+        return emptyList()
     }
 
     override suspend fun search(query: String, page: Int): List<AppAdapter.Item> {

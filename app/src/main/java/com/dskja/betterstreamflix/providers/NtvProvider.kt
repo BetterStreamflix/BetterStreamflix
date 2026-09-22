@@ -322,7 +322,7 @@ object NtvProvider : IptvProvider, ProviderConfigUrl {
 
     override suspend fun getVideo(server: Video.Server): Video = withContext(Dispatchers.IO) {
         val src = server.src.ifBlank { server.id }
-        when {
+        val video = when {
             src.contains("get-watch-streams") -> resolveWatchStreams(src)
             src.contains("cdnlivetv") || src.contains("/channels/player/") -> resolvePlayerPage(src)
             else -> {
@@ -340,6 +340,10 @@ object NtvProvider : IptvProvider, ProviderConfigUrl {
                 }
             }
         }
+        if (video.source.isBlank()) {
+            throw Exception("NTV: no stream found for ${server.name} (try another source)")
+        }
+        video
     }
 
     private fun resolveWatchStreams(apiUrl: String): Video {

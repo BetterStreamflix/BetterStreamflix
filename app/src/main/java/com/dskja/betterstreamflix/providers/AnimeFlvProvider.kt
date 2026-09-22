@@ -5,6 +5,7 @@ import kotlinx.coroutines.sync.withLock
 
 import com.dskja.betterstreamflix.utils.UserPreferences
 
+import android.util.Log
 import com.tanasi.retrofit_jsoup.converter.JsoupConverterFactory
 import com.dskja.betterstreamflix.adapters.AppAdapter
 import com.dskja.betterstreamflix.extractors.Extractor
@@ -32,6 +33,8 @@ import java.util.concurrent.TimeUnit
 
 object AnimeFlvProvider : Provider, ProviderConfigUrl {
 
+    private const val TAG = "AnimeFlvProvider"
+
     override val name = "AnimeFLV"
     override val defaultBaseUrl = "https://www.animeflv.vc"
     override val baseUrl: String
@@ -42,7 +45,7 @@ object AnimeFlvProvider : Provider, ProviderConfigUrl {
         baseUrl
     }
     override val language = "es"
-    override val logo = "$baseUrl/cdn/img/favicon.ico"
+    override val logo = "https://www.google.com/s2/favicons?domain=animeflv.vc&sz=128"
 
     private val client = OkHttpClient.Builder()
         .readTimeout(30, TimeUnit.SECONDS)
@@ -183,9 +186,36 @@ object AnimeFlvProvider : Provider, ProviderConfigUrl {
                     }
                 }
 
+                if (categories.isEmpty()) {
+                    // Site markup changed — fall back to a generic anime card selector
+                    // on the "agregado" directory page rather than leaving home empty.
+                    runCatching {
+                        val fallback = addedDeferred.await().select("article").mapNotNull { element ->
+                            val link = element.selectFirst("a[href*=/anime/]") ?: return@mapNotNull null
+                            val href = absoluteUrl(link.attr("href")) ?: return@mapNotNull null
+                            val slug = href.substringAfterLast("/").substringBefore("?")
+                            if (slug.isBlank()) return@mapNotNull null
+                            val title = element.selectFirst("h3, .h a, a")?.text()?.trim()
+                                ?.ifBlank { slug } ?: slug
+                            val poster = absoluteUrl(
+                                element.selectFirst("img[data-src]")?.attr("data-src")
+                                    ?: element.selectFirst("img")?.attr("src"),
+                            )
+                            TvShow(id = slug, title = title, poster = poster)
+                        }.distinctBy { it.id }
+                        if (fallback.isNotEmpty()) {
+                            Log.w(TAG, "getHome: primary selectors empty, used generic article fallback")
+                            categories.add(Category(Category.FEATURED, fallback))
+                        } else {
+                            Log.w(TAG, "getHome: no items found with primary or fallback selectors")
+                        }
+                    }
+                }
+
                 categories
             }
-        } catch (_: Exception) {
+        } catch (e: Exception) {
+            Log.e(TAG, "getHome failed: ${e.message}", e)
             emptyList()
         }
     }

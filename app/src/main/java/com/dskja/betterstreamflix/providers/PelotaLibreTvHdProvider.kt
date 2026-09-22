@@ -24,7 +24,7 @@ object PelotaLibreTvHdProvider : IptvProvider, ProviderConfigUrl {
     override suspend fun onChangeUrl(forceRefresh: Boolean): String = changeUrlMutex.withLock {
         baseUrl
     }
-    override val logo = "https://i.ibb.co/3s2mhm6/sports-logo.png"
+    override val logo = "https://www.google.com/s2/favicons?domain=espn.com&sz=128"
     override val language = "es"
 
     private const val TAG = "SportsEventsProvider"

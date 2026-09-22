@@ -72,21 +72,9 @@ object DemoAddonPlugin :
     }
 
     override suspend fun homeCategories(provider: Provider): List<Category> {
-        if (!isEnabled()) return emptyList()
-        val tip = Movie(
-            id = "demo-addon-tip",
-            title = "Plugin system ready",
-            overview = "Demo Addon is active for ${provider.name}. " +
-                "Install LOCAL SourcePlugin APKs under Settings → Sources, or disable this tip there.",
-            poster = null,
-            banner = null,
-        )
-        return listOf(
-            Category(
-                name = "BetterStreamflix Addons",
-                list = listOf(tip),
-            ),
-        )
+        // Demo Addon no longer injects a synthetic tip row into any provider's
+        // home screen — it only contributes search/metadata/playback hooks.
+        return emptyList()
     }
 
     override suspend fun search(

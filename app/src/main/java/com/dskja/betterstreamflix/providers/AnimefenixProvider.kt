@@ -10,6 +10,7 @@ import com.dskja.betterstreamflix.adapters.AppAdapter
 import com.dskja.betterstreamflix.extractors.Extractor
 import com.dskja.betterstreamflix.models.*
 import com.dskja.betterstreamflix.utils.DnsResolver
+import com.dskja.betterstreamflix.utils.HomeCatalogPipeline
 import com.dskja.betterstreamflix.utils.NetworkClient
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
@@ -106,11 +107,12 @@ object AnimefenixProvider : Provider, ProviderConfigUrl {
                 ?: a.attr("title").ifBlank { a.text() }.trim()
             if (title.isBlank()) return@mapNotNull null
             val image = el.selectFirst("img")
+            val rawPoster = image?.attr("data-src")?.ifBlank { null }
+                ?: image?.attr("src")?.ifBlank { null }
             TvShow(
                 id = absoluteUrl(href),
                 title = title,
-                poster = image?.attr("data-src")?.ifBlank { null }
-                    ?: image?.attr("src")?.ifBlank { null }
+                poster = HomeCatalogPipeline.absoluteUrl(baseUrl, rawPoster)
             )
         }.distinctBy { it.id }
     }
@@ -125,11 +127,12 @@ object AnimefenixProvider : Provider, ProviderConfigUrl {
                 ?: a.attr("title").ifBlank { a.text() }.trim()
             if (title.isBlank()) return@mapNotNull null
             val image = a.selectFirst("img")
+            val rawPoster = image?.attr("data-src")?.ifBlank { null }
+                ?: image?.attr("src")?.ifBlank { null }
             TvShow(
                 id = absoluteUrl(href),
                 title = title,
-                poster = image?.attr("data-src")?.ifBlank { null }
-                    ?: image?.attr("src")?.ifBlank { null }
+                poster = HomeCatalogPipeline.absoluteUrl(baseUrl, rawPoster)
             )
         }.distinctBy { it.id }
     }

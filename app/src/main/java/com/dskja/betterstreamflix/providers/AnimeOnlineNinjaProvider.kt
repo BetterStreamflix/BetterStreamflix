@@ -1333,6 +1333,16 @@ object AnimeOnlineNinjaProvider : Provider, ProviderConfigUrl {
                 rejectedClearance = clearanceToken(headers["Cookie"]),
             )
         }
+        // A "white page" — a 200 response with a blank/near-empty body and none of the
+        // usual challenge markers — is Cloudflare's JS challenge shell without the
+        // interstitial text. Route it through the WebView bypass too instead of failing.
+        if (response.isSuccessful && body.trim().length < 200) {
+            Log.w(TAG, "White-page response detected -> url=${response.finalUrl} size=${body.length}")
+            throw ChallengeRequiredException(
+                message = "AnimeOnline Ninja white-page (blank Cloudflare shell) for $url",
+                rejectedClearance = clearanceToken(headers["Cookie"]),
+            )
+        }
         if (!response.isSuccessful || body.isBlank()) {
             Log.w(TAG, "Page rejected -> code=${response.statusCode} url=$url")
             return null

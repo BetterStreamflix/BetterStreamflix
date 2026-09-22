@@ -57,6 +57,10 @@ class TvShow(
     @Ignore
     var contentRating: String? = null
 
+    /** TMDb title logo artwork used on the detail header. Not persisted. */
+    @Ignore
+    var logo: String? = null
+
     @Ignore
     var lastPlayedEpisode: Episode? = null
 
@@ -157,6 +161,7 @@ class TvShow(
         lastPlayedEpisodeId = this@TvShow.lastPlayedEpisodeId
         lastPlayedEpisode = this@TvShow.lastPlayedEpisode
         contentRating = this@TvShow.contentRating
+        logo = this@TvShow.logo
     }
 
     override fun equals(other: Any?): Boolean {

@@ -17,6 +17,7 @@ import com.dskja.betterstreamflix.adapters.AppAdapter
 import com.dskja.betterstreamflix.database.AppDatabase
 import com.dskja.betterstreamflix.databinding.FragmentTvShowMobileBinding
 import com.dskja.betterstreamflix.models.TvShow
+import com.dskja.betterstreamflix.ui.DetailHeaderController
 import com.dskja.betterstreamflix.ui.SpacingItemDecoration
 import com.dskja.betterstreamflix.utils.CacheUtils
 import com.dskja.betterstreamflix.utils.Http409CacheGuard
@@ -73,20 +74,7 @@ class TvShowMobileFragment : Fragment() {
                 drift = !ExperimentalMobileDesign.heroParallax(),
             )
         }
-        binding.root.findViewById<View>(com.dskja.betterstreamflix.R.id.iv_detail_back)
-            ?.also { back ->
-                androidx.appcompat.widget.TooltipCompat.setTooltipText(
-                    back, back.context.getString(com.dskja.betterstreamflix.R.string.exp_back))
-                if (ExperimentalMobileDesign.enabled()) {
-                    back.setBackgroundResource(ExperimentalMobileDesign.iconChipBackground())
-                    with(com.dskja.betterstreamflix.utils.ExpPressEffects) { back.applyExpPress() }
-                    ExpMotion.popIn(back)
-                }
-            }
-            ?.setOnClickListener {
-                ExpMotion.hapticTap(it)
-                androidx.navigation.Navigation.findNavController(binding.root).navigateUp()
-            }
+        DetailHeaderController.wireBack(binding.root)
 
         initializeTvShow()
 
@@ -164,10 +152,43 @@ class TvShowMobileFragment : Fragment() {
         }
     }
 
+    /**
+     * Everything the detail list renders, except the list/favorite state. When only that
+     * changes we refresh the header icon instead of re-submitting and jumping the page.
+     */
+    private fun contentSignature(tvShow: TvShow) = listOf(
+        tvShow.id,
+        tvShow.title,
+        tvShow.overview,
+        tvShow.poster,
+        tvShow.banner,
+        tvShow.logo,
+        tvShow.trailer,
+        tvShow.quality,
+        tvShow.rating,
+        tvShow.runtime,
+        tvShow.lastPlayedEpisodeId,
+        tvShow.seasons.size,
+        tvShow.genres.size,
+        tvShow.directors.size,
+        tvShow.cast.size,
+        tvShow.recommendations.size,
+    )
+
+    private var lastContentSignature: List<Any?>? = null
+
     private fun displayTvShow(tvShow: TvShow) {
         binding.ivTvShowBanner.loadTvShowBanner(tvShow) {
             transition(DrawableTransitionOptions.withCrossFade())
         }
+        DetailHeaderController.bindTvShow(this, binding.root, tvShow)
+
+        val signature = contentSignature(tvShow)
+        if (lastContentSignature == signature) {
+            DetailHeaderController.refreshListState(binding.root, tvShow.isFavorite)
+            return
+        }
+        lastContentSignature = signature
 
         appAdapter.submitList(listOfNotNull(
             tvShow.apply { itemType = AppAdapter.Type.TV_SHOW_MOBILE },

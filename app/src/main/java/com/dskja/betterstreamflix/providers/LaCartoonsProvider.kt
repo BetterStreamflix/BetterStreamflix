@@ -42,7 +42,7 @@ object LaCartoonsProvider : Provider, ProviderConfigUrl {
         baseUrl
     }
     override val language = "es"
-    override val logo: String get() = "https://images2.imgbox.com/fc/26/S7f7dn42_o.png"
+    override val logo: String get() = "https://www.google.com/s2/favicons?domain=lacartoons.com&sz=128"
 
     private val client: OkHttpClient = getOkHttpClient()
     private val retrofit: Retrofit = Retrofit.Builder()

@@ -39,7 +39,7 @@ object HiAnimeProvider : Provider, ProviderConfigUrl {
         baseUrl
     }
     override val name = "HiAnime"
-    override val logo = "$URL/images/logo.png"
+    override val logo = "https://www.google.com/s2/favicons?domain=hianime.cv&sz=128"
     override val language = "en"
 
     private val service = HiAnimeService.build()

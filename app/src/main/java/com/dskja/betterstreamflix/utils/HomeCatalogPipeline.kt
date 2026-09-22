@@ -130,14 +130,19 @@ object HomeCatalogPipeline {
             }
         }
 
-        val donor = categories.firstOrNull {
-            it.name != Category.FEATURED &&
-                it.list.any { item -> item is Movie || item is TvShow }
+        val donor = categories.firstOrNull { category ->
+            category.name != Category.FEATURED &&
+                !category.name.equals("BetterStreamflix Addons", ignoreCase = true) &&
+                category.list.any { item ->
+                    (item is Movie || item is TvShow) && !isPluginTipItem(item)
+                }
         } ?: return categories
 
         warnings.add("Featured shelf synthesized from “${donor.name.ifBlank { "catalog" }}”")
         val featuredItems = cloneShowItems(
-            donor.list.filter { it is Movie || it is TvShow }.take(MAX_FEATURED_ITEMS),
+            donor.list.filter { item ->
+                (item is Movie || item is TvShow) && !isPluginTipItem(item)
+            }.take(MAX_FEATURED_ITEMS),
         )
         val rest = categories.filterNot { it === donor }
             .filter { it.name != Category.FEATURED }
@@ -148,6 +153,10 @@ object HomeCatalogPipeline {
             addAll(rest)
         }
     }
+
+    /** Never let the built-in Demo Addon tip get promoted into FEATURED. */
+    private fun isPluginTipItem(item: AppAdapter.Item): Boolean =
+        item is Movie && item.id == "demo-addon-tip"
 
     fun cloneShowItems(items: List<AppAdapter.Item>): List<AppAdapter.Item> =
         items.map { item ->

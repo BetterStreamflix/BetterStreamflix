@@ -41,6 +41,10 @@ class PeopleMobileFragment : Fragment() {
 
     private val http409Guard = Http409CacheGuard()
 
+    private companion object {
+        const val COLLAPSED_BIOGRAPHY_LINES = 4
+    }
+
     private var _binding: FragmentPeopleMobileBinding? = null
     private val binding get() = _binding!!
 
@@ -309,7 +313,8 @@ class PeopleMobileFragment : Fragment() {
                     var expanded = false
                     fun applyExpand(open: Boolean) {
                         expanded = open
-                        binding.tvPeopleBiography.maxLines = if (open) Int.MAX_VALUE else 7
+                        binding.tvPeopleBiography.maxLines =
+                            if (open) Int.MAX_VALUE else COLLAPSED_BIOGRAPHY_LINES
                         binding.tvPeopleBiography.ellipsize =
                             if (open) null else android.text.TextUtils.TruncateAt.END
                         text = context.getString(
@@ -322,7 +327,8 @@ class PeopleMobileFragment : Fragment() {
                     }
                     applyExpand(false)
                     binding.tvPeopleBiography.post {
-                        val overflowing = binding.tvPeopleBiography.lineCount > 7
+                        val overflowing =
+                            binding.tvPeopleBiography.lineCount > COLLAPSED_BIOGRAPHY_LINES
                         val wasVisible = visibility == View.VISIBLE
                         visibility = if (overflowing) View.VISIBLE else View.GONE
                         if (!overflowing) {

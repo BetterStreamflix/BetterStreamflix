@@ -92,6 +92,22 @@ class HomeCatalogPipelineTest {
     }
 
     @Test
+    fun neverPromotesDemoAddonTipIntoFeatured() {
+        val tip = Movie(id = "demo-addon-tip", title = "Plugin system ready")
+        val real = Movie(id = "real-1", title = "Real Movie")
+        val result = HomeCatalogPipeline.process(
+            provider,
+            listOf(
+                Category(name = "BetterStreamflix Addons", list = listOf(tip)),
+                Category(name = "Latest", list = listOf(real)),
+            ),
+        )
+        val featured = result.categories.first { it.name == Category.FEATURED }
+        assertTrue(featured.list.none { it is Movie && it.id == "demo-addon-tip" })
+        assertTrue(featured.list.any { it is Movie && it.id == "real-1" })
+    }
+
+    @Test
     fun mergesDuplicateShelfNames() {
         val a = Movie(id = "1", title = "One")
         val b = Movie(id = "2", title = "Two")

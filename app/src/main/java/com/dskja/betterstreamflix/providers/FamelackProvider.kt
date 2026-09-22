@@ -403,6 +403,9 @@ object FamelackProvider : IptvProvider, ProviderConfigUrl {
 
     override suspend fun getVideo(server: Video.Server): Video {
         val payload = M3uChannelIdCodec.decode(server.id)
+        if (payload.url.isBlank()) {
+            throw Exception("Famelack: no stream URL found for ${server.name}")
+        }
         return Video(
             source = payload.url,
             headers = M3uChannelIdCodec.playbackHeaders(server.id).ifEmpty {

@@ -71,18 +71,15 @@ object TrailerPlaybackController {
         fragmentManager: androidx.fragment.app.FragmentManager? = activity?.supportFragmentManager,
     ) {
         val prefs = PreferenceManager.getDefaultSharedPreferences(context)
-        var preferred = prefs.getString(KEY_PREFERRED_PLAYER, PLAYER_ASK) ?: PLAYER_ASK
-        // Experimental detail pages prefer in-app trailer when user hasn't chosen.
-        if (preferred == PLAYER_ASK && ExperimentalMobileDesign.enabled()) {
-            preferred = PLAYER_IN_APP
-        }
+        val preferred = prefs.getString(KEY_PREFERRED_PLAYER, PLAYER_IN_APP) ?: PLAYER_IN_APP
         when (preferred) {
             PLAYER_IN_APP -> openInApp(context, activity, fragmentManager, trailerUrl)
             PLAYER_YOUTUBE -> openYoutube(context, trailerUrl)
             PLAYER_SMARTTUBE_STABLE -> launchSmartTube(context, SMARTTUBE_STABLE_PACKAGE, trailerUrl)
             PLAYER_SMARTTUBE_BETA -> launchSmartTube(context, SMARTTUBE_BETA_PACKAGE, trailerUrl)
             PLAYER_SMARTTUBE -> handleSmartTube(context, trailerUrl)
-            else -> showChooser(context, activity, fragmentManager, trailerUrl)
+            PLAYER_ASK -> showChooser(context, activity, fragmentManager, trailerUrl)
+            else -> openInApp(context, activity, fragmentManager, trailerUrl)
         }
     }
 
@@ -299,7 +296,7 @@ object TrailerPlaybackController {
             // Prefer a wide 16:9 plane; cap so dialog still fits on short landscape phones.
             val height = (width * 9 / 16).coerceIn(
                 (200 * metrics.density).toInt(),
-                (metrics.heightPixels * 0.55f).toInt(),
+                (metrics.heightPixels * 0.7f).toInt(),
             )
             web.layoutParams = FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
@@ -378,10 +375,14 @@ object TrailerPlaybackController {
                 .also { dialog ->
                     dialog.setOnDismissListener { destroyWeb() }
                     dialog.setOnShowListener {
-                        dialog.window?.setLayout(
-                            ViewGroup.LayoutParams.MATCH_PARENT,
-                            ViewGroup.LayoutParams.WRAP_CONTENT,
-                        )
+                        dialog.window?.apply {
+                            setLayout(
+                                ViewGroup.LayoutParams.MATCH_PARENT,
+                                ViewGroup.LayoutParams.WRAP_CONTENT,
+                            )
+                            setBackgroundDrawableResource(android.R.color.transparent)
+                            setDimAmount(0.82f)
+                        }
                         if (com.dskja.betterstreamflix.utils.ExperimentalMobileDesign.enabled()) {
                             root.setBackgroundResource(
                                 com.dskja.betterstreamflix.utils.ExperimentalMobileDesign.bottomSheetBackground(),

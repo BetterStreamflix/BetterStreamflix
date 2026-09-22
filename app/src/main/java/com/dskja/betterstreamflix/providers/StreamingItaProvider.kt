@@ -5,6 +5,7 @@ import kotlinx.coroutines.sync.withLock
 
 import com.dskja.betterstreamflix.utils.UserPreferences
 
+import android.util.Log
 import com.tanasi.retrofit_jsoup.converter.JsoupConverterFactory
 import com.dskja.betterstreamflix.adapters.AppAdapter
 import com.dskja.betterstreamflix.models.Category
@@ -47,6 +48,8 @@ import java.util.concurrent.TimeUnit
 
 object StreamingItaProvider : Provider, ProviderConfigUrl {
 
+    private const val TAG = "StreamingItaProvider"
+
     override val name = "StreamingIta"
     override val defaultBaseUrl = "https://streamingita.homes"
     override val baseUrl: String
@@ -57,7 +60,7 @@ object StreamingItaProvider : Provider, ProviderConfigUrl {
         baseUrl
     }
     override val language = "it"
-    override val logo: String get() = "$baseUrl/wp-content/uploads/2019/204/logos.png"
+    override val logo: String get() = "https://www.google.com/s2/favicons?domain=streamingita.homes&sz=128"
 
     private const val DEFAULT_USER_AGENT =
         "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36"
@@ -146,8 +149,32 @@ object StreamingItaProvider : Provider, ProviderConfigUrl {
 				}
 			}
 
+			if (categories.isEmpty()) {
+				// Homepage layout changed (no #slider-movies-tvshows / h2 sections found).
+				// Fall back to any article.item card on the page so home isn't empty.
+				val fallback = document.select("article.item").mapNotNull { el ->
+					val href = el.selectFirst("a")?.attr("href").orEmpty()
+					if (href.isBlank()) return@mapNotNull null
+					val img = el.selectFirst(".poster img, .image img, img")?.attr("src")
+					val title = el.selectFirst(".data h3 a, .data h3, h3 a, h3.title")?.text()
+						?: el.selectFirst("img")?.attr("alt") ?: ""
+					when {
+						href.contains("/tv/") -> TvShow(id = href, title = title, poster = img)
+						href.contains("/film/") -> Movie(id = href, title = title, poster = img)
+						else -> null
+					}
+				}
+				if (fallback.isNotEmpty()) {
+					Log.w(TAG, "getHome: primary selectors returned nothing, used article.item fallback")
+					categories.add(Category(name = Category.FEATURED, list = fallback))
+				} else {
+					Log.w(TAG, "getHome: no items found with primary or fallback selectors")
+				}
+			}
+
 			categories
         } catch (e: Exception) {
+            Log.e(TAG, "getHome failed: ${e.message}", e)
             emptyList()
         }
     }

@@ -36,6 +36,11 @@
     <string name="main_menu_tv_shows">Serien</string>
     <string name="main_menu_all_channels">Alle Kanäle</string>
     <string name="main_menu_settings">Einstellungen</string>
+    <string name="main_menu_favorites">Meine Listen</string>
+    <string name="favorites_empty">Deine Listen sind leer — füge einen Titel hinzu</string>
+    <string name="detail_add_to_list">Zur Liste hinzufügen</string>
+    <string name="detail_remove_from_list">Von Liste entfernen</string>
+    <string name="detail_download">Herunterladen</string>
     <string name="main_menu_theme_change">Design ändern</string>
     <string name="theme_default">Standard</string>
     <string name="theme_nero_amoled_oled">Nero Amoled/Oled</string>
@@ -80,8 +85,8 @@
     <string name="home_catalog_unavailable">Katalog nicht verfügbar — Bibliothek wird weiter angezeigt</string>
 
     <string name="option_episode_open_tv_show">Zur Serie gehen</string>
-    <string name="option_show_favorite">Zu Favoriten hinzufügen</string>
-    <string name="option_show_unfavorite">Aus Favoriten entfernen</string>
+    <string name="option_show_favorite">Zur Liste hinzufügen</string>
+    <string name="option_show_unfavorite">Von Liste entfernen</string>
     <string name="option_show_watched">Als Gesehen markieren</string>
     <string name="option_show_mark_all_previous_watched">Bis hier als Gesehen markieren</string>
     <string name="option_show_mark_all_previous_unwatched">Bis hier als Ungesehen markieren</string>
@@ -652,7 +657,7 @@
     <string name="exp_movies_tagline">Filme aus allen verbundenen Quellen</string>
     <string name="exp_tv_shows_tagline">Serien, binge-bereit</string>
     <string name="exp_search_tagline">Finde alles in deinen Quellen</string>
-    <string name="exp_favorites_tagline">Titel, die du behältst</string>
+    <string name="exp_favorites_tagline">Titel auf deinen Listen</string>
     <string name="exp_favorites_selected_count">%d ausgewählt · zum Verschieben ziehen</string>
     <string name="exp_downloads_tagline">Offline, bereit wenn du bist</string>
     <string name="exp_providers_eyebrow">Quellen</string>

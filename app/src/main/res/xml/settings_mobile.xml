@@ -744,7 +744,7 @@
                 android:summary="@string/settings_trailer_player_summary"
                 android:entries="@array/trailer_player_names"
                 android:entryValues="@array/trailer_player_values"
-                android:defaultValue="ask"
+                android:defaultValue="in_app"
                 app:iconSpaceReserved="false" />
 
             <Preference

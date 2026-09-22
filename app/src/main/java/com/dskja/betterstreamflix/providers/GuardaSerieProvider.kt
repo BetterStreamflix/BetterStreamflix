@@ -51,7 +51,7 @@ object GuardaSerieProvider : Provider, ProviderConfigUrl {
         service = GuardaSerieService.build(baseUrl.let { if (it.endsWith("/")) it else "$it/" })
         baseUrl
     }
-    override val logo: String = "$baseUrl/static/logo.png"
+    override val logo: String get() = "https://www.google.com/s2/favicons?domain=guarda-serie.ovh&sz=128"
     override val language = "it"
 
     private const val USER_AGENT = "User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"

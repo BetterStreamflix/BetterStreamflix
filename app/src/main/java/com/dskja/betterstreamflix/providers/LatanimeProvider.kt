@@ -303,7 +303,7 @@ object LatanimeProvider : Provider, ProviderConfigUrl {
         return Extractor.extract(server.id, server)
     }
 
-    override val logo: String get() = "https://latanime.org/public/img/logito.png"
+    override val logo: String get() = "https://www.google.com/s2/favicons?domain=latanime.org&sz=128"
 
     override suspend fun getGenre(id: String, page: Int): Genre {
         val document = service.getPage("$baseUrl/genero/$id?p=$page")

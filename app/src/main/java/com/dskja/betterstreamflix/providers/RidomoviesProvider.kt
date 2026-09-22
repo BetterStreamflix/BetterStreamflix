@@ -79,7 +79,10 @@ object RidomoviesProvider : Provider, ProviderConfigUrl {
             html.contains("cf-browser-verification", ignoreCase = true) ||
             html.contains("cf-mitigated", ignoreCase = true) ||
             html.contains("challenge-platform", ignoreCase = true) ||
-            html.contains("Checking your browser", ignoreCase = true)
+            html.contains("Checking your browser", ignoreCase = true) ||
+            html.contains("Access Blocked", ignoreCase = true) ||
+            html.contains("Access Denied", ignoreCase = true) ||
+            html.contains("has been blocked", ignoreCase = true)
     }
 
     private suspend fun getHtmlDocument(url: String): Document {

@@ -7,6 +7,8 @@ import com.dskja.betterstreamflix.database.AppDatabase
 import com.dskja.betterstreamflix.models.Genre
 import com.dskja.betterstreamflix.models.Movie
 import com.dskja.betterstreamflix.models.TvShow
+import com.dskja.betterstreamflix.providers.Provider
+import com.dskja.betterstreamflix.providers.TmdbProvider
 import com.dskja.betterstreamflix.utils.ParentalControlUtils
 import com.dskja.betterstreamflix.utils.UserPreferences
 import com.dskja.betterstreamflix.utils.ProviderChangeNotifier
@@ -20,7 +22,11 @@ import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.transformLatest
 import kotlinx.coroutines.launch
 
-class GenreViewModel(private val id: String, database: AppDatabase) : ViewModel() {
+class GenreViewModel(
+    private val id: String,
+    database: AppDatabase,
+    private val name: String? = null,
+) : ViewModel() {
 
     private val _state = MutableStateFlow<State>(State.Loading)
     
@@ -110,8 +116,22 @@ class GenreViewModel(private val id: String, database: AppDatabase) : ViewModel(
         try {
             val provider = UserPreferences.currentProvider
                 ?: throw Exception("No provider selected")
-            val genre = provider.getGenre(id).let {
+
+            var genre = provider.getGenre(id).let {
                 it.copy(shows = ParentalControlUtils.filterShows(it.shows))
+            }
+
+            // Providers keyed by slug often ignore a numeric TMDb id, and vice versa.
+            if (genre.shows.isEmpty() && !name.isNullOrBlank() && !name.equals(id, true)) {
+                genre = tryFetchGenre(provider, name) ?: genre
+            }
+
+            if (genre.shows.isEmpty() && id.toIntOrNull() != null && provider !is TmdbProvider) {
+                genre = tryFetchGenre(TmdbProvider(provider.language), id) ?: genre
+            }
+
+            if (genre.name.isBlank() && !name.isNullOrBlank()) {
+                genre = genre.copy(name = name)
             }
 
             page = 1
@@ -122,6 +142,14 @@ class GenreViewModel(private val id: String, database: AppDatabase) : ViewModel(
             _state.emit(State.FailedLoading(e))
         }
     }
+
+    /** Fallback lookup; a failing alternative must not replace the primary result. */
+    private suspend fun tryFetchGenre(provider: Provider, genreId: String): Genre? =
+        runCatching {
+            provider.getGenre(genreId).let {
+                it.copy(shows = ParentalControlUtils.filterShows(it.shows))
+            }
+        }.getOrNull()?.takeIf { it.shows.isNotEmpty() }
 
     fun loadMoreGenreShows() = viewModelScope.launch(Dispatchers.IO) {
         val currentState = _state.value

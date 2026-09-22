@@ -6,6 +6,21 @@
     android:layout_height="match_parent"
     tools:context=".fragments.genre.GenreMobileFragment">
 
+    <ImageView
+        android:id="@+id/iv_detail_back"
+        android:layout_width="40dp"
+        android:layout_height="40dp"
+        android:layout_marginStart="12dp"
+        android:layout_marginTop="16dp"
+        android:background="@drawable/bg_detail_icon_chip"
+        android:contentDescription="@string/exp_back"
+        android:elevation="12dp"
+        android:padding="9dp"
+        android:src="@drawable/ic_player_back"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        app:tint="#FFFFFF" />
+
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/rv_genre"
         android:layout_width="0dp"
@@ -13,7 +28,10 @@
         android:clipChildren="false"
         android:clipToPadding="false"
         android:orientation="vertical"
-        android:padding="10dp"
+        android:paddingStart="10dp"
+        android:paddingTop="64dp"
+        android:paddingEnd="10dp"
+        android:paddingBottom="10dp"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
@@ -33,10 +51,38 @@
         android:textColor="?android:attr/textColorSecondary"
         android:textSize="15sp"
         android:visibility="gone"
-        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintBottom_toTopOf="@id/v_genre_empty_rule"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintVertical_chainStyle="packed"
+        tools:visibility="visible" />
+
+    <View
+        android:id="@+id/v_genre_empty_rule"
+        android:layout_width="36dp"
+        android:layout_height="3dp"
+        android:layout_marginTop="12dp"
+        android:background="@drawable/bg_exp_accent_rule"
+        android:visibility="gone"
+        app:layout_constraintBottom_toTopOf="@id/btn_genre_empty_cta"
+        app:layout_constraintEnd_toEndOf="@id/tv_genre_empty"
+        app:layout_constraintStart_toStartOf="@id/tv_genre_empty"
+        app:layout_constraintTop_toBottomOf="@id/tv_genre_empty"
+        tools:visibility="visible" />
+
+    <TextView
+        android:id="@+id/btn_genre_empty_cta"
+        style="@style/AppTheme.Widget.Mobile.Button"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="14dp"
+        android:text="@string/exp_empty_back"
+        android:visibility="gone"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="@id/tv_genre_empty"
+        app:layout_constraintStart_toStartOf="@id/tv_genre_empty"
+        app:layout_constraintTop_toBottomOf="@id/v_genre_empty_rule"
         tools:visibility="visible" />
 
     <include
