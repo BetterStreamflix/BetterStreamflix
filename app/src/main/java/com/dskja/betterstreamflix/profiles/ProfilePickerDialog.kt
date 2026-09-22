@@ -48,8 +48,8 @@ class ProfilePickerDialog : DialogFragment() {
         super.onStart()
         val metrics = resources.displayMetrics
         dialog?.window?.setLayout(
-            (metrics.widthPixels * 0.92f).toInt(),
-            WindowManager.LayoutParams.WRAP_CONTENT,
+            WindowManager.LayoutParams.MATCH_PARENT,
+            WindowManager.LayoutParams.MATCH_PARENT,
         )
     }
 
@@ -126,49 +126,75 @@ class ProfilePickerDialog : DialogFragment() {
         val profiles = ProfileManager.profiles()
         val activeId = ProfileManager.activeProfileId
         val density = resources.displayMetrics.density
-        val perRow = if (profiles.size <= 2) profiles.size.coerceAtLeast(1) else 3
 
-        if (profiles.isEmpty()) {
-            val empty = TextView(requireContext()).apply {
-                text = getString(R.string.profile_create_subtitle)
-                gravity = android.view.Gravity.CENTER
-                setTextColor(context.getColor(R.color.profile_text_secondary))
-                textSize = 14f
-                setPadding(16, 24, 16, 24)
-            }
-            column.addView(empty)
-            return
+        val row = LinearLayout(requireContext()).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = android.view.Gravity.CENTER
+            layoutParams = LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT,
+            )
         }
-
-        profiles.chunked(perRow).forEach { group ->
-            val row = LinearLayout(requireContext()).apply {
-                orientation = LinearLayout.HORIZONTAL
-                gravity = android.view.Gravity.CENTER
+        profiles.forEachIndexed { index, profile ->
+            val item = inflater.inflate(R.layout.item_profile_picker, row, false)
+            item.layoutParams = LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT,
+            )
+            bindProfileItem(item, profile, activeId)
+            item.alpha = 0f
+            item.translationY = 18f * density
+            item.animate()
+                .alpha(1f)
+                .translationY(0f)
+                .setStartDelay(40L * index)
+                .setDuration(320L)
+                .start()
+            row.addView(item)
+        }
+        // Add Profile tile
+        val add = LinearLayout(requireContext()).apply {
+            orientation = LinearLayout.VERTICAL
+            gravity = android.view.Gravity.CENTER_HORIZONTAL
+            layoutParams = LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT,
+            )
+            setPadding(
+                (10 * density).toInt(),
+                (8 * density).toInt(),
+                (10 * density).toInt(),
+                (12 * density).toInt(),
+            )
+            addView(TextView(context).apply {
                 layoutParams = LinearLayout.LayoutParams(
-                    ViewGroup.LayoutParams.MATCH_PARENT,
-                    ViewGroup.LayoutParams.WRAP_CONTENT,
+                    (104 * density).toInt(),
+                    (104 * density).toInt(),
                 )
-            }
-            group.forEachIndexed { index, profile ->
-                val item = inflater.inflate(R.layout.item_profile_picker, row, false)
-                item.layoutParams = LinearLayout.LayoutParams(
-                    0,
+                gravity = android.view.Gravity.CENTER
+                text = "+"
+                textSize = 40f
+                setTextColor(0xFFFFFFFF.toInt())
+                setBackgroundResource(R.drawable.bg_detail_square_chip)
+            })
+            addView(TextView(context).apply {
+                layoutParams = LinearLayout.LayoutParams(
                     ViewGroup.LayoutParams.WRAP_CONTENT,
-                    1f,
-                )
-                bindProfileItem(item, profile, activeId)
-                item.alpha = 0f
-                item.translationY = 18f * density
-                item.animate()
-                    .alpha(1f)
-                    .translationY(0f)
-                    .setStartDelay(40L * index)
-                    .setDuration(320L)
-                    .start()
-                row.addView(item)
+                    ViewGroup.LayoutParams.WRAP_CONTENT,
+                ).also { it.topMargin = (12 * density).toInt() }
+                text = getString(R.string.profile_add_profile)
+                setTextColor(0xFFFFFFFF.toInt())
+                textSize = 15f
+                setTypeface(typeface, android.graphics.Typeface.BOLD)
+            })
+            setOnClickListener {
+                ExpMotion.hapticTap(it)
+                dismissAllowingStateLoss()
+                onCreateProfile?.invoke()
             }
-            column.addView(row)
         }
+        row.addView(add)
+        column.addView(row)
     }
 
     private fun bindProfileItem(item: View, profile: UserProfile, activeId: String) {
@@ -188,41 +214,11 @@ class ProfilePickerDialog : DialogFragment() {
             }
             if (visibility == View.VISIBLE && !wasVisible) ExpMotion.popIn(this)
         }
-        item.findViewById<TextView>(R.id.tv_profile_kids_badge).apply {
-            val wasVisible = visibility == View.VISIBLE
-            visibility = if (profile.isKids) View.VISIBLE else View.GONE
-            if (ExperimentalMobileDesign.enabled() && visibility == View.VISIBLE) {
-                val primary = com.google.android.material.color.MaterialColors.getColor(
-                    this,
-                    androidx.appcompat.R.attr.colorPrimary,
-                    context.getColor(R.color.m3_primary),
-                )
-                setTextColor(primary)
-                background?.mutate()?.setTint(primary)
-            }
-            if (visibility == View.VISIBLE && !wasVisible) ExpMotion.popIn(this)
-        }
+        item.findViewById<TextView>(R.id.tv_profile_kids_badge).visibility = View.GONE
+        item.findViewById<TextView>(R.id.tv_profile_meta).visibility = View.GONE
         item.findViewById<TextView>(R.id.tv_profile_lock).apply {
-            val wasVisible = visibility == View.VISIBLE
             visibility = if (profile.pinHash != null) View.VISIBLE else View.GONE
-            if (ExperimentalMobileDesign.enabled() && visibility == View.VISIBLE) {
-                val primary = com.google.android.material.color.MaterialColors.getColor(
-                    this,
-                    androidx.appcompat.R.attr.colorPrimary,
-                    context.getColor(R.color.m3_primary),
-                )
-                setTextColor(primary)
-                background?.mutate()?.setTint(primary)
-            }
-            if (visibility == View.VISIBLE && !wasVisible) ExpMotion.popIn(this)
         }
-
-        val paletteTitle = getString(ProfileAvatarStyle.paletteFor(profile.avatarKey).titleRes)
-        val meta = buildList {
-            if (profile.id == activeId) add(getString(R.string.profile_picker_active))
-            add(paletteTitle)
-        }.joinToString(" · ")
-        item.findViewById<TextView>(R.id.tv_profile_meta).text = meta
 
         item.setOnClickListener {
             ExpMotion.hapticTap(it)
@@ -420,7 +416,7 @@ class ProfilePickerDialog : DialogFragment() {
                 }
                 val created = ProfileManager.create(
                     name = name,
-                    isKids = kidsCheck.isChecked,
+                    isKids = false,
                     avatarKey = selected,
                 )
                 ExpDialogChrome.notify(

@@ -195,22 +195,15 @@ class TvShowMobileFragment : Fragment() {
 
         appAdapter.submitList(listOfNotNull(
             tvShow.apply { itemType = AppAdapter.Type.TV_SHOW_MOBILE },
-
+            tvShow.copy().apply { itemType = AppAdapter.Type.TV_SHOW_TABS_MOBILE },
             tvShow.takeIf { it.seasons.isNotEmpty() }
                 ?.copy()
                 ?.apply { itemType = AppAdapter.Type.TV_SHOW_SEASONS_MOBILE },
-
-            tvShow.takeIf { it.directors.isNotEmpty() }
-                ?.copy()
-                ?.apply { itemType = AppAdapter.Type.TV_SHOW_DIRECTORS_MOBILE },
-
-            tvShow.takeIf { it.cast.isNotEmpty() }
-                ?.copy()
-                ?.apply { itemType = AppAdapter.Type.TV_SHOW_CAST_MOBILE },
-
             tvShow.takeIf { it.recommendations.isNotEmpty() }
                 ?.copy()
                 ?.apply { itemType = AppAdapter.Type.TV_SHOW_RECOMMENDATIONS_MOBILE },
+            tvShow.copy().apply { itemType = AppAdapter.Type.TV_SHOW_TRAILER_MOBILE },
+            tvShow.copy().apply { itemType = AppAdapter.Type.TV_SHOW_ABOUT_MOBILE },
         ))
     }
 }

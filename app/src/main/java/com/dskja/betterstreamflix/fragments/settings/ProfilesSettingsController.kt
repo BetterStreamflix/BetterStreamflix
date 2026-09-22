@@ -105,12 +105,8 @@ object ProfilesSettingsController {
         }
 
         findPreference("PROFILE_KIDS")?.let { pref ->
-            val switch = pref as? SwitchPreferenceCompat ?: return@let
-            switch.setOnPreferenceChangeListener { _, newValue ->
-                ProfileManager.updateKids(ProfileManager.activeProfileId, newValue as Boolean)
-                refresh(findPreference, context, fragment)
-                true
-            }
+            pref.isVisible = false
+            pref.isEnabled = false
         }
 
         findPreference("PROFILE_PIN")?.setOnPreferenceClickListener {

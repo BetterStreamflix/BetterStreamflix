@@ -13,7 +13,7 @@
         android:layout_height="0dp"
         android:foreground="?attr/tv_show_banner_gradient_drawable"
         android:scaleType="centerCrop"
-        app:layout_constraintDimensionRatio="H,16:10"
+        app:layout_constraintDimensionRatio="H,2:3"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent"

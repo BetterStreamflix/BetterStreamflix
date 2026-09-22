@@ -19,6 +19,9 @@ import com.dskja.betterstreamflix.adapters.viewholders.SeasonViewHolder
 import com.dskja.betterstreamflix.adapters.viewholders.TvShowViewHolder
 import com.dskja.betterstreamflix.databinding.ContentCategorySwiperMobileBinding
 import com.dskja.betterstreamflix.databinding.ContentCategorySwiperTvBinding
+import com.dskja.betterstreamflix.databinding.ContentDetailAboutMobileBinding
+import com.dskja.betterstreamflix.databinding.ContentDetailTabsMobileBinding
+import com.dskja.betterstreamflix.databinding.ContentDetailTrailerMobileBinding
 import com.dskja.betterstreamflix.databinding.ContentMovieCastMobileBinding
 import com.dskja.betterstreamflix.databinding.ContentMovieCastTvBinding
 import com.dskja.betterstreamflix.databinding.ContentMovieDirectorsMobileBinding
@@ -153,6 +156,10 @@ class AppAdapter(
         MOVIE_RECOMMENDATIONS_MOBILE,
         MOVIE_RECOMMENDATIONS_TV,
 
+        MOVIE_TABS_MOBILE,
+        MOVIE_TRAILER_MOBILE,
+        MOVIE_ABOUT_MOBILE,
+
         PEOPLE_MOBILE_ITEM,
         PEOPLE_TV_ITEM,
 
@@ -178,6 +185,10 @@ class AppAdapter(
         TV_SHOW_CAST_TV,
         TV_SHOW_RECOMMENDATIONS_MOBILE,
         TV_SHOW_RECOMMENDATIONS_TV,
+
+        TV_SHOW_TABS_MOBILE,
+        TV_SHOW_TRAILER_MOBILE,
+        TV_SHOW_ABOUT_MOBILE,
     }
 
     private val states = mutableMapOf<Int, Parcelable?>()
@@ -425,6 +436,34 @@ class AppAdapter(
                 )
             )
 
+            Type.MOVIE_TABS_MOBILE -> MovieViewHolder(
+                ContentDetailTabsMobileBinding.bind(
+                    LayoutInflater.from(parent.context).inflate(
+                        R.layout.content_detail_tabs_mobile,
+                        parent,
+                        false,
+                    )
+                )
+            )
+            Type.MOVIE_TRAILER_MOBILE -> MovieViewHolder(
+                ContentDetailTrailerMobileBinding.bind(
+                    LayoutInflater.from(parent.context).inflate(
+                        R.layout.content_detail_trailer_mobile,
+                        parent,
+                        false,
+                    )
+                )
+            )
+            Type.MOVIE_ABOUT_MOBILE -> MovieViewHolder(
+                ContentDetailAboutMobileBinding.bind(
+                    LayoutInflater.from(parent.context).inflate(
+                        R.layout.content_detail_about_mobile,
+                        parent,
+                        false,
+                    )
+                )
+            )
+
             Type.PEOPLE_MOBILE_ITEM -> PeopleViewHolder(
                 ItemPeopleMobileBinding.bind(
                     LayoutInflater.from(parent.context).inflate(
@@ -596,6 +635,33 @@ class AppAdapter(
                     LayoutInflater.from(parent.context),
                     parent,
                     false,
+                )
+            )
+            Type.TV_SHOW_TABS_MOBILE -> TvShowViewHolder(
+                ContentDetailTabsMobileBinding.bind(
+                    LayoutInflater.from(parent.context).inflate(
+                        R.layout.content_detail_tabs_mobile,
+                        parent,
+                        false,
+                    )
+                )
+            )
+            Type.TV_SHOW_TRAILER_MOBILE -> TvShowViewHolder(
+                ContentDetailTrailerMobileBinding.bind(
+                    LayoutInflater.from(parent.context).inflate(
+                        R.layout.content_detail_trailer_mobile,
+                        parent,
+                        false,
+                    )
+                )
+            )
+            Type.TV_SHOW_ABOUT_MOBILE -> TvShowViewHolder(
+                ContentDetailAboutMobileBinding.bind(
+                    LayoutInflater.from(parent.context).inflate(
+                        R.layout.content_detail_about_mobile,
+                        parent,
+                        false,
+                    )
                 )
             )
         }

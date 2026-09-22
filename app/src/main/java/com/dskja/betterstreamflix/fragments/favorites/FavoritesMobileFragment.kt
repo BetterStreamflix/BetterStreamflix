@@ -16,6 +16,7 @@ import androidx.recyclerview.widget.RecyclerView
 import androidx.navigation.fragment.findNavController
 import com.dskja.betterstreamflix.R
 import com.dskja.betterstreamflix.adapters.AppAdapter
+import com.dskja.betterstreamflix.database.AppDatabase
 import com.dskja.betterstreamflix.databinding.FragmentFavoritesMobileBinding
 import com.dskja.betterstreamflix.models.Movie
 import com.dskja.betterstreamflix.models.TvShow
@@ -25,8 +26,9 @@ import com.dskja.betterstreamflix.utils.dp
 import com.dskja.betterstreamflix.utils.ExperimentalMobileDesign
 import com.dskja.betterstreamflix.utils.ExpEmptyChrome
 import com.dskja.betterstreamflix.utils.ExpMotion
-import com.dskja.betterstreamflix.utils.ExpNavAutoHide
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 class FavoritesMobileFragment : Fragment() {
 
@@ -64,19 +66,9 @@ class FavoritesMobileFragment : Fragment() {
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
-        ExpNavAutoHide.attach(binding.root)
         ExpMotion.enterScreen(binding.root)
         ExperimentalMobileDesign.applyReducedGlass(binding.root)
         ExpMotion.staggerFirstFill(binding.rvFavorites)
-        if (ExperimentalMobileDesign.enabled()) {
-            ExpMotion.revealHeader(
-                binding.root.findViewById(R.id.tv_favorites_eyebrow),
-                binding.root.findViewById(R.id.tv_favorites_brand),
-                binding.root.findViewById(R.id.tv_favorites_tagline),
-                binding.root.findViewById(R.id.v_favorites_rule),
-            )
-            ExpMotion.pulseAccentRule(binding.root.findViewById(R.id.v_favorites_rule))
-        }
         val columnCount = maxOf(3, resources.configuration.screenWidthDp / 120)
         val gridLayoutManager = GridLayoutManager(requireContext(), columnCount).apply {
             spanSizeLookup = object : GridLayoutManager.SpanSizeLookup() {
@@ -92,25 +84,25 @@ class FavoritesMobileFragment : Fragment() {
             addItemDecoration(SpacingItemDecoration(8.dp(requireContext())))
         }
         createDragHelper().attachToRecyclerView(binding.rvFavorites)
-        if (com.dskja.betterstreamflix.utils.ExperimentalMobileDesign.enabled()) {
-            with(com.dskja.betterstreamflix.utils.ExpPressEffects) {
-                binding.btnFavoritesReorder.applyExpPress()
-                binding.btnFavoritesReorderMode.applyExpPress()
-            }
-            binding.btnFavoritesReorder.setBackgroundResource(
-                ExperimentalMobileDesign.iconChipBackground(),
-            )
-            binding.btnFavoritesReorderMode.setBackgroundResource(
-                ExperimentalMobileDesign.iconChipBackground(),
-            )
-        }
-        binding.btnFavoritesReorder.setOnClickListener {
+        binding.btnFavoritesEdit.setOnClickListener {
             ExpMotion.hapticTap(it)
-            showSortDialog()
+            setRearrangeMode(true)
+        }
+        binding.btnFavoritesCancel.setOnClickListener {
+            ExpMotion.hapticTap(it)
+            setRearrangeMode(false)
+        }
+        binding.btnFavoritesRemove.setOnClickListener {
+            ExpMotion.hapticTap(it)
+            removeSelectedFavorites()
         }
         binding.btnFavoritesReorderMode.setOnClickListener {
             ExpMotion.hapticTap(it)
             setRearrangeMode(!rearrangeMode)
+        }
+        binding.btnFavoritesReorder.setOnClickListener {
+            ExpMotion.hapticTap(it)
+            showSortDialog()
         }
         setRearrangeMode(false)
 
@@ -180,55 +172,54 @@ class FavoritesMobileFragment : Fragment() {
     private fun setRearrangeMode(enabled: Boolean) {
         rearrangeMode = enabled
         if (!enabled) selectedItems.clear()
-        binding.btnFavoritesReorderMode.apply {
-            isSelected = enabled
-            if (ExperimentalMobileDesign.enabled()) {
-                setBackgroundResource(
-                    if (enabled) ExperimentalMobileDesign.primaryButtonBackground()
-                    else ExperimentalMobileDesign.iconChipBackground(),
-                )
-            }
-            // Selected state draws crimson via bg_exp_icon_chip selector; keep tint readable.
-            imageTintList = android.content.res.ColorStateList.valueOf(
-                if (enabled) {
-                    com.google.android.material.color.MaterialColors.getColor(
-                        this, com.google.android.material.R.attr.colorOnPrimary,
-                    )
-                } else {
-                    com.google.android.material.color.MaterialColors.getColor(
-                        this, com.google.android.material.R.attr.colorOnSurface,
-                    )
-                }
-            )
-            contentDescription = getString(
-                if (enabled) R.string.favorites_rearrange_off else R.string.favorites_rearrange_on
-            )
-            if (ExperimentalMobileDesign.enabled()) {
-                ExpMotion.hapticTap(this)
-                ExpMotion.popIn(this)
-                binding.root.findViewById<View>(R.id.v_favorites_rule)?.let {
-                    ExpMotion.pulseAccentRule(it)
-                }
-                binding.root.findViewById<android.widget.TextView>(R.id.tv_favorites_tagline)?.let { tagline ->
-                    tagline.text = if (enabled) {
-                        getString(R.string.favorites_rearrange_off)
-                    } else {
-                        getString(R.string.exp_favorites_tagline)
-                    }
-                    if (!enabled) {
-                        tagline.background = null
-                        tagline.setPadding(0, 0, 0, 0)
-                    }
-                    ExpMotion.revealHeader(tagline)
-                }
-                binding.btnFavoritesReorder.alpha = if (enabled) 0.35f else 1f
-                binding.btnFavoritesReorder.isEnabled = !enabled && appAdapter.items.isNotEmpty()
-            } else {
-                binding.btnFavoritesReorder.isEnabled = !enabled && appAdapter.items.isNotEmpty()
-            }
-        }
+        binding.btnFavoritesEdit.visibility = if (enabled) View.GONE else View.VISIBLE
+        binding.btnFavoritesCancel.visibility = if (enabled) View.VISIBLE else View.GONE
+        binding.btnFavoritesRemove.visibility = if (enabled) View.VISIBLE else View.GONE
+        updateRemoveEnabled()
         configureAdapterInteractions()
         appAdapter.notifyDataSetChanged()
+    }
+
+    private fun updateRemoveEnabled() {
+        val hasSelection = selectedItems.isNotEmpty()
+        binding.btnFavoritesRemove.isEnabled = rearrangeMode && hasSelection
+        binding.btnFavoritesRemove.setTextColor(
+            if (hasSelection) 0xFFFFFFFF.toInt() else 0x4DFFFFFF,
+        )
+    }
+
+    private fun removeSelectedFavorites() {
+        if (selectedItems.isEmpty()) return
+        val toRemove = appAdapter.items.filter { itemKey(it) in selectedItems }
+        viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
+            val db = AppDatabase.getInstance(requireContext())
+            toRemove.forEach { item ->
+                when (item) {
+                    is Movie -> {
+                        db.movieDao().upsertFavorite(item, false)
+                        com.dskja.betterstreamflix.platform.simkl.SimklSyncHooks.onListToggle(
+                            add = false,
+                            imdbId = item.imdbId,
+                            tmdbId = item.tmdbId,
+                            isTv = false,
+                        )
+                    }
+                    is TvShow -> {
+                        db.tvShowDao().upsertFavorite(item, false)
+                        com.dskja.betterstreamflix.platform.simkl.SimklSyncHooks.onListToggle(
+                            add = false,
+                            imdbId = item.imdbId,
+                            tmdbId = item.tmdbId,
+                            isTv = true,
+                        )
+                    }
+                }
+            }
+            withContext(Dispatchers.Main) {
+                selectedItems.clear()
+                setRearrangeMode(false)
+            }
+        }
     }
 
     private fun configureAdapterInteractions() {
@@ -253,27 +244,8 @@ class FavoritesMobileFragment : Fragment() {
     private fun toggleSelection(section: FavoritesViewModel.Section, id: String) {
         val key = selectionKey(section, id)
         if (!selectedItems.add(key)) selectedItems.remove(key)
-        if (ExperimentalMobileDesign.enabled()) {
-            ExpMotion.hapticTap(binding.root)
-            binding.root.findViewById<android.widget.TextView>(R.id.tv_favorites_tagline)?.let { tagline ->
-                tagline.text = if (selectedItems.isEmpty()) {
-                    getString(R.string.favorites_rearrange_off)
-                } else {
-                    getString(R.string.exp_favorites_selected_count, selectedItems.size)
-                }
-                tagline.setBackgroundResource(ExperimentalMobileDesign.metaPillBackground())
-                val density = resources.displayMetrics.density
-                tagline.setPadding(
-                    (12 * density).toInt(),
-                    (6 * density).toInt(),
-                    (12 * density).toInt(),
-                    (6 * density).toInt(),
-                )
-            }
-            binding.root.findViewById<View>(R.id.v_favorites_rule)?.let {
-                ExpMotion.pulseAccentRule(it)
-            }
-        }
+        ExpMotion.hapticTap(binding.root)
+        updateRemoveEnabled()
         appAdapter.items.indexOfFirst { itemKey(it) == key }
             .takeIf { it >= 0 }
             ?.let(appAdapter::notifyItemSelectionChanged)
@@ -383,21 +355,15 @@ class FavoritesMobileFragment : Fragment() {
         binding.tvFavoritesEmpty.let { emptyView ->
             ExpEmptyChrome.bind(
                 emptyView = emptyView,
-                emptyRule = binding.root.findViewById(R.id.v_favorites_empty_rule),
-                emptyCta = binding.root.findViewById(R.id.btn_favorites_empty_cta),
+                emptyRule = null,
+                emptyCta = null,
                 visible = gridItems.isEmpty(),
                 tintOnSurfaceVariant = false,
                 onCtaClick = { findNavController().navigate(R.id.search) },
             )
         }
         binding.rvFavorites.isVisible = gridItems.isNotEmpty()
-        val hasItems = gridItems.isNotEmpty()
-        binding.btnFavoritesReorder.isEnabled = hasItems && !rearrangeMode
-        if (ExperimentalMobileDesign.enabled()) {
-            binding.btnFavoritesReorder.alpha = if (rearrangeMode) 0.35f else 1f
-            binding.btnFavoritesReorder.isVisible = hasItems
-            binding.btnFavoritesReorderMode.isVisible = hasItems
-        }
+        binding.btnFavoritesEdit.isVisible = gridItems.isNotEmpty() && !rearrangeMode
         appAdapter.submitList(gridItems)
     }
 

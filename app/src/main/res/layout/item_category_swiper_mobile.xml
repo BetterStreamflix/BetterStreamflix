@@ -47,7 +47,7 @@
         android:importantForAccessibility="no"
         android:scaleType="fitCenter"
         android:visibility="gone"
-        app:layout_constraintBottom_toTopOf="@id/ll_swiper_actions"
+        app:layout_constraintBottom_toTopOf="@id/tv_swiper_status"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent"
@@ -69,12 +69,46 @@
         android:textColor="#FFFFFF"
         android:textSize="26sp"
         android:textStyle="bold"
-        app:layout_constraintBottom_toTopOf="@id/ll_swiper_actions"
+        app:layout_constraintBottom_toTopOf="@id/tv_swiper_status"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent"
         app:layout_constraintVertical_bias="0.48"
         tools:text="Title" />
+
+    <TextView
+        android:id="@+id/tv_swiper_status"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="28dp"
+        android:layout_marginEnd="28dp"
+        android:layout_marginBottom="6dp"
+        android:fontFamily="@font/manrope"
+        android:gravity="center"
+        android:textColor="#FFFFFF"
+        android:textSize="12sp"
+        app:layout_constraintBottom_toTopOf="@id/tv_swiper_genres"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        tools:text="All Episodes Available" />
+
+    <TextView
+        android:id="@+id/tv_swiper_genres"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="28dp"
+        android:layout_marginEnd="28dp"
+        android:layout_marginBottom="12dp"
+        android:fontFamily="@font/manrope"
+        android:gravity="center"
+        android:textAllCaps="true"
+        android:textColor="#FFFFFF"
+        android:textSize="13sp"
+        android:textStyle="bold"
+        app:layout_constraintBottom_toTopOf="@id/ll_swiper_actions"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        tools:text="DRAMA, ACTION" />
 
     <LinearLayout
         android:id="@+id/ll_swiper_actions"
@@ -118,7 +152,7 @@
             android:gravity="center"
             android:paddingStart="12dp"
             android:paddingEnd="12dp"
-            android:text="@string/detail_add_to_list"
+            android:text="@string/home_swiper_my_list"
             android:textColor="#FFFFFF"
             android:textSize="14sp"
             android:textStyle="bold" />
