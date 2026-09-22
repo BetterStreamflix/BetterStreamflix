@@ -138,10 +138,7 @@ class QrScannerActivity : AppCompatActivity() {
 
         binding = ActivityQrScannerBinding.bind(
             layoutInflater.inflate(
-                ExperimentalMobileDesign.layout(
-                    R.layout.activity_qr_scanner,
-                    R.layout.activity_qr_scanner_exp,
-                ),
+                R.layout.activity_qr_scanner,
                 null,
                 false,
             ),

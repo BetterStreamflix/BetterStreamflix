@@ -32,10 +32,7 @@ class ShowOptionsMobileDialog(
 
     private val binding = DialogShowOptionsMobileBinding.bind(
         LayoutInflater.from(context).inflate(
-            ExperimentalMobileDesign.layout(
-                R.layout.dialog_show_options_mobile,
-                R.layout.dialog_show_options_mobile_exp,
-            ),
+            R.layout.dialog_show_options_mobile,
             null,
         )
     )

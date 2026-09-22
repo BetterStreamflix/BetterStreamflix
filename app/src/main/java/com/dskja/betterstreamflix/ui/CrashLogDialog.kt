@@ -39,10 +39,7 @@ object CrashLogDialog {
         }
 
         val view = LayoutInflater.from(context).inflate(
-            ExperimentalMobileDesign.layout(
-                R.layout.dialog_crash_log,
-                R.layout.dialog_crash_log_exp,
-            ),
+            R.layout.dialog_crash_log,
             null,
             false,
         )

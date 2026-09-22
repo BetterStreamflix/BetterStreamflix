@@ -51,10 +51,7 @@ class GenreMobileFragment : Fragment() {
     ): View {
         _binding = FragmentGenreMobileBinding.bind(
             inflater.inflate(
-                ExperimentalMobileDesign.layout(
-                    R.layout.fragment_genre_mobile,
-                    R.layout.fragment_genre_mobile_exp,
-                ),
+                R.layout.fragment_genre_mobile,
                 container,
                 false,
             )
@@ -158,10 +155,7 @@ class GenreMobileFragment : Fragment() {
             binding = { parent ->
                 HeaderGenreMobileBinding.bind(
                     LayoutInflater.from(parent.context).inflate(
-                        ExperimentalMobileDesign.layout(
-                            R.layout.header_genre_mobile,
-                            R.layout.header_genre_mobile_exp,
-                        ),
+                        R.layout.header_genre_mobile,
                         parent,
                         false,
                     )

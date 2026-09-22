@@ -129,10 +129,7 @@ class MainMobileActivity : FragmentActivity() {
 
         _binding = ActivityMainMobileBinding.bind(
             layoutInflater.inflate(
-                ExperimentalMobileDesign.layout(
-                    R.layout.activity_main_mobile,
-                    R.layout.activity_main_mobile_exp,
-                ),
+                R.layout.activity_main_mobile,
                 null,
                 false,
             )

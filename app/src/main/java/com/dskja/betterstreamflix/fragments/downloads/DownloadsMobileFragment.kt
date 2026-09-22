@@ -68,10 +68,7 @@ class DownloadsMobileFragment : Fragment() {
     ): View {
         _binding = FragmentDownloadsMobileBinding.bind(
             inflater.inflate(
-                ExperimentalMobileDesign.layout(
-                    R.layout.fragment_downloads_mobile,
-                    R.layout.fragment_downloads_mobile_exp,
-                ),
+                R.layout.fragment_downloads_mobile,
                 container,
                 false,
             )

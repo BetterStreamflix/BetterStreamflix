@@ -21,10 +21,7 @@ class UpdateAppMobileDialog(
 
     private val binding = DialogUpdateAppMobileBinding.bind(
         LayoutInflater.from(context).inflate(
-            ExperimentalMobileDesign.layout(
-                R.layout.dialog_update_app_mobile,
-                R.layout.dialog_update_app_mobile_exp,
-            ),
+            R.layout.dialog_update_app_mobile,
             null,
         )
     )

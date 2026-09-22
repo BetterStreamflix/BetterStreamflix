@@ -88,20 +88,11 @@ internal object SeasonSwitcher {
                 .takeIf { it >= 0 }
                 ?: seasons.indexOfFirst { it.number == currentSeasonNumber }
                     .coerceAtLeast(0)
-            spinner.adapter = if (com.dskja.betterstreamflix.utils.ExperimentalMobileDesign.enabled()) {
-                com.dskja.betterstreamflix.utils.ExpSpinnerAdapter(
-                    fragment.requireContext(),
-                    R.layout.item_exp_spinner,
-                    R.layout.item_exp_spinner_dropdown,
-                    labels,
-                ) { spinner.selectedItemPosition.coerceAtLeast(0) }
-            } else {
-                ArrayAdapter(
-                    fragment.requireContext(),
-                    android.R.layout.simple_spinner_item,
-                    labels,
-                ).also { it.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item) }
-            }
+            spinner.adapter = ArrayAdapter(
+                fragment.requireContext(),
+                android.R.layout.simple_spinner_item,
+                labels,
+            ).also { it.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item) }
             spinner.setSelection(selectedIndex, false)
 
             spinner.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {

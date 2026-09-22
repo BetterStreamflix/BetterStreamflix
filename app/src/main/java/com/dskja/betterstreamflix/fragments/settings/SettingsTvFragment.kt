@@ -1845,10 +1845,7 @@ class SettingsTvFragment : LeanbackPreferenceFragmentCompat() {
         }
 
         val contentView = LayoutInflater.from(requireContext()).inflate(
-            ExperimentalMobileDesign.layout(
-                R.layout.layout_is_loading_tv,
-                R.layout.layout_is_loading_mobile_exp,
-            ),
+            R.layout.layout_is_loading_tv,
             null
         )
         contentView.findViewById<TextView>(R.id.tv_is_loading_error)?.visibility = View.GONE

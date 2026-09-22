@@ -62,10 +62,7 @@ class SearchMobileFragment : Fragment() {
     ): View {
         _binding = FragmentSearchMobileBinding.bind(
             inflater.inflate(
-                ExperimentalMobileDesign.layout(
-                    R.layout.fragment_search_mobile,
-                    R.layout.fragment_search_mobile_exp,
-                ),
+                R.layout.fragment_search_mobile,
                 container,
                 false,
             )

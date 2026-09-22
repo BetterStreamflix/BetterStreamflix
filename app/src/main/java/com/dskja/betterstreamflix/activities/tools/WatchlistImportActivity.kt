@@ -124,10 +124,7 @@ class WatchlistImportActivity : AppCompatActivity() {
         }
         super.onCreate(savedInstanceState)
         setContentView(
-            ExperimentalMobileDesign.layout(
-                R.layout.activity_watchlist_import,
-                R.layout.activity_watchlist_import_exp,
-            ),
+            R.layout.activity_watchlist_import,
         )
         WindowCompat.setDecorFitsSystemWindows(window, false)
 

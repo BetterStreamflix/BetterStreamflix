@@ -33,7 +33,6 @@ import com.dskja.betterstreamflix.models.TvShow
 import com.dskja.betterstreamflix.models.Video
 import com.dskja.betterstreamflix.utils.ExpDialogChrome
 import com.dskja.betterstreamflix.utils.ExpMotion
-import com.dskja.betterstreamflix.utils.ExpSpinnerAdapter
 import com.dskja.betterstreamflix.utils.ExperimentalMobileDesign
 import com.dskja.betterstreamflix.utils.UserPreferences
 import kotlinx.coroutines.Dispatchers
@@ -276,10 +275,7 @@ object DownloadOptionsController {
 
     private fun showOptionsDialog(activity: Activity, prepared: DownloadPrepareResult) {
         val view = LayoutInflater.from(activity).inflate(
-            ExperimentalMobileDesign.layout(
-                R.layout.dialog_download_options,
-                R.layout.dialog_download_options_exp,
-            ),
+            R.layout.dialog_download_options,
             null,
         )
         val titleView = view.findViewById<TextView>(R.id.tv_download_options_title)
@@ -316,27 +312,10 @@ object DownloadOptionsController {
         var tracksJob: Job? = null
 
         val serverNames = prepared.servers.map { it.server.name }.ifEmpty { listOf("Auto") }
-        val itemLayout = if (ExperimentalMobileDesign.enabled()) {
-            R.layout.item_exp_spinner
-        } else {
-            android.R.layout.simple_spinner_item
-        }
-        val dropdownLayout = if (ExperimentalMobileDesign.enabled()) {
-            R.layout.item_exp_spinner_dropdown
-        } else {
-            android.R.layout.simple_spinner_dropdown_item
-        }
-        serverSpinner.adapter = if (ExperimentalMobileDesign.enabled()) {
-            ExpSpinnerAdapter(
-                activity,
-                itemLayout,
-                dropdownLayout,
-                serverNames,
-            ) { serverSpinner.selectedItemPosition.coerceAtLeast(0) }
-        } else {
-            ArrayAdapter(activity, itemLayout, serverNames).also {
-                it.setDropDownViewResource(dropdownLayout)
-            }
+        val itemLayout = android.R.layout.simple_spinner_item
+        val dropdownLayout = android.R.layout.simple_spinner_dropdown_item
+        serverSpinner.adapter = ArrayAdapter(activity, itemLayout, serverNames).also {
+            it.setDropDownViewResource(dropdownLayout)
         }
         serverSpinner.setSelection(serverIndex)
         if (ExperimentalMobileDesign.enabled()) {
@@ -346,17 +325,8 @@ object DownloadOptionsController {
 
         fun bindQualitySpinner(options: List<DownloadTrackOption>, preferredIndex: Int) {
             val labels = options.map { it.label }.ifEmpty { listOf("Auto") }
-            qualitySpinner.adapter = if (ExperimentalMobileDesign.enabled()) {
-                ExpSpinnerAdapter(
-                    activity,
-                    itemLayout,
-                    dropdownLayout,
-                    labels,
-                ) { qualitySpinner.selectedItemPosition.coerceAtLeast(0) }
-            } else {
-                ArrayAdapter(activity, itemLayout, labels).also {
-                    it.setDropDownViewResource(dropdownLayout)
-                }
+            qualitySpinner.adapter = ArrayAdapter(activity, itemLayout, labels).also {
+                it.setDropDownViewResource(dropdownLayout)
             }
             qualityIndex = preferredIndex.coerceIn(0, labels.lastIndex.coerceAtLeast(0))
             qualitySpinner.setSelection(qualityIndex)

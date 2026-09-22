@@ -2030,10 +2030,7 @@ class SettingsMobileFragment : PreferenceFragmentCompat() {
         }
 
         val contentView = LayoutInflater.from(requireContext()).inflate(
-            ExperimentalMobileDesign.layout(
-                R.layout.layout_is_loading_mobile,
-                R.layout.layout_is_loading_mobile_exp,
-            ),
+            R.layout.layout_is_loading_mobile,
             null
         )
         contentView.findViewById<android.widget.TextView>(R.id.tv_is_loading_error)?.visibility = View.GONE

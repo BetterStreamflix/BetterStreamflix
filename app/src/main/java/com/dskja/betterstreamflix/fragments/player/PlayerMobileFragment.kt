@@ -307,10 +307,7 @@ class PlayerMobileFragment : Fragment() {
     ): View {
         _binding = FragmentPlayerMobileBinding.bind(
             inflater.inflate(
-                ExperimentalMobileDesign.layout(
-                    R.layout.fragment_player_mobile,
-                    R.layout.fragment_player_mobile_exp,
-                ),
+                R.layout.fragment_player_mobile,
                 container,
                 false,
             )
