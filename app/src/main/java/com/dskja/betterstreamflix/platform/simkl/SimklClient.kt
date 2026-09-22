@@ -8,11 +8,12 @@ import kotlinx.coroutines.withContext
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
+import org.json.JSONArray
 import org.json.JSONObject
 
 /**
- * Simkl REST client — scrobble + optional history sync.
- * Auth: OAuth/PKCE token stored in UserPreferences (paste or future device flow).
+ * Simkl REST client — scrobble, watchlist, and history sync.
+ * Auth: OAuth/PKCE token stored in UserPreferences.
  */
 object SimklClient {
     private const val TAG = "SimklClient"
@@ -58,6 +59,137 @@ object SimklClient {
             body.put("movie", movie)
         }
         post(path, body.toString())
+    }
+
+    /**
+     * Adds or removes a title from the Simkl plantowatch / watching lists.
+     * [isTv] picks the show payload; movies use the movie payload.
+     */
+    suspend fun syncWatchlist(
+        add: Boolean,
+        imdbId: String?,
+        tmdbId: String? = null,
+        isTv: Boolean = false,
+    ): Boolean = withContext(Dispatchers.IO) {
+        if (!SimklConfig.configured()) return@withContext false
+        val ids = JSONObject()
+        if (!imdbId.isNullOrBlank()) ids.put("imdb", imdbId)
+        if (!tmdbId.isNullOrBlank()) ids.put("tmdb", tmdbId)
+        if (ids.length() == 0) return@withContext false
+        val item = JSONObject().put("ids", ids).put("to", if (add) "plantowatch" else "notinterested")
+        val body = JSONObject()
+        if (isTv) body.put("shows", JSONArray().put(item))
+        else body.put("movies", JSONArray().put(item))
+        post("/sync/add-to-list", body.toString())
+    }
+
+    /**
+     * Marks a movie / episode as completed in Simkl history.
+     */
+    suspend fun markWatched(
+        imdbId: String?,
+        tmdbId: String? = null,
+        season: Int? = null,
+        episode: Int? = null,
+    ): Boolean = withContext(Dispatchers.IO) {
+        if (!SimklConfig.configured()) return@withContext false
+        val ids = JSONObject()
+        if (!imdbId.isNullOrBlank()) ids.put("imdb", imdbId)
+        if (!tmdbId.isNullOrBlank()) ids.put("tmdb", tmdbId)
+        if (ids.length() == 0) return@withContext false
+        val body = JSONObject()
+        if (season != null && episode != null) {
+            body.put(
+                "shows",
+                JSONArray().put(
+                    JSONObject()
+                        .put("ids", ids)
+                        .put(
+                            "seasons",
+                            JSONArray().put(
+                                JSONObject()
+                                    .put("number", season)
+                                    .put(
+                                        "episodes",
+                                        JSONArray().put(JSONObject().put("number", episode)),
+                                    ),
+                            ),
+                        ),
+                ),
+            )
+        } else {
+            body.put("movies", JSONArray().put(JSONObject().put("ids", ids)))
+        }
+        post("/sync/history", body.toString())
+    }
+
+    /**
+     * Pulls recent watch history from Simkl (movies + episodes).
+     * Returns a compact list of id/title pairs for UI / merge hooks.
+     */
+    suspend fun fetchRecentHistory(limit: Int = 40): List<SimklHistoryItem> = withContext(Dispatchers.IO) {
+        if (!SimklConfig.configured()) return@withContext emptyList()
+        runCatching {
+            val url = "${SimklConfig.API}/sync/all-items/movies,episodes/?${SimklConfig.queryParams()}&extended=full"
+            val request = Request.Builder()
+                .url(url)
+                .get()
+                .apply { SimklConfig.authHeaders().forEach { (k, v) -> header(k, v) } }
+                .build()
+            NetworkClient.default.newCall(request).execute().use { response ->
+                val raw = response.body?.string().orEmpty()
+                if (!response.isSuccessful) {
+                    Log.w(TAG, "fetchRecentHistory HTTP ${response.code}")
+                    return@use emptyList()
+                }
+                parseHistory(raw, limit)
+            }
+        }.getOrElse {
+            Log.w(TAG, "fetchRecentHistory failed: ${it.message}")
+            emptyList()
+        }
+    }
+
+    private fun parseHistory(raw: String, limit: Int): List<SimklHistoryItem> {
+        val root = JSONObject(raw)
+        val out = ArrayList<SimklHistoryItem>(limit)
+        fun takeMovies(array: JSONArray?) {
+            if (array == null) return
+            for (i in 0 until array.length()) {
+                if (out.size >= limit) return
+                val row = array.optJSONObject(i) ?: continue
+                val movie = row.optJSONObject("movie") ?: row
+                val ids = movie.optJSONObject("ids") ?: JSONObject()
+                out.add(
+                    SimklHistoryItem(
+                        title = movie.optString("title").ifBlank { movie.optString("name") },
+                        imdbId = ids.optString("imdb").takeIf { it.isNotBlank() },
+                        tmdbId = ids.opt("tmdb")?.toString()?.takeIf { it.isNotBlank() && it != "null" },
+                        isTv = false,
+                    ),
+                )
+            }
+        }
+        fun takeShows(array: JSONArray?) {
+            if (array == null) return
+            for (i in 0 until array.length()) {
+                if (out.size >= limit) return
+                val row = array.optJSONObject(i) ?: continue
+                val show = row.optJSONObject("show") ?: row
+                val ids = show.optJSONObject("ids") ?: JSONObject()
+                out.add(
+                    SimklHistoryItem(
+                        title = show.optString("title").ifBlank { show.optString("name") },
+                        imdbId = ids.optString("imdb").takeIf { it.isNotBlank() },
+                        tmdbId = ids.opt("tmdb")?.toString()?.takeIf { it.isNotBlank() && it != "null" },
+                        isTv = true,
+                    ),
+                )
+            }
+        }
+        takeMovies(root.optJSONArray("movies"))
+        takeShows(root.optJSONArray("shows") ?: root.optJSONArray("episodes"))
+        return out
     }
 
     private fun post(path: String, jsonBody: String): Boolean {
@@ -115,3 +247,10 @@ object SimklClient {
         }
     }
 }
+
+data class SimklHistoryItem(
+    val title: String,
+    val imdbId: String?,
+    val tmdbId: String?,
+    val isTv: Boolean,
+)

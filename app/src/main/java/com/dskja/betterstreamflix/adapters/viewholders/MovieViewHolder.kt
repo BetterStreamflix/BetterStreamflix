@@ -907,7 +907,7 @@ class MovieViewHolder(
     private fun displaySwiperMobileItem(binding: ItemCategorySwiperMobileBinding) {
         binding.ivSwiperBackground.loadMovieBanner(movie) {
             override(FeaturedSwiperChrome.ARTWORK_WIDTH, FeaturedSwiperChrome.ARTWORK_HEIGHT)
-                .fitCenter()
+                .centerCrop()
                 .transition(DrawableTransitionOptions.withCrossFade())
         }
 
@@ -946,6 +946,12 @@ class MovieViewHolder(
                     val target = !(dao.getById(movie.id)?.isFavorite ?: movie.isFavorite)
                     val resolved = ArtworkRepair.resolveMovieForFavorite(context, movie, target)
                     dao.upsertFavorite(resolved, target)
+                    com.dskja.betterstreamflix.platform.simkl.SimklSyncHooks.onListToggle(
+                        add = target,
+                        imdbId = movie.imdbId,
+                        tmdbId = movie.tmdbId,
+                        isTv = false,
+                    )
                     withContext(Dispatchers.Main) {
                         movie.isFavorite = target
                         movie.poster = resolved.poster
@@ -984,21 +990,15 @@ class MovieViewHolder(
             }
         }
 
-        binding.tvMovieTitle.text = movie.title
-
         binding.root.findViewById<android.widget.ImageView>(R.id.iv_movie_logo)?.let { logoView ->
-            val logo = movie.logo
-            if (logo.isNullOrBlank()) {
-                logoView.visibility = View.GONE
-                logoView.setImageDrawable(null)
-            } else {
-                logoView.visibility = View.VISIBLE
-                com.bumptech.glide.Glide.with(logoView)
-                    .load(com.dskja.betterstreamflix.utils.ArtworkUrls.preferHero(logo))
-                    .transition(DrawableTransitionOptions.withCrossFade())
-                    .into(logoView)
-            }
+            // Title logo belongs in the collapsing header only — never duplicate it here.
+            logoView.visibility = View.GONE
+            logoView.setImageDrawable(null)
         }
+
+        // Plain title stays under the poster; the TMDb title logo lives in the header.
+        binding.tvMovieTitle.text = movie.title
+        binding.tvMovieTitle.visibility = View.VISIBLE
 
         if (ExperimentalMobileDesign.enabled() &&
             binding.root.getTag(R.id.exp_enter_animated_tag) != true

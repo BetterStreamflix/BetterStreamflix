@@ -1,100 +1,107 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:background="#FF000000"
     android:elevation="16dp"
-    android:gravity="center_vertical"
-    android:minHeight="56dp"
-    android:orientation="horizontal"
-    android:paddingStart="2dp"
-    android:paddingTop="4dp"
-    android:paddingEnd="2dp"
-    android:paddingBottom="4dp">
+    android:minHeight="56dp">
 
-    <!-- Kept so older scroll listeners still find a scrim; sized to the bar only. -->
+    <!-- Fades in only after scroll; never covers the hero at the top. -->
     <View
         android:id="@+id/v_detail_header_scrim"
-        android:layout_width="0dp"
-        android:layout_height="0dp"
-        android:visibility="gone" />
+        android:layout_width="match_parent"
+        android:layout_height="56dp"
+        android:alpha="0"
+        android:background="#E6121218" />
 
-    <ImageView
-        android:id="@+id/iv_detail_back"
-        android:layout_width="48dp"
-        android:layout_height="48dp"
-        android:background="@android:color/transparent"
-        android:contentDescription="@string/exp_back"
-        android:padding="12dp"
-        android:src="@drawable/ic_nav_back" />
-
-    <FrameLayout
-        android:layout_width="0dp"
-        android:layout_height="36dp"
-        android:layout_marginStart="2dp"
-        android:layout_marginEnd="2dp"
-        android:layout_weight="1">
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="56dp"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:paddingStart="2dp"
+        android:paddingEnd="2dp">
 
         <ImageView
-            android:id="@+id/iv_detail_header_logo"
-            android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:layout_gravity="center"
-            android:adjustViewBounds="true"
-            android:importantForAccessibility="no"
-            android:scaleType="fitCenter"
-            android:visibility="invisible"
-            tools:src="@mipmap/ic_launcher"
-            tools:visibility="visible" />
+            android:id="@+id/iv_detail_back"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:background="@android:color/transparent"
+            android:contentDescription="@string/exp_back"
+            android:padding="12dp"
+            android:src="@drawable/ic_nav_back" />
 
-        <TextView
-            android:id="@+id/tv_detail_header_title"
-            android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:ellipsize="end"
-            android:fontFamily="@font/manrope"
-            android:gravity="center"
-            android:maxLines="1"
-            android:textColor="#FFFFFF"
-            android:textSize="16sp"
-            android:textStyle="bold"
-            android:visibility="invisible"
-            tools:text="Title"
-            tools:visibility="visible" />
-    </FrameLayout>
+        <FrameLayout
+            android:layout_width="0dp"
+            android:layout_height="32dp"
+            android:layout_marginStart="2dp"
+            android:layout_marginEnd="2dp"
+            android:layout_weight="1">
 
-    <ImageView
-        android:id="@+id/btn_detail_list"
-        android:layout_width="48dp"
-        android:layout_height="48dp"
-        android:background="@android:color/transparent"
-        android:contentDescription="@string/detail_add_to_list"
-        android:padding="12dp"
-        android:src="@drawable/ic_list_add" />
+            <ImageView
+                android:id="@+id/iv_detail_header_logo"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:layout_gravity="center"
+                android:adjustViewBounds="true"
+                android:alpha="0"
+                android:importantForAccessibility="no"
+                android:scaleType="fitCenter"
+                android:visibility="invisible"
+                tools:alpha="1"
+                tools:src="@mipmap/ic_launcher"
+                tools:visibility="visible" />
 
-    <ImageView
-        android:id="@+id/btn_detail_watched"
-        android:layout_width="0dp"
-        android:layout_height="0dp"
-        android:contentDescription="@string/option_show_watched"
-        android:src="@drawable/ic_watched"
-        android:visibility="gone" />
+            <TextView
+                android:id="@+id/tv_detail_header_title"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:alpha="0"
+                android:ellipsize="end"
+                android:fontFamily="@font/manrope"
+                android:gravity="center"
+                android:maxLines="1"
+                android:textColor="#FFFFFF"
+                android:textSize="15sp"
+                android:textStyle="bold"
+                android:visibility="invisible"
+                tools:alpha="1"
+                tools:text="Title"
+                tools:visibility="visible" />
+        </FrameLayout>
 
-    <ImageView
-        android:id="@+id/btn_detail_download"
-        android:layout_width="0dp"
-        android:layout_height="0dp"
-        android:contentDescription="@string/detail_download"
-        android:src="@drawable/ic_player_settings_download"
-        android:visibility="gone" />
+        <ImageView
+            android:id="@+id/btn_detail_list"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:background="@android:color/transparent"
+            android:contentDescription="@string/detail_add_to_list"
+            android:padding="12dp"
+            android:src="@drawable/ic_list_add" />
 
-    <ImageView
-        android:id="@+id/btn_detail_share"
-        android:layout_width="0dp"
-        android:layout_height="0dp"
-        android:contentDescription="@string/detail_share"
-        android:src="@drawable/ic_detail_share"
-        android:visibility="gone" />
-</LinearLayout>
+        <ImageView
+            android:id="@+id/btn_detail_watched"
+            android:layout_width="0dp"
+            android:layout_height="0dp"
+            android:contentDescription="@string/option_show_watched"
+            android:src="@drawable/ic_watched"
+            android:visibility="gone" />
+
+        <ImageView
+            android:id="@+id/btn_detail_download"
+            android:layout_width="0dp"
+            android:layout_height="0dp"
+            android:contentDescription="@string/detail_download"
+            android:src="@drawable/ic_player_settings_download"
+            android:visibility="gone" />
+
+        <ImageView
+            android:id="@+id/btn_detail_share"
+            android:layout_width="0dp"
+            android:layout_height="0dp"
+            android:contentDescription="@string/detail_share"
+            android:src="@drawable/ic_detail_share"
+            android:visibility="gone" />
+    </LinearLayout>
+</FrameLayout>

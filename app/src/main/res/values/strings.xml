@@ -67,6 +67,7 @@
     <string name="provider_health_unstable">unstable</string>
     <string name="provider_health_flaky">flaky</string>
     <string name="genre_empty">Nothing in this genre yet</string>
+    <string name="genre_section_label">Genre</string>
     <string name="season_empty">No episodes in this season</string>
     <string name="season_download_empty">Nothing to download</string>
     <string name="movies_empty">No movies available</string>
@@ -164,7 +165,8 @@
     <string name="episode_number">Episode %d</string>
 
     <string name="people_birthday">Birthday</string>
-    <string name="people_deathday">Day of death</string>
+    <string name="people_deathday">Died</string>
+    <string name="people_born">Born</string>
     <string name="people_birthplace">Place of birth</string>
     <string name="people_biography">Biography</string>
     <string name="people_read_more">Read More &gt;</string>

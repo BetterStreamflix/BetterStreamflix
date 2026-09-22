@@ -39,8 +39,8 @@
 
             <ImageView
                 android:id="@+id/iv_profile_picker_logo"
-                android:layout_width="40dp"
-                android:layout_height="40dp"
+                android:layout_width="56dp"
+                android:layout_height="56dp"
                 android:contentDescription="@string/app_name"
                 android:scaleType="fitCenter"
                 android:src="@mipmap/ic_launcher" />
@@ -49,26 +49,25 @@
                 android:id="@+id/tv_profile_picker_brand"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="10dp"
-                android:letterSpacing="0.12"
-                android:text="@string/profile_atelier_brand"
-                android:textAllCaps="true"
-                android:textAppearance="@style/TextAppearance.Lumina.Eyebrow"
-                android:textColor="@color/profile_accent"
-                android:textSize="11sp"
+                android:layout_marginTop="12dp"
+                android:fontFamily="@font/manrope"
+                android:letterSpacing="-0.02"
+                android:text="@string/app_name"
+                android:textColor="@color/profile_text_primary"
+                android:textSize="20sp"
                 android:textStyle="bold" />
 
             <TextView
                 android:id="@+id/tv_profile_picker_title"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="10dp"
+                android:layout_marginTop="8dp"
                 android:gravity="center"
                 android:letterSpacing="-0.02"
                 android:text="@string/profile_picker_title"
                 android:textAppearance="@style/TextAppearance.Lumina.Hero"
                 android:textColor="@color/profile_text_primary"
-                android:textSize="24sp"
+                android:textSize="22sp"
                 android:textStyle="bold" />
 
             <TextView

@@ -5,15 +5,15 @@
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:paddingStart="12dp"
-    android:paddingTop="6dp"
+    android:paddingTop="52dp"
     android:paddingEnd="12dp"
     android:paddingBottom="4dp">
 
-    <!-- Tall rounded card; fitCenter letterboxes the cover so it is not cropped/zoomed. -->
+    <!-- Tall cover card; centerCrop fills edge-to-edge without letterbox bars. -->
     <FrameLayout
         android:id="@+id/fl_category_swiper_card"
         android:layout_width="0dp"
-        android:layout_height="420dp"
+        android:layout_height="380dp"
         android:background="@drawable/bg_featured_card"
         android:clipToOutline="true"
         android:outlineProvider="background"
@@ -28,7 +28,6 @@
             android:orientation="horizontal" />
     </FrameLayout>
 
-    <!-- Hidden for Featured — floating home chrome replaces this bar. -->
     <TextView
         android:id="@+id/tv_category_title"
         android:layout_width="0dp"
