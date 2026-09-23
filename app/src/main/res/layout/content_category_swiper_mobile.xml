@@ -4,20 +4,16 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:paddingStart="12dp"
-    android:paddingTop="52dp"
-    android:paddingEnd="12dp"
-    android:paddingBottom="10dp">
+    android:paddingBottom="6dp">
 
-    <!-- Tall cover card; ~2:3 phone aspect via 0.85 of width as height proxy on phones.
-         Uses dimension so sw/h variants can override without hardcoding 480dp. -->
+    <!-- Full-bleed Featured hero — edge-to-edge under floating home chrome. -->
     <FrameLayout
         android:id="@+id/fl_category_swiper_card"
         android:layout_width="0dp"
         android:layout_height="@dimen/home_featured_card_height"
         android:background="@drawable/bg_featured_card"
-        android:clipToOutline="true"
-        android:outlineProvider="background"
+        android:clipChildren="true"
+        android:clipToPadding="true"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent">
@@ -27,6 +23,20 @@
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             android:orientation="horizontal" />
+
+        <LinearLayout
+            android:id="@+id/ll_dots_indicator"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="bottom|center_horizontal"
+            android:layout_marginBottom="14dp"
+            android:elevation="8dp"
+            android:gravity="center"
+            android:orientation="horizontal"
+            android:paddingStart="10dp"
+            android:paddingTop="6dp"
+            android:paddingEnd="10dp"
+            android:paddingBottom="6dp" />
     </FrameLayout>
 
     <TextView
@@ -52,26 +62,14 @@
         style="@android:style/Widget.ProgressBar.Horizontal"
         android:layout_width="0dp"
         android:layout_height="2dp"
-        android:layout_marginTop="6dp"
         android:indeterminate="false"
         android:max="1000"
         android:progress="0"
         android:progressBackgroundTint="#33FFFFFF"
         android:progressTint="#FFFFFFFF"
         android:visibility="gone"
+        app:layout_constraintBottom_toBottomOf="@id/fl_category_swiper_card"
         app:layout_constraintEnd_toEndOf="@id/fl_category_swiper_card"
-        app:layout_constraintStart_toStartOf="@id/fl_category_swiper_card"
-        app:layout_constraintTop_toBottomOf="@id/fl_category_swiper_card" />
-
-    <LinearLayout
-        android:id="@+id/ll_dots_indicator"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="10dp"
-        android:gravity="center"
-        android:orientation="horizontal"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/pb_swiper_auto_progress" />
+        app:layout_constraintStart_toStartOf="@id/fl_category_swiper_card" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>

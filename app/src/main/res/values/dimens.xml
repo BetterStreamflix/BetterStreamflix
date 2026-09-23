@@ -10,8 +10,8 @@
 
     <dimen name="season_episodes_spacing">30dp</dimen>
 
-    <!-- Featured hero card height (phone default). -->
-    <dimen name="home_featured_card_height">480dp</dimen>
+    <!-- Featured full-bleed hero height (phone default). -->
+    <dimen name="home_featured_card_height">580dp</dimen>
 
     <!-- TV player settings side panel (width percent set in layout; clamps below). -->
     <dimen name="player_settings_panel_min_width">280dp</dimen>
