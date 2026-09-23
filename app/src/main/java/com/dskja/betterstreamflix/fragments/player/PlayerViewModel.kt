@@ -118,7 +118,13 @@ class PlayerViewModel(
             // A completed download must not block Online Play from fetching streaming servers.
             val preferOffline = preferredServerName.equals(OFFLINE_SERVER_NAME, ignoreCase = true)
             val offline = if (preferOffline) resolveOffline(videoType) else null
-            if (offline != null) {
+            if (preferOffline) {
+                if (offline == null) {
+                    val message = BetterStreamflixApp.instance
+                        .getString(com.dskja.betterstreamflix.R.string.player_offline_missing)
+                    _state.emit(State.FailedLoadingServers(Exception(message)))
+                    return@launch
+                }
                 val server = Video.Server(
                     id = OFFLINE_SERVER_ID,
                     name = OFFLINE_SERVER_NAME,
@@ -148,10 +154,15 @@ class PlayerViewModel(
         Log.d("PlayerViewModel", "Inizio estrazione video dal server: ${server.name}")
         _state.emit(State.LoadingVideo(server))
         try {
-            if (server.id == OFFLINE_SERVER_ID || server.name == OFFLINE_SERVER_NAME) {
+            if (server.id.equals(OFFLINE_SERVER_ID, ignoreCase = true) ||
+                server.name.equals(OFFLINE_SERVER_NAME, ignoreCase = true)
+            ) {
                 val cached = server.video
                     ?: lastVideoType?.let { resolveOffline(it) }
-                    ?: throw Exception("Offline file missing")
+                    ?: throw Exception(
+                        BetterStreamflixApp.instance
+                            .getString(com.dskja.betterstreamflix.R.string.player_offline_missing),
+                    )
                 _state.emit(State.SuccessLoadingVideo(cached, server))
                 return@launch
             }
@@ -199,26 +210,35 @@ class PlayerViewModel(
         val item = com.dskja.betterstreamflix.download.OfflinePlayback.findCompleted(context, videoType)
             ?: com.dskja.betterstreamflix.download.OfflinePlayback.findCompletedAnyProvider(context, videoType)
             ?: return null
-        // Prefer a freshly built local video for a still-completed Room row. Cache is only a
-        // secondary shortcut and must never override a deleted download.
+        // Always rebuild via Media3 so a stale OfflineVideoCache cannot skip validation.
         val built = com.dskja.betterstreamflix.download.OfflinePlayback.buildLocalVideo(context, item)
-        if (built != null) {
-            if (providerName != null) {
-                val key = com.dskja.betterstreamflix.download.OfflinePlayback.contentKeyFor(videoType, providerName)
-                com.dskja.betterstreamflix.fragments.downloads.OfflineVideoCache.put(key, built)
-            }
-            return built
-        }
         if (providerName != null) {
             val key = com.dskja.betterstreamflix.download.OfflinePlayback.contentKeyFor(videoType, providerName)
-            com.dskja.betterstreamflix.fragments.downloads.OfflineVideoCache.remove(key)
+            // Drop any warmed cache entry; buildLocalVideo is the source of truth.
+            com.dskja.betterstreamflix.fragments.downloads.OfflineVideoCache.take(key)
+            if (built != null) {
+                com.dskja.betterstreamflix.fragments.downloads.OfflineVideoCache.put(key, built)
+            } else {
+                com.dskja.betterstreamflix.fragments.downloads.OfflineVideoCache.remove(key)
+            }
         }
-        return null
+        return built
     }
 
     companion object {
         const val OFFLINE_SERVER_ID = "__offline__"
         const val OFFLINE_SERVER_NAME = "__offline__"
+
+        fun isOfflineServer(server: Video.Server): Boolean =
+            server.id.equals(OFFLINE_SERVER_ID, ignoreCase = true) ||
+                server.name.equals(OFFLINE_SERVER_NAME, ignoreCase = true)
+
+        fun mediaServerLabel(context: android.content.Context, server: Video.Server): String =
+            if (isOfflineServer(server)) {
+                context.getString(com.dskja.betterstreamflix.R.string.downloads_play_offline)
+            } else {
+                server.name
+            }
     }
 
     fun getSubtitles(videoType: Video.Type) = viewModelScope.launch(Dispatchers.IO) {
@@ -226,9 +246,7 @@ class PlayerViewModel(
         _subtitleState.emit(SubtitleState.Loading)
 
         // Offline playback already carries sidecar subs — skip OpenSubtitles/SubDL net.
-        if (preferredServerName.equals(OFFLINE_SERVER_NAME, ignoreCase = true) &&
-            resolveOffline(videoType) != null
-        ) {
+        if (preferredServerName.equals(OFFLINE_SERVER_NAME, ignoreCase = true)) {
             Log.d("PlayerViewModel", "Offline playback — skipping remote subtitle search")
             _subtitleState.emit(SubtitleState.SuccessOpenSubtitles(emptyList()))
             _subtitleState.emit(SubtitleState.SuccessSubDLSubtitles(emptyList()))

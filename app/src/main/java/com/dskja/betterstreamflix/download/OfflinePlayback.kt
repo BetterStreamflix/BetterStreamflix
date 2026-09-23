@@ -72,11 +72,14 @@ object OfflinePlayback {
         val download = runCatching {
             StreamflixDownloadManager.get(context).downloadIndex.getDownload(media3Id)
         }.getOrNull()
-        // Only treat Media3-completed downloads as offline playable. Never fall back to the
-        // original remote stream URL (that would silently re-stream online content).
+        // Only treat Media3-completed downloads with cached bytes as offline playable.
+        // Keep source = request.uri so CacheDataSource keys match; never treat https as a
+        // local share path (see [exportShareUri]).
+        val hasCachedContent = download != null &&
+            download.state == Download.STATE_COMPLETED &&
+            (download.bytesDownloaded > 0L || item.bytesDownloaded > 0L)
         val source = when {
-            download != null && download.state == Download.STATE_COMPLETED ->
-                download.request.uri.toString()
+            hasCachedContent -> download!!.request.uri.toString()
             item.localUri.isNotBlank() &&
                 !item.localUri.startsWith("http://", ignoreCase = true) &&
                 !item.localUri.startsWith("https://", ignoreCase = true) -> item.localUri
@@ -87,6 +90,22 @@ object OfflinePlayback {
             o.keys().asSequence().associateWith { o.getString(it) }
         }.getOrDefault(emptyMap())
 
+        val langByPath = runCatching {
+            val urls = SubtitleFetch.decodeUrls(item.subtitleUrlsJson)
+            val paths = JSONArray(item.subtitlePathsJson.ifBlank { "[]" })
+            buildMap {
+                for (i in 0 until paths.length()) {
+                    val path = paths.optString(i)
+                    if (path.isBlank()) continue
+                    val lang = urls.getOrNull(i)?.first
+                        ?: File(path).nameWithoutExtension
+                            .substringAfter('_', missingDelimiterValue = "")
+                            .ifBlank { File(path).nameWithoutExtension }
+                    put(path, lang)
+                }
+            }
+        }.getOrDefault(emptyMap())
+
         val subs = runCatching {
             val arr = JSONArray(item.subtitlePathsJson.ifBlank { "[]" })
             buildList {
@@ -95,7 +114,10 @@ object OfflinePlayback {
                     if (path.isBlank()) continue
                     add(
                         Video.Subtitle(
-                            label = File(path).nameWithoutExtension,
+                            label = langByPath[path]
+                                ?: File(path).nameWithoutExtension
+                                    .substringAfter('_', missingDelimiterValue = "")
+                                    .ifBlank { File(path).nameWithoutExtension },
                             file = path,
                         ),
                     )
@@ -111,8 +133,17 @@ object OfflinePlayback {
         )
     }
 
+    /**
+     * Share/export only works for real on-disk files. Cache-only Media3 downloads have no
+     * file path — callers must handle null (external share disabled).
+     */
     fun exportShareUri(context: Context, item: DownloadItemEntity): Uri? {
         val path = item.localUri.takeIf { it.isNotBlank() } ?: return null
+        if (path.startsWith("http://", ignoreCase = true) ||
+            path.startsWith("https://", ignoreCase = true)
+        ) {
+            return null
+        }
         val file = when {
             path.startsWith("file:") -> File(Uri.parse(path).path ?: return null)
             path.startsWith("/") -> File(path)

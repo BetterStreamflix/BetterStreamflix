@@ -282,7 +282,11 @@ class DownloadsTvFragment : Fragment() {
 
     private fun playOffline(row: DownloadRowUiModel.Item) {
         viewLifecycleOwner.lifecycleScope.launch {
-            val videoType = DownloadController.deserializeVideoType(row.entity.videoTypeJson) ?: return@launch
+            val videoType = DownloadController.deserializeVideoType(row.entity.videoTypeJson)
+            if (videoType == null) {
+                showDownloadError(R.string.download_error_file_missing)
+                return@launch
+            }
             activateDownloadProvider(row.entity.providerName)
             val local = withContext(Dispatchers.IO) {
                 OfflinePlayback.buildLocalVideo(requireContext(), row.entity)

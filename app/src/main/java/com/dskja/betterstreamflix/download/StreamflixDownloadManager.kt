@@ -142,6 +142,22 @@ object StreamflixDownloadManager {
             .also { manager /* keep ref */ }
     }
 
+    /**
+     * Read-only [CacheDataSource] for offline playback. Uses the same [SimpleCache] as
+     * downloads, blocks on cache (no silent network fallback), and does not write.
+     * MediaItem URI must remain the download request URI so cache keys match.
+     */
+    fun playbackCacheDataSourceFactory(context: Context): CacheDataSource.Factory {
+        get(context)
+        val cache = simpleCache ?: error("cache not ready")
+        val upstream = dataSourceFactory ?: error("factory not ready")
+        return CacheDataSource.Factory()
+            .setCache(cache)
+            .setUpstreamDataSourceFactory(upstream)
+            .setCacheWriteDataSinkFactory(null)
+            .setFlags(CacheDataSource.FLAG_BLOCK_ON_CACHE)
+    }
+
     fun notificationHelper(context: Context): DownloadNotificationHelper {
         get(context)
         return notificationHelper!!

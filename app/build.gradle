@@ -175,6 +175,7 @@ dependencies {
     implementation "io.ktor:ktor-client-okhttp:3.2.2"
     testImplementation "junit:junit:4.13.2"
     testImplementation "org.json:json:20240303"
+    testImplementation "org.mockito:mockito-core:5.14.2"
     implementation 'org.conscrypt:conscrypt-android:2.5.2'
     implementation "androidx.browser:browser:1.7.0"
     implementation "org.nanohttpd:nanohttpd:2.3.1"

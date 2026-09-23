@@ -21,10 +21,6 @@ object SmartDownloadsManager {
     private val handled = mutableSetOf<String>()
 
     suspend fun onEpisodeFinished(context: Context, videoType: Video.Type.Episode) {
-        val autoDelete = UserPreferences.downloadAutoDeleteWatched
-        val smart = UserPreferences.downloadSmartEnabled
-        if (!autoDelete && !smart) return
-
         val key = "${videoType.tvShow.id}:${videoType.season.number}:${videoType.number}:${videoType.id}"
         if (!handled.add(key)) return
         if (handled.size > 64) handled.clear() // bound the debounce set
@@ -35,14 +31,38 @@ object SmartDownloadsManager {
                 videoTypeIdEquals(entity.videoTypeJson, videoType.id)
         }
 
-        // Flag watched state for the downloads tab badge, then maybe delete.
+        // Always mark watched for Downloads UI — smart prefs only gate delete/enqueue.
         if (item != null && !item.watchedOffline) {
             repo.upsert(item.copy(watchedOffline = true, updatedAt = System.currentTimeMillis()))
         }
+
+        val autoDelete = UserPreferences.downloadAutoDeleteWatched
+        val smart = UserPreferences.downloadSmartEnabled
         if (autoDelete && item?.state == DownloadItemState.COMPLETED.name) {
             repo.remove(item.id)
         }
         if (smart) enqueueNextEpisode(context, videoType)
+    }
+
+    suspend fun onMovieFinished(context: Context, videoType: Video.Type.Movie) {
+        val key = "movie:${videoType.id}"
+        if (!handled.add(key)) return
+        if (handled.size > 64) handled.clear()
+
+        val repo = DownloadRepository.get(context)
+        val item = repo.getAllOnce().firstOrNull { entity ->
+            entity.kind == DownloadKind.MOVIE.name &&
+                videoTypeIdEquals(entity.videoTypeJson, videoType.id)
+        } ?: return
+
+        if (!item.watchedOffline) {
+            repo.upsert(item.copy(watchedOffline = true, updatedAt = System.currentTimeMillis()))
+        }
+        if (UserPreferences.downloadAutoDeleteWatched &&
+            item.state == DownloadItemState.COMPLETED.name
+        ) {
+            repo.remove(item.id)
+        }
     }
 
     private suspend fun enqueueNextEpisode(context: Context, current: Video.Type.Episode) {

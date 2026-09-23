@@ -326,7 +326,9 @@ class TvShowViewHolder(
 
     private fun preferredOfflineServerNameForEpisode(episode: Episode?): String? {
         episode ?: return null
-        val providerName = UserPreferences.currentProvider?.name ?: return null
+        val providerName = tvShow.providerName
+            ?: UserPreferences.currentProvider?.name
+            ?: return null
         val seasonNumber = resolveEpisodeSeason(episode)?.number ?: episode.season?.number ?: return null
         val contentKey = DownloadContentKey.episode(
             providerName = providerName,
@@ -1091,64 +1093,64 @@ class TvShowViewHolder(
             applyExpPress()
             setOnClickListener {
                 ExpMotion.hapticTap(it)
-                if (isIptvProvider()) {
-                    handleDirectPlay(findNavController())
-                    return@setOnClickListener
-                }
-                val episode = episodeToWatch
-                if (episode == null) {
-                    val adapter = bindingAdapter as? AppAdapter
-                    if (adapter?.onDetailTabSelectedListener != null) {
-                        adapter.onDetailTabSelectedListener?.invoke(
-                            com.dskja.betterstreamflix.ui.DetailTab.EPISODES,
-                        )
-                    } else {
-                        val season = tvShow.seasons.firstOrNull()
-                        if (season != null) {
-                            findNavController().navigate(
-                                TvShowMobileFragmentDirections.actionTvShowToSeason(
-                                    tvShowId = tvShow.id,
-                                    tvShowTitle = tvShow.title,
-                                    tvShowPoster = tvShow.poster,
-                                    tvShowBanner = tvShow.banner,
-                                    seasonId = season.id,
-                                    seasonNumber = season.number,
-                                    seasonTitle = season.title ?: "Season ${season.number}",
-                                ),
+                checkProviderAndRun {
+                    if (isIptvProvider()) {
+                        handleDirectPlay(findNavController())
+                        return@checkProviderAndRun
+                    }
+                    val episode = episodeToWatch
+                    if (episode == null) {
+                        val adapter = bindingAdapter as? AppAdapter
+                        if (adapter?.onDetailTabSelectedListener != null) {
+                            adapter.onDetailTabSelectedListener?.invoke(
+                                com.dskja.betterstreamflix.ui.DetailTab.EPISODES,
                             )
+                        } else {
+                            val season = tvShow.seasons.firstOrNull()
+                            if (season != null) {
+                                findNavController().navigate(
+                                    TvShowMobileFragmentDirections.actionTvShowToSeason(
+                                        tvShowId = tvShow.id,
+                                        tvShowTitle = tvShow.title,
+                                        tvShowPoster = tvShow.poster,
+                                        tvShowBanner = tvShow.banner,
+                                        seasonId = season.id,
+                                        seasonNumber = season.number,
+                                        seasonTitle = season.title ?: "Season ${season.number}",
+                                    ),
+                                )
+                            }
                         }
+                        return@checkProviderAndRun
                     }
-                    return@setOnClickListener
-                }
-                val videoType = Video.Type.Episode(
-                    id = episode.id,
-                    number = episode.number,
-                    title = episode.title,
-                    poster = episode.poster,
-                    overview = episode.overview,
-                    tvShow = Video.Type.Episode.TvShow(
-                        id = tvShow.id,
-                        title = tvShow.title,
-                        poster = tvShow.poster,
-                        banner = tvShow.banner,
-                        releaseDate = tvShow.released?.format("yyyy-MM-dd"),
-                        imdbId = tvShow.imdbId,
-                    ),
-                    season = Video.Type.Episode.Season(
-                        number = episodeSeason?.number ?: 1,
-                        title = episodeSeason?.title ?: "",
-                    ),
-                )
-                val args = Bundle().apply {
-                    putString("id", episode.id)
-                    putString("title", tvShow.title)
-                    putString("subtitle", "S${videoType.season.number} E${videoType.number}  •  ${videoType.title}")
-                    putSerializable("videoType", videoType)
-                    preferredOfflineServerNameForEpisode(episode)?.let {
-                        putString("preferredServerName", it)
+                    val videoType = Video.Type.Episode(
+                        id = episode.id,
+                        number = episode.number,
+                        title = episode.title,
+                        poster = episode.poster,
+                        overview = episode.overview,
+                        tvShow = Video.Type.Episode.TvShow(
+                            id = tvShow.id,
+                            title = tvShow.title,
+                            poster = tvShow.poster,
+                            banner = tvShow.banner,
+                            releaseDate = tvShow.released?.format("yyyy-MM-dd"),
+                            imdbId = tvShow.imdbId,
+                        ),
+                        season = Video.Type.Episode.Season(
+                            number = episodeSeason?.number ?: 1,
+                            title = episodeSeason?.title ?: "",
+                        ),
+                    )
+                    val args = Bundle().apply {
+                        putString("id", episode.id)
+                        putString("title", tvShow.title)
+                        putString("subtitle", "S${videoType.season.number} E${videoType.number}  •  ${videoType.title}")
+                        putSerializable("videoType", videoType)
+                        // Dual CTA: Watch streams online; Offline uses the Download button.
                     }
+                    findNavController().navigate(R.id.player, args)
                 }
-                findNavController().navigate(R.id.player, args)
             }
             text = when {
                 isIptvProvider() -> context.getString(R.string.movie_watch_now)
@@ -1192,23 +1194,80 @@ class TvShowViewHolder(
         }
 
         binding.btnTvShowDownload.let { downloadBtn ->
-            downloadBtn.applyExpPress()
-            val seasonForDownload = tvShow.seasons.firstOrNull { it.episodes.isNotEmpty() }
-            downloadBtn.contentDescription = DetailDownloadLabels.seriesButton(
-                context,
-                tvShow,
-                episodeToWatch,
-                seasonForDownload,
-            )
-            androidx.appcompat.widget.TooltipCompat.setTooltipText(
-                downloadBtn,
-                downloadBtn.contentDescription,
-            )
-            downloadBtn.setOnClickListener {
-                ExpMotion.hapticTap(it)
-                checkProviderAndRun {
-                    val fragment = context.toActivity()?.getCurrentFragment() as? Fragment ?: return@checkProviderAndRun
-                    DownloadOptionsController.offerTvShowDownload(fragment, tvShow, episodeToWatch)
+            if (isIptvProvider()) {
+                downloadBtn.isVisible = false
+                downloadBtn.setOnClickListener(null)
+                downloadBtn.setOnLongClickListener(null)
+            } else {
+                downloadBtn.isVisible = true
+                downloadBtn.applyExpPress()
+                val seasonForDownload = tvShow.seasons.firstOrNull { it.episodes.isNotEmpty() }
+                val playOffline = preferredOfflineServerNameForEpisode(episodeToWatch) != null
+                downloadBtn.contentDescription = if (playOffline) {
+                    context.getString(R.string.downloads_play_offline)
+                } else {
+                    DetailDownloadLabels.seriesButton(
+                        context,
+                        tvShow,
+                        episodeToWatch,
+                        seasonForDownload,
+                    )
+                }
+                androidx.appcompat.widget.TooltipCompat.setTooltipText(
+                    downloadBtn,
+                    downloadBtn.contentDescription,
+                )
+                downloadBtn.setOnClickListener {
+                    ExpMotion.hapticTap(it)
+                    checkProviderAndRun {
+                        if (playOffline && episodeToWatch != null) {
+                            val episode = episodeToWatch
+                            val videoType = Video.Type.Episode(
+                                id = episode.id,
+                                number = episode.number,
+                                title = episode.title,
+                                poster = episode.poster,
+                                overview = episode.overview,
+                                tvShow = Video.Type.Episode.TvShow(
+                                    id = tvShow.id,
+                                    title = tvShow.title,
+                                    poster = tvShow.poster,
+                                    banner = tvShow.banner,
+                                    releaseDate = tvShow.released?.format("yyyy-MM-dd"),
+                                    imdbId = tvShow.imdbId,
+                                ),
+                                season = Video.Type.Episode.Season(
+                                    number = episodeSeason?.number ?: 1,
+                                    title = episodeSeason?.title ?: "",
+                                ),
+                            )
+                            val args = Bundle().apply {
+                                putString("id", episode.id)
+                                putString("title", tvShow.title)
+                                putString(
+                                    "subtitle",
+                                    "S${videoType.season.number} E${videoType.number}  •  ${videoType.title}",
+                                )
+                                putSerializable("videoType", videoType)
+                                putString("preferredServerName", PlayerViewModel.OFFLINE_SERVER_NAME)
+                            }
+                            downloadBtn.findNavController().navigate(R.id.player, args)
+                        } else {
+                            val fragment = context.toActivity()?.getCurrentFragment() as? Fragment
+                                ?: return@checkProviderAndRun
+                            DownloadOptionsController.offerTvShowDownload(fragment, tvShow, episodeToWatch)
+                        }
+                    }
+                }
+                downloadBtn.setOnLongClickListener {
+                    if (!playOffline) return@setOnLongClickListener false
+                    ExpMotion.hapticTap(it)
+                    checkProviderAndRun {
+                        val fragment = context.toActivity()?.getCurrentFragment() as? Fragment
+                            ?: return@checkProviderAndRun
+                        DownloadOptionsController.offerTvShowDownload(fragment, tvShow, episodeToWatch)
+                    }
+                    true
                 }
             }
         }
@@ -1437,62 +1496,62 @@ class TvShowViewHolder(
             isVisible = true
             setOnClickListener {
                 ExpMotion.hapticTap(it)
-                if (isIptvProvider()) {
-                    handleDirectPlay(findNavController())
-                    return@setOnClickListener
-                }
-                val episode = episodeToWatch
-                if (episode == null) {
-                    val adapter = bindingAdapter as? AppAdapter
-                    if (adapter?.onDetailTabSelectedListener != null) {
-                        adapter.onDetailTabSelectedListener?.invoke(DetailTab.EPISODES)
-                    } else {
-                        val season = tvShow.seasons.firstOrNull()
-                        if (season != null) {
-                            findNavController().navigate(
-                                TvShowTvFragmentDirections.actionTvShowToSeason(
-                                    tvShowId = tvShow.id,
-                                    tvShowTitle = tvShow.title,
-                                    tvShowPoster = tvShow.poster,
-                                    tvShowBanner = tvShow.banner,
-                                    seasonId = season.id,
-                                    seasonNumber = season.number,
-                                    seasonTitle = season.title ?: "Season ${season.number}",
-                                ),
-                            )
+                checkProviderAndRun {
+                    if (isIptvProvider()) {
+                        handleDirectPlay(findNavController())
+                        return@checkProviderAndRun
+                    }
+                    val episode = episodeToWatch
+                    if (episode == null) {
+                        val adapter = bindingAdapter as? AppAdapter
+                        if (adapter?.onDetailTabSelectedListener != null) {
+                            adapter.onDetailTabSelectedListener?.invoke(DetailTab.EPISODES)
+                        } else {
+                            val season = tvShow.seasons.firstOrNull()
+                            if (season != null) {
+                                findNavController().navigate(
+                                    TvShowTvFragmentDirections.actionTvShowToSeason(
+                                        tvShowId = tvShow.id,
+                                        tvShowTitle = tvShow.title,
+                                        tvShowPoster = tvShow.poster,
+                                        tvShowBanner = tvShow.banner,
+                                        seasonId = season.id,
+                                        seasonNumber = season.number,
+                                        seasonTitle = season.title ?: "Season ${season.number}",
+                                    ),
+                                )
+                            }
                         }
+                        return@checkProviderAndRun
                     }
-                    return@setOnClickListener
-                }
-                val videoType = Video.Type.Episode(
-                    id = episode.id,
-                    number = episode.number,
-                    title = episode.title,
-                    poster = episode.poster,
-                    overview = episode.overview,
-                    tvShow = Video.Type.Episode.TvShow(
-                        id = tvShow.id,
-                        title = tvShow.title,
-                        poster = tvShow.poster,
-                        banner = tvShow.banner,
-                        releaseDate = tvShow.released?.format("yyyy-MM-dd"),
-                        imdbId = tvShow.imdbId,
-                    ),
-                    season = Video.Type.Episode.Season(
-                        number = episodeSeason?.number ?: 1,
-                        title = episodeSeason?.title ?: "",
-                    ),
-                )
-                val args = Bundle().apply {
-                    putString("id", episode.id)
-                    putString("title", tvShow.title)
-                    putString("subtitle", "S${videoType.season.number} E${videoType.number}  •  ${videoType.title}")
-                    putSerializable("videoType", videoType)
-                    preferredOfflineServerNameForEpisode(episode)?.let {
-                        putString("preferredServerName", it)
+                    val videoType = Video.Type.Episode(
+                        id = episode.id,
+                        number = episode.number,
+                        title = episode.title,
+                        poster = episode.poster,
+                        overview = episode.overview,
+                        tvShow = Video.Type.Episode.TvShow(
+                            id = tvShow.id,
+                            title = tvShow.title,
+                            poster = tvShow.poster,
+                            banner = tvShow.banner,
+                            releaseDate = tvShow.released?.format("yyyy-MM-dd"),
+                            imdbId = tvShow.imdbId,
+                        ),
+                        season = Video.Type.Episode.Season(
+                            number = episodeSeason?.number ?: 1,
+                            title = episodeSeason?.title ?: "",
+                        ),
+                    )
+                    val args = Bundle().apply {
+                        putString("id", episode.id)
+                        putString("title", tvShow.title)
+                        putString("subtitle", "S${videoType.season.number} E${videoType.number}  •  ${videoType.title}")
+                        putSerializable("videoType", videoType)
+                        // Dual CTA: Watch streams online; Offline uses the Download button.
                     }
+                    findNavController().navigate(R.id.player, args)
                 }
-                findNavController().navigate(R.id.player, args)
             }
             text = when {
                 isIptvProvider() -> context.getString(R.string.movie_watch_now)
@@ -1551,20 +1610,76 @@ class TvShowViewHolder(
         }
 
         binding.btnTvShowDownload.apply {
-            val seasonForDownload = tvShow.seasons.firstOrNull { it.episodes.isNotEmpty() }
-            text = DetailDownloadLabels.seriesButton(
-                context,
-                tvShow,
-                episodeToWatch,
-                seasonForDownload,
-            )
-            contentDescription = text
-            setOnClickListener {
-                ExpMotion.hapticTap(it)
-                checkProviderAndRun {
-                    val fragment = context.toActivity()?.getCurrentFragment() as? Fragment
-                        ?: return@checkProviderAndRun
-                    DownloadOptionsController.offerTvShowDownload(fragment, tvShow, episodeToWatch)
+            if (isIptvProvider()) {
+                isVisible = false
+                setOnClickListener(null)
+                setOnLongClickListener(null)
+            } else {
+                isVisible = true
+                val seasonForDownload = tvShow.seasons.firstOrNull { it.episodes.isNotEmpty() }
+                val playOffline = preferredOfflineServerNameForEpisode(episodeToWatch) != null
+                text = if (playOffline) {
+                    context.getString(R.string.downloads_play_offline)
+                } else {
+                    DetailDownloadLabels.seriesButton(
+                        context,
+                        tvShow,
+                        episodeToWatch,
+                        seasonForDownload,
+                    )
+                }
+                contentDescription = text
+                setOnClickListener {
+                    ExpMotion.hapticTap(it)
+                    checkProviderAndRun {
+                        if (playOffline && episodeToWatch != null) {
+                            val episode = episodeToWatch
+                            val videoType = Video.Type.Episode(
+                                id = episode.id,
+                                number = episode.number,
+                                title = episode.title,
+                                poster = episode.poster,
+                                overview = episode.overview,
+                                tvShow = Video.Type.Episode.TvShow(
+                                    id = tvShow.id,
+                                    title = tvShow.title,
+                                    poster = tvShow.poster,
+                                    banner = tvShow.banner,
+                                    releaseDate = tvShow.released?.format("yyyy-MM-dd"),
+                                    imdbId = tvShow.imdbId,
+                                ),
+                                season = Video.Type.Episode.Season(
+                                    number = episodeSeason?.number ?: 1,
+                                    title = episodeSeason?.title ?: "",
+                                ),
+                            )
+                            val args = Bundle().apply {
+                                putString("id", episode.id)
+                                putString("title", tvShow.title)
+                                putString(
+                                    "subtitle",
+                                    "S${videoType.season.number} E${videoType.number}  •  ${videoType.title}",
+                                )
+                                putSerializable("videoType", videoType)
+                                putString("preferredServerName", PlayerViewModel.OFFLINE_SERVER_NAME)
+                            }
+                            findNavController().navigate(R.id.player, args)
+                        } else {
+                            val fragment = context.toActivity()?.getCurrentFragment() as? Fragment
+                                ?: return@checkProviderAndRun
+                            DownloadOptionsController.offerTvShowDownload(fragment, tvShow, episodeToWatch)
+                        }
+                    }
+                }
+                setOnLongClickListener {
+                    if (!playOffline) return@setOnLongClickListener false
+                    ExpMotion.hapticTap(it)
+                    checkProviderAndRun {
+                        val fragment = context.toActivity()?.getCurrentFragment() as? Fragment
+                            ?: return@checkProviderAndRun
+                        DownloadOptionsController.offerTvShowDownload(fragment, tvShow, episodeToWatch)
+                    }
+                    true
                 }
             }
         }

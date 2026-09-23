@@ -232,15 +232,22 @@ class ShowOptionsMobileDialog(
         }
 
         binding.btnOptionShowDownload.apply {
-            setOnClickListener {
-                ExpMotion.hapticTap(it)
-                val activity = context.toActivity() as? Activity
-                if (activity != null) {
-                    DownloadOptionsController.enqueueEpisode(context, activity, episode)
+            val iptv = UserPreferences.currentProvider is com.dskja.betterstreamflix.providers.IptvProvider ||
+                (episode.tvShow?.providerName?.let { Provider.findByName(it) }
+                    is com.dskja.betterstreamflix.providers.IptvProvider)
+            if (iptv) {
+                visibility = View.GONE
+            } else {
+                setOnClickListener {
+                    ExpMotion.hapticTap(it)
+                    val activity = context.toActivity() as? Activity
+                    if (activity != null) {
+                        DownloadOptionsController.enqueueEpisode(context, activity, episode)
+                    }
+                    dismiss()
                 }
-                dismiss()
+                visibility = View.VISIBLE
             }
-            visibility = View.VISIBLE
         }
 
         binding.btnOptionEpisodeMarkAllPreviousWatched.apply {
@@ -457,15 +464,22 @@ class ShowOptionsMobileDialog(
         }
 
         binding.btnOptionShowDownload.apply {
-            setOnClickListener {
-                ExpMotion.hapticTap(it)
-                val activity = context.toActivity() as? Activity
-                if (activity != null) {
-                    DownloadOptionsController.enqueueMovie(context, activity, freshMovie)
+            val iptv = UserPreferences.currentProvider is com.dskja.betterstreamflix.providers.IptvProvider ||
+                (freshMovie.providerName?.let { Provider.findByName(it) }
+                    is com.dskja.betterstreamflix.providers.IptvProvider)
+            if (iptv) {
+                visibility = View.GONE
+            } else {
+                setOnClickListener {
+                    ExpMotion.hapticTap(it)
+                    val activity = context.toActivity() as? Activity
+                    if (activity != null) {
+                        DownloadOptionsController.enqueueMovie(context, activity, freshMovie)
+                    }
+                    dismiss()
                 }
-                dismiss()
+                visibility = View.VISIBLE
             }
-            visibility = View.VISIBLE
         }
 
         binding.btnOptionEpisodeMarkAllPreviousWatched.visibility = View.GONE

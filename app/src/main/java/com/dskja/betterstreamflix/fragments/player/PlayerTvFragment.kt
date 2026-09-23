@@ -178,6 +178,8 @@ class PlayerTvFragment : Fragment() {
 
     private var currentVideo: Video? = null
     private var currentServer: Video.Server? = null
+    /** True when [currentServer] is the offline download server — uses cache DataSource. */
+    private var playingOffline: Boolean = false
     private var waitingForBypass = false
     private var bypassDone = false
     private var activeBypassSession: BypassSession? = null
@@ -467,7 +469,7 @@ class PlayerTvFragment : Fragment() {
                             .setMediaServers(state.servers.map {
                                 MediaServer(
                                     id = it.id,
-                                    name = it.name,
+                                    name = PlayerViewModel.mediaServerLabel(requireContext(), it),
                                 )
                             })
                             .build()
@@ -518,8 +520,10 @@ class PlayerTvFragment : Fragment() {
                                     playbackAlreadyStarted = false,
                                     softwareDecoderAlreadyEnabled = currentSoftwareDecoder,
                                     allowMidPlaybackFailover = true,
-                                    externalPlayerAvailable = com.dskja.betterstreamflix.platform.playerbackend.ExternalMpvBackend.canResolve(requireContext()) ||
-                                        com.dskja.betterstreamflix.platform.playerbackend.PlayerBackendSelector.shouldHandoffToExternal(),
+                                    externalPlayerAvailable = !isOfflinePlayback() && (
+                                        com.dskja.betterstreamflix.platform.playerbackend.ExternalMpvBackend.canResolve(requireContext()) ||
+                                            com.dskja.betterstreamflix.platform.playerbackend.PlayerBackendSelector.shouldHandoffToExternal()
+                                        ),
                                     externalPlayerAlreadyTried = currentExternalPlayerTried,
                                     error = state.error,
                                 )
@@ -552,31 +556,35 @@ class PlayerTvFragment : Fragment() {
                                     }
                                 }
                                 PlaybackFailover.Action.GiveUp -> {
-                                    val providerName = UserPreferences.currentProvider?.name ?: ""
-                                    val isTmdb = providerName.contains("TMDb", ignoreCase = true)
-                                    val isAD = providerName.contains("AfterDark", ignoreCase = true)
-
-                                    val message = if (isTmdb || isAD) {
-                                        val langCode =
-                                            providerName.substringAfter("(").substringBefore(")")
-                                        val locale = Locale.forLanguageTag(langCode)
-                                        val langDisplayName =
-                                            locale.getDisplayLanguage(Locale.getDefault())
-                                                .replaceFirstChar {
-                                                    if (it.isLowerCase()) it.titlecase(
-                                                        Locale.getDefault()
-                                                    ) else it.toString()
-                                                }
-
-                                        if (isTmdb) getString(
-                                            R.string.player_not_available_lang_message,
-                                            langDisplayName
-                                        )
-                                        else getString(R.string.player_retry_later_message)
-                                    } else if (UserPreferences.currentProvider is SerienStreamProvider) {
-                                        getString(R.string.player_bypass_retry_needed)
+                                    val message = if (isOfflinePlayback()) {
+                                        getString(R.string.player_offline_missing)
                                     } else {
-                                        getString(R.string.player_all_servers_failed)
+                                        val providerName = UserPreferences.currentProvider?.name ?: ""
+                                        val isTmdb = providerName.contains("TMDb", ignoreCase = true)
+                                        val isAD = providerName.contains("AfterDark", ignoreCase = true)
+
+                                        if (isTmdb || isAD) {
+                                            val langCode =
+                                                providerName.substringAfter("(").substringBefore(")")
+                                            val locale = Locale.forLanguageTag(langCode)
+                                            val langDisplayName =
+                                                locale.getDisplayLanguage(Locale.getDefault())
+                                                    .replaceFirstChar {
+                                                        if (it.isLowerCase()) it.titlecase(
+                                                            Locale.getDefault()
+                                                        ) else it.toString()
+                                                    }
+
+                                            if (isTmdb) getString(
+                                                R.string.player_not_available_lang_message,
+                                                langDisplayName
+                                            )
+                                            else getString(R.string.player_retry_later_message)
+                                        } else if (UserPreferences.currentProvider is SerienStreamProvider) {
+                                            getString(R.string.player_bypass_retry_needed)
+                                        } else {
+                                            getString(R.string.player_all_servers_failed)
+                                        }
                                     }
 
                                     CrashReporter.logNonFatal(
@@ -876,7 +884,7 @@ class PlayerTvFragment : Fragment() {
         return when (args.videoType) {
             is Video.Type.Episode -> {
                 if (!EpisodeManager.hasPreviousEpisode()) return false
-                viewModel.playPreviousEpisode()
+                playPreviousEpisodeAcrossSeasons()
                 true
             }
             is Video.Type.Movie -> false
@@ -918,7 +926,194 @@ class PlayerTvFragment : Fragment() {
             if (!hasNextEpisode) return@launch
             if (autoplay && !UserPreferences.autoplay) return@launch
 
+            if (isOfflinePlayback()) {
+                val nextEp = EpisodeManager.peekNextEpisode()
+                if (nextEp != null) {
+                    val nextType = Video.Type.Episode(
+                        id = nextEp.id,
+                        number = nextEp.number,
+                        title = nextEp.title,
+                        poster = nextEp.poster,
+                        overview = nextEp.overview,
+                        tvShow = Video.Type.Episode.TvShow(
+                            id = nextEp.tvShow.id,
+                            title = nextEp.tvShow.title,
+                            poster = nextEp.tvShow.poster,
+                            banner = nextEp.tvShow.banner,
+                            releaseDate = nextEp.tvShow.releaseDate,
+                            imdbId = nextEp.tvShow.imdbId,
+                        ),
+                        season = Video.Type.Episode.Season(
+                            number = nextEp.season.number,
+                            title = nextEp.season.title,
+                        ),
+                    )
+                    val hasOffline = withContext(Dispatchers.IO) {
+                        com.dskja.betterstreamflix.download.OfflinePlayback.findCompleted(
+                            requireContext(),
+                            nextType,
+                        ) != null ||
+                            com.dskja.betterstreamflix.download.OfflinePlayback.findCompletedAnyProvider(
+                                requireContext(),
+                                nextType,
+                            ) != null
+                    }
+                    if (!hasOffline) {
+                        if (autoplay) return@launch
+                        showOfflineNextEpisodeDialog(nextType)
+                        return@launch
+                    }
+                }
+            }
+
             viewModel.playNextEpisode()
+        }
+    }
+
+    private fun showOfflineNextEpisodeDialog(nextEpisode: Video.Type.Episode) {
+        if (!isAdded || _binding == null) return
+        android.app.AlertDialog.Builder(requireContext())
+            .setTitle(R.string.player_offline_next_title)
+            .setMessage(R.string.player_offline_next_message)
+            .setPositiveButton(R.string.player_offline_next_online) { _, _ ->
+                navigateToNextEpisode(nextEpisode, preferredServerName = null)
+            }
+            .setNegativeButton(R.string.option_cancel, null)
+            .show()
+    }
+
+    private fun playPreviousEpisodeAcrossSeasons() {
+        if (!EpisodeManager.hasPreviousEpisode()) return
+        lifecycleScope.launch {
+            if (isOfflinePlayback()) {
+                val prevEp = EpisodeManager.peekPreviousEpisode()
+                if (prevEp != null) {
+                    val prevType = Video.Type.Episode(
+                        id = prevEp.id,
+                        number = prevEp.number,
+                        title = prevEp.title,
+                        poster = prevEp.poster,
+                        overview = prevEp.overview,
+                        tvShow = Video.Type.Episode.TvShow(
+                            id = prevEp.tvShow.id,
+                            title = prevEp.tvShow.title,
+                            poster = prevEp.tvShow.poster,
+                            banner = prevEp.tvShow.banner,
+                            releaseDate = prevEp.tvShow.releaseDate,
+                            imdbId = prevEp.tvShow.imdbId,
+                        ),
+                        season = Video.Type.Episode.Season(
+                            number = prevEp.season.number,
+                            title = prevEp.season.title,
+                        ),
+                    )
+                    val hasOffline = withContext(Dispatchers.IO) {
+                        com.dskja.betterstreamflix.download.OfflinePlayback.findCompleted(
+                            requireContext(),
+                            prevType,
+                        ) != null ||
+                            com.dskja.betterstreamflix.download.OfflinePlayback.findCompletedAnyProvider(
+                                requireContext(),
+                                prevType,
+                            ) != null
+                    }
+                    if (!hasOffline) {
+                        showOfflinePreviousEpisodeDialog(prevType)
+                        return@launch
+                    }
+                }
+            }
+            viewModel.playPreviousEpisode()
+        }
+    }
+
+    private fun showOfflinePreviousEpisodeDialog(previousEpisode: Video.Type.Episode) {
+        if (!isAdded || _binding == null) return
+        android.app.AlertDialog.Builder(requireContext())
+            .setTitle(R.string.player_offline_prev_title)
+            .setMessage(R.string.player_offline_prev_message)
+            .setPositiveButton(R.string.player_offline_next_online) { _, _ ->
+                navigateToPreviousEpisode(previousEpisode, preferredServerName = null)
+            }
+            .setNegativeButton(R.string.option_cancel, null)
+            .show()
+    }
+
+    private fun navigateToPreviousEpisode(
+        previousEpisode: Video.Type.Episode,
+        preferredServerName: String?,
+    ) {
+        if (isTearingDown || !isAdded || _binding == null) return
+        EpisodeManager.getPreviousEpisode()
+        releasePlayer()
+        isSetupDone = false
+        val live = UserPreferences.currentProvider is IptvProvider
+        val navArgs = Bundle().apply {
+            putString("id", previousEpisode.id)
+            putSerializable("videoType", previousEpisode)
+            putString("title", previousEpisode.tvShow.title)
+            putString(
+                "subtitle",
+                if (live) {
+                    getString(R.string.player_live_channel)
+                } else {
+                    "S${previousEpisode.season.number} E${previousEpisode.number}  •  ${previousEpisode.title}"
+                },
+            )
+            preferredServerName?.let { putString("preferredServerName", it) }
+        }
+        hideNextEpisodeOverlay()
+        runCatching {
+            findNavController().navigate(
+                R.id.player,
+                navArgs,
+                androidx.navigation.NavOptions.Builder()
+                    .setPopUpTo(
+                        findNavController().currentDestination?.id ?: return@runCatching,
+                        true,
+                    )
+                    .setLaunchSingleTop(false)
+                    .build(),
+            )
+        }
+    }
+
+    private fun navigateToNextEpisode(
+        nextEpisode: Video.Type.Episode,
+        preferredServerName: String?,
+    ) {
+        if (isTearingDown || !isAdded || _binding == null) return
+        EpisodeManager.getNextEpisode()
+        releasePlayer()
+        isSetupDone = false
+        val live = UserPreferences.currentProvider is IptvProvider
+        val navArgs = Bundle().apply {
+            putString("id", nextEpisode.id)
+            putSerializable("videoType", nextEpisode)
+            putString("title", nextEpisode.tvShow.title)
+            putString(
+                "subtitle",
+                if (live) {
+                    getString(R.string.player_live_channel)
+                } else {
+                    "S${nextEpisode.season.number} E${nextEpisode.number}  •  ${nextEpisode.title}"
+                },
+            )
+            preferredServerName?.let { putString("preferredServerName", it) }
+        }
+        hideNextEpisodeOverlay()
+        runCatching {
+            findNavController().navigate(
+                R.id.player,
+                navArgs,
+                androidx.navigation.NavOptions.Builder()
+                    .setPopUpTo(
+                        findNavController().currentDestination?.id ?: return@runCatching,
+                        true,
+                    )
+                    .setLaunchSingleTop(false)
+                    .build(),
+            )
         }
     }
 
@@ -990,7 +1185,7 @@ class PlayerTvFragment : Fragment() {
                 .setMediaServers(servers.map {
                     MediaServer(
                         id = it.id,
-                        name = it.name,
+                        name = PlayerViewModel.mediaServerLabel(requireContext(), it),
                     )
                 })
                 .build()
@@ -1211,7 +1406,7 @@ class PlayerTvFragment : Fragment() {
             handleNavigationButton(
                 btnPrevious,
                 EpisodeManager::hasPreviousEpisode,
-                viewModel::playPreviousEpisode
+                ::playPreviousEpisodeAcrossSeasons,
             )
             handleNavigationButton(
                 btnNext,
@@ -1256,6 +1451,8 @@ class PlayerTvFragment : Fragment() {
         ) {
             currentVideo = video
             currentServer = server
+            val offline = server.id.equals(PlayerViewModel.OFFLINE_SERVER_ID, ignoreCase = true) ||
+                server.name.equals(PlayerViewModel.OFFLINE_SERVER_NAME, ignoreCase = true)
             updatePlayerHeader()
             runCatching {
                 com.dskja.betterstreamflix.platform.plugins.PluginManager
@@ -1263,7 +1460,10 @@ class PlayerTvFragment : Fragment() {
                 com.dskja.betterstreamflix.platform.plugins.PluginManager
                     .dispatchPlaybackStarted(args.videoType, server.name)
             }
-            if (com.dskja.betterstreamflix.platform.playerbackend.PlayerBackendSelector.shouldHandoffToExternal()) {
+            // Offline must stay on in-app Exo + CacheDataSource — external apps cannot read Media3 cache.
+            if (!offline &&
+                com.dskja.betterstreamflix.platform.playerbackend.PlayerBackendSelector.shouldHandoffToExternal()
+            ) {
                 currentExternalPlayerTried = true
                 val pos = runCatching { player.currentPosition }.getOrDefault(0L)
                 com.dskja.betterstreamflix.platform.playerbackend.ExternalMpvBackend.open(
@@ -1278,18 +1478,23 @@ class PlayerTvFragment : Fragment() {
             val extraBuffering = PlayerSettingsView.Settings.ExtraBuffering.isEnabled
             val softwareDecoder = PlayerSettingsView.Settings.SoftwareDecoder.isEnabled
             val needsReinit =
-                extraBuffering != currentExtraBuffering || softwareDecoder != currentSoftwareDecoder
+                extraBuffering != currentExtraBuffering ||
+                    softwareDecoder != currentSoftwareDecoder ||
+                    offline != playingOffline
             if (needsReinit) {
+                playingOffline = offline
                 initializePlayer(extraBuffering, softwareDecoder)
                 player.playlistMetadata = MediaMetadata.Builder()
                     .setTitle(resolvePlayerTitle())
                     .setMediaServers(servers.map {
                         MediaServer(
                             id = it.id,
-                            name = it.name,
+                            name = PlayerViewModel.mediaServerLabel(requireContext(), it),
                         )
                     })
                     .build()
+            } else {
+                playingOffline = offline
             }
 
             val currentPosition = startPositionMs ?: player.currentPosition
@@ -1343,11 +1548,19 @@ class PlayerTvFragment : Fragment() {
                     .build()
             )
 
-            if (isCasting || CastPlaybackHub.isCasting) {
+            if ((isCasting || CastPlaybackHub.isCasting) && !isOfflinePlayback()) {
                 pushMediaToCast(video, server, mediaMetadata, startPosition = currentPosition)
             }
 
             binding.pvPlayer.controller.binding.btnExoExternalPlayer.setOnClickListener {
+                if (isOfflinePlayback()) {
+                    Toast.makeText(
+                        requireContext(),
+                        R.string.player_offline_external_unavailable,
+                        Toast.LENGTH_SHORT,
+                    ).show()
+                    return@setOnClickListener
+                }
                 val videoTitle = when {
                     isLiveTvPlayback() -> resolvePlayerTitle()
                     else -> when (val type = args.videoType) {
@@ -1562,8 +1775,10 @@ class PlayerTvFragment : Fragment() {
                             playbackAlreadyStarted = ::player.isInitialized && player.hasStarted(),
                             softwareDecoderAlreadyEnabled = currentSoftwareDecoder,
                             allowMidPlaybackFailover = true,
-                            externalPlayerAvailable = com.dskja.betterstreamflix.platform.playerbackend.ExternalMpvBackend.canResolve(requireContext()) ||
-                                com.dskja.betterstreamflix.platform.playerbackend.PlayerBackendSelector.shouldHandoffToExternal(),
+                            externalPlayerAvailable = !isOfflinePlayback() && (
+                                com.dskja.betterstreamflix.platform.playerbackend.ExternalMpvBackend.canResolve(requireContext()) ||
+                                    com.dskja.betterstreamflix.platform.playerbackend.PlayerBackendSelector.shouldHandoffToExternal()
+                                ),
                             externalPlayerAlreadyTried = currentExternalPlayerTried,
                             error = error,
                         )
@@ -1597,7 +1812,11 @@ class PlayerTvFragment : Fragment() {
                             }
                         }
                         PlaybackFailover.Action.GiveUp -> {
-                            showPlayerError(error.message ?: error.errorCodeName)
+                            if (isOfflinePlayback()) {
+                                showPlayerError(getString(R.string.player_offline_missing))
+                            } else {
+                                showPlayerError(error.message ?: error.errorCodeName)
+                            }
                         }
                     }
                 }
@@ -1687,6 +1906,9 @@ class PlayerTvFragment : Fragment() {
                     (watchItem as? Movie)?.let {
                         database.movieDao().update(it)
                         UserDataCache.syncMovieToCache(appContext, resolvedProvider, it)
+                        if (finished) {
+                            SmartDownloadsManager.onMovieFinished(appContext, videoType)
+                        }
                     }
                 }
                 is Video.Type.Episode -> {
@@ -1804,9 +2026,15 @@ class PlayerTvFragment : Fragment() {
         private fun isLiveTvPlayback(): Boolean =
             UserPreferences.currentProvider is IptvProvider
 
+        private fun isOfflinePlayback(): Boolean =
+            currentServer?.id == PlayerViewModel.OFFLINE_SERVER_ID ||
+                currentServer?.name.equals(PlayerViewModel.OFFLINE_SERVER_NAME, ignoreCase = true) ||
+                args.preferredServerName.equals(PlayerViewModel.OFFLINE_SERVER_NAME, ignoreCase = true)
+
         /**
          * Live/IPTV must not show VOD-style position/duration clocks.
          * Media3 reports the HLS sliding window (~30s) as duration, which looks broken.
+         * Offline chrome (pill + cast/external guards) is applied after live chrome so it is not wiped.
          */
         private fun applyLiveControllerChrome(live: Boolean) {
             val controller = binding.pvPlayer.controller.binding
@@ -1816,7 +2044,8 @@ class PlayerTvFragment : Fragment() {
             controller.exoDuration.isVisible = !live
             controller.tvLiveIndicator.isVisible = live
             runCatching {
-                controller.mediaRouteButton.isVisible = !live && UserPreferences.castEnabled
+                controller.mediaRouteButton.isVisible =
+                    !live && UserPreferences.castEnabled && !isOfflinePlayback()
             }
             if (live) {
                 controller.tvLiveIndicator.text = getString(R.string.player_live_badge)
@@ -1836,6 +2065,7 @@ class PlayerTvFragment : Fragment() {
                 setupLiveChannelZapButtons()
                 ensureLiveChannelGuide()
                 startLiveEdgeWatcher()
+                applyOfflineCastExternalGuards(offline = false)
             } else {
                 controller.tvLiveIndicator.clearAnimation()
                 controller.tvLiveIndicator.setOnClickListener(null)
@@ -1843,6 +2073,48 @@ class PlayerTvFragment : Fragment() {
                 controller.btnGoLive.isVisible = false
                 controller.tvLiveChannelMeta.isVisible = false
                 stopLiveEdgeWatcher()
+                applyOfflineControllerChrome()
+            }
+        }
+
+        /** Offline pill + cast/external disable — must run after [applyLiveControllerChrome] VOD branch. */
+        private fun applyOfflineControllerChrome() {
+            val controller = binding.pvPlayer.controller.binding
+            val offline = isOfflinePlayback()
+            applyOfflineCastExternalGuards(offline)
+            if (!offline) {
+                if (!isLiveTvPlayback()) {
+                    controller.tvLiveIndicator.isVisible = false
+                    controller.tvLiveIndicator.setOnClickListener(null)
+                }
+                return
+            }
+            controller.tvLiveIndicator.isVisible = true
+            controller.tvLiveIndicator.text = getString(R.string.downloads_play_offline)
+            controller.tvLiveIndicator.clearAnimation()
+            controller.tvLiveIndicator.setOnClickListener(null)
+            controller.tvLiveIndicator.isClickable = false
+        }
+
+        private fun applyOfflineCastExternalGuards(offline: Boolean) {
+            val controller = binding.pvPlayer.controller.binding
+            runCatching {
+                controller.mediaRouteButton.isVisible =
+                    !offline && !isLiveTvPlayback() && UserPreferences.castEnabled
+                controller.mediaRouteButton.isEnabled = !offline
+                controller.mediaRouteButton.isFocusable = !offline
+            }
+            controller.btnExoExternalPlayer.isEnabled = !offline
+            controller.btnExoExternalPlayer.isFocusable = !offline
+            controller.btnExoExternalPlayer.alpha = if (offline) 0.4f else 1f
+            if (offline) {
+                controller.btnExoExternalPlayer.setOnClickListener {
+                    Toast.makeText(
+                        requireContext(),
+                        R.string.player_offline_external_unavailable,
+                        Toast.LENGTH_SHORT,
+                    ).show()
+                }
             }
         }
 
@@ -2357,7 +2629,16 @@ class PlayerTvFragment : Fragment() {
                 .build()
             httpDataSource = OkHttpDataSource.Factory(okHttpClient)
 
-            dataSourceFactory = DefaultDataSource.Factory(requireContext(), httpDataSource)
+            dataSourceFactory = if (playingOffline) {
+                // Always wrap so sidecar subtitle file:// paths bypass FLAG_BLOCK_ON_CACHE.
+                DefaultDataSource.Factory(
+                    requireContext(),
+                    com.dskja.betterstreamflix.download.StreamflixDownloadManager
+                        .playbackCacheDataSourceFactory(requireContext()),
+                )
+            } else {
+                DefaultDataSource.Factory(requireContext(), httpDataSource)
+            }
 
             player = buildPlayer(extraBuffering).also { built ->
                 mediaSession = MediaSession.Builder(requireContext(), built)
@@ -2384,7 +2665,7 @@ class PlayerTvFragment : Fragment() {
                 binding.pvPlayer.controller.binding.mediaRouteButton
             }.getOrNull() ?: return
 
-            if (!UserPreferences.castEnabled || isLiveTvPlayback()) {
+            if (!UserPreferences.castEnabled || isLiveTvPlayback() || isOfflinePlayback()) {
                 routeButton.isGone = true
                 return
             }
@@ -2448,6 +2729,12 @@ class PlayerTvFragment : Fragment() {
             startPosition: Long = player.currentPosition,
             playWhenReady: Boolean = true,
         ) {
+            if (isOfflinePlayback() ||
+                server.id == PlayerViewModel.OFFLINE_SERVER_ID ||
+                server.name.equals(PlayerViewModel.OFFLINE_SERVER_NAME, ignoreCase = true)
+            ) {
+                return
+            }
             val cp = castPlayer ?: CastPlaybackHub.obtainPlayer(requireContext()) ?: return
             castPlayer = cp
 
@@ -2847,6 +3134,7 @@ class PlayerTvFragment : Fragment() {
 
         val extraBuffering = PlayerSettingsView.Settings.ExtraBuffering.isEnabled
         currentExtraBuffering = extraBuffering
+        playingOffline = false
 
         val okHttpClient = NetworkClient.default
         httpDataSource = OkHttpDataSource.Factory(okHttpClient)
