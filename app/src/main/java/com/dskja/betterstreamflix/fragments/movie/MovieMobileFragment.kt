@@ -221,14 +221,9 @@ class MovieMobileFragment : Fragment() {
             DetailTab.TRAILER -> listOf(
                 movie.copy().apply { itemType = AppAdapter.Type.MOVIE_TRAILER_MOBILE },
             )
-            DetailTab.ABOUT -> listOfNotNull(
+            // About keeps facts/overview only — cast & directors live in their own systems.
+            DetailTab.ABOUT -> listOf(
                 movie.copy().apply { itemType = AppAdapter.Type.MOVIE_ABOUT_MOBILE },
-                movie.takeIf { it.cast.isNotEmpty() }
-                    ?.copy()
-                    ?.apply { itemType = AppAdapter.Type.MOVIE_CAST_MOBILE },
-                movie.takeIf { it.directors.isNotEmpty() }
-                    ?.copy()
-                    ?.apply { itemType = AppAdapter.Type.MOVIE_DIRECTORS_MOBILE },
             )
             DetailTab.EPISODES -> emptyList()
         }

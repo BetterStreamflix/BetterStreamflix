@@ -13,7 +13,7 @@
         android:id="@+id/tv_detail_about_overview_label"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:fontFamily="@font/manrope"
+        android:fontFamily="@font/outfit"
         android:letterSpacing="0.06"
         android:text="@string/detail_about_overview_label"
         android:textAllCaps="true"
@@ -40,80 +40,303 @@
         android:background="#22FFFFFF" />
 
     <TextView
-        android:id="@+id/tv_detail_about_featuring_label"
+        android:id="@+id/tv_detail_about_facts_label"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="12dp"
-        android:fontFamily="@font/manrope"
+        android:fontFamily="@font/outfit"
         android:letterSpacing="0.06"
-        android:text="@string/detail_about_featuring_label"
+        android:text="@string/detail_about_facts_label"
         android:textAllCaps="true"
         android:textColor="#99FFFFFF"
         android:textSize="11sp"
-        android:textStyle="bold"
-        tools:visibility="visible" />
+        android:textStyle="bold" />
+
+    <LinearLayout
+        android:id="@+id/ll_detail_about_facts"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="10dp"
+        android:orientation="vertical">
+
+        <TextView
+            android:id="@+id/tv_detail_about_genres_label"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:fontFamily="@font/manrope"
+            android:letterSpacing="0.04"
+            android:text="@string/detail_about_genres_label"
+            android:textAllCaps="true"
+            android:textColor="#66FFFFFF"
+            android:textSize="11sp"
+            android:textStyle="bold"
+            android:visibility="gone"
+            tools:visibility="visible" />
+
+        <TextView
+            android:id="@+id/tv_detail_about_genres"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:layout_marginBottom="14dp"
+            android:fontFamily="@font/manrope"
+            android:textColor="#E6FFFFFF"
+            android:textSize="14sp"
+            android:visibility="gone"
+            tools:text="Comedy · Animation"
+            tools:visibility="visible" />
+
+        <TextView
+            android:id="@+id/tv_detail_about_runtime_label"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:fontFamily="@font/manrope"
+            android:letterSpacing="0.04"
+            android:text="@string/detail_about_runtime_label"
+            android:textAllCaps="true"
+            android:textColor="#66FFFFFF"
+            android:textSize="11sp"
+            android:textStyle="bold"
+            android:visibility="gone"
+            tools:visibility="visible" />
+
+        <TextView
+            android:id="@+id/tv_detail_about_runtime"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:layout_marginBottom="14dp"
+            android:fontFamily="@font/manrope"
+            android:textColor="#E6FFFFFF"
+            android:textSize="14sp"
+            android:visibility="gone"
+            tools:text="1h 30m"
+            tools:visibility="visible" />
+
+        <TextView
+            android:id="@+id/tv_detail_about_year_label"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:fontFamily="@font/manrope"
+            android:letterSpacing="0.04"
+            android:text="@string/detail_about_year_label"
+            android:textAllCaps="true"
+            android:textColor="#66FFFFFF"
+            android:textSize="11sp"
+            android:textStyle="bold"
+            android:visibility="gone"
+            tools:visibility="visible" />
+
+        <TextView
+            android:id="@+id/tv_detail_about_year"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:layout_marginBottom="14dp"
+            android:fontFamily="@font/manrope"
+            android:textColor="#E6FFFFFF"
+            android:textSize="14sp"
+            android:visibility="gone"
+            tools:text="1997"
+            tools:visibility="visible" />
+
+        <TextView
+            android:id="@+id/tv_detail_about_rating_label"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:fontFamily="@font/manrope"
+            android:letterSpacing="0.04"
+            android:text="@string/detail_about_rating_label"
+            android:textAllCaps="true"
+            android:textColor="#66FFFFFF"
+            android:textSize="11sp"
+            android:textStyle="bold"
+            android:visibility="gone"
+            tools:visibility="visible" />
+
+        <TextView
+            android:id="@+id/tv_detail_about_rating"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:layout_marginBottom="14dp"
+            android:fontFamily="@font/manrope"
+            android:textColor="#E6FFFFFF"
+            android:textSize="14sp"
+            android:visibility="gone"
+            tools:text="8.7"
+            tools:visibility="visible" />
+
+        <TextView
+            android:id="@+id/tv_detail_about_quality_label"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:fontFamily="@font/manrope"
+            android:letterSpacing="0.04"
+            android:text="@string/detail_about_quality_label"
+            android:textAllCaps="true"
+            android:textColor="#66FFFFFF"
+            android:textSize="11sp"
+            android:textStyle="bold"
+            android:visibility="gone"
+            tools:visibility="visible" />
+
+        <TextView
+            android:id="@+id/tv_detail_about_quality"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:layout_marginBottom="14dp"
+            android:fontFamily="@font/manrope"
+            android:textColor="#E6FFFFFF"
+            android:textSize="14sp"
+            android:visibility="gone"
+            tools:text="HD"
+            tools:visibility="visible" />
+
+        <TextView
+            android:id="@+id/tv_detail_about_cert_label"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:fontFamily="@font/manrope"
+            android:letterSpacing="0.04"
+            android:text="@string/detail_about_cert_label"
+            android:textAllCaps="true"
+            android:textColor="#66FFFFFF"
+            android:textSize="11sp"
+            android:textStyle="bold"
+            android:visibility="gone"
+            tools:visibility="visible" />
+
+        <TextView
+            android:id="@+id/tv_detail_about_cert"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:layout_marginBottom="14dp"
+            android:fontFamily="@font/manrope"
+            android:textColor="#E6FFFFFF"
+            android:textSize="14sp"
+            android:visibility="gone"
+            tools:text="TV-MA"
+            tools:visibility="visible" />
+
+        <TextView
+            android:id="@+id/tv_detail_about_provider_label"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:fontFamily="@font/manrope"
+            android:letterSpacing="0.04"
+            android:text="@string/detail_about_provider_label"
+            android:textAllCaps="true"
+            android:textColor="#66FFFFFF"
+            android:textSize="11sp"
+            android:textStyle="bold"
+            android:visibility="gone"
+            tools:visibility="visible" />
+
+        <TextView
+            android:id="@+id/tv_detail_about_provider"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:layout_marginBottom="14dp"
+            android:fontFamily="@font/manrope"
+            android:textColor="#E6FFFFFF"
+            android:textSize="14sp"
+            android:visibility="gone"
+            tools:text="SerienStream"
+            tools:visibility="visible" />
+
+        <TextView
+            android:id="@+id/tv_detail_about_seasons_label"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:fontFamily="@font/manrope"
+            android:letterSpacing="0.04"
+            android:text="@string/detail_about_seasons_label"
+            android:textAllCaps="true"
+            android:textColor="#66FFFFFF"
+            android:textSize="11sp"
+            android:textStyle="bold"
+            android:visibility="gone"
+            tools:visibility="visible" />
+
+        <TextView
+            android:id="@+id/tv_detail_about_seasons"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:layout_marginBottom="14dp"
+            android:fontFamily="@font/manrope"
+            android:textColor="#E6FFFFFF"
+            android:textSize="14sp"
+            android:visibility="gone"
+            tools:text="26 seasons"
+            tools:visibility="visible" />
+
+        <TextView
+            android:id="@+id/tv_detail_about_ids_label"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:fontFamily="@font/manrope"
+            android:letterSpacing="0.04"
+            android:text="@string/detail_about_ids_label"
+            android:textAllCaps="true"
+            android:textColor="#66FFFFFF"
+            android:textSize="11sp"
+            android:textStyle="bold"
+            android:visibility="gone"
+            tools:visibility="visible" />
+
+        <TextView
+            android:id="@+id/tv_detail_about_ids"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:layout_marginBottom="6dp"
+            android:fontFamily="@font/manrope"
+            android:textColor="#E6FFFFFF"
+            android:textSize="14sp"
+            android:visibility="gone"
+            tools:text="TMDb 1399 · IMDb tt0121955"
+            tools:visibility="visible" />
+    </LinearLayout>
+
+    <!-- Legacy stubs kept gone so older callers / generated bindings stay safe during migrate. -->
+    <TextView
+        android:id="@+id/tv_detail_about_featuring_label"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:visibility="gone" />
 
     <TextView
         android:id="@+id/tv_detail_about_featuring"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="6dp"
-        android:fontFamily="@font/manrope"
-        android:lineSpacingExtra="3dp"
-        android:textColor="#E6FFFFFF"
-        android:textSize="14sp"
-        tools:text="Trey Parker, Matt Stone"
-        tools:visibility="visible" />
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:visibility="gone" />
 
     <TextView
         android:id="@+id/tv_detail_about_directors_label"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="18dp"
-        android:fontFamily="@font/manrope"
-        android:letterSpacing="0.06"
-        android:text="@string/detail_about_directors_label"
-        android:textAllCaps="true"
-        android:textColor="#99FFFFFF"
-        android:textSize="11sp"
-        android:textStyle="bold"
-        tools:visibility="visible" />
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:visibility="gone" />
 
     <TextView
         android:id="@+id/tv_detail_about_directors"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="6dp"
-        android:fontFamily="@font/manrope"
-        android:lineSpacingExtra="3dp"
-        android:textColor="#E6FFFFFF"
-        android:textSize="14sp"
-        tools:text="Jane Doe"
-        tools:visibility="visible" />
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:visibility="gone" />
 
     <TextView
         android:id="@+id/tv_detail_about_cast_label"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="18dp"
-        android:fontFamily="@font/manrope"
-        android:letterSpacing="0.06"
-        android:text="@string/detail_about_cast_label"
-        android:textAllCaps="true"
-        android:textColor="#99FFFFFF"
-        android:textSize="11sp"
-        android:textStyle="bold"
-        tools:visibility="visible" />
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:visibility="gone" />
 
     <TextView
         android:id="@+id/tv_detail_about_cast"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="6dp"
-        android:fontFamily="@font/manrope"
-        android:lineSpacingExtra="3dp"
-        android:textColor="#E6FFFFFF"
-        android:textSize="14sp"
-        tools:text="Actor One, Actor Two, Actor Three"
-        tools:visibility="visible" />
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:visibility="gone" />
 </LinearLayout>

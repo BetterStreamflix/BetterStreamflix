@@ -22,9 +22,9 @@ import com.dskja.betterstreamflix.utils.ExpMotion
  */
 object DetailHeaderController {
 
-    /** Fade starts only after the hero logo has scrolled away. */
-    private const val SCROLL_START = 120f
-    private const val COLLAPSE_RANGE = 280f
+    /** Fade starts only after the overlaid hero logo has scrolled away. */
+    private const val SCROLL_START = 160f
+    private const val COLLAPSE_RANGE = 260f
 
     fun wireBack(root: View) {
         val back = root.findViewById<View>(R.id.iv_detail_back) ?: return

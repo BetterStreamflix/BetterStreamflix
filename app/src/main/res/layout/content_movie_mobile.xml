@@ -6,7 +6,7 @@
     android:layout_height="wrap_content"
     android:paddingBottom="8dp">
 
-    <!-- Spacer matches the 16:9 fragment banner so chrome sits over the cover. -->
+    <!-- Spacer matches the fragment banner; logo overlays the cover (not below it). -->
     <Space
         android:id="@+id/space_movie_hero"
         android:layout_width="0dp"
@@ -16,7 +16,6 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent" />
 
-    <!-- Kept for ViewHolder/Glide compatibility; artwork lives in the fragment banner. -->
     <com.google.android.material.imageview.ShapeableImageView
         android:id="@+id/iv_movie_poster"
         android:layout_width="1dp"
@@ -26,17 +25,18 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent" />
 
-    <!-- Fixed-height brand slot: logo + title overlay — no layout shift on reveal. -->
+    <!-- Title logo sits on the bottom of the cover plane. -->
     <FrameLayout
         android:id="@+id/fl_movie_logo_slot"
         android:layout_width="0dp"
-        android:layout_height="72dp"
-        android:layout_marginStart="28dp"
-        android:layout_marginEnd="28dp"
+        android:layout_height="80dp"
+        android:layout_marginStart="24dp"
+        android:layout_marginEnd="24dp"
+        android:layout_marginBottom="18dp"
         android:elevation="6dp"
+        app:layout_constraintBottom_toBottomOf="@id/space_movie_hero"
         app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/space_movie_hero">
+        app:layout_constraintStart_toStartOf="parent">
 
         <ImageView
             android:id="@+id/iv_movie_logo"
@@ -44,7 +44,7 @@
             android:layout_height="match_parent"
             android:adjustViewBounds="true"
             android:importantForAccessibility="no"
-            android:padding="6dp"
+            android:padding="4dp"
             android:scaleType="fitCenter"
             android:visibility="invisible"
             tools:src="@mipmap/ic_launcher"
@@ -54,15 +54,15 @@
             android:id="@+id/tv_movie_title"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
-            android:fontFamily="@font/manrope"
+            android:fontFamily="@font/syne"
             android:gravity="center"
             android:shadowColor="#CC000000"
             android:shadowDx="0"
             android:shadowDy="2"
-            android:shadowRadius="10"
+            android:shadowRadius="12"
             android:textAllCaps="true"
             android:textColor="#FFFFFF"
-            android:textSize="34sp"
+            android:textSize="32sp"
             android:textStyle="bold"
             tools:text="PRIMATE" />
     </FrameLayout>
@@ -72,88 +72,175 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         app:barrierDirection="bottom"
-        app:constraint_referenced_ids="fl_movie_logo_slot" />
+        app:constraint_referenced_ids="space_movie_hero" />
 
+    <!-- Primary CTA: full-width Watch. -->
+    <TextView
+        android:id="@+id/btn_movie_watch_now"
+        android:layout_width="0dp"
+        android:layout_height="52dp"
+        android:layout_marginStart="16dp"
+        android:layout_marginTop="14dp"
+        android:layout_marginEnd="16dp"
+        android:background="@drawable/bg_detail_watch_now"
+        android:drawablePadding="8dp"
+        android:fontFamily="@font/manrope"
+        android:gravity="center"
+        android:paddingStart="16dp"
+        android:paddingEnd="16dp"
+        android:text="@string/movie_watch_now"
+        android:textAllCaps="true"
+        android:textColor="#121218"
+        android:textSize="15sp"
+        android:textStyle="bold"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/barrier_movie_brand" />
+
+    <!-- Secondary actions: evenly spaced, not crushed beside Watch. -->
     <LinearLayout
         android:id="@+id/ll_movie_cta_row"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:layout_marginStart="16dp"
-        android:layout_marginTop="16dp"
-        android:layout_marginEnd="16dp"
-        android:gravity="center_vertical"
+        android:layout_marginStart="12dp"
+        android:layout_marginTop="12dp"
+        android:layout_marginEnd="12dp"
+        android:gravity="center"
         android:orientation="horizontal"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/barrier_movie_brand">
+        app:layout_constraintTop_toBottomOf="@id/btn_movie_watch_now">
 
-        <TextView
-            android:id="@+id/btn_movie_watch_now"
+        <LinearLayout
             android:layout_width="0dp"
-            android:layout_height="48dp"
-            android:layout_marginEnd="8dp"
+            android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:background="@drawable/bg_detail_watch_now"
-            android:drawablePadding="8dp"
-            android:fontFamily="@font/manrope"
-            android:gravity="center"
-            android:paddingStart="16dp"
-            android:paddingEnd="16dp"
-            android:text="@string/movie_watch_now"
-            android:textAllCaps="true"
-            android:textColor="#121218"
-            android:textSize="14sp"
-            android:textStyle="bold" />
+            android:gravity="center_horizontal"
+            android:orientation="vertical">
 
-        <ImageView
-            android:id="@+id/btn_movie_favorite"
-            android:layout_width="48dp"
-            android:layout_height="48dp"
-            android:layout_marginEnd="8dp"
-            android:background="@drawable/bg_detail_square_chip"
-            android:contentDescription="@string/detail_add_to_list"
-            android:padding="12dp"
-            android:src="@drawable/ic_list_add" />
+            <ImageView
+                android:id="@+id/btn_movie_favorite"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:background="@drawable/bg_detail_square_chip"
+                android:contentDescription="@string/detail_add_to_list"
+                android:padding="12dp"
+                android:src="@drawable/ic_list_add" />
 
-        <ImageView
-            android:id="@+id/btn_movie_trailer"
-            android:layout_width="48dp"
-            android:layout_height="48dp"
-            android:layout_marginEnd="8dp"
-            android:background="@drawable/bg_detail_square_chip"
-            android:contentDescription="@string/movie_trailer"
-            android:padding="14dp"
-            android:scaleType="fitCenter"
-            android:src="@drawable/ic_trailer_play" />
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:fontFamily="@font/manrope"
+                android:text="@string/detail_action_list"
+                android:textColor="#B3FFFFFF"
+                android:textSize="11sp" />
+        </LinearLayout>
 
-        <ImageView
-            android:id="@+id/btn_movie_download"
-            android:layout_width="48dp"
-            android:layout_height="48dp"
-            android:layout_marginEnd="8dp"
-            android:background="@drawable/bg_detail_square_chip"
-            android:contentDescription="@string/option_show_download"
-            android:padding="12dp"
-            android:src="@drawable/ic_player_settings_download" />
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:gravity="center_horizontal"
+            android:orientation="vertical">
 
-        <ImageView
-            android:id="@+id/btn_movie_watched"
-            android:layout_width="48dp"
-            android:layout_height="48dp"
-            android:layout_marginEnd="8dp"
-            android:background="@drawable/bg_detail_square_chip"
-            android:contentDescription="@string/option_show_watched"
-            android:padding="12dp"
-            android:src="@drawable/ic_watched" />
+            <ImageView
+                android:id="@+id/btn_movie_trailer"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:background="@drawable/bg_detail_square_chip"
+                android:contentDescription="@string/movie_trailer"
+                android:padding="14dp"
+                android:scaleType="fitCenter"
+                android:src="@drawable/ic_trailer_play" />
 
-        <ImageView
-            android:id="@+id/btn_movie_share"
-            android:layout_width="48dp"
-            android:layout_height="48dp"
-            android:background="@drawable/bg_detail_square_chip"
-            android:contentDescription="@string/detail_share"
-            android:padding="12dp"
-            android:src="@drawable/ic_detail_share" />
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:fontFamily="@font/manrope"
+                android:text="@string/detail_action_trailer"
+                android:textColor="#B3FFFFFF"
+                android:textSize="11sp" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:gravity="center_horizontal"
+            android:orientation="vertical">
+
+            <ImageView
+                android:id="@+id/btn_movie_download"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:background="@drawable/bg_detail_square_chip"
+                android:contentDescription="@string/option_show_download"
+                android:padding="12dp"
+                android:src="@drawable/ic_player_settings_download" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:fontFamily="@font/manrope"
+                android:text="@string/detail_action_download"
+                android:textColor="#B3FFFFFF"
+                android:textSize="11sp" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:gravity="center_horizontal"
+            android:orientation="vertical">
+
+            <ImageView
+                android:id="@+id/btn_movie_watched"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:background="@drawable/bg_detail_square_chip"
+                android:contentDescription="@string/option_show_watched"
+                android:padding="12dp"
+                android:src="@drawable/ic_watched" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:fontFamily="@font/manrope"
+                android:text="@string/detail_action_watched"
+                android:textColor="#B3FFFFFF"
+                android:textSize="11sp" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:gravity="center_horizontal"
+            android:orientation="vertical">
+
+            <ImageView
+                android:id="@+id/btn_movie_share"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:background="@drawable/bg_detail_square_chip"
+                android:contentDescription="@string/detail_share"
+                android:padding="12dp"
+                android:src="@drawable/ic_detail_share" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:fontFamily="@font/manrope"
+                android:text="@string/detail_action_share"
+                android:textColor="#B3FFFFFF"
+                android:textSize="11sp" />
+        </LinearLayout>
     </LinearLayout>
 
     <ProgressBar
@@ -161,15 +248,14 @@
         style="@android:style/Widget.ProgressBar.Horizontal"
         android:layout_width="0dp"
         android:layout_height="3dp"
-        android:layout_marginTop="6dp"
+        android:layout_marginTop="10dp"
         android:backgroundTint="#80646464"
         android:progressTint="#FFFFFF"
-        app:layout_constraintEnd_toEndOf="@id/ll_movie_cta_row"
-        app:layout_constraintStart_toStartOf="@id/ll_movie_cta_row"
+        app:layout_constraintEnd_toEndOf="@id/btn_movie_watch_now"
+        app:layout_constraintStart_toStartOf="@id/btn_movie_watch_now"
         app:layout_constraintTop_toBottomOf="@id/ll_movie_cta_row"
         tools:progress="80" />
 
-    <!-- Meta: GENRE  RUNTIME  YEAR  [16] -->
     <LinearLayout
         android:id="@+id/ll_movie_meta_row"
         android:layout_width="0dp"
@@ -187,7 +273,7 @@
             android:id="@+id/tv_movie_genres"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:fontFamily="@font/manrope"
+            android:fontFamily="@font/outfit"
             android:textAllCaps="true"
             android:textColor="#FFFFFF"
             android:textSize="13sp"
@@ -233,7 +319,6 @@
             tools:text="16"
             tools:visibility="visible" />
 
-        <!-- Hidden legacy meta; kept for ViewHolder compile safety. -->
         <ImageView
             android:id="@+id/iv_movie_rating_icon"
             android:layout_width="0dp"
@@ -263,7 +348,7 @@
         android:layout_marginEnd="16dp"
         android:ellipsize="end"
         android:fontFamily="@font/manrope"
-        android:lineSpacingExtra="2dp"
+        android:lineSpacingExtra="3dp"
         android:maxLines="3"
         android:textColor="#E6FFFFFF"
         android:textSize="14sp"

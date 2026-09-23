@@ -141,6 +141,60 @@ object TrailerPlaybackController {
         }
     }
 
+    /** Shared YouTube-nocookie embed HTML for dialog + in-tab players. */
+    fun embedHtml(videoId: String): String = """
+            <!DOCTYPE html><html><head>
+            <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1"/>
+            <style>html,body{margin:0;padding:0;background:#000;height:100%;overflow:hidden;}
+            .wrap{position:absolute;inset:0;width:100%;height:100%;}
+            iframe{position:absolute;top:0;left:0;width:100%;height:100%;border:0;}</style>
+            </head><body><div class="wrap">
+            <iframe
+              src="https://www.youtube-nocookie.com/embed/$videoId?autoplay=1&amp;rel=0&amp;modestbranding=1&amp;playsinline=1&amp;fs=1"
+              allow="autoplay; encrypted-media; picture-in-picture; fullscreen"
+              allowfullscreen
+              referrerpolicy="strict-origin-when-cross-origin"></iframe>
+            </div></body></html>
+        """.trimIndent()
+
+    fun configureTrailerWebView(web: WebView) {
+        web.setLayerType(View.LAYER_TYPE_HARDWARE, null)
+        web.settings.apply {
+            javaScriptEnabled = true
+            domStorageEnabled = true
+            mediaPlaybackRequiresUserGesture = false
+            mixedContentMode = WebSettings.MIXED_CONTENT_COMPATIBILITY_MODE
+            loadWithOverviewMode = true
+            useWideViewPort = true
+            cacheMode = WebSettings.LOAD_DEFAULT
+            allowContentAccess = true
+            allowFileAccess = false
+        }
+    }
+
+    fun loadTrailerEmbed(web: WebView, videoId: String) {
+        web.loadDataWithBaseURL(
+            "https://www.youtube-nocookie.com",
+            embedHtml(videoId),
+            "text/html",
+            "utf-8",
+            null,
+        )
+    }
+
+    fun destroyTrailerWebView(web: WebView?) {
+        web ?: return
+        web.stopLoading()
+        web.loadUrl("about:blank")
+        runCatching { web.clearHistory() }
+        (web.parent as? ViewGroup)?.removeView(web)
+        web.destroy()
+    }
+
+    fun openExternalYoutube(context: Context, trailerUrl: String) {
+        openYoutube(context, trailerUrl)
+    }
+
     fun youtubeVideoId(trailerUrl: String): String? {
         if (trailerUrl.isBlank()) return null
         Regex("""(?:v=|youtu\.be/|embed/|shorts/)([A-Za-z0-9_-]{6,})""")
@@ -365,7 +419,7 @@ object TrailerPlaybackController {
             web.layoutParams = playerParams
             root.findViewById<FrameLayout>(R.id.fl_trailer_player).minimumHeight = playerHeight
 
-            configureWebView(web)
+            configureTrailerWebView(web)
             web.webChromeClient = WebChromeClient()
             web.webViewClient = object : WebViewClient() {
                 override fun onPageFinished(view: WebView?, url: String?) {
@@ -452,32 +506,11 @@ object TrailerPlaybackController {
                 }
         }
 
-        private fun configureWebView(web: WebView) {
-            web.setLayerType(View.LAYER_TYPE_HARDWARE, null)
-            web.settings.apply {
-                javaScriptEnabled = true
-                domStorageEnabled = true
-                mediaPlaybackRequiresUserGesture = false
-                mixedContentMode = WebSettings.MIXED_CONTENT_COMPATIBILITY_MODE
-                loadWithOverviewMode = true
-                useWideViewPort = true
-                cacheMode = WebSettings.LOAD_DEFAULT
-                allowContentAccess = true
-                allowFileAccess = false
-            }
-        }
-
         private fun loadEmbed(web: WebView, loading: ProgressBar, errorPanel: View) {
             errorPanel.visibility = View.GONE
             web.visibility = View.VISIBLE
             loading.visibility = View.VISIBLE
-            web.loadDataWithBaseURL(
-                "https://www.youtube-nocookie.com",
-                embedHtml(videoId),
-                "text/html",
-                "utf-8",
-                null,
-            )
+            loadTrailerEmbed(web, videoId)
         }
 
         private fun showError(loading: ProgressBar, web: WebView, errorPanel: View) {
@@ -491,13 +524,7 @@ object TrailerPlaybackController {
         }
 
         private fun destroyWeb() {
-            webView?.apply {
-                stopLoading()
-                loadUrl("about:blank")
-                runCatching { clearHistory() }
-                (parent as? ViewGroup)?.removeView(this)
-                destroy()
-            }
+            destroyTrailerWebView(webView)
             webView = null
         }
 
@@ -505,21 +532,6 @@ object TrailerPlaybackController {
             destroyWeb()
             super.onDestroyView()
         }
-
-        private fun embedHtml(videoId: String): String = """
-            <!DOCTYPE html><html><head>
-            <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1"/>
-            <style>html,body{margin:0;padding:0;background:#000;height:100%;overflow:hidden;}
-            .wrap{position:absolute;inset:0;width:100%;height:100%;}
-            iframe{position:absolute;top:0;left:0;width:100%;height:100%;border:0;}</style>
-            </head><body><div class="wrap">
-            <iframe
-              src="https://www.youtube-nocookie.com/embed/$videoId?autoplay=1&amp;rel=0&amp;modestbranding=1&amp;playsinline=1&amp;fs=1"
-              allow="autoplay; encrypted-media; picture-in-picture; fullscreen"
-              allowfullscreen
-              referrerpolicy="strict-origin-when-cross-origin"></iframe>
-            </div></body></html>
-        """.trimIndent()
 
         companion object {
             private const val ARG_ID = "id"

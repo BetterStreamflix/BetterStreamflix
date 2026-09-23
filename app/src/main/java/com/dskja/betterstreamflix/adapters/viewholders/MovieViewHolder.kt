@@ -2079,14 +2079,100 @@ class MovieViewHolder(
         binding.llDetailTrailerList.removeAllViews()
         binding.llDetailTrailerRow.visibility = View.GONE
         binding.tvDetailTrailerEmpty.visibility = View.GONE
+        binding.flDetailTrailerPlayer.visibility = View.GONE
+        binding.tvDetailTrailerNowPlaying.visibility = View.GONE
+        binding.tvDetailTrailerMoreLabel.visibility = View.GONE
+        binding.llDetailTrailerError.visibility = View.GONE
+
+        val web = binding.wvDetailTrailer
+        val loading = binding.pbDetailTrailerLoading
+        val errorPanel = binding.llDetailTrailerError
+        val metrics = binding.root.resources.displayMetrics
+        val playerHeight = ((metrics.widthPixels - (32 * metrics.density)) * 9f / 16f)
+            .toInt()
+            .coerceIn((180 * metrics.density).toInt(), (metrics.heightPixels * 0.45f).toInt())
+        web.layoutParams = web.layoutParams.apply { height = playerHeight }
+        binding.flDetailTrailerPlayer.minimumHeight = playerHeight
+
+        if (web.getTag(R.id.detail_trailer_webview_configured_tag) != true) {
+            web.setTag(R.id.detail_trailer_webview_configured_tag, true)
+            TrailerPlaybackController.configureTrailerWebView(web)
+            web.webChromeClient = android.webkit.WebChromeClient()
+            web.webViewClient = object : android.webkit.WebViewClient() {
+                override fun onPageFinished(view: android.webkit.WebView?, url: String?) {
+                    if (errorPanel.visibility != View.VISIBLE) {
+                        loading.visibility = View.GONE
+                        web.visibility = View.VISIBLE
+                    }
+                }
+
+                override fun onReceivedError(
+                    view: android.webkit.WebView?,
+                    request: android.webkit.WebResourceRequest?,
+                    resourceError: android.webkit.WebResourceError?,
+                ) {
+                    if (request?.isForMainFrame == true) {
+                        loading.visibility = View.GONE
+                        web.visibility = View.INVISIBLE
+                        errorPanel.visibility = View.VISIBLE
+                    }
+                }
+            }
+            binding.root.addOnAttachStateChangeListener(object : View.OnAttachStateChangeListener {
+                override fun onViewAttachedToWindow(v: View) = Unit
+                override fun onViewDetachedFromWindow(v: View) {
+                    web.stopLoading()
+                    web.loadUrl("about:blank")
+                }
+            })
+        }
+
+        var activeUrl: String? = null
+
+        fun playInline(title: String, url: String) {
+            val ytId = TrailerPlaybackController.youtubeVideoId(url)
+            if (ytId.isNullOrBlank()) {
+                TrailerPlaybackController.openExternalYoutube(context, url)
+                return
+            }
+            val alreadyPlaying = activeUrl == url &&
+                binding.flDetailTrailerPlayer.visibility == View.VISIBLE
+            activeUrl = url
+            binding.flDetailTrailerPlayer.visibility = View.VISIBLE
+            binding.tvDetailTrailerNowPlaying.visibility = View.VISIBLE
+            binding.tvDetailTrailerNowPlaying.text = title
+            binding.btnDetailTrailerOpenExternal.setOnClickListener {
+                ExpMotion.hapticTap(it)
+                TrailerPlaybackController.openExternalYoutube(context, url)
+            }
+            for (i in 0 until binding.llDetailTrailerList.childCount) {
+                val child = binding.llDetailTrailerList.getChildAt(i)
+                val selected = child.getTag(R.id.detail_trailer_row_url_tag) == url
+                child.background = if (selected) {
+                    ContextCompat.getDrawable(context, R.drawable.bg_detail_trailer_row_selected)
+                } else {
+                    null
+                }
+            }
+            if (alreadyPlaying) return
+            errorPanel.visibility = View.GONE
+            web.visibility = View.VISIBLE
+            loading.visibility = View.VISIBLE
+            TrailerPlaybackController.loadTrailerEmbed(web, ytId)
+        }
 
         fun bindRows(trailers: List<Triple<String, String, String>>) {
             binding.llDetailTrailerList.removeAllViews()
             if (trailers.isEmpty()) {
                 binding.tvDetailTrailerEmpty.visibility = View.VISIBLE
+                binding.flDetailTrailerPlayer.visibility = View.GONE
+                binding.tvDetailTrailerNowPlaying.visibility = View.GONE
+                binding.tvDetailTrailerMoreLabel.visibility = View.GONE
                 return
             }
             binding.tvDetailTrailerEmpty.visibility = View.GONE
+            binding.tvDetailTrailerMoreLabel.visibility =
+                if (trailers.size > 1) View.VISIBLE else View.GONE
             val inflater = LayoutInflater.from(context)
             trailers.take(5).forEach { (title, url, type) ->
                 val row = ItemDetailTrailerRowMobileBinding.inflate(
@@ -2094,6 +2180,7 @@ class MovieViewHolder(
                     binding.llDetailTrailerList,
                     false,
                 )
+                row.root.setTag(R.id.detail_trailer_row_url_tag, url)
                 row.tvDetailTrailerTitle.text = title
                 row.tvDetailTrailerMeta.text = type
                 row.tvDetailTrailerDesc.visibility = View.GONE
@@ -2108,16 +2195,20 @@ class MovieViewHolder(
                 }
                 val play = View.OnClickListener {
                     ExpMotion.hapticTap(it)
-                    val fragment = context.toActivity()?.getCurrentFragment() as? Fragment
-                    if (fragment != null) {
-                        TrailerPlaybackController.play(fragment, url)
-                    } else {
-                        handleTrailerClick(url, "MovieTrailerSection")
-                    }
+                    playInline(title, url)
                 }
                 row.root.setOnClickListener(play)
                 row.ivDetailTrailerPlay.setOnClickListener(play)
                 binding.llDetailTrailerList.addView(row.root)
+            }
+            val first = trailers.first()
+            if (activeUrl == null || trailers.none { it.second == activeUrl }) {
+                playInline(first.first, first.second)
+            } else {
+                playInline(
+                    trailers.first { it.second == activeUrl }.first,
+                    activeUrl!!,
+                )
             }
         }
 
@@ -2226,36 +2317,89 @@ class MovieViewHolder(
         binding.tvDetailAboutOverviewLabel.visibility =
             if (overview.isBlank()) View.GONE else View.VISIBLE
 
-        val featuringNames = movie.cast
-            .mapNotNull { it.name.takeIf { name -> name.isNotBlank() } }
-            .take(5)
-            .joinToString(", ")
-        binding.tvDetailAboutFeaturing.text = featuringNames
-        val featuringVisible = featuringNames.isNotBlank()
-        binding.tvDetailAboutFeaturing.visibility =
-            if (featuringVisible) View.VISIBLE else View.GONE
-        binding.tvDetailAboutFeaturingLabel.visibility =
-            if (featuringVisible) View.VISIBLE else View.GONE
+        // Legacy cast/crew walls stay gone — Actor / Cast / Director systems cover them.
+        binding.tvDetailAboutFeaturing.visibility = View.GONE
+        binding.tvDetailAboutFeaturingLabel.visibility = View.GONE
+        binding.tvDetailAboutDirectors.visibility = View.GONE
+        binding.tvDetailAboutDirectorsLabel.visibility = View.GONE
+        binding.tvDetailAboutCast.visibility = View.GONE
+        binding.tvDetailAboutCastLabel.visibility = View.GONE
 
-        val directorNames = movie.directors
-            .mapNotNull { it.name.takeIf { name -> name.isNotBlank() } }
-            .joinToString(", ")
-        binding.tvDetailAboutDirectors.text = directorNames
-        val directorsVisible = directorNames.isNotBlank()
-        binding.tvDetailAboutDirectors.visibility =
-            if (directorsVisible) View.VISIBLE else View.GONE
-        binding.tvDetailAboutDirectorsLabel.visibility =
-            if (directorsVisible) View.VISIBLE else View.GONE
+        fun bindFact(label: View, value: android.widget.TextView, text: String?) {
+            val visible = !text.isNullOrBlank()
+            label.visibility = if (visible) View.VISIBLE else View.GONE
+            value.visibility = if (visible) View.VISIBLE else View.GONE
+            if (visible) value.text = text
+        }
 
-        val castNames = movie.cast
+        val genres = movie.genres
             .mapNotNull { it.name.takeIf { name -> name.isNotBlank() } }
-            .joinToString(", ")
-        binding.tvDetailAboutCast.text = castNames
-        val castVisible = castNames.isNotBlank()
-        binding.tvDetailAboutCast.visibility =
-            if (castVisible) View.VISIBLE else View.GONE
-        binding.tvDetailAboutCastLabel.visibility =
-            if (castVisible) View.VISIBLE else View.GONE
+            .joinToString(" · ")
+        bindFact(binding.tvDetailAboutGenresLabel, binding.tvDetailAboutGenres, genres.ifBlank { null })
+
+        val runtime = movie.runtime?.let {
+            val hours = it / 60
+            val minutes = it % 60
+            when {
+                hours > 0 -> context.getString(
+                    R.string.movie_runtime_hours_minutes_short,
+                    hours,
+                    minutes,
+                )
+                else -> context.getString(R.string.movie_runtime_minutes_short, minutes)
+            }
+        }
+        bindFact(binding.tvDetailAboutRuntimeLabel, binding.tvDetailAboutRuntime, runtime)
+        bindFact(
+            binding.tvDetailAboutYearLabel,
+            binding.tvDetailAboutYear,
+            movie.released?.format("yyyy"),
+        )
+        bindFact(
+            binding.tvDetailAboutRatingLabel,
+            binding.tvDetailAboutRating,
+            movie.rating?.let { String.format(java.util.Locale.US, "%.1f", it) },
+        )
+        bindFact(
+            binding.tvDetailAboutQualityLabel,
+            binding.tvDetailAboutQuality,
+            movie.quality?.takeIf { it.isNotBlank() },
+        )
+        bindFact(
+            binding.tvDetailAboutCertLabel,
+            binding.tvDetailAboutCert,
+            movie.contentRating?.takeIf { it.isNotBlank() },
+        )
+        bindFact(
+            binding.tvDetailAboutProviderLabel,
+            binding.tvDetailAboutProvider,
+            movie.providerName?.takeIf { it.isNotBlank() },
+        )
+        binding.tvDetailAboutSeasonsLabel.visibility = View.GONE
+        binding.tvDetailAboutSeasons.visibility = View.GONE
+
+        val ids = buildList {
+            movie.tmdbId?.takeIf { it.isNotBlank() }?.let {
+                add(context.getString(R.string.detail_about_id_tmdb, it))
+            }
+            movie.imdbId?.takeIf { it.isNotBlank() }?.let {
+                add(context.getString(R.string.detail_about_id_imdb, it))
+            }
+        }.joinToString(" · ")
+        bindFact(binding.tvDetailAboutIdsLabel, binding.tvDetailAboutIds, ids.ifBlank { null })
+
+        val anyFact = listOf(
+            binding.tvDetailAboutGenres,
+            binding.tvDetailAboutRuntime,
+            binding.tvDetailAboutYear,
+            binding.tvDetailAboutRating,
+            binding.tvDetailAboutQuality,
+            binding.tvDetailAboutCert,
+            binding.tvDetailAboutProvider,
+            binding.tvDetailAboutIds,
+        ).any { it.visibility == View.VISIBLE }
+        binding.tvDetailAboutFactsLabel.visibility =
+            if (anyFact) View.VISIBLE else View.GONE
     }
 
 }

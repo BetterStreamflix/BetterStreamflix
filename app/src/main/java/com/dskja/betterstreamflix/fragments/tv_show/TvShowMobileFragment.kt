@@ -263,14 +263,9 @@ class TvShowMobileFragment : Fragment() {
             DetailTab.TRAILER -> listOf(
                 tvShow.copy().apply { itemType = AppAdapter.Type.TV_SHOW_TRAILER_MOBILE },
             )
-            DetailTab.ABOUT -> listOfNotNull(
+            // About keeps facts/overview only — cast & directors live in their own systems.
+            DetailTab.ABOUT -> listOf(
                 tvShow.copy().apply { itemType = AppAdapter.Type.TV_SHOW_ABOUT_MOBILE },
-                tvShow.takeIf { it.cast.isNotEmpty() }
-                    ?.copy()
-                    ?.apply { itemType = AppAdapter.Type.TV_SHOW_CAST_MOBILE },
-                tvShow.takeIf { it.directors.isNotEmpty() }
-                    ?.copy()
-                    ?.apply { itemType = AppAdapter.Type.TV_SHOW_DIRECTORS_MOBILE },
             )
         }
         appAdapter.submitList(
