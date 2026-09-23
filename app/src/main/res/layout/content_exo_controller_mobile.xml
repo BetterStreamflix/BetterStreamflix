@@ -101,7 +101,7 @@
         android:tint="#FFFFFF"
         app:layout_constraintBottom_toBottomOf="@id/tv_exo_subtitle"
         app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintTop_toTopOf="@id/tv_exo_title"
+        app:layout_constraintTop_toTopOf="@id/fl_exo_title_slot"
         tools:ignore="ContentDescription,UseAppTint" />
 
     <LinearLayout
@@ -378,6 +378,6 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:visibility="visible"
-        app:constraint_referenced_ids="btn_exo_back,tv_exo_title,tv_exo_subtitle,media_route_button,btn_exo_external_player,exo_center_controls,exo_progress,exo_bottom_bar" />
+        app:constraint_referenced_ids="btn_exo_back,fl_exo_title_slot,tv_exo_subtitle,media_route_button,btn_exo_external_player,exo_center_controls,exo_progress,exo_bottom_bar" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>
