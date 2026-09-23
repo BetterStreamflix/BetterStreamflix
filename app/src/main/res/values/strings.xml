@@ -1208,6 +1208,7 @@
     <string name="download_error_wifi">Wi‑Fi required</string>
     <string name="download_error_expired">Link expired — try again</string>
     <string name="download_error_file_missing">Local file missing</string>
+    <string name="downloads_share_cache_only">This download is stored in the app cache and can\'t be shared as a file. Play it offline instead.</string>
     <string name="player_offline_missing">Offline download missing or incomplete</string>
     <string name="player_offline_external_unavailable">Cast and external players are not available for offline playback</string>
     <string name="player_offline_next_title">Next episode not downloaded</string>

@@ -1045,6 +1045,7 @@
     <string name="download_error_wifi">Nur WLAN</string>
     <string name="download_error_expired">Link abgelaufen — erneut versuchen</string>
     <string name="download_error_file_missing">Lokale Datei fehlt</string>
+    <string name="downloads_share_cache_only">Dieser Download liegt nur im App-Cache und kann nicht als Datei geteilt werden. Spiele ihn offline ab.</string>
     <string name="player_offline_missing">Offline-Download fehlt oder ist unvollständig</string>
     <string name="player_offline_external_unavailable">Cast und externe Player sind bei Offline-Wiedergabe nicht verfügbar</string>
     <string name="player_offline_next_title">Nächste Folge nicht heruntergeladen</string>

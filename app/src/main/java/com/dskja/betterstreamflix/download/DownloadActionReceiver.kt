@@ -25,13 +25,15 @@ class DownloadActionReceiver : BroadcastReceiver() {
                     ACTION_PAUSE_ALL -> repo.pauseAll()
                     ACTION_RESUME_ALL -> repo.resumeAll()
                     ACTION_RETRY -> {
-                        // resume() clears the Media3 stop reason and re-queues a
-                        // failed download with its stored request — right fix for
-                        // transient network/Wi-Fi failures. Items whose signed URL
-                        // has expired still need the in-app retry (full re-resolve).
+                        // Full re-resolve (fresh servers/headers). Media3 resume alone
+                        // cannot revive STATE_FAILED downloads or expired signed URLs.
                         val itemId = intent.getStringExtra(EXTRA_ITEM_ID)
                         if (!itemId.isNullOrEmpty()) {
-                            repo.resume(itemId)
+                            val item = repo.getById(itemId)
+                            if (item != null) {
+                                DownloadNotifier.cancelFailed(appContext, itemId)
+                                DownloadController.retryItem(appContext, item)
+                            }
                         }
                     }
                 }
