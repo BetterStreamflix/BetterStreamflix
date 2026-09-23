@@ -127,6 +127,7 @@ object TmdbSettingsController {
 
         clearLogoPref?.setOnPreferenceClickListener {
             TmdbLogoCache.clearLogoOnly()
+            TmdbCache.clearLogos()
             TmdbLogoTelemetry.reset()
             refreshTelemetry()
             notifyUser(context, R.string.settings_tmdb_logo_cache_cleared)

@@ -77,8 +77,32 @@ object TmdbLogoPicker {
     fun shouldUpgradeLogo(current: String?): Boolean =
         com.dskja.betterstreamflix.logo.TmdbLogoPicker.shouldUpgradeLogo(current)
 
+    fun shouldUpgradeLogo(
+        current: String?,
+        storedLang: String?,
+        wantedLang: String?,
+    ): Boolean =
+        com.dskja.betterstreamflix.logo.TmdbLogoPicker.shouldUpgradeLogo(
+            current,
+            storedLang,
+            wantedLang,
+        )
+
     fun preferResolvedLogo(current: String?, tmdb: String?): String? =
         com.dskja.betterstreamflix.logo.TmdbLogoPicker.preferResolvedLogo(current, tmdb)
+
+    fun preferResolvedLogo(
+        current: String?,
+        tmdb: String?,
+        currentLang: String?,
+        wantedLang: String?,
+    ): String? =
+        com.dskja.betterstreamflix.logo.TmdbLogoPicker.preferResolvedLogo(
+            current,
+            tmdb,
+            currentLang,
+            wantedLang,
+        )
 
     fun readCache(
         entry: CacheEntry?,

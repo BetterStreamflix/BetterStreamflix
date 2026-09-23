@@ -33,6 +33,7 @@ object TitleLogoSurface {
         anchor.setTag(TITLE_TAG, movie.title)
         val currentCheck = stillCurrent ?: { anchor.getTag(TITLE_TAG) == movie.title }
         val current = movie.logo
+        val wantedLang = UserPreferences.currentProvider?.language
         TmdbLogoBinder.bindImage(
             imageView = imageView,
             titleView = titleView,
@@ -49,7 +50,7 @@ object TitleLogoSurface {
                 }
             },
         )
-        if (TmdbLogoPicker.shouldUpgradeLogo(current)) {
+        if (TmdbLogoPicker.shouldUpgradeLogo(current, movie.logoLanguage, wantedLang)) {
             resolveMovie(
                 anchor, movie, imageView, titleView,
                 hideUntilReady, persist, currentCheck, onResolved,
@@ -72,6 +73,7 @@ object TitleLogoSurface {
         anchor.setTag(TITLE_TAG, tvShow.title)
         val currentCheck = stillCurrent ?: { anchor.getTag(TITLE_TAG) == tvShow.title }
         val current = tvShow.logo
+        val wantedLang = UserPreferences.currentProvider?.language
         TmdbLogoBinder.bindImage(
             imageView = imageView,
             titleView = titleView,
@@ -88,7 +90,7 @@ object TitleLogoSurface {
                 }
             },
         )
-        if (TmdbLogoPicker.shouldUpgradeLogo(current)) {
+        if (TmdbLogoPicker.shouldUpgradeLogo(current, tvShow.logoLanguage, wantedLang)) {
             resolveTv(
                 anchor, tvShow, imageView, titleView,
                 hideUntilReady, persist, currentCheck, onResolved,
@@ -128,12 +130,15 @@ object TitleLogoSurface {
         tmdbId: String? = null,
         imdbId: String? = null,
         existingLogo: String? = null,
+        existingLogoLanguage: String? = null,
+        language: String? = UserPreferences.currentProvider?.language,
         hideUntilReady: Boolean = true,
         onResolved: ((String, LogoSource) -> Unit)? = null,
     ) {
         TmdbLogoBinder.cancel(anchor)
         anchor.setTag(TITLE_TAG, title)
         val stillCurrent = { anchor.getTag(TITLE_TAG) == title }
+        val wantedLang = language ?: UserPreferences.currentProvider?.language
         TmdbLogoBinder.bindImage(
             imageView = imageView,
             titleView = titleView,
@@ -142,7 +147,7 @@ object TitleLogoSurface {
             hideUntilReady = hideUntilReady,
             stillCurrent = stillCurrent,
         )
-        if (!TmdbLogoPicker.shouldUpgradeLogo(existingLogo)) return
+        if (!TmdbLogoPicker.shouldUpgradeLogo(existingLogo, existingLogoLanguage, wantedLang)) return
         TmdbLogoBinder.resolve(
             anchor = anchor,
             request = LogoRequest(
@@ -151,6 +156,7 @@ object TitleLogoSurface {
                 isTv = isTv,
                 tmdbId = tmdbId,
                 imdbId = imdbId,
+                language = wantedLang,
                 existingLogo = existingLogo,
             ),
         ) { url, source ->
@@ -178,6 +184,7 @@ object TitleLogoSurface {
         stillCurrent: () -> Boolean,
         onResolved: ((String, LogoSource) -> Unit)?,
     ) {
+        val wantedLang = UserPreferences.currentProvider?.language
         TmdbLogoBinder.resolve(
             anchor = anchor,
             request = LogoRequest(
@@ -186,13 +193,14 @@ object TitleLogoSurface {
                 isTv = false,
                 tmdbId = movie.tmdbId,
                 imdbId = movie.imdbId,
+                language = wantedLang,
                 existingLogo = movie.logo,
                 existingSource = movie.logoSource,
             ),
         ) { url, source ->
             movie.logo = url
             movie.logoSource = source
-            movie.logoLanguage = UserPreferences.currentProvider?.language
+            movie.logoLanguage = wantedLang
             onResolved?.invoke(url, source)
             if (persist) schedulePersistMovie(anchor, movie)
             if (stillCurrent()) {
@@ -218,6 +226,7 @@ object TitleLogoSurface {
         stillCurrent: () -> Boolean,
         onResolved: ((String, LogoSource) -> Unit)?,
     ) {
+        val wantedLang = UserPreferences.currentProvider?.language
         TmdbLogoBinder.resolve(
             anchor = anchor,
             request = LogoRequest(
@@ -226,13 +235,14 @@ object TitleLogoSurface {
                 isTv = true,
                 tmdbId = tvShow.tmdbId,
                 imdbId = tvShow.imdbId,
+                language = wantedLang,
                 existingLogo = tvShow.logo,
                 existingSource = tvShow.logoSource,
             ),
         ) { url, source ->
             tvShow.logo = url
             tvShow.logoSource = source
-            tvShow.logoLanguage = UserPreferences.currentProvider?.language
+            tvShow.logoLanguage = wantedLang
             onResolved?.invoke(url, source)
             if (persist) schedulePersistTv(anchor, tvShow)
             if (stillCurrent()) {

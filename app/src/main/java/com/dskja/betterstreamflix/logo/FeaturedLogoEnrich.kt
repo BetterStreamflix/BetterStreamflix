@@ -72,11 +72,23 @@ object FeaturedLogoEnrich {
                     val idx = (fromIndex + offset).floorMod(items.size)
                     offset++
                     when (val item = items.getOrNull(idx)) {
-                        is Movie -> if (TmdbLogoPicker.shouldUpgradeLogo(item.logo)) {
+                        is Movie -> if (
+                            TmdbLogoPicker.shouldUpgradeLogo(
+                                item.logo,
+                                item.logoLanguage,
+                                UserPreferences.currentProvider?.language,
+                            )
+                        ) {
                             add(item)
                             i++
                         }
-                        is TvShow -> if (TmdbLogoPicker.shouldUpgradeLogo(item.logo)) {
+                        is TvShow -> if (
+                            TmdbLogoPicker.shouldUpgradeLogo(
+                                item.logo,
+                                item.logoLanguage,
+                                UserPreferences.currentProvider?.language,
+                            )
+                        ) {
                             add(item)
                             i++
                         }
@@ -130,33 +142,37 @@ object FeaturedLogoEnrich {
     }
 
     private suspend fun resolveMovie(movie: Movie): String? {
+        val lang = UserPreferences.currentProvider?.language
         val url = TmdbUtils.resolveTitleLogo(
             title = movie.title,
             year = movie.released?.format("yyyy")?.toIntOrNull(),
             isTv = false,
             tmdbId = movie.tmdbId,
             imdbId = movie.imdbId,
+            language = lang,
         ) ?: return null
         if (!TmdbLogoPicker.isTrustedTmdbLogo(url)) return null
         movie.logo = url
         movie.logoSource = LogoSource.TMDB
-        movie.logoLanguage = UserPreferences.currentProvider?.language
+        movie.logoLanguage = lang
         LogoPersist.persistMovieLogo(movie)
         return url
     }
 
     private suspend fun resolveTv(tvShow: TvShow): String? {
+        val lang = UserPreferences.currentProvider?.language
         val url = TmdbUtils.resolveTitleLogo(
             title = tvShow.title,
             year = tvShow.released?.format("yyyy")?.toIntOrNull(),
             isTv = true,
             tmdbId = tvShow.tmdbId,
             imdbId = tvShow.imdbId,
+            language = lang,
         ) ?: return null
         if (!TmdbLogoPicker.isTrustedTmdbLogo(url)) return null
         tvShow.logo = url
         tvShow.logoSource = LogoSource.TMDB
-        tvShow.logoLanguage = UserPreferences.currentProvider?.language
+        tvShow.logoLanguage = lang
         LogoPersist.persistTvLogo(tvShow)
         return url
     }

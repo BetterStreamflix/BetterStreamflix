@@ -87,8 +87,10 @@ object TmdbLogoCache {
     fun isFilePathBlacklisted(filePath: String?, nowMs: Long = System.currentTimeMillis()): Boolean {
         val path = filePath?.trim().orEmpty()
         if (path.isEmpty()) return false
-        // Match against any blacklisted identity that ends with this file path.
-        val needle = path.lowercase()
+        // Boundary match on basename so "/1.png" does not poison "/11.png".
+        val basename = path.substringAfterLast('/').lowercase()
+        if (basename.isEmpty()) return false
+        val needle = "/$basename"
         val iterator = failBlacklist.entries.iterator()
         while (iterator.hasNext()) {
             val (id, at) = iterator.next()
@@ -96,7 +98,7 @@ object TmdbLogoCache {
                 iterator.remove()
                 continue
             }
-            if (id.contains(needle)) return true
+            if (id.endsWith(needle)) return true
         }
         return false
     }

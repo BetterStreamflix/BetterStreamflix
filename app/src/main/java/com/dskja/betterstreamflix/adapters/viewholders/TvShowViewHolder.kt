@@ -834,15 +834,45 @@ class TvShowViewHolder(
             applyExpPress()
             setOnClickListener(openTvShow)
             setOnLongClickListener { view ->
-                val trailer = tvShow.trailer
-                if (trailer.isNullOrBlank()) return@setOnLongClickListener false
+                fun playTrailer(url: String) {
+                    ExpMotion.hapticTap(view)
+                    val activity = context.toActivity() as? androidx.fragment.app.FragmentActivity
+                    TrailerPlaybackController.play(
+                        context = view.context,
+                        activity = activity,
+                        trailerUrl = url,
+                    )
+                }
+                val existing = tvShow.trailer
+                if (!existing.isNullOrBlank()) {
+                    playTrailer(existing)
+                    return@setOnLongClickListener true
+                }
+                val year = tvShow.released?.format("yyyy")?.toIntOrNull()
+                if (!TmdbUtils.hasTrailerLookupKeys(
+                        tmdbId = tvShow.tmdbId,
+                        imdbId = tvShow.imdbId,
+                        title = tvShow.title,
+                        year = year,
+                    )
+                ) {
+                    return@setOnLongClickListener false
+                }
                 ExpMotion.hapticTap(view)
-                val activity = context.toActivity() as? androidx.fragment.app.FragmentActivity
-                TrailerPlaybackController.play(
-                    context = view.context,
-                    activity = activity,
-                    trailerUrl = trailer,
-                )
+                itemView.findViewTreeLifecycleOwner()?.lifecycleScope?.launch {
+                    val remote = withContext(Dispatchers.IO) {
+                        TmdbUtils.listYoutubeTrailers(
+                            tmdbId = tvShow.tmdbId,
+                            isTv = true,
+                            title = tvShow.title,
+                            year = year,
+                            imdbId = tvShow.imdbId,
+                        )
+                    }
+                    val url = remote.firstOrNull()?.second?.takeIf { it.isNotBlank() } ?: return@launch
+                    if (tvShow.trailer.isNullOrBlank()) tvShow.trailer = url
+                    playTrailer(url)
+                }
                 true
             }
         }
@@ -1173,22 +1203,55 @@ class TvShowViewHolder(
         }
 
         binding.btnTvShowTrailer.apply {
-            val trailer = tvShow.trailer
-            isVisible = !trailer.isNullOrBlank() || !tvShow.tmdbId.isNullOrBlank()
+            val year = tvShow.released?.format("yyyy")?.toIntOrNull()
+            val canLookup = TmdbUtils.hasTrailerLookupKeys(
+                tmdbId = tvShow.tmdbId,
+                imdbId = tvShow.imdbId,
+                title = tvShow.title,
+                year = year,
+            )
+            isVisible = !tvShow.trailer.isNullOrBlank() || canLookup
             applyExpPress()
             setOnClickListener {
                 ExpMotion.hapticTap(it)
-                if (!trailer.isNullOrBlank()) {
+                fun play(url: String) {
                     val fragment = context.toActivity()?.getCurrentFragment() as? Fragment
                     if (fragment != null) {
-                        TrailerPlaybackController.play(fragment, trailer)
+                        TrailerPlaybackController.play(fragment, url)
                     } else {
-                        handleTrailerClick(trailer)
+                        handleTrailerClick(url)
                     }
-                } else {
+                }
+                val existing = tvShow.trailer
+                if (!existing.isNullOrBlank()) {
+                    play(existing)
+                    return@setOnClickListener
+                }
+                if (!canLookup) {
                     (bindingAdapter as? AppAdapter)?.onDetailTabSelectedListener?.invoke(
                         DetailTab.TRAILER,
                     )
+                    return@setOnClickListener
+                }
+                itemView.findViewTreeLifecycleOwner()?.lifecycleScope?.launch {
+                    val remote = withContext(Dispatchers.IO) {
+                        TmdbUtils.listYoutubeTrailers(
+                            tmdbId = tvShow.tmdbId,
+                            isTv = true,
+                            title = tvShow.title,
+                            year = year,
+                            imdbId = tvShow.imdbId,
+                        )
+                    }
+                    val first = remote.firstOrNull()?.second?.takeIf { it.isNotBlank() }
+                    if (!first.isNullOrBlank()) {
+                        if (tvShow.trailer.isNullOrBlank()) tvShow.trailer = first
+                        play(first)
+                    } else {
+                        (bindingAdapter as? AppAdapter)?.onDetailTabSelectedListener?.invoke(
+                            DetailTab.TRAILER,
+                        )
+                    }
                 }
             }
         }
@@ -1574,6 +1637,13 @@ class TvShowViewHolder(
         }
 
         binding.btnTvShowTrailer.apply {
+            val year = tvShow.released?.format("yyyy")?.toIntOrNull()
+            val canLookup = TmdbUtils.hasTrailerLookupKeys(
+                tmdbId = tvShow.tmdbId,
+                imdbId = tvShow.imdbId,
+                title = tvShow.title,
+                year = year,
+            )
             fun bindTrailer(trailerUrl: String?) {
                 setOnClickListener {
                     ExpMotion.hapticTap(it)
@@ -1586,17 +1656,17 @@ class TvShowViewHolder(
                         }
                     }
                 }
-                isVisible = !trailerUrl.isNullOrBlank()
+                isVisible = !trailerUrl.isNullOrBlank() || canLookup
             }
             bindTrailer(tvShow.trailer)
-            if (tvShow.trailer.isNullOrBlank() && !tvShow.tmdbId.isNullOrBlank()) {
+            if (tvShow.trailer.isNullOrBlank() && canLookup) {
                 itemView.findViewTreeLifecycleOwner()?.lifecycleScope?.launch {
                     val remote = withContext(Dispatchers.IO) {
                         TmdbUtils.listYoutubeTrailers(
                             tmdbId = tvShow.tmdbId,
                             isTv = true,
                             title = tvShow.title,
-                            year = tvShow.released?.format("yyyy")?.toIntOrNull(),
+                            year = year,
                             imdbId = tvShow.imdbId,
                         )
                     }

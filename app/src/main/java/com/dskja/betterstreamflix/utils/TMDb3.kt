@@ -812,10 +812,12 @@ object TMDb3 {
             seasonNumber: Int,
             appendToResponse: List<Params.AppendToResponse.TvSeason>? = null,
             language: String? = null,
+            includeVideoLanguage: String? = null,
         ): Season.Detail {
             val params = mapOf(
                 Params.Key.APPEND_TO_RESPONSE to appendToResponse?.joinToString(",") { it.value },
                 Params.Key.LANGUAGE to language,
+                Params.Key.INCLUDE_VIDEO_LANGUAGE to includeVideoLanguage,
             )
             return service.getTvSeasonDetails(
                 seriesId = seriesId,
@@ -2062,6 +2064,7 @@ object TMDb3 {
         @SerializedName("name") val name: String? = null,
         @SerializedName("size") val size: Int? = null, // 360, 480, 720, 1080
         @SerializedName("type") val type: VideoType? = null,
+        @SerializedName("official") val official: Boolean? = null,
         @SerializedName("published_at") val publishedAt: String? = null,
     ) {
 

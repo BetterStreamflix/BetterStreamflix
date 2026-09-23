@@ -170,22 +170,55 @@ class VixSrcExtractor : Extractor() {
                             val trackName = patchedLine.substringAfter("NAME=\"", "Unknown").substringBefore("\"")
                             val trackLang = patchedLine.substringAfter("LANGUAGE=\"", "").substringBefore("\"")
                             
-                            // RESET SEMPRE
+                            // RESET SEMPRE — then re-enable matching full captions (not only forced).
                             patchedLine = patchedLine.replace(Regex("DEFAULT=YES", RegexOption.IGNORE_CASE), "DEFAULT=NO")
                                                      .replace(Regex("AUTOSELECT=YES", RegexOption.IGNORE_CASE), "AUTOSELECT=NO")
                             
-                            // LOGICA: Se il nome o la lingua contiene "forced" E la lingua è quella giusta, ATTIVA.
-                            val isForced = trackName.contains("forced", ignoreCase = true) || trackLang.contains("forced", ignoreCase = true) || patchedLine.contains("FORCED=YES", ignoreCase = true)
+                            val isForced = trackName.contains("forced", ignoreCase = true) ||
+                                trackLang.contains("forced", ignoreCase = true) ||
+                                patchedLine.contains("FORCED=YES", ignoreCase = true)
                             val isRightLanguage = isMatchingSubtitleTrack(trackName, trackLang, langCode)
 
-                            if (isForced && isRightLanguage) {
+                            // Prefer full captions for the provider language; enable only ONE default.
+                            if (isRightLanguage && !isForced &&
+                                finalLines.none {
+                                    it.startsWith("#EXT-X-MEDIA:TYPE=SUBTITLES") &&
+                                        it.contains("DEFAULT=YES", ignoreCase = true)
+                                }
+                            ) {
                                 patchedLine = patchedLine.replace("DEFAULT=NO", "DEFAULT=YES")
                                                          .replace("AUTOSELECT=NO", "AUTOSELECT=YES")
-                                Log.i("BetterStreamflix", "[SUBTITLE] -> ENABLED FORCED: $trackName")
+                                Log.i("BetterStreamflix", "[SUBTITLE] -> ENABLED FULL: $trackName")
                             }
                             finalLines.add(patchedLine)
                         } else {
                             finalLines.add(patchedLine)
+                        }
+                    }
+
+                    // If no full caption was defaulted, enable forced track for the provider language.
+                    val hasFullDefault = finalLines.any { line ->
+                        line.startsWith("#EXT-X-MEDIA:TYPE=SUBTITLES") &&
+                            line.contains("DEFAULT=YES", ignoreCase = true) &&
+                            !line.contains("FORCED=YES", ignoreCase = true) &&
+                            !line.substringAfter("NAME=\"", "").substringBefore("\"").contains("forced", ignoreCase = true)
+                    }
+                    if (!hasFullDefault) {
+                        for (i in finalLines.indices) {
+                            val line = finalLines[i]
+                            if (!line.startsWith("#EXT-X-MEDIA:TYPE=SUBTITLES")) continue
+                            val trackName = line.substringAfter("NAME=\"", "Unknown").substringBefore("\"")
+                            val trackLang = line.substringAfter("LANGUAGE=\"", "").substringBefore("\"")
+                            val isForced = trackName.contains("forced", ignoreCase = true) ||
+                                trackLang.contains("forced", ignoreCase = true) ||
+                                line.contains("FORCED=YES", ignoreCase = true)
+                            if (isForced && isMatchingSubtitleTrack(trackName, trackLang, langCode)) {
+                                finalLines[i] = line
+                                    .replace("DEFAULT=NO", "DEFAULT=YES")
+                                    .replace("AUTOSELECT=NO", "AUTOSELECT=YES")
+                                Log.i("BetterStreamflix", "[SUBTITLE] -> ENABLED FORCED FALLBACK: $trackName")
+                                break
+                            }
                         }
                     }
                     Log.i("BetterStreamflix", "[VixSrc] --- Processing END ---")

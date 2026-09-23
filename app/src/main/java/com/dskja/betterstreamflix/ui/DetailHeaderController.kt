@@ -179,8 +179,10 @@ object DetailHeaderController {
             hideUntilReady = false,
             contentDescription = title,
             onFailed = {
+                // Decode fail on chrome: hide logo chrome; hero path already runs alternate resolve.
                 logo.background = null
                 logo.tag = null
+                TmdbLogoGlide.clear(logo)
                 logo.post { onScrolled(root, lastScrollY(root)) }
             },
             onReady = { readyUrl ->

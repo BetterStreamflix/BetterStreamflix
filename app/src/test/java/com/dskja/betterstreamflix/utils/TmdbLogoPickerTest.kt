@@ -102,6 +102,16 @@ class TmdbLogoPickerTest {
     }
 
     @Test
+    fun shouldUpgradeLogo_onLanguageMismatch() {
+        val tmdb = "https://image.tmdb.org/t/p/original/logo.png"
+        assertTrue(TmdbLogoPicker.shouldUpgradeLogo(tmdb, storedLang = "en", wantedLang = "de"))
+        // Null/blank stored lang must NOT force infinite re-resolve of a trusted logo.
+        assertFalse(TmdbLogoPicker.shouldUpgradeLogo(tmdb, storedLang = null, wantedLang = "de"))
+        assertFalse(TmdbLogoPicker.shouldUpgradeLogo(tmdb, storedLang = "de", wantedLang = "de-DE"))
+        assertFalse(TmdbLogoPicker.shouldUpgradeLogo(tmdb, storedLang = null, wantedLang = null))
+    }
+
+    @Test
     fun preferResolvedLogoUpgradesProviderAssets() {
         val tmdb = "https://image.tmdb.org/t/p/original/tmdb.png"
         val provider = "https://cdn.provider.example/logo.png"
@@ -115,6 +125,30 @@ class TmdbLogoPickerTest {
     }
 
     @Test
+    fun preferResolvedLogo_prefersTmdbWhenLangsDiffer() {
+        val en = "https://image.tmdb.org/t/p/original/en.png"
+        val de = "https://image.tmdb.org/t/p/original/de.png"
+        assertEquals(
+            de,
+            TmdbLogoPicker.preferResolvedLogo(
+                current = en,
+                tmdb = de,
+                currentLang = "en",
+                wantedLang = "de",
+            ),
+        )
+        assertEquals(
+            en,
+            TmdbLogoPicker.preferResolvedLogo(
+                current = en,
+                tmdb = de,
+                currentLang = "en",
+                wantedLang = "en-US",
+            ),
+        )
+    }
+
+    @Test
     fun pickBestSkipsSvgAndPrefersRequestedLanguage() {
         val logos = listOf(
             TmdbLogoPicker.LogoCandidate("/en.svg", iso639 = "en", voteCount = 999, width = 800),
@@ -124,6 +158,32 @@ class TmdbLogoPickerTest {
         )
         assertEquals("/de.png", TmdbLogoPicker.pickBestFilePath(logos, "de-DE"))
         assertEquals("/en.png", TmdbLogoPicker.pickBestFilePath(logos, "en"))
+    }
+
+    @Test
+    fun pickBest_narrowWantedLangBeatsWideEnglish() {
+        assertEquals(
+            "/de-narrow.png",
+            TmdbLogoPicker.pickBestFilePath(
+                listOf(
+                    TmdbLogoPicker.LogoCandidate(
+                        "/de-narrow.png",
+                        iso639 = "de",
+                        voteCount = 5,
+                        width = 120,
+                        height = 40,
+                    ),
+                    TmdbLogoPicker.LogoCandidate(
+                        "/en-wide.png",
+                        iso639 = "en",
+                        voteCount = 99,
+                        width = 900,
+                        height = 200,
+                    ),
+                ),
+                "de",
+            ),
+        )
     }
 
     @Test

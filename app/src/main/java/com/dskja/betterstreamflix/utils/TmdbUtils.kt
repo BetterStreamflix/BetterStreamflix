@@ -313,8 +313,26 @@ object TmdbUtils {
     }
 
     /**
-     * YouTube trailers/teasers for a title: (title, watch URL, type label).
+     * True when we have enough keys to attempt a TMDb trailer lookup.
+     * Trailer CTA/section gates should use this instead of tmdbId alone.
+     */
+    fun hasTrailerLookupKeys(
+        tmdbId: String? = null,
+        imdbId: String? = null,
+        title: String? = null,
+        year: Int? = null,
+    ): Boolean {
+        if (!tmdbId.isNullOrBlank()) return true
+        if (!imdbId.isNullOrBlank()) return true
+        if (!title.isNullOrBlank() && year != null) return true
+        return false
+    }
+
+    /**
+     * Trailers/teasers for a title: (title, watch URL, type label).
+     * Prefers official YouTube; falls back to Vimeo when no YouTube exists.
      * Resolves a TMDb id via [tmdbId], [imdbId], or title+year when needed.
+     * When [seasonNumber] is set for TV, uses the season videos endpoint.
      */
     suspend fun listYoutubeTrailers(
         tmdbId: String? = null,
@@ -322,6 +340,7 @@ object TmdbUtils {
         title: String? = null,
         year: Int? = null,
         imdbId: String? = null,
+        seasonNumber: Int? = null,
     ): List<Triple<String, String, String>> {
         if (!UserPreferences.enableTmdb) return emptyList()
         val lang = UserPreferences.currentProvider?.language
@@ -338,71 +357,86 @@ object TmdbUtils {
             }.getOrNull()
             ?: return emptyList()
         return runCatching {
-            val videos = if (isTv) {
-                TMDb3.TvSeries.details(
-                    seriesId = id,
-                    appendToResponse = listOf(TMDb3.Params.AppendToResponse.Tv.VIDEOS),
-                    includeVideoLanguage = includeLanguageList(lang),
-                ).videos?.results
-            } else {
-                TMDb3.Movies.details(
-                    movieId = id,
-                    appendToResponse = listOf(TMDb3.Params.AppendToResponse.Movie.VIDEOS),
-                    includeVideoLanguage = includeLanguageList(lang),
-                ).videos?.results
+            val videos = when {
+                isTv && seasonNumber != null -> {
+                    TMDb3.TvSeasons.details(
+                        seriesId = id,
+                        seasonNumber = seasonNumber,
+                        appendToResponse = listOf(TMDb3.Params.AppendToResponse.TvSeason.VIDEOS),
+                        language = lang,
+                        includeVideoLanguage = includeLanguageList(lang),
+                    ).videos?.results
+                }
+                isTv -> {
+                    TMDb3.TvSeries.details(
+                        seriesId = id,
+                        appendToResponse = listOf(TMDb3.Params.AppendToResponse.Tv.VIDEOS),
+                        includeVideoLanguage = includeLanguageList(lang),
+                    ).videos?.results
+                }
+                else -> {
+                    TMDb3.Movies.details(
+                        movieId = id,
+                        appendToResponse = listOf(TMDb3.Params.AppendToResponse.Movie.VIDEOS),
+                        includeVideoLanguage = includeLanguageList(lang),
+                    ).videos?.results
+                }
             }.orEmpty()
-            videos
-                .asSequence()
-                .filter { it.site == TMDb3.Video.VideoSite.YOUTUBE && !it.key.isNullOrBlank() }
-                .sortedWith(
-                    compareBy<TMDb3.Video>(
-                        {
-                            when (it.type) {
-                                TMDb3.Video.VideoType.TRAILER -> 0
-                                TMDb3.Video.VideoType.TEASER -> 1
-                                TMDb3.Video.VideoType.CLIP -> 2
-                                else -> 3
-                            }
-                        },
-                        { it.publishedAt.orEmpty() },
-                    ),
-                )
-                .map { video ->
+            rankTrailerVideos(videos)
+                .mapNotNull { video ->
+                    val url = videoWatchUrl(video) ?: return@mapNotNull null
                     Triple(
                         video.name?.takeIf { it.isNotBlank() } ?: "Trailer",
-                        "https://www.youtube.com/watch?v=${video.key}",
+                        url,
                         video.type?.value ?: "Trailer",
                     )
                 }
                 .distinctBy { it.second }
                 .take(5)
-                .toList()
         }.getOrDefault(emptyList())
     }
 
+    private fun videoWatchUrl(video: TMDb3.Video): String? {
+        val key = video.key?.takeIf { it.isNotBlank() } ?: return null
+        return when (video.site) {
+            TMDb3.Video.VideoSite.YOUTUBE -> "https://www.youtube.com/watch?v=$key"
+            TMDb3.Video.VideoSite.VIMEO -> "https://vimeo.com/$key"
+            else -> null
+        }
+    }
+
     /**
-     * Prefers official trailers, then teasers, then clips, then any YouTube video.
-     * Within a type, earlier [TMDb3.Video.publishedAt] wins.
+     * Prefer YouTube; if none, accept Vimeo. Within the pool: official first,
+     * then trailer/teaser/clip, then newer [publishedAt].
+     */
+    private fun rankTrailerVideos(videos: List<TMDb3.Video>): List<TMDb3.Video> {
+        val withKey = videos.filter { !it.key.isNullOrBlank() && it.site != null }
+        val youtube = withKey.filter { it.site == TMDb3.Video.VideoSite.YOUTUBE }
+        val pool = if (youtube.isNotEmpty()) {
+            youtube
+        } else {
+            withKey.filter { it.site == TMDb3.Video.VideoSite.VIMEO }
+        }
+        return pool.sortedWith(
+            compareBy<TMDb3.Video> { if (it.official == true) 0 else 1 }
+                .thenBy {
+                    when (it.type) {
+                        TMDb3.Video.VideoType.TRAILER -> 0
+                        TMDb3.Video.VideoType.TEASER -> 1
+                        TMDb3.Video.VideoType.CLIP -> 2
+                        else -> 3
+                    }
+                }
+                .thenByDescending { it.publishedAt.orEmpty() },
+        )
+    }
+
+    /**
+     * Prefers official trailers, then teasers, then clips.
+     * YouTube first; Vimeo only when no YouTube video exists. Newer publishedAt wins.
      */
     private fun pickBestYoutubeTrailerUrl(videos: List<TMDb3.Video>?): String? {
-        return videos
-            ?.asSequence()
-            ?.filter { it.site == TMDb3.Video.VideoSite.YOUTUBE && !it.key.isNullOrBlank() }
-            ?.sortedWith(
-                compareBy(
-                    {
-                        when (it.type) {
-                            TMDb3.Video.VideoType.TRAILER -> 0
-                            TMDb3.Video.VideoType.TEASER -> 1
-                            TMDb3.Video.VideoType.CLIP -> 2
-                            else -> 3
-                        }
-                    },
-                    { it.publishedAt.orEmpty() },
-                ),
-            )
-            ?.firstOrNull()
-            ?.let { "https://www.youtube.com/watch?v=${it.key}" }
+        return rankTrailerVideos(videos.orEmpty()).firstOrNull()?.let { videoWatchUrl(it) }
     }
 
     /**
@@ -510,7 +544,8 @@ object TmdbUtils {
 
     suspend fun getMovieById(tmdbId: Int, language: String? = null): Movie? {
         if (!UserPreferences.enableTmdb) return null
-        TmdbCache.getMovie(tmdbId)?.let { cached ->
+        val lang = language ?: UserPreferences.currentProvider?.language
+        TmdbCache.getMovie(tmdbId, lang)?.let { cached ->
             return Movie(
                 id = cached.id.toString(),
                 title = cached.title,
@@ -532,8 +567,10 @@ object TmdbUtils {
                 movie.logo = cached.logo
                     ?.takeIf { UserPreferences.enableTmdbLogos }
                     ?.takeUnless { url -> TmdbLogoCache.isBlacklisted(url) }
-                movie.logoLanguage = language.takeIf {
-                    UserPreferences.enableTmdbLogos && !movie.logo.isNullOrBlank()
+                movie.logoLanguage = when {
+                    !UserPreferences.enableTmdbLogos || movie.logo.isNullOrBlank() -> null
+                    !cached.logoLanguage.isNullOrBlank() -> cached.logoLanguage
+                    else -> lang
                 }
                 movie.logoSource = if (UserPreferences.enableTmdbLogos) {
                     com.dskja.betterstreamflix.logo.TmdbLogoPicker.inferSource(movie.logo)
@@ -553,9 +590,9 @@ object TmdbUtils {
                     TMDb3.Params.AppendToResponse.Movie.RELEASES_DATES,
                     TMDb3.Params.AppendToResponse.Movie.IMAGES,
                 ),
-                language = language,
-                includeImageLanguage = includeLanguageList(language),
-                includeVideoLanguage = includeLanguageList(language),
+                language = lang,
+                includeImageLanguage = includeLanguageList(lang),
+                includeVideoLanguage = includeLanguageList(lang),
             )
             val directors = details.credits?.crew
                 ?.filter { it.job.equals("Director", ignoreCase = true) }
@@ -563,18 +600,33 @@ object TmdbUtils {
                 ?.map { People(it.id.toString(), it.name, it.profilePath?.w500) }
                 .orEmpty()
             val recommendations = mapRecommendations(details.recommendations?.results)
-            val contentRating = extractMovieCertification(details, language)
-            val lang = language ?: UserPreferences.currentProvider?.language
-            val previousLogo = TmdbCache.getMovie(tmdbId)?.logo
+            val contentRating = extractMovieCertification(details, lang)
+            val previousLogo = TmdbCache.getMovie(tmdbId, lang)?.logo
             val logo = if (UserPreferences.enableTmdbLogos) {
                 val picked = pickBestLogo(details.images?.logos, lang)
                 // Only write logo cache when logos are enabled — otherwise a null put
                 // would poison the key with a 6h KnownMiss after the user re-enables.
-                TmdbLogoCache.put(logoCacheKey(tmdbId, lang), picked)
+                // Miss-poison only for true empty logo lists (shouldRememberMiss).
+                val candidates = details.images?.logos?.map {
+                    TmdbLogoPicker.LogoCandidate(
+                        filePath = it.filePath,
+                        iso639 = it.iso639,
+                        voteCount = it.voteCount,
+                        voteAverage = it.voteAverage,
+                        width = it.width,
+                        height = it.height,
+                    )
+                }
+                if (picked != null || TmdbLogoFetch.shouldRememberMiss(candidates)) {
+                    TmdbLogoCache.put(logoCacheKey(tmdbId, lang), picked)
+                }
                 picked
             } else {
                 // Keep any previously cached logo so disabling the feature does not wipe it.
                 previousLogo
+            }
+            val stampedLang = lang.takeIf {
+                UserPreferences.enableTmdbLogos && !logo.isNullOrBlank()
             }
             val result = Movie(
                 id = details.id.toString(),
@@ -595,7 +647,7 @@ object TmdbUtils {
             ).also {
                 it.contentRating = contentRating
                 it.logo = logo.takeIf { UserPreferences.enableTmdbLogos }
-                it.logoLanguage = lang.takeIf { UserPreferences.enableTmdbLogos }
+                it.logoLanguage = stampedLang
                 it.logoSource = if (UserPreferences.enableTmdbLogos) {
                     com.dskja.betterstreamflix.logo.TmdbLogoPicker.inferSource(logo)
                 } else {
@@ -616,6 +668,7 @@ object TmdbUtils {
                     imdbId = result.imdbId,
                     contentRating = contentRating,
                     logo = logo,
+                    logoLanguage = stampedLang,
                     genres = result.genres.map { it.id to it.name },
                     cast = result.cast.map { Triple(it.id, it.name, it.image) },
                     directors = directors.map { Triple(it.id, it.name, it.image) },
@@ -645,6 +698,7 @@ object TmdbUtils {
                         }
                     },
                 ),
+                language = lang,
             )
             result
         } catch (_: Exception) { null }
@@ -685,7 +739,8 @@ object TmdbUtils {
 
     suspend fun getTvShowById(tmdbId: Int, language: String? = null): TvShow? {
         if (!UserPreferences.enableTmdb) return null
-        TmdbCache.getTv(tmdbId)?.let { cached ->
+        val lang = language ?: UserPreferences.currentProvider?.language
+        TmdbCache.getTv(tmdbId, lang)?.let { cached ->
             return TvShow(
                 id = cached.id.toString(),
                 title = cached.title,
@@ -714,8 +769,10 @@ object TmdbUtils {
                 tvShow.logo = cached.logo
                     ?.takeIf { UserPreferences.enableTmdbLogos }
                     ?.takeUnless { url -> TmdbLogoCache.isBlacklisted(url) }
-                tvShow.logoLanguage = language.takeIf {
-                    UserPreferences.enableTmdbLogos && !tvShow.logo.isNullOrBlank()
+                tvShow.logoLanguage = when {
+                    !UserPreferences.enableTmdbLogos || tvShow.logo.isNullOrBlank() -> null
+                    !cached.logoLanguage.isNullOrBlank() -> cached.logoLanguage
+                    else -> lang
                 }
                 tvShow.logoSource = if (UserPreferences.enableTmdbLogos) {
                     com.dskja.betterstreamflix.logo.TmdbLogoPicker.inferSource(tvShow.logo)
@@ -735,9 +792,9 @@ object TmdbUtils {
                     TMDb3.Params.AppendToResponse.Tv.CONTENT_RATING,
                     TMDb3.Params.AppendToResponse.Tv.IMAGES,
                 ),
-                language = language,
-                includeImageLanguage = includeLanguageList(language),
-                includeVideoLanguage = includeLanguageList(language),
+                language = lang,
+                includeImageLanguage = includeLanguageList(lang),
+                includeVideoLanguage = includeLanguageList(lang),
             )
             val directors = details.credits?.crew
                 ?.filter {
@@ -752,15 +809,29 @@ object TmdbUtils {
                         .orEmpty()
                 }
             val recommendations = mapRecommendations(details.recommendations?.results)
-            val contentRating = extractTvCertification(details, language)
-            val lang = language ?: UserPreferences.currentProvider?.language
-            val previousLogo = TmdbCache.getTv(tmdbId)?.logo
+            val contentRating = extractTvCertification(details, lang)
+            val previousLogo = TmdbCache.getTv(tmdbId, lang)?.logo
             val logo = if (UserPreferences.enableTmdbLogos) {
                 val picked = pickBestLogo(details.images?.logos, lang)
-                TmdbLogoCache.put(logoCacheKey(tmdbId, lang), picked)
+                val candidates = details.images?.logos?.map {
+                    TmdbLogoPicker.LogoCandidate(
+                        filePath = it.filePath,
+                        iso639 = it.iso639,
+                        voteCount = it.voteCount,
+                        voteAverage = it.voteAverage,
+                        width = it.width,
+                        height = it.height,
+                    )
+                }
+                if (picked != null || TmdbLogoFetch.shouldRememberMiss(candidates)) {
+                    TmdbLogoCache.put(logoCacheKey(tmdbId, lang), picked)
+                }
                 picked
             } else {
                 previousLogo
+            }
+            val stampedLang = lang.takeIf {
+                UserPreferences.enableTmdbLogos && !logo.isNullOrBlank()
             }
             val result = TvShow(
                 id = details.id.toString(),
@@ -788,7 +859,7 @@ object TmdbUtils {
             ).also {
                 it.contentRating = contentRating
                 it.logo = logo.takeIf { UserPreferences.enableTmdbLogos }
-                it.logoLanguage = lang.takeIf { UserPreferences.enableTmdbLogos }
+                it.logoLanguage = stampedLang
                 it.logoSource = if (UserPreferences.enableTmdbLogos) {
                     com.dskja.betterstreamflix.logo.TmdbLogoPicker.inferSource(logo)
                 } else {
@@ -808,6 +879,7 @@ object TmdbUtils {
                     imdbId = result.imdbId,
                     contentRating = contentRating,
                     logo = logo,
+                    logoLanguage = stampedLang,
                     seasons = result.seasons.map {
                         TmdbCache.SeasonCache(it.number, it.title, it.poster)
                     },
@@ -840,6 +912,7 @@ object TmdbUtils {
                         }
                     },
                 ),
+                language = lang,
             )
             result
         } catch (_: Exception) { null }
@@ -883,15 +956,23 @@ object TmdbUtils {
             lastPlayedAtMillis = movie.lastPlayedAtMillis
             watchHistory = movie.watchHistory
             logo = if (UserPreferences.enableTmdbLogos) {
+                val tmdbLogo = tmdb.logo
+                    ?: tmdbId?.toIntOrNull()?.let { getMovieLogo(it, lang) }
                 TmdbLogoPicker.preferResolvedLogo(
                     current = movie.logo,
-                    tmdb = tmdb.logo
-                        ?: tmdbId?.toIntOrNull()?.let { getMovieLogo(it, lang) },
+                    tmdb = tmdbLogo,
+                    currentLang = movie.logoLanguage,
+                    wantedLang = lang,
                 )
             } else {
                 movie.logo
             }
-            logoLanguage = lang.takeIf { UserPreferences.enableTmdbLogos }
+            // Stamp language only when the resolved logo is a TMDb pick (not provider).
+            logoLanguage = when {
+                !UserPreferences.enableTmdbLogos || logo.isNullOrBlank() -> null
+                TmdbLogoPicker.isTrustedTmdbLogo(logo) -> lang
+                else -> movie.logoLanguage
+            }
             logoSource = if (UserPreferences.enableTmdbLogos) {
                 com.dskja.betterstreamflix.logo.TmdbLogoPicker.inferSource(logo)
             } else {
@@ -936,15 +1017,22 @@ object TmdbUtils {
             lastPlayedEpisodeId = tvShow.lastPlayedEpisodeId
             lastPlayedEpisode = tvShow.lastPlayedEpisode
             logo = if (UserPreferences.enableTmdbLogos) {
+                val tmdbLogo = tmdb.logo
+                    ?: tmdbId?.toIntOrNull()?.let { getTvShowLogo(it, lang) }
                 TmdbLogoPicker.preferResolvedLogo(
                     current = tvShow.logo,
-                    tmdb = tmdb.logo
-                        ?: tmdbId?.toIntOrNull()?.let { getTvShowLogo(it, lang) },
+                    tmdb = tmdbLogo,
+                    currentLang = tvShow.logoLanguage,
+                    wantedLang = lang,
                 )
             } else {
                 tvShow.logo
             }
-            logoLanguage = lang.takeIf { UserPreferences.enableTmdbLogos }
+            logoLanguage = when {
+                !UserPreferences.enableTmdbLogos || logo.isNullOrBlank() -> null
+                TmdbLogoPicker.isTrustedTmdbLogo(logo) -> lang
+                else -> tvShow.logoLanguage
+            }
             logoSource = if (UserPreferences.enableTmdbLogos) {
                 com.dskja.betterstreamflix.logo.TmdbLogoPicker.inferSource(logo)
             } else {

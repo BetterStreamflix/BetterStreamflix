@@ -1,7 +1,5 @@
 package com.dskja.betterstreamflix.logo
 
-import kotlin.math.max
-
 /**
  * Pure JVM helpers for TMDb title-logo ranking, cache keys, and search gating.
  */
@@ -58,8 +56,22 @@ object TmdbLogoPicker {
             value.contains("themoviedb.org/t/p/", ignoreCase = true)
     }
 
-    fun shouldUpgradeLogo(current: String?): Boolean =
-        current.isNullOrBlank() || !isTrustedTmdbLogo(current)
+    /**
+     * Upgrade when blank, untrusted, or when the stored resolve language no longer
+     * matches the wanted UI / provider language.
+     *
+     * Null langs (compat) only upgrade blank / untrusted URLs.
+     */
+    fun shouldUpgradeLogo(
+        current: String?,
+        storedLang: String? = null,
+        wantedLang: String? = null,
+    ): Boolean {
+        if (current.isNullOrBlank() || !isTrustedTmdbLogo(current)) return true
+        // Missing stored/wanted lang: keep a trusted logo (no infinite re-resolve).
+        if (storedLang.isNullOrBlank() || wantedLang.isNullOrBlank()) return false
+        return primaryLanguage(storedLang) != primaryLanguage(wantedLang)
+    }
 
     fun inferSource(url: String?): LogoSource = when {
         url.isNullOrBlank() -> LogoSource.UNKNOWN
@@ -67,12 +79,22 @@ object TmdbLogoPicker {
         else -> LogoSource.PROVIDER
     }
 
-    fun preferResolvedLogo(current: String?, tmdb: String?): String? {
+    /**
+     * Prefer a TMDb URL when the current asset should be upgraded (blank, untrusted,
+     * or language mismatch). When [currentLang] / [wantedLang] differ, prefer [tmdb].
+     */
+    fun preferResolvedLogo(
+        current: String?,
+        tmdb: String?,
+        currentLang: String? = null,
+        wantedLang: String? = null,
+    ): String? {
         val trustedTmdb = tmdb?.takeIf { isTrustedTmdbLogo(it) }
             ?: tmdb?.takeIf { it.isNotBlank() }
         val currentOk = current?.takeIf { it.isNotBlank() }
         return when {
-            trustedTmdb != null && shouldUpgradeLogo(currentOk) -> trustedTmdb
+            trustedTmdb != null &&
+                shouldUpgradeLogo(currentOk, currentLang, wantedLang) -> trustedTmdb
             currentOk != null -> currentOk
             else -> trustedTmdb
         }
@@ -133,23 +155,27 @@ object TmdbLogoPicker {
             ?.filterNot { isExcluded(it.filePath) }
             .orEmpty()
         if (usable.isEmpty()) return null
-        val hasWide = usable.any { (it.width ?: 0) >= LogoConstants.MIN_PREFERRED_WIDTH }
+        // Language rank first: never drop a wanted-lang (rank-0) candidate because a
+        // wider English / other-lang logo exists. Width filter applies only inside the
+        // best available rank bucket.
+        val bestRank = usable.minOf { rank(it) }
+        val bucket = usable.filter { rank(it) == bestRank }
+        val hasWide = bucket.any { (it.width ?: 0) >= LogoConstants.MIN_PREFERRED_WIDTH }
         val pool = if (hasWide) {
-            usable.filter { (it.width ?: 0) >= LogoConstants.MIN_PREFERRED_WIDTH }
+            bucket.filter { (it.width ?: 0) >= LogoConstants.MIN_PREFERRED_WIDTH }
         } else {
-            usable
+            bucket
         }
         return pool
             .sortedWith(
-                compareBy<LogoCandidate> { rank(it) }
-                    .thenByDescending {
-                        val a = aspect(it)
-                        when {
-                            a >= LogoConstants.MIN_ASPECT_FOR_WORDMARK -> 2
-                            a > 0f -> 1
-                            else -> 0
-                        }
+                compareByDescending<LogoCandidate> {
+                    val a = aspect(it)
+                    when {
+                        a >= LogoConstants.MIN_ASPECT_FOR_WORDMARK -> 2
+                        a > 0f -> 1
+                        else -> 0
                     }
+                }
                     .thenByDescending { it.voteCount ?: 0 }
                     .thenByDescending { it.voteAverage ?: 0f }
                     .thenByDescending { it.width ?: 0 }

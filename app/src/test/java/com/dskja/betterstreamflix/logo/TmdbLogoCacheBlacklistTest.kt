@@ -1,6 +1,7 @@
 package com.dskja.betterstreamflix.logo
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
@@ -10,6 +11,15 @@ class TmdbLogoCacheBlacklistTest {
     @Before
     fun clear() {
         TmdbLogoCache.clearAll()
+    }
+
+    @Test
+    fun blacklistBasenameBoundary_doesNotMatchSibling() {
+        TmdbLogoCache.blacklistUrl("https://image.tmdb.org/t/p/original/1.png")
+        assertTrue(TmdbLogoCache.isFilePathBlacklisted("/1.png"))
+        assertTrue(TmdbLogoCache.isFilePathBlacklisted("1.png"))
+        assertFalse(TmdbLogoCache.isFilePathBlacklisted("/11.png"))
+        assertFalse(TmdbLogoCache.isFilePathBlacklisted("/21.png"))
     }
 
     @Test

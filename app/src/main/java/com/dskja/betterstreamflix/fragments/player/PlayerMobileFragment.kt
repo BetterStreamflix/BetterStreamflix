@@ -2693,6 +2693,7 @@ class PlayerMobileFragment : Fragment() {
                 isTv = false,
                 imdbId = videoType.imdbId,
                 existingLogo = cachedUrl,
+                language = com.dskja.betterstreamflix.utils.UserPreferences.currentProvider?.language,
                 onResolved = onResolved,
             )
             is Video.Type.Episode -> com.dskja.betterstreamflix.logo.TitleLogoSurface.resolveAndBind(
@@ -2704,6 +2705,7 @@ class PlayerMobileFragment : Fragment() {
                 isTv = true,
                 imdbId = videoType.tvShow.imdbId,
                 existingLogo = cachedUrl,
+                language = com.dskja.betterstreamflix.utils.UserPreferences.currentProvider?.language,
                 onResolved = onResolved,
             )
         }

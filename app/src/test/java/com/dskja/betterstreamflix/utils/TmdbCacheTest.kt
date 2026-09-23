@@ -29,6 +29,7 @@ class TmdbCacheTest {
             imdbId = "tt0137523",
             contentRating = "R",
             logo = "https://image.tmdb.org/t/p/original/logo.png",
+            logoLanguage = "en",
             genres = listOf("18" to "Drama"),
             cast = listOf(Triple("287", "Brad Pitt", null)),
             directors = listOf(Triple("1", "David Fincher", null)),
@@ -45,16 +46,19 @@ class TmdbCacheTest {
                 ),
             ),
         )
-        TmdbCache.putMovie(cached)
-        val loaded = TmdbCache.getMovie(550)
+        TmdbCache.putMovie(cached, language = "en")
+        val loaded = TmdbCache.getMovie(550, "en")
         assertEquals("Fight Club", loaded?.title)
         assertEquals("tt0137523", loaded?.imdbId)
         assertEquals("R", loaded?.contentRating)
         assertEquals("https://image.tmdb.org/t/p/original/logo.png", loaded?.logo)
+        assertEquals("en", loaded?.logoLanguage)
         assertEquals(1, loaded?.genres?.size)
         assertEquals(1, loaded?.directors?.size)
         assertEquals(1, loaded?.recommendations?.size)
         assertEquals("Se7en", loaded?.recommendations?.first()?.title)
+        // Different language key is a miss (until filled).
+        assertNull(TmdbCache.getMovie(550, "de")?.title)
     }
 
     @Test
@@ -71,6 +75,7 @@ class TmdbCacheTest {
             imdbId = "tt0903747",
             contentRating = "TV-MA",
             logo = "https://image.tmdb.org/t/p/original/tvlogo.png",
+            logoLanguage = "en",
             seasons = listOf(TmdbCache.SeasonCache(1, "Season 1", null)),
             genres = listOf("18" to "Drama"),
             cast = emptyList(),
@@ -88,13 +93,42 @@ class TmdbCacheTest {
                 ),
             ),
         )
-        TmdbCache.putTv(cached)
-        assertEquals("Breaking Bad", TmdbCache.getTv(1396)?.title)
-        assertEquals(1, TmdbCache.getTv(1396)?.seasons?.size)
-        assertEquals("TV-MA", TmdbCache.getTv(1396)?.contentRating)
-        assertEquals("https://image.tmdb.org/t/p/original/tvlogo.png", TmdbCache.getTv(1396)?.logo)
-        assertEquals(1, TmdbCache.getTv(1396)?.directors?.size)
-        assertEquals("Better Call Saul", TmdbCache.getTv(1396)?.recommendations?.first()?.title)
+        TmdbCache.putTv(cached, language = "en")
+        assertEquals("Breaking Bad", TmdbCache.getTv(1396, "en")?.title)
+        assertEquals(1, TmdbCache.getTv(1396, "en")?.seasons?.size)
+        assertEquals("TV-MA", TmdbCache.getTv(1396, "en")?.contentRating)
+        assertEquals("https://image.tmdb.org/t/p/original/tvlogo.png", TmdbCache.getTv(1396, "en")?.logo)
+        assertEquals(1, TmdbCache.getTv(1396, "en")?.directors?.size)
+        assertEquals("Better Call Saul", TmdbCache.getTv(1396, "en")?.recommendations?.first()?.title)
+    }
+
+    @Test
+    fun clearLogos_stripsLogoFieldsOnly() {
+        TmdbCache.putMovie(
+            TmdbCache.CachedMovie(
+                id = 1,
+                title = "A",
+                overview = null,
+                released = null,
+                runtime = null,
+                trailer = null,
+                rating = null,
+                poster = "p",
+                banner = null,
+                imdbId = null,
+                logo = "https://image.tmdb.org/t/p/original/x.png",
+                logoLanguage = "de",
+                genres = emptyList(),
+                cast = emptyList(),
+            ),
+            language = "de",
+        )
+        TmdbCache.clearLogos()
+        val loaded = TmdbCache.getMovie(1, "de")
+        assertEquals("A", loaded?.title)
+        assertEquals("p", loaded?.poster)
+        assertNull(loaded?.logo)
+        assertNull(loaded?.logoLanguage)
     }
 
     @Test

@@ -990,20 +990,57 @@ class MovieViewHolder(
             applyExpPress()
             setOnClickListener(openMovie)
             setOnLongClickListener { view ->
-                val trailer = movie.trailer
-                if (trailer.isNullOrBlank()) return@setOnLongClickListener false
+                fun playTrailer(url: String) {
+                    ExpMotion.hapticTap(view)
+                    val activity = context.toActivity() as? androidx.fragment.app.FragmentActivity
+                    TrailerPlaybackController.play(
+                        context = view.context,
+                        activity = activity,
+                        trailerUrl = url,
+                    )
+                }
+                val existing = movie.trailer
+                if (!existing.isNullOrBlank()) {
+                    playTrailer(existing)
+                    return@setOnLongClickListener true
+                }
+                val year = movie.released?.format("yyyy")?.toIntOrNull()
+                if (!TmdbUtils.hasTrailerLookupKeys(
+                        tmdbId = movie.tmdbId,
+                        imdbId = movie.imdbId,
+                        title = movie.title,
+                        year = year,
+                    )
+                ) {
+                    return@setOnLongClickListener false
+                }
                 ExpMotion.hapticTap(view)
-                val activity = context.toActivity() as? androidx.fragment.app.FragmentActivity
-                TrailerPlaybackController.play(
-                    context = view.context,
-                    activity = activity,
-                    trailerUrl = trailer,
-                )
+                itemView.findViewTreeLifecycleOwner()?.lifecycleScope?.launch {
+                    val remote = withContext(Dispatchers.IO) {
+                        TmdbUtils.listYoutubeTrailers(
+                            tmdbId = movie.tmdbId,
+                            isTv = false,
+                            title = movie.title,
+                            year = year,
+                            imdbId = movie.imdbId,
+                        )
+                    }
+                    val url = remote.firstOrNull()?.second?.takeIf { it.isNotBlank() } ?: return@launch
+                    if (movie.trailer.isNullOrBlank()) movie.trailer = url
+                    playTrailer(url)
+                }
                 true
             }
             androidx.appcompat.widget.TooltipCompat.setTooltipText(
                 this,
-                if (!movie.trailer.isNullOrBlank()) {
+                if (!movie.trailer.isNullOrBlank() ||
+                    TmdbUtils.hasTrailerLookupKeys(
+                        tmdbId = movie.tmdbId,
+                        imdbId = movie.imdbId,
+                        title = movie.title,
+                        year = movie.released?.format("yyyy")?.toIntOrNull(),
+                    )
+                ) {
                     context.getString(R.string.home_swiper_trailer)
                 } else {
                     text
@@ -1212,8 +1249,14 @@ class MovieViewHolder(
         }
 
         binding.btnMovieTrailer.apply {
-            val trailer = movie.trailer
-            visibility = if (!trailer.isNullOrBlank() || !movie.tmdbId.isNullOrBlank()) {
+            val year = movie.released?.format("yyyy")?.toIntOrNull()
+            val canLookup = TmdbUtils.hasTrailerLookupKeys(
+                tmdbId = movie.tmdbId,
+                imdbId = movie.imdbId,
+                title = movie.title,
+                year = year,
+            )
+            visibility = if (!movie.trailer.isNullOrBlank() || canLookup) {
                 View.VISIBLE
             } else {
                 View.GONE
@@ -1221,17 +1264,44 @@ class MovieViewHolder(
             applyExpPress()
             setOnClickListener {
                 ExpMotion.hapticTap(it)
-                if (!trailer.isNullOrBlank()) {
+                fun play(url: String) {
                     val fragment = context.toActivity()?.getCurrentFragment() as? Fragment
                     if (fragment != null) {
-                        com.dskja.betterstreamflix.ui.TrailerPlaybackController.play(fragment, trailer)
+                        TrailerPlaybackController.play(fragment, url)
                     } else {
-                        handleTrailerClick(trailer, "MovieMobile")
+                        handleTrailerClick(url, "MovieMobile")
                     }
-                } else {
+                }
+                val existing = movie.trailer
+                if (!existing.isNullOrBlank()) {
+                    play(existing)
+                    return@setOnClickListener
+                }
+                if (!canLookup) {
                     (bindingAdapter as? AppAdapter)?.onDetailTabSelectedListener?.invoke(
-                        com.dskja.betterstreamflix.ui.DetailTab.TRAILER,
+                        DetailTab.TRAILER,
                     )
+                    return@setOnClickListener
+                }
+                itemView.findViewTreeLifecycleOwner()?.lifecycleScope?.launch {
+                    val remote = withContext(Dispatchers.IO) {
+                        TmdbUtils.listYoutubeTrailers(
+                            tmdbId = movie.tmdbId,
+                            isTv = false,
+                            title = movie.title,
+                            year = year,
+                            imdbId = movie.imdbId,
+                        )
+                    }
+                    val first = remote.firstOrNull()?.second?.takeIf { it.isNotBlank() }
+                    if (!first.isNullOrBlank()) {
+                        if (movie.trailer.isNullOrBlank()) movie.trailer = first
+                        play(first)
+                    } else {
+                        (bindingAdapter as? AppAdapter)?.onDetailTabSelectedListener?.invoke(
+                            DetailTab.TRAILER,
+                        )
+                    }
                 }
             }
         }
@@ -1557,6 +1627,13 @@ class MovieViewHolder(
         }
 
         binding.btnMovieTrailer.apply {
+            val year = movie.released?.format("yyyy")?.toIntOrNull()
+            val canLookup = TmdbUtils.hasTrailerLookupKeys(
+                tmdbId = movie.tmdbId,
+                imdbId = movie.imdbId,
+                title = movie.title,
+                year = year,
+            )
             fun bindTrailer(trailerUrl: String?) {
                 setOnClickListener {
                     ExpMotion.hapticTap(it)
@@ -1569,17 +1646,17 @@ class MovieViewHolder(
                         }
                     }
                 }
-                visibility = if (!trailerUrl.isNullOrBlank()) View.VISIBLE else View.GONE
+                visibility = if (!trailerUrl.isNullOrBlank() || canLookup) View.VISIBLE else View.GONE
             }
             bindTrailer(movie.trailer)
-            if (movie.trailer.isNullOrBlank() && !movie.tmdbId.isNullOrBlank()) {
+            if (movie.trailer.isNullOrBlank() && canLookup) {
                 itemView.findViewTreeLifecycleOwner()?.lifecycleScope?.launch {
                     val remote = withContext(Dispatchers.IO) {
                         TmdbUtils.listYoutubeTrailers(
                             tmdbId = movie.tmdbId,
                             isTv = false,
                             title = movie.title,
-                            year = movie.released?.format("yyyy")?.toIntOrNull(),
+                            year = year,
                             imdbId = movie.imdbId,
                         )
                     }

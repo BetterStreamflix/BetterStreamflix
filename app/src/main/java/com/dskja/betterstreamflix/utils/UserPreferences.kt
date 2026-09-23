@@ -103,6 +103,8 @@ object UserPreferences {
             AppDatabase.resetInstance()
 
             Key.CURRENT_PROVIDER.setString(value?.name)
+            // Provider language drives TMDb logo ranking — drop details so logos refetch.
+            runCatching { TmdbCache.clear() }
             runCatching {
                 ArtworkRepairScheduler.schedule(BetterStreamflixApp.instance, value)
             }

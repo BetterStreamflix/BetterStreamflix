@@ -1,10 +1,12 @@
 package com.dskja.betterstreamflix.utils
 
+import com.dskja.betterstreamflix.logo.TmdbLogoPicker
 import java.util.concurrent.ConcurrentHashMap
 
 /**
  * In-memory LRU-ish cache for TMDb enrichment / details to cut scraper fan-out.
- * Cleared when the API key or enable flag changes via [clear].
+ * Movie/TV details are keyed by `id:primaryLang` so a language switch does not
+ * reuse the wrong title logo. Cleared when the API key, enable flag, or provider changes.
  */
 object TmdbCache {
     private const val MAX_ENTRIES = 256
@@ -30,6 +32,7 @@ object TmdbCache {
         val imdbId: String?,
         val contentRating: String? = null,
         val logo: String? = null,
+        val logoLanguage: String? = null,
         val genres: List<Pair<String, String>>,
         val cast: List<Triple<String, String, String?>>,
         val directors: List<Triple<String, String, String?>> = emptyList(),
@@ -48,6 +51,7 @@ object TmdbCache {
         val imdbId: String?,
         val contentRating: String? = null,
         val logo: String? = null,
+        val logoLanguage: String? = null,
         val seasons: List<SeasonCache>,
         val genres: List<Pair<String, String>>,
         val cast: List<Triple<String, String, String?>>,
@@ -72,6 +76,9 @@ object TmdbCache {
         val poster: String?,
     )
 
+    fun detailsKey(id: Int, language: String?): String =
+        TmdbLogoPicker.cacheKey(id, language)
+
     fun clear() {
         movieDetails.clear()
         tvDetails.clear()
@@ -82,18 +89,51 @@ object TmdbCache {
         TmdbUtils.clearLogoCaches()
     }
 
-    fun getMovie(id: Int): CachedMovie? = movieDetails[id.toString()]
-
-    fun putMovie(cached: CachedMovie) {
-        trim(movieDetails)
-        movieDetails[cached.id.toString()] = cached
+    /** Drop cached title logos without wiping the rest of the details payload. */
+    fun clearLogos() {
+        movieDetails.keys.toList().forEach { key ->
+            movieDetails.computeIfPresent(key) { _, v ->
+                v.copy(logo = null, logoLanguage = null)
+            }
+        }
+        tvDetails.keys.toList().forEach { key ->
+            tvDetails.computeIfPresent(key) { _, v ->
+                v.copy(logo = null, logoLanguage = null)
+            }
+        }
     }
 
-    fun getTv(id: Int): CachedTv? = tvDetails[id.toString()]
+    fun getMovie(id: Int, language: String? = null): CachedMovie? {
+        val cached = movieDetails[detailsKey(id, language)] ?: return null
+        val wanted = TmdbLogoPicker.primaryLanguage(language)
+        val stored = TmdbLogoPicker.primaryLanguage(cached.logoLanguage)
+        // Only strip when both sides know a language and they disagree.
+        if (cached.logo != null && wanted.isNotEmpty() && stored.isNotEmpty() && stored != wanted) {
+            return cached.copy(logo = null, logoLanguage = null)
+        }
+        return cached
+    }
 
-    fun putTv(cached: CachedTv) {
+    fun putMovie(cached: CachedMovie, language: String? = null) {
+        trim(movieDetails)
+        val keyLang = language ?: cached.logoLanguage
+        movieDetails[detailsKey(cached.id, keyLang)] = cached
+    }
+
+    fun getTv(id: Int, language: String? = null): CachedTv? {
+        val cached = tvDetails[detailsKey(id, language)] ?: return null
+        val wanted = TmdbLogoPicker.primaryLanguage(language)
+        val stored = TmdbLogoPicker.primaryLanguage(cached.logoLanguage)
+        if (cached.logo != null && wanted.isNotEmpty() && stored.isNotEmpty() && stored != wanted) {
+            return cached.copy(logo = null, logoLanguage = null)
+        }
+        return cached
+    }
+
+    fun putTv(cached: CachedTv, language: String? = null) {
         trim(tvDetails)
-        tvDetails[cached.id.toString()] = cached
+        val keyLang = language ?: cached.logoLanguage
+        tvDetails[detailsKey(cached.id, keyLang)] = cached
     }
 
     fun getSearchMovieId(key: String): Int? = searchMovie[key]?.takeUnless { it == MISS }
