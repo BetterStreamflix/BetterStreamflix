@@ -33,15 +33,36 @@
         android:layout_height="wrap_content"
         android:layout_marginStart="70dp"
         android:layout_marginEnd="70dp"
+        android:fontFamily="@font/manrope"
         android:gravity="center"
+        android:letterSpacing="-0.02"
         android:text="@string/providers_choose_title"
         android:textColor="#FFFFFF"
         android:textSize="30sp"
-        app:layout_constraintBottom_toTopOf="@id/rv_providers"
+        android:textStyle="bold"
+        app:layout_constraintBottom_toTopOf="@id/tv_providers_subtitle"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent"
         app:layout_constraintVertical_chainStyle="packed" />
+
+    <TextView
+        android:id="@+id/tv_providers_subtitle"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="90dp"
+        android:layout_marginTop="8dp"
+        android:layout_marginEnd="90dp"
+        android:fontFamily="@font/manrope"
+        android:gravity="center"
+        android:lineSpacingExtra="2dp"
+        android:text="@string/providers_choose_subtitle"
+        android:textColor="#A0A0A0"
+        android:textSize="15sp"
+        app:layout_constraintBottom_toTopOf="@id/rv_providers"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/tv_providers_label" />
 
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/rv_providers"
@@ -58,7 +79,7 @@
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/tv_providers_label"
+        app:layout_constraintTop_toBottomOf="@id/tv_providers_subtitle"
         tools:itemCount="2"
         tools:listitem="@layout/item_provider_tv" />
 

@@ -5,11 +5,15 @@ import android.graphics.drawable.PictureDrawable
 import android.view.View
 import android.widget.ImageView
 import androidx.appcompat.app.AlertDialog
+import androidx.navigation.findNavController
 import androidx.recyclerview.widget.RecyclerView
 import androidx.viewbinding.ViewBinding
 import com.bumptech.glide.Glide
 import com.bumptech.glide.load.resource.drawable.DrawableTransitionOptions
 import com.dskja.betterstreamflix.R
+import com.dskja.betterstreamflix.fragments.settings.SettingsDeepLink
+import com.dskja.betterstreamflix.providers.AniWorldProvider
+import com.dskja.betterstreamflix.providers.SerienStreamProvider
 import com.dskja.betterstreamflix.utils.ExpMotion
 import com.dskja.betterstreamflix.utils.ExpPressEffects.applyExpPress
 import com.dskja.betterstreamflix.utils.ExperimentalMobileDesign
@@ -91,6 +95,8 @@ class ProviderViewHolder(
             }
         }
 
+        bindLoginGear(binding.root.findViewById(R.id.iv_provider_login_gear))
+
         loadProviderLogo(binding.ivProviderLogo)
 
         binding.tvProviderName.text = provider.name
@@ -170,9 +176,10 @@ class ProviderViewHolder(
             }
         }
 
-        val favWasVisible = binding.ivProviderFavorite.visibility == View.VISIBLE
         binding.ivProviderFavorite.visibility =
             if (provider.isFavorite) View.VISIBLE else View.GONE
+
+        bindLoginGear(binding.root.findViewById(R.id.iv_provider_login_gear))
 
         loadProviderLogo(binding.ivProviderLogo)
 
@@ -254,6 +261,63 @@ class ProviderViewHolder(
                 }
             )
             finish()
+        }
+    }
+
+    private fun bindLoginGear(gear: ImageView?) {
+        if (gear == null) return
+        val supportsLogin = provider.provider is SerienStreamProvider ||
+            provider.provider is AniWorldProvider
+        if (!supportsLogin) {
+            gear.visibility = View.GONE
+            gear.setOnClickListener(null)
+            return
+        }
+        val wasVisible = gear.visibility == View.VISIBLE
+        gear.visibility = View.VISIBLE
+        if (ExperimentalMobileDesign.enabled()) {
+            gear.setBackgroundResource(ExperimentalMobileDesign.iconChipBackground())
+            if (!wasVisible) ExpMotion.popIn(gear)
+            with(com.dskja.betterstreamflix.utils.ExpPressEffects) { gear.applyExpPress() }
+        }
+        gear.setOnClickListener { view ->
+            ExpMotion.hapticTap(view)
+            openProviderLoginSettings()
+        }
+    }
+
+    private fun openProviderLoginSettings() {
+        when (provider.provider) {
+            is SerienStreamProvider -> SettingsDeepLink.openSerienStreamAuth()
+            is AniWorldProvider -> SettingsDeepLink.openAniWorldAuth()
+            else -> return
+        }
+        runCatching {
+            itemView.findNavController().navigate(R.id.settings)
+        }.onFailure {
+            // Providers screen may sit outside a nav host with settings; open
+            // session login WebView directly as a fallback.
+            val source = when (provider.provider) {
+                is SerienStreamProvider ->
+                    com.dskja.betterstreamflix.activities.tools.WatchlistImportActivity.SOURCE_SERIENSTREAM
+                is AniWorldProvider ->
+                    com.dskja.betterstreamflix.activities.tools.WatchlistImportActivity.SOURCE_ANIWORLD
+                else -> return
+            }
+            context.startActivity(
+                Intent(
+                    context,
+                    com.dskja.betterstreamflix.activities.tools.WatchlistImportActivity::class.java,
+                )
+                    .putExtra(
+                        com.dskja.betterstreamflix.activities.tools.WatchlistImportActivity.EXTRA_SOURCE,
+                        source,
+                    )
+                    .putExtra(
+                        com.dskja.betterstreamflix.activities.tools.WatchlistImportActivity.EXTRA_SAVE_SESSION_ONLY,
+                        true,
+                    ),
+            )
         }
     }
 

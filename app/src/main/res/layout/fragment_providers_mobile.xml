@@ -58,7 +58,7 @@
         android:letterSpacing="-0.02"
         android:text="@string/providers_choose_title"
         android:textColor="#FFFFFF"
-        android:textSize="28sp"
+        android:textSize="30sp"
         android:textStyle="bold"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"

@@ -73,7 +73,9 @@ internal class SettingsHubController(
             if (!visible) post { requestFocus() }
         }
         if (mode != null) {
-            val needsBind = boundMode != mode || mode == HubMode.PLATFORM
+            // Always rebind ROOT so provider-gated account cards (SerienStream /
+            // AniWorld / watchlist) stay in sync after a provider switch.
+            val needsBind = boundMode != mode || mode == HubMode.ROOT || mode == HubMode.PLATFORM
             if (needsBind) {
                 bindMode(binding, mode)
                 if (boundMode != mode) enterAnimated = false

@@ -809,6 +809,33 @@ object UserPreferences {
         get() = Key.SERIENSTREAM_SESSION_VALIDATED_OK.getBoolean() ?: false
         set(value) = Key.SERIENSTREAM_SESSION_VALIDATED_OK.setBoolean(value)
 
+    /**
+     * AniWorld session cookie header (`name=value; …`), separate from SerienStream.
+     */
+    var aniWorldSessionCookies: String
+        get() = Key.ANIWORLD_SESSION_COOKIES.getString() ?: ""
+        set(value) {
+            val cleaned = com.dskja.betterstreamflix.player.SerienStreamBypassHelper
+                .sanitizeSessionCookies(value)
+            Key.ANIWORLD_SESSION_COOKIES.setString(cleaned)
+        }
+
+    var aniWorldSessionDisplayName: String
+        get() = Key.ANIWORLD_SESSION_DISPLAY_NAME.getString() ?: ""
+        set(value) = Key.ANIWORLD_SESSION_DISPLAY_NAME.setString(value.trim())
+
+    var aniWorldAccountConfirmed: Boolean
+        get() = Key.ANIWORLD_ACCOUNT_CONFIRMED.getBoolean() ?: false
+        set(value) = Key.ANIWORLD_ACCOUNT_CONFIRMED.setBoolean(value)
+
+    var aniWorldSessionValidatedAtMs: Long
+        get() = Key.ANIWORLD_SESSION_VALIDATED_AT.getLong() ?: 0L
+        set(value) = Key.ANIWORLD_SESSION_VALIDATED_AT.setLong(value.coerceAtLeast(0L))
+
+    var aniWorldSessionValidatedOk: Boolean
+        get() = Key.ANIWORLD_SESSION_VALIDATED_OK.getBoolean() ?: false
+        set(value) = Key.ANIWORLD_SESSION_VALIDATED_OK.setBoolean(value)
+
     enum class PlayerResize(
         val stringRes: Int,
         val resizeMode: Int,
@@ -1234,6 +1261,11 @@ object UserPreferences {
         SERIENSTREAM_ACCOUNT_CONFIRMED,
         SERIENSTREAM_SESSION_VALIDATED_AT,
         SERIENSTREAM_SESSION_VALIDATED_OK,
+        ANIWORLD_SESSION_COOKIES,
+        ANIWORLD_SESSION_DISPLAY_NAME,
+        ANIWORLD_ACCOUNT_CONFIRMED,
+        ANIWORLD_SESSION_VALIDATED_AT,
+        ANIWORLD_SESSION_VALIDATED_OK,
         UPDATE_CHECK_ENABLED,
         PROVIDER_LANGUAGE,
         FAVORITE_PROVIDERS,

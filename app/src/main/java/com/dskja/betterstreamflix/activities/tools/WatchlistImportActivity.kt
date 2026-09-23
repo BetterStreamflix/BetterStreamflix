@@ -198,11 +198,19 @@ class WatchlistImportActivity : AppCompatActivity() {
 
         CookieManager.getInstance().setAcceptCookie(true)
         CookieManager.getInstance().setAcceptThirdPartyCookies(webView, true)
-        // Restore any previously pasted SerienStream session cookies.
-        if (source == WatchlistImporter.Source.SERIENSTREAM) {
-            val pasted = UserPreferences.serienStreamSessionCookies.trim()
-            if (pasted.isNotBlank()) {
-                SerienStreamBypassHelper.applyStoredSessionCookies()
+        // Restore any previously pasted session cookies for this source.
+        when (source) {
+            WatchlistImporter.Source.SERIENSTREAM -> {
+                val pasted = UserPreferences.serienStreamSessionCookies.trim()
+                if (pasted.isNotBlank()) {
+                    SerienStreamBypassHelper.applyStoredSessionCookies()
+                }
+            }
+            WatchlistImporter.Source.ANIWORLD -> {
+                val pasted = UserPreferences.aniWorldSessionCookies.trim()
+                if (pasted.isNotBlank()) {
+                    com.dskja.betterstreamflix.providers.AniWorldAuthManager.seedRuntimeCookies()
+                }
             }
         }
 
@@ -455,6 +463,11 @@ class WatchlistImportActivity : AppCompatActivity() {
             url?.takeIf { it.isNotBlank() }?.let {
                 SerienStreamBypassHelper.applyCookies(it, cookies)
             }
+        } else if (source == WatchlistImporter.Source.ANIWORLD && cookies.isNotBlank()) {
+            SerienStreamBypassHelper.applyCookies("$hostBase/", cookies)
+            url?.takeIf { it.isNotBlank() }?.let {
+                SerienStreamBypassHelper.applyCookies(it, cookies)
+            }
         }
         val onLogin = url != null && url.contains("/login", ignoreCase = true)
         if (onLogin) {
@@ -466,13 +479,18 @@ class WatchlistImportActivity : AppCompatActivity() {
         }
         val leftLogin = url != null && !onLogin
         val hasSession = looksLoggedIn(cookies, lastPageHtml, url)
-        val bypassSolved = source != WatchlistImporter.Source.SERIENSTREAM ||
-            SerienStreamBypassHelper.looksLikeBypassSolved(cookies)
+        val bypassSolved = when (source) {
+            WatchlistImporter.Source.SERIENSTREAM,
+            WatchlistImporter.Source.ANIWORLD,
+            -> SerienStreamBypassHelper.looksLikeBypassSolved(cookies)
+        }
         val wasEnabled = importButton.isEnabled
         // Never enable Import / auto-save from warm homepage cookies alone.
         importButton.isEnabled = when {
-            saveSessionOnly && source == WatchlistImporter.Source.SERIENSTREAM ->
-                hasSession && leftLoginAfterVisit
+            saveSessionOnly && (
+                source == WatchlistImporter.Source.SERIENSTREAM ||
+                    source == WatchlistImporter.Source.ANIWORLD
+                ) -> hasSession && leftLoginAfterVisit
             else -> leftLogin || hasSession || (cookies.isNotBlank() && bypassSolved && sawLoginPage)
         }
         if (ExperimentalMobileDesign.enabled() && importButton.isEnabled && !wasEnabled) {
@@ -483,7 +501,8 @@ class WatchlistImportActivity : AppCompatActivity() {
             return
         }
         when {
-            source == WatchlistImporter.Source.SERIENSTREAM &&
+            (source == WatchlistImporter.Source.SERIENSTREAM ||
+                source == WatchlistImporter.Source.ANIWORLD) &&
                 cookies.isNotBlank() &&
                 !bypassSolved &&
                 !hasSession -> {
@@ -500,7 +519,8 @@ class WatchlistImportActivity : AppCompatActivity() {
                 maybeAutoSaveSession()
             }
             leftLogin && sawLoginPage &&
-                source == WatchlistImporter.Source.SERIENSTREAM &&
+                (source == WatchlistImporter.Source.SERIENSTREAM ||
+                    source == WatchlistImporter.Source.ANIWORLD) &&
                 SerienStreamBypassHelper.hasWebSessionCookie(cookies) &&
                 !hasSession -> {
                 // Login redirect landed but SSR chrome not proven yet — probe /account.
@@ -590,15 +610,31 @@ class WatchlistImportActivity : AppCompatActivity() {
             return
         }
         SerienStreamBypassHelper.applyCookies("$hostBase/", cookies)
-        val saved = if (saveSessionOnly) {
-            com.dskja.betterstreamflix.providers.SerienStreamAuthManager.persistAccountLogin(
-                cookieHeader = cookies,
-                htmlProof = lastPageHtml,
-                leftLoginAfterVisit = leftLoginAfterVisit,
-                pageUrl = lastPageUrl ?: webView.url,
-            )
-        } else {
-            com.dskja.betterstreamflix.providers.SerienStreamAuthManager.persist(cookies)
+        val saved = when (source) {
+            WatchlistImporter.Source.SERIENSTREAM -> {
+                if (saveSessionOnly) {
+                    com.dskja.betterstreamflix.providers.SerienStreamAuthManager.persistAccountLogin(
+                        cookieHeader = cookies,
+                        htmlProof = lastPageHtml,
+                        leftLoginAfterVisit = leftLoginAfterVisit,
+                        pageUrl = lastPageUrl ?: webView.url,
+                    )
+                } else {
+                    com.dskja.betterstreamflix.providers.SerienStreamAuthManager.persist(cookies)
+                }
+            }
+            WatchlistImporter.Source.ANIWORLD -> {
+                if (saveSessionOnly) {
+                    com.dskja.betterstreamflix.providers.AniWorldAuthManager.persistAccountLogin(
+                        cookieHeader = cookies,
+                        htmlProof = lastPageHtml,
+                        leftLoginAfterVisit = leftLoginAfterVisit,
+                        pageUrl = lastPageUrl ?: webView.url,
+                    )
+                } else {
+                    com.dskja.betterstreamflix.providers.AniWorldAuthManager.persist(cookies)
+                }
+            }
         }
         if (!saved) {
             sessionAutoSaved = false
@@ -606,7 +642,13 @@ class WatchlistImportActivity : AppCompatActivity() {
             return
         }
         sessionAutoSaved = true
-        notifyUserAndFinish(R.string.settings_serienstream_session_login_saved)
+        val savedMsg = when (source) {
+            WatchlistImporter.Source.SERIENSTREAM ->
+                R.string.settings_serienstream_session_login_saved
+            WatchlistImporter.Source.ANIWORLD ->
+                R.string.settings_aniworld_session_login_saved
+        }
+        notifyUserAndFinish(savedMsg)
     }
 
     /**
@@ -641,13 +683,22 @@ class WatchlistImportActivity : AppCompatActivity() {
             notifyUser(R.string.watchlist_import_login_hint)
             return
         }
-        // Persist a working SerienStream cookie jar for TV / later sessions.
-        if (source == WatchlistImporter.Source.SERIENSTREAM) {
-            SerienStreamBypassHelper.applyCookies("$hostBase/", cookies)
-            webView.url?.takeIf { it.isNotBlank() }?.let {
-                SerienStreamBypassHelper.applyCookies(it, cookies)
+        // Persist a working cookie jar for later sessions.
+        when (source) {
+            WatchlistImporter.Source.SERIENSTREAM -> {
+                SerienStreamBypassHelper.applyCookies("$hostBase/", cookies)
+                webView.url?.takeIf { it.isNotBlank() }?.let {
+                    SerienStreamBypassHelper.applyCookies(it, cookies)
+                }
+                com.dskja.betterstreamflix.providers.SerienStreamAuthManager.persist(cookies)
             }
-            com.dskja.betterstreamflix.providers.SerienStreamAuthManager.persist(cookies)
+            WatchlistImporter.Source.ANIWORLD -> {
+                SerienStreamBypassHelper.applyCookies("$hostBase/", cookies)
+                webView.url?.takeIf { it.isNotBlank() }?.let {
+                    SerienStreamBypassHelper.applyCookies(it, cookies)
+                }
+                com.dskja.betterstreamflix.providers.AniWorldAuthManager.persist(cookies)
+            }
         }
 
         importing = true
