@@ -1074,16 +1074,17 @@ class AppAdapter(
     ) : RecyclerView.ViewHolder(itemView) {
         fun bind(header: FavoriteSectionHeader) {
             itemView.findViewById<TextView>(R.id.tv_favorite_section_title)?.text = header.title
+            val rule = itemView.findViewById<View>(R.id.v_favorite_section_rule)
             if (ExperimentalMobileDesign.enabled()) {
                 itemView.setBackgroundResource(ExperimentalMobileDesign.glassCardBackground())
-                if (itemView.getTag(R.id.exp_enter_animated_tag) != true) {
-                    itemView.setTag(R.id.exp_enter_animated_tag, true)
-                    ExpMotion.revealHeader(
-                        itemView.findViewById(R.id.tv_favorite_section_title),
-                        itemView.findViewById(R.id.v_favorite_section_rule),
-                    )
-                    ExpMotion.pulseAccentRule(itemView.findViewById(R.id.v_favorite_section_rule))
-                }
+            }
+            if (itemView.getTag(R.id.exp_enter_animated_tag) != true) {
+                itemView.setTag(R.id.exp_enter_animated_tag, true)
+                ExpMotion.revealHeader(
+                    itemView.findViewById(R.id.tv_favorite_section_title),
+                    rule,
+                )
+                ExpMotion.pulseAccentRule(rule)
             }
         }
     }

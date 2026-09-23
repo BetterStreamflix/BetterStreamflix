@@ -981,6 +981,23 @@ class SettingsMobileFragment : PreferenceFragmentCompat() {
             }
         }
 
+        findPreference<SwitchPreference>("OLED_MODE")?.apply {
+            isChecked = UserPreferences.oledMode ||
+                UserPreferences.selectedTheme == ThemeManager.NERO_AMOLED_OLED
+            setOnPreferenceChangeListener { _, newValue ->
+                val enabled = newValue as Boolean
+                UserPreferences.oledMode = enabled
+                if (!enabled && UserPreferences.selectedTheme == ThemeManager.NERO_AMOLED_OLED) {
+                    UserPreferences.selectedTheme = ThemeManager.DEFAULT
+                }
+                requireActivity().apply {
+                    finish()
+                    startActivity(Intent(this, MainMobileActivity::class.java))
+                }
+                true
+            }
+        }
+
         findPreference<ListPreference>("APP_LANGUAGE")?.apply {
             entries = AppLanguageManager.buildLanguageEntries(requireContext())
             entryValues = AppLanguageManager.buildLanguageValues(requireContext())

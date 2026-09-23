@@ -771,6 +771,12 @@
                 android:entries="@array/theme_names"
                 android:entryValues="@array/theme_values"
                 android:defaultValue="default" />
+
+            <SwitchPreference
+                android:key="OLED_MODE"
+                android:title="@string/settings_oled_mode_title"
+                android:summary="@string/settings_oled_mode_summary"
+                android:defaultValue="false" />
         </PreferenceCategory>
 
         <PreferenceCategory

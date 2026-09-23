@@ -1,13 +1,28 @@
 <?xml version="1.0" encoding="utf-8"?>
-<TextView xmlns:android="http://schemas.android.com/apk/res/android"
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
-    android:id="@+id/tv_favorite_section_title"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:foreground="?attr/selectableItemBackground"
+    android:orientation="vertical"
     android:paddingHorizontal="8dp"
-    android:paddingTop="20dp"
-    android:paddingBottom="8dp"
-    android:textAppearance="@style/TextAppearance.Material3.TitleMedium"
-    android:textColor="?attr/colorOnSurface"
-    tools:text="Movies" />
+    android:paddingTop="16dp"
+    android:paddingBottom="6dp">
+
+    <TextView
+        android:id="@+id/tv_favorite_section_title"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:fontFamily="@font/manrope"
+        android:textAppearance="@style/TextAppearance.Material3.TitleMedium"
+        android:textColor="?android:attr/textColorPrimary"
+        android:textStyle="bold"
+        tools:text="Movies" />
+
+    <View
+        android:id="@+id/v_favorite_section_rule"
+        android:layout_width="28dp"
+        android:layout_height="2dp"
+        android:layout_marginTop="6dp"
+        android:background="@drawable/bg_exp_accent_rule" />
+
+</LinearLayout>

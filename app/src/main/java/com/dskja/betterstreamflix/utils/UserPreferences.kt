@@ -454,6 +454,14 @@ object UserPreferences {
         get() = Key.SELECTED_THEME.getString() ?: "default"
         set(value) = Key.SELECTED_THEME.setString(value)
 
+    /**
+     * App-wide OLED / true-black surfaces. Persists independently of the accent theme.
+     * When the Nero Amoled theme is selected, OLED is treated as active regardless.
+     */
+    var oledMode: Boolean
+        get() = Key.OLED_MODE.getBoolean() ?: false
+        set(value) = Key.OLED_MODE.setBoolean(value)
+
     /** Off-by-default complete mobile shell redesign. Requires activity restart. */
     var experimentalNewAppDesign: Boolean
         get() = Key.EXPERIMENTAL_NEW_APP_DESIGN.getBoolean() ?: false
@@ -1193,6 +1201,7 @@ object UserPreferences {
         PARENTAL_CONTROL_LOCKED_UNTIL,
         PARENTAL_CONTROL_HARD_LOCKED,
         SELECTED_THEME,
+        OLED_MODE,
         EXPERIMENTAL_NEW_APP_DESIGN,
         EXPERIMENTAL_REACT_HOME,
         EXPERIMENTAL_LUMINA_ACCENT,

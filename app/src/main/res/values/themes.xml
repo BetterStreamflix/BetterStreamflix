@@ -241,6 +241,8 @@
         <item name="app_background_color">#000000</item>
         <item name="android:windowBackground">@drawable/bg_splash_screen_amoled</item>
         <item name="android:colorBackground">#000000</item>
+        <item name="colorSurface">#000000</item>
+        <item name="colorSurfaceVariant">#0A0A0A</item>
         <item name="colorAccent">#FFFFFF</item>
         <item name="android:textColorPrimary">#FFFFFF</item>
         <item name="android:textColorSecondary">#BDBDBD</item>
@@ -407,6 +409,8 @@
         <item name="android:colorBackground">#000000</item>
         <item name="android:windowShowWallpaper">false</item>
         <item name="android:windowBackgroundFallback">#000000</item>
+        <item name="colorSurface">#000000</item>
+        <item name="colorSurfaceVariant">#0A0A0A</item>
         <item name="colorAccent">#FFFFFF</item>
         <item name="colorControlActivated">#FFFFFF</item>
         <item name="colorControlNormal">#BDBDBD</item>

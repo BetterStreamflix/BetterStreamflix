@@ -1068,6 +1068,20 @@ class SettingsTvFragment : LeanbackPreferenceFragmentCompat() {
             }
         }
 
+        findPreference<SwitchPreference>("OLED_MODE")?.apply {
+            isChecked = UserPreferences.oledMode ||
+                UserPreferences.selectedTheme == ThemeManager.NERO_AMOLED_OLED
+            setOnPreferenceChangeListener { _, newValue ->
+                val enabled = newValue as Boolean
+                UserPreferences.oledMode = enabled
+                if (!enabled && UserPreferences.selectedTheme == ThemeManager.NERO_AMOLED_OLED) {
+                    UserPreferences.selectedTheme = ThemeManager.DEFAULT
+                }
+                restartMainTvWithoutAnimation()
+                true
+            }
+        }
+
         findPreference<ListPreference>("APP_LANGUAGE")?.apply {
             entries = AppLanguageManager.buildLanguageEntries(requireContext())
             entryValues = AppLanguageManager.buildLanguageValues(requireContext())
