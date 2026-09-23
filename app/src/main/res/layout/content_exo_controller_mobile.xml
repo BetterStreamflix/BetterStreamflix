@@ -236,7 +236,7 @@
             android:layout_height="wrap_content"
             android:layout_marginStart="12dp"
             android:ellipsize="end"
-            android:maxLines="1"
+            android:maxLines="2"
             android:textColor="#B3FFFFFF"
             android:textSize="12sp"
             android:visibility="gone"

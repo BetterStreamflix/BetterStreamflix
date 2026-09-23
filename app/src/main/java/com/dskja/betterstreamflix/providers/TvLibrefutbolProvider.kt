@@ -404,6 +404,17 @@ object TvLibrefutbolProvider : IptvProvider, ProviderConfigUrl {
 
     override suspend fun getPeople(id: String, page: Int): People = throw Exception("Not supported")
 
+    override suspend fun listLiveChannels(aroundId: String?, limit: Int): List<com.dskja.betterstreamflix.iptv.IptvLiveSession.Channel> {
+        val shows = runCatching { getTvShows(1) }.getOrDefault(emptyList())
+            .filter { it.id !in setOf("creador-info", "apoyo-info", "apoyo-nando") }
+        return com.dskja.betterstreamflix.iptv.IptvChannelWindow.fromShows(
+            shows = shows,
+            aroundId = aroundId,
+            limit = limit,
+            programNowOf = { "En vivo" },
+        )
+    }
+
     override suspend fun getServers(id: String, videoType: Video.Type): List<Video.Server> = withContext(Dispatchers.IO) {
         try {
             val doc = fetchDocument(id) ?: throw Exception("No se pudo cargar")

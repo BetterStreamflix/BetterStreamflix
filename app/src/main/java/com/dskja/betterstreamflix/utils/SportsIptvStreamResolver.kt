@@ -22,6 +22,14 @@ object SportsIptvStreamResolver {
         Regex("""["'](playlist\.php\?[^"']+)["']"""),
         Regex("""["'](https:\\?/\\?/[^"']+\.m3u8[^"']*)["']"""),
         Regex("""["'](https:[^"']+\.m3u8[^"']*)["']"""),
+        Regex("""(https?:\\?/\\?/[^"'\s<>]+playlist\.php[^"'\s<>]*)"""),
+        Regex("""(https?:\\?/\\?/[^"'\s<>]+\.m3u8[^"'\s<>]*)"""),
+    )
+
+    private val KSDJUG_HOST_PATTERNS = listOf(
+        Regex("""https://deportes\.ksdjugfssddeports\.com/[^"'\\\s<>]+""", RegexOption.IGNORE_CASE),
+        Regex("""https://[^"'\\\s<>]*ksdjug[^"'\\\s<>]*/(?:stream|embed|player)\.php[^"'\\\s<>]*""", RegexOption.IGNORE_CASE),
+        Regex("""https://[^"'\\\s<>]+/(?:stream|embed)\.php\?[^"'\\\s<>]*""", RegexOption.IGNORE_CASE),
     )
 
     fun collectServerUrls(document: Document, baseUrl: String): List<Pair<String, String>> {
@@ -30,9 +38,11 @@ object SportsIptvStreamResolver {
         document.select(
             "button.option[data-src], a.option[data-src], a.option[href], " +
                 ".options-left .option[data-src], .options .option[data-src], " +
-                "a[href*='core.php'], iframe[src*='core.php'], iframe[data-src*='core.php']"
+                "a[href*='core.php'], iframe[src*='core.php'], iframe[data-src*='core.php'], " +
+                "button[data-url], a[data-url], li.option[data-src], div.option[data-src]"
         ).forEachIndexed { index, element ->
             val raw = element.attr("data-src")
+                .ifBlank { element.attr("data-url") }
                 .ifBlank { element.attr("href") }
                 .ifBlank { element.attr("src") }
             val absolute = absoluteUrl(raw, baseUrl) ?: return@forEachIndexed
@@ -63,27 +73,52 @@ object SportsIptvStreamResolver {
         }
 
         val embedUrl = findKsdjugEmbed(coreDoc.html())
-            ?: coreDoc.selectFirst("iframe[src*='ksdjug'], iframe[src*='stream.php'], iframe[src]")
-                ?.attr("src")
+            ?: coreDoc.selectFirst(
+                "iframe[src*='ksdjug'], iframe[src*='stream.php'], iframe[src*='embed'], " +
+                    "iframe[src*='player'], iframe[data-src*='stream'], iframe[src]",
+            )
+                ?.let { el ->
+                    el.attr("src").ifBlank { el.attr("data-src") }
+                }
                 ?.replace("&amp;", "&")
                 ?.let { absoluteUrl(it, coreUrl) }
             ?: return null
 
         val embedHtml = fetchHtml(client, embedUrl, coreUrl, userAgent) ?: return null
-        return extractPlaylistUrl(embedHtml, embedUrl)
+        extractPlaylistUrl(embedHtml, embedUrl)?.let { return it }
+
+        // One more hop: some embeds nest another player iframe.
+        val nested = LiveStreamHtmlExtractor.extractEmbedUrl(embedHtml)
+            ?: Regex(
+                """https?://[^"'\\\s<>]+(?:stream|embed|player)\.php[^"'\\\s<>]*""",
+                RegexOption.IGNORE_CASE,
+            ).find(embedHtml)?.value?.replace("\\/", "/")
+        if (!nested.isNullOrBlank() && !nested.equals(embedUrl, true)) {
+            val nestedHtml = fetchHtml(client, nested, embedUrl, userAgent) ?: return null
+            return extractPlaylistUrl(nestedHtml, nested)
+        }
+        return null
     }
 
     private fun findCoreOrEmbedUrl(document: Document, currentUrl: String): String? {
         document.selectFirst(
             "iframe#playerFrame[src], iframe#player-frame[src], iframe.player-frame[src], " +
-                "#player iframe[src], .player iframe[src], iframe[src*='core.php']"
-        )?.attr("src")
-            ?.takeIf { it.isNotBlank() }
-            ?.let { return absoluteUrl(it, currentUrl) }
+                "#player iframe[src], .player iframe[src], iframe[src*='core.php'], " +
+                "iframe[data-src*='core.php']"
+        )?.let { el ->
+            el.attr("src").ifBlank { el.attr("data-src") }
+                .takeIf { it.isNotBlank() }
+                ?.let { return absoluteUrl(it, currentUrl) }
+        }
 
-        document.selectFirst("button.option[data-src], a.option[data-src], a.option[href*='core.php']")
+        document.selectFirst(
+            "button.option[data-src], a.option[data-src], a.option[href*='core.php'], " +
+                "button[data-url*='core.php']",
+        )
             ?.let { el ->
-                val raw = el.attr("data-src").ifBlank { el.attr("href") }
+                val raw = el.attr("data-src")
+                    .ifBlank { el.attr("data-url") }
+                    .ifBlank { el.attr("href") }
                 absoluteUrl(raw, currentUrl)?.let { return it }
             }
 
@@ -91,13 +126,13 @@ object SportsIptvStreamResolver {
     }
 
     private fun findKsdjugEmbed(html: String): String? {
-        return Regex(
-            """https://deportes\.ksdjugfssddeports\.com/[^"'\\\s<>]+""",
-            RegexOption.IGNORE_CASE,
-        ).find(html)
-            ?.value
-            ?.replace("&amp;", "&")
-            ?.replace("\\/", "/")
+        for (pattern in KSDJUG_HOST_PATTERNS) {
+            pattern.find(html)?.value
+                ?.replace("&amp;", "&")
+                ?.replace("\\/", "/")
+                ?.let { return it }
+        }
+        return null
     }
 
     private fun extractPlaylistUrl(html: String, embedUrl: String): String? {
@@ -106,6 +141,7 @@ object SportsIptvStreamResolver {
             val cleaned = raw.replace("\\/", "/").replace("\\u0026", "&")
             absoluteUrl(cleaned, embedUrl)?.let { return it }
         }
+        LiveStreamHtmlExtractor.extractM3u8(html)?.let { return it }
         return null
     }
 

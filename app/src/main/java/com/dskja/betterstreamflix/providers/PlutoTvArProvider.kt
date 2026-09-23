@@ -295,6 +295,22 @@ object PlutoTvArProvider : IptvProvider, ProviderConfigUrl {
         return channels
     }
 
+    override suspend fun listLiveChannels(aroundId: String?, limit: Int): List<com.dskja.betterstreamflix.iptv.IptvLiveSession.Channel> {
+        val channels = getAllChannels()
+            .filter { it.name.isNotBlank() }
+            .distinctBy { it.name }
+            .map { channel ->
+                com.dskja.betterstreamflix.iptv.IptvLiveSession.Channel(
+                    id = createId(channel),
+                    name = channel.name,
+                    logo = channel.logo,
+                    group = channel.group,
+                    programNow = channel.group?.takeIf { it.isNotBlank() },
+                )
+            }
+        return com.dskja.betterstreamflix.iptv.IptvChannelWindow.fromChannels(channels, aroundId, limit)
+    }
+
     override suspend fun getMovies(page: Int): List<Movie> = emptyList()
 
     override suspend fun getTvShows(page: Int): List<TvShow> {

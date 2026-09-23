@@ -33,7 +33,8 @@ interface IptvProvider : Provider {
     ): List<com.dskja.betterstreamflix.iptv.IptvLiveSession.Channel> {
         val out = LinkedHashMap<String, com.dskja.betterstreamflix.iptv.IptvLiveSession.Channel>()
         var page = 1
-        while (out.size < limit && page <= 12) {
+        // Prefer filling near [aroundId] quickly: walk pages until found + window, then stop.
+        while (out.size < limit.coerceAtLeast(80) && page <= 16) {
             val batch = runCatching { getTvShows(page) }.getOrDefault(emptyList())
             if (batch.isEmpty()) break
             batch.forEach { show ->
@@ -46,15 +47,14 @@ interface IptvProvider : Provider {
                     ),
                 )
             }
+            if (aroundId != null && out.containsKey(aroundId) && out.size >= limit) break
             page++
         }
-        val list = out.values.toList()
-        if (aroundId == null) return list.take(limit)
-        val idx = list.indexOfFirst { it.id == aroundId }
-        if (idx < 0) return list.take(limit)
-        val half = limit / 2
-        val start = (idx - half).coerceAtLeast(0)
-        return list.drop(start).take(limit)
+        return com.dskja.betterstreamflix.iptv.IptvChannelWindow.fromChannels(
+            out.values.toList(),
+            aroundId,
+            limit,
+        )
     }
 }
 

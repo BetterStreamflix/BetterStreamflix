@@ -199,7 +199,11 @@ object SportsBiteProvider : IptvProvider, ProviderConfigUrl {
         val events = all.filter { !it.alwaysLive }.sortedByDescending { it.viewers }
 
         if (events.isNotEmpty()) {
-            categories += Category("🔴 Live Events", events.take(40).map { toShow(it) })
+            categories += Category("🔴 Live now", events.take(40).map { toShow(it) })
+            val upcoming = events.drop(40).take(24)
+            if (upcoming.isNotEmpty()) {
+                categories += Category("📅 Upcoming / popular", upcoming.map { toShow(it) })
+            }
         }
         if (live247.isNotEmpty()) {
             categories += Category("📺 24/7 Channels", live247.take(40).map { toShow(it) })
@@ -425,6 +429,12 @@ object SportsBiteProvider : IptvProvider, ProviderConfigUrl {
 
     override suspend fun listLiveChannels(aroundId: String?, limit: Int) =
         getAllStreams().map {
+            val slot = com.dskja.betterstreamflix.iptv.IptvProgramGuide.sportsSlot(
+                alwaysLive = it.alwaysLive,
+                category = it.category,
+                tag = it.tag,
+                viewers = it.viewers,
+            )
             com.dskja.betterstreamflix.iptv.IptvLiveSession.Channel(
                 id = createId(it),
                 name = it.name,
@@ -436,13 +446,11 @@ object SportsBiteProvider : IptvProvider, ProviderConfigUrl {
                         append(LiveCatalogMeta.countryName(it.country))
                     }
                 },
+                programNow = slot.now,
+                programNext = slot.next,
             )
         }.let { all ->
-            if (aroundId == null) all.take(limit)
-            else {
-                val idx = all.indexOfFirst { it.id == aroundId }.coerceAtLeast(0)
-                all.drop((idx - limit / 2).coerceAtLeast(0)).take(limit)
-            }
+            com.dskja.betterstreamflix.iptv.IptvChannelWindow.fromChannels(all, aroundId, limit)
         }
 
     private fun fetchHtml(url: String, referer: String = "$baseUrl/"): String? = try {

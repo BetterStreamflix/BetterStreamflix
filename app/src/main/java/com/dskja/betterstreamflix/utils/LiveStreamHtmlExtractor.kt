@@ -27,7 +27,33 @@ object LiveStreamHtmlExtractor {
         extractCdnLiveTvM3u8(html)?.let { return it }
         extractXorArrayM3u8(html)?.let { return it }
         extractAtobM3u8(html)?.let { return it }
+        extractSourceTagM3u8(html)?.let { return it }
+        extractClapprM3u8(html)?.let { return it }
         return GENERIC_M3U8.find(html)?.value?.replace("\\/", "/")
+    }
+
+    fun extractSourceTagM3u8(html: String): String? {
+        Regex(
+            """<source[^>]+src=["'](https?://[^"']+\.m3u8[^"']*)["']""",
+            RegexOption.IGNORE_CASE,
+        ).find(html)?.groupValues?.getOrNull(1)?.let { return it.replace("\\/", "/") }
+        Regex(
+            """["']file["']\s*:\s*["'](https?://[^"']+\.m3u8[^"']*)["']""",
+            RegexOption.IGNORE_CASE,
+        ).find(html)?.groupValues?.getOrNull(1)?.let { return it.replace("\\/", "/") }
+        return null
+    }
+
+    fun extractClapprM3u8(html: String): String? {
+        Regex(
+            """source\s*:\s*["'](https?://[^"']+\.m3u8[^"']*)["']""",
+            RegexOption.IGNORE_CASE,
+        ).find(html)?.groupValues?.getOrNull(1)?.let { return it.replace("\\/", "/") }
+        Regex(
+            """sources?\s*:\s*\[\s*["'](https?://[^"']+\.m3u8[^"']*)["']""",
+            RegexOption.IGNORE_CASE,
+        ).find(html)?.groupValues?.getOrNull(1)?.let { return it.replace("\\/", "/") }
+        return null
     }
 
     fun extractCdnLiveTvM3u8(html: String): String? {
