@@ -11,6 +11,7 @@ import androidx.media3.exoplayer.offline.DownloadService
 import com.dskja.betterstreamflix.fragments.downloads.OfflineVideoCache
 import com.dskja.betterstreamflix.utils.UserPreferences
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import org.json.JSONObject
@@ -22,8 +23,19 @@ class DownloadRepository private constructor(
 ) {
     fun observeAll(): Flow<List<DownloadItemEntity>> = dao.observeAll()
 
+    /**
+     * Completed download item contentKeys plus completed season-pack ids
+     * ([DownloadSeasonPackEntity.id] / [DownloadContentKey.seasonPack]).
+     */
     fun observeCompletedKeys(): Flow<Set<String>> =
-        dao.observeCompletedKeys().map { it.toSet() }
+        combine(
+            dao.observeCompletedKeys().map { it.toSet() },
+            dao.observeSeasonPacks().map { packs ->
+                packs.filter { it.state == DownloadItemState.COMPLETED.name }
+                    .map { it.id }
+                    .toSet()
+            },
+        ) { itemKeys, packKeys -> itemKeys + packKeys }
 
     fun observeSeasonPacks(): Flow<List<DownloadSeasonPackEntity>> = dao.observeSeasonPacks()
 
@@ -35,7 +47,14 @@ class DownloadRepository private constructor(
 
     suspend fun getByMedia3Id(media3Id: String) = dao.getByMedia3Id(media3Id)
 
-    suspend fun completedKeys(): Set<String> = dao.completedKeys().toSet()
+    suspend fun completedKeys(): Set<String> {
+        val itemKeys = dao.completedKeys().toSet()
+        val packKeys = dao.observeSeasonPacks().first()
+            .filter { it.state == DownloadItemState.COMPLETED.name }
+            .map { it.id }
+            .toSet()
+        return itemKeys + packKeys
+    }
 
     suspend fun upsert(item: DownloadItemEntity) = dao.upsert(item)
 

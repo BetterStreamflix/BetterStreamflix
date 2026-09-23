@@ -1043,6 +1043,13 @@
     <string name="download_error_wifi">Nur WLAN</string>
     <string name="download_error_expired">Link abgelaufen — erneut versuchen</string>
     <string name="download_error_file_missing">Lokale Datei fehlt</string>
+    <string name="player_offline_missing">Offline-Download fehlt oder ist unvollständig</string>
+    <string name="player_offline_external_unavailable">Cast und externe Player sind bei Offline-Wiedergabe nicht verfügbar</string>
+    <string name="player_offline_next_title">Nächste Folge nicht heruntergeladen</string>
+    <string name="player_offline_next_message">Diese Folge ist nicht offline verfügbar. Online abspielen oder abbrechen, um bei dieser Folge zu bleiben.</string>
+    <string name="player_offline_next_online">Online abspielen</string>
+    <string name="player_offline_prev_title">Vorherige Folge nicht heruntergeladen</string>
+    <string name="player_offline_prev_message">Diese Folge ist nicht offline verfügbar. Online abspielen oder abbrechen, um bei dieser Folge zu bleiben.</string>
     <string name="download_error_unsupported">Format nicht unterstützbar</string>
     <string name="option_show_download">Herunterladen</string>
     <string name="season_download">Staffel herunterladen</string>

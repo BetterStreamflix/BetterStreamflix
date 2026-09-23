@@ -244,6 +244,7 @@ class MovieViewHolder(
 
     /** Leanback: confirm before jumping straight into the player from Continue Watching. */
     private fun openContinueWatchingMovie(movie: Movie) {
+        val preferredServer = preferredOfflineServerName()
         val play = {
             itemView.findNavController().navigate(
                 R.id.action_global_player,
@@ -261,6 +262,7 @@ class MovieViewHolder(
                             imdbId = movie.imdbId,
                         ),
                     )
+                    preferredServer?.let { putString("preferredServerName", it) }
                 },
             )
         }
@@ -475,6 +477,9 @@ class MovieViewHolder(
                                                 imdbId = movie.imdbId,
                                             ),
                                         )
+                                        preferredOfflineServerName()?.let {
+                                            putString("preferredServerName", it)
+                                        }
                                     },
                                 )
                             } else {
@@ -864,6 +869,25 @@ class MovieViewHolder(
         return DownloadContentKey.movie(providerName, movie.id)
     }
 
+    private fun preferredOfflineServerName(): String? {
+        val contentKey = movieDownloadContentKey() ?: return null
+        return if (OfflineBadgeStore.isCompleted(context, contentKey)) {
+            com.dskja.betterstreamflix.fragments.player.PlayerViewModel.OFFLINE_SERVER_NAME
+        } else {
+            null
+        }
+    }
+
+    private fun isIptvProvider(): Boolean {
+        val name = movie.providerName
+        val provider = if (!name.isNullOrBlank()) {
+            com.dskja.betterstreamflix.providers.Provider.findByName(name)
+        } else {
+            UserPreferences.currentProvider
+        }
+        return provider is com.dskja.betterstreamflix.providers.IptvProvider
+    }
+
     private fun setRibbonVisible(view: View, visible: Boolean) {
         val wasVisible = view.visibility == View.VISIBLE
         view.visibility = if (visible) View.VISIBLE else View.GONE
@@ -1156,13 +1180,8 @@ class MovieViewHolder(
         }
 
         binding.btnMovieWatchNow.apply {
-            val contentKey = movieDownloadContentKey()
-            val playOffline = contentKey != null && OfflineBadgeStore.isCompleted(context, contentKey)
-            text = if (playOffline) {
-                context.getString(R.string.downloads_play_offline)
-            } else {
-                context.getString(R.string.movie_watch_now)
-            }
+            // Dual CTA: Watch now always streams online; completed downloads use the Download button.
+            text = context.getString(R.string.movie_watch_now)
             FeaturedSwiperChrome.wireWatchButton(this)
             applyExpPress()
             setOnClickListener {
@@ -1173,11 +1192,7 @@ class MovieViewHolder(
                         title = movie.title,
                         subtitle = movie.released?.format("yyyy") ?: "",
                         videoType = Video.Type.Movie(id = movie.id, title = movie.title, releaseDate = movie.released?.format("yyyy-MM-dd") ?: "", poster = movie.poster ?: movie.banner ?: "", imdbId = movie.imdbId),
-                        preferredServerName = if (playOffline) {
-                            com.dskja.betterstreamflix.fragments.player.PlayerViewModel.OFFLINE_SERVER_NAME
-                        } else {
-                            null
-                        },
+                        preferredServerName = null,
                     ))
                 }
             }
@@ -1223,14 +1238,57 @@ class MovieViewHolder(
 
         binding.btnMovieDownload.apply {
             applyExpPress()
-            contentDescription =
-                com.dskja.betterstreamflix.download.DetailDownloadLabels.movieButton(context, movie)
-            androidx.appcompat.widget.TooltipCompat.setTooltipText(this, contentDescription)
-            setOnClickListener {
-                ExpMotion.hapticTap(it)
-                checkProviderAndRun {
-                    val fragment = context.toActivity()?.getCurrentFragment() as? Fragment ?: return@checkProviderAndRun
-                    DownloadOptionsController.enqueueMovie(fragment, movie)
+            if (isIptvProvider()) {
+                visibility = View.GONE
+                setOnClickListener(null)
+                setOnLongClickListener(null)
+            } else {
+                visibility = View.VISIBLE
+                val contentKey = movieDownloadContentKey()
+                val playOffline = contentKey != null && OfflineBadgeStore.isCompleted(context, contentKey)
+                val label = if (playOffline) {
+                    context.getString(R.string.downloads_play_offline)
+                } else {
+                    com.dskja.betterstreamflix.download.DetailDownloadLabels.movieButton(context, movie)
+                }
+                contentDescription = label
+                androidx.appcompat.widget.TooltipCompat.setTooltipText(this, contentDescription)
+                setOnClickListener {
+                    ExpMotion.hapticTap(it)
+                    checkProviderAndRun {
+                        if (playOffline) {
+                            findNavController().navigate(
+                                MovieMobileFragmentDirections.actionMovieToPlayer(
+                                    id = movie.id,
+                                    title = movie.title,
+                                    subtitle = movie.released?.format("yyyy") ?: "",
+                                    videoType = Video.Type.Movie(
+                                        id = movie.id,
+                                        title = movie.title,
+                                        releaseDate = movie.released?.format("yyyy-MM-dd") ?: "",
+                                        poster = movie.poster ?: movie.banner ?: "",
+                                        imdbId = movie.imdbId,
+                                    ),
+                                    preferredServerName =
+                                        com.dskja.betterstreamflix.fragments.player.PlayerViewModel.OFFLINE_SERVER_NAME,
+                                ),
+                            )
+                        } else {
+                            val fragment = context.toActivity()?.getCurrentFragment() as? Fragment
+                                ?: return@checkProviderAndRun
+                            DownloadOptionsController.enqueueMovie(fragment, movie)
+                        }
+                    }
+                }
+                setOnLongClickListener {
+                    if (!playOffline) return@setOnLongClickListener false
+                    ExpMotion.hapticTap(it)
+                    checkProviderAndRun {
+                        val fragment = context.toActivity()?.getCurrentFragment() as? Fragment
+                            ?: return@checkProviderAndRun
+                        DownloadOptionsController.enqueueMovie(fragment, movie)
+                    }
+                    true
                 }
             }
         }
@@ -1469,13 +1527,8 @@ class MovieViewHolder(
         binding.tvMovieOverview.text = movie.overview
 
         binding.btnMovieWatchNow.apply {
-            val contentKey = movieDownloadContentKey()
-            val playOffline = contentKey != null && OfflineBadgeStore.isCompleted(context, contentKey)
-            text = if (playOffline) {
-                context.getString(R.string.downloads_play_offline)
-            } else {
-                context.getString(R.string.movie_watch_now)
-            }
+            // Dual CTA: Watch now always streams online; completed downloads use the Download button.
+            text = context.getString(R.string.movie_watch_now)
             setOnClickListener {
                 ExpMotion.hapticTap(it)
                 checkProviderAndRun {
@@ -1484,11 +1537,7 @@ class MovieViewHolder(
                         title = movie.title,
                         subtitle = movie.released?.format("yyyy") ?: "",
                         videoType = Video.Type.Movie(id = movie.id, title = movie.title, releaseDate = movie.released?.format("yyyy-MM-dd") ?: "", poster = movie.poster ?: movie.banner ?: "", imdbId = movie.imdbId),
-                        preferredServerName = if (playOffline) {
-                            com.dskja.betterstreamflix.fragments.player.PlayerViewModel.OFFLINE_SERVER_NAME
-                        } else {
-                            null
-                        },
+                        preferredServerName = null,
                     ))
                 }
             }
@@ -1544,13 +1593,56 @@ class MovieViewHolder(
         }
 
         binding.btnMovieDownload.apply {
-            text = com.dskja.betterstreamflix.download.DetailDownloadLabels.movieButton(context, movie)
-            contentDescription = text
-            setOnClickListener {
-                ExpMotion.hapticTap(it)
-                checkProviderAndRun {
-                    val fragment = context.toActivity()?.getCurrentFragment() as? Fragment ?: return@checkProviderAndRun
-                    DownloadOptionsController.enqueueMovie(fragment, movie)
+            if (isIptvProvider()) {
+                visibility = View.GONE
+                setOnClickListener(null)
+                setOnLongClickListener(null)
+            } else {
+                visibility = View.VISIBLE
+                val contentKey = movieDownloadContentKey()
+                val playOffline = contentKey != null && OfflineBadgeStore.isCompleted(context, contentKey)
+                text = if (playOffline) {
+                    context.getString(R.string.downloads_play_offline)
+                } else {
+                    com.dskja.betterstreamflix.download.DetailDownloadLabels.movieButton(context, movie)
+                }
+                contentDescription = text
+                setOnClickListener {
+                    ExpMotion.hapticTap(it)
+                    checkProviderAndRun {
+                        if (playOffline) {
+                            findNavController().navigate(
+                                MovieTvFragmentDirections.actionMovieToPlayer(
+                                    id = movie.id,
+                                    title = movie.title,
+                                    subtitle = movie.released?.format("yyyy") ?: "",
+                                    videoType = Video.Type.Movie(
+                                        id = movie.id,
+                                        title = movie.title,
+                                        releaseDate = movie.released?.format("yyyy-MM-dd") ?: "",
+                                        poster = movie.poster ?: movie.banner ?: "",
+                                        imdbId = movie.imdbId,
+                                    ),
+                                    preferredServerName =
+                                        com.dskja.betterstreamflix.fragments.player.PlayerViewModel.OFFLINE_SERVER_NAME,
+                                ),
+                            )
+                        } else {
+                            val fragment = context.toActivity()?.getCurrentFragment() as? Fragment
+                                ?: return@checkProviderAndRun
+                            DownloadOptionsController.enqueueMovie(fragment, movie)
+                        }
+                    }
+                }
+                setOnLongClickListener {
+                    if (!playOffline) return@setOnLongClickListener false
+                    ExpMotion.hapticTap(it)
+                    checkProviderAndRun {
+                        val fragment = context.toActivity()?.getCurrentFragment() as? Fragment
+                            ?: return@checkProviderAndRun
+                        DownloadOptionsController.enqueueMovie(fragment, movie)
+                    }
+                    true
                 }
             }
         }

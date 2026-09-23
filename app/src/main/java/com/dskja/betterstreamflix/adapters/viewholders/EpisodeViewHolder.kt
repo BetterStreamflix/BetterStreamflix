@@ -268,10 +268,21 @@ class EpisodeViewHolder(
             }
         }
 
-        binding.btnEpisodeDownload.setOnClickListener {
-            ExpMotion.hapticTap(it)
-            val fragment = context.toActivity()?.getCurrentFragment() as? Fragment ?: return@setOnClickListener
-            DownloadOptionsController.enqueueEpisode(fragment, episode)
+        binding.btnEpisodeDownload.apply {
+            val iptv = UserPreferences.currentProvider is com.dskja.betterstreamflix.providers.IptvProvider ||
+                (episode.tvShow?.providerName?.let { Provider.findByName(it) }
+                    is com.dskja.betterstreamflix.providers.IptvProvider)
+            if (iptv) {
+                visibility = View.GONE
+                setOnClickListener(null)
+            } else {
+                visibility = View.VISIBLE
+                setOnClickListener {
+                    ExpMotion.hapticTap(it)
+                    val fragment = context.toActivity()?.getCurrentFragment() as? Fragment ?: return@setOnClickListener
+                    DownloadOptionsController.enqueueEpisode(fragment, episode)
+                }
+            }
         }
     }
 

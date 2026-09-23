@@ -580,11 +580,19 @@ class DownloadsMobileFragment : Fragment() {
     }
 }
 
+/**
+ * In-memory shortcut for resolved local [Video]s after Room confirms a COMPLETED download.
+ *
+ * [put] is optional (Downloads UI / PlayerViewModel may warm the cache).
+ * [take] is a consume-once helper used only after validation in [com.dskja.betterstreamflix.fragments.player.PlayerViewModel]
+ * resolve — do not use it as the primary offline resolution path.
+ */
 object OfflineVideoCache {
     private val map = mutableMapOf<String, Video>()
     fun put(key: String, video: Video) {
         map[key] = video
     }
+    /** Consume a cached video once. Prefer Room + [com.dskja.betterstreamflix.download.OfflinePlayback] for truth. */
     fun take(key: String): Video? = map.remove(key)
     fun get(key: String): Video? = map[key]
     fun remove(key: String) {

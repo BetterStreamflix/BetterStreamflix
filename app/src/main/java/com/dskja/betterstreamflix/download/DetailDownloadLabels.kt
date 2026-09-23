@@ -79,7 +79,9 @@ object DetailDownloadLabels {
         var packs = 0
         tvShow.seasons.forEach { season ->
             val packKey = DownloadContentKey.seasonPack(provider, tvShow.id, season.number)
-            val packDone = keys.contains(packKey)
+            // Prefer DownloadSeasonPackEntity COMPLETED (merged into OfflineBadgeStore keys);
+            // fall back to legacy key membership for episode-only coverage.
+            val packDone = OfflineBadgeStore.isCompleted(context, packKey) || keys.contains(packKey)
             if (packDone) packs += 1
             season.episodes.forEach { episode ->
                 total += 1
