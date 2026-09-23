@@ -154,11 +154,22 @@ class PlayerViewModel(
 
                 val provider = UserPreferences.currentProvider
                     ?: throw Exception("No provider selected")
-                val servers = ProviderSmoke.withProviderTimeout(
-                    timeoutMs = ProviderSmoke.SERVERS_TIMEOUT_MS,
-                    label = "getServers(${provider.name})",
-                ) {
-                    provider.getServers(id, videoType)
+                // Live zap: use warm ±1 neighbor servers when available.
+                val warmed = if (provider is com.dskja.betterstreamflix.providers.IptvProvider) {
+                    com.dskja.betterstreamflix.iptv.IptvZapPreloader.takeCachedServers(id)
+                } else {
+                    null
+                }
+                val servers = if (!warmed.isNullOrEmpty()) {
+                    Log.d("PlayerViewModel", "IPTV zap cache hit for $id (${warmed.size} servers)")
+                    warmed
+                } else {
+                    ProviderSmoke.withProviderTimeout(
+                        timeoutMs = ProviderSmoke.SERVERS_TIMEOUT_MS,
+                        label = "getServers(${provider.name})",
+                    ) {
+                        provider.getServers(id, videoType)
+                    }
                 }
                 if (servers.isEmpty()) throw Exception("No servers found")
 
@@ -168,6 +179,9 @@ class PlayerViewModel(
                 Log.d("PlayerViewModel", "Ricerca server completata: ${servers.size} server trovati")
                 if (generation == serversGeneration && isActive) {
                     _state.emit(State.SuccessLoadingServers(servers))
+                }
+                if (provider is com.dskja.betterstreamflix.providers.IptvProvider) {
+                    com.dskja.betterstreamflix.iptv.IptvZapPreloader.warmNeighbors(provider)
                 }
             } catch (e: CancellationException) {
                 throw e

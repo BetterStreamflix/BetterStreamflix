@@ -8,10 +8,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Changed
+- IPTV / Live-TV / Sports system: faster zapping (±1 server preload), order-stable channel guide, sports-tuned live edge offsets, unlocked Mobile + TV channel guides with recent + now/next chrome
+- Pluto TV (all regions), MAGISTV/CineCity, and LatAm sports mirrors: fast `listLiveChannels` from M3U/HTML cache (no slow page walk)
+- SportsBite home rails: “Live now” + “Upcoming / popular”; guide rows carry EPG-lite now/next from schedule metadata
+- LatAm sports extractors: broader core.php / ksdjug / nested-embed + clappr/`<source>` m3u8 matching
 - CI: signed release APKs only on `main` / tags / manual dispatch (not every `dskja/**` push); parallel matrix + Gradle cache; debug APK workflow skips markdown-only changes
 - Docs: README Development section explains fast local debug loop vs CI APKs; add `scripts/build-debug.sh`
 
 ### Added
+- `IptvZapPreloader`, `IptvChannelWindow`, `IptvProgramGuide` (now/next + sports slots) for live playback
 - Profile Atelier redesign: Syne brand, tungsten accents, gradient orbs with motifs, premium picker/create/PIN, home chip orbs, Settings hero
 - Full-screen cinematic Profile Picker (avatar grid, kids badge, PIN gate, create/manage) from Home chip + Settings
 - Settings hub Profiles card shows live “Name · N profiles” summary

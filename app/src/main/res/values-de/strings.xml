@@ -942,12 +942,15 @@
     <string name="player_live_channel">Live-Kanal</string>
     <string name="player_go_live">Live</string>
     <string name="player_live_channel_meta">CH %1$d · %2$s</string>
+    <string name="player_live_channel_meta_program">%1$s\n%2$s</string>
     <string name="player_live_channel_guide">Senderliste</string>
     <string name="player_live_zapping">Wechsle Kanal…</string>
     <string name="player_controls_locked_hint">Steuerung gesperrt · tippen zum Entsperren</string>
     <string name="player_live_prev_channel">Vorheriger Kanal</string>
     <string name="player_live_next_channel">Nächster Kanal</string>
     <string name="player_live_no_more_channels">Keine weiteren Kanäle in der Liste</string>
+    <string name="player_live_recent_channels">Zuletzt</string>
+    <string name="player_live_recent_badge">Zuletzt</string>
     <string name="settings_tmdb_api_key_missing">TMDb-API-Schlüssel fehlt. Trage ihn in den Einstellungen ein, um den TMDb-Provider zu nutzen.</string>
     <string name="player_retry_software_decoder">Erneuter Versuch mit Software-Decoder…</string>
     <string name="player_all_servers_failed">Alle Server konnten das Video nicht laden.</string>

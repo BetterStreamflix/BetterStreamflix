@@ -1016,12 +1016,15 @@
     <string name="player_live_channel">Live channel</string>
     <string name="player_go_live">Go Live</string>
     <string name="player_live_channel_meta">CH %1$d · %2$s</string>
+    <string name="player_live_channel_meta_program">%1$s\n%2$s</string>
     <string name="player_live_channel_guide">Channel guide</string>
     <string name="player_live_zapping">Switching channel…</string>
     <string name="player_controls_locked_hint">Controls locked · tap to unlock</string>
     <string name="player_live_prev_channel">Previous channel</string>
     <string name="player_live_next_channel">Next channel</string>
     <string name="player_live_no_more_channels">No more channels in guide</string>
+    <string name="player_live_recent_channels">Recent</string>
+    <string name="player_live_recent_badge">Recent</string>
     <string name="settings_tmdb_api_key_success">API Key updated successfully</string>
     <string name="settings_tmdb_api_key_reset">Using default TMDb API Key</string>
     <string name="settings_tmdb_status_title">TMDb status</string>

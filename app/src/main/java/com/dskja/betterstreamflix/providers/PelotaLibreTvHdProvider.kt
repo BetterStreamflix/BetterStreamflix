@@ -192,6 +192,17 @@ object PelotaLibreTvHdProvider : IptvProvider, ProviderConfigUrl {
 
     override suspend fun getEpisodesBySeason(seasonId: String): List<Episode> = emptyList()
 
+    override suspend fun listLiveChannels(aroundId: String?, limit: Int): List<com.dskja.betterstreamflix.iptv.IptvLiveSession.Channel> {
+        val shows = runCatching { getTvShows(1) }.getOrDefault(emptyList())
+            .filter { it.id !in setOf("creador-info", "apoyo-info", "apoyo-nando") }
+        return com.dskja.betterstreamflix.iptv.IptvChannelWindow.fromShows(
+            shows = shows,
+            aroundId = aroundId,
+            limit = limit,
+            programNowOf = { "En vivo" },
+        )
+    }
+
     override suspend fun getServers(id: String, videoType: Video.Type): List<Video.Server> {
         return listOf(Video.Server(id = id, name = "Sports Stream"))
     }

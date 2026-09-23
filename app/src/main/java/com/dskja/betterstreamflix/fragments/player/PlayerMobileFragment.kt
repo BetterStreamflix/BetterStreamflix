@@ -1637,7 +1637,9 @@ class PlayerMobileFragment : Fragment() {
             .setMimeType(com.dskja.betterstreamflix.extractors.StreamMime.coalesce(video.type, video.source))
         if (isLiveTvPlayback()) {
             mediaItemBuilder.setLiveConfiguration(
-                com.dskja.betterstreamflix.iptv.IptvLivePlayback.liveConfiguration()
+                com.dskja.betterstreamflix.iptv.IptvLivePlayback.liveConfigurationForProvider(
+                    UserPreferences.currentProvider?.name,
+                )
             )
             applyLiveControllerChrome(live = true)
         } else {
@@ -2125,6 +2127,12 @@ class PlayerMobileFragment : Fragment() {
         if (live) {
             val wasLive = controller.tvLiveIndicator.getTag(R.id.exp_enter_animated_tag) == true
             controller.tvLiveIndicator.text = getString(R.string.player_live_badge)
+            controller.tvLiveIndicator.isClickable = true
+            controller.tvLiveIndicator.isFocusable = true
+            controller.tvLiveIndicator.setOnClickListener {
+                ExpMotion.hapticTap(it)
+                showLiveChannelGuideSheet()
+            }
             if (!wasLive) {
                 controller.tvLiveIndicator.setTag(R.id.exp_enter_animated_tag, true)
                 if (ExperimentalMobileDesign.enabled()) {
@@ -2140,20 +2148,20 @@ class PlayerMobileFragment : Fragment() {
                 controller.tvLiveIndicator.setBackgroundResource(
                     ExperimentalMobileDesign.liveIndicatorBackground(),
                 )
-                controller.tvLiveIndicator.isClickable = true
-                controller.tvLiveIndicator.isFocusable = true
                 with(com.dskja.betterstreamflix.utils.ExpPressEffects) {
                     controller.tvLiveIndicator.applyExpPress()
-                }
-                controller.tvLiveIndicator.setOnClickListener {
-                    ExpMotion.hapticTap(it)
-                    showLiveChannelGuideSheet()
                 }
                 controller.btnGoLive.setBackgroundResource(
                     ExperimentalMobileDesign.primaryButtonBackground(),
                 )
                 with(com.dskja.betterstreamflix.utils.ExpPressEffects) {
                     controller.btnGoLive.applyExpPress()
+                }
+            } else {
+                runCatching {
+                    controller.tvLiveIndicator.startAnimation(
+                        android.view.animation.AnimationUtils.loadAnimation(requireContext(), R.anim.live_badge_pulse),
+                    )
                 }
             }
             controller.btnGoLive.setOnClickListener {
@@ -2287,134 +2295,128 @@ class PlayerMobileFragment : Fragment() {
                 )
             }
         val wasVisible = controller.tvLiveChannelMeta.isVisible
-        if (idx >= 0) {
-            controller.tvLiveChannelMeta.text = getString(
-                R.string.player_live_channel_meta,
-                idx + 1,
-                channel.name,
-            )
+        val chLabel = if (idx >= 0) {
+            getString(R.string.player_live_channel_meta, idx + 1, channel.name)
         } else {
-            controller.tvLiveChannelMeta.text = channel.name
+            channel.name
+        }
+        val program = com.dskja.betterstreamflix.iptv.IptvProgramGuide.formatMetaLine(channel)
+        controller.tvLiveChannelMeta.text = if (program.isNullOrBlank()) {
+            chLabel
+        } else {
+            getString(R.string.player_live_channel_meta_program, chLabel, program)
         }
         controller.tvLiveChannelMeta.isVisible = true
+        controller.tvLiveChannelMeta.isClickable = true
+        controller.tvLiveChannelMeta.isFocusable = true
+        controller.tvLiveChannelMeta.setOnClickListener {
+            ExpMotion.hapticTap(it)
+            showLiveChannelGuideSheet()
+        }
         if (ExperimentalMobileDesign.enabled()) {
             controller.tvLiveChannelMeta.setBackgroundResource(
                 ExperimentalMobileDesign.metaPillBackground(),
             )
             if (!wasVisible) ExpMotion.popIn(controller.tvLiveChannelMeta)
-            controller.tvLiveChannelMeta.isClickable = true
-            controller.tvLiveChannelMeta.isFocusable = true
             with(com.dskja.betterstreamflix.utils.ExpPressEffects) {
                 controller.tvLiveChannelMeta.applyExpPress()
-            }
-            controller.tvLiveChannelMeta.setOnClickListener {
-                ExpMotion.hapticTap(it)
-                showLiveChannelGuideSheet()
             }
         }
     }
 
     private fun showLiveChannelGuideSheet() {
-        if (!ExperimentalMobileDesign.enabled() || !isLiveTvPlayback()) return
+        if (!isLiveTvPlayback()) return
         val channels = com.dskja.betterstreamflix.iptv.IptvLiveSession.snapshot()
         if (channels.isEmpty()) {
-            val emptySheet = com.google.android.material.bottomsheet.BottomSheetDialog(requireContext())
-            val emptyRoot = android.widget.LinearLayout(requireContext()).apply {
-                orientation = android.widget.LinearLayout.VERTICAL
-                setBackgroundResource(ExperimentalMobileDesign.bottomSheetBackground())
-                setPadding(20.dp(requireContext()), 20.dp(requireContext()), 20.dp(requireContext()), 28.dp(requireContext()))
+            if (ExperimentalMobileDesign.enabled()) {
+                showLiveChannelGuideEmptyExp()
+            } else {
+                Toast.makeText(requireContext(), R.string.player_live_no_more_channels, Toast.LENGTH_SHORT).show()
             }
-            ExperimentalMobileDesign.applyReducedGlass(emptyRoot)
-            val emptyIcon = android.widget.ImageView(requireContext()).apply {
-                setImageResource(R.drawable.ic_exp_error)
-                imageTintList = android.content.res.ColorStateList.valueOf(
-                    com.google.android.material.color.MaterialColors.getColor(
-                        this, androidx.appcompat.R.attr.colorPrimary,
-                    ),
-                )
-                layoutParams = android.widget.LinearLayout.LayoutParams(
-                    40.dp(requireContext()),
-                    40.dp(requireContext()),
-                )
-            }
-            val emptyTitle = android.widget.TextView(requireContext()).apply {
-                text = getString(R.string.player_live_channel_guide)
-                setTextAppearance(R.style.TextAppearance_Lumina_Title)
-                setTextColor(
-                    com.google.android.material.color.MaterialColors.getColor(
-                        this, com.google.android.material.R.attr.colorOnSurface,
-                    ),
-                )
-                setPadding(0, 12.dp(requireContext()), 0, 0)
-            }
-            val emptyRule = View(requireContext()).apply {
-                layoutParams = android.widget.LinearLayout.LayoutParams(
-                    40.dp(requireContext()),
-                    3.dp(requireContext()),
-                ).also { it.topMargin = 10.dp(requireContext()) }
-                setBackgroundResource(R.drawable.bg_exp_accent_rule)
-            }
-            val emptyBody = android.widget.TextView(requireContext()).apply {
-                text = getString(R.string.player_live_no_more_channels)
-                setTextAppearance(R.style.TextAppearance_Lumina_Body)
-                setTextColor(
-                    com.google.android.material.color.MaterialColors.getColor(
-                        this, com.google.android.material.R.attr.colorOnSurfaceVariant,
-                    ),
-                )
-                setPadding(0, 12.dp(requireContext()), 0, 16.dp(requireContext()))
-            }
-            val emptyCta = android.widget.TextView(requireContext()).apply {
-                text = getString(android.R.string.ok)
-                setTextAppearance(R.style.TextAppearance_Lumina_Caption)
-                setBackgroundResource(ExperimentalMobileDesign.primaryButtonBackground())
-                setTextColor(
-                    com.google.android.material.color.MaterialColors.getColor(
-                        this, com.google.android.material.R.attr.colorOnPrimary,
-                    ),
-                )
-                setPadding(16.dp(requireContext()), 12.dp(requireContext()), 16.dp(requireContext()), 12.dp(requireContext()))
-                setOnClickListener {
-                    ExpMotion.hapticTap(it)
-                    emptySheet.dismiss()
-                }
-            }
-            with(com.dskja.betterstreamflix.utils.ExpPressEffects) { emptyCta.applyExpPress() }
-            emptyRoot.addView(emptyIcon)
-            emptyRoot.addView(emptyTitle)
-            emptyRoot.addView(emptyRule)
-            emptyRoot.addView(emptyBody)
-            emptyRoot.addView(emptyCta)
-            ExpMotion.enterScreen(emptyRoot)
-            ExpMotion.revealHeader(emptyIcon, emptyTitle, emptyRule, emptyBody)
-            ExpMotion.pulseAccentRule(emptyRule)
-            ExpMotion.popIn(emptyCta)
-            emptySheet.setContentView(emptyRoot)
-            emptySheet.show()
             return
         }
         val currentId = com.dskja.betterstreamflix.iptv.IptvLiveSession.current()?.id
         val sheet = com.google.android.material.bottomsheet.BottomSheetDialog(requireContext())
+        val useExp = ExperimentalMobileDesign.enabled()
         val root = android.widget.LinearLayout(requireContext()).apply {
             orientation = android.widget.LinearLayout.VERTICAL
-            setBackgroundResource(ExperimentalMobileDesign.bottomSheetBackground())
+            if (useExp) {
+                setBackgroundResource(ExperimentalMobileDesign.bottomSheetBackground())
+            } else {
+                setBackgroundColor(
+                    com.google.android.material.color.MaterialColors.getColor(
+                        this, com.google.android.material.R.attr.colorSurface,
+                    ),
+                )
+            }
             setPadding(20.dp(requireContext()), 16.dp(requireContext()), 20.dp(requireContext()), 28.dp(requireContext()))
         }
-        ExperimentalMobileDesign.applyReducedGlass(root)
-        ExpMotion.enterScreen(root)
+        if (useExp) ExperimentalMobileDesign.applyReducedGlass(root)
+        if (useExp) ExpMotion.enterScreen(root)
         val title = android.widget.TextView(requireContext()).apply {
             text = getString(R.string.player_live_channel_guide)
-            setTextAppearance(R.style.TextAppearance_Lumina_Title)
+            if (useExp) setTextAppearance(R.style.TextAppearance_Lumina_Title)
+            else setTextAppearance(com.google.android.material.R.style.TextAppearance_Material3_TitleLarge)
             setPadding(0, 0, 0, 8.dp(requireContext()))
         }
         root.addView(title)
-        val rule = View(requireContext()).apply {
-            layoutParams = android.widget.LinearLayout.LayoutParams(40.dp(requireContext()), 3.dp(requireContext()))
-            setBackgroundResource(R.drawable.bg_exp_accent_rule)
+        if (useExp) {
+            val rule = View(requireContext()).apply {
+                layoutParams = android.widget.LinearLayout.LayoutParams(40.dp(requireContext()), 3.dp(requireContext()))
+                setBackgroundResource(R.drawable.bg_exp_accent_rule)
+            }
+            root.addView(rule)
+            ExpMotion.revealHeader(title)
+            ExpMotion.pulseAccentRule(rule)
         }
-        root.addView(rule)
-        ExpMotion.revealHeader(title)
-        ExpMotion.pulseAccentRule(rule)
+        val recent = com.dskja.betterstreamflix.iptv.IptvLiveSession.recent(6)
+            .filter { it.id != currentId }
+        if (recent.isNotEmpty()) {
+            val recentLabel = android.widget.TextView(requireContext()).apply {
+                text = getString(R.string.player_live_recent_channels)
+                setPadding(0, 8.dp(requireContext()), 0, 4.dp(requireContext()))
+                alpha = 0.8f
+            }
+            root.addView(recentLabel)
+            recent.forEach { channel ->
+                val catalogIdx = channels.indexOfFirst { it.id == channel.id }
+                val subtitle = com.dskja.betterstreamflix.iptv.IptvProgramGuide.formatGuideSubtitle(channel)
+                val row = android.widget.TextView(requireContext()).apply {
+                    text = buildString {
+                        val label = if (catalogIdx >= 0) {
+                            getString(R.string.player_live_channel_meta, catalogIdx + 1, channel.name)
+                        } else {
+                            channel.name
+                        }
+                        append(label)
+                        append("  ·  ").append(getString(R.string.player_live_recent_badge))
+                        if (!subtitle.isNullOrBlank()) append('\n').append(subtitle)
+                    }
+                    if (useExp) {
+                        setTextAppearance(R.style.TextAppearance_Lumina_Body)
+                        setBackgroundResource(ExperimentalMobileDesign.optionItemBackground())
+                    }
+                    setPadding(14.dp(requireContext()), 12.dp(requireContext()), 14.dp(requireContext()), 12.dp(requireContext()))
+                    isClickable = true
+                    isFocusable = true
+                    setOnClickListener {
+                        ExpMotion.hapticTap(it)
+                        sheet.dismiss()
+                        com.dskja.betterstreamflix.iptv.IptvLiveSession.setCurrent(channel.id)
+                        showLiveCue(R.string.player_live_zapping)
+                        viewModel.playLiveChannel(channel)
+                    }
+                }
+                if (useExp) {
+                    with(com.dskja.betterstreamflix.utils.ExpPressEffects) { row.applyExpPress() }
+                }
+                val lp = android.widget.LinearLayout.LayoutParams(
+                    android.view.ViewGroup.LayoutParams.MATCH_PARENT,
+                    android.view.ViewGroup.LayoutParams.WRAP_CONTENT,
+                ).apply { bottomMargin = 8.dp(requireContext()) }
+                root.addView(row, lp)
+            }
+        }
         val scroll = android.widget.ScrollView(requireContext()).apply {
             layoutParams = android.widget.LinearLayout.LayoutParams(
                 android.view.ViewGroup.LayoutParams.MATCH_PARENT,
@@ -2425,24 +2427,36 @@ class PlayerMobileFragment : Fragment() {
             orientation = android.widget.LinearLayout.VERTICAL
             setPadding(0, 12.dp(requireContext()), 0, 0)
         }
-        val rowBg = ExperimentalMobileDesign.optionItemBackground()
+        val rowBg = if (useExp) ExperimentalMobileDesign.optionItemBackground() else 0
         var currentRow: View? = null
         channels.forEachIndexed { index, channel ->
+            val subtitle = com.dskja.betterstreamflix.iptv.IptvProgramGuide.formatGuideSubtitle(channel)
             val row = android.widget.TextView(requireContext()).apply {
-                text = getString(R.string.player_live_channel_meta, index + 1, channel.name)
-                setTextAppearance(R.style.TextAppearance_Lumina_Body)
-                setBackgroundResource(rowBg)
+                text = buildString {
+                    append(getString(R.string.player_live_channel_meta, index + 1, channel.name))
+                    if (!subtitle.isNullOrBlank()) append('\n').append(subtitle)
+                }
+                if (useExp) setTextAppearance(R.style.TextAppearance_Lumina_Body)
+                if (rowBg != 0) setBackgroundResource(rowBg)
                 setPadding(14.dp(requireContext()), 12.dp(requireContext()), 14.dp(requireContext()), 12.dp(requireContext()))
                 isClickable = true
                 isFocusable = true
                 if (channel.id == currentId) {
                     isSelected = true
-                    setBackgroundResource(ExperimentalMobileDesign.primaryButtonBackground())
-                    setTextColor(
-                        com.google.android.material.color.MaterialColors.getColor(
-                            this, com.google.android.material.R.attr.colorOnPrimary,
+                    if (useExp) {
+                        setBackgroundResource(ExperimentalMobileDesign.primaryButtonBackground())
+                        setTextColor(
+                            com.google.android.material.color.MaterialColors.getColor(
+                                this, com.google.android.material.R.attr.colorOnPrimary,
+                            )
                         )
-                    )
+                    } else {
+                        setTextColor(
+                            com.google.android.material.color.MaterialColors.getColor(
+                                this, androidx.appcompat.R.attr.colorPrimary,
+                            )
+                        )
+                    }
                 }
                 setOnClickListener {
                     ExpMotion.hapticTap(it)
@@ -2453,14 +2467,16 @@ class PlayerMobileFragment : Fragment() {
                     viewModel.playLiveChannel(channel)
                 }
             }
-            with(com.dskja.betterstreamflix.utils.ExpPressEffects) { row.applyExpPress() }
+            if (useExp) {
+                with(com.dskja.betterstreamflix.utils.ExpPressEffects) { row.applyExpPress() }
+            }
             val lp = android.widget.LinearLayout.LayoutParams(
                 android.view.ViewGroup.LayoutParams.MATCH_PARENT,
                 android.view.ViewGroup.LayoutParams.WRAP_CONTENT,
             ).apply { bottomMargin = 8.dp(requireContext()) }
             list.addView(row, lp)
             if (channel.id == currentId) currentRow = row
-            if (index < 12 || channel.id == currentId) {
+            if (useExp && (index < 12 || channel.id == currentId)) {
                 row.alpha = 0f
                 row.postDelayed({ ExpMotion.popIn(row) }, 28L * index.coerceAtMost(12))
             }
@@ -2474,6 +2490,30 @@ class PlayerMobileFragment : Fragment() {
                 scroll.smoothScrollTo(0, row.top.coerceAtLeast(0))
             }
         }
+    }
+
+    private fun showLiveChannelGuideEmptyExp() {
+        val emptySheet = com.google.android.material.bottomsheet.BottomSheetDialog(requireContext())
+        val emptyRoot = android.widget.LinearLayout(requireContext()).apply {
+            orientation = android.widget.LinearLayout.VERTICAL
+            setBackgroundResource(ExperimentalMobileDesign.bottomSheetBackground())
+            setPadding(20.dp(requireContext()), 20.dp(requireContext()), 20.dp(requireContext()), 28.dp(requireContext()))
+        }
+        ExperimentalMobileDesign.applyReducedGlass(emptyRoot)
+        val emptyTitle = android.widget.TextView(requireContext()).apply {
+            text = getString(R.string.player_live_channel_guide)
+            setTextAppearance(R.style.TextAppearance_Lumina_Title)
+            setPadding(0, 12.dp(requireContext()), 0, 0)
+        }
+        val emptyBody = android.widget.TextView(requireContext()).apply {
+            text = getString(R.string.player_live_no_more_channels)
+            setTextAppearance(R.style.TextAppearance_Lumina_Body)
+            setPadding(0, 12.dp(requireContext()), 0, 16.dp(requireContext()))
+        }
+        emptyRoot.addView(emptyTitle)
+        emptyRoot.addView(emptyBody)
+        emptySheet.setContentView(emptyRoot)
+        emptySheet.show()
     }
 
     private fun ensureLiveChannelGuide() {

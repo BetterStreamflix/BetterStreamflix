@@ -1547,7 +1547,9 @@ class PlayerTvFragment : Fragment() {
                     .setMimeType(com.dskja.betterstreamflix.extractors.StreamMime.coalesce(video.type, video.source))
             if (isLiveTvPlayback()) {
                 mediaItemBuilder.setLiveConfiguration(
-                    com.dskja.betterstreamflix.iptv.IptvLivePlayback.liveConfiguration()
+                    com.dskja.betterstreamflix.iptv.IptvLivePlayback.liveConfigurationForProvider(
+                        UserPreferences.currentProvider?.name,
+                    )
                 )
                 applyLiveControllerChrome(live = true)
             } else {
@@ -2072,6 +2074,12 @@ class PlayerTvFragment : Fragment() {
                         android.view.animation.AnimationUtils.loadAnimation(requireContext(), R.anim.live_badge_pulse),
                     )
                 }
+                controller.tvLiveIndicator.isClickable = true
+                controller.tvLiveIndicator.isFocusable = true
+                controller.tvLiveIndicator.setOnClickListener {
+                    ExpMotion.hapticTap(it)
+                    showLiveChannelGuideDialog()
+                }
                 controller.btnGoLive.setOnClickListener {
                     ExpMotion.hapticTap(it)
                     if (::player.isInitialized) {
@@ -2180,16 +2188,24 @@ class PlayerTvFragment : Fragment() {
                         name = resolvePlayerTitle(),
                     )
                 }
-            if (idx >= 0) {
-                controller.tvLiveChannelMeta.text = getString(
-                    R.string.player_live_channel_meta,
-                    idx + 1,
-                    channel.name,
-                )
+            val chLabel = if (idx >= 0) {
+                getString(R.string.player_live_channel_meta, idx + 1, channel.name)
             } else {
-                controller.tvLiveChannelMeta.text = channel.name
+                channel.name
+            }
+            val program = com.dskja.betterstreamflix.iptv.IptvProgramGuide.formatMetaLine(channel)
+            controller.tvLiveChannelMeta.text = if (program.isNullOrBlank()) {
+                chLabel
+            } else {
+                getString(R.string.player_live_channel_meta_program, chLabel, program)
             }
             controller.tvLiveChannelMeta.isVisible = true
+            controller.tvLiveChannelMeta.isClickable = true
+            controller.tvLiveChannelMeta.isFocusable = true
+            controller.tvLiveChannelMeta.setOnClickListener {
+                ExpMotion.hapticTap(it)
+                showLiveChannelGuideDialog()
+            }
         }
 
         private fun ensureLiveChannelGuide() {
@@ -2215,10 +2231,10 @@ class PlayerTvFragment : Fragment() {
             val btnNext = binding.pvPlayer.controller.binding.btnCustomNext
             val hasPrev = com.dskja.betterstreamflix.iptv.IptvLiveSession.hasPrevious()
             val hasNext = com.dskja.betterstreamflix.iptv.IptvLiveSession.hasNext()
-            val prevWasGone = btnPrevious.isGone
-            val nextWasGone = btnNext.isGone
             btnPrevious.isGone = !hasPrev
             btnNext.isGone = !hasNext
+            btnPrevious.contentDescription = getString(R.string.player_live_prev_channel)
+            btnNext.contentDescription = getString(R.string.player_live_next_channel)
             btnPrevious.setOnClickListener {
                 ExpMotion.hapticTap(it)
                 val channel = com.dskja.betterstreamflix.iptv.IptvLiveSession.previous()
@@ -2242,6 +2258,32 @@ class PlayerTvFragment : Fragment() {
         }
 
         private fun showLiveChannelGuideDialog() {
+            if (!isLiveTvPlayback()) return
+            val channels = com.dskja.betterstreamflix.iptv.IptvLiveSession.snapshot()
+            if (channels.isEmpty()) {
+                showLiveCue(R.string.player_live_no_more_channels)
+                return
+            }
+            val currentId = com.dskja.betterstreamflix.iptv.IptvLiveSession.current()?.id
+            val labels = channels.mapIndexed { index, channel ->
+                val base = getString(R.string.player_live_channel_meta, index + 1, channel.name)
+                val sub = com.dskja.betterstreamflix.iptv.IptvProgramGuide.formatGuideSubtitle(channel)
+                val mark = if (channel.id == currentId) " ▶" else ""
+                if (sub.isNullOrBlank()) "$base$mark" else "$base$mark\n$sub"
+            }.toTypedArray()
+            val currentIndex = channels.indexOfFirst { it.id == currentId }.coerceAtLeast(0)
+            android.app.AlertDialog.Builder(requireContext())
+                .setTitle(R.string.player_live_channel_guide)
+                .setSingleChoiceItems(labels, currentIndex) { dialog, which ->
+                    val channel = channels.getOrNull(which) ?: return@setSingleChoiceItems
+                    dialog.dismiss()
+                    if (channel.id == currentId) return@setSingleChoiceItems
+                    com.dskja.betterstreamflix.iptv.IptvLiveSession.setCurrent(channel.id)
+                    showLiveCue(R.string.player_live_zapping)
+                    viewModel.playLiveChannel(channel)
+                }
+                .setNegativeButton(android.R.string.cancel, null)
+                .show()
         }
 
         private fun showLiveCue(@androidx.annotation.StringRes messageRes: Int) {

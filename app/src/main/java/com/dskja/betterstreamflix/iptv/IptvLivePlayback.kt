@@ -13,14 +13,33 @@ object IptvLivePlayback {
     const val TARGET_OFFSET_MS = 3_500L
     const val MIN_OFFSET_MS = 1_500L
     const val MAX_OFFSET_MS = 12_000L
+    /** Sports / high-jitter feeds tolerate a slightly deeper edge. */
+    const val SPORTS_TARGET_OFFSET_MS = 4_500L
 
-    fun liveConfiguration(): MediaItem.LiveConfiguration =
-        MediaItem.LiveConfiguration.Builder()
-            .setTargetOffsetMs(TARGET_OFFSET_MS)
+    fun liveConfiguration(sportsTuned: Boolean = false): MediaItem.LiveConfiguration {
+        val target = if (sportsTuned) SPORTS_TARGET_OFFSET_MS else TARGET_OFFSET_MS
+        return MediaItem.LiveConfiguration.Builder()
+            .setTargetOffsetMs(target)
             .setMinOffsetMs(MIN_OFFSET_MS)
             .setMaxOffsetMs(MAX_OFFSET_MS)
-            .setMaxPlaybackSpeed(1.04f)
+            .setMaxPlaybackSpeed(if (sportsTuned) 1.06f else 1.04f)
             .build()
+    }
+
+    /** Prefer sports-tuned live offsets for known sports IPTV providers. */
+    fun liveConfigurationForProvider(providerName: String?): MediaItem.LiveConfiguration {
+        val sports = providerName.orEmpty().lowercase().let { name ->
+            name.contains("sport") ||
+                name.contains("daddy") ||
+                name.contains("famelack") ||
+                name.contains("ntv") ||
+                name.contains("futbol") ||
+                name.contains("pelota") ||
+                name.contains("cablevision") ||
+                name.contains("tvporinternet")
+        }
+        return liveConfiguration(sportsTuned = sports)
+    }
 
     /**
      * True when the playhead is meaningfully behind the live edge
@@ -31,13 +50,21 @@ object IptvLivePlayback {
         if (!player.isCurrentMediaItemLive) return false
         val liveOffset = player.currentLiveOffset
         if (liveOffset == androidx.media3.common.C.TIME_UNSET) return false
-        return liveOffset > TARGET_OFFSET_MS + thresholdMs
+        val target = player.currentMediaItem?.liveConfiguration?.targetOffsetMs
+            ?.takeIf { it > 0 }
+            ?: TARGET_OFFSET_MS
+        return liveOffset > target + thresholdMs
     }
 
     /** Jump to the configured live edge (or default live position). */
     @OptIn(UnstableApi::class)
     fun seekToLiveEdge(player: Player) {
-        if (!player.isCurrentMediaItemLive) return
+        if (!player.isCurrentMediaItemLive) {
+            // Some IPTV HLS feeds omit EXT-X-PROGRAM-DATE-TIME; still nudge forward.
+            player.seekToDefaultPosition()
+            if (!player.isPlaying) player.play()
+            return
+        }
         val liveConfig = player.currentMediaItem?.liveConfiguration
         val target = liveConfig?.targetOffsetMs?.takeIf { it > 0 } ?: TARGET_OFFSET_MS
         val duration = player.duration
