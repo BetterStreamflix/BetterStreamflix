@@ -64,7 +64,11 @@ object TmdbLogoBinder {
                     }
                 }
                 if (logo.isNullOrBlank()) return@launch
-                if (TmdbLogoPicker.shouldUpgradeLogo(request.existingLogo) &&
+                if (TmdbLogoPicker.shouldUpgradeLogo(
+                        request.existingLogo,
+                        storedLang = null,
+                        wantedLang = request.language,
+                    ) &&
                     TmdbLogoPicker.isTrustedTmdbLogo(logo)
                 ) {
                     TmdbLogoTelemetry.recordUpgrade()

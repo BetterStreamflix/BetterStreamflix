@@ -183,8 +183,8 @@ class MovieMobileFragment : Fragment() {
 
     private fun displayMovie(movie: Movie) {
         currentMovie = movie
-        binding.ivMovieBanner.loadMovieBanner(movie, hero = true) {
-            fitCenter()
+        binding.ivMovieBanner.loadMovieBanner(movie, hero = false) {
+            centerCrop()
             transition(DrawableTransitionOptions.withCrossFade())
         }
         prefetchLogo(movie.logo)

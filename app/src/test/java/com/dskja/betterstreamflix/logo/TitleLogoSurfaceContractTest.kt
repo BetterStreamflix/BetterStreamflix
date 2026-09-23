@@ -71,6 +71,13 @@ class TitleLogoSurfaceContractTest {
     }
 
     @Test
+    fun upgradeGate_languageMismatchForcesUpgrade() {
+        val url = "https://image.tmdb.org/t/p/original/logo.png"
+        assertTrue(TmdbLogoPicker.shouldUpgradeLogo(url, "en", "de"))
+        assertFalse(TmdbLogoPicker.shouldUpgradeLogo(url, "de-DE", "de"))
+    }
+
+    @Test
     fun telemetry_snapshotTracksCounters() {
         TmdbLogoTelemetry.reset()
         TmdbLogoTelemetry.recordCacheHit()

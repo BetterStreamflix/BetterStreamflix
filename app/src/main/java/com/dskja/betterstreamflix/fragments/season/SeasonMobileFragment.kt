@@ -28,8 +28,11 @@ import com.dskja.betterstreamflix.utils.ExpEmptyChrome
 import com.dskja.betterstreamflix.utils.ExpMotion
 import com.dskja.betterstreamflix.utils.ExperimentalMobileDesign
 import com.dskja.betterstreamflix.utils.LoggingUtils
+import com.dskja.betterstreamflix.utils.TmdbUtils
 import com.dskja.betterstreamflix.utils.dp
+import com.dskja.betterstreamflix.utils.format
 import com.dskja.betterstreamflix.utils.viewModelsFactory
+import com.dskja.betterstreamflix.ui.TrailerPlaybackController
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -169,11 +172,15 @@ class SeasonMobileFragment : Fragment() {
         if (ExperimentalMobileDesign.enabled()) {
             with(com.dskja.betterstreamflix.utils.ExpPressEffects) {
                 binding.spSeasonPicker.applyExpPress()
+                binding.btnSeasonTrailer.applyExpPress()
                 binding.btnSeasonDownload.applyExpPress()
             }
             binding.spSeasonPicker.setBackgroundResource(ExperimentalMobileDesign.spinnerBackground())
+            binding.btnSeasonTrailer.setBackgroundResource(ExperimentalMobileDesign.primaryButtonBackground())
             binding.btnSeasonDownload.setBackgroundResource(ExperimentalMobileDesign.primaryButtonBackground())
         }
+
+        wireSeasonTrailerButton()
 
         binding.btnSeasonDownload.setOnClickListener {
             ExpMotion.hapticTap(it)
@@ -249,6 +256,56 @@ class SeasonMobileFragment : Fragment() {
             addItemDecoration(
                 SpacingItemDecoration(20.dp(requireContext()))
             )
+        }
+    }
+
+    private fun wireSeasonTrailerButton() {
+        viewLifecycleOwner.lifecycleScope.launch {
+            val tvShow = withContext(Dispatchers.IO) {
+                database.tvShowDao().getById(args.tvShowId)
+            }
+            val year = tvShow?.released?.format("yyyy")?.toIntOrNull()
+            val canLookup = TmdbUtils.hasTrailerLookupKeys(
+                tmdbId = tvShow?.tmdbId,
+                imdbId = tvShow?.imdbId,
+                title = tvShow?.title ?: args.tvShowTitle,
+                year = year,
+            )
+            if (!isAdded || _binding == null) return@launch
+            binding.btnSeasonTrailer.visibility = if (canLookup) View.VISIBLE else View.GONE
+            if (!canLookup) return@launch
+            if (ExperimentalMobileDesign.enabled()) {
+                ExpMotion.popIn(binding.btnSeasonTrailer)
+            }
+            binding.btnSeasonTrailer.setOnClickListener { view ->
+                ExpMotion.hapticTap(view)
+                viewLifecycleOwner.lifecycleScope.launch {
+                    val remote = withContext(Dispatchers.IO) {
+                        val show = database.tvShowDao().getById(args.tvShowId)
+                        TmdbUtils.listYoutubeTrailers(
+                            tmdbId = show?.tmdbId,
+                            isTv = true,
+                            title = show?.title ?: args.tvShowTitle,
+                            year = show?.released?.format("yyyy")?.toIntOrNull(),
+                            imdbId = show?.imdbId,
+                            seasonNumber = args.seasonNumber.takeIf { it > 0 }
+                                ?: viewModel.seasonNumber.takeIf { it > 0 },
+                        )
+                    }
+                    if (!isAdded || _binding == null || view == null) return@launch
+                    val url = remote.firstOrNull()?.second?.takeIf { it.isNotBlank() }
+                    val ctx = context ?: return@launch
+                    if (!url.isNullOrBlank()) {
+                        TrailerPlaybackController.play(this@SeasonMobileFragment, url)
+                    } else {
+                        Toast.makeText(
+                            ctx,
+                            R.string.detail_trailer_empty,
+                            Toast.LENGTH_SHORT,
+                        ).show()
+                    }
+                }
+            }
         }
     }
 

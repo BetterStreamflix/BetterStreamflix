@@ -25,7 +25,10 @@ import com.dskja.betterstreamflix.utils.ExpDialogChrome
 import com.dskja.betterstreamflix.utils.ExpEmptyChrome
 import com.dskja.betterstreamflix.utils.Http409CacheGuard
 import com.dskja.betterstreamflix.utils.LoggingUtils
+import com.dskja.betterstreamflix.utils.TmdbUtils
+import com.dskja.betterstreamflix.utils.format
 import com.dskja.betterstreamflix.utils.viewModelsFactory
+import com.dskja.betterstreamflix.ui.TrailerPlaybackController
 import androidx.core.view.isVisible
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -136,6 +139,8 @@ class SeasonTvFragment : Fragment() {
             dialogButton = binding.btnSeasonPicker,
         )
 
+        wireSeasonTrailerButton()
+
         binding.btnSeasonDownload.setOnClickListener {
             val episodes = loadedEpisodes
             if (episodes.isEmpty()) {
@@ -179,6 +184,52 @@ class SeasonTvFragment : Fragment() {
                 stateRestorationPolicy = RecyclerView.Adapter.StateRestorationPolicy.PREVENT_WHEN_EMPTY
             }
             setItemSpacing(resources.getDimension(R.dimen.season_episodes_spacing).toInt())
+        }
+    }
+
+    private fun wireSeasonTrailerButton() {
+        viewLifecycleOwner.lifecycleScope.launch {
+            val tvShow = withContext(Dispatchers.IO) {
+                database.tvShowDao().getById(args.tvShowId)
+            }
+            val year = tvShow?.released?.format("yyyy")?.toIntOrNull()
+            val canLookup = TmdbUtils.hasTrailerLookupKeys(
+                tmdbId = tvShow?.tmdbId,
+                imdbId = tvShow?.imdbId,
+                title = tvShow?.title ?: args.tvShowTitle,
+                year = year,
+            )
+            if (!isAdded || _binding == null) return@launch
+            binding.btnSeasonTrailer.isVisible = canLookup
+            if (!canLookup) return@launch
+            binding.btnSeasonTrailer.setOnClickListener {
+                viewLifecycleOwner.lifecycleScope.launch {
+                    val remote = withContext(Dispatchers.IO) {
+                        val show = database.tvShowDao().getById(args.tvShowId)
+                        TmdbUtils.listYoutubeTrailers(
+                            tmdbId = show?.tmdbId,
+                            isTv = true,
+                            title = show?.title ?: args.tvShowTitle,
+                            year = show?.released?.format("yyyy")?.toIntOrNull(),
+                            imdbId = show?.imdbId,
+                            seasonNumber = args.seasonNumber.takeIf { it > 0 }
+                                ?: viewModel.seasonNumber.takeIf { it > 0 },
+                        )
+                    }
+                    if (!isAdded || _binding == null || view == null) return@launch
+                    val url = remote.firstOrNull()?.second?.takeIf { it.isNotBlank() }
+                    val ctx = context ?: return@launch
+                    if (!url.isNullOrBlank()) {
+                        TrailerPlaybackController.play(this@SeasonTvFragment, url)
+                    } else {
+                        Toast.makeText(
+                            ctx,
+                            R.string.detail_trailer_empty,
+                            Toast.LENGTH_SHORT,
+                        ).show()
+                    }
+                }
+            }
         }
     }
 

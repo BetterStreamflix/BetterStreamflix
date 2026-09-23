@@ -21,6 +21,8 @@ import com.dskja.betterstreamflix.utils.CacheUtils
 import com.dskja.betterstreamflix.utils.DeviceCapabilities
 import com.dskja.betterstreamflix.utils.Http409CacheGuard
 import com.dskja.betterstreamflix.utils.LoggingUtils
+import com.dskja.betterstreamflix.utils.TmdbUtils
+import com.dskja.betterstreamflix.utils.format
 import com.dskja.betterstreamflix.utils.loadTvShowBanner
 import com.dskja.betterstreamflix.utils.viewModelsFactory
 import kotlinx.coroutines.launch
@@ -143,7 +145,15 @@ class TvShowTvFragment : Fragment() {
                 ?.copy()
                 ?.apply { itemType = AppAdapter.Type.TV_SHOW_CAST_TV },
 
-            tvShow.takeIf { !it.trailer.isNullOrBlank() || !it.tmdbId.isNullOrBlank() }
+            tvShow.takeIf {
+                !it.trailer.isNullOrBlank() ||
+                    TmdbUtils.hasTrailerLookupKeys(
+                        tmdbId = it.tmdbId,
+                        imdbId = it.imdbId,
+                        title = it.title,
+                        year = it.released?.format("yyyy")?.toIntOrNull(),
+                    )
+            }
                 ?.copy()
                 ?.apply { itemType = AppAdapter.Type.TV_SHOW_TRAILER_TV },
 

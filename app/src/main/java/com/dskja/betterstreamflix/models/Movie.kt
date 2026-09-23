@@ -95,6 +95,8 @@ class Movie(
         val preferred = com.dskja.betterstreamflix.logo.TmdbLogoPicker.preferResolvedLogo(
             current = logo,
             tmdb = other.logo,
+            currentLang = logoLanguage,
+            wantedLang = other.logoLanguage,
         )
         if (preferred != null && preferred != logo) {
             logo = preferred
@@ -104,6 +106,14 @@ class Movie(
             }
         } else if (logo.isNullOrBlank() && !other.logo.isNullOrBlank()) {
             logo = other.logo
+            logoLanguage = other.logoLanguage
+            logoSource = other.logoSource
+        } else if (
+            preferred == logo &&
+            preferred == other.logo &&
+            com.dskja.betterstreamflix.logo.TmdbLogoPicker.primaryLanguage(logoLanguage) !=
+            com.dskja.betterstreamflix.logo.TmdbLogoPicker.primaryLanguage(other.logoLanguage)
+        ) {
             logoLanguage = other.logoLanguage
             logoSource = other.logoSource
         }

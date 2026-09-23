@@ -211,8 +211,8 @@ class TvShowMobileFragment : Fragment() {
 
     private fun displayTvShow(tvShow: TvShow) {
         currentTvShow = tvShow
-        binding.ivTvShowBanner.loadTvShowBanner(tvShow, hero = true) {
-            fitCenter()
+        binding.ivTvShowBanner.loadTvShowBanner(tvShow, hero = false) {
+            centerCrop()
             transition(DrawableTransitionOptions.withCrossFade())
         }
         prefetchLogo(tvShow.logo)
