@@ -22,9 +22,6 @@ import com.dskja.betterstreamflix.models.People
 import com.dskja.betterstreamflix.models.TvShow
 import com.dskja.betterstreamflix.utils.CacheUtils
 import com.dskja.betterstreamflix.utils.ExpEmptyChrome
-import com.dskja.betterstreamflix.utils.ExpMotion
-import com.dskja.betterstreamflix.utils.ExpPressEffects.applyExpPress
-import com.dskja.betterstreamflix.utils.ExperimentalMobileDesign
 import com.dskja.betterstreamflix.utils.Http409CacheGuard
 import com.dskja.betterstreamflix.utils.LoggingUtils
 import com.dskja.betterstreamflix.utils.format
@@ -45,12 +42,17 @@ class PeopleTvFragment : Fragment() {
 
     private val appAdapter = AppAdapter()
 
+    private var savedGridPosition = RecyclerView.NO_POSITION
+
     override fun onCreateView(
         inflater: LayoutInflater,
         container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View {
         _binding = FragmentPeopleTvBinding.inflate(inflater, container, false)
+        if (savedInstanceState != null) {
+            savedGridPosition = savedInstanceState.getInt(KEY_GRID_POSITION, RecyclerView.NO_POSITION)
+        }
         return binding.root
     }
 
@@ -83,13 +85,11 @@ class PeopleTvFragment : Fragment() {
                             }) {
                                 return@collect
                             }
-                        if (!com.dskja.betterstreamflix.utils.ExperimentalMobileDesign.enabled()) {
-                            Toast.makeText(
-                                requireContext(),
-                                state.error.message ?: "",
-                                Toast.LENGTH_SHORT
-                            ).show()
-                        }
+                        Toast.makeText(
+                            requireContext(),
+                            state.error.message ?: "",
+                            Toast.LENGTH_SHORT
+                        ).show()
                         if (appAdapter.isLoading) {
                             appAdapter.isLoading = false
                         } else {
@@ -115,37 +115,23 @@ class PeopleTvFragment : Fragment() {
         }
     }
 
-    override fun onDestroyView() {
-        super.onDestroyView()
-        _binding = null
+    override fun onSaveInstanceState(outState: Bundle) {
+        super.onSaveInstanceState(outState)
+        val position = _binding?.vgvPeopleFilmography?.selectedPosition ?: savedGridPosition
+        outState.putInt(KEY_GRID_POSITION, position)
     }
 
+    override fun onDestroyView() {
+        _binding?.let {
+            savedGridPosition = it.vgvPeopleFilmography.selectedPosition
+            appAdapter.onSaveInstanceState(it.vgvPeopleFilmography)
+        }
+        _binding = null
+        super.onDestroyView()
+    }
 
     private fun initializePeople() {
         com.dskja.betterstreamflix.utils.ExpPressEffects.wireLoadingRetry(binding.isLoading.root)
-        if (ExperimentalMobileDesign.enabled()) {
-            ExpMotion.enterScreen(binding.root)
-            val onSurface = com.google.android.material.color.MaterialColors.getColor(
-                binding.tvPeopleName,
-                com.google.android.material.R.attr.colorOnSurface,
-            )
-            val onVariant = com.google.android.material.color.MaterialColors.getColor(
-                binding.tvPeopleBirthday,
-                com.google.android.material.R.attr.colorOnSurfaceVariant,
-            )
-            binding.tvPeopleName.setTextColor(onSurface)
-            listOf(
-                binding.tvPeopleBirthdayLabel,
-                binding.tvPeopleDeathdayLabel,
-                binding.tvPeopleBirthplaceLabel,
-            ).forEach { it.setTextColor(onSurface) }
-            listOf(
-                binding.tvPeopleBirthday,
-                binding.tvPeopleDeathday,
-                binding.tvPeopleBirthplace,
-            ).forEach { it.setTextColor(onVariant) }
-            ExpMotion.revealHeader(binding.tvPeopleName)
-        }
         binding.vgvPeopleFilmography.apply {
             adapter = appAdapter.apply {
                 stateRestorationPolicy = RecyclerView.Adapter.StateRestorationPolicy.PREVENT_WHEN_EMPTY
@@ -157,14 +143,37 @@ class PeopleTvFragment : Fragment() {
     private fun displayPeople(people: People, hasMore: Boolean) {
         binding.tvPeopleName.text = people.name.takeIf { it.isNotEmpty() } ?: args.name
 
+        val portraitUrl = people.image ?: args.image
+        binding.root.findViewById<android.widget.ImageView>(R.id.iv_people_backdrop)?.apply {
+            if (portraitUrl.isNullOrBlank()) {
+                setImageDrawable(null)
+                visibility = View.GONE
+                binding.root.findViewById<View>(R.id.v_people_backdrop_scrim)?.visibility = View.GONE
+            } else {
+                visibility = View.VISIBLE
+                binding.root.findViewById<View>(R.id.v_people_backdrop_scrim)?.visibility = View.VISIBLE
+                Glide.with(context)
+                    .load(portraitUrl)
+                    .centerCrop()
+                    .transition(DrawableTransitionOptions.withCrossFade())
+                    .into(this)
+            }
+        }
+
         binding.ivPeopleImage.apply {
             clipToOutline = true
             Glide.with(context)
-                .load(people.image ?: args.image)
+                .load(portraitUrl)
                 .placeholder(R.drawable.ic_person_placeholder)
                 .centerCrop()
                 .transition(DrawableTransitionOptions.withCrossFade())
                 .into(this)
+        }
+
+        binding.root.findViewById<android.widget.TextView>(R.id.tv_people_department)?.apply {
+            val department = people.knownForDepartment?.takeIf { it.isNotBlank() }
+            text = department
+            visibility = if (department == null) View.GONE else View.VISIBLE
         }
 
         binding.tvPeopleBirthday.text = people.birthday?.format("MMMM dd, yyyy")
@@ -188,12 +197,57 @@ class PeopleTvFragment : Fragment() {
             else -> View.VISIBLE
         }
 
+        binding.tvPeopleBiography.apply {
+            text = people.biography
+            maxLines = COLLAPSED_BIOGRAPHY_LINES
+            ellipsize = android.text.TextUtils.TruncateAt.END
+        }
+
+        binding.tvPeopleBiographyReadMore.apply {
+            var expanded = false
+            fun applyExpand(open: Boolean) {
+                expanded = open
+                binding.tvPeopleBiography.maxLines =
+                    if (open) Int.MAX_VALUE else COLLAPSED_BIOGRAPHY_LINES
+                binding.tvPeopleBiography.ellipsize =
+                    if (open) null else android.text.TextUtils.TruncateAt.END
+                text = context.getString(
+                    if (open) R.string.people_read_less else R.string.people_read_more,
+                )
+            }
+            setOnClickListener { applyExpand(!expanded) }
+            applyExpand(false)
+            binding.tvPeopleBiography.post {
+                val overflowing =
+                    binding.tvPeopleBiography.lineCount > COLLAPSED_BIOGRAPHY_LINES ||
+                        (people.biography?.length ?: 0) > 220
+                visibility = if (overflowing) View.VISIBLE else View.GONE
+                if (!overflowing) {
+                    binding.tvPeopleBiography.maxLines = Int.MAX_VALUE
+                    binding.tvPeopleBiography.ellipsize = null
+                }
+            }
+        }
+
+        binding.gPeopleBiography.visibility = when {
+            binding.tvPeopleBiography.text.isNullOrEmpty() -> View.GONE
+            else -> View.VISIBLE
+        }
+
         appAdapter.submitList(people.filmography.onEach {
             when (it) {
                 is Movie -> it.itemType = AppAdapter.Type.MOVIE_GRID_TV_ITEM
                 is TvShow -> it.itemType = AppAdapter.Type.TV_SHOW_GRID_TV_ITEM
             }
         })
+
+        if (savedGridPosition != RecyclerView.NO_POSITION && people.filmography.isNotEmpty()) {
+            val target = savedGridPosition.coerceIn(0, people.filmography.lastIndex)
+            binding.vgvPeopleFilmography.post {
+                binding.vgvPeopleFilmography.selectedPosition = target
+            }
+            savedGridPosition = RecyclerView.NO_POSITION
+        }
 
         val empty = people.filmography.isEmpty()
         binding.tvPeopleFilmographyEmpty.visibility = if (empty) View.VISIBLE else View.GONE
@@ -213,5 +267,10 @@ class PeopleTvFragment : Fragment() {
         } else {
             appAdapter.setOnLoadMoreListener(null)
         }
+    }
+
+    companion object {
+        private const val KEY_GRID_POSITION = "people_tv_grid_position"
+        private const val COLLAPSED_BIOGRAPHY_LINES = 4
     }
 }

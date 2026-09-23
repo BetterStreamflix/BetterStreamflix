@@ -3,6 +3,7 @@ package com.dskja.betterstreamflix.providers
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
+import com.dskja.betterstreamflix.BetterStreamflixApp
 import com.dskja.betterstreamflix.utils.UserPreferences
 
 import android.util.Log
@@ -471,7 +472,7 @@ object FlixLatamProvider : Provider, ProviderConfigUrl {
                             .build()
                         chain.proceed(request)
                     }
-                    .cache(Cache(File("cacheDir", "okhttpcache"), 10 * 1024 * 1024))
+                    .cache(Cache(File(BetterStreamflixApp.instance.cacheDir, "okhttpcache"), 10 * 1024 * 1024))
                     .readTimeout(30, TimeUnit.SECONDS)
                     .connectTimeout(20, TimeUnit.SECONDS)
                     .callTimeout(45, TimeUnit.SECONDS)

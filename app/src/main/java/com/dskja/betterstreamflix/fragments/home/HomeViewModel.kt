@@ -25,6 +25,7 @@ import com.dskja.betterstreamflix.utils.UserDataCache.toCached
 import com.dskja.betterstreamflix.utils.UserPreferences
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
@@ -36,6 +37,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.mapLatest
 import kotlinx.coroutines.flow.transformLatest
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import java.util.concurrent.ConcurrentHashMap
 
@@ -46,6 +48,8 @@ class HomeViewModel(
 
     private fun liveDatabase(): AppDatabase =
         AppDatabase.getInstance(BetterStreamflixApp.instance.applicationContext)
+
+    private var getHomeJob: Job? = null
 
     private data class HomeHistory(
         val continueWatching: List<AppAdapter.Item>,
@@ -155,12 +159,18 @@ class HomeViewModel(
                 fun mergeItem(item: AppAdapter.Item): AppAdapter.Item {
                     return when (item) {
                         is Movie -> moviesMap[item.id]
-                            ?.takeIf { !item.isSame(it) }
+                            ?.takeIf { db ->
+                                !item.isSame(db) ||
+                                    (item.logo.isNullOrBlank() && !db.logo.isNullOrBlank())
+                            }
                             ?.let { item.copy().merge(it) }
                             ?: item
 
                         is TvShow -> tvShowsMap[item.id]
-                            ?.takeIf { !item.isSame(it) }
+                            ?.takeIf { db ->
+                                !item.isSame(db) ||
+                                    (item.logo.isNullOrBlank() && !db.logo.isNullOrBlank())
+                            }
                             ?.let { item.copy().merge(it) }
                             ?: item
 
@@ -172,7 +182,7 @@ class HomeViewModel(
 
                     // FEATURED
                     state.categories
-                        .find { it.name == Category.FEATURED }
+                        .find { Category.isFeaturedName(it.name) }
                         ?.let { category ->
                             category.copy(
                                 list = category.list.map(::mergeItem)
@@ -223,7 +233,7 @@ class HomeViewModel(
                     ),
                 ) + state.categories
                     .filter {
-                        it.name != Category.FEATURED &&
+                        !Category.isFeaturedName(it.name) &&
                             !com.dskja.betterstreamflix.platform.ContinueWatchingMerger
                                 .isProviderContinueWatching(it.name)
                     }
@@ -311,9 +321,17 @@ class HomeViewModel(
                 val mergedTvShow = resolvedTvShow?.copy().apply {
                     this?.let { show ->
                         episode.tvShow?.let { existingTvShow -> show.merge(existingTvShow) }
+                        // Room converter only stores tvShow id — overlay full row logo when present.
+                        liveDatabase().tvShowDao().getById(tvShowId)?.let { dbShow ->
+                            show.merge(dbShow)
+                        }
                         show.providerName = provider.name
                     }
-                } ?: episode.tvShow
+                } ?: episode.tvShow?.also { fallback ->
+                    liveDatabase().tvShowDao().getById(tvShowId)?.let { dbShow ->
+                        fallback.merge(dbShow)
+                    }
+                }
 
                 val resolvedSeason = episode.season?.let { season ->
                     mergedTvShow?.seasons?.firstOrNull { it.id == season.id || it.number == season.number }
@@ -352,84 +370,91 @@ class HomeViewModel(
         }.awaitAll()
     }
 
-    fun getHome() = viewModelScope.launch(Dispatchers.IO) {
-        val provider = UserPreferences.currentProvider ?: run {
-            _state.emit(State.FailedLoading(IllegalStateException("No provider selected")))
-            return@launch
-        }
+    fun getHome() {
+        getHomeJob?.cancel()
+        getHomeJob = viewModelScope.launch(Dispatchers.IO) {
+            val provider = UserPreferences.currentProvider ?: run {
+                _state.emit(State.FailedLoading(IllegalStateException("No provider selected")))
+                return@launch
+            }
 
-
-        currentProvider = provider
-        val appContext = BetterStreamflixApp.instance.applicationContext
-        val rawCached = HomeCacheStore.read(appContext, provider)
-        val cachedCategories = rawCached?.let {
-            HomeCatalogPipeline.process(provider, it).categories
-        }
-        val deferCachedHomeForClearance =
+            currentProvider = provider
+            val appContext = BetterStreamflixApp.instance.applicationContext
+            val rawCached = HomeCacheStore.read(appContext, provider)
+            val cachedCategories = rawCached?.let {
+                HomeCatalogPipeline.process(provider, it).categories
+            }
+            val deferCachedHomeForClearance =
                 provider === AnimeOnlineNinjaProvider &&
-                        !AnimeOnlineNinjaProvider.hasCurrentClearanceCookie()
-        // Stale-while-revalidate: show cache immediately even if old, then refresh.
-        if (!cachedCategories.isNullOrEmpty() && !deferCachedHomeForClearance) {
-            _state.emit(State.SuccessLoading(cachedCategories))
-        } else {
-            _state.emit(State.Loading)
-        }
-
-        loadUserDataCache(provider)
-        libraryRefresh.value += 1
-        viewModelScope.launch(Dispatchers.IO) {
-            traktContinueWatching.value =
-                com.dskja.betterstreamflix.platform.trakt.TraktContinueWatching.load()
-        }
-
-        // Circuit breaker: prefer cache over hammering a dead origin.
-        if (ProviderSmoke.isHomeCircuitOpen(provider.name) &&
-            !cachedCategories.isNullOrEmpty() &&
-            !deferCachedHomeForClearance
-        ) {
-            val hint = ProviderSmoke.circuitHint(provider.name)
-            _state.emit(State.SuccessLoading(cachedCategories, providerWarning = hint))
-            return@launch
-        }
-
-        try {
-            val categories = ProviderSmoke.withProviderTimeout(
-                timeoutMs = ProviderSmoke.HOME_TIMEOUT_MS,
-                label = "getHome(${provider.name})",
-            ) {
-                provider.getHome()
-            }
-            val addonRows = runCatching {
-                com.dskja.betterstreamflix.platform.plugins.PluginManager
-                    .collectHomeCategories(provider)
-            }.getOrDefault(emptyList())
-            val processed = HomeCatalogPipeline.process(provider, categories, addonRows)
-            HomeCacheStore.write(appContext, provider, processed.categories)
-            ProviderSmoke.noteHomeSuccess(provider.name)
-            _state.emit(
-                State.SuccessLoading(
-                    processed.categories,
-                    providerWarning = processed.warningText,
-                )
-            )
-        } catch (e: Exception) {
-            if (e is kotlinx.coroutines.CancellationException) throw e
-            Log.e("HomeViewModel", "getHome: ", e)
-            ProviderSmoke.noteHomeFailure(provider.name)
-            CrashReporter.logNonFatal("HomeViewModel", "getHome failed for ${provider.name}", e)
-            val warning = buildString {
-                append(e.message?.takeIf { it.isNotBlank() }
-                    ?: "Catalog unavailable for ${provider.name}")
-                if (ProviderSmoke.isHomeCircuitOpen(provider.name)) {
-                    append(" · paused after repeated failures")
-                }
-            }
-            if (!cachedCategories.isNullOrEmpty()) {
-                // Keep serving cache on failure / timeout (including deferred clearance case).
-                _state.emit(State.SuccessLoading(cachedCategories, providerWarning = warning))
+                    !AnimeOnlineNinjaProvider.hasCurrentClearanceCookie()
+            // Stale-while-revalidate: show cache immediately even if old, then refresh.
+            if (!cachedCategories.isNullOrEmpty() && !deferCachedHomeForClearance) {
+                _state.emit(State.SuccessLoading(cachedCategories))
             } else {
-                // Soft-fail: empty catalog still lets continue-watching / favorites render.
-                _state.emit(State.SuccessLoading(emptyList(), providerWarning = warning))
+                _state.emit(State.Loading)
+            }
+
+            loadUserDataCache(provider)
+            libraryRefresh.value += 1
+            viewModelScope.launch(Dispatchers.IO) {
+                traktContinueWatching.value =
+                    com.dskja.betterstreamflix.platform.trakt.TraktContinueWatching.load()
+            }
+
+            // Circuit breaker: prefer cache over hammering a dead origin.
+            if (ProviderSmoke.isHomeCircuitOpen(provider.name) &&
+                !cachedCategories.isNullOrEmpty() &&
+                !deferCachedHomeForClearance
+            ) {
+                val hint = ProviderSmoke.circuitHint(provider.name)
+                _state.emit(State.SuccessLoading(cachedCategories, providerWarning = hint))
+                return@launch
+            }
+
+            try {
+                val categories = ProviderSmoke.withProviderTimeout(
+                    timeoutMs = ProviderSmoke.HOME_TIMEOUT_MS,
+                    label = "getHome(${provider.name})",
+                ) {
+                    provider.getHome()
+                }
+                if (!isActive || provider != UserPreferences.currentProvider) return@launch
+                val addonRows = runCatching {
+                    com.dskja.betterstreamflix.platform.plugins.PluginManager
+                        .collectHomeCategories(provider)
+                }.getOrDefault(emptyList())
+                val processed = HomeCatalogPipeline.process(provider, categories, addonRows)
+                HomeCacheStore.write(appContext, provider, processed.categories)
+                ProviderSmoke.noteHomeSuccess(provider.name)
+                if (!isActive || provider != UserPreferences.currentProvider) return@launch
+                _state.emit(
+                    State.SuccessLoading(
+                        processed.categories,
+                        providerWarning = processed.warningText,
+                    )
+                )
+            } catch (e: Exception) {
+                if (e is kotlinx.coroutines.CancellationException) throw e
+                if (!isActive) return@launch
+                Log.e("HomeViewModel", "getHome: ", e)
+                ProviderSmoke.noteHomeFailure(provider.name)
+                CrashReporter.logNonFatal("HomeViewModel", "getHome failed for ${provider.name}", e)
+                val warning = buildString {
+                    append(
+                        e.message?.takeIf { it.isNotBlank() }
+                            ?: "Catalog unavailable for ${provider.name}",
+                    )
+                    if (ProviderSmoke.isHomeCircuitOpen(provider.name)) {
+                        append(" · paused after repeated failures")
+                    }
+                }
+                if (!cachedCategories.isNullOrEmpty()) {
+                    // Keep serving cache on failure / timeout (including deferred clearance case).
+                    _state.emit(State.SuccessLoading(cachedCategories, providerWarning = warning))
+                } else {
+                    // Soft-fail: empty catalog still lets continue-watching / favorites render.
+                    _state.emit(State.SuccessLoading(emptyList(), providerWarning = warning))
+                }
             }
         }
     }

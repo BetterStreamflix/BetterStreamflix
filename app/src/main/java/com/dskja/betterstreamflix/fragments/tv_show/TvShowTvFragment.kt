@@ -12,11 +12,13 @@ import androidx.lifecycle.lifecycleScope
 import androidx.navigation.fragment.navArgs
 import androidx.recyclerview.widget.RecyclerView
 import com.bumptech.glide.load.resource.drawable.DrawableTransitionOptions
+import com.dskja.betterstreamflix.R
 import com.dskja.betterstreamflix.adapters.AppAdapter
 import com.dskja.betterstreamflix.database.AppDatabase
 import com.dskja.betterstreamflix.databinding.FragmentTvShowTvBinding
 import com.dskja.betterstreamflix.models.TvShow
 import com.dskja.betterstreamflix.utils.CacheUtils
+import com.dskja.betterstreamflix.utils.DeviceCapabilities
 import com.dskja.betterstreamflix.utils.Http409CacheGuard
 import com.dskja.betterstreamflix.utils.LoggingUtils
 import com.dskja.betterstreamflix.utils.loadTvShowBanner
@@ -76,13 +78,11 @@ class TvShowTvFragment : Fragment() {
                         if (http409Guard.handle(requireContext(), state.error) { viewModel.getTvShow(args.id) }) {
                                 return@collect
                             }
-                        if (!com.dskja.betterstreamflix.utils.ExperimentalMobileDesign.enabled()) {
-                            Toast.makeText(
-                                requireContext(),
-                                state.error.message ?: "",
-                                Toast.LENGTH_SHORT
-                            ).show()
-                        }
+                        Toast.makeText(
+                            requireContext(),
+                            state.error.message ?: "",
+                            Toast.LENGTH_SHORT
+                        ).show()
                         binding.isLoading.apply {
                             com.dskja.betterstreamflix.utils.ExpPressEffects.showLoadingSkeleton(root, false)
                             gIsLoadingRetry.visibility = View.VISIBLE
@@ -110,19 +110,22 @@ class TvShowTvFragment : Fragment() {
         super.onDestroyView()
     }
 
-
     private fun initializeTvShow() {
         binding.vgvTvShow.apply {
             adapter = appAdapter.apply {
                 stateRestorationPolicy = RecyclerView.Adapter.StateRestorationPolicy.PREVENT_WHEN_EMPTY
             }
-            setItemSpacing(80)
+            setItemSpacing(resources.getDimension(R.dimen.detail_tv_item_spacing).toInt())
         }
     }
 
     private fun displayTvShow(tvShow: TvShow) {
         binding.ivTvShowBanner.loadTvShowBanner(tvShow) {
-            transition(DrawableTransitionOptions.withCrossFade())
+            if (!DeviceCapabilities.shouldReduceHomeEffects(requireContext())) {
+                transition(DrawableTransitionOptions.withCrossFade())
+            } else {
+                this
+            }
         }
 
         appAdapter.submitList(listOfNotNull(
@@ -139,6 +142,10 @@ class TvShowTvFragment : Fragment() {
             tvShow.takeIf { it.cast.isNotEmpty() }
                 ?.copy()
                 ?.apply { itemType = AppAdapter.Type.TV_SHOW_CAST_TV },
+
+            tvShow.takeIf { !it.trailer.isNullOrBlank() || !it.tmdbId.isNullOrBlank() }
+                ?.copy()
+                ?.apply { itemType = AppAdapter.Type.TV_SHOW_TRAILER_TV },
 
             tvShow.takeIf { it.recommendations.isNotEmpty() }
                 ?.copy()

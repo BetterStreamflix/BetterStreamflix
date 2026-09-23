@@ -19,9 +19,6 @@ import com.dskja.betterstreamflix.providers.Provider
 import com.dskja.betterstreamflix.utils.UserPreferences
 import com.dskja.betterstreamflix.utils.CacheUtils
 import com.dskja.betterstreamflix.utils.ExpEmptyChrome
-import com.dskja.betterstreamflix.utils.ExpMotion
-import com.dskja.betterstreamflix.utils.ExpPressEffects.applyExpPress
-import com.dskja.betterstreamflix.utils.ExperimentalMobileDesign
 import com.dskja.betterstreamflix.utils.Http409CacheGuard
 import com.dskja.betterstreamflix.utils.viewModelsFactory
 import androidx.navigation.fragment.findNavController
@@ -78,13 +75,11 @@ class TvShowsTvFragment : Fragment() {
                             }) {
                                 return@collect
                             }
-                        if (!com.dskja.betterstreamflix.utils.ExperimentalMobileDesign.enabled()) {
-                            Toast.makeText(
-                                requireContext(),
-                                state.error.message ?: "",
-                                Toast.LENGTH_SHORT
-                            ).show()
-                        }
+                        Toast.makeText(
+                            requireContext(),
+                            state.error.message ?: "",
+                            Toast.LENGTH_SHORT
+                        ).show()
                         if (appAdapter.isLoading) {
                             appAdapter.isLoading = false
                         } else {
@@ -112,18 +107,8 @@ class TvShowsTvFragment : Fragment() {
         _binding = null
     }
 
-
     private fun initializeTvShows() {
         com.dskja.betterstreamflix.utils.ExpPressEffects.wireLoadingRetry(binding.isLoading.root)
-        if (com.dskja.betterstreamflix.utils.ExperimentalMobileDesign.enabled()) {
-            com.dskja.betterstreamflix.utils.ExpMotion.enterScreen(binding.root)
-            binding.tvTvShowsEmpty.setTextColor(
-                com.google.android.material.color.MaterialColors.getColor(
-                    binding.tvTvShowsEmpty,
-                    com.google.android.material.R.attr.colorOnSurfaceVariant,
-                ),
-            )
-        }
         binding.vgvTvShows.apply {
             val spacing = requireContext().resources.getDimension(R.dimen.tv_shows_spacing).toInt()
             setItemSpacing(spacing)

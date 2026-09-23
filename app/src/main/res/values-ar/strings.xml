@@ -514,4 +514,18 @@
     <string name="settings_refresh_cache_success">تم تحديث ذاكرة التخزين المؤقت بنجاح</string>
     <string name="supabase_instructions_title">التعليمات</string>
     <string name="supabase_instructions_summary">فتح الدليل التفصيلي لإعداد حساب ومزامنة Supabase في المتصفح</string>
+    <string name="home_swiper_resume">متابعة · %1$d٪</string>
+    <string name="home_swiper_continue">متابعة المشاهدة</string>
+    <string name="home_swiper_released_year">%1$s</string>
+    <string name="home_swiper_more_info">المزيد</string>
+    <string name="home_swiper_trailer">إعلان</string>
+    <string name="home_featured_synthesized">تمت استعادة المميز من الكتالوج</string>
+    <string name="simkl_sync_failed">تعذر المزامنة — محفوظ محلياً</string>
+    <string name="home_swiper_my_list">+ قائمتي</string>
+    <string name="home_swiper_in_my_list">في قائمتي</string>
+    <string name="home_swiper_all_episodes">جميع الحلقات متاحة</string>
+    <string name="home_swiper_now_playing">يعرض الآن</string>
+    <string name="home_featured_title">مميز</string>
+    <string name="exp_swiper_page">مميز: %1$s</string>
+    <string name="home_featured_page">مميز: %1$s</string>
 </resources>

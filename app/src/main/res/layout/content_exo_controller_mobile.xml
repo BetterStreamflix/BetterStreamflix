@@ -27,23 +27,42 @@
         android:tint="#FFFFFF"
         app:layout_constraintBottom_toBottomOf="@id/tv_exo_subtitle"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="@id/tv_exo_title"
+        app:layout_constraintTop_toTopOf="@id/fl_exo_title_slot"
         tools:ignore="ContentDescription,UseAppTint" />
 
-    <TextView
-        android:id="@+id/tv_exo_title"
+    <FrameLayout
+        android:id="@+id/fl_exo_title_slot"
         android:layout_width="0dp"
-        android:layout_height="wrap_content"
+        android:layout_height="40dp"
         android:layout_marginStart="16dp"
         android:layout_marginTop="16dp"
         android:layout_marginEnd="16dp"
-        android:textColor="#FFFFFF"
-        android:textSize="18sp"
-        android:textStyle="bold"
         app:layout_constraintEnd_toStartOf="@id/media_route_button"
         app:layout_constraintStart_toEndOf="@id/btn_exo_back"
-        app:layout_constraintTop_toTopOf="parent"
-        tools:text="Title" />
+        app:layout_constraintTop_toTopOf="parent">
+
+        <ImageView
+            android:id="@+id/iv_exo_logo"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:adjustViewBounds="true"
+            android:importantForAccessibility="no"
+            android:padding="2dp"
+            android:scaleType="fitStart"
+            android:visibility="invisible"
+            tools:src="@mipmap/ic_launcher"
+            tools:visibility="visible" />
+
+        <TextView
+            android:id="@+id/tv_exo_title"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:gravity="center_vertical"
+            android:textColor="#FFFFFF"
+            android:textSize="18sp"
+            android:textStyle="bold"
+            tools:text="Title" />
+    </FrameLayout>
 
     <TextView
         android:id="@+id/tv_exo_subtitle"
@@ -56,7 +75,7 @@
         android:textStyle="bold"
         app:layout_constraintEnd_toStartOf="@id/media_route_button"
         app:layout_constraintStart_toEndOf="@id/btn_exo_back"
-        app:layout_constraintTop_toBottomOf="@id/tv_exo_title"
+        app:layout_constraintTop_toBottomOf="@id/fl_exo_title_slot"
         tools:text="Description" />
 
     <androidx.mediarouter.app.MediaRouteButton
@@ -69,7 +88,7 @@
         android:visibility="gone"
         app:layout_constraintBottom_toBottomOf="@id/tv_exo_subtitle"
         app:layout_constraintEnd_toStartOf="@id/btn_exo_external_player"
-        app:layout_constraintTop_toTopOf="@id/tv_exo_title"
+        app:layout_constraintTop_toTopOf="@id/fl_exo_title_slot"
         tools:visibility="visible" />
 
     <ImageView

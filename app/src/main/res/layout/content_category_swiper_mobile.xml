@@ -9,11 +9,12 @@
     android:paddingEnd="12dp"
     android:paddingBottom="10dp">
 
-    <!-- Tall cover card; centerCrop fills edge-to-edge without letterbox bars. -->
+    <!-- Tall cover card; ~2:3 phone aspect via 0.85 of width as height proxy on phones.
+         Uses dimension so sw/h variants can override without hardcoding 480dp. -->
     <FrameLayout
         android:id="@+id/fl_category_swiper_card"
         android:layout_width="0dp"
-        android:layout_height="480dp"
+        android:layout_height="@dimen/home_featured_card_height"
         android:background="@drawable/bg_featured_card"
         android:clipToOutline="true"
         android:outlineProvider="background"

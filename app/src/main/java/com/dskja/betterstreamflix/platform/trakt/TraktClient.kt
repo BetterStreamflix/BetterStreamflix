@@ -6,6 +6,9 @@ import com.dskja.betterstreamflix.utils.NetworkClient
 import com.dskja.betterstreamflix.utils.UserPreferences
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.Request
@@ -16,8 +19,7 @@ import org.json.JSONObject
 object TraktClient {
     private const val TAG = "TraktClient"
     private val jsonMedia = "application/json; charset=utf-8".toMediaType()
-    @Volatile
-    private var refreshing = false
+    private val refreshMutex = Mutex()
 
     fun warm(context: Context) {
         if (!TraktConfig.configured()) {
@@ -202,40 +204,56 @@ object TraktClient {
             false
         }
 
+    /**
+     * Single-flight refresh: concurrent callers wait on [refreshMutex].
+     * Waiters that find a newer access token (or cleared auth) skip a second request
+     * and retry their API call with the updated credentials.
+     * Auth is cleared only after a confirmed invalid refresh (HTTP 401/403).
+     */
     fun refreshAccessToken(): Boolean {
-        if (refreshing) return false
-        val refresh = UserPreferences.traktRefreshToken.trim()
+        val accessBefore = UserPreferences.traktAccessToken
         val clientId = TraktConfig.clientId()
         val clientSecret = TraktConfig.clientSecret()
-        if (refresh.isBlank() || clientId.isBlank() || clientSecret.isBlank()) return false
-        refreshing = true
-        return try {
-            val body = JSONObject()
-                .put("refresh_token", refresh)
-                .put("client_id", clientId)
-                .put("client_secret", clientSecret)
-                .put("grant_type", "refresh_token")
-                .toString()
-            val request = Request.Builder()
-                .url("${TraktConfig.API_BASE}/oauth/token")
-                .post(body.toRequestBody(jsonMedia))
-                .header("Content-Type", "application/json")
-                .build()
-            NetworkClient.default.newCall(request).execute().use { response ->
-                val raw = response.body?.string().orEmpty()
-                if (!response.isSuccessful) {
-                    Log.w(TAG, "refresh failed HTTP ${response.code}")
-                    if (response.code == 401 || response.code == 403) clearAuth()
-                    return false
+        if (clientId.isBlank() || clientSecret.isBlank()) return false
+        if (UserPreferences.traktRefreshToken.trim().isBlank()) return false
+
+        return runBlocking {
+            refreshMutex.withLock {
+                val accessNow = UserPreferences.traktAccessToken
+                if (accessNow.isNotBlank() && accessNow != accessBefore) {
+                    return@withLock true
                 }
-                storeTokens(JSONObject(raw))
-                true
+                val refresh = UserPreferences.traktRefreshToken.trim()
+                if (refresh.isBlank()) return@withLock false
+
+                try {
+                    val body = JSONObject()
+                        .put("refresh_token", refresh)
+                        .put("client_id", clientId)
+                        .put("client_secret", clientSecret)
+                        .put("grant_type", "refresh_token")
+                        .toString()
+                    val request = Request.Builder()
+                        .url("${TraktConfig.API_BASE}/oauth/token")
+                        .post(body.toRequestBody(jsonMedia))
+                        .header("Content-Type", "application/json")
+                        .build()
+                    NetworkClient.default.newCall(request).execute().use { response ->
+                        val raw = response.body?.string().orEmpty()
+                        if (!response.isSuccessful) {
+                            Log.w(TAG, "refresh failed HTTP ${response.code}")
+                            // Only wipe credentials on confirmed invalid refresh.
+                            if (response.code == 401 || response.code == 403) clearAuth()
+                            return@withLock false
+                        }
+                        storeTokens(JSONObject(raw))
+                        true
+                    }
+                } catch (e: Exception) {
+                    Log.w(TAG, "refresh failed: ${e.message}")
+                    false
+                }
             }
-        } catch (e: Exception) {
-            Log.w(TAG, "refresh failed: ${e.message}")
-            false
-        } finally {
-            refreshing = false
         }
     }
 

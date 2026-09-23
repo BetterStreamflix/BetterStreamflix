@@ -21,6 +21,9 @@ class People(
     val birthday: Calendar? = birthday?.toCalendar()
     val deathday: Calendar? = deathday?.toCalendar()
 
+    /** Cast credit role when shown under the name in cast rows. Not persisted (Room-safe). */
+    var character: String? = null
+
     override lateinit var itemType: AppAdapter.Type
 
 

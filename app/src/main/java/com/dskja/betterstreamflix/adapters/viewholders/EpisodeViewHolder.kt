@@ -11,9 +11,11 @@ import androidx.viewbinding.ViewBinding
 import com.bumptech.glide.Glide
 import com.bumptech.glide.load.resource.drawable.DrawableTransitionOptions
 import com.dskja.betterstreamflix.R
+import com.dskja.betterstreamflix.utils.TvFocusZoom
 import com.dskja.betterstreamflix.utils.ExpPressEffects.applyExpPress
 import com.dskja.betterstreamflix.utils.ExpMotion
 import com.dskja.betterstreamflix.utils.ExperimentalMobileDesign
+import com.dskja.betterstreamflix.utils.DeviceCapabilities
 import com.dskja.betterstreamflix.databinding.ItemEpisodeContinueWatchingMobileBinding
 import com.dskja.betterstreamflix.databinding.ItemEpisodeContinueWatchingTvBinding
 import com.dskja.betterstreamflix.databinding.ItemEpisodeDetailMobileBinding
@@ -80,7 +82,6 @@ class EpisodeViewHolder(
             is ItemEpisodeContinueWatchingTvBinding -> displayContinueWatchingTvItem(_binding)
         }
     }
-
 
     private fun displayMobileItem(binding: ItemEpisodeMobileBinding) {
         binding.root.apply {
@@ -414,34 +415,26 @@ class EpisodeViewHolder(
                 true
             }
             setOnFocusChangeListener { _, hasFocus ->
-                val animation = when {
-                    hasFocus -> AnimationUtils.loadAnimation(context, R.anim.zoom_in)
-                    else -> AnimationUtils.loadAnimation(context, R.anim.zoom_out)
-                }
-                binding.root.startAnimation(animation)
-                animation.fillAfter = true
+                TvFocusZoom.apply(itemView, hasFocus)
             }
         }
 
         binding.ivEpisodePoster.apply {
             clipToOutline = true
-            Glide.with(context)
+            var request = Glide.with(context)
                 .load(episode.poster)
                 .error(R.drawable.glide_fallback_cover)
                 .fallback(R.drawable.glide_fallback_cover)
                 .centerCrop()
-                .transition(DrawableTransitionOptions.withCrossFade())
-                .into(this)
+            if (!DeviceCapabilities.shouldReduceHomeEffects(context)) {
+                request = request.transition(DrawableTransitionOptions.withCrossFade())
+            }
+            request.into(this)
         }
         binding.ivEpisodeWatchedRibbon.let { ribbon ->
             val wasVisible = ribbon.visibility == View.VISIBLE
             ribbon.visibility = if (episode.isWatched) View.VISIBLE else View.GONE
-            if (ExperimentalMobileDesign.enabled() && episode.isWatched) {
-                ribbon.setBackgroundResource(ExperimentalMobileDesign.iconChipBackground())
-                val pad = (4 * context.resources.displayMetrics.density).toInt()
-                ribbon.setPadding(pad, pad, pad, pad)
-                if (!wasVisible) ExpMotion.popIn(ribbon)
-            } else if (!episode.isWatched) {
+if (!episode.isWatched) {
                 ribbon.background = null
             }
         }
@@ -454,46 +447,28 @@ class EpisodeViewHolder(
             episode.number
         )
 
-        binding.tvEpisodeTitle.text = episode.title ?: context.getString(
-            R.string.episode_number,
-            episode.number
-        )
-
-        if (ExperimentalMobileDesign.enabled()) {
-            val onSurface = com.google.android.material.color.MaterialColors.getColor(
-                binding.tvEpisodeTitle, com.google.android.material.R.attr.colorOnSurface,
+        binding.tvEpisodeTitle.apply {
+            text = episode.title ?: context.getString(
+                R.string.episode_number,
+                episode.number
             )
-            val onVariant = com.google.android.material.color.MaterialColors.getColor(
-                binding.tvEpisodeInfo, com.google.android.material.R.attr.colorOnSurfaceVariant,
-            )
-            binding.tvEpisodeTitle.setTextColor(onSurface)
-            binding.tvEpisodeInfo.setTextColor(onVariant)
-            binding.tvEpisodeOverview.setTextColor(onVariant)
-            binding.tvEpisodeInfo.setBackgroundResource(ExperimentalMobileDesign.metaPillBackground())
-            val primary = com.google.android.material.color.MaterialColors.getColor(
-                binding.pbEpisodeProgress, androidx.appcompat.R.attr.colorPrimary,
-            )
-            binding.pbEpisodeProgress.progressTintList =
-                android.content.res.ColorStateList.valueOf(primary)
+            maxLines = 2
+            ellipsize = android.text.TextUtils.TruncateAt.END
         }
 
         binding.tvEpisodeReleased.apply {
-            text = episode.released?.format("EEEE - MMMM dd, yyyy")
-            val show = !text.isNullOrEmpty()
-            val wasVisible = visibility == View.VISIBLE
-            visibility = if (show) View.VISIBLE else View.GONE
-            if (ExperimentalMobileDesign.enabled() && show) {
-                setBackgroundResource(ExperimentalMobileDesign.metaPillBackground())
-                if (!wasVisible) ExpMotion.popIn(this)
+            val meta = buildDetailMetaLine().ifBlank {
+                episode.released?.format("EEEE - MMMM dd, yyyy").orEmpty()
             }
+            text = meta
+            val show = meta.isNotBlank()
+            visibility = if (show) View.VISIBLE else View.GONE
         }
-        binding.tvEpisodeOverview.text = episode.overview ?: ""
-        if (ExperimentalMobileDesign.enabled() &&
-            binding.root.getTag(R.id.exp_enter_animated_tag) != true
-        ) {
-            binding.root.setTag(R.id.exp_enter_animated_tag, true)
-            binding.root.setBackgroundResource(ExperimentalMobileDesign.glassCardBackground())
-            ExpMotion.revealHeader(binding.tvEpisodeInfo, binding.tvEpisodeTitle)
+        binding.tvEpisodeOverview.apply {
+            text = episode.overview ?: ""
+            maxLines = 5
+            ellipsize = android.text.TextUtils.TruncateAt.END
+            visibility = if (episode.overview.isNullOrBlank()) View.GONE else View.VISIBLE
         }
     }
 
@@ -501,10 +476,96 @@ class EpisodeViewHolder(
         val providerName = episode.tvShow?.providerName
         if (!providerName.isNullOrBlank() && providerName != UserPreferences.currentProvider?.name) {
             Provider.findByName(providerName)?.let {
-                UserPreferences.currentProvider = it
+                UserPreferences.setCurrentProviderForPlayback(it)
             }
         }
         action()
+    }
+
+    /** Leanback: confirm before jumping straight into the player from Continue Watching. */
+    private fun openContinueWatchingEpisode() {
+        val play = {
+            val subtitle = episode.season?.takeIf { it.number != 0 }?.let { season ->
+                context.getString(
+                    R.string.player_subtitle_tv_show,
+                    season.number,
+                    episode.number,
+                    episode.title ?: context.getString(
+                        R.string.episode_number,
+                        episode.number,
+                    ),
+                )
+            } ?: context.getString(
+                R.string.player_subtitle_tv_show_episode_only,
+                episode.number,
+                episode.title ?: context.getString(
+                    R.string.episode_number,
+                    episode.number,
+                ),
+            )
+            itemView.findNavController().navigate(
+                R.id.action_global_player,
+                android.os.Bundle().apply {
+                    putString("id", episode.id)
+                    putString("title", episode.tvShow?.title ?: "")
+                    putString("subtitle", subtitle)
+                    putSerializable(
+                        "videoType",
+                        Video.Type.Episode(
+                            id = episode.id,
+                            number = episode.number,
+                            title = episode.title,
+                            poster = episode.poster,
+                            overview = episode.overview,
+                            tvShow = Video.Type.Episode.TvShow(
+                                id = episode.tvShow?.id ?: "",
+                                title = episode.tvShow?.title ?: "",
+                                poster = episode.tvShow?.poster,
+                                banner = episode.tvShow?.banner,
+                                releaseDate = episode.tvShow?.released?.format("yyyy-MM-dd"),
+                                imdbId = episode.tvShow?.imdbId,
+                            ),
+                            season = Video.Type.Episode.Season(
+                                number = episode.season?.number ?: 0,
+                                title = episode.season?.title,
+                            ),
+                        ),
+                    )
+                    putString("preferredServerName", preferredOfflineServerName())
+                },
+            )
+        }
+        val details = {
+            episode.tvShow?.let { tvShow ->
+                itemView.findNavController().navigate(
+                    HomeTvFragmentDirections.actionHomeToTvShow(
+                        id = tvShow.id,
+                        poster = tvShow.poster,
+                        banner = tvShow.banner,
+                    ),
+                )
+            }
+        }
+        val leanback = DeviceCapabilities.isLeanbackDevice(context) ||
+            DeviceCapabilities.isAmazonFireTv(context)
+        if (!leanback) {
+            play()
+            return
+        }
+        val items = arrayOf(
+            context.getString(R.string.home_swiper_watch_now),
+            context.getString(R.string.continue_watching_go_to_details),
+            context.getString(R.string.option_cancel),
+        )
+        androidx.appcompat.app.AlertDialog.Builder(context)
+            .setTitle(R.string.continue_watching_confirm_title)
+            .setItems(items) { _, which ->
+                when (which) {
+                    0 -> play()
+                    1 -> details()
+                }
+            }
+            .show()
     }
 
     private fun displayContinueWatchingMobileItem(binding: ItemEpisodeContinueWatchingMobileBinding) {
@@ -586,6 +647,13 @@ class EpisodeViewHolder(
         bindEpisodeRemainingPill(binding.root)
 
         binding.tvEpisodeTvShowTitle.text = episode.tvShow?.title ?: ""
+        com.dskja.betterstreamflix.logo.TitleLogoSurface.bindCachedOnly(
+            imageView = binding.ivEpisodeTvShowLogo,
+            titleView = null,
+            logoUrl = episode.tvShow?.logo,
+            title = episode.tvShow?.title.orEmpty(),
+            hideUntilReady = true,
+        )
 
         binding.tvEpisodeInfo.text = episode.season?.takeIf { it.number != 0 }?.let { season ->
             context.getString(
@@ -624,57 +692,8 @@ class EpisodeViewHolder(
             }
             setOnClickListener {
                 ExpMotion.hapticTap(it)
-                // Go straight to player (parity with mobile continue-watching) — no detail detour.
                 checkProviderAndRun {
-                    val subtitle = episode.season?.takeIf { it.number != 0 }?.let { season ->
-                        context.getString(
-                            R.string.player_subtitle_tv_show,
-                            season.number,
-                            episode.number,
-                            episode.title ?: context.getString(
-                                R.string.episode_number,
-                                episode.number
-                            )
-                        )
-                    } ?: context.getString(
-                        R.string.player_subtitle_tv_show_episode_only,
-                        episode.number,
-                        episode.title ?: context.getString(
-                            R.string.episode_number,
-                            episode.number
-                        )
-                    )
-                    findNavController().navigate(
-                        R.id.action_global_player,
-                        android.os.Bundle().apply {
-                            putString("id", episode.id)
-                            putString("title", episode.tvShow?.title ?: "")
-                            putString("subtitle", subtitle)
-                            putSerializable(
-                                "videoType",
-                                Video.Type.Episode(
-                                    id = episode.id,
-                                    number = episode.number,
-                                    title = episode.title,
-                                    poster = episode.poster,
-                                    overview = episode.overview,
-                                    tvShow = Video.Type.Episode.TvShow(
-                                        id = episode.tvShow?.id ?: "",
-                                        title = episode.tvShow?.title ?: "",
-                                        poster = episode.tvShow?.poster,
-                                        banner = episode.tvShow?.banner,
-                                        releaseDate = episode.tvShow?.released?.format("yyyy-MM-dd"),
-                                        imdbId = episode.tvShow?.imdbId,
-                                    ),
-                                    season = Video.Type.Episode.Season(
-                                        number = episode.season?.number ?: 0,
-                                        title = episode.season?.title,
-                                    ),
-                                ),
-                            )
-                            putString("preferredServerName", preferredOfflineServerName())
-                        },
-                    )
+                    openContinueWatchingEpisode()
                 }
             }
             setOnLongClickListener {
@@ -684,12 +703,7 @@ class EpisodeViewHolder(
                 true
             }
             setOnFocusChangeListener { _, hasFocus ->
-                val animation = when {
-                    hasFocus -> AnimationUtils.loadAnimation(context, R.anim.zoom_in)
-                    else -> AnimationUtils.loadAnimation(context, R.anim.zoom_out)
-                }
-                binding.root.startAnimation(animation)
-                animation.fillAfter = true
+                TvFocusZoom.apply(itemView, hasFocus)
 
                 when (val fragment = context.toActivity()?.getCurrentFragment()) {
                     is HomeTvFragment -> {
@@ -715,6 +729,13 @@ class EpisodeViewHolder(
         bindEpisodeRemainingPill(binding.root)
 
         binding.tvEpisodeTvShowTitle.text = episode.tvShow?.title ?: ""
+        com.dskja.betterstreamflix.logo.TitleLogoSurface.bindCachedOnly(
+            imageView = binding.ivEpisodeTvShowLogo,
+            titleView = null,
+            logoUrl = episode.tvShow?.logo,
+            title = episode.tvShow?.title.orEmpty(),
+            hideUntilReady = true,
+        )
 
         binding.tvEpisodeInfo.text = episode.season?.takeIf { it.number != 0 }?.let { season ->
             context.getString(
@@ -769,7 +790,7 @@ class EpisodeViewHolder(
             ?: UserPreferences.currentProvider?.name
             ?: return null
         val tvShowId = episode.tvShow?.id ?: return null
-        val seasonNumber = episode.season?.number ?: return null
+        val seasonNumber = episode.season?.number ?: 1
         return DownloadContentKey.episode(
             providerName = providerName,
             tvShowId = tvShowId,
@@ -828,16 +849,19 @@ class EpisodeViewHolder(
 
     private fun ImageView.loadContinueWatchingArtwork(withFallback: Boolean = false) {
         val tvShow = episode.tvShow
+        val reduce = DeviceCapabilities.shouldReduceHomeEffects(context)
         if (tvShow == null) {
-            Glide.with(context)
+            var request = Glide.with(context)
                 .load(episode.poster)
                 .error(R.drawable.glide_fallback_cover)
                 .apply {
                     if (withFallback) fallback(R.drawable.glide_fallback_cover)
                 }
                 .centerCrop()
-                .transition(DrawableTransitionOptions.withCrossFade())
-                .into(this)
+            if (!reduce) {
+                request = request.transition(DrawableTransitionOptions.withCrossFade())
+            }
+            request.into(this)
             return
         }
 
@@ -847,10 +871,13 @@ class EpisodeViewHolder(
                 if (withFallback) fallback(R.drawable.glide_fallback_cover)
             }
             centerCrop()
-            transition(DrawableTransitionOptions.withCrossFade())
+            if (!reduce) {
+                transition(DrawableTransitionOptions.withCrossFade())
+            } else {
+                this
+            }
         }
     }
-
 
     private fun bindEpisodeRemainingPill(root: View) {
         val remaining = root.findViewById<android.widget.TextView>(R.id.tv_episode_remaining) ?: return

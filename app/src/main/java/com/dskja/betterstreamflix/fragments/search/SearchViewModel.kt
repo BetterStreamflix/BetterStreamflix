@@ -98,11 +98,17 @@ class SearchViewModel(
                     results = state.results.map { item ->
                         when (item) {
                             is Movie -> moviesById[item.id]
-                                ?.takeIf { !item.isSame(it) }
+                                ?.takeIf { db ->
+                                    !item.isSame(db) ||
+                                        (item.logo.isNullOrBlank() && !db.logo.isNullOrBlank())
+                                }
                                 ?.let { item.copy().merge(it) }
                                 ?: item
                             is TvShow -> tvShowsById[item.id]
-                                ?.takeIf { !item.isSame(it) }
+                                ?.takeIf { db ->
+                                    !item.isSame(db) ||
+                                        (item.logo.isNullOrBlank() && !db.logo.isNullOrBlank())
+                                }
                                 ?.let { item.copy().merge(it) }
                                 ?: item
                             else -> item

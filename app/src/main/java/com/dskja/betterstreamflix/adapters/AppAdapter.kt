@@ -17,6 +17,7 @@ import com.dskja.betterstreamflix.adapters.viewholders.PeopleViewHolder
 import com.dskja.betterstreamflix.adapters.viewholders.ProviderViewHolder
 import com.dskja.betterstreamflix.adapters.viewholders.SeasonViewHolder
 import com.dskja.betterstreamflix.adapters.viewholders.TvShowViewHolder
+import com.dskja.betterstreamflix.ui.FeaturedHeroController
 import com.dskja.betterstreamflix.databinding.ContentCategorySwiperMobileBinding
 import com.dskja.betterstreamflix.databinding.ContentCategorySwiperTvBinding
 import com.dskja.betterstreamflix.databinding.ContentDetailAboutMobileBinding
@@ -81,12 +82,16 @@ import com.dskja.betterstreamflix.databinding.ItemSupportBannerTvBinding
 import com.dskja.betterstreamflix.utils.ExperimentalMobileDesign
 import com.dskja.betterstreamflix.utils.ExpMotion
 import com.dskja.betterstreamflix.support.SupportUiBinder
+import com.dskja.betterstreamflix.adapters.viewholders.TrailerViewHolder
+import com.dskja.betterstreamflix.databinding.ContentDetailTrailerTvBinding
+import com.dskja.betterstreamflix.databinding.ItemTrailerTvBinding
+import com.dskja.betterstreamflix.models.Trailer
 
 class AppAdapter(
     val items: MutableList<Item> = mutableListOf()
 ) : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
 
-    private companion object {
+    companion object {
         const val PAYLOAD_SELECTION = "selection"
     }
 
@@ -163,6 +168,7 @@ class AppAdapter(
 
         MOVIE_TABS_MOBILE,
         MOVIE_TRAILER_MOBILE,
+        MOVIE_TRAILER_TV,
         MOVIE_ABOUT_MOBILE,
 
         PEOPLE_MOBILE_ITEM,
@@ -173,6 +179,8 @@ class AppAdapter(
 
         SEASON_MOBILE_ITEM,
         SEASON_TV_ITEM,
+
+        TRAILER_TV_ITEM,
 
         TV_SHOW_MOBILE_ITEM,
         TV_SHOW_TV_ITEM,
@@ -193,6 +201,7 @@ class AppAdapter(
 
         TV_SHOW_TABS_MOBILE,
         TV_SHOW_TRAILER_MOBILE,
+        TV_SHOW_TRAILER_TV,
         TV_SHOW_ABOUT_MOBILE,
     }
 
@@ -468,6 +477,13 @@ class AppAdapter(
                     )
                 )
             )
+            Type.MOVIE_TRAILER_TV -> MovieViewHolder(
+                ContentDetailTrailerTvBinding.inflate(
+                    LayoutInflater.from(parent.context),
+                    parent,
+                    false,
+                )
+            )
             Type.MOVIE_ABOUT_MOBILE -> MovieViewHolder(
                 ContentDetailAboutMobileBinding.bind(
                     LayoutInflater.from(parent.context).inflate(
@@ -489,6 +505,14 @@ class AppAdapter(
             )
             Type.PEOPLE_TV_ITEM -> PeopleViewHolder(
                 ItemPeopleTvBinding.inflate(
+                    LayoutInflater.from(parent.context),
+                    parent,
+                    false,
+                )
+            )
+
+            Type.TRAILER_TV_ITEM -> TrailerViewHolder(
+                ItemTrailerTvBinding.inflate(
                     LayoutInflater.from(parent.context),
                     parent,
                     false,
@@ -669,6 +693,13 @@ class AppAdapter(
                     )
                 )
             )
+            Type.TV_SHOW_TRAILER_TV -> TvShowViewHolder(
+                ContentDetailTrailerTvBinding.inflate(
+                    LayoutInflater.from(parent.context),
+                    parent,
+                    false,
+                )
+            )
             Type.TV_SHOW_ABOUT_MOBILE -> TvShowViewHolder(
                 ContentDetailAboutMobileBinding.bind(
                     LayoutInflater.from(parent.context).inflate(
@@ -727,6 +758,9 @@ class AppAdapter(
             is SeasonViewHolder -> holder.bind(
                 items[adjustedPosition] as Season
             ) // Tu original no pasaba listener, lo respeto
+            is TrailerViewHolder -> holder.bind(
+                items[adjustedPosition] as Trailer
+            )
             is TvShowViewHolder -> holder.bind(
                 items[adjustedPosition] as TvShow,
                 onTvShowClickListener,
@@ -761,6 +795,10 @@ class AppAdapter(
                 is TvShowViewHolder -> holder.setItemSelected(selected)
                 else -> super.onBindViewHolder(holder, position, payloads)
             }
+            return
+        }
+        if (FeaturedHeroController.PAYLOAD_ROTATE in payloads) {
+            (holder as? CategoryViewHolder)?.bindFeaturedRotatePayload()
             return
         }
         super.onBindViewHolder(holder, position, payloads)
@@ -1066,6 +1104,10 @@ class AppAdapter(
         )
 
         fun bind(onClick: (() -> Unit)?, onDismiss: (() -> Unit)?) {
+            val title = root.context.getString(R.string.support_banner_title)
+            val subtitle = root.context.getString(R.string.support_banner_subtitle)
+            root.contentDescription = "$title. $subtitle"
+            cta.contentDescription = root.context.getString(R.string.support_banner_cta)
             val open = android.view.View.OnClickListener {
                 ExpMotion.hapticTap(it)
                 onClick?.invoke()
@@ -1194,6 +1236,7 @@ class AppAdapter(
         is People -> "people:${id}"
         is Provider -> "provider:${name}"
         is Season -> "season:${id}"
+        is Trailer -> "trailer:${url}"
         is TvShow -> "tvshow:${id}"
         else -> "item:${itemType.name}"
     }

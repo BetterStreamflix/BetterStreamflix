@@ -12,16 +12,22 @@ import androidx.lifecycle.lifecycleScope
 import androidx.navigation.fragment.navArgs
 import androidx.recyclerview.widget.RecyclerView
 import com.bumptech.glide.load.resource.drawable.DrawableTransitionOptions
+import com.dskja.betterstreamflix.R
 import com.dskja.betterstreamflix.adapters.AppAdapter
 import com.dskja.betterstreamflix.database.AppDatabase
 import com.dskja.betterstreamflix.databinding.FragmentMovieTvBinding
 import com.dskja.betterstreamflix.models.Movie
+import com.dskja.betterstreamflix.utils.CacheUtils
+import com.dskja.betterstreamflix.utils.DeviceCapabilities
+import com.dskja.betterstreamflix.utils.Http409CacheGuard
 import com.dskja.betterstreamflix.utils.LoggingUtils
 import com.dskja.betterstreamflix.utils.loadMovieBanner
 import com.dskja.betterstreamflix.utils.viewModelsFactory
 import kotlinx.coroutines.launch
 
 class MovieTvFragment : Fragment() {
+
+    private val http409Guard = Http409CacheGuard()
 
     private var _binding: FragmentMovieTvBinding? = null
     private val binding get() = _binding!!
@@ -62,18 +68,31 @@ class MovieTvFragment : Fragment() {
                         )
                     }
                     is MovieViewModel.State.FailedLoading -> {
-                        if (!com.dskja.betterstreamflix.utils.ExperimentalMobileDesign.enabled()) {
-                            Toast.makeText(
-                                requireContext(),
-                                state.error.message ?: "",
-                                Toast.LENGTH_SHORT
-                            ).show()
+                        if (http409Guard.handle(requireContext(), state.error) {
+                                viewModel.getMovie(args.id)
+                            }
+                        ) {
+                            return@collect
                         }
+                        Toast.makeText(
+                            requireContext(),
+                            state.error.message ?: "",
+                            Toast.LENGTH_SHORT
+                        ).show()
                         binding.isLoading.apply {
                             com.dskja.betterstreamflix.utils.ExpPressEffects.showLoadingSkeleton(root, false)
                             gIsLoadingRetry.visibility = View.VISIBLE
                             com.dskja.betterstreamflix.utils.ExpPressEffects.animateLoadingError(root)
                             btnIsLoadingRetry.setOnClickListener {
+                                viewModel.getMovie(args.id)
+                            }
+                            btnIsLoadingClearCache.setOnClickListener {
+                                CacheUtils.clearAppCache(requireContext())
+                                com.dskja.betterstreamflix.utils.ExpDialogChrome.notify(
+                                    requireContext(),
+                                    getString(R.string.clear_cache_done),
+                                    R.string.loading_error_clear_cache,
+                                )
                                 viewModel.getMovie(args.id)
                             }
                             btnIsLoadingErrorDetails.setOnClickListener {
@@ -93,19 +112,22 @@ class MovieTvFragment : Fragment() {
         super.onDestroyView()
     }
 
-
     private fun initializeMovie() {
         binding.vgvMovie.apply {
             adapter = appAdapter.apply {
                 stateRestorationPolicy = RecyclerView.Adapter.StateRestorationPolicy.PREVENT_WHEN_EMPTY
             }
-            setItemSpacing(80)
+            setItemSpacing(resources.getDimension(R.dimen.detail_tv_item_spacing).toInt())
         }
     }
 
     private fun displayMovie(movie: Movie) {
         binding.ivMovieBanner.loadMovieBanner(movie) {
-            transition(DrawableTransitionOptions.withCrossFade())
+            if (!DeviceCapabilities.shouldReduceHomeEffects(requireContext())) {
+                transition(DrawableTransitionOptions.withCrossFade())
+            } else {
+                this
+            }
         }
 
         appAdapter.submitList(listOfNotNull(
@@ -118,6 +140,10 @@ class MovieTvFragment : Fragment() {
             movie.takeIf { it.cast.isNotEmpty() }
                 ?.copy()
                 ?.apply { itemType = AppAdapter.Type.MOVIE_CAST_TV },
+
+            movie.takeIf { !it.trailer.isNullOrBlank() || !it.tmdbId.isNullOrBlank() }
+                ?.copy()
+                ?.apply { itemType = AppAdapter.Type.MOVIE_TRAILER_TV },
 
             movie.takeIf { it.recommendations.isNotEmpty() }
                 ?.copy()

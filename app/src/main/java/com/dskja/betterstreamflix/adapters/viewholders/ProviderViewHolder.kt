@@ -46,7 +46,6 @@ class ProviderViewHolder(
         }
     }
 
-
     private fun displayMobileItem(binding: ItemProviderMobileBinding) {
         binding.root.apply {
             setOnClickListener {
@@ -163,9 +162,6 @@ class ProviderViewHolder(
                 val fav = binding.ivProviderFavorite
                 val wasVisible = fav.visibility == View.VISIBLE
                 fav.visibility = if (provider.isFavorite) View.VISIBLE else View.GONE
-                if (ExperimentalMobileDesign.enabled() && provider.isFavorite && !wasVisible) {
-                    ExpMotion.popIn(fav)
-                }
                 true
             }
         }
@@ -173,16 +169,6 @@ class ProviderViewHolder(
         val favWasVisible = binding.ivProviderFavorite.visibility == View.VISIBLE
         binding.ivProviderFavorite.visibility =
             if (provider.isFavorite) View.VISIBLE else View.GONE
-        if (ExperimentalMobileDesign.enabled()) {
-            if (provider.isFavorite) {
-                binding.ivProviderFavorite.setBackgroundResource(
-                    ExperimentalMobileDesign.iconChipBackground(),
-                )
-                if (!favWasVisible) ExpMotion.popIn(binding.ivProviderFavorite)
-            } else {
-                binding.ivProviderFavorite.background = null
-            }
-        }
 
         loadProviderLogo(binding.ivProviderLogo)
 
@@ -191,34 +177,7 @@ class ProviderViewHolder(
         val lang = Locale.forLanguageTag(provider.language)
             .let { it.getDisplayLanguage(it) }
             .replaceFirstChar { it.titlecase() }
-        if (ExperimentalMobileDesign.enabled()) {
-            binding.root.setBackgroundResource(ExperimentalMobileDesign.glassCardBackground())
-            binding.ivProviderLogo.setBackgroundColor(android.graphics.Color.TRANSPARENT)
-            val onSurface = com.google.android.material.color.MaterialColors.getColor(
-                binding.tvProviderName,
-                com.google.android.material.R.attr.colorOnSurface,
-            )
-            val onVariant = com.google.android.material.color.MaterialColors.getColor(
-                binding.tvProviderLanguage,
-                com.google.android.material.R.attr.colorOnSurfaceVariant,
-            )
-            binding.tvProviderName.setTextColor(onSurface)
-            binding.tvProviderLanguage.setTextColor(onVariant)
-            binding.tvProviderLanguage.setBackgroundResource(
-                ExperimentalMobileDesign.metaPillBackground(),
-            )
-            val padH = (8 * context.resources.displayMetrics.density).toInt()
-            val padV = (2 * context.resources.displayMetrics.density).toInt()
-            binding.tvProviderLanguage.setPadding(padH, padV, padH, padV)
-            binding.tvProviderLanguage.text = providerHealthLabel(lang, provider.name)
-            if (binding.root.getTag(R.id.exp_enter_animated_tag) != true) {
-                binding.root.setTag(R.id.exp_enter_animated_tag, true)
-                ExpMotion.popIn(binding.root)
-                ExpMotion.revealHeader(binding.tvProviderName, binding.tvProviderLanguage)
-            }
-        } else {
-            binding.tvProviderLanguage.text = providerHealthLabel(lang, provider.name)
-        }
+        binding.tvProviderLanguage.text = providerHealthLabel(lang, provider.name)
     }
 
     private fun providerHealthLabel(language: String, providerName: String): String {

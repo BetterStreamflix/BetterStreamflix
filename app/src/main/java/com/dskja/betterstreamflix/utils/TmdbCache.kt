@@ -79,6 +79,7 @@ object TmdbCache {
         searchTv.clear()
         findImdbMovie.clear()
         findImdbTv.clear()
+        TmdbUtils.clearLogoCaches()
     }
 
     fun getMovie(id: Int): CachedMovie? = movieDetails[id.toString()]

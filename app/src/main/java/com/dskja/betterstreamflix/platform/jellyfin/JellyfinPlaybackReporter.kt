@@ -35,17 +35,26 @@ object JellyfinPlaybackReporter {
         lastAt[itemId] = now
         scope.launch {
             runCatching {
-                val sessionId = playSessions.getOrPut(itemId) { UUID.randomUUID().toString() }
+                // Don't getOrPut before the branch — after Stopped we remove the session and
+                // must POST /Sessions/Playing again on the next report, not Progress.
+                val existingSession = playSessions[itemId]
+                val sessionId = existingSession ?: UUID.randomUUID().toString()
                 val ticks = (positionMs.coerceAtLeast(0L)) * 10_000L
                 when {
                     progress >= 0.95 || (!isPlaying && progress >= 0.90) -> {
                         post("/Sessions/Playing/Stopped", sessionBody(itemId, sessionId, ticks, stopped = true))
                         playSessions.remove(itemId)
+                        lastAt.remove(itemId)
                     }
                     !isPlaying -> {
-                        post("/Sessions/Playing/Progress", sessionBody(itemId, sessionId, ticks, paused = true))
+                        if (existingSession == null) {
+                            playSessions[itemId] = sessionId
+                            post("/Sessions/Playing", sessionBody(itemId, sessionId, ticks, paused = true))
+                        } else {
+                            post("/Sessions/Playing/Progress", sessionBody(itemId, sessionId, ticks, paused = true))
+                        }
                     }
-                    last == 0L || !playSessions.containsKey(itemId) -> {
+                    existingSession == null || last == 0L -> {
                         playSessions[itemId] = sessionId
                         post("/Sessions/Playing", sessionBody(itemId, sessionId, ticks))
                     }

@@ -166,7 +166,7 @@ class MovieMobileFragment : Fragment() {
         movie.overview,
         movie.poster,
         movie.banner,
-        movie.logo,
+        // logo intentionally omitted — async LogoPersist must not reset detail tabs
         movie.trailer,
         movie.quality,
         movie.rating,
@@ -188,7 +188,6 @@ class MovieMobileFragment : Fragment() {
             transition(DrawableTransitionOptions.withCrossFade())
         }
         prefetchLogo(movie.logo)
-        DetailHeaderController.bindMovie(this, binding.root, movie)
         DetailHeaderController.wireCast(this, binding.root)
 
         val signature = contentSignature(movie)
@@ -198,25 +197,26 @@ class MovieMobileFragment : Fragment() {
             appAdapter.selectedDetailTab = selectedTab
         }
         rebuildBody(scrollTabsToTop = false)
+        // Bind after body submit so the hero ImageView exists in the RecyclerView item.
+        binding.rvMovie.post {
+            if (!isAdded) return@post
+            DetailHeaderController.bindMovie(this, binding.root, movie)
+        }
     }
 
     private fun prefetchLogo(logoUrl: String?) {
-        val url = com.dskja.betterstreamflix.utils.ArtworkUrls.preferHero(logoUrl)
-            ?: com.dskja.betterstreamflix.utils.ArtworkUrls.preferOriginal(logoUrl)
-            ?: return
-        com.bumptech.glide.Glide.with(this)
-            .load(url)
-            .diskCacheStrategy(com.bumptech.glide.load.engine.DiskCacheStrategy.AUTOMATIC)
-            .preload()
+        com.dskja.betterstreamflix.logo.TmdbLogoGlide.prefetch(
+            context = requireContext(),
+            logoUrl = logoUrl,
+            wifiOnly = true,
+        )
     }
 
     private fun rebuildBody(scrollTabsToTop: Boolean) {
         val movie = currentMovie ?: return
         val body: List<AppAdapter.Item> = when (selectedTab) {
-            DetailTab.SIMILAR -> listOfNotNull(
-                movie.takeIf { it.recommendations.isNotEmpty() }
-                    ?.copy()
-                    ?.apply { itemType = AppAdapter.Type.MOVIE_RECOMMENDATIONS_MOBILE },
+            DetailTab.SIMILAR -> listOf(
+                movie.copy().apply { itemType = AppAdapter.Type.MOVIE_RECOMMENDATIONS_MOBILE },
             )
             DetailTab.TRAILER -> listOf(
                 movie.copy().apply { itemType = AppAdapter.Type.MOVIE_TRAILER_MOBILE },

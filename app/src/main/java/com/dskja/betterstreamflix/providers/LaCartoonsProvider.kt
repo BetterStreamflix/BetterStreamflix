@@ -3,6 +3,7 @@ package com.dskja.betterstreamflix.providers
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
+import com.dskja.betterstreamflix.BetterStreamflixApp
 import com.dskja.betterstreamflix.utils.UserPreferences
 
 import com.tanasi.retrofit_jsoup.converter.JsoupConverterFactory
@@ -53,7 +54,7 @@ object LaCartoonsProvider : Provider, ProviderConfigUrl {
     private val service = retrofit.create(Service::class.java)
 
     private fun getOkHttpClient(): OkHttpClient {
-        val appCache = Cache(File("cacheDir", "okhttpcache"), 10 * 1024 * 1024)
+        val appCache = Cache(File(BetterStreamflixApp.instance.cacheDir, "okhttpcache"), 10 * 1024 * 1024)
         val builder = OkHttpClient.Builder()
             .cache(appCache)
             .readTimeout(20, TimeUnit.SECONDS)

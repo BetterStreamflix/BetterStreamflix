@@ -641,7 +641,7 @@ class TmdbProvider(override val language: String) : Provider {
                         id = cast.id.toString(),
                         name = cast.name,
                         image = cast.profilePath?.w500,
-                    )
+                    ).also { it.character = cast.character.takeIf { role -> role.isNotBlank() } }
                 } ?: listOf(),
                 recommendations = movie.recommendations?.results?.mapNotNull { multi ->
                     when (multi) {
@@ -721,7 +721,7 @@ class TmdbProvider(override val language: String) : Provider {
                         id = cast.id.toString(),
                         name = cast.name,
                         image = cast.profilePath?.w500,
-                    )
+                    ).also { it.character = cast.character.takeIf { role -> role.isNotBlank() } }
                 } ?: listOf(),
                 recommendations = tv.recommendations?.results?.mapNotNull { multi ->
                     when (multi) {

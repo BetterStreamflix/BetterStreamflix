@@ -192,7 +192,7 @@ class TvShowMobileFragment : Fragment() {
         tvShow.overview,
         tvShow.poster,
         tvShow.banner,
-        tvShow.logo,
+        // logo intentionally omitted — async LogoPersist must not reset detail tabs
         tvShow.trailer,
         tvShow.quality,
         tvShow.rating,
@@ -215,7 +215,7 @@ class TvShowMobileFragment : Fragment() {
             fitCenter()
             transition(DrawableTransitionOptions.withCrossFade())
         }
-        DetailHeaderController.bindTvShow(this, binding.root, tvShow)
+        prefetchLogo(tvShow.logo)
         DetailHeaderController.wireCast(this, binding.root)
 
         val signature = contentSignature(tvShow)
@@ -229,6 +229,19 @@ class TvShowMobileFragment : Fragment() {
             appAdapter.selectedDetailTab = selectedTab
         }
         rebuildBody(scrollTabsToTop = false)
+        // Bind after body submit so the hero ImageView exists in the RecyclerView item.
+        binding.rvTvShow.post {
+            if (!isAdded) return@post
+            DetailHeaderController.bindTvShow(this, binding.root, tvShow)
+        }
+    }
+
+    private fun prefetchLogo(logoUrl: String?) {
+        com.dskja.betterstreamflix.logo.TmdbLogoGlide.prefetch(
+            context = requireContext(),
+            logoUrl = logoUrl,
+            wifiOnly = true,
+        )
     }
 
     fun loadSeasonEpisodes(season: Season) {
@@ -244,10 +257,8 @@ class TvShowMobileFragment : Fragment() {
                     ?.copy()
                     ?.apply { itemType = AppAdapter.Type.TV_SHOW_SEASONS_MOBILE },
             )
-            DetailTab.SIMILAR -> listOfNotNull(
-                tvShow.takeIf { it.recommendations.isNotEmpty() }
-                    ?.copy()
-                    ?.apply { itemType = AppAdapter.Type.TV_SHOW_RECOMMENDATIONS_MOBILE },
+            DetailTab.SIMILAR -> listOf(
+                tvShow.copy().apply { itemType = AppAdapter.Type.TV_SHOW_RECOMMENDATIONS_MOBILE },
             )
             DetailTab.TRAILER -> listOf(
                 tvShow.copy().apply { itemType = AppAdapter.Type.TV_SHOW_TRAILER_MOBILE },

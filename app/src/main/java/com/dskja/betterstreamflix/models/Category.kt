@@ -17,10 +17,18 @@ class Category(
     fun copy(
         name: String = this.name,
         list: List<AppAdapter.Item> = this.list,
+        selectedIndex: Int = this.selectedIndex,
+        itemSpacing: Int = this.itemSpacing,
     ) = Category(
         name,
         list,
-    )
+    ).also {
+        it.selectedIndex = selectedIndex
+        it.itemSpacing = itemSpacing
+        if (::itemType.isInitialized) {
+            it.itemType = itemType
+        }
+    }
 
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
@@ -47,10 +55,21 @@ class Category(
 
 
     companion object {
-        const val FEATURED = ""
+        /**
+         * Stable Featured shelf id. Historically `""` so providers could omit a
+         * title; blank / "Featured*" names are still normalized to this in
+         * [com.dskja.betterstreamflix.utils.HomeCatalogPipeline].
+         */
+        const val FEATURED = "Featured"
         const val CONTINUE_WATCHING = "Continue Watching"
         const val RECENTLY_WATCHED = "Recently Watched"
         const val FAVORITE_MOVIES = "Favorite movies"
         const val FAVORITE_TV_SHOWS = "Favorite TV shows"
+
+        /** True for the Featured constant or a blank legacy name. */
+        fun isFeaturedName(name: String?): Boolean {
+            val n = name?.trim().orEmpty()
+            return n.isEmpty() || n.equals(FEATURED, ignoreCase = true)
+        }
     }
 }

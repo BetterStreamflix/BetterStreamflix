@@ -1,5 +1,6 @@
 package com.dskja.betterstreamflix.providers
 
+import com.dskja.betterstreamflix.BetterStreamflixApp
 import com.dskja.betterstreamflix.utils.UserPreferences
 
 import android.util.Log
@@ -244,7 +245,7 @@ object MkissaProvider : Provider, ProviderConfigUrl {
         .addConverterFactory(ScalarsConverterFactory.create())
         .client(
             OkHttpClient.Builder()
-                .cache(Cache(File("cacheDir", "mkissa_okhttpcache"), 10 * 1024 * 1024))
+                .cache(Cache(File(BetterStreamflixApp.instance.cacheDir, "mkissa_okhttpcache"), 10 * 1024 * 1024))
                 .readTimeout(20, TimeUnit.SECONDS)
                 .connectTimeout(15, TimeUnit.SECONDS)
                 .callTimeout(35, TimeUnit.SECONDS)

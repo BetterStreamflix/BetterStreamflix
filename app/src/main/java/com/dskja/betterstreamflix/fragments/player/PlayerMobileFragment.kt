@@ -141,7 +141,9 @@ class PlayerMobileFragment : Fragment() {
 
     private val args by navArgs<PlayerMobileFragmentArgs>()
     private val database get() = AppDatabase.getInstance(requireContext())
-    private val viewModel by viewModelsFactory { PlayerViewModel(args.videoType, args.id) }
+    private val viewModel by viewModelsFactory {
+        PlayerViewModel(args.videoType, args.id, args.preferredServerName)
+    }
 
     private lateinit var player: ExoPlayer
     private var playbackListener: Player.Listener? = null
@@ -1572,7 +1574,9 @@ class PlayerMobileFragment : Fragment() {
                         durationMs = duration,
                         isPlaying = false,
                     )
-                    if (player.hasReallyFinished()) {
+                    if (player.hasReallyFinished() &&
+                        player.playbackState == androidx.media3.common.Player.STATE_ENDED
+                    ) {
                         if (UserPreferences.autoplay) {
                             playNextEpisodeAcrossSeasons(autoplay = true)
                         }
@@ -2358,6 +2362,7 @@ class PlayerMobileFragment : Fragment() {
         val subtitleChanged = controller.tvExoSubtitle.text?.toString() != subtitle
         controller.tvExoTitle.text = title
         controller.tvExoSubtitle.text = subtitle
+        bindPlayerTitleLogo(controller.root, controller.ivExoLogo, controller.tvExoTitle, videoType)
         if (ExperimentalMobileDesign.enabled()) {
             val offline = currentServer?.id == PlayerViewModel.OFFLINE_SERVER_ID ||
                 currentServer?.name == PlayerViewModel.OFFLINE_SERVER_NAME
@@ -2391,6 +2396,57 @@ class PlayerMobileFragment : Fragment() {
                 controller.tvExoTitle.animate().alpha(1f).setDuration(180L).start()
                 controller.tvExoSubtitle.animate().alpha(1f).setDuration(180L).start()
             }
+        }
+    }
+
+    private fun bindPlayerTitleLogo(
+        anchor: android.view.View,
+        logoView: android.widget.ImageView,
+        titleView: android.widget.TextView,
+        videoType: Video.Type,
+    ) {
+        val title = resolvePlayerTitle(videoType)
+        // Live TV channel names are not TMDb titles — keep plain text, skip resolve.
+        if (isLiveTvPlayback()) {
+            com.dskja.betterstreamflix.logo.TitleLogoSurface.bindCachedOnly(
+                imageView = logoView,
+                titleView = titleView,
+                logoUrl = null,
+                title = title,
+            )
+            anchor.setTag(R.id.player_logo_resolved_url_tag, null)
+            return
+        }
+        val cachedUrl = (anchor.getTag(R.id.player_logo_resolved_url_tag) as? String)
+            ?.takeIf {
+                anchor.getTag(R.id.title_logo_expected_title_tag) == title && it.isNotBlank()
+            }
+        val onResolved: (String, com.dskja.betterstreamflix.logo.LogoSource) -> Unit = { url, _ ->
+            anchor.setTag(R.id.player_logo_resolved_url_tag, url)
+        }
+        when (videoType) {
+            is Video.Type.Movie -> com.dskja.betterstreamflix.logo.TitleLogoSurface.resolveAndBind(
+                anchor = anchor,
+                imageView = logoView,
+                titleView = titleView,
+                title = title,
+                year = videoType.releaseDate.take(4).toIntOrNull(),
+                isTv = false,
+                imdbId = videoType.imdbId,
+                existingLogo = cachedUrl,
+                onResolved = onResolved,
+            )
+            is Video.Type.Episode -> com.dskja.betterstreamflix.logo.TitleLogoSurface.resolveAndBind(
+                anchor = anchor,
+                imageView = logoView,
+                titleView = titleView,
+                title = title,
+                year = videoType.tvShow.releaseDate?.take(4)?.toIntOrNull(),
+                isTv = true,
+                imdbId = videoType.tvShow.imdbId,
+                existingLogo = cachedUrl,
+                onResolved = onResolved,
+            )
         }
     }
 
@@ -2778,6 +2834,7 @@ class PlayerMobileFragment : Fragment() {
 
         dataSourceFactory = DefaultDataSource.Factory(requireContext(), httpDataSource)
 
+        releasePlayer()
         player = buildPlayer(extraBuffering).also { built ->
                 mediaSession = MediaSession.Builder(requireContext(), built)
                     .build()

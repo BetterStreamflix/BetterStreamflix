@@ -40,9 +40,28 @@
         android:focusableInTouchMode="true"
         android:minWidth="200dp"
         android:contentDescription="@string/season_switch_content_description"
+        android:visibility="gone"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@id/v_season_title_rule" />
+
+    <TextView
+        android:id="@+id/btn_season_picker"
+        style="@style/AppTheme.Widget.Tv.Button"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="12dp"
+        android:focusable="true"
+        android:focusableInTouchMode="true"
+        android:minWidth="200dp"
+        android:contentDescription="@string/season_switch_content_description"
+        android:text="@string/season_switch_content_description"
+        android:visibility="gone"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/v_season_title_rule"
+        tools:visibility="visible"
+        tools:text="Season 1" />
 
     <TextView
         android:id="@+id/btn_season_download"
@@ -55,7 +74,8 @@
         android:text="@string/season_download"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/sp_season_picker" />
+        app:layout_constraintTop_toBottomOf="@id/btn_season_picker"
+        app:layout_goneMarginTop="12dp" />
 
     <androidx.leanback.widget.HorizontalGridView
         android:id="@+id/hgv_episodes"

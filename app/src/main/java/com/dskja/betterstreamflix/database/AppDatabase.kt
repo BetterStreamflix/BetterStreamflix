@@ -25,7 +25,7 @@ import com.dskja.betterstreamflix.utils.UserPreferences
         Season::class,
         TvShow::class,
     ],
-    version = 9,
+    version = 10,
     exportSchema = false
 )
 @TypeConverters(Converters::class)
@@ -105,6 +105,9 @@ abstract class AppDatabase : RoomDatabase() {
                 currentProviderName = null
                 currentProfileId = null
             }
+            runCatching {
+                com.dskja.betterstreamflix.download.OfflineBadgeStore.reset()
+            }
         }
 
         fun getInstanceForProvider(
@@ -134,6 +137,7 @@ abstract class AppDatabase : RoomDatabase() {
                 .addMigrations(MIGRATION_6_7)
                 .addMigrations(MIGRATION_7_8)
                 .addMigrations(MIGRATION_8_9)
+                .addMigrations(MIGRATION_9_10)
                 .build()
         }
 
@@ -263,6 +267,15 @@ abstract class AppDatabase : RoomDatabase() {
                     )
                     """.trimIndent()
                 )
+            }
+        }
+
+        private val MIGRATION_9_10: Migration = object : Migration(9, 10) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE movies ADD COLUMN logo TEXT")
+                db.execSQL("ALTER TABLE movies ADD COLUMN logoLanguage TEXT")
+                db.execSQL("ALTER TABLE tv_shows ADD COLUMN logo TEXT")
+                db.execSQL("ALTER TABLE tv_shows ADD COLUMN logoLanguage TEXT")
             }
         }
     }

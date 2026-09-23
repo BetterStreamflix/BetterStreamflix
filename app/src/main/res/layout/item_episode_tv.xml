@@ -78,7 +78,9 @@
         android:id="@+id/tv_episode_title"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
+        android:ellipsize="end"
         android:gravity="center"
+        android:maxLines="2"
         android:textColor="#FFFFFF"
         android:textSize="18sp"
         android:textStyle="bold"
@@ -92,28 +94,31 @@
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_marginTop="4dp"
+        android:ellipsize="end"
         android:gravity="center"
+        android:maxLines="1"
         android:textSize="12sp"
         android:textStyle="bold"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@id/tv_episode_title"
-        tools:text="Release date" />
+        tools:text="1h  Mar 30, 2025" />
 
     <TextView
         android:id="@+id/tv_episode_overview"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_marginStart="12dp"
+        android:layout_marginTop="6dp"
         android:layout_marginEnd="10dp"
-        android:textSize="12sp"
         android:ellipsize="end"
+        android:maxLines="5"
         android:scrollHorizontally="false"
         android:singleLine="false"
-        android:maxLines="4"
-        app:layout_constraintTop_toBottomOf="@id/tv_episode_title"
-        app:layout_constraintStart_toStartOf="parent"
+        android:textSize="12sp"
         app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/tv_episode_released"
         tools:text="Overview" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>

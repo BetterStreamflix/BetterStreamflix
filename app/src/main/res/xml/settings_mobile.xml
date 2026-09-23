@@ -53,6 +53,52 @@
                 android:title="@string/settings_tmdb_clear_cache_title"
                 android:summary="@string/settings_tmdb_clear_cache_summary"
                 app:iconSpaceReserved="false" />
+
+            <SwitchPreferenceCompat
+                android:key="ENABLE_TMDB_LOGOS"
+                android:title="@string/settings_enable_tmdb_logos_title"
+                android:summary="@string/settings_enable_tmdb_logos_summary"
+                android:defaultValue="true"
+                app:iconSpaceReserved="false" />
+
+            <ListPreference
+                android:key="TMDB_LOGO_QUALITY"
+                android:title="@string/settings_tmdb_logo_quality_title"
+                android:summary="@string/settings_tmdb_logo_quality_summary"
+                android:entries="@array/tmdb_logo_quality_entries"
+                android:entryValues="@array/tmdb_logo_quality_values"
+                android:defaultValue="original_first"
+                app:iconSpaceReserved="false" />
+
+            <ListPreference
+                android:key="TMDB_LOGO_MISS_TTL_HOURS"
+                android:title="@string/settings_tmdb_logo_miss_ttl_title"
+                android:summary="@string/settings_tmdb_logo_miss_ttl_summary"
+                android:entries="@array/tmdb_logo_ttl_entries"
+                android:entryValues="@array/tmdb_logo_ttl_values"
+                android:defaultValue="6"
+                app:iconSpaceReserved="false" />
+
+            <ListPreference
+                android:key="TMDB_LOGO_HIT_TTL_HOURS"
+                android:title="@string/settings_tmdb_logo_hit_ttl_title"
+                android:summary="@string/settings_tmdb_logo_hit_ttl_summary"
+                android:entries="@array/tmdb_logo_ttl_entries"
+                android:entryValues="@array/tmdb_logo_ttl_values"
+                android:defaultValue="24"
+                app:iconSpaceReserved="false" />
+
+            <Preference
+                android:key="TMDB_CLEAR_LOGO_CACHE"
+                android:title="@string/settings_tmdb_clear_logo_cache_title"
+                android:summary="@string/settings_tmdb_clear_logo_cache_summary"
+                app:iconSpaceReserved="false" />
+
+            <Preference
+                android:key="TMDB_LOGO_TELEMETRY"
+                android:title="@string/settings_tmdb_logo_telemetry_title"
+                android:summary="@string/settings_tmdb_logo_telemetry_summary"
+                app:iconSpaceReserved="false" />
         </PreferenceCategory>
     </PreferenceScreen>
 

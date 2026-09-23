@@ -1,35 +1,24 @@
 package com.dskja.betterstreamflix.ui
 
-import android.graphics.drawable.Drawable
 import android.view.View
 import android.widget.ImageView
 import android.widget.TextView
 import androidx.appcompat.widget.TooltipCompat
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
-import androidx.lifecycle.lifecycleScope
-import com.bumptech.glide.Glide
-import com.bumptech.glide.load.DataSource
-import com.bumptech.glide.load.engine.DiskCacheStrategy
-import com.bumptech.glide.load.engine.GlideException
-import com.bumptech.glide.request.RequestListener
-import com.bumptech.glide.request.target.Target
 import com.dskja.betterstreamflix.R
+import com.dskja.betterstreamflix.logo.TitleLogoSurface
+import com.dskja.betterstreamflix.logo.TmdbLogoGlide
 import com.dskja.betterstreamflix.models.Movie
 import com.dskja.betterstreamflix.models.TvShow
-import com.dskja.betterstreamflix.utils.ArtworkUrls
 import com.dskja.betterstreamflix.utils.ExpMotion
-import com.dskja.betterstreamflix.utils.TmdbUtils
-import com.dskja.betterstreamflix.utils.format
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 
 /**
  * Overlay chrome for movie / TV detail pages.
  *
- * At the top of the page only Back + Cast float over the hero.
+ * Owns both the collapsing header logo and the hero title logo on the detail body.
  * After the user scrolls past the hero logo, a soft bar fades in with the TMDb title logo.
+ * Resolve/bind/persist goes through [TitleLogoSurface] (shared with Featured + TV).
  */
 object DetailHeaderController {
 
@@ -47,7 +36,6 @@ object DetailHeaderController {
         }
     }
 
-
     fun wireCast(fragment: Fragment, root: View) {
         val button = root.findViewById<androidx.mediarouter.app.MediaRouteButton>(R.id.btn_detail_cast) ?: return
         runCatching {
@@ -63,40 +51,78 @@ object DetailHeaderController {
     }
 
     fun bindMovie(fragment: Fragment, root: View, movie: Movie) {
+        root.findViewById<TextView>(R.id.tv_detail_header_title)?.text = movie.title
         bindTitleChrome(root, movie.title, movie.logo)
-        if (movie.logo.isNullOrBlank()) {
-            resolveLogo(
-                fragment = fragment,
-                root = root,
-                title = movie.title,
-                year = movie.released?.format("yyyy")?.toIntOrNull(),
-                isTv = false,
-                tmdbId = movie.tmdbId,
-                imdbId = movie.imdbId,
-            ) { movie.logo = it }
-        }
-        onScrolled(root, 0)
+        bindHeroMovie(fragment, root, movie, retries = 2)
+        wireDevLogoLongPress(root, movie.title) { movie.logo }
+        onScrolled(root, lastScrollY(root))
         root.findViewById<ImageView>(R.id.btn_detail_list)?.visibility = View.GONE
     }
 
     fun bindTvShow(fragment: Fragment, root: View, tvShow: TvShow) {
+        root.findViewById<TextView>(R.id.tv_detail_header_title)?.text = tvShow.title
         bindTitleChrome(root, tvShow.title, tvShow.logo)
-        if (tvShow.logo.isNullOrBlank()) {
-            resolveLogo(
-                fragment = fragment,
-                root = root,
-                title = tvShow.title,
-                year = tvShow.released?.format("yyyy")?.toIntOrNull(),
-                isTv = true,
-                tmdbId = tvShow.tmdbId,
-                imdbId = tvShow.imdbId,
-            ) { tvShow.logo = it }
-        }
-        onScrolled(root, 0)
+        bindHeroTvShow(fragment, root, tvShow, retries = 2)
+        wireDevLogoLongPress(root, tvShow.title) { tvShow.logo }
+        onScrolled(root, lastScrollY(root))
         root.findViewById<ImageView>(R.id.btn_detail_list)?.visibility = View.GONE
     }
 
-    /** Soft bar + centered logo fade in only after the hero scrolls away. */
+    private fun bindHeroMovie(fragment: Fragment, root: View, movie: Movie, retries: Int) {
+        val heroLogo = fragment.view?.findViewById<ImageView>(R.id.iv_movie_logo)
+        val heroTitle = fragment.view?.findViewById<TextView>(R.id.tv_movie_title)
+        if (heroLogo == null) {
+            if (retries > 0) {
+                fragment.view?.post { bindHeroMovie(fragment, root, movie, retries - 1) }
+            }
+            return
+        }
+        TitleLogoSurface.bindAndMaybeResolve(
+            anchor = fragment.view ?: root,
+            imageView = heroLogo,
+            titleView = heroTitle,
+            movie = movie,
+            persist = true,
+            allowAlternateOnFail = true,
+            stillCurrent = {
+                root.findViewById<TextView>(R.id.tv_detail_header_title)?.text?.toString() ==
+                    movie.title
+            },
+            onResolved = { url, _ ->
+                bindTitleChrome(root, movie.title, url)
+                onScrolled(root, lastScrollY(root))
+            },
+        )
+    }
+
+    private fun bindHeroTvShow(fragment: Fragment, root: View, tvShow: TvShow, retries: Int) {
+        val heroLogo = fragment.view?.findViewById<ImageView>(R.id.iv_tv_show_logo)
+        val heroTitle = fragment.view?.findViewById<TextView>(R.id.tv_tv_show_title)
+        if (heroLogo == null) {
+            if (retries > 0) {
+                fragment.view?.post { bindHeroTvShow(fragment, root, tvShow, retries - 1) }
+            }
+            return
+        }
+        TitleLogoSurface.bindAndMaybeResolve(
+            anchor = fragment.view ?: root,
+            imageView = heroLogo,
+            titleView = heroTitle,
+            tvShow = tvShow,
+            persist = true,
+            allowAlternateOnFail = true,
+            stillCurrent = {
+                root.findViewById<TextView>(R.id.tv_detail_header_title)?.text?.toString() ==
+                    tvShow.title
+            },
+            onResolved = { url, _ ->
+                bindTitleChrome(root, tvShow.title, url)
+                onScrolled(root, lastScrollY(root))
+            },
+        )
+    }
+
+    /** Soft bar + centered logo fade in only after the hero logo has scrolled away. */
     fun onScrolled(root: View, scrollY: Int) {
         root.setTag(R.id.v_detail_header_scrim, scrollY)
         val progress = ((scrollY - SCROLL_START) / COLLAPSE_RANGE).coerceIn(0f, 1f)
@@ -111,7 +137,7 @@ object DetailHeaderController {
             title?.visibility = View.INVISIBLE
             return
         }
-        val showLogo = logo?.tag == true
+        val showLogo = (logo?.tag as? String)?.isNotBlank() == true
         if (showLogo) {
             logo?.visibility = View.VISIBLE
             logo?.alpha = progress
@@ -133,143 +159,51 @@ object DetailHeaderController {
     private fun lastScrollY(root: View): Int =
         (root.getTag(R.id.v_detail_header_scrim) as? Int) ?: 0
 
-    private fun resolveLogo(
-        fragment: Fragment,
+    private fun bindTitleChrome(
         root: View,
         title: String,
-        year: Int?,
-        isTv: Boolean,
-        tmdbId: String?,
-        imdbId: String? = null,
-        onResolved: (String) -> Unit,
+        logoUrl: String?,
     ) {
-        fragment.viewLifecycleOwner.lifecycleScope.launch {
-            val logo = withContext(Dispatchers.IO) {
-                runCatching {
-                    TmdbUtils.resolveTitleLogo(
-                        title = title,
-                        year = year,
-                        isTv = isTv,
-                        tmdbId = tmdbId,
-                        imdbId = imdbId,
-                    )
-                }.getOrNull()
-            }
-            if (logo.isNullOrBlank()) return@launch
-            onResolved(logo)
-            val currentTitle = root.findViewById<TextView>(R.id.tv_detail_header_title)?.text?.toString()
-            if (currentTitle == title) {
-                bindTitleChrome(root, title, logo)
-                bindHeroLogo(fragment.view, isTv, logo)
-                onScrolled(root, lastScrollY(root))
-            }
-        }
-    }
-
-    private fun bindHeroLogo(fragmentView: View?, isTv: Boolean, logoUrl: String) {
-        val heroId = if (isTv) R.id.iv_tv_show_logo else R.id.iv_movie_logo
-        val titleId = if (isTv) R.id.tv_tv_show_title else R.id.tv_movie_title
-        val logoView = fragmentView?.findViewById<ImageView>(heroId) ?: return
-        val titleView = fragmentView.findViewById<TextView>(titleId)
-        logoView.visibility = View.VISIBLE
-        titleView?.visibility = View.GONE
-        loadLogoWithFallback(
-            imageView = logoView,
-            logoUrl = logoUrl,
-            preferHeroFirst = false,
-            onFailed = {
-                logoView.visibility = View.GONE
-                titleView?.visibility = View.VISIBLE
-            },
-            onReady = {
-                logoView.visibility = View.VISIBLE
-                titleView?.visibility = View.GONE
-            },
-        )
-    }
-
-    private fun bindTitleChrome(root: View, title: String, logoUrl: String?) {
         root.findViewById<TextView>(R.id.tv_detail_header_title)?.text = title
         val logo = root.findViewById<ImageView>(R.id.iv_detail_header_logo) ?: return
-        val primary = ArtworkUrls.preferHero(logoUrl) ?: ArtworkUrls.preferOriginal(logoUrl)
-        if (primary.isNullOrBlank()) {
-            logo.setImageDrawable(null)
-            logo.tag = false
+        if (logoUrl.isNullOrBlank()) {
+            TmdbLogoGlide.clear(logo)
+            logo.background = null
+            logo.tag = null
             onScrolled(root, lastScrollY(root))
             return
         }
-        loadLogoWithFallback(
+        TmdbLogoGlide.load(
             imageView = logo,
             logoUrl = logoUrl,
-            preferHeroFirst = true,
+            hideUntilReady = false,
+            contentDescription = title,
             onFailed = {
-                logo.tag = false
+                logo.background = null
+                logo.tag = null
                 logo.post { onScrolled(root, lastScrollY(root)) }
             },
-            onReady = {
-                logo.tag = true
+            onReady = { readyUrl ->
+                logo.setBackgroundResource(R.drawable.bg_title_logo_contrast)
+                logo.tag = readyUrl
                 // Re-apply after Glide finishes so a load at scrollY=0 stays invisible.
                 logo.post { onScrolled(root, lastScrollY(root)) }
             },
         )
     }
 
-    private fun loadLogoWithFallback(
-        imageView: ImageView,
-        logoUrl: String?,
-        preferHeroFirst: Boolean,
-        onFailed: () -> Unit,
-        onReady: () -> Unit,
-    ) {
-        val primary = if (preferHeroFirst) {
-            ArtworkUrls.preferHero(logoUrl) ?: ArtworkUrls.preferOriginal(logoUrl)
-        } else {
-            ArtworkUrls.preferOriginal(logoUrl) ?: ArtworkUrls.preferHero(logoUrl)
+    private fun wireDevLogoLongPress(root: View, title: String, logoUrl: () -> String?) {
+        if (!com.dskja.betterstreamflix.BuildConfig.DEBUG) return
+        val logo = root.findViewById<ImageView>(R.id.iv_detail_header_logo) ?: return
+        logo.setOnLongClickListener {
+            val url = logoUrl().orEmpty().ifBlank { "(none)" }
+            android.widget.Toast.makeText(
+                root.context,
+                "Logo[$title]: $url",
+                android.widget.Toast.LENGTH_LONG,
+            ).show()
+            true
         }
-        val alternate = if (preferHeroFirst) {
-            ArtworkUrls.preferOriginal(logoUrl)
-        } else {
-            ArtworkUrls.preferHero(logoUrl)
-        }
-        fun load(url: String?, isRetry: Boolean) {
-            if (url.isNullOrBlank()) {
-                onFailed()
-                return
-            }
-            Glide.with(imageView)
-                .load(url)
-                .diskCacheStrategy(DiskCacheStrategy.AUTOMATIC)
-                .fitCenter()
-                .listener(object : RequestListener<Drawable> {
-                    override fun onLoadFailed(
-                        e: GlideException?,
-                        model: Any?,
-                        target: Target<Drawable>,
-                        isFirstResource: Boolean,
-                    ): Boolean {
-                        val retryUrl = alternate?.takeIf { !isRetry && it != url }
-                        if (retryUrl != null) {
-                            load(retryUrl, true)
-                            return true
-                        }
-                        onFailed()
-                        return false
-                    }
-
-                    override fun onResourceReady(
-                        resource: Drawable,
-                        model: Any,
-                        target: Target<Drawable>?,
-                        dataSource: DataSource,
-                        isFirstResource: Boolean,
-                    ): Boolean {
-                        onReady()
-                        return false
-                    }
-                })
-                .into(imageView)
-        }
-        load(primary, false)
     }
 
     private fun applyListState(icon: ImageView, inList: Boolean, animate: Boolean) {

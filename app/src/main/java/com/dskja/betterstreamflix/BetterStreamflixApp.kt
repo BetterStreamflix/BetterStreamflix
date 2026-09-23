@@ -93,6 +93,10 @@ class BetterStreamflixApp : Application() {
 
         // 2. Inizializzazione preferenze (con applicationContext)
         UserPreferences.setup(this)
+        runCatching {
+            com.dskja.betterstreamflix.logo.TmdbLogoCache.init(this)
+            UserPreferences.applyTmdbLogoTtls()
+        }
         ProfileManager.init(this)
         ExperimentalMobileDesign.enforceAvailabilityGate()
         CrashReporter.install(this)
@@ -102,6 +106,13 @@ class BetterStreamflixApp : Application() {
         DnsResolver.setDnsUrl(UserPreferences.dohProviderUrl)
         // Rebuild after DoH is applied so the first TMDB call never uses system DNS.
         runCatching { TMDb3.rebuildService() }
+
+        if (DeviceCapabilities.shouldReduceHomeEffects(this)) {
+            runCatching {
+                com.bumptech.glide.Glide.get(this)
+                    .setMemoryCategory(com.bumptech.glide.MemoryCategory.LOW)
+            }
+        }
 
         runCatching {
             com.dskja.betterstreamflix.download.DownloadConnectivityMonitor.start(this)

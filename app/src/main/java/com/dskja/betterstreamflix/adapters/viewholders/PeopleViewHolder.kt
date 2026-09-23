@@ -1,5 +1,6 @@
 package com.dskja.betterstreamflix.adapters.viewholders
 
+import android.view.View
 import android.view.animation.AnimationUtils
 import androidx.navigation.findNavController
 import androidx.recyclerview.widget.RecyclerView
@@ -7,6 +8,7 @@ import androidx.viewbinding.ViewBinding
 import com.bumptech.glide.Glide
 import com.bumptech.glide.load.resource.drawable.DrawableTransitionOptions
 import com.dskja.betterstreamflix.R
+import com.dskja.betterstreamflix.utils.TvFocusZoom
 import com.dskja.betterstreamflix.utils.ExpMotion
 import com.dskja.betterstreamflix.utils.ExpPressEffects.applyExpPress
 import com.dskja.betterstreamflix.utils.ExperimentalMobileDesign
@@ -48,7 +50,6 @@ class PeopleViewHolder(
         }
     }
 
-
     private fun displayMobileItem(binding: ItemPeopleMobileBinding) {
         binding.root.apply {
             setOnClickListener {
@@ -83,6 +84,11 @@ class PeopleViewHolder(
         }
 
         binding.tvPeopleName.text = people.name
+        binding.tvPeopleCharacter.apply {
+            val role = people.character?.takeIf { it.isNotBlank() }
+            text = role
+            visibility = if (role == null) View.GONE else View.VISIBLE
+        }
         if (ExperimentalMobileDesign.enabled()) {
             runCatching {
                 (binding.ivPeopleImage as? com.google.android.material.imageview.ShapeableImageView)?.apply {
@@ -97,7 +103,7 @@ class PeopleViewHolder(
             if (binding.root.getTag(R.id.exp_enter_animated_tag) != true) {
                 binding.root.setTag(R.id.exp_enter_animated_tag, true)
                 ExpMotion.kenBurns(binding.ivPeopleImage, drift = true)
-                ExpMotion.revealHeader(binding.tvPeopleName)
+                ExpMotion.revealHeader(binding.tvPeopleName, binding.tvPeopleCharacter)
                 ExpMotion.popIn(binding.root)
                 ExpMotion.popIn(binding.ivPeopleImage)
             }
@@ -126,12 +132,7 @@ class PeopleViewHolder(
                 }
             }
             setOnFocusChangeListener { _, hasFocus ->
-                val animation = when {
-                    hasFocus -> AnimationUtils.loadAnimation(context, R.anim.zoom_in)
-                    else -> AnimationUtils.loadAnimation(context, R.anim.zoom_out)
-                }
-                binding.ivPeopleImage.startAnimation(animation)
-                animation.fillAfter = true
+                TvFocusZoom.apply(binding.ivPeopleImage, hasFocus)
             }
         }
 
@@ -146,24 +147,10 @@ class PeopleViewHolder(
         }
 
         binding.tvPeopleName.text = people.name
-        if (ExperimentalMobileDesign.enabled()) {
-            runCatching {
-                (binding.ivPeopleImage as? com.google.android.material.imageview.ShapeableImageView)?.apply {
-                    strokeColor = android.content.res.ColorStateList.valueOf(
-                        com.google.android.material.color.MaterialColors.getColor(
-                            this, androidx.appcompat.R.attr.colorPrimary,
-                        ),
-                    )
-                    strokeWidth = 2.5f * resources.displayMetrics.density
-                }
-            }
-            if (binding.root.getTag(R.id.exp_enter_animated_tag) != true) {
-                binding.root.setTag(R.id.exp_enter_animated_tag, true)
-                ExpMotion.kenBurns(binding.ivPeopleImage, drift = true)
-                ExpMotion.revealHeader(binding.tvPeopleName)
-                ExpMotion.popIn(binding.root)
-                ExpMotion.popIn(binding.ivPeopleImage)
-            }
+        binding.tvPeopleCharacter.apply {
+            val role = people.character?.takeIf { it.isNotBlank() }
+            text = role
+            visibility = if (role == null) View.GONE else View.VISIBLE
         }
     }
 }

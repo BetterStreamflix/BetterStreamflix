@@ -121,7 +121,7 @@ class SearchMobileFragment : Fragment() {
                         ExpMotion.fadeOutAndHide(binding.isLoading.root)
                     }
                     is State.FailedSearching -> {
-                        if (http409Guard.handle(requireContext(), state.error) { viewModel.search(viewModel.query) }) {
+                        if (http409Guard.handle(requireContext(), state.error) { retryLastSearch() }) {
                                 return@collect
                             }
                         if (!ExperimentalMobileDesign.enabled()) {
@@ -138,7 +138,7 @@ class SearchMobileFragment : Fragment() {
                                 com.dskja.betterstreamflix.utils.ExpPressEffects.showLoadingSkeleton(root, false)
                                 gIsLoadingRetry.visibility = View.VISIBLE
                                 com.dskja.betterstreamflix.utils.ExpPressEffects.animateLoadingError(root)
-                                val doRetry = { viewModel.search(viewModel.query) }
+                                val doRetry = { retryLastSearch() }
                                 btnIsLoadingRetry.setOnClickListener { doRetry() }
                                 btnIsLoadingClearCache.setOnClickListener {
                                     CacheUtils.clearAppCache(requireContext())
@@ -163,6 +163,16 @@ class SearchMobileFragment : Fragment() {
         }
         super.onDestroyView()
         _binding = null
+    }
+
+    private fun retryLastSearch() {
+        val query = viewModel.query
+        if (binding.swGlobalSearch.isChecked) {
+            val currentLanguage = UserPreferences.currentProvider?.language ?: "es"
+            viewModel.searchGlobal(query, currentLanguage)
+        } else {
+            viewModel.search(query)
+        }
     }
 
     private fun initializeSearch() {
@@ -232,7 +242,12 @@ class SearchMobileFragment : Fragment() {
                 binding.btnSearchVoice.clearAnimation()
                 binding.etSearch.setText(query)
                 SearchRecentStore.remember(requireContext(), query)
-                viewModel.search(query)
+                if (binding.swGlobalSearch.isChecked) {
+                    val currentLanguage = UserPreferences.currentProvider?.language ?: "es"
+                    viewModel.searchGlobal(query, currentLanguage)
+                } else {
+                    viewModel.search(query)
+                }
                 refreshRecentSearches()
             },
             onError = { msg ->

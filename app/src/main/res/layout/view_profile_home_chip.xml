@@ -9,6 +9,7 @@
     android:contentDescription="@string/profile_switch_title"
     android:elevation="12dp"
     android:focusable="true"
+    android:focusableInTouchMode="true"
     android:gravity="center"
     android:orientation="horizontal">
 

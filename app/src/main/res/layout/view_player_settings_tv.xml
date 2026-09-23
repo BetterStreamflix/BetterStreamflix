@@ -6,12 +6,15 @@
     android:layout_height="match_parent">
 
     <androidx.constraintlayout.widget.ConstraintLayout
-        android:layout_width="350dp"
+        android:layout_width="0dp"
         android:layout_height="0dp"
         android:background="#202020"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintTop_toTopOf="parent">
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintWidth_max="@dimen/player_settings_panel_max_width"
+        app:layout_constraintWidth_min="@dimen/player_settings_panel_min_width"
+        app:layout_constraintWidth_percent="0.30">
 
         <TextView
             android:id="@+id/tv_settings_header"
@@ -20,7 +23,7 @@
             android:layout_marginStart="24dp"
             android:layout_marginTop="32dp"
             android:layout_marginEnd="24dp"
-            android:textColor="#FFFFFF"
+            android:textColor="@color/white"
             android:textSize="20sp"
             android:textStyle="bold"
             app:layout_constraintEnd_toEndOf="parent"

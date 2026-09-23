@@ -1,6 +1,7 @@
 package com.dskja.betterstreamflix.providers
 
 import android.util.Base64
+import com.dskja.betterstreamflix.BetterStreamflixApp
 import com.dskja.betterstreamflix.adapters.AppAdapter
 import com.dskja.betterstreamflix.extractors.Extractor
 import com.dskja.betterstreamflix.utils.UserPreferences
@@ -391,7 +392,7 @@ object MStreamProvider : Provider {
     interface MStreamService {
         companion object {
             private fun getOkHttpClient(): OkHttpClient {
-                val appCache = Cache(File("cacheDir", "okhttpcache"), 10 * 1024 * 1024)
+                val appCache = Cache(File(BetterStreamflixApp.instance.cacheDir, "okhttpcache"), 10 * 1024 * 1024)
                 val clientBuilder = NetworkClient.default.newBuilder()
                     .cache(appCache)
                     .readTimeout(30, TimeUnit.SECONDS)

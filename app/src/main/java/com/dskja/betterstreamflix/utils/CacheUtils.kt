@@ -1,19 +1,46 @@
 package com.dskja.betterstreamflix.utils
 
+import android.app.Activity
 import android.content.Context
+import android.content.ContextWrapper
+import android.os.Handler
+import android.os.Looper
 import android.util.Log
 import android.webkit.WebView
+import androidx.fragment.app.FragmentActivity
 import com.bumptech.glide.Glide
+import com.dskja.betterstreamflix.fragments.player.PlayerMobileFragment
+import com.dskja.betterstreamflix.fragments.player.PlayerTvFragment
 import java.io.File
 
 object CacheUtils {
     private const val TAG = "CacheUtils"
 
+    /**
+     * Only these top-level [Context.getCacheDir] children are safe to wipe.
+     * Unknown files (e.g. active `stream.m3u8`, tmp subtitle downloads) must survive.
+     */
+    private val SAFE_CACHE_SUBDIRS = setOf(
+        "image_manager_disk_cache", // Glide default disk cache
+        "glide-okhttp-cache",       // GlideCustomModule OkHttp cache
+        "okhttpcache",              // provider OkHttp caches
+        "mkissa_okhttpcache",
+        "http_cache",
+        "WebView",
+        "org.chromium.android_webview",
+    )
+
     fun clearAppCache(context: Context) {
-        Log.d(TAG, "Inizio pulizia cache completa...")
+        if (isPlaybackActive(context)) {
+            Log.i(TAG, "Skip cache wipe — playback is active")
+            return
+        }
+
+        Log.d(TAG, "Inizio pulizia cache (safe subdirs only)...")
         try {
-            context.cacheDir?.deleteRecursively()
-            Log.d(TAG, "Cache interna eliminata.")
+            deleteKnownSafeCacheChildren(context.cacheDir)
+            deleteKnownSafeCacheChildren(context.externalCacheDir)
+            Log.d(TAG, "Cache sicura eliminata.")
         } catch (e: Exception) {
             Log.e(TAG, "Errore eliminazione cache interna: ${e.message}")
         }
@@ -32,15 +59,61 @@ object CacheUtils {
             Log.e(TAG, "Errore Glide: ${e.message}")
         }
 
-        try {
-            WebView(context).apply {
-                clearCache(true)
-                destroy()
+        clearWebViewCacheOnMainThread(context)
+    }
+
+    private fun deleteKnownSafeCacheChildren(cacheRoot: File?) {
+        if (cacheRoot == null || !cacheRoot.isDirectory) return
+        val children = cacheRoot.listFiles() ?: return
+        for (child in children) {
+            if (!child.isDirectory) {
+                // Never delete unknown top-level files (playback temps, etc.).
+                Log.d(TAG, "Skip unknown cache file: ${child.name}")
+                continue
             }
-            Log.d(TAG, "Cache WebView eliminata.")
-        } catch (e: Exception) {
-            Log.e(TAG, "Errore WebView: ${e.message}")
+            if (child.name !in SAFE_CACHE_SUBDIRS) {
+                Log.d(TAG, "Skip unknown cache dir: ${child.name}")
+                continue
+            }
+            runCatching {
+                child.deleteRecursively()
+                Log.d(TAG, "Deleted cache dir: ${child.name}")
+            }.onFailure {
+                Log.e(TAG, "Failed deleting ${child.name}: ${it.message}")
+            }
         }
+    }
+
+    private fun clearWebViewCacheOnMainThread(context: Context) {
+        val clear: () -> Unit = {
+            try {
+                WebView(context.applicationContext).apply {
+                    clearCache(true)
+                    destroy()
+                }
+                Log.d(TAG, "Cache WebView eliminata.")
+            } catch (e: Exception) {
+                Log.e(TAG, "Errore WebView: ${e.message}")
+            }
+            Unit
+        }
+        if (Looper.myLooper() == Looper.getMainLooper()) {
+            clear()
+        } else {
+            Handler(Looper.getMainLooper()).post(clear)
+        }
+    }
+
+    private fun isPlaybackActive(context: Context): Boolean {
+        val activity = context.findActivity() as? FragmentActivity ?: return false
+        val current = activity.getCurrentFragment()
+        return current is PlayerMobileFragment || current is PlayerTvFragment
+    }
+
+    private tailrec fun Context.findActivity(): Activity? = when (this) {
+        is Activity -> this
+        is ContextWrapper -> baseContext.findActivity()
+        else -> null
     }
 
     fun getCacheSize(context: Context): Long {
@@ -71,9 +144,9 @@ object CacheUtils {
         val currentSize = getCacheSize(context)
         val thresholdBytes = thresholdMb * 1024 * 1024
         val currentMb = currentSize / (1024 * 1024)
-        
+
         Log.d(TAG, "Controllo cache: Attuale = ${currentMb}MB, Soglia = ${thresholdMb}MB")
-        
+
         if (currentSize > thresholdBytes) {
             Log.i(TAG, "Soglia superata! Avvio pulizia automatica...")
             clearAppCache(context)

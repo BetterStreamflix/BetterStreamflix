@@ -51,7 +51,6 @@
         android:textColor="#99FFFFFF"
         android:textSize="11sp"
         android:textStyle="bold"
-        android:visibility="gone"
         tools:visibility="visible" />
 
     <TextView
@@ -63,7 +62,6 @@
         android:lineSpacingExtra="3dp"
         android:textColor="#E6FFFFFF"
         android:textSize="14sp"
-        android:visibility="gone"
         tools:text="Trey Parker, Matt Stone"
         tools:visibility="visible" />
 
@@ -79,7 +77,6 @@
         android:textColor="#99FFFFFF"
         android:textSize="11sp"
         android:textStyle="bold"
-        android:visibility="gone"
         tools:visibility="visible" />
 
     <TextView
@@ -91,7 +88,6 @@
         android:lineSpacingExtra="3dp"
         android:textColor="#E6FFFFFF"
         android:textSize="14sp"
-        android:visibility="gone"
         tools:text="Jane Doe"
         tools:visibility="visible" />
 
@@ -107,7 +103,6 @@
         android:textColor="#99FFFFFF"
         android:textSize="11sp"
         android:textStyle="bold"
-        android:visibility="gone"
         tools:visibility="visible" />
 
     <TextView
@@ -119,7 +114,6 @@
         android:lineSpacingExtra="3dp"
         android:textColor="#E6FFFFFF"
         android:textSize="14sp"
-        android:visibility="gone"
         tools:text="Actor One, Actor Two, Actor Three"
         tools:visibility="visible" />
 </LinearLayout>

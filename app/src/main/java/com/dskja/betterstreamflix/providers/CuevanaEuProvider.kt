@@ -2,6 +2,7 @@ package com.dskja.betterstreamflix.providers
 
 import android.util.Log
 import com.tanasi.retrofit_jsoup.converter.JsoupConverterFactory
+import com.dskja.betterstreamflix.BetterStreamflixApp
 import com.dskja.betterstreamflix.adapters.AppAdapter
 import com.dskja.betterstreamflix.extractors.Extractor
 import com.dskja.betterstreamflix.models.*
@@ -64,7 +65,7 @@ object CuevanaEuProvider : Provider {
     private val json = Json { ignoreUnknownKeys = true }
 
     private fun getOkHttpClient(): okhttp3.OkHttpClient {
-        val appCache = Cache(File("cacheDir", "okhttpcache"), 10 * 1024 * 1024)
+        val appCache = Cache(File(BetterStreamflixApp.instance.cacheDir, "okhttpcache"), 10 * 1024 * 1024)
         val clientBuilder = okhttp3.OkHttpClient.Builder()
             .cache(appCache)
             .readTimeout(30, TimeUnit.SECONDS)
@@ -545,7 +546,7 @@ object CuevanaEuProvider : Provider {
                                 id = cast.id.toString(),
                                 name = cast.name,
                                 image = cast.profilePath?.w500,
-                            )
+                            ).also { it.character = cast.character.takeIf { role -> role.isNotBlank() } }
                         } ?: emptyList(),
                         recommendations = tmdbMovie.recommendations?.results?.mapNotNull { multi ->
                             when (multi) {
@@ -736,7 +737,7 @@ object CuevanaEuProvider : Provider {
                                 id = cast.id.toString(),
                                 name = cast.name,
                                 image = cast.profilePath?.w500,
-                            )
+                            ).also { it.character = cast.character.takeIf { role -> role.isNotBlank() } }
                         } ?: emptyList(),
                         recommendations = tmdbTv.recommendations?.results?.mapNotNull { multi ->
                             when (multi) {

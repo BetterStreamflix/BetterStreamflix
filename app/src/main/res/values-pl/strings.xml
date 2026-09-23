@@ -167,4 +167,18 @@
     <string name="settings_app_language_polish">Polski</string>
     <string name="supabase_instructions_title">Instrukcje</string>
     <string name="supabase_instructions_summary">Otwórz w przeglądarce szczegółową instrukcję konfiguracji konta i synchronizacji Supabase</string>
+    <string name="home_swiper_resume">Wznów · %1$d%%</string>
+    <string name="home_swiper_continue">Kontynuuj oglądanie</string>
+    <string name="home_swiper_released_year">%1$s</string>
+    <string name="home_swiper_more_info">Więcej info</string>
+    <string name="home_swiper_trailer">Zwiastun</string>
+    <string name="home_featured_synthesized">Wyróżnione przywrócone z katalogu</string>
+    <string name="simkl_sync_failed">Nie udało się zsynchronizować — zapisano lokalnie</string>
+    <string name="home_swiper_my_list">+ Moja lista</string>
+    <string name="home_swiper_in_my_list">Na mojej liście</string>
+    <string name="home_swiper_all_episodes">Wszystkie odcinki dostępne</string>
+    <string name="home_swiper_now_playing">Teraz w kinach</string>
+    <string name="home_featured_title">Wyróżnione</string>
+    <string name="exp_swiper_page">Wyróżnione: %1$s</string>
+    <string name="home_featured_page">Wyróżnione: %1$s</string>
 </resources>

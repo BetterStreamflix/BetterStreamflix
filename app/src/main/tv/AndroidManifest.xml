@@ -60,7 +60,7 @@
             android:name=".cast.CastExpandedControllerActivity"
             android:exported="false"
             android:launchMode="singleTask"
-            android:theme="@style/Theme.AppCompat.NoActionBar" />
+            android:theme="@style/AppTheme.Tv" />
 
         <activity
             android:name=".activities.tools.TraktOAuthActivity"

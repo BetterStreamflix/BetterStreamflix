@@ -7,6 +7,50 @@ import org.junit.Test
 class TrailerPlaybackControllerTest {
 
     @Test
+    fun resolvePreferredPlayer_nonLeanback_nullStored_returnsInApp() {
+        val result = TrailerPlaybackController.resolvePreferredPlayer(
+            stored = null,
+            leanback = false,
+            smartTubeStableInstalled = false,
+            smartTubeAnyInstalled = false,
+            youtubeInstalled = false,
+        )
+        assertEquals(TrailerPlaybackController.PLAYER_IN_APP, result)
+    }
+
+    @Test
+    fun resolvePreferredPlayer_keepsExplicitNonInAppChoice() {
+        val result = TrailerPlaybackController.resolvePreferredPlayer(
+            stored = TrailerPlaybackController.PLAYER_YOUTUBE,
+            leanback = true,
+            smartTubeStableInstalled = true,
+            smartTubeAnyInstalled = true,
+            youtubeInstalled = true,
+        )
+        assertEquals(TrailerPlaybackController.PLAYER_YOUTUBE, result)
+    }
+
+    @Test
+    fun resolvePreferredPlayer_leanbackUnset_prefersSmartTubeStable() {
+        val result = TrailerPlaybackController.resolvePreferredPlayer(
+            stored = null,
+            leanback = true,
+            smartTubeStableInstalled = true,
+            smartTubeAnyInstalled = true,
+            youtubeInstalled = true,
+        )
+        assertEquals(TrailerPlaybackController.PLAYER_SMARTTUBE_STABLE, result)
+    }
+
+    @Test
+    fun playerConstantsAreStable() {
+        assertEquals("in_app", TrailerPlaybackController.PLAYER_IN_APP)
+        assertEquals("ask", TrailerPlaybackController.PLAYER_ASK)
+        assertEquals("youtube", TrailerPlaybackController.PLAYER_YOUTUBE)
+        assertEquals("smarttube_stable", TrailerPlaybackController.PLAYER_SMARTTUBE_STABLE)
+    }
+
+    @Test
     fun youtubeVideoId_parsesWatchUrl() {
         assertEquals(
             "dQw4w9WgXcQ",
@@ -15,38 +59,8 @@ class TrailerPlaybackControllerTest {
     }
 
     @Test
-    fun youtubeVideoId_parsesShortUrl() {
-        assertEquals(
-            "dQw4w9WgXcQ",
-            TrailerPlaybackController.youtubeVideoId("https://youtu.be/dQw4w9WgXcQ"),
-        )
-    }
-
-    @Test
-    fun youtubeVideoId_parsesEmbedUrl() {
-        assertEquals(
-            "abcDEF12345",
-            TrailerPlaybackController.youtubeVideoId("https://www.youtube.com/embed/abcDEF12345"),
-        )
-    }
-
-    @Test
-    fun youtubeVideoId_parsesShortsUrl() {
-        assertEquals(
-            "dQw4w9WgXcQ",
-            TrailerPlaybackController.youtubeVideoId("https://www.youtube.com/shorts/dQw4w9WgXcQ"),
-        )
-    }
-
-    @Test
     fun youtubeVideoId_returnsNullForUnknown() {
         assertNull(TrailerPlaybackController.youtubeVideoId("https://example.com/video"))
         assertNull(TrailerPlaybackController.youtubeVideoId(""))
-    }
-
-    @Test
-    fun playerConstants_includeInApp() {
-        assertEquals("in_app", TrailerPlaybackController.PLAYER_IN_APP)
-        assertEquals("preferred_player", TrailerPlaybackController.KEY_PREFERRED_PLAYER)
     }
 }

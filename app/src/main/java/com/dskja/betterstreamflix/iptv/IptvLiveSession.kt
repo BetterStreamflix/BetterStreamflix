@@ -34,14 +34,16 @@ object IptvLiveSession {
     fun remember(list: List<Channel>, provider: Provider? = null) {
         if (list.isEmpty()) return
         val name = provider?.name
-        if (name != null && providerName != null && providerName != name) {
+        synchronized(this) {
+            if (name != null && providerName != null && providerName != name) {
+                channels.clear()
+            }
+            providerName = name ?: providerName
+            val byId = channels.associateBy { it.id }.toMutableMap()
+            list.forEach { byId[it.id] = it }
             channels.clear()
+            channels.addAll(byId.values)
         }
-        providerName = name ?: providerName
-        val byId = channels.associateBy { it.id }.toMutableMap()
-        list.forEach { byId[it.id] = it }
-        channels.clear()
-        channels.addAll(byId.values)
     }
 
     fun rememberShows(shows: List<TvShow>, provider: Provider? = null) {
@@ -72,17 +74,21 @@ object IptvLiveSession {
     }
 
     fun previous(): Channel? {
-        val idx = currentIndex()
+        val snapshot = channels.toList()
+        val id = currentId ?: return null
+        val idx = snapshot.indexOfFirst { it.id == id }
         if (idx <= 0) return null
-        val channel = channels[idx - 1]
+        val channel = snapshot[idx - 1]
         currentId = channel.id
         return channel
     }
 
     fun next(): Channel? {
-        val idx = currentIndex()
-        if (idx < 0 || idx >= channels.lastIndex) return null
-        val channel = channels[idx + 1]
+        val snapshot = channels.toList()
+        val id = currentId ?: return null
+        val idx = snapshot.indexOfFirst { it.id == id }
+        if (idx < 0 || idx >= snapshot.lastIndex) return null
+        val channel = snapshot[idx + 1]
         currentId = channel.id
         return channel
     }

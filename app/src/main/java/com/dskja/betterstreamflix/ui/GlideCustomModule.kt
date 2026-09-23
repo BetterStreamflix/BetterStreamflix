@@ -4,11 +4,16 @@ import android.content.Context
 import android.graphics.drawable.PictureDrawable
 import android.webkit.CookieManager
 import com.bumptech.glide.Glide
+import com.bumptech.glide.GlideBuilder
 import com.bumptech.glide.annotation.GlideModule
+import com.bumptech.glide.load.engine.cache.LruResourceCache
+import com.bumptech.glide.load.engine.bitmap_recycle.LruBitmapPool
+import com.bumptech.glide.load.engine.cache.MemorySizeCalculator
 import com.bumptech.glide.load.model.GlideUrl
 import com.bumptech.glide.module.AppGlideModule
 import com.caverock.androidsvg.SVG
 import com.dskja.betterstreamflix.utils.ArtworkRequestHeaders
+import com.dskja.betterstreamflix.utils.DeviceCapabilities
 import com.dskja.betterstreamflix.utils.DnsResolver
 import com.dskja.betterstreamflix.utils.NetworkClient
 import okhttp3.*
@@ -24,6 +29,16 @@ import javax.net.ssl.X509TrustManager
 
 @GlideModule
 class GlideCustomModule : AppGlideModule() {
+
+    override fun applyOptions(context: Context, builder: GlideBuilder) {
+        if (!DeviceCapabilities.shouldReduceHomeEffects(context)) return
+        // Fire Stick / low-RAM: shrink Glide pools; MemoryCategory.LOW applied in app onCreate.
+        val calculator = MemorySizeCalculator.Builder(context).build()
+        val memCache = (calculator.memoryCacheSize * 0.5f).toLong().coerceAtLeast(1024L * 1024L)
+        val bitmapPool = (calculator.bitmapPoolSize * 0.5f).toLong().coerceAtLeast(1024L * 1024L)
+        builder.setMemoryCache(LruResourceCache(memCache))
+        builder.setBitmapPool(LruBitmapPool(bitmapPool))
+    }
 
     private fun getOkHttpClient(context: Context): OkHttpClient {
         val appCache = Cache(File(context.cacheDir, "glide-okhttp-cache"), 10 * 1024 * 1024)

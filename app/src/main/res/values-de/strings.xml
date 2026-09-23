@@ -44,6 +44,7 @@
     <string name="detail_tab_trailer">Trailer</string>
     <string name="detail_tab_about">Info</string>
     <string name="detail_trailer_empty">Noch keine Trailer für diesen Titel gefunden</string>
+    <string name="detail_similar_empty">Noch keine ähnlichen Titel gefunden</string>
     <string name="detail_featuring_fmt">Mit: %1$s</string>
     <string name="detail_directors_fmt">Regie: %1$s</string>
     <string name="detail_actors_fmt">Schauspieler: %1$s</string>
@@ -598,6 +599,19 @@
     <string name="settings_tmdb_clear_cache_title">TMDb-Cache leeren</string>
     <string name="settings_tmdb_clear_cache_summary">Gecachte Details, IMDb-Finds und Suchtreffer verwerfen</string>
     <string name="settings_tmdb_cache_cleared">TMDb-Cache geleert</string>
+    <string name="settings_enable_tmdb_logos_title">Titel-Logos</string>
+    <string name="settings_enable_tmdb_logos_summary">TMDb-Titel-Logos auf Featured und Detailseiten zeigen</string>
+    <string name="settings_tmdb_logo_quality_title">Logo-Bildqualität</string>
+    <string name="settings_tmdb_logo_quality_summary">Original oder w1280 zuerst beim Laden der Logos</string>
+    <string name="settings_tmdb_clear_logo_cache_title">Titel-Logo-Cache leeren</string>
+    <string name="settings_tmdb_clear_logo_cache_summary">Nur gecachte Titel-Logo-URLs verwerfen (andere TMDb-Daten bleiben)</string>
+    <string name="settings_tmdb_logo_cache_cleared">Titel-Logo-Cache geleert</string>
+    <string name="settings_tmdb_logo_telemetry_title">Titel-Logo-Statistik</string>
+    <string name="settings_tmdb_logo_telemetry_summary">Tippen zum Aktualisieren der Logo-Pipeline-Zähler</string>
+    <string name="settings_tmdb_logo_miss_ttl_title">Logo-Miss-Cache-TTL</string>
+    <string name="settings_tmdb_logo_miss_ttl_summary">Wie lange merken, dass ein Titel kein Logo hat</string>
+    <string name="settings_tmdb_logo_hit_ttl_title">Logo-Hit-Cache-TTL</string>
+    <string name="settings_tmdb_logo_hit_ttl_summary">Wie lange eine erfolgreiche Logo-URL behalten wird</string>
     <string name="settings_category_subdl">SubDL-Einstellungen</string>
     <string name="settings_subdl_api_key">SubDL API-Key</string>
     <string name="settings_subdl_api_key_summary">Eigener SubDL API-Key für Untertitel</string>
@@ -733,6 +747,7 @@
     <string name="exp_cd_rewind">Zurückspulen</string>
     <string name="exp_cd_forward">Vorspulen</string>
     <string name="exp_cd_replay">Wiederholen</string>
+    <string name="exp_cd_play_pause">Wiedergeben oder pausieren</string>
     <string name="exp_cd_lock">Steuerung sperren</string>
     <string name="exp_cd_unlock">Steuerung entsperren</string>
     <string name="exp_cd_pip">Bild-in-Bild</string>
@@ -1357,4 +1372,12 @@
     <string name="platform_test_ok">Verbindung OK</string>
     <string name="platform_test_fail">Verbindung fehlgeschlagen</string>
     <string name="platform_url_invalid">Gültige http(s)-URL eingeben</string>
+    <string name="home_swiper_resume">Fortsetzen · %1$d%%</string>
+    <string name="home_swiper_continue">Weitersehen</string>
+    <string name="home_swiper_released_year">%1$s</string>
+    <string name="home_swiper_more_info">Mehr Infos</string>
+    <string name="home_swiper_trailer">Trailer</string>
+    <string name="home_featured_synthesized">Empfohlen aus dem Katalog wiederhergestellt</string>
+    <string name="simkl_sync_failed">Liste nicht synchronisiert — lokal gespeichert</string>
+    <string name="home_featured_page">Empfohlen: %1$s</string>
 </resources>

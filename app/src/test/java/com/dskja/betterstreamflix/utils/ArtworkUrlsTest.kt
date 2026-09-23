@@ -29,6 +29,19 @@ class ArtworkUrlsTest {
     }
 
     @Test
+    fun preferLogoPrefersOriginalThenHero() {
+        assertEquals(
+            "https://image.tmdb.org/t/p/original/logo.png",
+            ArtworkUrls.preferLogo("https://image.tmdb.org/t/p/w500/logo.png"),
+        )
+        assertEquals(
+            "https://cdn.example.com/logo.png",
+            ArtworkUrls.preferLogo("https://cdn.example.com/logo.png"),
+        )
+        assertNull(ArtworkUrls.preferLogo("  "))
+    }
+
+    @Test
     fun blankUrlsBecomeNull() {
         assertNull(ArtworkUrls.preferHero("   "))
         assertNull(ArtworkUrls.preferOriginal(null))
@@ -50,5 +63,14 @@ class ArtworkUrlsTest {
                 poster = "https://image.tmdb.org/t/p/w500/poster.jpg",
             ),
         )
+    }
+
+    @Test
+    fun logoFileIdentity_collapsesSizeTiers() {
+        val a = ArtworkUrls.logoFileIdentity("https://image.tmdb.org/t/p/original/logo.png")
+        val b = ArtworkUrls.logoFileIdentity("https://image.tmdb.org/t/p/w1280/logo.png")
+        val c = ArtworkUrls.logoFileIdentity("https://image.tmdb.org/t/p/w300/logo.png")
+        assertEquals(a, b)
+        assertEquals(b, c)
     }
 }

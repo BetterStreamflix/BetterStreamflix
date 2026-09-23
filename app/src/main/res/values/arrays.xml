@@ -137,6 +137,32 @@
         <item>cross_provider</item>
     </string-array>
 
+    <string-array name="tmdb_logo_quality_entries">
+        <item>Original first</item>
+        <item>w1280 first</item>
+    </string-array>
+    <string-array name="tmdb_logo_quality_values">
+        <item>original_first</item>
+        <item>w1280_first</item>
+    </string-array>
+
+    <string-array name="tmdb_logo_ttl_entries">
+        <item>1 hour</item>
+        <item>6 hours</item>
+        <item>12 hours</item>
+        <item>24 hours</item>
+        <item>48 hours</item>
+        <item>168 hours</item>
+    </string-array>
+    <string-array name="tmdb_logo_ttl_values">
+        <item>1</item>
+        <item>6</item>
+        <item>12</item>
+        <item>24</item>
+        <item>48</item>
+        <item>168</item>
+    </string-array>
+
     <string-array name="download_quality_preset_entries">
         <item>@string/download_preset_best</item>
         <item>@string/download_preset_data_saver</item>

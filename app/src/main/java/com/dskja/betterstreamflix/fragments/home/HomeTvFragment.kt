@@ -22,20 +22,25 @@ import com.dskja.betterstreamflix.models.Category
 import com.dskja.betterstreamflix.models.Episode
 import com.dskja.betterstreamflix.models.Movie
 import com.dskja.betterstreamflix.models.TvShow
-import com.dskja.betterstreamflix.utils.viewModelsFactory
-import kotlinx.coroutines.Runnable
 import com.dskja.betterstreamflix.utils.CacheUtils
+import com.dskja.betterstreamflix.utils.DeviceCapabilities
 import com.dskja.betterstreamflix.utils.ExpEmptyChrome
 import com.dskja.betterstreamflix.utils.ExpMotion
-import com.dskja.betterstreamflix.utils.ExperimentalMobileDesign
 import com.dskja.betterstreamflix.utils.Http409CacheGuard
+import kotlinx.coroutines.Runnable
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.merge
 import kotlinx.coroutines.launch
-import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import com.dskja.betterstreamflix.utils.LoggingUtils
 import com.dskja.betterstreamflix.utils.UserPreferences
 import com.dskja.betterstreamflix.utils.ProviderChangeNotifier
 import com.dskja.betterstreamflix.utils.HomeCatalogPipeline
+import com.dskja.betterstreamflix.ui.FeaturedAdvancePolicy
+import com.dskja.betterstreamflix.ui.FeaturedHeroController
+import com.dskja.betterstreamflix.ui.FeaturedTvRotation
+import com.dskja.betterstreamflix.logo.FeaturedLogoEnrich
 
 class HomeTvFragment : Fragment() {
 
@@ -44,22 +49,21 @@ class HomeTvFragment : Fragment() {
     private var _binding: FragmentHomeTvBinding? = null
     private val binding get() = _binding!!
 
-    private val viewModel: HomeViewModel
-        get() {
-            val providerKey = UserPreferences.currentProvider?.name ?: "default"
-            val factory = object : ViewModelProvider.Factory {
-                override fun <T : ViewModel> create(modelClass: Class<T>): T {
-                    @Suppress("UNCHECKED_CAST")
-                    return HomeViewModel() as T
-                }
-            }
-            return ViewModelProvider(this, factory)[providerKey, HomeViewModel::class.java]
-        }
+    private val viewModel: HomeViewModel by lazy {
+        ViewModelProvider(this)[HomeViewModel::class.java]
+    }
 
     private val appAdapter = AppAdapter()
 
     private val swiperHandler = Handler(Looper.getMainLooper())
     private var isBackgroundPinned = false
+    var featuredChromeFocused = false
+        private set
+
+    fun setFeaturedChromeFocused(focused: Boolean) {
+        featuredChromeFocused = focused
+        if (!focused) resetSwiperSchedule()
+    }
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -75,67 +79,63 @@ class HomeTvFragment : Fragment() {
 
         initializeHome()
         refreshProfileChip()
-        if (ExperimentalMobileDesign.enabled()) {
-            ExpMotion.enterScreen(binding.root)
-        }
 
-        // Lightweight refresh when provider changes
+        // Single HomeViewModel (no provider key). ViewModel owns getHome on provider change;
+        // this collector only binds UI and resets Featured timers when the active provider flips.
         viewLifecycleOwner.lifecycleScope.launch {
-            ProviderChangeNotifier.providerChangeFlow.flowWithLifecycle(lifecycle, Lifecycle.State.STARTED).collect {
-                viewModel.getHome()
-            }
-        }
-
-        // Initial load
-        viewModel.getHome()
-
-        viewLifecycleOwner.lifecycleScope.launch {
-            viewModel.state.flowWithLifecycle(lifecycle, Lifecycle.State.STARTED).collect { state ->
-                when (state) {
-                    HomeViewModel.State.Loading -> binding.isLoading.apply {
-                        root.visibility = View.VISIBLE
-                        com.dskja.betterstreamflix.utils.ExpPressEffects.showLoadingSkeleton(root, true)
-                        gIsLoadingRetry.visibility = View.GONE
-                        hideCatalogWarning()
-                    }
-                    is HomeViewModel.State.SuccessLoading -> {
-                        displayHome(state.categories)
-                        binding.vgvHome.visibility = View.VISIBLE
-                        binding.isLoading.root.visibility = View.GONE
-                        com.dskja.betterstreamflix.utils.ExpPressEffects.showLoadingSkeleton(
-                            binding.isLoading.root, false,
-                        )
-                        showCatalogWarning(state.providerWarning)
-                    }
-                    is HomeViewModel.State.FailedLoading -> {
-                        if (http409Guard.handle(requireContext(), state.error) { viewModel.getHome() }) {
-                                return@collect
+            merge(
+                flowOf(Unit),
+                ProviderChangeNotifier.providerChangeFlow,
+            ).flowWithLifecycle(lifecycle, Lifecycle.State.STARTED)
+                .collectLatest {
+                    // Drop pending Featured advances from the previous provider/load.
+                    swiperHandler.removeCallbacksAndMessages(null)
+                    viewModel.state.collect { state ->
+                        when (state) {
+                            HomeViewModel.State.Loading -> binding.isLoading.apply {
+                                root.visibility = View.VISIBLE
+                                com.dskja.betterstreamflix.utils.ExpPressEffects.showLoadingSkeleton(root, true)
+                                gIsLoadingRetry.visibility = View.GONE
+                                hideCatalogWarning()
                             }
-                        if (!ExperimentalMobileDesign.enabled()) {
-                            Toast.makeText(
-                                requireContext(),
-                                state.error.message ?: "",
-                                Toast.LENGTH_SHORT
-                            ).show()
-                        }
-                        binding.isLoading.apply {
-                            com.dskja.betterstreamflix.utils.ExpPressEffects.showLoadingSkeleton(root, false)
-                            gIsLoadingRetry.visibility = View.VISIBLE
-                            com.dskja.betterstreamflix.utils.ExpPressEffects.animateLoadingError(root)
-                            btnIsLoadingRetry.setOnClickListener { viewModel.getHome() }
-                            btnIsLoadingClearCache.setOnClickListener {
-                                CacheUtils.clearAppCache(requireContext())
-                                com.dskja.betterstreamflix.utils.ExpDialogChrome.notify(requireContext(), getString(com.dskja.betterstreamflix.R.string.clear_cache_done), com.dskja.betterstreamflix.R.string.loading_error_clear_cache)
-                                viewModel.getHome()
+                            is HomeViewModel.State.SuccessLoading -> {
+                                displayHome(state.categories)
+                                binding.vgvHome.visibility = View.VISIBLE
+                                binding.isLoading.root.visibility = View.GONE
+                                com.dskja.betterstreamflix.utils.ExpPressEffects.showLoadingSkeleton(
+                                    binding.isLoading.root, false,
+                                )
+                                showCatalogWarning(state.providerWarning)
                             }
-                            btnIsLoadingErrorDetails.setOnClickListener {
-                                LoggingUtils.showErrorDialog(requireContext(), state.error)
+                            is HomeViewModel.State.FailedLoading -> {
+                                if (http409Guard.handle(requireContext(), state.error) { viewModel.getHome() }) {
+                                    return@collect
+                                }
+                                Toast.makeText(
+                                    requireContext(),
+                                    state.error.message ?: "",
+                                    Toast.LENGTH_SHORT
+                                ).show()
+                                binding.isLoading.apply {
+                                    com.dskja.betterstreamflix.utils.ExpPressEffects.showLoadingSkeleton(root, false)
+                                    gIsLoadingRetry.visibility = View.VISIBLE
+                                    com.dskja.betterstreamflix.utils.ExpPressEffects.animateLoadingError(root)
+                                    btnIsLoadingRetry.setOnClickListener { viewModel.getHome() }
+                                    btnIsLoadingClearCache.setOnClickListener {
+                                        CacheUtils.clearAppCache(requireContext())
+                                        com.dskja.betterstreamflix.utils.ExpDialogChrome.notify(requireContext(), getString(com.dskja.betterstreamflix.R.string.clear_cache_done), com.dskja.betterstreamflix.R.string.loading_error_clear_cache)
+                                        viewModel.getHome()
+                                    }
+                                    btnIsLoadingErrorDetails.setOnClickListener {
+                                        LoggingUtils.showErrorDialog(requireContext(), state.error)
+                                    }
+                                    binding.vgvHome.visibility = View.GONE
+                                    btnIsLoadingRetry.requestFocus()
+                                }
                             }
-                            binding.vgvHome.visibility = View.GONE
                         }
                     }
                 }
-            }
         }
     }
 
@@ -144,12 +144,12 @@ class HomeTvFragment : Fragment() {
         refreshProfileChip()
     }
     
+    // Restart the carousel when data is already loaded and the fragment is visible.
     override fun onStart() {
         super.onStart()
-        // Riavvia il carosello se i dati sono già stati caricati e il fragment è visibile
         appAdapter.items
             .filterIsInstance<Category>()
-            .firstOrNull { it.name == Category.FEATURED }
+            .firstOrNull { Category.isFeaturedName(it.name) }
             ?.let {
                 resetSwiperSchedule()
             }
@@ -171,11 +171,15 @@ class HomeTvFragment : Fragment() {
         val banner = _binding?.tvHomeCatalogWarning ?: return
         val text = warning?.takeIf { it.isNotBlank() }
         if (text == null) {
-            banner.visibility = View.GONE
-            banner.setOnClickListener(null)
+            hideCatalogWarning()
             return
         }
         banner.visibility = View.VISIBLE
+        banner.isFocusable = true
+        banner.isFocusableInTouchMode = true
+        banner.isClickable = true
+        banner.nextFocusDownId = binding.vgvHome.id
+        banner.nextFocusRightId = R.id.tv_home_profile_chip
         banner.text = text
         banner.contentDescription = getString(R.string.home_catalog_warning_tap_retry)
         banner.setOnClickListener { viewModel.getHome() }
@@ -183,6 +187,9 @@ class HomeTvFragment : Fragment() {
 
     private fun hideCatalogWarning() {
         _binding?.tvHomeCatalogWarning?.apply {
+            if (isFocused) clearFocus()
+            isFocusable = false
+            isFocusableInTouchMode = false
             visibility = View.GONE
             setOnClickListener(null)
         }
@@ -202,14 +209,10 @@ class HomeTvFragment : Fragment() {
                 textSizeSp = 12f,
             )
         chip.visibility = View.VISIBLE
-        if (ExperimentalMobileDesign.enabled()) {
-            chip.setBackgroundResource(ExperimentalMobileDesign.chipBackground())
-            with(com.dskja.betterstreamflix.utils.ExpPressEffects) { chip.applyExpPress() }
-            if (chip.getTag(R.id.exp_enter_animated_tag) != true) {
-                chip.setTag(R.id.exp_enter_animated_tag, true)
-                ExpMotion.popIn(chip)
-            }
-        }
+        chip.isFocusable = true
+        chip.isFocusableInTouchMode = true
+        chip.isClickable = true
+        chip.nextFocusDownId = binding.vgvHome.id
         chip.setOnClickListener {
             ExpMotion.hapticTap(it)
             com.dskja.betterstreamflix.fragments.settings.ProfilesSettingsController.showSwitchDialog(this) {
@@ -225,20 +228,32 @@ class HomeTvFragment : Fragment() {
     fun updateBackground(uri: String?, swiperHasFocus: Boolean? = false) {
         if (swiperHasFocus == null && isBackgroundPinned) return
         if (swiperHasFocus == null && !swiperHasLastFocus) return
+        val target = _binding?.ivHomeBackground ?: return
+        if (!target.isAttachedToWindow) return
 
-        Glide.with(requireContext())
+        var request = Glide.with(target)
             .load(uri)
-            .transition(DrawableTransitionOptions.withCrossFade())
-            .into(binding.ivHomeBackground)
+            .centerCrop()
+            .thumbnail(0.25f)
+        if (!DeviceCapabilities.shouldReduceHomeEffects(target.context)) {
+            request = request.transition(DrawableTransitionOptions.withCrossFade(180))
+        }
+        request.into(target)
         swiperHasLastFocus = swiperHasFocus ?: swiperHasLastFocus
     }
 
     fun pinBackground(uri: String?) {
         isBackgroundPinned = true
-        Glide.with(requireContext())
+        val target = _binding?.ivHomeBackground ?: return
+        if (!target.isAttachedToWindow) return
+        var request = Glide.with(target)
             .load(uri)
-            .transition(DrawableTransitionOptions.withCrossFade())
-            .into(binding.ivHomeBackground)
+            .centerCrop()
+            .thumbnail(0.25f)
+        if (!DeviceCapabilities.shouldReduceHomeEffects(target.context)) {
+            request = request.transition(DrawableTransitionOptions.withCrossFade(180))
+        }
+        request.into(target)
     }
 
     fun releasePinnedBackground() {
@@ -254,35 +269,36 @@ class HomeTvFragment : Fragment() {
                 stateRestorationPolicy = RecyclerView.Adapter.StateRestorationPolicy.PREVENT_WHEN_EMPTY
             }
             setItemSpacing(resources.getDimension(R.dimen.home_spacing).toInt() * 2)
+            // Focus the catalog grid (first row / Featured CTAs), never the fragment root.
+            requestFocus()
         }
-
-        binding.root.requestFocus()
     }
 
     private fun displayHome(categories: List<Category>) {
         categories
-            .find { it.name == Category.FEATURED }
-            ?.also {
-                val index = appAdapter.items
+            .find { Category.isFeaturedName(it.name) }
+            ?.also { featured ->
+                val previous = appAdapter.items
                     .filterIsInstance<Category>()
-                    .find { item -> item.name == Category.FEATURED }
-                    ?.selectedIndex
-                    ?: 0
-                it.selectedIndex = index
-                
-                // Initialize background with first item from featured category immediately
-                val firstItem = it.list.getOrNull(index)
-                val poster = when (firstItem) {
-                    is Movie -> firstItem.banner
-                    is TvShow -> firstItem.banner
-                    else -> null
-                }
-                // Force background update without waiting for focus
-                if (poster != null) {
+                    .find { item -> Category.isFeaturedName(item.name) }
+                val index = previous?.selectedIndex ?: 0
+                featured.selectedIndex = FeaturedTvRotation.coerceIndex(index, featured.list.size)
+
+                // Logo-only Room merges rematerialize SuccessLoading; don't restart the
+                // Featured timer or thrash the background unless the shelf identity changed.
+                val previousIds = previous?.list?.map(::featuredItemKey)
+                val nextIds = featured.list.map(::featuredItemKey)
+                val shelfIdentityChanged = previousIds != nextIds
+                val poster = FeaturedTvRotation.bannerOf(featured.list.getOrNull(featured.selectedIndex))
+                val previousPoster = FeaturedTvRotation.bannerOf(
+                    previous?.list?.getOrNull(previous.selectedIndex),
+                )
+                if (poster != null && (shelfIdentityChanged || poster != previousPoster)) {
                     updateBackground(poster, null)
                 }
-                
-                resetSwiperSchedule()
+                if (shelfIdentityChanged) {
+                    resetSwiperSchedule()
+                }
             }
 
         categories
@@ -329,7 +345,7 @@ class HomeTvFragment : Fragment() {
         val visibleCategories = HomeCatalogPipeline.isolateFeatured(categories)
         visibleCategories
             .onEach { category ->
-                if (category.name != Category.FEATURED &&
+                if (!Category.isFeaturedName(category.name) &&
                     category.name != getString(R.string.home_continue_watching)
                 ) {
                     category.list.forEach { show ->
@@ -341,8 +357,8 @@ class HomeTvFragment : Fragment() {
                     }
                 }
                 category.itemSpacing = resources.getDimension(R.dimen.home_spacing).toInt()
-                category.itemType = when (category.name) {
-                    Category.FEATURED -> AppAdapter.Type.CATEGORY_TV_SWIPER
+                category.itemType = when {
+                    Category.isFeaturedName(category.name) -> AppAdapter.Type.CATEGORY_TV_SWIPER
                     else -> AppAdapter.Type.CATEGORY_TV_ITEM
                 }
             }
@@ -351,7 +367,7 @@ class HomeTvFragment : Fragment() {
                 homeItems.add(category)
                 // CW was already renamed to the localized title; don't use the English constant.
                 val insertAfter = category.name == getString(R.string.home_continue_watching) ||
-                    (category.name == Category.FEATURED && !hasContinueWatching)
+                    (Category.isFeaturedName(category.name) && !hasContinueWatching)
                 if (insertAfter &&
                     !UserPreferences.homeSupportCardDismissed &&
                     homeItems.none { it is com.dskja.betterstreamflix.support.SupportBannerItem }
@@ -389,37 +405,62 @@ class HomeTvFragment : Fragment() {
         )
     }
 
+    private fun featuredItemKey(item: AppAdapter.Item): String = when (item) {
+        is Movie -> "movie:${item.id}"
+        is TvShow -> "tv:${item.id}"
+        else -> item.javaClass.name
+    }
+
     fun resetSwiperSchedule() {
         swiperHandler.removeCallbacksAndMessages(null)
+        if (!isAdded) return
+        val ctx = context ?: return
+        if (!FeaturedAdvancePolicy.shouldAutoAdvance(ctx)) return
         swiperHandler.postDelayed(object : Runnable {
             override fun run() {
-                if (isBackgroundPinned) {
+                if (!isAdded) return
+                val ctx2 = context ?: return
+                if (!FeaturedAdvancePolicy.shouldAutoAdvance(ctx2)) {
+                    swiperHandler.removeCallbacksAndMessages(null)
+                    return
+                }
+                if (isBackgroundPinned || featuredChromeFocused) {
                     swiperHandler.postDelayed(this, 8_000)
                     return
                 }
 
                 val position = appAdapter.items
                     .filterIsInstance<Category>()
-                    .find { it.name == Category.FEATURED }
+                    .find { Category.isFeaturedName(it.name) }
                     ?.let { category ->
                         if (category.list.isEmpty()) {
                             return@let null
                         }
-                        if (category.list.size > 1) {
-                            category.selectedIndex =
-                                (category.selectedIndex + 1) % category.list.size
-                        }
+                        category.selectedIndex = FeaturedTvRotation.nextIndex(
+                            category.selectedIndex,
+                            category.list.size,
+                        )
 
                         // Update background when swiper rotates automatically
-                        val currentItem = category.list.getOrNull(category.selectedIndex)
-                        val poster = when (currentItem) {
-                            is Movie -> currentItem.banner
-                            is TvShow -> currentItem.banner
-                            else -> null
-                        }
+                        val poster = FeaturedTvRotation.bannerOf(
+                            category.list.getOrNull(category.selectedIndex),
+                        )
                         // Update background if it's not null
                         if (poster != null) {
                             updateBackground(poster, null)
+                        }
+
+                        // Prefetch the following banner so rotation doesn't flash.
+                        val nextPoster = FeaturedTvRotation.bannerOf(
+                            category.list.getOrNull(
+                                FeaturedTvRotation.nextIndex(
+                                    category.selectedIndex,
+                                    category.list.size,
+                                ),
+                            ),
+                        )
+                        if (nextPoster != null) {
+                            FeaturedLogoEnrich.prefetchBanner(requireContext(), nextPoster)
                         }
 
                         appAdapter.items.indexOf(category)
@@ -431,7 +472,7 @@ class HomeTvFragment : Fragment() {
                     return
                 }
 
-                appAdapter.notifyItemChanged(position)
+                appAdapter.notifyItemChanged(position, FeaturedHeroController.PAYLOAD_ROTATE)
                 swiperHandler.postDelayed(this, 8_000)
             }
         }, 8_000)
@@ -440,15 +481,12 @@ class HomeTvFragment : Fragment() {
     private fun syncFeaturedBackground() {
         val featured = appAdapter.items
             .filterIsInstance<Category>()
-            .find { it.name == Category.FEATURED }
+            .find { Category.isFeaturedName(it.name) }
             ?: return
 
-        val currentItem = featured.list.getOrNull(featured.selectedIndex)
-        val poster = when (currentItem) {
-            is Movie -> currentItem.banner
-            is TvShow -> currentItem.banner
-            else -> null
-        }
+        val poster = FeaturedTvRotation.bannerOf(
+            featured.list.getOrNull(featured.selectedIndex),
+        )
 
         if (poster != null) {
             updateBackground(poster, null)

@@ -3,6 +3,7 @@ package com.dskja.betterstreamflix.providers
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
+import com.dskja.betterstreamflix.BetterStreamflixApp
 import com.dskja.betterstreamflix.utils.UserPreferences
 
 import android.util.Log
@@ -54,7 +55,7 @@ object AnimeAv1Provider : Provider, ProviderConfigUrl {
     private val service = retrofit.create(AnimeAv1Service::class.java)
 
     private fun getOkHttpClient(): OkHttpClient {
-        val appCache = Cache(File("cacheDir", "okhttpcache"), 10 * 1024 * 1024)
+        val appCache = Cache(File(BetterStreamflixApp.instance.cacheDir, "okhttpcache"), 10 * 1024 * 1024)
 
         val clientBuilder = OkHttpClient.Builder()
             .cache(appCache)
