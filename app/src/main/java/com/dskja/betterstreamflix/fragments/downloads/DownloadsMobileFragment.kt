@@ -567,7 +567,7 @@ class DownloadsMobileFragment : Fragment() {
     /** Prefer the download's stamped provider so autoplay/retry resolve the right catalog. */
     private fun activateDownloadProvider(providerName: String?) {
         val name = providerName?.takeIf { it.isNotBlank() } ?: return
-        Provider.findByName(name)?.let { UserPreferences.currentProvider = it }
+        Provider.findByName(name)?.let { UserPreferences.setCurrentProviderForPlayback(it) }
     }
 
     override fun onDestroyView() {

@@ -26,6 +26,7 @@ import androidx.fragment.app.Fragment
 import androidx.fragment.app.FragmentActivity
 import androidx.preference.PreferenceManager
 import com.dskja.betterstreamflix.R
+import com.dskja.betterstreamflix.utils.DeviceCapabilities
 import com.dskja.betterstreamflix.utils.ExpDialogChrome
 import com.dskja.betterstreamflix.utils.ExpMotion
 import com.dskja.betterstreamflix.utils.ExpPressEffects
@@ -34,7 +35,8 @@ import com.google.android.material.dialog.MaterialAlertDialogBuilder
 
 /**
  * Unified trailer playback for Movie/TV detail pages.
- * Supports in-app YouTube embed (experimental default), YouTube app, and SmartTube.
+ * Supports in-app YouTube embed, YouTube app, and SmartTube.
+ * On leanback/Fire TV, prefers native apps over the in-app WebView.
  */
 object TrailerPlaybackController {
     private fun alertBuilder(context: Context) =
@@ -57,6 +59,16 @@ object TrailerPlaybackController {
 
     const val SMARTTUBE_STABLE_PACKAGE = "org.smarttube.stable"
     const val SMARTTUBE_BETA_PACKAGE = "org.smarttube.beta"
+    const val YOUTUBE_PACKAGE = "com.google.android.youtube"
+    /** Common YouTube TV package ids across OEM builds. */
+    const val YOUTUBE_TV_PACKAGE = "com.google.android.tv.youtube"
+    const val YOUTUBE_TV_PACKAGE_ALT = "com.google.android.youtube.tv"
+
+    private fun isPackageInstalled(context: Context, packageName: String): Boolean =
+        runCatching {
+            context.packageManager.getPackageInfo(packageName, 0)
+            true
+        }.getOrDefault(false)
 
     fun play(fragment: Fragment, trailerUrl: String) {
         val context = fragment.requireContext()
@@ -70,7 +82,8 @@ object TrailerPlaybackController {
         fragmentManager: androidx.fragment.app.FragmentManager? = activity?.supportFragmentManager,
     ) {
         val prefs = PreferenceManager.getDefaultSharedPreferences(context)
-        val preferred = prefs.getString(KEY_PREFERRED_PLAYER, PLAYER_IN_APP) ?: PLAYER_IN_APP
+        val stored = prefs.getString(KEY_PREFERRED_PLAYER, null)
+        val preferred = resolvePreferredPlayer(context, stored)
         when (preferred) {
             PLAYER_IN_APP -> openInApp(context, activity, fragmentManager, trailerUrl)
             PLAYER_YOUTUBE -> openYoutube(context, trailerUrl)
@@ -79,6 +92,52 @@ object TrailerPlaybackController {
             PLAYER_SMARTTUBE -> handleSmartTube(context, trailerUrl)
             PLAYER_ASK -> showChooser(context, activity, fragmentManager, trailerUrl)
             else -> openInApp(context, activity, fragmentManager, trailerUrl)
+        }
+    }
+
+    /**
+     * Leanback / Fire TV: never silently open the in-app WebView when the user
+     * has not chosen a player — prefer SmartTube-stable → YouTube app → Ask.
+     */
+    fun resolvePreferredPlayer(context: Context, stored: String?): String {
+        val leanback = DeviceCapabilities.isLeanbackDevice(context) ||
+            DeviceCapabilities.isAmazonFireTv(context)
+        val st = installedSmartTube(context)
+        val youtubeInstalled = isPackageInstalled(context, YOUTUBE_TV_PACKAGE) ||
+            isPackageInstalled(context, YOUTUBE_TV_PACKAGE_ALT) ||
+            isPackageInstalled(context, YOUTUBE_PACKAGE)
+        return resolvePreferredPlayer(
+            stored = stored,
+            leanback = leanback,
+            smartTubeStableInstalled = st.contains(SMARTTUBE_STABLE_PACKAGE),
+            smartTubeAnyInstalled = st.isNotEmpty(),
+            youtubeInstalled = youtubeInstalled,
+        )
+    }
+
+    /**
+     * Pure preferred-player resolution (unit-testable).
+     * Mobile / non-leanback keeps today's default ([PLAYER_IN_APP] when unset).
+     * Leanback overrides unset/[PLAYER_IN_APP] so first play never silently WebViews.
+     */
+    fun resolvePreferredPlayer(
+        stored: String?,
+        leanback: Boolean,
+        smartTubeStableInstalled: Boolean,
+        smartTubeAnyInstalled: Boolean,
+        youtubeInstalled: Boolean,
+    ): String {
+        if (!leanback) {
+            return stored?.takeIf { it.isNotBlank() } ?: PLAYER_IN_APP
+        }
+        if (!stored.isNullOrBlank() && stored != PLAYER_IN_APP) {
+            return stored
+        }
+        return when {
+            smartTubeStableInstalled -> PLAYER_SMARTTUBE_STABLE
+            smartTubeAnyInstalled -> PLAYER_SMARTTUBE
+            youtubeInstalled -> PLAYER_YOUTUBE
+            else -> PLAYER_ASK
         }
     }
 

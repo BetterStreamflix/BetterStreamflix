@@ -99,17 +99,29 @@ object UserPreferences {
                 ?: providerName?.let { Provider.findByName(it) }
         }
         set(value) {
-            // CRITICO: Resetta l'istanza del database prima di cambiare provider
-            // per forzare la creazione di un nuovo database file corretto.
+            // Explicit Providers UI / global switch: full DB reset + notify storm.
             AppDatabase.resetInstance()
 
             Key.CURRENT_PROVIDER.setString(value?.name)
             runCatching {
                 ArtworkRepairScheduler.schedule(BetterStreamflixApp.instance, value)
             }
-            // Notify all ViewModels that the provider has changed
             ProviderChangeNotifier.notifyProviderChanged()
         }
+
+    /**
+     * Transient sticky handoff for Continue Watching / Featured / detail play when the
+     * item belongs to another provider. Sets [currentProvider] without
+     * [AppDatabase.resetInstance] or [ProviderChangeNotifier] so Home/library collectors
+     * are not thrashed mid-playback navigation.
+     */
+    fun setCurrentProviderForPlayback(provider: Provider) {
+        if (currentProvider?.name == provider.name) return
+        Key.CURRENT_PROVIDER.setString(provider.name)
+        runCatching {
+            ArtworkRepairScheduler.schedule(BetterStreamflixApp.instance, provider)
+        }
+    }
 
     fun getProviderCache(provider: Provider, key: String): String {
         return providerCache
@@ -578,6 +590,43 @@ object UserPreferences {
                 }
             }
         }
+
+    /** Master toggle for TMDb title logos (still requires [enableTmdb]). */
+    var enableTmdbLogos: Boolean
+        get() = Key.ENABLE_TMDB_LOGOS.getBoolean() ?: true
+        set(value) {
+            Key.ENABLE_TMDB_LOGOS.setBoolean(value)
+        }
+
+    /** `original_first` (default) or `w1280_first`. */
+    var tmdbLogoQuality: String
+        get() = Key.TMDB_LOGO_QUALITY.getString() ?: "original_first"
+        set(value) {
+            Key.TMDB_LOGO_QUALITY.setString(value)
+        }
+
+    var tmdbLogoMissTtlHours: Int
+        get() = Key.TMDB_LOGO_MISS_TTL_HOURS.getInt() ?: 6
+        set(value) {
+            Key.TMDB_LOGO_MISS_TTL_HOURS.setInt(value.coerceIn(1, 168))
+            applyTmdbLogoTtls()
+        }
+
+    var tmdbLogoHitTtlHours: Int
+        get() = Key.TMDB_LOGO_HIT_TTL_HOURS.getInt() ?: 24
+        set(value) {
+            Key.TMDB_LOGO_HIT_TTL_HOURS.setInt(value.coerceIn(1, 336))
+            applyTmdbLogoTtls()
+        }
+
+    fun applyTmdbLogoTtls() {
+        runCatching {
+            com.dskja.betterstreamflix.logo.TmdbLogoCache.configureTtls(
+                missTtlMs = tmdbLogoMissTtlHours * 60L * 60L * 1000L,
+                hitTtlMs = tmdbLogoHitTtlHours * 60L * 60L * 1000L,
+            )
+        }
+    }
 
     /** When false, Home hides the Continue Watching row. */
     var showContinueWatching: Boolean
@@ -1128,6 +1177,10 @@ object UserPreferences {
         AUTOPLAY_BUFFER,
         SERVER_AUTO_SUBTITLES_DISABLED,
         ENABLE_TMDB,
+        ENABLE_TMDB_LOGOS,
+        TMDB_LOGO_QUALITY,
+        TMDB_LOGO_MISS_TTL_HOURS,
+        TMDB_LOGO_HIT_TTL_HOURS,
         SHOW_CONTINUE_WATCHING,
         SHOW_RECENTLY_WATCHED,
         SHOW_QUARANTINED_PROVIDERS,

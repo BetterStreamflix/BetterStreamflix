@@ -23,16 +23,11 @@ import androidx.recyclerview.widget.RecyclerView
 import androidx.recyclerview.widget.GridLayoutManager
 import androidx.viewbinding.ViewBinding
 import com.dskja.betterstreamflix.providers.IptvProvider
-import android.graphics.drawable.Drawable
 import android.widget.TextView
 import com.bumptech.glide.Glide
-import com.bumptech.glide.load.DataSource
-import com.bumptech.glide.load.engine.DiskCacheStrategy
-import com.bumptech.glide.load.engine.GlideException
 import com.bumptech.glide.load.resource.drawable.DrawableTransitionOptions
-import com.bumptech.glide.request.RequestListener
-import com.bumptech.glide.request.target.Target
 import com.dskja.betterstreamflix.R
+import com.dskja.betterstreamflix.utils.TvFocusZoom
 import com.dskja.betterstreamflix.adapters.AppAdapter
 import com.dskja.betterstreamflix.database.AppDatabase
 import com.dskja.betterstreamflix.databinding.*
@@ -58,9 +53,11 @@ import com.dskja.betterstreamflix.fragments.movie.MovieMobileFragmentDirections
 import com.dskja.betterstreamflix.fragments.player.PlayerViewModel
 import com.dskja.betterstreamflix.fragments.tv_show.TvShowMobileFragment
 import com.dskja.betterstreamflix.fragments.tv_show.TvShowMobileFragmentDirections
+import com.dskja.betterstreamflix.fragments.tv_show.TvShowTvFragment
 import com.dskja.betterstreamflix.fragments.tv_show.TvShowTvFragmentDirections
 import com.dskja.betterstreamflix.ui.TrailerPlaybackController
 import com.dskja.betterstreamflix.ui.DetailTab
+import com.dskja.betterstreamflix.ui.TmdbLogoGlide
 import com.dskja.betterstreamflix.utils.TmdbUtils
 import com.dskja.betterstreamflix.databinding.ItemDetailTrailerRowMobileBinding
 import com.dskja.betterstreamflix.fragments.movies.MoviesMobileFragmentDirections
@@ -77,6 +74,8 @@ import com.dskja.betterstreamflix.models.Movie
 import com.dskja.betterstreamflix.models.Season
 import com.dskja.betterstreamflix.models.TvShow
 import com.dskja.betterstreamflix.models.Video
+import com.dskja.betterstreamflix.ui.FeaturedHeroController
+import com.dskja.betterstreamflix.ui.FeaturedProviderSwitch
 import com.dskja.betterstreamflix.ui.FeaturedSwiperChrome
 import com.dskja.betterstreamflix.ui.SpacingItemDecoration
 import com.dskja.betterstreamflix.ui.ShowOptionsMobileDialog
@@ -93,9 +92,9 @@ import com.dskja.betterstreamflix.utils.dp
 import com.dskja.betterstreamflix.utils.loadTvShowBanner
 import com.dskja.betterstreamflix.utils.loadTvShowPoster
 import com.dskja.betterstreamflix.utils.ArtworkRepair
-import com.dskja.betterstreamflix.utils.ArtworkUrls
 import com.dskja.betterstreamflix.providers.Provider
 import java.util.Locale
+import com.dskja.betterstreamflix.models.Trailer
 
 class TvShowViewHolder(
     private val _binding: ViewBinding
@@ -132,8 +131,10 @@ class TvShowViewHolder(
             is ContentTvShowSeasonsTvBinding -> _binding.hgvTvShowSeasons
             is ContentTvShowCastMobileBinding -> _binding.rvTvShowCast
             is ContentTvShowCastTvBinding -> _binding.hgvTvShowCast
+            is ContentTvShowDirectorsTvBinding -> _binding.hgvTvShowDirectors
             is ContentTvShowRecommendationsMobileBinding -> _binding.rvTvShowRecommendations
             is ContentTvShowRecommendationsTvBinding -> _binding.hgvTvShowRecommendations
+            is ContentDetailTrailerTvBinding -> _binding.hgvDetailTrailers
             else -> null
         }
 
@@ -168,6 +169,7 @@ class TvShowViewHolder(
             is ContentTvShowRecommendationsMobileBinding -> displayRecommendationsMobile(_binding)
             is ContentDetailTabsMobileBinding -> displayTabsMobile(_binding)
             is ContentDetailTrailerMobileBinding -> displayTrailerMobile(_binding)
+            is ContentDetailTrailerTvBinding -> displayTrailerTv(_binding)
             is ContentDetailAboutMobileBinding -> displayAboutMobile(_binding)
             is ContentTvShowRecommendationsTvBinding -> displayRecommendationsTv(_binding)
         }
@@ -253,7 +255,7 @@ class TvShowViewHolder(
         val providerName = tvShow.providerName
         if (!providerName.isNullOrBlank() && providerName != UserPreferences.currentProvider?.name) {
             Provider.findByName(providerName)?.let {
-                UserPreferences.currentProvider = it
+                UserPreferences.setCurrentProviderForPlayback(it)
             }
         }
         action()
@@ -406,6 +408,13 @@ class TvShowViewHolder(
         }
         bindEpisodeBadge(binding.tvTvShowLastEpisode)
         binding.tvTvShowTitle.text = tvShow.title
+        com.dskja.betterstreamflix.logo.TitleLogoSurface.bindCachedOnly(
+            imageView = binding.ivTvShowLogo,
+            titleView = null,
+            logoUrl = tvShow.logo,
+            title = tvShow.title,
+            hideUntilReady = true,
+        )
         if (ExperimentalMobileDesign.enabled() &&
             binding.root.getTag(R.id.exp_enter_animated_tag) != true
         ) {
@@ -442,9 +451,7 @@ class TvShowViewHolder(
                 true
             }
             setOnFocusChangeListener { _, hasFocus ->
-                val animation = if (hasFocus) AnimationUtils.loadAnimation(context, R.anim.zoom_in) else AnimationUtils.loadAnimation(context, R.anim.zoom_out)
-                startAnimation(animation)
-                animation.fillAfter = true
+                TvFocusZoom.apply(this, hasFocus)
                 (context.toActivity()?.getCurrentFragment() as? HomeTvFragment)?.let { fragment ->
                     if (hasFocus) {
                         fragment.pinBackground(tvShow.banner)
@@ -461,10 +468,6 @@ class TvShowViewHolder(
             val show = !text.isNullOrEmpty()
             val wasVisible = isVisible
             isVisible = show
-            if (ExperimentalMobileDesign.enabled() && show) {
-                setBackgroundResource(ExperimentalMobileDesign.metaPillBackground())
-                if (!wasVisible) ExpMotion.popIn(this)
-            }
         }
         binding.pbTvShowProgress.apply {
             val watchHistory = tvShow.episodeToWatch?.watchHistory
@@ -474,23 +477,9 @@ class TvShowViewHolder(
                 else -> 0
             }
             isVisible = watchHistory != null
-            if (ExperimentalMobileDesign.enabled() && watchHistory != null) {
-                val primary = com.google.android.material.color.MaterialColors.getColor(
-                    this, androidx.appcompat.R.attr.colorPrimary,
-                )
-                progressTintList = android.content.res.ColorStateList.valueOf(primary)
-            }
         }
         bindEpisodeBadge(binding.tvTvShowLastEpisode)
         binding.tvTvShowTitle.text = tvShow.title
-        if (ExperimentalMobileDesign.enabled() &&
-            binding.root.getTag(R.id.exp_enter_animated_tag) != true
-        ) {
-            binding.root.setTag(R.id.exp_enter_animated_tag, true)
-            ExpMotion.kenBurns(binding.ivTvShowPoster)
-            ExpMotion.revealHeader(binding.tvTvShowTitle)
-            ExpMotion.popIn(binding.root)
-        }
     }
 
     private fun displayGridMobileItem(binding: ItemTvShowGridMobileBinding) {
@@ -552,6 +541,13 @@ class TvShowViewHolder(
         }
         bindEpisodeBadge(binding.tvTvShowLastEpisode)
         binding.tvTvShowTitle.text = tvShow.title
+        com.dskja.betterstreamflix.logo.TitleLogoSurface.bindCachedOnly(
+            imageView = binding.ivTvShowLogo,
+            titleView = null,
+            logoUrl = tvShow.logo,
+            title = tvShow.title,
+            hideUntilReady = true,
+        )
         if (ExperimentalMobileDesign.enabled() &&
             binding.root.getTag(R.id.exp_enter_animated_tag) != true
         ) {
@@ -591,9 +587,7 @@ class TvShowViewHolder(
                 true
             }
             setOnFocusChangeListener { _, hasFocus ->
-                val animation = if (hasFocus) AnimationUtils.loadAnimation(context, R.anim.zoom_in) else AnimationUtils.loadAnimation(context, R.anim.zoom_out)
-                startAnimation(animation)
-                animation.fillAfter = true
+                TvFocusZoom.apply(this, hasFocus)
             }
         }
         setPoster(binding.ivTvShowPoster)
@@ -603,10 +597,6 @@ class TvShowViewHolder(
             val show = !text.isNullOrEmpty()
             val wasVisible = isVisible
             isVisible = show
-            if (ExperimentalMobileDesign.enabled() && show) {
-                setBackgroundResource(ExperimentalMobileDesign.metaPillBackground())
-                if (!wasVisible) ExpMotion.popIn(this)
-            }
         }
         binding.pbTvShowProgress.apply {
             val watchHistory = tvShow.episodeToWatch?.watchHistory
@@ -616,23 +606,9 @@ class TvShowViewHolder(
                 else -> 0
             }
             isVisible = watchHistory != null
-            if (ExperimentalMobileDesign.enabled() && watchHistory != null) {
-                val primary = com.google.android.material.color.MaterialColors.getColor(
-                    this, androidx.appcompat.R.attr.colorPrimary,
-                )
-                progressTintList = android.content.res.ColorStateList.valueOf(primary)
-            }
         }
         bindEpisodeBadge(binding.tvTvShowLastEpisode)
         binding.tvTvShowTitle.text = tvShow.title
-        if (ExperimentalMobileDesign.enabled() &&
-            binding.root.getTag(R.id.exp_enter_animated_tag) != true
-        ) {
-            binding.root.setTag(R.id.exp_enter_animated_tag, true)
-            ExpMotion.kenBurns(binding.ivTvShowPoster)
-            ExpMotion.revealHeader(binding.tvTvShowTitle)
-            ExpMotion.popIn(binding.root)
-        }
     }
 
     private fun applyMobileSelection(view: View) {
@@ -829,28 +805,44 @@ class TvShowViewHolder(
         binding.pbSwiperProgress.visibility = View.GONE
 
         binding.tvSwiperStatus.apply {
-            text = context.getString(R.string.home_swiper_all_episodes)
-            visibility = View.VISIBLE
+            text = FeaturedHeroController.statusLine(context, tvShow)
+                ?: context.getString(R.string.home_swiper_all_episodes)
+            visibility = if (text.isNullOrBlank()) View.GONE else View.VISIBLE
         }
         binding.tvSwiperGenres.apply {
-            val labels = tvShow.genres.map { it.name }.filter { it.isNotBlank() }
-            text = labels.joinToString(", ")
+            val labels = FeaturedHeroController.genresLine(tvShow)
+            text = labels
             visibility = if (labels.isEmpty()) View.GONE else View.VISIBLE
         }
 
         val openTvShow = View.OnClickListener {
             ExpMotion.hapticTap(it)
-            if (isIptvProvider()) {
-                handleDirectPlay(binding.root.findNavController())
-            } else {
-                binding.root.findNavController().navigate(R.id.tv_show, tvShowArgs())
+            FeaturedProviderSwitch.runWithProvider(tvShow) {
+                if (isIptvProvider()) {
+                    handleDirectPlay(binding.root.findNavController())
+                } else {
+                    binding.root.findNavController().navigate(R.id.tv_show, tvShowArgs())
+                }
             }
         }
 
         binding.btnSwiperWatchNow.apply {
             FeaturedSwiperChrome.wireWatchButton(this)
+            text = FeaturedHeroController.watchCtaLabel(context, tvShow)
             applyExpPress()
             setOnClickListener(openTvShow)
+            setOnLongClickListener { view ->
+                val trailer = tvShow.trailer
+                if (trailer.isNullOrBlank()) return@setOnLongClickListener false
+                ExpMotion.hapticTap(view)
+                val activity = context.toActivity() as? androidx.fragment.app.FragmentActivity
+                TrailerPlaybackController.play(
+                    context = view.context,
+                    activity = activity,
+                    trailerUrl = trailer,
+                )
+                true
+            }
         }
 
         FeaturedSwiperChrome.bindListButton(binding.btnSwiperAddToList, tvShow.isFavorite)
@@ -858,30 +850,31 @@ class TvShowViewHolder(
             applyExpPress()
             setOnClickListener {
                 ExpMotion.hapticTap(it)
-                itemView.findViewTreeLifecycleOwner()?.lifecycleScope?.launch(Dispatchers.IO) {
-                    val dao = database.tvShowDao()
-                    val target = !(dao.getById(tvShow.id)?.isFavorite ?: tvShow.isFavorite)
-                    val resolved = ArtworkRepair.resolveTvShowForFavorite(context, tvShow, target)
-                    dao.upsertFavorite(resolved, target)
-                    com.dskja.betterstreamflix.platform.simkl.SimklSyncHooks.onListToggle(
-                        add = target,
-                        imdbId = tvShow.imdbId,
-                        tmdbId = tvShow.tmdbId,
-                        isTv = true,
-                    )
-                    withContext(Dispatchers.Main) {
-                        tvShow.isFavorite = target
-                        tvShow.poster = resolved.poster
-                        tvShow.banner = resolved.banner
-                        FeaturedSwiperChrome.bindListButton(this@apply, target, animate = true)
-                    }
-                }
+                FeaturedSwiperChrome.toggleTvShowFavorite(
+                    anchor = itemView,
+                    button = this,
+                    tvShow = tvShow,
+                )
             }
         }
+        ribbonStateJob?.cancel()
+        val boundTvShowId = tvShow.id
+        ribbonStateJob = FeaturedSwiperChrome.observeListStateTv(
+            anchor = itemView,
+            button = binding.btnSwiperAddToList,
+            tvShowId = boundTvShowId,
+        ) { favorite ->
+            if (tvShow.id != boundTvShowId) return@observeListStateTv
+            tvShow.isFavorite = favorite
+            FeaturedSwiperChrome.bindListButton(binding.btnSwiperAddToList, favorite)
+        }
 
-        binding.root.setOnClickListener(openTvShow)
+        // Nested clickables confuse TalkBack — keep chrome buttons primary.
+        binding.root.isClickable = false
+        binding.root.setOnClickListener(null)
         binding.ivSwiperBackground.apply {
             isClickable = true
+            contentDescription = tvShow.title
             setOnClickListener(openTvShow)
         }
     }
@@ -953,55 +946,9 @@ class TvShowViewHolder(
         Glide.with(binding.ivTvShowPoster).clear(binding.ivTvShowPoster)
 
         binding.tvTvShowTitle.text = tvShow.title
-        val logoUrl = ArtworkUrls.preferOriginal(tvShow.logo) ?: ArtworkUrls.preferHero(tvShow.logo)
-        val logoView = binding.ivTvShowLogo
-        if (!logoUrl.isNullOrBlank()) {
-            logoView.visibility = View.VISIBLE
-            binding.tvTvShowTitle.visibility = View.GONE
-            Glide.with(logoView)
-                .load(logoUrl)
-                .diskCacheStrategy(DiskCacheStrategy.AUTOMATIC)
-                .fitCenter()
-                .listener(object : RequestListener<Drawable> {
-                    override fun onLoadFailed(
-                        e: GlideException?,
-                        model: Any?,
-                        target: Target<Drawable>,
-                        isFirstResource: Boolean,
-                    ): Boolean {
-                        logoView.visibility = View.GONE
-                        binding.tvTvShowTitle.visibility = View.VISIBLE
-                        return false
-                    }
-
-                    override fun onResourceReady(
-                        resource: Drawable,
-                        model: Any,
-                        target: Target<Drawable>?,
-                        dataSource: DataSource,
-                        isFirstResource: Boolean,
-                    ): Boolean {
-                        logoView.visibility = View.VISIBLE
-                        binding.tvTvShowTitle.visibility = View.GONE
-                        return false
-                    }
-                })
-                .into(logoView)
-        } else {
-            Glide.with(logoView).clear(logoView)
-            logoView.setImageDrawable(null)
-            logoView.visibility = View.GONE
-            binding.tvTvShowTitle.visibility = View.VISIBLE
-            resolveHeroLogoIfBlank(
-                logoView = logoView,
-                titleView = binding.tvTvShowTitle,
-                title = tvShow.title,
-                year = tvShow.released?.format("yyyy")?.toIntOrNull(),
-                isTv = true,
-                tmdbId = tvShow.tmdbId,
-                imdbId = tvShow.imdbId,
-            ) { tvShow.logo = it }
-        }
+        // Hero logo bind is owned by DetailHeaderController (after body submit).
+        binding.ivTvShowLogo.visibility = View.INVISIBLE
+        binding.tvTvShowTitle.visibility = View.VISIBLE
 
         if (ExperimentalMobileDesign.enabled() &&
             binding.root.getTag(R.id.exp_enter_animated_tag) != true
@@ -1058,41 +1005,48 @@ class TvShowViewHolder(
                 text = ""
                 isVisible = false
                 movementMethod = null
+                isClickable = false
                 setOnClickListener(null)
             } else {
-                val genre = tvShow.genres.first()
-                val label = genre.name.uppercase(Locale.getDefault())
+                text = tvShow.genres.joinToString(" · ") {
+                    it.name.uppercase(Locale.getDefault())
+                }
                 isVisible = true
-                val spanned = android.text.SpannableString(label)
-                spanned.setSpan(
-                    object : android.text.style.ClickableSpan() {
-                        override fun onClick(widget: View) {
-                            ExpMotion.hapticTap(widget)
-                            checkProviderAndRun {
-                                if (context.toActivity()?.getCurrentFragment() is TvShowMobileFragment) {
-                                    findNavController().navigate(
-                                        TvShowMobileFragmentDirections.actionTvShowToGenre(
-                                            id = genre.id,
-                                            name = genre.name,
-                                        )
-                                    )
-                                }
+                movementMethod = null
+                isClickable = true
+                contentDescription = context.getString(R.string.genre_section_label)
+                setOnClickListener { view ->
+                    ExpMotion.hapticTap(view)
+                    val genres = tvShow.genres
+                    fun openGenre(genre: com.dskja.betterstreamflix.models.Genre) {
+                        checkProviderAndRun {
+                            if (context.toActivity()?.getCurrentFragment() is TvShowMobileFragment) {
+                                findNavController().navigate(
+                                    TvShowMobileFragmentDirections.actionTvShowToGenre(
+                                        id = genre.id,
+                                        name = genre.name,
+                                    ),
+                                )
                             }
                         }
-
-                        override fun updateDrawState(ds: android.text.TextPaint) {
-                            ds.isUnderlineText = false
-                            ds.color = currentTextColor
+                    }
+                    if (genres.size == 1) {
+                        openGenre(genres.first())
+                    } else {
+                        val labels = genres.map { it.name }.toTypedArray()
+                        val builder = if (ExperimentalMobileDesign.enabled()) {
+                            MaterialAlertDialogBuilder(context)
+                        } else {
+                            AlertDialog.Builder(context)
                         }
-                    },
-                    0,
-                    label.length,
-                    android.text.Spanned.SPAN_EXCLUSIVE_EXCLUSIVE,
-                )
-                text = spanned
-                movementMethod = android.text.method.LinkMovementMethod.getInstance()
-                highlightColor = Color.TRANSPARENT
-                setOnClickListener(null)
+                        builder
+                            .setTitle(R.string.genre_section_label)
+                            .setItems(labels) { _, which ->
+                                genres.getOrNull(which)?.let(::openGenre)
+                            }
+                            .show()
+                    }
+                }
             }
         }
 
@@ -1272,6 +1226,7 @@ class TvShowViewHolder(
         }
 
         binding.root.findViewById<View>(R.id.btn_tv_show_share)?.let { shareBtn ->
+            shareBtn.applyExpPress()
             shareBtn.setOnClickListener {
                 ExpMotion.hapticTap(it)
                 val share = Intent(Intent.ACTION_SEND).apply {
@@ -1288,6 +1243,41 @@ class TvShowViewHolder(
                     )
                 }
                 context.startActivity(Intent.createChooser(share, context.getString(R.string.detail_share)))
+            }
+        }
+
+        binding.root.findViewById<View>(R.id.btn_tv_show_watched)?.let { watchedBtn ->
+            // Series has no single isWatched flag; toggle isWatching (false = watching complete).
+            fun applyWatchingUi(watching: Boolean) {
+                val completed = !watching
+                val description = context.getString(
+                    if (completed) R.string.option_show_unwatched else R.string.option_show_watched,
+                )
+                watchedBtn.contentDescription = description
+                androidx.appcompat.widget.TooltipCompat.setTooltipText(watchedBtn, description)
+                watchedBtn.alpha = if (completed) 1f else 0.55f
+            }
+
+            watchedBtn.applyExpPress()
+            applyWatchingUi(tvShow.isWatching)
+            watchedBtn.setOnClickListener {
+                ExpMotion.hapticTap(it)
+                checkProviderAndRun {
+                    itemView.findViewTreeLifecycleOwner()?.lifecycleScope?.launch(Dispatchers.IO) {
+                        val dao = database.tvShowDao()
+                        val current = dao.getById(tvShow.id)
+                        val currentlyWatching = current?.isWatching ?: tvShow.isWatching
+                        val targetWatching = !currentlyWatching
+                        val updated = (current ?: tvShow).copy().apply {
+                            isWatching = targetWatching
+                        }
+                        dao.save(updated)
+                        withContext(Dispatchers.Main) {
+                            tvShow.isWatching = targetWatching
+                            applyWatchingUi(targetWatching)
+                        }
+                    }
+                }
             }
         }
 
@@ -1345,12 +1335,32 @@ class TvShowViewHolder(
             visibility = if (tvShow.poster.isNullOrEmpty()) View.GONE else View.VISIBLE
         }
         binding.tvTvShowTitle.text = tvShow.title
+        com.dskja.betterstreamflix.logo.TitleLogoSurface.bindAndMaybeResolve(
+            anchor = binding.root,
+            imageView = binding.ivTvShowLogo,
+            titleView = binding.tvTvShowTitle,
+            tvShow = tvShow,
+            persist = true,
+            allowAlternateOnFail = true,
+        )
 
         binding.tvTvShowRating.apply {
-            text = tvShow.rating?.let { String.format(Locale.ROOT, "%.1f", it) } ?: "N/A"
+            text = tvShow.rating?.let { String.format(Locale.ROOT, "%.1f", it) }
             isVisible = !text.isNullOrEmpty()
         }
         binding.ivTvShowRatingIcon.isVisible = binding.tvTvShowRating.isVisible
+
+        binding.tvTvShowCertification.apply {
+            val cert = tvShow.contentRating?.trim().orEmpty()
+            val digits = cert.filter { it.isDigit() }
+            val badge = when {
+                digits.isNotEmpty() -> digits.take(2)
+                cert.isNotEmpty() -> cert.take(3).uppercase(Locale.getDefault())
+                else -> ""
+            }
+            text = badge
+            isVisible = badge.isNotEmpty()
+        }
 
         binding.tvTvShowQuality.apply {
             text = tvShow.quality
@@ -1375,45 +1385,56 @@ class TvShowViewHolder(
         }
 
         binding.tvTvShowGenres.apply {
-            text = tvShow.genres.joinToString(", ") { it.name }
-            isVisible = tvShow.genres.isNotEmpty()
+            if (tvShow.genres.isEmpty()) {
+                text = ""
+                isVisible = false
+                isFocusable = false
+                setOnClickListener(null)
+            } else {
+                text = tvShow.genres.joinToString(", ") { it.name }
+                isVisible = true
+                isFocusable = true
+                isFocusableInTouchMode = true
+                isClickable = true
+                contentDescription = context.getString(R.string.genre_section_label)
+                setOnClickListener { view ->
+                    ExpMotion.hapticTap(view)
+                    val genres = tvShow.genres
+                    fun openGenre(genre: com.dskja.betterstreamflix.models.Genre) {
+                        checkProviderAndRun {
+                            if (context.toActivity()?.getCurrentFragment() is TvShowTvFragment) {
+                                findNavController().navigate(
+                                    TvShowTvFragmentDirections.actionTvShowToGenre(
+                                        id = genre.id,
+                                        name = genre.name,
+                                    ),
+                                )
+                            }
+                        }
+                    }
+                    if (genres.size == 1) {
+                        openGenre(genres.first())
+                    } else {
+                        val labels = genres.map { it.name }.toTypedArray()
+                        AlertDialog.Builder(context)
+                            .setTitle(R.string.genre_section_label)
+                            .setItems(labels) { _, which ->
+                                genres.getOrNull(which)?.let(::openGenre)
+                            }
+                            .show()
+                    }
+                }
+                nextFocusDownId = binding.btnTvShowWatchNow.id
+                binding.btnTvShowWatchNow.nextFocusUpId = id
+            }
         }
 
         binding.tvTvShowOverview.text = tvShow.overview
         val episodeToWatch = tvShow.episodeToWatch
         val episodeSeason = resolveEpisodeSeason(episodeToWatch)
 
-        if (ExperimentalMobileDesign.enabled()) {
-            val onSurface = com.google.android.material.color.MaterialColors.getColor(
-                binding.tvTvShowTitle, com.google.android.material.R.attr.colorOnSurface,
-            )
-            val onVariant = com.google.android.material.color.MaterialColors.getColor(
-                binding.tvTvShowOverview, com.google.android.material.R.attr.colorOnSurfaceVariant,
-            )
-            binding.tvTvShowTitle.setTextColor(onSurface)
-            binding.tvTvShowOverview.setTextColor(onVariant)
-            listOf(
-                binding.tvTvShowRating,
-                binding.tvTvShowQuality,
-                binding.tvTvShowReleased,
-            ).forEach { meta ->
-                if (meta.isVisible) {
-                    meta.setBackgroundResource(ExperimentalMobileDesign.metaPillBackground())
-                    meta.setTextColor(onSurface)
-                }
-            }
-            if (binding.root.getTag(R.id.exp_enter_animated_tag) != true) {
-                binding.root.setTag(R.id.exp_enter_animated_tag, true)
-                ExpMotion.revealHeader(binding.tvTvShowTitle, binding.tvTvShowOverview)
-            }
-        }
-
         binding.btnTvShowWatchNow.apply {
             isVisible = true
-            if (ExperimentalMobileDesign.enabled()) {
-                setBackgroundResource(ExperimentalMobileDesign.primaryButtonBackground())
-                applyExpPress()
-            }
             setOnClickListener {
                 ExpMotion.hapticTap(it)
                 if (isIptvProvider()) {
@@ -1494,23 +1515,82 @@ class TvShowViewHolder(
         }
 
         binding.btnTvShowTrailer.apply {
-            val trailer = tvShow.trailer
-            if (ExperimentalMobileDesign.enabled() && !trailer.isNullOrBlank()) {
-                setBackgroundResource(ExperimentalMobileDesign.chipBackground())
-                applyExpPress()
+            fun bindTrailer(trailerUrl: String?) {
+                setOnClickListener {
+                    ExpMotion.hapticTap(it)
+                    if (!trailerUrl.isNullOrBlank()) {
+                        val fragment = context.toActivity()?.getCurrentFragment() as? Fragment
+                        if (fragment != null) {
+                            TrailerPlaybackController.play(fragment, trailerUrl)
+                        } else {
+                            handleTrailerClick(trailerUrl)
+                        }
+                    }
+                }
+                isVisible = !trailerUrl.isNullOrBlank()
             }
-            setOnClickListener {
-                ExpMotion.hapticTap(it)
-                if (!trailer.isNullOrBlank()) {
-                    val fragment = context.toActivity()?.getCurrentFragment() as? Fragment
-                    if (fragment != null) {
-                        TrailerPlaybackController.play(fragment, trailer)
-                    } else {
-                        handleTrailerClick(trailer)
+            bindTrailer(tvShow.trailer)
+            if (tvShow.trailer.isNullOrBlank() && !tvShow.tmdbId.isNullOrBlank()) {
+                itemView.findViewTreeLifecycleOwner()?.lifecycleScope?.launch {
+                    val remote = withContext(Dispatchers.IO) {
+                        TmdbUtils.listYoutubeTrailers(
+                            tmdbId = tvShow.tmdbId,
+                            isTv = true,
+                            title = tvShow.title,
+                            year = tvShow.released?.format("yyyy")?.toIntOrNull(),
+                            imdbId = tvShow.imdbId,
+                        )
+                    }
+                    val first = remote.firstOrNull()?.second
+                    if (!first.isNullOrBlank() && tvShow.trailer.isNullOrBlank()) {
+                        tvShow.trailer = first
+                        bindTrailer(first)
                     }
                 }
             }
-            isVisible = !trailer.isNullOrBlank()
+        }
+
+        binding.btnTvShowDownload.apply {
+            val seasonForDownload = tvShow.seasons.firstOrNull { it.episodes.isNotEmpty() }
+            text = DetailDownloadLabels.seriesButton(
+                context,
+                tvShow,
+                episodeToWatch,
+                seasonForDownload,
+            )
+            contentDescription = text
+            setOnClickListener {
+                ExpMotion.hapticTap(it)
+                checkProviderAndRun {
+                    val fragment = context.toActivity()?.getCurrentFragment() as? Fragment
+                        ?: return@checkProviderAndRun
+                    DownloadOptionsController.offerTvShowDownload(fragment, tvShow, episodeToWatch)
+                }
+            }
+        }
+
+        binding.root.findViewById<View>(R.id.btn_tv_show_share)?.let { shareBtn ->
+            shareBtn.setOnClickListener {
+                ExpMotion.hapticTap(it)
+                val share = Intent(Intent.ACTION_SEND).apply {
+                    type = "text/plain"
+                    putExtra(Intent.EXTRA_SUBJECT, tvShow.title)
+                    putExtra(
+                        Intent.EXTRA_TEXT,
+                        buildString {
+                            append(tvShow.title)
+                            tvShow.released?.format("yyyy")?.let { year -> append(" ($year)") }
+                            tvShow.overview?.takeIf { it.isNotBlank() }?.let { overview ->
+                                append("\n\n").append(overview.take(280))
+                            }
+                            tvShow.trailer?.let { trailer -> append("\n").append(trailer) }
+                        },
+                    )
+                }
+                context.startActivity(
+                    Intent.createChooser(share, context.getString(R.string.detail_share)),
+                )
+            }
         }
 
         binding.btnTvShowFavorite.apply {
@@ -1519,9 +1599,11 @@ class TvShowViewHolder(
                 false -> R.drawable.ic_favorite_disable
             }
 
-            if (ExperimentalMobileDesign.enabled()) {
-                setBackgroundResource(ExperimentalMobileDesign.iconChipBackground())
-                applyExpPress()
+            fun applyFavoriteState(inList: Boolean) {
+                setImageDrawable(ContextCompat.getDrawable(context, inList.drawable()))
+                contentDescription = context.getString(
+                    if (inList) R.string.detail_remove_from_list else R.string.detail_add_to_list,
+                )
             }
 
             setOnClickListener {
@@ -1534,24 +1616,34 @@ class TvShowViewHolder(
                         val resolvedTvShow = ArtworkRepair.resolveTvShowForFavorite(context, tvShow, newValue)
 
                         dao.upsertFavorite(resolvedTvShow, newValue)
+                        com.dskja.betterstreamflix.platform.simkl.SimklSyncHooks.onListToggle(
+                            add = newValue,
+                            imdbId = tvShow.imdbId,
+                            tmdbId = tvShow.tmdbId,
+                            isTv = true,
+                        )
 
                         withContext(Dispatchers.Main) {
                             tvShow.poster = resolvedTvShow.poster
                             tvShow.banner = resolvedTvShow.banner
                             tvShow.isFavorite = newValue
-                            setImageDrawable(
-                                ContextCompat.getDrawable(context, newValue.drawable())
-                            )
+                            applyFavoriteState(newValue)
                             ExpMotion.popIn(binding.btnTvShowFavorite)
                         }
                     }
                 }
             }
 
-            setImageDrawable(
-                ContextCompat.getDrawable(context, tvShow.isFavorite.drawable())
-            )
+            applyFavoriteState(tvShow.isFavorite)
         }
+
+        com.dskja.betterstreamflix.utils.TvFocusChain.linkHorizontal(
+            binding.btnTvShowWatchNow,
+            binding.btnTvShowTrailer,
+            binding.btnTvShowDownload,
+            binding.root.findViewById(R.id.btn_tv_show_share),
+            binding.btnTvShowFavorite,
+        )
     }
 
     private fun displaySeasonsMobile(binding: ContentTvShowSeasonsMobileBinding) {
@@ -1793,12 +1885,6 @@ class TvShowViewHolder(
                     androidx.appcompat.R.attr.colorPrimary,
                 ),
             )
-            binding.hgvTvShowDirectors.setTextColor(
-                com.google.android.material.color.MaterialColors.getColor(
-                    binding.hgvTvShowDirectors,
-                    com.google.android.material.R.attr.colorOnSurface,
-                ),
-            )
             binding.root.findViewById<View>(R.id.v_tv_show_directors_rule)?.visibility = View.VISIBLE
             if (binding.root.getTag(R.id.exp_enter_animated_tag) != true) {
                 binding.root.setTag(R.id.exp_enter_animated_tag, true)
@@ -1807,9 +1893,18 @@ class TvShowViewHolder(
                     binding.root.findViewById(R.id.v_tv_show_directors_rule),
                 )
                 ExpMotion.pulseAccentRule(binding.root.findViewById(R.id.v_tv_show_directors_rule))
+                ExpMotion.staggerFirstFill(binding.hgvTvShowDirectors)
             }
         }
-        binding.hgvTvShowDirectors.text = tvShow.directors.joinToString(", ") { it.name }
+        binding.hgvTvShowDirectors.apply {
+            setRowHeight(ViewGroup.LayoutParams.WRAP_CONTENT)
+            adapter = AppAdapter().apply {
+                submitList(tvShow.directors.onEach {
+                    it.itemType = AppAdapter.Type.PEOPLE_TV_ITEM
+                })
+            }
+            setItemSpacing(80)
+        }
     }
     private fun displayCastMobile(binding: ContentTvShowCastMobileBinding) {
         if (ExperimentalMobileDesign.enabled() &&
@@ -1877,6 +1972,11 @@ class TvShowViewHolder(
             ExpMotion.pulseAccentRule(binding.root.findViewById(R.id.v_tv_show_recommendations_rule))
             ExpMotion.staggerFirstFill(binding.rvTvShowRecommendations)
         }
+        val empty = tvShow.recommendations.isEmpty()
+        binding.root.findViewById<View>(R.id.tv_tv_show_recommendations_empty)?.visibility =
+            if (empty) View.VISIBLE else View.GONE
+        binding.rvTvShowRecommendations.visibility = if (empty) View.GONE else View.VISIBLE
+        if (empty) return
         binding.rvTvShowRecommendations.apply {
             val grid = layoutManager as? GridLayoutManager
             if (grid == null) {
@@ -2052,6 +2152,76 @@ class TvShowViewHolder(
         }
     }
 
+
+    private fun displayTrailerTv(binding: ContentDetailTrailerTvBinding) {
+        binding.root.tag = DETAIL_SECTION_TRAILER
+        if (ExperimentalMobileDesign.enabled()) {
+            binding.tvDetailTrailerLabel.setTextColor(
+                com.google.android.material.color.MaterialColors.getColor(
+                    binding.tvDetailTrailerLabel,
+                    androidx.appcompat.R.attr.colorPrimary,
+                ),
+            )
+            binding.root.findViewById<View>(R.id.v_detail_trailer_rule)?.visibility = View.VISIBLE
+            if (binding.root.getTag(R.id.exp_enter_animated_tag) != true) {
+                binding.root.setTag(R.id.exp_enter_animated_tag, true)
+                ExpMotion.revealHeader(
+                    binding.tvDetailTrailerLabel,
+                    binding.root.findViewById(R.id.v_detail_trailer_rule),
+                )
+                ExpMotion.pulseAccentRule(binding.root.findViewById(R.id.v_detail_trailer_rule))
+            }
+        }
+
+        fun bindRows(trailers: List<Triple<String, String, String>>) {
+            binding.root.visibility = if (trailers.isEmpty()) View.GONE else View.VISIBLE
+            binding.hgvDetailTrailers.apply {
+                setRowHeight(ViewGroup.LayoutParams.WRAP_CONTENT)
+                adapter = AppAdapter().apply {
+                    submitList(
+                        trailers.take(5).map { (title, url, type) ->
+                            Trailer(title = title, url = url, type = type).also {
+                                it.itemType = AppAdapter.Type.TRAILER_TV_ITEM
+                            }
+                        },
+                    )
+                }
+                setItemSpacing(24)
+            }
+            if (ExperimentalMobileDesign.enabled() && trailers.isNotEmpty()) {
+                ExpMotion.staggerFirstFill(binding.hgvDetailTrailers)
+            }
+        }
+
+        val seed = tvShow.trailer?.takeIf { it.isNotBlank() }?.let { url ->
+            listOf(
+                Triple(
+                    "${tvShow.title} ${context.getString(R.string.tv_show_trailer)}",
+                    url,
+                    context.getString(R.string.tv_show_trailer),
+                ),
+            )
+        }.orEmpty()
+        if (seed.isNotEmpty()) bindRows(seed) else binding.root.visibility = View.GONE
+
+        itemView.findViewTreeLifecycleOwner()?.lifecycleScope?.launch {
+            val remote = withContext(Dispatchers.IO) {
+                TmdbUtils.listYoutubeTrailers(
+                    tmdbId = tvShow.tmdbId,
+                    isTv = true,
+                    title = tvShow.title,
+                    year = tvShow.released?.format("yyyy")?.toIntOrNull(),
+                    imdbId = tvShow.imdbId,
+                )
+            }
+            val trailers = (seed + remote).distinctBy { it.second }
+            if (trailers.isNotEmpty() && tvShow.trailer.isNullOrBlank()) {
+                tvShow.trailer = trailers.first().second
+            }
+            bindRows(trailers)
+        }
+    }
+
     private fun displayAboutMobile(binding: ContentDetailAboutMobileBinding) {
         binding.root.tag = DETAIL_SECTION_ABOUT
         val overview = tvShow.overview.orEmpty()
@@ -2061,74 +2231,36 @@ class TvShowViewHolder(
         binding.tvDetailAboutOverviewLabel.visibility =
             if (overview.isBlank()) View.GONE else View.VISIBLE
 
-        binding.tvDetailAboutFeaturingLabel.visibility = View.GONE
-        binding.tvDetailAboutFeaturing.visibility = View.GONE
-        binding.tvDetailAboutDirectorsLabel.visibility = View.GONE
-        binding.tvDetailAboutDirectors.visibility = View.GONE
-        binding.tvDetailAboutCastLabel.visibility = View.GONE
-        binding.tvDetailAboutCast.visibility = View.GONE
-    }
+        val featuringNames = tvShow.cast
+            .mapNotNull { it.name.takeIf { name -> name.isNotBlank() } }
+            .take(5)
+            .joinToString(", ")
+        binding.tvDetailAboutFeaturing.text = featuringNames
+        val featuringVisible = featuringNames.isNotBlank()
+        binding.tvDetailAboutFeaturing.visibility =
+            if (featuringVisible) View.VISIBLE else View.GONE
+        binding.tvDetailAboutFeaturingLabel.visibility =
+            if (featuringVisible) View.VISIBLE else View.GONE
 
-    /** When catalogue left logo blank, resolve TMDb artwork and update the hero. */
-    private fun resolveHeroLogoIfBlank(
-        logoView: android.widget.ImageView,
-        titleView: android.widget.TextView,
-        title: String,
-        year: Int?,
-        isTv: Boolean,
-        tmdbId: String?,
-        imdbId: String?,
-        onResolved: (String) -> Unit,
-    ) {
-        val owner = itemView.findViewTreeLifecycleOwner() ?: return
-        owner.lifecycleScope.launch {
-            val logo = withContext(Dispatchers.IO) {
-                runCatching {
-                    TmdbUtils.resolveTitleLogo(
-                        title = title,
-                        year = year,
-                        isTv = isTv,
-                        tmdbId = tmdbId,
-                        imdbId = imdbId,
-                    )
-                }.getOrNull()
-            }
-            if (logo.isNullOrBlank()) return@launch
-            onResolved(logo)
-            if (!::tvShow.isInitialized || tvShow.title != title) return@launch
-            val url = ArtworkUrls.preferOriginal(logo) ?: ArtworkUrls.preferHero(logo) ?: return@launch
-            logoView.visibility = View.VISIBLE
-            titleView.visibility = View.GONE
-            Glide.with(logoView)
-                .load(url)
-                .diskCacheStrategy(DiskCacheStrategy.AUTOMATIC)
-                .fitCenter()
-                .listener(object : RequestListener<Drawable> {
-                    override fun onLoadFailed(
-                        e: GlideException?,
-                        model: Any?,
-                        target: Target<Drawable>,
-                        isFirstResource: Boolean,
-                    ): Boolean {
-                        logoView.visibility = View.GONE
-                        titleView.visibility = View.VISIBLE
-                        return false
-                    }
+        val directorNames = tvShow.directors
+            .mapNotNull { it.name.takeIf { name -> name.isNotBlank() } }
+            .joinToString(", ")
+        binding.tvDetailAboutDirectors.text = directorNames
+        val directorsVisible = directorNames.isNotBlank()
+        binding.tvDetailAboutDirectors.visibility =
+            if (directorsVisible) View.VISIBLE else View.GONE
+        binding.tvDetailAboutDirectorsLabel.visibility =
+            if (directorsVisible) View.VISIBLE else View.GONE
 
-                    override fun onResourceReady(
-                        resource: Drawable,
-                        model: Any,
-                        target: Target<Drawable>?,
-                        dataSource: DataSource,
-                        isFirstResource: Boolean,
-                    ): Boolean {
-                        logoView.visibility = View.VISIBLE
-                        titleView.visibility = View.GONE
-                        return false
-                    }
-                })
-                .into(logoView)
-        }
+        val castNames = tvShow.cast
+            .mapNotNull { it.name.takeIf { name -> name.isNotBlank() } }
+            .joinToString(", ")
+        binding.tvDetailAboutCast.text = castNames
+        val castVisible = castNames.isNotBlank()
+        binding.tvDetailAboutCast.visibility =
+            if (castVisible) View.VISIBLE else View.GONE
+        binding.tvDetailAboutCastLabel.visibility =
+            if (castVisible) View.VISIBLE else View.GONE
     }
 
     companion object {

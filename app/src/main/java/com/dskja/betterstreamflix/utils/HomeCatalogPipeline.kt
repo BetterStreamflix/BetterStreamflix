@@ -12,9 +12,21 @@ import java.net.URI
  * Shared post-process for every provider's [Provider.getHome] result.
  *
  * Ensures FEATURED exists, stamps [Movie.providerName] / [TvShow.providerName],
- * drops empty shelves, absolute-izes relative artwork URLs, and dedupes items.
- * Applied once in [com.dskja.betterstreamflix.fragments.home.HomeViewModel]
- * so all ~80 scrapers benefit without per-provider rewrites.
+ * drops empty shelves, absolute-izes relative artwork URLs (poster/banner/logo),
+ * and dedupes items. Applied once in
+ * [com.dskja.betterstreamflix.fragments.home.HomeViewModel] so all ~80 scrapers
+ * benefit without per-provider rewrites.
+ *
+ * Featured contract:
+ * - [Category.FEATURED] is the stable shelf id (`"Featured"`); blank / "Featured*"
+ *   names normalize here.
+ * - FEATURED rows are always identity-cloned ([cloneShowItems]) so Mobile
+ *   ViewPager2 itemType stamps cannot crash shelf posters (BETTERSTREAMFLIX-13).
+ * - Cap: [MAX_FEATURED_ITEMS] (aligned with
+ *   [com.dskja.betterstreamflix.ui.FeaturedHeroController.MAX_FEATURED_BITMAP_BUDGET]).
+ * - Demo addon tip ids never promote into FEATURED.
+ * - Kids / parental: when filtering is active, donor synthesis only uses already
+ *   filtered shelves (callers must filter before [ensureFeaturedShelf]).
  */
 object HomeCatalogPipeline {
 
@@ -57,10 +69,12 @@ object HomeCatalogPipeline {
     private fun normalizeCategory(provider: Provider, category: Category): Category? {
         val rawName = category.name.trim()
         val name = when {
-            rawName.equals(Category.FEATURED, ignoreCase = true) -> Category.FEATURED
-            rawName.equals("Featured", ignoreCase = true) -> Category.FEATURED
+            rawName.isEmpty() -> Category.FEATURED
+            Category.isFeaturedName(rawName) -> Category.FEATURED
+            // Exact-ish Featured labels only — avoid collapsing "Featured Hits 2024".
             rawName.contains("Featured", ignoreCase = true) &&
-                rawName.length <= 24 -> Category.FEATURED
+                rawName.length <= 16 &&
+                rawName.split(Regex("\\s+")).size <= 2 -> Category.FEATURED
             else -> rawName
         }
         val cap = if (name == Category.FEATURED) MAX_FEATURED_ITEMS else MAX_ITEMS_PER_CATEGORY
@@ -84,6 +98,7 @@ object HomeCatalogPipeline {
                     if (providerName.isNullOrBlank()) providerName = provider.name
                     poster = absoluteUrl(provider.baseUrl, poster)
                     banner = absoluteUrl(provider.baseUrl, banner)
+                    logo = absoluteUrl(provider.baseUrl, logo)
                 }
             }
 
@@ -93,6 +108,7 @@ object HomeCatalogPipeline {
                     if (providerName.isNullOrBlank()) providerName = provider.name
                     poster = absoluteUrl(provider.baseUrl, poster)
                     banner = absoluteUrl(provider.baseUrl, banner)
+                    logo = absoluteUrl(provider.baseUrl, logo)
                 }
             }
 
@@ -115,15 +131,20 @@ object HomeCatalogPipeline {
         categories: List<Category>,
         warnings: MutableList<String>,
     ): List<Category> {
-        val featured = categories.firstOrNull { it.name == Category.FEATURED }
+        val featured = categories.firstOrNull { Category.isFeaturedName(it.name) }
         if (featured != null && featured.list.isNotEmpty()) {
             // Always clone FEATURED rows even when the provider already sent the
             // shelf — shared Movie/TvShow refs with other shelves mutate itemType
             // (poster ↔ swiper) and crash ViewPager2 (BETTERSTREAMFLIX-13).
             val cloned = cloneShowItems(featured.list)
             return categories.map { cat ->
-                if (cat.name == Category.FEATURED) {
-                    Category(name = Category.FEATURED, list = cloned)
+                if (Category.isFeaturedName(cat.name)) {
+                    cat.copy(
+                        name = Category.FEATURED,
+                        list = cloned,
+                        selectedIndex = cat.selectedIndex
+                            .coerceIn(0, (cloned.size - 1).coerceAtLeast(0)),
+                    )
                 } else {
                     cat
                 }
@@ -131,22 +152,23 @@ object HomeCatalogPipeline {
         }
 
         val donor = categories.firstOrNull { category ->
-            category.name != Category.FEATURED &&
+            !Category.isFeaturedName(category.name) &&
                 !category.name.equals("BetterStreamflix Addons", ignoreCase = true) &&
                 category.list.any { item ->
                     (item is Movie || item is TvShow) && !isPluginTipItem(item)
                 }
         } ?: return categories
 
-        warnings.add("Featured shelf synthesized from “${donor.name.ifBlank { "catalog" }}”")
+        warnings.add("Featured shelf restored from “${donor.name.ifBlank { "catalog" }}”")
         val featuredItems = cloneShowItems(
             donor.list.filter { item ->
                 (item is Movie || item is TvShow) && !isPluginTipItem(item)
             }.take(MAX_FEATURED_ITEMS),
         )
         val rest = categories.filterNot { it === donor }
-            .filter { it.name != Category.FEATURED }
-        val keepDonor = donor.name.isNotBlank()
+            .filter { !Category.isFeaturedName(it.name) }
+        // Do not keep a blank-named donor (legacy Featured sentinel) as a shelf.
+        val keepDonor = donor.name.isNotBlank() && !Category.isFeaturedName(donor.name)
         return buildList {
             add(Category(name = Category.FEATURED, list = featuredItems))
             if (keepDonor) add(donor)
@@ -154,9 +176,16 @@ object HomeCatalogPipeline {
         }
     }
 
-    /** Never let the built-in Demo Addon tip get promoted into FEATURED. */
-    private fun isPluginTipItem(item: AppAdapter.Item): Boolean =
-        item is Movie && item.id == "demo-addon-tip"
+    /** Never let built-in tip / onboarding tiles get promoted into FEATURED. */
+    private fun isPluginTipItem(item: AppAdapter.Item): Boolean {
+        if (item !is Movie) return false
+        val id = item.id.lowercase()
+        return id == "demo-addon-tip" ||
+            id.endsWith("-tip") ||
+            id.startsWith("tip-") ||
+            id.contains("onboarding") ||
+            item.title.contains("plugin system", ignoreCase = true)
+    }
 
     fun cloneShowItems(items: List<AppAdapter.Item>): List<AppAdapter.Item> =
         items.map { item ->
@@ -175,16 +204,20 @@ object HomeCatalogPipeline {
     fun isolateFeatured(categories: List<Category>): List<Category> {
         val visible = categories.filter { it.list.isNotEmpty() }
         val ensured = ensureFeatured(visible, mutableListOf())
-        return ensured.map { cat ->
-            if (cat.name != Category.FEATURED) {
+                return ensured.map { cat ->
+            if (!Category.isFeaturedName(cat.name)) {
                 cat
             } else {
-                Category(
+                val featuredList = cloneShowItems(
+                    cat.list.filter { it is Movie || it is TvShow }
+                        .take(MAX_FEATURED_ITEMS),
+                )
+                // Preserve rotation index — callers often set selectedIndex before isolate.
+                cat.copy(
                     name = Category.FEATURED,
-                    list = cloneShowItems(
-                        cat.list.filter { it is Movie || it is TvShow }
-                            .take(MAX_FEATURED_ITEMS),
-                    ),
+                    list = featuredList,
+                    selectedIndex = cat.selectedIndex
+                        .coerceIn(0, (featuredList.size - 1).coerceAtLeast(0)),
                 )
             }
         }.filter { it.list.isNotEmpty() }
@@ -197,18 +230,28 @@ object HomeCatalogPipeline {
     private fun mergeDuplicateShelfNames(categories: List<Category>): List<Category> {
         val order = LinkedHashMap<String, MutableList<AppAdapter.Item>>()
         categories.forEach { category ->
-            val bucket = order.getOrPut(category.name) { mutableListOf() }
+            val key = if (Category.isFeaturedName(category.name)) {
+                Category.FEATURED
+            } else {
+                category.name
+            }
+            val bucket = order.getOrPut(key) { mutableListOf() }
             val seen = bucket.mapNotNullTo(mutableSetOf()) { itemKey(it) }
             category.list.forEach { item ->
-                val key = itemKey(item)
-                if (key == null || seen.add(key)) {
+                val itemKey = itemKey(item)
+                if (itemKey == null || seen.add(itemKey)) {
                     bucket.add(item)
                 }
             }
         }
         return order.map { (name, items) ->
-            val cap = if (name == Category.FEATURED) MAX_FEATURED_ITEMS else MAX_ITEMS_PER_CATEGORY
-            Category(name = name, list = items.take(cap))
+            val canonical = if (Category.isFeaturedName(name)) Category.FEATURED else name
+            val cap = if (canonical == Category.FEATURED) {
+                MAX_FEATURED_ITEMS
+            } else {
+                MAX_ITEMS_PER_CATEGORY
+            }
+            Category(name = canonical, list = items.take(cap))
         }
     }
 

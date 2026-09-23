@@ -116,4 +116,12 @@ class TmdbCacheTest {
         assertFalse(TmdbCache.hasSearchTv("k"))
         assertFalse(TmdbCache.hasFindImdbMovie("tt1"))
     }
+
+    @Test
+    fun clearAlsoClearsLogoCachesWithoutThrowing() {
+        // Logo caches live on TmdbUtils; clear() must reach them without circular init issues.
+        TmdbCache.clear()
+        TmdbUtils.clearLogoCaches()
+        TmdbCache.clear()
+    }
 }

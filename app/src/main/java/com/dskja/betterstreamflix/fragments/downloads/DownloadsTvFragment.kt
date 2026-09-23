@@ -4,7 +4,6 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.widget.PopupMenu
 import android.widget.Toast
 import androidx.core.os.bundleOf
 import androidx.core.view.isVisible
@@ -32,13 +31,9 @@ import com.dskja.betterstreamflix.models.Season
 import com.dskja.betterstreamflix.models.TvShow
 import com.dskja.betterstreamflix.models.Video
 import com.dskja.betterstreamflix.providers.Provider
-import com.dskja.betterstreamflix.utils.ExpDialogChrome
 import com.dskja.betterstreamflix.utils.ExpEmptyChrome
-import com.dskja.betterstreamflix.utils.ExpMotion
-import com.dskja.betterstreamflix.utils.ExperimentalMobileDesign
 import com.dskja.betterstreamflix.utils.UserPreferences
 import com.dskja.betterstreamflix.utils.viewModelsFactory
-import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
@@ -83,38 +78,8 @@ class DownloadsTvFragment : Fragment() {
         binding.chipFilterCompleted.setOnClickListener { viewModel.setFilter(DownloadsFilter.COMPLETED) }
         binding.chipFilterFailed.setOnClickListener { viewModel.setFilter(DownloadsFilter.FAILED) }
 
-        if (ExperimentalMobileDesign.enabled()) {
-            ExpMotion.enterScreen(binding.root)
-            val onSurface = com.google.android.material.color.MaterialColors.getColor(
-                binding.tvDownloadsTitle,
-                com.google.android.material.R.attr.colorOnSurface,
-            )
-            val onVariant = com.google.android.material.color.MaterialColors.getColor(
-                binding.tvDownloadsStorage,
-                com.google.android.material.R.attr.colorOnSurfaceVariant,
-            )
-            val error = com.google.android.material.color.MaterialColors.getColor(
-                binding.tvDownloadsBanner,
-                androidx.appcompat.R.attr.colorError,
-            )
-            binding.tvDownloadsTitle.setTextColor(onSurface)
-            binding.tvDownloadsStorage.setTextColor(onVariant)
-            binding.tvDownloadsBanner.setTextColor(error)
-            binding.btnDownloadsMenu.imageTintList =
-                android.content.res.ColorStateList.valueOf(onSurface)
-            binding.btnDownloadsMenu.setBackgroundResource(
-                ExperimentalMobileDesign.iconChipBackground(),
-            )
-            with(com.dskja.betterstreamflix.utils.ExpPressEffects) {
-                binding.btnDownloadsMenu.applyExpPress()
-            }
-            ExpMotion.revealHeader(binding.tvDownloadsTitle, binding.tvDownloadsStorage)
-            binding.root.findViewById<View>(R.id.v_downloads_filters_edge_fade_start)?.isVisible = true
-            binding.root.findViewById<View>(R.id.v_downloads_filters_edge_fade_end)?.isVisible = true
-        } else {
-            binding.root.findViewById<View>(R.id.v_downloads_filters_edge_fade_start)?.isVisible = false
-            binding.root.findViewById<View>(R.id.v_downloads_filters_edge_fade_end)?.isVisible = false
-        }
+        binding.root.findViewById<View>(R.id.v_downloads_filters_edge_fade_start)?.isVisible = false
+        binding.root.findViewById<View>(R.id.v_downloads_filters_edge_fade_end)?.isVisible = false
 
         viewLifecycleOwner.lifecycleScope.launch {
             // Combine filter so empty→empty filter switches still refresh CTA copy
@@ -136,12 +101,6 @@ class DownloadsTvFragment : Fragment() {
                     R.id.btn_downloads_empty_cta,
                 )
                 val filterAll = filter == DownloadsFilter.ALL
-                if (empty && ExperimentalMobileDesign.enabled()) {
-                    emptyCta?.setText(
-                        if (filterAll) R.string.exp_empty_browse_catalog
-                        else R.string.exp_empty_clear_filter,
-                    )
-                }
                 ExpEmptyChrome.bind(
                     emptyView = binding.tvDownloadsEmpty,
                     emptyRule = binding.root.findViewById(R.id.v_downloads_empty_rule),
@@ -205,66 +164,46 @@ class DownloadsTvFragment : Fragment() {
     }
 
     private fun styleChip(chip: android.widget.TextView, selected: Boolean) {
-        val wasSelected = chip.isSelected
         chip.isSelected = selected
-        val exp = ExperimentalMobileDesign.enabled()
         chip.setBackgroundResource(
-            when {
-                exp && selected -> ExperimentalMobileDesign.primaryButtonBackground()
-                exp -> ExperimentalMobileDesign.chipBackground()
-                selected -> R.drawable.bg_download_filter_chip_selected
-                else -> R.drawable.bg_download_filter_chip
-            },
+            if (selected) R.drawable.bg_download_filter_chip_selected
+            else R.drawable.bg_download_filter_chip,
         )
         chip.setTextColor(
-            when {
-                exp && selected -> com.google.android.material.color.MaterialColors.getColor(
-                    chip, com.google.android.material.R.attr.colorOnPrimary,
-                )
-                exp -> com.google.android.material.color.MaterialColors.getColor(
-                    chip, com.google.android.material.R.attr.colorOnSurfaceVariant,
-                )
-                selected -> 0xFF111111.toInt()
-                else -> 0xFFFFFFFF.toInt()
-            },
+            if (selected) 0xFF111111.toInt() else 0xFFFFFFFF.toInt(),
         )
+        chip.isFocusable = true
+        chip.isFocusableInTouchMode = true
         chip.refreshDrawableState()
-        if (exp && selected && !wasSelected) {
-            com.dskja.betterstreamflix.utils.ExpMotion.popIn(chip)
+        chip.typeface = if (selected) {
+            android.graphics.Typeface.create("sans-serif-medium", android.graphics.Typeface.BOLD)
+        } else {
+            android.graphics.Typeface.create("sans-serif", android.graphics.Typeface.NORMAL)
         }
-        if (exp) {
-            with(com.dskja.betterstreamflix.utils.ExpPressEffects) { chip.applyExpPress() }
-            chip.typeface = if (selected) {
-                android.graphics.Typeface.create("sans-serif-medium", android.graphics.Typeface.BOLD)
-            } else {
-                android.graphics.Typeface.create("sans-serif", android.graphics.Typeface.NORMAL)
-            }
-            chip.letterSpacing = if (selected) 0.02f else 0f
+        chip.setOnFocusChangeListener { v, hasFocus ->
+            v.scaleX = if (hasFocus) 1.06f else 1f
+            v.scaleY = if (hasFocus) 1.06f else 1f
+            v.refreshDrawableState()
         }
     }
 
     private fun showMenu(anchor: View) {
-        PopupMenu(requireContext(), anchor).apply {
-            menu.add(0, 1, 0, R.string.downloads_action_pause_all)
-            menu.add(0, 2, 1, R.string.downloads_action_resume_all)
-            menu.add(0, 6, 2, R.string.downloads_action_retry_all_failed)
-            menu.add(0, 3, 3, R.string.downloads_action_clear_completed)
-            menu.add(0, 7, 4, R.string.downloads_action_clear_watched)
-            menu.add(0, 4, 5, R.string.downloads_action_clear_failed)
-            val sortMenu = menu.addSubMenu(0, 8, 6, R.string.downloads_sort)
-            sortMenu.add(0, 10, 0, R.string.downloads_sort_newest)
-                .setCheckable(true)
-                .setChecked(viewModel.currentSort() == DownloadsSort.NEWEST)
-            sortMenu.add(0, 11, 1, R.string.downloads_sort_title)
-                .setCheckable(true)
-                .setChecked(viewModel.currentSort() == DownloadsSort.TITLE)
-            sortMenu.add(0, 12, 2, R.string.downloads_sort_size)
-                .setCheckable(true)
-                .setChecked(viewModel.currentSort() == DownloadsSort.SIZE)
-            sortMenu.setGroupCheckable(0, true, true)
-            menu.add(0, 5, 7, R.string.downloads_action_settings)
-            setOnMenuItemClickListener {
-                when (it.itemId) {
+        val labels = mutableListOf<Pair<Int, Int>>()
+        labels += 1 to R.string.downloads_action_pause_all
+        labels += 2 to R.string.downloads_action_resume_all
+        labels += 6 to R.string.downloads_action_retry_all_failed
+        labels += 3 to R.string.downloads_action_clear_completed
+        labels += 7 to R.string.downloads_action_clear_watched
+        labels += 4 to R.string.downloads_action_clear_failed
+        labels += 10 to R.string.downloads_sort_newest
+        labels += 11 to R.string.downloads_sort_title
+        labels += 12 to R.string.downloads_sort_size
+        labels += 5 to R.string.downloads_action_settings
+        val titles = labels.map { getString(it.second) }.toTypedArray()
+        androidx.appcompat.app.AlertDialog.Builder(requireContext())
+            .setTitle(R.string.downloads_title)
+            .setItems(titles) { _, which ->
+                when (labels[which].first) {
                     1 -> viewModel.pauseAll()
                     2 -> viewModel.resumeAll()
                     3 -> viewModel.clearCompleted()
@@ -279,48 +218,47 @@ class DownloadsTvFragment : Fragment() {
                     11 -> viewModel.setSort(DownloadsSort.TITLE)
                     12 -> viewModel.setSort(DownloadsSort.SIZE)
                 }
-                true
             }
-            show()
-        }
+            .show()
     }
 
     private fun showItemMenu(row: DownloadRowUiModel.Item, anchor: View) {
-        PopupMenu(requireContext(), anchor).apply {
-            if (row.state == DownloadItemState.COMPLETED) {
-                menu.add(0, 1, 0, R.string.downloads_action_share)
-            }
-            if (row.state == DownloadItemState.FAILED) {
-                menu.add(0, 2, 1, R.string.downloads_action_retry)
-            }
-            menu.add(0, 3, 2, R.string.downloads_action_delete)
-            setOnMenuItemClickListener {
-                when (it.itemId) {
+        val labels = mutableListOf<Pair<Int, Int>>()
+        if (row.state == DownloadItemState.COMPLETED) {
+            labels += 1 to R.string.downloads_action_share
+        }
+        if (row.state == DownloadItemState.FAILED) {
+            labels += 2 to R.string.downloads_action_retry
+        }
+        labels += 3 to R.string.downloads_action_delete
+        val titles = labels.map { getString(it.second) }.toTypedArray()
+        androidx.appcompat.app.AlertDialog.Builder(requireContext())
+            .setItems(titles) { _, which ->
+                when (labels[which].first) {
                     1 -> share(row)
                     2 -> retry(row)
                     3 -> viewModel.remove(row.id)
                 }
-                true
             }
-            show()
-        }
+            .show()
     }
 
     private fun showPackMenu(pack: DownloadRowUiModel.SeasonPack, anchor: View) {
-        PopupMenu(requireContext(), anchor).apply {
-            menu.add(0, 1, 0, R.string.downloads_pack_pause)
-            menu.add(0, 2, 1, R.string.downloads_pack_resume)
-            menu.add(0, 3, 2, R.string.downloads_pack_delete)
-            setOnMenuItemClickListener {
-                when (it.itemId) {
+        val labels = listOf(
+            1 to R.string.downloads_pack_pause,
+            2 to R.string.downloads_pack_resume,
+            3 to R.string.downloads_pack_delete,
+        )
+        val titles = labels.map { getString(it.second) }.toTypedArray()
+        androidx.appcompat.app.AlertDialog.Builder(requireContext())
+            .setItems(titles) { _, which ->
+                when (labels[which].first) {
                     1 -> viewModel.pausePack(pack.pack.id)
                     2 -> viewModel.resumePack(pack.pack.id)
                     3 -> viewModel.removePack(pack.pack.id)
                 }
-                true
             }
-            show()
-        }
+            .show()
     }
 
     private fun share(row: DownloadRowUiModel.Item) {
@@ -413,20 +351,12 @@ class DownloadsTvFragment : Fragment() {
 
     private fun activateDownloadProvider(providerName: String?) {
         val name = providerName?.takeIf { it.isNotBlank() } ?: return
-        Provider.findByName(name)?.let { UserPreferences.currentProvider = it }
+        Provider.findByName(name)?.let { UserPreferences.setCurrentProviderForPlayback(it) }
     }
 
     private fun showDownloadError(messageRes: Int) {
         val message = getString(messageRes)
-        if (ExperimentalMobileDesign.enabled()) {
-            ExpDialogChrome.showInfo(
-                requireContext(),
-                R.string.downloads_title,
-                message,
-            ) { ctx -> MaterialAlertDialogBuilder(ctx) }
-        } else {
-            Toast.makeText(requireContext(), message, Toast.LENGTH_SHORT).show()
-        }
+        Toast.makeText(requireContext(), message, Toast.LENGTH_SHORT).show()
     }
 
     override fun onDestroyView() {

@@ -79,6 +79,9 @@
         <action
             android:id="@+id/action_search_to_tv_show"
             app:destination="@id/tv_show" />
+        <action
+            android:id="@+id/action_search_to_genre"
+            app:destination="@id/genre" />
     </fragment>
     <fragment
         android:id="@+id/movies"
@@ -118,6 +121,9 @@
         <action
             android:id="@+id/action_movie_to_tv_show"
             app:destination="@id/tv_show" />
+        <action
+            android:id="@+id/action_movie_to_genre"
+            app:destination="@id/genre" />
     </fragment>
     <fragment
         android:id="@+id/tv_show"
@@ -150,6 +156,9 @@
         <action
             android:id="@+id/action_tv_show_to_player"
             app:destination="@id/player" />
+        <action
+            android:id="@+id/action_tv_show_to_genre"
+            app:destination="@id/genre" />
     </fragment>
     <fragment
         android:id="@+id/season"
@@ -271,7 +280,16 @@
         android:id="@+id/support"
         android:name="com.dskja.betterstreamflix.fragments.support.SupportTvFragment"
         android:label="fragment_support_tv"
-        tools:layout="@layout/fragment_support_tv" />
+        tools:layout="@layout/fragment_support_tv">
+        <action
+            android:id="@+id/action_support_to_support_details"
+            app:destination="@id/support_details" />
+    </fragment>
+    <fragment
+        android:id="@+id/support_details"
+        android:name="com.dskja.betterstreamflix.fragments.support.SupportDetailsTvFragment"
+        android:label="fragment_support_details_tv"
+        tools:layout="@layout/fragment_support_details_mobile" />
     <action
         android:id="@+id/action_global_support"
         app:destination="@id/support" />

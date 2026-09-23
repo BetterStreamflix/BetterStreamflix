@@ -54,6 +54,10 @@
     <string name="search_input_hint">Search movies, TV shows</string>
     <string name="search_input_hint_iptv">Search channels</string>
     <string name="global_search">Global search</string>
+    <string name="global_search_cd_on">Global search, on, switch</string>
+    <string name="global_search_cd_off">Global search, off, switch</string>
+    <string name="continue_watching_confirm_title">Continue watching?</string>
+    <string name="continue_watching_go_to_details">Go to details</string>
     <string name="search_empty_query">Please enter a search query</string>
     <string name="search_no_results">No results for this search</string>
     <string name="search_recent_title">Recent</string>
@@ -77,6 +81,7 @@
     <string name="people_known_for">Known for</string>
     <string name="people_meta_dot" translatable="false">·</string>
     <string name="home_empty">Nothing to show yet — try another provider or pull to refresh</string>
+    <string name="home_empty_choose_provider">Choose provider</string>
     <string name="exp_cd_search_clear">Clear search</string>
     <string name="exp_cd_voice_search">Voice search</string>
     <string name="searching">Searching...</string>
@@ -109,6 +114,7 @@
     <string name="detail_tab_trailer">Trailer</string>
     <string name="detail_tab_about">About</string>
     <string name="detail_trailer_empty">No trailers found for this title yet</string>
+    <string name="detail_similar_empty">No similar titles found yet</string>
     <string name="detail_featuring_fmt">Featuring: %1$s</string>
     <string name="detail_directors_fmt">Director: %1$s</string>
     <string name="detail_actors_fmt">Actors: %1$s</string>
@@ -120,6 +126,13 @@
     <string name="home_swiper_in_my_list">In My List</string>
     <string name="home_swiper_all_episodes">All Episodes Available</string>
     <string name="home_swiper_now_playing">Now Playing</string>
+    <string name="home_swiper_resume">Resume · %1$d%%</string>
+    <string name="home_swiper_continue">Continue Watching</string>
+    <string name="home_swiper_released_year">%1$s</string>
+    <string name="home_swiper_more_info">More Info</string>
+    <string name="home_swiper_trailer">Trailer</string>
+    <string name="home_featured_synthesized">Featured shelf restored from catalog</string>
+    <string name="simkl_sync_failed">Couldn’t sync list — saved locally</string>
     <string name="favorites_edit">Edit</string>
     <string name="favorites_cancel">Cancel</string>
     <string name="favorites_remove">Remove</string>
@@ -930,6 +943,7 @@
     <string name="exp_cd_rewind">Rewind</string>
     <string name="exp_cd_forward">Fast forward</string>
     <string name="exp_cd_replay">Replay</string>
+    <string name="exp_cd_play_pause">Play or pause</string>
     <string name="exp_cd_lock">Lock controls</string>
     <string name="exp_cd_unlock">Unlock controls</string>
     <string name="exp_cd_pip">Picture in picture</string>
@@ -1021,6 +1035,19 @@
     <string name="settings_tmdb_clear_cache_title">Clear TMDb cache</string>
     <string name="settings_tmdb_clear_cache_summary">Drop cached details, IMDb finds and search matches</string>
     <string name="settings_tmdb_cache_cleared">TMDb cache cleared</string>
+    <string name="settings_enable_tmdb_logos_title">Title logos</string>
+    <string name="settings_enable_tmdb_logos_summary">Show TMDb title logos on Featured and detail pages</string>
+    <string name="settings_tmdb_logo_quality_title">Logo image quality</string>
+    <string name="settings_tmdb_logo_quality_summary">Prefer original or w1280 first when loading logos</string>
+    <string name="settings_tmdb_clear_logo_cache_title">Clear title logo cache</string>
+    <string name="settings_tmdb_clear_logo_cache_summary">Drop only cached title logo URLs (keeps other TMDb data)</string>
+    <string name="settings_tmdb_logo_cache_cleared">Title logo cache cleared</string>
+    <string name="settings_tmdb_logo_telemetry_title">Title logo stats</string>
+    <string name="settings_tmdb_logo_telemetry_summary">Tap to refresh in-session logo pipeline counters</string>
+    <string name="settings_tmdb_logo_miss_ttl_title">Logo miss cache TTL</string>
+    <string name="settings_tmdb_logo_miss_ttl_summary">How long to remember that a title has no logo</string>
+    <string name="settings_tmdb_logo_hit_ttl_title">Logo hit cache TTL</string>
+    <string name="settings_tmdb_logo_hit_ttl_summary">How long to keep a successful logo URL before refresh</string>
 
     <string name="settings_category_subdl">SubDL Settings</string>
     <string name="settings_subdl_api_key">SubDL API Key</string>
@@ -1562,4 +1589,6 @@
     <string name="platform_opensubtitles_logged_out">OpenSubtitles session cleared</string>
     <string name="platform_simkl_logged_out">Simkl token cleared</string>
     <string name="platform_url_invalid">Enter a valid http(s) URL</string>
+    <string name="home_featured_page">Featured: %1$s</string>
+    <string name="home_featured_page_index">%1$d/%2$d</string>
 </resources>

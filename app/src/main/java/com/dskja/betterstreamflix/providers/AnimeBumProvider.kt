@@ -3,6 +3,7 @@ package com.dskja.betterstreamflix.providers
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
+import com.dskja.betterstreamflix.BetterStreamflixApp
 import com.dskja.betterstreamflix.utils.UserPreferences
 
 import com.tanasi.retrofit_jsoup.converter.JsoupConverterFactory
@@ -49,7 +50,7 @@ object AnimeBumProvider : Provider, ProviderConfigUrl {
 
     private fun getOkHttpClient(): OkHttpClient {
         return OkHttpClient.Builder()
-            .cache(Cache(File("cacheDir", "okhttpcache"), 10 * 1024 * 1024))
+            .cache(Cache(File(BetterStreamflixApp.instance.cacheDir, "okhttpcache"), 10 * 1024 * 1024))
             .readTimeout(30, TimeUnit.SECONDS)
             .connectTimeout(30, TimeUnit.SECONDS)
             .dns(DnsResolver.doh)

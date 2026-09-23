@@ -541,4 +541,18 @@
     <string name="settings_refresh_cache_success">Cache actualisé avec succès</string>
     <string name="supabase_instructions_title">Instructions</string>
     <string name="supabase_instructions_summary">Ouvrir dans le navigateur le guide détaillé de configuration du compte et de la synchronisation Supabase</string>
+    <string name="home_swiper_resume">Reprendre · %1$d%%</string>
+    <string name="home_swiper_continue">Reprendre</string>
+    <string name="home_swiper_released_year">%1$s</string>
+    <string name="home_swiper_more_info">Plus d’infos</string>
+    <string name="home_swiper_trailer">Bande-annonce</string>
+    <string name="home_featured_synthesized">À la une restauré depuis le catalogue</string>
+    <string name="simkl_sync_failed">Sync liste impossible — enregistré localement</string>
+    <string name="home_swiper_my_list">+ Ma liste</string>
+    <string name="home_swiper_in_my_list">Dans ma liste</string>
+    <string name="home_swiper_all_episodes">Tous les épisodes disponibles</string>
+    <string name="home_swiper_now_playing">À l’affiche</string>
+    <string name="home_featured_title">À la une</string>
+    <string name="exp_swiper_page">À la une : %1$s</string>
+    <string name="home_featured_page">À la une : %1$s</string>
 </resources>

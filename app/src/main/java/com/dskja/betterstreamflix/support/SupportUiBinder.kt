@@ -11,6 +11,7 @@ import com.dskja.betterstreamflix.databinding.ItemSupportProviderCardBinding
 import com.dskja.betterstreamflix.utils.ExpMotion
 import com.dskja.betterstreamflix.utils.ExpPressEffects.applyExpPress
 import com.dskja.betterstreamflix.utils.ExperimentalMobileDesign
+import com.dskja.betterstreamflix.utils.DeviceCapabilities
 
 object SupportUiBinder {
 
@@ -98,6 +99,12 @@ object SupportUiBinder {
 
     fun applyFocusScale(view: View) {
         view.setOnFocusChangeListener { v, hasFocus ->
+            if (DeviceCapabilities.shouldReduceHomeEffects(v.context)) {
+                v.animate().cancel()
+                v.scaleX = 1f
+                v.scaleY = 1f
+                return@setOnFocusChangeListener
+            }
             val scale = if (hasFocus) 1.03f else 1f
             v.animate().scaleX(scale).scaleY(scale).setDuration(140).start()
         }

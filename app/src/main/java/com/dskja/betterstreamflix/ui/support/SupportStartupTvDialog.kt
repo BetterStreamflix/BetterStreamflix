@@ -13,8 +13,6 @@ import com.dskja.betterstreamflix.databinding.DialogSupportStartupTvBinding
 import com.dskja.betterstreamflix.support.SupportLinkOpener
 import com.dskja.betterstreamflix.support.SupportProvider
 import com.dskja.betterstreamflix.utils.ExpMotion
-import com.dskja.betterstreamflix.utils.ExpPressEffects.applyExpPress
-import com.dskja.betterstreamflix.utils.ExperimentalMobileDesign
 import com.dskja.betterstreamflix.utils.UserPreferences
 
 class SupportStartupTvDialog(
@@ -43,47 +41,6 @@ class SupportStartupTvDialog(
         }
 
         binding.cbSupportStartupNever.isChecked = UserPreferences.neverShowSupportOnStart
-
-        if (ExperimentalMobileDesign.enabled()) {
-            (binding.root.getChildAt(0) as? android.view.View)
-                ?.setBackgroundResource(ExperimentalMobileDesign.dialogBackground())
-            ExperimentalMobileDesign.applyReducedGlass(binding.root)
-            ExpMotion.enterScreen(binding.root)
-            ExpMotion.revealHeader(
-                binding.tvSupportStartupTitle,
-                binding.vSupportStartupAccentRule,
-                binding.tvSupportStartupBody,
-            )
-            ExpMotion.pulseAccentRule(binding.vSupportStartupAccentRule)
-            binding.btnSupportStartupClose.setBackgroundResource(
-                ExperimentalMobileDesign.iconChipBackground(),
-            )
-            binding.btnSupportStartupClose.alpha = 1f
-            binding.btnSupportStartupPrimary.setBackgroundResource(
-                ExperimentalMobileDesign.primaryButtonBackground(),
-            )
-            listOf(
-                binding.btnSupportStartupSponsors,
-                binding.btnSupportStartupBmc,
-                binding.btnSupportStartupCommunity,
-                binding.btnSupportStartupRepo,
-            ).forEach { btn ->
-                btn.setBackgroundResource(ExperimentalMobileDesign.chipBackground())
-            }
-            val ctas = listOf(
-                binding.btnSupportStartupClose,
-                binding.btnSupportStartupPrimary,
-                binding.btnSupportStartupSponsors,
-                binding.btnSupportStartupBmc,
-                binding.btnSupportStartupCommunity,
-                binding.btnSupportStartupRepo,
-            )
-            ctas.forEach { it.applyExpPress() }
-            binding.cbSupportStartupNever.applyExpPress()
-            (ctas + binding.cbSupportStartupNever).forEachIndexed { index, btn ->
-                btn.postDelayed({ ExpMotion.popIn(btn) }, 36L * index)
-            }
-        }
 
         binding.btnSupportStartupClose.setOnClickListener {
             ExpMotion.hapticTap(it)
@@ -114,6 +71,11 @@ class SupportStartupTvDialog(
         }
 
         binding.btnSupportStartupPrimary.requestFocus()
+        setOnShowListener {
+            binding.btnSupportStartupPrimary.post {
+                binding.btnSupportStartupPrimary.requestFocus()
+            }
+        }
 
         setOnDismissListener { persistNeverAgainIfChecked() }
     }

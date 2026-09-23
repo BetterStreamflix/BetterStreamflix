@@ -1,12 +1,15 @@
 package com.dskja.betterstreamflix.fragments.providers
 
 import android.os.Bundle
+import android.view.KeyEvent
 import android.view.LayoutInflater
+import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
 import android.widget.AdapterView
 import android.widget.ArrayAdapter
 import android.widget.Toast
+import androidx.appcompat.app.AlertDialog
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
 import androidx.lifecycle.Lifecycle
@@ -19,9 +22,10 @@ import com.dskja.betterstreamflix.databinding.FragmentProvidersTvBinding
 import com.dskja.betterstreamflix.models.Provider as ModelProvider
 import com.dskja.betterstreamflix.providers.Provider
 import com.dskja.betterstreamflix.ui.SpacingItemDecoration
+import com.dskja.betterstreamflix.utils.CacheUtils
+import com.dskja.betterstreamflix.utils.DeviceCapabilities
 import com.dskja.betterstreamflix.utils.ExpEmptyChrome
-import com.dskja.betterstreamflix.utils.ExpMotion
-import com.dskja.betterstreamflix.utils.ExperimentalMobileDesign
+import com.dskja.betterstreamflix.utils.LoggingUtils
 import com.dskja.betterstreamflix.utils.UserPreferences
 import kotlinx.coroutines.launch
 import java.util.Locale
@@ -34,6 +38,15 @@ class ProvidersTvFragment : Fragment() {
     private val viewModel by viewModels<ProvidersViewModel>()
 
     private val appAdapter = AppAdapter()
+
+    private data class Language(
+        val code: String,
+        val name: String,
+    )
+
+    private var languageOptions: List<Language> = emptyList()
+    private var languageLabels: List<String> = emptyList()
+    private var selectedLanguageIndex: Int = 0
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -65,13 +78,11 @@ class ProvidersTvFragment : Fragment() {
                         )
                     }
                     is ProvidersViewModel.State.FailedLoading -> {
-                        if (!com.dskja.betterstreamflix.utils.ExperimentalMobileDesign.enabled()) {
-                            Toast.makeText(
-                                requireContext(),
-                                state.error.message ?: "",
-                                Toast.LENGTH_SHORT
-                            ).show()
-                        }
+                        Toast.makeText(
+                            requireContext(),
+                            state.error.message ?: "",
+                            Toast.LENGTH_SHORT
+                        ).show()
                         binding.isLoading.apply {
                             com.dskja.betterstreamflix.utils.ExpPressEffects.showLoadingSkeleton(root, false)
                             gIsLoadingRetry.visibility = View.VISIBLE
@@ -79,7 +90,20 @@ class ProvidersTvFragment : Fragment() {
                             btnIsLoadingRetry.setOnClickListener {
                                 viewModel.getProviders()
                             }
+                            btnIsLoadingClearCache.setOnClickListener {
+                                CacheUtils.clearAppCache(requireContext())
+                                com.dskja.betterstreamflix.utils.ExpDialogChrome.notify(
+                                    requireContext(),
+                                    getString(R.string.clear_cache_done),
+                                    R.string.loading_error_clear_cache,
+                                )
+                                viewModel.getProviders()
+                            }
+                            btnIsLoadingErrorDetails.setOnClickListener {
+                                LoggingUtils.showErrorDialog(requireContext(), state.error)
+                            }
                             binding.rvProviders.visibility = View.GONE
+                            btnIsLoadingRetry.requestFocus()
                         }
                     }
                 }
@@ -92,19 +116,12 @@ class ProvidersTvFragment : Fragment() {
         _binding = null
     }
 
-
     private fun initializeProviders() {
         binding.sProvidersLanguage.apply {
-            class Language(
-                val code: String,
-                val name: String,
-            )
-
-            val languages = Provider.providers.keys
+            languageOptions = Provider.providers.keys
                 .distinctBy { it.language }
                 .map {
                     val locale = Locale.forLanguageTag(it.language)
-
                     Language(
                         code = it.language,
                         name = locale.getDisplayLanguage(locale)
@@ -113,93 +130,73 @@ class ProvidersTvFragment : Fragment() {
                 }
                 .sortedBy { it.name.lowercase() }
 
-            val labels = mutableListOf(
+            languageLabels = mutableListOf(
                 context.getString(R.string.providers_all_languages),
                 context.getString(R.string.providers_favorites),
             ).apply {
-                addAll(languages.map { it.name })
+                addAll(languageOptions.map { it.name })
             }
+
             val spinnerAdapter = ArrayAdapter(
                 requireContext(),
                 android.R.layout.simple_spinner_item,
-                labels.toTypedArray(),
+                languageLabels.toTypedArray(),
             ).also {
                 it.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
             }
             setAdapter(spinnerAdapter)
 
-            if (ExperimentalMobileDesign.enabled()) {
-                setBackgroundResource(ExperimentalMobileDesign.spinnerBackground())
-                with(com.dskja.betterstreamflix.utils.ExpPressEffects) { applyExpPress() }
-                runCatching {
-                    setPopupBackgroundResource(ExperimentalMobileDesign.glassCardBackground())
+            selectedLanguageIndex = when (val lang = UserPreferences.providerLanguage) {
+                null -> 0
+                "favorites" -> 1
+                else -> {
+                    val index = languageOptions.indexOfFirst { it.code == lang }
+                    if (index != -1) index + 2 else 0
                 }
-                val onSurface = com.google.android.material.color.MaterialColors.getColor(
-                    binding.tvProvidersLabel,
-                    com.google.android.material.R.attr.colorOnSurface,
-                )
-                binding.tvProvidersLabel.setTextColor(onSurface)
-                binding.tvProvidersLabel.setTextAppearance(
-                    requireContext(),
-                    R.style.TextAppearance_Lumina_Title,
-                )
-                binding.root.findViewById<android.widget.ImageView>(R.id.iv_providers_language)?.let { langIcon ->
-                    val primary = com.google.android.material.color.MaterialColors.getColor(
-                        langIcon,
-                        androidx.appcompat.R.attr.colorPrimary,
-                    )
-                    langIcon.imageTintList = android.content.res.ColorStateList.valueOf(primary)
-                    langIcon.setBackgroundResource(ExperimentalMobileDesign.iconChipBackground())
-                    if (langIcon.getTag(R.id.exp_enter_animated_tag) != true) {
-                        langIcon.setTag(R.id.exp_enter_animated_tag, true)
-                        com.dskja.betterstreamflix.utils.ExpMotion.popIn(langIcon)
-                    }
-                }
-                if (getTag(R.id.exp_enter_animated_tag) != true) {
-                    setTag(R.id.exp_enter_animated_tag, true)
-                    com.dskja.betterstreamflix.utils.ExpMotion.popIn(this)
-                }
-                com.dskja.betterstreamflix.utils.ExpMotion.revealHeader(binding.tvProvidersLabel)
-                com.dskja.betterstreamflix.utils.ExpMotion.enterScreen(binding.root)
             }
 
-            onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
-                override fun onItemSelected(
-                    parent: AdapterView<*>?,
-                    view: View?,
-                    position: Int,
-                    id: Long
-                ) {
-                    when (position) {
-                        0 -> {
-                            viewModel.getProviders()
-                            UserPreferences.providerLanguage = null
-                        }
-                        1 -> {
-                            viewModel.getProviders("favorites")
-                            UserPreferences.providerLanguage = "favorites"
-                        }
-                        else -> {
-                            val langCode = languages[position - 2].code
-                            viewModel.getProviders(langCode)
-                            UserPreferences.providerLanguage = langCode
-                        }
+            val leanback = DeviceCapabilities.isLeanbackDevice(requireContext()) ||
+                DeviceCapabilities.isAmazonFireTv(requireContext())
+
+            if (leanback) {
+                onItemSelectedListener = null
+                setSelection(selectedLanguageIndex, false)
+                setOnTouchListener { _, event ->
+                    if (event.action == MotionEvent.ACTION_UP) {
+                        showLanguageDialog()
+                    }
+                    true
+                }
+                setOnKeyListener { _, keyCode, event ->
+                    if (event.action == KeyEvent.ACTION_UP &&
+                        (keyCode == KeyEvent.KEYCODE_DPAD_CENTER ||
+                            keyCode == KeyEvent.KEYCODE_ENTER ||
+                            keyCode == KeyEvent.KEYCODE_SPACE)
+                    ) {
+                        showLanguageDialog()
+                        true
+                    } else {
+                        false
                     }
                 }
+                applyLanguageFilter(selectedLanguageIndex)
+            } else {
+                setOnTouchListener(null)
+                setOnKeyListener(null)
+                onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
+                    override fun onItemSelected(
+                        parent: AdapterView<*>?,
+                        view: View?,
+                        position: Int,
+                        id: Long
+                    ) {
+                        applyLanguageFilter(position)
+                    }
 
-                override fun onNothingSelected(parent: AdapterView<*>?) {}
+                    override fun onNothingSelected(parent: AdapterView<*>?) {}
+                }
+                setSelection(selectedLanguageIndex)
             }
-
-            setSelection(
-                when (val lang = UserPreferences.providerLanguage) {
-                    null -> 0
-                    "favorites" -> 1
-                    else -> {
-                        val index = languages.indexOfFirst { it.code == lang }
-                        if (index != -1) index + 2 else 0
-                    }
-                }
-            )
         }
 
         binding.rvProviders.apply {
@@ -211,6 +208,41 @@ class ProvidersTvFragment : Fragment() {
                     requireContext().resources.getDimension(R.dimen.providers_spacing).toInt()
                 )
             )
+        }
+    }
+
+    private fun showLanguageDialog() {
+        if (languageLabels.isEmpty()) return
+        AlertDialog.Builder(requireContext())
+            .setTitle(R.string.providers_choose_title)
+            .setSingleChoiceItems(
+                languageLabels.toTypedArray(),
+                selectedLanguageIndex,
+            ) { dialog, which ->
+                applyLanguageFilter(which)
+                binding.sProvidersLanguage.setSelection(which, false)
+                dialog.dismiss()
+            }
+            .setNegativeButton(android.R.string.cancel, null)
+            .show()
+    }
+
+    private fun applyLanguageFilter(position: Int) {
+        selectedLanguageIndex = position
+        when (position) {
+            0 -> {
+                viewModel.getProviders()
+                UserPreferences.providerLanguage = null
+            }
+            1 -> {
+                viewModel.getProviders("favorites")
+                UserPreferences.providerLanguage = "favorites"
+            }
+            else -> {
+                val langCode = languageOptions.getOrNull(position - 2)?.code ?: return
+                viewModel.getProviders(langCode)
+                UserPreferences.providerLanguage = langCode
+            }
         }
     }
 
@@ -226,11 +258,9 @@ class ProvidersTvFragment : Fragment() {
             emptyCta = binding.root.findViewById(R.id.btn_providers_empty_cta),
             visible = empty,
             tintOnSurfaceVariant = false,
-            onCtaClick = { binding.sProvidersLanguage.setSelection(0) },
+            onCtaClick = { applyLanguageFilter(0) },
         )
-        if (empty && ExperimentalMobileDesign.enabled()) {
-            binding.root.findViewById<View>(R.id.btn_providers_empty_cta)?.requestFocus()
-        } else if (!empty) {
+if (!empty) {
             binding.rvProviders.requestFocus()
         }
     }

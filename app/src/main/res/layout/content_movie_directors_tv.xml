@@ -3,8 +3,7 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
-    android:layout_height="wrap_content"
-    android:paddingBottom="12dp">
+    android:layout_height="wrap_content">
 
     <TextView
         android:id="@+id/tv_movie_directors_label"
@@ -16,6 +15,7 @@
         android:textColor="#FFFFFF"
         android:textSize="22sp"
         android:textStyle="bold"
+        android:accessibilityHeading="true"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent" />
@@ -31,18 +31,21 @@
         app:layout_constraintTop_toBottomOf="@id/tv_movie_directors_label"
         tools:visibility="visible" />
 
-    <TextView
-        android:id="@+id/rv_movie_directors"
+    <androidx.leanback.widget.HorizontalGridView
+        android:id="@+id/hgv_movie_directors"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:layout_marginStart="70dp"
-        android:layout_marginTop="14dp"
-        android:layout_marginEnd="70dp"
-        android:ellipsize="end"
-        android:textSize="16sp"
+        android:clipChildren="false"
+        android:clipToPadding="false"
+        android:paddingStart="70dp"
+        android:paddingTop="26dp"
+        android:paddingEnd="70dp"
+        android:paddingBottom="20dp"
+        app:focusOutEnd="true"
+        app:focusOutFront="true"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@id/v_movie_directors_rule"
-        tools:text="Director" />
+        tools:listitem="@layout/item_people_tv" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>

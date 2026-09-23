@@ -23,12 +23,9 @@ import com.dskja.betterstreamflix.models.TvShow
 import com.dskja.betterstreamflix.utils.CacheUtils
 import com.dskja.betterstreamflix.utils.ExpDialogChrome
 import com.dskja.betterstreamflix.utils.ExpEmptyChrome
-import com.dskja.betterstreamflix.utils.ExpMotion
-import com.dskja.betterstreamflix.utils.ExperimentalMobileDesign
 import com.dskja.betterstreamflix.utils.Http409CacheGuard
 import com.dskja.betterstreamflix.utils.LoggingUtils
 import com.dskja.betterstreamflix.utils.viewModelsFactory
-import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import androidx.core.view.isVisible
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -91,13 +88,11 @@ class SeasonTvFragment : Fragment() {
                         if (http409Guard.handle(requireContext(), state.error) { viewModel.getSeasonEpisodes(args.seasonId) }) {
                                 return@collect
                             }
-                        if (!ExperimentalMobileDesign.enabled()) {
-                            Toast.makeText(
-                                requireContext(),
-                                state.error.message ?: "",
-                                Toast.LENGTH_SHORT
-                            ).show()
-                        }
+                        Toast.makeText(
+                            requireContext(),
+                            state.error.message ?: "",
+                            Toast.LENGTH_SHORT
+                        ).show()
                         binding.isLoading.apply {
                             com.dskja.betterstreamflix.utils.ExpPressEffects.showLoadingSkeleton(root, false)
                             gIsLoadingRetry.visibility = View.VISIBLE
@@ -124,7 +119,6 @@ class SeasonTvFragment : Fragment() {
         _binding = null
     }
 
-
     private fun initializeSeason() {
         binding.tvSeasonTitle.text = args.seasonTitle
 
@@ -139,63 +133,20 @@ class SeasonTvFragment : Fragment() {
             currentSeasonId = args.seasonId,
             currentSeasonNumber = args.seasonNumber,
             currentSeasonTitle = args.seasonTitle,
+            dialogButton = binding.btnSeasonPicker,
         )
 
-        if (ExperimentalMobileDesign.enabled()) {
-            ExpMotion.enterScreen(binding.root)
-            binding.tvSeasonTitle.setTextColor(
-                com.google.android.material.color.MaterialColors.getColor(
-                    binding.tvSeasonTitle,
-                    com.google.android.material.R.attr.colorOnSurface,
-                ),
-            )
-            binding.root.findViewById<View>(R.id.v_season_title_rule)?.visibility = View.VISIBLE
-            ExpMotion.revealHeader(
-                binding.tvSeasonTitle,
-                binding.root.findViewById(R.id.v_season_title_rule),
-            )
-            ExpMotion.pulseAccentRule(binding.root.findViewById(R.id.v_season_title_rule))
-            with(com.dskja.betterstreamflix.utils.ExpPressEffects) {
-                binding.spSeasonPicker.applyExpPress()
-                binding.btnSeasonDownload.applyExpPress()
-            }
-            binding.spSeasonPicker.setBackgroundResource(ExperimentalMobileDesign.spinnerBackground())
-            binding.btnSeasonDownload.setBackgroundResource(ExperimentalMobileDesign.primaryButtonBackground())
-            ExpMotion.popIn(binding.spSeasonPicker)
-            ExpMotion.popIn(binding.btnSeasonDownload)
-        }
-
         binding.btnSeasonDownload.setOnClickListener {
-            if (ExperimentalMobileDesign.enabled()) ExpMotion.hapticTap(it)
             val episodes = loadedEpisodes
             if (episodes.isEmpty()) {
-                if (ExperimentalMobileDesign.enabled()) {
-                    ExpDialogChrome.showInfo(
-                        requireContext(),
-                        R.string.season_download,
-                        getString(R.string.season_download_empty),
-                    ) { ctx -> MaterialAlertDialogBuilder(ctx) }
-                } else {
-                    Toast.makeText(requireContext(), R.string.season_download_empty, Toast.LENGTH_SHORT).show()
-                }
+                Toast.makeText(requireContext(), R.string.season_download_empty, Toast.LENGTH_SHORT).show()
                 return@setOnClickListener
             }
-            val confirm = if (ExperimentalMobileDesign.enabled()) {
-                MaterialAlertDialogBuilder(requireContext())
-            } else {
-                AlertDialog.Builder(requireContext())
-            }
+            val confirm = AlertDialog.Builder(requireContext())
             val confirmMessage = getString(R.string.season_download_confirm, episodes.size)
-            val glass = if (ExperimentalMobileDesign.enabled()) {
-                ExpDialogChrome.buildGlassMessage(requireContext(), confirmMessage)
-            } else {
-                null
-            }
-            if (glass != null) confirm.setView(glass.root)
-            else confirm.setMessage(confirmMessage)
             confirm
+                .setMessage(confirmMessage)
                 .setPositiveButton(android.R.string.ok) { _, _ ->
-                    if (ExperimentalMobileDesign.enabled()) ExpMotion.hapticTap(binding.root)
                     viewLifecycleOwner.lifecycleScope.launch {
                         val tvShow = withContext(Dispatchers.IO) {
                             database.tvShowDao().getById(args.tvShowId)
@@ -217,11 +168,7 @@ class SeasonTvFragment : Fragment() {
                 .create()
                 .also { dialog ->
                     dialog.setOnShowListener {
-                        if (glass != null) ExpDialogChrome.polishGlassMessageShown(dialog, glass)
-                        else ExpDialogChrome.polishButtons(dialog)
-                        if (ExperimentalMobileDesign.enabled()) {
-                            dialog.window?.decorView?.let { ExpMotion.enterScreen(it) }
-                        }
+                        ExpDialogChrome.polishButtons(dialog)
                     }
                     dialog.show()
                 }
@@ -285,7 +232,5 @@ class SeasonTvFragment : Fragment() {
             }
         })
     }
-
-
 
 }

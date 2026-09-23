@@ -15,7 +15,7 @@ import com.dskja.betterstreamflix.utils.ExpMotion
 import com.dskja.betterstreamflix.utils.ExpPressEffects.applyExpPress
 import com.dskja.betterstreamflix.utils.ExperimentalMobileDesign
 
-class SupportDetailsMobileFragment : Fragment() {
+open class SupportDetailsMobileFragment : Fragment() {
 
     private var _binding: FragmentSupportDetailsMobileBinding? = null
     private val binding get() = _binding!!

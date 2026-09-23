@@ -20,11 +20,27 @@
         app:layout_constraintTop_toTopOf="parent" />
 
     <TextView
+        android:id="@id/tv_season_eyebrow"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        android:fontFamily="@font/manrope"
+        android:letterSpacing="0.1"
+        android:text="@string/exp_season_eyebrow"
+        android:textAllCaps="true"
+        android:textColor="#8AFFFFFF"
+        android:textSize="11sp"
+        android:textStyle="bold"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
+
+    <TextView
         android:id="@+id/tv_season_title"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_marginStart="56dp"
-        android:layout_marginTop="32dp"
+        android:layout_marginTop="4dp"
         android:layout_marginEnd="10dp"
         android:gravity="center"
         android:textColor="#FFFFFF"
@@ -32,19 +48,45 @@
         android:textStyle="bold"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/tv_season_eyebrow"
         tools:text="Season #" />
+
+    <TextView
+        android:id="@id/tv_season_tagline"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="24dp"
+        android:layout_marginTop="4dp"
+        android:layout_marginEnd="24dp"
+        android:fontFamily="@font/manrope"
+        android:gravity="center"
+        android:text="@string/exp_season_tagline"
+        android:textColor="#8AFFFFFF"
+        android:textSize="13sp"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/tv_season_title" />
+
+    <View
+        android:id="@id/v_season_rule"
+        android:layout_width="36dp"
+        android:layout_height="3dp"
+        android:layout_marginTop="10dp"
+        android:background="@drawable/bg_exp_accent_rule"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/tv_season_tagline" />
 
     <Spinner
         android:id="@+id/sp_season_picker"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginTop="8dp"
+        android:layout_marginTop="12dp"
         android:minWidth="160dp"
         android:contentDescription="@string/season_switch_content_description"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/tv_season_title" />
+        app:layout_constraintTop_toBottomOf="@id/v_season_rule" />
 
     <TextView
         android:id="@+id/btn_season_download"
@@ -71,7 +113,7 @@
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@id/btn_season_download"
-        tools:listitem="@layout/item_episode_mobile" />
+        tools:listitem="@layout/item_episode_detail_mobile" />
 
     <TextView
         android:id="@+id/tv_season_empty"
@@ -84,10 +126,38 @@
         android:textColor="?android:attr/textColorSecondary"
         android:textSize="15sp"
         android:visibility="gone"
-        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintBottom_toTopOf="@id/v_season_empty_rule"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@id/btn_season_download"
+        app:layout_constraintVertical_chainStyle="packed"
+        tools:visibility="visible" />
+
+    <View
+        android:id="@+id/v_season_empty_rule"
+        android:layout_width="36dp"
+        android:layout_height="3dp"
+        android:layout_marginTop="14dp"
+        android:background="@drawable/bg_exp_accent_rule"
+        android:visibility="gone"
+        app:layout_constraintBottom_toTopOf="@id/btn_season_empty_cta"
+        app:layout_constraintEnd_toEndOf="@id/tv_season_empty"
+        app:layout_constraintStart_toStartOf="@id/tv_season_empty"
+        app:layout_constraintTop_toBottomOf="@id/tv_season_empty"
+        tools:visibility="visible" />
+
+    <TextView
+        android:id="@+id/btn_season_empty_cta"
+        style="@style/AppTheme.Widget.Mobile.Button.Secondary"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="14dp"
+        android:text="@string/exp_empty_back"
+        android:visibility="gone"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="@id/tv_season_empty"
+        app:layout_constraintStart_toStartOf="@id/tv_season_empty"
+        app:layout_constraintTop_toBottomOf="@id/v_season_empty_rule"
         tools:visibility="visible" />
 
     <include

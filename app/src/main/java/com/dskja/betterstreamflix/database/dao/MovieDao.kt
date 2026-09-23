@@ -21,6 +21,9 @@ interface MovieDao {
     @Query("SELECT * FROM movies WHERE id = :id")
     fun getById(id: String): Movie?
 
+    @Query("UPDATE movies SET logo = :logo, logoLanguage = :logoLanguage WHERE id = :id")
+    fun updateLogo(id: String, logo: String?, logoLanguage: String?)
+
     @Query("SELECT * FROM movies WHERE id = :id")
     fun getByIdAsFlow(id: String): Flow<Movie?>
 
@@ -81,9 +84,10 @@ interface MovieDao {
         val provider = UserPreferences.currentProvider?.name ?: "Unknown"
         val existing = getById(movie.id)
         if (existing != null) {
-            val merged = movie.merge(existing)
-            update(merged)
-            Log.d("DatabaseVerify", "[$provider] REAL-TIME UPDATE Movie: ${merged.title} (Fav: ${merged.isFavorite}, Watched: ${merged.isWatched})")
+            // Incoming wins for user flags (watched/favorite/history) — same as EpisodeDao.save.
+            existing.merge(movie)
+            update(existing)
+            Log.d("DatabaseVerify", "[$provider] REAL-TIME UPDATE Movie: ${existing.title} (Fav: ${existing.isFavorite}, Watched: ${existing.isWatched})")
         } else {
             insert(movie)
             Log.d("DatabaseVerify", "[$provider] REAL-TIME INSERT Movie: ${movie.title} (Fav: ${movie.isFavorite})")

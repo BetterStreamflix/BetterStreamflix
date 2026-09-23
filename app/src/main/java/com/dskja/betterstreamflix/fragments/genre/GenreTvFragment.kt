@@ -20,9 +20,6 @@ import com.dskja.betterstreamflix.models.Movie
 import com.dskja.betterstreamflix.models.TvShow
 import com.dskja.betterstreamflix.utils.CacheUtils
 import com.dskja.betterstreamflix.utils.ExpEmptyChrome
-import com.dskja.betterstreamflix.utils.ExpMotion
-import com.dskja.betterstreamflix.utils.ExpPressEffects.applyExpPress
-import com.dskja.betterstreamflix.utils.ExperimentalMobileDesign
 import com.dskja.betterstreamflix.utils.Http409CacheGuard
 import com.dskja.betterstreamflix.utils.viewModelsFactory
 import androidx.navigation.fragment.findNavController
@@ -41,12 +38,17 @@ class GenreTvFragment : Fragment() {
 
     private val appAdapter = AppAdapter()
 
+    private var savedGridPosition = RecyclerView.NO_POSITION
+
     override fun onCreateView(
         inflater: LayoutInflater,
         container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View {
         _binding = FragmentGenreTvBinding.inflate(inflater, container, false)
+        if (savedInstanceState != null) {
+            savedGridPosition = savedInstanceState.getInt(KEY_GRID_POSITION, RecyclerView.NO_POSITION)
+        }
         return binding.root
     }
 
@@ -79,13 +81,11 @@ class GenreTvFragment : Fragment() {
                             }) {
                                 return@collect
                             }
-                        if (!com.dskja.betterstreamflix.utils.ExperimentalMobileDesign.enabled()) {
-                            Toast.makeText(
-                                requireContext(),
-                                state.error.message ?: "",
-                                Toast.LENGTH_SHORT
-                            ).show()
-                        }
+                        Toast.makeText(
+                            requireContext(),
+                            state.error.message ?: "",
+                            Toast.LENGTH_SHORT
+                        ).show()
                         if (appAdapter.isLoading) {
                             appAdapter.isLoading = false
                         } else {
@@ -108,24 +108,23 @@ class GenreTvFragment : Fragment() {
         }
     }
 
-    override fun onDestroyView() {
-        super.onDestroyView()
-        _binding = null
+    override fun onSaveInstanceState(outState: Bundle) {
+        super.onSaveInstanceState(outState)
+        val position = _binding?.vgvGenre?.selectedPosition ?: savedGridPosition
+        outState.putInt(KEY_GRID_POSITION, position)
     }
 
+    override fun onDestroyView() {
+        _binding?.let {
+            savedGridPosition = it.vgvGenre.selectedPosition
+            appAdapter.onSaveInstanceState(it.vgvGenre)
+        }
+        _binding = null
+        super.onDestroyView()
+    }
 
     private fun initializeGenre() {
         com.dskja.betterstreamflix.utils.ExpPressEffects.wireLoadingRetry(binding.isLoading.root)
-        if (com.dskja.betterstreamflix.utils.ExperimentalMobileDesign.enabled()) {
-            com.dskja.betterstreamflix.utils.ExpMotion.enterScreen(binding.root)
-            binding.tvGenreName.setTextColor(
-                com.google.android.material.color.MaterialColors.getColor(
-                    binding.tvGenreName,
-                    com.google.android.material.R.attr.colorOnSurface,
-                ),
-            )
-            com.dskja.betterstreamflix.utils.ExpMotion.revealHeader(binding.tvGenreName)
-        }
         binding.vgvGenre.apply {
             adapter = appAdapter.apply {
                 stateRestorationPolicy = RecyclerView.Adapter.StateRestorationPolicy.PREVENT_WHEN_EMPTY
@@ -147,6 +146,14 @@ class GenreTvFragment : Fragment() {
             }
         })
 
+        if (savedGridPosition != RecyclerView.NO_POSITION && genre.shows.isNotEmpty()) {
+            val target = savedGridPosition.coerceIn(0, genre.shows.lastIndex)
+            binding.vgvGenre.post {
+                binding.vgvGenre.selectedPosition = target
+            }
+            savedGridPosition = RecyclerView.NO_POSITION
+        }
+
         binding.tvGenreEmpty.visibility =
             if (genre.shows.isEmpty()) View.VISIBLE else View.GONE
         binding.vgvGenre.visibility =
@@ -164,5 +171,9 @@ class GenreTvFragment : Fragment() {
         } else {
             appAdapter.setOnLoadMoreListener(null)
         }
+    }
+
+    companion object {
+        private const val KEY_GRID_POSITION = "genre_tv_grid_position"
     }
 }

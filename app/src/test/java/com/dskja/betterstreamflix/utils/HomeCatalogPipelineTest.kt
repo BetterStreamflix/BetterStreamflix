@@ -165,4 +165,70 @@ class HomeCatalogPipelineTest {
         featured.itemType = AppAdapter.Type.MOVIE_SWIPER_MOBILE_ITEM
         assertTrue(latest.itemType != featured.itemType)
     }
+
+    @Test
+    fun isolateFeaturedPreservesSelectedIndex() {
+        val items = listOf(
+            Movie(id = "a", title = "A"),
+            Movie(id = "b", title = "B"),
+            Movie(id = "c", title = "C"),
+        )
+        val source = Category(name = Category.FEATURED, list = items).also {
+            it.selectedIndex = 2
+        }
+        val isolated = HomeCatalogPipeline.isolateFeatured(listOf(source))
+        val featured = isolated.first { Category.isFeaturedName(it.name) }
+        assertEquals(2, featured.selectedIndex)
+    }
+
+    @Test
+    fun blankLegacyFeaturedNameNormalizesToConstant() {
+        val movie = Movie(id = "1", title = "Legacy")
+        val result = HomeCatalogPipeline.process(
+            provider,
+            listOf(Category(name = "", list = listOf(movie))),
+        )
+        val featured = result.categories.first { Category.isFeaturedName(it.name) }
+        assertEquals(Category.FEATURED, featured.name)
+        assertEquals("Featured", Category.FEATURED)
+        assertTrue(Category.isFeaturedName(""))
+        assertTrue(Category.isFeaturedName("featured"))
+        assertTrue(!Category.isFeaturedName("Latest"))
+    }
+
+    @Test
+    fun featuredNamedShelfIsCanonicalized() {
+        val movie = Movie(id = "2", title = "Named")
+        val result = HomeCatalogPipeline.process(
+            provider,
+            listOf(Category(name = "  Featured  ", list = listOf(movie))),
+        )
+        val featured = result.categories.first { it.name == Category.FEATURED }
+        assertEquals(1, featured.list.size)
+        assertEquals("2", (featured.list.first() as Movie).id)
+    }
+
+    @Test
+    fun longFeaturedNamedShelfIsNotCollapsed() {
+        val movie = Movie(id = "3", title = "Keep")
+        val result = HomeCatalogPipeline.process(
+            provider,
+            listOf(Category(name = "Featured Hits Collection 2024", list = listOf(movie))),
+        )
+        // Long multi-word "Featured …" shelves stay distinct; Featured is synthesized from them.
+        assertTrue(result.categories.any { it.name == "Featured Hits Collection 2024" })
+        assertTrue(result.categories.any { it.name == Category.FEATURED })
+    }
+
+    @Test
+    fun absoluteUrlAlsoNormalizesLogo() {
+        val movie = Movie(id = "l", title = "Logo").apply { logo = "/logo.png" }
+        val result = HomeCatalogPipeline.process(
+            provider,
+            listOf(Category(name = Category.FEATURED, list = listOf(movie))),
+        )
+        val featured = result.categories.first { it.name == Category.FEATURED }
+            .list.filterIsInstance<Movie>().first()
+        assertEquals("https://example.com/logo.png", featured.logo)
+    }
 }

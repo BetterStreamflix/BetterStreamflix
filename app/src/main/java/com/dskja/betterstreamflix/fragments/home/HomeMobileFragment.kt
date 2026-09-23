@@ -20,6 +20,7 @@ import com.dskja.betterstreamflix.models.Episode
 import com.dskja.betterstreamflix.models.Movie
 import com.dskja.betterstreamflix.models.TvShow
 import com.dskja.betterstreamflix.ui.HomeProfileChip
+import com.dskja.betterstreamflix.ui.FeaturedTvRotation
 import com.dskja.betterstreamflix.ui.SpacingItemDecoration
 import com.dskja.betterstreamflix.utils.UserPreferences
 import com.dskja.betterstreamflix.utils.dp
@@ -34,7 +35,6 @@ import com.dskja.betterstreamflix.utils.HomeCatalogPipeline
 import com.dskja.betterstreamflix.utils.LoggingUtils
 import com.dskja.betterstreamflix.utils.ProviderChangeNotifier
 import kotlinx.coroutines.launch
-import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.recyclerview.widget.RecyclerView
 
@@ -44,17 +44,9 @@ class HomeMobileFragment : Fragment() {
 
     private var _binding: FragmentHomeMobileBinding? = null
     private val binding get() = _binding!!
-    private val viewModel: HomeViewModel
-        get() {
-            val providerKey = UserPreferences.currentProvider?.name ?: "default"
-            val factory = object : ViewModelProvider.Factory {
-                override fun <T : ViewModel> create(modelClass: Class<T>): T {
-                    @Suppress("UNCHECKED_CAST")
-                    return HomeViewModel() as T
-                }
-            }
-            return ViewModelProvider(this, factory)[providerKey, HomeViewModel::class.java]
-        }
+    private val viewModel: HomeViewModel by lazy {
+        ViewModelProvider(this)[HomeViewModel::class.java]
+    }
 
     private val appAdapter = AppAdapter()
 
@@ -74,16 +66,12 @@ class HomeMobileFragment : Fragment() {
 
         initializeHome()
 
-        // Lightweight refresh when provider changes
+        // Provider changes: ViewModel.getHome is the single caller; fragment only refreshes chrome.
         viewLifecycleOwner.lifecycleScope.launch {
             ProviderChangeNotifier.providerChangeFlow.flowWithLifecycle(lifecycle, Lifecycle.State.STARTED).collect {
                 refreshProviderLogo()
-                viewModel.getHome()
             }
         }
-
-        // Initial load
-        viewModel.getHome()
 
         viewLifecycleOwner.lifecycleScope.launch {
             viewModel.state.flowWithLifecycle(lifecycle, Lifecycle.State.STARTED).collect { state ->
@@ -314,7 +302,7 @@ class HomeMobileFragment : Fragment() {
         }
 
         categories
-            .find { it.name == Category.FEATURED }
+            .find { Category.isFeaturedName(it.name) }
             ?.also {
                 it.list.forEach { show ->
                     when (show) {
@@ -362,7 +350,7 @@ class HomeMobileFragment : Fragment() {
         val homeItems = mutableListOf<AppAdapter.Item>()
         val visibleCategories = HomeCatalogPipeline.isolateFeatured(categories)
         visibleCategories.onEach { category ->
-            if (category.name != Category.FEATURED && category.name != getString(R.string.home_continue_watching)) {
+            if (!Category.isFeaturedName(category.name) && category.name != getString(R.string.home_continue_watching)) {
                 category.list.onEach { show ->
                     when (show) {
                         is Episode -> show.itemType = AppAdapter.Type.EPISODE_MOBILE_ITEM
@@ -372,8 +360,8 @@ class HomeMobileFragment : Fragment() {
                 }
             }
             category.itemSpacing = 10.dp(requireContext())
-            category.itemType = when (category.name) {
-                Category.FEATURED -> AppAdapter.Type.CATEGORY_MOBILE_SWIPER
+            category.itemType = when {
+                Category.isFeaturedName(category.name) -> AppAdapter.Type.CATEGORY_MOBILE_SWIPER
                 else -> AppAdapter.Type.CATEGORY_MOBILE_ITEM
             }
         }
@@ -381,7 +369,7 @@ class HomeMobileFragment : Fragment() {
         // Stamp SWIPER types only on the isolated FEATURED clones — never on
         // original shelf rows (BETTERSTREAMFLIX-13).
         visibleCategories
-            .filter { it.name == Category.FEATURED }
+            .filter { Category.isFeaturedName(it.name) }
             .flatMap { it.list }
             .forEach { show ->
                 when (show) {
@@ -399,7 +387,7 @@ class HomeMobileFragment : Fragment() {
             // CW was already renamed to the localized title above; do not check the
             // English Category.CONTINUE_WATCHING constant here.
             val insertAfter = category.name == getString(R.string.home_continue_watching) ||
-                (category.name == Category.FEATURED && !hasContinueWatching)
+                (Category.isFeaturedName(category.name) && !hasContinueWatching)
             if (insertAfter &&
                 !UserPreferences.homeSupportCardDismissed &&
                 homeItems.none { it is com.dskja.betterstreamflix.support.SupportBannerItem }
@@ -447,7 +435,12 @@ class HomeMobileFragment : Fragment() {
     private var currentHeroArt: String? = null
 
     private fun updateExperimentalHero(categories: List<Category>) {
-        val featured = categories.find { it.name == Category.FEATURED }?.list?.firstOrNull()
+        val featuredCat = categories.find { Category.isFeaturedName(it.name) }
+        val index = FeaturedTvRotation.coerceIndex(
+            featuredCat?.selectedIndex ?: 0,
+            featuredCat?.list?.size ?: 0,
+        )
+        val featured = featuredCat?.list?.getOrNull(index)
         updateExperimentalHeroArt(featured as? com.dskja.betterstreamflix.models.Show)
     }
 

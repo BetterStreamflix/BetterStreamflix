@@ -3,6 +3,7 @@ package com.dskja.betterstreamflix.providers
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
+import com.dskja.betterstreamflix.BetterStreamflixApp
 import com.dskja.betterstreamflix.utils.UserPreferences
 
 import android.util.Base64
@@ -46,7 +47,7 @@ object LatanimeProvider : Provider, ProviderConfigUrl {
     private val service = retrofit.create(LatanimeService::class.java)
 
     private fun getOkHttpClient(): OkHttpClient {
-        val appCache = Cache(File("cacheDir", "okhttpcache"), 10 * 1024 * 1024)
+        val appCache = Cache(File(BetterStreamflixApp.instance.cacheDir, "okhttpcache"), 10 * 1024 * 1024)
         val clientBuilder = OkHttpClient.Builder()
             .cache(appCache)
             .addInterceptor { chain ->

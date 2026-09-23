@@ -80,10 +80,9 @@ import com.dskja.betterstreamflix.sync.CloudSyncHooks
 import com.dskja.betterstreamflix.ui.PlayerTvView
 import com.dskja.betterstreamflix.utils.ExpDialogChrome
 import com.dskja.betterstreamflix.utils.ExpMotion
-import com.dskja.betterstreamflix.utils.ExpPressEffects
-import com.dskja.betterstreamflix.utils.ExperimentalMobileDesign
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.dskja.betterstreamflix.utils.DnsResolver
+import com.dskja.betterstreamflix.utils.DeviceCapabilities
 import com.dskja.betterstreamflix.utils.NetworkClient
 import com.dskja.betterstreamflix.utils.EpisodeManager
 import com.dskja.betterstreamflix.utils.MediaServer
@@ -154,7 +153,9 @@ class PlayerTvFragment : Fragment() {
 
     private val args by navArgs<PlayerTvFragmentArgs>()
     private val database get() = AppDatabase.getInstance(requireContext())
-    private val viewModel by viewModelsFactory { PlayerViewModel(args.videoType, args.id) }
+    private val viewModel by viewModelsFactory {
+        PlayerViewModel(args.videoType, args.id, args.preferredServerName)
+    }
 
     private lateinit var player: ExoPlayer
     private var playerReleased = false
@@ -170,7 +171,7 @@ class PlayerTvFragment : Fragment() {
     private lateinit var mediaSession: MediaSession
     private lateinit var progressHandler: android.os.Handler
     private lateinit var progressRunnable: Runnable
-    private lateinit var gestureHelper: PlayerGestureHelper
+    private var gestureHelper: PlayerGestureHelper? = null
 
     private var servers = listOf<Video.Server>()
     private var zoomToast: Toast? = null
@@ -323,16 +324,24 @@ class PlayerTvFragment : Fragment() {
         applyExperimentalPlayerChrome()
         binding.pvPlayer.onMediaPreviousClicked = ::handleMediaPrevious
         binding.pvPlayer.onMediaNextClicked = ::handleMediaNext
-        gestureHelper = PlayerGestureHelper(
-            requireContext(),
-            binding.pvPlayer,
-            binding.llBrightness,
-            binding.pbBrightness,
-            binding.tvBrightnessPercentage,
-            binding.llVolume,
-            binding.pbVolume,
-            binding.tvVolumePercentage
-        )
+        // Touch brightness/volume gestures are for handsets; skip on Leanback / Fire TV.
+        gestureHelper = if (
+            DeviceCapabilities.isLeanbackDevice(requireContext()) ||
+            DeviceCapabilities.isAmazonFireTv(requireContext())
+        ) {
+            null
+        } else {
+            PlayerGestureHelper(
+                requireContext(),
+                binding.pvPlayer,
+                binding.llBrightness,
+                binding.pbBrightness,
+                binding.tvBrightnessPercentage,
+                binding.llVolume,
+                binding.pbVolume,
+                binding.tvVolumePercentage
+            )
+        }
 
         // Stato Video
         viewLifecycleOwner.lifecycleScope.launch {
@@ -429,8 +438,6 @@ class PlayerTvFragment : Fragment() {
                             return@collect
                         }
 
-
-
                         val providerName = UserPreferences.currentProvider?.name ?: ""
                         val isTmdb = providerName.contains("TMDb", ignoreCase = true)
                         val isAD = providerName.contains("AfterDark", ignoreCase = true)
@@ -481,15 +488,7 @@ class PlayerTvFragment : Fragment() {
                         is PlayerViewModel.State.FailedLoadingServers -> {
                             val message = state.error.message?.takeIf { it.isNotBlank() }
                                 ?: getString(R.string.exp_player_error_title)
-                            if (ExperimentalMobileDesign.enabled()) {
-                                ExpDialogChrome.showInfo(
-                                    requireContext(),
-                                    R.string.exp_player_error_title,
-                                    message,
-                                ) { ctx -> MaterialAlertDialogBuilder(ctx) }
-                            } else {
-                                Toast.makeText(requireContext(), message, Toast.LENGTH_LONG).show()
-                            }
+                            Toast.makeText(requireContext(), message, Toast.LENGTH_LONG).show()
                             safeNavigateUp()
                         }
 
@@ -778,7 +777,6 @@ class PlayerTvFragment : Fragment() {
                 }
             }
 
-
         }
 
     override fun onPause() {
@@ -817,8 +815,9 @@ class PlayerTvFragment : Fragment() {
         stopLiveEdgeWatcher()
         hideNextEpisodeOverlay()
         clearBypassSession(dismissDialog = true)
-        if (::gestureHelper.isInitialized) {
-            runCatching { gestureHelper.release() }
+        if (gestureHelper != null) {
+            runCatching { gestureHelper?.release() }
+            gestureHelper = null
         }
         castEndedListener?.let { listener ->
             runCatching { castPlayer?.removeListener(listener) }
@@ -895,49 +894,6 @@ class PlayerTvFragment : Fragment() {
     }
 
     private fun applyExperimentalPlayerChrome() {
-        if (!ExperimentalMobileDesign.enabled()) return
-        val controls = binding.pvPlayer.controller.binding
-        with(ExpPressEffects) {
-            listOf(
-                controls.btnExoExternalPlayer,
-                controls.exoReplay,
-                controls.exoPlayPause,
-                controls.btnCustomPrev,
-                controls.btnCustomNext,
-                controls.btnSkipIntro,
-                controls.btnExoAspectRatio,
-                controls.exoSettings,
-                controls.btnGoLive,
-                binding.btnNextEpisodeAction,
-                binding.btnNextEpisodeDismiss,
-            ).forEach { btn ->
-                runCatching { btn.applyExpPress() }
-            }
-            runCatching { controls.mediaRouteButton.applyExpPress() }
-        }
-        listOf(
-            controls.btnExoExternalPlayer,
-            controls.btnExoAspectRatio,
-            controls.exoSettings,
-        ).forEach { btn ->
-            runCatching {
-                btn.setBackgroundResource(ExperimentalMobileDesign.iconChipBackground())
-            }
-        }
-        runCatching {
-            controls.mediaRouteButton.setBackgroundResource(
-                ExperimentalMobileDesign.iconChipBackground(),
-            )
-        }
-        listOf(
-            controls.exoPlayPause,
-            controls.exoReplay,
-            controls.btnSkipIntro,
-        ).forEach { btn ->
-            runCatching {
-                btn.setBackgroundResource(ExperimentalMobileDesign.controlsPillBackground())
-            }
-        }
     }
 
     private fun refreshEpisodeNavigation(type: Video.Type.Episode) {
@@ -976,40 +932,15 @@ class PlayerTvFragment : Fragment() {
         }
         root.findViewById<android.widget.TextView>(R.id.tv_player_error_message)?.text = message
         root.findViewById<View>(R.id.btn_player_error_close)?.let { close ->
-            if (ExperimentalMobileDesign.enabled()) {
-                with(ExpPressEffects) { close.applyExpPress() }
-            }
             close.setOnClickListener {
                 ExpMotion.hapticTap(it)
-                if (ExperimentalMobileDesign.enabled()) {
-                    ExpMotion.fadeOutAndHide(overlay)
-                    overlay.postDelayed({
-                        safeNavigateUp()
-                    }, 220L)
-                } else {
-                    overlay.isGone = true
-                    safeNavigateUp()
-                }
+                overlay.isGone = true
+                safeNavigateUp()
             }
         }
-        if (ExperimentalMobileDesign.enabled()) {
-            overlay.setBackgroundResource(ExperimentalMobileDesign.dialogBackground())
-            ExpMotion.fadeInAndShow(overlay)
-            ExpMotion.revealHeader(
-                root.findViewById(R.id.tv_player_error_title),
-                root.findViewById(R.id.tv_player_error_message),
-            )
-            root.findViewById<View>(R.id.btn_player_error_close)?.let { close ->
-                close.setBackgroundResource(ExperimentalMobileDesign.primaryButtonBackground())
-                ExpMotion.popIn(close)
-                close.requestFocus()
-            }
-        } else {
-            overlay.isVisible = true
-            root.findViewById<View>(R.id.btn_player_error_close)?.requestFocus()
-        }
+        overlay.isVisible = true
+        root.findViewById<View>(R.id.btn_player_error_close)?.requestFocus()
     }
-
 
         private fun updatePlayerScale() {
             val videoSurfaceView = binding.pvPlayer.videoSurfaceView
@@ -1145,13 +1076,9 @@ class PlayerTvFragment : Fragment() {
 
             binding.pvPlayer.controller.binding.btnExoAspectRatio.setOnClickListener {
                 val newResize = UserPreferences.playerResize.next()
-                if (ExperimentalMobileDesign.enabled()) {
-                    showPlayerCue(newResize.stringRes)
-                } else {
-                    zoomToast?.cancel()
-                    zoomToast = Toast.makeText(requireContext(), newResize.stringRes, Toast.LENGTH_SHORT)
-                    zoomToast?.show()
-                }
+                zoomToast?.cancel()
+                zoomToast = Toast.makeText(requireContext(), newResize.stringRes, Toast.LENGTH_SHORT)
+                zoomToast?.show()
 
                 UserPreferences.playerResize = newResize
                 binding.pvPlayer.controllerShowTimeoutMs = binding.pvPlayer.controllerShowTimeoutMs
@@ -1608,7 +1535,9 @@ class PlayerTvFragment : Fragment() {
                                 is Video.Type.Episode -> videoType.id
                             },
                         )
-                        if (reallyFinished) {
+                        if (reallyFinished &&
+                            player.playbackState == androidx.media3.common.Player.STATE_ENDED
+                        ) {
                             if (UserPreferences.autoplay) {
                                 playNextEpisodeAcrossSeasons(autoplay = true)
                             }
@@ -1717,7 +1646,6 @@ class PlayerTvFragment : Fragment() {
             player.prepare()
             player.playWhenReady = shouldPlay
         }
-
 
         private fun ExoPlayer.hasStarted(): Boolean {
             return (this.currentPosition > (this.duration * 0.005) || this.currentPosition > 20.seconds.inWholeMilliseconds)
@@ -1897,29 +1825,6 @@ class PlayerTvFragment : Fragment() {
                         android.view.animation.AnimationUtils.loadAnimation(requireContext(), R.anim.live_badge_pulse),
                     )
                 }
-                if (ExperimentalMobileDesign.enabled()) {
-                    controller.tvLiveIndicator.setBackgroundResource(
-                        ExperimentalMobileDesign.liveIndicatorBackground(),
-                    )
-                    controller.tvLiveIndicator.isClickable = true
-                    controller.tvLiveIndicator.isFocusable = true
-                    with(ExpPressEffects) { controller.tvLiveIndicator.applyExpPress() }
-                    controller.tvLiveIndicator.setOnClickListener {
-                        ExpMotion.hapticTap(it)
-                        showLiveChannelGuideDialog()
-                    }
-                    controller.tvLiveChannelMeta.isClickable = true
-                    controller.tvLiveChannelMeta.isFocusable = true
-                    with(ExpPressEffects) { controller.tvLiveChannelMeta.applyExpPress() }
-                    controller.tvLiveChannelMeta.setOnClickListener {
-                        ExpMotion.hapticTap(it)
-                        showLiveChannelGuideDialog()
-                    }
-                    controller.btnGoLive.setBackgroundResource(
-                        ExperimentalMobileDesign.primaryButtonBackground(),
-                    )
-                    with(ExpPressEffects) { controller.btnGoLive.applyExpPress() }
-                }
                 controller.btnGoLive.setOnClickListener {
                     ExpMotion.hapticTap(it)
                     if (::player.isInitialized) {
@@ -2022,36 +1927,8 @@ class PlayerTvFragment : Fragment() {
             val hasNext = com.dskja.betterstreamflix.iptv.IptvLiveSession.hasNext()
             val prevWasGone = btnPrevious.isGone
             val nextWasGone = btnNext.isGone
-            if (ExperimentalMobileDesign.enabled()) {
-                val pill = ExperimentalMobileDesign.controlsPillBackground()
-                if (hasPrev) {
-                    btnPrevious.animate().cancel()
-                    btnPrevious.alpha = 1f
-                    btnPrevious.isVisible = true
-                    btnPrevious.setBackgroundResource(pill)
-                    with(ExpPressEffects) { btnPrevious.applyExpPress() }
-                    if (prevWasGone) ExpMotion.popIn(btnPrevious)
-                } else if (!prevWasGone) {
-                    ExpMotion.fadeOutAndHide(btnPrevious)
-                } else {
-                    btnPrevious.isGone = true
-                }
-                if (hasNext) {
-                    btnNext.animate().cancel()
-                    btnNext.alpha = 1f
-                    btnNext.isVisible = true
-                    btnNext.setBackgroundResource(pill)
-                    with(ExpPressEffects) { btnNext.applyExpPress() }
-                    if (nextWasGone) ExpMotion.popIn(btnNext)
-                } else if (!nextWasGone) {
-                    ExpMotion.fadeOutAndHide(btnNext)
-                } else {
-                    btnNext.isGone = true
-                }
-            } else {
-                btnPrevious.isGone = !hasPrev
-                btnNext.isGone = !hasNext
-            }
+            btnPrevious.isGone = !hasPrev
+            btnNext.isGone = !hasNext
             btnPrevious.setOnClickListener {
                 ExpMotion.hapticTap(it)
                 val channel = com.dskja.betterstreamflix.iptv.IptvLiveSession.previous()
@@ -2075,135 +1952,6 @@ class PlayerTvFragment : Fragment() {
         }
 
         private fun showLiveChannelGuideDialog() {
-            if (!ExperimentalMobileDesign.enabled() || !isLiveTvPlayback()) return
-            val channels = com.dskja.betterstreamflix.iptv.IptvLiveSession.snapshot()
-            val density = requireContext().resources.displayMetrics.density
-            fun dp(v: Int) = (v * density).toInt()
-            val root = LinearLayout(requireContext()).apply {
-                orientation = LinearLayout.VERTICAL
-                setBackgroundResource(ExperimentalMobileDesign.dialogBackground())
-                setPadding(dp(24), dp(20), dp(24), dp(24))
-            }
-            ExperimentalMobileDesign.applyReducedGlass(root)
-            val title = TextView(requireContext()).apply {
-                text = getString(R.string.player_live_channel_guide)
-                setTextAppearance(R.style.TextAppearance_Lumina_Title)
-                setTextColor(
-                    com.google.android.material.color.MaterialColors.getColor(
-                        this, com.google.android.material.R.attr.colorOnSurface,
-                    ),
-                )
-            }
-            val rule = View(requireContext()).apply {
-                layoutParams = LinearLayout.LayoutParams(dp(40), dp(3)).also {
-                    it.topMargin = dp(10)
-                    it.bottomMargin = dp(12)
-                }
-                setBackgroundResource(R.drawable.bg_exp_accent_rule)
-            }
-            root.addView(title)
-            root.addView(rule)
-            if (channels.isEmpty()) {
-                val emptyBody = TextView(requireContext()).apply {
-                    text = getString(R.string.player_live_no_more_channels)
-                    setTextAppearance(R.style.TextAppearance_Lumina_Body)
-                    setTextColor(
-                        com.google.android.material.color.MaterialColors.getColor(
-                            this, com.google.android.material.R.attr.colorOnSurfaceVariant,
-                        ),
-                    )
-                    setPadding(0, 0, 0, dp(16))
-                }
-                root.addView(emptyBody)
-                val dialog = com.google.android.material.dialog.MaterialAlertDialogBuilder(requireContext())
-                    .setView(root)
-                    .setPositiveButton(android.R.string.ok, null)
-                    .create()
-                dialog.setOnShowListener {
-                    ExpDialogChrome.polishShown(dialog)
-                    ExpMotion.enterScreen(root)
-                    ExpMotion.revealHeader(title, rule, emptyBody)
-                    ExpMotion.pulseAccentRule(rule)
-                }
-                dialog.show()
-                return
-            }
-            val currentId = com.dskja.betterstreamflix.iptv.IptvLiveSession.current()?.id
-            val scroll = ScrollView(requireContext()).apply {
-                layoutParams = LinearLayout.LayoutParams(
-                    ViewGroup.LayoutParams.MATCH_PARENT,
-                    dp(360),
-                )
-            }
-            val list = LinearLayout(requireContext()).apply {
-                orientation = LinearLayout.VERTICAL
-            }
-            val rowBg = ExperimentalMobileDesign.optionItemBackground()
-            var currentRow: View? = null
-            var focusRow: View? = null
-            channels.forEachIndexed { index, channel ->
-                val row = TextView(requireContext()).apply {
-                    text = getString(R.string.player_live_channel_meta, index + 1, channel.name)
-                    setTextAppearance(R.style.TextAppearance_Lumina_Body)
-                    setBackgroundResource(rowBg)
-                    setPadding(dp(14), dp(14), dp(14), dp(14))
-                    isClickable = true
-                    isFocusable = true
-                    if (channel.id == currentId) {
-                        isSelected = true
-                        setBackgroundResource(ExperimentalMobileDesign.primaryButtonBackground())
-                        setTextColor(
-                            com.google.android.material.color.MaterialColors.getColor(
-                                this, com.google.android.material.R.attr.colorOnPrimary,
-                            ),
-                        )
-                    }
-                }
-                with(ExpPressEffects) { row.applyExpPress() }
-                val lp = LinearLayout.LayoutParams(
-                    ViewGroup.LayoutParams.MATCH_PARENT,
-                    ViewGroup.LayoutParams.WRAP_CONTENT,
-                ).apply { bottomMargin = dp(8) }
-                list.addView(row, lp)
-                if (channel.id == currentId) {
-                    currentRow = row
-                    focusRow = row
-                } else if (focusRow == null && index == 0) {
-                    focusRow = row
-                }
-                if (index < 12 || channel.id == currentId) {
-                    row.alpha = 0f
-                    row.postDelayed({ ExpMotion.popIn(row) }, 28L * index.coerceAtMost(12))
-                }
-            }
-            scroll.addView(list)
-            root.addView(scroll)
-            val dialog = com.google.android.material.dialog.MaterialAlertDialogBuilder(requireContext())
-                .setView(root)
-                .setNegativeButton(android.R.string.cancel, null)
-                .create()
-            channels.forEachIndexed { index, channel ->
-                val row = list.getChildAt(index) ?: return@forEachIndexed
-                row.setOnClickListener {
-                    ExpMotion.hapticTap(it)
-                    dialog.dismiss()
-                    if (channel.id == currentId) return@setOnClickListener
-                    com.dskja.betterstreamflix.iptv.IptvLiveSession.setCurrent(channel.id)
-                    showLiveCue(R.string.player_live_zapping)
-                    viewModel.playLiveChannel(channel)
-                }
-            }
-            dialog.setOnShowListener {
-                ExpDialogChrome.polishShown(dialog)
-                ExpMotion.enterScreen(root)
-                ExpMotion.revealHeader(title)
-                ExpMotion.pulseAccentRule(rule)
-                focusRow?.requestFocus()
-                currentRow?.let { row ->
-                    scroll.post { scroll.smoothScrollTo(0, row.top.coerceAtLeast(0)) }
-                }
-            }
-            dialog.show()
         }
 
         private fun showLiveCue(@androidx.annotation.StringRes messageRes: Int) {
@@ -2216,47 +1964,7 @@ class PlayerTvFragment : Fragment() {
         }
 
         private fun showPlayerCue(message: CharSequence) {
-            if (!ExperimentalMobileDesign.enabled()) {
-                Toast.makeText(requireContext(), message, Toast.LENGTH_SHORT).show()
-                return
-            }
-            val host = binding.root as? ViewGroup ?: run {
-                Toast.makeText(requireContext(), message, Toast.LENGTH_SHORT).show()
-                return
-            }
-            host.findViewWithTag<TextView>("exp_live_cue")?.let { existing ->
-                host.removeView(existing)
-            }
-            val density = resources.displayMetrics.density
-            val cue = TextView(requireContext()).apply {
-                tag = "exp_live_cue"
-                text = message
-                gravity = Gravity.CENTER
-                setTextAppearance(R.style.TextAppearance_Lumina_Caption)
-                setBackgroundResource(ExperimentalMobileDesign.metaPillBackground())
-                val padH = (16 * density).toInt()
-                val padV = (10 * density).toInt()
-                setPadding(padH, padV, padH, padV)
-                elevation = 8f * density
-                setTextColor(
-                    com.google.android.material.color.MaterialColors.getColor(
-                        this, com.google.android.material.R.attr.colorOnSurface,
-                    ),
-                )
-            }
-            val lp = FrameLayout.LayoutParams(
-                ViewGroup.LayoutParams.WRAP_CONTENT,
-                ViewGroup.LayoutParams.WRAP_CONTENT,
-            ).apply {
-                gravity = Gravity.CENTER_HORIZONTAL or Gravity.TOP
-                topMargin = (72 * density).toInt()
-            }
-            host.addView(cue, lp)
-            ExpMotion.popIn(cue)
-            cue.postDelayed({
-                ExpMotion.fadeOutAndHide(cue)
-                cue.postDelayed({ runCatching { host.removeView(cue) } }, 280L)
-            }, 1200L)
+            Toast.makeText(requireContext(), message, Toast.LENGTH_SHORT).show()
         }
 
         private fun resolvePlayerTitle(videoType: Video.Type = currentVideoTypeForUi()): String {
@@ -2280,8 +1988,52 @@ class PlayerTvFragment : Fragment() {
         }
 
         private fun updatePlayerHeader(videoType: Video.Type = currentVideoTypeForUi()) {
-            binding.pvPlayer.controller.binding.tvExoTitle.text = resolvePlayerTitle(videoType)
-            binding.pvPlayer.controller.binding.tvExoSubtitle.text = resolvePlayerSubtitle(videoType)
+            val controller = binding.pvPlayer.controller.binding
+            val title = resolvePlayerTitle(videoType)
+            controller.tvExoTitle.text = title
+            controller.tvExoSubtitle.text = resolvePlayerSubtitle(videoType)
+            val anchor = controller.root
+            if (isLiveTvPlayback()) {
+                com.dskja.betterstreamflix.logo.TitleLogoSurface.bindCachedOnly(
+                    imageView = controller.ivExoLogo,
+                    titleView = controller.tvExoTitle,
+                    logoUrl = null,
+                    title = title,
+                )
+                anchor.setTag(R.id.player_logo_resolved_url_tag, null)
+                return
+            }
+            val cachedUrl = (anchor.getTag(R.id.player_logo_resolved_url_tag) as? String)
+                ?.takeIf {
+                    anchor.getTag(R.id.title_logo_expected_title_tag) == title && it.isNotBlank()
+                }
+            val onResolved: (String, com.dskja.betterstreamflix.logo.LogoSource) -> Unit = { url, _ ->
+                anchor.setTag(R.id.player_logo_resolved_url_tag, url)
+            }
+            when (videoType) {
+                is Video.Type.Movie -> com.dskja.betterstreamflix.logo.TitleLogoSurface.resolveAndBind(
+                    anchor = anchor,
+                    imageView = controller.ivExoLogo,
+                    titleView = controller.tvExoTitle,
+                    title = title,
+                    year = videoType.releaseDate.take(4).toIntOrNull(),
+                    isTv = false,
+                    imdbId = videoType.imdbId,
+                    existingLogo = cachedUrl,
+                    onResolved = onResolved,
+                )
+                is Video.Type.Episode -> com.dskja.betterstreamflix.logo.TitleLogoSurface.resolveAndBind(
+                    anchor = anchor,
+                    imageView = controller.ivExoLogo,
+                    titleView = controller.tvExoTitle,
+                    title = title,
+                    year = videoType.tvShow.releaseDate?.take(4)?.toIntOrNull(),
+                    isTv = true,
+                    imdbId = videoType.tvShow.imdbId,
+                    existingLogo = cachedUrl,
+                    onResolved = onResolved,
+                )
+            }
         }
 
         private fun queueNextEpisodeForContinueWatching(provider: com.dskja.betterstreamflix.providers.Provider) {
@@ -2456,73 +2208,21 @@ class PlayerTvFragment : Fragment() {
                 .into(binding.ivNextEpisodePoster)
 
             if (binding.layoutNextEpisodeOverlay.isGone) {
-                if (ExperimentalMobileDesign.enabled()) {
-                    binding.layoutNextEpisodeOverlay.setBackgroundResource(
-                        ExperimentalMobileDesign.glassCardBackground(),
-                    )
-                    binding.tvNextEpisodeMeta.setBackgroundResource(
-                        ExperimentalMobileDesign.metaPillBackground(),
-                    )
-                    binding.tvNextEpisodeCountdown.setBackgroundResource(
-                        ExperimentalMobileDesign.metaPillBackground(),
-                    )
-                    binding.root.findViewById<View>(R.id.v_next_episode_rule)?.isVisible = true
-                    updateNextEpisodeOverlayAlpha(
-                        binding.btnNextEpisodeAction.hasFocus() ||
-                            binding.btnNextEpisodeDismiss.hasFocus(),
-                    )
-                    binding.layoutNextEpisodeOverlay.isVisible = true
-                    ExpMotion.revealHeader(
-                        binding.tvNextEpisodeLabel,
-                        binding.root.findViewById(R.id.v_next_episode_rule),
-                        binding.tvNextEpisodeMeta,
-                        binding.tvNextEpisodeTitle,
-                        binding.tvNextEpisodeCountdown,
-                    )
-                    ExpMotion.pulseAccentRule(
-                        binding.root.findViewById(R.id.v_next_episode_rule),
-                    )
-                    with(ExpPressEffects) {
-                        binding.btnNextEpisodeAction.applyExpPress()
-                        binding.btnNextEpisodeDismiss.applyExpPress()
+                val fadeIn = android.view.animation.AnimationUtils.loadAnimation(
+                    requireContext(),
+                    R.anim.fade_in
+                )
+                updateNextEpisodeOverlayAlpha(
+                    binding.btnNextEpisodeAction.hasFocus() ||
+                        binding.btnNextEpisodeDismiss.hasFocus()
+                )
+                binding.layoutNextEpisodeOverlay.startAnimation(fadeIn)
+                binding.layoutNextEpisodeOverlay.isVisible = true
+                binding.btnNextEpisodeAction.post {
+                    if (_binding == null || !binding.layoutNextEpisodeOverlay.isVisible) {
+                        return@post
                     }
-                    binding.btnNextEpisodeAction.setBackgroundResource(
-                        ExperimentalMobileDesign.primaryButtonBackground(),
-                    )
-                    binding.btnNextEpisodeDismiss.setBackgroundResource(
-                        ExperimentalMobileDesign.chipBackground(),
-                    )
-                    listOf(
-                        binding.ivNextEpisodePoster,
-                        binding.btnNextEpisodeAction,
-                        binding.btnNextEpisodeDismiss,
-                    ).forEachIndexed { index, view ->
-                        view.alpha = 0f
-                        view.postDelayed({ ExpMotion.popIn(view) }, 28L * index)
-                    }
-                    binding.btnNextEpisodeAction.post {
-                        if (_binding == null || !binding.layoutNextEpisodeOverlay.isVisible) {
-                            return@post
-                        }
-                        binding.btnNextEpisodeAction.requestFocus()
-                    }
-                } else {
-                    val fadeIn = android.view.animation.AnimationUtils.loadAnimation(
-                        requireContext(),
-                        R.anim.fade_in
-                    )
-                    updateNextEpisodeOverlayAlpha(
-                        binding.btnNextEpisodeAction.hasFocus() ||
-                            binding.btnNextEpisodeDismiss.hasFocus()
-                    )
-                    binding.layoutNextEpisodeOverlay.startAnimation(fadeIn)
-                    binding.layoutNextEpisodeOverlay.isVisible = true
-                    binding.btnNextEpisodeAction.post {
-                        if (_binding == null || !binding.layoutNextEpisodeOverlay.isVisible) {
-                            return@post
-                        }
-                        binding.btnNextEpisodeAction.requestFocus()
-                    }
+                    binding.btnNextEpisodeAction.requestFocus()
                 }
             }
         }
@@ -2531,18 +2231,13 @@ class PlayerTvFragment : Fragment() {
             val b = _binding ?: return
             updateNextEpisodeOverlayFocusBindings(false)
             if (b.layoutNextEpisodeOverlay.isVisible) {
-                if (ExperimentalMobileDesign.enabled()) {
-                    ExpMotion.fadeOutAndHide(b.layoutNextEpisodeOverlay)
-                    b.root.findViewById<View>(R.id.v_next_episode_rule)?.isVisible = false
-                } else {
-                    val ctx = context ?: return
-                    val fadeOut = android.view.animation.AnimationUtils.loadAnimation(
-                        ctx,
-                        R.anim.fade_out
-                    )
-                    b.layoutNextEpisodeOverlay.startAnimation(fadeOut)
-                    b.layoutNextEpisodeOverlay.isGone = true
-                }
+                val ctx = context ?: return
+                val fadeOut = android.view.animation.AnimationUtils.loadAnimation(
+                    ctx,
+                    R.anim.fade_out
+                )
+                b.layoutNextEpisodeOverlay.startAnimation(fadeOut)
+                b.layoutNextEpisodeOverlay.isGone = true
             }
         }
 
@@ -2588,37 +2283,24 @@ class PlayerTvFragment : Fragment() {
             val b = _binding ?: return
             val btnSkipIntro = b.pvPlayer.controller.binding.btnSkipIntro
             if (show && btnSkipIntro.isGone) {
-                if (ExperimentalMobileDesign.enabled()) {
-                    btnSkipIntro.setBackgroundResource(
-                        ExperimentalMobileDesign.controlsPillBackground(),
-                    )
-                    with(ExpPressEffects) { btnSkipIntro.applyExpPress() }
-                    btnSkipIntro.isVisible = true
-                    ExpMotion.popIn(btnSkipIntro)
-                } else {
-                    val ctx = context ?: return
-                    val fadeIn = android.view.animation.AnimationUtils.loadAnimation(
-                        ctx,
-                        R.anim.fade_in
-                    )
-                    btnSkipIntro.startAnimation(fadeIn)
-                    btnSkipIntro.isVisible = true
-                }
+                val ctx = context ?: return
+                val fadeIn = android.view.animation.AnimationUtils.loadAnimation(
+                    ctx,
+                    R.anim.fade_in
+                )
+                btnSkipIntro.startAnimation(fadeIn)
+                btnSkipIntro.isVisible = true
                 if (b.layoutNextEpisodeOverlay.isVisible) {
                     updateNextEpisodeOverlayFocusBindings(true)
                 }
             } else if (!show && btnSkipIntro.isVisible) {
-                if (ExperimentalMobileDesign.enabled()) {
-                    ExpMotion.fadeOutAndHide(btnSkipIntro)
-                } else {
-                    val ctx = context ?: return
-                    val fadeOut = android.view.animation.AnimationUtils.loadAnimation(
-                        ctx,
-                        R.anim.fade_out
-                    )
-                    btnSkipIntro.startAnimation(fadeOut)
-                    btnSkipIntro.isGone = true
-                }
+                val ctx = context ?: return
+                val fadeOut = android.view.animation.AnimationUtils.loadAnimation(
+                    ctx,
+                    R.anim.fade_out
+                )
+                btnSkipIntro.startAnimation(fadeOut)
+                btnSkipIntro.isGone = true
                 if (b.layoutNextEpisodeOverlay.isVisible) {
                     updateNextEpisodeOverlayFocusBindings(true)
                 }
@@ -2831,15 +2513,7 @@ class PlayerTvFragment : Fragment() {
 
         private fun showCastInfo(messageRes: Int) {
             val message = getString(messageRes)
-            if (ExperimentalMobileDesign.enabled()) {
-                ExpDialogChrome.showInfo(
-                    requireContext(),
-                    R.string.player_cast_content_description,
-                    message,
-                ) { ctx -> MaterialAlertDialogBuilder(ctx) }
-            } else {
-                Toast.makeText(requireContext(), message, Toast.LENGTH_LONG).show()
-            }
+            Toast.makeText(requireContext(), message, Toast.LENGTH_LONG).show()
         }
 
         private fun notifyPlayer(message: CharSequence, titleRes: Int = R.string.player_settings_title) {
@@ -2962,9 +2636,9 @@ class PlayerTvFragment : Fragment() {
             setBackgroundColor(Color.WHITE)
             scaleType = ImageView.ScaleType.FIT_CENTER
             adjustViewBounds = true
-            isFocusable = true
-            isFocusableInTouchMode = true
-            requestFocus()
+            // QR is visual only — primary DPAD focus belongs on the dialog action.
+            isFocusable = false
+            importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
         }
 
         val instructionsView = TextView(requireContext()).apply {
@@ -2978,33 +2652,13 @@ class PlayerTvFragment : Fragment() {
                 }
             }
             setTextSize(TypedValue.COMPLEX_UNIT_SP, 14f)
-            if (ExperimentalMobileDesign.enabled()) {
-                setTextAppearance(R.style.TextAppearance_Lumina_Body)
-                setTextColor(
-                    com.google.android.material.color.MaterialColors.getColor(
-                        this,
-                        com.google.android.material.R.attr.colorOnSurface,
-                    ),
-                )
-            } else {
-                setTextColor(Color.WHITE)
-            }
+            setTextColor(Color.WHITE)
         }
 
         val deepLinkView = TextView(requireContext()).apply {
             text = deepLink
             setTextSize(TypedValue.COMPLEX_UNIT_SP, 11f)
-            if (ExperimentalMobileDesign.enabled()) {
-                setTextAppearance(R.style.TextAppearance_Lumina_Caption)
-                setTextColor(
-                    com.google.android.material.color.MaterialColors.getColor(
-                        this,
-                        com.google.android.material.R.attr.colorOnSurfaceVariant,
-                    ),
-                )
-            } else {
-                setTextColor(Color.parseColor("#BBBBBB"))
-            }
+            setTextColor(Color.parseColor("#BBBBBB"))
             setPadding(0, (density * 8).toInt(), 0, 0)
             setTextIsSelectable(true)
         }
@@ -3018,17 +2672,6 @@ class PlayerTvFragment : Fragment() {
                 (density * 24).toInt(),
                 (density * 12).toInt(),
             )
-        }
-        if (ExperimentalMobileDesign.enabled()) {
-            val rule = View(requireContext()).apply {
-                layoutParams = LinearLayout.LayoutParams(
-                    (36 * density).toInt(),
-                    (3 * density).toInt(),
-                ).also { it.bottomMargin = (12 * density).toInt() }
-                setBackgroundResource(R.drawable.bg_exp_accent_rule)
-                tag = "exp_qr_rule"
-            }
-            container.addView(rule)
         }
         container.addView(
             imageView,
@@ -3054,11 +2697,7 @@ class PlayerTvFragment : Fragment() {
             addView(container)
         }
 
-        val builder = if (ExperimentalMobileDesign.enabled()) {
-            MaterialAlertDialogBuilder(requireActivity())
-        } else {
-            androidx.appcompat.app.AlertDialog.Builder(requireActivity())
-        }
+        val builder = androidx.appcompat.app.AlertDialog.Builder(requireActivity())
         qrDialog = builder
             .setTitle(R.string.player_bypass_qr_title)
             .setView(scrollView)
@@ -3075,14 +2714,11 @@ class PlayerTvFragment : Fragment() {
         qrDialog?.setOnShowListener { dialogInterface ->
             val dialog = dialogInterface as? android.app.Dialog ?: qrDialog ?: return@setOnShowListener
             ExpDialogChrome.polishShown(dialog)
-            if (ExperimentalMobileDesign.enabled()) {
-                ExperimentalMobileDesign.applyReducedGlass(scrollView)
-                container.findViewWithTag<View>("exp_qr_rule")?.let { ExpMotion.pulseAccentRule(it) }
-                ExpMotion.popIn(imageView)
-                imageView.postDelayed({ ExpMotion.revealHeader(instructionsView, deepLinkView) }, 48L)
-                qrDialog?.getButton(androidx.appcompat.app.AlertDialog.BUTTON_NEGATIVE)?.let { btn ->
-                    with(ExpPressEffects) { btn.applyExpPress() }
-                }
+            val cancelBtn = qrDialog?.getButton(androidx.appcompat.app.AlertDialog.BUTTON_NEGATIVE)
+            cancelBtn?.let { btn ->
+                btn.isFocusable = true
+                btn.isFocusableInTouchMode = true
+                btn.post { btn.requestFocus() }
             }
         }
         qrDialog?.show()
@@ -3189,7 +2825,6 @@ class PlayerTvFragment : Fragment() {
         stopHttpLandingServer()
     }
 
-
     private fun onBypassCompleted(token: String, cookies: String?) {
         val session = activeBypassSession
         if (session == null || session.token != token) {
@@ -3218,6 +2853,7 @@ class PlayerTvFragment : Fragment() {
 
         dataSourceFactory = DefaultDataSource.Factory(requireContext(), httpDataSource)
 
+        releasePlayer()
         player = buildPlayer(extraBuffering)
         playerReleased = false
 
@@ -3247,6 +2883,5 @@ class PlayerTvFragment : Fragment() {
     private fun applyBypassCookies(url: String, cookieHeader: String?) {
         SerienStreamBypassHelper.applyCookies(url, cookieHeader?.trim().orEmpty())
     }
-
 
     }

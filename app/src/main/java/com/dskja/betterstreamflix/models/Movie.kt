@@ -51,9 +51,16 @@ class Movie(
     @Ignore
     var contentRating: String? = null
 
-    /** TMDb title logo artwork used on the detail header. Not persisted. */
-    @Ignore
+    /** TMDb / provider title logo artwork (persisted for faster cold start). */
     var logo: String? = null
+
+    /** BCP-47 language tag used when the logo was chosen. */
+    var logoLanguage: String? = null
+
+    /** Where [logo] came from (runtime only). */
+    @Ignore
+    var logoSource: com.dskja.betterstreamflix.logo.LogoSource =
+        com.dskja.betterstreamflix.logo.LogoSource.UNKNOWN
 
     override var isWatched: Boolean = false
     override var watchedDate: Calendar? = null
@@ -79,7 +86,27 @@ class Movie(
         this.watchedDate = movie.watchedDate
         this.watchHistory = movie.watchHistory
         this.lastPlayedAtMillis = movie.lastPlayedAtMillis
+        adoptLogoFrom(movie)
         return this
+    }
+
+    /** Soft-adopt a library / Room logo without wiping a better in-memory TMDb URL. */
+    private fun adoptLogoFrom(other: Movie) {
+        val preferred = com.dskja.betterstreamflix.logo.TmdbLogoPicker.preferResolvedLogo(
+            current = logo,
+            tmdb = other.logo,
+        )
+        if (preferred != null && preferred != logo) {
+            logo = preferred
+            if (preferred == other.logo) {
+                logoLanguage = other.logoLanguage
+                logoSource = other.logoSource
+            }
+        } else if (logo.isNullOrBlank() && !other.logo.isNullOrBlank()) {
+            logo = other.logo
+            logoLanguage = other.logoLanguage
+            logoSource = other.logoSource
+        }
     }
 
 
@@ -127,6 +154,8 @@ class Movie(
         lastPlayedAtMillis = this@Movie.lastPlayedAtMillis
         contentRating = this@Movie.contentRating
         logo = this@Movie.logo
+        logoLanguage = this@Movie.logoLanguage
+        logoSource = this@Movie.logoSource
     }
 
     override fun equals(other: Any?): Boolean {
@@ -144,6 +173,8 @@ class Movie(
         if (rating != other.rating) return false
         if (poster != other.poster) return false
         if (banner != other.banner) return false
+        if (logo != other.logo) return false
+        if (logoLanguage != other.logoLanguage) return false
         if (imdbId != other.imdbId) return false
         if (genres != other.genres) return false
         if (directors != other.directors) return false
@@ -151,7 +182,6 @@ class Movie(
         if (recommendations != other.recommendations) return false
         if (isFavorite != other.isFavorite) return false
         if (released != other.released) return false
-        if (isFavorite != other.isFavorite) return false
         if (favoritedAtMillis != other.favoritedAtMillis) return false
         if (isWatched != other.isWatched) return false
         if (watchedDate != other.watchedDate) return false
@@ -171,6 +201,8 @@ class Movie(
         result = 31 * result + (rating?.hashCode() ?: 0)
         result = 31 * result + (poster?.hashCode() ?: 0)
         result = 31 * result + (banner?.hashCode() ?: 0)
+        result = 31 * result + (logo?.hashCode() ?: 0)
+        result = 31 * result + (logoLanguage?.hashCode() ?: 0)
         result = 31 * result + (imdbId?.hashCode() ?: 0)
         result = 31 * result + genres.hashCode()
         result = 31 * result + directors.hashCode()

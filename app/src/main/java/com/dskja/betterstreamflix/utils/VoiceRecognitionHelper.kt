@@ -86,7 +86,8 @@ class VoiceRecognitionHelper(
     }
 
     fun isAvailable(): Boolean {
-        return SpeechRecognizer.isRecognitionAvailable(context)
+        val hasMic = context.packageManager.hasSystemFeature(PackageManager.FEATURE_MICROPHONE)
+        return hasMic && SpeechRecognizer.isRecognitionAvailable(context)
     }
 
     private fun startRecognition() {

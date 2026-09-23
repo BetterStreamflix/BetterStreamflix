@@ -20,9 +20,6 @@ import com.dskja.betterstreamflix.models.Episode
 import com.dskja.betterstreamflix.models.Movie
 import com.dskja.betterstreamflix.models.TvShow
 import com.dskja.betterstreamflix.utils.ArtworkRepair
-import com.dskja.betterstreamflix.utils.ExpMotion
-import com.dskja.betterstreamflix.utils.ExpPressEffects
-import com.dskja.betterstreamflix.utils.ExperimentalMobileDesign
 import com.dskja.betterstreamflix.utils.UserDataCache
 import com.dskja.betterstreamflix.utils.UserPreferences
 import com.dskja.betterstreamflix.utils.format
@@ -31,7 +28,6 @@ import com.dskja.betterstreamflix.utils.loadMoviePoster
 import com.dskja.betterstreamflix.utils.loadTvShowPoster
 import com.dskja.betterstreamflix.utils.toActivity
 import com.dskja.betterstreamflix.providers.Provider
-import com.google.android.material.color.MaterialColors
 import java.util.Calendar
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -56,102 +52,22 @@ class ShowOptionsTvDialog(
 
         if (!providerName.isNullOrBlank() && providerName != UserPreferences.currentProvider?.name) {
             Provider.findByName(providerName)?.let {
-                UserPreferences.currentProvider = it
+                UserPreferences.setCurrentProviderForPlayback(it)
             }
         }
         action()
     }
 
     private fun styleActiveOption(btn: View, active: Boolean) {
-        if (!ExperimentalMobileDesign.enabled()) return
-        btn.setBackgroundResource(
-            if (active) ExperimentalMobileDesign.primaryButtonBackground()
-            else ExperimentalMobileDesign.optionItemBackground(),
-        )
-        if (btn is android.widget.TextView) {
-            btn.setTextColor(
-                MaterialColors.getColor(
-                    btn,
-                    if (active) com.google.android.material.R.attr.colorOnPrimary
-                    else com.google.android.material.R.attr.colorOnSurface,
-                ),
-            )
-        }
     }
 
     private fun styleSubtitlePill() {
-        if (!ExperimentalMobileDesign.enabled()) return
-        if (binding.tvShowSubtitle.text.isNullOrBlank()) return
-        binding.tvShowSubtitle.setBackgroundResource(ExperimentalMobileDesign.metaPillBackground())
-        val density = context.resources.displayMetrics.density
-        binding.tvShowSubtitle.setPadding(
-            (10 * density).toInt(),
-            (4 * density).toInt(),
-            (10 * density).toInt(),
-            (4 * density).toInt(),
-        )
-        binding.tvShowSubtitle.setTextColor(
-            MaterialColors.getColor(
-                binding.tvShowSubtitle,
-                com.google.android.material.R.attr.colorOnSurfaceVariant,
-            ),
-        )
     }
 
     init {
         setContentView(binding.root)
 
-        if (ExperimentalMobileDesign.enabled()) {
-            binding.root.setBackgroundResource(ExperimentalMobileDesign.dialogBackground())
-            ExperimentalMobileDesign.applyReducedGlass(binding.root)
-            ExpMotion.enterScreen(binding.root)
-            binding.tvOptionsShowTitle.setTextAppearance(R.style.TextAppearance_Lumina_Title)
-            binding.tvOptionsShowTitle.setTextColor(
-                MaterialColors.getColor(
-                    binding.tvOptionsShowTitle,
-                    com.google.android.material.R.attr.colorOnSurface,
-                ),
-            )
-            with(ExpPressEffects) {
-                listOf(
-                    binding.btnOptionEpisodeOpenTvShow,
-                    binding.btnOptionShowFavorite,
-                    binding.btnOptionShowWatched,
-                    binding.btnOptionShowDownload,
-                    binding.btnOptionEpisodeMarkAllPreviousWatched,
-                    binding.btnOptionProgramClear,
-                    binding.btnOptionRecentlyWatchedClear,
-                    binding.btnOptionCancel,
-                ).forEach { btn ->
-                    btn.setBackgroundResource(
-                        if (btn === binding.btnOptionCancel) {
-                            ExperimentalMobileDesign.chipBackground()
-                        } else {
-                            ExperimentalMobileDesign.optionItemBackground()
-                        },
-                    )
-                    btn.setTextColor(
-                        MaterialColors.getColor(
-                            btn,
-                            if (btn === binding.btnOptionCancel) {
-                                com.google.android.material.R.attr.colorOnSurfaceVariant
-                            } else {
-                                com.google.android.material.R.attr.colorOnSurface
-                            },
-                        ),
-                    )
-                    btn.applyExpPress()
-                }
-            }
-            ExpMotion.revealHeader(
-                binding.ivOptionsShowPoster,
-                binding.tvOptionsShowTitle,
-                binding.tvShowSubtitle,
-            )
-        }
-
         binding.btnOptionCancel.setOnClickListener {
-            if (ExperimentalMobileDesign.enabled()) ExpMotion.hapticTap(it)
             dismiss()
         }
 
@@ -161,22 +77,8 @@ class ShowOptionsTvDialog(
             is TvShow -> displayTvShow(show)
         }
 
-        if (ExperimentalMobileDesign.enabled()) {
-            listOf(
-                binding.btnOptionEpisodeOpenTvShow,
-                binding.btnOptionShowFavorite,
-                binding.btnOptionShowWatched,
-                binding.btnOptionShowDownload,
-                binding.btnOptionEpisodeMarkAllPreviousWatched,
-                binding.btnOptionProgramClear,
-                binding.btnOptionRecentlyWatchedClear,
-                binding.btnOptionCancel,
-            ).forEachIndexed { index, row ->
-                if (row.visibility == View.VISIBLE) {
-                    row.postDelayed({ ExpMotion.popIn(row) }, 36L * index)
-                }
-            }
-        }
+        applyActionContentDescriptions()
+        focusFirstVisibleAction()
 
         window?.attributes = window?.attributes?.also { param ->
             param.gravity = Gravity.END
@@ -187,6 +89,32 @@ class ShowOptionsTvDialog(
         )
     }
 
+    private fun actionButtons(): List<android.widget.TextView> = listOf(
+        binding.btnOptionEpisodeOpenTvShow,
+        binding.btnOptionShowFavorite,
+        binding.btnOptionShowWatched,
+        binding.btnOptionShowDownload,
+        binding.btnOptionEpisodeMarkAllPreviousWatched,
+        binding.btnOptionProgramClear,
+        binding.btnOptionRecentlyWatchedClear,
+        binding.btnOptionCancel,
+    )
+
+    private fun applyActionContentDescriptions() {
+        actionButtons().forEach { btn ->
+            if (btn.visibility == View.VISIBLE) {
+                val label = btn.text?.toString().orEmpty()
+                if (label.isNotBlank()) {
+                    btn.contentDescription = label
+                }
+            }
+        }
+    }
+
+    private fun focusFirstVisibleAction() {
+        val first = actionButtons().firstOrNull { it.visibility == View.VISIBLE } ?: return
+        first.post { first.requestFocus() }
+    }
 
     private fun displayEpisode(episode: Episode) {
         val provider = UserPreferences.currentProvider
@@ -221,7 +149,6 @@ class ShowOptionsTvDialog(
 
         binding.btnOptionEpisodeOpenTvShow.apply {
             setOnClickListener {
-                if (ExperimentalMobileDesign.enabled()) ExpMotion.hapticTap(it)
                 when (val fragment = context.toActivity()?.getCurrentFragment()) {
                     is HomeTvFragment -> episode.tvShow?.let { tvShow ->
                         NavHostFragment.findNavController(fragment).navigate(
@@ -248,7 +175,6 @@ class ShowOptionsTvDialog(
 
         binding.btnOptionShowWatched.apply {
             setOnClickListener {
-                if (ExperimentalMobileDesign.enabled()) ExpMotion.hapticTap(it)
                 checkProviderAndRun(episode) {
                     val currentProvider = UserPreferences.currentProvider ?: return@checkProviderAndRun
                     val updatedEpisode = episode.copy().apply {
@@ -297,7 +223,6 @@ class ShowOptionsTvDialog(
 
         binding.btnOptionShowDownload.apply {
             setOnClickListener {
-                if (ExperimentalMobileDesign.enabled()) ExpMotion.hapticTap(it)
                 val activity = context.toActivity() as? Activity
                 if (activity != null) {
                     DownloadOptionsController.enqueueEpisode(context, activity, episode)
@@ -309,7 +234,6 @@ class ShowOptionsTvDialog(
 
         binding.btnOptionEpisodeMarkAllPreviousWatched.apply {
             setOnClickListener {
-                if (ExperimentalMobileDesign.enabled()) ExpMotion.hapticTap(it)
                 checkProviderAndRun(episode) {
                     val episodeDao = AppDatabase.getInstance(context).episodeDao()
                     val episodeNumber = episode.number
@@ -369,7 +293,6 @@ class ShowOptionsTvDialog(
 
         binding.btnOptionProgramClear.apply {
             setOnClickListener {
-                if (ExperimentalMobileDesign.enabled()) ExpMotion.hapticTap(it)
                 checkProviderAndRun(episode) {
                     val provider = UserPreferences.currentProvider ?: return@checkProviderAndRun
                     val updatedEpisode = episode.copy().apply {
@@ -424,7 +347,6 @@ class ShowOptionsTvDialog(
 
         binding.btnOptionShowFavorite.apply {
             setOnClickListener {
-                if (ExperimentalMobileDesign.enabled()) ExpMotion.hapticTap(it)
                 checkProviderAndRun(freshMovie) {
                     val provider = UserPreferences.currentProvider ?: return@checkProviderAndRun
                     context.toActivity()?.lifecycleScope?.launch(Dispatchers.IO) {
@@ -456,7 +378,6 @@ class ShowOptionsTvDialog(
 
         binding.btnOptionShowWatched.apply {
             setOnClickListener {
-                if (ExperimentalMobileDesign.enabled()) ExpMotion.hapticTap(it)
                 checkProviderAndRun(freshMovie) {
                     val provider = UserPreferences.currentProvider ?: return@checkProviderAndRun
                     val updatedMovie = freshMovie.copy().apply {
@@ -490,7 +411,6 @@ class ShowOptionsTvDialog(
 
         binding.btnOptionShowDownload.apply {
             setOnClickListener {
-                if (ExperimentalMobileDesign.enabled()) ExpMotion.hapticTap(it)
                 val activity = context.toActivity() as? Activity
                 if (activity != null) {
                     DownloadOptionsController.enqueueMovie(context, activity, freshMovie)
@@ -504,7 +424,6 @@ class ShowOptionsTvDialog(
 
         binding.btnOptionProgramClear.apply {
             setOnClickListener {
-                if (ExperimentalMobileDesign.enabled()) ExpMotion.hapticTap(it)
                 checkProviderAndRun(freshMovie) {
                     val provider = UserPreferences.currentProvider ?: return@checkProviderAndRun
                     val updatedMovie = freshMovie.copy().apply {
@@ -527,7 +446,6 @@ class ShowOptionsTvDialog(
 
         binding.btnOptionRecentlyWatchedClear.apply {
             setOnClickListener {
-                if (ExperimentalMobileDesign.enabled()) ExpMotion.hapticTap(it)
                 checkProviderAndRun(freshMovie) {
                     AppDatabase.getInstance(context).movieDao().clearRecentlyWatched(freshMovie.id)
                     freshMovie.lastPlayedAtMillis = null
@@ -558,7 +476,6 @@ class ShowOptionsTvDialog(
 
         binding.btnOptionShowFavorite.apply {
             setOnClickListener {
-                if (ExperimentalMobileDesign.enabled()) ExpMotion.hapticTap(it)
                 checkProviderAndRun(freshTvShow) {
                     val provider = UserPreferences.currentProvider ?: return@checkProviderAndRun
                     context.toActivity()?.lifecycleScope?.launch(Dispatchers.IO) {
@@ -600,7 +517,6 @@ class ShowOptionsTvDialog(
 
         binding.btnOptionRecentlyWatchedClear.apply {
             setOnClickListener {
-                if (ExperimentalMobileDesign.enabled()) ExpMotion.hapticTap(it)
                 checkProviderAndRun(freshTvShow) {
                     AppDatabase.getInstance(context).tvShowDao().clearRecentlyWatched(freshTvShow.id)
                     freshTvShow.lastPlayedAtMillis = null

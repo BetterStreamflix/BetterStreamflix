@@ -66,6 +66,25 @@ object ProfileManager {
 
     fun isKidsActive(): Boolean = activeProfile()?.isKids == true
 
+    /** Profile enforces a content age ceiling (kids and/or explicit max age). */
+    fun hasParentalCeiling(profile: UserProfile?): Boolean {
+        if (profile == null) return false
+        return profile.isKids || profile.maxAgeRating != null
+    }
+
+    /**
+     * Switching away from a parental-locked profile (kids / parental max-age) to a
+     * profile without a ceiling requires verifying the parental PIN (or the active
+     * profile PIN as fallback).
+     */
+    fun requiresParentalExitChallenge(target: UserProfile): Boolean {
+        if (hasParentalCeiling(target)) return false
+        val active = activeProfile()
+        val leavingRestricted = hasParentalCeiling(active) || UserPreferences.isParentalControlActive
+        if (!leavingRestricted) return false
+        return UserPreferences.parentalControlPin.isNotBlank() || active?.pinHash != null
+    }
+
     fun profiles(): List<UserProfile> {
         if (!::appContext.isInitialized) return emptyList()
         return ProfileStore.loadAll(appContext)

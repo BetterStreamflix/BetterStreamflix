@@ -76,6 +76,7 @@ object SimklSyncHooks {
         imdbId: String?,
         tmdbId: String? = null,
         isTv: Boolean = false,
+        onError: ((Throwable) -> Unit)? = null,
     ) {
         if (!SimklConfig.configured()) return
         if (imdbId.isNullOrBlank() && tmdbId.isNullOrBlank()) return
@@ -87,7 +88,10 @@ object SimklSyncHooks {
                     tmdbId = tmdbId,
                     isTv = isTv,
                 )
-            }.onFailure { Log.w(TAG, "watchlist sync failed: ${it.message}") }
+            }.onFailure {
+                Log.w(TAG, "watchlist sync failed: ${it.message}")
+                onError?.invoke(it)
+            }
         }
     }
 

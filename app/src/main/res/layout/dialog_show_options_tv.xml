@@ -121,6 +121,8 @@
                 android:layout_height="wrap_content"
                 android:layout_marginTop="8dp"
                 android:background="@drawable/bg_item_option"
+                android:focusable="true"
+                android:focusableInTouchMode="true"
                 android:gravity="center_vertical"
                 android:padding="12dp"
                 android:text="@string/option_show_mark_all_previous_watched"

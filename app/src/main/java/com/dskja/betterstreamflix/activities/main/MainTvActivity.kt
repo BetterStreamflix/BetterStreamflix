@@ -48,6 +48,8 @@ class MainTvActivity : FragmentActivity() {
 
     private lateinit var updateAppDialog: UpdateAppTvDialog
 
+    private var lastNavHeaderLogoUrl: Any? = null
+
     override fun attachBaseContext(newBase: android.content.Context) {
         super.attachBaseContext(AppLanguageManager.wrap(newBase))
     }
@@ -106,10 +108,15 @@ class MainTvActivity : FragmentActivity() {
             binding.navMain.headerView?.apply {
                 val header = ContentHeaderMenuMainTvBinding.bind(this)
 
-                Glide.with(context)
-                    .load(UserPreferences.currentProvider?.logo?.takeIf { it.isNotEmpty() } ?: R.drawable.ic_provider_default_logo)
-                    .error(R.drawable.ic_provider_default_logo)
-                    .into(header.ivNavigationHeaderIcon)
+                val logoLoad = UserPreferences.currentProvider?.logo?.takeIf { it.isNotEmpty() }
+                    ?: R.drawable.ic_provider_default_logo
+                if (logoLoad != lastNavHeaderLogoUrl) {
+                    lastNavHeaderLogoUrl = logoLoad
+                    Glide.with(context)
+                        .load(logoLoad)
+                        .error(R.drawable.ic_provider_default_logo)
+                        .into(header.ivNavigationHeaderIcon)
+                }
                 header.tvNavigationHeaderTitle.text = UserPreferences.currentProvider?.name
                 header.tvNavigationHeaderSubtitle.text = getString(R.string.main_menu_change_provider)
                 val palette = ThemeManager.palette(UserPreferences.selectedTheme)
@@ -258,6 +265,9 @@ class MainTvActivity : FragmentActivity() {
     fun adjustLayoutDelta(deltaX: Int?, deltaY: Int?) {
         val uDeltaX = deltaX ?: UserPreferences.paddingX
         val uDeltaY = deltaY ?: UserPreferences.paddingY
+        // Overscan padding must not clip focused Leanback zoom / shelf edges.
+        binding.root.clipToPadding = false
+        binding.root.clipChildren = false
         binding.root.setPadding(uDeltaX, uDeltaY, uDeltaX, uDeltaY)
     }
 

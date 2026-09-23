@@ -7,6 +7,7 @@
     android:layout_marginStart="24dp"
     android:layout_marginEnd="24dp"
     android:background="@drawable/bg_support_banner"
+    android:contentDescription="@string/support_banner_title"
     android:focusable="true"
     android:minHeight="@dimen/support_banner_height"
     android:padding="18dp">
@@ -63,6 +64,7 @@
             android:layout_height="@dimen/support_button_height"
             android:layout_marginStart="16dp"
             android:background="@drawable/bg_support_btn_primary"
+            android:contentDescription="@string/support_banner_cta"
             android:focusable="true"
             android:gravity="center"
             android:minWidth="120dp"

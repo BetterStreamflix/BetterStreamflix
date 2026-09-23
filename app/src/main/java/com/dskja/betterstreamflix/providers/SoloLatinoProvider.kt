@@ -90,7 +90,7 @@ object SoloLatinoProvider : Provider, ProviderConfigUrl {
     }
 
     private fun getOkHttpClient(): OkHttpClient {
-        val appCache = Cache(File("cacheDir", "okhttpcache"), 10 * 1024 * 1024)
+        val appCache = Cache(File(BetterStreamflixApp.instance.cacheDir, "okhttpcache"), 10 * 1024 * 1024)
 
         val clientBuilder = OkHttpClient.Builder()
             .addInterceptor { chain ->

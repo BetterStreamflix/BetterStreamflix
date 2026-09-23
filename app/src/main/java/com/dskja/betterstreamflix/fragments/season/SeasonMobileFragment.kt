@@ -255,7 +255,7 @@ class SeasonMobileFragment : Fragment() {
     private fun displaySeason(episodes: List<Episode>) {
         loadedEpisodes = episodes
         appAdapter.submitList(episodes.onEach { episode ->
-            episode.itemType = AppAdapter.Type.EPISODE_MOBILE_ITEM
+            episode.itemType = AppAdapter.Type.EPISODE_DETAIL_MOBILE_ITEM
         })
         if (episodes.isNotEmpty()) {
             binding.btnSeasonDownload.text = getString(

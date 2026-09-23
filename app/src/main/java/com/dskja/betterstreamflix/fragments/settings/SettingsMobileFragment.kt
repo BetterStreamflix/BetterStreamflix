@@ -178,21 +178,11 @@ class SettingsMobileFragment : PreferenceFragmentCompat() {
 
         backupRestoreManager = BackupRestoreManager(
             requireContext(),
-            allProvidersToBackup.mapNotNull { provider ->
-                try {
-                    val db = AppDatabase.getInstanceForProvider(provider.name, requireContext())
-                    ProviderBackupContext(
-                        name = provider.name,
-                        movieDao = db.movieDao(),
-                        tvShowDao = db.tvShowDao(),
-                        episodeDao = db.episodeDao(),
-                        seasonDao = db.seasonDao(),
-                        provider = provider
-                    )
-                } catch (e: Exception) {
-                    Log.w("BackupRestore", "Skipping ${provider.name}: ${e.message}")
-                    null
-                }
+            allProvidersToBackup.map { provider ->
+                ProviderBackupContext(
+                    name = provider.name,
+                    provider = provider,
+                )
             }
         )
 

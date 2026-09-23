@@ -26,6 +26,7 @@ import kotlinx.coroutines.launch
 class PlayerViewModel(
     private val videoType: Video.Type,
     id: String,
+    private val preferredServerName: String? = null,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow<State>(State.LoadingServers)
@@ -113,7 +114,10 @@ class PlayerViewModel(
         lastId = id
         _state.emit(State.LoadingServers)
         try {
-            val offline = resolveOffline(videoType)
+            // Only prefer offline when the caller explicitly requested offline play.
+            // A completed download must not block Online Play from fetching streaming servers.
+            val preferOffline = preferredServerName.equals(OFFLINE_SERVER_NAME, ignoreCase = true)
+            val offline = if (preferOffline) resolveOffline(videoType) else null
             if (offline != null) {
                 val server = Video.Server(
                     id = OFFLINE_SERVER_ID,
@@ -222,7 +226,9 @@ class PlayerViewModel(
         _subtitleState.emit(SubtitleState.Loading)
 
         // Offline playback already carries sidecar subs — skip OpenSubtitles/SubDL net.
-        if (resolveOffline(videoType) != null) {
+        if (preferredServerName.equals(OFFLINE_SERVER_NAME, ignoreCase = true) &&
+            resolveOffline(videoType) != null
+        ) {
             Log.d("PlayerViewModel", "Offline playback — skipping remote subtitle search")
             _subtitleState.emit(SubtitleState.SuccessOpenSubtitles(emptyList()))
             _subtitleState.emit(SubtitleState.SuccessSubDLSubtitles(emptyList()))

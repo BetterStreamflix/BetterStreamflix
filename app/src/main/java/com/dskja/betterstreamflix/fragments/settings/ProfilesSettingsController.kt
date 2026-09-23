@@ -28,6 +28,7 @@ import com.dskja.betterstreamflix.profiles.ProfileAvatarView
 import com.dskja.betterstreamflix.profiles.ProfileManager
 import com.dskja.betterstreamflix.profiles.ProfilePickerDialog
 import com.dskja.betterstreamflix.profiles.UserProfile
+import com.dskja.betterstreamflix.utils.UserPreferences
 
 /** Shared Profiles binder for Mobile + TV settings. */
 object ProfilesSettingsController {
@@ -115,9 +116,14 @@ object ProfilesSettingsController {
         }
 
         findPreference("PROFILE_PIN_CLEAR")?.setOnPreferenceClickListener {
-            ProfileManager.clearPin(ProfileManager.activeProfileId)
-            notifyUser(context, context.getString(R.string.profile_pin_cleared), R.string.profile_pin_title)
-            refresh(findPreference, context, fragment)
+            val profile = ProfileManager.activeProfile()
+            if (profile?.pinHash == null) return@setOnPreferenceClickListener true
+            // Require the current profile PIN before clearing it.
+            promptPin(context, profile) {
+                ProfileManager.clearPin(profile.id)
+                notifyUser(context, context.getString(R.string.profile_pin_cleared), R.string.profile_pin_title)
+                refresh(findPreference, context, fragment)
+            }
             true
         }
 
@@ -514,6 +520,66 @@ object ProfilesSettingsController {
         }
     }
 
+    /**
+     * When leaving a parental-locked / kids profile for one without a ceiling,
+     * challenge the parental PIN (or active profile PIN) before [onAllowed].
+     */
+    fun guardParentalExit(
+        fragment: Fragment,
+        target: UserProfile,
+        onAllowed: () -> Unit,
+    ) {
+        if (!ProfileManager.requiresParentalExitChallenge(target)) {
+            onAllowed()
+            return
+        }
+        val context = fragment.requireContext()
+        val parentalPin = UserPreferences.parentalControlPin
+        if (parentalPin.isNotBlank()) {
+            promptParentalPin(context) { onAllowed() }
+            return
+        }
+        val active = ProfileManager.activeProfile()
+        if (active?.pinHash != null) {
+            promptPin(context, active) { onAllowed() }
+            return
+        }
+        onAllowed()
+    }
+
+    private fun promptParentalPin(context: Context, onVerified: () -> Unit) {
+        val expected = UserPreferences.parentalControlPin
+        if (expected.isBlank()) {
+            onVerified()
+            return
+        }
+        val input = EditText(context).apply {
+            inputType = InputType.TYPE_CLASS_NUMBER or InputType.TYPE_NUMBER_VARIATION_PASSWORD
+            imeOptions = EditorInfo.IME_ACTION_DONE
+            hint = context.getString(R.string.settings_parental_pin_hint)
+            styleExpInput(this, context)
+        }
+        showGlassInputDialog(
+            context = context,
+            titleRes = R.string.settings_parental_enter_current_pin_title,
+            message = context.getString(R.string.settings_parental_enter_current_pin_message),
+            input = input,
+        ) {
+            val entered = input.text?.toString()?.trim().orEmpty()
+            if (entered == expected) {
+                UserPreferences.registerParentalPinSuccess()
+                onVerified()
+            } else {
+                UserPreferences.registerParentalPinFailure()
+                notifyUser(
+                    context,
+                    context.getString(R.string.settings_parental_invalid_pin),
+                    R.string.settings_parental_pin_title,
+                )
+            }
+        }
+    }
+
     private fun promptPin(context: Context, profile: UserProfile, onVerified: () -> Unit) {
         val input = EditText(context).apply {
             inputType = InputType.TYPE_CLASS_NUMBER or InputType.TYPE_NUMBER_VARIATION_PASSWORD
@@ -542,13 +608,15 @@ object ProfilesSettingsController {
         target: UserProfile,
         onProfileSwitched: (() -> Unit)?,
     ) {
-        val context = fragment.requireContext()
-        if (!ProfileManager.switchTo(context, target.id)) return
-        notifyUser(
-            context,
-            context.getString(R.string.profile_switched_toast, target.displayName),
-        )
-        refresh(findPreference, context, fragment)
-        onProfileSwitched?.invoke()
+        guardParentalExit(fragment, target) {
+            val context = fragment.requireContext()
+            if (!ProfileManager.switchTo(context, target.id)) return@guardParentalExit
+            notifyUser(
+                context,
+                context.getString(R.string.profile_switched_toast, target.displayName),
+            )
+            refresh(findPreference, context, fragment)
+            onProfileSwitched?.invoke()
+        }
     }
 }

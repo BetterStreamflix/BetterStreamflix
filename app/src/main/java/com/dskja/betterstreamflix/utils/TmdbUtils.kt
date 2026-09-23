@@ -7,11 +7,19 @@ import com.dskja.betterstreamflix.models.People
 import com.dskja.betterstreamflix.models.Season
 import com.dskja.betterstreamflix.models.Show
 import com.dskja.betterstreamflix.models.TvShow
+import com.dskja.betterstreamflix.logo.LogoConstants
+import com.dskja.betterstreamflix.logo.TmdbLogoCache
+import com.dskja.betterstreamflix.logo.TmdbLogoFetch
+import com.dskja.betterstreamflix.logo.TmdbLogoPicker
+import com.dskja.betterstreamflix.logo.TmdbLogoTelemetry
 import com.dskja.betterstreamflix.utils.TMDb3.original
 import com.dskja.betterstreamflix.utils.TMDb3.w500
 import java.text.Normalizer
 import java.util.concurrent.ConcurrentHashMap
 import kotlin.math.max
+import kotlin.coroutines.cancellation.CancellationException
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.delay
 
 object TmdbUtils {
     private const val MIN_ACCEPTABLE_SCORE = 60
@@ -21,75 +29,150 @@ object TmdbUtils {
     private const val UNKNOWN_AGE_RATING = Int.MIN_VALUE
     private val movieAgeCache = ConcurrentHashMap<String, Int>()
     private val tvAgeCache = ConcurrentHashMap<String, Int>()
-    private val movieLogoCache = ConcurrentHashMap<Int, String>()
-    private val tvLogoCache = ConcurrentHashMap<Int, String>()
+
+    fun clearLogoCaches() {
+        TmdbLogoCache.clearAll()
+    }
+
+    private fun logoCacheKey(tmdbId: Int, language: String?) =
+        TmdbLogoPicker.cacheKey(tmdbId, language)
 
     /**
      * Picks the title logo that best matches the UI language, preferring a language hit,
-     * then English, then language-less artwork, and finally the highest-voted file.
-     * Skips SVG. Prefers higher vote_count within a language tier.
+     * then English, then language-less artwork, and finally the highest-voted / widest file.
+     * Skips SVG.
      */
     private fun pickBestLogo(
         logos: List<TMDb3.Images.FileImage>?,
         language: String?,
     ): String? {
-        val wanted = language?.take(2)?.lowercase()
-        fun rank(image: TMDb3.Images.FileImage): Int {
-            val iso = image.iso639?.lowercase()
-            return when {
-                wanted != null && iso == wanted -> 0
-                iso == "en" -> 1
-                iso.isNullOrBlank() -> 2
-                else -> 3
-            }
-        }
-        return logos
-            ?.filterNot { it.filePath.endsWith(".svg", ignoreCase = true) }
-            ?.sortedWith(
-                compareBy(
-                    { rank(it) },
-                    { -(it.voteCount ?: 0) },
-                    { -(it.voteAverage ?: 0f) },
+        if (!UserPreferences.enableTmdbLogos) return null
+        val path = TmdbLogoPicker.pickBestFilePath(
+            logos = logos?.map {
+                TmdbLogoPicker.LogoCandidate(
+                    filePath = it.filePath,
+                    iso639 = it.iso639,
+                    voteCount = it.voteCount,
+                    voteAverage = it.voteAverage,
+                    width = it.width,
+                    height = it.height,
                 )
-            )
-            ?.firstOrNull()
-            ?.filePath
-            ?.original
+            },
+            language = language,
+            isExcluded = { filePath -> TmdbLogoCache.isFilePathBlacklisted(filePath) },
+        ) ?: return null
+        return path.original
     }
 
     private fun includeLanguageList(language: String?): String {
-        val lang = language?.take(2)?.lowercase()?.takeIf { it.isNotBlank() }
+        // Align with cache primaryLanguage: primary + en + null.
+        val lang = TmdbLogoPicker.primaryLanguage(language).takeIf { it.isNotBlank() }
         return if (lang == null || lang == "en") "en,null" else "$lang,en,null"
     }
 
+    /**
+     * Fetches a title logo by TMDb id. [LOGO_MISS] is stored only after a successful
+     * details response with no usable logo — network / parse errors must not poison the cache.
+     */
     private suspend fun getMovieLogo(tmdbId: Int, language: String?): String? {
-        movieLogoCache[tmdbId]?.let { return it }
-        val logo = runCatching {
-            TMDb3.Movies.details(
-                movieId = tmdbId,
-                appendToResponse = listOf(TMDb3.Params.AppendToResponse.Movie.IMAGES),
-                includeImageLanguage = includeLanguageList(language),
-            ).images?.logos
-        }.getOrNull()?.let { pickBestLogo(it, language) }
-        if (!logo.isNullOrBlank()) {
-            movieLogoCache[tmdbId] = logo
+        if (!UserPreferences.enableTmdbLogos) return null
+        val cacheKey = logoCacheKey(tmdbId, language)
+        when (val cached = TmdbLogoCache.lookup(cacheKey)) {
+            is TmdbLogoCache.Lookup.Hit -> return cached.url
+            TmdbLogoCache.Lookup.KnownMiss -> return null
+            TmdbLogoCache.Lookup.Fetch -> Unit
         }
-        return logo
+
+        val flightKey = TmdbLogoPicker.inflightKey(isTv = false, tmdbId = tmdbId, language = language)
+        TmdbLogoCache.getInflight(flightKey)?.let { return it.await() }
+
+        val deferred = CompletableDeferred<String?>()
+        val winner = TmdbLogoCache.putInflight(flightKey, deferred)
+        if (winner !== deferred) return winner.await()
+
+        try {
+            val logos = fetchLogosWithRetry {
+                TmdbLogoFetch.fetchMovieLogos(tmdbId, includeLanguageList(language))
+            }
+            val resolved = TmdbLogoFetch.pickUrl(logos, language)?.takeIf { it.isNotBlank() }
+            if (resolved != null) {
+                TmdbLogoCache.put(cacheKey, resolved)
+                TmdbLogoTelemetry.recordNetworkSuccess()
+            } else if (TmdbLogoFetch.shouldRememberMiss(logos)) {
+                // True empty logos[] — remember miss. Do NOT miss-poison when candidates
+                // existed but were all blacklisted (decode-fail alternate exhausted).
+                TmdbLogoCache.put(cacheKey, null)
+            }
+            deferred.complete(resolved)
+            return resolved
+        } catch (e: CancellationException) {
+            throw e
+        } catch (_: Exception) {
+            TmdbLogoTelemetry.recordNetworkFailure()
+            deferred.complete(null)
+            return null
+        } finally {
+            if (!deferred.isCompleted) deferred.complete(null)
+            TmdbLogoCache.removeInflight(flightKey, deferred)
+        }
     }
 
     private suspend fun getTvShowLogo(tmdbId: Int, language: String?): String? {
-        tvLogoCache[tmdbId]?.let { return it }
-        val logo = runCatching {
-            TMDb3.TvSeries.details(
-                seriesId = tmdbId,
-                appendToResponse = listOf(TMDb3.Params.AppendToResponse.Tv.IMAGES),
-                includeImageLanguage = includeLanguageList(language),
-            ).images?.logos
-        }.getOrNull()?.let { pickBestLogo(it, language) }
-        if (!logo.isNullOrBlank()) {
-            tvLogoCache[tmdbId] = logo
+        if (!UserPreferences.enableTmdbLogos) return null
+        val cacheKey = logoCacheKey(tmdbId, language)
+        when (val cached = TmdbLogoCache.lookup(cacheKey)) {
+            is TmdbLogoCache.Lookup.Hit -> return cached.url
+            TmdbLogoCache.Lookup.KnownMiss -> return null
+            TmdbLogoCache.Lookup.Fetch -> Unit
         }
-        return logo
+
+        val flightKey = TmdbLogoPicker.inflightKey(isTv = true, tmdbId = tmdbId, language = language)
+        TmdbLogoCache.getInflight(flightKey)?.let { return it.await() }
+
+        val deferred = CompletableDeferred<String?>()
+        val winner = TmdbLogoCache.putInflight(flightKey, deferred)
+        if (winner !== deferred) return winner.await()
+
+        try {
+            val logos = fetchLogosWithRetry {
+                TmdbLogoFetch.fetchTvLogos(tmdbId, includeLanguageList(language))
+            }
+            val resolved = TmdbLogoFetch.pickUrl(logos, language)?.takeIf { it.isNotBlank() }
+            if (resolved != null) {
+                TmdbLogoCache.put(cacheKey, resolved)
+                TmdbLogoTelemetry.recordNetworkSuccess()
+            } else if (TmdbLogoFetch.shouldRememberMiss(logos)) {
+                TmdbLogoCache.put(cacheKey, null)
+            }
+            deferred.complete(resolved)
+            return resolved
+        } catch (e: CancellationException) {
+            throw e
+        } catch (_: Exception) {
+            TmdbLogoTelemetry.recordNetworkFailure()
+            deferred.complete(null)
+            return null
+        } finally {
+            if (!deferred.isCompleted) deferred.complete(null)
+            TmdbLogoCache.removeInflight(flightKey, deferred)
+        }
+    }
+
+    private suspend fun <T> fetchLogosWithRetry(block: suspend () -> T): T {
+        var last: Exception? = null
+        repeat(LogoConstants.NETWORK_RETRY_COUNT + 1) { attempt ->
+            try {
+                return block()
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                last = e
+                if (attempt < LogoConstants.NETWORK_RETRY_COUNT) {
+                    delay(LogoConstants.NETWORK_RETRY_BASE_DELAY_MS * (attempt + 1))
+                }
+            }
+        }
+        throw last ?: IllegalStateException("logo fetch failed")
     }
 
     /**
@@ -106,11 +189,12 @@ object TmdbUtils {
         language: String? = null,
     ): String? {
         if (!UserPreferences.enableTmdb) return null
+        if (!UserPreferences.enableTmdbLogos) return null
         val lang = language ?: UserPreferences.currentProvider?.language
         val effectiveYear = year ?: extractYear(title)
         val normalizedQuery = titleNormalizer(title)
         val id = tmdbId?.trim()?.toIntOrNull()
-            ?: runCatching {
+            ?: suspendCatching {
                 val cleanImdb = imdbId?.trim()?.takeIf { it.isNotBlank() }
                 when {
                     cleanImdb != null && isTv ->
@@ -119,38 +203,113 @@ object TmdbUtils {
                         getMovieByImdbId(cleanImdb, lang)?.tmdbId?.toIntOrNull()
                     else -> null
                 }
-            }.getOrNull()
-            ?: runCatching {
+            }
+            ?: suspendCatching {
                 if (isTv) {
                     findBestTvMatch(title, effectiveYear, lang)?.id
-                        ?: effectiveYear?.let { findBestTvMatch(title, year = null, lang)?.id }
-                        ?: searchTvDirect(normalizedQuery.ifBlank { title }, lang)?.id
+                        ?: effectiveYear?.let {
+                            // Year-less remake guard: still prefer candidates near the year.
+                            findBestTvMatch(title, year = null, lang)?.id
+                        }
+                        ?: searchTvDirect(
+                            query = normalizedQuery.ifBlank { title },
+                            language = lang,
+                            preferredYear = effectiveYear,
+                        )?.id
                 } else {
                     findBestMovieMatch(title, effectiveYear, lang)?.id
-                        ?: effectiveYear?.let { findBestMovieMatch(title, year = null, lang)?.id }
-                        ?: searchMovieDirect(normalizedQuery.ifBlank { title }, lang)?.id
+                        ?: effectiveYear?.let {
+                            findBestMovieMatch(title, year = null, lang)?.id
+                        }
+                        ?: searchMovieDirect(
+                            query = normalizedQuery.ifBlank { title },
+                            language = lang,
+                            preferredYear = effectiveYear,
+                        )?.id
                 }
-            }.getOrNull()
+            }
             ?: return null
         return if (isTv) getTvShowLogo(id, lang) else getMovieLogo(id, lang)
     }
 
+    /** Like [runCatching] but never swallows [CancellationException]. */
+    private suspend inline fun <T> suspendCatching(block: suspend () -> T): T? =
+        try {
+            block()
+        } catch (e: CancellationException) {
+            throw e
+        } catch (_: Exception) {
+            null
+        }
+
     /** Direct [TMDb3.Search.movie] when scored matching returns nothing. */
-    private suspend fun searchMovieDirect(query: String, language: String?): TMDb3.Movie? {
+    private suspend fun searchMovieDirect(
+        query: String,
+        language: String?,
+        preferredYear: Int? = null,
+    ): TMDb3.Movie? {
         if (query.isBlank()) return null
-        return runCatching {
+        return suspendCatching {
             TMDb3.Search.movie(query = query, language = language).results
-                .maxByOrNull { it.voteCount }
-        }.getOrNull()
+                .filter {
+                    TmdbLogoPicker.isAcceptableSearchHit(
+                        voteCount = it.voteCount,
+                        popularity = it.popularity,
+                        queryTitle = query,
+                        candidateTitles = listOf(it.title, it.originalTitle),
+                        normalize = ::titleNormalizer,
+                        releaseYear = preferredYear,
+                        candidateYear = it.releaseDate?.take(4)?.toIntOrNull(),
+                    )
+                }
+                .maxWithOrNull(
+                    compareBy<TMDb3.Movie> { it.voteCount }
+                        .thenBy { it.popularity }
+                        .thenByDescending {
+                            val y = it.releaseDate?.take(4)?.toIntOrNull()
+                            if (preferredYear != null && y != null) {
+                                -kotlin.math.abs(preferredYear - y)
+                            } else {
+                                0
+                            }
+                        },
+                )
+        }
     }
 
     /** Direct [TMDb3.Search.tv] when scored matching returns nothing. */
-    private suspend fun searchTvDirect(query: String, language: String?): TMDb3.Tv? {
+    private suspend fun searchTvDirect(
+        query: String,
+        language: String?,
+        preferredYear: Int? = null,
+    ): TMDb3.Tv? {
         if (query.isBlank()) return null
-        return runCatching {
+        return suspendCatching {
             TMDb3.Search.tv(query = query, language = language).results
-                .maxByOrNull { it.voteCount }
-        }.getOrNull()
+                .filter {
+                    TmdbLogoPicker.isAcceptableSearchHit(
+                        voteCount = it.voteCount,
+                        popularity = it.popularity,
+                        queryTitle = query,
+                        candidateTitles = listOf(it.name, it.originalName),
+                        normalize = ::titleNormalizer,
+                        releaseYear = preferredYear,
+                        candidateYear = it.firstAirDate?.take(4)?.toIntOrNull(),
+                    )
+                }
+                .maxWithOrNull(
+                    compareBy<TMDb3.Tv> { it.voteCount }
+                        .thenBy { it.popularity }
+                        .thenByDescending {
+                            val y = it.firstAirDate?.take(4)?.toIntOrNull()
+                            if (preferredYear != null && y != null) {
+                                -kotlin.math.abs(preferredYear - y)
+                            } else {
+                                0
+                            }
+                        },
+                )
+        }
     }
 
     /**
@@ -368,9 +527,19 @@ object TmdbUtils {
                 cast = cached.cast.map { People(it.first, it.second, it.third) },
                 directors = cached.directors.map { People(it.first, it.second, it.third) },
                 recommendations = cached.recommendations.map { it.toShow() },
-            ).also {
-                it.contentRating = cached.contentRating
-                it.logo = cached.logo
+            ).also { movie ->
+                movie.contentRating = cached.contentRating
+                movie.logo = cached.logo
+                    ?.takeIf { UserPreferences.enableTmdbLogos }
+                    ?.takeUnless { url -> TmdbLogoCache.isBlacklisted(url) }
+                movie.logoLanguage = language.takeIf {
+                    UserPreferences.enableTmdbLogos && !movie.logo.isNullOrBlank()
+                }
+                movie.logoSource = if (UserPreferences.enableTmdbLogos) {
+                    com.dskja.betterstreamflix.logo.TmdbLogoPicker.inferSource(movie.logo)
+                } else {
+                    com.dskja.betterstreamflix.logo.LogoSource.UNKNOWN
+                }
             }
         }
         return try {
@@ -395,9 +564,17 @@ object TmdbUtils {
                 .orEmpty()
             val recommendations = mapRecommendations(details.recommendations?.results)
             val contentRating = extractMovieCertification(details, language)
-            val logo = pickBestLogo(details.images?.logos, language)
-            if (!logo.isNullOrBlank()) {
-                movieLogoCache[tmdbId] = logo
+            val lang = language ?: UserPreferences.currentProvider?.language
+            val previousLogo = TmdbCache.getMovie(tmdbId)?.logo
+            val logo = if (UserPreferences.enableTmdbLogos) {
+                val picked = pickBestLogo(details.images?.logos, lang)
+                // Only write logo cache when logos are enabled — otherwise a null put
+                // would poison the key with a 6h KnownMiss after the user re-enables.
+                TmdbLogoCache.put(logoCacheKey(tmdbId, lang), picked)
+                picked
+            } else {
+                // Keep any previously cached logo so disabling the feature does not wipe it.
+                previousLogo
             }
             val result = Movie(
                 id = details.id.toString(),
@@ -412,12 +589,18 @@ object TmdbUtils {
                 imdbId = details.externalIds?.imdbId,
                 tmdbId = details.id.toString(),
                 genres = details.genres.map { Genre(it.id.toString(), it.name) },
-                cast = details.credits?.cast?.map { People(it.id.toString(), it.name, it.profilePath?.w500) } ?: listOf(),
+                cast = details.credits?.cast?.map { peopleFromCastCredit(it) } ?: listOf(),
                 directors = directors,
                 recommendations = recommendations,
             ).also {
                 it.contentRating = contentRating
-                it.logo = logo
+                it.logo = logo.takeIf { UserPreferences.enableTmdbLogos }
+                it.logoLanguage = lang.takeIf { UserPreferences.enableTmdbLogos }
+                it.logoSource = if (UserPreferences.enableTmdbLogos) {
+                    com.dskja.betterstreamflix.logo.TmdbLogoPicker.inferSource(logo)
+                } else {
+                    com.dskja.betterstreamflix.logo.LogoSource.UNKNOWN
+                }
             }
             TmdbCache.putMovie(
                 TmdbCache.CachedMovie(
@@ -526,9 +709,19 @@ object TmdbUtils {
                 cast = cached.cast.map { People(it.first, it.second, it.third) },
                 directors = cached.directors.map { People(it.first, it.second, it.third) },
                 recommendations = cached.recommendations.map { it.toShow() },
-            ).also {
-                it.contentRating = cached.contentRating
-                it.logo = cached.logo
+            ).also { tvShow ->
+                tvShow.contentRating = cached.contentRating
+                tvShow.logo = cached.logo
+                    ?.takeIf { UserPreferences.enableTmdbLogos }
+                    ?.takeUnless { url -> TmdbLogoCache.isBlacklisted(url) }
+                tvShow.logoLanguage = language.takeIf {
+                    UserPreferences.enableTmdbLogos && !tvShow.logo.isNullOrBlank()
+                }
+                tvShow.logoSource = if (UserPreferences.enableTmdbLogos) {
+                    com.dskja.betterstreamflix.logo.TmdbLogoPicker.inferSource(tvShow.logo)
+                } else {
+                    com.dskja.betterstreamflix.logo.LogoSource.UNKNOWN
+                }
             }
         }
         return try {
@@ -560,9 +753,14 @@ object TmdbUtils {
                 }
             val recommendations = mapRecommendations(details.recommendations?.results)
             val contentRating = extractTvCertification(details, language)
-            val logo = pickBestLogo(details.images?.logos, language)
-            if (!logo.isNullOrBlank()) {
-                tvLogoCache[tmdbId] = logo
+            val lang = language ?: UserPreferences.currentProvider?.language
+            val previousLogo = TmdbCache.getTv(tmdbId)?.logo
+            val logo = if (UserPreferences.enableTmdbLogos) {
+                val picked = pickBestLogo(details.images?.logos, lang)
+                TmdbLogoCache.put(logoCacheKey(tmdbId, lang), picked)
+                picked
+            } else {
+                previousLogo
             }
             val result = TvShow(
                 id = details.id.toString(),
@@ -584,12 +782,18 @@ object TmdbUtils {
                     )
                 },
                 genres = details.genres.map { Genre(it.id.toString(), it.name) },
-                cast = details.credits?.cast?.map { People(it.id.toString(), it.name, it.profilePath?.w500) } ?: listOf(),
+                cast = details.credits?.cast?.map { peopleFromCastCredit(it) } ?: listOf(),
                 directors = directors,
                 recommendations = recommendations,
             ).also {
                 it.contentRating = contentRating
-                it.logo = logo
+                it.logo = logo.takeIf { UserPreferences.enableTmdbLogos }
+                it.logoLanguage = lang.takeIf { UserPreferences.enableTmdbLogos }
+                it.logoSource = if (UserPreferences.enableTmdbLogos) {
+                    com.dskja.betterstreamflix.logo.TmdbLogoPicker.inferSource(logo)
+                } else {
+                    com.dskja.betterstreamflix.logo.LogoSource.UNKNOWN
+                }
             }
             TmdbCache.putTv(
                 TmdbCache.CachedTv(
@@ -678,9 +882,21 @@ object TmdbUtils {
             watchedDate = movie.watchedDate
             lastPlayedAtMillis = movie.lastPlayedAtMillis
             watchHistory = movie.watchHistory
-            logo = movie.logo?.takeIf { it.isNotBlank() }
-                ?: tmdb.logo
-                ?: tmdbId?.toIntOrNull()?.let { getMovieLogo(it, lang) }
+            logo = if (UserPreferences.enableTmdbLogos) {
+                TmdbLogoPicker.preferResolvedLogo(
+                    current = movie.logo,
+                    tmdb = tmdb.logo
+                        ?: tmdbId?.toIntOrNull()?.let { getMovieLogo(it, lang) },
+                )
+            } else {
+                movie.logo
+            }
+            logoLanguage = lang.takeIf { UserPreferences.enableTmdbLogos }
+            logoSource = if (UserPreferences.enableTmdbLogos) {
+                com.dskja.betterstreamflix.logo.TmdbLogoPicker.inferSource(logo)
+            } else {
+                com.dskja.betterstreamflix.logo.LogoSource.UNKNOWN
+            }
         }
     }
 
@@ -719,9 +935,21 @@ object TmdbUtils {
             lastPlayedAtMillis = tvShow.lastPlayedAtMillis
             lastPlayedEpisodeId = tvShow.lastPlayedEpisodeId
             lastPlayedEpisode = tvShow.lastPlayedEpisode
-            logo = tvShow.logo?.takeIf { it.isNotBlank() }
-                ?: tmdb.logo
-                ?: tmdbId?.toIntOrNull()?.let { getTvShowLogo(it, lang) }
+            logo = if (UserPreferences.enableTmdbLogos) {
+                TmdbLogoPicker.preferResolvedLogo(
+                    current = tvShow.logo,
+                    tmdb = tmdb.logo
+                        ?: tmdbId?.toIntOrNull()?.let { getTvShowLogo(it, lang) },
+                )
+            } else {
+                tvShow.logo
+            }
+            logoLanguage = lang.takeIf { UserPreferences.enableTmdbLogos }
+            logoSource = if (UserPreferences.enableTmdbLogos) {
+                com.dskja.betterstreamflix.logo.TmdbLogoPicker.inferSource(logo)
+            } else {
+                com.dskja.betterstreamflix.logo.LogoSource.UNKNOWN
+            }
         }
     }
 
@@ -1205,6 +1433,15 @@ object TmdbUtils {
             .mapNotNull { it.rating?.trim()?.takeIf { r -> r.isNotEmpty() } }
             .firstOrNull()
     }
+
+    private fun peopleFromCastCredit(cast: TMDb3.Cast): People =
+        People(
+            id = cast.id.toString(),
+            name = cast.name,
+            image = cast.profilePath?.w500,
+        ).also { person ->
+            person.character = cast.character.takeIf { it.isNotBlank() }
+        }
 
     private fun mapRecommendations(results: List<TMDb3.MultiItem>?): List<Show> {
         if (results.isNullOrEmpty()) return emptyList()

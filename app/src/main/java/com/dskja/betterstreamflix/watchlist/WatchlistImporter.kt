@@ -248,26 +248,30 @@ object WatchlistImporter {
         }
         val provider = providerFor(source)
         val database = AppDatabase.getInstanceForProvider(provider.name, context)
-        var count = 0
-        val now = System.currentTimeMillis()
-        for (item in items) {
-            runCatching {
-                val show = TvShow(
-                    id = item.id,
-                    title = item.title,
-                    poster = item.poster,
-                ).apply {
-                    isFavorite = true
-                    favoritedAtMillis = now
+        try {
+            var count = 0
+            val now = System.currentTimeMillis()
+            for (item in items) {
+                runCatching {
+                    val show = TvShow(
+                        id = item.id,
+                        title = item.title,
+                        poster = item.poster,
+                    ).apply {
+                        isFavorite = true
+                        favoritedAtMillis = now
+                    }
+                    database.tvShowDao().upsertFavorite(show, favorite = true)
+                    UserDataCache.addTvShowToFavorites(context, provider, show)
+                    count++
+                }.onFailure { e ->
+                    Log.w(TAG, "Failed persisting ${item.id}: ${e.message}")
                 }
-                database.tvShowDao().upsertFavorite(show, favorite = true)
-                UserDataCache.addTvShowToFavorites(context, provider, show)
-                count++
-            }.onFailure { e ->
-                Log.w(TAG, "Failed persisting ${item.id}: ${e.message}")
             }
+            Result(importedCount = count)
+        } finally {
+            database.close()
         }
-        Result(importedCount = count)
     }
 
     /**

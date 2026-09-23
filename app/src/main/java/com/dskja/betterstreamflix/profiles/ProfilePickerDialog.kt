@@ -23,6 +23,7 @@ import androidx.appcompat.app.AlertDialog
 import androidx.fragment.app.DialogFragment
 import androidx.fragment.app.Fragment
 import com.dskja.betterstreamflix.R
+import com.dskja.betterstreamflix.fragments.settings.ProfilesSettingsController
 import com.dskja.betterstreamflix.utils.ExpDialogChrome
 import com.dskja.betterstreamflix.utils.ExpMotion
 import com.dskja.betterstreamflix.utils.ExperimentalMobileDesign
@@ -274,10 +275,15 @@ class ProfilePickerDialog : DialogFragment() {
                 dismissAllowingStateLoss()
                 return@setOnClickListener
             }
-            if (profile.pinHash != null) {
-                showPinDialog(profile) { completeSwitch(profile) }
-            } else {
-                completeSwitch(profile)
+            fun proceedWithTargetPin() {
+                if (profile.pinHash != null) {
+                    showPinDialog(profile) { completeSwitch(profile) }
+                } else {
+                    completeSwitch(profile)
+                }
+            }
+            ProfilesSettingsController.guardParentalExit(this, profile) {
+                proceedWithTargetPin()
             }
         }
         with(com.dskja.betterstreamflix.utils.ExpPressEffects) { item.applyExpPress() }
@@ -759,6 +765,15 @@ class ProfilePickerDialog : DialogFragment() {
             val pinInput = view.findViewById<EditText>(R.id.et_profile_create_pin)
             val clearPin = view.findViewById<CheckBox>(R.id.cb_profile_clear_pin)
             if (clearPin?.isChecked == true && hadExistingPin) {
+                val pin = pinInput?.text?.toString()?.trim().orEmpty()
+                if (!ProfileManager.verifyPin(profileId, pin)) {
+                    ExpDialogChrome.notify(
+                        context,
+                        R.string.profile_pin_invalid,
+                        R.string.profile_pin_title,
+                    )
+                    return false
+                }
                 ProfileManager.clearPin(profileId)
                 return true
             }

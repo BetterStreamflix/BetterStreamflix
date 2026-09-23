@@ -541,4 +541,18 @@
     <string name="settings_force_extra_buffer_summary">Activa búfer extra para todos los servidores de forma predeterminada</string>
     <string name="supabase_instructions_title">Instrucciones</string>
     <string name="supabase_instructions_summary">Abrir en el navegador la guía detallada para configurar la cuenta y la sincronización de Supabase</string>
+    <string name="home_swiper_resume">Reanudar · %1$d%%</string>
+    <string name="home_swiper_continue">Seguir viendo</string>
+    <string name="home_swiper_released_year">%1$s</string>
+    <string name="home_swiper_more_info">Más info</string>
+    <string name="home_swiper_trailer">Tráiler</string>
+    <string name="home_featured_synthesized">Destacados restaurados del catálogo</string>
+    <string name="simkl_sync_failed">No se pudo sincronizar — guardado local</string>
+    <string name="home_swiper_my_list">+ Mi lista</string>
+    <string name="home_swiper_in_my_list">En mi lista</string>
+    <string name="home_swiper_all_episodes">Todos los episodios disponibles</string>
+    <string name="home_swiper_now_playing">En cartelera</string>
+    <string name="home_featured_title">Destacados</string>
+    <string name="exp_swiper_page">Destacados: %1$s</string>
+    <string name="home_featured_page">Destacados: %1$s</string>
 </resources>

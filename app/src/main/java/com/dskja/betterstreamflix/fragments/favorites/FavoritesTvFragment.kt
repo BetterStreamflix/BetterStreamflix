@@ -26,11 +26,8 @@ import com.dskja.betterstreamflix.ui.ShowOptionsTvDialog
 import com.dskja.betterstreamflix.ui.SpacingItemDecoration
 import com.dskja.betterstreamflix.utils.ExpDialogChrome
 import com.dskja.betterstreamflix.utils.ExpEmptyChrome
-import com.dskja.betterstreamflix.utils.ExpMotion
-import com.dskja.betterstreamflix.utils.ExperimentalMobileDesign
 import com.dskja.betterstreamflix.utils.UserPreferences
 import com.dskja.betterstreamflix.utils.dp
-import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import kotlinx.coroutines.launch
 
 class FavoritesTvFragment : Fragment() {
@@ -96,6 +93,13 @@ class FavoritesTvFragment : Fragment() {
                             return binding.btnFavoritesReorderMode
                         }
                     }
+                    if (direction == View.FOCUS_LEFT) {
+                        val itemView = binding.rvFavorites.findContainingItemView(focused)
+                        val lp = itemView?.layoutParams as? LayoutParams
+                        if (lp != null && lp.spanIndex == 0) {
+                            return activity?.findViewById(R.id.nav_main)
+                        }
+                    }
                     return super.onInterceptFocusSearch(focused, direction)
                 }
             }
@@ -106,33 +110,10 @@ class FavoritesTvFragment : Fragment() {
         }
         binding.btnFavoritesReorder.setOnClickListener { showSortDialog() }
         binding.btnFavoritesReorderMode.setOnClickListener { setRearrangeMode(!rearrangeMode) }
-        if (ExperimentalMobileDesign.enabled()) {
-            ExpMotion.enterScreen(binding.root)
-            binding.btnFavoritesReorder.setBackgroundResource(ExperimentalMobileDesign.chipBackground())
-            binding.btnFavoritesReorderMode.setBackgroundResource(ExperimentalMobileDesign.chipBackground())
-            val onSurface = com.google.android.material.color.MaterialColors.getColor(
-                binding.btnFavoritesReorder,
-                com.google.android.material.R.attr.colorOnSurface,
-            )
-            binding.btnFavoritesReorder.setTextColor(onSurface)
-            binding.btnFavoritesReorderMode.setTextColor(onSurface)
-            with(com.dskja.betterstreamflix.utils.ExpPressEffects) {
-                binding.btnFavoritesReorder.applyExpPress()
-                binding.btnFavoritesReorderMode.applyExpPress()
-            }
-            ExpMotion.popIn(binding.btnFavoritesReorder)
-            ExpMotion.popIn(binding.btnFavoritesReorderMode)
-            binding.root.findViewById<android.widget.TextView>(R.id.tv_favorites_empty)?.let { empty ->
-                empty.setTextColor(
-                    com.google.android.material.color.MaterialColors.getColor(
-                        empty, com.google.android.material.R.attr.colorOnSurfaceVariant,
-                    ),
-                )
-            }
-        }
         requireActivity().onBackPressedDispatcher.addCallback(viewLifecycleOwner, rearrangeBackCallback)
         setRearrangeMode(false)
-        binding.root.requestFocus()
+        // Focus the favorites grid, not the fragment root (TV DPAD entry).
+        binding.rvFavorites.requestFocus()
 
         viewLifecycleOwner.lifecycleScope.launch {
             viewModel.sections.flowWithLifecycle(lifecycle, Lifecycle.State.STARTED).collect(::display)
@@ -151,7 +132,12 @@ class FavoritesTvFragment : Fragment() {
         }
         binding.btnFavoritesReorder.isEnabled = !enabled && appAdapter.items.isNotEmpty()
         configureAdapterInteractions()
-        appAdapter.notifyDataSetChanged()
+        // Prefer range notify over notifyDataSetChanged so Leanback keeps focus/scroll.
+        // Full payload selection refresh is enough for rearrange chrome.
+        val count = appAdapter.itemCount
+        if (count > 0) {
+            appAdapter.notifyItemRangeChanged(0, count, AppAdapter.PAYLOAD_SELECTION)
+        }
         if (!enabled) {
             binding.btnFavoritesReorderMode.post {
                 _binding?.btnFavoritesReorderMode?.requestFocus()
@@ -374,13 +360,6 @@ class FavoritesTvFragment : Fragment() {
             visible = gridItems.isEmpty(),
             onCtaClick = { runCatching { findNavController().navigate(R.id.search) } },
         )
-        if (gridItems.isEmpty() && ExperimentalMobileDesign.enabled()) {
-            binding.btnFavoritesReorder.isVisible = false
-            binding.btnFavoritesReorderMode.isVisible = false
-        } else if (ExperimentalMobileDesign.enabled()) {
-            binding.btnFavoritesReorder.isVisible = gridItems.isNotEmpty()
-            binding.btnFavoritesReorderMode.isVisible = gridItems.isNotEmpty()
-        }
         appAdapter.submitList(gridItems)
     }
 
@@ -392,44 +371,10 @@ class FavoritesTvFragment : Fragment() {
             getString(R.string.favorites_sort_title_ascending),
             getString(R.string.favorites_sort_title_descending),
         )
-        val builder = if (ExperimentalMobileDesign.enabled()) {
-            MaterialAlertDialogBuilder(requireContext())
-        } else {
-            androidx.appcompat.app.AlertDialog.Builder(requireContext())
-        }
-        if (ExperimentalMobileDesign.enabled()) {
-            val titleBox = android.widget.LinearLayout(requireContext()).apply {
-                orientation = android.widget.LinearLayout.VERTICAL
-                val pad = (20 * resources.displayMetrics.density).toInt()
-                setPadding(pad, pad, pad, (8 * resources.displayMetrics.density).toInt())
-            }
-            val titleView = android.widget.TextView(requireContext()).apply {
-                text = getString(R.string.favorites_sort_title)
-                setTextAppearance(R.style.TextAppearance_Lumina_Title)
-                setTextColor(
-                    com.google.android.material.color.MaterialColors.getColor(
-                        this,
-                        com.google.android.material.R.attr.colorOnSurface,
-                    ),
-                )
-            }
-            val rule = View(requireContext()).apply {
-                layoutParams = android.widget.LinearLayout.LayoutParams(
-                    (36 * resources.displayMetrics.density).toInt(),
-                    (3 * resources.displayMetrics.density).toInt(),
-                ).also { it.topMargin = (10 * resources.displayMetrics.density).toInt() }
-                setBackgroundResource(R.drawable.bg_exp_accent_rule)
-            }
-            titleBox.addView(titleView)
-            titleBox.addView(rule)
-            builder.setCustomTitle(titleBox)
-            ExpMotion.pulseAccentRule(rule)
-        } else {
-            builder.setTitle(R.string.favorites_sort_title)
-        }
+        val builder = androidx.appcompat.app.AlertDialog.Builder(requireContext())
+        builder.setTitle(R.string.favorites_sort_title)
         builder
             .setSingleChoiceItems(labels, modes.indexOf(viewModel.currentSortMode())) { dialog, which ->
-                if (ExperimentalMobileDesign.enabled()) ExpMotion.hapticTap(binding.root)
                 if (modes[which] != FavoritesViewModel.SortMode.MANUAL) setRearrangeMode(false)
                 viewModel.setSortMode(modes[which])
                 dialog.dismiss()
@@ -439,16 +384,6 @@ class FavoritesTvFragment : Fragment() {
             .also { dialog ->
                 dialog.setOnShowListener {
                     ExpDialogChrome.polishShown(dialog)
-                    if (ExperimentalMobileDesign.enabled()) {
-                        dialog.window?.decorView?.let { ExpMotion.enterScreen(it) }
-                        dialog.listView?.post {
-                            val list = dialog.listView ?: return@post
-                            for (i in 0 until list.childCount) {
-                                val row = list.getChildAt(i) ?: continue
-                                row.postDelayed({ ExpMotion.popIn(row) }, 28L * i)
-                            }
-                        }
-                    }
                 }
                 dialog.show()
             }

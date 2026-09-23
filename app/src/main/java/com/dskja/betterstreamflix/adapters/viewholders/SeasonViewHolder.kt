@@ -8,6 +8,7 @@ import androidx.viewbinding.ViewBinding
 import com.bumptech.glide.Glide
 import com.bumptech.glide.load.resource.drawable.DrawableTransitionOptions
 import com.dskja.betterstreamflix.R
+import com.dskja.betterstreamflix.utils.TvFocusZoom
 import com.dskja.betterstreamflix.utils.ExpMotion
 import com.dskja.betterstreamflix.utils.ExpPressEffects.applyExpPress
 import com.dskja.betterstreamflix.utils.ExperimentalMobileDesign
@@ -40,7 +41,6 @@ class SeasonViewHolder(
             is ItemSeasonTvBinding -> displayTvItem(_binding)
         }
     }
-
 
     private fun displayMobileItem(binding: ItemSeasonMobileBinding) {
         binding.root.apply {
@@ -119,12 +119,7 @@ class SeasonViewHolder(
                 )
             }
             setOnFocusChangeListener { _, hasFocus ->
-                val animation = when {
-                    hasFocus -> AnimationUtils.loadAnimation(context, R.anim.zoom_in)
-                    else -> AnimationUtils.loadAnimation(context, R.anim.zoom_out)
-                }
-                binding.ivSeasonPoster.startAnimation(animation)
-                animation.fillAfter = true
+                TvFocusZoom.apply(binding.ivSeasonPoster, hasFocus)
             }
         }
 
@@ -137,38 +132,12 @@ class SeasonViewHolder(
                 .centerCrop()
                 .transition(DrawableTransitionOptions.withCrossFade())
                 .into(this)
-            if (ExperimentalMobileDesign.enabled() &&
-                getTag(R.id.exp_ken_burns_animator) == null
-            ) {
-                ExpMotion.kenBurns(this)
-            }
         }
         val watched = season.isFullyWatched()
         val wasWatched = binding.ivSeasonWatchedRibbon.isVisible
-        if (ExperimentalMobileDesign.enabled() && wasWatched && !watched) {
-            ExpMotion.fadeOutAndHide(binding.ivSeasonWatchedRibbon)
-            binding.ivSeasonWatchedRibbon.background = null
-        } else {
-            binding.ivSeasonWatchedRibbon.isVisible = watched
-            if (ExperimentalMobileDesign.enabled() && watched) {
-                binding.ivSeasonWatchedRibbon.setBackgroundResource(
-                    ExperimentalMobileDesign.iconChipBackground(),
-                )
-                val pad = (4 * context.resources.displayMetrics.density).toInt()
-                binding.ivSeasonWatchedRibbon.setPadding(pad, pad, pad, pad)
-                if (!wasWatched) ExpMotion.popIn(binding.ivSeasonWatchedRibbon)
-            }
-        }
+        binding.ivSeasonWatchedRibbon.isVisible = watched
 
         binding.tvSeasonTitle.text = season.displayTitle()
-        if (ExperimentalMobileDesign.enabled() &&
-            binding.root.getTag(R.id.exp_enter_animated_tag) != true
-        ) {
-            binding.root.setTag(R.id.exp_enter_animated_tag, true)
-            binding.root.setBackgroundResource(ExperimentalMobileDesign.glassCardBackground())
-            ExpMotion.revealHeader(binding.tvSeasonTitle)
-            ExpMotion.popIn(binding.root)
-        }
     }
 
     private fun Season.displayTitle(): String {
