@@ -227,13 +227,19 @@ class DownloadRepository private constructor(
             )
             return
         }
-        DownloadService.sendSetStopReason(
-            context,
-            StreamflixDownloadService::class.java,
-            item.media3Id,
-            Download.STOP_REASON_NONE,
-            false,
-        )
+        // Media3 STATE_FAILED ignores stop-reason clears — re-add the request so
+        // transient failures (network blips) can continue without a full re-resolve.
+        if (item.state == DownloadItemState.FAILED.name) {
+            requeueFailedMedia3(item)
+        } else {
+            DownloadService.sendSetStopReason(
+                context,
+                StreamflixDownloadService::class.java,
+                item.media3Id,
+                Download.STOP_REASON_NONE,
+                false,
+            )
+        }
         dao.upsert(
             item.copy(
                 state = DownloadItemState.QUEUED.name,
@@ -241,6 +247,45 @@ class DownloadRepository private constructor(
                 errorMessage = "",
                 updatedAt = System.currentTimeMillis(),
             ),
+        )
+        DownloadNotifier.cancelFailed(context, item.id)
+    }
+
+    /**
+     * Re-enqueue a Media3 download that is in STATE_FAILED (or missing from the index).
+     * Uses the stored request URI/mime/headers — callers that need fresh signed URLs
+     * should use [DownloadController.retryItem] instead.
+     */
+    private fun requeueFailedMedia3(item: DownloadItemEntity) {
+        val dm = StreamflixDownloadManager.get(context)
+        val existing = runCatching { dm.downloadIndex.getDownload(item.media3Id) }.getOrNull()
+        val request = existing?.request ?: run {
+            if (item.streamUrl.isBlank()) return
+            val headers = runCatching {
+                val o = org.json.JSONObject(item.headersJson.ifBlank { "{}" })
+                o.keys().asSequence().associateWith { o.getString(it) }
+            }.getOrDefault(emptyMap())
+            DownloadHeaderStore.put(context, item.media3Id, headers)
+            DownloadHeaderStore.putForUrl(context, item.streamUrl, headers, media3Id = item.media3Id)
+            val mime = item.mimeType.takeIf { it.isNotBlank() }
+                ?: when {
+                    item.streamUrl.contains(".m3u8", ignoreCase = true) -> MimeTypes.APPLICATION_M3U8
+                    item.streamUrl.contains(".mpd", ignoreCase = true) -> MimeTypes.APPLICATION_MPD
+                    item.streamUrl.contains(".mp4", ignoreCase = true) -> MimeTypes.VIDEO_MP4
+                    else -> null
+                }
+            DownloadRequest.Builder(item.media3Id, Uri.parse(item.streamUrl))
+                .setMimeType(mime)
+                .setData(item.title.toByteArray(Charsets.UTF_8))
+                .build()
+        }
+        // Re-add (Media3 replaces an existing failed entry with the same id and
+        // keeps already-cached bytes when the URI matches).
+        DownloadService.sendAddDownload(
+            context,
+            StreamflixDownloadService::class.java,
+            request,
+            /* foreground= */ true,
         )
     }
 

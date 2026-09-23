@@ -146,16 +146,18 @@ class DownloadsMobileFragment : Fragment() {
                     }
                     if (binding.tvDownloadsEmpty.visibility != View.VISIBLE) {
                         binding.tvDownloadsEmpty.isVisible = true
-                        emptyRule?.isVisible = ExperimentalMobileDesign.enabled()
+                        emptyRule?.isVisible = true
                         if (ExperimentalMobileDesign.enabled()) {
                             ExpMotion.revealHeader(binding.tvDownloadsEmpty, emptyRule, cta)
                             ExpMotion.pulseAccentRule(emptyRule)
                         } else {
                             ExpMotion.fadeInAndShow(binding.tvDownloadsEmpty)
+                            emptyRule?.let { ExpMotion.fadeInAndShow(it) }
+                            cta?.let { ExpMotion.fadeInAndShow(it) }
                         }
                     } else {
                         binding.tvDownloadsEmpty.isVisible = true
-                        emptyRule?.isVisible = ExperimentalMobileDesign.enabled()
+                        emptyRule?.isVisible = true
                     }
                     val filterAll = filter == DownloadsFilter.ALL
                     binding.root.findViewById<android.widget.TextView>(R.id.btn_downloads_empty_cta)?.let { chip ->
@@ -465,7 +467,8 @@ class DownloadsMobileFragment : Fragment() {
                 OfflinePlayback.exportShareUri(requireContext(), row.entity)
             }
             if (uri == null) {
-                showDownloadError(R.string.download_error_file_missing)
+                // Cache-only Media3 downloads have no on-disk file to share.
+                showDownloadError(R.string.downloads_share_cache_only)
                 return@launch
             }
             val intent = android.content.Intent(android.content.Intent.ACTION_SEND).apply {

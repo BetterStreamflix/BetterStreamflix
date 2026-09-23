@@ -105,12 +105,14 @@ object DownloadNotifier {
         NotificationManagerCompat.from(context).cancel(NOTIFICATION_ID_ACTIVE)
     }
 
-    fun notifyFailed(context: Context, itemId: String, title: String) {
+    fun notifyFailed(context: Context, itemId: String, title: String, reason: String? = null) {
         ensureChannel(context)
+        val body = if (!reason.isNullOrBlank()) "$title · $reason" else title
         val notification = NotificationCompat.Builder(context, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_menu_downloads)
             .setContentTitle(context.getString(R.string.download_notification_failed_title))
-            .setContentText(title)
+            .setContentText(body)
+            .setStyle(NotificationCompat.BigTextStyle().bigText(body))
             .setAutoCancel(true)
             .setContentIntent(openDownloadsIntent(context))
             .addAction(

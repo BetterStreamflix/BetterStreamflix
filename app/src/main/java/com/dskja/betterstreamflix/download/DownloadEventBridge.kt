@@ -157,7 +157,23 @@ object DownloadEventBridge : DownloadManager.Listener {
             }
         }
         if (state == DownloadItemState.FAILED && entity.state != DownloadItemState.FAILED.name) {
-            DownloadNotifier.notifyFailed(context, entity.id, entity.title)
+            val code = classifyFailure(finalException)
+            val reason = runCatching {
+                context.getString(
+                    when (code) {
+                        DownloadErrorCode.NOSPACE -> com.dskja.betterstreamflix.R.string.download_error_nospace
+                        DownloadErrorCode.WIFI_REQUIRED -> com.dskja.betterstreamflix.R.string.download_error_wifi
+                        DownloadErrorCode.EXPIRED -> com.dskja.betterstreamflix.R.string.download_error_expired
+                        DownloadErrorCode.NETWORK -> com.dskja.betterstreamflix.R.string.download_error_network
+                        DownloadErrorCode.CLOUDFLARE -> com.dskja.betterstreamflix.R.string.download_error_cloudflare
+                        DownloadErrorCode.DRM -> com.dskja.betterstreamflix.R.string.download_error_drm
+                        DownloadErrorCode.UNSUPPORTED -> com.dskja.betterstreamflix.R.string.download_error_unsupported
+                        DownloadErrorCode.NO_SERVERS -> com.dskja.betterstreamflix.R.string.download_error_no_servers
+                        else -> com.dskja.betterstreamflix.R.string.downloads_failed_generic
+                    },
+                )
+            }.getOrNull()
+            DownloadNotifier.notifyFailed(context, entity.id, entity.title, reason)
         } else if (state != DownloadItemState.FAILED && entity.state == DownloadItemState.FAILED.name) {
             DownloadNotifier.cancelFailed(context, entity.id)
         }
@@ -170,42 +186,13 @@ object DownloadEventBridge : DownloadManager.Listener {
         DownloadErrorClassifier.classify(e)
 
     private fun refreshAggregateNotification(context: Context, downloadManager: DownloadManager) {
+        // Progress + Pause/Resume live on the DownloadService FGS notification only.
+        // Keep canceling any legacy duplicate aggregate (pre-unify) when the queue drains.
         val active = downloadManager.currentDownloads.filter {
             it.state == Download.STATE_DOWNLOADING || it.state == Download.STATE_QUEUED
         }
         if (active.isEmpty()) {
             DownloadNotifier.cancelActive(context)
-            return
         }
-        val downloading = active.firstOrNull { it.state == Download.STATE_DOWNLOADING } ?: active.first()
-        val pct = when {
-            downloading.percentDownloaded >= 0f -> downloading.percentDownloaded.toInt().coerceAtLeast(0)
-            downloading.contentLength > 0L ->
-                ((downloading.bytesDownloaded * 100L) / downloading.contentLength).toInt().coerceAtLeast(0)
-            else -> 0
-        }
-        val title = if (active.size == 1) {
-            context.getString(com.dskja.betterstreamflix.R.string.download_notification_active_one)
-        } else {
-            context.getString(
-                com.dskja.betterstreamflix.R.string.download_notification_active_many,
-                active.size,
-            )
-        }
-        val text = if (downloading.percentDownloaded >= 0f || downloading.contentLength > 0L) {
-            context.getString(
-                com.dskja.betterstreamflix.R.string.download_notification_progress,
-                pct,
-            )
-        } else {
-            context.getString(com.dskja.betterstreamflix.R.string.download_notification_indeterminate)
-        }
-        DownloadNotifier.notifyActive(
-            context = context,
-            title = title,
-            progressPct = pct,
-            indeterminate = downloading.percentDownloaded < 0f && downloading.contentLength <= 0L,
-            contentText = text,
-        )
     }
 }

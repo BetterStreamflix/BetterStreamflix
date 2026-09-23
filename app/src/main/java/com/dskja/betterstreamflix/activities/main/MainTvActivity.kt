@@ -206,6 +206,26 @@ class MainTvActivity : FragmentActivity() {
         })
 
         com.dskja.betterstreamflix.support.SupportStartupController.schedule(this, isTv = true)
+
+        handleOpenDownloadsIntent(intent)
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        handleOpenDownloadsIntent(intent)
+    }
+
+    /** Notification / deep-link tap → Downloads tab (parity with [MainMobileActivity]). */
+    private fun handleOpenDownloadsIntent(intent: Intent?) {
+        if (intent?.getBooleanExtra("open_downloads", false) != true) return
+        val navHost =
+            supportFragmentManager.findFragmentById(R.id.nav_main_fragment) as? NavHostFragment
+                ?: return
+        val navController = navHost.navController
+        if (navController.currentDestination?.id != R.id.downloads) {
+            runCatching { navController.navigate(R.id.downloads) }
+        }
     }
 
     private fun bindingRootAndChrome() {

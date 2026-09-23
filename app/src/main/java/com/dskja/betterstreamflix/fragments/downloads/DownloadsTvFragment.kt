@@ -134,15 +134,31 @@ class DownloadsTvFragment : Fragment() {
             }
         }
         viewLifecycleOwner.lifecycleScope.launch {
+            viewModel.lowSpace.flowWithLifecycle(lifecycle, Lifecycle.State.STARTED).collect { low ->
+                updateBanner(low, viewModel.wifiPaused.value)
+            }
+        }
+        viewLifecycleOwner.lifecycleScope.launch {
             viewModel.wifiPaused.flowWithLifecycle(lifecycle, Lifecycle.State.STARTED).collect { paused ->
-                binding.tvDownloadsBanner.isVisible = paused || viewModel.lowSpace.value
-                binding.tvDownloadsBanner.setText(
-                    if (paused) R.string.downloads_wifi_paused else R.string.downloads_low_space,
-                )
+                updateBanner(viewModel.lowSpace.value, paused)
             }
         }
         viewModel.refreshStorage()
         styleFilters(viewModel.currentFilter())
+    }
+
+    private fun updateBanner(lowSpace: Boolean, wifiPaused: Boolean) {
+        when {
+            wifiPaused -> {
+                binding.tvDownloadsBanner.isVisible = true
+                binding.tvDownloadsBanner.setText(R.string.downloads_wifi_paused)
+            }
+            lowSpace -> {
+                binding.tvDownloadsBanner.isVisible = true
+                binding.tvDownloadsBanner.setText(R.string.downloads_low_space)
+            }
+            else -> binding.tvDownloadsBanner.isVisible = false
+        }
     }
 
     override fun onResume() {
@@ -206,19 +222,33 @@ class DownloadsTvFragment : Fragment() {
                 when (labels[which].first) {
                     1 -> viewModel.pauseAll()
                     2 -> viewModel.resumeAll()
-                    3 -> viewModel.clearCompleted()
-                    4 -> viewModel.clearFailed()
+                    3 -> confirmDestructive(R.string.settings_download_clear_completed_confirm) {
+                        viewModel.clearCompleted()
+                    }
+                    4 -> confirmDestructive(R.string.settings_download_clear_failed_confirm) {
+                        viewModel.clearFailed()
+                    }
                     5 -> {
                         SettingsDeepLink.openDownloadsScreen()
                         findNavController().navigate(R.id.settings)
                     }
                     6 -> viewModel.retryAllFailed()
-                    7 -> viewModel.clearWatched()
+                    7 -> confirmDestructive(R.string.downloads_action_clear_watched_confirm) {
+                        viewModel.clearWatched()
+                    }
                     10 -> viewModel.setSort(DownloadsSort.NEWEST)
                     11 -> viewModel.setSort(DownloadsSort.TITLE)
                     12 -> viewModel.setSort(DownloadsSort.SIZE)
                 }
             }
+            .show()
+    }
+
+    private fun confirmDestructive(messageRes: Int, onConfirm: () -> Unit) {
+        androidx.appcompat.app.AlertDialog.Builder(requireContext())
+            .setMessage(messageRes)
+            .setPositiveButton(android.R.string.ok) { _, _ -> onConfirm() }
+            .setNegativeButton(android.R.string.cancel, null)
             .show()
     }
 
@@ -266,7 +296,8 @@ class DownloadsTvFragment : Fragment() {
             val uri = withContext(Dispatchers.IO) {
                 OfflinePlayback.exportShareUri(requireContext(), row.entity)
             } ?: run {
-                showDownloadError(R.string.download_error_file_missing)
+                // Cache-only Media3 downloads have no on-disk file to share.
+                showDownloadError(R.string.downloads_share_cache_only)
                 return@launch
             }
             val intent = android.content.Intent(android.content.Intent.ACTION_SEND).apply {
