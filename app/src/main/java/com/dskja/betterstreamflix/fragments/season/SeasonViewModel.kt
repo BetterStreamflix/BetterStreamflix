@@ -7,6 +7,7 @@ import com.dskja.betterstreamflix.database.AppDatabase
 import com.dskja.betterstreamflix.models.Episode
 import com.dskja.betterstreamflix.models.Season
 import com.dskja.betterstreamflix.models.TvShow
+import com.dskja.betterstreamflix.providers.ProviderSmoke
 import com.dskja.betterstreamflix.utils.EpisodeManager
 import com.dskja.betterstreamflix.utils.UserPreferences
 import kotlinx.coroutines.Dispatchers
@@ -80,9 +81,12 @@ class SeasonViewModel(
         try {
             val provider = UserPreferences.currentProvider
                 ?: throw Exception("No provider selected")
-            val episodes = provider
-                .getEpisodesBySeason(seasonId)
-                .sortedBy { it.number }
+            val episodes = ProviderSmoke.withProviderTimeout(
+                timeoutMs = ProviderSmoke.DETAIL_TIMEOUT_MS,
+                label = "getEpisodesBySeason(${provider.name})",
+            ) {
+                provider.getEpisodesBySeason(seasonId)
+            }.sortedBy { it.number }
             val ids = episodes.map { it.id }
             val episodeMap = episodes.associateBy { it.id }
 

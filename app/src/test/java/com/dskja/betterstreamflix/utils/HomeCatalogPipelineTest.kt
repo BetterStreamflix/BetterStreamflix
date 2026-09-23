@@ -231,4 +231,21 @@ class HomeCatalogPipelineTest {
             .list.filterIsInstance<Movie>().first()
         assertEquals("https://example.com/logo.png", featured.logo)
     }
+
+    @Test
+    fun cloneShowItemsPreservesItemType() {
+        val movie = Movie(id = "m1", title = "Clone Me").apply {
+            itemType = AppAdapter.Type.MOVIE_SWIPER_MOBILE_ITEM
+        }
+        val tv = TvShow(id = "t1", title = "Clone Me Too").apply {
+            itemType = AppAdapter.Type.TV_SHOW_SWIPER_MOBILE_ITEM
+        }
+        val cloned = HomeCatalogPipeline.cloneShowItems(listOf(movie, tv))
+        val clonedMovie = cloned[0] as Movie
+        val clonedTv = cloned[1] as TvShow
+        assertTrue(clonedMovie !== movie)
+        assertTrue(clonedTv !== tv)
+        assertEquals(AppAdapter.Type.MOVIE_SWIPER_MOBILE_ITEM, clonedMovie.itemType)
+        assertEquals(AppAdapter.Type.TV_SHOW_SWIPER_MOBILE_ITEM, clonedTv.itemType)
+    }
 }

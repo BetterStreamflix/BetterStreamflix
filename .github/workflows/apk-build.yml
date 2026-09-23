@@ -104,8 +104,9 @@ jobs:
           else
             sed -i '/^APP_LAYOUT=/d' local.properties || true
           fi
-          echo "local.properties:"
-          cat local.properties
+          # Never `cat local.properties` — it may contain API secrets (C-CI-1).
+          echo "local.properties keys present:"
+          grep -E '^[A-Za-z0-9_]+=' local.properties | cut -d= -f1 || true
 
       - name: Assemble debug APK
         run: ./gradlew :app:assembleDebug --stacktrace

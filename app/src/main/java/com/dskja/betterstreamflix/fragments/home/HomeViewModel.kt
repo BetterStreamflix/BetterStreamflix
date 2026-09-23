@@ -13,6 +13,7 @@ import com.dskja.betterstreamflix.models.TvShow
 import com.dskja.betterstreamflix.providers.AnimeOnlineNinjaProvider
 import com.dskja.betterstreamflix.providers.Provider
 import com.dskja.betterstreamflix.providers.ProviderSmoke
+import com.dskja.betterstreamflix.providers.TmdbProvider
 import com.dskja.betterstreamflix.ui.UserDataNotifier
 import com.dskja.betterstreamflix.utils.CrashReporter
 import com.dskja.betterstreamflix.utils.CrossProviderLibrary
@@ -23,22 +24,25 @@ import com.dskja.betterstreamflix.utils.ProviderChangeNotifier
 import com.dskja.betterstreamflix.utils.UserDataCache
 import com.dskja.betterstreamflix.utils.UserDataCache.toCached
 import com.dskja.betterstreamflix.utils.UserPreferences
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.emitAll
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOn
-import kotlinx.coroutines.flow.mapLatest
 import kotlinx.coroutines.flow.transformLatest
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeout
 import java.util.concurrent.ConcurrentHashMap
 
 class HomeViewModel(
@@ -50,6 +54,7 @@ class HomeViewModel(
         AppDatabase.getInstance(BetterStreamflixApp.instance.applicationContext)
 
     private var getHomeJob: Job? = null
+    private var userDataCacheJob: Job? = null
 
     private data class HomeHistory(
         val continueWatching: List<AppAdapter.Item>,
@@ -80,22 +85,57 @@ class HomeViewModel(
     private var currentProvider: Provider? = null
 
     @OptIn(ExperimentalCoroutinesApi::class)
-    private val homeHistory: Flow<HomeHistory> = libraryRefresh.mapLatest {
-        val appContext = BetterStreamflixApp.instance.applicationContext
-        val raw = CrossProviderLibrary.loadHomeHistory(appContext)
-        val movies = raw.continueWatching.filterIsInstance<Movie>()
-        val episodes = enrichContinueWatchingEpisodes(
-            raw.continueWatching.filterIsInstance<Episode>()
-        )
-        val continueWatching = (movies + episodes)
-            .sortedByDescending { engagementMillis(it) }
-            .distinctBy { continueWatchingKey(it) }
-        HomeHistory(
-            continueWatching = continueWatching,
-            recentlyWatched = raw.recentlyWatched,
-            favoritesMovies = raw.favoriteMovies,
-            favoriteTvShows = raw.favoriteTvShows,
-        )
+    private val homeHistory: Flow<HomeHistory> = libraryRefresh.transformLatest {
+        // Home UI combines this flow with catalog state — emit local Room rows
+        // immediately so Loading can clear, then soft-enrich CW with a hard cap.
+        try {
+            val appContext = BetterStreamflixApp.instance.applicationContext
+            val raw = CrossProviderLibrary.loadHomeHistory(appContext)
+            val movies = raw.continueWatching.filterIsInstance<Movie>()
+            val localEpisodes = raw.continueWatching.filterIsInstance<Episode>()
+
+            fun build(episodes: List<Episode>) = HomeHistory(
+                continueWatching = (movies + episodes)
+                    .sortedByDescending { engagementMillis(it) }
+                    .distinctBy { continueWatchingKey(it) },
+                recentlyWatched = raw.recentlyWatched,
+                favoritesMovies = raw.favoriteMovies,
+                favoriteTvShows = raw.favoriteTvShows,
+            )
+
+            emit(build(localEpisodes))
+
+            if (localEpisodes.isEmpty()) return@transformLatest
+            val enriched = try {
+                withTimeout(ProviderSmoke.CW_ENRICH_TIMEOUT_MS) {
+                    enrichContinueWatchingEpisodes(localEpisodes)
+                }
+            } catch (e: TimeoutCancellationException) {
+                Log.w("HomeViewModel", "CW enrich timed out; keeping local episode rows")
+                null
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                Log.w("HomeViewModel", "CW enrich failed; keeping local episode rows", e)
+                null
+            } ?: return@transformLatest
+
+            emit(build(enriched))
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            // A dead Room / closed DB must not kill the combine collector (infinite spinner).
+            Log.e("HomeViewModel", "homeHistory failed", e)
+            CrashReporter.logNonFatal("HomeViewModel", "homeHistory failed", e)
+            emit(
+                HomeHistory(
+                    continueWatching = emptyList(),
+                    recentlyWatched = emptyList(),
+                    favoritesMovies = emptyList(),
+                    favoriteTvShows = emptyList(),
+                )
+            )
+        }
     }.flowOn(Dispatchers.IO)
 
     @OptIn(ExperimentalCoroutinesApi::class)
@@ -115,10 +155,17 @@ class HomeViewModel(
                         emit(emptyList())
                     } else {
                         val db = runCatching { liveDatabase() }.getOrNull()
-                        if (db == null) {
+                        if (db == null || !db.isOpen) {
                             emit(emptyList())
                         } else {
-                            emitAll(db.movieDao().getByIds(movies.map { it.id }))
+                            // Provider switch closes Room mid-collect — never crash the combine.
+                            emitAll(
+                                db.movieDao().getByIds(movies.map { it.id }).catch { e ->
+                                    if (e is CancellationException) throw e
+                                    Log.w("HomeViewModel", "moviesDb flow failed after provider switch", e)
+                                    emit(emptyList())
+                                }
+                            )
                         }
                     }
                 }
@@ -137,10 +184,16 @@ class HomeViewModel(
                         emit(emptyList())
                     } else {
                         val db = runCatching { liveDatabase() }.getOrNull()
-                        if (db == null) {
+                        if (db == null || !db.isOpen) {
                             emit(emptyList())
                         } else {
-                            emitAll(db.tvShowDao().getByIds(tvShows.map { it.id }))
+                            emitAll(
+                                db.tvShowDao().getByIds(tvShows.map { it.id }).catch { e ->
+                                    if (e is CancellationException) throw e
+                                    Log.w("HomeViewModel", "tvShowsDb flow failed after provider switch", e)
+                                    emit(emptyList())
+                                }
+                            )
                         }
                     }
                 }
@@ -372,6 +425,7 @@ class HomeViewModel(
 
     fun getHome() {
         getHomeJob?.cancel()
+        userDataCacheJob?.cancel()
         getHomeJob = viewModelScope.launch(Dispatchers.IO) {
             val provider = UserPreferences.currentProvider ?: run {
                 _state.emit(State.FailedLoading(IllegalStateException("No provider selected")))
@@ -379,6 +433,7 @@ class HomeViewModel(
             }
 
             currentProvider = provider
+            val providerName = provider.name
             val appContext = BetterStreamflixApp.instance.applicationContext
             val rawCached = HomeCacheStore.read(appContext, provider)
             val cachedCategories = rawCached?.let {
@@ -412,13 +467,20 @@ class HomeViewModel(
             }
 
             try {
+                val homeTimeoutMs = if (provider is TmdbProvider) {
+                    ProviderSmoke.TMDB_HOME_TIMEOUT_MS
+                } else {
+                    ProviderSmoke.HOME_TIMEOUT_MS
+                }
                 val categories = ProviderSmoke.withProviderTimeout(
-                    timeoutMs = ProviderSmoke.HOME_TIMEOUT_MS,
+                    timeoutMs = homeTimeoutMs,
                     label = "getHome(${provider.name})",
                 ) {
                     provider.getHome()
                 }
-                if (!isActive || provider != UserPreferences.currentProvider) return@launch
+                // Compare by name: TMDb used to allocate a new instance per
+                // UserPreferences read, so reference != always aborted Success.
+                if (!isActive || providerName != UserPreferences.currentProvider?.name) return@launch
                 val addonRows = runCatching {
                     com.dskja.betterstreamflix.platform.plugins.PluginManager
                         .collectHomeCategories(provider)
@@ -426,7 +488,7 @@ class HomeViewModel(
                 val processed = HomeCatalogPipeline.process(provider, categories, addonRows)
                 HomeCacheStore.write(appContext, provider, processed.categories)
                 ProviderSmoke.noteHomeSuccess(provider.name)
-                if (!isActive || provider != UserPreferences.currentProvider) return@launch
+                if (!isActive || providerName != UserPreferences.currentProvider?.name) return@launch
                 _state.emit(
                     State.SuccessLoading(
                         processed.categories,
@@ -438,7 +500,12 @@ class HomeViewModel(
                 if (!isActive) return@launch
                 Log.e("HomeViewModel", "getHome: ", e)
                 ProviderSmoke.noteHomeFailure(provider.name)
-                CrashReporter.logNonFatal("HomeViewModel", "getHome failed for ${provider.name}", e)
+                // Provider timeouts are expected soft-fails — keep them local (BETTERSTREAMFLIX-1C).
+                val isTimeout = e is java.util.concurrent.TimeoutException ||
+                    e.cause is TimeoutCancellationException
+                if (!isTimeout) {
+                    CrashReporter.logNonFatal("HomeViewModel", "getHome failed for ${provider.name}", e)
+                }
                 val warning = buildString {
                     append(
                         e.message?.takeIf { it.isNotBlank() }
@@ -461,51 +528,61 @@ class HomeViewModel(
 
     private fun loadUserDataCache(provider: Provider) {
         val appContext = BetterStreamflixApp.instance.applicationContext
-        viewModelScope.launch(Dispatchers.IO) {
-            val cached = UserDataCache.read(appContext, provider)
-            _userDataCache.value = cached
-            val db = AppDatabase.getInstance(appContext)
-            val moviesDeferred = async { db.movieDao().getFavorites().first() }
-            val tvShowsDeferred = async { db.tvShowDao().getFavorites().first() }
-            val watchingMoviesDeferred = async { db.movieDao().getWatchingMoviesCapped().first() }
-            val watchingEpisodesDeferred = async { db.episodeDao().getWatchingEpisodesCapped().first() }
+        userDataCacheJob?.cancel()
+        userDataCacheJob = viewModelScope.launch(Dispatchers.IO) {
+            runCatching {
+                val cached = UserDataCache.read(appContext, provider)
+                _userDataCache.value = cached
+                val db = runCatching { AppDatabase.getInstance(appContext) }.getOrNull()
+                    ?: return@launch
+                if (!db.isOpen) return@launch
+                val moviesDeferred = async { db.movieDao().getFavorites().first() }
+                val tvShowsDeferred = async { db.tvShowDao().getFavorites().first() }
+                val watchingMoviesDeferred = async { db.movieDao().getWatchingMoviesCapped().first() }
+                val watchingEpisodesDeferred = async { db.episodeDao().getWatchingEpisodesCapped().first() }
 
-            val movies = moviesDeferred.await()
-            val tvShows = tvShowsDeferred.await()
-            val watchingMovies = watchingMoviesDeferred.await()
-            val watchingEpisodes = watchingEpisodesDeferred.await()
+                val movies = moviesDeferred.await()
+                val tvShows = tvShowsDeferred.await()
+                val watchingMovies = watchingMoviesDeferred.await()
+                val watchingEpisodes = watchingEpisodesDeferred.await()
 
-            val newData = UserDataCache.UserData(
-                favoritesMovies = preserveCacheOrder(
-                    cached = cached?.favoritesMovies ?: emptyList(),
-                    incoming = movies.filter { it.isFavorite }.map { it.toCached() },
-                    idOf = { it.id },
-                ),
-                favoritesTvShows = preserveCacheOrder(
-                    cached = cached?.favoritesTvShows ?: emptyList(),
-                    incoming = tvShows.filter { it.isFavorite }.map { it.toCached() },
-                    idOf = { it.id },
-                ),
-                continueWatchingMovies = preserveCacheOrder(
-                    cached = cached?.continueWatchingMovies ?: emptyList(),
-                    incoming = (movies + watchingMovies)
-                        .filter { it.watchHistory != null }
-                        .map { it.toCached() },
-                    idOf = { it.id },
-                ),
-                continueWatchingEpisodes = preserveCacheOrder(
-                    cached = cached?.continueWatchingEpisodes ?: emptyList(),
-                    incoming = watchingEpisodes
-                        .filter { it.watchHistory != null }
-                        .map { it.toCached() },
-                    idOf = { it.id },
-                ),
-            )
+                if (!isActive || provider.name != UserPreferences.currentProvider?.name) return@launch
 
-            UserDataCache.write(appContext, provider, newData)
+                val newData = UserDataCache.UserData(
+                    favoritesMovies = preserveCacheOrder(
+                        cached = cached?.favoritesMovies ?: emptyList(),
+                        incoming = movies.filter { it.isFavorite }.map { it.toCached() },
+                        idOf = { it.id },
+                    ),
+                    favoritesTvShows = preserveCacheOrder(
+                        cached = cached?.favoritesTvShows ?: emptyList(),
+                        incoming = tvShows.filter { it.isFavorite }.map { it.toCached() },
+                        idOf = { it.id },
+                    ),
+                    continueWatchingMovies = preserveCacheOrder(
+                        cached = cached?.continueWatchingMovies ?: emptyList(),
+                        incoming = (movies + watchingMovies)
+                            .filter { it.watchHistory != null }
+                            .map { it.toCached() },
+                        idOf = { it.id },
+                    ),
+                    continueWatchingEpisodes = preserveCacheOrder(
+                        cached = cached?.continueWatchingEpisodes ?: emptyList(),
+                        incoming = watchingEpisodes
+                            .filter { it.watchHistory != null }
+                            .map { it.toCached() },
+                        idOf = { it.id },
+                    ),
+                )
 
-            if (_userDataCache.value != newData) {
-                _userDataCache.value = newData
+                UserDataCache.write(appContext, provider, newData)
+
+                if (_userDataCache.value != newData) {
+                    _userDataCache.value = newData
+                }
+            }.onFailure { e ->
+                if (e is CancellationException) throw e
+                Log.e("HomeViewModel", "loadUserDataCache failed", e)
             }
         }
     }

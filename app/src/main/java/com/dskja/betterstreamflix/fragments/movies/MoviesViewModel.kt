@@ -5,14 +5,18 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.dskja.betterstreamflix.database.AppDatabase
 import com.dskja.betterstreamflix.models.Movie
+import com.dskja.betterstreamflix.providers.ProviderSmoke
 import com.dskja.betterstreamflix.utils.CatalogSort
 import com.dskja.betterstreamflix.utils.ParentalControlUtils
 import com.dskja.betterstreamflix.utils.UserPreferences
 import com.dskja.betterstreamflix.utils.ProviderChangeNotifier
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.emitAll
 import kotlinx.coroutines.flow.flowOn
@@ -27,7 +31,9 @@ class MoviesViewModel(
         AppDatabase.getInstance(com.dskja.betterstreamflix.BetterStreamflixApp.instance.applicationContext)
 
     private val _state = MutableStateFlow<State>(State.Loading)
-    
+    private var moviesJob: Job? = null
+    private var loadMoreJob: Job? = null
+
     init {
         // Listen for provider changes and reload data
         viewModelScope.launch {
@@ -46,8 +52,17 @@ class MoviesViewModel(
                         emit(emptyList())
                     } else {
                         val db = runCatching { liveDb() }.getOrNull()
-                        if (db == null) emit(emptyList())
-                        else emitAll(db.movieDao().getByIds(state.movies.map { it.id }))
+                        if (db == null || !db.isOpen) {
+                            emit(emptyList())
+                        } else {
+                            emitAll(
+                                db.movieDao().getByIds(state.movies.map { it.id }).catch { e ->
+                                    if (e is CancellationException) throw e
+                                    Log.w("MoviesViewModel", "moviesDb flow failed after provider switch", e)
+                                    emit(emptyList())
+                                }
+                            )
+                        }
                     }
                 }
                 else -> emit(emptyList<Movie>())
@@ -85,37 +100,59 @@ class MoviesViewModel(
     }
 
 
-    fun getMovies() = viewModelScope.launch(Dispatchers.IO) {
-        _state.emit(State.Loading)
+    fun getMovies() {
+        moviesJob?.cancel()
+        loadMoreJob?.cancel()
+        moviesJob = viewModelScope.launch(Dispatchers.IO) {
+            _state.emit(State.Loading)
 
-        try {
-            val provider = UserPreferences.currentProvider
-                ?: throw Exception("No provider selected")
-            val movies = ParentalControlUtils.filterItems(
-                provider.getMovies()
-            ).filterIsInstance<Movie>().let { CatalogSort.movies(it) }
+            try {
+                val provider = UserPreferences.currentProvider
+                    ?: throw Exception("No provider selected")
+                val providerName = provider.name
+                val movies = ParentalControlUtils.filterItems(
+                    ProviderSmoke.withProviderTimeout(
+                        timeoutMs = ProviderSmoke.CATALOG_TIMEOUT_MS,
+                        label = "getMovies(${provider.name})",
+                    ) {
+                        provider.getMovies()
+                    }
+                ).filterIsInstance<Movie>().let { CatalogSort.movies(it) }
 
-            page = 1
+                if (providerName != UserPreferences.currentProvider?.name) return@launch
+                page = 1
 
-            _state.emit(State.SuccessLoading(movies, movies.isNotEmpty()))
-        } catch (e: Exception) {
-            Log.e("MoviesViewModel", "getMovies: ", e)
-            _state.emit(State.FailedLoading(e))
+                _state.emit(State.SuccessLoading(movies, movies.isNotEmpty()))
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                Log.e("MoviesViewModel", "getMovies: ", e)
+                _state.emit(State.FailedLoading(e))
+            }
         }
     }
 
-    fun loadMoreMovies() = viewModelScope.launch(Dispatchers.IO) {
+    fun loadMoreMovies() {
         val currentState = _state.value
-        if (currentState is State.SuccessLoading) {
+        if (currentState !is State.SuccessLoading) return
+        loadMoreJob?.cancel()
+        loadMoreJob = viewModelScope.launch(Dispatchers.IO) {
             _state.emit(State.LoadingMore)
 
             try {
                 val provider = UserPreferences.currentProvider
                     ?: throw Exception("No provider selected")
+                val providerName = provider.name
                 val movies = ParentalControlUtils.filterItems(
-                    provider.getMovies(page + 1)
+                    ProviderSmoke.withProviderTimeout(
+                        timeoutMs = ProviderSmoke.CATALOG_TIMEOUT_MS,
+                        label = "getMovies(${provider.name}, page=${page + 1})",
+                    ) {
+                        provider.getMovies(page + 1)
+                    }
                 ).filterIsInstance<Movie>().let { CatalogSort.movies(it) }
 
+                if (providerName != UserPreferences.currentProvider?.name) return@launch
                 page += 1
 
                 _state.emit(
@@ -124,6 +161,8 @@ class MoviesViewModel(
                         hasMore = movies.isNotEmpty(),
                     )
                 )
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 Log.e("MoviesViewModel", "loadMoreMovies: ", e)
                 _state.emit(State.FailedLoading(e))

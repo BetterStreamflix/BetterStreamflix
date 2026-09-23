@@ -1076,10 +1076,11 @@ object TMDb3 {
                 // Prefer app NetworkClient (DoH + retry-after) so ISP DNS and brief 429s
                 // do not surface as "TMDB unreachable".
                 val client = NetworkClient.default.newBuilder()
-                    .connectTimeout(20, TimeUnit.SECONDS)
-                    .readTimeout(35, TimeUnit.SECONDS)
-                    .writeTimeout(30, TimeUnit.SECONDS)
-                    .callTimeout(60, TimeUnit.SECONDS)
+                    .connectTimeout(12, TimeUnit.SECONDS)
+                    .readTimeout(20, TimeUnit.SECONDS)
+                    .writeTimeout(20, TimeUnit.SECONDS)
+                    // Keep under Home/TMDb outer timeouts so a hung TCP cannot strand UI.
+                    .callTimeout(20, TimeUnit.SECONDS)
                     .retryOnConnectionFailure(true)
                     .addInterceptor { chain ->
                         val original = chain.request()
@@ -1095,7 +1096,8 @@ object TMDb3 {
                         // One soft retry on transient gateway / rate-limit responses.
                         if (response.code in listOf(408, 425, 429, 500, 502, 503, 504)) {
                             response.close()
-                            Thread.sleep(400)
+                            // Keep short — this runs on OkHttp's thread and is not cancellable.
+                            Thread.sleep(150)
                             response = chain.proceed(requestBuilder.build())
                         }
                         response

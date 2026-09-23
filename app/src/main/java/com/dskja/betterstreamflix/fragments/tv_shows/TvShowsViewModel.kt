@@ -5,14 +5,18 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.dskja.betterstreamflix.database.AppDatabase
 import com.dskja.betterstreamflix.models.TvShow
+import com.dskja.betterstreamflix.providers.ProviderSmoke
 import com.dskja.betterstreamflix.utils.CatalogSort
 import com.dskja.betterstreamflix.utils.ParentalControlUtils
 import com.dskja.betterstreamflix.utils.UserPreferences
 import com.dskja.betterstreamflix.utils.ProviderChangeNotifier
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.emitAll
 import kotlinx.coroutines.flow.flowOn
@@ -27,7 +31,9 @@ class TvShowsViewModel(
         AppDatabase.getInstance(com.dskja.betterstreamflix.BetterStreamflixApp.instance.applicationContext)
 
     private val _state = MutableStateFlow<State>(State.Loading)
-    
+    private var tvShowsJob: Job? = null
+    private var loadMoreJob: Job? = null
+
     init {
         // Listen for provider changes and reload data
         viewModelScope.launch {
@@ -46,8 +52,17 @@ class TvShowsViewModel(
                         emit(emptyList())
                     } else {
                         val db = runCatching { liveDb() }.getOrNull()
-                        if (db == null) emit(emptyList())
-                        else emitAll(db.tvShowDao().getByIds(state.tvShows.map { it.id }))
+                        if (db == null || !db.isOpen) {
+                            emit(emptyList())
+                        } else {
+                            emitAll(
+                                db.tvShowDao().getByIds(state.tvShows.map { it.id }).catch { e ->
+                                    if (e is CancellationException) throw e
+                                    Log.w("TvShowsViewModel", "tvShowsDb flow failed after provider switch", e)
+                                    emit(emptyList())
+                                }
+                            )
+                        }
                     }
                 }
                 else -> emit(emptyList<TvShow>())
@@ -86,37 +101,59 @@ class TvShowsViewModel(
     }
 
 
-    fun getTvShows() = viewModelScope.launch(Dispatchers.IO) {
-        _state.emit(State.Loading)
+    fun getTvShows() {
+        tvShowsJob?.cancel()
+        loadMoreJob?.cancel()
+        tvShowsJob = viewModelScope.launch(Dispatchers.IO) {
+            _state.emit(State.Loading)
 
-        try {
-            val provider = UserPreferences.currentProvider
-                ?: throw Exception("No provider selected")
-            val tvShows = ParentalControlUtils.filterItems(
-                provider.getTvShows()
-            ).filterIsInstance<TvShow>().let { CatalogSort.tvShows(it) }
+            try {
+                val provider = UserPreferences.currentProvider
+                    ?: throw Exception("No provider selected")
+                val providerName = provider.name
+                val tvShows = ParentalControlUtils.filterItems(
+                    ProviderSmoke.withProviderTimeout(
+                        timeoutMs = ProviderSmoke.CATALOG_TIMEOUT_MS,
+                        label = "getTvShows(${provider.name})",
+                    ) {
+                        provider.getTvShows()
+                    }
+                ).filterIsInstance<TvShow>().let { CatalogSort.tvShows(it) }
 
-            page = 1
+                if (providerName != UserPreferences.currentProvider?.name) return@launch
+                page = 1
 
-            _state.emit(State.SuccessLoading(tvShows, tvShows.isNotEmpty()))
-        } catch (e: Exception) {
-            Log.e("TvShowsViewModel", "getTvShows: ", e)
-            _state.emit(State.FailedLoading(e))
+                _state.emit(State.SuccessLoading(tvShows, tvShows.isNotEmpty()))
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                Log.e("TvShowsViewModel", "getTvShows: ", e)
+                _state.emit(State.FailedLoading(e))
+            }
         }
     }
 
-    fun loadMoreTvShows() = viewModelScope.launch(Dispatchers.IO) {
+    fun loadMoreTvShows() {
         val currentState = _state.value
-        if (currentState is State.SuccessLoading) {
+        if (currentState !is State.SuccessLoading) return
+        loadMoreJob?.cancel()
+        loadMoreJob = viewModelScope.launch(Dispatchers.IO) {
             _state.emit(State.LoadingMore)
 
             try {
                 val provider = UserPreferences.currentProvider
                     ?: throw Exception("No provider selected")
+                val providerName = provider.name
                 val tvShows = ParentalControlUtils.filterItems(
-                    provider.getTvShows(page + 1)
+                    ProviderSmoke.withProviderTimeout(
+                        timeoutMs = ProviderSmoke.CATALOG_TIMEOUT_MS,
+                        label = "getTvShows(${provider.name}, page=${page + 1})",
+                    ) {
+                        provider.getTvShows(page + 1)
+                    }
                 ).filterIsInstance<TvShow>().let { CatalogSort.tvShows(it) }
 
+                if (providerName != UserPreferences.currentProvider?.name) return@launch
                 page += 1
 
                 _state.emit(
@@ -125,6 +162,8 @@ class TvShowsViewModel(
                         hasMore = tvShows.isNotEmpty(),
                     )
                 )
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 Log.e("TvShowsViewModel", "loadMoreTvShows: ", e)
                 _state.emit(State.FailedLoading(e))

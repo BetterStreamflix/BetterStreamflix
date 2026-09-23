@@ -48,8 +48,9 @@ object ProfileManager {
 
     fun init(context: Context) {
         appContext = context.applicationContext
-        ProfileStore.ensureDefaultExists(appContext)
-        applyKidsParentalDefaults(activeProfile())
+        // Never throw out of init — corrupted prefs / Gson failures must not brick startup.
+        runCatching { ProfileStore.ensureDefaultExists(appContext) }
+        runCatching { applyKidsParentalDefaults(activeProfile()) }
     }
 
     fun activeProfile(): UserProfile? =

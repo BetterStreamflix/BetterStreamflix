@@ -7,19 +7,22 @@ import com.dskja.betterstreamflix.database.AppDatabase
 import com.dskja.betterstreamflix.models.Movie
 import com.dskja.betterstreamflix.models.People
 import com.dskja.betterstreamflix.models.TvShow
+import com.dskja.betterstreamflix.providers.ProviderSmoke
 import com.dskja.betterstreamflix.utils.format
 import com.dskja.betterstreamflix.utils.UserPreferences
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.emitAll
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.transformLatest
 import kotlinx.coroutines.launch
 
-class PeopleViewModel(private val id: String, database: AppDatabase) : ViewModel() {
+class PeopleViewModel(private val id: String, private val database: AppDatabase) : ViewModel() {
 
     private val _state = MutableStateFlow<State>(State.Loading)
     @OptIn(ExperimentalCoroutinesApi::class)
@@ -32,8 +35,16 @@ class PeopleViewModel(private val id: String, database: AppDatabase) : ViewModel
                         .filterIsInstance<Movie>()
                     if (movies.isEmpty()) {
                         emit(emptyList())
+                    } else if (!database.isOpen) {
+                        emit(emptyList())
                     } else {
-                        emitAll(database.movieDao().getByIds(movies.map { it.id }))
+                        emitAll(
+                            database.movieDao().getByIds(movies.map { it.id }).catch { e ->
+                                if (e is CancellationException) throw e
+                                Log.w("PeopleViewModel", "moviesDb flow failed after provider switch", e)
+                                emit(emptyList())
+                            }
+                        )
                     }
                 }
                 else -> emit(emptyList<Movie>())
@@ -46,8 +57,16 @@ class PeopleViewModel(private val id: String, database: AppDatabase) : ViewModel
                         .filterIsInstance<TvShow>()
                     if (tvShows.isEmpty()) {
                         emit(emptyList())
+                    } else if (!database.isOpen) {
+                        emit(emptyList())
                     } else {
-                        emitAll(database.tvShowDao().getByIds(tvShows.map { it.id }))
+                        emitAll(
+                            database.tvShowDao().getByIds(tvShows.map { it.id }).catch { e ->
+                                if (e is CancellationException) throw e
+                                Log.w("PeopleViewModel", "tvShowsDb flow failed after provider switch", e)
+                                emit(emptyList())
+                            }
+                        )
                     }
                 }
                 else -> emit(emptyList<TvShow>())
@@ -101,7 +120,12 @@ class PeopleViewModel(private val id: String, database: AppDatabase) : ViewModel
             val provider = UserPreferences.currentProvider
                 ?: throw Exception("No provider selected")
             val people = try {
-                val loaded = provider.getPeople(id)
+                val loaded = ProviderSmoke.withProviderTimeout(
+                    timeoutMs = ProviderSmoke.DETAIL_TIMEOUT_MS,
+                    label = "getPeople(${provider.name})",
+                ) {
+                    provider.getPeople(id)
+                }
                 val providerHadCredits = loaded.filmography.isNotEmpty()
                 val enriched = enrichPeopleFromTmdb(loaded, id, provider.language)
                 page = 1
@@ -149,7 +173,12 @@ class PeopleViewModel(private val id: String, database: AppDatabase) : ViewModel
             try {
                 val provider = UserPreferences.currentProvider
                     ?: throw Exception("No provider selected")
-                val people = provider.getPeople(id, page + 1)
+                val people = ProviderSmoke.withProviderTimeout(
+                    timeoutMs = ProviderSmoke.DETAIL_TIMEOUT_MS,
+                    label = "getPeople(${provider.name}, page=${page + 1})",
+                ) {
+                    provider.getPeople(id, page + 1)
+                }
 
                 page += 1
 

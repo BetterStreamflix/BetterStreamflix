@@ -353,91 +353,101 @@ class PlayerTvFragment : Fragment() {
             ).collect { state ->
                 if (isTearingDown || !isAdded || _binding == null) return@collect
                 when (state) {
-                    PlayerViewModel.State.LoadingServers -> {}
+                    PlayerViewModel.State.LoadingServers -> {
+                        // Mirror LoadingVideo: keep a blank/idle surface instead of a fake
+                        // "playing" URI while getServers is in flight (C-PLAY-1).
+                        if (::player.isInitialized && !player.isPlaying) {
+                            player.playWhenReady = false
+                            player.stop()
+                            player.clearMediaItems()
+                        }
+                    }
                     is PlayerViewModel.State.SuccessLoadingServers -> {
                         servers = state.servers
 
                         val sToServer = servers.firstOrNull {
                             isSerienStreamBypassUrl(it.id) || isSerienStreamBypassUrl(it.src)
                         }
+                        var deferToNormalPlayback = false
                         if (sToServer != null && !waitingForBypass && !bypassDone) {
                             val bypassUrl = buildSerienStreamBypassUrl(servers)
                             if (bypassUrl.isNullOrBlank()) {
                                 clearBypassSession(resetBypassDone = true)
                                 notifyPlayer("Unable to prepare TV bypass page.")
-                                return@collect
-                            }
-
-                            // Pasted cookies: skip QR when clearance is already present (#112/#117).
-                            SerienStreamBypassHelper.applyStoredSessionCookies(bypassUrl)
-                            val stored = UserPreferences.serienStreamSessionCookies
-                            if (SerienStreamBypassHelper.looksLikeClearanceSolved(stored)) {
-                                waitingForBypass = false
-                                bypassDone = true
-                                applyBypassCookies(sToServer.id, stored)
-                                lifecycleScope.launch {
-                                    delay(250)
-                                    viewModel.reloadServersAfterBypass()
-                                }
-                                return@collect
-                            }
-
-                            waitingForBypass = true
-
-                            val session = BypassSession(
-                                token = UUID.randomUUID().toString(),
-                                serverUrl = sToServer.id,
-                                bypassUrl = bypassUrl,
-                            )
-                            activeBypassSession = session
-
-                            val actualPort = startWebSocketServer()
-                            if (actualPort == -1) {
-                                clearBypassSession(resetBypassDone = true)
-                                notifyPlayer("Unable to start TV bypass. Please try again.")
-                                return@collect
-                            }
-
-                            val wsUrl = BypassWebSocketEndpointHelper.getAdvertisedWsUrl(actualPort)
-                            if (wsUrl.isNullOrBlank()) {
-                                clearBypassSession(resetBypassDone = true)
-                                notifyPlayer(getString(R.string.player_bypass_no_lan_ip))
-                                return@collect
-                            }
-
-                            val deepLink =
-                                "betterstreamflix://resolve?ws=${Uri.encode(wsUrl)}&token=${Uri.encode(session.token)}"
-                            val httpPort = startHttpLandingServer(deepLink)
-                            val qrContent = if (httpPort != -1) {
-                                val host = BypassWebSocketEndpointHelper.getLocalIpv4Address()
-                                    ?: UserPreferences.bypassWsAdvertisedHost
-                                        .trim()
-                                        .removePrefix("ws://")
-                                        .removePrefix("wss://")
-                                        .substringBefore(':')
-                                        .ifBlank { null }
-                                if (host != null) {
-                                    "http://$host:$httpPort/resolve?token=${Uri.encode(session.token)}&ws=${Uri.encode(wsUrl)}"
-                                } else {
-                                    deepLink
-                                }
+                                // Fall through like Mobile — other hosters may still play (H-PLAY-3).
+                                deferToNormalPlayback = true
                             } else {
-                                deepLink
-                            }
+                                // Pasted cookies: skip QR when clearance is already present (#112/#117).
+                                SerienStreamBypassHelper.applyStoredSessionCookies(bypassUrl)
+                                val stored = UserPreferences.serienStreamSessionCookies
+                                if (SerienStreamBypassHelper.looksLikeClearanceSolved(stored)) {
+                                    waitingForBypass = false
+                                    bypassDone = true
+                                    applyBypassCookies(sToServer.id, stored)
+                                    lifecycleScope.launch {
+                                        delay(250)
+                                        viewModel.reloadServersAfterBypass()
+                                    }
+                                    return@collect
+                                }
 
-                            wsServer?.registerSession(
-                                session.token,
-                                JSONObject()
-                                    .put("url", session.bypassUrl)
-                                    .toString()
-                            )
-                            requireActivity().runOnUiThread {
-                                if (!isAdded || _binding == null) return@runOnUiThread
-                                showQrDialog(qrContent, deepLink, wsUrl)
-                                Log.d("Bypass", "Advertised WS URL: $wsUrl QR: $qrContent")
-                            }
+                                waitingForBypass = true
 
-                            return@collect
+                                val session = BypassSession(
+                                    token = UUID.randomUUID().toString(),
+                                    serverUrl = sToServer.id,
+                                    bypassUrl = bypassUrl,
+                                )
+                                activeBypassSession = session
+
+                                val actualPort = startWebSocketServer()
+                                if (actualPort == -1) {
+                                    clearBypassSession(resetBypassDone = true)
+                                    notifyPlayer("Unable to start TV bypass. Please try again.")
+                                    deferToNormalPlayback = true
+                                } else {
+                                    val wsUrl = BypassWebSocketEndpointHelper.getAdvertisedWsUrl(actualPort)
+                                    if (wsUrl.isNullOrBlank()) {
+                                        clearBypassSession(resetBypassDone = true)
+                                        notifyPlayer(getString(R.string.player_bypass_no_lan_ip))
+                                        deferToNormalPlayback = true
+                                    } else {
+                                        val deepLink =
+                                            "betterstreamflix://resolve?ws=${Uri.encode(wsUrl)}&token=${Uri.encode(session.token)}"
+                                        val httpPort = startHttpLandingServer(deepLink)
+                                        val qrContent = if (httpPort != -1) {
+                                            val host = BypassWebSocketEndpointHelper.getLocalIpv4Address()
+                                                ?: UserPreferences.bypassWsAdvertisedHost
+                                                    .trim()
+                                                    .removePrefix("ws://")
+                                                    .removePrefix("wss://")
+                                                    .substringBefore(':')
+                                                    .ifBlank { null }
+                                            if (host != null) {
+                                                "http://$host:$httpPort/resolve?token=${Uri.encode(session.token)}&ws=${Uri.encode(wsUrl)}"
+                                            } else {
+                                                deepLink
+                                            }
+                                        } else {
+                                            deepLink
+                                        }
+
+                                        wsServer?.registerSession(
+                                            session.token,
+                                            JSONObject()
+                                                .put("url", session.bypassUrl)
+                                                .toString()
+                                        )
+                                        requireActivity().runOnUiThread {
+                                            if (!isAdded || _binding == null) return@runOnUiThread
+                                            showQrDialog(qrContent, deepLink, wsUrl)
+                                            Log.d("Bypass", "Advertised WS URL: $wsUrl QR: $qrContent")
+                                        }
+
+                                        return@collect
+                                    }
+                                }
+                            }
                         }
 
                         val providerName = UserPreferences.currentProvider?.name ?: ""
@@ -484,7 +494,15 @@ class PlayerTvFragment : Fragment() {
                         val preferredServer = state.servers.firstOrNull {
                             it.name.equals(args.preferredServerName, ignoreCase = true)
                         }
-                        viewModel.getVideo(preferredServer ?: state.servers.first())
+                        // Prefer a non-bypass hoster when interactive bypass failed.
+                        val playServer = when {
+                            deferToNormalPlayback ->
+                                state.servers.firstOrNull {
+                                    !isSerienStreamBypassUrl(it.id) && !isSerienStreamBypassUrl(it.src)
+                                } ?: preferredServer ?: state.servers.first()
+                            else -> preferredServer ?: state.servers.first()
+                        }
+                        viewModel.getVideo(playServer)
 
                     }
                         is PlayerViewModel.State.FailedLoadingServers -> {

@@ -240,6 +240,8 @@ class ProviderViewHolder(
     }
 
     private fun switchToProvider() {
+        // Setting currentProvider resets Room + notifies ViewModels to cancel
+        // in-flight Home/catalog work before we tear down the activity task.
         UserPreferences.currentProvider = provider.provider
         context.toActivity()?.apply {
             startActivity(

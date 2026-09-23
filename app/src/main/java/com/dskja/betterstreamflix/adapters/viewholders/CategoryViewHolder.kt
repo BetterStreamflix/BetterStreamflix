@@ -266,6 +266,13 @@ class CategoryViewHolder(
         } else {
             source
         }
+        // Loop clones historically dropped lateinit itemType → crash in AppAdapter.submitList
+        // (BETTERSTREAMFLIX-1P). Re-stamp every page including head/tail.
+        HomeCatalogPipeline.stampFeaturedSwiperTypes(
+            items,
+            movieType = AppAdapter.Type.MOVIE_SWIPER_MOBILE_ITEM,
+            tvShowType = AppAdapter.Type.TV_SHOW_SWIPER_MOBILE_ITEM,
+        )
 
         var userDragging = false
 

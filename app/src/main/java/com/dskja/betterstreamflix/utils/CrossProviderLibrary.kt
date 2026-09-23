@@ -33,47 +33,60 @@ object CrossProviderLibrary {
         val favoriteTvShows = mutableListOf<TvShow>()
 
         forEachScopedProviderDb(context) { provider, db ->
-            favoriteMovies += db.movieDao().getFavorites().first()
-                .map { it.withProvider(provider.name) }
-            favoriteTvShows += db.tvShowDao().getFavorites().first()
-                .map { it.withProvider(provider.name) }
+            // One corrupt / closed provider DB must not brick Home forever.
+            try {
+                favoriteMovies += db.movieDao().getFavorites().first()
+                    .map { it.withProvider(provider.name) }
+                favoriteTvShows += db.tvShowDao().getFavorites().first()
+                    .map { it.withProvider(provider.name) }
 
-            continueWatching += db.movieDao().getWatchingMoviesCapped().first()
-                .map { it.withProvider(provider.name) }
+                continueWatching += db.movieDao().getWatchingMoviesCapped().first()
+                    .map { it.withProvider(provider.name) }
 
-            val watchingEpisodes = db.episodeDao().getWatchingEpisodesCapped().first()
-            val nextEpisodes = db.episodeDao().getNextEpisodesToWatch().first()
-            val tvShowsMap = db.tvShowDao().getAll().first().associateBy { it.id }
-            val allEpisodes = (watchingEpisodes + nextEpisodes).distinctBy { it.id }
-            val seasonIds = allEpisodes.mapNotNull { it.season?.id }.distinct()
-            val seasonsMap = if (seasonIds.isEmpty()) {
-                emptyMap()
-            } else {
-                db.seasonDao().getByIds(seasonIds).associateBy { it.id }
-            }
-
-            continueWatching += allEpisodes.map { episode ->
-                episode.copy(
-                    tvShow = (episode.tvShow?.id?.let { tvShowsMap[it] } ?: episode.tvShow)
-                        ?.withProvider(provider.name),
-                    season = episode.season?.id?.let { seasonsMap[it] } ?: episode.season,
-                ).apply { merge(episode) }
-            }
-
-            recentlyWatched += db.movieDao().getRecentlyWatched().first()
-                .map { it.withProvider(provider.name) }
-
-            val recentTvShows = db.tvShowDao().getRecentlyWatched().first()
-            val episodeIds = recentTvShows.mapNotNull { it.lastPlayedEpisodeId }.distinct()
-            val episodesById = if (episodeIds.isEmpty()) {
-                emptyMap()
-            } else {
-                db.episodeDao().getByIds(episodeIds).associateBy { it.id }
-            }
-            recentlyWatched += recentTvShows.map { tvShow ->
-                tvShow.withProvider(provider.name).apply {
-                    lastPlayedEpisode = lastPlayedEpisodeId?.let(episodesById::get)
+                val watchingEpisodes = db.episodeDao().getWatchingEpisodesCapped().first()
+                val nextEpisodes = db.episodeDao().getNextEpisodesToWatch().first()
+                val allEpisodes = (watchingEpisodes + nextEpisodes).distinctBy { it.id }
+                // Prefer getByIds — getAll() on large libraries stalls the home combine.
+                val tvShowIds = allEpisodes.mapNotNull { it.tvShow?.id }.distinct()
+                val tvShowsMap = if (tvShowIds.isEmpty()) {
+                    emptyMap()
+                } else {
+                    db.tvShowDao().getByIds(tvShowIds).first().associateBy { it.id }
                 }
+                val seasonIds = allEpisodes.mapNotNull { it.season?.id }.distinct()
+                val seasonsMap = if (seasonIds.isEmpty()) {
+                    emptyMap()
+                } else {
+                    db.seasonDao().getByIds(seasonIds).associateBy { it.id }
+                }
+
+                continueWatching += allEpisodes.map { episode ->
+                    episode.copy(
+                        tvShow = (episode.tvShow?.id?.let { tvShowsMap[it] } ?: episode.tvShow)
+                            ?.withProvider(provider.name),
+                        season = episode.season?.id?.let { seasonsMap[it] } ?: episode.season,
+                    ).apply { merge(episode) }
+                }
+
+                recentlyWatched += db.movieDao().getRecentlyWatched().first()
+                    .map { it.withProvider(provider.name) }
+
+                val recentTvShows = db.tvShowDao().getRecentlyWatched().first()
+                val episodeIds = recentTvShows.mapNotNull { it.lastPlayedEpisodeId }.distinct()
+                val episodesById = if (episodeIds.isEmpty()) {
+                    emptyMap()
+                } else {
+                    db.episodeDao().getByIds(episodeIds).associateBy { it.id }
+                }
+                recentlyWatched += recentTvShows.map { tvShow ->
+                    tvShow.withProvider(provider.name).apply {
+                        lastPlayedEpisode = lastPlayedEpisodeId?.let(episodesById::get)
+                    }
+                }
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                throw e
+            } catch (_: Exception) {
+                // Skip this provider DB and continue aggregating.
             }
         }
 

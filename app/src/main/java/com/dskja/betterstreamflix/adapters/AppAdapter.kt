@@ -840,7 +840,8 @@ class AppAdapter(
 
         val adjustedPosition = header?.let { position - 1 } ?: position
         if (adjustedPosition in items.indices) {
-            return items[adjustedPosition].itemType.ordinal
+            return runCatching { items[adjustedPosition].itemType.ordinal }
+                .getOrDefault(Type.LOADING_ITEM.ordinal)
         }
 
         val loadMorePosition = itemCount - 1 - (if (footer != null) 1 else 0)
@@ -1208,7 +1209,9 @@ class AppAdapter(
 
         forEachIndexed { index, item ->
             val baseKey = item.baseIdentityKey()
-            val key = "${item.itemType.ordinal}:$baseKey"
+            // Never touch uninitialized lateinit itemType (Featured loop clones, Room merges).
+            val typeOrdinal = runCatching { item.itemType.ordinal }.getOrDefault(-1)
+            val key = "$typeOrdinal:$baseKey"
             val occurrenceIndex = occurrenceCounts.getOrDefault(key, 0)
             occurrenceCounts[key] = occurrenceIndex + 1
 
@@ -1238,6 +1241,6 @@ class AppAdapter(
         is Season -> "season:${id}"
         is Trailer -> "trailer:${url}"
         is TvShow -> "tvshow:${id}"
-        else -> "item:${itemType.name}"
+        else -> "item:${runCatching { itemType.name }.getOrDefault(javaClass.simpleName)}"
     }
 }

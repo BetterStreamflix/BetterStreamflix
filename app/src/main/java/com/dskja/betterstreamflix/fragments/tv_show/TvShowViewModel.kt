@@ -8,14 +8,17 @@ import com.dskja.betterstreamflix.models.Episode
 import com.dskja.betterstreamflix.models.Movie
 import com.dskja.betterstreamflix.models.Season
 import com.dskja.betterstreamflix.models.TvShow
+import com.dskja.betterstreamflix.providers.ProviderSmoke
 import com.dskja.betterstreamflix.utils.ArtworkRepair
 import com.dskja.betterstreamflix.utils.UserPreferences
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.emitAll
 import kotlinx.coroutines.flow.first
@@ -108,8 +111,16 @@ class TvShowViewModel(
             }
             emit(state)
         },
-        database.tvShowDao().getByIdAsFlow(id),
-        database.episodeDao().getByTvShowIdAsFlow(id),
+        database.tvShowDao().getByIdAsFlow(id).catch { e ->
+            if (e is CancellationException) throw e
+            Log.w("TvShowViewModel", "tvShowDb flow failed after provider switch", e)
+            emit(null)
+        },
+        database.episodeDao().getByTvShowIdAsFlow(id).catch { e ->
+            if (e is CancellationException) throw e
+            Log.w("TvShowViewModel", "episodesDb flow failed after provider switch", e)
+            emit(emptyList())
+        },
         _state.transformLatest { state ->
             when (state) {
                 is State.SuccessLoading -> {
@@ -117,8 +128,15 @@ class TvShowViewModel(
                         .filterIsInstance<Movie>()
                     if (movies.isEmpty()) {
                         emit(emptyList())
+                    } else if (!database.isOpen) {
+                        emit(emptyList())
                     } else {
-                        emitAll(database.movieDao().getByIds(movies.map { it.id }))
+                        emitAll(
+                            database.movieDao().getByIds(movies.map { it.id }).catch { e ->
+                                if (e is CancellationException) throw e
+                                emit(emptyList())
+                            }
+                        )
                     }
                 }
                 else -> emit(emptyList<Movie>())
@@ -131,8 +149,15 @@ class TvShowViewModel(
                         .filterIsInstance<TvShow>()
                     if (tvShows.isEmpty()) {
                         emit(emptyList())
+                    } else if (!database.isOpen) {
+                        emit(emptyList())
                     } else {
-                        emitAll(database.tvShowDao().getByIds(tvShows.map { it.id }))
+                        emitAll(
+                            database.tvShowDao().getByIds(tvShows.map { it.id }).catch { e ->
+                                if (e is CancellationException) throw e
+                                emit(emptyList())
+                            }
+                        )
                     }
                 }
                 else -> emit(emptyList<TvShow>())
@@ -232,13 +257,23 @@ class TvShowViewModel(
         try {
             val provider = UserPreferences.currentProvider
                 ?: throw IllegalStateException("No provider selected")
-            val tvShow = com.dskja.betterstreamflix.utils.ShowLookup.tvShow(provider, id)
+            val tvShow = ProviderSmoke.withProviderTimeout(
+                timeoutMs = ProviderSmoke.DETAIL_TIMEOUT_MS,
+                label = "getTvShow(${provider.name})",
+            ) {
+                com.dskja.betterstreamflix.utils.ShowLookup.tvShow(provider, id)
+            }
             val pluginEnriched = runCatching {
                 com.dskja.betterstreamflix.platform.plugins.PluginManager
                     .enrichTvShow(provider, tvShow)
             }.getOrDefault(tvShow)
             val enriched = runCatching {
-                com.dskja.betterstreamflix.utils.TmdbUtils.enrichTvShowDetail(pluginEnriched)
+                ProviderSmoke.withProviderTimeout(
+                    timeoutMs = ProviderSmoke.TMDB_ENRICH_TIMEOUT_MS,
+                    label = "enrichTvShowDetail",
+                ) {
+                    com.dskja.betterstreamflix.utils.TmdbUtils.enrichTvShowDetail(pluginEnriched)
+                }
             }.getOrDefault(pluginEnriched)
 
             if (!ArtworkRepair.isRemoteArtworkUrl(enriched.poster) && ArtworkRepair.isRemoteArtworkUrl(fallbackPoster)) {

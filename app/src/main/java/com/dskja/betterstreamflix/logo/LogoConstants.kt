@@ -29,8 +29,11 @@ object LogoConstants {
     const val MEMORY_CACHE_MAX_ENTRIES = 256
 
     /** Network retries for transient logo detail failures. */
-    const val NETWORK_RETRY_COUNT = 2
-    const val NETWORK_RETRY_BASE_DELAY_MS = 250L
+    const val NETWORK_RETRY_COUNT = 1
+    const val NETWORK_RETRY_BASE_DELAY_MS = 200L
+
+    /** Hard cap for a single title-logo resolve (id lookup + images). */
+    const val RESOLVE_TIMEOUT_MS = 8_000L
 
     /** Prefix length ratio for whole-word prefix matches (shorter*2 >= longer ≈ 50%). */
     const val PREFIX_LENGTH_RATIO_NUM = 2

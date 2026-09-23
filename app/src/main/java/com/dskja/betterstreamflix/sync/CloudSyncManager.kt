@@ -696,7 +696,7 @@ object CloudSyncManager {
         }
 
     private fun allProviders(): List<Provider> = (Provider.providers.keys +
-        listOf("it", "en", "es", "de", "fr").map(::TmdbProvider)).toList()
+        listOf("it", "en", "es", "de", "fr").map(TmdbProvider::forLanguage)).toList()
 
     private fun providerByName(name: String): Provider? =
         allProviders().firstOrNull { it.name == name }

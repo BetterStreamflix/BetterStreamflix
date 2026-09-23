@@ -37,16 +37,36 @@ import com.dskja.betterstreamflix.utils.safeSubList
 import android.util.Base64
 import android.util.Log
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeout
 import okhttp3.OkHttpClient
 import okhttp3.Request
 
-class TmdbProvider(override val language: String) : Provider {
+class TmdbProvider private constructor(override val language: String) : Provider {
     companion object {
         private const val TMDB_DE_PREFIX = "tmdbde:"
+
+        private val instances =
+            java.util.concurrent.ConcurrentHashMap<String, TmdbProvider>()
+
+        /**
+         * Stable per-language instance. [UserPreferences.currentProvider] used to
+         * allocate a fresh [TmdbProvider] on every read, so Home's
+         * `provider != currentProvider` identity check always dropped Success and
+         * left the TMDb Home spinner spinning forever.
+         */
+        fun forLanguage(language: String): TmdbProvider {
+            val lang = com.dskja.betterstreamflix.utils.ProviderAudioLanguage
+                .normalizeTmdbLanguage(language)
+            return instances.getOrPut(lang) { TmdbProvider(lang) }
+        }
+
+        /** @deprecated Prefer [forLanguage]; kept for call-site compatibility. */
+        operator fun invoke(language: String): TmdbProvider = forLanguage(language)
     }
 
     override val baseUrl: String
@@ -55,6 +75,11 @@ class TmdbProvider(override val language: String) : Provider {
     override val name = "TMDb ($language)"
     override val logo =
         "https://upload.wikimedia.org/wikipedia/commons/thumb/8/89/Tmdb.new.logo.svg/1280px-Tmdb.new.logo.svg.png"
+
+    override fun equals(other: Any?): Boolean =
+        other is TmdbProvider && other.language == language
+
+    override fun hashCode(): Int = language.hashCode()
 
     override suspend fun getHome(): List<Category> = coroutineScope {
         try {
@@ -106,6 +131,29 @@ class TmdbProvider(override val language: String) : Provider {
                 "TMDb server error ($httpCode). Retry shortly."
             else ->
                 "TMDb request failed: ${e.message ?: e.javaClass.simpleName}"
+        }
+    }
+
+    /**
+     * Soft-await a shelf: timeout / network errors return [fallback] so one hung
+     * TMDb endpoint cannot block the entire Home catalog forever.
+     */
+    private suspend fun <T> softShelf(
+        label: String,
+        fallback: T,
+        timeoutMs: Long = ProviderSmoke.TMDB_SHELF_TIMEOUT_MS,
+        block: suspend () -> T,
+    ): T {
+        return try {
+            withTimeout(timeoutMs) { block() }
+        } catch (e: TimeoutCancellationException) {
+            Log.w("TmdbProvider", "TMDb shelf '$label' timed out after ${timeoutMs}ms")
+            fallback
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            Log.w("TmdbProvider", "TMDb shelf '$label' failed: ${e.message}")
+            fallback
         }
     }
 
@@ -166,339 +214,195 @@ class TmdbProvider(override val language: String) : Provider {
             )
         }
 
+        // One page per list — three pages × many shelves was a request storm that
+        // hung Home when DNS/API stalled (callTimeout previously 60s each).
         val trendingDeferred = async {
-            awaitAll(
-                async { TMDb3.Trending.all(TMDb3.Params.TimeWindow.DAY, page = 1, language = language) },
-                async { TMDb3.Trending.all(TMDb3.Params.TimeWindow.DAY, page = 2, language = language) },
-                async { TMDb3.Trending.all(TMDb3.Params.TimeWindow.DAY, page = 3, language = language) },
-            ).flatMap { it.results }
+            softShelf("trending", emptyList()) {
+                TMDb3.Trending.all(TMDb3.Params.TimeWindow.DAY, page = 1, language = language).results
+            }
         }
 
         val popularMoviesDeferred = async {
-            awaitAll(
-                async { TMDb3.MovieLists.popular(page = 1, language = language) },
-                async { TMDb3.MovieLists.popular(page = 2, language = language) },
-                async { TMDb3.MovieLists.popular(page = 3, language = language) },
-            ).flatMap { it.results }
+            softShelf("popularMovies", emptyList()) {
+                TMDb3.MovieLists.popular(page = 1, language = language).results
+            }
         }
 
         val popularTvShowsDeferred = async {
-            awaitAll(
-                async { TMDb3.TvSeriesLists.popular(page = 1, language = language) },
-                async { TMDb3.TvSeriesLists.popular(page = 2, language = language) },
-                async { TMDb3.TvSeriesLists.popular(page = 3, language = language) },
-            ).flatMap { it.results }
+            softShelf("popularTv", emptyList()) {
+                TMDb3.TvSeriesLists.popular(page = 1, language = language).results
+            }
         }
 
         val popularAnimeDeferred = async {
-            run {
-                val movies = async { TMDb3.Discover.movie(
+            softShelf("anime", emptyList()) {
+                val movies = async {
+                    TMDb3.Discover.movie(
                         language = language,
                         withKeywords = TMDb3.Params.WithBuilder(TMDb3.Keyword.KeywordId.ANIME)
                             .or(TMDb3.Keyword.KeywordId.BASED_ON_ANIME),
-                    ).results }
-                val shows = async { TMDb3.Discover.tv(
+                    ).results
+                }
+                val shows = async {
+                    TMDb3.Discover.tv(
                         language = language,
                         withKeywords = TMDb3.Params.WithBuilder(TMDb3.Keyword.KeywordId.ANIME)
                             .or(TMDb3.Keyword.KeywordId.BASED_ON_ANIME),
-                    ).results }
+                    ).results
+                }
                 val movieItems: List<TMDb3.MultiItem> = movies.await()
                 val showItems: List<TMDb3.MultiItem> = shows.await()
                 movieItems + showItems
             }
+        }
+
+        suspend fun streamingShelf(
+            label: String,
+            movieProvider: TMDb3.Provider.WatchProviderId,
+            tvNetwork: TMDb3.Network.NetworkId,
+        ): List<TMDb3.MultiItem> = softShelf(label, emptyList()) {
+            val movies = async {
+                TMDb3.Discover.movie(
+                    language = language,
+                    watchRegion = watchRegion,
+                    withWatchProviders = TMDb3.Params.WithBuilder(movieProvider),
+                ).results
+            }
+            val shows = async {
+                TMDb3.Discover.tv(
+                    language = language,
+                    withNetworks = TMDb3.Params.WithBuilder(tvNetwork),
+                ).results
+            }
+            val movieItems: List<TMDb3.MultiItem> = movies.await()
+            val showItems: List<TMDb3.MultiItem> = shows.await()
+            movieItems + showItems
         }
 
         val netflixDeferred = async {
-            run {
-                val movies = async { TMDb3.Discover.movie(
-                        language = language,
-                        watchRegion = watchRegion,
-                        withWatchProviders = TMDb3.Params.WithBuilder(TMDb3.Provider.WatchProviderId.NETFLIX),
-                    ).results }
-                val shows = async { TMDb3.Discover.tv(
-                        language = language,
-                        withNetworks = TMDb3.Params.WithBuilder(TMDb3.Network.NetworkId.NETFLIX),
-                    ).results }
-                val movieItems: List<TMDb3.MultiItem> = movies.await()
-                val showItems: List<TMDb3.MultiItem> = shows.await()
-                movieItems + showItems
-            }
+            streamingShelf("netflix", TMDb3.Provider.WatchProviderId.NETFLIX, TMDb3.Network.NetworkId.NETFLIX)
         }
-
         val amazonDeferred = async {
-            run {
-                val movies = async { TMDb3.Discover.movie(
-                        language = language,
-                        watchRegion = watchRegion,
-                        withWatchProviders = TMDb3.Params.WithBuilder(TMDb3.Provider.WatchProviderId.AMAZON_VIDEO),
-                    ).results }
-                val shows = async { TMDb3.Discover.tv(
-                        language = language,
-                        withNetworks = TMDb3.Params.WithBuilder(TMDb3.Network.NetworkId.AMAZON),
-                    ).results }
-                val movieItems: List<TMDb3.MultiItem> = movies.await()
-                val showItems: List<TMDb3.MultiItem> = shows.await()
-                movieItems + showItems
-            }
+            streamingShelf("amazon", TMDb3.Provider.WatchProviderId.AMAZON_VIDEO, TMDb3.Network.NetworkId.AMAZON)
         }
-
         val disneyDeferred = async {
-            run {
-                val movies = async { TMDb3.Discover.movie(
-                        language = language,
-                        watchRegion = watchRegion,
-                        withWatchProviders = TMDb3.Params.WithBuilder(TMDb3.Provider.WatchProviderId.DISNEY_PLUS),
-                    ).results }
-                val shows = async { TMDb3.Discover.tv(
-                        language = language,
-                        withNetworks = TMDb3.Params.WithBuilder(TMDb3.Network.NetworkId.DISNEY_PLUS),
-                    ).results }
-                val movieItems: List<TMDb3.MultiItem> = movies.await()
-                val showItems: List<TMDb3.MultiItem> = shows.await()
-                movieItems + showItems
-            }
+            streamingShelf("disney", TMDb3.Provider.WatchProviderId.DISNEY_PLUS, TMDb3.Network.NetworkId.DISNEY_PLUS)
         }
-
         val huluDeferred = async {
-            run {
-                val movies = async { TMDb3.Discover.movie(
-                        language = language,
-                        watchRegion = watchRegion,
-                        withWatchProviders = TMDb3.Params.WithBuilder(TMDb3.Provider.WatchProviderId.HULU),
-                    ).results }
-                val shows = async { TMDb3.Discover.tv(
-                        language = language,
-                        withNetworks = TMDb3.Params.WithBuilder(TMDb3.Network.NetworkId.HULU),
-                    ).results }
-                val movieItems: List<TMDb3.MultiItem> = movies.await()
-                val showItems: List<TMDb3.MultiItem> = shows.await()
-                movieItems + showItems
-            }
+            streamingShelf("hulu", TMDb3.Provider.WatchProviderId.HULU, TMDb3.Network.NetworkId.HULU)
         }
-
         val appleDeferred = async {
-            run {
-                val movies = async { TMDb3.Discover.movie(
-                        language = language,
-                        watchRegion = watchRegion,
-                        withWatchProviders = TMDb3.Params.WithBuilder(TMDb3.Provider.WatchProviderId.APPLE_TV_PLUS),
-                    ).results }
-                val shows = async { TMDb3.Discover.tv(
-                        language = language,
-                        withNetworks = TMDb3.Params.WithBuilder(TMDb3.Network.NetworkId.APPLE_TV),
-                    ).results }
-                val movieItems: List<TMDb3.MultiItem> = movies.await()
-                val showItems: List<TMDb3.MultiItem> = shows.await()
-                movieItems + showItems
-            }
+            streamingShelf("apple", TMDb3.Provider.WatchProviderId.APPLE_TV_PLUS, TMDb3.Network.NetworkId.APPLE_TV)
         }
 
         val hboDeferred = async {
-            awaitAll(
-                async {
-                    TMDb3.Discover.tv(
-                        language = language,
-                        withNetworks = TMDb3.Params.WithBuilder(TMDb3.Network.NetworkId.HBO),
-                        page = 1,
-                    )
-                },
-                async {
-                    TMDb3.Discover.tv(
-                        language = language,
-                        withNetworks = TMDb3.Params.WithBuilder(TMDb3.Network.NetworkId.HBO),
-                        page = 2,
-                    )
-                },
-            ).flatMap { it.results }
+            softShelf("hbo", emptyList()) {
+                TMDb3.Discover.tv(
+                    language = language,
+                    withNetworks = TMDb3.Params.WithBuilder(TMDb3.Network.NetworkId.HBO),
+                    page = 1,
+                ).results
+            }
         }
 
         val topRatedMoviesDeferred = async {
-            TMDb3.MovieLists.topRated(mapOf("language" to language, "page" to "1")).results
+            softShelf("topRatedMovies", emptyList()) {
+                TMDb3.MovieLists.topRated(mapOf("language" to language, "page" to "1")).results
+            }
         }
         val topRatedTvDeferred = async {
-            TMDb3.TvSeriesLists.topRated(mapOf("language" to language, "page" to "1")).results
+            softShelf("topRatedTv", emptyList()) {
+                TMDb3.TvSeriesLists.topRated(mapOf("language" to language, "page" to "1")).results
+            }
         }
         val nowPlayingDeferred = async {
-            TMDb3.MovieLists.nowPlaying(language = language, page = 1, region = watchRegion).results
+            softShelf("nowPlaying", emptyList()) {
+                TMDb3.MovieLists.nowPlaying(language = language, page = 1, region = watchRegion).results
+            }
         }
         val upcomingDeferred = async {
-            TMDb3.MovieLists.upcoming(language = language, page = 1, region = watchRegion).results
+            softShelf("upcoming", emptyList()) {
+                TMDb3.MovieLists.upcoming(language = language, page = 1, region = watchRegion).results
+            }
         }
         val airingTodayDeferred = async {
-            TMDb3.TvSeriesLists.airingToday(language = language, page = 1).results
+            softShelf("airingToday", emptyList()) {
+                TMDb3.TvSeriesLists.airingToday(language = language, page = 1).results
+            }
         }
         val onTheAirDeferred = async {
-            TMDb3.TvSeriesLists.onTheAir(language = language, page = 1).results
+            softShelf("onTheAir", emptyList()) {
+                TMDb3.TvSeriesLists.onTheAir(language = language, page = 1).results
+            }
+        }
+
+        fun popularityOf(item: TMDb3.MultiItem): Float = when (item) {
+            is TMDb3.Movie -> item.popularity
+            is TMDb3.Person -> item.popularity
+            is TMDb3.Tv -> item.popularity
         }
 
         val trending = trendingDeferred.await()
-        categories.add(
-            Category(
-                name = Category.FEATURED,
-                list = trending.safeSubList(0, 5).mapNotNull(mapMulti)
+        if (trending.isNotEmpty()) {
+            categories.add(
+                Category(
+                    name = Category.FEATURED,
+                    list = trending.safeSubList(0, 5).mapNotNull(mapMulti)
+                )
             )
-        )
-
-        categories.add(
-            Category(
-                name = getTranslation("Trending"),
-                list = trending.safeSubList(5, trending.size).mapNotNull(mapMulti)
+            categories.add(
+                Category(
+                    name = getTranslation("Trending"),
+                    list = trending.safeSubList(5, trending.size).mapNotNull(mapMulti)
+                )
             )
-        )
+        }
 
-        categories.add(
-            Category(
-                name = getTranslation("Now Playing"),
-                list = nowPlayingDeferred.await().map(mapMovie)
+        fun addShelf(name: String, list: List<AppAdapter.Item>) {
+            if (list.isNotEmpty()) {
+                categories.add(Category(name = name, list = list))
+            }
+        }
+
+        addShelf(getTranslation("Now Playing"), nowPlayingDeferred.await().map(mapMovie))
+        addShelf(getTranslation("Airing Today"), airingTodayDeferred.await().map(mapTv))
+        addShelf(getTranslation("Popular Movies"), popularMoviesDeferred.await().mapNotNull(mapMulti))
+        addShelf(getTranslation("Popular TV Shows"), popularTvShowsDeferred.await().mapNotNull(mapMulti))
+        addShelf(getTranslation("Top Rated Movies"), topRatedMoviesDeferred.await().map(mapMovie))
+        addShelf(getTranslation("Top Rated TV Shows"), topRatedTvDeferred.await().map(mapTv))
+        addShelf(getTranslation("On The Air"), onTheAirDeferred.await().map(mapTv))
+        addShelf(getTranslation("Upcoming"), upcomingDeferred.await().map(mapMovie))
+        addShelf(
+            getTranslation("Popular Anime"),
+            popularAnimeDeferred.await().sortedByDescending(::popularityOf).mapNotNull(mapMulti),
+        )
+        addShelf(
+            getTranslation("Popular on Netflix"),
+            netflixDeferred.await().sortedByDescending(::popularityOf).mapNotNull(mapMulti),
+        )
+        addShelf(
+            getTranslation("Popular on Amazon"),
+            amazonDeferred.await().sortedByDescending(::popularityOf).mapNotNull(mapMulti),
+        )
+        addShelf(
+            getTranslation("Popular on Disney+"),
+            disneyDeferred.await().sortedByDescending(::popularityOf).mapNotNull(mapMulti),
+        )
+        addShelf(
+            getTranslation("Popular on Hulu"),
+            huluDeferred.await().sortedByDescending(::popularityOf).mapNotNull(mapMulti),
+        )
+        addShelf(
+            getTranslation("Popular on Apple TV+"),
+            appleDeferred.await().sortedByDescending(::popularityOf).mapNotNull(mapMulti),
+        )
+        addShelf(getTranslation("Popular on HBO"), hboDeferred.await().mapNotNull(mapMulti))
+
+        if (categories.isEmpty()) {
+            throw Exception(
+                "TMDb returned no catalog shelves. Check your API key and connection, then retry.",
             )
-        )
-
-        categories.add(
-            Category(
-                name = getTranslation("Airing Today"),
-                list = airingTodayDeferred.await().map(mapTv)
-            )
-        )
-
-        categories.add(
-            Category(
-                name = getTranslation("Popular Movies"),
-                list = popularMoviesDeferred.await().mapNotNull(mapMulti)
-            )
-        )
-
-        categories.add(
-            Category(
-                name = getTranslation("Popular TV Shows"),
-                list = popularTvShowsDeferred.await().mapNotNull(mapMulti)
-            )
-        )
-
-        categories.add(
-            Category(
-                name = getTranslation("Top Rated Movies"),
-                list = topRatedMoviesDeferred.await().map(mapMovie)
-            )
-        )
-
-        categories.add(
-            Category(
-                name = getTranslation("Top Rated TV Shows"),
-                list = topRatedTvDeferred.await().map(mapTv)
-            )
-        )
-
-        categories.add(
-            Category(
-                name = getTranslation("On The Air"),
-                list = onTheAirDeferred.await().map(mapTv)
-            )
-        )
-
-        categories.add(
-            Category(
-                name = getTranslation("Upcoming"),
-                list = upcomingDeferred.await().map(mapMovie)
-            )
-        )
-
-        categories.add(
-            Category(
-                name = getTranslation("Popular Anime"),
-                list = popularAnimeDeferred.await()
-                    .sortedByDescending {
-                        when (it) {
-                            is TMDb3.Movie -> it.popularity
-                            is TMDb3.Person -> it.popularity
-                            is TMDb3.Tv -> it.popularity
-                        }
-                    }
-                    .mapNotNull(mapMulti),
-            )
-        )
-
-        categories.add(
-            Category(
-                name = getTranslation("Popular on Netflix"),
-                list = netflixDeferred.await()
-                    .sortedByDescending {
-                        when (it) {
-                            is TMDb3.Movie -> it.popularity
-                            is TMDb3.Person -> it.popularity
-                            is TMDb3.Tv -> it.popularity
-                        }
-                    }
-                    .mapNotNull(mapMulti),
-            )
-        )
-
-        categories.add(
-            Category(
-                name = getTranslation("Popular on Amazon"),
-                list = amazonDeferred.await()
-                    .sortedByDescending {
-                        when (it) {
-                            is TMDb3.Movie -> it.popularity
-                            is TMDb3.Person -> it.popularity
-                            is TMDb3.Tv -> it.popularity
-                        }
-                    }
-                    .mapNotNull(mapMulti),
-            )
-        )
-
-        categories.add(
-            Category(
-                name = getTranslation("Popular on Disney+"),
-                list = disneyDeferred.await()
-                    .sortedByDescending {
-                        when (it) {
-                            is TMDb3.Movie -> it.popularity
-                            is TMDb3.Person -> it.popularity
-                            is TMDb3.Tv -> it.popularity
-                        }
-                    }
-                    .mapNotNull(mapMulti),
-            )
-        )
-
-        categories.add(
-            Category(
-                name = getTranslation("Popular on Hulu"),
-                list = huluDeferred.await()
-                    .sortedByDescending {
-                        when (it) {
-                            is TMDb3.Movie -> it.popularity
-                            is TMDb3.Person -> it.popularity
-                            is TMDb3.Tv -> it.popularity
-                        }
-                    }
-                    .mapNotNull(mapMulti),
-            )
-        )
-
-        categories.add(
-            Category(
-                name = getTranslation("Popular on Apple TV+"),
-                list = appleDeferred.await()
-                    .sortedByDescending {
-                        when (it) {
-                            is TMDb3.Movie -> it.popularity
-                            is TMDb3.Person -> it.popularity
-                            is TMDb3.Tv -> it.popularity
-                        }
-                    }
-                    .mapNotNull(mapMulti),
-            )
-        )
-
-        categories.add(
-            Category(
-                name = getTranslation("Popular on HBO"),
-                list = hboDeferred.await().mapNotNull(mapMulti),
-            )
-        )
-
+        }
         categories
     }
 

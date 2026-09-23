@@ -166,6 +166,11 @@ class Movie(
         logo = this@Movie.logo
         logoLanguage = this@Movie.logoLanguage
         logoSource = this@Movie.logoSource
+        // copy() must keep adapter type — Featured swiper loop clones crash otherwise
+        // (BETTERSTREAMFLIX-1P UninitializedPropertyAccessException on itemType).
+        if (this@Movie::itemType.isInitialized) {
+            itemType = this@Movie.itemType
+        }
     }
 
     override fun equals(other: Any?): Boolean {

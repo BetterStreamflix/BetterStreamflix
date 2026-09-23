@@ -397,7 +397,15 @@ class PlayerMobileFragment : Fragment() {
             viewModel.state.flowWithLifecycle(viewLifecycleOwner.lifecycle, Lifecycle.State.STARTED).collect { state ->
                 if (isTearingDown || !isAdded || _binding == null) return@collect
                 when (state) {
-                    PlayerViewModel.State.LoadingServers -> {}
+                    PlayerViewModel.State.LoadingServers -> {
+                        // Keep an idle surface while getServers runs (C-PLAY-1); avoid a
+                        // fake playing URI if a prior session left media installed.
+                        if (::player.isInitialized && !player.isPlaying) {
+                            player.playWhenReady = false
+                            player.stop()
+                            player.clearMediaItems()
+                        }
+                    }
                     is PlayerViewModel.State.SuccessLoadingServers -> {
                         servers = state.servers
                         val sToServer = servers.firstOrNull {
@@ -440,7 +448,10 @@ class PlayerMobileFragment : Fragment() {
                                 val preferredServer = state.servers.firstOrNull {
                                     it.name.equals(args.preferredServerName, ignoreCase = true)
                                 }
-                                viewModel.getVideo(preferredServer ?: state.servers.first())
+                                val playServer = state.servers.firstOrNull {
+                                    !isSerienStreamBypassUrl(it.id) && !isSerienStreamBypassUrl(it.src)
+                                } ?: preferredServer ?: state.servers.first()
+                                viewModel.getVideo(playServer)
                                 return@collect
                             }
 

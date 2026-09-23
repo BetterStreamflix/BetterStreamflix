@@ -8,6 +8,7 @@ import com.dskja.betterstreamflix.providers.Provider
 import com.dskja.betterstreamflix.providers.ProviderHealth
 import com.dskja.betterstreamflix.providers.TmdbProvider
 import com.dskja.betterstreamflix.utils.UserPreferences
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -89,7 +90,10 @@ class ProvidersViewModel : ViewModel() {
                     .thenBy { it.name.lowercase(Locale.ROOT) }
             )
 
+            // Empty favorites / language filter → empty state, never an endless spinner.
             _state.emit(State.SuccessLoading(modelProviders))
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
             Log.e("ProvidersViewModel", "getProviders: ", e)
             _state.emit(State.FailedLoading(e))
