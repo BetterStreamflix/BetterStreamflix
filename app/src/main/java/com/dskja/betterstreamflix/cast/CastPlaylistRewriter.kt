@@ -12,18 +12,24 @@ object CastPlaylistRewriter {
 
     /**
      * Rewrites absolute and relative segment / URI= references to flow through [proxyBase]/p?u=…
+     * When [sessionToken] is non-blank, appends `&t=` so playlist hops require the same auth as [wrap].
      */
-    fun rewrite(playlistText: String, playlistUrl: String, proxyBase: String): String {
+    fun rewrite(
+        playlistText: String,
+        playlistUrl: String,
+        proxyBase: String,
+        sessionToken: String = "",
+    ): String {
         if (!playlistText.contains("#EXTM3U")) return playlistText
         val base = proxyBase.trimEnd('/')
         return playlistText.lineSequence().joinToString("\n") { line ->
             val trimmed = line.trim()
             when {
-                trimmed.isEmpty() || trimmed.startsWith("#") -> rewriteTagUris(line, playlistUrl, base)
+                trimmed.isEmpty() || trimmed.startsWith("#") ->
+                    rewriteTagUris(line, playlistUrl, base, sessionToken)
                 else -> {
                     val absolute = resolveAgainst(playlistUrl, trimmed)
-                    val encoded = URLEncoder.encode(absolute, StandardCharsets.UTF_8.name())
-                    "$base/p?u=$encoded"
+                    proxyUrl(base, absolute, sessionToken)
                 }
             }
         }
@@ -34,13 +40,27 @@ object CastPlaylistRewriter {
         return runCatching { URI(baseUrl).resolve(ref).toString() }.getOrDefault(ref)
     }
 
-    private fun rewriteTagUris(line: String, playlistUrl: String, base: String): String {
+    fun proxyUrl(proxyBase: String, absoluteUrl: String, sessionToken: String = ""): String {
+        val base = proxyBase.trimEnd('/')
+        val encoded = URLEncoder.encode(absoluteUrl, StandardCharsets.UTF_8.name())
+        return if (sessionToken.isBlank()) {
+            "$base/p?u=$encoded"
+        } else {
+            "$base/p?u=$encoded&t=${URLEncoder.encode(sessionToken, StandardCharsets.UTF_8.name())}"
+        }
+    }
+
+    private fun rewriteTagUris(
+        line: String,
+        playlistUrl: String,
+        base: String,
+        sessionToken: String,
+    ): String {
         if (!line.contains("URI=", ignoreCase = true)) return line
         return URI_ATTR_REGEX.replace(line) { match ->
             val raw = match.groupValues[1]
             val absolute = resolveAgainst(playlistUrl, raw)
-            val encoded = URLEncoder.encode(absolute, StandardCharsets.UTF_8.name())
-            "URI=\"$base/p?u=$encoded\""
+            "URI=\"${proxyUrl(base, absolute, sessionToken)}\""
         }
     }
 }

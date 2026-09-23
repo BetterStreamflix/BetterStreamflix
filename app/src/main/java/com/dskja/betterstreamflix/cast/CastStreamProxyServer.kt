@@ -8,9 +8,10 @@ import okhttp3.Request
 import okhttp3.internal.userAgent
 import java.io.PipedInputStream
 import java.io.PipedOutputStream
+import java.net.InetAddress
 import java.net.URLDecoder
-import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
+import java.util.UUID
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 
@@ -21,6 +22,9 @@ import java.util.concurrent.TimeUnit
  * Chromecast cannot reach the phone's 127.0.0.1 — we advertise the device LAN IP.
  * Large media responses are streamed; HLS playlists are rewritten so variants/segments
  * also flow through this proxy.
+ *
+ * Auth: every `/p` request must carry the per-instance session token issued by [wrap]
+ * (H-CAST-1). Private/loopback targets are rejected to limit open-relay SSRF.
  */
 class CastStreamProxyServer(
     private val httpClient: OkHttpClient = defaultClient(),
@@ -29,10 +33,17 @@ class CastStreamProxyServer(
     @Volatile
     private var defaultHeaders: Map<String, String> = emptyMap()
 
+    /** Opaque token required on `/p` while this instance is running. */
+    val sessionToken: String = UUID.randomUUID().toString().replace("-", "")
+
     private val pumpExecutor = Executors.newCachedThreadPool()
 
     fun updateDefaultHeaders(headers: Map<String, String>) {
         defaultHeaders = headers
+    }
+
+    fun clearDefaultHeaders() {
+        defaultHeaders = emptyMap()
     }
 
     fun publicBaseUrl(): String? {
@@ -43,8 +54,7 @@ class CastStreamProxyServer(
     /** Build a Cast-reachable URL that proxies [originalUrl] with the current headers. */
     fun wrap(originalUrl: String): String {
         val base = publicBaseUrl() ?: return originalUrl
-        val encoded = URLEncoder.encode(originalUrl, StandardCharsets.UTF_8.name())
-        return "$base/p?u=$encoded"
+        return CastPlaylistRewriter.proxyUrl(base, originalUrl, sessionToken)
     }
 
     override fun serve(session: IHTTPSession): Response {
@@ -73,6 +83,11 @@ class CastStreamProxyServer(
     }
 
     private fun proxy(session: IHTTPSession): Response {
+        val presented = session.parms["t"].orEmpty()
+        if (presented.isBlank() || presented != sessionToken) {
+            return newFixedLengthResponse(Response.Status.UNAUTHORIZED, MIME_PLAINTEXT, "unauthorized")
+        }
+
         val encoded = session.parms["u"].orEmpty()
         if (encoded.isBlank()) {
             return newFixedLengthResponse(Response.Status.BAD_REQUEST, MIME_PLAINTEXT, "missing u")
@@ -80,6 +95,9 @@ class CastStreamProxyServer(
         val target = URLDecoder.decode(encoded, StandardCharsets.UTF_8.name())
         if (!target.startsWith("http://") && !target.startsWith("https://")) {
             return newFixedLengthResponse(Response.Status.BAD_REQUEST, MIME_PLAINTEXT, "unsupported scheme")
+        }
+        if (isBlockedProxyTarget(target)) {
+            return newFixedLengthResponse(Response.Status.FORBIDDEN, MIME_PLAINTEXT, "blocked target")
         }
 
         val requestBuilder = Request.Builder().url(target).get()
@@ -184,14 +202,12 @@ class CastStreamProxyServer(
         val text = runCatching { String(bytes, StandardCharsets.UTF_8) }.getOrNull() ?: return bytes
         if (!text.contains("#EXTM3U")) return bytes
         val base = publicBaseUrl() ?: return bytes
-        return CastPlaylistRewriter.rewrite(text, playlistUrl, base)
+        return CastPlaylistRewriter.rewrite(text, playlistUrl, base, sessionToken)
             .toByteArray(StandardCharsets.UTF_8)
     }
 
-    private fun resolveAgainst(baseUrl: String, ref: String): String =
-        CastPlaylistRewriter.resolveAgainst(baseUrl, ref)
-
     override fun stop() {
+        clearDefaultHeaders()
         runCatching { super.stop() }
         runCatching { pumpExecutor.shutdownNow() }
     }
@@ -206,5 +222,21 @@ class CastStreamProxyServer(
                 .connectTimeout(20, TimeUnit.SECONDS)
                 .readTimeout(0, TimeUnit.SECONDS)
                 .build()
+
+        /**
+         * Reject loopback / link-local / RFC1918 targets so a LAN peer cannot use
+         * the proxy as an open SSRF relay into the phone's private network.
+         */
+        fun isBlockedProxyTarget(url: String): Boolean {
+            val host = runCatching { java.net.URI(url).host }.getOrNull()?.lowercase() ?: return true
+            if (host == "localhost" || host.endsWith(".localhost") || host == "0.0.0.0") return true
+            if (host == "::1" || host == "[::1]") return true
+            val inet = runCatching { InetAddress.getByName(host) }.getOrNull() ?: return false
+            return inet.isAnyLocalAddress ||
+                inet.isLoopbackAddress ||
+                inet.isLinkLocalAddress ||
+                inet.isSiteLocalAddress ||
+                inet.isMulticastAddress
+        }
     }
 }

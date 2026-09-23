@@ -118,7 +118,8 @@ object TraktClient {
             NetworkClient.default.newCall(request).execute().use { response ->
                 val raw = response.body?.string().orEmpty()
                 if (!response.isSuccessful) {
-                    Log.w(TAG, "oauth exchange HTTP ${response.code}: $raw")
+                    // Never log OAuth bodies — may contain tokens / error detail (H-TRAKT-1).
+                    Log.w(TAG, "oauth exchange HTTP ${response.code}")
                     return@use false
                 }
                 storeTokens(JSONObject(raw))

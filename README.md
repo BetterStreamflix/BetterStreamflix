@@ -11,7 +11,7 @@
   <br />
   <a href="https://maidensail.com/startup/betterstreamflix" rel="dofollow"><img src="https://maidensail.com/badge/betterstreamflix.svg?theme=dark" alt="Featured on Maidensail" height="44"></a>
   <br />
-  <strong>v1.1.0</strong> · Maintained by <a href="https://github.com/dskja">dskja</a>
+  <strong>v1.1.1</strong> · Maintained by <a href="https://github.com/dskja">dskja</a>
   <br />
   An actively maintained fork of Streamflix with extra fixes, providers and UX improvements for Android TV and mobile.
   <br />
