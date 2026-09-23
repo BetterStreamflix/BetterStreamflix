@@ -983,6 +983,8 @@
 
     <string name="settings_screen_appearance_summary">Theme, immersive mode and screen layout adjustments</string>
     <string name="settings_theme_title">App Theme</string>
+    <string name="settings_oled_mode_title">OLED mode</string>
+    <string name="settings_oled_mode_summary">Replace gray surfaces with true black across the app</string>
     <string name="settings_app_language_title">App language</string>
     <string name="settings_app_language_summary">Choose which bundled translation the app should use</string>
     <string name="settings_app_language_system">System default</string>

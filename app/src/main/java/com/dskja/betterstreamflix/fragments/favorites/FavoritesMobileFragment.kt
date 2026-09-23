@@ -4,6 +4,8 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import androidx.activity.OnBackPressedCallback
+import androidx.appcompat.app.AlertDialog
 import androidx.core.view.isVisible
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.Lifecycle
@@ -19,12 +21,16 @@ import com.dskja.betterstreamflix.database.AppDatabase
 import com.dskja.betterstreamflix.databinding.FragmentFavoritesMobileBinding
 import com.dskja.betterstreamflix.models.Movie
 import com.dskja.betterstreamflix.models.TvShow
+import com.dskja.betterstreamflix.providers.Provider
 import com.dskja.betterstreamflix.ui.SpacingItemDecoration
-import com.dskja.betterstreamflix.utils.UserPreferences
-import com.dskja.betterstreamflix.utils.dp
-import com.dskja.betterstreamflix.utils.ExperimentalMobileDesign
+import com.dskja.betterstreamflix.ui.UserDataNotifier
+import com.dskja.betterstreamflix.utils.ExpDialogChrome
 import com.dskja.betterstreamflix.utils.ExpEmptyChrome
 import com.dskja.betterstreamflix.utils.ExpMotion
+import com.dskja.betterstreamflix.utils.ExperimentalMobileDesign
+import com.dskja.betterstreamflix.utils.UserDataCache
+import com.dskja.betterstreamflix.utils.UserPreferences
+import com.dskja.betterstreamflix.utils.dp
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -37,6 +43,11 @@ class FavoritesMobileFragment : Fragment() {
     private var rearrangeMode = false
     private val selectedItems = mutableSetOf<String>()
     private val providerName get() = UserPreferences.currentProvider?.name.orEmpty()
+    private val rearrangeBackCallback = object : OnBackPressedCallback(false) {
+        override fun handleOnBackPressed() {
+            setRearrangeMode(false)
+        }
+    }
     private val viewModel: FavoritesViewModel
         get() {
             val key = providerName.ifBlank { "default" }
@@ -83,6 +94,7 @@ class FavoritesMobileFragment : Fragment() {
             addItemDecoration(SpacingItemDecoration(8.dp(requireContext())))
         }
         createDragHelper().attachToRecyclerView(binding.rvFavorites)
+        requireActivity().onBackPressedDispatcher.addCallback(viewLifecycleOwner, rearrangeBackCallback)
         binding.btnFavoritesEdit.setOnClickListener {
             ExpMotion.hapticTap(it)
             setRearrangeMode(true)
@@ -94,6 +106,10 @@ class FavoritesMobileFragment : Fragment() {
         binding.btnFavoritesRemove.setOnClickListener {
             ExpMotion.hapticTap(it)
             removeSelectedFavorites()
+        }
+        binding.btnFavoritesSort.setOnClickListener {
+            ExpMotion.hapticTap(it)
+            showSortDialog()
         }
         setRearrangeMode(false)
 
@@ -138,16 +154,14 @@ class FavoritesMobileFragment : Fragment() {
 
         override fun clearView(recyclerView: RecyclerView, viewHolder: RecyclerView.ViewHolder) {
             super.clearView(recyclerView, viewHolder)
-            if (ExperimentalMobileDesign.enabled()) {
-                viewHolder.itemView.animate().scaleX(1f).scaleY(1f).translationZ(0f).setDuration(160L).start()
-            }
+            viewHolder.itemView.animate().scaleX(1f).scaleY(1f).translationZ(0f).setDuration(160L).start()
             draggedSection?.let(::persistSectionOrder)
             draggedSection = null
         }
 
         override fun onSelectedChanged(viewHolder: RecyclerView.ViewHolder?, actionState: Int) {
             super.onSelectedChanged(viewHolder, actionState)
-            if (!ExperimentalMobileDesign.enabled() || viewHolder == null) return
+            if (viewHolder == null) return
             if (actionState == ItemTouchHelper.ACTION_STATE_DRAG) {
                 ExpMotion.hapticTap(viewHolder.itemView)
                 viewHolder.itemView.animate()
@@ -162,55 +176,107 @@ class FavoritesMobileFragment : Fragment() {
 
     private fun setRearrangeMode(enabled: Boolean) {
         rearrangeMode = enabled
+        rearrangeBackCallback.isEnabled = enabled
         if (!enabled) selectedItems.clear()
         binding.btnFavoritesEdit.visibility = if (enabled) View.GONE else View.VISIBLE
+        binding.btnFavoritesSort.visibility = if (enabled) View.GONE else View.VISIBLE
         binding.btnFavoritesCancel.visibility = if (enabled) View.VISIBLE else View.GONE
         binding.btnFavoritesRemove.visibility = if (enabled) View.VISIBLE else View.GONE
+        updateToolbarCopy()
         updateRemoveEnabled()
         configureAdapterInteractions()
-        appAdapter.notifyDataSetChanged()
+        val count = appAdapter.itemCount
+        if (count > 0) {
+            appAdapter.notifyItemRangeChanged(0, count, AppAdapter.PAYLOAD_SELECTION)
+        }
+    }
+
+    private fun updateToolbarCopy() {
+        binding.tvFavoritesTitle.text = when {
+            rearrangeMode && selectedItems.isNotEmpty() ->
+                getString(R.string.exp_favorites_selected_count, selectedItems.size)
+            rearrangeMode -> getString(R.string.favorites_edit)
+            else -> getString(R.string.main_menu_favorites)
+        }
     }
 
     private fun updateRemoveEnabled() {
         val hasSelection = selectedItems.isNotEmpty()
         binding.btnFavoritesRemove.isEnabled = rearrangeMode && hasSelection
+        binding.btnFavoritesRemove.alpha = if (hasSelection) 1f else 0.4f
         binding.btnFavoritesRemove.setTextColor(
-            if (hasSelection) 0xFFFFFFFF.toInt() else 0x4DFFFFFF,
+            if (hasSelection) 0xFFFFFFFF.toInt() else 0x4DFFFFFF.toInt(),
         )
+        updateToolbarCopy()
     }
 
     private fun removeSelectedFavorites() {
         if (selectedItems.isEmpty()) return
         val toRemove = appAdapter.items.filter { itemKey(it) in selectedItems }
         viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
-            val db = AppDatabase.getInstance(requireContext())
+            val appContext = requireContext().applicationContext
+            val currentName = UserPreferences.currentProvider?.name
             toRemove.forEach { item ->
                 when (item) {
-                    is Movie -> {
-                        db.movieDao().upsertFavorite(item, false)
-                        com.dskja.betterstreamflix.platform.simkl.SimklSyncHooks.onListToggle(
-                            add = false,
-                            imdbId = item.imdbId,
-                            tmdbId = item.tmdbId,
-                            isTv = false,
-                        )
-                    }
-                    is TvShow -> {
-                        db.tvShowDao().upsertFavorite(item, false)
-                        com.dskja.betterstreamflix.platform.simkl.SimklSyncHooks.onListToggle(
-                            add = false,
-                            imdbId = item.imdbId,
-                            tmdbId = item.tmdbId,
-                            isTv = true,
-                        )
-                    }
+                    is Movie -> removeMovieFavorite(appContext, item, currentName)
+                    is TvShow -> removeTvShowFavorite(appContext, item, currentName)
                 }
             }
+            UserDataNotifier.notifyChanged()
             withContext(Dispatchers.Main) {
                 selectedItems.clear()
                 setRearrangeMode(false)
             }
         }
+    }
+
+    private fun removeMovieFavorite(appContext: android.content.Context, movie: Movie, currentName: String?) {
+        val provider = resolveProvider(movie.providerName, currentName) ?: return
+        val ownsDb = provider.name == currentName
+        val db = if (ownsDb) {
+            AppDatabase.getInstance(appContext)
+        } else {
+            AppDatabase.getInstanceForProvider(provider.name, appContext)
+        }
+        try {
+            db.movieDao().upsertFavorite(movie, false)
+            UserDataCache.removeMovieFromFavorites(appContext, provider, movie.id)
+            com.dskja.betterstreamflix.platform.simkl.SimklSyncHooks.onListToggle(
+                add = false,
+                imdbId = movie.imdbId,
+                tmdbId = movie.tmdbId,
+                isTv = false,
+            )
+        } finally {
+            if (!ownsDb) runCatching { db.close() }
+        }
+    }
+
+    private fun removeTvShowFavorite(appContext: android.content.Context, tvShow: TvShow, currentName: String?) {
+        val provider = resolveProvider(tvShow.providerName, currentName) ?: return
+        val ownsDb = provider.name == currentName
+        val db = if (ownsDb) {
+            AppDatabase.getInstance(appContext)
+        } else {
+            AppDatabase.getInstanceForProvider(provider.name, appContext)
+        }
+        try {
+            db.tvShowDao().upsertFavorite(tvShow, false)
+            UserDataCache.removeTvShowFromFavorites(appContext, provider, tvShow.id)
+            com.dskja.betterstreamflix.platform.simkl.SimklSyncHooks.onListToggle(
+                add = false,
+                imdbId = tvShow.imdbId,
+                tmdbId = tvShow.tmdbId,
+                isTv = true,
+            )
+        } finally {
+            if (!ownsDb) runCatching { db.close() }
+        }
+    }
+
+    private fun resolveProvider(itemProviderName: String?, currentName: String?): Provider? {
+        val name = itemProviderName?.takeIf { it.isNotBlank() } ?: currentName
+        return name?.let(Provider::findByName) ?: UserPreferences.currentProvider
     }
 
     private fun configureAdapterInteractions() {
@@ -343,22 +409,47 @@ class FavoritesMobileFragment : Fragment() {
                     }
                 }
         }
-        binding.tvFavoritesEmpty.let { emptyView ->
-            ExpEmptyChrome.bind(
-                emptyView = emptyView,
-                emptyRule = null,
-                emptyCta = null,
-                visible = gridItems.isEmpty(),
-                tintOnSurfaceVariant = false,
-                onCtaClick = { findNavController().navigate(R.id.search) },
-            )
-        }
-        binding.rvFavorites.isVisible = gridItems.isNotEmpty()
-        binding.btnFavoritesEdit.isVisible = gridItems.isNotEmpty() && !rearrangeMode
+        val empty = gridItems.isEmpty()
+        ExpEmptyChrome.bind(
+            emptyView = binding.tvFavoritesEmpty,
+            emptyRule = binding.vFavoritesEmptyRule,
+            emptyCta = binding.btnFavoritesEmptyCta,
+            visible = empty,
+            tintOnSurfaceVariant = false,
+            onCtaClick = { findNavController().navigate(R.id.search) },
+        )
+        binding.rvFavorites.isVisible = !empty
+        binding.btnFavoritesEdit.isVisible = !empty && !rearrangeMode
+        binding.btnFavoritesSort.isVisible = !empty && !rearrangeMode
+        if (empty && rearrangeMode) setRearrangeMode(false)
         appAdapter.submitList(gridItems)
     }
 
+    private fun showSortDialog() {
+        val modes = FavoritesViewModel.SortMode.entries
+        val labels = arrayOf(
+            getString(R.string.favorites_sort_manual),
+            getString(R.string.favorites_sort_recent),
+            getString(R.string.favorites_sort_title_ascending),
+            getString(R.string.favorites_sort_title_descending),
+        )
+        AlertDialog.Builder(requireContext())
+            .setTitle(R.string.favorites_sort_title)
+            .setSingleChoiceItems(labels, modes.indexOf(viewModel.currentSortMode())) { dialog, which ->
+                if (modes[which] != FavoritesViewModel.SortMode.MANUAL) setRearrangeMode(false)
+                viewModel.setSortMode(modes[which])
+                dialog.dismiss()
+            }
+            .setNegativeButton(R.string.option_cancel, null)
+            .create()
+            .also { dialog ->
+                dialog.setOnShowListener { ExpDialogChrome.polishShown(dialog) }
+                dialog.show()
+            }
+    }
+
     override fun onDestroyView() {
+        rearrangeBackCallback.isEnabled = false
         setRearrangeMode(false)
         appAdapter.onSaveInstanceState(binding.rvFavorites)
         _binding = null

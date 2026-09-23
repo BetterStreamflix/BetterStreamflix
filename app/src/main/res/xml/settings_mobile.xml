@@ -837,6 +837,13 @@
                 app:iconSpaceReserved="false" />
 
             <SwitchPreference
+                android:key="OLED_MODE"
+                android:title="@string/settings_oled_mode_title"
+                android:summary="@string/settings_oled_mode_summary"
+                android:defaultValue="false"
+                app:iconSpaceReserved="false" />
+
+            <SwitchPreference
                 android:key="IMMERSIVE_MODE"
                 android:title="@string/settings_immersive_mode"
                 android:summary="@string/settings_immersive_mode_summary"

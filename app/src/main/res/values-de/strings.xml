@@ -789,6 +789,8 @@
     <string name="percentage_format">%d%%</string>
     <string name="settings_category_appearance">Darstellung</string>
     <string name="settings_theme_title">App-Design</string>
+    <string name="settings_oled_mode_title">OLED-Modus</string>
+    <string name="settings_oled_mode_summary">Graue Flächen app-weit durch echtes Schwarz ersetzen</string>
     <string name="settings_category_library">Mediathek</string>
     <string name="settings_library_scope_title">Favoriten &amp; Weiterschauen</string>
     <string name="settings_library_scope_summary">Listen nur vom aktuellen Anbieter oder von allen Anbietern anzeigen</string>
