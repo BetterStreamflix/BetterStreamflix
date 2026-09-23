@@ -559,7 +559,7 @@ class PlayerMobileFragment : Fragment() {
                     is PlayerViewModel.State.FailedLoadingVideo -> {
                         when (
                             val action = PlaybackFailover.decide(
-                                currentServerIndex = servers.indexOf(state.server),
+                                currentServerIndex = PlaybackFailover.indexOfServer(servers, state.server),
                                 serverCount = servers.size,
                                 playbackAlreadyStarted = false,
                                 softwareDecoderAlreadyEnabled = currentSoftwareDecoder,
@@ -1819,7 +1819,7 @@ class PlayerMobileFragment : Fragment() {
 
                 when (
                     val action = PlaybackFailover.decide(
-                        currentServerIndex = servers.indexOf(currentServer),
+                        currentServerIndex = PlaybackFailover.indexOfServer(servers, currentServer),
                         serverCount = servers.size,
                         playbackAlreadyStarted = ::player.isInitialized && player.hasStarted(),
                         softwareDecoderAlreadyEnabled = currentSoftwareDecoder,

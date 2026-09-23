@@ -1,5 +1,7 @@
 package com.dskja.betterstreamflix.player
 
+import com.dskja.betterstreamflix.models.Video
+
 /**
  * Unified playback failover policy for mobile + TV.
  * Prefer the next hoster first; after servers are exhausted, retry once with software decoding.
@@ -15,6 +17,21 @@ object PlaybackFailover {
         data object RetrySoftwareDecoder : Action()
         data object TryExternalPlayer : Action()
         data object GiveUp : Action()
+    }
+
+    /**
+     * Resolve a server's position by stable [Video.Server.id] (then name/src), not instance
+     * identity — `List.indexOf` returns -1 when a reloaded Server object differs.
+     */
+    fun indexOfServer(servers: List<Video.Server>, server: Video.Server?): Int {
+        if (server == null || servers.isEmpty()) return -1
+        val byId = servers.indexOfFirst { it.id == server.id && it.id.isNotBlank() }
+        if (byId >= 0) return byId
+        val byNameSrc = servers.indexOfFirst {
+            it.name == server.name && it.src == server.src
+        }
+        if (byNameSrc >= 0) return byNameSrc
+        return servers.indexOf(server)
     }
 
     /** True when Exo hit a dead CDN/HTML page — skip lingering on this server. */
@@ -62,9 +79,11 @@ object PlaybackFailover {
                 else -> Action.GiveUp
             }
         }
-        // indexOf can return -1 when the server instance identity differs — treat as 0.
-        val safeIndex = currentServerIndex.coerceAtLeast(0)
-        val next = safeIndex + 1
+        // Unknown server (indexOf miss) — do not restart the chain from server[1] (H-PLAY-4).
+        if (currentServerIndex < 0) {
+            return Action.GiveUp
+        }
+        val next = currentServerIndex + 1
         if (next in 0 until serverCount) {
             return Action.TryNextServer(next)
         }

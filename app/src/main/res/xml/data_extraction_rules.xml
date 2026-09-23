@@ -3,11 +3,25 @@
     <cloud-backup>
         <!-- Downloads are large and re-fetchable; user state syncs via the in-app backup. -->
         <exclude domain="file" path="downloads/" />
-        <!-- Supabase session must never leave the device. -->
+        <!-- Secrets & auth must never leave the device via cloud backup (H-SEC-3). -->
         <exclude domain="sharedpref" path="supabase_connection.xml" />
+        <exclude domain="sharedpref" path="beta_profiles.xml" />
+        <exclude domain="sharedpref" path="cloud_account_state.xml" />
+        <exclude domain="sharedpref" path="cloud_sync_queue.xml" />
+        <exclude domain="sharedpref" path="trakt_oauth.xml" />
+        <exclude domain="sharedpref" path="download_headers.xml" />
+        <exclude domain="sharedpref" path="com.dskja.betterstreamflix.preferences.xml" />
+        <exclude domain="sharedpref" path="com.dskja.betterstreamflix.debug.preferences.xml" />
     </cloud-backup>
     <device-transfer>
         <exclude domain="file" path="downloads/" />
         <exclude domain="sharedpref" path="supabase_connection.xml" />
+        <exclude domain="sharedpref" path="beta_profiles.xml" />
+        <exclude domain="sharedpref" path="cloud_account_state.xml" />
+        <exclude domain="sharedpref" path="cloud_sync_queue.xml" />
+        <exclude domain="sharedpref" path="trakt_oauth.xml" />
+        <exclude domain="sharedpref" path="download_headers.xml" />
+        <exclude domain="sharedpref" path="com.dskja.betterstreamflix.preferences.xml" />
+        <exclude domain="sharedpref" path="com.dskja.betterstreamflix.debug.preferences.xml" />
     </device-transfer>
 </data-extraction-rules>

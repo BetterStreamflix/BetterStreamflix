@@ -1,5 +1,6 @@
 package com.dskja.betterstreamflix.player
 
+import com.dskja.betterstreamflix.models.Video
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -86,14 +87,21 @@ class PlaybackFailoverTest {
     }
 
     @Test
-    fun negativeIndexOfTreatedAsZeroThenAdvances() {
+    fun negativeIndexOfGivesUp() {
         val action = PlaybackFailover.decide(
             currentServerIndex = -1,
             serverCount = 3,
             playbackAlreadyStarted = false,
             softwareDecoderAlreadyEnabled = false,
         )
-        assertEquals(PlaybackFailover.Action.TryNextServer(1), action)
+        assertEquals(PlaybackFailover.Action.GiveUp, action)
+    }
+
+    @Test
+    fun indexOfServerMatchesByIdNotInstance() {
+        val listed = Video.Server(id = "a", name = "VOE", src = "https://x/1")
+        val otherInstance = Video.Server(id = "a", name = "VOE", src = "https://x/1")
+        assertEquals(0, PlaybackFailover.indexOfServer(listOf(listed), otherInstance))
     }
 
     @Test

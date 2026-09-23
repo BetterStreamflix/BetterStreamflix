@@ -100,11 +100,28 @@ object NetworkClient {
 
     private val loggingInterceptor by lazy {
         HttpLoggingInterceptor { message ->
-            Log.d(TAG, "[OkHttp] $message")
+            Log.d(TAG, "[OkHttp] ${redactSensitiveLogLine(message)}")
         }.apply {
             level = HttpLoggingInterceptor.Level.HEADERS
+            redactHeader("Authorization")
+            redactHeader("Cookie")
+            redactHeader("Set-Cookie")
+            redactHeader("Proxy-Authorization")
         }
     }
+
+    /** Best-effort scrub for lines the interceptor still emits as plain text. */
+    internal fun redactSensitiveLogLine(message: String): String {
+        var out = message
+        SENSITIVE_HEADER_REGEX.findAll(message).forEach { match ->
+            out = out.replace(match.value, "${match.groupValues[1]}: ❰redacted❱")
+        }
+        return out
+    }
+
+    private val SENSITIVE_HEADER_REGEX = Regex(
+        "(?i)(Authorization|Cookie|Set-Cookie|Proxy-Authorization)\\s*:\\s*.+",
+    )
 
     val default: OkHttpClient by lazy { buildClient(DnsResolver.doh) }
     val systemDns: OkHttpClient by lazy { buildClient(Dns.SYSTEM) }

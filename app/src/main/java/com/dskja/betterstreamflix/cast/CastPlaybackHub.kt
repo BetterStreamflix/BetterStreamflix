@@ -269,6 +269,7 @@ object CastPlaybackHub {
     }
 
     private fun stopProxy() {
+        runCatching { proxy?.clearDefaultHeaders() }
         runCatching { proxy?.stop() }
         proxy = null
     }
