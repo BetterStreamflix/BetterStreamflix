@@ -9,6 +9,7 @@ import com.dskja.betterstreamflix.models.Movie
 import com.dskja.betterstreamflix.models.TvShow
 import com.dskja.betterstreamflix.providers.IptvProvider
 import com.dskja.betterstreamflix.providers.Provider
+import com.dskja.betterstreamflix.providers.ProviderSmoke
 import com.dskja.betterstreamflix.utils.ParentalControlUtils
 import com.dskja.betterstreamflix.utils.UserPreferences
 import kotlinx.coroutines.CancellationException
@@ -17,6 +18,7 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.emitAll
 import kotlinx.coroutines.flow.flowOn
@@ -65,8 +67,14 @@ class SearchViewModel(
                         emit(emptyList())
                     } else {
                         val db = runCatching { liveDb() }.getOrNull()
-                        if (db == null) emit(emptyList())
-                        else emitAll(db.movieDao().getByIds(movies.map { it.id }))
+                        if (db == null || !db.isOpen) emit(emptyList())
+                        else emitAll(
+                            db.movieDao().getByIds(movies.map { it.id }).catch { e ->
+                                if (e is CancellationException) throw e
+                                Log.w("SearchViewModel", "moviesDb flow failed after provider switch", e)
+                                emit(emptyList())
+                            }
+                        )
                     }
                 }
                 else -> emit(emptyList<Movie>())
@@ -81,8 +89,14 @@ class SearchViewModel(
                         emit(emptyList())
                     } else {
                         val db = runCatching { liveDb() }.getOrNull()
-                        if (db == null) emit(emptyList())
-                        else emitAll(db.tvShowDao().getByIds(tvShows.map { it.id }))
+                        if (db == null || !db.isOpen) emit(emptyList())
+                        else emitAll(
+                            db.tvShowDao().getByIds(tvShows.map { it.id }).catch { e ->
+                                if (e is CancellationException) throw e
+                                Log.w("SearchViewModel", "tvShowsDb flow failed after provider switch", e)
+                                emit(emptyList())
+                            }
+                        )
                     }
                 }
                 else -> emit(emptyList<TvShow>())
@@ -146,7 +160,14 @@ class SearchViewModel(
                         _state.emit(State.FailedSearching(Exception("No provider selected")))
                         return@launch
                     }
-                val results = ParentalControlUtils.filterItems(provider.search(query))
+                val results = ParentalControlUtils.filterItems(
+                    ProviderSmoke.withProviderTimeout(
+                        timeoutMs = ProviderSmoke.SEARCH_TIMEOUT_MS,
+                        label = "search(${provider.name})",
+                    ) {
+                        provider.search(query)
+                    }
+                )
                 val addonHits = runCatching {
                     com.dskja.betterstreamflix.platform.plugins.PluginManager
                         .collectSearchResults(provider, query, page = 1)
@@ -179,7 +200,12 @@ class SearchViewModel(
                             return@launch
                         }
                     val results = ParentalControlUtils.filterItems(
-                        provider.search(requestedQuery, page + 1)
+                        ProviderSmoke.withProviderTimeout(
+                            timeoutMs = ProviderSmoke.SEARCH_TIMEOUT_MS,
+                            label = "search(${provider.name}, page=${page + 1})",
+                        ) {
+                            provider.search(requestedQuery, page + 1)
+                        }
                     )
                     // Drop if the user started a newer search while we were loading.
                     if (query != requestedQuery) return@launch
@@ -242,7 +268,13 @@ class SearchViewModel(
             targetProviders.forEachIndexed { index, provider ->
                 launch {
                     val next = try {
-                        val results = ParentalControlUtils.filterItems(provider.search(query).onEach { item ->
+                        val results = ParentalControlUtils.filterItems(
+                            ProviderSmoke.withProviderTimeout(
+                                timeoutMs = ProviderSmoke.SEARCH_TIMEOUT_MS,
+                                label = "searchGlobal(${provider.name})",
+                            ) {
+                                provider.search(query)
+                            }.onEach { item ->
                             // ========= ¡AQUÍ ESTÁ LA MAGIA! =========
                             // Le ponemos el sello a cada resultado
                             when (item) {

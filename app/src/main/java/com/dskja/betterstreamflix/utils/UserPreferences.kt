@@ -90,19 +90,18 @@ object UserPreferences {
         get() {
             val providerName = Key.CURRENT_PROVIDER.getString()
             if (providerName?.startsWith("TMDb (") == true && providerName.endsWith(")")) {
-                val lang = ProviderAudioLanguage.normalizeTmdbLanguage(
-                    providerName.substringAfter("TMDb (").substringBefore(")")
-                )
-                return TmdbProvider(lang)
+                val lang = providerName.substringAfter("TMDb (").substringBefore(")")
+                return TmdbProvider.forLanguage(lang)
             }
             return Provider.providers.keys.find { it.name == providerName }
                 ?: providerName?.let { Provider.findByName(it) }
         }
         set(value) {
-            // Explicit Providers UI / global switch: full DB reset + notify storm.
-            AppDatabase.resetInstance()
-
+            // Flip the preferred name first so any concurrent getInstance() rebuilds
+            // the *new* provider DB, then close the old singleton. Notifying last
+            // lets ViewModels cancel in-flight Room collectors against a closed DB.
             Key.CURRENT_PROVIDER.setString(value?.name)
+            AppDatabase.resetInstance()
             // Provider language drives TMDb logo ranking — drop details so logos refetch.
             runCatching { TmdbCache.clear() }
             runCatching {

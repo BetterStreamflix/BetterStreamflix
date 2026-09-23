@@ -17,6 +17,28 @@ object ProviderSmoke {
     private const val TAG = "ProviderSmoke"
     const val HOME_TIMEOUT_MS = 25_000L
     const val SERVERS_TIMEOUT_MS = 20_000L
+    /** Catalog tabs (movies / TV shows / genre / people pages). */
+    const val CATALOG_TIMEOUT_MS = 25_000L
+    /** Search + global search per-provider. */
+    const val SEARCH_TIMEOUT_MS = 20_000L
+    /** Detail / season episode list fetches. */
+    const val DETAIL_TIMEOUT_MS = 25_000L
+    /**
+     * Continue-watching network enrich must not gate Home UI. Cap it so a hung
+     * getTvShow() cannot leave the home spinner up forever.
+     */
+    const val CW_ENRICH_TIMEOUT_MS = 4_000L
+    /**
+     * TMDb home fires many parallel API shelves — keep the outer Home timeout
+     * shorter so a hung api.themoviedb.org cannot strand the spinner near 25s+.
+     */
+    const val TMDB_HOME_TIMEOUT_MS = 18_000L
+    /** Per-shelf soft timeout inside [com.dskja.betterstreamflix.providers.TmdbProvider]. */
+    const val TMDB_SHELF_TIMEOUT_MS = 10_000L
+    /** Detail-page TMDb metadata enrich (outside provider getMovie/getTvShow). */
+    const val TMDB_ENRICH_TIMEOUT_MS = 10_000L
+    /** Title-logo resolve (Featured / Detail). */
+    const val TMDB_LOGO_TIMEOUT_MS = 8_000L
 
     /** Open the circuit after this many failures inside [CIRCUIT_WINDOW_MS]. */
     const val CIRCUIT_FAILURE_THRESHOLD = 3
@@ -116,7 +138,9 @@ object ProviderSmoke {
             withTimeout(timeoutMs) { block() }
         } catch (e: TimeoutCancellationException) {
             runCatching { Log.e(TAG, "$label timed out after ${timeoutMs}ms") }
-            throw e
+            // Wrap so ViewModel `catch (e: Exception)` paths surface FailedLoading
+            // instead of treating the timeout as job cancellation.
+            throw java.util.concurrent.TimeoutException("$label timed out after ${timeoutMs}ms").initCause(e)
         }
     }
 }

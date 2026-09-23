@@ -17,6 +17,10 @@ import java.net.InetAddress
 
 object DnsResolver : Dns {
     private const val TAG = "DnsResolver"
+    private const val LOOKUP_TIMEOUT_MS = 8_000L
+    private val lookupExecutor = java.util.concurrent.Executors.newCachedThreadPool { r ->
+        Thread(r, "dns-lookup").apply { isDaemon = true }
+    }
     private val logging = HttpLoggingInterceptor().setLevel(HttpLoggingInterceptor.Level.BASIC)
 
     private val trustAllCerts = arrayOf<TrustManager>(
@@ -45,6 +49,23 @@ object DnsResolver : Dns {
     override fun lookup(hostname: String): List<InetAddress> {
         val providerName = if (_url.isEmpty()) "SYSTEM" else _url
         Log.d(TAG, "Resolving host: $hostname using provider: $providerName")
+        val future = lookupExecutor.submit<List<InetAddress>> {
+            lookupUncapped(hostname, providerName)
+        }
+        return try {
+            future.get(LOOKUP_TIMEOUT_MS, TimeUnit.MILLISECONDS)
+        } catch (e: java.util.concurrent.TimeoutException) {
+            future.cancel(true)
+            Log.e(TAG, "DNS lookup timed out for $hostname after ${LOOKUP_TIMEOUT_MS}ms")
+            throw java.net.UnknownHostException("DNS lookup timed out for $hostname")
+        } catch (e: java.util.concurrent.ExecutionException) {
+            val cause = e.cause
+            if (cause is Exception) throw cause
+            throw e
+        }
+    }
+
+    private fun lookupUncapped(hostname: String, providerName: String): List<InetAddress> {
         return try {
             val addresses = preferIpv4(_internalDoh.lookup(hostname))
             Log.d(TAG, "Resolved $hostname to: ${addresses.joinToString { it.hostAddress ?: "" }}")

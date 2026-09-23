@@ -75,8 +75,11 @@ object SentryBootstrap {
                             val type = ex.type.orEmpty()
                             val value = ex.value.orEmpty()
                             type.contains("CancellationException", ignoreCase = true) ||
+                                type.contains("TimeoutException", ignoreCase = true) ||
                                 value.contains("Job was cancelled", ignoreCase = true) ||
-                                value.contains("StandaloneCoroutine was cancelled", ignoreCase = true)
+                                value.contains("StandaloneCoroutine was cancelled", ignoreCase = true) ||
+                                value.contains("timed out after", ignoreCase = true) ||
+                                value.contains("Timed out waiting for", ignoreCase = true)
                         }
                     ) {
                         return@BeforeSendCallback null

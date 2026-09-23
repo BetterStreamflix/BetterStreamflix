@@ -4,7 +4,13 @@ import android.content.Context
 import androidx.core.content.edit
 import com.dskja.betterstreamflix.R
 import com.google.gson.Gson
+import org.json.JSONArray
+import org.json.JSONObject
 
+/**
+ * Local profile persistence. Avoid Gson [com.google.gson.reflect.TypeToken] for
+ * open generics — under R8 that crashed cold start (BETTERSTREAMFLIX-1B).
+ */
 object ProfileStore {
 
     const val DEFAULT_PROFILE_ID = "default"
@@ -21,10 +27,13 @@ object ProfileStore {
 
     fun loadAll(context: Context): List<UserProfile> {
         val raw = prefs(context).getString(KEY_PROFILES, null) ?: return emptyList()
-        // Array deserialization stays R8/ProGuard-safe (no open TypeToken generics).
-        return runCatching {
+        // Prefer Array<> class literal (R8-safe). Fall back to hand-rolled JSON
+        // if Gson ever fails on a corrupted or legacy payload.
+        val fromGson = runCatching {
             gson.fromJson(raw, Array<UserProfile>::class.java)?.toList().orEmpty()
-        }.getOrDefault(emptyList())
+        }.getOrNull()
+        if (fromGson != null) return fromGson
+        return runCatching { parseProfilesJson(raw) }.getOrDefault(emptyList())
     }
 
     fun saveAll(context: Context, profiles: List<UserProfile>) {
@@ -71,5 +80,55 @@ object ProfileStore {
             setActiveId(appContext, DEFAULT_PROFILE_ID)
         }
         return defaultProfile
+    }
+
+    /** Minimal JSONArray parser — no TypeToken, no reflection generics. */
+    internal fun parseProfilesJson(raw: String): List<UserProfile> {
+        val array = when {
+            raw.trimStart().startsWith("[") -> JSONArray(raw)
+            else -> JSONArray().put(JSONObject(raw))
+        }
+        val out = ArrayList<UserProfile>(array.length())
+        for (i in 0 until array.length()) {
+            val obj = array.optJSONObject(i) ?: continue
+            val id = obj.optString("id")
+            if (id.isBlank()) continue
+            val displayName = obj.optString("displayName").ifBlank { id }
+            val avatarKey = obj.optString("avatarKey").ifBlank { DEFAULT_AVATAR_KEY }
+            val created = obj.optLong("createdAtMillis", System.currentTimeMillis())
+            val updated = obj.optLong("updatedAtMillis", created)
+            val integrations = linkedSetOf<String>()
+            val integ = obj.optJSONArray("enabledIntegrations")
+            if (integ != null) {
+                for (j in 0 until integ.length()) {
+                    val value = integ.optString(j)
+                    if (value.isNotBlank()) integrations.add(value)
+                }
+            }
+            out.add(
+                UserProfile(
+                    id = id,
+                    displayName = displayName,
+                    avatarKey = avatarKey,
+                    accentColorArgb = if (obj.has("accentColorArgb") && !obj.isNull("accentColorArgb")) {
+                        obj.optInt("accentColorArgb")
+                    } else {
+                        null
+                    },
+                    isKids = obj.optBoolean("isKids", false),
+                    maxAgeRating = if (obj.has("maxAgeRating") && !obj.isNull("maxAgeRating")) {
+                        obj.optInt("maxAgeRating")
+                    } else {
+                        null
+                    },
+                    pinHash = obj.optString("pinHash").takeIf { it.isNotBlank() },
+                    createdAtMillis = created,
+                    updatedAtMillis = updated,
+                    enabledIntegrations = integrations,
+                    notes = obj.optString("notes").takeIf { it.isNotBlank() },
+                ),
+            )
+        }
+        return out
     }
 }

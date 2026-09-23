@@ -202,6 +202,9 @@ class TvShow(
         logoLanguage = this@TvShow.logoLanguage
         logoSource = this@TvShow.logoSource
         isWatching = this@TvShow.isWatching
+        if (this@TvShow::itemType.isInitialized) {
+            itemType = this@TvShow.itemType
+        }
         favoritedAtMillis = this@TvShow.favoritedAtMillis
     }
 

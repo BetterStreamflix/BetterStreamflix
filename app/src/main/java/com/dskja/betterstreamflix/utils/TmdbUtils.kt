@@ -19,7 +19,10 @@ import java.util.concurrent.ConcurrentHashMap
 import kotlin.math.max
 import kotlin.coroutines.cancellation.CancellationException
 import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.withTimeout
+import kotlinx.coroutines.withTimeoutOrNull
 
 object TmdbUtils {
     private const val MIN_ACCEPTABLE_SCORE = 60
@@ -91,8 +94,13 @@ object TmdbUtils {
         if (winner !== deferred) return winner.await()
 
         try {
-            val logos = fetchLogosWithRetry {
-                TmdbLogoFetch.fetchMovieLogos(tmdbId, includeLanguageList(language))
+            val logos = withTimeoutOrNull(LogoConstants.RESOLVE_TIMEOUT_MS) {
+                fetchLogosWithRetry {
+                    TmdbLogoFetch.fetchMovieLogos(tmdbId, includeLanguageList(language))
+                }
+            } ?: run {
+                deferred.complete(null)
+                return null
             }
             val resolved = TmdbLogoFetch.pickUrl(logos, language)?.takeIf { it.isNotBlank() }
             if (resolved != null) {
@@ -134,8 +142,13 @@ object TmdbUtils {
         if (winner !== deferred) return winner.await()
 
         try {
-            val logos = fetchLogosWithRetry {
-                TmdbLogoFetch.fetchTvLogos(tmdbId, includeLanguageList(language))
+            val logos = withTimeoutOrNull(LogoConstants.RESOLVE_TIMEOUT_MS) {
+                fetchLogosWithRetry {
+                    TmdbLogoFetch.fetchTvLogos(tmdbId, includeLanguageList(language))
+                }
+            } ?: run {
+                deferred.complete(null)
+                return null
             }
             val resolved = TmdbLogoFetch.pickUrl(logos, language)?.takeIf { it.isNotBlank() }
             if (resolved != null) {
@@ -190,6 +203,34 @@ object TmdbUtils {
     ): String? {
         if (!UserPreferences.enableTmdb) return null
         if (!UserPreferences.enableTmdbLogos) return null
+        return try {
+            withTimeout(LogoConstants.RESOLVE_TIMEOUT_MS) {
+                resolveTitleLogoUncapped(
+                    title = title,
+                    year = year,
+                    isTv = isTv,
+                    tmdbId = tmdbId,
+                    imdbId = imdbId,
+                    language = language,
+                )
+            }
+        } catch (e: TimeoutCancellationException) {
+            null
+        } catch (e: CancellationException) {
+            throw e
+        } catch (_: Exception) {
+            null
+        }
+    }
+
+    private suspend fun resolveTitleLogoUncapped(
+        title: String,
+        year: Int? = null,
+        isTv: Boolean = false,
+        tmdbId: String? = null,
+        imdbId: String? = null,
+        language: String? = null,
+    ): String? {
         val lang = language ?: UserPreferences.currentProvider?.language
         val effectiveYear = year ?: extractYear(title)
         val normalizedQuery = titleNormalizer(title)

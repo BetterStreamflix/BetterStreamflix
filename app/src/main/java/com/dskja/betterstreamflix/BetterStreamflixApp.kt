@@ -5,6 +5,7 @@ import android.app.Application
 import android.content.Context
 import android.content.pm.PackageManager
 import android.os.Bundle
+import android.util.Log
 import java.security.Security
 import org.conscrypt.Conscrypt
 import com.dskja.betterstreamflix.database.AppDatabase
@@ -97,7 +98,10 @@ class BetterStreamflixApp : Application() {
             com.dskja.betterstreamflix.logo.TmdbLogoCache.init(this)
             UserPreferences.applyTmdbLogoTtls()
         }
-        ProfileManager.init(this)
+        // Profiles must never kill cold start (BETTERSTREAMFLIX-1B was a Gson/R8
+        // TypeToken crash inside ProfileStore during init on older builds).
+        runCatching { ProfileManager.init(this) }
+            .onFailure { Log.e("BetterStreamflixApp", "ProfileManager.init failed", it) }
         ExperimentalMobileDesign.enforceAvailabilityGate()
         CrashReporter.install(this)
         runCatching {

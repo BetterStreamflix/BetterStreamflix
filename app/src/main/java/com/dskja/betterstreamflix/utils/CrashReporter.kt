@@ -53,7 +53,8 @@ object CrashReporter {
         // Expected stream/CDN/hoster noise stays local — do not flood Sentry.
         if (com.dskja.betterstreamflix.extractors.ExtractorFailureClassifier.isExpectedStreamNoise(error) ||
             message.contains("No source found", ignoreCase = true) ||
-            message.contains("getVideo failed", ignoreCase = true)
+            message.contains("getVideo failed", ignoreCase = true) ||
+            isExpectedProviderTimeout(error, message)
         ) {
             return
         }
@@ -122,6 +123,22 @@ object CrashReporter {
     }
 
     private fun crashDir(context: Context): File = File(context.filesDir, DIR)
+
+    private fun isExpectedProviderTimeout(error: Throwable?, message: String): Boolean {
+        if (message.contains("timed out after", ignoreCase = true)) return true
+        var cur: Throwable? = error
+        var depth = 0
+        while (cur != null && depth < 6) {
+            val name = cur::class.java.name
+            val msg = cur.message.orEmpty()
+            if (cur is java.util.concurrent.TimeoutException) return true
+            if (name.contains("TimeoutCancellationException")) return true
+            if (msg.contains("timed out after", ignoreCase = true)) return true
+            cur = cur.cause
+            depth++
+        }
+        return false
+    }
 
     private fun trimOld(dir: File) {
         val files = dir.listFiles()?.filter { it.isFile }?.sortedByDescending { it.lastModified() }

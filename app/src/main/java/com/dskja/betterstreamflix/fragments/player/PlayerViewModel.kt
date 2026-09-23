@@ -16,12 +16,15 @@ import com.dskja.betterstreamflix.utils.SubDL
 import com.dskja.betterstreamflix.utils.SubtitleFileCache
 import com.dskja.betterstreamflix.utils.UserPreferences
 import com.dskja.betterstreamflix.utils.format
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.isActive
 
 class PlayerViewModel(
     private val videoType: Video.Type,
@@ -37,6 +40,12 @@ class PlayerViewModel(
 
     private val _playPreviousOrNextEpisode = MutableSharedFlow<Video.Type.Episode>()
     val playPreviousOrNextEpisode: SharedFlow<Video.Type.Episode> = _playPreviousOrNextEpisode
+
+    private var serversJob: Job? = null
+    private var videoJob: Job? = null
+    private var serversGeneration: Int = 0
+    private var videoGeneration: Int = 0
+
     init {
         getServers(videoType, id)
         getSubtitles(videoType)
@@ -108,99 +117,132 @@ class PlayerViewModel(
         getSubtitles(episode)
     }
 
-    private fun getServers(videoType: Video.Type, id: String) = viewModelScope.launch(Dispatchers.IO) {
-        Log.d("PlayerViewModel", "Inizio ricerca server per ID: $id")
-        lastVideoType = videoType
-        lastId = id
-        _state.emit(State.LoadingServers)
-        try {
-            // Only prefer offline when the caller explicitly requested offline play.
-            // A completed download must not block Online Play from fetching streaming servers.
-            val preferOffline = preferredServerName.equals(OFFLINE_SERVER_NAME, ignoreCase = true)
-            val offline = if (preferOffline) resolveOffline(videoType) else null
-            if (preferOffline) {
-                if (offline == null) {
-                    val message = BetterStreamflixApp.instance
-                        .getString(com.dskja.betterstreamflix.R.string.player_offline_missing)
-                    _state.emit(State.FailedLoadingServers(Exception(message)))
+    private fun getServers(videoType: Video.Type, id: String) {
+        // Cancel overlapping server / extract jobs so failover / next-episode / bypass
+        // reload cannot complete out of order and overwrite _state (H-PLAY-2).
+        serversJob?.cancel()
+        videoJob?.cancel()
+        val generation = ++serversGeneration
+        serversJob = viewModelScope.launch(Dispatchers.IO) {
+            Log.d("PlayerViewModel", "Inizio ricerca server per ID: $id")
+            lastVideoType = videoType
+            lastId = id
+            _state.emit(State.LoadingServers)
+            try {
+                // Only prefer offline when the caller explicitly requested offline play.
+                // A completed download must not block Online Play from fetching streaming servers.
+                val preferOffline = preferredServerName.equals(OFFLINE_SERVER_NAME, ignoreCase = true)
+                val offline = if (preferOffline) resolveOffline(videoType) else null
+                if (preferOffline) {
+                    if (offline == null) {
+                        val message = BetterStreamflixApp.instance
+                            .getString(com.dskja.betterstreamflix.R.string.player_offline_missing)
+                        if (generation == serversGeneration && isActive) {
+                            _state.emit(State.FailedLoadingServers(Exception(message)))
+                        }
+                        return@launch
+                    }
+                    val server = Video.Server(
+                        id = OFFLINE_SERVER_ID,
+                        name = OFFLINE_SERVER_NAME,
+                    ).also { it.video = offline }
+                    if (generation == serversGeneration && isActive) {
+                        _state.emit(State.SuccessLoadingServers(listOf(server)))
+                    }
                     return@launch
                 }
-                val server = Video.Server(
-                    id = OFFLINE_SERVER_ID,
-                    name = OFFLINE_SERVER_NAME,
-                ).also { it.video = offline }
-                _state.emit(State.SuccessLoadingServers(listOf(server)))
-                return@launch
+
+                val provider = UserPreferences.currentProvider
+                    ?: throw Exception("No provider selected")
+                val servers = ProviderSmoke.withProviderTimeout(
+                    timeoutMs = ProviderSmoke.SERVERS_TIMEOUT_MS,
+                    label = "getServers(${provider.name})",
+                ) {
+                    provider.getServers(id, videoType)
+                }
+                if (servers.isEmpty()) throw Exception("No servers found")
+
+                Log.i("BetterStreamflix", "[SERVERS LIST] -> Provider: ${provider.name}")
+                Log.i("BetterStreamflix", "[SERVERS LIST] -> Found ${servers.size} servers: ${servers.joinToString { it.name }}")
+
+                Log.d("PlayerViewModel", "Ricerca server completata: ${servers.size} server trovati")
+                if (generation == serversGeneration && isActive) {
+                    _state.emit(State.SuccessLoadingServers(servers))
+                }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                Log.e("PlayerViewModel", "Errore ricerca server: ", e)
+                if (generation == serversGeneration && isActive) {
+                    _state.emit(State.FailedLoadingServers(e))
+                }
             }
-
-            val provider = UserPreferences.currentProvider
-                ?: throw Exception("No provider selected")
-            val servers = provider.getServers(id, videoType)
-            if (servers.isEmpty()) throw Exception("No servers found")
-            
-            // LOG POTENZIATO: Mostra tutti i server disponibili per il player
-            Log.i("BetterStreamflix", "[SERVERS LIST] -> Provider: ${provider.name}")
-            Log.i("BetterStreamflix", "[SERVERS LIST] -> Found ${servers.size} servers: ${servers.joinToString { it.name }}")
-
-            Log.d("PlayerViewModel", "Ricerca server completata: ${servers.size} server trovati")
-            _state.emit(State.SuccessLoadingServers(servers))
-        } catch (e: Exception) {
-            Log.e("PlayerViewModel", "Errore ricerca server: ", e)
-            _state.emit(State.FailedLoadingServers(e))
         }
     }
 
-    fun getVideo(server: Video.Server) = viewModelScope.launch(Dispatchers.IO) {
-        Log.d("PlayerViewModel", "Inizio estrazione video dal server: ${server.name}")
-        _state.emit(State.LoadingVideo(server))
-        try {
-            if (server.id.equals(OFFLINE_SERVER_ID, ignoreCase = true) ||
-                server.name.equals(OFFLINE_SERVER_NAME, ignoreCase = true)
-            ) {
-                val cached = server.video
-                    ?: lastVideoType?.let { resolveOffline(it) }
-                    ?: throw Exception(
-                        BetterStreamflixApp.instance
-                            .getString(com.dskja.betterstreamflix.R.string.player_offline_missing),
-                    )
-                _state.emit(State.SuccessLoadingVideo(cached, server))
-                return@launch
-            }
-            val provider = UserPreferences.currentProvider
-                ?: throw Exception("No provider selected")
-            val video = ProviderSmoke.withProviderTimeout(
-                timeoutMs = ProviderSmoke.SERVERS_TIMEOUT_MS,
-                label = "getVideo(${server.name})",
-            ) {
-                provider.getVideo(server)
-            }
-            if (video.source.isBlank()) throw Exception("No source found")
+    fun getVideo(server: Video.Server) {
+        videoJob?.cancel()
+        val generation = ++videoGeneration
+        videoJob = viewModelScope.launch(Dispatchers.IO) {
+            Log.d("PlayerViewModel", "Inizio estrazione video dal server: ${server.name}")
+            _state.emit(State.LoadingVideo(server))
+            try {
+                if (server.id.equals(OFFLINE_SERVER_ID, ignoreCase = true) ||
+                    server.name.equals(OFFLINE_SERVER_NAME, ignoreCase = true)
+                ) {
+                    val cached = server.video
+                        ?: lastVideoType?.let { resolveOffline(it) }
+                        ?: throw Exception(
+                            BetterStreamflixApp.instance
+                                .getString(com.dskja.betterstreamflix.R.string.player_offline_missing),
+                        )
+                    if (generation == videoGeneration && isActive) {
+                        _state.emit(State.SuccessLoadingVideo(cached, server))
+                    }
+                    return@launch
+                }
+                val provider = UserPreferences.currentProvider
+                    ?: throw Exception("No provider selected")
+                val video = ProviderSmoke.withProviderTimeout(
+                    timeoutMs = ProviderSmoke.SERVERS_TIMEOUT_MS,
+                    label = "getVideo(${server.name})",
+                ) {
+                    provider.getVideo(server)
+                }
+                if (video.source.isBlank()) throw Exception("No source found")
 
-            // LOGICA SOTTOTITOLI GLOBALE: 
-            // Se il provider non ha già impostato un default (es. i "forced" in spagnolo),
-            // allora proviamo ad attivare l'ultimo sottotitolo usato dall'utente.
-            // MA: se siamo su un provider spagnolo e non ci sono forced, non dobbiamo attivare nulla.
-            val currentProviderLang = provider.language
-            val hasDefaultAlready = video.subtitles.any { it.default }
+                // LOGICA SOTTOTITOLI GLOBALE:
+                // Se il provider non ha già impostato un default (es. i "forced" in spagnolo),
+                // allora proviamo ad attivare l'ultimo sottotitolo usato dall'utente.
+                // MA: se siamo su un provider spagnolo e non ci sono forced, non dobbiamo attivare nulla.
+                val currentProviderLang = provider.language
+                val hasDefaultAlready = video.subtitles.any { it.default }
 
-            if (!hasDefaultAlready && currentProviderLang != "es") {
-                if (!(video.useServerSubtitleSetting && UserPreferences.serverAutoSubtitlesDisabled)) {
-                    video.subtitles
-                        .firstOrNull { it.label.startsWith(UserPreferences.subtitleName ?: "") }
-                        ?.default = true
-		}
-            }
+                if (!hasDefaultAlready && currentProviderLang != "es") {
+                    if (!(video.useServerSubtitleSetting && UserPreferences.serverAutoSubtitlesDisabled)) {
+                        video.subtitles
+                            .firstOrNull { it.label.startsWith(UserPreferences.subtitleName ?: "") }
+                            ?.default = true
+                    }
+                }
 
-            Log.d("PlayerViewModel", "Estrazione video completata con successo")
-            _state.emit(State.SuccessLoadingVideo(video, server))
-        } catch (e: Exception) {
-            Log.e("PlayerViewModel", "Errore estrazione video: ", e)
-            // Permanent hoster misses (404 / unpack / deleted) are expected failover noise —
-            // keep local logs but do not flood Sentry (BETTERSTREAMFLIX-10 / -12).
-            if (!com.dskja.betterstreamflix.extractors.ExtractorFailureClassifier.isPermanent(e)) {
-                CrashReporter.logNonFatal("PlayerViewModel", "getVideo failed: ${server.name}", e)
+                Log.d("PlayerViewModel", "Estrazione video completata con successo")
+                if (generation == videoGeneration && isActive) {
+                    _state.emit(State.SuccessLoadingVideo(video, server))
+                }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                Log.e("PlayerViewModel", "Errore estrazione video: ", e)
+                // Permanent hoster misses (404 / unpack / deleted) are expected failover noise —
+                // keep local logs but do not flood Sentry (BETTERSTREAMFLIX-10 / -12).
+                if (!com.dskja.betterstreamflix.extractors.ExtractorFailureClassifier.isPermanent(e)) {
+                    CrashReporter.logNonFatal("PlayerViewModel", "getVideo failed: ${server.name}", e)
+                }
+                if (generation == videoGeneration && isActive) {
+                    _state.emit(State.FailedLoadingVideo(e, server))
+                }
             }
-            _state.emit(State.FailedLoadingVideo(e, server))
         }
     }
 

@@ -8,14 +8,17 @@ import com.dskja.betterstreamflix.models.Genre
 import com.dskja.betterstreamflix.models.Movie
 import com.dskja.betterstreamflix.models.TvShow
 import com.dskja.betterstreamflix.providers.Provider
+import com.dskja.betterstreamflix.providers.ProviderSmoke
 import com.dskja.betterstreamflix.providers.TmdbProvider
 import com.dskja.betterstreamflix.utils.ParentalControlUtils
 import com.dskja.betterstreamflix.utils.UserPreferences
 import com.dskja.betterstreamflix.utils.ProviderChangeNotifier
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.emitAll
 import kotlinx.coroutines.flow.flowOn
@@ -24,7 +27,7 @@ import kotlinx.coroutines.launch
 
 class GenreViewModel(
     private val id: String,
-    database: AppDatabase,
+    private val database: AppDatabase,
     private val name: String? = null,
 ) : ViewModel() {
 
@@ -48,8 +51,16 @@ class GenreViewModel(
                         .filterIsInstance<Movie>()
                     if (movies.isEmpty()) {
                         emit(emptyList())
+                    } else if (!database.isOpen) {
+                        emit(emptyList())
                     } else {
-                        emitAll(database.movieDao().getByIds(movies.map { it.id }))
+                        emitAll(
+                            database.movieDao().getByIds(movies.map { it.id }).catch { e ->
+                                if (e is CancellationException) throw e
+                                Log.w("GenreViewModel", "moviesDb flow failed after provider switch", e)
+                                emit(emptyList())
+                            }
+                        )
                     }
                 }
                 else -> emit(emptyList<Movie>())
@@ -62,8 +73,16 @@ class GenreViewModel(
                         .filterIsInstance<TvShow>()
                     if (tvShows.isEmpty()) {
                         emit(emptyList())
+                    } else if (!database.isOpen) {
+                        emit(emptyList())
                     } else {
-                        emitAll(database.tvShowDao().getByIds(tvShows.map { it.id }))
+                        emitAll(
+                            database.tvShowDao().getByIds(tvShows.map { it.id }).catch { e ->
+                                if (e is CancellationException) throw e
+                                Log.w("GenreViewModel", "tvShowsDb flow failed after provider switch", e)
+                                emit(emptyList())
+                            }
+                        )
                     }
                 }
                 else -> emit(emptyList<TvShow>())
@@ -117,7 +136,12 @@ class GenreViewModel(
             val provider = UserPreferences.currentProvider
                 ?: throw Exception("No provider selected")
 
-            var genre = provider.getGenre(id).let {
+            var genre = ProviderSmoke.withProviderTimeout(
+                timeoutMs = ProviderSmoke.CATALOG_TIMEOUT_MS,
+                label = "getGenre(${provider.name})",
+            ) {
+                provider.getGenre(id)
+            }.let {
                 it.copy(shows = ParentalControlUtils.filterShows(it.shows))
             }
 
@@ -146,7 +170,12 @@ class GenreViewModel(
     /** Fallback lookup; a failing alternative must not replace the primary result. */
     private suspend fun tryFetchGenre(provider: Provider, genreId: String): Genre? =
         runCatching {
-            provider.getGenre(genreId).let {
+            ProviderSmoke.withProviderTimeout(
+                timeoutMs = ProviderSmoke.CATALOG_TIMEOUT_MS,
+                label = "getGenre(${provider.name}, fallback)",
+            ) {
+                provider.getGenre(genreId)
+            }.let {
                 it.copy(shows = ParentalControlUtils.filterShows(it.shows))
             }
         }.getOrNull()?.takeIf { it.shows.isNotEmpty() }
@@ -159,7 +188,12 @@ class GenreViewModel(
             try {
                 val provider = UserPreferences.currentProvider
                     ?: throw Exception("No provider selected")
-                val genre = provider.getGenre(id, page + 1).let {
+                val genre = ProviderSmoke.withProviderTimeout(
+                    timeoutMs = ProviderSmoke.CATALOG_TIMEOUT_MS,
+                    label = "getGenre(${provider.name}, page=${page + 1})",
+                ) {
+                    provider.getGenre(id, page + 1)
+                }.let {
                     it.copy(shows = ParentalControlUtils.filterShows(it.shows))
                 }
 

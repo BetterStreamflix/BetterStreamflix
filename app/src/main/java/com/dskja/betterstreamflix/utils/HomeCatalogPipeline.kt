@@ -190,11 +190,27 @@ object HomeCatalogPipeline {
     fun cloneShowItems(items: List<AppAdapter.Item>): List<AppAdapter.Item> =
         items.map { item ->
             when (item) {
+                // Movie/TvShow.copy() preserves itemType when initialized — required for
+                // Featured infinite-loop head/tail clones (BETTERSTREAMFLIX-1P).
                 is Movie -> item.copy()
                 is TvShow -> item.copy()
                 else -> item
             }
         }
+
+    /** Ensure Featured swiper pages always have a bindable itemType. */
+    fun stampFeaturedSwiperTypes(
+        items: List<AppAdapter.Item>,
+        movieType: AppAdapter.Type,
+        tvShowType: AppAdapter.Type,
+    ) {
+        items.forEach { show ->
+            when (show) {
+                is Movie -> show.itemType = movieType
+                is TvShow -> show.itemType = tvShowType
+            }
+        }
+    }
 
     /**
      * Home bind helper: restore FEATURED if filters dropped it, then clone

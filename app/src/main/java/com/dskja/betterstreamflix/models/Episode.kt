@@ -74,7 +74,11 @@ class Episode(
         overview,
         tvShow,
         season,
-    )
+    ).also { copy ->
+        if (::itemType.isInitialized) {
+            copy.itemType = itemType
+        }
+    }
 
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
