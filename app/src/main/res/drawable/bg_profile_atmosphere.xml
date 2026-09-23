@@ -5,7 +5,7 @@
             <solid android:color="@color/profile_bg" />
         </shape>
     </item>
-    <!-- Soft cyan wash from top -->
+    <!-- Soft crimson wash from top -->
     <item
         android:gravity="top|fill_horizontal"
         android:height="280dp">
@@ -22,9 +22,9 @@
         <shape android:shape="rectangle">
             <gradient
                 android:angle="145"
-                android:centerColor="#0A1220"
+                android:centerColor="#120808"
                 android:endColor="@color/profile_bg"
-                android:startColor="#0F2A3F"
+                android:startColor="#2A0A0C"
                 android:type="linear" />
         </shape>
     </item>
@@ -36,7 +36,7 @@
             <gradient
                 android:angle="90"
                 android:endColor="#00000000"
-                android:startColor="#CC070709"
+                android:startColor="#CC0A0A0A"
                 android:type="linear" />
         </shape>
     </item>

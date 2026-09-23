@@ -1130,8 +1130,8 @@
 
     <!-- Telegram Join Gate (mobile soft gate) -->
     <string name="tg_gate_brand">BetterStreamflix</string>
-    <string name="tg_gate_headline">Bleib auf dem Laufenden</string>
-    <string name="tg_gate_body">Offizielle Updates, Releases und Chat — Telegram oder Discord beitreten, oder einfach weiter.</string>
+    <string name="tg_gate_headline">Community beitreten</string>
+    <string name="tg_gate_body">Release-Notes, frühe APKs und Support — Telegram oder Discord beitreten, oder einfach weiter.</string>
     <string name="tg_gate_channel_chip">@%1$s</string>
     <string name="tg_gate_step_open">Öffnen</string>
     <string name="tg_gate_step_join">Beitreten</string>
@@ -1139,6 +1139,8 @@
     <string name="tg_gate_cta_open">Telegram öffnen</string>
     <string name="tg_gate_cta_open_again">Telegram erneut öffnen</string>
     <string name="tg_gate_cta_open_short">Öffnen</string>
+    <string name="tg_gate_cta_join_telegram">Telegram beitreten</string>
+    <string name="tg_gate_cta_join_discord">Discord beitreten</string>
     <string name="tg_gate_cta_confirm">Beigetreten — weiter</string>
     <string name="tg_gate_cta_continue">Weiter ohne Beitritt</string>
     <string name="tg_gate_cta_copy_link">Kanal-Link kopieren</string>
@@ -1146,6 +1148,9 @@
     <string name="tg_gate_benefit_updates">Release-Notes &amp; APKs zuerst hier</string>
     <string name="tg_gate_benefit_support">Direkter Support wenn etwas hakt</string>
     <string name="tg_gate_benefit_community">News vor dem Store</string>
+    <string name="tg_gate_benefit_updates_short">Frühe APKs</string>
+    <string name="tg_gate_benefit_support_short">Support</string>
+    <string name="tg_gate_benefit_community_short">News zuerst</string>
     <string name="tg_gate_status_locked">Schritt 1 von 3 — Telegram öffnen</string>
     <string name="tg_gate_status_opened">Schritt 2 von 3 — @%1$s beitreten</string>
     <string name="tg_gate_status_ready">Schritt 3 von 3 — bestätigen und %1$s starten</string>

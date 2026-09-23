@@ -63,10 +63,29 @@
                 android:layout_marginTop="14dp"
                 android:background="@drawable/bg_exp_accent_rule" />
 
+            <com.dskja.betterstreamflix.profiles.ProfileAvatarView
+                android:id="@+id/pav_profile_create_preview"
+                android:layout_width="88dp"
+                android:layout_height="88dp"
+                android:layout_gravity="center_horizontal"
+                android:layout_marginTop="20dp" />
+
+            <TextView
+                android:id="@+id/tv_profile_create_avatar_label"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="10dp"
+                android:gravity="center"
+                android:textAppearance="@style/TextAppearance.Lumina.Caption"
+                android:textColor="@color/profile_accent"
+                android:textSize="13sp"
+                android:textStyle="bold"
+                tools:text="Crimson" />
+
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="20dp"
+                android:layout_marginTop="18dp"
                 android:text="@string/profile_name_hint"
                 android:textAppearance="@style/TextAppearance.Lumina.Caption"
                 android:textColor="@color/profile_text_secondary"
@@ -100,27 +119,22 @@
                 android:textSize="12sp"
                 android:textStyle="bold" />
 
-            <GridLayout
-                android:id="@+id/ll_profile_create_avatars"
+            <HorizontalScrollView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="12dp"
-                android:alignmentMode="alignMargins"
-                android:columnCount="5"
-                android:columnOrderPreserved="false"
-                android:paddingBottom="2dp"
-                android:useDefaultMargins="false" />
+                android:clipToPadding="false"
+                android:overScrollMode="never"
+                android:scrollbars="none">
 
-            <TextView
-                android:id="@+id/tv_profile_create_avatar_label"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="10dp"
-                android:textAppearance="@style/TextAppearance.Lumina.Caption"
-                android:textColor="@color/profile_accent"
-                android:textSize="13sp"
-                android:textStyle="bold"
-                tools:text="Gold" />
+                <LinearLayout
+                    android:id="@+id/ll_profile_create_avatars"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal"
+                    android:paddingBottom="2dp" />
+            </HorizontalScrollView>
 
             <TextView
                 android:layout_width="match_parent"

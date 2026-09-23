@@ -260,6 +260,7 @@ class TelegramJoinGateUiBinder(
             binding.vTgGateBrandRule,
             binding.tvTgGateHeadline,
             binding.tvTgGateBody,
+            binding.hsvTgGateBenefits,
             binding.rowTgGateTelegram,
             binding.rowTgGateDiscord,
             binding.tvTgGateHint,
@@ -267,21 +268,42 @@ class TelegramJoinGateUiBinder(
         )
         views.forEachIndexed { index, view ->
             view.alpha = 0f
-            view.translationY = 18f + index
+            view.translationY = 22f + index * 2f
             view.animate()
                 .alpha(1f)
                 .translationY(0f)
-                .setStartDelay(36L * index)
-                .setDuration(420L)
-                .setInterpolator(DecelerateInterpolator(1.35f))
+                .setStartDelay(40L * index)
+                .setDuration(460L)
+                .setInterpolator(DecelerateInterpolator(1.4f))
                 .start()
         }
-        binding.tvTgGateBrand.scaleX = 0.96f
-        binding.tvTgGateBrand.scaleY = 0.96f
+        binding.tvTgGateBrand.scaleX = 0.94f
+        binding.tvTgGateBrand.scaleY = 0.94f
         binding.tvTgGateBrand.animate()
             .scaleX(1f)
             .scaleY(1f)
-            .setDuration(520L)
+            .setDuration(560L)
+            .setInterpolator(DecelerateInterpolator())
+            .start()
+        listOf(binding.vTgGateOrbA, binding.vTgGateOrbB).forEachIndexed { index, orb ->
+            orb.alpha = 0f
+            orb.scaleX = 0.86f
+            orb.scaleY = 0.86f
+            orb.animate()
+                .alpha(if (index == 0) 0.55f else 0.4f)
+                .scaleX(1f)
+                .scaleY(1f)
+                .setStartDelay(80L + 60L * index)
+                .setDuration(720L)
+                .setInterpolator(DecelerateInterpolator())
+                .start()
+        }
+        binding.vTgGateBrandRule.scaleX = 0.2f
+        binding.vTgGateBrandRule.pivotX = 0f
+        binding.vTgGateBrandRule.animate()
+            .scaleX(1f)
+            .setStartDelay(120L)
+            .setDuration(480L)
             .setInterpolator(DecelerateInterpolator())
             .start()
     }

@@ -49,4 +49,18 @@ class ProfileAvatarStyleTest {
         assertEquals(20, ProfileAvatarStyle.all().size)
         assertEquals(ProfileManager.avatarKeys.size, ProfileAvatarStyle.all().size)
     }
+
+    @Test
+    fun featured_returnsEightHeroStyles() {
+        val featured = ProfileAvatarStyle.featured()
+        assertEquals(8, featured.size)
+        assertEquals("crimson", featured.first().key)
+    }
+
+    @Test
+    fun featured_includesSelectedWhenOutsideCuratedSet() {
+        val featured = ProfileAvatarStyle.featured("peach")
+        assertEquals(9, featured.size)
+        assertEquals("peach", featured.first().key)
+    }
 }
