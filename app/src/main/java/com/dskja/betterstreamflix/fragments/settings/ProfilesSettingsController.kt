@@ -431,7 +431,7 @@ object ProfilesSettingsController {
             val density = context.resources.displayMetrics.density
             preview.bind(selected, profile.displayName, textSizeSp = 22f)
             label.setText(ProfileAvatarStyle.paletteFor(selected).titleRes)
-            ProfileAvatarStyle.all().forEach { palette ->
+            ProfileAvatarStyle.featured(selected).forEach { palette ->
                 val orb = ProfileAvatarView(context).apply {
                     layoutParams = LinearLayout.LayoutParams(
                         (56 * density).toInt(),

@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Telegram Join Gate chrome follows the Support screen. Brand icons stay on the rows. -->
+    <!-- Join community chrome uses Support crimson; platform brands stay on the rows. -->
     <color name="tg_gate_bg_deep">@color/support_bg</color>
     <color name="tg_gate_bg_mid">@color/support_surface</color>
     <color name="tg_gate_bg_glow">@color/support_surface_elevated</color>
@@ -10,21 +10,25 @@
     <color name="tg_gate_text_secondary">@color/support_text_secondary</color>
     <color name="tg_gate_text_tertiary">@color/support_text_tertiary</color>
     <color name="tg_gate_brand">@color/support_text_primary</color>
-    <color name="tg_gate_telegram">@color/support_accent</color>
-    <color name="tg_gate_telegram_bright">@color/support_accent</color>
-    <color name="tg_gate_telegram_pressed">@color/support_accent_pressed</color>
-    <color name="tg_gate_telegram_soft">@color/support_accent_soft</color>
-    <color name="tg_gate_telegram_mist">@color/support_accent_soft</color>
+    <color name="tg_gate_telegram">#2AABEE</color>
+    <color name="tg_gate_telegram_bright">#4BB8F0</color>
+    <color name="tg_gate_telegram_pressed">#1A8FC8</color>
+    <color name="tg_gate_telegram_soft">#332AABEE</color>
+    <color name="tg_gate_telegram_mist">#1A2AABEE</color>
     <color name="tg_gate_success">@color/support_success</color>
     <color name="tg_gate_success_soft">#263DDC97</color>
-    <color name="tg_gate_on_primary">@color/support_on_accent</color>
+    <color name="tg_gate_on_primary">#FFFFFF</color>
     <color name="tg_gate_step_idle">@color/support_surface_elevated_2</color>
     <color name="tg_gate_step_active">@color/support_accent</color>
     <color name="tg_gate_step_done">@color/support_success</color>
     <color name="tg_gate_orb">@color/support_accent_soft</color>
     <color name="tg_gate_scrim">@color/support_scrim</color>
-    <color name="tg_gate_discord">@color/support_accent</color>
-    <color name="tg_gate_discord_bright">@color/support_accent</color>
-    <color name="tg_gate_discord_pressed">@color/support_accent_pressed</color>
-    <color name="tg_gate_discord_orb">@color/support_accent_soft</color>
+    <color name="tg_gate_discord">#5865F2</color>
+    <color name="tg_gate_discord_bright">#7289DA</color>
+    <color name="tg_gate_discord_pressed">#4752C4</color>
+    <color name="tg_gate_discord_orb">#335865F2</color>
+    <color name="tg_gate_card_telegram">#121820</color>
+    <color name="tg_gate_card_discord">#16161F</color>
+    <color name="tg_gate_card_border_telegram">#2A3A4A</color>
+    <color name="tg_gate_card_border_discord">#2A2A3A</color>
 </resources>

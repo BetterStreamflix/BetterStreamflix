@@ -14,7 +14,6 @@ import android.view.inputmethod.EditorInfo
 import android.widget.CheckBox
 import android.widget.EditText
 import android.widget.FrameLayout
-import android.widget.GridLayout
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
@@ -317,20 +316,23 @@ class ProfilePickerDialog : DialogFragment() {
         val nameInput = form.findViewById<EditText>(R.id.et_profile_create_name)
         val kidsCheck = form.findViewById<CheckBox>(R.id.cb_profile_create_kids)
         val pinInput = form.findViewById<EditText>(R.id.et_profile_create_pin)
-        val avatarGrid = form.findViewById<GridLayout>(R.id.ll_profile_create_avatars)
+        val avatarRow = form.findViewById<LinearLayout>(R.id.ll_profile_create_avatars)
         val avatarLabel = form.findViewById<TextView>(R.id.tv_profile_create_avatar_label)
+        val avatarPreview = form.findViewById<ProfileAvatarView>(R.id.pav_profile_create_preview)
 
         wireAdvancedSection(form, profile = null)
 
         val used = ProfileManager.profiles().map { it.avatarKey }.toSet()
-        var selected = ProfileManager.avatarKeys.firstOrNull { it !in used }
-            ?: ProfileManager.avatarKeys.first()
+        var selected = ProfileAvatarStyle.featured().firstOrNull { it.key !in used }?.key
+            ?: ProfileAvatarStyle.featured().first().key
 
         fun refreshAvatarRow() {
-            bindAvatarGrid(
+            bindAvatarRow(
                 context = requireContext(),
-                grid = avatarGrid,
+                row = avatarRow,
                 label = avatarLabel,
+                preview = avatarPreview,
+                previewName = nameInput.text?.toString().orEmpty(),
                 selectedKey = selected,
                 onSelect = { key ->
                     selected = key
@@ -339,6 +341,13 @@ class ProfilePickerDialog : DialogFragment() {
             )
         }
         refreshAvatarRow()
+        nameInput.addTextChangedListener(object : android.text.TextWatcher {
+            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) = Unit
+            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) = Unit
+            override fun afterTextChanged(s: android.text.Editable?) {
+                avatarPreview?.bind(selected, s?.toString().orEmpty(), textSizeSp = 28f)
+            }
+        })
 
         val cancel = form.findViewById<TextView>(R.id.btn_profile_create_cancel)
         val ok = form.findViewById<TextView>(R.id.btn_profile_create_ok)
@@ -407,15 +416,18 @@ class ProfilePickerDialog : DialogFragment() {
             clearPin?.visibility = View.VISIBLE
         }
         wireAdvancedSection(form, profile)
-        val avatarGrid = form.findViewById<GridLayout>(R.id.ll_profile_create_avatars)
+        val avatarRow = form.findViewById<LinearLayout>(R.id.ll_profile_create_avatars)
         val avatarLabel = form.findViewById<TextView>(R.id.tv_profile_create_avatar_label)
+        val avatarPreview = form.findViewById<ProfileAvatarView>(R.id.pav_profile_create_preview)
         var selected = profile.avatarKey
 
         fun refreshAvatarRow() {
-            bindAvatarGrid(
+            bindAvatarRow(
                 context = requireContext(),
-                grid = avatarGrid,
+                row = avatarRow,
                 label = avatarLabel,
+                preview = avatarPreview,
+                previewName = nameInput.text?.toString() ?: profile.displayName,
                 selectedKey = selected,
                 onSelect = { key ->
                     selected = key
@@ -424,6 +436,13 @@ class ProfilePickerDialog : DialogFragment() {
             )
         }
         refreshAvatarRow()
+        nameInput.addTextChangedListener(object : android.text.TextWatcher {
+            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) = Unit
+            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) = Unit
+            override fun afterTextChanged(s: android.text.Editable?) {
+                avatarPreview?.bind(selected, s?.toString() ?: profile.displayName, textSizeSp = 28f)
+            }
+        })
 
         val cancel = form.findViewById<TextView>(R.id.btn_profile_create_cancel)
         val ok = form.findViewById<TextView>(R.id.btn_profile_create_ok)
@@ -641,20 +660,23 @@ class ProfilePickerDialog : DialogFragment() {
             val nameInput = view.findViewById<EditText>(R.id.et_profile_create_name)
             val kidsCheck = view.findViewById<CheckBox>(R.id.cb_profile_create_kids)
             val pinInput = view.findViewById<EditText>(R.id.et_profile_create_pin)
-            val avatarGrid = view.findViewById<GridLayout>(R.id.ll_profile_create_avatars)
+            val avatarRow = view.findViewById<LinearLayout>(R.id.ll_profile_create_avatars)
             val avatarLabel = view.findViewById<TextView>(R.id.tv_profile_create_avatar_label)
+            val avatarPreview = view.findViewById<ProfileAvatarView>(R.id.pav_profile_create_preview)
 
             wireAdvancedSection(view, profile = null)
 
             val used = ProfileManager.profiles().map { it.avatarKey }.toSet()
-            var selected = ProfileManager.avatarKeys.firstOrNull { it !in used }
-                ?: ProfileManager.avatarKeys.first()
+            var selected = ProfileAvatarStyle.featured().firstOrNull { it.key !in used }?.key
+                ?: ProfileAvatarStyle.featured().first().key
 
             fun refreshAvatarRow() {
-                bindAvatarGrid(
+                bindAvatarRow(
                     context = context,
-                    grid = avatarGrid,
+                    row = avatarRow,
                     label = avatarLabel,
+                    preview = avatarPreview,
+                    previewName = nameInput.text?.toString().orEmpty(),
                     selectedKey = selected,
                     onSelect = { key ->
                         selected = key
@@ -663,6 +685,13 @@ class ProfilePickerDialog : DialogFragment() {
                 )
             }
             refreshAvatarRow()
+            nameInput.addTextChangedListener(object : android.text.TextWatcher {
+                override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) = Unit
+                override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) = Unit
+                override fun afterTextChanged(s: android.text.Editable?) {
+                    avatarPreview?.bind(selected, s?.toString().orEmpty(), textSizeSp = 28f)
+                }
+            })
 
             val dialog = (
                 if (ExperimentalMobileDesign.enabled()) MaterialAlertDialogBuilder(context)
@@ -809,34 +838,26 @@ class ProfilePickerDialog : DialogFragment() {
             return true
         }
 
-        private fun bindAvatarGrid(
+        private fun bindAvatarRow(
             context: Context,
-            grid: GridLayout,
+            row: LinearLayout,
             label: TextView,
+            preview: ProfileAvatarView?,
+            previewName: String,
             selectedKey: String,
             onSelect: (String) -> Unit,
         ) {
-            grid.removeAllViews()
+            row.removeAllViews()
             val density = context.resources.displayMetrics.density
-            val columns = when {
-                context.resources.configuration.screenWidthDp >= 480 -> 6
-                context.resources.configuration.screenWidthDp >= 360 -> 5
-                else -> 4
-            }
-            grid.columnCount = columns
-            val gap = (8 * density).toInt()
-            val size = (52 * density).toInt()
-            ProfileAvatarStyle.all().forEachIndexed { index, palette ->
+            val size = (60 * density).toInt()
+            val gap = (10 * density).toInt()
+            preview?.bind(selectedKey, previewName.ifBlank { selectedKey }, textSizeSp = 28f)
+            ProfileAvatarStyle.featured(selectedKey).forEach { palette ->
                 val orb = ProfileAvatarView(context).apply {
-                    val params = GridLayout.LayoutParams().apply {
-                        width = size
-                        height = size
-                        columnSpec = GridLayout.spec(index % columns)
-                        rowSpec = GridLayout.spec(index / columns)
-                        setMargins(0, 0, gap, gap)
+                    layoutParams = LinearLayout.LayoutParams(size, size).also {
+                        it.setMargins(0, 0, gap, 0)
                     }
-                    layoutParams = params
-                    bind(palette.key, ProfileAvatarStyle.initialFor(palette.key), textSizeSp = 15f)
+                    bind(palette.key, ProfileAvatarStyle.initialFor(palette.key), textSizeSp = 16f)
                     isSelected = palette.key == selectedKey
                     foreground = context.getDrawable(R.drawable.bg_profile_avatar_select_ring)
                     if (ExperimentalMobileDesign.enabled()) {
@@ -847,7 +868,7 @@ class ProfilePickerDialog : DialogFragment() {
                         onSelect(palette.key)
                     }
                 }
-                grid.addView(orb)
+                row.addView(orb)
             }
             label.setText(ProfileAvatarStyle.paletteFor(selectedKey).titleRes)
         }

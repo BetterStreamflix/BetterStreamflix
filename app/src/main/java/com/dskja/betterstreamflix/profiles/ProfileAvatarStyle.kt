@@ -87,11 +87,11 @@ object ProfileAvatarStyle {
         Palette(
             key = "gold",
             titleRes = R.string.profile_avatar_gold_atelier,
-            start = 0xFF0A2030.toInt(),
-            end = 0xFF2AABEE.toInt(),
-            mid = 0xFF1878B0.toInt(),
-            highlight = 0x885BC4F5.toInt(),
-            onOrb = 0xFFF5F8FC.toInt(),
+            start = 0xFF4A0A0E.toInt(),
+            end = 0xFFE50914.toInt(),
+            mid = 0xFFB20710.toInt(),
+            highlight = 0x88FFB0B8.toInt(),
+            onOrb = 0xFFFFF8F8.toInt(),
             motif = Motif.FACE,
         ),
         Palette(
@@ -228,7 +228,28 @@ object ProfileAvatarStyle {
 
     private val byKey = PALETTES.associateBy { it.key }
 
+    /** Curated set for Create/Edit — avoids crowding the card with every signal. */
+    private val FEATURED_KEYS = listOf(
+        "crimson",
+        "ember",
+        "aurora",
+        "slate",
+        "forest",
+        "ocean",
+        "gold",
+        "rose",
+    )
+
     fun all(): List<Palette> = PALETTES
+
+    /** Eight hero styles for create/edit; always includes [selectedKey] if set. */
+    fun featured(selectedKey: String? = null): List<Palette> {
+        val base = FEATURED_KEYS.mapNotNull { byKey[it] }
+        if (selectedKey.isNullOrBlank()) return base
+        val selected = byKey[selectedKey] ?: return base
+        if (base.any { it.key == selected.key }) return base
+        return listOf(selected) + base
+    }
 
     fun paletteFor(avatarKey: String): Palette =
         byKey[avatarKey] ?: PALETTES.first()
