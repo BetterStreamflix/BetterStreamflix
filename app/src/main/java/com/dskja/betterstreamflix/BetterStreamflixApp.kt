@@ -144,6 +144,9 @@ class BetterStreamflixApp : Application() {
             runCatching {
                 com.dskja.betterstreamflix.providers.SerienStreamAuthManager.seedRuntimeCookies()
             }
+            runCatching {
+                com.dskja.betterstreamflix.providers.AniWorldAuthManager.seedRuntimeCookies()
+            }
             runCatching { KinoGerProvider.init(appContext) }
             runCatching { SoloLatinoProvider.init(appContext) }
             runCatching { AniWorldProvider.initialize(appContext) }

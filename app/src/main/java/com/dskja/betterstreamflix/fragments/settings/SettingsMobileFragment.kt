@@ -212,7 +212,14 @@ class SettingsMobileFragment : PreferenceFragmentCompat() {
     private fun consumeSettingsDeepLink() {
         val key = SettingsDeepLink.consumePendingScreenKey() ?: return
         val title = findPreference<PreferenceScreen>(key)?.title?.toString()
-            ?: getString(R.string.settings_screen_downloads)
+            ?: when (key) {
+                "screen_serienstream_auth" -> getString(R.string.serienstream_auth_category_title)
+                "screen_aniworld_auth" -> getString(R.string.aniworld_auth_category_title)
+                else -> getString(R.string.settings_screen_downloads)
+            }
+        // Deep links (e.g. provider picker gear) must open even when the root
+        // preference is hidden for the currently selected catalog provider.
+        findPreference<Preference>(key)?.isVisible = true
         view?.post { openNestedSettingsScreen(key, title) }
     }
 
@@ -616,6 +623,9 @@ class SettingsMobileFragment : PreferenceFragmentCompat() {
         SerienStreamAuthSettingsController.bind(this, lifecycleScope) { key ->
             findPreference(key)
         }
+        AniWorldAuthSettingsController.bind(this, lifecycleScope) { key ->
+            findPreference(key)
+        }
         TmdbSettingsController.bind(this, lifecycleScope) { key ->
             findPreference(key)
         }
@@ -624,6 +634,13 @@ class SettingsMobileFragment : PreferenceFragmentCompat() {
             openNestedSettingsScreen(
                 "screen_serienstream_auth",
                 getString(R.string.serienstream_auth_category_title),
+            )
+            true
+        }
+        findPreference<Preference>("p_aniworld_account_open")?.setOnPreferenceClickListener {
+            openNestedSettingsScreen(
+                "screen_aniworld_auth",
+                getString(R.string.aniworld_auth_category_title),
             )
             true
         }
@@ -1358,24 +1375,33 @@ class SettingsMobileFragment : PreferenceFragmentCompat() {
     }
 
     private fun updateProviderVisibilityState() {
-        val isStreamingCommunity = UserPreferences.currentProvider is StreamingCommunityProvider
-        val isSerienStream = UserPreferences.currentProvider is SerienStreamProvider
-        val isMoflix = UserPreferences.currentProvider is MStreamProvider
-        val isCuevana = UserPreferences.currentProvider?.name == "Cuevana 3"
-        val isPoseidon = UserPreferences.currentProvider?.name == "Poseidonhd2"
-        val isAnimeOnlineNinja = UserPreferences.currentProvider is AnimeOnlineNinjaProvider
-        val isGuardaFlix = UserPreferences.currentProvider is GuardaFlixProvider
-        val hasConfigProvider = UserPreferences.currentProvider is ProviderConfigUrl
-        val hasSpecificOptions = isStreamingCommunity || isSerienStream || isMoflix || isCuevana || isPoseidon || isAnimeOnlineNinja || isGuardaFlix
+        val provider = UserPreferences.currentProvider
+        val isStreamingCommunity = provider is StreamingCommunityProvider
+        val isSerienStream = ProviderSettingsVisibility.showSerienStreamSettings(provider)
+        val isAniWorld = ProviderSettingsVisibility.showAniWorldSettings(provider)
+        val isMoflix = provider is MStreamProvider
+        val isCuevana = provider?.name == "Cuevana 3"
+        val isPoseidon = provider?.name == "Poseidonhd2"
+        val isAnimeOnlineNinja = provider is AnimeOnlineNinjaProvider
+        val isGuardaFlix = provider is GuardaFlixProvider
+        val hasConfigProvider = provider is ProviderConfigUrl
+        val hasSpecificOptions = isStreamingCommunity || isSerienStream || isAniWorld ||
+            isMoflix || isCuevana || isPoseidon || isAnimeOnlineNinja || isGuardaFlix
 
         findPreference<PreferenceCategory>("pc_streamingcommunity_settings")?.isVisible = isStreamingCommunity
         findPreference<PreferenceCategory>("pc_serienstream_settings")?.isVisible = isSerienStream
+        findPreference<PreferenceCategory>("pc_aniworld_settings")?.isVisible = isAniWorld
         findPreference<PreferenceCategory>("pc_moflix_settings")?.isVisible = isMoflix
         findPreference<PreferenceCategory>("pc_cuevana_settings")?.isVisible = isCuevana
         findPreference<PreferenceCategory>("pc_poseidon_settings")?.isVisible = isPoseidon
         findPreference<PreferenceCategory>("pc_animeonlineninja_settings")?.isVisible = isAnimeOnlineNinja
         findPreference<PreferenceCategory>("pc_guardaflix_settings")?.isVisible = isGuardaFlix
         findPreference<PreferenceCategory>("pc_provider_empty_state")?.isVisible = !hasConfigProvider && !hasSpecificOptions
+
+        findPreference<Preference>("screen_serienstream_auth")?.isVisible = isSerienStream
+        findPreference<Preference>("screen_aniworld_auth")?.isVisible = isAniWorld
+        findPreference<Preference>("screen_watchlist_import")?.isVisible =
+            ProviderSettingsVisibility.showWatchlistImport(provider)
     }
 
     private fun bindAnimeOnlineNinjaPreferredServer() {
@@ -2081,6 +2107,7 @@ class SettingsMobileFragment : PreferenceFragmentCompat() {
             context = requireContext(),
         )
         SerienStreamAuthSettingsController.refresh { key -> findPreference(key) }
+        AniWorldAuthSettingsController.refresh { key -> findPreference(key) }
         settingsHubController?.updateVisibility()
 
         findPreference<EditTextPreference>("provider_streamingcommunity_domain")?.apply {

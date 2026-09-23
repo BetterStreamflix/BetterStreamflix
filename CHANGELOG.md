@@ -8,6 +8,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Changed
+- Settings: SerienStream account/options only when SerienStream is active; Import Watchlist only for SerienStream, AniWorld, or TMDb Deutsch; TMDb settings keep Title logos + clear logo cache, drop logo quality/TTL/telemetry clutter
+- Provider picker: clearer choose-a-provider copy + TV subtitle; gear/login entry on SerienStream and AniWorld cards
 - IPTV / Live-TV / Sports system: faster zapping (±1 server preload), order-stable channel guide, sports-tuned live edge offsets, unlocked Mobile + TV channel guides with recent + now/next chrome
 - Pluto TV (all regions), MAGISTV/CineCity, and LatAm sports mirrors: fast `listLiveChannels` from M3U/HTML cache (no slow page walk)
 - SportsBite home rails: “Live now” + “Upcoming / popular”; guide rows carry EPG-lite now/next from schedule metadata
@@ -16,6 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Docs: README Development section explains fast local debug loop vs CI APKs; add `scripts/build-debug.sh`
 
 ### Added
+- AniWorld login/account system parity with SerienStream (credentials, WebView, paste/copy, validate, sign-out; separate cookie jar)
 - `IptvZapPreloader`, `IptvChannelWindow`, `IptvProgramGuide` (now/next + sports slots) for live playback
 - Profile Atelier redesign: Syne brand, tungsten accents, gradient orbs with motifs, premium picker/create/PIN, home chip orbs, Settings hero
 - Full-screen cinematic Profile Picker (avatar grid, kids badge, PIN gate, create/manage) from Home chip + Settings

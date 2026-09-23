@@ -35,6 +35,24 @@
         tools:ignore="ContentDescription"
         tools:visibility="visible" />
 
+    <ImageView
+        android:id="@+id/iv_provider_login_gear"
+        android:layout_width="32dp"
+        android:layout_height="32dp"
+        android:layout_margin="8dp"
+        android:background="@drawable/bg_provider_selected_check"
+        android:contentDescription="@string/provider_login_gear_cd"
+        android:elevation="2dp"
+        android:focusable="true"
+        android:padding="6dp"
+        android:src="@drawable/ic_menu_settings"
+        android:visibility="gone"
+        app:layout_constraintBottom_toBottomOf="@id/iv_provider_logo"
+        app:layout_constraintEnd_toEndOf="@id/iv_provider_logo"
+        app:tint="#FFFFFF"
+        tools:ignore="ContentDescription"
+        tools:visibility="visible" />
+
     <TextView
         android:id="@+id/tv_provider_name"
         android:layout_width="0dp"

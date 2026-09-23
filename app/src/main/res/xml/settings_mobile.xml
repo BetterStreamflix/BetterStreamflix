@@ -61,43 +61,10 @@
                 android:defaultValue="true"
                 app:iconSpaceReserved="false" />
 
-            <ListPreference
-                android:key="TMDB_LOGO_QUALITY"
-                android:title="@string/settings_tmdb_logo_quality_title"
-                android:summary="@string/settings_tmdb_logo_quality_summary"
-                android:entries="@array/tmdb_logo_quality_entries"
-                android:entryValues="@array/tmdb_logo_quality_values"
-                android:defaultValue="original_first"
-                app:iconSpaceReserved="false" />
-
-            <ListPreference
-                android:key="TMDB_LOGO_MISS_TTL_HOURS"
-                android:title="@string/settings_tmdb_logo_miss_ttl_title"
-                android:summary="@string/settings_tmdb_logo_miss_ttl_summary"
-                android:entries="@array/tmdb_logo_ttl_entries"
-                android:entryValues="@array/tmdb_logo_ttl_values"
-                android:defaultValue="6"
-                app:iconSpaceReserved="false" />
-
-            <ListPreference
-                android:key="TMDB_LOGO_HIT_TTL_HOURS"
-                android:title="@string/settings_tmdb_logo_hit_ttl_title"
-                android:summary="@string/settings_tmdb_logo_hit_ttl_summary"
-                android:entries="@array/tmdb_logo_ttl_entries"
-                android:entryValues="@array/tmdb_logo_ttl_values"
-                android:defaultValue="24"
-                app:iconSpaceReserved="false" />
-
             <Preference
                 android:key="TMDB_CLEAR_LOGO_CACHE"
                 android:title="@string/settings_tmdb_clear_logo_cache_title"
                 android:summary="@string/settings_tmdb_clear_logo_cache_summary"
-                app:iconSpaceReserved="false" />
-
-            <Preference
-                android:key="TMDB_LOGO_TELEMETRY"
-                android:title="@string/settings_tmdb_logo_telemetry_title"
-                android:summary="@string/settings_tmdb_logo_telemetry_summary"
                 app:iconSpaceReserved="false" />
         </PreferenceCategory>
     </PreferenceScreen>
@@ -972,6 +939,64 @@
     </PreferenceScreen>
 
     <PreferenceScreen
+        android:key="screen_aniworld_auth"
+        android:title="@string/aniworld_auth_category_title"
+        android:summary="@string/settings_aniworld_session_login_summary"
+        android:widgetLayout="@layout/preference_widget_chevron"
+        app:iconSpaceReserved="false">
+
+        <PreferenceCategory
+            android:key="pc_aniworld_auth"
+            android:title="@string/aniworld_auth_category_title"
+            app:iconSpaceReserved="false">
+
+            <Preference
+                android:key="ANIWORLD_AUTH_STATUS"
+                android:title="@string/aniworld_auth_status_title"
+                android:summary="@string/aniworld_auth_status_signed_out"
+                app:iconSpaceReserved="false" />
+
+            <Preference
+                android:key="ANIWORLD_SESSION_LOGIN"
+                android:title="@string/settings_aniworld_session_login"
+                android:summary="@string/aniworld_auth_credentials_message"
+                app:iconSpaceReserved="false" />
+
+            <Preference
+                android:key="ANIWORLD_SESSION_VALIDATE"
+                android:title="@string/aniworld_auth_validate"
+                android:summary="@string/aniworld_auth_validate_summary"
+                app:iconSpaceReserved="false" />
+
+            <Preference
+                android:key="ANIWORLD_SESSION_PASTE"
+                android:title="@string/aniworld_auth_paste_title"
+                android:summary="@string/aniworld_auth_paste_summary"
+                app:iconSpaceReserved="false" />
+
+            <Preference
+                android:key="ANIWORLD_SESSION_COPY"
+                android:title="@string/aniworld_auth_copy"
+                android:summary="@string/aniworld_auth_copy_summary"
+                app:iconSpaceReserved="false" />
+
+            <Preference
+                android:key="ANIWORLD_SESSION_LOGOUT"
+                android:title="@string/aniworld_auth_sign_out"
+                android:summary="@string/aniworld_auth_sign_out_summary"
+                app:iconSpaceReserved="false" />
+
+            <Preference
+                android:key="ANIWORLD_SESSION_COOKIES"
+                android:title="@string/settings_aniworld_session_cookies"
+                android:summary="@string/settings_aniworld_session_cookies_summary"
+                android:selectable="false"
+                app:isPreferenceVisible="false"
+                app:iconSpaceReserved="false" />
+        </PreferenceCategory>
+    </PreferenceScreen>
+
+    <PreferenceScreen
         android:key="screen_network"
         android:title="@string/settings_category_network_title"
         android:summary="@string/settings_screen_network_summary"
@@ -1271,6 +1296,19 @@
                 android:key="provider_serienstream_domain_reset"
                 android:title="@string/settings_serienstream_domain_reset"
                 android:summary="@string/settings_serienstream_domain_reset_summary"
+                app:iconSpaceReserved="false" />
+        </PreferenceCategory>
+
+        <PreferenceCategory
+            android:key="pc_aniworld_settings"
+            android:title="@string/settings_category_aniworld"
+            app:iconSpaceReserved="false">
+
+            <Preference
+                android:key="p_aniworld_account_open"
+                android:title="@string/aniworld_auth_category_title"
+                android:summary="@string/settings_aniworld_session_login_summary"
+                android:widgetLayout="@layout/preference_widget_chevron"
                 app:iconSpaceReserved="false" />
         </PreferenceCategory>
 

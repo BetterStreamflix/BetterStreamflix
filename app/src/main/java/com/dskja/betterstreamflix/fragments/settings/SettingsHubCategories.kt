@@ -71,6 +71,7 @@ internal object SettingsHubCategories {
     )
 
     fun accountCards(): List<SettingsHubCard> {
+        val provider = com.dskja.betterstreamflix.utils.UserPreferences.currentProvider
         val cards = mutableListOf(
             SettingsHubCard(
                 id = "library_parental",
@@ -87,9 +88,7 @@ internal object SettingsHubCategories {
                 target = SettingsHubTarget.PreferenceScreen("screen_cloud_sync"),
             ),
         )
-        if (com.dskja.betterstreamflix.utils.UserPreferences.currentProvider
-                is com.dskja.betterstreamflix.providers.SerienStreamProvider
-        ) {
+        if (ProviderSettingsVisibility.showSerienStreamSettings(provider)) {
             cards += SettingsHubCard(
                 id = "serienstream_auth",
                 titleRes = R.string.serienstream_auth_category_title,
@@ -98,14 +97,25 @@ internal object SettingsHubCategories {
                 target = SettingsHubTarget.PreferenceScreen("screen_serienstream_auth"),
             )
         }
-        cards += listOf(
-            SettingsHubCard(
+        if (ProviderSettingsVisibility.showAniWorldSettings(provider)) {
+            cards += SettingsHubCard(
+                id = "aniworld_auth",
+                titleRes = R.string.aniworld_auth_category_title,
+                summaryRes = R.string.settings_aniworld_session_login_summary,
+                iconRes = R.drawable.ic_providers_language,
+                target = SettingsHubTarget.PreferenceScreen("screen_aniworld_auth"),
+            )
+        }
+        if (ProviderSettingsVisibility.showWatchlistImport(provider)) {
+            cards += SettingsHubCard(
                 id = "watchlist",
                 titleRes = R.string.settings_watchlist_import_title,
                 summaryRes = R.string.settings_watchlist_import_summary,
                 iconRes = R.drawable.ic_favorite_enable,
                 target = SettingsHubTarget.PreferenceScreen("screen_watchlist_import"),
-            ),
+            )
+        }
+        cards += listOf(
             SettingsHubCard(
                 id = "backup",
                 titleRes = R.string.backup_category_title,
