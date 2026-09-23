@@ -9,6 +9,8 @@
   <a href="https://github.com/dskja/BetterStreamflix/releases"><img src="https://img.shields.io/github/downloads/dskja/BetterStreamflix/total" alt="Downloads" /></a>
   <img src="https://img.shields.io/badge/Kotlin-Android%20TV%20%2B%20Mobile-7F52FF" alt="Kotlin" />
   <br />
+  <a href="https://maidensail.com/startup/betterstreamflix" rel="dofollow"><img src="https://maidensail.com/badge/betterstreamflix.svg?theme=dark" alt="Featured on Maidensail" height="44"></a>
+  <br />
   <strong>v1.1.0</strong> · Maintained by <a href="https://github.com/dskja">dskja</a>
   <br />
   An actively maintained fork of Streamflix with extra fixes, providers and UX improvements for Android TV and mobile.
