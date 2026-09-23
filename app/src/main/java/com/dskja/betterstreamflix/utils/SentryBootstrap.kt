@@ -91,10 +91,16 @@ object SentryBootstrap {
                             type.contains("SentryHttpClientException", ignoreCase = true) ||
                                 type.contains("ExoPlaybackException", ignoreCase = true) ||
                                 type.contains("ParserException", ignoreCase = true) ||
+                                type.contains("HttpException", ignoreCase = true) ||
                                 value.contains("No source found", ignoreCase = true) ||
+                                value.contains("No servers found", ignoreCase = true) ||
                                 value.contains("status code: 503", ignoreCase = true) ||
                                 value.contains("status code: 502", ignoreCase = true) ||
                                 value.contains("status code: 504", ignoreCase = true) ||
+                                value.contains("HTTP 403", ignoreCase = true) ||
+                                value.contains("HTTP 500", ignoreCase = true) ||
+                                value.contains("Cloudflare", ignoreCase = true) ||
+                                value.contains("bloqueado", ignoreCase = true) ||
                                 value.contains("#EXTM3U", ignoreCase = true) ||
                                 value.contains("contentIsMalformed", ignoreCase = true) ||
                                 value.contains("Large HTTP payload", ignoreCase = true) ||

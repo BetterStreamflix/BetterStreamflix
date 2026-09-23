@@ -192,6 +192,14 @@
         <item name="android:windowIsFloating">true</item>
         <item name="colorAccent">?attr/colorPrimary</item>
         <item name="colorControlActivated">?attr/colorPrimary</item>
+        <!-- Explicit so TV hosts never inherit Leanback gaps into row inflate. -->
+        <item name="selectableItemBackground">?android:attr/selectableItemBackground</item>
+        <item name="selectableItemBackgroundBorderless">?android:attr/selectableItemBackgroundBorderless</item>
+        <item name="colorPrimary">@color/m3_primary</item>
+        <item name="colorOnPrimary">@color/m3_on_primary</item>
+        <item name="colorSurface">@color/m3_surface</item>
+        <item name="colorOnSurface">@color/m3_on_surface</item>
+        <item name="colorOnSurfaceVariant">@color/m3_on_surface_variant</item>
     </style>
 
     <style name="SupportDialogAnimation">

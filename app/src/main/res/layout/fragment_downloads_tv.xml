@@ -24,7 +24,7 @@
         android:id="@+id/btn_downloads_menu"
         android:layout_width="56dp"
         android:layout_height="56dp"
-        android:background="?attr/selectableItemBackgroundBorderless"
+        android:background="?android:attr/selectableItemBackgroundBorderless"
         android:contentDescription="@string/downloads_action_settings"
         android:focusable="true"
         android:src="@drawable/ic_menu_settings"

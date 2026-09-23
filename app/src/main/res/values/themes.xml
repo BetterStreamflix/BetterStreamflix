@@ -20,9 +20,17 @@
         <item name="colorOnSurface">@color/m3_on_surface</item>
         <item name="colorOnSurfaceVariant">@color/m3_on_surface_variant</item>
         <item name="colorSurfaceVariant">@color/m3_surface_variant</item>
+        <item name="colorSurfaceContainerLowest">@color/m3_surface_container_lowest</item>
+        <item name="colorSurfaceContainerLow">@color/m3_surface_container_low</item>
+        <item name="colorSurfaceContainer">@color/m3_surface_container</item>
+        <item name="colorSurfaceContainerHigh">@color/m3_surface_container_high</item>
+        <item name="colorSurfaceContainerHighest">@color/m3_surface_container_highest</item>
         <item name="colorError">@color/m3_error</item>
         <item name="colorOnError">@color/m3_on_error</item>
         <item name="colorOutline">@color/m3_outline</item>
+        <item name="colorOutlineVariant">@color/m3_outline_variant</item>
+        <item name="selectableItemBackground">?android:attr/selectableItemBackground</item>
+        <item name="selectableItemBackgroundBorderless">?android:attr/selectableItemBackgroundBorderless</item>
         <item name="colorAccent">@color/m3_primary</item>
         <item name="colorControlActivated">@color/m3_primary</item>
         <item name="colorControlNormal">@color/m3_on_surface_variant</item>
@@ -348,22 +356,38 @@
     </style>
 
     <!-- Tema di Default per TV -->
+    <!--
+      Leanback does not define AppCompat ripples or M3 surface-container attrs.
+      Shared Lumina layouts (profile picker, downloads, support) need these or
+      inflate crashes on TV (Sentry BETTERSTREAMFLIX-1N).
+    -->
     <style name="AppTheme.Tv" parent="Theme.Leanback">
         <item name="app_background_color">#181818</item>
         <item name="preferenceTheme">@style/PreferenceThemeOverlayLeanback</item>
         <item name="alertDialogTheme">@style/Theme.AppCompat.Dialog.Alert</item>
+        <!-- Framework ripples — available without AppCompat parent. -->
+        <item name="selectableItemBackground">?android:attr/selectableItemBackground</item>
+        <item name="selectableItemBackgroundBorderless">?android:attr/selectableItemBackgroundBorderless</item>
         <!-- Material color attrs for shared Lumina layouts (profile chip, support). -->
         <item name="colorPrimary">@color/m3_primary</item>
         <item name="colorOnPrimary">@color/m3_on_primary</item>
         <item name="colorPrimaryContainer">@color/m3_primary_container</item>
         <item name="colorOnPrimaryContainer">@color/m3_on_primary_container</item>
+        <item name="colorSecondary">@color/m3_secondary</item>
+        <item name="colorOnSecondary">@color/m3_on_secondary</item>
         <item name="colorSurface">@color/m3_surface</item>
         <item name="colorOnSurface">@color/m3_on_surface</item>
         <item name="colorOnSurfaceVariant">@color/m3_on_surface_variant</item>
         <item name="colorSurfaceVariant">@color/m3_surface_variant</item>
+        <item name="colorSurfaceContainerLowest">@color/m3_surface_container_lowest</item>
+        <item name="colorSurfaceContainerLow">@color/m3_surface_container_low</item>
+        <item name="colorSurfaceContainer">@color/m3_surface_container</item>
+        <item name="colorSurfaceContainerHigh">@color/m3_surface_container_high</item>
+        <item name="colorSurfaceContainerHighest">@color/m3_surface_container_highest</item>
         <item name="colorError">@color/m3_error</item>
         <item name="colorOnError">@color/m3_on_error</item>
         <item name="colorOutline">@color/m3_outline</item>
+        <item name="colorOutlineVariant">@color/m3_outline_variant</item>
         <item name="colorAccent">#FFFFFF</item>
         <item name="colorControlActivated">#FFFFFF</item>
         <item name="colorControlNormal">#BDBDBD</item>

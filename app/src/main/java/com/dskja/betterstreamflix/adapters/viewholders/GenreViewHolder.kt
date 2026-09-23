@@ -48,6 +48,7 @@ class GenreViewHolder(
                     com.google.android.material.color.MaterialColors.getColor(
                         this,
                         com.google.android.material.R.attr.colorSurfaceContainer,
+                        0xFF141414.toInt(),
                     )
                 } else {
                     context.getColor(R.color.exp_nav_glass)
@@ -55,6 +56,7 @@ class GenreViewHolder(
                 val primary = com.google.android.material.color.MaterialColors.getColor(
                     this,
                     androidx.appcompat.R.attr.colorPrimary,
+                    0xFFE50914.toInt(),
                 )
                 val glassStroke = (primary and 0x00FFFFFF) or 0x66000000
                 tile?.setColor(glassFill)
