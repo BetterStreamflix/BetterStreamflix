@@ -141,7 +141,11 @@ class ProviderViewHolder(
                 com.google.android.material.R.attr.colorOnSecondaryContainer
         }
         pill.setTextColor(
-            com.google.android.material.color.MaterialColors.getColor(pill, colorAttr),
+            com.google.android.material.color.MaterialColors.getColor(
+                pill,
+                colorAttr,
+                0xFFE8E8E8.toInt(),
+            ),
         )
         if (ExperimentalMobileDesign.enabled()) {
             pill.setBackgroundResource(ExperimentalMobileDesign.metaPillBackground())

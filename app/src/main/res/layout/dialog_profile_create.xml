@@ -302,7 +302,7 @@
             android:id="@+id/btn_profile_create_cancel"
             android:layout_width="wrap_content"
             android:layout_height="48dp"
-            android:background="?attr/selectableItemBackgroundBorderless"
+            android:background="?android:attr/selectableItemBackgroundBorderless"
             android:gravity="center"
             android:paddingStart="16dp"
             android:paddingEnd="16dp"

@@ -4,7 +4,7 @@
     android:id="@+id/profile_picker_item_root"
     android:layout_width="132dp"
     android:layout_height="wrap_content"
-    android:background="?attr/selectableItemBackgroundBorderless"
+    android:background="?android:attr/selectableItemBackgroundBorderless"
     android:clickable="true"
     android:focusable="true"
     android:gravity="center_horizontal"

@@ -133,7 +133,7 @@ object SettingsListStyler {
             title.typeface = manrope
             title.setTextColor(
                 com.google.android.material.color.MaterialColors.getColor(
-                    title, androidx.appcompat.R.attr.colorPrimary,
+                    title, androidx.appcompat.R.attr.colorPrimary, 0xFFE50914.toInt(),
                 ),
             )
             title.setTextSize(TypedValue.COMPLEX_UNIT_SP, if (isTv) 13f else 11f)
@@ -147,14 +147,16 @@ object SettingsListStyler {
             return
         }
 
+        // Always pass defaults — missing theme attrs throw IllegalArgumentException
+        // (Sentry BETTERSTREAMFLIX-1E on classic / Leanback hosts).
         val surface = com.google.android.material.color.MaterialColors.getColor(
-            view, com.google.android.material.R.attr.colorSurfaceContainer,
+            view, com.google.android.material.R.attr.colorSurfaceContainer, 0xFF141414.toInt(),
         )
         val border = com.google.android.material.color.MaterialColors.getColor(
-            view, com.google.android.material.R.attr.colorOutlineVariant,
+            view, com.google.android.material.R.attr.colorOutlineVariant, 0xFF2A2A2A.toInt(),
         )
         val accent = com.google.android.material.color.MaterialColors.getColor(
-            view, androidx.appcompat.R.attr.colorPrimary,
+            view, androidx.appcompat.R.attr.colorPrimary, 0xFFE50914.toInt(),
         )
         val highlight = ColorUtils.blendARGB(surface, accent, 0.16f)
         val highlightBorder = ColorUtils.blendARGB(border, accent, 0.35f)
@@ -202,6 +204,7 @@ object SettingsListStyler {
                 com.google.android.material.color.MaterialColors.getColor(
                     view,
                     com.google.android.material.R.attr.colorOnSurface,
+                    0xFFE8E8E8.toInt(),
                 ),
             )
         }
@@ -214,6 +217,7 @@ object SettingsListStyler {
                 com.google.android.material.color.MaterialColors.getColor(
                     this,
                     com.google.android.material.R.attr.colorOnSurfaceVariant,
+                    0xFFB0B0B0.toInt(),
                 ),
             )
             setTextSize(TypedValue.COMPLEX_UNIT_SP, if (isTv) 14f else 12.5f)

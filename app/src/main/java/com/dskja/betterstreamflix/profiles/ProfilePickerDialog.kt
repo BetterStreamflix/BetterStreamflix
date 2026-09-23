@@ -162,10 +162,24 @@ class ProfilePickerDialog : DialogFragment() {
             )
     }
 
+    /**
+     * Inflate picker rows with [ProfilePickerDialogTheme], not the host Activity theme.
+     * TV ([AppTheme.Tv] / Leanback) lacks AppCompat ripples / some Material attrs →
+     * InflateException (Sentry BETTERSTREAMFLIX-1N).
+     */
+    private fun pickerInflater(): LayoutInflater {
+        val base = dialog?.context ?: requireContext()
+        val themed = androidx.appcompat.view.ContextThemeWrapper(
+            base,
+            R.style.ProfilePickerDialogTheme,
+        )
+        return LayoutInflater.from(themed)
+    }
+
     private fun bindProfiles(root: View) {
         val column = root.findViewById<LinearLayout>(R.id.ll_profile_picker_row)
         column.removeAllViews()
-        val inflater = LayoutInflater.from(requireContext())
+        val inflater = pickerInflater()
         val profiles = ProfileManager.profiles()
         val activeId = ProfileManager.activeProfileId
         val density = resources.displayMetrics.density
@@ -179,7 +193,12 @@ class ProfilePickerDialog : DialogFragment() {
             )
         }
         profiles.forEachIndexed { index, profile ->
-            val item = inflater.inflate(R.layout.item_profile_picker, row, false)
+            val item = runCatching {
+                inflater.inflate(R.layout.item_profile_picker, row, false)
+            }.getOrElse {
+                // Last-resort: Activity inflater after theme attrs were backfilled on AppTheme.Tv.
+                LayoutInflater.from(requireContext()).inflate(R.layout.item_profile_picker, row, false)
+            }
             item.layoutParams = LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.WRAP_CONTENT,
                 ViewGroup.LayoutParams.WRAP_CONTENT,
