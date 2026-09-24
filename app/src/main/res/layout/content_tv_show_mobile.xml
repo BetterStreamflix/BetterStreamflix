@@ -4,13 +4,13 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:paddingBottom="8dp">
+    android:paddingBottom="20dp">
 
+    <!-- Tall transparent hero: fragment banner shows through down to the tabs. -->
     <Space
         android:id="@+id/space_tv_show_hero"
         android:layout_width="0dp"
-        android:layout_height="0dp"
-        app:layout_constraintDimensionRatio="H,16:9"
+        android:layout_height="72dp"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent" />
@@ -27,14 +27,14 @@
     <FrameLayout
         android:id="@+id/fl_tv_show_logo_slot"
         android:layout_width="0dp"
-        android:layout_height="96dp"
-        android:layout_marginStart="24dp"
-        android:layout_marginEnd="24dp"
-        android:layout_marginBottom="28dp"
+        android:layout_height="128dp"
+        android:layout_marginStart="20dp"
+        android:layout_marginTop="12dp"
+        android:layout_marginEnd="20dp"
         android:elevation="6dp"
-        app:layout_constraintBottom_toBottomOf="@id/space_tv_show_hero"
         app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent">
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/space_tv_show_hero">
 
         <ImageView
             android:id="@+id/iv_tv_show_logo"
@@ -60,7 +60,7 @@
             android:shadowRadius="12"
             android:textAllCaps="true"
             android:textColor="#FFFFFF"
-            android:textSize="32sp"
+            android:textSize="34sp"
             android:textStyle="bold"
             tools:text="SOUTH PARK" />
     </FrameLayout>
@@ -70,14 +70,14 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         app:barrierDirection="bottom"
-        app:constraint_referenced_ids="space_tv_show_hero" />
+        app:constraint_referenced_ids="fl_tv_show_logo_slot" />
 
     <TextView
         android:id="@+id/btn_tv_show_watch_now"
         android:layout_width="0dp"
         android:layout_height="52dp"
         android:layout_marginStart="16dp"
-        android:layout_marginTop="-10dp"
+        android:layout_marginTop="28dp"
         android:layout_marginEnd="16dp"
         android:background="@drawable/bg_detail_watch_now"
         android:drawablePadding="8dp"
