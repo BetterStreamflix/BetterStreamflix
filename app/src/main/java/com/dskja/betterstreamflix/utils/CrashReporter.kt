@@ -54,7 +54,8 @@ object CrashReporter {
         if (com.dskja.betterstreamflix.extractors.ExtractorFailureClassifier.isExpectedStreamNoise(error) ||
             message.contains("No source found", ignoreCase = true) ||
             message.contains("getVideo failed", ignoreCase = true) ||
-            isExpectedProviderTimeout(error, message)
+            isExpectedProviderTimeout(error, message) ||
+            isExpectedTmdbShelfParseNoise(error, message)
         ) {
             return
         }
@@ -134,6 +135,27 @@ object CrashReporter {
             if (cur is java.util.concurrent.TimeoutException) return true
             if (name.contains("TimeoutCancellationException")) return true
             if (msg.contains("timed out after", ignoreCase = true)) return true
+            cur = cur.cause
+            depth++
+        }
+        return false
+    }
+
+    /**
+     * BETTERSTREAMFLIX-Q: Discover movie/TV shelf ClassCast soft-fails are local —
+     * Home already shows Success + warning; do not flood Sentry.
+     */
+    private fun isExpectedTmdbShelfParseNoise(error: Throwable?, message: String): Boolean {
+        val looksTmdb = message.contains("TMDb", ignoreCase = true) ||
+            message.contains("TMDB", ignoreCase = true) ||
+            message.contains("getHome failed", ignoreCase = true)
+        if (!looksTmdb) return false
+        var cur: Throwable? = error
+        var depth = 0
+        while (cur != null && depth < 8) {
+            if (cur is ClassCastException) return true
+            val msg = cur.message.orEmpty()
+            if (msg.contains("ClassCastException", ignoreCase = true)) return true
             cur = cur.cause
             depth++
         }

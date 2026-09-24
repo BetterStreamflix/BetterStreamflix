@@ -81,17 +81,17 @@ class TmdbProvider private constructor(override val language: String) : Provider
 
     override fun hashCode(): Int = language.hashCode()
 
-    override suspend fun getHome(): List<Category> = coroutineScope {
+    override suspend fun getHome(): List<Category> {
         try {
             requireTmdbApiKey()
-            buildHomeCategories()
+            return buildHomeCategories()
         } catch (e: Exception) {
+            if (e is kotlinx.coroutines.CancellationException) throw e
             Log.e("TmdbProvider", "TMDB home failed: ${e.message}", e)
             throw Exception(classifyTmdbFailure(e), e)
         }
     }
 
-    
     private fun requireTmdbApiKey() {
         if (!UserPreferences.enableTmdb) {
             throw Exception(
@@ -135,24 +135,36 @@ class TmdbProvider private constructor(override val language: String) : Provider
     }
 
     /**
-     * Soft-await a shelf: timeout / network errors return [fallback] so one hung
-     * TMDb endpoint cannot block the entire Home catalog forever.
+     * Soft-await a shelf: timeout / network / ClassCast errors return [fallback]
+     * so one bad TMDb endpoint cannot block the entire Home catalog.
+     *
+     * The block is a [CoroutineScope] receiver so nested [async] children belong
+     * to this shelf scope (cancelled with the timeout). Capturing the outer Home
+     * [coroutineScope] for nested async used to:
+     * - leave orphan OkHttp work alive past the shelf budget (#206 / soft-fail), and
+     * - let a child ClassCastException fail the outer Home scope even when the
+     *   shelf catch returned fallback (BETTERSTREAMFLIX-Q).
      */
     private suspend fun <T> softShelf(
         label: String,
         fallback: T,
         timeoutMs: Long = ProviderSmoke.TMDB_SHELF_TIMEOUT_MS,
-        block: suspend () -> T,
+        block: suspend kotlinx.coroutines.CoroutineScope.() -> T,
     ): T {
         return try {
-            withTimeout(timeoutMs) { block() }
+            withTimeout(timeoutMs) {
+                coroutineScope { block() }
+            }
         } catch (e: TimeoutCancellationException) {
             Log.w("TmdbProvider", "TMDb shelf '$label' timed out after ${timeoutMs}ms")
             fallback
         } catch (e: kotlinx.coroutines.CancellationException) {
             throw e
         } catch (e: Exception) {
-            Log.w("TmdbProvider", "TMDb shelf '$label' failed: ${e.message}")
+            Log.w(
+                "TmdbProvider",
+                "TMDb shelf '$label' failed: ${e.javaClass.simpleName}: ${e.message}",
+            )
             fallback
         }
     }
@@ -218,7 +230,10 @@ class TmdbProvider private constructor(override val language: String) : Provider
         // hung Home when DNS/API stalled (callTimeout previously 60s each).
         val trendingDeferred = async {
             softShelf("trending", emptyList()) {
-                TMDb3.Trending.all(TMDb3.Params.TimeWindow.DAY, page = 1, language = language).results
+                // compactResults drops Gson nulls from incomplete media_type rows.
+                TMDb3.Trending.all(TMDb3.Params.TimeWindow.DAY, page = 1, language = language)
+                    .results
+                    .filterNotNull()
             }
         }
 
@@ -236,23 +251,33 @@ class TmdbProvider private constructor(override val language: String) : Provider
 
         val popularAnimeDeferred = async {
             softShelf("anime", emptyList()) {
+                // Keep Movie/Tv lists typed separately — never force List<MultiItem>
+                // via awaitAll/cast (BETTERSTREAMFLIX-Q ClassCast).
                 val movies = async {
-                    TMDb3.Discover.movie(
-                        language = language,
-                        withKeywords = TMDb3.Params.WithBuilder(TMDb3.Keyword.KeywordId.ANIME)
-                            .or(TMDb3.Keyword.KeywordId.BASED_ON_ANIME),
-                    ).results
+                    runCatching {
+                        TMDb3.Discover.movie(
+                            language = language,
+                            withKeywords = TMDb3.Params.WithBuilder(TMDb3.Keyword.KeywordId.ANIME)
+                                .or(TMDb3.Keyword.KeywordId.BASED_ON_ANIME),
+                        ).results
+                    }.getOrElse { e ->
+                        Log.w("TmdbProvider", "TMDb anime movies failed: ${e.javaClass.simpleName}")
+                        emptyList()
+                    }
                 }
                 val shows = async {
-                    TMDb3.Discover.tv(
-                        language = language,
-                        withKeywords = TMDb3.Params.WithBuilder(TMDb3.Keyword.KeywordId.ANIME)
-                            .or(TMDb3.Keyword.KeywordId.BASED_ON_ANIME),
-                    ).results
+                    runCatching {
+                        TMDb3.Discover.tv(
+                            language = language,
+                            withKeywords = TMDb3.Params.WithBuilder(TMDb3.Keyword.KeywordId.ANIME)
+                                .or(TMDb3.Keyword.KeywordId.BASED_ON_ANIME),
+                        ).results
+                    }.getOrElse { e ->
+                        Log.w("TmdbProvider", "TMDb anime shows failed: ${e.javaClass.simpleName}")
+                        emptyList()
+                    }
                 }
-                val movieItems: List<TMDb3.MultiItem> = movies.await()
-                val showItems: List<TMDb3.MultiItem> = shows.await()
-                movieItems + showItems
+                movies.await() + shows.await()
             }
         }
 
@@ -262,21 +287,30 @@ class TmdbProvider private constructor(override val language: String) : Provider
             tvNetwork: TMDb3.Network.NetworkId,
         ): List<TMDb3.MultiItem> = softShelf(label, emptyList()) {
             val movies = async {
-                TMDb3.Discover.movie(
-                    language = language,
-                    watchRegion = watchRegion,
-                    withWatchProviders = TMDb3.Params.WithBuilder(movieProvider),
-                ).results
+                runCatching {
+                    TMDb3.Discover.movie(
+                        language = language,
+                        watchRegion = watchRegion,
+                        withWatchProviders = TMDb3.Params.WithBuilder(movieProvider),
+                    ).results
+                }.getOrElse { e ->
+                    Log.w("TmdbProvider", "TMDb $label movies failed: ${e.javaClass.simpleName}")
+                    emptyList()
+                }
             }
             val shows = async {
-                TMDb3.Discover.tv(
-                    language = language,
-                    withNetworks = TMDb3.Params.WithBuilder(tvNetwork),
-                ).results
+                runCatching {
+                    TMDb3.Discover.tv(
+                        language = language,
+                        withNetworks = TMDb3.Params.WithBuilder(tvNetwork),
+                    ).results
+                }.getOrElse { e ->
+                    Log.w("TmdbProvider", "TMDb $label shows failed: ${e.javaClass.simpleName}")
+                    emptyList()
+                }
             }
-            val movieItems: List<TMDb3.MultiItem> = movies.await()
-            val showItems: List<TMDb3.MultiItem> = shows.await()
-            movieItems + showItems
+            // List<Movie> + List<Tv> widens to List<MultiItem> without unsafe casts.
+            movies.await() + shows.await()
         }
 
         val netflixDeferred = async {
