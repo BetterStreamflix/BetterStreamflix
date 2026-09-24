@@ -206,10 +206,15 @@ class MovieMobileFragment : Fragment() {
             DetailTab.TRAILER -> listOf(
                 movie.copy().apply { itemType = AppAdapter.Type.MOVIE_TRAILER_MOBILE },
             )
-            // About keeps facts/overview only — cast & directors live in their own systems.
-            DetailTab.ABOUT -> listOf(
-                movie.copy().apply { itemType = AppAdapter.Type.MOVIE_ABOUT_MOBILE },
-            )
+            DetailTab.ABOUT -> buildList {
+                add(movie.copy().apply { itemType = AppAdapter.Type.MOVIE_ABOUT_MOBILE })
+                if (movie.directors.isNotEmpty()) {
+                    add(movie.copy().apply { itemType = AppAdapter.Type.MOVIE_DIRECTORS_MOBILE })
+                }
+                if (movie.cast.isNotEmpty()) {
+                    add(movie.copy().apply { itemType = AppAdapter.Type.MOVIE_CAST_MOBILE })
+                }
+            }
             DetailTab.EPISODES -> emptyList()
         }
         appAdapter.submitList(
