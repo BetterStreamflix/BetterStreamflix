@@ -4,12 +4,12 @@
     android:height="24dp"
     android:viewportWidth="24"
     android:viewportHeight="24">
-    <!-- Solid disc — watched / completed -->
+    <!-- Accent disc -->
+    <path
+        android:fillColor="#FFE53935"
+        android:pathData="M12,2.25A9.75,9.75 0,1 1,2.25 12A9.75,9.75 0,0 1,12 2.25Z" />
+    <!-- White check -->
     <path
         android:fillColor="#FFFFFFFF"
-        android:pathData="M12,2.5A9.5,9.5 0,1 1,2.5 12A9.5,9.5 0,0 1,12 2.5Z" />
-    <!-- Check cut via dark fill for contrast on white chip bg; tinted at runtime via accent when needed -->
-    <path
-        android:fillColor="#FF121218"
-        android:pathData="M10.15,15.95L6.55,12.35l1.35,-1.35l2.25,2.25l5.15,-5.15l1.35,1.35z" />
+        android:pathData="M10.2,16.45L6.25,12.5l1.55,-1.55l2.4,2.4l5.7,-5.7l1.55,1.55z" />
 </vector>

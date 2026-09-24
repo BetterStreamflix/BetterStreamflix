@@ -1083,9 +1083,14 @@ class MovieViewHolder(
     }
 
     private fun displayMovieMobile(binding: ContentMovieMobileBinding) {
-        // Poster lives in the fragment banner; keep the layout stub gone.
+        // Poster stub stays gone; cover lives inside this hero block.
         binding.ivMoviePoster.visibility = View.GONE
         Glide.with(binding.ivMoviePoster).clear(binding.ivMoviePoster)
+
+        binding.ivMovieCover.loadMovieBanner(movie, hero = false) {
+            centerCrop()
+            transition(DrawableTransitionOptions.withCrossFade(280))
+        }
 
         binding.tvMovieTitle.text = movie.title
         // Hero logo bind is owned by DetailHeaderController (after body submit).
