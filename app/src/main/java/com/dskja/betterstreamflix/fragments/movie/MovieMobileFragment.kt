@@ -200,21 +200,20 @@ class MovieMobileFragment : Fragment() {
     private fun rebuildBody(scrollTabsToTop: Boolean) {
         val movie = currentMovie ?: return
         val body: List<AppAdapter.Item> = when (selectedTab) {
-            DetailTab.SIMILAR -> listOf(
-                movie.copy().apply { itemType = AppAdapter.Type.MOVIE_RECOMMENDATIONS_MOBILE },
-            )
+            DetailTab.SIMILAR -> {
+                if (movie.recommendations.isEmpty()) {
+                    // Avoid an empty Similar page — fall back to About body.
+                    aboutBody(movie)
+                } else {
+                    listOf(
+                        movie.copy().apply { itemType = AppAdapter.Type.MOVIE_RECOMMENDATIONS_MOBILE },
+                    )
+                }
+            }
             DetailTab.TRAILER -> listOf(
                 movie.copy().apply { itemType = AppAdapter.Type.MOVIE_TRAILER_MOBILE },
             )
-            DetailTab.ABOUT -> buildList {
-                add(movie.copy().apply { itemType = AppAdapter.Type.MOVIE_ABOUT_MOBILE })
-                if (movie.directors.isNotEmpty()) {
-                    add(movie.copy().apply { itemType = AppAdapter.Type.MOVIE_DIRECTORS_MOBILE })
-                }
-                if (movie.cast.isNotEmpty()) {
-                    add(movie.copy().apply { itemType = AppAdapter.Type.MOVIE_CAST_MOBILE })
-                }
-            }
+            DetailTab.ABOUT -> aboutBody(movie)
             DetailTab.EPISODES -> emptyList()
         }
         appAdapter.submitList(
@@ -225,6 +224,16 @@ class MovieMobileFragment : Fragment() {
         )
         if (scrollTabsToTop) {
             binding.rvMovie.post { binding.rvMovie.smoothScrollToPosition(1) }
+        }
+    }
+
+    private fun aboutBody(movie: Movie): List<AppAdapter.Item> = buildList {
+        add(movie.copy().apply { itemType = AppAdapter.Type.MOVIE_ABOUT_MOBILE })
+        if (movie.directors.isNotEmpty()) {
+            add(movie.copy().apply { itemType = AppAdapter.Type.MOVIE_DIRECTORS_MOBILE })
+        }
+        if (movie.cast.isNotEmpty()) {
+            add(movie.copy().apply { itemType = AppAdapter.Type.MOVIE_CAST_MOBILE })
         }
     }
 }

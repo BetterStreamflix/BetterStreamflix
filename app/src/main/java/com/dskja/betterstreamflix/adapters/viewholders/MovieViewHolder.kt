@@ -92,6 +92,8 @@ import com.dskja.betterstreamflix.ui.FeaturedSwiperChrome
 import com.dskja.betterstreamflix.ui.ShowOptionsMobileDialog
 import com.dskja.betterstreamflix.ui.ShowOptionsTvDialog
 import com.dskja.betterstreamflix.ui.SpacingItemDecoration
+import com.dskja.betterstreamflix.ui.DetailRating
+import com.dskja.betterstreamflix.ui.DetailTabsController
 import com.dskja.betterstreamflix.ui.DetailTrailerMobilePlayer
 import com.dskja.betterstreamflix.ui.TrailerPlaybackController
 import com.dskja.betterstreamflix.ui.DetailTab
@@ -1112,9 +1114,12 @@ class MovieViewHolder(
             )
         }
 
-        // Legacy meta pills stay gone in the Primate meta row.
-        binding.tvMovieRating.visibility = View.GONE
-        binding.ivMovieRatingIcon.visibility = View.GONE
+        val ratingText = DetailRating.format(movie.rating)
+        binding.tvMovieRating.apply {
+            text = ratingText
+            visibility = if (ratingText.isNullOrBlank()) View.GONE else View.VISIBLE
+        }
+        binding.ivMovieRatingIcon.visibility = binding.tvMovieRating.visibility
         binding.tvMovieQuality.visibility = View.GONE
 
         binding.tvMovieReleased.apply {
@@ -2047,44 +2052,14 @@ class MovieViewHolder(
     }
 
     private fun displayTabsMobile(binding: ContentDetailTabsMobileBinding) {
-        binding.tabDetailEpisodes.visibility = View.GONE
         val adapter = bindingAdapter as? AppAdapter
-        val selected = adapter?.selectedDetailTab ?: DetailTab.SIMILAR
-        fun select(active: android.view.View) {
-            listOf(
-                binding.tabDetailEpisodes,
-                binding.tabDetailSimilar,
-                binding.tabDetailTrailer,
-                binding.tabDetailAbout,
-            ).forEach { tab ->
-                val on = tab === active
-                tab.setTextColor(if (on) 0xFFFFFFFF.toInt() else 0x8AFFFFFF.toInt())
-                tab.setBackgroundResource(if (on) R.drawable.bg_detail_tab_underline else 0)
-            }
-        }
-        val active = when (selected) {
-            com.dskja.betterstreamflix.ui.DetailTab.EPISODES -> binding.tabDetailEpisodes
-            com.dskja.betterstreamflix.ui.DetailTab.SIMILAR -> binding.tabDetailSimilar
-            com.dskja.betterstreamflix.ui.DetailTab.TRAILER -> binding.tabDetailTrailer
-            com.dskja.betterstreamflix.ui.DetailTab.ABOUT -> binding.tabDetailAbout
-        }
-        select(active)
-
-        binding.tabDetailSimilar.setOnClickListener {
-            ExpMotion.hapticTap(it)
-            select(binding.tabDetailSimilar)
-            adapter?.onDetailTabSelectedListener?.invoke(com.dskja.betterstreamflix.ui.DetailTab.SIMILAR)
-        }
-        binding.tabDetailTrailer.setOnClickListener {
-            ExpMotion.hapticTap(it)
-            select(binding.tabDetailTrailer)
-            adapter?.onDetailTabSelectedListener?.invoke(com.dskja.betterstreamflix.ui.DetailTab.TRAILER)
-        }
-        binding.tabDetailAbout.setOnClickListener {
-            ExpMotion.hapticTap(it)
-            select(binding.tabDetailAbout)
-            adapter?.onDetailTabSelectedListener?.invoke(com.dskja.betterstreamflix.ui.DetailTab.ABOUT)
-        }
+        DetailTabsController.bind(
+            binding = binding,
+            selected = adapter?.selectedDetailTab ?: DetailTab.SIMILAR,
+            showEpisodes = false,
+            showSimilar = movie.recommendations.isNotEmpty(),
+            onSelect = { tab -> adapter?.onDetailTabSelectedListener?.invoke(tab) },
+        )
     }
 
     private fun displayTrailerMobile(binding: ContentDetailTrailerMobileBinding) {

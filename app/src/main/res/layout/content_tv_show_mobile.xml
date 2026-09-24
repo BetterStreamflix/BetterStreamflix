@@ -46,6 +46,7 @@
         app:layout_constraintStart_toStartOf="@id/iv_tv_show_cover"
         app:layout_constraintTop_toTopOf="@id/iv_tv_show_cover" />
 
+    <!-- Legacy poster stub (cover is full-bleed). Kept gone for binding safety. -->
     <com.google.android.material.imageview.ShapeableImageView
         android:id="@+id/iv_tv_show_poster"
         android:layout_width="1dp"
@@ -58,7 +59,7 @@
     <Space
         android:id="@+id/space_tv_show_hero"
         android:layout_width="0dp"
-        android:layout_height="52dp"
+        android:layout_height="@dimen/detail_hero_top_inset"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent" />
@@ -66,7 +67,7 @@
     <Space
         android:id="@+id/space_tv_show_art_stage"
         android:layout_width="0dp"
-        android:layout_height="300dp"
+        android:layout_height="@dimen/detail_art_stage_height"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@id/space_tv_show_hero" />
@@ -74,7 +75,7 @@
     <FrameLayout
         android:id="@+id/fl_tv_show_logo_slot"
         android:layout_width="0dp"
-        android:layout_height="140dp"
+        android:layout_height="@dimen/detail_logo_slot_height"
         android:layout_marginStart="28dp"
         android:layout_marginEnd="28dp"
         android:layout_marginBottom="12dp"
@@ -126,22 +127,22 @@
     <TextView
         android:id="@+id/btn_tv_show_watch_now"
         android:layout_width="0dp"
-        android:layout_height="54dp"
+        android:layout_height="56dp"
         android:layout_marginStart="20dp"
-        android:layout_marginTop="18dp"
+        android:layout_marginTop="20dp"
         android:layout_marginEnd="20dp"
         android:background="@drawable/bg_detail_watch_now"
         android:drawablePadding="10dp"
-        android:elevation="6dp"
+        android:elevation="8dp"
         android:fontFamily="@font/manrope"
         android:gravity="center"
-        android:letterSpacing="0.04"
+        android:letterSpacing="0.06"
         android:paddingStart="16dp"
         android:paddingEnd="16dp"
         android:text="@string/tv_show_watch_season_episode"
         android:textAllCaps="true"
         android:textColor="#121218"
-        android:textSize="15sp"
+        android:textSize="16sp"
         android:textStyle="bold"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
@@ -377,16 +378,32 @@
 
         <ImageView
             android:id="@+id/iv_tv_show_rating_icon"
-            android:layout_width="0dp"
-            android:layout_height="0dp"
+            android:layout_width="14dp"
+            android:layout_height="14dp"
+            android:layout_marginStart="12dp"
+            android:importantForAccessibility="no"
+            android:src="@android:drawable/btn_star_big_on"
             android:visibility="gone"
-            tools:ignore="ContentDescription" />
+            tools:ignore="ContentDescription"
+            tools:visibility="visible" />
 
         <TextView
             android:id="@+id/tv_tv_show_rating"
-            android:layout_width="0dp"
-            android:layout_height="0dp"
-            android:visibility="gone" />
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="4dp"
+            android:background="@drawable/bg_detail_rating_chip"
+            android:fontFamily="@font/outfit"
+            android:paddingStart="8dp"
+            android:paddingTop="2dp"
+            android:paddingEnd="8dp"
+            android:paddingBottom="2dp"
+            android:textColor="#FFFFFFFF"
+            android:textSize="12sp"
+            android:textStyle="bold"
+            android:visibility="gone"
+            tools:text="8.4"
+            tools:visibility="visible" />
 
         <TextView
             android:id="@+id/tv_tv_show_quality"
@@ -404,10 +421,12 @@
         android:layout_marginEnd="20dp"
         android:ellipsize="end"
         android:fontFamily="@font/manrope"
-        android:lineSpacingExtra="4dp"
+        android:letterSpacing="0.01"
+        android:lineSpacingExtra="5dp"
+        android:lineSpacingMultiplier="1.05"
         android:maxLines="3"
-        android:textColor="#E0FFFFFF"
-        android:textSize="14sp"
+        android:textColor="#E6FFFFFF"
+        android:textSize="14.5sp"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@id/ll_tv_show_meta_row"
