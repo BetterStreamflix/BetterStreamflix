@@ -24,7 +24,7 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
-        app:layout_constraintGuide_percent="0.55" />
+        app:layout_constraintGuide_percent="0.62" />
 
     <!-- Soft / blurred wash over the lower cover toward the tabs. -->
     <ImageView
@@ -319,7 +319,7 @@
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_marginStart="20dp"
-        android:layout_marginTop="18dp"
+        android:layout_marginTop="20dp"
         android:layout_marginEnd="20dp"
         android:gravity="center_vertical"
         android:orientation="horizontal"
@@ -444,13 +444,15 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginStart="20dp"
-        android:layout_marginTop="6dp"
-        android:fontFamily="@font/manrope"
-        android:minHeight="28dp"
-        android:paddingTop="2dp"
-        android:paddingBottom="2dp"
+        android:layout_marginTop="8dp"
+        android:fontFamily="@font/outfit"
+        android:letterSpacing="0.02"
+        android:minHeight="32dp"
+        android:paddingTop="4dp"
+        android:paddingBottom="4dp"
         android:text="@string/detail_overview_more"
-        android:textColor="#B3FFFFFF"
+        android:textColor="#E6FFFFFF"
+        android:textSize="13sp"
         android:textStyle="bold"
         android:visibility="gone"
         app:layout_constraintStart_toStartOf="parent"
