@@ -142,7 +142,16 @@ object TrailerPlaybackController {
     }
 
     /** Shared YouTube-nocookie embed HTML for dialog + in-tab players. */
-    fun embedHtml(videoId: String): String = """
+    fun embedHtml(
+        videoId: String,
+        autoplay: Boolean = true,
+        muted: Boolean = false,
+        useIframeApi: Boolean = false,
+    ): String {
+        if (!useIframeApi) {
+            val muteParam = if (muted) "&amp;mute=1" else ""
+            val autoParam = if (autoplay) "1" else "0"
+            return """
             <!DOCTYPE html><html><head>
             <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1"/>
             <style>html,body{margin:0;padding:0;background:#000;height:100%;overflow:hidden;}
@@ -150,12 +159,49 @@ object TrailerPlaybackController {
             iframe{position:absolute;top:0;left:0;width:100%;height:100%;border:0;}</style>
             </head><body><div class="wrap">
             <iframe
-              src="https://www.youtube-nocookie.com/embed/$videoId?autoplay=1&amp;rel=0&amp;modestbranding=1&amp;playsinline=1&amp;fs=1"
+              src="https://www.youtube-nocookie.com/embed/$videoId?autoplay=$autoParam&amp;rel=0&amp;modestbranding=1&amp;playsinline=1&amp;fs=1$muteParam"
               allow="autoplay; encrypted-media; picture-in-picture; fullscreen"
               allowfullscreen
               referrerpolicy="strict-origin-when-cross-origin"></iframe>
             </div></body></html>
+            """.trimIndent()
+        }
+        val auto = if (autoplay) 1 else 0
+        val mute = if (muted) 1 else 0
+        return """
+            <!DOCTYPE html><html><head>
+            <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1"/>
+            <style>html,body{margin:0;padding:0;background:#000;height:100%;overflow:hidden;}
+            #player{position:absolute;inset:0;width:100%;height:100%;}</style>
+            </head><body>
+            <div id="player"></div>
+            <script>
+            var AndroidTrailerPlayer=null;
+            function notify(fn,arg){try{if(window.AndroidTrailer&&AndroidTrailer[fn]){if(arg===undefined)AndroidTrailer[fn]();else AndroidTrailer[fn](arg);}}catch(e){}}
+            function onYouTubeIframeAPIReady(){
+              AndroidTrailerPlayer=new YT.Player('player',{
+                width:'100%',height:'100%',
+                videoId:'$videoId',
+                host:'https://www.youtube-nocookie.com',
+                playerVars:{autoplay:$auto,mute:$mute,rel:0,modestbranding:1,playsinline:1,fs:1,controls:1},
+                events:{
+                  onReady:function(e){try{if($mute){e.target.mute();}else{e.target.unMute();}}catch(x){}notify('onReady');},
+                  onStateChange:function(e){
+                    if(e.data===YT.PlayerState.PLAYING)notify('onPlaying');
+                    else if(e.data===YT.PlayerState.PAUSED)notify('onPaused');
+                    else if(e.data===YT.PlayerState.ENDED)notify('onEnded');
+                  },
+                  onError:function(e){notify('onError',e.data||0);}
+                }
+              });
+            }
+            var tag=document.createElement('script');
+            tag.src='https://www.youtube.com/iframe_api';
+            document.head.appendChild(tag);
+            </script>
+            </body></html>
         """.trimIndent()
+    }
 
     fun configureTrailerWebView(web: WebView) {
         web.setLayerType(View.LAYER_TYPE_HARDWARE, null)
@@ -172,10 +218,16 @@ object TrailerPlaybackController {
         }
     }
 
-    fun loadTrailerEmbed(web: WebView, videoId: String) {
+    fun loadTrailerEmbed(
+        web: WebView,
+        videoId: String,
+        autoplay: Boolean = true,
+        muted: Boolean = false,
+        useIframeApi: Boolean = false,
+    ) {
         web.loadDataWithBaseURL(
             "https://www.youtube-nocookie.com",
-            embedHtml(videoId),
+            embedHtml(videoId, autoplay = autoplay, muted = muted, useIframeApi = useIframeApi),
             "text/html",
             "utf-8",
             null,

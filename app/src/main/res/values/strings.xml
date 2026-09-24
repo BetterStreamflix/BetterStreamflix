@@ -135,6 +135,11 @@
     <string name="detail_about_id_tmdb">TMDb %1$s</string>
     <string name="detail_about_id_imdb">IMDb %1$s</string>
     <string name="detail_trailer_more_label">More trailers</string>
+    <string name="detail_trailer_retry">Retry</string>
+    <string name="detail_trailer_mute">Mute trailer</string>
+    <string name="detail_trailer_unmute">Unmute trailer</string>
+    <string name="detail_trailer_fullscreen">Fullscreen</string>
+    <string name="detail_trailer_official_badge">Official</string>
     <string name="detail_action_list">My List</string>
     <string name="detail_action_trailer">Trailer</string>
     <string name="detail_action_download">Download</string>

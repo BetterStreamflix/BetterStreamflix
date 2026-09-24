@@ -55,11 +55,11 @@ import com.dskja.betterstreamflix.fragments.tv_show.TvShowMobileFragment
 import com.dskja.betterstreamflix.fragments.tv_show.TvShowMobileFragmentDirections
 import com.dskja.betterstreamflix.fragments.tv_show.TvShowTvFragment
 import com.dskja.betterstreamflix.fragments.tv_show.TvShowTvFragmentDirections
+import com.dskja.betterstreamflix.ui.DetailTrailerMobilePlayer
 import com.dskja.betterstreamflix.ui.TrailerPlaybackController
 import com.dskja.betterstreamflix.ui.DetailTab
 import com.dskja.betterstreamflix.ui.TmdbLogoGlide
 import com.dskja.betterstreamflix.utils.TmdbUtils
-import com.dskja.betterstreamflix.databinding.ItemDetailTrailerRowMobileBinding
 import com.dskja.betterstreamflix.fragments.movies.MoviesMobileFragmentDirections
 import com.dskja.betterstreamflix.fragments.movies.MoviesTvFragmentDirections
 import com.dskja.betterstreamflix.fragments.search.SearchMobileFragmentDirections
@@ -2278,169 +2278,21 @@ class TvShowViewHolder(
     }
 
     private fun displayTrailerMobile(binding: ContentDetailTrailerMobileBinding) {
-        binding.root.tag = DETAIL_SECTION_TRAILER
-        binding.llDetailTrailerList.removeAllViews()
-        binding.llDetailTrailerRow.visibility = View.GONE
-        binding.tvDetailTrailerEmpty.visibility = View.GONE
-        binding.flDetailTrailerPlayer.visibility = View.GONE
-        binding.tvDetailTrailerNowPlaying.visibility = View.GONE
-        binding.tvDetailTrailerMoreLabel.visibility = View.GONE
-        binding.llDetailTrailerError.visibility = View.GONE
-
-        val web = binding.wvDetailTrailer
-        val loading = binding.pbDetailTrailerLoading
-        val errorPanel = binding.llDetailTrailerError
-        val metrics = binding.root.resources.displayMetrics
-        val playerHeight = ((metrics.widthPixels - (32 * metrics.density)) * 9f / 16f)
-            .toInt()
-            .coerceIn((180 * metrics.density).toInt(), (metrics.heightPixels * 0.45f).toInt())
-        web.layoutParams = web.layoutParams.apply { height = playerHeight }
-        binding.flDetailTrailerPlayer.minimumHeight = playerHeight
-
-        if (web.getTag(R.id.detail_trailer_webview_configured_tag) != true) {
-            web.setTag(R.id.detail_trailer_webview_configured_tag, true)
-            TrailerPlaybackController.configureTrailerWebView(web)
-            web.webChromeClient = android.webkit.WebChromeClient()
-            web.webViewClient = object : android.webkit.WebViewClient() {
-                override fun onPageFinished(view: android.webkit.WebView?, url: String?) {
-                    if (errorPanel.visibility != View.VISIBLE) {
-                        loading.visibility = View.GONE
-                        web.visibility = View.VISIBLE
-                    }
-                }
-
-                override fun onReceivedError(
-                    view: android.webkit.WebView?,
-                    request: android.webkit.WebResourceRequest?,
-                    resourceError: android.webkit.WebResourceError?,
-                ) {
-                    if (request?.isForMainFrame == true) {
-                        loading.visibility = View.GONE
-                        web.visibility = View.INVISIBLE
-                        errorPanel.visibility = View.VISIBLE
-                    }
-                }
+        val player = binding.root.getTag(R.id.detail_trailer_player_tag) as? DetailTrailerMobilePlayer
+            ?: DetailTrailerMobilePlayer(binding).also {
+                binding.root.setTag(R.id.detail_trailer_player_tag, it)
             }
-            binding.root.addOnAttachStateChangeListener(object : View.OnAttachStateChangeListener {
-                override fun onViewAttachedToWindow(v: View) = Unit
-                override fun onViewDetachedFromWindow(v: View) {
-                    web.stopLoading()
-                    web.loadUrl("about:blank")
-                }
-            })
-        }
-
-        var activeUrl: String? = null
-
-        fun playInline(title: String, url: String) {
-            val ytId = TrailerPlaybackController.youtubeVideoId(url)
-            if (ytId.isNullOrBlank()) {
-                TrailerPlaybackController.openExternalYoutube(context, url)
-                return
-            }
-            val alreadyPlaying = activeUrl == url &&
-                binding.flDetailTrailerPlayer.visibility == View.VISIBLE
-            activeUrl = url
-            binding.flDetailTrailerPlayer.visibility = View.VISIBLE
-            binding.tvDetailTrailerNowPlaying.visibility = View.VISIBLE
-            binding.tvDetailTrailerNowPlaying.text = title
-            binding.btnDetailTrailerOpenExternal.setOnClickListener {
-                ExpMotion.hapticTap(it)
-                TrailerPlaybackController.openExternalYoutube(context, url)
-            }
-            for (i in 0 until binding.llDetailTrailerList.childCount) {
-                val child = binding.llDetailTrailerList.getChildAt(i)
-                val selected = child.getTag(R.id.detail_trailer_row_url_tag) == url
-                child.background = if (selected) {
-                    ContextCompat.getDrawable(context, R.drawable.bg_detail_trailer_row_selected)
-                } else {
-                    null
-                }
-            }
-            if (alreadyPlaying) return
-            errorPanel.visibility = View.GONE
-            web.visibility = View.VISIBLE
-            loading.visibility = View.VISIBLE
-            TrailerPlaybackController.loadTrailerEmbed(web, ytId)
-        }
-
-        fun bindRows(trailers: List<Triple<String, String, String>>) {
-            binding.llDetailTrailerList.removeAllViews()
-            if (trailers.isEmpty()) {
-                binding.tvDetailTrailerEmpty.visibility = View.VISIBLE
-                binding.flDetailTrailerPlayer.visibility = View.GONE
-                binding.tvDetailTrailerNowPlaying.visibility = View.GONE
-                binding.tvDetailTrailerMoreLabel.visibility = View.GONE
-                return
-            }
-            binding.tvDetailTrailerEmpty.visibility = View.GONE
-            binding.tvDetailTrailerMoreLabel.visibility =
-                if (trailers.size > 1) View.VISIBLE else View.GONE
-            val inflater = LayoutInflater.from(context)
-            trailers.take(5).forEach { (title, url, type) ->
-                val row = ItemDetailTrailerRowMobileBinding.inflate(
-                    inflater,
-                    binding.llDetailTrailerList,
-                    false,
-                )
-                row.root.setTag(R.id.detail_trailer_row_url_tag, url)
-                row.tvDetailTrailerTitle.text = title
-                row.tvDetailTrailerMeta.text = type
-                row.tvDetailTrailerDesc.visibility = View.GONE
-                val ytId = TrailerPlaybackController.youtubeVideoId(url)
-                if (ytId != null) {
-                    Glide.with(row.ivDetailTrailerThumb)
-                        .load("https://img.youtube.com/vi/$ytId/hqdefault.jpg")
-                        .centerCrop()
-                        .into(row.ivDetailTrailerThumb)
-                } else {
-                    row.ivDetailTrailerThumb.setImageDrawable(null)
-                }
-                val play = View.OnClickListener {
-                    ExpMotion.hapticTap(it)
-                    playInline(title, url)
-                }
-                row.root.setOnClickListener(play)
-                row.ivDetailTrailerPlay.setOnClickListener(play)
-                binding.llDetailTrailerList.addView(row.root)
-            }
-            val first = trailers.first()
-            if (activeUrl == null || trailers.none { it.second == activeUrl }) {
-                playInline(first.first, first.second)
-            } else {
-                playInline(
-                    trailers.first { it.second == activeUrl }.first,
-                    activeUrl!!,
-                )
-            }
-        }
-
-        val seed = tvShow.trailer?.takeIf { it.isNotBlank() }?.let { url ->
-            listOf(
-                Triple(
-                    "${tvShow.title} ${context.getString(R.string.tv_show_trailer)}",
-                    url,
-                    context.getString(R.string.tv_show_trailer),
-                ),
-            )
-        }.orEmpty()
-        if (seed.isNotEmpty()) bindRows(seed)
-
-        itemView.findViewTreeLifecycleOwner()?.lifecycleScope?.launch {
-            val remote = withContext(Dispatchers.IO) {
-                TmdbUtils.listYoutubeTrailers(
-                    tmdbId = tvShow.tmdbId,
-                    isTv = true,
-                    title = tvShow.title,
-                    year = tvShow.released?.format("yyyy")?.toIntOrNull(),
-                    imdbId = tvShow.imdbId,
-                )
-            }
-            val trailers = (seed + remote).distinctBy { it.second }
-            bindRows(trailers)
-        }
+        player.bind(
+            seedUrl = tvShow.trailer,
+            title = tvShow.title,
+            trailerLabel = context.getString(R.string.tv_show_trailer),
+            tmdbId = tvShow.tmdbId,
+            isTv = true,
+            year = tvShow.released?.format("yyyy")?.toIntOrNull(),
+            imdbId = tvShow.imdbId,
+            sectionTag = DETAIL_SECTION_TRAILER,
+        )
     }
-
 
     private fun displayTrailerTv(binding: ContentDetailTrailerTvBinding) {
         binding.root.tag = DETAIL_SECTION_TRAILER
