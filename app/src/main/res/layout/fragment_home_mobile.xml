@@ -46,17 +46,17 @@
     <!-- Floating chrome over Featured — no solid bar. -->
     <ImageView
         android:id="@+id/iv_provider_logo"
-        android:layout_width="44dp"
+        android:layout_width="48dp"
         android:layout_height="0dp"
-        android:layout_marginStart="14dp"
-        android:layout_marginTop="10dp"
+        android:layout_marginStart="16dp"
+        android:layout_marginTop="12dp"
         android:background="@drawable/bg_provider_logo_home_mobile"
         android:clickable="true"
         android:contentDescription="@string/providers_choose_title"
         android:duplicateParentState="true"
         android:elevation="10dp"
         android:focusable="true"
-        android:padding="6dp"
+        android:padding="7dp"
         app:layout_constraintDimensionRatio="1:1"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent" />

@@ -23,7 +23,7 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
-        app:layout_constraintGuide_percent="0.36" />
+        app:layout_constraintGuide_percent="0.55" />
 
     <ImageView
         android:id="@+id/iv_tv_show_cover_soft"
@@ -127,21 +127,21 @@
     <TextView
         android:id="@+id/btn_tv_show_watch_now"
         android:layout_width="0dp"
-        android:layout_height="56dp"
+        android:layout_height="58dp"
         android:layout_marginStart="20dp"
-        android:layout_marginTop="20dp"
+        android:layout_marginTop="18dp"
         android:layout_marginEnd="20dp"
         android:background="@drawable/bg_detail_watch_now"
         android:drawablePadding="10dp"
-        android:elevation="8dp"
-        android:fontFamily="@font/manrope"
+        android:elevation="10dp"
+        android:fontFamily="@font/outfit"
         android:gravity="center"
-        android:letterSpacing="0.06"
+        android:letterSpacing="0.04"
         android:paddingStart="16dp"
         android:paddingEnd="16dp"
+        android:textColor="#FF0E0E12"
         android:text="@string/tv_show_watch_season_episode"
         android:textAllCaps="true"
-        android:textColor="#121218"
         android:textSize="16sp"
         android:textStyle="bold"
         app:layout_constraintEnd_toEndOf="parent"
@@ -152,9 +152,9 @@
         android:id="@+id/ll_tv_show_cta_row"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:layout_marginStart="8dp"
-        android:layout_marginTop="16dp"
-        android:layout_marginEnd="8dp"
+        android:layout_marginStart="4dp"
+        android:layout_marginTop="18dp"
+        android:layout_marginEnd="4dp"
         android:gravity="center"
         android:orientation="horizontal"
         app:layout_constraintEnd_toEndOf="parent"
@@ -170,18 +170,19 @@
 
             <ImageView
                 android:id="@+id/btn_tv_show_favorite"
-                android:layout_width="52dp"
-                android:layout_height="52dp"
+                android:layout_width="56dp"
+                android:layout_height="56dp"
                 android:background="@drawable/bg_detail_square_chip"
                 android:contentDescription="@string/detail_add_to_list"
-                android:padding="13dp"
+                android:padding="14dp"
                 android:src="@drawable/ic_list_add" />
 
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="6dp"
-                android:fontFamily="@font/manrope"
+                android:layout_marginTop="8dp"
+                android:fontFamily="@font/outfit"
+                android:letterSpacing="0.02"
                 android:text="@string/detail_action_list"
                 android:textColor="#CCFFFFFF"
                 android:textSize="11sp" />
@@ -196,19 +197,20 @@
 
             <ImageView
                 android:id="@+id/btn_tv_show_trailer"
-                android:layout_width="52dp"
-                android:layout_height="52dp"
+                android:layout_width="56dp"
+                android:layout_height="56dp"
                 android:background="@drawable/bg_detail_square_chip"
                 android:contentDescription="@string/tv_show_trailer"
-                android:padding="15dp"
+                android:padding="14dp"
                 android:scaleType="fitCenter"
                 android:src="@drawable/ic_trailer_play" />
 
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="6dp"
-                android:fontFamily="@font/manrope"
+                android:layout_marginTop="8dp"
+                android:fontFamily="@font/outfit"
+                android:letterSpacing="0.02"
                 android:text="@string/detail_action_trailer"
                 android:textColor="#CCFFFFFF"
                 android:textSize="11sp" />
@@ -223,8 +225,8 @@
 
             <ImageView
                 android:id="@+id/btn_tv_show_download"
-                android:layout_width="52dp"
-                android:layout_height="52dp"
+                android:layout_width="56dp"
+                android:layout_height="56dp"
                 android:background="@drawable/bg_detail_square_chip"
                 android:contentDescription="@string/option_show_download"
                 android:padding="13dp"
@@ -233,8 +235,9 @@
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="6dp"
-                android:fontFamily="@font/manrope"
+                android:layout_marginTop="8dp"
+                android:fontFamily="@font/outfit"
+                android:letterSpacing="0.02"
                 android:text="@string/detail_action_download"
                 android:textColor="#CCFFFFFF"
                 android:textSize="11sp" />
@@ -249,8 +252,8 @@
 
             <ImageView
                 android:id="@+id/btn_tv_show_watched"
-                android:layout_width="52dp"
-                android:layout_height="52dp"
+                android:layout_width="56dp"
+                android:layout_height="56dp"
                 android:background="@drawable/bg_detail_square_chip"
                 android:contentDescription="@string/option_show_watched"
                 android:padding="12dp"
@@ -259,8 +262,9 @@
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="6dp"
-                android:fontFamily="@font/manrope"
+                android:layout_marginTop="8dp"
+                android:fontFamily="@font/outfit"
+                android:letterSpacing="0.02"
                 android:text="@string/detail_action_watched"
                 android:textColor="#CCFFFFFF"
                 android:textSize="11sp" />
@@ -275,8 +279,8 @@
 
             <ImageView
                 android:id="@+id/btn_tv_show_share"
-                android:layout_width="52dp"
-                android:layout_height="52dp"
+                android:layout_width="56dp"
+                android:layout_height="56dp"
                 android:background="@drawable/bg_detail_square_chip"
                 android:contentDescription="@string/detail_share"
                 android:padding="13dp"
@@ -285,8 +289,9 @@
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="6dp"
-                android:fontFamily="@font/manrope"
+                android:layout_marginTop="8dp"
+                android:fontFamily="@font/outfit"
+                android:letterSpacing="0.02"
                 android:text="@string/detail_action_share"
                 android:textColor="#CCFFFFFF"
                 android:textSize="11sp" />
@@ -378,26 +383,25 @@
 
         <ImageView
             android:id="@+id/iv_tv_show_rating_icon"
-            android:layout_width="14dp"
-            android:layout_height="14dp"
-            android:layout_marginStart="12dp"
-            android:importantForAccessibility="no"
-            android:src="@android:drawable/btn_star_big_on"
+            android:layout_width="18dp"
+            android:layout_height="18dp"
+            android:layout_marginStart="10dp"
+            android:contentDescription="@string/profile_integration_tmdb"
+            android:src="@drawable/ic_tmdb_attr"
             android:visibility="gone"
-            tools:ignore="ContentDescription"
             tools:visibility="visible" />
 
         <TextView
             android:id="@+id/tv_tv_show_rating"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginStart="4dp"
+            android:layout_marginStart="6dp"
             android:background="@drawable/bg_detail_rating_chip"
             android:fontFamily="@font/outfit"
             android:paddingStart="8dp"
-            android:paddingTop="2dp"
+            android:paddingTop="3dp"
             android:paddingEnd="8dp"
-            android:paddingBottom="2dp"
+            android:paddingBottom="3dp"
             android:textColor="#FFFFFFFF"
             android:textSize="12sp"
             android:textStyle="bold"
