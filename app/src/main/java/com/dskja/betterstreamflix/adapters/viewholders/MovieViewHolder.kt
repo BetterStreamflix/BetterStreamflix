@@ -956,6 +956,9 @@ class MovieViewHolder(
 
         itemView.contentDescription = movie.title
         FeaturedSwiperChrome.resolveAndBindLogo(binding, movie)
+        binding.tvSwiperTitle.setTextColor(0xFFFFFFFF.toInt())
+        binding.tvSwiperStatus.setTextColor(0xFFFFFFFF.toInt())
+        binding.tvSwiperGenres.setTextColor(0xFFFFFFFF.toInt())
 
         // Retired meta chrome — keep gone so recycled views never flash old pills.
         binding.tvSwiperOverview.visibility = View.GONE

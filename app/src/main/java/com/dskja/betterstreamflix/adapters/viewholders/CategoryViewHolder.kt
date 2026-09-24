@@ -386,20 +386,51 @@ class CategoryViewHolder(
         }
 
         val callback = object : ViewPager2.OnPageChangeCallback() {
-            override fun onPageSelected(position: Int) {
-                if (swiperHandler !== handler || bindingAdapterPosition == RecyclerView.NO_POSITION) {
-                    return
-                }
-                val indicatorPosition = if (!useLoop) {
+            private fun indicatorForPager(position: Int): Int {
+                return if (!useLoop) {
                     position.coerceIn(0, (source.lastIndex).coerceAtLeast(0))
                 } else {
                     when (position) {
                         0 -> source.lastIndex
                         items.lastIndex -> 0
-                        else -> position - 1
+                        else -> (position - 1).coerceIn(0, source.lastIndex)
                     }
                 }
+            }
+
+            private fun syncDots(indicatorPosition: Int) {
                 category.selectedIndex = indicatorPosition
+                if (exp) {
+                    updateExpDots(binding, indicatorPosition)
+                } else {
+                    updateMobilePageIndicator(binding, indicatorPosition, source.size)
+                }
+            }
+
+            override fun onPageScrolled(
+                position: Int,
+                positionOffset: Float,
+                positionOffsetPixels: Int,
+            ) {
+                if (swiperHandler !== handler || bindingAdapterPosition == RecyclerView.NO_POSITION) {
+                    return
+                }
+                if (source.isEmpty()) return
+                // Prefer the page that owns most of the viewport so dots track mid-swipe.
+                val owning = if (positionOffset >= 0.5f) {
+                    (position + 1).coerceAtMost(items.lastIndex)
+                } else {
+                    position
+                }
+                syncDots(indicatorForPager(owning))
+            }
+
+            override fun onPageSelected(position: Int) {
+                if (swiperHandler !== handler || bindingAdapterPosition == RecyclerView.NO_POSITION) {
+                    return
+                }
+                val indicatorPosition = indicatorForPager(position)
+                syncDots(indicatorPosition)
                 val currentShow = source.getOrNull(indicatorPosition) as? Show
                 FeaturedHeroController.recordImpression(currentShow)
                 val nextBanner = if (source.isNotEmpty()) {
@@ -419,7 +450,6 @@ class CategoryViewHolder(
                     wifiOnly = true,
                 )
                 if (exp) {
-                    updateExpDots(binding, indicatorPosition)
                     if (FeaturedAdvancePolicy.shouldHapticOnPageChange(context)) {
                         ExpMotion.hapticTap(binding.vpCategorySwiper)
                     }
@@ -488,8 +518,6 @@ class CategoryViewHolder(
                                 }
                             }
                     }
-                } else {
-                    updateMobilePageIndicator(binding, indicatorPosition, source.size)
                 }
             }
 
@@ -658,8 +686,19 @@ class CategoryViewHolder(
             return
         }
         binding.llDotsIndicator.children.forEachIndexed { index, view ->
-            view.isSelected = selected == index
+            val isActive = selected == index
+            view.isSelected = isActive
+            val lp = view.layoutParams as? LinearLayout.LayoutParams
+            if (lp != null) {
+                val activeWidth = 15
+                val dotSize = 15
+                // Non-exp uses equal size; still refresh tint via selected state.
+                lp.width = dotSize
+                view.layoutParams = lp
+            }
+            view.requestLayout()
         }
+        binding.llDotsIndicator.requestLayout()
     }
 
     private fun updateExpDots(
@@ -690,7 +729,9 @@ class CategoryViewHolder(
             view.layoutParams = (view.layoutParams as LinearLayout.LayoutParams).apply {
                 width = if (isActive) activeWidth else dotSize
             }
+            view.requestLayout()
             view.backgroundTintList = ColorStateList.valueOf(if (isActive) activeColor else inactive)
+            view.isSelected = isActive
             view.animate().cancel()
             if (isActive) {
                 view.scaleX = 0.7f
@@ -709,6 +750,7 @@ class CategoryViewHolder(
                 view.alpha = 0.85f
             }
         }
+        binding.llDotsIndicator.requestLayout()
     }
 
     /**

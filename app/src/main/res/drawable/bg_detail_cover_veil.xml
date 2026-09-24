@@ -1,24 +1,22 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Soft gray haze into the page tone — avoid hard black bands at the tabs. -->
+<!-- Soft gray haze into the page — avoid opaque black bands across the art. -->
 <layer-list xmlns:android="http://schemas.android.com/apk/res/android">
-    <!-- Keep top of the art readable -->
     <item>
         <shape android:shape="rectangle">
             <gradient
                 android:angle="90"
-                android:centerColor="#18000000"
-                android:endColor="#4D000000"
+                android:centerColor="#10000000"
+                android:endColor="#33000000"
                 android:startColor="#00000000"
                 android:type="linear" />
         </shape>
     </item>
-    <!-- Progressive gray wash into the page -->
     <item>
         <shape android:shape="rectangle">
             <gradient
                 android:angle="90"
-                android:centerColor="#B3181818"
-                android:endColor="#20181818"
+                android:centerColor="#99181818"
+                android:endColor="#00181818"
                 android:startColor="#FF181818"
                 android:type="linear" />
         </shape>
