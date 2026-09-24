@@ -3,6 +3,7 @@ package com.dskja.betterstreamflix.ui
 import android.graphics.RenderEffect
 import android.graphics.Shader
 import android.os.Build
+import android.view.View
 import android.widget.ImageView
 import com.bumptech.glide.load.resource.drawable.DrawableTransitionOptions
 import com.dskja.betterstreamflix.R
@@ -14,7 +15,8 @@ import com.dskja.betterstreamflix.utils.loadMovieBanner
 import com.dskja.betterstreamflix.utils.loadTvShowBanner
 
 /**
- * Cinematic detail cover: sharp backdrop + softer lower wash (blur on API 31+).
+ * Cinematic detail cover: sharp backdrop + soft lower wash.
+ * Soft blur decode runs only on API 31+ to avoid a second full-res bitmap on older devices.
  */
 object DetailCoverAtmosphere {
 
@@ -23,12 +25,11 @@ object DetailCoverAtmosphere {
             centerCrop()
             transition(DrawableTransitionOptions.withCrossFade(320))
         }
-        soft?.let { softCover ->
+        bindSoft(soft) { softCover ->
             softCover.loadMovieBanner(movie, hero = false) {
                 centerCrop()
                 transition(DrawableTransitionOptions.withCrossFade(320))
             }
-            applySoftLayer(softCover)
         }
         maybeKenBurns(cover)
     }
@@ -38,24 +39,28 @@ object DetailCoverAtmosphere {
             centerCrop()
             transition(DrawableTransitionOptions.withCrossFade(320))
         }
-        soft?.let { softCover ->
+        bindSoft(soft) { softCover ->
             softCover.loadTvShowBanner(tvShow, hero = false) {
                 centerCrop()
                 transition(DrawableTransitionOptions.withCrossFade(320))
             }
-            applySoftLayer(softCover)
         }
         maybeKenBurns(cover)
     }
 
-    private fun applySoftLayer(soft: ImageView) {
+    private fun bindSoft(soft: ImageView?, load: (ImageView) -> Unit) {
+        soft ?: return
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            soft.visibility = View.VISIBLE
             soft.alpha = 1f
+            load(soft)
             soft.setRenderEffect(
                 RenderEffect.createBlurEffect(32f, 32f, Shader.TileMode.CLAMP),
             )
         } else {
-            soft.alpha = 0.62f
+            // Skip the second decode; veil alone handles the fade into tabs.
+            soft.setImageDrawable(null)
+            soft.visibility = View.GONE
         }
     }
 

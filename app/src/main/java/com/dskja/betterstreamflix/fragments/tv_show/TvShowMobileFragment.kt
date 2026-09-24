@@ -242,21 +242,19 @@ class TvShowMobileFragment : Fragment() {
                     ?.copy()
                     ?.apply { itemType = AppAdapter.Type.TV_SHOW_SEASONS_MOBILE },
             )
-            DetailTab.SIMILAR -> listOf(
-                tvShow.copy().apply { itemType = AppAdapter.Type.TV_SHOW_RECOMMENDATIONS_MOBILE },
-            )
+            DetailTab.SIMILAR -> {
+                if (tvShow.recommendations.isEmpty()) {
+                    aboutBody(tvShow)
+                } else {
+                    listOf(
+                        tvShow.copy().apply { itemType = AppAdapter.Type.TV_SHOW_RECOMMENDATIONS_MOBILE },
+                    )
+                }
+            }
             DetailTab.TRAILER -> listOf(
                 tvShow.copy().apply { itemType = AppAdapter.Type.TV_SHOW_TRAILER_MOBILE },
             )
-            DetailTab.ABOUT -> buildList {
-                add(tvShow.copy().apply { itemType = AppAdapter.Type.TV_SHOW_ABOUT_MOBILE })
-                if (tvShow.directors.isNotEmpty()) {
-                    add(tvShow.copy().apply { itemType = AppAdapter.Type.TV_SHOW_DIRECTORS_MOBILE })
-                }
-                if (tvShow.cast.isNotEmpty()) {
-                    add(tvShow.copy().apply { itemType = AppAdapter.Type.TV_SHOW_CAST_MOBILE })
-                }
-            }
+            DetailTab.ABOUT -> aboutBody(tvShow)
         }
         appAdapter.submitList(
             listOfNotNull(
@@ -266,6 +264,16 @@ class TvShowMobileFragment : Fragment() {
         )
         if (scrollTabsToTop) {
             binding.rvTvShow.post { binding.rvTvShow.smoothScrollToPosition(1) }
+        }
+    }
+
+    private fun aboutBody(tvShow: TvShow): List<AppAdapter.Item> = buildList {
+        add(tvShow.copy().apply { itemType = AppAdapter.Type.TV_SHOW_ABOUT_MOBILE })
+        if (tvShow.directors.isNotEmpty()) {
+            add(tvShow.copy().apply { itemType = AppAdapter.Type.TV_SHOW_DIRECTORS_MOBILE })
+        }
+        if (tvShow.cast.isNotEmpty()) {
+            add(tvShow.copy().apply { itemType = AppAdapter.Type.TV_SHOW_CAST_MOBILE })
         }
     }
 }

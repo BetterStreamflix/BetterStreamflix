@@ -9,6 +9,7 @@
     <item name="detail_trailer_webview_configured_tag" type="id" />
     <item name="detail_trailer_row_url_tag" type="id" />
     <item name="detail_trailer_player_tag" type="id" />
+    <item name="detail_header_bind_generation" type="id" />
     <item name="tv_shelf_nav_focus_listener_tag" type="id" />
     <item name="exp_search_recent_queries_tag" type="id" />
     <item name="profile_chip_key_tag" type="id" />
