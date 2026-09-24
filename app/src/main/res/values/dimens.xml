@@ -8,6 +8,11 @@
     <dimen name="genre_spacing">16dp</dimen>
     <dimen name="detail_tv_item_spacing">80dp</dimen>
 
+    <!-- Mobile detail hero art stage (cover reads large above CTAs). -->
+    <dimen name="detail_hero_top_inset">52dp</dimen>
+    <dimen name="detail_art_stage_height">300dp</dimen>
+    <dimen name="detail_logo_slot_height">140dp</dimen>
+
     <dimen name="season_episodes_spacing">30dp</dimen>
 
     <!-- Featured full-bleed hero height (phone default). -->

@@ -4,7 +4,6 @@ import android.view.View
 import android.widget.ImageView
 import android.widget.TextView
 import androidx.appcompat.widget.TooltipCompat
-import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import com.dskja.betterstreamflix.R
 import com.dskja.betterstreamflix.logo.TitleLogoSurface
@@ -51,29 +50,50 @@ object DetailHeaderController {
     }
 
     fun bindMovie(fragment: Fragment, root: View, movie: Movie) {
+        val generation = bumpGeneration(root)
         root.findViewById<TextView>(R.id.tv_detail_header_title)?.text = movie.title
         bindTitleChrome(root, movie.title, movie.logo)
-        bindHeroMovie(fragment, root, movie, retries = 2)
+        bindHeroMovie(fragment, root, movie, retries = 2, generation = generation)
         wireDevLogoLongPress(root, movie.title) { movie.logo }
         onScrolled(root, lastScrollY(root))
+        // Header list affordance retired — My List lives in the hero CTA row.
         root.findViewById<ImageView>(R.id.btn_detail_list)?.visibility = View.GONE
     }
 
     fun bindTvShow(fragment: Fragment, root: View, tvShow: TvShow) {
+        val generation = bumpGeneration(root)
         root.findViewById<TextView>(R.id.tv_detail_header_title)?.text = tvShow.title
         bindTitleChrome(root, tvShow.title, tvShow.logo)
-        bindHeroTvShow(fragment, root, tvShow, retries = 2)
+        bindHeroTvShow(fragment, root, tvShow, retries = 2, generation = generation)
         wireDevLogoLongPress(root, tvShow.title) { tvShow.logo }
         onScrolled(root, lastScrollY(root))
         root.findViewById<ImageView>(R.id.btn_detail_list)?.visibility = View.GONE
     }
 
-    private fun bindHeroMovie(fragment: Fragment, root: View, movie: Movie, retries: Int) {
+    private fun bumpGeneration(root: View): Int {
+        val next = ((root.getTag(R.id.detail_header_bind_generation) as? Int) ?: 0) + 1
+        root.setTag(R.id.detail_header_bind_generation, next)
+        return next
+    }
+
+    private fun isCurrentGeneration(root: View, generation: Int): Boolean =
+        (root.getTag(R.id.detail_header_bind_generation) as? Int) == generation
+
+    private fun bindHeroMovie(
+        fragment: Fragment,
+        root: View,
+        movie: Movie,
+        retries: Int,
+        generation: Int,
+    ) {
+        if (!isCurrentGeneration(root, generation)) return
         val heroLogo = fragment.view?.findViewById<ImageView>(R.id.iv_movie_logo)
         val heroTitle = fragment.view?.findViewById<TextView>(R.id.tv_movie_title)
         if (heroLogo == null) {
             if (retries > 0) {
-                fragment.view?.post { bindHeroMovie(fragment, root, movie, retries - 1) }
+                fragment.view?.post {
+                    bindHeroMovie(fragment, root, movie, retries - 1, generation)
+                }
             }
             return
         }
@@ -85,22 +105,33 @@ object DetailHeaderController {
             persist = true,
             allowAlternateOnFail = true,
             stillCurrent = {
-                root.findViewById<TextView>(R.id.tv_detail_header_title)?.text?.toString() ==
+                isCurrentGeneration(root, generation) &&
+                    root.findViewById<TextView>(R.id.tv_detail_header_title)?.text?.toString() ==
                     movie.title
             },
             onResolved = { url, _ ->
+                if (!isCurrentGeneration(root, generation)) return@bindAndMaybeResolve
                 bindTitleChrome(root, movie.title, url)
                 onScrolled(root, lastScrollY(root))
             },
         )
     }
 
-    private fun bindHeroTvShow(fragment: Fragment, root: View, tvShow: TvShow, retries: Int) {
+    private fun bindHeroTvShow(
+        fragment: Fragment,
+        root: View,
+        tvShow: TvShow,
+        retries: Int,
+        generation: Int,
+    ) {
+        if (!isCurrentGeneration(root, generation)) return
         val heroLogo = fragment.view?.findViewById<ImageView>(R.id.iv_tv_show_logo)
         val heroTitle = fragment.view?.findViewById<TextView>(R.id.tv_tv_show_title)
         if (heroLogo == null) {
             if (retries > 0) {
-                fragment.view?.post { bindHeroTvShow(fragment, root, tvShow, retries - 1) }
+                fragment.view?.post {
+                    bindHeroTvShow(fragment, root, tvShow, retries - 1, generation)
+                }
             }
             return
         }
@@ -112,10 +143,12 @@ object DetailHeaderController {
             persist = true,
             allowAlternateOnFail = true,
             stillCurrent = {
-                root.findViewById<TextView>(R.id.tv_detail_header_title)?.text?.toString() ==
+                isCurrentGeneration(root, generation) &&
+                    root.findViewById<TextView>(R.id.tv_detail_header_title)?.text?.toString() ==
                     tvShow.title
             },
             onResolved = { url, _ ->
+                if (!isCurrentGeneration(root, generation)) return@bindAndMaybeResolve
                 bindTitleChrome(root, tvShow.title, url)
                 onScrolled(root, lastScrollY(root))
             },
@@ -149,11 +182,6 @@ object DetailHeaderController {
             title?.visibility = View.VISIBLE
             title?.alpha = progress
         }
-    }
-
-    fun refreshListState(root: View, inList: Boolean) {
-        root.findViewById<ImageView>(R.id.btn_detail_list)
-            ?.let { applyListState(it, inList, animate = false) }
     }
 
     private fun lastScrollY(root: View): Int =
@@ -206,20 +234,5 @@ object DetailHeaderController {
             ).show()
             true
         }
-    }
-
-    private fun applyListState(icon: ImageView, inList: Boolean, animate: Boolean) {
-        icon.setImageDrawable(
-            ContextCompat.getDrawable(
-                icon.context,
-                if (inList) R.drawable.ic_list_added else R.drawable.ic_list_add,
-            )
-        )
-        val description = icon.context.getString(
-            if (inList) R.string.detail_remove_from_list else R.string.detail_add_to_list,
-        )
-        icon.contentDescription = description
-        TooltipCompat.setTooltipText(icon, description)
-        if (animate) ExpMotion.softScale(icon)
     }
 }

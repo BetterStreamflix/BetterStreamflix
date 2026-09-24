@@ -55,6 +55,8 @@ import com.dskja.betterstreamflix.fragments.tv_show.TvShowMobileFragment
 import com.dskja.betterstreamflix.fragments.tv_show.TvShowMobileFragmentDirections
 import com.dskja.betterstreamflix.fragments.tv_show.TvShowTvFragment
 import com.dskja.betterstreamflix.fragments.tv_show.TvShowTvFragmentDirections
+import com.dskja.betterstreamflix.ui.DetailRating
+import com.dskja.betterstreamflix.ui.DetailTabsController
 import com.dskja.betterstreamflix.ui.DetailTrailerMobilePlayer
 import com.dskja.betterstreamflix.ui.TrailerPlaybackController
 import com.dskja.betterstreamflix.ui.DetailTab
@@ -1001,8 +1003,12 @@ class TvShowViewHolder(
             )
         }
 
-        binding.tvTvShowRating.visibility = View.GONE
-        binding.ivTvShowRatingIcon.visibility = View.GONE
+        val ratingText = DetailRating.format(tvShow.rating)
+        binding.tvTvShowRating.apply {
+            text = ratingText
+            visibility = if (ratingText.isNullOrBlank()) View.GONE else View.VISIBLE
+        }
+        binding.ivTvShowRatingIcon.visibility = binding.tvTvShowRating.visibility
         binding.tvTvShowQuality.visibility = View.GONE
 
         binding.tvTvShowReleased.apply {
@@ -2232,49 +2238,14 @@ class TvShowViewHolder(
     }
 
     private fun displayTabsMobile(binding: ContentDetailTabsMobileBinding) {
-        binding.tabDetailEpisodes.visibility = View.VISIBLE
         val adapter = bindingAdapter as? AppAdapter
-        val selected = adapter?.selectedDetailTab ?: DetailTab.EPISODES
-        fun select(active: android.view.View) {
-            listOf(
-                binding.tabDetailEpisodes,
-                binding.tabDetailSimilar,
-                binding.tabDetailTrailer,
-                binding.tabDetailAbout,
-            ).forEach { tab ->
-                val on = tab === active
-                tab.setTextColor(if (on) 0xFFFFFFFF.toInt() else 0x8AFFFFFF.toInt())
-                tab.setBackgroundResource(if (on) R.drawable.bg_detail_tab_underline else 0)
-            }
-        }
-        val active = when (selected) {
-            com.dskja.betterstreamflix.ui.DetailTab.EPISODES -> binding.tabDetailEpisodes
-            com.dskja.betterstreamflix.ui.DetailTab.SIMILAR -> binding.tabDetailSimilar
-            com.dskja.betterstreamflix.ui.DetailTab.TRAILER -> binding.tabDetailTrailer
-            com.dskja.betterstreamflix.ui.DetailTab.ABOUT -> binding.tabDetailAbout
-        }
-        select(active)
-
-        binding.tabDetailEpisodes.setOnClickListener {
-            ExpMotion.hapticTap(it)
-            select(binding.tabDetailEpisodes)
-            (bindingAdapter as? AppAdapter)?.onDetailTabSelectedListener?.invoke(DetailTab.EPISODES)
-        }
-        binding.tabDetailSimilar.setOnClickListener {
-            ExpMotion.hapticTap(it)
-            select(binding.tabDetailSimilar)
-            adapter?.onDetailTabSelectedListener?.invoke(com.dskja.betterstreamflix.ui.DetailTab.SIMILAR)
-        }
-        binding.tabDetailTrailer.setOnClickListener {
-            ExpMotion.hapticTap(it)
-            select(binding.tabDetailTrailer)
-            adapter?.onDetailTabSelectedListener?.invoke(com.dskja.betterstreamflix.ui.DetailTab.TRAILER)
-        }
-        binding.tabDetailAbout.setOnClickListener {
-            ExpMotion.hapticTap(it)
-            select(binding.tabDetailAbout)
-            adapter?.onDetailTabSelectedListener?.invoke(com.dskja.betterstreamflix.ui.DetailTab.ABOUT)
-        }
+        DetailTabsController.bind(
+            binding = binding,
+            selected = adapter?.selectedDetailTab ?: DetailTab.EPISODES,
+            showEpisodes = tvShow.seasons.isNotEmpty(),
+            showSimilar = tvShow.recommendations.isNotEmpty(),
+            onSelect = { tab -> adapter?.onDetailTabSelectedListener?.invoke(tab) },
+        )
     }
 
     private fun displayTrailerMobile(binding: ContentDetailTrailerMobileBinding) {
