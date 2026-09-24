@@ -44,7 +44,13 @@
     <string name="detail_tab_trailer">Trailer</string>
     <string name="detail_tab_about">Info</string>
     <string name="detail_trailer_empty">Noch keine Trailer für diesen Titel gefunden</string>
+    <string name="detail_trailer_more_label">Weitere Trailer</string>
     <string name="detail_similar_empty">Noch keine ähnlichen Titel gefunden</string>
+    <string name="detail_trailer_retry">Erneut versuchen</string>
+    <string name="detail_trailer_mute">Trailer stummschalten</string>
+    <string name="detail_trailer_unmute">Trailer Ton an</string>
+    <string name="detail_trailer_fullscreen">Vollbild</string>
+    <string name="detail_trailer_official_badge">Offiziell</string>
     <string name="detail_featuring_fmt">Mit: %1$s</string>
     <string name="detail_directors_fmt">Regie: %1$s</string>
     <string name="detail_actors_fmt">Schauspieler: %1$s</string>
