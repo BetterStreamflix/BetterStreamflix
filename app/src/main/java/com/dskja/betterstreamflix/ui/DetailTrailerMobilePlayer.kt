@@ -207,6 +207,8 @@ class DetailTrailerMobilePlayer(
         web.layoutParams = web.layoutParams.apply { height = playerHeight }
         stage.minimumHeight = playerHeight
         shimmer.layoutParams = shimmer.layoutParams.apply { height = playerHeight }
+        stage.clipToOutline = true
+        stage.outlineProvider = android.view.ViewOutlineProvider.BACKGROUND
     }
 
     private fun bindRows(trailers: List<Triple<String, String, String>>, autoplay: Boolean) {
@@ -299,15 +301,16 @@ class DetailTrailerMobilePlayer(
     }
 
     private fun highlightRow(url: String) {
+        val selectedBg = ContextCompat.getDrawable(context, R.drawable.bg_detail_trailer_row_selected)
+        val typed = android.util.TypedValue()
+        context.theme.resolveAttribute(android.R.attr.selectableItemBackground, typed, true)
+        val ripple = ContextCompat.getDrawable(context, typed.resourceId)
         for (i in 0 until binding.llDetailTrailerList.childCount) {
             val child = binding.llDetailTrailerList.getChildAt(i)
             val selected = child.getTag(R.id.detail_trailer_row_url_tag) == url
-            child.background = if (selected) {
-                ContextCompat.getDrawable(context, R.drawable.bg_detail_trailer_row_selected)
-            } else {
-                null
-            }
+            child.background = if (selected) selectedBg?.constantState?.newDrawable()?.mutate() else ripple?.constantState?.newDrawable()?.mutate()
             child.isSelected = selected
+            child.alpha = if (selected) 1f else 0.92f
         }
     }
 
