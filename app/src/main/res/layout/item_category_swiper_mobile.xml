@@ -4,7 +4,7 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#FF0A0A0C">
+    android:background="@color/cinema_ink">
 
     <ImageView
         android:id="@+id/iv_swiper_background"
@@ -22,9 +22,8 @@
         android:layout_width="0dp"
         android:layout_height="0dp"
         android:background="@drawable/bg_featured_scrim_top"
-        android:visibility="visible"
         app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintHeight_percent="0.28"
+        app:layout_constraintHeight_percent="0.22"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent" />
 
@@ -35,26 +34,25 @@
         android:background="@drawable/bg_featured_scrim_bottom"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintHeight_percent="0.72"
+        app:layout_constraintHeight_percent="0.58"
         app:layout_constraintStart_toStartOf="parent" />
 
-    <!-- Brand-forward title logo / Syne title over the art. -->
+    <!-- Brand-forward title logo — hero signal, no hard plate. -->
     <FrameLayout
         android:id="@+id/fl_swiper_logo_slot"
         android:layout_width="0dp"
-        android:layout_height="84dp"
-        android:layout_marginStart="24dp"
-        android:layout_marginEnd="24dp"
-        android:layout_marginBottom="10dp"
-        android:background="@drawable/bg_detail_logo_scrim"
-        android:paddingStart="10dp"
-        android:paddingTop="8dp"
-        android:paddingEnd="10dp"
-        android:paddingBottom="8dp"
-        app:layout_constraintBottom_toTopOf="@id/tv_swiper_status"
+        android:layout_height="96dp"
+        android:layout_marginStart="28dp"
+        android:layout_marginEnd="28dp"
+        android:layout_marginBottom="14dp"
+        android:paddingStart="4dp"
+        android:paddingTop="6dp"
+        android:paddingEnd="4dp"
+        android:paddingBottom="6dp"
+        app:layout_constraintBottom_toTopOf="@id/tv_swiper_genres"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintWidth_percent="0.82">
+        app:layout_constraintWidth_percent="0.88">
 
         <ImageView
             android:id="@+id/iv_swiper_logo"
@@ -62,7 +60,6 @@
             android:layout_height="match_parent"
             android:adjustViewBounds="true"
             android:importantForAccessibility="no"
-            android:padding="4dp"
             android:scaleType="fitCenter"
             android:visibility="invisible"
             tools:src="@mipmap/ic_launcher"
@@ -74,54 +71,37 @@
             android:layout_height="match_parent"
             android:fontFamily="@font/syne"
             android:gravity="center"
-            android:shadowColor="#E6000000"
+            android:shadowColor="#F2000000"
             android:shadowDx="0"
-            android:shadowDy="3"
-            android:shadowRadius="16"
-            android:textColor="#FFFFFFFF"
-            android:textSize="26sp"
+            android:shadowDy="2"
+            android:shadowRadius="18"
+            android:textAllCaps="true"
+            android:textColor="@color/cinema_text"
+            android:textSize="30sp"
             android:textStyle="bold"
             tools:text="Title" />
     </FrameLayout>
 
     <TextView
-        android:id="@+id/tv_swiper_status"
-        android:layout_width="0dp"
-        android:layout_height="wrap_content"
-        android:layout_marginStart="28dp"
-        android:layout_marginEnd="28dp"
-        android:layout_marginBottom="4dp"
-        android:fontFamily="@font/manrope"
-        android:gravity="center"
-        android:letterSpacing="0.04"
-        android:shadowColor="#B3000000"
-        android:shadowDx="0"
-        android:shadowDy="1"
-        android:shadowRadius="6"
-        android:textColor="#FFFFFFFF"
-        android:textSize="12sp"
-        app:layout_constraintBottom_toTopOf="@id/tv_swiper_genres"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        tools:text="All Episodes Available" />
-
-    <TextView
         android:id="@+id/tv_swiper_genres"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:layout_marginStart="28dp"
-        android:layout_marginEnd="28dp"
-        android:layout_marginBottom="14dp"
+        android:layout_marginStart="32dp"
+        android:layout_marginEnd="32dp"
+        android:layout_marginBottom="18dp"
+        android:ellipsize="end"
         android:fontFamily="@font/outfit"
         android:gravity="center"
-        android:textAllCaps="true"
-        android:textColor="#FFFFFFFF"
-        android:textSize="13sp"
-        android:textStyle="bold"
+        android:letterSpacing="0.08"
+        android:maxLines="1"
         android:shadowColor="#B3000000"
         android:shadowDx="0"
         android:shadowDy="1"
-        android:shadowRadius="6"
+        android:shadowRadius="8"
+        android:textAllCaps="true"
+        android:textColor="@color/cinema_text_soft"
+        android:textSize="12sp"
+        android:textStyle="bold"
         app:layout_constraintBottom_toTopOf="@id/ll_swiper_actions"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
@@ -131,9 +111,9 @@
         android:id="@+id/ll_swiper_actions"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:layout_marginStart="20dp"
-        android:layout_marginEnd="20dp"
-        android:layout_marginBottom="44dp"
+        android:layout_marginStart="24dp"
+        android:layout_marginEnd="24dp"
+        android:layout_marginBottom="52dp"
         android:gravity="center"
         android:orientation="horizontal"
         app:layout_constraintBottom_toBottomOf="parent"
@@ -143,39 +123,51 @@
         <TextView
             android:id="@+id/btn_swiper_watch_now"
             android:layout_width="0dp"
-            android:layout_height="50dp"
-            android:layout_marginEnd="8dp"
-            android:layout_weight="1.35"
+            android:layout_height="52dp"
+            android:layout_marginEnd="10dp"
+            android:layout_weight="1.4"
             android:background="@drawable/bg_featured_cta_primary"
             android:drawablePadding="8dp"
             android:fontFamily="@font/outfit"
             android:gravity="center"
-            android:paddingStart="14dp"
-            android:paddingEnd="14dp"
+            android:letterSpacing="0.02"
+            android:paddingStart="16dp"
+            android:paddingEnd="16dp"
             android:text="@string/home_swiper_watch_now"
-            android:textColor="#FF0E0E12"
-            android:textSize="15sp"
+            android:textAllCaps="true"
+            android:textColor="@color/cinema_cta_ink"
+            android:textSize="14sp"
             android:textStyle="bold" />
 
         <TextView
             android:id="@+id/btn_swiper_add_to_list"
             android:layout_width="0dp"
-            android:layout_height="50dp"
-            android:layout_marginStart="8dp"
+            android:layout_height="52dp"
+            android:layout_marginStart="10dp"
             android:layout_weight="1"
             android:background="@drawable/bg_featured_cta_secondary"
             android:drawablePadding="8dp"
             android:fontFamily="@font/outfit"
             android:gravity="center"
-            android:paddingStart="12dp"
-            android:paddingEnd="12dp"
+            android:letterSpacing="0.02"
+            android:paddingStart="14dp"
+            android:paddingEnd="14dp"
             android:text="@string/home_swiper_my_list"
-            android:textColor="#FFFFFFFF"
-            android:textSize="14sp"
+            android:textAllCaps="true"
+            android:textColor="@color/cinema_text"
+            android:textSize="13sp"
             android:textStyle="bold" />
     </LinearLayout>
 
-    <!-- Kept gone so older ViewHolder branches and page transformers still compile. -->
+    <!-- Status kept for binding; visual hierarchy moves to genres line. -->
+    <TextView
+        android:id="@+id/tv_swiper_status"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:visibility="gone"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
+
     <TextView
         android:id="@+id/tv_swiper_overview"
         android:layout_width="0dp"
@@ -234,7 +226,6 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent" />
 
-    <!-- Dots live on the Featured shell; stub kept for binding. -->
     <LinearLayout
         android:id="@+id/ll_dots_indicator"
         android:layout_width="wrap_content"
