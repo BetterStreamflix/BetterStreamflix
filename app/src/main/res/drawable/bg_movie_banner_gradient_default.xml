@@ -1,11 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <shape xmlns:android="http://schemas.android.com/apk/res/android"
     android:shape="rectangle">
-    <!-- Soft bottom fade only — keep banner artwork readable. -->
+    <!-- Stronger bottom fade so the cover blends into the page (no hard black band). -->
     <gradient
         android:angle="90"
-        android:centerColor="#22000000"
+        android:centerColor="#55121218"
         android:endColor="#00000000"
-        android:startColor="#99121218"
+        android:startColor="#E6121218"
         android:type="linear" />
 </shape>

@@ -1377,7 +1377,13 @@ class TvShowViewHolder(
                 )
                 watchedBtn.contentDescription = description
                 androidx.appcompat.widget.TooltipCompat.setTooltipText(watchedBtn, description)
-                watchedBtn.alpha = if (completed) 1f else 0.55f
+                watchedBtn.alpha = 1f
+                (watchedBtn as? android.widget.ImageView)?.setImageDrawable(
+                    ContextCompat.getDrawable(
+                        context,
+                        if (completed) R.drawable.ic_watched_filled else R.drawable.ic_watched,
+                    ),
+                )
             }
 
             watchedBtn.applyExpPress()
@@ -1397,6 +1403,7 @@ class TvShowViewHolder(
                         withContext(Dispatchers.Main) {
                             tvShow.isWatching = targetWatching
                             applyWatchingUi(targetWatching)
+                            ExpMotion.softScale(watchedBtn)
                         }
                     }
                 }
@@ -1467,7 +1474,7 @@ class TvShowViewHolder(
         )
 
         binding.tvTvShowRating.apply {
-            text = tvShow.rating?.let { String.format(Locale.ROOT, "%.1f", it) }
+            text = com.dskja.betterstreamflix.ui.DetailRating.format(tvShow.rating)
             isVisible = !text.isNullOrEmpty()
         }
         binding.ivTvShowRatingIcon.isVisible = binding.tvTvShowRating.isVisible
@@ -2548,7 +2555,7 @@ class TvShowViewHolder(
         bindFact(
             binding.tvDetailAboutRatingLabel,
             binding.tvDetailAboutRating,
-            tvShow.rating?.let { String.format(java.util.Locale.US, "%.1f", it) },
+            com.dskja.betterstreamflix.ui.DetailRating.format(tvShow.rating),
         )
         bindFact(
             binding.tvDetailAboutQualityLabel,

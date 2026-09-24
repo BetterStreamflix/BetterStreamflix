@@ -1403,7 +1403,13 @@ class MovieViewHolder(
                 )
                 watchedBtn.contentDescription = description
                 androidx.appcompat.widget.TooltipCompat.setTooltipText(watchedBtn, description)
-                watchedBtn.alpha = if (watched) 1f else 0.55f
+                watchedBtn.alpha = 1f
+                (watchedBtn as? android.widget.ImageView)?.setImageDrawable(
+                    ContextCompat.getDrawable(
+                        context,
+                        if (watched) R.drawable.ic_watched_filled else R.drawable.ic_watched,
+                    ),
+                )
                 (watchedBtn as? TextView)?.text = description
             }
 
@@ -1424,6 +1430,7 @@ class MovieViewHolder(
                         withContext(Dispatchers.Main) {
                             movie.isWatched = target
                             applyWatchedUi(target)
+                            ExpMotion.softScale(watchedBtn)
                         }
                     }
                 }
@@ -1497,7 +1504,7 @@ class MovieViewHolder(
         )
 
         binding.tvMovieRating.apply {
-            text = movie.rating?.let { String.format(Locale.ROOT, "%.1f", it) }
+            text = com.dskja.betterstreamflix.ui.DetailRating.format(movie.rating)
             visibility = if (text.isNullOrEmpty()) View.GONE else View.VISIBLE
         }
         binding.ivMovieRatingIcon.visibility = binding.tvMovieRating.visibility
@@ -2358,7 +2365,7 @@ class MovieViewHolder(
         bindFact(
             binding.tvDetailAboutRatingLabel,
             binding.tvDetailAboutRating,
-            movie.rating?.let { String.format(java.util.Locale.US, "%.1f", it) },
+            com.dskja.betterstreamflix.ui.DetailRating.format(movie.rating),
         )
         bindFact(
             binding.tvDetailAboutQualityLabel,

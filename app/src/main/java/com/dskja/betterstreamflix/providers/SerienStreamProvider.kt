@@ -510,10 +510,15 @@ object SerienStreamProvider : Provider {
         val localRating = if (tmdbTvShow?.rating == null) {
             val imdbTitleUrl = document.selectFirst("a[href*='imdb.com']")?.attr("href") ?: ""
             val imdbDocument = if (imdbTitleUrl.isNotEmpty()) try { withDomainAndSslFallback { it.getCustomUrl(imdbTitleUrl) } } catch (e: Exception) { null } else null
-            imdbDocument?.selectFirst("div[data-testid='hero-rating-bar__aggregate-rating__score'] span")
-                ?.text()?.toDoubleOrNull() ?: document.selectFirst(".text-white-50:contains(Bewertungen)")?.text()?.split(" ")?.firstOrNull()?.toDoubleOrNull() ?: 0.0
+            // Only accept a real 0–10 score — never scrape "N Bewertungen" (vote count).
+            val imdbScore = imdbDocument
+                ?.selectFirst("div[data-testid='hero-rating-bar__aggregate-rating__score'] span")
+                ?.text()
+                ?.replace(',', '.')
+                ?.toDoubleOrNull()
+            com.dskja.betterstreamflix.ui.DetailRating.normalize(imdbScore)
         } else {
-            0.0
+            null
         }
         
         val localCast = document.select(".series-group:contains(Besetzung) a").mapNotNull {

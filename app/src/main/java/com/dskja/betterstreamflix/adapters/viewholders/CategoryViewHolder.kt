@@ -964,8 +964,8 @@ class CategoryViewHolder(
 
         binding.tvSwiperRating.apply {
             text = when (selected) {
-                is Movie -> selected.rating?.let { String.format(Locale.ROOT, "%.1f", it) }
-                is TvShow -> selected.rating?.let { String.format(Locale.ROOT, "%.1f", it) }
+                is Movie -> com.dskja.betterstreamflix.ui.DetailRating.format(selected.rating)
+                is TvShow -> com.dskja.betterstreamflix.ui.DetailRating.format(selected.rating)
             }
             visibility = when {
                 text.isNullOrEmpty() -> View.GONE
