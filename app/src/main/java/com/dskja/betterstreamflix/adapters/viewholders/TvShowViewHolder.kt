@@ -977,10 +977,11 @@ class TvShowViewHolder(
         binding.ivTvShowPoster.visibility = View.GONE
         Glide.with(binding.ivTvShowPoster).clear(binding.ivTvShowPoster)
 
-        binding.ivTvShowCover.loadTvShowBanner(tvShow, hero = false) {
-            centerCrop()
-            transition(DrawableTransitionOptions.withCrossFade(280))
-        }
+        com.dskja.betterstreamflix.ui.DetailCoverAtmosphere.bindTvShow(
+            cover = binding.ivTvShowCover,
+            soft = binding.ivTvShowCoverSoft,
+            tvShow = tvShow,
+        )
 
         binding.tvTvShowTitle.text = tvShow.title
         // Hero logo bind is owned by DetailHeaderController (after body submit).
