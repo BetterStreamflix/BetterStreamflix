@@ -5,8 +5,8 @@
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:background="#181818"
-    android:paddingTop="8dp"
-    android:paddingBottom="20dp">
+    android:paddingTop="10dp"
+    android:paddingBottom="24dp">
 
     <TextView
         android:id="@+id/tv_movie_recommendations_label"
