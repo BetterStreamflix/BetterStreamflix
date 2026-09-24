@@ -3,17 +3,24 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
-    android:layout_height="wrap_content">
+    android:layout_height="wrap_content"
+    android:background="#181818"
+    android:paddingTop="8dp"
+    android:paddingBottom="16dp">
 
     <TextView
         android:id="@+id/tv_tv_show_cast_label"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:layout_marginStart="10dp"
-        android:layout_marginEnd="10dp"
+        android:layout_marginStart="20dp"
+        android:layout_marginEnd="20dp"
+        android:fontFamily="@font/outfit"
+        android:letterSpacing="0.06"
         android:text="@string/tv_show_cast"
-        android:textColor="#FFFFFF"
-        android:textSize="18sp"
+        android:textAllCaps="true"
+        android:textColor="#F2FFFFFF"
+        android:textSize="13sp"
+        android:textStyle="bold"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent" />
@@ -21,24 +28,22 @@
     <View
         android:id="@+id/v_tv_show_cast_rule"
         android:layout_width="36dp"
-        android:layout_height="3dp"
+        android:layout_height="2.5dp"
         android:layout_marginTop="8dp"
         android:background="@drawable/bg_exp_accent_rule"
-        android:visibility="gone"
         app:layout_constraintStart_toStartOf="@id/tv_tv_show_cast_label"
-        app:layout_constraintTop_toBottomOf="@id/tv_tv_show_cast_label"
-        tools:visibility="visible" />
+        app:layout_constraintTop_toBottomOf="@id/tv_tv_show_cast_label" />
 
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/rv_tv_show_cast"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:layout_marginTop="10dp"
+        android:layout_marginTop="12dp"
         android:clipChildren="false"
         android:clipToPadding="false"
         android:orientation="horizontal"
-        android:paddingStart="10dp"
-        android:paddingEnd="10dp"
+        android:paddingStart="16dp"
+        android:paddingEnd="16dp"
         app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
