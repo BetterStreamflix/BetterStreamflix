@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- Sentry P2 leftover **BETTERSTREAMFLIX-Q**: TMDb Home Discover shelves no longer let a child `ClassCastException` fail the outer Home scope — soft-shelf uses its own `coroutineScope`, merges `List<Movie>+List<Tv>` without unsafe `List<MultiItem>` casts, and CrashReporter/Sentry drop TMDb ClassCast soft-noise
+
 ### Changed
 - Settings: SerienStream account/options only when SerienStream is active; Import Watchlist only for SerienStream, AniWorld, or TMDb Deutsch; TMDb settings keep Title logos + clear logo cache, drop logo quality/TTL/telemetry clutter
 - Provider picker: clearer choose-a-provider copy + TV subtitle; gear/login entry on SerienStream and AniWorld cards

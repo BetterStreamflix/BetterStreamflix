@@ -88,10 +88,18 @@ object SentryBootstrap {
                     if (values.any { ex ->
                             val type = ex.type.orEmpty()
                             val value = ex.value.orEmpty()
+                            val tmdbShelfCast = type.contains("ClassCastException", ignoreCase = true) &&
+                                values.any { peer ->
+                                    val v = peer.value.orEmpty()
+                                    v.contains("TMDb", ignoreCase = true) ||
+                                        v.contains("TMDB", ignoreCase = true)
+                                }
                             type.contains("SentryHttpClientException", ignoreCase = true) ||
                                 type.contains("ExoPlaybackException", ignoreCase = true) ||
                                 type.contains("ParserException", ignoreCase = true) ||
                                 type.contains("HttpException", ignoreCase = true) ||
+                                tmdbShelfCast ||
+                                value.contains("TMDb request failed: ClassCastException", ignoreCase = true) ||
                                 value.contains("No source found", ignoreCase = true) ||
                                 value.contains("No servers found", ignoreCase = true) ||
                                 value.contains("status code: 503", ignoreCase = true) ||
