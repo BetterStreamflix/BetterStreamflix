@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <!-- Solid disc — watched / completed -->
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M12,2.5A9.5,9.5 0,1 1,2.5 12A9.5,9.5 0,0 1,12 2.5Z" />
+    <!-- Check cut via dark fill for contrast on white chip bg; tinted at runtime via accent when needed -->
+    <path
+        android:fillColor="#FF121218"
+        android:pathData="M10.15,15.95L6.55,12.35l1.35,-1.35l2.25,2.25l5.15,-5.15l1.35,1.35z" />
+</vector>
