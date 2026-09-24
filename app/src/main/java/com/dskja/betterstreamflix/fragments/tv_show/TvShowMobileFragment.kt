@@ -18,6 +18,7 @@ import com.dskja.betterstreamflix.database.AppDatabase
 import com.dskja.betterstreamflix.databinding.FragmentTvShowMobileBinding
 import com.dskja.betterstreamflix.models.Season
 import com.dskja.betterstreamflix.models.TvShow
+import com.dskja.betterstreamflix.ui.DetailCoverSync
 import com.dskja.betterstreamflix.ui.DetailHeaderController
 import com.dskja.betterstreamflix.ui.DetailTab
 import com.dskja.betterstreamflix.ui.SpacingItemDecoration
@@ -27,7 +28,6 @@ import com.dskja.betterstreamflix.utils.ExpNavAutoHide
 import com.dskja.betterstreamflix.utils.ExpMotion
 import com.dskja.betterstreamflix.utils.ExperimentalMobileDesign
 import com.dskja.betterstreamflix.utils.LoggingUtils
-import com.dskja.betterstreamflix.utils.dp
 import com.dskja.betterstreamflix.utils.loadTvShowBanner
 import com.dskja.betterstreamflix.utils.viewModelsFactory
 import kotlinx.coroutines.launch
@@ -167,16 +167,18 @@ class TvShowMobileFragment : Fragment() {
                 stateRestorationPolicy = RecyclerView.Adapter.StateRestorationPolicy.PREVENT_WHEN_EMPTY
             }
             addItemDecoration(
-                SpacingItemDecoration(20.dp(requireContext()))
+                SpacingItemDecoration(0),
             )
+            DetailCoverSync.bind(this, binding.ivTvShowBanner)
             addOnScrollListener(object : RecyclerView.OnScrollListener() {
                 override fun onScrolled(recyclerView: RecyclerView, dx: Int, dy: Int) {
                     detailScrollOffset = (detailScrollOffset + dy).coerceAtLeast(0)
                     DetailHeaderController.onScrolled(binding.root, detailScrollOffset)
                     if (ExperimentalMobileDesign.enabled()) {
-                        val parallax = (detailScrollOffset * 0.28f).coerceIn(0f, 420f)
+                        val parallax = (detailScrollOffset * 0.12f).coerceIn(0f, 96f)
                         binding.ivTvShowBanner.translationY = -parallax
                     }
+                    DetailCoverSync.syncHeight(recyclerView, binding.ivTvShowBanner)
                 }
             })
         }
