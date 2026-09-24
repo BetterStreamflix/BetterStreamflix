@@ -1,23 +1,25 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Soft up top → heavy gray wash at the tabs. -->
+<!-- Clear sky → mid haze → solid page gray at the tabs. -->
 <layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Keep top of the art readable -->
     <item>
         <shape android:shape="rectangle">
             <gradient
                 android:angle="90"
-                android:centerColor="#33121218"
-                android:endColor="#00000000"
+                android:centerColor="#22000000"
+                android:endColor="#66000000"
                 android:startColor="#00000000"
                 android:type="linear" />
         </shape>
     </item>
+    <!-- Progressive gray wash into the page -->
     <item>
         <shape android:shape="rectangle">
             <gradient
                 android:angle="90"
-                android:centerColor="#B3181818"
+                android:centerColor="#99181818"
                 android:endColor="#10181818"
-                android:startColor="#F2181818"
+                android:startColor="#FF181818"
                 android:type="linear" />
         </shape>
     </item>

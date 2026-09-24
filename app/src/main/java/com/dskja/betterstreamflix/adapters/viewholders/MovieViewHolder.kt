@@ -1087,10 +1087,11 @@ class MovieViewHolder(
         binding.ivMoviePoster.visibility = View.GONE
         Glide.with(binding.ivMoviePoster).clear(binding.ivMoviePoster)
 
-        binding.ivMovieCover.loadMovieBanner(movie, hero = false) {
-            centerCrop()
-            transition(DrawableTransitionOptions.withCrossFade(280))
-        }
+        com.dskja.betterstreamflix.ui.DetailCoverAtmosphere.bindMovie(
+            cover = binding.ivMovieCover,
+            soft = binding.ivMovieCoverSoft,
+            movie = movie,
+        )
 
         binding.tvMovieTitle.text = movie.title
         // Hero logo bind is owned by DetailHeaderController (after body submit).
