@@ -4,12 +4,10 @@
     android:height="24dp"
     android:viewportWidth="24"
     android:viewportHeight="24">
-    <!-- Accent disc -->
     <path
         android:fillColor="#FFE53935"
-        android:pathData="M12,2.25A9.75,9.75 0,1 1,2.25 12A9.75,9.75 0,0 1,12 2.25Z" />
-    <!-- White check -->
+        android:pathData="M12,2A10,10 0,1 1,2 12A10,10 0,0 1,12 2Z" />
     <path
         android:fillColor="#FFFFFFFF"
-        android:pathData="M10.2,16.45L6.25,12.5l1.55,-1.55l2.4,2.4l5.7,-5.7l1.55,1.55z" />
+        android:pathData="M10.05,16.7L5.75,12.4l1.7,-1.7l2.6,2.6l6.2,-6.2l1.7,1.7z" />
 </vector>

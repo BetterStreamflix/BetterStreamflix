@@ -19,6 +19,25 @@
         app:layout_constraintTop_toTopOf="parent"
         tools:src="@mipmap/ic_launcher" />
 
+    <androidx.constraintlayout.widget.Guideline
+        android:id="@+id/gl_movie_soft_start"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        app:layout_constraintGuide_percent="0.36" />
+
+    <!-- Soft / blurred wash over the lower cover toward the tabs. -->
+    <ImageView
+        android:id="@+id/iv_movie_cover_soft"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:importantForAccessibility="no"
+        android:scaleType="centerCrop"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="@id/gl_movie_soft_start" />
+
     <View
         android:id="@+id/v_movie_cover_veil"
         android:layout_width="0dp"
@@ -42,7 +61,7 @@
     <Space
         android:id="@+id/space_movie_hero"
         android:layout_width="0dp"
-        android:layout_height="56dp"
+        android:layout_height="52dp"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent" />
@@ -51,7 +70,7 @@
     <Space
         android:id="@+id/space_movie_art_stage"
         android:layout_width="0dp"
-        android:layout_height="220dp"
+        android:layout_height="300dp"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@id/space_movie_hero" />
@@ -59,11 +78,16 @@
     <FrameLayout
         android:id="@+id/fl_movie_logo_slot"
         android:layout_width="0dp"
-        android:layout_height="120dp"
-        android:layout_marginStart="24dp"
-        android:layout_marginEnd="24dp"
-        android:layout_marginBottom="8dp"
+        android:layout_height="140dp"
+        android:layout_marginStart="28dp"
+        android:layout_marginEnd="28dp"
+        android:layout_marginBottom="12dp"
+        android:background="@drawable/bg_detail_logo_scrim"
         android:elevation="8dp"
+        android:paddingStart="8dp"
+        android:paddingTop="10dp"
+        android:paddingEnd="8dp"
+        android:paddingBottom="10dp"
         app:layout_constraintBottom_toBottomOf="@id/space_movie_art_stage"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent">
@@ -74,7 +98,6 @@
             android:layout_height="match_parent"
             android:adjustViewBounds="true"
             android:importantForAccessibility="no"
-            android:padding="2dp"
             android:scaleType="fitCenter"
             android:visibility="invisible"
             tools:src="@mipmap/ic_launcher"
@@ -92,7 +115,7 @@
             android:shadowRadius="14"
             android:textAllCaps="true"
             android:textColor="#FFFFFF"
-            android:textSize="36sp"
+            android:textSize="38sp"
             android:textStyle="bold"
             tools:text="RESIDENT EVIL" />
     </FrameLayout>
