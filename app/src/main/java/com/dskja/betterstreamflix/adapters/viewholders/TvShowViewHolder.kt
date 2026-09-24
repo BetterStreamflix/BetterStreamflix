@@ -799,6 +799,9 @@ class TvShowViewHolder(
 
         itemView.contentDescription = tvShow.title
         FeaturedSwiperChrome.resolveAndBindLogo(binding, tvShow)
+        binding.tvSwiperTitle.setTextColor(0xFFFFFFFF.toInt())
+        binding.tvSwiperStatus.setTextColor(0xFFFFFFFF.toInt())
+        binding.tvSwiperGenres.setTextColor(0xFFFFFFFF.toInt())
 
         binding.tvSwiperOverview.visibility = View.GONE
         binding.tvSwiperTvShowLastEpisode.visibility = View.GONE
