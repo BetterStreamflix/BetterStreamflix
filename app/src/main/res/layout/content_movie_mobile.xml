@@ -4,17 +4,32 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:paddingBottom="20dp">
+    android:paddingBottom="28dp">
 
-    <!-- Tall transparent hero: fragment banner shows through down to the tabs. -->
-    <Space
-        android:id="@+id/space_movie_hero"
+    <!-- Full-bleed cover: tied to this hero block so it always reaches the tabs. -->
+    <ImageView
+        android:id="@+id/iv_movie_cover"
         android:layout_width="0dp"
-        android:layout_height="72dp"
+        android:layout_height="0dp"
+        android:importantForAccessibility="no"
+        android:scaleType="centerCrop"
+        app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent" />
+        app:layout_constraintTop_toTopOf="parent"
+        tools:src="@mipmap/ic_launcher" />
 
+    <View
+        android:id="@+id/v_movie_cover_veil"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:background="@drawable/bg_detail_cover_veil"
+        app:layout_constraintBottom_toBottomOf="@id/iv_movie_cover"
+        app:layout_constraintEnd_toEndOf="@id/iv_movie_cover"
+        app:layout_constraintStart_toStartOf="@id/iv_movie_cover"
+        app:layout_constraintTop_toTopOf="@id/iv_movie_cover" />
+
+    <!-- Legacy stub (fragment used to own the banner). -->
     <com.google.android.material.imageview.ShapeableImageView
         android:id="@+id/iv_movie_poster"
         android:layout_width="1dp"
@@ -24,18 +39,34 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent" />
 
-    <!-- Large title logo near the top of the cover plane. -->
+    <Space
+        android:id="@+id/space_movie_hero"
+        android:layout_width="0dp"
+        android:layout_height="56dp"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
+
+    <!-- Tall art stage so the cover reads large before CTAs. -->
+    <Space
+        android:id="@+id/space_movie_art_stage"
+        android:layout_width="0dp"
+        android:layout_height="220dp"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/space_movie_hero" />
+
     <FrameLayout
         android:id="@+id/fl_movie_logo_slot"
         android:layout_width="0dp"
-        android:layout_height="128dp"
-        android:layout_marginStart="20dp"
-        android:layout_marginTop="12dp"
-        android:layout_marginEnd="20dp"
-        android:elevation="6dp"
+        android:layout_height="120dp"
+        android:layout_marginStart="24dp"
+        android:layout_marginEnd="24dp"
+        android:layout_marginBottom="8dp"
+        android:elevation="8dp"
+        app:layout_constraintBottom_toBottomOf="@id/space_movie_art_stage"
         app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/space_movie_hero">
+        app:layout_constraintStart_toStartOf="parent">
 
         <ImageView
             android:id="@+id/iv_movie_logo"
@@ -43,7 +74,7 @@
             android:layout_height="match_parent"
             android:adjustViewBounds="true"
             android:importantForAccessibility="no"
-            android:padding="4dp"
+            android:padding="2dp"
             android:scaleType="fitCenter"
             android:visibility="invisible"
             tools:src="@mipmap/ic_launcher"
@@ -55,15 +86,15 @@
             android:layout_height="match_parent"
             android:fontFamily="@font/syne"
             android:gravity="center"
-            android:shadowColor="#CC000000"
+            android:shadowColor="#E6000000"
             android:shadowDx="0"
-            android:shadowDy="2"
-            android:shadowRadius="12"
+            android:shadowDy="3"
+            android:shadowRadius="14"
             android:textAllCaps="true"
             android:textColor="#FFFFFF"
-            android:textSize="34sp"
+            android:textSize="36sp"
             android:textStyle="bold"
-            tools:text="PRIMATE" />
+            tools:text="RESIDENT EVIL" />
     </FrameLayout>
 
     <androidx.constraintlayout.widget.Barrier
@@ -71,21 +102,21 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         app:barrierDirection="bottom"
-        app:constraint_referenced_ids="fl_movie_logo_slot" />
+        app:constraint_referenced_ids="space_movie_art_stage" />
 
-    <!-- Primary CTA: full-width Watch. -->
     <TextView
         android:id="@+id/btn_movie_watch_now"
         android:layout_width="0dp"
-        android:layout_height="52dp"
-        android:layout_marginStart="16dp"
-        android:layout_marginTop="28dp"
-        android:layout_marginEnd="16dp"
+        android:layout_height="54dp"
+        android:layout_marginStart="20dp"
+        android:layout_marginTop="18dp"
+        android:layout_marginEnd="20dp"
         android:background="@drawable/bg_detail_watch_now"
-        android:drawablePadding="8dp"
-        android:elevation="4dp"
+        android:drawablePadding="10dp"
+        android:elevation="6dp"
         android:fontFamily="@font/manrope"
         android:gravity="center"
+        android:letterSpacing="0.04"
         android:paddingStart="16dp"
         android:paddingEnd="16dp"
         android:text="@string/movie_watch_now"
@@ -97,14 +128,13 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@id/barrier_movie_brand" />
 
-    <!-- Secondary actions: evenly spaced, not crushed beside Watch. -->
     <LinearLayout
         android:id="@+id/ll_movie_cta_row"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:layout_marginStart="12dp"
-        android:layout_marginTop="12dp"
-        android:layout_marginEnd="12dp"
+        android:layout_marginStart="8dp"
+        android:layout_marginTop="16dp"
+        android:layout_marginEnd="8dp"
         android:gravity="center"
         android:orientation="horizontal"
         app:layout_constraintEnd_toEndOf="parent"
@@ -120,20 +150,20 @@
 
             <ImageView
                 android:id="@+id/btn_movie_favorite"
-                android:layout_width="48dp"
-                android:layout_height="48dp"
+                android:layout_width="52dp"
+                android:layout_height="52dp"
                 android:background="@drawable/bg_detail_square_chip"
                 android:contentDescription="@string/detail_add_to_list"
-                android:padding="12dp"
+                android:padding="13dp"
                 android:src="@drawable/ic_list_add" />
 
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="4dp"
+                android:layout_marginTop="6dp"
                 android:fontFamily="@font/manrope"
                 android:text="@string/detail_action_list"
-                android:textColor="#B3FFFFFF"
+                android:textColor="#CCFFFFFF"
                 android:textSize="11sp" />
         </LinearLayout>
 
@@ -146,21 +176,21 @@
 
             <ImageView
                 android:id="@+id/btn_movie_trailer"
-                android:layout_width="48dp"
-                android:layout_height="48dp"
+                android:layout_width="52dp"
+                android:layout_height="52dp"
                 android:background="@drawable/bg_detail_square_chip"
                 android:contentDescription="@string/movie_trailer"
-                android:padding="14dp"
+                android:padding="15dp"
                 android:scaleType="fitCenter"
                 android:src="@drawable/ic_trailer_play" />
 
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="4dp"
+                android:layout_marginTop="6dp"
                 android:fontFamily="@font/manrope"
                 android:text="@string/detail_action_trailer"
-                android:textColor="#B3FFFFFF"
+                android:textColor="#CCFFFFFF"
                 android:textSize="11sp" />
         </LinearLayout>
 
@@ -173,20 +203,20 @@
 
             <ImageView
                 android:id="@+id/btn_movie_download"
-                android:layout_width="48dp"
-                android:layout_height="48dp"
+                android:layout_width="52dp"
+                android:layout_height="52dp"
                 android:background="@drawable/bg_detail_square_chip"
                 android:contentDescription="@string/option_show_download"
-                android:padding="12dp"
+                android:padding="13dp"
                 android:src="@drawable/ic_player_settings_download" />
 
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="4dp"
+                android:layout_marginTop="6dp"
                 android:fontFamily="@font/manrope"
                 android:text="@string/detail_action_download"
-                android:textColor="#B3FFFFFF"
+                android:textColor="#CCFFFFFF"
                 android:textSize="11sp" />
         </LinearLayout>
 
@@ -199,8 +229,8 @@
 
             <ImageView
                 android:id="@+id/btn_movie_watched"
-                android:layout_width="48dp"
-                android:layout_height="48dp"
+                android:layout_width="52dp"
+                android:layout_height="52dp"
                 android:background="@drawable/bg_detail_square_chip"
                 android:contentDescription="@string/option_show_watched"
                 android:padding="12dp"
@@ -209,10 +239,10 @@
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="4dp"
+                android:layout_marginTop="6dp"
                 android:fontFamily="@font/manrope"
                 android:text="@string/detail_action_watched"
-                android:textColor="#B3FFFFFF"
+                android:textColor="#CCFFFFFF"
                 android:textSize="11sp" />
         </LinearLayout>
 
@@ -225,20 +255,20 @@
 
             <ImageView
                 android:id="@+id/btn_movie_share"
-                android:layout_width="48dp"
-                android:layout_height="48dp"
+                android:layout_width="52dp"
+                android:layout_height="52dp"
                 android:background="@drawable/bg_detail_square_chip"
                 android:contentDescription="@string/detail_share"
-                android:padding="12dp"
+                android:padding="13dp"
                 android:src="@drawable/ic_detail_share" />
 
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="4dp"
+                android:layout_marginTop="6dp"
                 android:fontFamily="@font/manrope"
                 android:text="@string/detail_action_share"
-                android:textColor="#B3FFFFFF"
+                android:textColor="#CCFFFFFF"
                 android:textSize="11sp" />
         </LinearLayout>
     </LinearLayout>
@@ -248,7 +278,7 @@
         style="@android:style/Widget.ProgressBar.Horizontal"
         android:layout_width="0dp"
         android:layout_height="3dp"
-        android:layout_marginTop="10dp"
+        android:layout_marginTop="12dp"
         android:backgroundTint="#80646464"
         android:progressTint="#FFFFFF"
         app:layout_constraintEnd_toEndOf="@id/btn_movie_watch_now"
@@ -260,9 +290,9 @@
         android:id="@+id/ll_movie_meta_row"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:layout_marginStart="16dp"
-        android:layout_marginTop="14dp"
-        android:layout_marginEnd="16dp"
+        android:layout_marginStart="20dp"
+        android:layout_marginTop="18dp"
+        android:layout_marginEnd="20dp"
         android:gravity="center_vertical"
         android:orientation="horizontal"
         app:layout_constraintEnd_toEndOf="parent"
@@ -271,44 +301,51 @@
 
         <TextView
             android:id="@+id/tv_movie_genres"
-            android:layout_width="wrap_content"
+            android:layout_width="0dp"
             android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:ellipsize="end"
             android:fontFamily="@font/outfit"
+            android:maxLines="1"
             android:textAllCaps="true"
-            android:textColor="#FFFFFF"
-            android:textSize="13sp"
+            android:textColor="#F2FFFFFF"
+            android:textSize="12sp"
             android:textStyle="bold"
-            tools:text="HORROR" />
+            tools:text="HORROR · SCIENCE FICTION · ABENTEUER" />
 
         <TextView
             android:id="@+id/tv_movie_runtime"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginStart="14dp"
+            android:layout_marginStart="12dp"
             android:fontFamily="@font/manrope"
+            android:maxLines="1"
+            android:singleLine="true"
             android:textAllCaps="true"
-            android:textColor="#FFFFFF"
-            android:textSize="13sp"
+            android:textColor="#CCFFFFFF"
+            android:textSize="12sp"
             android:textStyle="bold"
-            tools:text="1H 30M" />
+            tools:text="1H 35M" />
 
         <TextView
             android:id="@+id/tv_movie_released"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginStart="14dp"
+            android:layout_marginStart="12dp"
             android:fontFamily="@font/manrope"
+            android:maxLines="1"
+            android:singleLine="true"
             android:textAllCaps="true"
-            android:textColor="#FFFFFF"
-            android:textSize="13sp"
+            android:textColor="#CCFFFFFF"
+            android:textSize="12sp"
             android:textStyle="bold"
-            tools:text="2025" />
+            tools:text="2026" />
 
         <TextView
             android:id="@+id/tv_movie_certification"
             android:layout_width="28dp"
             android:layout_height="28dp"
-            android:layout_marginStart="12dp"
+            android:layout_marginStart="10dp"
             android:background="@drawable/bg_cert_badge"
             android:fontFamily="@font/manrope"
             android:gravity="center"
@@ -343,14 +380,14 @@
         android:id="@+id/tv_movie_overview"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:layout_marginStart="16dp"
+        android:layout_marginStart="20dp"
         android:layout_marginTop="14dp"
-        android:layout_marginEnd="16dp"
+        android:layout_marginEnd="20dp"
         android:ellipsize="end"
         android:fontFamily="@font/manrope"
-        android:lineSpacingExtra="3dp"
+        android:lineSpacingExtra="4dp"
         android:maxLines="3"
-        android:textColor="#E6FFFFFF"
+        android:textColor="#E0FFFFFF"
         android:textSize="14sp"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
@@ -361,13 +398,14 @@
         android:id="@+id/tv_movie_overview_more"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginStart="16dp"
-        android:layout_marginTop="4dp"
+        android:layout_marginStart="20dp"
+        android:layout_marginTop="6dp"
+        android:fontFamily="@font/manrope"
         android:minHeight="28dp"
         android:paddingTop="2dp"
         android:paddingBottom="2dp"
         android:text="@string/detail_overview_more"
-        android:textColor="#8AFFFFFF"
+        android:textColor="#B3FFFFFF"
         android:textStyle="bold"
         android:visibility="gone"
         app:layout_constraintStart_toStartOf="parent"

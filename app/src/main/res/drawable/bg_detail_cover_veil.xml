@@ -1,16 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!--
-  Progressive cover veil: artwork stays readable up top, then washes into
-  page gray so the hero can run all the way down to the detail tabs.
--->
+<!-- Soft up top → heavy gray wash at the tabs. -->
 <layer-list xmlns:android="http://schemas.android.com/apk/res/android">
     <item>
         <shape android:shape="rectangle">
             <gradient
                 android:angle="90"
-                android:centerColor="#66181818"
+                android:centerColor="#33121218"
                 android:endColor="#00000000"
-                android:startColor="#00181818"
+                android:startColor="#00000000"
                 android:type="linear" />
         </shape>
     </item>
@@ -18,9 +15,9 @@
         <shape android:shape="rectangle">
             <gradient
                 android:angle="90"
-                android:centerColor="#CC2A2A2E"
-                android:endColor="#002A2A2E"
-                android:startColor="#FF181818"
+                android:centerColor="#B3181818"
+                android:endColor="#10181818"
+                android:startColor="#F2181818"
                 android:type="linear" />
         </shape>
     </item>
