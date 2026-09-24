@@ -11,12 +11,14 @@
         android:id="@+id/iv_tv_show_banner"
         android:layout_width="0dp"
         android:layout_height="0dp"
-        android:foreground="?attr/tv_show_banner_gradient_drawable"
+        android:foreground="@drawable/bg_detail_cover_veil"
         android:scaleType="centerCrop"
-        app:layout_constraintDimensionRatio="H,16:9"
+        app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHeight_percent="0.88"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintVertical_bias="0"
         tools:ignore="ContentDescription" />
 
     <androidx.recyclerview.widget.RecyclerView
