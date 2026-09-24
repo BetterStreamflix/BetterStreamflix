@@ -1,12 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Soft scrim behind title logos for contrast on bright backdrops. -->
+<!-- Soft branding plate behind title logos on bright art. -->
 <shape xmlns:android="http://schemas.android.com/apk/res/android"
     android:shape="rectangle">
     <gradient
         android:angle="90"
-        android:centerColor="#66000000"
-        android:endColor="#00000000"
-        android:startColor="#99000000"
+        android:centerColor="#73000000"
+        android:endColor="#14000000"
+        android:startColor="#B3000000"
         android:type="linear" />
-    <corners android:radius="12dp" />
+    <corners android:radius="14dp" />
 </shape>
