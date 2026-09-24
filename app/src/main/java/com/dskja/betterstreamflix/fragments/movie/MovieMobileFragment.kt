@@ -11,13 +11,11 @@ import androidx.lifecycle.flowWithLifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.navigation.fragment.navArgs
 import androidx.recyclerview.widget.RecyclerView
-import com.bumptech.glide.load.resource.drawable.DrawableTransitionOptions
 import com.dskja.betterstreamflix.R
 import com.dskja.betterstreamflix.adapters.AppAdapter
 import com.dskja.betterstreamflix.database.AppDatabase
 import com.dskja.betterstreamflix.databinding.FragmentMovieMobileBinding
 import com.dskja.betterstreamflix.models.Movie
-import com.dskja.betterstreamflix.ui.DetailCoverSync
 import com.dskja.betterstreamflix.ui.DetailHeaderController
 import com.dskja.betterstreamflix.ui.DetailTab
 import com.dskja.betterstreamflix.ui.SpacingItemDecoration
@@ -26,7 +24,6 @@ import com.dskja.betterstreamflix.utils.ExpNavAutoHide
 import com.dskja.betterstreamflix.utils.ExpMotion
 import com.dskja.betterstreamflix.utils.ExperimentalMobileDesign
 import com.dskja.betterstreamflix.utils.LoggingUtils
-import com.dskja.betterstreamflix.utils.loadMovieBanner
 import com.dskja.betterstreamflix.utils.viewModelsFactory
 import kotlinx.coroutines.launch
 
@@ -66,10 +63,6 @@ class MovieMobileFragment : Fragment() {
         ExperimentalMobileDesign.applyReducedGlass(binding.root)
         if (ExperimentalMobileDesign.enabled()) {
             ExpMotion.staggerFirstFill(binding.rvMovie)
-            ExpMotion.kenBurns(
-                binding.ivMovieBanner,
-                drift = !ExperimentalMobileDesign.heroParallax(),
-            )
         }
         DetailHeaderController.wireBack(binding.root)
         DetailHeaderController.wireCast(this, binding.root)
@@ -143,17 +136,10 @@ class MovieMobileFragment : Fragment() {
             addItemDecoration(
                 SpacingItemDecoration(0),
             )
-            DetailCoverSync.bind(this, binding.ivMovieBanner)
             addOnScrollListener(object : RecyclerView.OnScrollListener() {
                 override fun onScrolled(recyclerView: RecyclerView, dx: Int, dy: Int) {
                     detailScrollOffset = (detailScrollOffset + dy).coerceAtLeast(0)
                     DetailHeaderController.onScrolled(binding.root, detailScrollOffset)
-                    // Soft parallax — keep cover filling down to the tabs (no black gap).
-                    if (ExperimentalMobileDesign.enabled()) {
-                        val parallax = (detailScrollOffset * 0.12f).coerceIn(0f, 96f)
-                        binding.ivMovieBanner.translationY = -parallax
-                    }
-                    DetailCoverSync.syncHeight(recyclerView, binding.ivMovieBanner)
                 }
             })
         }
@@ -186,10 +172,6 @@ class MovieMobileFragment : Fragment() {
 
     private fun displayMovie(movie: Movie) {
         currentMovie = movie
-        binding.ivMovieBanner.loadMovieBanner(movie, hero = false) {
-            centerCrop()
-            transition(DrawableTransitionOptions.withCrossFade())
-        }
         prefetchLogo(movie.logo)
         DetailHeaderController.wireCast(this, binding.root)
 

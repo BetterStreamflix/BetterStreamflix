@@ -11,14 +11,12 @@ import androidx.lifecycle.flowWithLifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.navigation.fragment.navArgs
 import androidx.recyclerview.widget.RecyclerView
-import com.bumptech.glide.load.resource.drawable.DrawableTransitionOptions
 import com.dskja.betterstreamflix.R
 import com.dskja.betterstreamflix.adapters.AppAdapter
 import com.dskja.betterstreamflix.database.AppDatabase
 import com.dskja.betterstreamflix.databinding.FragmentTvShowMobileBinding
 import com.dskja.betterstreamflix.models.Season
 import com.dskja.betterstreamflix.models.TvShow
-import com.dskja.betterstreamflix.ui.DetailCoverSync
 import com.dskja.betterstreamflix.ui.DetailHeaderController
 import com.dskja.betterstreamflix.ui.DetailTab
 import com.dskja.betterstreamflix.ui.SpacingItemDecoration
@@ -28,7 +26,6 @@ import com.dskja.betterstreamflix.utils.ExpNavAutoHide
 import com.dskja.betterstreamflix.utils.ExpMotion
 import com.dskja.betterstreamflix.utils.ExperimentalMobileDesign
 import com.dskja.betterstreamflix.utils.LoggingUtils
-import com.dskja.betterstreamflix.utils.loadTvShowBanner
 import com.dskja.betterstreamflix.utils.viewModelsFactory
 import kotlinx.coroutines.launch
 
@@ -73,10 +70,6 @@ class TvShowMobileFragment : Fragment() {
         ExperimentalMobileDesign.applyReducedGlass(binding.root)
         if (ExperimentalMobileDesign.enabled()) {
             ExpMotion.staggerFirstFill(binding.rvTvShow)
-            ExpMotion.kenBurns(
-                binding.ivTvShowBanner,
-                drift = !ExperimentalMobileDesign.heroParallax(),
-            )
         }
         DetailHeaderController.wireBack(binding.root)
         DetailHeaderController.wireCast(this, binding.root)
@@ -169,16 +162,10 @@ class TvShowMobileFragment : Fragment() {
             addItemDecoration(
                 SpacingItemDecoration(0),
             )
-            DetailCoverSync.bind(this, binding.ivTvShowBanner)
             addOnScrollListener(object : RecyclerView.OnScrollListener() {
                 override fun onScrolled(recyclerView: RecyclerView, dx: Int, dy: Int) {
                     detailScrollOffset = (detailScrollOffset + dy).coerceAtLeast(0)
                     DetailHeaderController.onScrolled(binding.root, detailScrollOffset)
-                    if (ExperimentalMobileDesign.enabled()) {
-                        val parallax = (detailScrollOffset * 0.12f).coerceIn(0f, 96f)
-                        binding.ivTvShowBanner.translationY = -parallax
-                    }
-                    DetailCoverSync.syncHeight(recyclerView, binding.ivTvShowBanner)
                 }
             })
         }
@@ -213,10 +200,6 @@ class TvShowMobileFragment : Fragment() {
 
     private fun displayTvShow(tvShow: TvShow) {
         currentTvShow = tvShow
-        binding.ivTvShowBanner.loadTvShowBanner(tvShow, hero = false) {
-            centerCrop()
-            transition(DrawableTransitionOptions.withCrossFade())
-        }
         prefetchLogo(tvShow.logo)
         DetailHeaderController.wireCast(this, binding.root)
 
