@@ -7,36 +7,36 @@
     android:background="?attr/selectableItemBackground"
     android:gravity="center_vertical"
     android:orientation="horizontal"
-    android:paddingStart="6dp"
-    android:paddingTop="8dp"
-    android:paddingEnd="6dp"
-    android:paddingBottom="8dp">
+    android:paddingStart="8dp"
+    android:paddingTop="10dp"
+    android:paddingEnd="8dp"
+    android:paddingBottom="10dp">
 
     <FrameLayout
-        android:layout_width="156dp"
-        android:layout_height="88dp">
+        android:layout_width="152dp"
+        android:layout_height="86dp">
 
         <ImageView
             android:id="@+id/iv_detail_trailer_thumb"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
-            android:background="#FF1A1A1A"
+            android:background="#FF141418"
             android:scaleType="centerCrop"
             tools:ignore="ContentDescription" />
 
         <View
             android:layout_width="match_parent"
             android:layout_height="match_parent"
-            android:background="#33000000" />
+            android:background="#40000000" />
 
         <ImageView
             android:id="@+id/iv_detail_trailer_play"
-            android:layout_width="44dp"
-            android:layout_height="44dp"
+            android:layout_width="42dp"
+            android:layout_height="42dp"
             android:layout_gravity="center"
             android:background="@drawable/bg_trailer_play_overlay"
             android:contentDescription="@string/movie_trailer"
-            android:padding="12dp"
+            android:padding="11dp"
             android:src="@drawable/ic_trailer_play"
             tools:ignore="ContentDescription" />
 
@@ -48,6 +48,7 @@
             android:layout_margin="6dp"
             android:background="@drawable/bg_detail_trailer_official_badge"
             android:fontFamily="@font/outfit"
+            android:letterSpacing="0.04"
             android:paddingStart="7dp"
             android:paddingTop="2dp"
             android:paddingEnd="7dp"
@@ -75,7 +76,7 @@
             android:ellipsize="end"
             android:fontFamily="@font/outfit"
             android:maxLines="2"
-            android:textColor="#FFFFFF"
+            android:textColor="#FFFFFFFF"
             android:textSize="14sp"
             android:textStyle="bold"
             tools:text="Official Trailer" />
@@ -84,8 +85,9 @@
             android:id="@+id/tv_detail_trailer_meta"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="4dp"
-            android:fontFamily="@font/manrope"
+            android:layout_marginTop="5dp"
+            android:fontFamily="@font/outfit"
+            android:letterSpacing="0.06"
             android:textAllCaps="true"
             android:textColor="#99FFFFFF"
             android:textSize="11sp"

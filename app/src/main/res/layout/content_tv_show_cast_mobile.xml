@@ -5,8 +5,8 @@
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:background="#181818"
-    android:paddingTop="8dp"
-    android:paddingBottom="16dp">
+    android:paddingTop="14dp"
+    android:paddingBottom="20dp">
 
     <TextView
         android:id="@+id/tv_tv_show_cast_label"
@@ -15,11 +15,11 @@
         android:layout_marginStart="20dp"
         android:layout_marginEnd="20dp"
         android:fontFamily="@font/outfit"
-        android:letterSpacing="0.06"
+        android:letterSpacing="0.08"
         android:text="@string/tv_show_cast"
         android:textAllCaps="true"
-        android:textColor="#F2FFFFFF"
-        android:textSize="13sp"
+        android:textColor="#99FFFFFF"
+        android:textSize="11sp"
         android:textStyle="bold"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
@@ -28,7 +28,7 @@
     <View
         android:id="@+id/v_tv_show_cast_rule"
         android:layout_width="36dp"
-        android:layout_height="2.5dp"
+        android:layout_height="2dp"
         android:layout_marginTop="8dp"
         android:background="@drawable/bg_exp_accent_rule"
         app:layout_constraintStart_toStartOf="@id/tv_tv_show_cast_label"
@@ -38,7 +38,7 @@
         android:id="@+id/rv_tv_show_cast"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:layout_marginTop="12dp"
+        android:layout_marginTop="14dp"
         android:clipChildren="false"
         android:clipToPadding="false"
         android:orientation="horizontal"
