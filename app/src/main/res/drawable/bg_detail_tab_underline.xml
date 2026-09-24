@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <layer-list xmlns:android="http://schemas.android.com/apk/res/android">
-    <item android:gravity="bottom|center_horizontal" android:left="10dp" android:right="10dp">
+    <item android:gravity="bottom">
         <shape android:shape="rectangle">
             <size android:height="3dp" />
-            <solid android:color="#FFFFFFFF" />
+            <solid android:color="@color/cinema_text" />
             <corners android:radius="2dp" />
         </shape>
     </item>

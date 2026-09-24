@@ -87,18 +87,21 @@ object TmdbLogoBinder {
         title: String,
         hideUntilReady: Boolean = true,
         stillCurrent: () -> Boolean = { true },
-        applyContrastScrim: Boolean = true,
+        applyContrastScrim: Boolean = false,
         onLoadFailed: (() -> Unit)? = null,
     ) {
         titleView?.text = title
+        // Never paint a hard plate onto the ImageView — that boxes/crushes TMDb logos.
+        // Contrast lives on the art vignette / optional parent slot plate (XML).
+        TitleLogoPresentation.clearImagePlate(imageView)
         when (TitleLogoSlot.state(logoUrl, hideUntilReady)) {
             TitleLogoSlot.State.SHOW_TITLE -> {
                 TmdbLogoGlide.clear(imageView)
-                imageView.background = null
                 // INVISIBLE (not GONE) when parent is a fixed-height slot — no layout shift.
                 imageView.visibility = View.INVISIBLE
                 imageView.importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
                 titleView?.visibility = View.VISIBLE
+                TitleLogoPresentation.applySlotPlate(imageView, showPlate = applyContrastScrim)
                 return
             }
             TitleLogoSlot.State.LOADING_LOGO -> {
@@ -119,16 +122,15 @@ object TmdbLogoBinder {
             hideUntilReady = hideUntilReady,
             contentDescription = title,
             onFailed = {
-                imageView.background = null
+                TitleLogoPresentation.clearImagePlate(imageView)
                 imageView.visibility = View.INVISIBLE
                 imageView.importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
                 titleView?.visibility = View.VISIBLE
+                TitleLogoPresentation.applySlotPlate(imageView, showPlate = applyContrastScrim)
                 onLoadFailed?.invoke()
             },
             onReady = {
-                if (applyContrastScrim) {
-                    imageView.setBackgroundResource(R.drawable.bg_title_logo_contrast)
-                }
+                TitleLogoPresentation.clearImagePlate(imageView)
                 imageView.visibility = View.VISIBLE
                 imageView.importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_YES
                 titleView?.visibility = View.GONE
