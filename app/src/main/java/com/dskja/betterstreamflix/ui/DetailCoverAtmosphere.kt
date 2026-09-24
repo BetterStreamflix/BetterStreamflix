@@ -52,10 +52,10 @@ object DetailCoverAtmosphere {
         soft ?: return
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             soft.visibility = View.VISIBLE
-            soft.alpha = 0.72f
+            soft.alpha = 0.45f
             load(soft)
             soft.setRenderEffect(
-                RenderEffect.createBlurEffect(24f, 24f, Shader.TileMode.CLAMP),
+                RenderEffect.createBlurEffect(18f, 18f, Shader.TileMode.CLAMP),
             )
         } else {
             // Skip the second decode; veil alone handles the fade into tabs.
