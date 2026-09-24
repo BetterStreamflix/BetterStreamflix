@@ -102,8 +102,7 @@ object FeaturedSwiperChrome {
     fun wireWatchButton(button: TextView) {
         val play = ContextCompat.getDrawable(button.context, R.drawable.ic_featured_play)
         TextViewCompat.setCompoundDrawablesRelativeWithIntrinsicBounds(button, play, null, null, null)
-        // Themes can wash primary CTA text — pin near-black for contrast on white.
-        button.setTextColor(0xFF0E0E12.toInt())
+        button.setTextColor(0xFF0A0A0C.toInt())
         button.compoundDrawableTintList = null
     }
 

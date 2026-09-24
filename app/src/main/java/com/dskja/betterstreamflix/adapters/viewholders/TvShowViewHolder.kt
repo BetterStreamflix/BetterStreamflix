@@ -799,10 +799,10 @@ class TvShowViewHolder(
 
         itemView.contentDescription = tvShow.title
         FeaturedSwiperChrome.resolveAndBindLogo(binding, tvShow)
-        binding.tvSwiperTitle.setTextColor(0xFFFFFFFF.toInt())
-        binding.tvSwiperStatus.setTextColor(0xFFFFFFFF.toInt())
-        binding.tvSwiperGenres.setTextColor(0xFFFFFFFF.toInt())
+        binding.tvSwiperTitle.setTextColor(0xFFF7F7F8.toInt())
+        binding.tvSwiperGenres.setTextColor(0xFFE8E8EC.toInt())
 
+        binding.tvSwiperStatus.visibility = View.GONE
         binding.tvSwiperOverview.visibility = View.GONE
         binding.tvSwiperTvShowLastEpisode.visibility = View.GONE
         binding.tvSwiperQuality.visibility = View.GONE
@@ -811,15 +811,15 @@ class TvShowViewHolder(
         binding.ivSwiperRatingIcon.visibility = View.GONE
         binding.pbSwiperProgress.visibility = View.GONE
 
-        binding.tvSwiperStatus.apply {
-            text = FeaturedHeroController.statusLine(context, tvShow)
-                ?: context.getString(R.string.home_swiper_all_episodes)
-            visibility = if (text.isNullOrBlank()) View.GONE else View.VISIBLE
-        }
         binding.tvSwiperGenres.apply {
-            val labels = FeaturedHeroController.genresLine(tvShow)
-            text = labels
-            visibility = if (labels.isEmpty()) View.GONE else View.VISIBLE
+            val genres = FeaturedHeroController.genresLine(tvShow)
+            val status = FeaturedHeroController.statusLine(context, tvShow)
+            text = when {
+                genres.isNotEmpty() -> genres
+                !status.isNullOrBlank() -> status
+                else -> context.getString(R.string.home_swiper_all_episodes)
+            }
+            visibility = if (text.isNullOrBlank()) View.GONE else View.VISIBLE
         }
 
         val openTvShow = View.OnClickListener {

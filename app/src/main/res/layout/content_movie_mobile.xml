@@ -4,7 +4,7 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:paddingBottom="28dp">
+    android:paddingBottom="32dp">
 
     <!-- Full-bleed cover: tied to this hero block so it always reaches the tabs. -->
     <ImageView
@@ -24,7 +24,7 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
-        app:layout_constraintGuide_percent="0.62" />
+        app:layout_constraintGuide_percent="0.55" />
 
     <!-- Soft / blurred wash over the lower cover toward the tabs. -->
     <ImageView
@@ -79,15 +79,15 @@
         android:id="@+id/fl_movie_logo_slot"
         android:layout_width="0dp"
         android:layout_height="@dimen/detail_logo_slot_height"
-        android:layout_marginStart="28dp"
-        android:layout_marginEnd="28dp"
-        android:layout_marginBottom="12dp"
+        android:layout_marginStart="24dp"
+        android:layout_marginEnd="24dp"
+        android:layout_marginBottom="8dp"
         android:background="@drawable/bg_detail_logo_scrim"
-        android:elevation="8dp"
-        android:paddingStart="8dp"
-        android:paddingTop="10dp"
-        android:paddingEnd="8dp"
-        android:paddingBottom="10dp"
+        android:elevation="0dp"
+        android:paddingStart="6dp"
+        android:paddingTop="8dp"
+        android:paddingEnd="6dp"
+        android:paddingBottom="8dp"
         app:layout_constraintBottom_toBottomOf="@id/space_movie_art_stage"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent">
@@ -109,13 +109,13 @@
             android:layout_height="match_parent"
             android:fontFamily="@font/syne"
             android:gravity="center"
-            android:shadowColor="#E6000000"
+            android:shadowColor="#F2000000"
             android:shadowDx="0"
-            android:shadowDy="3"
-            android:shadowRadius="14"
+            android:shadowDy="2"
+            android:shadowRadius="16"
             android:textAllCaps="true"
-            android:textColor="#FFFFFF"
-            android:textSize="38sp"
+            android:textColor="@color/cinema_text"
+            android:textSize="34sp"
             android:textStyle="bold"
             tools:text="RESIDENT EVIL" />
     </FrameLayout>
@@ -130,19 +130,19 @@
     <TextView
         android:id="@+id/btn_movie_watch_now"
         android:layout_width="0dp"
-        android:layout_height="58dp"
+        android:layout_height="56dp"
         android:layout_marginStart="20dp"
-        android:layout_marginTop="18dp"
+        android:layout_marginTop="16dp"
         android:layout_marginEnd="20dp"
         android:background="@drawable/bg_detail_watch_now"
         android:drawablePadding="10dp"
-        android:elevation="10dp"
+        android:elevation="6dp"
         android:fontFamily="@font/outfit"
         android:gravity="center"
         android:letterSpacing="0.04"
         android:paddingStart="16dp"
         android:paddingEnd="16dp"
-        android:textColor="#FF0E0E12"
+        android:textColor="@color/cinema_cta_ink"
         android:text="@string/movie_watch_now"
         android:textAllCaps="true"
         android:textSize="16sp"
@@ -187,7 +187,7 @@
                 android:fontFamily="@font/outfit"
                 android:letterSpacing="0.02"
                 android:text="@string/detail_action_list"
-                android:textColor="#CCFFFFFF"
+                android:textColor="@color/cinema_text_muted"
                 android:textSize="11sp" />
         </LinearLayout>
 
@@ -215,7 +215,7 @@
                 android:fontFamily="@font/outfit"
                 android:letterSpacing="0.02"
                 android:text="@string/detail_action_trailer"
-                android:textColor="#CCFFFFFF"
+                android:textColor="@color/cinema_text_muted"
                 android:textSize="11sp" />
         </LinearLayout>
 
@@ -242,7 +242,7 @@
                 android:fontFamily="@font/outfit"
                 android:letterSpacing="0.02"
                 android:text="@string/detail_action_download"
-                android:textColor="#CCFFFFFF"
+                android:textColor="@color/cinema_text_muted"
                 android:textSize="11sp" />
         </LinearLayout>
 
@@ -269,7 +269,7 @@
                 android:fontFamily="@font/outfit"
                 android:letterSpacing="0.02"
                 android:text="@string/detail_action_watched"
-                android:textColor="#CCFFFFFF"
+                android:textColor="@color/cinema_text_muted"
                 android:textSize="11sp" />
         </LinearLayout>
 
@@ -296,7 +296,7 @@
                 android:fontFamily="@font/outfit"
                 android:letterSpacing="0.02"
                 android:text="@string/detail_action_share"
-                android:textColor="#CCFFFFFF"
+                android:textColor="@color/cinema_text_muted"
                 android:textSize="11sp" />
         </LinearLayout>
     </LinearLayout>
@@ -319,7 +319,7 @@
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_marginStart="20dp"
-        android:layout_marginTop="18dp"
+        android:layout_marginTop="16dp"
         android:layout_marginEnd="20dp"
         android:gravity="center_vertical"
         android:orientation="horizontal"
@@ -334,11 +334,11 @@
             android:layout_weight="1"
             android:ellipsize="end"
             android:fontFamily="@font/outfit"
-            android:letterSpacing="0.02"
+            android:letterSpacing="0.06"
             android:maxLines="1"
             android:textAllCaps="true"
-            android:textColor="#D9FFFFFF"
-            android:textSize="12sp"
+            android:textColor="@color/cinema_text_soft"
+            android:textSize="11sp"
             android:textStyle="bold"
             tools:text="HORROR · SCIENCE FICTION · ABENTEUER" />
 
@@ -351,7 +351,7 @@
             android:maxLines="1"
             android:singleLine="true"
             android:textAllCaps="true"
-            android:textColor="#CCFFFFFF"
+            android:textColor="@color/cinema_text_muted"
             android:textSize="12sp"
             android:textStyle="bold"
             tools:text="1H 35M" />
@@ -365,7 +365,7 @@
             android:maxLines="1"
             android:singleLine="true"
             android:textAllCaps="true"
-            android:textColor="#CCFFFFFF"
+            android:textColor="@color/cinema_text_muted"
             android:textSize="12sp"
             android:textStyle="bold"
             tools:text="2026" />
@@ -425,16 +425,16 @@
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_marginStart="20dp"
-        android:layout_marginTop="16dp"
+        android:layout_marginTop="14dp"
         android:layout_marginEnd="20dp"
         android:ellipsize="end"
         android:fontFamily="@font/manrope"
         android:letterSpacing="0.01"
-        android:lineSpacingExtra="5dp"
-        android:lineSpacingMultiplier="1.05"
+        android:lineSpacingExtra="6dp"
+        android:lineSpacingMultiplier="1.08"
         android:maxLines="3"
-        android:textColor="#E6FFFFFF"
-        android:textSize="14.5sp"
+        android:textColor="@color/cinema_text_soft"
+        android:textSize="15sp"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@id/ll_movie_meta_row"
@@ -445,14 +445,14 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginStart="20dp"
-        android:layout_marginTop="8dp"
+        android:layout_marginTop="6dp"
         android:fontFamily="@font/outfit"
-        android:letterSpacing="0.02"
+        android:letterSpacing="0.04"
         android:minHeight="32dp"
         android:paddingTop="4dp"
         android:paddingBottom="4dp"
         android:text="@string/detail_overview_more"
-        android:textColor="#E6FFFFFF"
+        android:textColor="@color/cinema_text"
         android:textSize="13sp"
         android:textStyle="bold"
         android:visibility="gone"

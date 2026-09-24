@@ -761,7 +761,7 @@ class CategoryViewHolder(
         container: LinearLayout,
         total: Int,
         selected: Int,
-        exp: Boolean,
+        @Suppress("UNUSED_PARAMETER") exp: Boolean,
         leanbackFocusable: Boolean,
         onSelect: (Int) -> Unit,
     ) {
@@ -787,34 +787,25 @@ class CategoryViewHolder(
             container.addView(label)
             return
         }
-        val activeColor = if (exp) {
-            MaterialColors.getColor(
-                context, androidx.appcompat.R.attr.colorPrimary, 0xFFFFFFFF.toInt(),
-            )
-        } else {
-            0xFFFFFFFF.toInt()
-        }
-        val inactiveColor = if (exp) {
-            MaterialColors.getColor(
-                context, com.google.android.material.R.attr.colorOnSurfaceVariant, 0x66FFFFFF,
-            )
-        } else {
-            0x66FFFFFF
-        }
-        val dotSize = if (exp) 6.dp(context) else 15
-        val activeWidth = if (exp) 28 else 15
-        val margin = if (exp) 5.dp(context) else 10
+        val activeColor = 0xFFFFFFFF.toInt()
+        val inactiveColor = 0x66FFFFFF
+        val density = context.resources.displayMetrics.density
+        val inactiveSize = (7 * density).toInt()
+        val activeWidth = (22 * density).toInt()
+        val activeHeight = (7 * density).toInt()
+        val margin = (5 * density).toInt()
         repeat(total) { index ->
             val isActive = safeSelected == index
             val view = View(context).apply {
                 layoutParams = LinearLayout.LayoutParams(
-                    if (isActive) activeWidth else dotSize,
-                    if (exp) 6.dp(context) else 15,
+                    if (isActive) activeWidth else inactiveSize,
+                    if (isActive) activeHeight else inactiveSize,
                 ).apply {
                     setMargins(margin, 0, margin, 0)
                 }
                 setBackgroundResource(
-                    if (exp) R.drawable.bg_exp_dot else R.drawable.bg_dot_indicator,
+                    if (isActive) R.drawable.bg_featured_dot_active
+                    else R.drawable.bg_featured_dot_inactive,
                 )
                 backgroundTintList = ColorStateList.valueOf(
                     if (isActive) activeColor else inactiveColor,

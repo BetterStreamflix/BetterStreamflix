@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Cinema Ink — shared Featured / Detail / logo surface -->
+    <color name="cinema_ink">#FF0A0A0C</color>
+    <color name="cinema_surface">#FF121218</color>
+    <color name="cinema_elevated">#FF1A1A22</color>
+    <color name="cinema_text">#FFF7F7F8</color>
+    <color name="cinema_text_soft">#FFE8E8EC</color>
+    <color name="cinema_text_muted">#FFA1A1AA</color>
+    <color name="cinema_text_faint">#FF71717A</color>
+    <color name="cinema_cta_fill">#FFF7F7F8</color>
+    <color name="cinema_cta_ink">#FF0A0A0C</color>
+    <color name="cinema_glass">#33FFFFFF</color>
+    <color name="cinema_glass_strong">#4DFFFFFF</color>
+    <color name="cinema_stroke">#40FFFFFF</color>
+    <color name="cinema_accent">#FF5B8CFF</color>
+    <color name="cinema_tmdb">#FF01B4E4</color>
+</resources>

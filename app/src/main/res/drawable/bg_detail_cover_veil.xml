@@ -1,11 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Single smooth wash into page gray — no mid-art black band. -->
+<!-- Smooth wash into page surface — no mid-art black band. -->
 <shape xmlns:android="http://schemas.android.com/apk/res/android"
     android:shape="rectangle">
     <gradient
         android:angle="90"
-        android:centerColor="#66181818"
-        android:endColor="#14000000"
-        android:startColor="#FF181818"
+        android:centerColor="#80121218"
+        android:endColor="#1A000000"
+        android:startColor="#FF121218"
         android:type="linear" />
 </shape>
