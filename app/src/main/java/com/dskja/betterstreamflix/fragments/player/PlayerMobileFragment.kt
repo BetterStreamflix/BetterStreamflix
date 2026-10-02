@@ -50,6 +50,7 @@ import androidx.navigation.fragment.findNavController
 import androidx.navigation.fragment.navArgs
 import com.dskja.betterstreamflix.R
 import com.dskja.betterstreamflix.player.PlaybackFailover
+import com.dskja.betterstreamflix.player.PlaybackLifecycleGuard
 import com.dskja.betterstreamflix.player.PlayerBuilderFactory
 import com.dskja.betterstreamflix.player.SerienStreamBypassHelper
 import com.dskja.betterstreamflix.providers.SerienStreamAuthManager
@@ -174,9 +175,13 @@ class PlayerMobileFragment : Fragment() {
     /** Set once the user leaves the player — blocks further UI/player work. */
     private var isTearingDown = false
     private var playerReleased = false
+    private var mediaSessionReleased = true
     private var chooserReceiverRegistered = false
     private var castNextQueueJob: Job? = null
     private var stateCollectJob: Job? = null
+    private val playbackStopHandle = PlaybackLifecycleGuard.StopHandle {
+        forceStopPlayback()
+    }
     private var subtitleCollectJob: Job? = null
     private var episodeNavJob: Job? = null
 
@@ -798,6 +803,7 @@ class PlayerMobileFragment : Fragment() {
     }
 
     fun onUserLeaveHint() {
+        if (isTearingDown || isRemoving) return
         if (isCasting || CastPlaybackHub.isCasting) return
         if (!isIgnoringPip && ::player.isInitialized && !playerReleased &&
             runCatching { player.isPlaying }.getOrDefault(false)
@@ -806,11 +812,67 @@ class PlayerMobileFragment : Fragment() {
         }
     }
 
+    /**
+     * Hard-stop local audio/video. Called from Back, destination changes, and teardown.
+     * Idempotent — safe if already released.
+     */
+    fun forceStopPlayback() {
+        isTearingDown = true
+        stopProgressHandler()
+        stopLiveEdgeWatcher()
+        releasePlayer()
+    }
+
+    private fun isInPipMode(): Boolean =
+        activity?.isInPictureInPictureMode == true
+
+    override fun onPause() {
+        super.onPause()
+        // Pause immediately when leaving the player screen (Back / bottom nav / Home).
+        // Skip while in PiP or casting so background playback can continue intentionally.
+        if (!isInPipMode() &&
+            !isCasting &&
+            !CastPlaybackHub.isCasting &&
+            ::player.isInitialized &&
+            !playerReleased
+        ) {
+            runCatching {
+                player.playWhenReady = false
+                player.pause()
+            }
+        }
+        if (::player.isInitialized && !playerReleased && !isTearingDown && !isLiveTvPlayback()) {
+            runCatching {
+                reportTraktProgress(
+                    videoType = args.videoType,
+                    positionMs = player.currentPosition,
+                    durationMs = player.duration,
+                    isPlaying = false,
+                )
+            }
+        }
+        stopProgressHandler()
+        stopLiveEdgeWatcher()
+        hideNextEpisodeOverlay()
+    }
+
     override fun onStop() {
         super.onStop()
         // Keep local Exo paused only when we are not casting — otherwise Cast owns playback.
         if (::player.isInitialized && !playerReleased && !isCasting && !CastPlaybackHub.isCasting) {
-            runCatching { player.pause() }
+            if (isRemoving || isTearingDown || !isInPipMode()) {
+                // Leaving the player (or the activity without PiP) — kill audio hard.
+                runCatching {
+                    player.playWhenReady = false
+                    player.pause()
+                    player.stop()
+                }
+            } else {
+                runCatching { player.pause() }
+            }
+        }
+        if (isRemoving || isTearingDown) {
+            releasePlayer()
         }
     }
 
@@ -818,6 +880,7 @@ class PlayerMobileFragment : Fragment() {
         // Tear down player/UI while the fragment is still attached. Doing this after
         // super.onDestroyView() races with OEM back stacks (crash on Zurück).
         isTearingDown = true
+        PlaybackLifecycleGuard.unregister(playbackStopHandle)
         val appContext = context?.applicationContext
         val hostActivity = activity
         runCatching {
@@ -880,14 +943,9 @@ class PlayerMobileFragment : Fragment() {
     private fun safeNavigateUp() {
         if (isTearingDown) return
         if (!isAdded) return
-        isTearingDown = true
         // Release the player before popping the back stack so ExoPlayer/PlayerView
         // cannot race OEM destroy sequences after navigateUp().
-        runCatching {
-            stopProgressHandler()
-            stopLiveEdgeWatcher()
-            releasePlayer()
-        }
+        forceStopPlayback()
         runCatching { findNavController().navigateUp() }
     }
 
@@ -3077,24 +3135,6 @@ class PlayerMobileFragment : Fragment() {
 
 
 
-    override fun onPause() {
-        super.onPause()
-        // safeNavigateUp() may already have released Exo; never touch player after that.
-        if (::player.isInitialized && !playerReleased && !isTearingDown && !isLiveTvPlayback()) {
-            runCatching {
-                reportTraktProgress(
-                    videoType = args.videoType,
-                    positionMs = player.currentPosition,
-                    durationMs = player.duration,
-                    isPlaying = false,
-                )
-            }
-        }
-        stopProgressHandler()
-        stopLiveEdgeWatcher()
-        hideNextEpisodeOverlay()
-    }
-
     private var currentExtraBuffering = false
     private var currentSoftwareDecoder = false
     private var currentExternalPlayerTried = false
@@ -3116,8 +3156,12 @@ class PlayerMobileFragment : Fragment() {
     private fun initializePlayer(extraBuffering: Boolean, softwareDecoder: Boolean = currentSoftwareDecoder) {
         releasePlayer()
         playerReleased = false
+        mediaSessionReleased = true
         currentExtraBuffering = extraBuffering
         currentSoftwareDecoder = softwareDecoder
+        // Leaving the player mid-rebuild must still be able to kill audio.
+        isTearingDown = false
+        PlaybackLifecycleGuard.register(playbackStopHandle)
 
         var tokenLogged = false
         val okHttpClient = NetworkClient.default.newBuilder()
@@ -3159,7 +3203,10 @@ class PlayerMobileFragment : Fragment() {
         player = buildPlayer(extraBuffering).also { built ->
                 mediaSession = MediaSession.Builder(requireContext(), built)
                     .build()
+                mediaSessionReleased = false
             }
+        playerReleased = false
+        PlaybackLifecycleGuard.register(playbackStopHandle)
 
         SubtitleOffset.restore(requireContext(), subtitleOffsetKey())
 
@@ -3414,6 +3461,7 @@ class PlayerMobileFragment : Fragment() {
     private fun releasePlayer() {
         stopProgressHandler()
         stopLiveEdgeWatcher()
+        PlaybackLifecycleGuard.unregister(playbackStopHandle)
         val b = _binding
         if (b != null) {
             runCatching {
@@ -3425,16 +3473,23 @@ class PlayerMobileFragment : Fragment() {
                 com.bumptech.glide.Glide.with(b.root).clear(b.ivNextEpisodePoster)
             }
         }
+        // Release MediaSession BEFORE the player — a live session can keep audio focus
+        // and continue commanding a "released" ExoPlayer (zombie audio on Home).
+        if (::mediaSession.isInitialized && !mediaSessionReleased) {
+            runCatching { mediaSession.release() }
+            mediaSessionReleased = true
+        }
         if (::player.isInitialized && !playerReleased) {
             playbackListener?.let { runCatching { player.removeListener(it) } }
             playbackListener = null
-            runCatching { player.stop() }
-            runCatching { player.clearMediaItems() }
+            runCatching {
+                player.playWhenReady = false
+                player.pause()
+                player.stop()
+                player.clearMediaItems()
+            }
             runCatching { player.release() }
             playerReleased = true
-        }
-        if (::mediaSession.isInitialized) {
-            runCatching { mediaSession.release() }
         }
     }
 

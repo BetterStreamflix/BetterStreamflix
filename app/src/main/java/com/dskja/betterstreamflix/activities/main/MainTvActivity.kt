@@ -21,6 +21,7 @@ import com.dskja.betterstreamflix.database.AppDatabase
 import com.dskja.betterstreamflix.databinding.ActivityMainTvBinding
 import com.dskja.betterstreamflix.databinding.ContentHeaderMenuMainTvBinding
 import com.dskja.betterstreamflix.fragments.player.PlayerTvFragment
+import com.dskja.betterstreamflix.player.PlaybackLifecycleGuard
 import com.dskja.betterstreamflix.ui.UpdateAppTvDialog
 import com.dskja.betterstreamflix.providers.IptvProvider
 import com.dskja.betterstreamflix.providers.Provider
@@ -105,6 +106,9 @@ class MainTvActivity : FragmentActivity() {
         }
 
         navController.addOnDestinationChangedListener { _, destination, _ ->
+            if (destination.id != R.id.player) {
+                PlaybackLifecycleGuard.stopActivePlayback()
+            }
             binding.navMain.headerView?.apply {
                 val header = ContentHeaderMenuMainTvBinding.bind(this)
 
@@ -198,8 +202,15 @@ class MainTvActivity : FragmentActivity() {
                         }
                     }
                     else -> {
-                        val handled = (getCurrentFragment() as? PlayerTvFragment)?.onBackPressed() ?: false
-                        if (!handled && !navController.navigateUp()) finish()
+                        val playerFrag = getCurrentFragment() as? PlayerTvFragment
+                        val handled = playerFrag?.onBackPressed() ?: false
+                        if (handled) return
+                        if (playerFrag != null) {
+                            playerFrag.forceStopPlayback()
+                        } else {
+                            PlaybackLifecycleGuard.stopActivePlayback()
+                        }
+                        if (!navController.navigateUp()) finish()
                     }
                 }
             }

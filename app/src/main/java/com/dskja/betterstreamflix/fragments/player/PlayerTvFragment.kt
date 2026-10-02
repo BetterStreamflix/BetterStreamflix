@@ -60,6 +60,7 @@ import com.dskja.betterstreamflix.cast.CastMediaFactory
 import com.dskja.betterstreamflix.cast.CastPlaybackHub
 import com.dskja.betterstreamflix.cast.CastQueueCoordinator
 import com.dskja.betterstreamflix.player.PlaybackFailover
+import com.dskja.betterstreamflix.player.PlaybackLifecycleGuard
 import com.dskja.betterstreamflix.player.PlayerBuilderFactory
 import com.dskja.betterstreamflix.player.SerienStreamBypassHelper
 import com.dskja.betterstreamflix.providers.SerienStreamAuthManager
@@ -159,6 +160,7 @@ class PlayerTvFragment : Fragment() {
 
     private lateinit var player: ExoPlayer
     private var playerReleased = false
+    private var mediaSessionReleased = true
     private var isTearingDown = false
     private var playbackListener: Player.Listener? = null
     private var castPlayer: CastPlayer? = null
@@ -172,6 +174,9 @@ class PlayerTvFragment : Fragment() {
     private lateinit var progressHandler: android.os.Handler
     private lateinit var progressRunnable: Runnable
     private var gestureHelper: PlayerGestureHelper? = null
+    private val playbackStopHandle = PlaybackLifecycleGuard.StopHandle {
+        forceStopPlayback()
+    }
 
     private var servers = listOf<Video.Server>()
     private var zoomToast: Toast? = null
@@ -807,9 +812,19 @@ class PlayerTvFragment : Fragment() {
 
     override fun onPause() {
         super.onPause()
-        // Do not pause ExoPlayer here. Brief onPause callbacks (overlays, WebView,
-        // system focus flashes) are common on Android TV / Fire TV and were pausing
-        // playback permanently because onResume never called play().
+        // Brief onPause flashes are common on Android TV / Fire TV. Only hard-stop
+        // when the fragment is actually leaving — otherwise wait for onStop.
+        if ((isRemoving || isTearingDown) &&
+            ::player.isInitialized &&
+            !playerReleased &&
+            !isCasting &&
+            !CastPlaybackHub.isCasting
+        ) {
+            runCatching {
+                player.playWhenReady = false
+                player.pause()
+            }
+        }
         stopProgressHandler()
         stopLiveEdgeWatcher()
         hideNextEpisodeOverlay()
@@ -819,18 +834,36 @@ class PlayerTvFragment : Fragment() {
         super.onStop()
         // Keep local Exo paused only when we are not casting — otherwise Cast owns playback.
         if (::player.isInitialized && !playerReleased && !isCasting && !CastPlaybackHub.isCasting) {
-            try {
+            runCatching {
+                player.playWhenReady = false
                 player.pause()
-            } catch (e: Exception) {
-                Log.w("Player", "pause() ignored, player already released")
+                if (isRemoving || isTearingDown) {
+                    player.stop()
+                }
             }
         }
+        if (isRemoving || isTearingDown) {
+            releasePlayer()
+        }
+    }
+
+    /**
+     * Hard-stop local audio/video. Called from Back, destination changes, and teardown.
+     * Idempotent — safe if already released.
+     */
+    fun forceStopPlayback() {
+        isTearingDown = true
+        stopProgressHandler()
+        stopLiveEdgeWatcher()
+        clearBypassSession(dismissDialog = true)
+        releasePlayer()
     }
 
     override fun onDestroyView() {
         // Tear down while still attached — requireContext()/binding after super crash on
         // Zurück from player (especially TV OEM paths).
         isTearingDown = true
+        PlaybackLifecycleGuard.unregister(playbackStopHandle)
         val appContext = context?.applicationContext
         runCatching {
             com.dskja.betterstreamflix.platform.player.PlayerPlaybackReporter.resetSession()
@@ -868,12 +901,7 @@ class PlayerTvFragment : Fragment() {
 
     private fun safeNavigateUp() {
         if (!isAdded) return
-        runCatching {
-            stopProgressHandler()
-            stopLiveEdgeWatcher()
-            clearBypassSession(dismissDialog = true)
-            releasePlayer()
-        }
+        forceStopPlayback()
         runCatching { findNavController().navigateUp() }
     }
 
@@ -2662,8 +2690,12 @@ class PlayerTvFragment : Fragment() {
 
         private fun initializePlayer(extraBuffering: Boolean, softwareDecoder: Boolean = currentSoftwareDecoder) {
             releasePlayer()
+            playerReleased = false
+            mediaSessionReleased = true
+            isTearingDown = false
             currentExtraBuffering = extraBuffering
             currentSoftwareDecoder = softwareDecoder
+            PlaybackLifecycleGuard.register(playbackStopHandle)
 
             var tokenLogged = false
             val okHttpClient = OkHttpClient.Builder()
@@ -2705,7 +2737,10 @@ class PlayerTvFragment : Fragment() {
             player = buildPlayer(extraBuffering).also { built ->
                 mediaSession = MediaSession.Builder(requireContext(), built)
                     .build()
+                mediaSessionReleased = false
             }
+            playerReleased = false
+            PlaybackLifecycleGuard.register(playbackStopHandle)
 
             SubtitleOffset.restore(requireContext(), subtitleOffsetKey())
 
@@ -2948,6 +2983,7 @@ class PlayerTvFragment : Fragment() {
         private fun releasePlayer() {
             stopProgressHandler()
             stopLiveEdgeWatcher()
+            PlaybackLifecycleGuard.unregister(playbackStopHandle)
             val b = _binding
             if (b != null) {
                 runCatching {
@@ -2956,16 +2992,23 @@ class PlayerTvFragment : Fragment() {
                     b.settings.subtitleView = null
                 }
             }
+            // Release MediaSession BEFORE the player — a live session can keep audio focus
+            // and continue commanding a "released" ExoPlayer (zombie audio on Home).
+            if (::mediaSession.isInitialized && !mediaSessionReleased) {
+                runCatching { mediaSession.release() }
+                mediaSessionReleased = true
+            }
             if (::player.isInitialized && !playerReleased) {
                 playbackListener?.let { runCatching { player.removeListener(it) } }
                 playbackListener = null
-                runCatching { player.stop() }
-                runCatching { player.clearMediaItems() }
+                runCatching {
+                    player.playWhenReady = false
+                    player.pause()
+                    player.stop()
+                    player.clearMediaItems()
+                }
                 runCatching { player.release() }
                 playerReleased = true
-            }
-            if (::mediaSession.isInitialized) {
-                runCatching { mediaSession.release() }
             }
         }
 
