@@ -1239,8 +1239,12 @@
     <string name="support_banner_dismiss_cd">Support-Karte ausblenden</string>
     <string name="support_thanks_title">Danke für deine Unterstützung</string>
     <string name="support_thanks_body">Jede Unterstützung hilft, das Projekt weiterzubringen.</string>
+    <string name="support_thanks_body_with_supporters">Jede Unterstützung hilft, das Projekt weiterzubringen.\n\nBesonderer Dank an unsere Unterstützer: %1$s.</string>
     <string name="support_thanks_back">Zurück zu BetterStreamflix</string>
     <string name="support_thanks_community">Discord beitreten</string>
+    <string name="support_supporters_title">Community-Unterstützer</string>
+    <string name="support_supporters_subtitle">Danke an alle, die BetterStreamflix am Leben halten.</string>
+    <string name="support_supporters_summary">Danke: %1$s</string>
     <string name="support_unable_to_open_link">Link konnte nicht geöffnet werden.</string>
     <string name="support_settings_entry_title">BetterStreamflix unterstützen</string>
     <string name="support_settings_entry_summary">Spenden, Sponsoren, Impact-Ziele, FAQ und Community</string>
