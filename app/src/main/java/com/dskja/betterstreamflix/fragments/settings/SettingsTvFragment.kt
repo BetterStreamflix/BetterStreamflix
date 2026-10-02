@@ -156,6 +156,12 @@ class SettingsTvFragment : LeanbackPreferenceFragmentCompat() {
         }
     }
 
+    private val pickDownloadFolderLauncher = registerForActivityResult(
+        ActivityResultContracts.OpenDocumentTree()
+    ) { uri: Uri? ->
+        DownloadsSettingsController.onDownloadFolderPicked(this, { key -> findPreference(key) }, uri)
+    }
+
     override fun onCreatePreferences(savedInstanceState: Bundle?, rootKey: String?) {
         currentScreenState = SettingsScreenState(rootKey = rootKey, title = null)
         renderCurrentScreen()
@@ -814,9 +820,14 @@ class SettingsTvFragment : LeanbackPreferenceFragmentCompat() {
             true
         }
 
-        DownloadsSettingsController.bind(this, lifecycleScope) { key ->
-            findPreference(key)
-        }
+        DownloadsSettingsController.bind(
+            this,
+            lifecycleScope,
+            findPreference = { key -> findPreference(key) },
+            onPickDownloadFolder = {
+                pickDownloadFolderLauncher.launch(null)
+            },
+        )
 
         findPreference<SwitchPreference>("FORCE_EXTRA_BUFFERING")?.apply {
             isChecked = UserPreferences.forceExtraBuffering

@@ -8,6 +8,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Play with / open in external player (VLC, MX, MPV…): player chrome, player overflow, and Downloads — remembers optional default package
+- Download with… for ADM and similar download managers from download options, player overflow, and Downloads (URL + headers handoff)
+- SD card / removable storage for offline downloads (`REMOVABLE` via app-specific secondary volume) plus custom folder picker (SAF tree URI) in Downloads settings
+- EN / DE / IT copy for external player, external download, and download folder settings
 - Provider picker search on Choose a provider (Mobile + TV): live name filter, clear control, search empty-state with Clear search CTA
 - Search result order chips (Relevance / Newest) plus year filter on Mobile and TV Search; preference keys `SEARCH_SORT_MODE` and `SEARCH_YEAR_FILTER`
 - Italian catalogs: **Eurostreaming** (`eurostreaming.design`), **Altadefinizione** (`alta-definizione.beer`), and **Altadefinizione X** (`altadefinizionex.me`) — Home/search/detail/seasons with VixSrc (and VidxGo on X)

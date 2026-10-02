@@ -18,6 +18,7 @@ import com.dskja.betterstreamflix.R
 import com.dskja.betterstreamflix.databinding.FragmentDownloadsMobileBinding
 import com.dskja.betterstreamflix.download.DownloadController
 import com.dskja.betterstreamflix.download.DownloadItemState
+import com.dskja.betterstreamflix.download.ExternalDownloadHandoff
 import com.dskja.betterstreamflix.download.OfflinePlayback
 import com.dskja.betterstreamflix.download.ui.DownloadOptionsController
 import com.dskja.betterstreamflix.download.ui.DownloadRowUiModel
@@ -27,6 +28,7 @@ import com.dskja.betterstreamflix.download.ui.DownloadsSort
 import com.dskja.betterstreamflix.download.ui.DownloadsViewModel
 import com.dskja.betterstreamflix.fragments.settings.SettingsDeepLink
 import com.dskja.betterstreamflix.models.Video
+import com.dskja.betterstreamflix.platform.playerbackend.ExternalStreamHandoff
 import com.dskja.betterstreamflix.providers.Provider
 import com.dskja.betterstreamflix.utils.ExpDialogChrome
 import com.dskja.betterstreamflix.utils.ExperimentalMobileDesign
@@ -427,16 +429,22 @@ class DownloadsMobileFragment : Fragment() {
         PopupMenu(requireContext(), anchor).apply {
             if (row.state == DownloadItemState.COMPLETED) {
                 menu.add(0, 1, 0, R.string.downloads_action_share)
+                menu.add(0, 4, 1, R.string.downloads_action_play_with)
+            }
+            if (row.entity.streamUrl.startsWith("http")) {
+                menu.add(0, 5, 2, R.string.downloads_action_download_with)
             }
             if (row.state == DownloadItemState.FAILED) {
-                menu.add(0, 2, 1, R.string.downloads_action_retry)
+                menu.add(0, 2, 3, R.string.downloads_action_retry)
             }
-            menu.add(0, 3, 2, R.string.downloads_action_delete)
+            menu.add(0, 3, 4, R.string.downloads_action_delete)
             setOnMenuItemClickListener {
                 when (it.itemId) {
                     1 -> share(row)
                     2 -> retry(row)
                     3 -> viewModel.remove(row.id)
+                    4 -> playWithExternal(row)
+                    5 -> downloadWithExternal(row)
                 }
                 true
             }
@@ -479,6 +487,64 @@ class DownloadsMobileFragment : Fragment() {
             runCatching {
                 startActivity(android.content.Intent.createChooser(intent, row.entity.title))
             }
+        }
+    }
+
+    private fun playWithExternal(row: DownloadRowUiModel.Item) {
+        viewLifecycleOwner.lifecycleScope.launch {
+            val localUri = withContext(Dispatchers.IO) {
+                OfflinePlayback.exportShareUri(requireContext(), row.entity)?.toString()
+            }
+            val source = localUri
+                ?: row.entity.streamUrl.takeIf { it.startsWith("http") }
+            if (source.isNullOrBlank()) {
+                showDownloadError(R.string.downloads_share_cache_only)
+                return@launch
+            }
+            val headers = runCatching {
+                val o = org.json.JSONObject(row.entity.headersJson.ifBlank { "{}" })
+                o.keys().asSequence().associateWith { o.getString(it) }
+            }.getOrDefault(emptyMap())
+            ExternalStreamHandoff.launch(
+                requireActivity(),
+                ExternalStreamHandoff.Request(
+                    sourceUrl = source,
+                    headers = headers,
+                    title = row.entity.title,
+                    mimeType = row.entity.mimeType,
+                ),
+                forceChooser = true,
+            )
+        }
+    }
+
+    private fun downloadWithExternal(row: DownloadRowUiModel.Item) {
+        val url = row.entity.streamUrl
+        if (!url.startsWith("http")) {
+            ExpDialogChrome.notify(
+                requireContext(),
+                R.string.external_download_invalid_url,
+                R.string.external_download_with_title,
+            )
+            return
+        }
+        val headers = runCatching {
+            val o = org.json.JSONObject(row.entity.headersJson.ifBlank { "{}" })
+            o.keys().asSequence().associateWith { o.getString(it) }
+        }.getOrDefault(emptyMap())
+        val ok = ExternalDownloadHandoff.launch(
+            requireActivity(),
+            ExternalDownloadHandoff.Request(
+                url = url,
+                headers = headers,
+                fileName = row.entity.title,
+                mimeType = row.entity.mimeType,
+                title = row.entity.title,
+            ),
+            forceChooser = true,
+        )
+        if (ok) {
+            ExpDialogChrome.notify(requireContext(), R.string.external_download_started)
         }
     }
 

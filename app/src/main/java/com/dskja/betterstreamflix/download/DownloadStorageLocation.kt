@@ -12,7 +12,20 @@ enum class DownloadStorageLocation {
     APP_EXTERNAL,
 
     /** Shared Movies/BetterStreamflix folder (easier to find; may need legacy permission on old APIs). */
-    PUBLIC_MOVIES;
+    PUBLIC_MOVIES,
+
+    /**
+     * Removable / SD card app-specific folder via [android.content.Context.getExternalFilesDirs].
+     * Preferred path for Media3 [androidx.media3.datasource.cache.SimpleCache] on SD.
+     */
+    REMOVABLE,
+
+    /**
+     * User-picked folder via Storage Access Framework (tree URI).
+     * Media3 cache uses the matching removable app dir when available; the tree URI is
+     * persisted for display, progressive exports, and permission continuity.
+     */
+    CUSTOM_FOLDER;
 
     companion object {
         fun fromKey(raw: String?): DownloadStorageLocation {

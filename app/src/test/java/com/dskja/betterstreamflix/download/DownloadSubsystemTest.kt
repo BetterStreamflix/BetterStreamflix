@@ -19,6 +19,8 @@ class DownloadSubsystemTest {
         assertEquals(DownloadStorageLocation.INTERNAL, DownloadStorageLocation.fromKey("internal"))
         assertEquals(DownloadStorageLocation.APP_EXTERNAL, DownloadStorageLocation.fromKey("APP_EXTERNAL"))
         assertEquals(DownloadStorageLocation.PUBLIC_MOVIES, DownloadStorageLocation.fromKey("public_movies"))
+        assertEquals(DownloadStorageLocation.REMOVABLE, DownloadStorageLocation.fromKey("REMOVABLE"))
+        assertEquals(DownloadStorageLocation.CUSTOM_FOLDER, DownloadStorageLocation.fromKey("custom_folder"))
     }
 
     @Test

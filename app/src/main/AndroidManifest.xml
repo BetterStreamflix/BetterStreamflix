@@ -36,6 +36,20 @@
         <package android:name="com.google.android.youtube" />
         <package android:name="com.google.android.tv.youtube" />
 
+        <!-- External players -->
+        <package android:name="is.xyz.mpv" />
+        <package android:name="com.brouken.player" />
+        <package android:name="org.videolan.vlc" />
+        <package android:name="com.mxtech.videoplayer.ad" />
+        <package android:name="com.mxtech.videoplayer.pro" />
+
+        <!-- External download managers (ADM and similar) -->
+        <package android:name="com.dv.adm" />
+        <package android:name="com.dv.adm.pay" />
+        <package android:name="com.dv.adm.old" />
+        <package android:name="idm.internet.download.manager" />
+        <package android:name="idm.internet.download.manager.plus" />
+
         <!-- Generic Video Players Visibility -->
         <intent>
             <action android:name="android.intent.action.VIEW" />
@@ -48,6 +62,18 @@
         <intent>
             <action android:name="android.intent.action.VIEW" />
             <data android:mimeType="application/vnd.apple.mpegurl" />
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:scheme="http" />
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:scheme="https" />
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.SEND" />
+            <data android:mimeType="text/plain" />
         </intent>
 
         <!-- Intent queries for YouTube links -->

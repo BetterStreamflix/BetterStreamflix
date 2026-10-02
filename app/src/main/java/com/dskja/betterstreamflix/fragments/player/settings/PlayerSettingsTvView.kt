@@ -56,8 +56,16 @@ class PlayerSettingsTvView @JvmOverloads constructor(
     override var onSubtitlesClicked: (() -> Unit)? = null
     var onManualZoomClicked: (() -> Unit)? = null
     var onDownloadClicked: (() -> Unit)? = null
+    var onPlayWithClicked: (() -> Unit)? = null
+    var onDownloadWithClicked: (() -> Unit)? = null
     fun setOnDownloadClickedListener(listener: () -> Unit) {
         onDownloadClicked = listener
+    }
+    fun setOnPlayWithClickedListener(listener: () -> Unit) {
+        onPlayWithClicked = listener
+    }
+    fun setOnDownloadWithClickedListener(listener: () -> Unit) {
+        onDownloadWithClicked = listener
     }
 
     init {
@@ -260,6 +268,14 @@ class PlayerSettingsTvView @JvmOverloads constructor(
                                 }
                                 Settings.Download -> {
                                     settingsView.onDownloadClicked?.invoke()
+                                    settingsView.hide()
+                                }
+                                Settings.PlayWith -> {
+                                    settingsView.onPlayWithClicked?.invoke()
+                                    settingsView.hide()
+                                }
+                                Settings.DownloadWith -> {
+                                    settingsView.onDownloadWithClicked?.invoke()
                                     settingsView.hide()
                                 }
                                 else -> {}
@@ -486,6 +502,18 @@ class PlayerSettingsTvView @JvmOverloads constructor(
                                     R.drawable.ic_player_settings_download
                                 )
                             )
+                            Settings.PlayWith -> setImageDrawable(
+                                ContextCompat.getDrawable(
+                                    context,
+                                    R.drawable.exo_styled_controls_external_player
+                                )
+                            )
+                            Settings.DownloadWith -> setImageDrawable(
+                                ContextCompat.getDrawable(
+                                    context,
+                                    R.drawable.ic_player_settings_download
+                                )
+                            )
                             else -> {}
                         }
                         visibility = View.VISIBLE
@@ -532,6 +560,8 @@ class PlayerSettingsTvView @JvmOverloads constructor(
                         Settings.Server -> context.getString(R.string.player_settings_servers_label)
                         Settings.ManualZoom -> context.getString(R.string.player_settings_manual_zoom_label)
                         Settings.Download -> context.getString(R.string.player_settings_download)
+                        Settings.PlayWith -> context.getString(R.string.player_settings_play_with)
+                        Settings.DownloadWith -> context.getString(R.string.player_settings_download_with)
                         else -> ""
                     }
 
@@ -644,6 +674,8 @@ class PlayerSettingsTvView @JvmOverloads constructor(
                         Settings.Server -> Settings.Server.selected?.name ?: ""
                         Settings.ManualZoom -> ""
                         Settings.Download -> ""
+                        Settings.PlayWith -> ""
+                        Settings.DownloadWith -> ""
                         else -> ""
                     }
 

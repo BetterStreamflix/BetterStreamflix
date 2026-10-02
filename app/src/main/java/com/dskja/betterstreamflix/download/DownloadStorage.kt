@@ -22,6 +22,10 @@ object DownloadStorage {
                 appExternalDownloads(app)
             DownloadStorageLocation.PUBLIC_MOVIES ->
                 publicMoviesDownloads()
+            DownloadStorageLocation.REMOVABLE ->
+                removableAppDownloadsDir(app) ?: appExternalDownloads(app)
+            DownloadStorageLocation.CUSTOM_FOLDER ->
+                DownloadTreeAccess.media3CacheDir(app)
         }
         return ensureWritableDir(preferred) ?: appExternalDownloads(app).also { fallback ->
             // Scoped storage often blocks bare public Movies mkdirs on API 29+.
@@ -40,6 +44,41 @@ object DownloadStorage {
     private fun publicMoviesDownloads(): File {
         val movies = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_MOVIES)
         return File(File(movies, PUBLIC_FOLDER), DIR_NAME)
+    }
+
+    /**
+     * App-specific downloads folder on a removable volume (index 1+ of getExternalFilesDirs).
+     * When [volumeIdHint] is set (from a SAF tree), prefer a matching path.
+     */
+    fun removableAppDownloadsDir(context: Context, volumeIdHint: String? = null): File? {
+        val dirs = context.getExternalFilesDirs(Environment.DIRECTORY_MOVIES)
+            ?.filterNotNull()
+            ?.filter { it.exists() || it.mkdirs() }
+            .orEmpty()
+        if (dirs.size <= 1) {
+            // Only primary — try getExternalFilesDirs(null) in case Movies is missing on SD.
+            val all = context.getExternalFilesDirs(null)
+                ?.filterNotNull()
+                ?.filter { it.exists() || it.mkdirs() }
+                .orEmpty()
+            if (all.size <= 1) return null
+            val match = matchVolume(all, volumeIdHint) ?: all.getOrNull(1) ?: return null
+            val dir = File(match, DIR_NAME)
+            return ensureWritableDir(dir)
+        }
+        val match = matchVolume(dirs, volumeIdHint) ?: dirs.getOrNull(1) ?: return null
+        val dir = File(match, DIR_NAME)
+        return ensureWritableDir(dir)
+    }
+
+    fun hasRemovableStorage(context: Context): Boolean =
+        removableAppDownloadsDir(context) != null
+
+    private fun matchVolume(dirs: List<File>, volumeIdHint: String?): File? {
+        if (volumeIdHint.isNullOrBlank()) return null
+        return dirs.firstOrNull { dir ->
+            dir.absolutePath.contains(volumeIdHint, ignoreCase = true)
+        }
     }
 
     /** Create [dir] if needed; return it only when it exists and is writable. */
@@ -73,8 +112,18 @@ object DownloadStorage {
         return dir
     }
 
-    fun absolutePathSummary(context: Context): String =
-        downloadsDir(context).absolutePath
+    fun absolutePathSummary(context: Context): String {
+        if (location() == DownloadStorageLocation.CUSTOM_FOLDER) {
+            val treeName = DownloadTreeAccess.displayName(context)
+            val cachePath = downloadsDir(context).absolutePath
+            return if (!treeName.isNullOrBlank()) {
+                "$treeName · $cachePath"
+            } else {
+                cachePath
+            }
+        }
+        return downloadsDir(context).absolutePath
+    }
 
     fun usedBytes(context: Context): Long =
         downloadsDir(context).walkTopDown().filter { it.isFile }.sumOf { it.length() }
