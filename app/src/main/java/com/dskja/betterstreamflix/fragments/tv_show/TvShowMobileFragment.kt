@@ -121,7 +121,10 @@ class TvShowMobileFragment : Fragment() {
                         tvShow.seasons.firstOrNull { it.id == seasonState.season.id }
                             ?.episodes = seasonState.episodes
                         seasonState.season.episodes = seasonState.episodes
-                        rebuildBody(scrollTabsToTop = false)
+                        // Only rebuild the episodes body — skip full list churn on other tabs.
+                        if (selectedTab == DetailTab.EPISODES) {
+                            rebuildBody(scrollTabsToTop = false)
+                        }
                     }
                     is TvShowViewModel.SeasonState.FailedLoading -> {
                         if (selectedTab == DetailTab.EPISODES) {

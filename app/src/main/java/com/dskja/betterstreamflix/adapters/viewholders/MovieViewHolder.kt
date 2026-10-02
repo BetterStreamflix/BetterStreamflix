@@ -98,6 +98,7 @@ import com.dskja.betterstreamflix.ui.SpacingItemDecoration
 import com.dskja.betterstreamflix.ui.DetailRating
 import com.dskja.betterstreamflix.ui.DetailTabsController
 import com.dskja.betterstreamflix.ui.DetailTrailerMobilePlayer
+import com.dskja.betterstreamflix.ui.DetailTrailerTvController
 import com.dskja.betterstreamflix.ui.TrailerPlaybackController
 import com.dskja.betterstreamflix.ui.DetailTab
 import com.dskja.betterstreamflix.ui.TmdbLogoGlide
@@ -1324,72 +1325,17 @@ class MovieViewHolder(
     }
 
     private fun displayTrailerTv(binding: ContentDetailTrailerTvBinding) {
-        binding.root.tag = DETAIL_SECTION_TRAILER
-        if (ExperimentalMobileDesign.enabled()) {
-            binding.tvDetailTrailerLabel.setTextColor(
-                com.google.android.material.color.MaterialColors.getColor(
-                    binding.tvDetailTrailerLabel,
-                    androidx.appcompat.R.attr.colorPrimary,
-                ),
-            )
-            binding.root.findViewById<View>(R.id.v_detail_trailer_rule)?.visibility = View.VISIBLE
-            if (binding.root.getTag(R.id.exp_enter_animated_tag) != true) {
-                binding.root.setTag(R.id.exp_enter_animated_tag, true)
-                ExpMotion.revealHeader(
-                    binding.tvDetailTrailerLabel,
-                    binding.root.findViewById(R.id.v_detail_trailer_rule),
-                )
-                ExpMotion.pulseAccentRule(binding.root.findViewById(R.id.v_detail_trailer_rule))
-            }
-        }
-
-        fun bindRows(trailers: List<Triple<String, String, String>>) {
-            binding.root.visibility = if (trailers.isEmpty()) View.GONE else View.VISIBLE
-            binding.hgvDetailTrailers.apply {
-                setRowHeight(ViewGroup.LayoutParams.WRAP_CONTENT)
-                adapter = AppAdapter().apply {
-                    submitList(
-                        trailers.take(5).map { (title, url, type) ->
-                            Trailer(title = title, url = url, type = type).also {
-                                it.itemType = AppAdapter.Type.TRAILER_TV_ITEM
-                            }
-                        },
-                    )
-                }
-                setItemSpacing(24)
-            }
-            if (ExperimentalMobileDesign.enabled() && trailers.isNotEmpty()) {
-                ExpMotion.staggerFirstFill(binding.hgvDetailTrailers)
-            }
-        }
-
-        val seed = movie.trailer?.takeIf { it.isNotBlank() }?.let { url ->
-            listOf(
-                Triple(
-                    "${movie.title} ${context.getString(R.string.movie_trailer)}",
-                    url,
-                    context.getString(R.string.movie_trailer),
-                ),
-            )
-        }.orEmpty()
-        if (seed.isNotEmpty()) bindRows(seed) else binding.root.visibility = View.GONE
-
-        itemView.findViewTreeLifecycleOwner()?.lifecycleScope?.launch {
-            val remote = withContext(Dispatchers.IO) {
-                TmdbUtils.listYoutubeTrailers(
-                    tmdbId = movie.tmdbId,
-                    isTv = false,
-                    title = movie.title,
-                    year = movie.released?.format("yyyy")?.toIntOrNull(),
-                    imdbId = movie.imdbId,
-                )
-            }
-            val trailers = (seed + remote).distinctBy { it.second }
-            if (trailers.isNotEmpty() && movie.trailer.isNullOrBlank()) {
-                movie.trailer = trailers.first().second
-            }
-            bindRows(trailers)
-        }
+        DetailTrailerTvController.bind(
+            binding = binding,
+            seedUrl = movie.trailer,
+            title = movie.title,
+            trailerLabel = context.getString(R.string.movie_trailer),
+            tmdbId = movie.tmdbId,
+            isTv = false,
+            year = movie.released?.format("yyyy")?.toIntOrNull(),
+            imdbId = movie.imdbId,
+            onTrailerSeeded = { url -> movie.trailer = url },
+        )
     }
 
     private fun displayAboutMobile(binding: ContentDetailAboutMobileBinding) {

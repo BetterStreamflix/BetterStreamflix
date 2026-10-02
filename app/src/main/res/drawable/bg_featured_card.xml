@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- Transparent plane — art fills edge-to-edge; no letterbox black plate. -->
 <shape xmlns:android="http://schemas.android.com/apk/res/android"
     android:shape="rectangle">
-    <solid android:color="#FF0A0A0C" />
+    <solid android:color="@android:color/transparent" />
 </shape>

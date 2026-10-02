@@ -24,7 +24,7 @@
     <FrameLayout
         android:id="@+id/fl_swiper_logo_slot"
         android:layout_width="0dp"
-        android:layout_height="96dp"
+        android:layout_height="108dp"
         android:layout_marginTop="20dp"
         android:layout_marginEnd="50dp"
         app:layout_constraintEnd_toStartOf="@id/guideline1"
@@ -37,7 +37,7 @@
             android:layout_height="match_parent"
             android:adjustViewBounds="true"
             android:importantForAccessibility="no"
-            android:padding="4dp"
+            android:padding="2dp"
             android:scaleType="fitStart"
             android:visibility="invisible"
             tools:src="@mipmap/ic_launcher"

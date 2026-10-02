@@ -35,9 +35,9 @@
   <a href="https://github.com/dskja/BetterStreamflix/issues">Request Feature</a>
 </p>
 
-> **One-time goal: $25** · Status: **open**  
-> Personal basic costs during a tight stretch — so BetterStreamflix development can continue.  
-> Not hosting, APIs, or servers. This ask closes when reached.  
+> **Support BetterStreamflix**  
+> Personal basic costs during a tight stretch — so development can continue.  
+> Not hosting, APIs, or servers.  
 > [Buy Me a Coffee](https://buymeacoffee.com/betterstreamflix) · [Patreon](https://www.patreon.com/BetterStreamflix) · [GitHub Sponsors](https://github.com/sponsors/dskja) · [Discord](https://discord.gg/R4F72rMUZ8)
 
 <details>
@@ -158,7 +158,7 @@ Contributions are welcome.
 
 ## Support
 
-One-time goal of **$25** (open) for personal basic costs so development can continue — not hosting or API costs.
+Optional support for personal basic costs so development can continue — not hosting or API costs.
 
 | | |
 | --- | --- |
