@@ -132,10 +132,19 @@ class TvShowMobileFragment : Fragment() {
                 when (seasonState) {
                     is TvShowViewModel.SeasonState.SuccessLoading -> {
                         val tvShow = currentTvShow ?: return@collect
+                        com.dskja.betterstreamflix.adapters.viewholders.TvShowViewHolder
+                            .clearSeasonEpisodeFailure(seasonState.season.id)
                         tvShow.seasons.firstOrNull { it.id == seasonState.season.id }
                             ?.episodes = seasonState.episodes
                         seasonState.season.episodes = seasonState.episodes
                         rebuildBody(scrollTabsToTop = false)
+                    }
+                    is TvShowViewModel.SeasonState.FailedLoading -> {
+                        com.dskja.betterstreamflix.adapters.viewholders.TvShowViewHolder
+                            .markSeasonEpisodeFailure(seasonState.season.id)
+                        if (selectedTab == DetailTab.EPISODES) {
+                            rebuildBody(scrollTabsToTop = false)
+                        }
                     }
                     else -> Unit
                 }
@@ -204,15 +213,21 @@ class TvShowMobileFragment : Fragment() {
         DetailHeaderController.wireCast(this, binding.root)
 
         val signature = contentSignature(tvShow)
-        if (lastContentSignature != signature) {
-            lastContentSignature = signature
-            selectedTab = when {
-                tvShow.seasons.isNotEmpty() -> DetailTab.EPISODES
-                tvShow.recommendations.isNotEmpty() -> DetailTab.SIMILAR
-                else -> DetailTab.ABOUT
+        if (lastContentSignature == signature) {
+            // Favorite-only / list-state refresh: keep the current list to avoid scroll jump.
+            binding.rvTvShow.post {
+                if (!isAdded) return@post
+                DetailHeaderController.bindTvShow(this, binding.root, tvShow)
             }
-            appAdapter.selectedDetailTab = selectedTab
+            return
         }
+        lastContentSignature = signature
+        selectedTab = when {
+            tvShow.seasons.isNotEmpty() -> DetailTab.EPISODES
+            tvShow.recommendations.isNotEmpty() -> DetailTab.SIMILAR
+            else -> DetailTab.ABOUT
+        }
+        appAdapter.selectedDetailTab = selectedTab
         rebuildBody(scrollTabsToTop = false)
         // Bind after body submit so the hero ImageView exists in the RecyclerView item.
         binding.rvTvShow.post {

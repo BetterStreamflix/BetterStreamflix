@@ -216,7 +216,10 @@ class TvShowViewModel(
             val season: Season,
             val episodes: List<Episode>,
         ) : SeasonState()
-        data class FailedLoading(val error: Exception) : SeasonState()
+        data class FailedLoading(
+            val season: Season,
+            val error: Exception,
+        ) : SeasonState()
     }
 
     init {
@@ -370,7 +373,7 @@ class TvShowViewModel(
             _seasonState.emit(SeasonState.SuccessLoading(tvShow, season, episodes))
         } catch (e: Exception) {
             Log.e("TvShowViewModel", "getSeason: ", e)
-            _seasonState.emit(SeasonState.FailedLoading(e))
+            _seasonState.emit(SeasonState.FailedLoading(season, e))
         }
     }
 }

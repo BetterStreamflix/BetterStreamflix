@@ -23,11 +23,14 @@ import com.dskja.betterstreamflix.utils.CacheUtils
 import com.dskja.betterstreamflix.utils.ExpNavAutoHide
 import com.dskja.betterstreamflix.utils.ExpMotion
 import com.dskja.betterstreamflix.utils.ExperimentalMobileDesign
+import com.dskja.betterstreamflix.utils.Http409CacheGuard
 import com.dskja.betterstreamflix.utils.LoggingUtils
 import com.dskja.betterstreamflix.utils.viewModelsFactory
 import kotlinx.coroutines.launch
 
 class MovieMobileFragment : Fragment() {
+
+    private val http409Guard = Http409CacheGuard()
 
     private var _binding: FragmentMovieMobileBinding? = null
     private val binding get() = _binding!!
@@ -90,6 +93,12 @@ class MovieMobileFragment : Fragment() {
                         ExpMotion.fadeOutAndHide(binding.isLoading.root)
                     }
                     is MovieViewModel.State.FailedLoading -> {
+                        if (http409Guard.handle(requireContext(), state.error) {
+                                viewModel.getMovie(args.id)
+                            }
+                        ) {
+                            return@collect
+                        }
                         if (!com.dskja.betterstreamflix.utils.ExperimentalMobileDesign.enabled()) {
                             Toast.makeText(
                                 requireContext(),
@@ -97,19 +106,24 @@ class MovieMobileFragment : Fragment() {
                                 Toast.LENGTH_SHORT
                             ).show()
                         }
-                            binding.isLoading.apply {
+                        binding.isLoading.apply {
                             com.dskja.betterstreamflix.utils.ExpPressEffects.showLoadingSkeleton(root, false)
                             gIsLoadingRetry.visibility = View.VISIBLE
                             com.dskja.betterstreamflix.utils.ExpPressEffects.animateLoadingError(root)
-                                val doRetry = { viewModel.getMovie(args.id) }
-                                btnIsLoadingRetry.setOnClickListener { doRetry() }
-                                btnIsLoadingClearCache.setOnClickListener {
-                                    CacheUtils.clearAppCache(requireContext())
-                                    doRetry()
-                                }
-                                btnIsLoadingErrorDetails.setOnClickListener {
-                                    LoggingUtils.showErrorDialog(requireContext(), state.error)
-                                }
+                            val doRetry = { viewModel.getMovie(args.id) }
+                            btnIsLoadingRetry.setOnClickListener { doRetry() }
+                            btnIsLoadingClearCache.setOnClickListener {
+                                CacheUtils.clearAppCache(requireContext())
+                                com.dskja.betterstreamflix.utils.ExpDialogChrome.notify(
+                                    requireContext(),
+                                    getString(R.string.clear_cache_done),
+                                    R.string.loading_error_clear_cache,
+                                )
+                                doRetry()
+                            }
+                            btnIsLoadingErrorDetails.setOnClickListener {
+                                LoggingUtils.showErrorDialog(requireContext(), state.error)
+                            }
                         }
                     }
                 }
@@ -176,11 +190,18 @@ class MovieMobileFragment : Fragment() {
         DetailHeaderController.wireCast(this, binding.root)
 
         val signature = contentSignature(movie)
-        if (lastContentSignature != signature) {
-            lastContentSignature = signature
-            selectedTab = if (movie.recommendations.isNotEmpty()) DetailTab.SIMILAR else DetailTab.ABOUT
-            appAdapter.selectedDetailTab = selectedTab
+        if (lastContentSignature == signature) {
+            // Favorite-only / list-state refresh: keep the current list to avoid scroll jump.
+            // Hero My List CTA already updates in place from the ViewHolder click path.
+            binding.rvMovie.post {
+                if (!isAdded) return@post
+                DetailHeaderController.bindMovie(this, binding.root, movie)
+            }
+            return
         }
+        lastContentSignature = signature
+        selectedTab = if (movie.recommendations.isNotEmpty()) DetailTab.SIMILAR else DetailTab.ABOUT
+        appAdapter.selectedDetailTab = selectedTab
         rebuildBody(scrollTabsToTop = false)
         // Bind after body submit so the hero ImageView exists in the RecyclerView item.
         binding.rvMovie.post {
