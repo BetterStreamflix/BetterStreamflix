@@ -29,7 +29,8 @@ object DetailTabsController {
             ).forEach { tab ->
                 if (tab.visibility != View.VISIBLE) return@forEach
                 val on = tab === active
-                tab.setTextColor(if (on) 0xFFF7F7F8.toInt() else 0xFF71717A.toInt())
+                val colorRes = if (on) R.color.cinema_text else R.color.cinema_text_faint
+                tab.setTextColor(tab.context.getColor(colorRes))
                 tab.setBackgroundResource(if (on) R.drawable.bg_detail_tab_underline else 0)
             }
         }
