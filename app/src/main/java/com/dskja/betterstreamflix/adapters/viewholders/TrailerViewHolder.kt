@@ -78,8 +78,18 @@ class TrailerViewHolder(
 
         val play = View.OnClickListener {
             ExpMotion.hapticTap(it)
-            val fragment = resolveHostFragment(binding.root) ?: return@OnClickListener
-            TrailerPlaybackController.play(fragment, trailer.url)
+            val fragment = resolveHostFragment(binding.root)
+            if (fragment != null) {
+                TrailerPlaybackController.play(fragment, trailer.url)
+            } else {
+                val activity = binding.root.context.toActivity()
+                TrailerPlaybackController.play(
+                    binding.root.context,
+                    activity,
+                    trailer.url,
+                    activity?.supportFragmentManager,
+                )
+            }
         }
         binding.root.setOnClickListener(play)
         binding.ivTrailerPlay.setOnClickListener(play)
