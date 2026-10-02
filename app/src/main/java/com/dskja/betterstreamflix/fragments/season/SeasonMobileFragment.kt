@@ -20,14 +20,13 @@ import com.dskja.betterstreamflix.databinding.FragmentSeasonMobileBinding
 import com.dskja.betterstreamflix.download.ui.DownloadOptionsController
 import com.dskja.betterstreamflix.models.Episode
 import com.dskja.betterstreamflix.models.TvShow
+import com.dskja.betterstreamflix.ui.DetailLoadingErrorChrome
 import com.dskja.betterstreamflix.ui.SpacingItemDecoration
-import com.dskja.betterstreamflix.utils.CacheUtils
 import com.dskja.betterstreamflix.utils.Http409CacheGuard
 import com.dskja.betterstreamflix.utils.ExpNavAutoHide
 import com.dskja.betterstreamflix.utils.ExpEmptyChrome
 import com.dskja.betterstreamflix.utils.ExpMotion
 import com.dskja.betterstreamflix.utils.ExperimentalMobileDesign
-import com.dskja.betterstreamflix.utils.LoggingUtils
 import com.dskja.betterstreamflix.utils.TmdbUtils
 import com.dskja.betterstreamflix.utils.dp
 import com.dskja.betterstreamflix.utils.format
@@ -119,28 +118,13 @@ class SeasonMobileFragment : Fragment() {
                         if (http409Guard.handle(requireContext(), state.error) { viewModel.getSeasonEpisodes(args.seasonId) }) {
                                 return@collect
                             }
-                        if (!com.dskja.betterstreamflix.utils.ExperimentalMobileDesign.enabled()) {
-                            Toast.makeText(
-                                requireContext(),
-                                state.error.message ?: "",
-                                Toast.LENGTH_SHORT
-                            ).show()
-                        }
-                            binding.isLoading.apply {
-                            com.dskja.betterstreamflix.utils.ExpPressEffects.showLoadingSkeleton(root, false)
-                            gIsLoadingRetry.visibility = View.VISIBLE
-                            com.dskja.betterstreamflix.utils.ExpPressEffects.animateLoadingError(root)
-                                val doRetry = { viewModel.getSeasonEpisodes(args.seasonId) }
-                                btnIsLoadingRetry.setOnClickListener { doRetry() }
-                                btnIsLoadingClearCache.setOnClickListener {
-                                    CacheUtils.clearAppCache(requireContext())
-                                    com.dskja.betterstreamflix.utils.ExpDialogChrome.notify(requireContext(), getString(com.dskja.betterstreamflix.R.string.clear_cache_done), com.dskja.betterstreamflix.R.string.loading_error_clear_cache)
-                                    doRetry()
-                                }
-                                btnIsLoadingErrorDetails.setOnClickListener {
-                                    LoggingUtils.showErrorDialog(requireContext(), state.error)
-                                }
-                        }
+                        DetailLoadingErrorChrome.bind(
+                            root = binding.isLoading.root,
+                            context = requireContext(),
+                            error = state.error,
+                            showToast = !ExperimentalMobileDesign.enabled(),
+                            onRetry = { viewModel.getSeasonEpisodes(args.seasonId) },
+                        )
                     }
                 }
             }

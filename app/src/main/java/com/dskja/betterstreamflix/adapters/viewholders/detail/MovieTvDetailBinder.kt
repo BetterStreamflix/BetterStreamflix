@@ -164,7 +164,42 @@ internal fun MovieViewHolder.bindMovieTvDetail(binding: ContentMovieTvBinding) {
         }
     }
 
-    binding.tvMovieOverview.text = movie.overview
+    binding.tvMovieOverview.apply {
+        text = movie.overview
+        val collapsedLines = 4
+        maxLines = collapsedLines
+        ellipsize = android.text.TextUtils.TruncateAt.END
+        var expanded = false
+        fun applyExpand(open: Boolean) {
+            expanded = open
+            maxLines = if (open) Integer.MAX_VALUE else collapsedLines
+            ellipsize = if (open) null else android.text.TextUtils.TruncateAt.END
+        }
+        if (!movie.overview.isNullOrBlank()) {
+            isFocusable = true
+            isFocusableInTouchMode = true
+            isClickable = true
+            setOnClickListener {
+                ExpMotion.hapticTap(it)
+                applyExpand(!expanded)
+            }
+            post {
+                val overflowing = lineCount > collapsedLines || (text?.length ?: 0) > 220
+                if (!overflowing) {
+                    isFocusable = false
+                    isClickable = false
+                    setOnClickListener(null)
+                    maxLines = Integer.MAX_VALUE
+                    ellipsize = null
+                }
+            }
+            nextFocusDownId = binding.btnMovieWatchNow.id
+            binding.btnMovieWatchNow.nextFocusUpId = id
+        } else {
+            isFocusable = false
+            setOnClickListener(null)
+        }
+    }
 
     binding.btnMovieWatchNow.apply {
         // Dual CTA: Watch now always streams online; completed downloads use the Download button.
@@ -196,6 +231,17 @@ internal fun MovieViewHolder.bindMovieTvDetail(binding: ContentMovieTvBinding) {
         }
     }
 
+    fun rewireTvCtaFocus() {
+        com.dskja.betterstreamflix.utils.TvFocusChain.linkHorizontal(
+            binding.btnMovieWatchNow,
+            binding.btnMovieTrailer,
+            binding.btnMovieDownload,
+            binding.root.findViewById(R.id.btn_movie_watched),
+            binding.root.findViewById(R.id.btn_movie_share),
+            binding.btnMovieFavorite,
+        )
+    }
+
     binding.btnMovieTrailer.apply {
         val year = movie.released?.format("yyyy")?.toIntOrNull()
         val canLookup = TmdbUtils.hasTrailerLookupKeys(
@@ -216,7 +262,9 @@ internal fun MovieViewHolder.bindMovieTvDetail(binding: ContentMovieTvBinding) {
                     }
                 }
             }
-            visibility = if (!trailerUrl.isNullOrBlank() || canLookup) View.VISIBLE else View.GONE
+            // Hide until a playable URL is ready — avoids dead clicks while lookup runs.
+            visibility = if (!trailerUrl.isNullOrBlank()) View.VISIBLE else View.GONE
+            rewireTvCtaFocus()
         }
         bindTrailer(movie.trailer)
         if (movie.trailer.isNullOrBlank() && canLookup) {
@@ -326,26 +374,36 @@ internal fun MovieViewHolder.bindMovieTvDetail(binding: ContentMovieTvBinding) {
     }
 
     binding.root.findViewById<View>(R.id.btn_movie_share)?.let { shareBtn ->
-        shareBtn.setOnClickListener {
-            ExpMotion.hapticTap(it)
-            val share = Intent(Intent.ACTION_SEND).apply {
-                type = "text/plain"
-                putExtra(Intent.EXTRA_SUBJECT, movie.title)
-                putExtra(
-                    Intent.EXTRA_TEXT,
-                    buildString {
-                        append(movie.title)
-                        movie.released?.format("yyyy")?.let { year -> append(" ($year)") }
-                        movie.overview?.takeIf { it.isNotBlank() }?.let { overview ->
-                            append("\n\n").append(overview.take(280))
-                        }
-                        movie.trailer?.let { trailer -> append("\n").append(trailer) }
-                    },
-                )
-            }
-            context.startActivity(
-                Intent.createChooser(share, context.getString(R.string.detail_share)),
+        val share = Intent(Intent.ACTION_SEND).apply {
+            type = "text/plain"
+            putExtra(Intent.EXTRA_SUBJECT, movie.title)
+            putExtra(
+                Intent.EXTRA_TEXT,
+                buildString {
+                    append(movie.title)
+                    movie.released?.format("yyyy")?.let { year -> append(" ($year)") }
+                    movie.overview?.takeIf { it.isNotBlank() }?.let { overview ->
+                        append("\n\n").append(overview.take(280))
+                    }
+                    movie.trailer?.let { trailer -> append("\n").append(trailer) }
+                },
             )
+        }
+        val canShare = share.resolveActivity(context.packageManager) != null
+        shareBtn.visibility = if (canShare) View.VISIBLE else View.GONE
+        if (canShare) {
+            shareBtn.setOnClickListener {
+                ExpMotion.hapticTap(it)
+                // Prefer direct send — Leanback remotes struggle with chooser UIs.
+                runCatching { context.startActivity(share) }
+                    .onFailure {
+                        context.startActivity(
+                            Intent.createChooser(share, context.getString(R.string.detail_share)),
+                        )
+                    }
+            }
+        } else {
+            shareBtn.setOnClickListener(null)
         }
     }
 
@@ -394,14 +452,7 @@ internal fun MovieViewHolder.bindMovieTvDetail(binding: ContentMovieTvBinding) {
         applyFavoriteState(movie.isFavorite)
     }
 
-    com.dskja.betterstreamflix.utils.TvFocusChain.linkHorizontal(
-        binding.btnMovieWatchNow,
-        binding.btnMovieTrailer,
-        binding.btnMovieDownload,
-        binding.root.findViewById(R.id.btn_movie_watched),
-        binding.root.findViewById(R.id.btn_movie_share),
-        binding.btnMovieFavorite,
-    )
+    rewireTvCtaFocus()
 }
 
 
