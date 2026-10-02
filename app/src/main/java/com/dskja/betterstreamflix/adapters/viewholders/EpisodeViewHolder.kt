@@ -43,6 +43,7 @@ import com.dskja.betterstreamflix.utils.format
 import com.dskja.betterstreamflix.utils.getCurrentFragment
 import com.dskja.betterstreamflix.utils.loadTvShowCardArtwork
 import com.dskja.betterstreamflix.utils.toActivity
+import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
@@ -227,6 +228,17 @@ class EpisodeViewHolder(
             true
         }
 
+        val upNext = episode.id == episode.tvShow?.episodeToWatch?.id
+        binding.root.setBackgroundResource(
+            if (upNext) R.drawable.bg_episode_up_next else 0,
+        )
+        binding.root.setPadding(
+            if (upNext) (8 * context.resources.displayMetrics.density).toInt() else 0,
+            binding.root.paddingTop,
+            if (upNext) (8 * context.resources.displayMetrics.density).toInt() else 0,
+            binding.root.paddingBottom,
+        )
+
         binding.ivEpisodePoster.apply {
             clipToOutline = true
             Glide.with(context)
@@ -244,6 +256,11 @@ class EpisodeViewHolder(
 
         val title = episode.title ?: context.getString(R.string.episode_number, episode.number)
         binding.tvEpisodeTitle.text = "${episode.number}. $title"
+        if (upNext) {
+            binding.tvEpisodeTitle.setTextColor(
+                ContextCompat.getColor(context, R.color.cinema_text),
+            )
+        }
 
         binding.tvEpisodeMeta.text = buildDetailMetaLine()
         binding.tvEpisodeMeta.visibility =
