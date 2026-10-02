@@ -187,35 +187,28 @@ class SeasonTvFragment : Fragment() {
                 year = year,
             )
             if (!isAdded || _binding == null) return@launch
-            binding.btnSeasonTrailer.isVisible = canLookup
+            // Hide until a playable URL is ready (parity with Movie/TV detail hero CTAs).
+            binding.btnSeasonTrailer.isVisible = false
             if (!canLookup) return@launch
+
+            val remote = withContext(Dispatchers.IO) {
+                TmdbUtils.listYoutubeTrailers(
+                    tmdbId = tvShow?.tmdbId,
+                    isTv = true,
+                    title = tvShow?.title ?: args.tvShowTitle,
+                    year = year,
+                    imdbId = tvShow?.imdbId,
+                    seasonNumber = args.seasonNumber.takeIf { it > 0 }
+                        ?: viewModel.seasonNumber.takeIf { it > 0 },
+                )
+            }
+            if (!isAdded || _binding == null) return@launch
+            val url = remote.firstOrNull()?.second?.takeIf { it.isNotBlank() }
+            if (url.isNullOrBlank()) return@launch
+
+            binding.btnSeasonTrailer.isVisible = true
             binding.btnSeasonTrailer.setOnClickListener {
-                viewLifecycleOwner.lifecycleScope.launch {
-                    val remote = withContext(Dispatchers.IO) {
-                        val show = database.tvShowDao().getById(args.tvShowId)
-                        TmdbUtils.listYoutubeTrailers(
-                            tmdbId = show?.tmdbId,
-                            isTv = true,
-                            title = show?.title ?: args.tvShowTitle,
-                            year = show?.released?.format("yyyy")?.toIntOrNull(),
-                            imdbId = show?.imdbId,
-                            seasonNumber = args.seasonNumber.takeIf { it > 0 }
-                                ?: viewModel.seasonNumber.takeIf { it > 0 },
-                        )
-                    }
-                    if (!isAdded || _binding == null || view == null) return@launch
-                    val url = remote.firstOrNull()?.second?.takeIf { it.isNotBlank() }
-                    val ctx = context ?: return@launch
-                    if (!url.isNullOrBlank()) {
-                        TrailerPlaybackController.play(this@SeasonTvFragment, url)
-                    } else {
-                        Toast.makeText(
-                            ctx,
-                            R.string.detail_trailer_empty,
-                            Toast.LENGTH_SHORT,
-                        ).show()
-                    }
-                }
+                TrailerPlaybackController.play(this@SeasonTvFragment, url)
             }
         }
     }
