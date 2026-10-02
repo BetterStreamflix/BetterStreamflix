@@ -110,7 +110,14 @@ class MovieMobileFragment : Fragment() {
         }
     }
 
+    override fun onPause() {
+        // In-tab / dialog trailer WebViews must not keep audio under Home.
+        com.dskja.betterstreamflix.ui.TrailerPlaybackController.silenceAllActive()
+        super.onPause()
+    }
+
     override fun onDestroyView() {
+        com.dskja.betterstreamflix.ui.TrailerPlaybackController.silenceAllActive()
         _binding?.let { appAdapter.onSaveInstanceState(it.rvMovie) }
         _binding = null
         super.onDestroyView()
@@ -199,6 +206,9 @@ class MovieMobileFragment : Fragment() {
 
     private fun rebuildBody(scrollTabsToTop: Boolean) {
         val movie = currentMovie ?: return
+        if (selectedTab != DetailTab.TRAILER) {
+            com.dskja.betterstreamflix.ui.TrailerPlaybackController.silenceAllActive()
+        }
         val body: List<AppAdapter.Item> = when (selectedTab) {
             DetailTab.SIMILAR -> listOf(
                 movie.copy().apply { itemType = AppAdapter.Type.MOVIE_RECOMMENDATIONS_MOBILE },

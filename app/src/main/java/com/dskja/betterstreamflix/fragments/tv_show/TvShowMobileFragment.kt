@@ -134,7 +134,13 @@ class TvShowMobileFragment : Fragment() {
         }
     }
 
+    override fun onPause() {
+        com.dskja.betterstreamflix.ui.TrailerPlaybackController.silenceAllActive()
+        super.onPause()
+    }
+
     override fun onDestroyView() {
+        com.dskja.betterstreamflix.ui.TrailerPlaybackController.silenceAllActive()
         _binding?.let { appAdapter.onSaveInstanceState(it.rvTvShow) }
         _binding = null
         super.onDestroyView()
@@ -233,6 +239,9 @@ class TvShowMobileFragment : Fragment() {
 
     private fun rebuildBody(scrollTabsToTop: Boolean) {
         val tvShow = currentTvShow ?: return
+        if (selectedTab != DetailTab.TRAILER) {
+            com.dskja.betterstreamflix.ui.TrailerPlaybackController.silenceAllActive()
+        }
         val body: List<AppAdapter.Item> = when (selectedTab) {
             DetailTab.EPISODES -> listOfNotNull(
                 tvShow.takeIf { it.seasons.isNotEmpty() }
