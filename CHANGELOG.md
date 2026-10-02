@@ -8,15 +8,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+<<<<<<< HEAD
 - Search result order chips (Relevance / Newest) plus year filter on Mobile and TV Search; preference keys `SEARCH_SORT_MODE` and `SEARCH_YEAR_FILTER`
+=======
+- Italian catalogs: **Eurostreaming** (`eurostreaming.design`), **Altadefinizione** (`alta-definizione.beer`), and **Altadefinizione X** (`altadefinizionex.me`) — Home/search/detail/seasons with VixSrc (and VidxGo on X)
+- Shared `ItalianVixCatalog` helpers for TMDb-backed `/detail/film-|tv-` Italian mirrors
+>>>>>>> dc882858 (Add Eurostreaming and Altadefinizione Italian catalogs)
 - Community supporters recognition on Support hub (Mobile + TV), About, and Thanks dialog — maintainable `assets/supporters.json` (starts with **Zem936**, first Buy Me a Coffee supporter)
 - Buy Me a Coffee short-link constant (`buymeacoff.ee/betterstreamflix`) alongside the canonical URL
 
 ### Fixed
 - Anikoto playback: MegaPlay/Nekostream `getSources` now returns AES-encrypted `enc` instead of plaintext `sources.file` — decrypt that payload so Play works again
 - Sentry P2 leftover **BETTERSTREAMFLIX-Q**: TMDb Home Discover shelves no longer let a child `ClassCastException` fail the outer Home scope — soft-shelf uses its own `coroutineScope`, merges `List<Movie>+List<Tv>` without unsafe `List<MultiItem>` casts, and CrashReporter/Sentry drop TMDb ClassCast soft-noise
+- GuardaSerie detail parser treats `/detail/film-` as movies (parity with Eurostreaming mirrors)
 
 ### Changed
+- Altadefinizione01 default mirror → `altadefinizione-01.surf`
+- StreamingIta quarantined (default domain dead); override Main URL in settings if a live mirror appears
 - Support impact: Trakt VIP goal editorial progress nudged after first community coffee
 - Detail polish / Support section: Cinema Ink thanks & credits surfaces call out community supporters
 - Settings: SerienStream account/options only when SerienStream is active; Import Watchlist only for SerienStream, AniWorld, or TMDb Deutsch; TMDb settings keep Title logos + clear logo cache, drop logo quality/TTL/telemetry clutter
