@@ -144,6 +144,8 @@ Debug builds skip R8 minify/shrink and use application id `com.dskja.betterstrea
 
 Signed release builds no longer run on every feature-branch push. For a signed APK on a branch, run **Actions → Build & Release APK → Run workflow**.
 
+Signing needs these repository Actions secrets: `SIGNING_KEYSTORE_BASE64` (base64 of the `.jks`), `SIGNING_KEY_ALIAS`, `SIGNING_STORE_PASSWORD`, `SIGNING_KEY_PASSWORD`. Without them, pushes to `main` still upload unsigned release APKs; tagged releases fail until the secrets are set.
+
 ## Contributing
 
 Contributions are welcome.
