@@ -63,4 +63,19 @@ class TrailerPlaybackControllerTest {
         assertNull(TrailerPlaybackController.youtubeVideoId("https://example.com/video"))
         assertNull(TrailerPlaybackController.youtubeVideoId(""))
     }
+
+    @Test
+    fun silenceAllActive_invokesRegisteredSessions() {
+        var silenced = 0
+        val session = TrailerPlaybackController.ActiveSession { silenced += 1 }
+        TrailerPlaybackController.registerActiveSession(session)
+        try {
+            TrailerPlaybackController.silenceAllActive()
+            assertEquals(1, silenced)
+            TrailerPlaybackController.silenceAllActive()
+            assertEquals(2, silenced)
+        } finally {
+            TrailerPlaybackController.unregisterActiveSession(session)
+        }
+    }
 }

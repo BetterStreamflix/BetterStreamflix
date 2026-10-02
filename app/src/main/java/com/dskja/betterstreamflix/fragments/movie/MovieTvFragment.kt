@@ -89,7 +89,13 @@ class MovieTvFragment : Fragment() {
         }
     }
 
+    override fun onPause() {
+        com.dskja.betterstreamflix.ui.TrailerPlaybackController.silenceAllActive()
+        super.onPause()
+    }
+
     override fun onDestroyView() {
+        com.dskja.betterstreamflix.ui.TrailerPlaybackController.silenceAllActive()
         _binding?.let { appAdapter.onSaveInstanceState(it.vgvMovie) }
         _binding = null
         super.onDestroyView()

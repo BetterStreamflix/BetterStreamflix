@@ -16,6 +16,8 @@ import android.webkit.WebViewClient
 import android.widget.FrameLayout
 import android.widget.ImageButton
 import androidx.core.content.ContextCompat
+import androidx.lifecycle.DefaultLifecycleObserver
+import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.findViewTreeLifecycleOwner
 import androidx.lifecycle.lifecycleScope
 import com.bumptech.glide.Glide
@@ -34,10 +36,12 @@ import kotlinx.coroutines.withContext
  * Shared in-tab trailer stage for Movie/TV mobile detail.
  * Always uses the built-in youtube-nocookie IFrame player — independent of
  * [TrailerPlaybackController.play] preferences used by the hero CTA.
+ *
+ * Lifecycle: pauses/blanks on fragment pause, detach, and recycle so Home stays silent.
  */
 class DetailTrailerMobilePlayer(
     private val binding: ContentDetailTrailerMobileBinding,
-) {
+) : TrailerPlaybackController.ActiveSession {
     private val context = binding.root.context
     private val web: WebView = binding.wvDetailTrailer
     private val loading = binding.pbDetailTrailerLoading
@@ -60,6 +64,20 @@ class DetailTrailerMobilePlayer(
     private var customViewCallback: WebChromeClient.CustomViewCallback? = null
     private var previousOrientation: Int? = null
     private var previousSystemUi: Int? = null
+    private var boundLifecycleOwner: LifecycleOwner? = null
+
+    private val lifecycleObserver = object : DefaultLifecycleObserver {
+        override fun onPause(owner: LifecycleOwner) {
+            // Detail under Home / leaving Trailer tab / app background — kill audio.
+            silence()
+        }
+
+        override fun onStop(owner: LifecycleOwner) {
+            silence()
+        }
+    }
+
+    override fun silence() = pauseAndBlank()
 
     fun bind(
         seedUrl: String?,
@@ -73,6 +91,8 @@ class DetailTrailerMobilePlayer(
     ) {
         binding.root.tag = sectionTag
         ensureConfigured()
+        attachLifecycle()
+        TrailerPlaybackController.registerActiveSession(this)
         fetchJob?.cancel()
 
         val key = listOf(tmdbId.orEmpty(), imdbId.orEmpty(), title, seedUrl.orEmpty()).joinToString("|")
@@ -120,15 +140,32 @@ class DetailTrailerMobilePlayer(
     fun pauseAndBlank() {
         exitFullscreen()
         loadedUrl = null
-        runCatching {
-            web.evaluateJavascript(
-                "try{if(window.AndroidTrailerPlayer){window.AndroidTrailerPlayer.pauseVideo();}}catch(e){}",
-                null,
-            )
-        }
+        TrailerPlaybackController.pauseTrailerMedia(web)
         web.stopLoading()
         web.loadUrl("about:blank")
         setLoading(false)
+    }
+
+    /** Recycle / destroy path — cancel work and drop registry entry. */
+    fun release() {
+        fetchJob?.cancel()
+        fetchJob = null
+        detachLifecycle()
+        TrailerPlaybackController.unregisterActiveSession(this)
+        pauseAndBlank()
+    }
+
+    private fun attachLifecycle() {
+        val owner = binding.root.findViewTreeLifecycleOwner() ?: return
+        if (boundLifecycleOwner === owner) return
+        detachLifecycle()
+        boundLifecycleOwner = owner
+        owner.lifecycle.addObserver(lifecycleObserver)
+    }
+
+    private fun detachLifecycle() {
+        boundLifecycleOwner?.lifecycle?.removeObserver(lifecycleObserver)
+        boundLifecycleOwner = null
     }
 
     @SuppressLint("SetJavaScriptEnabled", "AddJavascriptInterface")
@@ -173,9 +210,15 @@ class DetailTrailerMobilePlayer(
             }
         }
         binding.root.addOnAttachStateChangeListener(object : View.OnAttachStateChangeListener {
-            override fun onViewAttachedToWindow(v: View) = Unit
+            override fun onViewAttachedToWindow(v: View) {
+                TrailerPlaybackController.registerActiveSession(this@DetailTrailerMobilePlayer)
+                attachLifecycle()
+            }
+
             override fun onViewDetachedFromWindow(v: View) {
-                pauseAndBlank()
+                // Tab switch / navigate away — stop audio even if VH is cached.
+                silence()
+                TrailerPlaybackController.unregisterActiveSession(this@DetailTrailerMobilePlayer)
             }
         })
         muteBtn.setOnClickListener {

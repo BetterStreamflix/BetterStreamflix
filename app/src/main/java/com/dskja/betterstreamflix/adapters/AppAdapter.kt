@@ -860,6 +860,10 @@ class AppAdapter(
         if (holder is CategoryViewHolder) {
             holder.clearSwiper()
         }
+        // Trailer tab item removed / scrolled off — stop YouTube WebView audio.
+        (holder.itemView.getTag(R.id.detail_trailer_player_tag)
+            as? com.dskja.betterstreamflix.ui.DetailTrailerMobilePlayer)
+            ?.release()
         super.onViewRecycled(holder)
 
         val state = when (holder) {
