@@ -28,6 +28,10 @@
     <string name="providers_choose_title">Anbieter auswählen</string>
     <string name="providers_choose_subtitle">Wähle eine Quelle für Filme und Serien. Lang drücken zum Favorisieren. Zahnrad bei SerienStream oder AniWorld öffnet den Login.</string>
     <string name="providers_empty">Keine Anbieter für diesen Filter</string>
+    <string name="providers_search_hint">Anbieter suchen</string>
+    <string name="providers_search_empty">Keine Anbieter für diese Suche</string>
+    <string name="providers_search_clear">Suche löschen</string>
+    <string name="providers_search_clear_cd">Anbietersuche löschen</string>
 
     <string name="main_menu_change_provider">Anbieter wechseln</string>
     <string name="main_menu_search">Suche</string>

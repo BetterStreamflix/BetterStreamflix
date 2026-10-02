@@ -24,6 +24,7 @@
         android:layout_height="wrap_content"
         android:layout_marginTop="32dp"
         android:layout_marginEnd="16dp"
+        android:nextFocusDown="@id/et_providers_search"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintTop_toTopOf="parent" />
 
@@ -59,10 +60,78 @@
         android:text="@string/providers_choose_subtitle"
         android:textColor="#A0A0A0"
         android:textSize="15sp"
-        app:layout_constraintBottom_toTopOf="@id/rv_providers"
+        app:layout_constraintBottom_toTopOf="@id/cl_providers_search"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@id/tv_providers_label" />
+
+    <androidx.constraintlayout.widget.ConstraintLayout
+        android:id="@+id/cl_providers_search"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="120dp"
+        android:layout_marginTop="18dp"
+        android:layout_marginEnd="120dp"
+        android:background="@drawable/bg_search_edittext"
+        android:focusable="false"
+        app:layout_constraintBottom_toTopOf="@id/rv_providers"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/tv_providers_subtitle"
+        app:layout_constraintWidth_max="720dp">
+
+        <androidx.leanback.widget.SearchEditText
+            android:id="@+id/et_providers_search"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginEnd="8dp"
+            android:drawableStart="@drawable/ic_search"
+            android:drawablePadding="10dp"
+            android:drawableTint="#FFFFFF"
+            android:focusable="true"
+            android:focusableInTouchMode="true"
+            android:fontFamily="@font/manrope"
+            android:gravity="center_vertical"
+            android:hint="@string/providers_search_hint"
+            android:imeOptions="actionSearch"
+            android:inputType="text"
+            android:maxLines="1"
+            android:nextFocusUp="@id/s_providers_language"
+            android:nextFocusRight="@id/btn_providers_search_clear"
+            android:nextFocusDown="@id/rv_providers"
+            android:padding="14dp"
+            android:textColor="#FFFFFF"
+            android:textColorHint="#80FFFFFF"
+            android:textSize="16sp"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toStartOf="@id/btn_providers_search_clear"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent" />
+
+        <ImageView
+            android:id="@+id/btn_providers_search_clear"
+            android:layout_width="0dp"
+            android:layout_height="0dp"
+            android:layout_marginTop="4dp"
+            android:layout_marginEnd="8dp"
+            android:layout_marginBottom="4dp"
+            android:background="@drawable/bg_btn_exoplayer_tv"
+            android:contentDescription="@string/providers_search_clear_cd"
+            android:focusable="true"
+            android:focusableInTouchMode="true"
+            android:nextFocusLeft="@id/et_providers_search"
+            android:nextFocusDown="@id/rv_providers"
+            android:padding="10dp"
+            android:src="@drawable/ic_search_clear"
+            android:tint="#FFFFFF"
+            android:visibility="gone"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintDimensionRatio="1:1"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintTop_toTopOf="parent"
+            tools:ignore="PrivateResource,UseAppTint"
+            tools:visibility="visible" />
+    </androidx.constraintlayout.widget.ConstraintLayout>
 
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/rv_providers"
@@ -70,6 +139,7 @@
         android:layout_height="wrap_content"
         android:clipChildren="false"
         android:clipToPadding="false"
+        android:nextFocusUp="@id/et_providers_search"
         android:orientation="horizontal"
         android:paddingStart="70dp"
         android:paddingTop="@dimen/providers_spacing"
@@ -79,7 +149,7 @@
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/tv_providers_subtitle"
+        app:layout_constraintTop_toBottomOf="@id/cl_providers_search"
         tools:itemCount="2"
         tools:listitem="@layout/item_provider_tv" />
 
@@ -96,7 +166,7 @@
         app:layout_constraintBottom_toTopOf="@id/v_providers_empty_rule"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/tv_providers_label"
+        app:layout_constraintTop_toBottomOf="@id/cl_providers_search"
         app:layout_constraintVertical_chainStyle="packed"
         app:layout_constraintWidth_max="520dp"
         tools:visibility="visible" />
@@ -121,6 +191,7 @@
         android:layout_height="wrap_content"
         android:layout_marginTop="14dp"
         android:focusable="true"
+        android:nextFocusUp="@id/et_providers_search"
         android:text="@string/exp_empty_all_languages"
         android:visibility="gone"
         app:layout_constraintBottom_toBottomOf="parent"

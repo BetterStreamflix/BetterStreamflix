@@ -26,6 +26,10 @@
     <string name="providers_all_languages">Tutte le lingue</string>
     <string name="providers_favorites">Preferiti</string>
     <string name="providers_choose_title">Scegli un provider</string>
+    <string name="providers_search_hint">Cerca provider</string>
+    <string name="providers_search_empty">Nessun provider corrisponde alla ricerca</string>
+    <string name="providers_search_clear">Cancella ricerca</string>
+    <string name="providers_search_clear_cd">Cancella ricerca provider</string>
 
     <string name="main_menu_change_provider">Cambia provider</string>
     <string name="main_menu_search">Cerca</string>

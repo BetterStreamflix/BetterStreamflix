@@ -90,12 +90,76 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@id/tv_providers_subtitle" />
 
+    <androidx.constraintlayout.widget.ConstraintLayout
+        android:id="@+id/cl_providers_search"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="16dp"
+        android:layout_marginTop="16dp"
+        android:layout_marginEnd="16dp"
+        android:background="@drawable/bg_search_edittext"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/v_providers_rule">
+
+        <ImageView
+            android:id="@+id/ic_providers_search"
+            android:layout_width="0dp"
+            android:layout_height="0dp"
+            android:padding="12dp"
+            android:src="@drawable/ic_search"
+            android:tint="#FFFFFF"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintDimensionRatio="1:1"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent"
+            tools:ignore="ContentDescription,PrivateResource,UseAppTint" />
+
+        <EditText
+            android:id="@+id/et_providers_search"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:background="@android:color/transparent"
+            android:fontFamily="@font/manrope"
+            android:gravity="center_vertical"
+            android:hint="@string/providers_search_hint"
+            android:imeOptions="actionSearch"
+            android:inputType="text"
+            android:maxLines="1"
+            android:paddingTop="13dp"
+            android:paddingBottom="13dp"
+            android:textColor="#FFFFFF"
+            android:textColorHint="#80FFFFFF"
+            android:textSize="15sp"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toStartOf="@id/btn_providers_search_clear"
+            app:layout_constraintStart_toEndOf="@id/ic_providers_search"
+            app:layout_constraintTop_toTopOf="parent"
+            tools:ignore="Autofill,UnusedAttribute" />
+
+        <ImageView
+            android:id="@+id/btn_providers_search_clear"
+            android:layout_width="0dp"
+            android:layout_height="0dp"
+            android:contentDescription="@string/providers_search_clear_cd"
+            android:padding="12dp"
+            android:src="@drawable/ic_search_clear"
+            android:tint="#FFFFFF"
+            android:visibility="gone"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintDimensionRatio="1:1"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintTop_toTopOf="parent"
+            tools:ignore="PrivateResource,UseAppTint"
+            tools:visibility="visible" />
+    </androidx.constraintlayout.widget.ConstraintLayout>
+
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/rv_providers"
         android:layout_width="0dp"
         android:layout_height="0dp"
         android:layout_marginStart="16dp"
-        android:layout_marginTop="16dp"
+        android:layout_marginTop="12dp"
         android:layout_marginEnd="16dp"
         android:clipToPadding="false"
         android:orientation="vertical"
@@ -105,10 +169,63 @@
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/v_providers_rule"
+        app:layout_constraintTop_toBottomOf="@id/cl_providers_search"
         app:spanCount="2"
         tools:itemCount="3"
         tools:listitem="@layout/item_provider_mobile" />
+
+    <TextView
+        android:id="@+id/tv_providers_empty"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="32dp"
+        android:layout_marginEnd="32dp"
+        android:fontFamily="@font/manrope"
+        android:gravity="center"
+        android:padding="28dp"
+        android:text="@string/providers_empty"
+        android:textColor="#B3FFFFFF"
+        android:textSize="16sp"
+        android:visibility="gone"
+        app:layout_constraintBottom_toTopOf="@id/v_providers_empty_rule"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/cl_providers_search"
+        app:layout_constraintVertical_chainStyle="packed"
+        tools:visibility="visible" />
+
+    <View
+        android:id="@+id/v_providers_empty_rule"
+        android:layout_width="36dp"
+        android:layout_height="3dp"
+        android:layout_marginTop="14dp"
+        android:background="@drawable/bg_exp_accent_rule"
+        android:visibility="gone"
+        app:layout_constraintBottom_toTopOf="@id/btn_providers_empty_cta"
+        app:layout_constraintEnd_toEndOf="@id/tv_providers_empty"
+        app:layout_constraintStart_toStartOf="@id/tv_providers_empty"
+        app:layout_constraintTop_toBottomOf="@id/tv_providers_empty"
+        tools:visibility="visible" />
+
+    <TextView
+        android:id="@+id/btn_providers_empty_cta"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="14dp"
+        android:fontFamily="@font/manrope"
+        android:paddingStart="18dp"
+        android:paddingTop="10dp"
+        android:paddingEnd="18dp"
+        android:paddingBottom="10dp"
+        android:text="@string/exp_empty_all_languages"
+        android:textColor="#FFFFFF"
+        android:textSize="14sp"
+        android:visibility="gone"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="@id/tv_providers_empty"
+        app:layout_constraintStart_toStartOf="@id/tv_providers_empty"
+        app:layout_constraintTop_toBottomOf="@id/v_providers_empty_rule"
+        tools:visibility="visible" />
 
     <include
         android:id="@+id/is_loading"
