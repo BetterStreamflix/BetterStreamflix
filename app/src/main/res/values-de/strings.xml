@@ -78,6 +78,13 @@
     <string name="search_input_hint">Filme / Serien suchen</string>
     <string name="search_input_hint_iptv">Kanäle suchen</string>
     <string name="global_search">Globale Suche</string>
+    <string name="search_sort_default">Relevanz</string>
+    <string name="search_sort_newest">Neueste</string>
+    <string name="search_filter_year">Jahr</string>
+    <string name="search_filter_year_selected">Jahr %1$d</string>
+    <string name="search_filter_year_title">Nach Jahr filtern</string>
+    <string name="search_filter_all_years">Alle Jahre</string>
+    <string name="settings_search_sort_title">Suchergebnis-Reihenfolge</string>
     <string name="search_empty_query">Bitte geben Sie einen Suchbegriff ein</string>
     <string name="search_no_results">Keine Ergebnisse für diese Suche</string>
     <string name="search_recent_title">Zuletzt</string>

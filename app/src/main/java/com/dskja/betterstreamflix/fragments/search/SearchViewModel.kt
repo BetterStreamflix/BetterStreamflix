@@ -11,6 +11,8 @@ import com.dskja.betterstreamflix.providers.IptvProvider
 import com.dskja.betterstreamflix.providers.Provider
 import com.dskja.betterstreamflix.providers.ProviderSmoke
 import com.dskja.betterstreamflix.utils.ParentalControlUtils
+import com.dskja.betterstreamflix.utils.SearchSort
+import com.dskja.betterstreamflix.utils.SearchSortMode
 import com.dskja.betterstreamflix.utils.UserPreferences
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
@@ -142,8 +144,99 @@ class SearchViewModel(
     private var loadMoreJob: Job? = null
     private var globalSearchJob: Job? = null
 
+    /** Unordered / unfiltered provider+plugin hits for local search. */
+    private var rawLocalResults: List<AppAdapter.Item> = emptyList()
+    private var rawLocalHasMore: Boolean = false
+
+    /** Global search rows with Success payloads still unordered / unfiltered. */
+    private var rawGlobalResults: List<ProviderResult> = emptyList()
+
+    private val providerStateComparator = compareBy<ProviderResult> { providerResult ->
+        when (val state = providerResult.state) {
+            is ProviderResult.State.Success -> if (state.results.isNotEmpty()) 1 else 3
+            is ProviderResult.State.Loading -> 2
+            is ProviderResult.State.Error -> 4
+        }
+    }
+
     init {
         search(query)
+    }
+
+    fun currentSortMode(): SearchSortMode = UserPreferences.searchSortMode
+
+    fun currentYearFilter(): Int? = UserPreferences.searchYearFilter
+
+    /** Years present in the current raw result set (local or global). */
+    fun yearsInCurrentResults(): List<Int> {
+        val items = when (val s = _state.value) {
+            is State.SuccessSearching -> rawLocalResults
+            is State.SuccessGlobalSearching -> rawGlobalResults.flatMap { pr ->
+                (pr.state as? ProviderResult.State.Success)?.results.orEmpty()
+            }
+            else -> rawLocalResults
+        }
+        return SearchSort.availableYears(items)
+    }
+
+    fun setSortMode(mode: SearchSortMode) {
+        if (UserPreferences.searchSortMode == mode) {
+            reapplyOrdering()
+            return
+        }
+        UserPreferences.searchSortMode = mode
+        reapplyOrdering()
+    }
+
+    fun setYearFilter(year: Int?) {
+        if (UserPreferences.searchYearFilter == year) {
+            reapplyOrdering()
+            return
+        }
+        UserPreferences.searchYearFilter = year
+        reapplyOrdering()
+    }
+
+    fun reapplyOrdering() {
+        viewModelScope.launch(Dispatchers.IO) {
+            when (_state.value) {
+                is State.SuccessSearching, is State.SearchingMore -> {
+                    emitLocalSuccess()
+                }
+                is State.SuccessGlobalSearching -> {
+                    _state.emit(State.SuccessGlobalSearching(orderGlobal(rawGlobalResults)))
+                }
+                else -> Unit
+            }
+        }
+    }
+
+    private fun orderLocal(items: List<AppAdapter.Item>): List<AppAdapter.Item> =
+        SearchSort.items(items, UserPreferences.searchSortMode, UserPreferences.searchYearFilter)
+
+    private fun orderGlobal(rows: List<ProviderResult>): List<ProviderResult> =
+        rows.map { pr ->
+            when (val st = pr.state) {
+                is ProviderResult.State.Success -> pr.copy(
+                    state = ProviderResult.State.Success(
+                        SearchSort.items(
+                            st.results,
+                            UserPreferences.searchSortMode,
+                            UserPreferences.searchYearFilter,
+                        )
+                    )
+                )
+                else -> pr
+            }
+        }.sortedWith(providerStateComparator)
+
+    private suspend fun emitLocalSuccess() {
+        _state.emit(
+            State.SuccessSearching(
+                results = orderLocal(rawLocalResults),
+                hasMore = rawLocalHasMore,
+            )
+        )
     }
 
     fun search(query: String) {
@@ -175,7 +268,10 @@ class SearchViewModel(
                 val merged = (results + addonHits).distinctBy { it.searchIdentityKey() }
                 this@SearchViewModel.query = query
                 page = 1
-                _state.emit(State.SuccessSearching(merged, merged.isNotEmpty()))
+                rawLocalResults = merged
+                rawLocalHasMore = merged.isNotEmpty()
+                rawGlobalResults = emptyList()
+                emitLocalSuccess()
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
@@ -209,18 +305,15 @@ class SearchViewModel(
                     )
                     // Drop if the user started a newer search while we were loading.
                     if (query != requestedQuery) return@launch
-                    val existingKeys = currentState.results
+                    val existingKeys = rawLocalResults
                         .asSequence()
                         .map { it.searchIdentityKey() }
                         .toHashSet()
                     val newUniqueResults = results.filterNot { it.searchIdentityKey() in existingKeys }
                     page += 1
-                    _state.emit(
-                        State.SuccessSearching(
-                            results = currentState.results + newUniqueResults,
-                            hasMore = newUniqueResults.isNotEmpty(),
-                        )
-                    )
+                    rawLocalResults = rawLocalResults + newUniqueResults
+                    rawLocalHasMore = newUniqueResults.isNotEmpty()
+                    emitLocalSuccess()
                 } catch (e: CancellationException) {
                     throw e
                 } catch (e: Exception) {
@@ -245,6 +338,7 @@ class SearchViewModel(
                 .toList()
 
             if (targetProviders.isEmpty()) {
+                rawGlobalResults = emptyList()
                 _state.emit(State.SuccessGlobalSearching(emptyList()))
                 return@launch
             }
@@ -252,18 +346,11 @@ class SearchViewModel(
             val initialResults = targetProviders.map { provider ->
                 ProviderResult(provider, ProviderResult.State.Loading)
             }
+            rawGlobalResults = initialResults
             _state.emit(State.SuccessGlobalSearching(initialResults))
 
             val mutableResults = initialResults.toMutableList()
             val resultsLock = Any()
-
-            val stateComparator = compareBy<ProviderResult> { providerResult ->
-                when (val state = providerResult.state) {
-                    is ProviderResult.State.Success -> if (state.results.isNotEmpty()) 1 else 3
-                    is ProviderResult.State.Loading -> 2
-                    is ProviderResult.State.Error -> 4
-                }
-            }
 
             targetProviders.forEachIndexed { index, provider ->
                 launch {
@@ -293,9 +380,10 @@ class SearchViewModel(
 
                     val snapshot = synchronized(resultsLock) {
                         mutableResults[index] = next
-                        mutableResults.toList().sortedWith(stateComparator)
+                        mutableResults.toList()
                     }
-                    _state.emit(State.SuccessGlobalSearching(snapshot))
+                    rawGlobalResults = snapshot
+                    _state.emit(State.SuccessGlobalSearching(orderGlobal(snapshot)))
                 }
             }
         }

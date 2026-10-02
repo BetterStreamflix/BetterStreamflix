@@ -379,7 +379,47 @@ class SearchMobileFragment : Fragment() {
                 SpacingItemDecoration(10.dp(requireContext()))
             )
         }
+        initializeSearchSortControls()
         refreshRecentSearches()
+    }
+
+    private fun initializeSearchSortControls() {
+        val chipDefault = binding.root.findViewById<TextView>(R.id.chip_search_sort_default) ?: return
+        val chipNewest = binding.root.findViewById<TextView>(R.id.chip_search_sort_newest) ?: return
+        val chipYear = binding.root.findViewById<TextView>(R.id.chip_search_filter_year) ?: return
+
+        fun refreshChips() {
+            SearchSortUi.bindChips(
+                chipDefault = chipDefault,
+                chipNewest = chipNewest,
+                chipYear = chipYear,
+                mode = viewModel.currentSortMode(),
+                year = viewModel.currentYearFilter(),
+            )
+        }
+        refreshChips()
+
+        chipDefault.setOnClickListener {
+            ExpMotion.hapticTap(it)
+            viewModel.setSortMode(com.dskja.betterstreamflix.utils.SearchSortMode.PROVIDER_DEFAULT)
+            refreshChips()
+        }
+        chipNewest.setOnClickListener {
+            ExpMotion.hapticTap(it)
+            viewModel.setSortMode(com.dskja.betterstreamflix.utils.SearchSortMode.NEWEST_FIRST)
+            refreshChips()
+        }
+        chipYear.setOnClickListener {
+            ExpMotion.hapticTap(it)
+            SearchSortUi.showYearPicker(
+                context = requireContext(),
+                currentYear = viewModel.currentYearFilter(),
+                resultYears = viewModel.yearsInCurrentResults(),
+            ) { year ->
+                viewModel.setYearFilter(year)
+                refreshChips()
+            }
+        }
     }
 
     private fun refreshRecentSearches() {
