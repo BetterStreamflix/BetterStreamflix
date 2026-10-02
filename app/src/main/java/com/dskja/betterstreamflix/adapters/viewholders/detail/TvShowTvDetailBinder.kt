@@ -279,6 +279,8 @@ internal fun TvShowViewHolder.bindTvShowTvDetail(binding: ContentTvShowTvBinding
             binding.btnTvShowTrailer,
             binding.btnTvShowDownload,
             binding.root.findViewById(R.id.btn_tv_show_watched),
+        )
+        com.dskja.betterstreamflix.utils.TvFocusChain.linkHorizontal(
             binding.root.findViewById(R.id.btn_tv_show_share),
             binding.btnTvShowFavorite,
         )
