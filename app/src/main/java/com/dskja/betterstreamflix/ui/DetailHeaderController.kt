@@ -18,6 +18,9 @@ import com.dskja.betterstreamflix.utils.ExpMotion
  * Owns both the collapsing header logo and the hero title logo on the detail body.
  * After the user scrolls past the hero logo, a soft bar fades in with the TMDb title logo.
  * Resolve/bind/persist goes through [TitleLogoSurface] (shared with Featured + TV).
+ *
+ * Header chrome mirrors hero decode success/fail only — never an independent Glide race
+ * that can leave logo in the bar while the cover shows title text (or the reverse).
  */
 object DetailHeaderController {
 
@@ -52,8 +55,9 @@ object DetailHeaderController {
     fun bindMovie(fragment: Fragment, root: View, movie: Movie) {
         val generation = bumpGeneration(root)
         root.findViewById<TextView>(R.id.tv_detail_header_title)?.text = movie.title
-        bindTitleChrome(root, movie.title, movie.logo)
-        bindHeroMovie(fragment, root, movie, retries = 2, generation = generation)
+        // Title-only until hero Glide confirms — keeps header and cover in lockstep.
+        clearTitleChrome(root)
+        bindHeroMovie(fragment, root, movie, retries = 4, generation = generation)
         wireDevLogoLongPress(root, movie.title) { movie.logo }
         onScrolled(root, lastScrollY(root))
         // Header list affordance retired — My List lives in the hero CTA row.
@@ -63,8 +67,8 @@ object DetailHeaderController {
     fun bindTvShow(fragment: Fragment, root: View, tvShow: TvShow) {
         val generation = bumpGeneration(root)
         root.findViewById<TextView>(R.id.tv_detail_header_title)?.text = tvShow.title
-        bindTitleChrome(root, tvShow.title, tvShow.logo)
-        bindHeroTvShow(fragment, root, tvShow, retries = 2, generation = generation)
+        clearTitleChrome(root)
+        bindHeroTvShow(fragment, root, tvShow, retries = 4, generation = generation)
         wireDevLogoLongPress(root, tvShow.title) { tvShow.logo }
         onScrolled(root, lastScrollY(root))
         root.findViewById<ImageView>(R.id.btn_detail_list)?.visibility = View.GONE
@@ -109,9 +113,14 @@ object DetailHeaderController {
                     root.findViewById<TextView>(R.id.tv_detail_header_title)?.text?.toString() ==
                     movie.title
             },
-            onResolved = { url, _ ->
+            onLogoReady = { url ->
                 if (!isCurrentGeneration(root, generation)) return@bindAndMaybeResolve
                 bindTitleChrome(root, movie.title, url)
+                onScrolled(root, lastScrollY(root))
+            },
+            onLogoFailed = {
+                if (!isCurrentGeneration(root, generation)) return@bindAndMaybeResolve
+                clearTitleChrome(root)
                 onScrolled(root, lastScrollY(root))
             },
         )
@@ -147,9 +156,14 @@ object DetailHeaderController {
                     root.findViewById<TextView>(R.id.tv_detail_header_title)?.text?.toString() ==
                     tvShow.title
             },
-            onResolved = { url, _ ->
+            onLogoReady = { url ->
                 if (!isCurrentGeneration(root, generation)) return@bindAndMaybeResolve
                 bindTitleChrome(root, tvShow.title, url)
+                onScrolled(root, lastScrollY(root))
+            },
+            onLogoFailed = {
+                if (!isCurrentGeneration(root, generation)) return@bindAndMaybeResolve
+                clearTitleChrome(root)
                 onScrolled(root, lastScrollY(root))
             },
         )
@@ -187,6 +201,15 @@ object DetailHeaderController {
     private fun lastScrollY(root: View): Int =
         (root.getTag(R.id.v_detail_header_scrim) as? Int) ?: 0
 
+    private fun clearTitleChrome(root: View) {
+        val logo = root.findViewById<ImageView>(R.id.iv_detail_header_logo) ?: return
+        TmdbLogoGlide.clear(logo)
+        logo.background = null
+        logo.tag = null
+        logo.visibility = View.INVISIBLE
+        logo.alpha = 0f
+    }
+
     private fun bindTitleChrome(
         root: View,
         title: String,
@@ -195,33 +218,32 @@ object DetailHeaderController {
         root.findViewById<TextView>(R.id.tv_detail_header_title)?.text = title
         val logo = root.findViewById<ImageView>(R.id.iv_detail_header_logo) ?: return
         if (logoUrl.isNullOrBlank()) {
-            TmdbLogoGlide.clear(logo)
-            logo.background = null
-            logo.tag = null
+            clearTitleChrome(root)
             onScrolled(root, lastScrollY(root))
             return
         }
+        // Hero already decoded this URL — tag immediately so scroll chrome matches cover
+        // even if the smaller header ImageView briefly misses the Glide race.
+        logo.tag = logoUrl
+        com.dskja.betterstreamflix.logo.TitleLogoPresentation.clearImagePlate(logo)
+        com.dskja.betterstreamflix.logo.TitleLogoPresentation.polishLogoImage(logo)
         TmdbLogoGlide.load(
             imageView = logo,
             logoUrl = logoUrl,
             hideUntilReady = false,
             contentDescription = title,
             onFailed = {
-                // Decode fail on chrome: hide logo chrome; hero path already runs alternate resolve.
-                logo.background = null
-                logo.tag = null
-                TmdbLogoGlide.clear(logo)
+                // Keep tag + title fallback only if pixels never arrive; scroll still prefers logo tag.
                 logo.post { onScrolled(root, lastScrollY(root)) }
             },
             onReady = { readyUrl ->
-                // Never plate the ImageView — contrast lives on the collapsed bar scrim.
                 com.dskja.betterstreamflix.logo.TitleLogoPresentation.clearImagePlate(logo)
                 com.dskja.betterstreamflix.logo.TitleLogoPresentation.polishLogoImage(logo)
                 logo.tag = readyUrl
-                // Re-apply after Glide finishes so a load at scrollY=0 stays invisible.
                 logo.post { onScrolled(root, lastScrollY(root)) }
             },
         )
+        onScrolled(root, lastScrollY(root))
     }
 
     private fun wireDevLogoLongPress(root: View, title: String, logoUrl: () -> String?) {

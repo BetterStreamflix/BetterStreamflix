@@ -228,16 +228,9 @@ class EpisodeViewHolder(
             true
         }
 
-        val upNext = episode.id == episode.tvShow?.episodeToWatch?.id
-        binding.root.setBackgroundResource(
-            if (upNext) R.drawable.bg_episode_up_next else 0,
-        )
-        binding.root.setPadding(
-            if (upNext) (8 * context.resources.displayMetrics.density).toInt() else 0,
-            binding.root.paddingTop,
-            if (upNext) (8 * context.resources.displayMetrics.density).toInt() else 0,
-            binding.root.paddingBottom,
-        )
+        // No permanent "up next" border — blue outline looked like a stuck focus ring.
+        binding.root.setBackgroundResource(0)
+        binding.root.setPadding(0, binding.root.paddingTop, 0, binding.root.paddingBottom)
 
         binding.ivEpisodePoster.apply {
             clipToOutline = true
@@ -256,11 +249,9 @@ class EpisodeViewHolder(
 
         val title = episode.title ?: context.getString(R.string.episode_number, episode.number)
         binding.tvEpisodeTitle.text = "${episode.number}. $title"
-        if (upNext) {
-            binding.tvEpisodeTitle.setTextColor(
-                ContextCompat.getColor(context, R.color.cinema_text),
-            )
-        }
+        binding.tvEpisodeTitle.setTextColor(
+            ContextCompat.getColor(context, R.color.cinema_text),
+        )
 
         binding.tvEpisodeMeta.text = buildDetailMetaLine()
         binding.tvEpisodeMeta.visibility =
