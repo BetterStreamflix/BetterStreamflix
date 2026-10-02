@@ -4,7 +4,6 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.widget.Toast
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.flowWithLifecycle
@@ -17,10 +16,9 @@ import com.dskja.betterstreamflix.adapters.AppAdapter
 import com.dskja.betterstreamflix.database.AppDatabase
 import com.dskja.betterstreamflix.databinding.FragmentMovieTvBinding
 import com.dskja.betterstreamflix.models.Movie
-import com.dskja.betterstreamflix.utils.CacheUtils
+import com.dskja.betterstreamflix.ui.DetailLoadingErrorChrome
 import com.dskja.betterstreamflix.utils.DeviceCapabilities
 import com.dskja.betterstreamflix.utils.Http409CacheGuard
-import com.dskja.betterstreamflix.utils.LoggingUtils
 import com.dskja.betterstreamflix.utils.TmdbUtils
 import com.dskja.betterstreamflix.utils.format
 import com.dskja.betterstreamflix.utils.loadMovieBanner
@@ -39,6 +37,7 @@ class MovieTvFragment : Fragment() {
     private val viewModel by viewModelsFactory { MovieViewModel(args.id, database) }
 
     private val appAdapter = AppAdapter()
+    private var watchFocusedOnce = false
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -68,6 +67,7 @@ class MovieTvFragment : Fragment() {
                         com.dskja.betterstreamflix.utils.ExpPressEffects.showLoadingSkeleton(
                             binding.isLoading.root, false,
                         )
+                        requestWatchFocus()
                     }
                     is MovieViewModel.State.FailedLoading -> {
                         if (http409Guard.handle(requireContext(), state.error) {
@@ -76,32 +76,13 @@ class MovieTvFragment : Fragment() {
                         ) {
                             return@collect
                         }
-                        Toast.makeText(
-                            requireContext(),
-                            state.error.message ?: "",
-                            Toast.LENGTH_SHORT
-                        ).show()
-                        binding.isLoading.apply {
-                            com.dskja.betterstreamflix.utils.ExpPressEffects.showLoadingSkeleton(root, false)
-                            gIsLoadingRetry.visibility = View.VISIBLE
-                            com.dskja.betterstreamflix.utils.ExpPressEffects.animateLoadingError(root)
-                            btnIsLoadingRetry.setOnClickListener {
-                                viewModel.getMovie(args.id)
-                            }
-                            btnIsLoadingClearCache.setOnClickListener {
-                                CacheUtils.clearAppCache(requireContext())
-                                com.dskja.betterstreamflix.utils.ExpDialogChrome.notify(
-                                    requireContext(),
-                                    getString(R.string.clear_cache_done),
-                                    R.string.loading_error_clear_cache,
-                                )
-                                viewModel.getMovie(args.id)
-                            }
-                            btnIsLoadingErrorDetails.setOnClickListener {
-                                LoggingUtils.showErrorDialog(requireContext(), state.error)
-                            }
-                            btnIsLoadingRetry.requestFocus()
-                        }
+                        DetailLoadingErrorChrome.bind(
+                            root = binding.isLoading.root,
+                            context = requireContext(),
+                            error = state.error,
+                            requestFocusOnRetry = true,
+                            onRetry = { viewModel.getMovie(args.id) },
+                        )
                     }
                 }
             }
@@ -120,6 +101,21 @@ class MovieTvFragment : Fragment() {
                 stateRestorationPolicy = RecyclerView.Adapter.StateRestorationPolicy.PREVENT_WHEN_EMPTY
             }
             setItemSpacing(resources.getDimension(R.dimen.detail_tv_item_spacing).toInt())
+        }
+    }
+
+    private fun requestWatchFocus() {
+        if (watchFocusedOnce) return
+        binding.vgvMovie.post {
+            if (!isAdded || _binding == null) return@post
+            val watch = binding.vgvMovie
+                .findViewHolderForAdapterPosition(0)
+                ?.itemView
+                ?.findViewById<View>(R.id.btn_movie_watch_now)
+            if (watch != null) {
+                watch.requestFocus()
+                watchFocusedOnce = true
+            }
         }
     }
 
