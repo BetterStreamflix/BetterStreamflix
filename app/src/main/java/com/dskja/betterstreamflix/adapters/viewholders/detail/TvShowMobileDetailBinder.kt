@@ -426,23 +426,31 @@ internal fun TvShowViewHolder.bindTvShowMobileDetail(binding: ContentTvShowMobil
     }
 
     binding.root.findViewById<View>(R.id.btn_tv_show_share)?.let { shareBtn ->
-        shareBtn.applyExpPress()
-        shareBtn.setOnClickListener {
-            ExpMotion.hapticTap(it)
-            val share = Intent(Intent.ACTION_SEND).apply {
-                type = "text/plain"
-                putExtra(Intent.EXTRA_SUBJECT, tvShow.title)
-                putExtra(
-                    Intent.EXTRA_TEXT,
-                    buildString {
-                        append(tvShow.title)
-                        tvShow.released?.format("yyyy")?.let { year -> append(" ($year)") }
-                        tvShow.overview?.takeIf { it.isNotBlank() }?.let { overview -> append("\n\n").append(overview.take(280)) }
-                        tvShow.trailer?.let { trailer -> append("\n").append(trailer) }
-                    },
-                )
+        val shareColumn = binding.root.findViewById<View>(R.id.ll_tv_show_share_column)
+        val share = Intent(Intent.ACTION_SEND).apply {
+            type = "text/plain"
+            putExtra(Intent.EXTRA_SUBJECT, tvShow.title)
+            putExtra(
+                Intent.EXTRA_TEXT,
+                buildString {
+                    append(tvShow.title)
+                    tvShow.released?.format("yyyy")?.let { year -> append(" ($year)") }
+                    tvShow.overview?.takeIf { it.isNotBlank() }?.let { overview -> append("\n\n").append(overview.take(280)) }
+                    tvShow.trailer?.let { trailer -> append("\n").append(trailer) }
+                },
+            )
+        }
+        val canShare = share.resolveActivity(context.packageManager) != null
+        shareBtn.visibility = if (canShare) View.VISIBLE else View.GONE
+        shareColumn?.visibility = if (canShare) View.VISIBLE else View.GONE
+        if (canShare) {
+            shareBtn.applyExpPress()
+            shareBtn.setOnClickListener {
+                ExpMotion.hapticTap(it)
+                context.startActivity(Intent.createChooser(share, context.getString(R.string.detail_share)))
             }
-            context.startActivity(Intent.createChooser(share, context.getString(R.string.detail_share)))
+        } else {
+            shareBtn.setOnClickListener(null)
         }
     }
 

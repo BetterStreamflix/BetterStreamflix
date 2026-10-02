@@ -76,14 +76,14 @@
         android:id="@+id/fl_tv_show_logo_slot"
         android:layout_width="0dp"
         android:layout_height="@dimen/detail_logo_slot_height"
-        android:layout_marginStart="24dp"
-        android:layout_marginEnd="24dp"
+        android:layout_marginStart="20dp"
+        android:layout_marginEnd="48dp"
         android:layout_marginBottom="8dp"
         android:background="@drawable/bg_detail_logo_scrim"
         android:elevation="0dp"
-        android:paddingStart="6dp"
+        android:paddingStart="4dp"
         android:paddingTop="8dp"
-        android:paddingEnd="6dp"
+        android:paddingEnd="4dp"
         android:paddingBottom="8dp"
         app:layout_constraintBottom_toBottomOf="@id/space_tv_show_art_stage"
         app:layout_constraintEnd_toEndOf="parent"
@@ -95,7 +95,7 @@
             android:layout_height="match_parent"
             android:adjustViewBounds="true"
             android:importantForAccessibility="no"
-            android:scaleType="fitCenter"
+            android:scaleType="fitStart"
             android:visibility="invisible"
             tools:src="@mipmap/ic_launcher"
             tools:visibility="visible" />
@@ -104,17 +104,18 @@
             android:id="@+id/tv_tv_show_title"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
+            android:ellipsize="end"
             android:fontFamily="@font/syne"
-            android:gravity="center"
+            android:gravity="start|center_vertical"
+            android:maxLines="3"
             android:shadowColor="#F2000000"
             android:shadowDx="0"
             android:shadowDy="2"
             android:shadowRadius="16"
-            android:textAllCaps="true"
             android:textColor="@color/cinema_text"
-            android:textSize="34sp"
+            android:textSize="32sp"
             android:textStyle="bold"
-            tools:text="SOUTH PARK" />
+            tools:text="South Park" />
     </FrameLayout>
 
     <androidx.constraintlayout.widget.Barrier
@@ -123,6 +124,170 @@
         android:layout_height="wrap_content"
         app:barrierDirection="bottom"
         app:constraint_referenced_ids="space_tv_show_art_stage" />
+
+    <LinearLayout
+        android:id="@+id/ll_tv_show_meta_facts"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="20dp"
+        android:layout_marginTop="10dp"
+        android:layout_marginEnd="20dp"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/barrier_tv_show_brand">
+
+        <TextView
+            android:id="@+id/tv_tv_show_released"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:fontFamily="@font/manrope"
+            android:maxLines="1"
+            android:singleLine="true"
+            android:textColor="@color/cinema_text_muted"
+            android:textSize="13sp"
+            android:textStyle="bold"
+            tools:text="1997" />
+
+        <TextView
+            android:id="@+id/tv_tv_show_runtime"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="12dp"
+            android:fontFamily="@font/manrope"
+            android:maxLines="1"
+            android:singleLine="true"
+            android:textColor="@color/cinema_text_muted"
+            android:textSize="13sp"
+            android:textStyle="bold"
+            tools:text="26 seasons" />
+
+        <TextView
+            android:id="@+id/tv_tv_show_certification"
+            android:layout_width="28dp"
+            android:layout_height="28dp"
+            android:layout_marginStart="10dp"
+            android:background="@drawable/bg_cert_badge"
+            android:fontFamily="@font/manrope"
+            android:gravity="center"
+            android:textColor="@color/cinema_text"
+            android:textSize="11sp"
+            android:textStyle="bold"
+            android:visibility="gone"
+            tools:text="16"
+            tools:visibility="visible" />
+
+        <ImageView
+            android:id="@+id/iv_tv_show_rating_icon"
+            android:layout_width="18dp"
+            android:layout_height="18dp"
+            android:layout_marginStart="10dp"
+            android:contentDescription="@string/profile_integration_tmdb"
+            android:src="@drawable/ic_tmdb_attr"
+            android:visibility="gone"
+            tools:visibility="visible" />
+
+        <TextView
+            android:id="@+id/tv_tv_show_rating"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="6dp"
+            android:background="@drawable/bg_detail_rating_chip"
+            android:fontFamily="@font/outfit"
+            android:paddingStart="8dp"
+            android:paddingTop="3dp"
+            android:paddingEnd="8dp"
+            android:paddingBottom="3dp"
+            android:textColor="@color/cinema_text"
+            android:textSize="12sp"
+            android:textStyle="bold"
+            android:visibility="gone"
+            tools:text="8.4"
+            tools:visibility="visible" />
+
+        <TextView
+            android:id="@+id/tv_tv_show_quality"
+            android:layout_width="0dp"
+            android:layout_height="0dp"
+            android:visibility="gone" />
+    </LinearLayout>
+
+    <LinearLayout
+        android:id="@+id/ll_tv_show_meta_row"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="20dp"
+        android:layout_marginTop="8dp"
+        android:layout_marginEnd="20dp"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/ll_tv_show_meta_facts">
+
+        <TextView
+            android:id="@+id/tv_tv_show_genres"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:ellipsize="end"
+            android:fontFamily="@font/outfit"
+            android:letterSpacing="0.04"
+            android:maxLines="1"
+            android:textAllCaps="true"
+            android:textColor="@color/cinema_text_soft"
+            android:textSize="11sp"
+            android:textStyle="bold"
+            tools:text="COMEDY · ANIMATION" />
+    </LinearLayout>
+
+    <TextView
+        android:id="@+id/tv_tv_show_overview"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="20dp"
+        android:layout_marginTop="12dp"
+        android:layout_marginEnd="20dp"
+        android:ellipsize="end"
+        android:fontFamily="@font/manrope"
+        android:letterSpacing="0.01"
+        android:lineSpacingExtra="5dp"
+        android:lineSpacingMultiplier="1.08"
+        android:maxLines="3"
+        android:textColor="@color/cinema_text_soft"
+        android:textSize="15sp"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/ll_tv_show_meta_row"
+        tools:text="Overview" />
+
+    <TextView
+        android:id="@+id/tv_tv_show_overview_more"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="20dp"
+        android:layout_marginTop="4dp"
+        android:fontFamily="@font/outfit"
+        android:letterSpacing="0.04"
+        android:minHeight="32dp"
+        android:paddingTop="4dp"
+        android:paddingBottom="4dp"
+        android:text="@string/detail_overview_more"
+        android:textColor="@color/cinema_text"
+        android:textSize="13sp"
+        android:textStyle="bold"
+        android:visibility="gone"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/tv_tv_show_overview"
+        tools:visibility="visible" />
+
+    <androidx.constraintlayout.widget.Barrier
+        android:id="@+id/barrier_tv_show_synopsis"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        app:barrierDirection="bottom"
+        app:constraint_referenced_ids="tv_tv_show_overview,tv_tv_show_overview_more" />
 
     <TextView
         android:id="@+id/btn_tv_show_watch_now"
@@ -139,27 +304,40 @@
         android:letterSpacing="0.04"
         android:paddingStart="16dp"
         android:paddingEnd="16dp"
-        android:textColor="@color/cinema_cta_ink"
         android:text="@string/tv_show_watch_season_episode"
         android:textAllCaps="true"
+        android:textColor="@color/cinema_cta_ink"
         android:textSize="16sp"
         android:textStyle="bold"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/barrier_tv_show_brand" />
+        app:layout_constraintTop_toBottomOf="@id/barrier_tv_show_synopsis" />
+
+    <ProgressBar
+        android:id="@+id/pb_tv_show_progress_episode"
+        style="@android:style/Widget.ProgressBar.Horizontal"
+        android:layout_width="0dp"
+        android:layout_height="3dp"
+        android:layout_marginTop="8dp"
+        android:backgroundTint="#80646464"
+        android:progressTint="@color/cinema_text"
+        app:layout_constraintEnd_toEndOf="@id/btn_tv_show_watch_now"
+        app:layout_constraintStart_toStartOf="@id/btn_tv_show_watch_now"
+        app:layout_constraintTop_toBottomOf="@id/btn_tv_show_watch_now"
+        tools:progress="80" />
 
     <LinearLayout
         android:id="@+id/ll_tv_show_cta_row"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_marginStart="4dp"
-        android:layout_marginTop="18dp"
+        android:layout_marginTop="14dp"
         android:layout_marginEnd="4dp"
         android:gravity="center"
         android:orientation="horizontal"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/btn_tv_show_watch_now">
+        app:layout_constraintTop_toBottomOf="@id/pb_tv_show_progress_episode">
 
         <LinearLayout
             android:layout_width="0dp"
@@ -272,6 +450,7 @@
         </LinearLayout>
 
         <LinearLayout
+            android:id="@+id/ll_tv_show_share_column"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
@@ -298,164 +477,5 @@
                 android:textSize="11sp" />
         </LinearLayout>
     </LinearLayout>
-
-    <ProgressBar
-        android:id="@+id/pb_tv_show_progress_episode"
-        style="@android:style/Widget.ProgressBar.Horizontal"
-        android:layout_width="0dp"
-        android:layout_height="3dp"
-        android:layout_marginTop="12dp"
-        android:backgroundTint="#80646464"
-        android:progressTint="#FFFFFF"
-        app:layout_constraintEnd_toEndOf="@id/btn_tv_show_watch_now"
-        app:layout_constraintStart_toStartOf="@id/btn_tv_show_watch_now"
-        app:layout_constraintTop_toBottomOf="@id/ll_tv_show_cta_row"
-        tools:progress="80" />
-
-    <LinearLayout
-        android:id="@+id/ll_tv_show_meta_row"
-        android:layout_width="0dp"
-        android:layout_height="wrap_content"
-        android:layout_marginStart="20dp"
-        android:layout_marginTop="16dp"
-        android:layout_marginEnd="20dp"
-        android:gravity="center_vertical"
-        android:orientation="horizontal"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/pb_tv_show_progress_episode">
-
-        <TextView
-            android:id="@+id/tv_tv_show_genres"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:ellipsize="end"
-            android:fontFamily="@font/outfit"
-            android:letterSpacing="0.06"
-            android:maxLines="1"
-            android:textAllCaps="true"
-            android:textColor="@color/cinema_text_soft"
-            android:textSize="11sp"
-            android:textStyle="bold"
-            tools:text="COMEDY · ANIMATION" />
-
-        <TextView
-            android:id="@+id/tv_tv_show_runtime"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginStart="12dp"
-            android:fontFamily="@font/manrope"
-            android:maxLines="1"
-            android:singleLine="true"
-            android:textAllCaps="true"
-            android:textColor="@color/cinema_text_muted"
-            android:textSize="12sp"
-            android:textStyle="bold"
-            tools:text="26 SEASONS" />
-
-        <TextView
-            android:id="@+id/tv_tv_show_released"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginStart="12dp"
-            android:fontFamily="@font/manrope"
-            android:maxLines="1"
-            android:singleLine="true"
-            android:textAllCaps="true"
-            android:textColor="@color/cinema_text_muted"
-            android:textSize="12sp"
-            android:textStyle="bold"
-            tools:text="1997" />
-
-        <TextView
-            android:id="@+id/tv_tv_show_certification"
-            android:layout_width="28dp"
-            android:layout_height="28dp"
-            android:layout_marginStart="10dp"
-            android:background="@drawable/bg_cert_badge"
-            android:fontFamily="@font/manrope"
-            android:gravity="center"
-            android:textColor="#FFFFFF"
-            android:textSize="11sp"
-            android:textStyle="bold"
-            android:visibility="gone"
-            tools:text="16"
-            tools:visibility="visible" />
-
-        <ImageView
-            android:id="@+id/iv_tv_show_rating_icon"
-            android:layout_width="18dp"
-            android:layout_height="18dp"
-            android:layout_marginStart="10dp"
-            android:contentDescription="@string/profile_integration_tmdb"
-            android:src="@drawable/ic_tmdb_attr"
-            android:visibility="gone"
-            tools:visibility="visible" />
-
-        <TextView
-            android:id="@+id/tv_tv_show_rating"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginStart="6dp"
-            android:background="@drawable/bg_detail_rating_chip"
-            android:fontFamily="@font/outfit"
-            android:paddingStart="8dp"
-            android:paddingTop="3dp"
-            android:paddingEnd="8dp"
-            android:paddingBottom="3dp"
-            android:textColor="#FFFFFFFF"
-            android:textSize="12sp"
-            android:textStyle="bold"
-            android:visibility="gone"
-            tools:text="8.4"
-            tools:visibility="visible" />
-
-        <TextView
-            android:id="@+id/tv_tv_show_quality"
-            android:layout_width="0dp"
-            android:layout_height="0dp"
-            android:visibility="gone" />
-    </LinearLayout>
-
-    <TextView
-        android:id="@+id/tv_tv_show_overview"
-        android:layout_width="0dp"
-        android:layout_height="wrap_content"
-        android:layout_marginStart="20dp"
-        android:layout_marginTop="14dp"
-        android:layout_marginEnd="20dp"
-        android:ellipsize="end"
-        android:fontFamily="@font/manrope"
-        android:letterSpacing="0.01"
-        android:lineSpacingExtra="6dp"
-        android:lineSpacingMultiplier="1.08"
-        android:maxLines="3"
-        android:textColor="@color/cinema_text_soft"
-        android:textSize="15sp"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/ll_tv_show_meta_row"
-        tools:text="Overview" />
-
-    <TextView
-        android:id="@+id/tv_tv_show_overview_more"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginStart="20dp"
-        android:layout_marginTop="6dp"
-        android:fontFamily="@font/outfit"
-        android:letterSpacing="0.04"
-        android:minHeight="32dp"
-        android:paddingTop="4dp"
-        android:paddingBottom="4dp"
-        android:text="@string/detail_overview_more"
-        android:textColor="@color/cinema_text"
-        android:textSize="13sp"
-        android:textStyle="bold"
-        android:visibility="gone"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/tv_tv_show_overview"
-        tools:visibility="visible" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>
