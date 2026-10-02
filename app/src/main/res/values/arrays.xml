@@ -34,6 +34,15 @@
         <item>LAST_RELEASE</item>
     </string-array>
 
+    <string-array name="search_sort_names">
+        <item>@string/search_sort_default</item>
+        <item>@string/search_sort_newest</item>
+    </string-array>
+    <string-array name="search_sort_values">
+        <item>PROVIDER_DEFAULT</item>
+        <item>NEWEST_FIRST</item>
+    </string-array>
+
     <string-array name="trailer_player_names">
         <item>@string/trailer_player_in_app</item>
         <item>@string/youtube</item>

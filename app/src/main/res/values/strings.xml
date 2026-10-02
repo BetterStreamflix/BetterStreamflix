@@ -56,6 +56,13 @@
     <string name="global_search">Global search</string>
     <string name="global_search_cd_on">Global search, on, switch</string>
     <string name="global_search_cd_off">Global search, off, switch</string>
+    <string name="search_sort_default">Relevance</string>
+    <string name="search_sort_newest">Newest</string>
+    <string name="search_filter_year">Year</string>
+    <string name="search_filter_year_selected">Year %1$d</string>
+    <string name="search_filter_year_title">Filter by year</string>
+    <string name="search_filter_all_years">All years</string>
+    <string name="settings_search_sort_title">Search result order</string>
     <string name="continue_watching_confirm_title">Continue watching?</string>
     <string name="continue_watching_go_to_details">Go to details</string>
     <string name="search_empty_query">Please enter a search query</string>

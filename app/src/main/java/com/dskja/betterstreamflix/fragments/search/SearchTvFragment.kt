@@ -214,7 +214,8 @@ class SearchTvFragment : Fragment() {
         binding.etSearch.hint = getString(hintStringRes)
 
         binding.llGlobalSearch.nextFocusUpId = binding.etSearch.id
-        binding.vgvSearch.nextFocusUpId = binding.llGlobalSearch.id
+        binding.llGlobalSearch.nextFocusDownId = R.id.chip_search_sort_default
+        binding.vgvSearch.nextFocusUpId = R.id.chip_search_sort_default
         updateGlobalSearchContentDescription()
         binding.llGlobalSearch.setOnCheckedChangeListener { _, _ ->
             updateGlobalSearchContentDescription()
@@ -350,14 +351,51 @@ class SearchTvFragment : Fragment() {
                     subposition: Int,
                 ) {
                     child?.itemView?.nextFocusUpId =
-                        if (position in 0 until currentGridColumns) binding.llGlobalSearch.id
+                        if (position in 0 until currentGridColumns) R.id.chip_search_sort_default
                         else View.NO_ID
                 }
             })
         }
 
         refreshRecentSearches()
+        initializeSearchSortControls()
         binding.root.requestFocus()
+    }
+
+    private fun initializeSearchSortControls() {
+        val chipDefault = binding.root.findViewById<android.widget.TextView>(R.id.chip_search_sort_default) ?: return
+        val chipNewest = binding.root.findViewById<android.widget.TextView>(R.id.chip_search_sort_newest) ?: return
+        val chipYear = binding.root.findViewById<android.widget.TextView>(R.id.chip_search_filter_year) ?: return
+
+        fun refreshChips() {
+            SearchSortUi.bindChips(
+                chipDefault = chipDefault,
+                chipNewest = chipNewest,
+                chipYear = chipYear,
+                mode = viewModel.currentSortMode(),
+                year = viewModel.currentYearFilter(),
+            )
+        }
+        refreshChips()
+
+        chipDefault.setOnClickListener {
+            viewModel.setSortMode(com.dskja.betterstreamflix.utils.SearchSortMode.PROVIDER_DEFAULT)
+            refreshChips()
+        }
+        chipNewest.setOnClickListener {
+            viewModel.setSortMode(com.dskja.betterstreamflix.utils.SearchSortMode.NEWEST_FIRST)
+            refreshChips()
+        }
+        chipYear.setOnClickListener {
+            SearchSortUi.showYearPicker(
+                context = requireContext(),
+                currentYear = viewModel.currentYearFilter(),
+                resultYears = viewModel.yearsInCurrentResults(),
+            ) { year ->
+                viewModel.setYearFilter(year)
+                refreshChips()
+            }
+        }
     }
 
     private fun refreshRecentSearches() {

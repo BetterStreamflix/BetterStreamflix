@@ -568,6 +568,15 @@ object UserPreferences {
         get() = CatalogSortMode.fromKey(Key.CATALOG_SORT_MODE.getString())
         set(value) = Key.CATALOG_SORT_MODE.setString(value.name)
 
+    var searchSortMode: SearchSortMode
+        get() = SearchSortMode.fromKey(Key.SEARCH_SORT_MODE.getString())
+        set(value) = Key.SEARCH_SORT_MODE.setString(value.name)
+
+    /** Null means show all years. */
+    var searchYearFilter: Int?
+        get() = Key.SEARCH_YEAR_FILTER.getInt()
+        set(value) = Key.SEARCH_YEAR_FILTER.setInt(value)
+
     var castEnabled: Boolean
         get() = Key.CAST_ENABLED.getBoolean() ?: true
         set(value) = Key.CAST_ENABLED.setBoolean(value)
@@ -1252,6 +1261,8 @@ object UserPreferences {
         TELEGRAM_JOIN_GATE_CONFIRM_COUNT,
         TELEGRAM_JOIN_GATE_CHANNEL_VERSION,
         CATALOG_SORT_MODE,
+        SEARCH_SORT_MODE,
+        SEARCH_YEAR_FILTER,
         CAST_ENABLED,
         CAST_SUBTITLES_ENABLED,
         CAST_KEEP_SCREEN_AWAKE,
