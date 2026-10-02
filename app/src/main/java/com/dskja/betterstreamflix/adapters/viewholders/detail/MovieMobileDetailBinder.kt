@@ -351,23 +351,31 @@ internal fun MovieViewHolder.bindMovieMobileDetail(binding: ContentMovieMobileBi
     }
 
     binding.root.findViewById<View>(R.id.btn_movie_share)?.let { shareBtn ->
-        shareBtn.applyExpPress()
-        shareBtn.setOnClickListener {
-            ExpMotion.hapticTap(it)
-            val share = Intent(Intent.ACTION_SEND).apply {
-                type = "text/plain"
-                putExtra(Intent.EXTRA_SUBJECT, movie.title)
-                putExtra(
-                    Intent.EXTRA_TEXT,
-                    buildString {
-                        append(movie.title)
-                        movie.released?.format("yyyy")?.let { year -> append(" ($year)") }
-                        movie.overview?.takeIf { it.isNotBlank() }?.let { overview -> append("\n\n").append(overview.take(280)) }
-                        movie.trailer?.let { trailer -> append("\n").append(trailer) }
-                    },
-                )
+        val shareColumn = binding.root.findViewById<View>(R.id.ll_movie_share_column)
+        val share = Intent(Intent.ACTION_SEND).apply {
+            type = "text/plain"
+            putExtra(Intent.EXTRA_SUBJECT, movie.title)
+            putExtra(
+                Intent.EXTRA_TEXT,
+                buildString {
+                    append(movie.title)
+                    movie.released?.format("yyyy")?.let { year -> append(" ($year)") }
+                    movie.overview?.takeIf { it.isNotBlank() }?.let { overview -> append("\n\n").append(overview.take(280)) }
+                    movie.trailer?.let { trailer -> append("\n").append(trailer) }
+                },
+            )
+        }
+        val canShare = share.resolveActivity(context.packageManager) != null
+        shareBtn.visibility = if (canShare) View.VISIBLE else View.GONE
+        shareColumn?.visibility = if (canShare) View.VISIBLE else View.GONE
+        if (canShare) {
+            shareBtn.applyExpPress()
+            shareBtn.setOnClickListener {
+                ExpMotion.hapticTap(it)
+                context.startActivity(Intent.createChooser(share, context.getString(R.string.detail_share)))
             }
-            context.startActivity(Intent.createChooser(share, context.getString(R.string.detail_share)))
+        } else {
+            shareBtn.setOnClickListener(null)
         }
     }
 
