@@ -11,6 +11,9 @@ class ProviderHealthTest {
         assertTrue(ProviderHealth.isQuarantinedName("Fanpelis"))
         assertTrue(ProviderHealth.isQuarantinedName("Kidraz"))
         assertTrue(ProviderHealth.isQuarantinedName("MKissa"))
+        assertTrue(ProviderHealth.isQuarantinedName("StreamingIta"))
+        assertFalse(ProviderHealth.isQuarantinedName("Eurostreaming"))
+        assertFalse(ProviderHealth.isQuarantinedName("Altadefinizione"))
         assertFalse(ProviderHealth.isQuarantinedName("SerienStream"))
         assertFalse(ProviderHealth.isQuarantinedName("StreamingCommunity"))
     }
@@ -21,6 +24,8 @@ class ProviderHealthTest {
         assertTrue(names.contains("SFlix"))
         assertTrue(names.contains("SerienStream"))
         assertTrue(names.contains("GuardaFlix"))
+        assertTrue(names.contains("Eurostreaming"))
+        assertTrue(names.contains("Altadefinizione"))
         assertTrue(names.contains("HDFilme"))
         assertTrue(names.contains("Frembed"))
         assertTrue(names.contains("Filmpalast"))

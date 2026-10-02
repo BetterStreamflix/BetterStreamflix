@@ -21,6 +21,8 @@ object ProviderHealth {
         "MKissa",
         "FrenchAnime",
         "Doramasflix",
+        // Domain dead as of 2026-10 (streamingita.homes NXDOMAIN); keep entry for URL override.
+        "StreamingIta",
     )
 
     /** High-traffic providers that smoke harnesses should prioritize. */
@@ -30,6 +32,8 @@ object ProviderHealth {
         "StreamingCommunity (EN)",
         "GuardaFlix",
         "GuardaSerie",
+        "Eurostreaming",
+        "Altadefinizione",
         "HDFilme",
         "Frembed",
         "AniWorld",

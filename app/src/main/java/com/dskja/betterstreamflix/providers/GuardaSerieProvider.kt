@@ -207,7 +207,10 @@ object GuardaSerieProvider : Provider, ProviderConfigUrl {
     private fun parseDetailItem(href: String, title: String, poster: String = "", rating: Double? = null): Show? {
         val absolute = absUrl(href)
         if (!absolute.contains("/detail/")) return null
-        return if (absolute.contains("/detail/movie-")) {
+        return if (
+            absolute.contains("/detail/movie-") ||
+            absolute.contains("/detail/film-")
+        ) {
             Movie(id = absolute, title = title, poster = poster, rating = rating)
         } else {
             TvShow(id = absolute, title = title, poster = poster, rating = rating)
@@ -396,7 +399,7 @@ object GuardaSerieProvider : Provider, ProviderConfigUrl {
     private fun extractTmdbId(doc: Document, id: String): Int? {
         Regex("""tmdbID\s*=\s*(\d+)""").find(doc.html())?.groupValues?.getOrNull(1)?.toIntOrNull()?.let { return it }
         Regex("""/detail/tv-(\d+)""").find(id)?.groupValues?.getOrNull(1)?.toIntOrNull()?.let { return it }
-        Regex("""/detail/movie-(\d+)""").find(id)?.groupValues?.getOrNull(1)?.toIntOrNull()?.let { return it }
+        Regex("""/detail/(?:movie|film)-(\d+)""").find(id)?.groupValues?.getOrNull(1)?.toIntOrNull()?.let { return it }
         return null
     }
 
