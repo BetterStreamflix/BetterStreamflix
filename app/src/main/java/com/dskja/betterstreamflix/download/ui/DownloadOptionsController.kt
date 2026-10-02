@@ -27,6 +27,7 @@ import com.dskja.betterstreamflix.download.DownloadPrepareResult
 import com.dskja.betterstreamflix.download.DownloadQualityPreset
 import com.dskja.betterstreamflix.download.DownloadStorage
 import com.dskja.betterstreamflix.download.DownloadTrackOption
+import com.dskja.betterstreamflix.download.ExternalDownloadHandoff
 import com.dskja.betterstreamflix.models.Episode
 import com.dskja.betterstreamflix.models.Movie
 import com.dskja.betterstreamflix.models.TvShow
@@ -400,6 +401,30 @@ object DownloadOptionsController {
                         )
                     }
                     handleOutcomeActivity(activity, result) {}
+                }
+            }
+            .setNeutralButton(R.string.download_options_external) { _, _ ->
+                if (ExperimentalMobileDesign.enabled()) {
+                    ExpMotion.hapticTap(view)
+                }
+                tracksJob?.cancel()
+                val candidate = currentPrepared.servers.getOrNull(serverIndex)
+                    ?: currentPrepared.servers.firstOrNull()
+                val video = candidate?.video
+                val url = video?.source.orEmpty()
+                val ok = ExternalDownloadHandoff.launch(
+                    activity,
+                    ExternalDownloadHandoff.Request(
+                        url = url,
+                        headers = video?.headers.orEmpty(),
+                        fileName = currentPrepared.title,
+                        mimeType = video?.type,
+                        title = currentPrepared.title,
+                    ),
+                    forceChooser = true,
+                )
+                if (ok) {
+                    ExpDialogChrome.notify(activity, R.string.external_download_started)
                 }
             }
             .setNegativeButton(android.R.string.cancel) { _, _ ->

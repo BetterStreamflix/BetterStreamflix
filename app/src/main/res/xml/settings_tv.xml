@@ -639,9 +639,38 @@
                 app:useSimpleSummaryProvider="true" />
 
             <Preference
+                android:key="DOWNLOAD_STORAGE_PICK_FOLDER"
+                android:title="@string/settings_download_storage_pick_folder"
+                android:summary="@string/settings_download_storage_pick_folder_summary" />
+
+            <Preference
+                android:key="DOWNLOAD_STORAGE_CLEAR_FOLDER"
+                android:title="@string/settings_download_storage_clear_folder" />
+
+            <Preference
                 android:key="DOWNLOAD_STORAGE_PATH"
                 android:title="@string/settings_download_storage_path"
                 android:selectable="false" />
+
+            <Preference
+                android:key="EXTERNAL_PLAYER_DEFAULT"
+                android:title="@string/settings_external_player_title"
+                android:summary="@string/external_player_default_none" />
+
+            <Preference
+                android:key="EXTERNAL_PLAYER_CLEAR"
+                android:title="@string/external_player_clear_default"
+                android:summary="@string/external_player_clear_default_summary" />
+
+            <Preference
+                android:key="EXTERNAL_DOWNLOADER_DEFAULT"
+                android:title="@string/settings_external_downloader_title"
+                android:summary="@string/settings_external_downloader_summary" />
+
+            <Preference
+                android:key="EXTERNAL_DOWNLOADER_CLEAR"
+                android:title="@string/settings_external_downloader_clear"
+                android:summary="@string/settings_external_downloader_none" />
 
             <SwitchPreference
                 android:key="DOWNLOAD_WIFI_ONLY"

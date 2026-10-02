@@ -59,8 +59,16 @@ class PlayerSettingsMobileView @JvmOverloads constructor(
     override var onSubtitlesClicked: (() -> Unit)? = null
     var onManualZoomClicked: (() -> Unit)? = null
     var onDownloadClicked: (() -> Unit)? = null
+    var onPlayWithClicked: (() -> Unit)? = null
+    var onDownloadWithClicked: (() -> Unit)? = null
     fun setOnDownloadClickedListener(listener: () -> Unit) {
         onDownloadClicked = listener
+    }
+    fun setOnPlayWithClickedListener(listener: () -> Unit) {
+        onPlayWithClicked = listener
+    }
+    fun setOnDownloadWithClickedListener(listener: () -> Unit) {
+        onDownloadWithClicked = listener
     }
 
     init {
@@ -308,6 +316,14 @@ class PlayerSettingsMobileView @JvmOverloads constructor(
                                     settingsView.onDownloadClicked?.invoke()
                                     settingsView.hide()
                                 }
+                                Settings.PlayWith -> {
+                                    settingsView.onPlayWithClicked?.invoke()
+                                    settingsView.hide()
+                                }
+                                Settings.DownloadWith -> {
+                                    settingsView.onDownloadWithClicked?.invoke()
+                                    settingsView.hide()
+                                }
                             }
                         }
 
@@ -521,6 +537,8 @@ class PlayerSettingsMobileView @JvmOverloads constructor(
                         Settings.KeepScreenOn -> R.drawable.ic_brightness
                         Settings.ManualZoom -> R.drawable.exo_styled_controls_aspect_ratio
                         Settings.Download -> R.drawable.ic_player_settings_download
+                        Settings.PlayWith -> R.drawable.exo_styled_controls_external_player
+                        Settings.DownloadWith -> R.drawable.ic_player_settings_download
                     })
                 )
                 if (ExperimentalMobileDesign.enabled()) {
@@ -550,6 +568,8 @@ class PlayerSettingsMobileView @JvmOverloads constructor(
                         Settings.KeepScreenOn -> context.getString(R.string.player_settings_keep_screen_on_title)
                         Settings.ManualZoom -> context.getString(R.string.player_settings_manual_zoom_label)
                         Settings.Download -> context.getString(R.string.player_settings_download)
+                        Settings.PlayWith -> context.getString(R.string.player_settings_play_with)
+                        Settings.DownloadWith -> context.getString(R.string.player_settings_download_with)
                     }
 
                     is Settings.Audio -> when (item) {
@@ -667,6 +687,8 @@ class PlayerSettingsMobileView @JvmOverloads constructor(
                         Settings.Server -> Settings.Server.selected?.name ?: ""
                         Settings.ManualZoom -> ""
                         Settings.Download -> ""
+                        Settings.PlayWith -> ""
+                        Settings.DownloadWith -> ""
                         else -> ""
                     }
 
