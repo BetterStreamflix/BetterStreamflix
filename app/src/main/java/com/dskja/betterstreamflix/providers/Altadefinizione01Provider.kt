@@ -37,7 +37,7 @@ import retrofit2.http.Header
 object Altadefinizione01Provider : Provider, ProviderConfigUrl {
 
     override val name: String = "Altadefinizione01"
-    override val defaultBaseUrl = "https://altadefinizione-01.fun"
+    override val defaultBaseUrl = "https://altadefinizione-01.surf"
     override val baseUrl: String
         get() = UserPreferences.getProviderCache(this, UserPreferences.PROVIDER_URL).ifBlank { defaultBaseUrl }
     override val changeUrlMutex = Mutex()
