@@ -3,12 +3,16 @@ package com.dskja.betterstreamflix.fragments.providers
 import com.dskja.betterstreamflix.utils.ExpDialogChrome
 
 import android.os.Bundle
+import android.text.Editable
+import android.text.TextWatcher
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.view.inputmethod.EditorInfo
 import android.widget.AdapterView
 import android.widget.ArrayAdapter
 import android.widget.Toast
+import androidx.core.view.isVisible
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
 import androidx.lifecycle.Lifecycle
@@ -38,6 +42,9 @@ class ProvidersMobileFragment : Fragment() {
     private val viewModel by viewModels<ProvidersViewModel>()
 
     private val appAdapter = AppAdapter()
+
+    private var allProviders: List<ModelProvider> = emptyList()
+    private var searchQuery: String = ""
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -73,6 +80,7 @@ class ProvidersMobileFragment : Fragment() {
         }
 
         initializeProviders()
+        initializeProviderSearch()
 
         viewLifecycleOwner.lifecycleScope.launch {
             viewModel.state.flowWithLifecycle(lifecycle, Lifecycle.State.STARTED).collect { state ->
@@ -221,18 +229,93 @@ class ProvidersMobileFragment : Fragment() {
         }
     }
 
+    private fun initializeProviderSearch() {
+        val searchField = binding.clProvidersSearch
+        if (ExperimentalMobileDesign.enabled()) {
+            searchField.setBackgroundResource(ExperimentalMobileDesign.searchFieldBackground())
+            binding.btnProvidersSearchClear.setBackgroundResource(
+                ExperimentalMobileDesign.iconChipBackground(),
+            )
+            with(com.dskja.betterstreamflix.utils.ExpPressEffects) {
+                binding.btnProvidersSearchClear.applyExpPress()
+            }
+            if (searchField.getTag(R.id.exp_enter_animated_tag) != true) {
+                searchField.setTag(R.id.exp_enter_animated_tag, true)
+                ExpMotion.popIn(searchField)
+            }
+            binding.etProvidersSearch.setOnFocusChangeListener { _, hasFocus ->
+                searchField.isActivated = hasFocus
+                searchField.animate()
+                    .scaleX(if (hasFocus) 1.01f else 1f)
+                    .scaleY(if (hasFocus) 1.01f else 1f)
+                    .setDuration(160L)
+                    .start()
+                searchField.elevation =
+                    if (hasFocus) 6f * resources.displayMetrics.density else 0f
+            }
+        }
+
+        binding.etProvidersSearch.apply {
+            setOnEditorActionListener { _, actionId, _ ->
+                if (actionId == EditorInfo.IME_ACTION_SEARCH) {
+                    clearFocus()
+                    true
+                } else {
+                    false
+                }
+            }
+            addTextChangedListener(object : TextWatcher {
+                override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
+                override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
+                override fun afterTextChanged(s: Editable?) {
+                    searchQuery = s?.toString().orEmpty()
+                    binding.btnProvidersSearchClear.isVisible = searchQuery.isNotBlank()
+                    applyProviderFilter()
+                }
+            })
+        }
+
+        binding.btnProvidersSearchClear.setOnClickListener {
+            ExpMotion.hapticTap(it)
+            binding.etProvidersSearch.setText("")
+            binding.etProvidersSearch.requestFocus()
+        }
+    }
+
     private fun displayProviders(providers: List<ModelProvider>) {
-        appAdapter.submitList(providers.onEach {
+        allProviders = providers
+        applyProviderFilter()
+    }
+
+    private fun applyProviderFilter() {
+        val filtered = ProvidersSearch.filter(allProviders, searchQuery)
+        appAdapter.submitList(filtered.onEach {
             it.itemType = AppAdapter.Type.PROVIDER_MOBILE_ITEM
         })
-        val empty = providers.isEmpty()
+        val empty = filtered.isEmpty()
+        val searching = searchQuery.isNotBlank()
+        val emptyView = binding.tvProvidersEmpty
+        emptyView.setText(
+            if (searching) R.string.providers_search_empty else R.string.providers_empty,
+        )
+        val emptyCta = binding.btnProvidersEmptyCta
+        emptyCta.setText(
+            if (searching) R.string.providers_search_clear else R.string.exp_empty_all_languages,
+        )
         ExpEmptyChrome.bind(
-            emptyView = binding.root.findViewById(R.id.tv_providers_empty),
-            emptyRule = binding.root.findViewById(R.id.v_providers_empty_rule),
-            emptyCta = binding.root.findViewById(R.id.btn_providers_empty_cta),
+            emptyView = emptyView,
+            emptyRule = binding.vProvidersEmptyRule,
+            emptyCta = emptyCta,
             visible = empty,
             tintOnSurfaceVariant = false,
-            onCtaClick = { binding.sProvidersLanguage.setSelection(0) },
+            onCtaClick = {
+                if (searching) {
+                    binding.etProvidersSearch.setText("")
+                    binding.etProvidersSearch.requestFocus()
+                } else {
+                    binding.sProvidersLanguage.setSelection(0)
+                }
+            },
         )
         binding.rvProviders.visibility = if (empty) View.GONE else View.VISIBLE
     }

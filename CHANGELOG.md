@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Provider picker search on Choose a provider (Mobile + TV): live name filter, clear control, search empty-state with Clear search CTA
 - Search result order chips (Relevance / Newest) plus year filter on Mobile and TV Search; preference keys `SEARCH_SORT_MODE` and `SEARCH_YEAR_FILTER`
 - Italian catalogs: **Eurostreaming** (`eurostreaming.design`), **Altadefinizione** (`alta-definizione.beer`), and **Altadefinizione X** (`altadefinizionex.me`) — Home/search/detail/seasons with VixSrc (and VidxGo on X)
 - Shared `ItalianVixCatalog` helpers for TMDb-backed `/detail/film-|tv-` Italian mirrors
