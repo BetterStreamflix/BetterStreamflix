@@ -94,7 +94,13 @@ class TvShowTvFragment : Fragment() {
         }
     }
 
+    override fun onPause() {
+        com.dskja.betterstreamflix.ui.TrailerPlaybackController.silenceAllActive()
+        super.onPause()
+    }
+
     override fun onDestroyView() {
+        com.dskja.betterstreamflix.ui.TrailerPlaybackController.silenceAllActive()
         _binding?.let { appAdapter.onSaveInstanceState(it.vgvTvShow) }
         _binding = null
         super.onDestroyView()

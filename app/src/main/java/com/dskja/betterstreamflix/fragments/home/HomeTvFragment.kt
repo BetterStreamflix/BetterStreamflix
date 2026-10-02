@@ -152,6 +152,7 @@ class HomeTvFragment : Fragment() {
     override fun onResume() {
         super.onResume()
         refreshProfileChip()
+        com.dskja.betterstreamflix.ui.TrailerPlaybackController.silenceAllActive()
     }
     
     // Restart the carousel when data is already loaded and the fragment is visible.

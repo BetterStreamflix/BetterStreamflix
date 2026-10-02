@@ -37,6 +37,8 @@ import com.google.android.material.dialog.MaterialAlertDialogBuilder
  * Unified trailer playback for Movie/TV detail pages.
  * Supports in-app YouTube embed, YouTube app, and SmartTube.
  * On leanback/Fire TV, prefers native apps over the in-app WebView.
+ *
+ * In-app WebView sessions must pause/release on navigate-away so Home stays silent.
  */
 object TrailerPlaybackController {
     private fun alertBuilder(context: Context) =
@@ -49,6 +51,52 @@ object TrailerPlaybackController {
     private const val TAG = "TrailerPlayback"
     const val KEY_PREFERRED_PLAYER = "preferred_player"
     const val KEY_SMARTTUBE_PACKAGE = "preferred_smarttube_package"
+
+    /**
+     * Active in-app trailer surfaces (detail tab WebView, dialog embed).
+     * Weak set so recycled/destroyed players drop out without explicit unregister races.
+     */
+    fun interface ActiveSession {
+        /** Pause media and blank the WebView so audio cannot leak. */
+        fun silence()
+    }
+
+    private val activeSessions =
+        java.util.Collections.newSetFromMap(java.util.WeakHashMap<ActiveSession, Boolean>())
+
+    fun registerActiveSession(session: ActiveSession) {
+        synchronized(activeSessions) { activeSessions.add(session) }
+    }
+
+    fun unregisterActiveSession(session: ActiveSession) {
+        synchronized(activeSessions) { activeSessions.remove(session) }
+    }
+
+    /** Pause/blank every registered in-app trailer. Safe from Home / detail onPause. */
+    fun silenceAllActive() {
+        val snapshot: List<ActiveSession>
+        synchronized(activeSessions) {
+            snapshot = activeSessions.toList()
+        }
+        snapshot.forEach { session ->
+            runCatching { session.silence() }
+        }
+    }
+
+    /** Pause a YouTube IFrame API player inside [web] without tearing the document down. */
+    fun pauseTrailerMedia(web: WebView?) {
+        web ?: return
+        runCatching {
+            web.evaluateJavascript(
+                "try{if(window.AndroidTrailerPlayer){window.AndroidTrailerPlayer.pauseVideo();" +
+                    "window.AndroidTrailerPlayer.mute();}}" +
+                    "catch(e){}" +
+                    "try{document.querySelectorAll('video,audio').forEach(function(m){" +
+                    "try{m.pause();m.muted=true;}catch(x){}});}catch(e){}",
+                null,
+            )
+        }
+    }
 
     const val PLAYER_ASK = "ask"
     const val PLAYER_YOUTUBE = "youtube"
@@ -576,8 +624,32 @@ object TrailerPlaybackController {
         }
 
         private fun destroyWeb() {
+            pauseTrailerMedia(webView)
             destroyTrailerWebView(webView)
             webView = null
+            unregisterActiveSession(dialogSession)
+        }
+
+        private val dialogSession = ActiveSession {
+            pauseTrailerMedia(webView)
+            webView?.stopLoading()
+            webView?.loadUrl("about:blank")
+        }
+
+        override fun onStart() {
+            super.onStart()
+            registerActiveSession(dialogSession)
+        }
+
+        override fun onPause() {
+            pauseTrailerMedia(webView)
+            super.onPause()
+        }
+
+        override fun onStop() {
+            // Leaving the dialog (home, back, overlay) must kill audio immediately.
+            destroyWeb()
+            super.onStop()
         }
 
         override fun onDestroyView() {

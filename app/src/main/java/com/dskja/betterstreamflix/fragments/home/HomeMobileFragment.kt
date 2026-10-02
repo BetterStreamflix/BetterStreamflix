@@ -125,6 +125,8 @@ class HomeMobileFragment : Fragment() {
         refreshProfileChip()
         // Soft-resume featured auto-advance — avoid notifyItemChanged (full rebind glitches).
         _binding?.rvHome?.let { appAdapter.resumeCategorySwipers(it) }
+        // Belt-and-suspenders: any leaked detail/dialog trailer must die on Home.
+        com.dskja.betterstreamflix.ui.TrailerPlaybackController.silenceAllActive()
     }
 
     override fun onPause() {
