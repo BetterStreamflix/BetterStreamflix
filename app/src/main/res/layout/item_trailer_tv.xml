@@ -12,7 +12,7 @@
         android:id="@+id/fl_trailer_thumb"
         android:layout_width="0dp"
         android:layout_height="0dp"
-        android:background="#FF1A1A1A"
+        android:background="@color/cinema_ink"
         android:duplicateParentState="true"
         android:foreground="@drawable/fg_item_people_image_tv"
         app:layout_constraintDimensionRatio="16:9"

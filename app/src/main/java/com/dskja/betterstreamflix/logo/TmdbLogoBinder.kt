@@ -100,21 +100,26 @@ object TmdbLogoBinder {
                 // INVISIBLE (not GONE) when parent is a fixed-height slot — no layout shift.
                 imageView.visibility = View.INVISIBLE
                 imageView.importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
+                titleView?.alpha = 1f
                 titleView?.visibility = View.VISIBLE
                 TitleLogoPresentation.applySlotPlate(imageView, showPlate = applyContrastScrim)
                 return
             }
             TitleLogoSlot.State.LOADING_LOGO -> {
+                // Keep title as a soft placeholder — never leave an empty black plate.
                 imageView.visibility = View.INVISIBLE
                 imageView.importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
-                titleView?.visibility = View.GONE
+                titleView?.alpha = 0.62f
+                titleView?.visibility = View.VISIBLE
             }
             TitleLogoSlot.State.SHOW_LOGO -> {
                 imageView.visibility = View.VISIBLE
                 imageView.importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_YES
+                titleView?.alpha = 1f
                 titleView?.visibility = View.GONE
             }
         }
+        TitleLogoPresentation.polishLogoImage(imageView)
         TmdbLogoGlide.load(
             imageView = imageView,
             logoUrl = logoUrl,
@@ -125,6 +130,7 @@ object TmdbLogoBinder {
                 TitleLogoPresentation.clearImagePlate(imageView)
                 imageView.visibility = View.INVISIBLE
                 imageView.importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
+                titleView?.alpha = 1f
                 titleView?.visibility = View.VISIBLE
                 TitleLogoPresentation.applySlotPlate(imageView, showPlate = applyContrastScrim)
                 onLoadFailed?.invoke()
@@ -133,6 +139,7 @@ object TmdbLogoBinder {
                 TitleLogoPresentation.clearImagePlate(imageView)
                 imageView.visibility = View.VISIBLE
                 imageView.importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_YES
+                titleView?.alpha = 1f
                 titleView?.visibility = View.GONE
             },
         )

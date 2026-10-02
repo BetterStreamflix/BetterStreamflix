@@ -410,11 +410,11 @@
     <string name="player_subtitle_search_failed">Untertitelsuche fehlgeschlagen: %1$s</string>
     <string name="player_server_unavailable">Dieser Server ist nicht mehr verfügbar</string>
     <string name="settings_buy_me_a_coffee">Buy me a coffee</string>
-    <string name="settings_buy_me_a_coffee_summary">Einmalig ~25 USD (offen): persönliche Grundkosten, damit Weiterentwicklung möglich bleibt — kein Hosting/API</string>
+    <string name="settings_buy_me_a_coffee_summary">BetterStreamflix mit einem Kaffee unterstützen</string>
     <string name="settings_patreon">Patreon</string>
     <string name="settings_patreon_summary">BetterStreamflix über Patreon unterstützen (Abo oder einmalig)</string>
     <string name="settings_github_sponsors">GitHub Sponsors</string>
-    <string name="settings_github_sponsors_summary">Gleicher einmaliger ~25-USD-Aufruf über GitHub Sponsors</string>
+    <string name="settings_github_sponsors_summary">BetterStreamflix über GitHub Sponsors unterstützen</string>
     <string name="settings_category_streamingcommunity">StreamingCommunity - Einstellungen</string>
     <string name="settings_category_streamingcommunity_domain">StreamingCommunity - Domain-Name</string>
     <string name="settings_streamingcommunity_domain_reset">Domain zurücksetzen</string>
