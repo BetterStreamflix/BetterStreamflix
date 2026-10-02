@@ -7,6 +7,7 @@ import com.dskja.betterstreamflix.BuildConfig
 import com.dskja.betterstreamflix.R
 import com.dskja.betterstreamflix.support.SupportLinkOpener
 import com.dskja.betterstreamflix.support.SupportProvider
+import com.dskja.betterstreamflix.support.SupportersCatalog
 import com.dskja.betterstreamflix.support.SupportUrls
 
 class SettingsAboutTvFragment : LeanbackPreferenceFragmentCompat() {
@@ -54,6 +55,16 @@ class SettingsAboutTvFragment : LeanbackPreferenceFragmentCompat() {
 
         findPreference<Preference>("p_settings_upstream")?.setOnPreferenceClickListener {
             openLink(SupportUrls.UPSTREAM_REPOSITORY_URL)
+        }
+
+        val supporterNames = SupportersCatalog.displayNames(requireContext())
+        findPreference<Preference>("p_settings_supporters")?.apply {
+            isVisible = supporterNames.isNotBlank()
+            summary = if (supporterNames.isNotBlank()) {
+                getString(R.string.support_supporters_summary, supporterNames)
+            } else {
+                ""
+            }
         }
     }
 }

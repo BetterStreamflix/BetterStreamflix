@@ -5,7 +5,9 @@ package com.dskja.betterstreamflix.support
  * Keep outbound links here — do not scatter literals across UI code.
  */
 object SupportUrls {
+    /** Canonical Buy Me a Coffee page (same destination as buymeacoff.ee/betterstreamflix). */
     const val BUY_ME_A_COFFEE_URL = "https://buymeacoffee.com/betterstreamflix"
+    const val BUY_ME_A_COFFEE_SHORT_URL = "https://buymeacoff.ee/betterstreamflix"
     const val GITHUB_SPONSORS_URL = "https://github.com/sponsors/dskja"
     const val PATREON_URL = "https://www.patreon.com/BetterStreamflix"
     const val TELEGRAM_URL = "https://t.me/BetterStreamflix"

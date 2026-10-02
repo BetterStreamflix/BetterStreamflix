@@ -58,4 +58,11 @@
         app:summary="@string/settings_about_credits_summary"
         android:selectable="false" />
 
+    <Preference
+        app:iconSpaceReserved="false"
+        app:key="p_settings_supporters"
+        app:title="@string/support_supporters_title"
+        app:summary="@string/support_supporters_subtitle"
+        android:selectable="false" />
+
 </androidx.preference.PreferenceScreen>

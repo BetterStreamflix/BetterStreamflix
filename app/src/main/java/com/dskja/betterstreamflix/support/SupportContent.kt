@@ -24,7 +24,8 @@ object SupportContent {
         ImpactGoal(
             titleRes = R.string.support_impact_trakt_title,
             bodyRes = R.string.support_impact_trakt_body,
-            progressPercent = 0,
+            // Editorial: first community coffee toward VIP coverage.
+            progressPercent = 5,
         ),
         ImpactGoal(
             titleRes = R.string.support_impact_infra_title,

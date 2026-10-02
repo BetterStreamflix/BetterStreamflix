@@ -59,6 +59,12 @@ class SupportMobileFragment : Fragment() {
             horizontal = false,
             animate = ExperimentalMobileDesign.enabled(),
         )
+        SupportHubBinder.bindSupporters(
+            requireContext(),
+            binding.llSupportSupporters,
+            binding.tvSupportSupportersTitle,
+            binding.tvSupportSupportersSubtitle,
+        )
         SupportHubBinder.bindImpact(requireContext(), binding.llSupportImpact)
         SupportHubBinder.bindFaq(requireContext(), binding.llSupportFaq)
 
@@ -131,6 +137,8 @@ class SupportMobileFragment : Fragment() {
                 binding.tvSupportIntro,
                 binding.tvSupportOptionsTitle,
                 binding.llSupportProviders,
+                binding.tvSupportSupportersTitle,
+                binding.llSupportSupporters,
                 binding.tvSupportTransparencyTitle,
                 binding.llSupportTransparency,
                 binding.tvSupportImpactTitle,

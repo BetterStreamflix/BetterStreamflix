@@ -162,11 +162,17 @@ One-time goal of **$25** (open) for personal basic costs so development can cont
 
 | | |
 | --- | --- |
-| Buy Me a Coffee | https://buymeacoffee.com/betterstreamflix |
+| Buy Me a Coffee | https://buymeacoffee.com/betterstreamflix · https://buymeacoff.ee/betterstreamflix |
 | Patreon | https://www.patreon.com/BetterStreamflix |
 | GitHub Sponsors | https://github.com/sponsors/dskja |
 | Discord | https://discord.gg/R4F72rMUZ8 |
 | Telegram | https://t.me/BetterStreamflix |
+
+### Supporters
+
+Thank you to the people who keep BetterStreamflix going (also listed in-app under Support → Community supporters):
+
+- **Zem936** — first Buy Me a Coffee supporter
 
 ## Legal Disclaimer
 
