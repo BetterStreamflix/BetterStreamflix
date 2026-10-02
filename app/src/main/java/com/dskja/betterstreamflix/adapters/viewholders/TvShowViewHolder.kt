@@ -1,5 +1,9 @@
 package com.dskja.betterstreamflix.adapters.viewholders
 
+import com.dskja.betterstreamflix.adapters.viewholders.detail.bindTvShowMobileDetail
+import com.dskja.betterstreamflix.adapters.viewholders.detail.bindTvShowTvDetail
+import com.dskja.betterstreamflix.adapters.viewholders.detail.bindTvShowSeasonsMobile
+
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
@@ -104,8 +108,8 @@ class TvShowViewHolder(
     _binding.root
 ) {
 
-    private val context = itemView.context
-    private val database: AppDatabase
+    internal val context = itemView.context
+    internal val database: AppDatabase
         get() = AppDatabase.getInstance(context)
 
     init {
@@ -120,7 +124,7 @@ class TvShowViewHolder(
         }
     }
 
-    private lateinit var tvShow: TvShow
+    internal lateinit var tvShow: TvShow
     private var onTvShowClick: ((TvShow) -> Unit)? = null
     private var onTvShowLongClick: ((TvShow) -> Unit)? = null
     private var onTvShowKey: ((TvShow, KeyEvent) -> Boolean)? = null
@@ -188,7 +192,7 @@ class TvShowViewHolder(
         }
     }
 
-    private fun isIptvProvider(): Boolean {
+    internal fun isIptvProvider(): Boolean {
         val name = tvShow.providerName ?: UserPreferences.currentProvider?.name ?: ""
         val provider = Provider.providers.keys.find { it.name == name }
         return provider is IptvProvider
@@ -253,7 +257,7 @@ class TvShowViewHolder(
         }
     }
 
-    private fun checkProviderAndRun(action: () -> Unit) {
+    internal fun checkProviderAndRun(action: () -> Unit) {
         val providerName = tvShow.providerName
         if (!providerName.isNullOrBlank() && providerName != UserPreferences.currentProvider?.name) {
             Provider.findByName(providerName)?.let {
@@ -263,7 +267,7 @@ class TvShowViewHolder(
         action()
     }
 
-    private fun handleDirectPlay(navController: NavController) {
+    internal fun handleDirectPlay(navController: NavController) {
         val videoType = Video.Type.Episode(
             id = tvShow.id,
             number = 1,
@@ -308,7 +312,7 @@ class TvShowViewHolder(
         }
     }
 
-    private fun resolveEpisodeSeason(episode: Episode?): Season? {
+    internal fun resolveEpisodeSeason(episode: Episode?): Season? {
         if (episode == null) return null
 
         val currentSeason = episode.season
@@ -326,7 +330,7 @@ class TvShowViewHolder(
         } ?: currentSeason
     }
 
-    private fun preferredOfflineServerNameForEpisode(episode: Episode?): String? {
+    internal fun preferredOfflineServerNameForEpisode(episode: Episode?): String? {
         episode ?: return null
         val providerName = tvShow.providerName
             ?: UserPreferences.currentProvider?.name
@@ -659,7 +663,7 @@ class TvShowViewHolder(
         }
     }
 
-    private fun isPackageInstalled(packageName: String): Boolean {
+    internal fun isPackageInstalled(packageName: String): Boolean {
         return try {
             context.packageManager.getPackageInfo(packageName, 0)
             true
@@ -668,20 +672,20 @@ class TvShowViewHolder(
         }
     }
 
-    private fun getInstalledSmartTubePackages(): List<String> {
+    internal fun getInstalledSmartTubePackages(): List<String> {
         val installed = mutableListOf<String>()
         if (isPackageInstalled("org.smarttube.stable")) installed.add("org.smarttube.stable")
         if (isPackageInstalled("org.smarttube.beta")) installed.add("org.smarttube.beta")
         return installed
     }
 
-    private fun launchSmartTube(packageName: String, trailerUrl: String) {
+    internal fun launchSmartTube(packageName: String, trailerUrl: String) {
         val intent = Intent(Intent.ACTION_VIEW, trailerUrl.toUri())
         intent.setPackage(packageName)
         context.startActivity(intent)
     }
 
-    private fun showSmartTubeVersionDialog(packages: List<String>, trailerUrl: String, shouldSavePreference: Boolean) {
+    internal fun showSmartTubeVersionDialog(packages: List<String>, trailerUrl: String, shouldSavePreference: Boolean) {
         val prefs = PreferenceManager.getDefaultSharedPreferences(context)
         val editor = prefs.edit()
 
@@ -705,7 +709,7 @@ class TvShowViewHolder(
             .also { com.dskja.betterstreamflix.ui.TrailerPlaybackController.polishChooserDialog(it) }
     }
 
-    private fun handleSmartTubeSelection(trailerUrl: String) {
+    internal fun handleSmartTubeSelection(trailerUrl: String) {
         val prefs = PreferenceManager.getDefaultSharedPreferences(context)
         val savedPackage = prefs.getString("preferred_smarttube_package", null)
         val stPackages = getInstalledSmartTubePackages()
@@ -727,7 +731,7 @@ class TvShowViewHolder(
         }
     }
 
-    private fun safeLaunchYoutube(intent: Intent) {
+    internal fun safeLaunchYoutube(intent: Intent) {
         try {
             context.startActivity(intent)
         } catch (e: Exception) {
@@ -747,7 +751,7 @@ class TvShowViewHolder(
         }
     }
 
-    private fun handleTrailerClick(trailer: String) {
+    internal fun handleTrailerClick(trailer: String) {
         val youtubeIntent = Intent(Intent.ACTION_VIEW, trailer.toUri())
         val prefs = PreferenceManager.getDefaultSharedPreferences(context)
         val preferredPlayer = prefs.getString("preferred_player", "ask")
@@ -978,1063 +982,14 @@ class TvShowViewHolder(
         }
     }
 
-    private fun displayTvShowMobile(binding: ContentTvShowMobileBinding) {
-        binding.ivTvShowPoster.visibility = View.GONE
-        Glide.with(binding.ivTvShowPoster).clear(binding.ivTvShowPoster)
+    private fun displayTvShowMobile(binding: ContentTvShowMobileBinding) =
+        bindTvShowMobileDetail(binding)
 
-        com.dskja.betterstreamflix.ui.DetailCoverAtmosphere.bindTvShow(
-            cover = binding.ivTvShowCover,
-            soft = binding.ivTvShowCoverSoft,
-            tvShow = tvShow,
-        )
+    private fun displayTvShowTv(binding: ContentTvShowTvBinding) =
+        bindTvShowTvDetail(binding)
 
-        binding.tvTvShowTitle.text = tvShow.title
-        // Hero logo bind is owned by DetailHeaderController (after body submit).
-        binding.ivTvShowLogo.visibility = View.INVISIBLE
-        binding.tvTvShowTitle.visibility = View.VISIBLE
-
-        if (ExperimentalMobileDesign.enabled() &&
-            binding.root.getTag(R.id.exp_enter_animated_tag) != true
-        ) {
-            binding.root.setTag(R.id.exp_enter_animated_tag, true)
-            ExpMotion.revealHeader(
-                binding.tvTvShowTitle,
-                binding.ivTvShowLogo,
-                binding.btnTvShowWatchNow,
-                binding.btnTvShowTrailer,
-                binding.btnTvShowDownload,
-            )
-        }
-
-        val ratingText = DetailRating.format(tvShow.rating)
-        binding.tvTvShowRating.apply {
-            text = ratingText
-            visibility = if (ratingText.isNullOrBlank()) View.GONE else View.VISIBLE
-        }
-        binding.ivTvShowRatingIcon.visibility = binding.tvTvShowRating.visibility
-        binding.tvTvShowQuality.visibility = View.GONE
-
-        binding.tvTvShowReleased.apply {
-            text = tvShow.released?.format("yyyy")
-            isVisible = !text.isNullOrEmpty()
-        }
-
-        binding.tvTvShowRuntime.apply {
-            val seasonCount = tvShow.seasons.count { it.number > 0 }
-                .takeIf { it > 0 }
-                ?: tvShow.seasons.size.takeIf { it > 0 }
-            text = when {
-                seasonCount != null -> {
-                    if (seasonCount == 1) {
-                        context.getString(R.string.tv_show_season_count_one, seasonCount)
-                    } else {
-                        context.getString(R.string.tv_show_seasons_count, seasonCount)
-                    }
-                }
-                else -> tvShow.runtime?.let {
-                    val hours = it / 60
-                    val minutes = it % 60
-                    when {
-                        hours > 0 -> context.getString(
-                            R.string.movie_runtime_hours_minutes_short,
-                            hours,
-                            minutes,
-                        )
-                        else -> context.getString(R.string.movie_runtime_minutes_short, minutes)
-                    }
-                }
-            }
-            isVisible = !text.isNullOrEmpty()
-        }
-
-        binding.tvTvShowGenres.apply {
-            if (tvShow.genres.isEmpty()) {
-                text = ""
-                isVisible = false
-                movementMethod = null
-                isClickable = false
-                setOnClickListener(null)
-            } else {
-                text = tvShow.genres.joinToString(" · ") {
-                    it.name.uppercase(Locale.getDefault())
-                }
-                isVisible = true
-                movementMethod = null
-                isClickable = true
-                contentDescription = context.getString(R.string.genre_section_label)
-                setOnClickListener { view ->
-                    ExpMotion.hapticTap(view)
-                    val genres = tvShow.genres
-                    fun openGenre(genre: com.dskja.betterstreamflix.models.Genre) {
-                        checkProviderAndRun {
-                            if (context.toActivity()?.getCurrentFragment() is TvShowMobileFragment) {
-                                findNavController().navigate(
-                                    TvShowMobileFragmentDirections.actionTvShowToGenre(
-                                        id = genre.id,
-                                        name = genre.name,
-                                    ),
-                                )
-                            }
-                        }
-                    }
-                    if (genres.size == 1) {
-                        openGenre(genres.first())
-                    } else {
-                        val labels = genres.map { it.name }.toTypedArray()
-                        val builder = if (ExperimentalMobileDesign.enabled()) {
-                            MaterialAlertDialogBuilder(context)
-                        } else {
-                            AlertDialog.Builder(context)
-                        }
-                        builder
-                            .setTitle(R.string.genre_section_label)
-                            .setItems(labels) { _, which ->
-                                genres.getOrNull(which)?.let(::openGenre)
-                            }
-                            .show()
-                    }
-                }
-            }
-        }
-
-        binding.tvTvShowOverview.apply {
-            text = tvShow.overview
-            val more = binding.tvTvShowOverviewMore
-            val hasText = !tvShow.overview.isNullOrBlank()
-            maxLines = 3
-            ellipsize = android.text.TextUtils.TruncateAt.END
-            var expanded = false
-            fun applyExpand(open: Boolean) {
-                expanded = open
-                maxLines = if (open) Integer.MAX_VALUE else 3
-                more.text = context.getString(
-                    if (open) R.string.detail_overview_less else R.string.detail_overview_more,
-                )
-            }
-            val toggle = View.OnClickListener {
-                ExpMotion.hapticTap(it)
-                applyExpand(!expanded)
-            }
-            if (hasText) {
-                setOnClickListener(toggle)
-                more.setOnClickListener(toggle)
-                post {
-                    val overflowing = lineCount > 3 ||
-                        (text?.length ?: 0) > 160 ||
-                        (layout != null && maxLines == 3 && layout.getEllipsisCount(lineCount.coerceAtLeast(1) - 1) > 0)
-                    more.visibility = if (overflowing) View.VISIBLE else View.GONE
-                    if (!overflowing) setOnClickListener(null)
-                }
-            } else {
-                more.visibility = View.GONE
-                setOnClickListener(null)
-            }
-        }
-        val episodeToWatch = tvShow.episodeToWatch
-        val episodeSeason = resolveEpisodeSeason(episodeToWatch)
-        binding.btnTvShowWatchNow.apply {
-            isVisible = true
-            FeaturedSwiperChrome.wireWatchButton(this)
-            applyExpPress()
-            setOnClickListener {
-                ExpMotion.hapticTap(it)
-                checkProviderAndRun {
-                    if (isIptvProvider()) {
-                        handleDirectPlay(findNavController())
-                        return@checkProviderAndRun
-                    }
-                    val episode = episodeToWatch
-                    if (episode == null) {
-                        val adapter = bindingAdapter as? AppAdapter
-                        if (adapter?.onDetailTabSelectedListener != null) {
-                            adapter.onDetailTabSelectedListener?.invoke(
-                                com.dskja.betterstreamflix.ui.DetailTab.EPISODES,
-                            )
-                        } else {
-                            val season = tvShow.seasons.firstOrNull()
-                            if (season != null) {
-                                findNavController().navigate(
-                                    TvShowMobileFragmentDirections.actionTvShowToSeason(
-                                        tvShowId = tvShow.id,
-                                        tvShowTitle = tvShow.title,
-                                        tvShowPoster = tvShow.poster,
-                                        tvShowBanner = tvShow.banner,
-                                        seasonId = season.id,
-                                        seasonNumber = season.number,
-                                        seasonTitle = season.title ?: "Season ${season.number}",
-                                    ),
-                                )
-                            }
-                        }
-                        return@checkProviderAndRun
-                    }
-                    val videoType = Video.Type.Episode(
-                        id = episode.id,
-                        number = episode.number,
-                        title = episode.title,
-                        poster = episode.poster,
-                        overview = episode.overview,
-                        tvShow = Video.Type.Episode.TvShow(
-                            id = tvShow.id,
-                            title = tvShow.title,
-                            poster = tvShow.poster,
-                            banner = tvShow.banner,
-                            releaseDate = tvShow.released?.format("yyyy-MM-dd"),
-                            imdbId = tvShow.imdbId,
-                        ),
-                        season = Video.Type.Episode.Season(
-                            number = episodeSeason?.number ?: 1,
-                            title = episodeSeason?.title ?: "",
-                        ),
-                    )
-                    val args = Bundle().apply {
-                        putString("id", episode.id)
-                        putString("title", tvShow.title)
-                        putString("subtitle", "S${videoType.season.number} E${videoType.number}  •  ${videoType.title}")
-                        putSerializable("videoType", videoType)
-                        // Dual CTA: Watch streams online; Offline uses the Download button.
-                    }
-                    findNavController().navigate(R.id.player, args)
-                }
-            }
-            text = when {
-                isIptvProvider() -> context.getString(R.string.movie_watch_now)
-                episodeToWatch == null -> context.getString(R.string.movie_watch_now)
-                else -> context.getString(
-                    R.string.tv_show_watch_season_episode,
-                    episodeSeason?.number ?: 1,
-                    episodeToWatch.number,
-                )
-            }
-        }
-
-        binding.pbTvShowProgressEpisode.apply {
-            val watchHistory = episodeToWatch?.watchHistory
-            progress = when {
-                watchHistory != null -> (watchHistory.lastPlaybackPositionMillis * 100 / watchHistory.durationMillis.toDouble()).toInt()
-                else -> 0
-            }
-            isVisible = watchHistory != null
-        }
-
-        binding.btnTvShowTrailer.apply {
-            val year = tvShow.released?.format("yyyy")?.toIntOrNull()
-            val canLookup = TmdbUtils.hasTrailerLookupKeys(
-                tmdbId = tvShow.tmdbId,
-                imdbId = tvShow.imdbId,
-                title = tvShow.title,
-                year = year,
-            )
-            isVisible = !tvShow.trailer.isNullOrBlank() || canLookup
-            applyExpPress()
-            setOnClickListener {
-                ExpMotion.hapticTap(it)
-                fun play(url: String) {
-                    val fragment = context.toActivity()?.getCurrentFragment() as? Fragment
-                    if (fragment != null) {
-                        TrailerPlaybackController.play(fragment, url)
-                    } else {
-                        handleTrailerClick(url)
-                    }
-                }
-                val existing = tvShow.trailer
-                if (!existing.isNullOrBlank()) {
-                    play(existing)
-                    return@setOnClickListener
-                }
-                if (!canLookup) {
-                    (bindingAdapter as? AppAdapter)?.onDetailTabSelectedListener?.invoke(
-                        DetailTab.TRAILER,
-                    )
-                    return@setOnClickListener
-                }
-                itemView.findViewTreeLifecycleOwner()?.lifecycleScope?.launch {
-                    val remote = withContext(Dispatchers.IO) {
-                        TmdbUtils.listYoutubeTrailers(
-                            tmdbId = tvShow.tmdbId,
-                            isTv = true,
-                            title = tvShow.title,
-                            year = year,
-                            imdbId = tvShow.imdbId,
-                        )
-                    }
-                    val first = remote.firstOrNull()?.second?.takeIf { it.isNotBlank() }
-                    if (!first.isNullOrBlank()) {
-                        if (tvShow.trailer.isNullOrBlank()) tvShow.trailer = first
-                        play(first)
-                    } else {
-                        (bindingAdapter as? AppAdapter)?.onDetailTabSelectedListener?.invoke(
-                            DetailTab.TRAILER,
-                        )
-                    }
-                }
-            }
-        }
-
-        binding.btnTvShowDownload.let { downloadBtn ->
-            if (isIptvProvider()) {
-                downloadBtn.isVisible = false
-                downloadBtn.setOnClickListener(null)
-                downloadBtn.setOnLongClickListener(null)
-            } else {
-                downloadBtn.isVisible = true
-                downloadBtn.applyExpPress()
-                val seasonForDownload = tvShow.seasons.firstOrNull { it.episodes.isNotEmpty() }
-                val playOffline = preferredOfflineServerNameForEpisode(episodeToWatch) != null
-                downloadBtn.contentDescription = if (playOffline) {
-                    context.getString(R.string.downloads_play_offline)
-                } else {
-                    DetailDownloadLabels.seriesButton(
-                        context,
-                        tvShow,
-                        episodeToWatch,
-                        seasonForDownload,
-                    )
-                }
-                androidx.appcompat.widget.TooltipCompat.setTooltipText(
-                    downloadBtn,
-                    downloadBtn.contentDescription,
-                )
-                downloadBtn.setOnClickListener {
-                    ExpMotion.hapticTap(it)
-                    checkProviderAndRun {
-                        if (playOffline && episodeToWatch != null) {
-                            val episode = episodeToWatch
-                            val videoType = Video.Type.Episode(
-                                id = episode.id,
-                                number = episode.number,
-                                title = episode.title,
-                                poster = episode.poster,
-                                overview = episode.overview,
-                                tvShow = Video.Type.Episode.TvShow(
-                                    id = tvShow.id,
-                                    title = tvShow.title,
-                                    poster = tvShow.poster,
-                                    banner = tvShow.banner,
-                                    releaseDate = tvShow.released?.format("yyyy-MM-dd"),
-                                    imdbId = tvShow.imdbId,
-                                ),
-                                season = Video.Type.Episode.Season(
-                                    number = episodeSeason?.number ?: 1,
-                                    title = episodeSeason?.title ?: "",
-                                ),
-                            )
-                            val args = Bundle().apply {
-                                putString("id", episode.id)
-                                putString("title", tvShow.title)
-                                putString(
-                                    "subtitle",
-                                    "S${videoType.season.number} E${videoType.number}  •  ${videoType.title}",
-                                )
-                                putSerializable("videoType", videoType)
-                                putString("preferredServerName", PlayerViewModel.OFFLINE_SERVER_NAME)
-                            }
-                            downloadBtn.findNavController().navigate(R.id.player, args)
-                        } else {
-                            val fragment = context.toActivity()?.getCurrentFragment() as? Fragment
-                                ?: return@checkProviderAndRun
-                            DownloadOptionsController.offerTvShowDownload(fragment, tvShow, episodeToWatch)
-                        }
-                    }
-                }
-                downloadBtn.setOnLongClickListener {
-                    if (!playOffline) return@setOnLongClickListener false
-                    ExpMotion.hapticTap(it)
-                    checkProviderAndRun {
-                        val fragment = context.toActivity()?.getCurrentFragment() as? Fragment
-                            ?: return@checkProviderAndRun
-                        DownloadOptionsController.offerTvShowDownload(fragment, tvShow, episodeToWatch)
-                    }
-                    true
-                }
-            }
-        }
-
-        binding.tvTvShowCertification.apply {
-            val cert = tvShow.contentRating?.trim().orEmpty()
-            val digits = cert.filter { it.isDigit() }
-            val badge = when {
-                digits.isNotEmpty() -> digits.take(2)
-                cert.isNotEmpty() -> cert.take(3).uppercase(Locale.getDefault())
-                else -> ""
-            }
-            text = badge
-            visibility = if (badge.isEmpty()) View.GONE else View.VISIBLE
-        }
-
-        binding.root.findViewById<View>(R.id.btn_tv_show_share)?.let { shareBtn ->
-            shareBtn.applyExpPress()
-            shareBtn.setOnClickListener {
-                ExpMotion.hapticTap(it)
-                val share = Intent(Intent.ACTION_SEND).apply {
-                    type = "text/plain"
-                    putExtra(Intent.EXTRA_SUBJECT, tvShow.title)
-                    putExtra(
-                        Intent.EXTRA_TEXT,
-                        buildString {
-                            append(tvShow.title)
-                            tvShow.released?.format("yyyy")?.let { year -> append(" ($year)") }
-                            tvShow.overview?.takeIf { it.isNotBlank() }?.let { overview -> append("\n\n").append(overview.take(280)) }
-                            tvShow.trailer?.let { trailer -> append("\n").append(trailer) }
-                        },
-                    )
-                }
-                context.startActivity(Intent.createChooser(share, context.getString(R.string.detail_share)))
-            }
-        }
-
-        binding.root.findViewById<View>(R.id.btn_tv_show_watched)?.let { watchedBtn ->
-            // Series has no single isWatched flag; toggle isWatching (false = watching complete).
-            fun applyWatchingUi(watching: Boolean) {
-                val completed = !watching
-                val description = context.getString(
-                    if (completed) R.string.option_show_unwatched else R.string.option_show_watched,
-                )
-                watchedBtn.contentDescription = description
-                androidx.appcompat.widget.TooltipCompat.setTooltipText(watchedBtn, description)
-                watchedBtn.alpha = 1f
-                (watchedBtn as? android.widget.ImageView)?.setImageDrawable(
-                    ContextCompat.getDrawable(
-                        context,
-                        if (completed) R.drawable.ic_watched_filled else R.drawable.ic_watched,
-                    ),
-                )
-            }
-
-            watchedBtn.applyExpPress()
-            applyWatchingUi(tvShow.isWatching)
-            watchedBtn.setOnClickListener {
-                ExpMotion.hapticTap(it)
-                checkProviderAndRun {
-                    itemView.findViewTreeLifecycleOwner()?.lifecycleScope?.launch(Dispatchers.IO) {
-                        val dao = database.tvShowDao()
-                        val current = dao.getById(tvShow.id)
-                        val currentlyWatching = current?.isWatching ?: tvShow.isWatching
-                        val targetWatching = !currentlyWatching
-                        val updated = (current ?: tvShow).copy().apply {
-                            isWatching = targetWatching
-                        }
-                        dao.save(updated)
-                        withContext(Dispatchers.Main) {
-                            tvShow.isWatching = targetWatching
-                            applyWatchingUi(targetWatching)
-                            ExpMotion.softScale(watchedBtn)
-                        }
-                    }
-                }
-            }
-        }
-
-        binding.btnTvShowFavorite.apply {
-            fun applyState(inList: Boolean) {
-                setImageDrawable(
-                    ContextCompat.getDrawable(
-                        context,
-                        if (inList) R.drawable.ic_list_added else R.drawable.ic_list_add,
-                    )
-                )
-                val description = context.getString(
-                    if (inList) R.string.detail_remove_from_list else R.string.detail_add_to_list,
-                )
-                contentDescription = description
-                androidx.appcompat.widget.TooltipCompat.setTooltipText(this, description)
-            }
-
-            applyExpPress()
-            applyState(tvShow.isFavorite)
-            setOnClickListener {
-                ExpMotion.hapticTap(it)
-                checkProviderAndRun {
-                    itemView.findViewTreeLifecycleOwner()?.lifecycleScope?.launch(Dispatchers.IO) {
-                        val dao = database.tvShowDao()
-                        val target = !(dao.getById(tvShow.id)?.isFavorite ?: tvShow.isFavorite)
-                        val resolved =
-                            ArtworkRepair.resolveTvShowForFavorite(context, tvShow, target)
-                        dao.upsertFavorite(resolved, target)
-                        com.dskja.betterstreamflix.platform.simkl.SimklSyncHooks.onListToggle(
-                            add = target,
-                            imdbId = tvShow.imdbId,
-                            tmdbId = tvShow.tmdbId,
-                            isTv = true,
-                        )
-                        withContext(Dispatchers.Main) {
-                            tvShow.poster = resolved.poster
-                            tvShow.banner = resolved.banner
-                            tvShow.isFavorite = target
-                            applyState(target)
-                            ExpMotion.softScale(binding.btnTvShowFavorite)
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    private fun displayTvShowTv(binding: ContentTvShowTvBinding) {
-        binding.ivTvShowPoster.run {
-            loadTvShowPoster(tvShow) {
-                fallback(R.drawable.glide_fallback_cover)
-                transition(DrawableTransitionOptions.withCrossFade())
-            }
-            visibility = if (tvShow.poster.isNullOrEmpty()) View.GONE else View.VISIBLE
-        }
-        binding.tvTvShowTitle.text = tvShow.title
-        com.dskja.betterstreamflix.logo.TitleLogoSurface.bindAndMaybeResolve(
-            anchor = binding.root,
-            imageView = binding.ivTvShowLogo,
-            titleView = binding.tvTvShowTitle,
-            tvShow = tvShow,
-            persist = true,
-            allowAlternateOnFail = true,
-        )
-
-        binding.tvTvShowRating.apply {
-            text = com.dskja.betterstreamflix.ui.DetailRating.format(tvShow.rating)
-            isVisible = !text.isNullOrEmpty()
-        }
-        binding.ivTvShowRatingIcon.isVisible = binding.tvTvShowRating.isVisible
-
-        binding.tvTvShowCertification.apply {
-            val cert = tvShow.contentRating?.trim().orEmpty()
-            val digits = cert.filter { it.isDigit() }
-            val badge = when {
-                digits.isNotEmpty() -> digits.take(2)
-                cert.isNotEmpty() -> cert.take(3).uppercase(Locale.getDefault())
-                else -> ""
-            }
-            text = badge
-            isVisible = badge.isNotEmpty()
-        }
-
-        binding.tvTvShowQuality.apply {
-            text = tvShow.quality
-            isVisible = !text.isNullOrEmpty()
-        }
-
-        binding.tvTvShowReleased.apply {
-            text = tvShow.released?.format("yyyy")
-            isVisible = !text.isNullOrEmpty()
-        }
-
-        binding.tvTvShowRuntime.apply {
-            text = tvShow.runtime?.let {
-                val hours = it / 60
-                val minutes = it % 60
-                when {
-                    hours > 0 -> context.getString(R.string.tv_show_runtime_hours_minutes, hours, minutes)
-                    else -> context.getString(R.string.tv_show_runtime_minutes, minutes)
-                }
-            }
-            isVisible = !text.isNullOrEmpty()
-        }
-
-        binding.tvTvShowGenres.apply {
-            if (tvShow.genres.isEmpty()) {
-                text = ""
-                isVisible = false
-                isFocusable = false
-                setOnClickListener(null)
-            } else {
-                text = tvShow.genres.joinToString(", ") { it.name }
-                isVisible = true
-                isFocusable = true
-                isFocusableInTouchMode = true
-                isClickable = true
-                contentDescription = context.getString(R.string.genre_section_label)
-                setOnClickListener { view ->
-                    ExpMotion.hapticTap(view)
-                    val genres = tvShow.genres
-                    fun openGenre(genre: com.dskja.betterstreamflix.models.Genre) {
-                        checkProviderAndRun {
-                            if (context.toActivity()?.getCurrentFragment() is TvShowTvFragment) {
-                                findNavController().navigate(
-                                    TvShowTvFragmentDirections.actionTvShowToGenre(
-                                        id = genre.id,
-                                        name = genre.name,
-                                    ),
-                                )
-                            }
-                        }
-                    }
-                    if (genres.size == 1) {
-                        openGenre(genres.first())
-                    } else {
-                        val labels = genres.map { it.name }.toTypedArray()
-                        AlertDialog.Builder(context)
-                            .setTitle(R.string.genre_section_label)
-                            .setItems(labels) { _, which ->
-                                genres.getOrNull(which)?.let(::openGenre)
-                            }
-                            .show()
-                    }
-                }
-                nextFocusDownId = binding.btnTvShowWatchNow.id
-                binding.btnTvShowWatchNow.nextFocusUpId = id
-            }
-        }
-
-        binding.tvTvShowOverview.text = tvShow.overview
-        val episodeToWatch = tvShow.episodeToWatch
-        val episodeSeason = resolveEpisodeSeason(episodeToWatch)
-
-        binding.btnTvShowWatchNow.apply {
-            isVisible = true
-            setOnClickListener {
-                ExpMotion.hapticTap(it)
-                checkProviderAndRun {
-                    if (isIptvProvider()) {
-                        handleDirectPlay(findNavController())
-                        return@checkProviderAndRun
-                    }
-                    val episode = episodeToWatch
-                    if (episode == null) {
-                        val adapter = bindingAdapter as? AppAdapter
-                        if (adapter?.onDetailTabSelectedListener != null) {
-                            adapter.onDetailTabSelectedListener?.invoke(DetailTab.EPISODES)
-                        } else {
-                            val season = tvShow.seasons.firstOrNull()
-                            if (season != null) {
-                                findNavController().navigate(
-                                    TvShowTvFragmentDirections.actionTvShowToSeason(
-                                        tvShowId = tvShow.id,
-                                        tvShowTitle = tvShow.title,
-                                        tvShowPoster = tvShow.poster,
-                                        tvShowBanner = tvShow.banner,
-                                        seasonId = season.id,
-                                        seasonNumber = season.number,
-                                        seasonTitle = season.title ?: "Season ${season.number}",
-                                    ),
-                                )
-                            }
-                        }
-                        return@checkProviderAndRun
-                    }
-                    val videoType = Video.Type.Episode(
-                        id = episode.id,
-                        number = episode.number,
-                        title = episode.title,
-                        poster = episode.poster,
-                        overview = episode.overview,
-                        tvShow = Video.Type.Episode.TvShow(
-                            id = tvShow.id,
-                            title = tvShow.title,
-                            poster = tvShow.poster,
-                            banner = tvShow.banner,
-                            releaseDate = tvShow.released?.format("yyyy-MM-dd"),
-                            imdbId = tvShow.imdbId,
-                        ),
-                        season = Video.Type.Episode.Season(
-                            number = episodeSeason?.number ?: 1,
-                            title = episodeSeason?.title ?: "",
-                        ),
-                    )
-                    val args = Bundle().apply {
-                        putString("id", episode.id)
-                        putString("title", tvShow.title)
-                        putString("subtitle", "S${videoType.season.number} E${videoType.number}  •  ${videoType.title}")
-                        putSerializable("videoType", videoType)
-                        // Dual CTA: Watch streams online; Offline uses the Download button.
-                    }
-                    findNavController().navigate(R.id.player, args)
-                }
-            }
-            text = when {
-                isIptvProvider() -> context.getString(R.string.movie_watch_now)
-                episodeToWatch == null -> context.getString(R.string.movie_watch_now)
-                else -> context.getString(
-                    R.string.tv_show_watch_season_episode,
-                    episodeSeason?.number ?: 1,
-                    episodeToWatch.number,
-                )
-            }
-        }
-
-        binding.pbTvShowProgressEpisode.apply {
-            val watchHistory = episodeToWatch?.watchHistory
-            progress = when {
-                watchHistory != null -> (watchHistory.lastPlaybackPositionMillis * 100 / watchHistory.durationMillis.toDouble()).toInt()
-                else -> 0
-            }
-            isVisible = watchHistory != null
-        }
-
-        binding.btnTvShowTrailer.apply {
-            val year = tvShow.released?.format("yyyy")?.toIntOrNull()
-            val canLookup = TmdbUtils.hasTrailerLookupKeys(
-                tmdbId = tvShow.tmdbId,
-                imdbId = tvShow.imdbId,
-                title = tvShow.title,
-                year = year,
-            )
-            fun bindTrailer(trailerUrl: String?) {
-                setOnClickListener {
-                    ExpMotion.hapticTap(it)
-                    if (!trailerUrl.isNullOrBlank()) {
-                        val fragment = context.toActivity()?.getCurrentFragment() as? Fragment
-                        if (fragment != null) {
-                            TrailerPlaybackController.play(fragment, trailerUrl)
-                        } else {
-                            handleTrailerClick(trailerUrl)
-                        }
-                    }
-                }
-                isVisible = !trailerUrl.isNullOrBlank() || canLookup
-            }
-            bindTrailer(tvShow.trailer)
-            if (tvShow.trailer.isNullOrBlank() && canLookup) {
-                itemView.findViewTreeLifecycleOwner()?.lifecycleScope?.launch {
-                    val remote = withContext(Dispatchers.IO) {
-                        TmdbUtils.listYoutubeTrailers(
-                            tmdbId = tvShow.tmdbId,
-                            isTv = true,
-                            title = tvShow.title,
-                            year = year,
-                            imdbId = tvShow.imdbId,
-                        )
-                    }
-                    val first = remote.firstOrNull()?.second
-                    if (!first.isNullOrBlank() && tvShow.trailer.isNullOrBlank()) {
-                        tvShow.trailer = first
-                        bindTrailer(first)
-                    }
-                }
-            }
-        }
-
-        binding.btnTvShowDownload.apply {
-            if (isIptvProvider()) {
-                isVisible = false
-                setOnClickListener(null)
-                setOnLongClickListener(null)
-            } else {
-                isVisible = true
-                val seasonForDownload = tvShow.seasons.firstOrNull { it.episodes.isNotEmpty() }
-                val playOffline = preferredOfflineServerNameForEpisode(episodeToWatch) != null
-                text = if (playOffline) {
-                    context.getString(R.string.downloads_play_offline)
-                } else {
-                    DetailDownloadLabels.seriesButton(
-                        context,
-                        tvShow,
-                        episodeToWatch,
-                        seasonForDownload,
-                    )
-                }
-                contentDescription = text
-                setOnClickListener {
-                    ExpMotion.hapticTap(it)
-                    checkProviderAndRun {
-                        if (playOffline && episodeToWatch != null) {
-                            val episode = episodeToWatch
-                            val videoType = Video.Type.Episode(
-                                id = episode.id,
-                                number = episode.number,
-                                title = episode.title,
-                                poster = episode.poster,
-                                overview = episode.overview,
-                                tvShow = Video.Type.Episode.TvShow(
-                                    id = tvShow.id,
-                                    title = tvShow.title,
-                                    poster = tvShow.poster,
-                                    banner = tvShow.banner,
-                                    releaseDate = tvShow.released?.format("yyyy-MM-dd"),
-                                    imdbId = tvShow.imdbId,
-                                ),
-                                season = Video.Type.Episode.Season(
-                                    number = episodeSeason?.number ?: 1,
-                                    title = episodeSeason?.title ?: "",
-                                ),
-                            )
-                            val args = Bundle().apply {
-                                putString("id", episode.id)
-                                putString("title", tvShow.title)
-                                putString(
-                                    "subtitle",
-                                    "S${videoType.season.number} E${videoType.number}  •  ${videoType.title}",
-                                )
-                                putSerializable("videoType", videoType)
-                                putString("preferredServerName", PlayerViewModel.OFFLINE_SERVER_NAME)
-                            }
-                            findNavController().navigate(R.id.player, args)
-                        } else {
-                            val fragment = context.toActivity()?.getCurrentFragment() as? Fragment
-                                ?: return@checkProviderAndRun
-                            DownloadOptionsController.offerTvShowDownload(fragment, tvShow, episodeToWatch)
-                        }
-                    }
-                }
-                setOnLongClickListener {
-                    if (!playOffline) return@setOnLongClickListener false
-                    ExpMotion.hapticTap(it)
-                    checkProviderAndRun {
-                        val fragment = context.toActivity()?.getCurrentFragment() as? Fragment
-                            ?: return@checkProviderAndRun
-                        DownloadOptionsController.offerTvShowDownload(fragment, tvShow, episodeToWatch)
-                    }
-                    true
-                }
-            }
-        }
-
-        binding.root.findViewById<View>(R.id.btn_tv_show_share)?.let { shareBtn ->
-            shareBtn.setOnClickListener {
-                ExpMotion.hapticTap(it)
-                val share = Intent(Intent.ACTION_SEND).apply {
-                    type = "text/plain"
-                    putExtra(Intent.EXTRA_SUBJECT, tvShow.title)
-                    putExtra(
-                        Intent.EXTRA_TEXT,
-                        buildString {
-                            append(tvShow.title)
-                            tvShow.released?.format("yyyy")?.let { year -> append(" ($year)") }
-                            tvShow.overview?.takeIf { it.isNotBlank() }?.let { overview ->
-                                append("\n\n").append(overview.take(280))
-                            }
-                            tvShow.trailer?.let { trailer -> append("\n").append(trailer) }
-                        },
-                    )
-                }
-                context.startActivity(
-                    Intent.createChooser(share, context.getString(R.string.detail_share)),
-                )
-            }
-        }
-
-        binding.btnTvShowFavorite.apply {
-            fun Boolean.drawable() = when (this) {
-                true -> R.drawable.ic_favorite_enable
-                false -> R.drawable.ic_favorite_disable
-            }
-
-            fun applyFavoriteState(inList: Boolean) {
-                setImageDrawable(ContextCompat.getDrawable(context, inList.drawable()))
-                contentDescription = context.getString(
-                    if (inList) R.string.detail_remove_from_list else R.string.detail_add_to_list,
-                )
-            }
-
-            setOnClickListener {
-                ExpMotion.hapticTap(it)
-                checkProviderAndRun {
-                    itemView.findViewTreeLifecycleOwner()?.lifecycleScope?.launch(Dispatchers.IO) {
-                        val dao = database.tvShowDao()
-                        val current = dao.getById(tvShow.id)?.isFavorite ?: false
-                        val newValue = !current
-                        val resolvedTvShow = ArtworkRepair.resolveTvShowForFavorite(context, tvShow, newValue)
-
-                        dao.upsertFavorite(resolvedTvShow, newValue)
-                        com.dskja.betterstreamflix.platform.simkl.SimklSyncHooks.onListToggle(
-                            add = newValue,
-                            imdbId = tvShow.imdbId,
-                            tmdbId = tvShow.tmdbId,
-                            isTv = true,
-                        )
-
-                        withContext(Dispatchers.Main) {
-                            tvShow.poster = resolvedTvShow.poster
-                            tvShow.banner = resolvedTvShow.banner
-                            tvShow.isFavorite = newValue
-                            applyFavoriteState(newValue)
-                            ExpMotion.popIn(binding.btnTvShowFavorite)
-                        }
-                    }
-                }
-            }
-
-            applyFavoriteState(tvShow.isFavorite)
-        }
-
-        com.dskja.betterstreamflix.utils.TvFocusChain.linkHorizontal(
-            binding.btnTvShowWatchNow,
-            binding.btnTvShowTrailer,
-            binding.btnTvShowDownload,
-            binding.root.findViewById(R.id.btn_tv_show_share),
-            binding.btnTvShowFavorite,
-        )
-    }
-
-    private fun displaySeasonsMobile(binding: ContentTvShowSeasonsMobileBinding) {
-        binding.root.tag = DETAIL_SECTION_SEASONS
-
-        val seasons = tvShow.seasons
-        if (seasons.isEmpty()) {
-            binding.btnTvShowSeasonPicker.visibility = View.GONE
-            binding.rvTvShowEpisodes.visibility = View.GONE
-            binding.pbTvShowEpisodesLoading.visibility = View.GONE
-            binding.tvTvShowEpisodesEmpty.visibility = View.VISIBLE
-            return
-        }
-
-        val selectedSeason = resolveSelectedSeason(seasons)
-        selectedSeasonIdByShow[tvShow.id] = selectedSeason.id
-
-        binding.btnTvShowSeasonPicker.apply {
-            visibility = View.VISIBLE
-            text = selectedSeason.title
-                ?: context.getString(R.string.season_number, selectedSeason.number)
-            setOnClickListener {
-                ExpMotion.hapticTap(it)
-                showSeasonPicker(binding, seasons)
-            }
-            if (ExperimentalMobileDesign.enabled()) {
-                applyExpPress()
-            }
-        }
-
-        if (ExperimentalMobileDesign.enabled() &&
-            binding.root.getTag(R.id.exp_enter_animated_tag) != true
-        ) {
-            binding.root.setTag(R.id.exp_enter_animated_tag, true)
-            ExpMotion.popIn(binding.btnTvShowSeasonPicker)
-            ExpMotion.staggerFirstFill(binding.rvTvShowEpisodes)
-        }
-
-        bindSeasonEpisodes(binding, selectedSeason)
-    }
-
-    private fun resolveSelectedSeason(seasons: List<Season>): Season {
-        val rememberedId = selectedSeasonIdByShow[tvShow.id]
-        if (rememberedId != null) {
-            seasons.firstOrNull { it.id == rememberedId }?.let { return it }
-        }
-        // Prefer the season that contains the next episode to watch, else first non-zero.
-        val episodeSeasonId = tvShow.episodeToWatch?.season?.id
-        if (episodeSeasonId != null) {
-            seasons.firstOrNull { it.id == episodeSeasonId }?.let { return it }
-        }
-        return seasons.firstOrNull { it.number != 0 } ?: seasons.first()
-    }
-
-    private fun showSeasonPicker(
-        binding: ContentTvShowSeasonsMobileBinding,
-        seasons: List<Season>,
-    ) {
-        val labels = seasons.map { season ->
-            season.title ?: context.getString(R.string.season_number, season.number)
-        }.toTypedArray()
-        val selectedIndex = seasons.indexOfFirst { it.id == selectedSeasonIdByShow[tvShow.id] }
-            .coerceAtLeast(0)
-        val builder = if (ExperimentalMobileDesign.enabled()) {
-            MaterialAlertDialogBuilder(context)
-        } else {
-            AlertDialog.Builder(context)
-        }
-        builder
-            .setTitle(R.string.tv_show_seasons)
-            .setSingleChoiceItems(labels, selectedIndex) { dialog, which ->
-                val season = seasons.getOrNull(which) ?: return@setSingleChoiceItems
-                selectedSeasonIdByShow[tvShow.id] = season.id
-                binding.btnTvShowSeasonPicker.text = labels[which]
-                bindSeasonEpisodes(binding, season)
-                dialog.dismiss()
-            }
-            .setNegativeButton(android.R.string.cancel, null)
-            .show()
-    }
-
-    private fun bindSeasonEpisodes(
-        binding: ContentTvShowSeasonsMobileBinding,
-        season: Season,
-    ) {
-        val episodes = season.episodes.sortedBy { it.number }
-        val adapter = (binding.rvTvShowEpisodes.adapter as? AppAdapter) ?: AppAdapter().also {
-            binding.rvTvShowEpisodes.adapter = it
-            if (binding.rvTvShowEpisodes.itemDecorationCount == 0) {
-                binding.rvTvShowEpisodes.addItemDecoration(SpacingItemDecoration(8.dp(context)))
-            }
-        }
-
-        when {
-            episodes.isNotEmpty() -> {
-                loadingSeasonIds.remove(season.id)
-                binding.pbTvShowEpisodesLoading.visibility = View.GONE
-                binding.tvTvShowEpisodesEmpty.visibility = View.GONE
-                binding.rvTvShowEpisodes.visibility = View.VISIBLE
-                adapter.submitList(
-                    episodes.onEach { episode ->
-                        val show = episode.tvShow ?: tvShow
-                        if (show.contentRating.isNullOrBlank()) {
-                            show.contentRating = tvShow.contentRating
-                        }
-                        episode.tvShow = show
-                        episode.season = episode.season ?: season
-                        episode.itemType = AppAdapter.Type.EPISODE_DETAIL_MOBILE_ITEM
-                    },
-                )
-                binding.rvTvShowEpisodes.post {
-                    binding.rvTvShowEpisodes.requestLayout()
-                    (binding.rvTvShowEpisodes.parent as? View)?.requestLayout()
-                }
-            }
-            loadingSeasonIds.contains(season.id) -> {
-                binding.rvTvShowEpisodes.visibility = View.GONE
-                binding.tvTvShowEpisodesEmpty.visibility = View.GONE
-                binding.pbTvShowEpisodesLoading.visibility = View.VISIBLE
-                adapter.submitList(emptyList())
-            }
-            else -> {
-                binding.rvTvShowEpisodes.visibility = View.GONE
-                binding.tvTvShowEpisodesEmpty.visibility = View.GONE
-                binding.pbTvShowEpisodesLoading.visibility = View.VISIBLE
-                adapter.submitList(emptyList())
-                requestSeasonEpisodes(binding, season)
-            }
-        }
-    }
-
-    private fun requestSeasonEpisodes(
-        binding: ContentTvShowSeasonsMobileBinding,
-        season: Season,
-    ) {
-        if (!loadingSeasonIds.add(season.id)) return
-        val fragment = context.toActivity()?.getCurrentFragment() as? TvShowMobileFragment
-        if (fragment != null) {
-            fragment.loadSeasonEpisodes(season)
-            // When episodes land via ViewModel flow, the section rebinds.
-            // Clear loading flag after a short window so a failed load can show empty.
-            itemView.findViewTreeLifecycleOwner()?.lifecycleScope?.launch {
-                kotlinx.coroutines.delay(12_000)
-                loadingSeasonIds.remove(season.id)
-                if (selectedSeasonIdByShow[tvShow.id] == season.id &&
-                    season.episodes.isEmpty() &&
-                    binding.pbTvShowEpisodesLoading.isVisible
-                ) {
-                    binding.pbTvShowEpisodesLoading.visibility = View.GONE
-                    binding.tvTvShowEpisodesEmpty.visibility = View.VISIBLE
-                }
-            }
-            return
-        }
-
-        // Fallback: load directly if fragment isn't available.
-        itemView.findViewTreeLifecycleOwner()?.lifecycleScope?.launch {
-            val loaded = withContext(Dispatchers.IO) {
-                runCatching {
-                    val provider = UserPreferences.currentProvider
-                        ?: return@runCatching emptyList<Episode>()
-                    val episodes = provider.getEpisodesBySeason(season.id)
-                    val episodeMap = episodes.associateBy { it.id }
-                    episodes.map { it.id }.chunked(400).forEach { chunk ->
-                        database.episodeDao().getByIds(chunk).forEach { db ->
-                            episodeMap[db.id]?.merge(db)
-                        }
-                    }
-                    episodes.forEach {
-                        it.tvShow = tvShow
-                        it.season = season
-                    }
-                    database.episodeDao().insertAll(episodes)
-                    episodes
-                }.getOrDefault(emptyList())
-            }
-            loadingSeasonIds.remove(season.id)
-            season.episodes = loaded
-            tvShow.seasons.firstOrNull { it.id == season.id }?.episodes = loaded
-            if (selectedSeasonIdByShow[tvShow.id] == season.id) {
-                bindSeasonEpisodes(binding, season)
-            }
-        }
-    }
+    private fun displaySeasonsMobile(binding: ContentTvShowSeasonsMobileBinding) =
+        bindTvShowSeasonsMobile(binding)
 
     private fun displaySeasonsTv(binding: ContentTvShowSeasonsTvBinding) {
         if (ExperimentalMobileDesign.enabled()) {
@@ -2447,8 +1402,19 @@ class TvShowViewHolder(
         const val DETAIL_SECTION_TRAILER = "detail_section_trailer"
         const val DETAIL_SECTION_ABOUT = "detail_section_about"
 
-        private val selectedSeasonIdByShow = mutableMapOf<String, String>()
-        private val loadingSeasonIds = mutableSetOf<String>()
+        internal val selectedSeasonIdByShow = mutableMapOf<String, String>()
+        internal val loadingSeasonIds = mutableSetOf<String>()
+        internal val failedSeasonIds = mutableSetOf<String>()
+
+        fun markSeasonEpisodeFailure(seasonId: String) {
+            loadingSeasonIds.remove(seasonId)
+            failedSeasonIds.add(seasonId)
+        }
+
+        fun clearSeasonEpisodeFailure(seasonId: String) {
+            loadingSeasonIds.remove(seasonId)
+            failedSeasonIds.remove(seasonId)
+        }
     }
 
 }
