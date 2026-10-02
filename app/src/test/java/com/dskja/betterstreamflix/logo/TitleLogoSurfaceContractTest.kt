@@ -56,6 +56,23 @@ class TitleLogoSurfaceContractTest {
     }
 
     @Test
+    fun slot_loadingKeepsUrlPathDistinctFromTitle() {
+        // Loading reserves the slot; binder keeps title visible as soft placeholder.
+        assertEquals(
+            TitleLogoSlot.State.LOADING_LOGO,
+            TitleLogoSlot.state(
+                logoUrl = "https://image.tmdb.org/t/p/original/x.png",
+                hideUntilReady = true,
+                loadReady = false,
+            ),
+        )
+        assertEquals(
+            TitleLogoSlot.State.SHOW_TITLE,
+            TitleLogoSlot.state(logoUrl = null, hideUntilReady = true),
+        )
+    }
+
+    @Test
     fun upgradeGate_blankNeedsUpgrade() {
         assertTrue(TmdbLogoPicker.shouldUpgradeLogo(null))
         assertTrue(TmdbLogoPicker.shouldUpgradeLogo(""))

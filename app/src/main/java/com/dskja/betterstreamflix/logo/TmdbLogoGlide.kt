@@ -62,10 +62,16 @@ object TmdbLogoGlide {
         if (hideUntilReady) {
             imageView.visibility = View.INVISIBLE
         }
-        val overrideW = imageView.width.takeIf { it > 0 }
-            ?: imageView.layoutParams?.width?.takeIf { it > 0 }
+        // Prefer height-based decode so wide match_parent slots do not squash wordmarks.
         val overrideH = imageView.height.takeIf { it > 0 }
             ?: imageView.layoutParams?.height?.takeIf { it > 0 }
+        val overrideW = overrideH?.let { h ->
+            val laidOutW = imageView.width.takeIf { it > 0 }
+                ?: imageView.layoutParams?.width?.takeIf { it > 0 }
+            // Cap at ~3× height for typical TMDb logo aspect; never exceed laid-out width.
+            val budget = (h * 3).coerceAtLeast(h)
+            laidOutW?.coerceAtMost(budget) ?: budget
+        }
 
         fun attempt(index: Int) {
             val url = sizes.getOrNull(index)
@@ -84,10 +90,11 @@ object TmdbLogoGlide {
                 return
             }
             imageView.setTag(LOGO_URL_TAG, url)
+            // Let ImageView scaleType (fitStart / fitCenter) own alignment — no Glide transform.
             var request = Glide.with(imageView)
                 .load(url)
                 .diskCacheStrategy(DiskCacheStrategy.AUTOMATIC)
-                .fitCenter()
+                .dontTransform()
                 .transition(
                     com.bumptech.glide.load.resource.drawable.DrawableTransitionOptions.withCrossFade(180),
                 )

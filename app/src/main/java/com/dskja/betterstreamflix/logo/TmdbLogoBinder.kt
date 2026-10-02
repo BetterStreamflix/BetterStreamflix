@@ -89,11 +89,14 @@ object TmdbLogoBinder {
         stillCurrent: () -> Boolean = { true },
         applyContrastScrim: Boolean = false,
         onLoadFailed: (() -> Unit)? = null,
+        onLogoReady: ((String) -> Unit)? = null,
+        onLogoFailed: (() -> Unit)? = null,
     ) {
         titleView?.text = title
         // Never paint a hard plate onto the ImageView — that boxes/crushes TMDb logos.
         // Contrast lives on the art vignette / optional parent slot plate (XML).
         TitleLogoPresentation.clearImagePlate(imageView)
+        TitleLogoPresentation.clearSlotPlate(imageView)
         when (TitleLogoSlot.state(logoUrl, hideUntilReady)) {
             TitleLogoSlot.State.SHOW_TITLE -> {
                 TmdbLogoGlide.clear(imageView)
@@ -103,6 +106,7 @@ object TmdbLogoBinder {
                 titleView?.alpha = 1f
                 titleView?.visibility = View.VISIBLE
                 TitleLogoPresentation.applySlotPlate(imageView, showPlate = applyContrastScrim)
+                onLogoFailed?.invoke()
                 return
             }
             TitleLogoSlot.State.LOADING_LOGO -> {
@@ -128,19 +132,23 @@ object TmdbLogoBinder {
             contentDescription = title,
             onFailed = {
                 TitleLogoPresentation.clearImagePlate(imageView)
+                TitleLogoPresentation.clearSlotPlate(imageView)
                 imageView.visibility = View.INVISIBLE
                 imageView.importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
                 titleView?.alpha = 1f
                 titleView?.visibility = View.VISIBLE
                 TitleLogoPresentation.applySlotPlate(imageView, showPlate = applyContrastScrim)
+                onLogoFailed?.invoke()
                 onLoadFailed?.invoke()
             },
-            onReady = {
+            onReady = { readyUrl ->
                 TitleLogoPresentation.clearImagePlate(imageView)
+                TitleLogoPresentation.clearSlotPlate(imageView)
                 imageView.visibility = View.VISIBLE
                 imageView.importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_YES
                 titleView?.alpha = 1f
                 titleView?.visibility = View.GONE
+                onLogoReady?.invoke(readyUrl)
             },
         )
     }

@@ -17,12 +17,19 @@ object TitleLogoPresentation {
     }
 
     /**
-     * Wordmark-friendly ImageView defaults: fitStart, no crop, crisp padding.
-     * Call before Glide so scaleType survives into decode.
+     * Wordmark-friendly ImageView defaults. Preserves XML fitStart (Detail) / fitCenter
+     * (Featured) so header/hero/Featured alignment stay intentional.
      */
     fun polishLogoImage(imageView: ImageView) {
         clearImagePlate(imageView)
-        imageView.scaleType = ImageView.ScaleType.FIT_START
+        clearSlotPlate(imageView)
+        when (imageView.scaleType) {
+            ImageView.ScaleType.FIT_CENTER,
+            ImageView.ScaleType.FIT_START,
+            ImageView.ScaleType.CENTER_INSIDE,
+            -> Unit
+            else -> imageView.scaleType = ImageView.ScaleType.FIT_START
+        }
         imageView.adjustViewBounds = true
         imageView.cropToPadding = false
         // Soft horizontal inset so wide logos breathe without a hard plate.
@@ -39,10 +46,19 @@ object TitleLogoPresentation {
      * on surfaces that do not already ship a vignette (rare). Featured/Detail rely on art scrims.
      */
     fun applySlotPlate(imageView: ImageView, showPlate: Boolean) {
-        if (!showPlate) return
+        if (!showPlate) {
+            clearSlotPlate(imageView)
+            return
+        }
         val parent = imageView.parent as? ViewGroup ?: return
         if (parent.background == null) {
             parent.setBackgroundResource(R.drawable.bg_title_logo_contrast)
         }
+    }
+
+    /** Drop any soft slot plate so logo pixels never sit on an empty dark card. */
+    fun clearSlotPlate(imageView: ImageView) {
+        val parent = imageView.parent as? ViewGroup ?: return
+        parent.background = null
     }
 }
