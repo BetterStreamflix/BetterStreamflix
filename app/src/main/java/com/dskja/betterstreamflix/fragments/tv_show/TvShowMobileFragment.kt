@@ -4,7 +4,6 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.widget.Toast
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.flowWithLifecycle
@@ -18,14 +17,13 @@ import com.dskja.betterstreamflix.databinding.FragmentTvShowMobileBinding
 import com.dskja.betterstreamflix.models.Season
 import com.dskja.betterstreamflix.models.TvShow
 import com.dskja.betterstreamflix.ui.DetailHeaderController
+import com.dskja.betterstreamflix.ui.DetailLoadingErrorChrome
 import com.dskja.betterstreamflix.ui.DetailTab
 import com.dskja.betterstreamflix.ui.SpacingItemDecoration
-import com.dskja.betterstreamflix.utils.CacheUtils
 import com.dskja.betterstreamflix.utils.Http409CacheGuard
 import com.dskja.betterstreamflix.utils.ExpNavAutoHide
 import com.dskja.betterstreamflix.utils.ExpMotion
 import com.dskja.betterstreamflix.utils.ExperimentalMobileDesign
-import com.dskja.betterstreamflix.utils.LoggingUtils
 import com.dskja.betterstreamflix.utils.viewModelsFactory
 import kotlinx.coroutines.launch
 
@@ -50,6 +48,9 @@ class TvShowMobileFragment : Fragment() {
     private val appAdapter = AppAdapter()
     private var currentTvShow: TvShow? = null
     private var selectedTab: DetailTab = DetailTab.EPISODES
+
+    /** Season episode load UI state for the in-page Episodes tab. */
+    fun seasonEpisodeUi(): TvShowViewModel = viewModel
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -100,28 +101,13 @@ class TvShowMobileFragment : Fragment() {
                         if (http409Guard.handle(requireContext(), state.error) { viewModel.getTvShow(args.id) }) {
                                 return@collect
                             }
-                        if (!com.dskja.betterstreamflix.utils.ExperimentalMobileDesign.enabled()) {
-                            Toast.makeText(
-                                requireContext(),
-                                state.error.message ?: "",
-                                Toast.LENGTH_SHORT
-                            ).show()
-                        }
-                            binding.isLoading.apply {
-                            com.dskja.betterstreamflix.utils.ExpPressEffects.showLoadingSkeleton(root, false)
-                            gIsLoadingRetry.visibility = View.VISIBLE
-                            com.dskja.betterstreamflix.utils.ExpPressEffects.animateLoadingError(root)
-                                val doRetry = { viewModel.getTvShow(args.id) }
-                                btnIsLoadingRetry.setOnClickListener { doRetry() }
-                                btnIsLoadingClearCache.setOnClickListener {
-                                    CacheUtils.clearAppCache(requireContext())
-                                    com.dskja.betterstreamflix.utils.ExpDialogChrome.notify(requireContext(), getString(com.dskja.betterstreamflix.R.string.clear_cache_done), com.dskja.betterstreamflix.R.string.loading_error_clear_cache)
-                                    doRetry()
-                                }
-                                btnIsLoadingErrorDetails.setOnClickListener {
-                                    LoggingUtils.showErrorDialog(requireContext(), state.error)
-                                }
-                        }
+                        DetailLoadingErrorChrome.bind(
+                            root = binding.isLoading.root,
+                            context = requireContext(),
+                            error = state.error,
+                            showToast = !ExperimentalMobileDesign.enabled(),
+                            onRetry = { viewModel.getTvShow(args.id) },
+                        )
                     }
                 }
             }
@@ -132,16 +118,12 @@ class TvShowMobileFragment : Fragment() {
                 when (seasonState) {
                     is TvShowViewModel.SeasonState.SuccessLoading -> {
                         val tvShow = currentTvShow ?: return@collect
-                        com.dskja.betterstreamflix.adapters.viewholders.TvShowViewHolder
-                            .clearSeasonEpisodeFailure(seasonState.season.id)
                         tvShow.seasons.firstOrNull { it.id == seasonState.season.id }
                             ?.episodes = seasonState.episodes
                         seasonState.season.episodes = seasonState.episodes
                         rebuildBody(scrollTabsToTop = false)
                     }
                     is TvShowViewModel.SeasonState.FailedLoading -> {
-                        com.dskja.betterstreamflix.adapters.viewholders.TvShowViewHolder
-                            .markSeasonEpisodeFailure(seasonState.season.id)
                         if (selectedTab == DetailTab.EPISODES) {
                             rebuildBody(scrollTabsToTop = false)
                         }

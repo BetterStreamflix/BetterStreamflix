@@ -1,50 +1,26 @@
 package com.dskja.betterstreamflix.adapters.viewholders.detail
 
-import android.content.Intent
-import android.os.Bundle
 import android.view.View
-import android.view.ViewGroup
-import android.widget.TextView
 import androidx.appcompat.app.AlertDialog
-import androidx.core.content.ContextCompat
-import androidx.core.view.isVisible
-import androidx.fragment.app.Fragment
 import androidx.lifecycle.findViewTreeLifecycleOwner
 import androidx.lifecycle.lifecycleScope
-import androidx.navigation.findNavController
-import com.bumptech.glide.load.resource.drawable.DrawableTransitionOptions
 import com.dskja.betterstreamflix.R
 import com.dskja.betterstreamflix.adapters.AppAdapter
 import com.dskja.betterstreamflix.adapters.viewholders.TvShowViewHolder
-import com.dskja.betterstreamflix.databinding.ContentTvShowMobileBinding
 import com.dskja.betterstreamflix.databinding.ContentTvShowSeasonsMobileBinding
-import com.dskja.betterstreamflix.databinding.ContentTvShowTvBinding
-import com.dskja.betterstreamflix.download.DetailDownloadLabels
-import com.dskja.betterstreamflix.download.ui.DownloadOptionsController
-import com.dskja.betterstreamflix.fragments.player.PlayerViewModel
 import com.dskja.betterstreamflix.fragments.tv_show.TvShowMobileFragment
-import com.dskja.betterstreamflix.fragments.tv_show.TvShowTvFragment
-import com.dskja.betterstreamflix.fragments.tv_show.TvShowTvFragmentDirections
+import com.dskja.betterstreamflix.fragments.tv_show.TvShowViewModel
 import com.dskja.betterstreamflix.models.Episode
 import com.dskja.betterstreamflix.models.Season
-import com.dskja.betterstreamflix.models.Video
-import com.dskja.betterstreamflix.ui.DetailTab
-import com.dskja.betterstreamflix.ui.FeaturedSwiperChrome
 import com.dskja.betterstreamflix.ui.SpacingItemDecoration
-import com.dskja.betterstreamflix.ui.TrailerPlaybackController
-import com.dskja.betterstreamflix.utils.ArtworkRepair
 import com.dskja.betterstreamflix.utils.ExpMotion
 import com.dskja.betterstreamflix.utils.ExpPressEffects.applyExpPress
 import com.dskja.betterstreamflix.utils.ExperimentalMobileDesign
-import com.dskja.betterstreamflix.utils.TmdbUtils
 import com.dskja.betterstreamflix.utils.UserPreferences
 import com.dskja.betterstreamflix.utils.dp
-import com.dskja.betterstreamflix.utils.format
 import com.dskja.betterstreamflix.utils.getCurrentFragment
-import com.dskja.betterstreamflix.utils.loadTvShowPoster
 import com.dskja.betterstreamflix.utils.toActivity
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
-import java.util.Locale
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -63,8 +39,9 @@ internal fun TvShowViewHolder.bindTvShowSeasonsMobile(binding: ContentTvShowSeas
         return
     }
 
-    val selectedSeason = resolveSelectedSeason(seasons)
-    TvShowViewHolder.selectedSeasonIdByShow[tvShow.id] = selectedSeason.id
+    val seasonUi = seasonEpisodeUi()
+    val selectedSeason = resolveSelectedSeason(seasons, seasonUi)
+    seasonUi?.selectedSeasonId = selectedSeason.id
 
     binding.btnTvShowSeasonPicker.apply {
         visibility = View.VISIBLE
@@ -72,7 +49,7 @@ internal fun TvShowViewHolder.bindTvShowSeasonsMobile(binding: ContentTvShowSeas
             ?: context.getString(R.string.season_number, selectedSeason.number)
         setOnClickListener {
             ExpMotion.hapticTap(it)
-            showSeasonPicker(binding, seasons)
+            showSeasonPicker(binding, seasons, seasonUi)
         }
         if (ExperimentalMobileDesign.enabled()) {
             applyExpPress()
@@ -87,11 +64,18 @@ internal fun TvShowViewHolder.bindTvShowSeasonsMobile(binding: ContentTvShowSeas
         ExpMotion.staggerFirstFill(binding.rvTvShowEpisodes)
     }
 
-    bindSeasonEpisodes(binding, selectedSeason)
+    bindSeasonEpisodes(binding, selectedSeason, seasonUi)
 }
 
-private fun TvShowViewHolder.resolveSelectedSeason(seasons: List<Season>): Season {
-    val rememberedId = TvShowViewHolder.selectedSeasonIdByShow[tvShow.id]
+private fun TvShowViewHolder.seasonEpisodeUi(): TvShowViewModel? {
+    return (context.toActivity()?.getCurrentFragment() as? TvShowMobileFragment)?.seasonEpisodeUi()
+}
+
+private fun TvShowViewHolder.resolveSelectedSeason(
+    seasons: List<Season>,
+    seasonUi: TvShowViewModel?,
+): Season {
+    val rememberedId = seasonUi?.selectedSeasonId
     if (rememberedId != null) {
         seasons.firstOrNull { it.id == rememberedId }?.let { return it }
     }
@@ -106,11 +90,12 @@ private fun TvShowViewHolder.resolveSelectedSeason(seasons: List<Season>): Seaso
 private fun TvShowViewHolder.showSeasonPicker(
     binding: ContentTvShowSeasonsMobileBinding,
     seasons: List<Season>,
+    seasonUi: TvShowViewModel?,
 ) {
     val labels = seasons.map { season ->
         season.title ?: context.getString(R.string.season_number, season.number)
     }.toTypedArray()
-    val selectedIndex = seasons.indexOfFirst { it.id == TvShowViewHolder.selectedSeasonIdByShow[tvShow.id] }
+    val selectedIndex = seasons.indexOfFirst { it.id == seasonUi?.selectedSeasonId }
         .coerceAtLeast(0)
     val builder = if (ExperimentalMobileDesign.enabled()) {
         MaterialAlertDialogBuilder(context)
@@ -121,9 +106,9 @@ private fun TvShowViewHolder.showSeasonPicker(
         .setTitle(R.string.tv_show_seasons)
         .setSingleChoiceItems(labels, selectedIndex) { dialog, which ->
             val season = seasons.getOrNull(which) ?: return@setSingleChoiceItems
-            TvShowViewHolder.selectedSeasonIdByShow[tvShow.id] = season.id
+            seasonUi?.selectedSeasonId = season.id
             binding.btnTvShowSeasonPicker.text = labels[which]
-            bindSeasonEpisodes(binding, season)
+            bindSeasonEpisodes(binding, season, seasonUi)
             dialog.dismiss()
         }
         .setNegativeButton(android.R.string.cancel, null)
@@ -133,6 +118,7 @@ private fun TvShowViewHolder.showSeasonPicker(
 private fun TvShowViewHolder.bindSeasonEpisodes(
     binding: ContentTvShowSeasonsMobileBinding,
     season: Season,
+    seasonUi: TvShowViewModel?,
 ) {
     val episodes = season.episodes.sortedBy { it.number }
     val adapter = (binding.rvTvShowEpisodes.adapter as? AppAdapter) ?: AppAdapter().also {
@@ -144,8 +130,7 @@ private fun TvShowViewHolder.bindSeasonEpisodes(
 
     when {
         episodes.isNotEmpty() -> {
-            TvShowViewHolder.loadingSeasonIds.remove(season.id)
-            TvShowViewHolder.failedSeasonIds.remove(season.id)
+            seasonUi?.clearSeasonEpisodeFailure(season.id)
             binding.pbTvShowEpisodesLoading.visibility = View.GONE
             binding.llTvShowEpisodesEmpty.visibility = View.GONE
             binding.btnTvShowEpisodesRetry.visibility = View.GONE
@@ -166,8 +151,8 @@ private fun TvShowViewHolder.bindSeasonEpisodes(
                 (binding.rvTvShowEpisodes.parent as? View)?.requestLayout()
             }
         }
-        TvShowViewHolder.failedSeasonIds.contains(season.id) -> {
-            TvShowViewHolder.loadingSeasonIds.remove(season.id)
+        seasonUi?.isSeasonEpisodeFailed(season.id) == true -> {
+            seasonUi.endSeasonEpisodeLoad(season.id)
             binding.rvTvShowEpisodes.visibility = View.GONE
             binding.pbTvShowEpisodesLoading.visibility = View.GONE
             binding.llTvShowEpisodesEmpty.visibility = View.VISIBLE
@@ -175,16 +160,16 @@ private fun TvShowViewHolder.bindSeasonEpisodes(
             binding.btnTvShowEpisodesRetry.visibility = View.VISIBLE
             binding.btnTvShowEpisodesRetry.setOnClickListener {
                 ExpMotion.hapticTap(it)
-                TvShowViewHolder.failedSeasonIds.remove(season.id)
+                seasonUi.clearSeasonEpisodeFailure(season.id)
                 binding.btnTvShowEpisodesRetry.visibility = View.GONE
                 binding.llTvShowEpisodesEmpty.visibility = View.GONE
                 binding.pbTvShowEpisodesLoading.visibility = View.VISIBLE
                 adapter.submitList(emptyList())
-                requestSeasonEpisodes(binding, season)
+                requestSeasonEpisodes(binding, season, seasonUi)
             }
             adapter.submitList(emptyList())
         }
-        TvShowViewHolder.loadingSeasonIds.contains(season.id) -> {
+        seasonUi?.isSeasonEpisodeLoading(season.id) == true -> {
             binding.rvTvShowEpisodes.visibility = View.GONE
             binding.llTvShowEpisodesEmpty.visibility = View.GONE
             binding.btnTvShowEpisodesRetry.visibility = View.GONE
@@ -197,7 +182,7 @@ private fun TvShowViewHolder.bindSeasonEpisodes(
             binding.btnTvShowEpisodesRetry.visibility = View.GONE
             binding.pbTvShowEpisodesLoading.visibility = View.VISIBLE
             adapter.submitList(emptyList())
-            requestSeasonEpisodes(binding, season)
+            requestSeasonEpisodes(binding, season, seasonUi)
         }
     }
 }
@@ -205,17 +190,21 @@ private fun TvShowViewHolder.bindSeasonEpisodes(
 private fun TvShowViewHolder.requestSeasonEpisodes(
     binding: ContentTvShowSeasonsMobileBinding,
     season: Season,
+    seasonUi: TvShowViewModel?,
 ) {
-    if (!TvShowViewHolder.loadingSeasonIds.add(season.id)) return
-    TvShowViewHolder.failedSeasonIds.remove(season.id)
-    val fragment = context.toActivity()?.getCurrentFragment() as? TvShowMobileFragment
-    if (fragment != null) {
-        fragment.loadSeasonEpisodes(season)
-        // Failure is handled via SeasonState.FailedLoading in the fragment.
-        return
+    if (seasonUi != null) {
+        if (!seasonUi.beginSeasonEpisodeLoad(season.id)) return
+        seasonUi.clearSeasonEpisodeFailure(season.id)
+        val fragment = context.toActivity()?.getCurrentFragment() as? TvShowMobileFragment
+        if (fragment != null) {
+            fragment.loadSeasonEpisodes(season)
+            // Failure is handled via SeasonState.FailedLoading in the fragment.
+            return
+        }
+        seasonUi.endSeasonEpisodeLoad(season.id)
     }
 
-    // Fallback: load directly if fragment isn't available.
+    // Fallback: load directly if fragment/ViewModel isn't available.
     itemView.findViewTreeLifecycleOwner()?.lifecycleScope?.launch {
         val result = withContext(Dispatchers.IO) {
             runCatching {
@@ -236,20 +225,17 @@ private fun TvShowViewHolder.requestSeasonEpisodes(
                 episodes
             }
         }
-        TvShowViewHolder.loadingSeasonIds.remove(season.id)
         result.onSuccess { loaded ->
             season.episodes = loaded
             tvShow.seasons.firstOrNull { it.id == season.id }?.episodes = loaded
-            if (TvShowViewHolder.selectedSeasonIdByShow[tvShow.id] == season.id) {
-                bindSeasonEpisodes(binding, season)
+            if (seasonUi?.selectedSeasonId == season.id || seasonUi == null) {
+                bindSeasonEpisodes(binding, season, seasonUi)
             }
         }.onFailure {
-            TvShowViewHolder.failedSeasonIds.add(season.id)
-            if (TvShowViewHolder.selectedSeasonIdByShow[tvShow.id] == season.id) {
-                bindSeasonEpisodes(binding, season)
+            seasonUi?.markSeasonEpisodeFailure(season.id)
+            if (seasonUi?.selectedSeasonId == season.id || seasonUi == null) {
+                bindSeasonEpisodes(binding, season, seasonUi)
             }
         }
     }
 }
-
-

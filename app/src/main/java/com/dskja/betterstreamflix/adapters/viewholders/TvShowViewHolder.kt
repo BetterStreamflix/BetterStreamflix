@@ -1401,20 +1401,6 @@ class TvShowViewHolder(
         const val DETAIL_SECTION_RECOMMENDATIONS = "detail_section_recommendations"
         const val DETAIL_SECTION_TRAILER = "detail_section_trailer"
         const val DETAIL_SECTION_ABOUT = "detail_section_about"
-
-        internal val selectedSeasonIdByShow = mutableMapOf<String, String>()
-        internal val loadingSeasonIds = mutableSetOf<String>()
-        internal val failedSeasonIds = mutableSetOf<String>()
-
-        fun markSeasonEpisodeFailure(seasonId: String) {
-            loadingSeasonIds.remove(seasonId)
-            failedSeasonIds.add(seasonId)
-        }
-
-        fun clearSeasonEpisodeFailure(seasonId: String) {
-            loadingSeasonIds.remove(seasonId)
-            failedSeasonIds.remove(seasonId)
-        }
     }
 
 }

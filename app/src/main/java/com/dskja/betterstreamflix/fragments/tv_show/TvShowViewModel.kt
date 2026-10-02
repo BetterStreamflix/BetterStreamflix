@@ -209,6 +209,32 @@ class TvShowViewModel(
     private val _seasonState = MutableStateFlow<SeasonState>(SeasonState.Loading)
     val seasonState: StateFlow<SeasonState> = _seasonState.asStateFlow()
 
+    /** In-page Episodes tab: remembered season for this show instance (not process-global). */
+    var selectedSeasonId: String? = null
+
+    private val loadingSeasonIds = mutableSetOf<String>()
+    private val failedSeasonIds = mutableSetOf<String>()
+
+    fun beginSeasonEpisodeLoad(seasonId: String): Boolean = loadingSeasonIds.add(seasonId)
+
+    fun endSeasonEpisodeLoad(seasonId: String) {
+        loadingSeasonIds.remove(seasonId)
+    }
+
+    fun isSeasonEpisodeLoading(seasonId: String): Boolean = loadingSeasonIds.contains(seasonId)
+
+    fun isSeasonEpisodeFailed(seasonId: String): Boolean = failedSeasonIds.contains(seasonId)
+
+    fun markSeasonEpisodeFailure(seasonId: String) {
+        loadingSeasonIds.remove(seasonId)
+        failedSeasonIds.add(seasonId)
+    }
+
+    fun clearSeasonEpisodeFailure(seasonId: String) {
+        loadingSeasonIds.remove(seasonId)
+        failedSeasonIds.remove(seasonId)
+    }
+
     sealed class SeasonState {
         data object Loading :  SeasonState()
         data class SuccessLoading(
@@ -344,6 +370,49 @@ class TvShowViewModel(
         }.getOrDefault(base)
     }
 
+    private var ribbonsPrefetchStarted = false
+
+    /**
+     * Fills empty season episode lists (bounded) so TV season posters can show
+     * fully-watched ribbons without opening each season screen.
+     */
+    fun prefetchSeasonEpisodesForRibbons(tvShow: TvShow, limit: Int = 6) {
+        if (ribbonsPrefetchStarted) return
+        ribbonsPrefetchStarted = true
+        viewModelScope.launch(Dispatchers.IO) {
+            val provider = UserPreferences.currentProvider ?: return@launch
+            val targets = tvShow.seasons
+                .filter { it.number != 0 && it.episodes.isEmpty() }
+                .take(limit)
+            if (targets.isEmpty()) return@launch
+            var loadedAny = false
+            for (season in targets) {
+                runCatching {
+                    val episodes = provider.getEpisodesBySeason(season.id)
+                    val episodeMap = episodes.associateBy { it.id }
+                    episodes.map { it.id }.chunked(400).forEach { chunk ->
+                        database.episodeDao().getByIds(chunk).forEach { db ->
+                            episodeMap[db.id]?.merge(db)
+                        }
+                    }
+                    episodes.forEach {
+                        it.tvShow = tvShow
+                        it.season = season
+                    }
+                    database.episodeDao().insertAll(episodes)
+                    season.episodes = episodes
+                    tvShow.seasons.firstOrNull { it.id == season.id }?.episodes = episodes
+                    loadedAny = true
+                }
+            }
+            if (!loadedAny) return@launch
+            val current = (_state.value as? State.SuccessLoading)?.tvShow
+            if (current?.id == tvShow.id) {
+                _state.emit(State.SuccessLoading(current))
+            }
+        }
+    }
+
     fun loadSeasonEpisodes(tvShow: TvShow, season: Season) = getSeason(tvShow, season)
 
     private fun getSeason(tvShow: TvShow, season: Season) = viewModelScope.launch(Dispatchers.IO) {
@@ -369,10 +438,12 @@ class TvShowViewModel(
             }
 
             database.episodeDao().insertAll(episodes)
+            clearSeasonEpisodeFailure(season.id)
 
             _seasonState.emit(SeasonState.SuccessLoading(tvShow, season, episodes))
         } catch (e: Exception) {
             Log.e("TvShowViewModel", "getSeason: ", e)
+            markSeasonEpisodeFailure(season.id)
             _seasonState.emit(SeasonState.FailedLoading(season, e))
         }
     }

@@ -47,7 +47,7 @@
         android:layout_marginTop="4dp"
         android:clipChildren="false"
         android:clipToPadding="false"
-        android:nestedScrollingEnabled="true"
+        android:nestedScrollingEnabled="false"
         android:orientation="vertical"
         android:overScrollMode="never"
         android:paddingStart="16dp"
