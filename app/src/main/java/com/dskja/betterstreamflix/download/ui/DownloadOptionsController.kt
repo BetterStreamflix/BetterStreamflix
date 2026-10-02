@@ -495,16 +495,20 @@ object DownloadOptionsController {
             DownloadErrorCode.NOSPACE -> R.string.download_error_nospace
             DownloadErrorCode.WIFI_REQUIRED -> R.string.download_error_wifi
             DownloadErrorCode.EXPIRED -> R.string.download_error_expired
+            DownloadErrorCode.NOT_FOUND -> R.string.download_error_not_found
             DownloadErrorCode.FILE_MISSING -> R.string.download_error_file_missing
             DownloadErrorCode.UNSUPPORTED -> R.string.download_error_unsupported
             DownloadErrorCode.EMPTY_RESPONSE -> R.string.download_error_empty_response
             DownloadErrorCode.UNKNOWN -> null
         }
-        // Also map raw JSON EOF messages that slipped through as UNKNOWN
+        // Also map raw messages that slipped through as UNKNOWN
         if (res == null) {
             val low = fallback.lowercase()
-            if (low.contains("end of input") || low.contains("character 0")) {
-                return context.getString(R.string.download_error_empty_response)
+            when {
+                low.contains("end of input") || low.contains("character 0") ->
+                    return context.getString(R.string.download_error_empty_response)
+                "404" in low || "not found" in low ->
+                    return context.getString(R.string.download_error_not_found)
             }
         }
         return res?.let { context.getString(it) } ?: fallback.ifBlank {

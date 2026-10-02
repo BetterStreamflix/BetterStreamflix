@@ -1,7 +1,11 @@
 package com.dskja.betterstreamflix.download
 
 import android.content.Context
+import android.net.Uri
 import androidx.media3.database.StandaloneDatabaseProvider
+import androidx.media3.datasource.BaseDataSource
+import androidx.media3.datasource.DataSource
+import androidx.media3.datasource.DataSpec
 import androidx.media3.datasource.cache.CacheDataSource
 import androidx.media3.datasource.cache.NoOpCacheEvictor
 import androidx.media3.datasource.cache.SimpleCache
@@ -19,6 +23,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import java.io.IOException
 import java.util.concurrent.Executor
 import java.util.concurrent.Executors
 
@@ -144,18 +149,49 @@ object StreamflixDownloadManager {
 
     /**
      * Read-only [CacheDataSource] for offline playback. Uses the same [SimpleCache] as
-     * downloads, blocks on cache (no silent network fallback), and does not write.
-     * MediaItem URI must remain the download request URI so cache keys match.
+     * downloads and does not write. Upstream intentionally rejects network opens so a
+     * cache miss cannot fetch an expired CDN URL and surface a raw HTTP 404.
+     *
+     * MediaItem must come from [DownloadRequest.toMediaItem] (stream keys + cache key)
+     * so HLS/DASH variants match what was downloaded — see [OfflinePlayback.buildOfflineMediaItem].
      */
     fun playbackCacheDataSourceFactory(context: Context): CacheDataSource.Factory {
         get(context)
         val cache = simpleCache ?: error("cache not ready")
-        val upstream = dataSourceFactory ?: error("factory not ready")
         return CacheDataSource.Factory()
             .setCache(cache)
-            .setUpstreamDataSourceFactory(upstream)
+            .setUpstreamDataSourceFactory(OfflineCacheMissDataSource.Factory)
             .setCacheWriteDataSinkFactory(null)
             .setFlags(CacheDataSource.FLAG_BLOCK_ON_CACHE)
+    }
+
+    /**
+     * Upstream used only for offline playback. Any open means the requested bytes were
+     * not in the download cache (wrong stream keys, wiped cache, incomplete download).
+     */
+    private class OfflineCacheMissDataSource : BaseDataSource(/* isNetwork= */ false) {
+        private var openedUri: Uri? = null
+
+        override fun open(dataSpec: DataSpec): Long {
+            openedUri = dataSpec.uri
+            throw IOException(
+                "Offline cache miss for ${dataSpec.uri} — re-download or play online",
+            )
+        }
+
+        override fun read(buffer: ByteArray, offset: Int, length: Int): Int {
+            throw IOException("Offline cache miss")
+        }
+
+        override fun getUri(): Uri? = openedUri
+
+        override fun close() {
+            openedUri = null
+        }
+
+        object Factory : DataSource.Factory {
+            override fun createDataSource(): DataSource = OfflineCacheMissDataSource()
+        }
     }
 
     fun notificationHelper(context: Context): DownloadNotificationHelper {
