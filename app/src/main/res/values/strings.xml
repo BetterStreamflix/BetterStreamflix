@@ -29,6 +29,10 @@
     <string name="providers_choose_title">Choose a provider</string>
     <string name="providers_choose_subtitle">Pick a source to browse movies and TV shows. Long-press to favorite. Use the gear on SerienStream or AniWorld to sign in.</string>
     <string name="providers_empty">No providers match this filter</string>
+    <string name="providers_search_hint">Search providers</string>
+    <string name="providers_search_empty">No providers match your search</string>
+    <string name="providers_search_clear">Clear search</string>
+    <string name="providers_search_clear_cd">Clear provider search</string>
 
     <string name="main_menu_change_provider">Change provider</string>
     <string name="main_menu_search">Search</string>

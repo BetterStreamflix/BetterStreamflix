@@ -1,15 +1,19 @@
 package com.dskja.betterstreamflix.fragments.providers
 
 import android.os.Bundle
+import android.text.Editable
+import android.text.TextWatcher
 import android.view.KeyEvent
 import android.view.LayoutInflater
 import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
+import android.view.inputmethod.EditorInfo
 import android.widget.AdapterView
 import android.widget.ArrayAdapter
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
+import androidx.core.view.isVisible
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
 import androidx.lifecycle.Lifecycle
@@ -48,6 +52,10 @@ class ProvidersTvFragment : Fragment() {
     private var languageLabels: List<String> = emptyList()
     private var selectedLanguageIndex: Int = 0
 
+    private var allProviders: List<ModelProvider> = emptyList()
+    private var searchQuery: String = ""
+    private var hasTakenListFocus: Boolean = false
+
     override fun onCreateView(
         inflater: LayoutInflater,
         container: ViewGroup?,
@@ -61,6 +69,7 @@ class ProvidersTvFragment : Fragment() {
         super.onViewCreated(view, savedInstanceState)
 
         initializeProviders()
+        initializeProviderSearch()
 
         viewLifecycleOwner.lifecycleScope.launch {
             viewModel.state.flowWithLifecycle(lifecycle, Lifecycle.State.STARTED).collect { state ->
@@ -211,6 +220,77 @@ class ProvidersTvFragment : Fragment() {
         }
     }
 
+    private fun initializeProviderSearch() {
+        binding.etProvidersSearch.apply {
+            setOnEditorActionListener { _, actionId, event ->
+                val isSubmitAction = actionId == EditorInfo.IME_ACTION_SEARCH ||
+                    actionId == EditorInfo.IME_ACTION_DONE
+                val isSubmitKey = event?.action == KeyEvent.ACTION_DOWN &&
+                    (event.keyCode == KeyEvent.KEYCODE_ENTER ||
+                        event.keyCode == KeyEvent.KEYCODE_NUMPAD_ENTER)
+                if (isSubmitAction || isSubmitKey) {
+                    if (binding.rvProviders.isVisible && appAdapter.itemCount > 0) {
+                        binding.rvProviders.requestFocus()
+                    } else if (binding.btnProvidersEmptyCta.isVisible) {
+                        binding.btnProvidersEmptyCta.requestFocus()
+                    }
+                    true
+                } else {
+                    false
+                }
+            }
+            setOnKeyListener { _, keyCode, event ->
+                if (event.action != KeyEvent.ACTION_DOWN) return@setOnKeyListener false
+                if (keyCode == KeyEvent.KEYCODE_DPAD_DOWN) {
+                    when {
+                        binding.rvProviders.isVisible && appAdapter.itemCount > 0 -> {
+                            binding.rvProviders.requestFocus()
+                            true
+                        }
+                        binding.btnProvidersEmptyCta.isVisible -> {
+                            binding.btnProvidersEmptyCta.requestFocus()
+                            true
+                        }
+                        else -> false
+                    }
+                } else {
+                    false
+                }
+            }
+            addTextChangedListener(object : TextWatcher {
+                override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
+                override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
+                override fun afterTextChanged(s: Editable?) {
+                    searchQuery = s?.toString().orEmpty()
+                    binding.btnProvidersSearchClear.isVisible = searchQuery.isNotBlank()
+                    applyProviderFilter(requestListFocus = false)
+                }
+            })
+        }
+
+        binding.btnProvidersSearchClear.setOnClickListener {
+            binding.etProvidersSearch.setText("")
+            binding.etProvidersSearch.requestFocus()
+        }
+        binding.btnProvidersSearchClear.setOnKeyListener { _, keyCode, event ->
+            if (event.action == KeyEvent.ACTION_DOWN && keyCode == KeyEvent.KEYCODE_DPAD_DOWN) {
+                when {
+                    binding.rvProviders.isVisible && appAdapter.itemCount > 0 -> {
+                        binding.rvProviders.requestFocus()
+                        true
+                    }
+                    binding.btnProvidersEmptyCta.isVisible -> {
+                        binding.btnProvidersEmptyCta.requestFocus()
+                        true
+                    }
+                    else -> false
+                }
+            } else {
+                false
+            }
+        }
+    }
+
     private fun showLanguageDialog() {
         if (languageLabels.isEmpty()) return
         AlertDialog.Builder(requireContext())
@@ -229,6 +309,7 @@ class ProvidersTvFragment : Fragment() {
 
     private fun applyLanguageFilter(position: Int) {
         selectedLanguageIndex = position
+        hasTakenListFocus = false
         when (position) {
             0 -> {
                 viewModel.getProviders()
@@ -247,21 +328,47 @@ class ProvidersTvFragment : Fragment() {
     }
 
     private fun displayProviders(providers: List<ModelProvider>) {
-        appAdapter.submitList(providers.onEach {
+        allProviders = providers
+        applyProviderFilter(requestListFocus = !hasTakenListFocus)
+    }
+
+    private fun applyProviderFilter(requestListFocus: Boolean) {
+        val filtered = ProvidersSearch.filter(allProviders, searchQuery)
+        appAdapter.submitList(filtered.onEach {
             it.itemType = AppAdapter.Type.PROVIDER_TV_ITEM
         })
-        val empty = providers.isEmpty()
+        val empty = filtered.isEmpty()
+        val searching = searchQuery.isNotBlank()
         binding.rvProviders.visibility = if (empty) View.GONE else View.VISIBLE
+        binding.tvProvidersEmpty.setText(
+            if (searching) R.string.providers_search_empty else R.string.providers_empty,
+        )
+        binding.btnProvidersEmptyCta.setText(
+            if (searching) R.string.providers_search_clear else R.string.exp_empty_all_languages,
+        )
         ExpEmptyChrome.bind(
-            emptyView = binding.root.findViewById(R.id.tv_providers_empty),
-            emptyRule = binding.root.findViewById(R.id.v_providers_empty_rule),
-            emptyCta = binding.root.findViewById(R.id.btn_providers_empty_cta),
+            emptyView = binding.tvProvidersEmpty,
+            emptyRule = binding.vProvidersEmptyRule,
+            emptyCta = binding.btnProvidersEmptyCta,
             visible = empty,
             tintOnSurfaceVariant = false,
-            onCtaClick = { applyLanguageFilter(0) },
+            onCtaClick = {
+                if (searching) {
+                    binding.etProvidersSearch.setText("")
+                    binding.etProvidersSearch.requestFocus()
+                } else {
+                    applyLanguageFilter(0)
+                }
+            },
         )
-if (!empty) {
-            binding.rvProviders.requestFocus()
+        when {
+            !empty && requestListFocus -> {
+                binding.rvProviders.requestFocus()
+                hasTakenListFocus = true
+            }
+            empty && searching && binding.btnProvidersEmptyCta.isVisible -> {
+                // Keep focus on the search field while typing; CTA is reachable via D-pad down.
+            }
         }
     }
 }
