@@ -17,6 +17,24 @@ object TitleLogoPresentation {
     }
 
     /**
+     * Wordmark-friendly ImageView defaults: fitStart, no crop, crisp padding.
+     * Call before Glide so scaleType survives into decode.
+     */
+    fun polishLogoImage(imageView: ImageView) {
+        clearImagePlate(imageView)
+        imageView.scaleType = ImageView.ScaleType.FIT_START
+        imageView.adjustViewBounds = true
+        imageView.cropToPadding = false
+        // Soft horizontal inset so wide logos breathe without a hard plate.
+        val density = imageView.resources.displayMetrics.density
+        val padH = (2 * density).toInt()
+        val padV = (4 * density).toInt()
+        if (imageView.paddingLeft < padH || imageView.paddingTop < padV) {
+            imageView.setPadding(padH, padV, padH, padV)
+        }
+    }
+
+    /**
      * Optional soft plate on the logo slot parent when showing fallback title text
      * on surfaces that do not already ship a vignette (rare). Featured/Detail rely on art scrims.
      */
