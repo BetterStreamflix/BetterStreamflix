@@ -8,12 +8,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
-<<<<<<< HEAD
 - Search result order chips (Relevance / Newest) plus year filter on Mobile and TV Search; preference keys `SEARCH_SORT_MODE` and `SEARCH_YEAR_FILTER`
-=======
 - Italian catalogs: **Eurostreaming** (`eurostreaming.design`), **Altadefinizione** (`alta-definizione.beer`), and **Altadefinizione X** (`altadefinizionex.me`) — Home/search/detail/seasons with VixSrc (and VidxGo on X)
 - Shared `ItalianVixCatalog` helpers for TMDb-backed `/detail/film-|tv-` Italian mirrors
->>>>>>> dc882858 (Add Eurostreaming and Altadefinizione Italian catalogs)
 - Community supporters recognition on Support hub (Mobile + TV), About, and Thanks dialog — maintainable `assets/supporters.json` (starts with **Zem936**, first Buy Me a Coffee supporter)
 - Buy Me a Coffee short-link constant (`buymeacoff.ee/betterstreamflix`) alongside the canonical URL
 
