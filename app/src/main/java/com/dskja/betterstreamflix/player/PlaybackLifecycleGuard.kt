@@ -10,7 +10,7 @@ import java.util.concurrent.atomic.AtomicReference
  */
 object PlaybackLifecycleGuard {
     fun interface StopHandle {
-        /** Pause, stop, and release local playback (and MediaSession). Idempotent. */
+        /** Soft-stop local playback (silence + detach); ExoPlayer.release runs in onDestroyView. */
         fun stopAndRelease()
     }
 

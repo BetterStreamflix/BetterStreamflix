@@ -51,6 +51,7 @@ import androidx.navigation.fragment.navArgs
 import com.dskja.betterstreamflix.R
 import com.dskja.betterstreamflix.player.PlaybackFailover
 import com.dskja.betterstreamflix.player.PlaybackLifecycleGuard
+import com.dskja.betterstreamflix.player.PlayerTeardownPolicy
 import com.dskja.betterstreamflix.player.PlayerBuilderFactory
 import com.dskja.betterstreamflix.player.SerienStreamBypassHelper
 import com.dskja.betterstreamflix.providers.SerienStreamAuthManager
@@ -174,6 +175,8 @@ class PlayerMobileFragment : Fragment() {
     private var nextEpisodeOverlayDismissed = false
     /** Set once the user leaves the player — blocks further UI/player work. */
     private var isTearingDown = false
+    private var playbackSoftStopped = false
+    private var playerViewDetached = false
     private var playerReleased = false
     private var mediaSessionReleased = true
     private var chooserReceiverRegistered = false
@@ -760,7 +763,7 @@ class PlayerMobileFragment : Fragment() {
                 viewLifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
                     viewModel.playPreviousOrNextEpisode.collect { nextEpisode ->
                     if (isTearingDown || !isAdded || _binding == null) return@collect
-                    releasePlayer()
+                    releasePlayer(ReleaseMode.HARD_REPLACE)
                     isSetupDone = false
                     val live = UserPreferences.currentProvider is IptvProvider
                     val action = PlayerMobileFragmentDirections
@@ -818,10 +821,15 @@ class PlayerMobileFragment : Fragment() {
      */
     fun forceStopPlayback() {
         isTearingDown = true
-        stopProgressHandler()
-        stopLiveEdgeWatcher()
-        releasePlayer()
+        releasePlayer(ReleaseMode.SOFT_LEAVE)
     }
+
+    private fun mayRunPlayerListenerWork(): Boolean =
+        PlayerTeardownPolicy.allowListenerWork(
+            tearingDown = isTearingDown,
+            playerReleased = playerReleased,
+            hasBinding = _binding != null,
+        )
 
     private fun isInPipMode(): Boolean =
         activity?.isInPictureInPictureMode == true
@@ -872,7 +880,7 @@ class PlayerMobileFragment : Fragment() {
             }
         }
         if (isRemoving || isTearingDown) {
-            releasePlayer()
+            releasePlayer(ReleaseMode.SOFT_LEAVE)
         }
     }
 
@@ -907,7 +915,7 @@ class PlayerMobileFragment : Fragment() {
             runCatching { castPlayer?.removeListener(listener) }
         }
         castEndedListener = null
-        releasePlayer()
+        releasePlayer(ReleaseMode.HARD_DESTROY)
         runCatching {
             appContext?.let { CastPlaybackHub.detachUi(it) }
         }
@@ -941,11 +949,11 @@ class PlayerMobileFragment : Fragment() {
     }
 
     private fun safeNavigateUp() {
-        if (isTearingDown) return
         if (!isAdded) return
-        // Release the player before popping the back stack so ExoPlayer/PlayerView
-        // cannot race OEM destroy sequences after navigateUp().
-        forceStopPlayback()
+        if (!isTearingDown) {
+            // Soft-stop before pop so audio stops immediately; Exo release waits for onDestroyView.
+            forceStopPlayback()
+        }
         runCatching { findNavController().navigateUp() }
     }
 
@@ -1441,7 +1449,7 @@ class PlayerMobileFragment : Fragment() {
     ) {
         if (isTearingDown || !isAdded || _binding == null) return
         EpisodeManager.getPreviousEpisode()
-        releasePlayer()
+        releasePlayer(ReleaseMode.HARD_REPLACE)
         isSetupDone = false
         val live = UserPreferences.currentProvider is IptvProvider
         val action = PlayerMobileFragmentDirections
@@ -1549,7 +1557,7 @@ class PlayerMobileFragment : Fragment() {
     ) {
         if (isTearingDown || !isAdded || _binding == null) return
         EpisodeManager.getNextEpisode() // advance index to match playNextEpisode
-        releasePlayer()
+        releasePlayer(ReleaseMode.HARD_REPLACE)
         isSetupDone = false
         val live = UserPreferences.currentProvider is IptvProvider
         val action = PlayerMobileFragmentDirections
@@ -1825,6 +1833,7 @@ class PlayerMobileFragment : Fragment() {
         val playbackListenerLocal = object : Player.Listener {
             override fun onIsPlayingChanged(isPlaying: Boolean) {
                 super.onIsPlayingChanged(isPlaying)
+                if (!mayRunPlayerListenerWork()) return
                 binding.pvPlayer.keepScreenOn = isPlaying || UserPreferences.keepScreenOnWhenPaused
 
                 if (isPlaying) {
@@ -3167,8 +3176,10 @@ class PlayerMobileFragment : Fragment() {
     }
 
     private fun initializePlayer(extraBuffering: Boolean, softwareDecoder: Boolean = currentSoftwareDecoder) {
-        releasePlayer()
+        releasePlayer(ReleaseMode.HARD_REPLACE)
         playerReleased = false
+        playbackSoftStopped = false
+        playerViewDetached = false
         mediaSessionReleased = true
         currentExtraBuffering = extraBuffering
         currentSoftwareDecoder = softwareDecoder
@@ -3212,13 +3223,15 @@ class PlayerMobileFragment : Fragment() {
             DefaultDataSource.Factory(requireContext(), httpDataSource)
         }
 
-        releasePlayer()
+        releasePlayer(ReleaseMode.HARD_REPLACE)
         player = buildPlayer(extraBuffering).also { built ->
                 mediaSession = MediaSession.Builder(requireContext(), built)
                     .build()
                 mediaSessionReleased = false
             }
         playerReleased = false
+        playbackSoftStopped = false
+        playerViewDetached = false
         PlaybackLifecycleGuard.register(playbackStopHandle)
 
         SubtitleOffset.restore(requireContext(), subtitleOffsetKey())
@@ -3471,27 +3484,43 @@ class PlayerMobileFragment : Fragment() {
         activity?.window?.clearFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
     }
 
-    private fun releasePlayer() {
+    private enum class ReleaseMode {
+        /** Back / nav away — silence audio, detach views; defer ExoPlayer.release(). */
+        SOFT_LEAVE,
+        /** Swap server/episode on the same screen — must release old Exo instance. */
+        HARD_REPLACE,
+        /** onDestroyView — surface cleared, safe to release ExoPlayer. */
+        HARD_DESTROY,
+    }
+
+    private fun detachPlayerViews() {
+        val b = _binding ?: return
+        runCatching {
+            b.pvPlayer.player = null
+            b.settings.player = null
+            b.settings.subtitleView = null
+        }
+        runCatching {
+            com.bumptech.glide.Glide.with(b.root).clear(b.ivNextEpisodePoster)
+        }
+        playerViewDetached = true
+    }
+
+    private fun releasePlayer(mode: ReleaseMode) {
         stopProgressHandler()
         stopLiveEdgeWatcher()
         PlaybackLifecycleGuard.unregister(playbackStopHandle)
-        val b = _binding
-        if (b != null) {
-            runCatching {
-                b.pvPlayer.player = null
-                b.settings.player = null
-                b.settings.subtitleView = null
-            }
-            runCatching {
-                com.bumptech.glide.Glide.with(b.root).clear(b.ivNextEpisodePoster)
-            }
+
+        if (_binding != null) {
+            detachPlayerViews()
         }
-        // Release MediaSession BEFORE the player — a live session can keep audio focus
-        // and continue commanding a "released" ExoPlayer (zombie audio on Home).
+
+        // Release MediaSession BEFORE touching ExoPlayer — keeps audio focus from zombie playback.
         if (::mediaSession.isInitialized && !mediaSessionReleased) {
             runCatching { mediaSession.release() }
             mediaSessionReleased = true
         }
+
         if (::player.isInitialized && !playerReleased) {
             playbackListener?.let { runCatching { player.removeListener(it) } }
             playbackListener = null
@@ -3501,8 +3530,20 @@ class PlayerMobileFragment : Fragment() {
                 player.stop()
                 player.clearMediaItems()
             }
-            runCatching { player.release() }
-            playerReleased = true
+            playbackSoftStopped = true
+
+            val hardRelease = when (mode) {
+                ReleaseMode.HARD_REPLACE, ReleaseMode.HARD_DESTROY -> true
+                ReleaseMode.SOFT_LEAVE -> PlayerTeardownPolicy.allowHardRelease(
+                    viewAttached = _binding != null,
+                    playerViewDetached = playerViewDetached,
+                    destroying = mode == ReleaseMode.HARD_DESTROY,
+                )
+            }
+            if (hardRelease) {
+                runCatching { player.release() }
+                playerReleased = true
+            }
         }
     }
 

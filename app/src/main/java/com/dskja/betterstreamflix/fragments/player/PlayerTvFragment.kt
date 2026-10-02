@@ -61,6 +61,7 @@ import com.dskja.betterstreamflix.cast.CastPlaybackHub
 import com.dskja.betterstreamflix.cast.CastQueueCoordinator
 import com.dskja.betterstreamflix.player.PlaybackFailover
 import com.dskja.betterstreamflix.player.PlaybackLifecycleGuard
+import com.dskja.betterstreamflix.player.PlayerTeardownPolicy
 import com.dskja.betterstreamflix.player.PlayerBuilderFactory
 import com.dskja.betterstreamflix.player.SerienStreamBypassHelper
 import com.dskja.betterstreamflix.providers.SerienStreamAuthManager
@@ -162,6 +163,8 @@ class PlayerTvFragment : Fragment() {
     private var playerReleased = false
     private var mediaSessionReleased = true
     private var isTearingDown = false
+    private var playbackSoftStopped = false
+    private var playerViewDetached = false
     private var playbackListener: Player.Listener? = null
     private var castPlayer: CastPlayer? = null
     private var castEndedListener: Player.Listener? = null
@@ -770,7 +773,7 @@ class PlayerTvFragment : Fragment() {
                 viewLifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
                     viewModel.playPreviousOrNextEpisode.collect { nextEpisode ->
                         if (isTearingDown || !isAdded || _binding == null) return@collect
-                        releasePlayer()
+                        releasePlayer(ReleaseMode.HARD_REPLACE)
                         isSetupDone = false
 
                         val live = UserPreferences.currentProvider is IptvProvider
@@ -843,7 +846,7 @@ class PlayerTvFragment : Fragment() {
             }
         }
         if (isRemoving || isTearingDown) {
-            releasePlayer()
+            releasePlayer(ReleaseMode.SOFT_LEAVE)
         }
     }
 
@@ -853,11 +856,16 @@ class PlayerTvFragment : Fragment() {
      */
     fun forceStopPlayback() {
         isTearingDown = true
-        stopProgressHandler()
-        stopLiveEdgeWatcher()
         clearBypassSession(dismissDialog = true)
-        releasePlayer()
+        releasePlayer(ReleaseMode.SOFT_LEAVE)
     }
+
+    private fun mayRunPlayerListenerWork(): Boolean =
+        PlayerTeardownPolicy.allowListenerWork(
+            tearingDown = isTearingDown,
+            playerReleased = playerReleased,
+            hasBinding = _binding != null,
+        )
 
     override fun onDestroyView() {
         // Tear down while still attached — requireContext()/binding after super crash on
@@ -882,7 +890,7 @@ class PlayerTvFragment : Fragment() {
             runCatching { castPlayer?.removeListener(listener) }
         }
         castEndedListener = null
-        releasePlayer()
+        releasePlayer(ReleaseMode.HARD_DESTROY)
         runCatching {
             appContext?.let { CastPlaybackHub.detachUi(it) }
         }
@@ -901,7 +909,9 @@ class PlayerTvFragment : Fragment() {
 
     private fun safeNavigateUp() {
         if (!isAdded) return
-        forceStopPlayback()
+        if (!isTearingDown) {
+            forceStopPlayback()
+        }
         runCatching { findNavController().navigateUp() }
     }
 
@@ -1091,7 +1101,7 @@ class PlayerTvFragment : Fragment() {
     ) {
         if (isTearingDown || !isAdded || _binding == null) return
         EpisodeManager.getPreviousEpisode()
-        releasePlayer()
+        releasePlayer(ReleaseMode.HARD_REPLACE)
         isSetupDone = false
         val live = UserPreferences.currentProvider is IptvProvider
         val navArgs = Bundle().apply {
@@ -1130,7 +1140,7 @@ class PlayerTvFragment : Fragment() {
     ) {
         if (isTearingDown || !isAdded || _binding == null) return
         EpisodeManager.getNextEpisode()
-        releasePlayer()
+        releasePlayer(ReleaseMode.HARD_REPLACE)
         isSetupDone = false
         val live = UserPreferences.currentProvider is IptvProvider
         val navArgs = Bundle().apply {
@@ -1759,6 +1769,7 @@ class PlayerTvFragment : Fragment() {
                 }
 
                 override fun onIsPlayingChanged(isPlaying: Boolean) {
+                    if (!mayRunPlayerListenerWork()) return
                     binding.pvPlayer.keepScreenOn = isPlaying
 
                     if (isPlaying) {
@@ -2708,8 +2719,10 @@ class PlayerTvFragment : Fragment() {
         }
 
         private fun initializePlayer(extraBuffering: Boolean, softwareDecoder: Boolean = currentSoftwareDecoder) {
-            releasePlayer()
+            releasePlayer(ReleaseMode.HARD_REPLACE)
             playerReleased = false
+            playbackSoftStopped = false
+            playerViewDetached = false
             mediaSessionReleased = true
             isTearingDown = false
             currentExtraBuffering = extraBuffering
@@ -2999,37 +3012,60 @@ class PlayerTvFragment : Fragment() {
             activity?.window?.clearFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         }
 
-        private fun releasePlayer() {
-            stopProgressHandler()
-            stopLiveEdgeWatcher()
-            PlaybackLifecycleGuard.unregister(playbackStopHandle)
-            val b = _binding
-            if (b != null) {
-                runCatching {
-                    b.pvPlayer.player = null
-                    b.settings.player = null
-                    b.settings.subtitleView = null
-                }
+    private enum class ReleaseMode {
+        SOFT_LEAVE,
+        HARD_REPLACE,
+        HARD_DESTROY,
+    }
+
+    private fun detachPlayerViews() {
+        val b = _binding ?: return
+        runCatching {
+            b.pvPlayer.player = null
+            b.settings.player = null
+            b.settings.subtitleView = null
+        }
+        playerViewDetached = true
+    }
+
+    private fun releasePlayer(mode: ReleaseMode) {
+        stopProgressHandler()
+        stopLiveEdgeWatcher()
+        PlaybackLifecycleGuard.unregister(playbackStopHandle)
+
+        if (_binding != null) {
+            detachPlayerViews()
+        }
+
+        if (::mediaSession.isInitialized && !mediaSessionReleased) {
+            runCatching { mediaSession.release() }
+            mediaSessionReleased = true
+        }
+        if (::player.isInitialized && !playerReleased) {
+            playbackListener?.let { runCatching { player.removeListener(it) } }
+            playbackListener = null
+            runCatching {
+                player.playWhenReady = false
+                player.pause()
+                player.stop()
+                player.clearMediaItems()
             }
-            // Release MediaSession BEFORE the player — a live session can keep audio focus
-            // and continue commanding a "released" ExoPlayer (zombie audio on Home).
-            if (::mediaSession.isInitialized && !mediaSessionReleased) {
-                runCatching { mediaSession.release() }
-                mediaSessionReleased = true
+            playbackSoftStopped = true
+
+            val hardRelease = when (mode) {
+                ReleaseMode.HARD_REPLACE, ReleaseMode.HARD_DESTROY -> true
+                ReleaseMode.SOFT_LEAVE -> PlayerTeardownPolicy.allowHardRelease(
+                    viewAttached = _binding != null,
+                    playerViewDetached = playerViewDetached,
+                    destroying = mode == ReleaseMode.HARD_DESTROY,
+                )
             }
-            if (::player.isInitialized && !playerReleased) {
-                playbackListener?.let { runCatching { player.removeListener(it) } }
-                playbackListener = null
-                runCatching {
-                    player.playWhenReady = false
-                    player.pause()
-                    player.stop()
-                    player.clearMediaItems()
-                }
+            if (hardRelease) {
                 runCatching { player.release() }
                 playerReleased = true
             }
         }
+    }
 
     private fun showQrDialog(qrContent: String, deepLink: String, wsUrl: String) {
         if (!isAdded || _binding == null) return
@@ -3265,7 +3301,7 @@ class PlayerTvFragment : Fragment() {
 
         dataSourceFactory = DefaultDataSource.Factory(requireContext(), httpDataSource)
 
-        releasePlayer()
+        releasePlayer(ReleaseMode.HARD_REPLACE)
         player = buildPlayer(extraBuffering)
         playerReleased = false
 
