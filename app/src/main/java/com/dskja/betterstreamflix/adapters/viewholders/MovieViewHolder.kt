@@ -400,58 +400,19 @@ class MovieViewHolder(
         }
     }
 
-    internal fun handleTrailerClick(trailer: String, logPrefix: String) {
+    internal fun handleTrailerClick(trailer: String, logPrefix: String = "Movie") {
         Log.d(TAG, "$logPrefix: Clicked. Trailer URL: $trailer")
-
-        val youtubeIntent = Intent(Intent.ACTION_VIEW, trailer.toUri())
-        val prefs = PreferenceManager.getDefaultSharedPreferences(context)
-        val preferredPlayer = prefs.getString(KEY_PREFERRED_PLAYER, PLAYER_ASK)
-        Log.d(TAG, "$logPrefix: Preferred player from settings: $preferredPlayer")
-
-        when (preferredPlayer) {
-            PLAYER_SMARTTUBE -> {
-                handleSmartTubeSelection(trailer, logPrefix)
-            }
-            PLAYER_SMARTTUBE_STABLE -> {
-                Log.d(TAG, "$logPrefix: Launching SmartTube Stable (Preferred)")
-                launchSmartTube(SMARTTUBE_STABLE_PACKAGE, trailer)
-            }
-            PLAYER_SMARTTUBE_BETA -> {
-                Log.d(TAG, "$logPrefix: Launching SmartTube Beta (Preferred)")
-                launchSmartTube(SMARTTUBE_BETA_PACKAGE, trailer)
-            }
-            PLAYER_YOUTUBE -> {
-                Log.d(TAG, "$logPrefix: Launching YouTube (Preferred)")
-                safeLaunchYoutube(youtubeIntent)
-            }
-            else -> { // PLAYER_ASK or nothing set
-                val stPackages = getInstalledSmartTubePackages()
-                if (stPackages.isNotEmpty()) {
-                    Log.d(TAG, "$logPrefix: Showing choice dialog (Ask)")
-                    (if (ExperimentalMobileDesign.enabled()) MaterialAlertDialogBuilder(context) else AlertDialog.Builder(context))
-                        .setTitle(context.getString(R.string.watch_trailer_with))
-                        .setItems(arrayOf(context.getString(R.string.youtube), context.getString(R.string.smarttube))) { _, which ->
-                            if (which == 0) {
-                                Log.d(TAG, "$logPrefix: Dialog (Ask): YouTube selected")
-                                safeLaunchYoutube(youtubeIntent)
-                            } else {
-                                Log.d(TAG, "$logPrefix: Dialog (Ask): SmartTube selected")
-                                // Qui, non salvare la preferenza per la versione SmartTube,
-                                // ma chiedi quale usare se ci sono due installazioni.
-                                if (stPackages.size > 1) {
-                                    showSmartTubeVersionDialog(stPackages, trailer, false)
-                                } else {
-                                    launchSmartTube(stPackages[0], trailer)
-                                }
-                            }
-                        }
-                        .create()
-                        .also { com.dskja.betterstreamflix.ui.TrailerPlaybackController.polishChooserDialog(it) }
-                } else {
-                    Log.d(TAG, "$logPrefix: SmartTube not found, launching YouTube directly")
-                    safeLaunchYoutube(youtubeIntent)
-                }
-            }
+        val activity = context.toActivity()
+        val fragment = activity?.getCurrentFragment() as? Fragment
+        if (fragment != null) {
+            TrailerPlaybackController.play(fragment, trailer)
+        } else {
+            TrailerPlaybackController.play(
+                context,
+                activity,
+                trailer,
+                activity?.supportFragmentManager,
+            )
         }
     }
 
