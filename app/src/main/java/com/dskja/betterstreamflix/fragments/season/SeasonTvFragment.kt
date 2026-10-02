@@ -20,14 +20,13 @@ import com.dskja.betterstreamflix.databinding.FragmentSeasonTvBinding
 import com.dskja.betterstreamflix.download.ui.DownloadOptionsController
 import com.dskja.betterstreamflix.models.Episode
 import com.dskja.betterstreamflix.models.TvShow
-import com.dskja.betterstreamflix.utils.CacheUtils
 import com.dskja.betterstreamflix.utils.ExpDialogChrome
 import com.dskja.betterstreamflix.utils.ExpEmptyChrome
 import com.dskja.betterstreamflix.utils.Http409CacheGuard
-import com.dskja.betterstreamflix.utils.LoggingUtils
 import com.dskja.betterstreamflix.utils.TmdbUtils
 import com.dskja.betterstreamflix.utils.format
 import com.dskja.betterstreamflix.utils.viewModelsFactory
+import com.dskja.betterstreamflix.ui.DetailLoadingErrorChrome
 import com.dskja.betterstreamflix.ui.TrailerPlaybackController
 import androidx.core.view.isVisible
 import kotlinx.coroutines.Dispatchers
@@ -91,26 +90,13 @@ class SeasonTvFragment : Fragment() {
                         if (http409Guard.handle(requireContext(), state.error) { viewModel.getSeasonEpisodes(args.seasonId) }) {
                                 return@collect
                             }
-                        Toast.makeText(
-                            requireContext(),
-                            state.error.message ?: "",
-                            Toast.LENGTH_SHORT
-                        ).show()
-                        binding.isLoading.apply {
-                            com.dskja.betterstreamflix.utils.ExpPressEffects.showLoadingSkeleton(root, false)
-                            gIsLoadingRetry.visibility = View.VISIBLE
-                            com.dskja.betterstreamflix.utils.ExpPressEffects.animateLoadingError(root)
-                            btnIsLoadingRetry.setOnClickListener { viewModel.getSeasonEpisodes(args.seasonId) }
-                            btnIsLoadingClearCache.setOnClickListener {
-                                CacheUtils.clearAppCache(requireContext())
-                                com.dskja.betterstreamflix.utils.ExpDialogChrome.notify(requireContext(), getString(com.dskja.betterstreamflix.R.string.clear_cache_done), com.dskja.betterstreamflix.R.string.loading_error_clear_cache)
-                                viewModel.getSeasonEpisodes(args.seasonId)
-                            }
-                            btnIsLoadingErrorDetails.setOnClickListener {
-                                LoggingUtils.showErrorDialog(requireContext(), state.error)
-                            }
-                            btnIsLoadingRetry.requestFocus()
-                        }
+                        DetailLoadingErrorChrome.bind(
+                            root = binding.isLoading.root,
+                            context = requireContext(),
+                            error = state.error,
+                            requestFocusOnRetry = true,
+                            onRetry = { viewModel.getSeasonEpisodes(args.seasonId) },
+                        )
                     }
                 }
             }
@@ -118,8 +104,9 @@ class SeasonTvFragment : Fragment() {
     }
 
     override fun onDestroyView() {
-        super.onDestroyView()
+        _binding?.let { appAdapter.onSaveInstanceState(it.hgvEpisodes) }
         _binding = null
+        super.onDestroyView()
     }
 
     private fun initializeSeason() {

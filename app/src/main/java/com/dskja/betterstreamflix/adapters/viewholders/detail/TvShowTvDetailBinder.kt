@@ -153,7 +153,42 @@ internal fun TvShowViewHolder.bindTvShowTvDetail(binding: ContentTvShowTvBinding
         }
     }
 
-    binding.tvTvShowOverview.text = tvShow.overview
+    binding.tvTvShowOverview.apply {
+        text = tvShow.overview
+        val collapsedLines = 4
+        maxLines = collapsedLines
+        ellipsize = android.text.TextUtils.TruncateAt.END
+        var expanded = false
+        fun applyExpand(open: Boolean) {
+            expanded = open
+            maxLines = if (open) Integer.MAX_VALUE else collapsedLines
+            ellipsize = if (open) null else android.text.TextUtils.TruncateAt.END
+        }
+        if (!tvShow.overview.isNullOrBlank()) {
+            isFocusable = true
+            isFocusableInTouchMode = true
+            isClickable = true
+            setOnClickListener {
+                ExpMotion.hapticTap(it)
+                applyExpand(!expanded)
+            }
+            post {
+                val overflowing = lineCount > collapsedLines || (text?.length ?: 0) > 220
+                if (!overflowing) {
+                    isFocusable = false
+                    isClickable = false
+                    setOnClickListener(null)
+                    maxLines = Integer.MAX_VALUE
+                    ellipsize = null
+                }
+            }
+            nextFocusDownId = binding.btnTvShowWatchNow.id
+            binding.btnTvShowWatchNow.nextFocusUpId = id
+        } else {
+            isFocusable = false
+            setOnClickListener(null)
+        }
+    }
     val episodeToWatch = tvShow.episodeToWatch
     val episodeSeason = resolveEpisodeSeason(episodeToWatch)
 
@@ -238,6 +273,17 @@ internal fun TvShowViewHolder.bindTvShowTvDetail(binding: ContentTvShowTvBinding
         isVisible = watchHistory != null
     }
 
+    fun rewireTvCtaFocus() {
+        com.dskja.betterstreamflix.utils.TvFocusChain.linkHorizontal(
+            binding.btnTvShowWatchNow,
+            binding.btnTvShowTrailer,
+            binding.btnTvShowDownload,
+            binding.root.findViewById(R.id.btn_tv_show_watched),
+            binding.root.findViewById(R.id.btn_tv_show_share),
+            binding.btnTvShowFavorite,
+        )
+    }
+
     binding.btnTvShowTrailer.apply {
         val year = tvShow.released?.format("yyyy")?.toIntOrNull()
         val canLookup = TmdbUtils.hasTrailerLookupKeys(
@@ -258,7 +304,9 @@ internal fun TvShowViewHolder.bindTvShowTvDetail(binding: ContentTvShowTvBinding
                     }
                 }
             }
-            isVisible = !trailerUrl.isNullOrBlank() || canLookup
+            // Hide until a playable URL is ready — avoids dead clicks while lookup runs.
+            isVisible = !trailerUrl.isNullOrBlank()
+            rewireTvCtaFocus()
         }
         bindTrailer(tvShow.trailer)
         if (tvShow.trailer.isNullOrBlank() && canLookup) {
@@ -357,26 +405,36 @@ internal fun TvShowViewHolder.bindTvShowTvDetail(binding: ContentTvShowTvBinding
     }
 
     binding.root.findViewById<View>(R.id.btn_tv_show_share)?.let { shareBtn ->
-        shareBtn.setOnClickListener {
-            ExpMotion.hapticTap(it)
-            val share = Intent(Intent.ACTION_SEND).apply {
-                type = "text/plain"
-                putExtra(Intent.EXTRA_SUBJECT, tvShow.title)
-                putExtra(
-                    Intent.EXTRA_TEXT,
-                    buildString {
-                        append(tvShow.title)
-                        tvShow.released?.format("yyyy")?.let { year -> append(" ($year)") }
-                        tvShow.overview?.takeIf { it.isNotBlank() }?.let { overview ->
-                            append("\n\n").append(overview.take(280))
-                        }
-                        tvShow.trailer?.let { trailer -> append("\n").append(trailer) }
-                    },
-                )
-            }
-            context.startActivity(
-                Intent.createChooser(share, context.getString(R.string.detail_share)),
+        val share = Intent(Intent.ACTION_SEND).apply {
+            type = "text/plain"
+            putExtra(Intent.EXTRA_SUBJECT, tvShow.title)
+            putExtra(
+                Intent.EXTRA_TEXT,
+                buildString {
+                    append(tvShow.title)
+                    tvShow.released?.format("yyyy")?.let { year -> append(" ($year)") }
+                    tvShow.overview?.takeIf { it.isNotBlank() }?.let { overview ->
+                        append("\n\n").append(overview.take(280))
+                    }
+                    tvShow.trailer?.let { trailer -> append("\n").append(trailer) }
+                },
             )
+        }
+        val canShare = share.resolveActivity(context.packageManager) != null
+        shareBtn.isVisible = canShare
+        if (canShare) {
+            shareBtn.setOnClickListener {
+                ExpMotion.hapticTap(it)
+                // Prefer direct send — Leanback remotes struggle with chooser UIs.
+                runCatching { context.startActivity(share) }
+                    .onFailure {
+                        context.startActivity(
+                            Intent.createChooser(share, context.getString(R.string.detail_share)),
+                        )
+                    }
+            }
+        } else {
+            shareBtn.setOnClickListener(null)
         }
     }
 
@@ -454,14 +512,7 @@ internal fun TvShowViewHolder.bindTvShowTvDetail(binding: ContentTvShowTvBinding
         applyFavoriteState(tvShow.isFavorite)
     }
 
-    com.dskja.betterstreamflix.utils.TvFocusChain.linkHorizontal(
-        binding.btnTvShowWatchNow,
-        binding.btnTvShowTrailer,
-        binding.btnTvShowDownload,
-        binding.root.findViewById(R.id.btn_tv_show_watched),
-        binding.root.findViewById(R.id.btn_tv_show_share),
-        binding.btnTvShowFavorite,
-    )
+    rewireTvCtaFocus()
 }
 
 

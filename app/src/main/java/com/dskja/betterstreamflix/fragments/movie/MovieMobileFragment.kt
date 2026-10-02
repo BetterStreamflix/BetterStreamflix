@@ -4,7 +4,6 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.widget.Toast
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.flowWithLifecycle
@@ -17,14 +16,13 @@ import com.dskja.betterstreamflix.database.AppDatabase
 import com.dskja.betterstreamflix.databinding.FragmentMovieMobileBinding
 import com.dskja.betterstreamflix.models.Movie
 import com.dskja.betterstreamflix.ui.DetailHeaderController
+import com.dskja.betterstreamflix.ui.DetailLoadingErrorChrome
 import com.dskja.betterstreamflix.ui.DetailTab
 import com.dskja.betterstreamflix.ui.SpacingItemDecoration
-import com.dskja.betterstreamflix.utils.CacheUtils
 import com.dskja.betterstreamflix.utils.ExpNavAutoHide
 import com.dskja.betterstreamflix.utils.ExpMotion
 import com.dskja.betterstreamflix.utils.ExperimentalMobileDesign
 import com.dskja.betterstreamflix.utils.Http409CacheGuard
-import com.dskja.betterstreamflix.utils.LoggingUtils
 import com.dskja.betterstreamflix.utils.viewModelsFactory
 import kotlinx.coroutines.launch
 
@@ -99,32 +97,13 @@ class MovieMobileFragment : Fragment() {
                         ) {
                             return@collect
                         }
-                        if (!com.dskja.betterstreamflix.utils.ExperimentalMobileDesign.enabled()) {
-                            Toast.makeText(
-                                requireContext(),
-                                state.error.message ?: "",
-                                Toast.LENGTH_SHORT
-                            ).show()
-                        }
-                        binding.isLoading.apply {
-                            com.dskja.betterstreamflix.utils.ExpPressEffects.showLoadingSkeleton(root, false)
-                            gIsLoadingRetry.visibility = View.VISIBLE
-                            com.dskja.betterstreamflix.utils.ExpPressEffects.animateLoadingError(root)
-                            val doRetry = { viewModel.getMovie(args.id) }
-                            btnIsLoadingRetry.setOnClickListener { doRetry() }
-                            btnIsLoadingClearCache.setOnClickListener {
-                                CacheUtils.clearAppCache(requireContext())
-                                com.dskja.betterstreamflix.utils.ExpDialogChrome.notify(
-                                    requireContext(),
-                                    getString(R.string.clear_cache_done),
-                                    R.string.loading_error_clear_cache,
-                                )
-                                doRetry()
-                            }
-                            btnIsLoadingErrorDetails.setOnClickListener {
-                                LoggingUtils.showErrorDialog(requireContext(), state.error)
-                            }
-                        }
+                        DetailLoadingErrorChrome.bind(
+                            root = binding.isLoading.root,
+                            context = requireContext(),
+                            error = state.error,
+                            showToast = !ExperimentalMobileDesign.enabled(),
+                            onRetry = { viewModel.getMovie(args.id) },
+                        )
                     }
                 }
             }
