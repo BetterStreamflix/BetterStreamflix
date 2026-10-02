@@ -753,45 +753,17 @@ class TvShowViewHolder(
     }
 
     internal fun handleTrailerClick(trailer: String) {
-        val youtubeIntent = Intent(Intent.ACTION_VIEW, trailer.toUri())
-        val prefs = PreferenceManager.getDefaultSharedPreferences(context)
-        val preferredPlayer = prefs.getString("preferred_player", "ask")
-
-        when (preferredPlayer) {
-            "smarttube" -> {
-                handleSmartTubeSelection(trailer)
-            }
-            "smarttube_stable" -> {
-                launchSmartTube("org.smarttube.stable", trailer)
-            }
-            "smarttube_beta" -> {
-                launchSmartTube("org.smarttube.beta", trailer)
-            }
-            "youtube" -> {
-                safeLaunchYoutube(youtubeIntent)
-            }
-            else -> {
-                val stPackages = getInstalledSmartTubePackages()
-                if (stPackages.isNotEmpty()) {
-                    (if (ExperimentalMobileDesign.enabled()) MaterialAlertDialogBuilder(context) else AlertDialog.Builder(context))
-                        .setTitle(context.getString(R.string.watch_trailer_with))
-                        .setItems(arrayOf(context.getString(R.string.youtube), context.getString(R.string.smarttube))) { _, which ->
-                            if (which == 0) {
-                                safeLaunchYoutube(youtubeIntent)
-                            } else {
-                                if (stPackages.size > 1) {
-                                    showSmartTubeVersionDialog(stPackages, trailer, false)
-                                } else {
-                                    launchSmartTube(stPackages[0], trailer)
-                                }
-                            }
-                        }
-                        .create()
-                        .also { com.dskja.betterstreamflix.ui.TrailerPlaybackController.polishChooserDialog(it) }
-                } else {
-                    safeLaunchYoutube(youtubeIntent)
-                }
-            }
+        val activity = context.toActivity()
+        val fragment = activity?.getCurrentFragment() as? Fragment
+        if (fragment != null) {
+            TrailerPlaybackController.play(fragment, trailer)
+        } else {
+            TrailerPlaybackController.play(
+                context,
+                activity,
+                trailer,
+                activity?.supportFragmentManager,
+            )
         }
     }
 

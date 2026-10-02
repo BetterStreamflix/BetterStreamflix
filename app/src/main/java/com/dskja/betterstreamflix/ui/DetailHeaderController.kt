@@ -214,7 +214,9 @@ object DetailHeaderController {
                 logo.post { onScrolled(root, lastScrollY(root)) }
             },
             onReady = { readyUrl ->
-                logo.setBackgroundResource(R.drawable.bg_title_logo_contrast)
+                // Never plate the ImageView — contrast lives on the collapsed bar scrim.
+                com.dskja.betterstreamflix.logo.TitleLogoPresentation.clearImagePlate(logo)
+                com.dskja.betterstreamflix.logo.TitleLogoPresentation.polishLogoImage(logo)
                 logo.tag = readyUrl
                 // Re-apply after Glide finishes so a load at scrollY=0 stays invisible.
                 logo.post { onScrolled(root, lastScrollY(root)) }
