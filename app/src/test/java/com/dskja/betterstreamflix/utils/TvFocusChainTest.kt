@@ -16,14 +16,21 @@ import org.junit.Test
  * Run on a Fire Stick (or TV emulator with DPAD) after UI changes:
  * 1. **Home shelves → side nav**: focus first poster in a category row, press LEFT →
  *    [nav_main] receives focus (`item_category_tv` HorizontalGridView nextFocusLeft + focusOutFront).
- * 2. **Favorites grid**: focus leftmost poster, press LEFT → side nav; first row UP →
+ * 2. **Home vertical scroll to last shelf**: DPAD-DOWN from Featured through Continue Watching /
+ *    Support banner to the last category row — focus must keep moving (no freeze). Category
+ *    shelf roots must be `wrap_content` (`item_category_tv`), not `match_parent`.
+ * 3. **Home entry from side nav**: after catalog load, Featured Watch (or first shelf) must
+ *    take focus / be reachable with DPAD-RIGHT from [nav_main]. Movies grid works because it
+ *    is a flat VerticalGridView; Home is nested rows and needs an explicit post-bind focus
+ *    handoff plus `focusOut*` on `vgv_home`.
+ * 4. **Favorites grid**: focus leftmost poster, press LEFT → side nav; first row UP →
  *    rearrange / sort actions.
- * 3. **Detail actions**: Watch / Trailer / Download / Share / Favorite chain LEFT/RIGHT
+ * 5. **Detail actions**: Watch / Trailer / Download / Share / Favorite chain LEFT/RIGHT
  *    via [TvFocusChain.linkHorizontal] without trapping.
- * 4. **Player chrome**: Play/Pause, aspect, settings keep contentDescriptions; next-episode
+ * 6. **Player chrome**: Play/Pause, aspect, settings keep contentDescriptions; next-episode
  *    overlay action ↔ dismiss; Bypass QR dialog lands focus on Cancel, not the QR bitmap.
- * 5. **Support banner**: root + CTA + dismiss announce; DPAD activate opens Support hub.
- * 6. **Overscan**: Settings padding X/Y — focused shelf zoom must not clip at screen edges
+ * 7. **Support banner**: root + CTA + dismiss announce; DPAD activate opens Support hub.
+ * 8. **Overscan**: Settings padding X/Y — focused shelf zoom must not clip at screen edges
  *    ([MainTvActivity.adjustLayoutDelta] clipChildren/clipToPadding false).
  */
 class TvFocusChainTest {

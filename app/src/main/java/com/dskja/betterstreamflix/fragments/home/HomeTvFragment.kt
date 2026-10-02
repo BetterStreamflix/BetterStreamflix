@@ -94,6 +94,8 @@ class HomeTvFragment : Fragment() {
                         when (state) {
                             HomeViewModel.State.Loading -> binding.isLoading.apply {
                                 root.visibility = View.VISIBLE
+                                root.isFocusable = true
+                                root.isClickable = true
                                 com.dskja.betterstreamflix.utils.ExpPressEffects.showLoadingSkeleton(root, true)
                                 gIsLoadingRetry.visibility = View.GONE
                                 hideCatalogWarning()
@@ -101,11 +103,19 @@ class HomeTvFragment : Fragment() {
                             is HomeViewModel.State.SuccessLoading -> {
                                 displayHome(state.categories)
                                 binding.vgvHome.visibility = View.VISIBLE
-                                binding.isLoading.root.visibility = View.GONE
+                                binding.isLoading.root.apply {
+                                    visibility = View.GONE
+                                    // GONE alone is not enough on some Fire OS builds — a
+                                    // lingering focusable full-screen loader blocks Home DPAD.
+                                    isFocusable = false
+                                    isFocusableInTouchMode = false
+                                    isClickable = false
+                                }
                                 com.dskja.betterstreamflix.utils.ExpPressEffects.showLoadingSkeleton(
                                     binding.isLoading.root, false,
                                 )
                                 showCatalogWarning(state.providerWarning)
+                                focusHomeContent()
                             }
                             is HomeViewModel.State.FailedLoading -> {
                                 if (http409Guard.handle(requireContext(), state.error) { viewModel.getHome() }) {
@@ -269,8 +279,29 @@ class HomeTvFragment : Fragment() {
                 stateRestorationPolicy = RecyclerView.Adapter.StateRestorationPolicy.PREVENT_WHEN_EMPTY
             }
             setItemSpacing(resources.getDimension(R.dimen.home_spacing).toInt() * 2)
-            // Focus the catalog grid (first row / Featured CTAs), never the fragment root.
-            requestFocus()
+            // Do not requestFocus while the adapter is empty — Leanback then loses the
+            // focus target and DPAD stays trapped on the side nav until Movies/etc.
+        }
+    }
+
+    /**
+     * After shelves bind, land DPAD on Featured Watch (or the first shelf tile).
+     * Home is a nested VerticalGridView of rows (unlike Movies' flat poster grid),
+     * so geometric focus search from [nav_main] often fails without an explicit handoff.
+     */
+    private fun focusHomeContent() {
+        val grid = _binding?.vgvHome ?: return
+        if (!grid.isAttachedToWindow || grid.adapter?.itemCount == 0) return
+        grid.post {
+            val b = _binding ?: return@post
+            if (b.isLoading.root.visibility == View.VISIBLE) return@post
+            val featuredWatch = b.vgvHome.findViewById<View>(R.id.btn_swiper_watch_now)
+            when {
+                featuredWatch != null &&
+                    featuredWatch.visibility == View.VISIBLE &&
+                    featuredWatch.isFocusable -> featuredWatch.requestFocus()
+                else -> b.vgvHome.requestFocus()
+            }
         }
     }
 

@@ -149,6 +149,7 @@
         android:layout_marginBottom="50dp"
         android:focusable="true"
         android:focusableInTouchMode="true"
+        android:nextFocusLeft="@id/nav_main"
         android:nextFocusRight="@id/btn_swiper_add_to_list"
         android:text="@string/home_swiper_watch_now"
         android:textSize="18sp"

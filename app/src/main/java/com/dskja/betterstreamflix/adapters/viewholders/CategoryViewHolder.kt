@@ -206,6 +206,18 @@ class CategoryViewHolder(
     ) {
         binding.tvCategoryTitle.text = category.name
 
+        // Empty shelves must not stay focusable — Leanback DPAD search stalls on an
+        // empty HorizontalGridView (focus black hole near the bottom of home).
+        if (category.list.isEmpty()) {
+            binding.root.visibility = View.GONE
+            binding.hgvCategory.apply {
+                isFocusable = false
+                adapter = null
+            }
+            return
+        }
+        binding.root.visibility = View.VISIBLE
+
         binding.hgvCategory.apply {
             setRowHeight(ViewGroup.LayoutParams.WRAP_CONTENT)
 
@@ -871,8 +883,14 @@ class CategoryViewHolder(
         if (selected == null) {
             binding.tvSwiperTitle.text = ""
             binding.ivSwiperLogo.visibility = View.INVISIBLE
+            // Empty Featured must not leave focusable CTAs that trap DPAD on Home.
+            binding.btnSwiperWatchNow.visibility = View.GONE
+            binding.btnSwiperAddToList.visibility = View.GONE
+            binding.llDotsIndicator.visibility = View.GONE
             return
         }
+        binding.btnSwiperWatchNow.visibility = View.VISIBLE
+        // My List visibility is owned by FeaturedSwiperChrome.bindListButton below.
 
         if (ExperimentalMobileDesign.enabled()) {
             applyExperimentalTvSwiperChrome(binding)
@@ -1016,14 +1034,14 @@ class CategoryViewHolder(
         binding.btnSwiperWatchNow.apply {
             FeaturedSwiperChrome.wireWatchButton(this)
             text = FeaturedHeroController.watchCtaLabel(context, selected)
-            // DPAD: up to profile chip; down into the next home shelf via parent VerticalGridView.
+            // DPAD: left → side nav (parity with shelf tiles); up → profile chip;
+            // down stays unset so VerticalGridView focus search lands on the next shelf
+            // (forcing parent.id traps DPAD-down / freezes remote near bottom).
+            nextFocusLeftId = R.id.nav_main
             (context.toActivity()?.findViewById<View>(R.id.tv_home_profile_chip))?.let { chip ->
                 nextFocusUpId = chip.id
             }
-            (binding.root.parent as? View)?.let { parent ->
-                // Leanback VerticalGridView focus search handles the next shelf row.
-                nextFocusDownId = parent.id
-            }
+            nextFocusDownId = View.NO_ID
             if (ExperimentalMobileDesign.enabled()) {
                 setBackgroundResource(ExperimentalMobileDesign.primaryButtonBackground())
                 setTextColor(
@@ -1074,12 +1092,11 @@ class CategoryViewHolder(
         }
         FeaturedSwiperChrome.bindListButton(binding.btnSwiperAddToList, inList)
         binding.btnSwiperAddToList.apply {
+            nextFocusLeftId = R.id.btn_swiper_watch_now
             (context.toActivity()?.findViewById<View>(R.id.tv_home_profile_chip))?.let { chip ->
                 nextFocusUpId = chip.id
             }
-            (binding.root.parent as? View)?.let { parent ->
-                nextFocusDownId = parent.id
-            }
+            nextFocusDownId = View.NO_ID
             if (ExperimentalMobileDesign.enabled()) {
                 with(com.dskja.betterstreamflix.utils.ExpPressEffects) { applyExpPress() }
             }
