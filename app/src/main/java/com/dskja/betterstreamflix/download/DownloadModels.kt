@@ -45,6 +45,8 @@ enum class DownloadErrorCode {
     NOSPACE,
     WIFI_REQUIRED,
     EXPIRED,
+    /** Provider/CDN returned HTTP 404 — content removed or bad resolve URL. */
+    NOT_FOUND,
     FILE_MISSING,
     UNSUPPORTED,
     EMPTY_RESPONSE,
