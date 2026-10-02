@@ -1,6 +1,6 @@
 name: Build & Release APK
 
-# Builds three signed APKs (same layout split as upstream Streamflix Reborn):
+# Builds three release APKs (same layout split as upstream Streamflix Reborn):
 #   BetterStreamflix.apk            — universal (mobile + TV)
 #   BetterStreamflix-only-Mobile.apk
 #   BetterStreamflix-only-TV.apk
@@ -8,6 +8,10 @@ name: Build & Release APK
 # Trigger: push tag v*              → GitHub Release with all three assets
 #          push to main             → upload all three as artifacts (no release)
 #          workflow_dispatch        → upload all three as artifacts (no release)
+#
+# Signing requires Actions secrets SIGNING_KEYSTORE_BASE64, SIGNING_KEY_ALIAS,
+# SIGNING_STORE_PASSWORD, SIGNING_KEY_PASSWORD (legacy KEYSTORE also accepted).
+# Tags fail without them; main / manual runs upload unsigned APKs instead.
 #
 # Feature branches (dskja/**) intentionally do NOT run this workflow.
 # Use "Build APKs" (debug, ~5–10 min) for day-to-day testing, or dispatch
@@ -116,12 +120,60 @@ jobs:
           SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
         run: ./gradlew :app:assembleRelease --stacktrace
 
+      # Signing secrets (repo Settings → Secrets and variables → Actions):
+      #   SIGNING_KEYSTORE_BASE64  — base64 of the .jks/.keystore file
+      #   SIGNING_KEY_ALIAS
+      #   SIGNING_STORE_PASSWORD
+      #   SIGNING_KEY_PASSWORD
+      # Legacy alias still accepted: KEYSTORE (same value as SIGNING_KEYSTORE_BASE64).
+      - name: Check signing secrets
+        id: signing_secrets
+        env:
+          SIGNING_KEYSTORE_BASE64: ${{ secrets.SIGNING_KEYSTORE_BASE64 }}
+          KEYSTORE: ${{ secrets.KEYSTORE }}
+          SIGNING_KEY_ALIAS: ${{ secrets.SIGNING_KEY_ALIAS }}
+          SIGNING_STORE_PASSWORD: ${{ secrets.SIGNING_STORE_PASSWORD }}
+          SIGNING_KEY_PASSWORD: ${{ secrets.SIGNING_KEY_PASSWORD }}
+        run: |
+          KEYSTORE_B64="${SIGNING_KEYSTORE_BASE64:-$KEYSTORE}"
+          missing=()
+          [ -z "$KEYSTORE_B64" ] && missing+=("SIGNING_KEYSTORE_BASE64 (or legacy KEYSTORE)")
+          [ -z "$SIGNING_KEY_ALIAS" ] && missing+=("SIGNING_KEY_ALIAS")
+          [ -z "$SIGNING_STORE_PASSWORD" ] && missing+=("SIGNING_STORE_PASSWORD")
+          [ -z "$SIGNING_KEY_PASSWORD" ] && missing+=("SIGNING_KEY_PASSWORD")
+
+          if [ ${#missing[@]} -eq 0 ]; then
+            echo "available=true" >> "$GITHUB_OUTPUT"
+            echo "Signing secrets present."
+            exit 0
+          fi
+
+          echo "available=false" >> "$GITHUB_OUTPUT"
+          echo "::warning::Missing signing secrets: ${missing[*]}"
+          cat <<'EOF'
+          Required GitHub Actions secrets for signed release APKs:
+            SIGNING_KEYSTORE_BASE64  — base64-encoded .jks/.keystore
+            SIGNING_KEY_ALIAS
+            SIGNING_STORE_PASSWORD
+            SIGNING_KEY_PASSWORD
+          Optional legacy fallback for the keystore blob: KEYSTORE
+          Encode with: base64 -w0 your-release.jks > keystore.b64
+          EOF
+
+          if [[ "${GITHUB_REF}" == refs/tags/v* ]]; then
+            echo "::error::Cannot publish a tagged release without signing secrets."
+            exit 1
+          fi
+
+          echo "Non-tag run: will upload unsigned release APK artifacts."
+
       - name: Sign APK
         id: sign_apk
+        if: steps.signing_secrets.outputs.available == 'true'
         uses: r0adkll/sign-android-release@v1
         with:
           releaseDirectory: app/build/outputs/apk/release
-          signingKeyBase64: ${{ secrets.SIGNING_KEYSTORE_BASE64 }}
+          signingKeyBase64: ${{ secrets.SIGNING_KEYSTORE_BASE64 || secrets.KEYSTORE }}
           alias: ${{ secrets.SIGNING_KEY_ALIAS }}
           keyStorePassword: ${{ secrets.SIGNING_STORE_PASSWORD }}
           keyPassword: ${{ secrets.SIGNING_KEY_PASSWORD }}
@@ -130,7 +182,14 @@ jobs:
 
       - name: Rename APK
         run: |
-          cp "${{ steps.sign_apk.outputs.signedReleaseFile }}" "${{ matrix.apk_name }}"
+          if [ "${{ steps.signing_secrets.outputs.available }}" = "true" ]; then
+            src="${{ steps.sign_apk.outputs.signedReleaseFile }}"
+          else
+            src=$(ls app/build/outputs/apk/release/*-unsigned.apk | head -n 1)
+            echo "::warning::Uploading unsigned release APK (signing secrets not configured)."
+          fi
+          test -n "$src" && test -f "$src"
+          cp "$src" "${{ matrix.apk_name }}"
           ls -lh "${{ matrix.apk_name }}"
 
       - name: Upload APK artifact
