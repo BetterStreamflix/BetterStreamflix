@@ -30,6 +30,7 @@ import com.dskja.betterstreamflix.activities.tools.BypassWebViewActivity
 import com.dskja.betterstreamflix.cast.CastPlaybackHub
 import com.dskja.betterstreamflix.databinding.ActivityMainMobileBinding
 import com.dskja.betterstreamflix.fragments.player.PlayerMobileFragment
+import com.dskja.betterstreamflix.player.PlaybackLifecycleGuard
 import com.dskja.betterstreamflix.providers.AnimeOnlineNinjaProvider
 import com.dskja.betterstreamflix.providers.Cine24hProvider
 import com.dskja.betterstreamflix.providers.FilmyOnlineCcProvider
@@ -257,6 +258,10 @@ class MainMobileActivity : FragmentActivity() {
         updateBottomNavigationVisibility(navController.currentDestination?.id)
 
         navController.addOnDestinationChangedListener { _, destination, _ ->
+            if (destination.id != R.id.player) {
+                // Bottom nav / deep links can leave the player without Back — kill audio.
+                PlaybackLifecycleGuard.stopActivePlayback()
+            }
             updateNavigationVisibility(destination.id)
             updateBottomNavigationVisibility(destination.id)
             binding.mainContent.post { binding.mainContent.requestApplyInsets() }
@@ -304,9 +309,16 @@ class MainMobileActivity : FragmentActivity() {
                 if (com.dskja.betterstreamflix.telegram.TelegramJoinGateController.onBackPressed(this@MainMobileActivity)) {
                     return
                 }
-                val handled =
-                    (getCurrentFragment() as? PlayerMobileFragment)?.onBackPressed() ?: false
+                val playerFrag = getCurrentFragment() as? PlayerMobileFragment
+                val handled = playerFrag?.onBackPressed() ?: false
                 if (handled) return
+                // Leaving the player via system Back / gesture — kill audio before navigateUp
+                // so Home never keeps a zombie ExoPlayer/MediaSession.
+                if (playerFrag != null) {
+                    playerFrag.forceStopPlayback()
+                } else {
+                    PlaybackLifecycleGuard.stopActivePlayback()
+                }
 
                 val currentDestinationId = navController.currentDestination?.id
 
