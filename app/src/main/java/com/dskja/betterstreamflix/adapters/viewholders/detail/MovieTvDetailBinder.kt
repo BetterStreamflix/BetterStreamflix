@@ -237,6 +237,8 @@ internal fun MovieViewHolder.bindMovieTvDetail(binding: ContentMovieTvBinding) {
             binding.btnMovieTrailer,
             binding.btnMovieDownload,
             binding.root.findViewById(R.id.btn_movie_watched),
+        )
+        com.dskja.betterstreamflix.utils.TvFocusChain.linkHorizontal(
             binding.root.findViewById(R.id.btn_movie_share),
             binding.btnMovieFavorite,
         )
