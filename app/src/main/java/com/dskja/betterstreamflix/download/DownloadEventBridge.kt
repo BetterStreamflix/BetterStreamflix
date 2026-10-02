@@ -164,6 +164,8 @@ object DownloadEventBridge : DownloadManager.Listener {
                         DownloadErrorCode.NOSPACE -> com.dskja.betterstreamflix.R.string.download_error_nospace
                         DownloadErrorCode.WIFI_REQUIRED -> com.dskja.betterstreamflix.R.string.download_error_wifi
                         DownloadErrorCode.EXPIRED -> com.dskja.betterstreamflix.R.string.download_error_expired
+                        DownloadErrorCode.NOT_FOUND -> com.dskja.betterstreamflix.R.string.download_error_not_found
+                        DownloadErrorCode.FILE_MISSING -> com.dskja.betterstreamflix.R.string.download_error_file_missing
                         DownloadErrorCode.NETWORK -> com.dskja.betterstreamflix.R.string.download_error_network
                         DownloadErrorCode.CLOUDFLARE -> com.dskja.betterstreamflix.R.string.download_error_cloudflare
                         DownloadErrorCode.DRM -> com.dskja.betterstreamflix.R.string.download_error_drm

@@ -1690,29 +1690,43 @@ class PlayerMobileFragment : Fragment() {
             serverId = server.id,
         )
 
-        val mediaItemBuilder = MediaItem.Builder()
-            .setUri(video.source.toUri())
-            .setMimeType(com.dskja.betterstreamflix.extractors.StreamMime.coalesce(video.type, video.source))
-        if (isLiveTvPlayback()) {
-            mediaItemBuilder.setLiveConfiguration(
-                com.dskja.betterstreamflix.iptv.IptvLivePlayback.liveConfigurationForProvider(
-                    UserPreferences.currentProvider?.name,
-                )
+        val subtitleConfigs = subtitleConfigurationsForPlayback(
+            context = requireContext(),
+            videoType = args.videoType,
+            serverSubtitles = video.subtitles,
+        )
+        val localMediaItem = if (offline) {
+            // Must use DownloadRequest streamKeys/customCacheKey — plain URI re-fetches
+            // the master playlist, misses cache, and hits an expired CDN (HTTP 404).
+            com.dskja.betterstreamflix.download.OfflinePlayback.buildOfflineMediaItem(
+                context = requireContext(),
+                video = video,
+                subtitleConfigurations = subtitleConfigs,
+                mediaMetadata = mediaMetadata,
             )
+        } else {
+            val mediaItemBuilder = MediaItem.Builder()
+                .setUri(video.source.toUri())
+                .setMimeType(
+                    com.dskja.betterstreamflix.extractors.StreamMime.coalesce(video.type, video.source),
+                )
+            if (isLiveTvPlayback()) {
+                mediaItemBuilder.setLiveConfiguration(
+                    com.dskja.betterstreamflix.iptv.IptvLivePlayback.liveConfigurationForProvider(
+                        UserPreferences.currentProvider?.name,
+                    ),
+                )
+            }
+            mediaItemBuilder
+                .setSubtitleConfigurations(subtitleConfigs)
+                .setMediaMetadata(mediaMetadata)
+                .build()
+        }
+        if (isLiveTvPlayback() && !offline) {
             applyLiveControllerChrome(live = true)
         } else {
             applyLiveControllerChrome(live = false)
         }
-        val localMediaItem = mediaItemBuilder
-            .setSubtitleConfigurations(
-                subtitleConfigurationsForPlayback(
-                    context = requireContext(),
-                    videoType = args.videoType,
-                    serverSubtitles = video.subtitles,
-                )
-            )
-            .setMediaMetadata(mediaMetadata)
-            .build()
         player.setMediaItem(localMediaItem)
 
         if ((isCasting || CastPlaybackHub.isCasting) && !isOfflinePlayback()) {
@@ -2245,29 +2259,22 @@ class PlayerMobileFragment : Fragment() {
         }
     }
 
-    /** Offline pill + cast/external disable — must run after [applyLiveControllerChrome] VOD branch. */
+    /** Offline chrome + cast/external disable — must run after [applyLiveControllerChrome] VOD branch. */
     private fun applyOfflineControllerChrome() {
         val controller = binding.pvPlayer.controller.binding
         val offline = isOfflinePlayback()
         applyOfflineCastExternalGuards(offline)
-        if (!offline) {
-            if (!isLiveTvPlayback()) {
-                controller.tvLiveIndicator.isVisible = false
-                controller.tvLiveIndicator.setOnClickListener(null)
-            }
-            return
+        // Never reuse the LIVE red pill on the time row for offline — it sat on top of
+        // exo_position / exo_duration. Offline is signaled in the top subtitle instead.
+        if (!isLiveTvPlayback()) {
+            controller.tvLiveIndicator.clearAnimation()
+            controller.tvLiveIndicator.setOnClickListener(null)
+            controller.tvLiveIndicator.isVisible = false
+            controller.tvLiveIndicator.isClickable = false
         }
-        val wasVisible = controller.tvLiveIndicator.isVisible
-        controller.tvLiveIndicator.isVisible = true
-        controller.tvLiveIndicator.text = getString(R.string.downloads_play_offline)
-        controller.tvLiveIndicator.clearAnimation()
-        controller.tvLiveIndicator.setOnClickListener(null)
-        controller.tvLiveIndicator.isClickable = false
-        if (ExperimentalMobileDesign.enabled()) {
-            controller.tvLiveIndicator.setBackgroundResource(
-                ExperimentalMobileDesign.metaPillBackground(),
-            )
-            if (!wasVisible) ExpMotion.popIn(controller.tvLiveIndicator)
+        if (offline) {
+            // Refresh subtitle so "Play offline" appears even if header ran earlier.
+            updatePlayerHeader()
         }
     }
 
@@ -2730,12 +2737,19 @@ class PlayerMobileFragment : Fragment() {
         if (isLiveTvPlayback()) {
             return getString(R.string.player_live_badge)
         }
-        return when (videoType) {
+        val base = when (videoType) {
             is Video.Type.Movie -> args.subtitle
             is Video.Type.Episode -> {
                 val episodeTitle = videoType.title?.takeUnless { it.isBlank() } ?: args.subtitle
                 "S${videoType.season.number} E${videoType.number}  •  $episodeTitle"
             }
+        }
+        if (!isOfflinePlayback()) return base
+        val offlineLabel = getString(R.string.downloads_play_offline)
+        return when {
+            base.isBlank() -> offlineLabel
+            base.contains(offlineLabel, ignoreCase = true) -> base
+            else -> "$base · $offlineLabel"
         }
     }
 
@@ -2748,8 +2762,7 @@ class PlayerMobileFragment : Fragment() {
         controller.tvExoTitle.text = title
         controller.tvExoSubtitle.text = subtitle
         bindPlayerTitleLogo(controller.root, controller.ivExoLogo, controller.tvExoTitle, videoType)
-        // Offline pill is applied via applyLiveControllerChrome → applyOfflineControllerChrome
-        // so it is not wiped when live chrome resets tvLiveIndicator visibility.
+        // Offline status lives in the subtitle (not the LIVE red pill on the time row).
         if (ExperimentalMobileDesign.enabled() && (titleChanged || subtitleChanged)) {
             // Soft crossfade on episode/channel swaps; full reveal only first time.
             val first = controller.tvExoTitle.getTag(R.id.exp_enter_animated_tag) != true

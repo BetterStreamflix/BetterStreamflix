@@ -29,6 +29,8 @@ object DownloadErrorClassifier {
                 DownloadErrorCode.NO_SERVERS
             "cleartext" in hay || "cleartexttraffic" in hay ->
                 DownloadErrorCode.UNSUPPORTED
+            "404" in hay || "not found" in hay || "not_found" in hay ->
+                DownloadErrorCode.NOT_FOUND
             "expired" in hay || "410" in hay ||
                 (("403" in hay || "401" in hay || "forbidden" in hay) &&
                     "cloudflare" !in hay) -> DownloadErrorCode.EXPIRED
@@ -41,6 +43,8 @@ object DownloadErrorClassifier {
             "unable to resolve host" in hay || "timeout" in hay ||
                 "unknownhost" in hay || "sockettimeout" in hay ||
                 "failed to connect" in hay -> DownloadErrorCode.NETWORK
+            "offline cache miss" in hay || "file missing" in hay ||
+                "no such file" in hay -> DownloadErrorCode.FILE_MISSING
             else -> DownloadErrorCode.UNKNOWN
         }
     }

@@ -3,7 +3,10 @@ package com.dskja.betterstreamflix.download
 import android.content.Context
 import android.net.Uri
 import androidx.core.content.FileProvider
+import androidx.media3.common.MediaItem
+import androidx.media3.common.MediaMetadata
 import androidx.media3.exoplayer.offline.Download
+import com.dskja.betterstreamflix.extractors.StreamMime
 import com.dskja.betterstreamflix.models.Video
 import org.json.JSONArray
 import java.io.File
@@ -128,9 +131,58 @@ object OfflinePlayback {
         return Video(
             source = source,
             headers = headers.ifEmpty { null },
-            type = item.mimeType.ifBlank { null },
+            type = item.mimeType.ifBlank { null }
+                ?: download?.request?.mimeType?.takeIf { it.isNotBlank() },
             subtitles = subs,
+            // Only stamp Media3 id when the download index has completed bytes —
+            // players use this to rebuild MediaItem with streamKeys/customCacheKey.
+            offlineMedia3Id = media3Id.takeIf { hasCachedContent && it.isNotBlank() },
         )
+    }
+
+    /**
+     * Build the Exo [MediaItem] for offline playback.
+     *
+     * Critical: use [DownloadRequest.toMediaItem] so HLS/DASH [StreamKey]s and the custom
+     * cache key match what was downloaded. A plain URI MediaItem re-reads the master
+     * playlist, picks a non-downloaded variant, misses cache, and hits the expired CDN
+     * (HTTP 404).
+     */
+    fun buildOfflineMediaItem(
+        context: Context,
+        video: Video,
+        subtitleConfigurations: List<MediaItem.SubtitleConfiguration>,
+        mediaMetadata: MediaMetadata? = null,
+    ): MediaItem {
+        val media3Id = video.offlineMedia3Id?.takeIf { it.isNotBlank() }
+        if (media3Id != null) {
+            val download = runCatching {
+                StreamflixDownloadManager.get(context).downloadIndex.getDownload(media3Id)
+            }.getOrNull()
+            if (download != null &&
+                download.state == Download.STATE_COMPLETED &&
+                (download.bytesDownloaded > 0L)
+            ) {
+                val builder = download.request.toMediaItem().buildUpon()
+                    .setSubtitleConfigurations(subtitleConfigurations)
+                if (mediaMetadata != null) {
+                    builder.setMediaMetadata(mediaMetadata)
+                }
+                // Prefer stored mime when Media3 request omitted it.
+                if (download.request.mimeType.isNullOrBlank() && !video.type.isNullOrBlank()) {
+                    builder.setMimeType(video.type)
+                }
+                return builder.build()
+            }
+        }
+        val builder = MediaItem.Builder()
+            .setUri(Uri.parse(video.source))
+            .setMimeType(StreamMime.coalesce(video.type, video.source))
+            .setSubtitleConfigurations(subtitleConfigurations)
+        if (mediaMetadata != null) {
+            builder.setMediaMetadata(mediaMetadata)
+        }
+        return builder.build()
     }
 
     /**

@@ -32,4 +32,20 @@ class DownloadErrorClassifierTest {
             DownloadErrorClassifier.classify(Exception("ENOSPC no space left on device")),
         )
     }
+
+    @Test
+    fun classifiesHttp404AsNotFound() {
+        assertEquals(
+            DownloadErrorCode.NOT_FOUND,
+            DownloadErrorClassifier.classify(Exception("Response code: 404")),
+        )
+        assertEquals(
+            DownloadErrorCode.NOT_FOUND,
+            DownloadErrorClassifier.classify(Exception("VOE source not found (404)")),
+        )
+        assertEquals(
+            DownloadErrorCode.FILE_MISSING,
+            DownloadErrorClassifier.classify(Exception("Offline cache miss for https://cdn/x")),
+        )
+    }
 }

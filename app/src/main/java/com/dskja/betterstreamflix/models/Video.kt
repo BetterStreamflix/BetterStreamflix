@@ -11,7 +11,13 @@ data class Video(
     val type: String? = null,
     val extraBuffering: Boolean = false,
     val useServerSubtitleSetting: Boolean = false,
-    val maintainToken: Boolean = false
+    val maintainToken: Boolean = false,
+    /**
+     * Media3 download id for offline playback. When set, the player must build the
+     * [androidx.media3.common.MediaItem] from the matching [androidx.media3.exoplayer.offline.DownloadRequest]
+     * (stream keys + cache key) so HLS/DASH variants hit the download cache instead of the network.
+     */
+    val offlineMedia3Id: String? = null,
 ) : Serializable {
 
     sealed class Type : Parcelable, Serializable {

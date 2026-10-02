@@ -665,6 +665,9 @@ object DownloadController {
         val display = when (code) {
             DownloadErrorCode.EMPTY_RESPONSE -> "Empty response"
             DownloadErrorCode.NO_SERVERS -> "No servers found"
+            DownloadErrorCode.NOT_FOUND -> "Content not found (404)"
+            DownloadErrorCode.EXPIRED -> "Link expired"
+            DownloadErrorCode.FILE_MISSING -> "Local file missing"
             else -> msg.ifBlank { code.name }
         }
         return DownloadEnqueueOutcome.Failed(code, display)

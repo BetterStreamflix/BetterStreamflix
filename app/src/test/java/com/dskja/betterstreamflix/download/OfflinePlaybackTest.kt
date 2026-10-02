@@ -118,4 +118,23 @@ class OfflinePlaybackTest {
         val ctx = mock(Context::class.java)
         assertNull(OfflinePlayback.exportShareUri(ctx, item))
     }
+
+    @Test
+    fun buildLocalVideo_stampsOfflineMedia3IdOnlyWhenCompleted() {
+        val incomplete = DownloadItemEntity(
+            id = "id5",
+            contentKey = "movie|p|5",
+            media3Id = "m5",
+            providerName = "p",
+            kind = DownloadKind.MOVIE.name,
+            title = "T",
+            state = DownloadItemState.COMPLETED.name,
+            streamUrl = "https://cdn.example/v.mp4",
+            localUri = "https://cdn.example/v.mp4",
+            bytesDownloaded = 0L,
+        )
+        val ctx = mock(Context::class.java)
+        // No Media3 download index in JVM unit tests → null (no stamp).
+        assertNull(OfflinePlayback.buildLocalVideo(ctx, incomplete))
+    }
 }
