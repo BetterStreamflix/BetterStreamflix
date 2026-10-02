@@ -200,11 +200,15 @@
         <item>@string/settings_download_storage_internal</item>
         <item>@string/settings_download_storage_app_external</item>
         <item>@string/settings_download_storage_public_movies</item>
+        <item>@string/settings_download_storage_removable</item>
+        <item>@string/settings_download_storage_custom</item>
     </string-array>
     <string-array name="download_storage_location_values">
         <item>INTERNAL</item>
         <item>APP_EXTERNAL</item>
         <item>PUBLIC_MOVIES</item>
+        <item>REMOVABLE</item>
+        <item>CUSTOM_FOLDER</item>
     </string-array>
 
     <string-array name="lumina_accent_names">

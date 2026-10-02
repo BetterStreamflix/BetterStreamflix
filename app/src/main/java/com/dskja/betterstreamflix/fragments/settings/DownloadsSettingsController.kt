@@ -1,6 +1,6 @@
 package com.dskja.betterstreamflix.fragments.settings
 
-import android.widget.Toast
+import android.net.Uri
 import androidx.appcompat.app.AlertDialog
 import com.dskja.betterstreamflix.utils.ExpDialogChrome
 import com.dskja.betterstreamflix.utils.ExperimentalMobileDesign
@@ -19,7 +19,10 @@ import com.dskja.betterstreamflix.download.DownloadRepository
 import com.dskja.betterstreamflix.download.DownloadStats
 import com.dskja.betterstreamflix.download.DownloadStorage
 import com.dskja.betterstreamflix.download.DownloadStorageLocation
+import com.dskja.betterstreamflix.download.DownloadTreeAccess
+import com.dskja.betterstreamflix.download.ExternalDownloadHandoff
 import com.dskja.betterstreamflix.download.StreamflixDownloadManager
+import com.dskja.betterstreamflix.platform.playerbackend.ExternalStreamHandoff
 import com.dskja.betterstreamflix.utils.UserPreferences
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -34,6 +37,7 @@ object DownloadsSettingsController {
         fragment: Fragment,
         scope: LifecycleCoroutineScope,
         findPreference: (String) -> Preference?,
+        onPickDownloadFolder: (() -> Unit)? = null,
     ) {
         val context = fragment.requireContext()
 
@@ -43,6 +47,24 @@ object DownloadsSettingsController {
             list.summaryProvider = ListPreference.SimpleSummaryProvider.getInstance()
             list.setOnPreferenceChangeListener { _, newValue ->
                 val location = DownloadStorageLocation.fromKey(newValue as String)
+                when (location) {
+                    DownloadStorageLocation.REMOVABLE -> {
+                        if (!DownloadStorage.hasRemovableStorage(context)) {
+                            ExpDialogChrome.notify(
+                                context,
+                                R.string.settings_download_storage_removable_unavailable,
+                            )
+                            return@setOnPreferenceChangeListener false
+                        }
+                    }
+                    DownloadStorageLocation.CUSTOM_FOLDER -> {
+                        if (!DownloadTreeAccess.hasTree()) {
+                            onPickDownloadFolder?.invoke()
+                            return@setOnPreferenceChangeListener false
+                        }
+                    }
+                    else -> Unit
+                }
                 if (location != UserPreferences.downloadStorageLocation) {
                     UserPreferences.downloadStorageLocation = location
                     StreamflixDownloadManager.release()
@@ -51,6 +73,97 @@ object DownloadsSettingsController {
                 }
                 true
             }
+        }
+
+        findPreference("DOWNLOAD_STORAGE_PICK_FOLDER")?.setOnPreferenceClickListener {
+            onPickDownloadFolder?.invoke()
+            true
+        }
+
+        findPreference("DOWNLOAD_STORAGE_CLEAR_FOLDER")?.setOnPreferenceClickListener {
+            DownloadTreeAccess.clearTree(context)
+            StreamflixDownloadManager.release()
+            refreshSummaries(findPreference, context)
+            ExpDialogChrome.notify(context, R.string.settings_download_storage_folder_cleared)
+            true
+        }
+
+        findPreference("EXTERNAL_PLAYER_DEFAULT")?.setOnPreferenceClickListener {
+            val current = UserPreferences.externalPlayerPackage
+            val players = ExternalStreamHandoff.listInstalledPlayers(context)
+            if (players.isEmpty()) {
+                ExpDialogChrome.notify(context, R.string.external_player_none_found)
+                return@setOnPreferenceClickListener true
+            }
+            val labels = players.map {
+                it.loadLabel(context.packageManager).toString() + "\n" + it.activityInfo.packageName
+            }.toTypedArray()
+            val packages = players.map { it.activityInfo.packageName }
+            val checked = packages.indexOf(current).coerceAtLeast(-1)
+            val builder = if (ExperimentalMobileDesign.enabled()) {
+                MaterialAlertDialogBuilder(context)
+            } else {
+                AlertDialog.Builder(context)
+            }
+            builder
+                .setTitle(R.string.settings_external_player_title)
+                .setSingleChoiceItems(labels, checked) { dialog, which ->
+                    ExternalStreamHandoff.rememberChosenPackage(packages.getOrNull(which))
+                    dialog.dismiss()
+                    refreshSummaries(findPreference, context)
+                    ExpDialogChrome.notify(context, R.string.external_player_remembered)
+                }
+                .setNegativeButton(android.R.string.cancel, null)
+                .create()
+                .also { dialog ->
+                    dialog.setOnShowListener { ExpDialogChrome.polishButtons(dialog) }
+                    dialog.show()
+                }
+            true
+        }
+
+        findPreference("EXTERNAL_PLAYER_CLEAR")?.setOnPreferenceClickListener {
+            ExternalStreamHandoff.clearPreferredPackage()
+            refreshSummaries(findPreference, context)
+            ExpDialogChrome.notify(context, R.string.external_player_clear_default)
+            true
+        }
+
+        findPreference("EXTERNAL_DOWNLOADER_DEFAULT")?.setOnPreferenceClickListener {
+            val installed = ExternalDownloadHandoff.installedCandidates(context)
+            if (installed.isEmpty()) {
+                ExpDialogChrome.notify(context, R.string.external_download_none_found)
+                return@setOnPreferenceClickListener true
+            }
+            val current = UserPreferences.externalDownloaderPackage
+            val checked = installed.indexOf(current).coerceAtLeast(-1)
+            val builder = if (ExperimentalMobileDesign.enabled()) {
+                MaterialAlertDialogBuilder(context)
+            } else {
+                AlertDialog.Builder(context)
+            }
+            builder
+                .setTitle(R.string.settings_external_downloader_title)
+                .setSingleChoiceItems(installed.toTypedArray(), checked) { dialog, which ->
+                    ExternalDownloadHandoff.rememberChosenPackage(installed.getOrNull(which))
+                    dialog.dismiss()
+                    refreshSummaries(findPreference, context)
+                    ExpDialogChrome.notify(context, R.string.external_download_started)
+                }
+                .setNegativeButton(android.R.string.cancel, null)
+                .create()
+                .also { dialog ->
+                    dialog.setOnShowListener { ExpDialogChrome.polishButtons(dialog) }
+                    dialog.show()
+                }
+            true
+        }
+
+        findPreference("EXTERNAL_DOWNLOADER_CLEAR")?.setOnPreferenceClickListener {
+            ExternalDownloadHandoff.clearPreferredPackage()
+            refreshSummaries(findPreference, context)
+            ExpDialogChrome.notify(context, R.string.settings_external_downloader_clear)
+            true
         }
 
         findPreference("DOWNLOAD_WIFI_ONLY")?.let { pref ->
@@ -209,6 +322,23 @@ object DownloadsSettingsController {
         refresh(findPreference, context, scope)
     }
 
+    fun onDownloadFolderPicked(
+        fragment: Fragment,
+        findPreference: (String) -> Preference?,
+        uri: Uri?,
+    ) {
+        val context = fragment.requireContext()
+        if (uri == null) return
+        val ok = DownloadTreeAccess.persistTree(context, uri)
+        if (ok) {
+            StreamflixDownloadManager.release()
+            ExpDialogChrome.notify(context, R.string.settings_download_storage_folder_set)
+        } else {
+            ExpDialogChrome.notify(context, R.string.settings_download_storage_folder_failed)
+        }
+        refreshSummaries(findPreference, context)
+    }
+
     private fun confirmClear(
         context: android.content.Context,
         titleRes: Int,
@@ -286,5 +416,32 @@ object DownloadsSettingsController {
             DownloadStorage.absolutePathSummary(context)
         findPreference("DOWNLOAD_STORAGE_USED")?.summary =
             DownloadStats.storageSummary(context)
+
+        val treeName = DownloadTreeAccess.displayName(context)
+        findPreference("DOWNLOAD_STORAGE_PICK_FOLDER")?.summary =
+            if (!treeName.isNullOrBlank()) {
+                context.getString(R.string.settings_download_storage_pick_folder_set, treeName)
+            } else {
+                context.getString(R.string.settings_download_storage_pick_folder_summary)
+            }
+        findPreference("DOWNLOAD_STORAGE_CLEAR_FOLDER")?.isEnabled = DownloadTreeAccess.hasTree()
+
+        val playerPkg = UserPreferences.externalPlayerPackage
+        findPreference("EXTERNAL_PLAYER_DEFAULT")?.summary =
+            if (playerPkg.isNotBlank()) {
+                context.getString(R.string.external_player_default_summary, playerPkg)
+            } else {
+                context.getString(R.string.external_player_default_none)
+            }
+        findPreference("EXTERNAL_PLAYER_CLEAR")?.isEnabled = playerPkg.isNotBlank()
+
+        val dlPkg = UserPreferences.externalDownloaderPackage
+        findPreference("EXTERNAL_DOWNLOADER_DEFAULT")?.summary =
+            if (dlPkg.isNotBlank()) {
+                context.getString(R.string.settings_external_downloader_value, dlPkg)
+            } else {
+                context.getString(R.string.settings_external_downloader_summary)
+            }
+        findPreference("EXTERNAL_DOWNLOADER_CLEAR")?.isEnabled = dlPkg.isNotBlank()
     }
 }

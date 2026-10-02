@@ -96,6 +96,17 @@ object ExternalMpvBackend : PlayerBackend {
         title: String? = null,
         subtitleUri: String? = null,
     ): Boolean {
+        val activity = context as? android.app.Activity
+        val request = ExternalStreamHandoff.Request(
+            sourceUrl = url,
+            headers = headers,
+            positionMs = positionMs,
+            title = title,
+            subtitleUri = subtitleUri,
+        )
+        if (activity != null) {
+            return ExternalStreamHandoff.launch(activity, request, forceChooser = false)
+        }
         val handoff = Handoff(
             url = url,
             headers = headers,
@@ -103,7 +114,10 @@ object ExternalMpvBackend : PlayerBackend {
             title = title,
             subtitleUri = subtitleUri,
         )
-        for (pkg in CANDIDATE_PACKAGES) {
+        val preferred = UserPreferences.externalPlayerPackage.trim()
+            .takeIf { it.isNotEmpty() && ExternalStreamHandoff.isPackageInstalled(context, it) }
+            ?: preferredInstalledPackage(context)
+        for (pkg in listOfNotNull(preferred) + CANDIDATE_PACKAGES) {
             val intent = buildIntent(handoff, pkg)
             if (intent.resolveActivity(context.packageManager) != null) {
                 return try {

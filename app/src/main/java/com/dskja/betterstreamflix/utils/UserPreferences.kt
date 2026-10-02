@@ -210,6 +210,27 @@ object UserPreferences {
             Key.DOWNLOAD_STORAGE_LOCATION.setString(value.name)
         }
 
+    /** Persisted SAF tree URI for custom / SD download folder (empty when unset). */
+    var downloadTreeUri: String
+        get() = Key.DOWNLOAD_TREE_URI.getString().orEmpty()
+        set(value) {
+            Key.DOWNLOAD_TREE_URI.setString(value.trim().ifEmpty { null })
+        }
+
+    /** Remembered external player package (empty = always show chooser / auto-detect). */
+    var externalPlayerPackage: String
+        get() = Key.EXTERNAL_PLAYER_PACKAGE.getString().orEmpty()
+        set(value) {
+            Key.EXTERNAL_PLAYER_PACKAGE.setString(value.trim().ifEmpty { null })
+        }
+
+    /** Remembered external download manager package (ADM etc.). */
+    var externalDownloaderPackage: String
+        get() = Key.EXTERNAL_DOWNLOADER_PACKAGE.getString().orEmpty()
+        set(value) {
+            Key.EXTERNAL_DOWNLOADER_PACKAGE.setString(value.trim().ifEmpty { null })
+        }
+
     /** Smart Downloads: auto-download the next episode after one finishes (opt-in). */
     var downloadSmartEnabled: Boolean
         get() = Key.DOWNLOAD_SMART_ENABLED.getBoolean() ?: false
@@ -1287,6 +1308,9 @@ object UserPreferences {
         DOWNLOAD_FILTER_CURRENT_PROVIDER,
         DOWNLOAD_SOFT_LIMIT_GB,
         DOWNLOAD_STORAGE_LOCATION,
+        DOWNLOAD_TREE_URI,
+        EXTERNAL_PLAYER_PACKAGE,
+        EXTERNAL_DOWNLOADER_PACKAGE,
         DOWNLOAD_SMART_ENABLED,
         DOWNLOAD_AUTO_DELETE_WATCHED,
         TRAKT_ENABLED,
