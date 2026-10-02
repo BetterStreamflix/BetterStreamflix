@@ -93,9 +93,14 @@ class DetailTrailerMobilePlayer(
         ensureConfigured()
         attachLifecycle()
         TrailerPlaybackController.registerActiveSession(this)
-        fetchJob?.cancel()
 
         val key = listOf(tmdbId.orEmpty(), imdbId.orEmpty(), title, seedUrl.orEmpty()).joinToString("|")
+        if (contentKey == key && binding.llDetailTrailerList.childCount > 0) {
+            // Parent rebind with unchanged content — keep rows + WebView, skip reinflate.
+            return
+        }
+        fetchJob?.cancel()
+
         if (contentKey != key) {
             contentKey = key
             hasAutoPlayed = false

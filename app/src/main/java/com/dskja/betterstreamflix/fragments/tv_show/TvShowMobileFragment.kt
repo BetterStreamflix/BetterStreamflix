@@ -16,6 +16,7 @@ import com.dskja.betterstreamflix.database.AppDatabase
 import com.dskja.betterstreamflix.databinding.FragmentTvShowMobileBinding
 import com.dskja.betterstreamflix.models.Season
 import com.dskja.betterstreamflix.models.TvShow
+import com.dskja.betterstreamflix.ui.DetailContentSignatures
 import com.dskja.betterstreamflix.ui.DetailHeaderController
 import com.dskja.betterstreamflix.ui.DetailLoadingErrorChrome
 import com.dskja.betterstreamflix.ui.DetailTab
@@ -175,26 +176,7 @@ class TvShowMobileFragment : Fragment() {
      * Everything the detail list renders, except the list/favorite state. When only that
      * changes we refresh the header icon instead of re-submitting and jumping the page.
      */
-    private fun contentSignature(tvShow: TvShow) = listOf(
-        tvShow.id,
-        tvShow.title,
-        tvShow.overview,
-        tvShow.poster,
-        tvShow.banner,
-        // logo intentionally omitted — async LogoPersist must not reset detail tabs
-        tvShow.trailer,
-        tvShow.quality,
-        tvShow.rating,
-        tvShow.runtime,
-        tvShow.lastPlayedEpisodeId,
-        tvShow.seasons.size,
-        tvShow.seasons.sumOf { it.episodes.size },
-        tvShow.seasons.map { "${it.id}:${it.episodes.size}" },
-        tvShow.genres.size,
-        tvShow.directors.size,
-        tvShow.cast.size,
-        tvShow.recommendations.size,
-    )
+    private fun contentSignature(tvShow: TvShow) = DetailContentSignatures.tvShow(tvShow)
 
     private var lastContentSignature: List<Any?>? = null
 
