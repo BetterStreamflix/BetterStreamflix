@@ -4,7 +4,7 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:background="#181818"
+    android:background="@color/cinema_surface"
     android:paddingTop="10dp"
     android:paddingBottom="24dp">
 
@@ -51,7 +51,7 @@
         android:gravity="center"
         android:padding="28dp"
         android:text="@string/detail_similar_empty"
-        android:textColor="#8AFFFFFF"
+        android:textColor="@color/cinema_text_faint"
         android:textSize="14sp"
         android:visibility="gone"
         app:layout_constraintEnd_toEndOf="parent"

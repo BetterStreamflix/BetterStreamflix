@@ -4,7 +4,7 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:background="#181818"
+    android:background="@color/cinema_surface"
     android:paddingTop="4dp"
     android:paddingBottom="12dp">
 
@@ -20,11 +20,11 @@
         android:gravity="center_vertical"
         android:paddingStart="16dp"
         android:paddingEnd="14dp"
-        android:textColor="#FFFFFF"
+        android:textColor="@color/cinema_text"
         android:textSize="14sp"
         android:textStyle="bold"
         app:drawableEndCompat="@drawable/ic_exp_chevron_down"
-        app:drawableTint="#FFFFFF"
+        app:drawableTint="@color/cinema_text"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent"
         tools:text="Season 1" />
@@ -96,7 +96,7 @@
             android:fontFamily="@font/manrope"
             android:gravity="center"
             android:text="@string/season_empty"
-            android:textColor="#8AFFFFFF"
+            android:textColor="@color/cinema_text_faint"
             android:textSize="14sp" />
 
         <TextView
@@ -110,7 +110,7 @@
             android:paddingStart="18dp"
             android:paddingEnd="18dp"
             android:text="@string/loading_error_retry"
-            android:textColor="#FFFFFF"
+            android:textColor="@color/cinema_text"
             android:textSize="14sp"
             android:textStyle="bold"
             android:visibility="gone"

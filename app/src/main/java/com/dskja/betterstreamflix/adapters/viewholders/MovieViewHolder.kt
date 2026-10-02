@@ -1416,51 +1416,30 @@ class MovieViewHolder(
             if (visible) value.text = text
         }
 
-        val genres = movie.genres
-            .mapNotNull { it.name.takeIf { name -> name.isNotBlank() } }
-            .joinToString(" · ")
-        bindFact(binding.tvDetailAboutGenresLabel, binding.tvDetailAboutGenres, genres.ifBlank { null })
+        // Hero already shows genres / runtime / year / rating / cert — keep About for extras only.
+        binding.tvDetailAboutGenresLabel.visibility = View.GONE
+        binding.tvDetailAboutGenres.visibility = View.GONE
+        binding.tvDetailAboutRuntimeLabel.visibility = View.GONE
+        binding.tvDetailAboutRuntime.visibility = View.GONE
+        binding.tvDetailAboutYearLabel.visibility = View.GONE
+        binding.tvDetailAboutYear.visibility = View.GONE
+        binding.tvDetailAboutRatingLabel.visibility = View.GONE
+        binding.tvDetailAboutRating.visibility = View.GONE
+        binding.tvDetailAboutCertLabel.visibility = View.GONE
+        binding.tvDetailAboutCert.visibility = View.GONE
+        binding.tvDetailAboutSeasonsLabel.visibility = View.GONE
+        binding.tvDetailAboutSeasons.visibility = View.GONE
 
-        val runtime = movie.runtime?.let {
-            val hours = it / 60
-            val minutes = it % 60
-            when {
-                hours > 0 -> context.getString(
-                    R.string.movie_runtime_hours_minutes_short,
-                    hours,
-                    minutes,
-                )
-                else -> context.getString(R.string.movie_runtime_minutes_short, minutes)
-            }
-        }
-        bindFact(binding.tvDetailAboutRuntimeLabel, binding.tvDetailAboutRuntime, runtime)
-        bindFact(
-            binding.tvDetailAboutYearLabel,
-            binding.tvDetailAboutYear,
-            movie.released?.format("yyyy"),
-        )
-        bindFact(
-            binding.tvDetailAboutRatingLabel,
-            binding.tvDetailAboutRating,
-            com.dskja.betterstreamflix.ui.DetailRating.format(movie.rating),
-        )
         bindFact(
             binding.tvDetailAboutQualityLabel,
             binding.tvDetailAboutQuality,
             movie.quality?.takeIf { it.isNotBlank() },
         )
         bindFact(
-            binding.tvDetailAboutCertLabel,
-            binding.tvDetailAboutCert,
-            movie.contentRating?.takeIf { it.isNotBlank() },
-        )
-        bindFact(
             binding.tvDetailAboutProviderLabel,
             binding.tvDetailAboutProvider,
             movie.providerName?.takeIf { it.isNotBlank() },
         )
-        binding.tvDetailAboutSeasonsLabel.visibility = View.GONE
-        binding.tvDetailAboutSeasons.visibility = View.GONE
 
         val ids = buildList {
             movie.tmdbId?.takeIf { it.isNotBlank() }?.let {
@@ -1473,16 +1452,13 @@ class MovieViewHolder(
         bindFact(binding.tvDetailAboutIdsLabel, binding.tvDetailAboutIds, ids.ifBlank { null })
 
         val anyFact = listOf(
-            binding.tvDetailAboutGenres,
-            binding.tvDetailAboutRuntime,
-            binding.tvDetailAboutYear,
-            binding.tvDetailAboutRating,
             binding.tvDetailAboutQuality,
-            binding.tvDetailAboutCert,
             binding.tvDetailAboutProvider,
             binding.tvDetailAboutIds,
         ).any { it.visibility == View.VISIBLE }
         binding.tvDetailAboutFactsLabel.visibility =
+            if (anyFact) View.VISIBLE else View.GONE
+        binding.llDetailAboutFacts.visibility =
             if (anyFact) View.VISIBLE else View.GONE
     }
 

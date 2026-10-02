@@ -146,9 +146,13 @@ private fun TvShowViewHolder.bindSeasonEpisodes(
                     episode.itemType = AppAdapter.Type.EPISODE_DETAIL_MOBILE_ITEM
                 },
             )
+            val upNextIndex = episodes.indexOfFirst { it.id == tvShow.episodeToWatch?.id }
             binding.rvTvShowEpisodes.post {
                 binding.rvTvShowEpisodes.requestLayout()
                 (binding.rvTvShowEpisodes.parent as? View)?.requestLayout()
+                if (upNextIndex >= 0) {
+                    binding.rvTvShowEpisodes.scrollToPosition(upNextIndex)
+                }
             }
         }
         seasonUi?.isSeasonEpisodeFailed(season.id) == true -> {

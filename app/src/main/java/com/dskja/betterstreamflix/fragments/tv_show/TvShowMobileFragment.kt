@@ -239,15 +239,9 @@ class TvShowMobileFragment : Fragment() {
                     ?.copy()
                     ?.apply { itemType = AppAdapter.Type.TV_SHOW_SEASONS_MOBILE },
             )
-            DetailTab.SIMILAR -> {
-                if (tvShow.recommendations.isEmpty()) {
-                    aboutBody(tvShow)
-                } else {
-                    listOf(
-                        tvShow.copy().apply { itemType = AppAdapter.Type.TV_SHOW_RECOMMENDATIONS_MOBILE },
-                    )
-                }
-            }
+            DetailTab.SIMILAR -> listOf(
+                tvShow.copy().apply { itemType = AppAdapter.Type.TV_SHOW_RECOMMENDATIONS_MOBILE },
+            )
             DetailTab.TRAILER -> listOf(
                 tvShow.copy().apply { itemType = AppAdapter.Type.TV_SHOW_TRAILER_MOBILE },
             )

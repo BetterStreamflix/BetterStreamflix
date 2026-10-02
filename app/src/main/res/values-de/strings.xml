@@ -40,7 +40,7 @@
     <string name="favorites_empty">Deine Listen sind leer — füge einen Titel hinzu</string>
     <string name="detail_add_to_list">Zur Liste hinzufügen</string>
     <string name="detail_tab_episodes">Episoden</string>
-    <string name="detail_tab_similar">Das könnte dir auch gefallen</string>
+    <string name="detail_tab_similar">Ähnlich</string>
     <string name="detail_tab_trailer">Trailer</string>
     <string name="detail_tab_about">Info</string>
     <string name="detail_trailer_empty">Noch keine Trailer für diesen Titel gefunden</string>
