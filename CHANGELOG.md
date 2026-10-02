@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Buy Me a Coffee short-link constant (`buymeacoff.ee/betterstreamflix`) alongside the canonical URL
 
 ### Fixed
+- Anikoto playback: MegaPlay/Nekostream `getSources` now returns AES-encrypted `enc` instead of plaintext `sources.file` — decrypt that payload so Play works again
 - Sentry P2 leftover **BETTERSTREAMFLIX-Q**: TMDb Home Discover shelves no longer let a child `ClassCastException` fail the outer Home scope — soft-shelf uses its own `coroutineScope`, merges `List<Movie>+List<Tv>` without unsafe `List<MultiItem>` casts, and CrashReporter/Sentry drop TMDb ClassCast soft-noise
 
 ### Changed
