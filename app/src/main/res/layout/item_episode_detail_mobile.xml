@@ -18,7 +18,7 @@
             android:id="@+id/iv_episode_poster"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
-            android:background="#FF1A1A1A"
+            android:background="@color/cinema_elevated"
             android:scaleType="centerCrop"
             tools:ignore="ContentDescription" />
 
@@ -46,7 +46,7 @@
             android:background="@drawable/bg_cert_badge"
             android:fontFamily="@font/manrope"
             android:gravity="center"
-            android:textColor="#FFFFFF"
+            android:textColor="@color/cinema_text"
             android:textSize="10sp"
             android:textStyle="bold"
             android:visibility="gone"
@@ -82,7 +82,7 @@
             android:layout_height="3dp"
             android:layout_gravity="bottom"
             android:backgroundTint="#CC646464"
-            android:progressTint="#FFFFFF"
+            android:progressTint="@color/cinema_text"
             android:visibility="gone"
             tools:progress="40"
             tools:visibility="visible" />
@@ -97,7 +97,7 @@
         android:ellipsize="end"
         android:fontFamily="@font/outfit"
         android:maxLines="2"
-        android:textColor="#FFFFFFFF"
+        android:textColor="@color/cinema_text"
         android:textSize="15sp"
         android:textStyle="bold"
         app:layout_constraintEnd_toStartOf="@id/btn_episode_download"
@@ -114,7 +114,7 @@
         android:src="@drawable/ic_menu_downloads"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintTop_toTopOf="@id/tv_episode_title"
-        app:tint="#FFFFFF"
+        app:tint="@color/cinema_text"
         tools:ignore="ContentDescription" />
 
     <TextView
@@ -127,7 +127,7 @@
         android:ellipsize="end"
         android:fontFamily="@font/manrope"
         android:maxLines="1"
-        android:textColor="#99FFFFFF"
+        android:textColor="@color/cinema_text_muted"
         android:textSize="12sp"
         app:layout_constraintEnd_toStartOf="@id/btn_episode_download"
         app:layout_constraintStart_toEndOf="@id/fl_episode_thumb"
@@ -160,7 +160,7 @@
         android:fontFamily="@font/manrope"
         android:lineSpacingExtra="3dp"
         android:maxLines="3"
-        android:textColor="#B3FFFFFF"
+        android:textColor="@color/cinema_text_soft"
         android:textSize="13sp"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"

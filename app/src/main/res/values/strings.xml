@@ -110,7 +110,7 @@
     <string name="detail_download_offline">Saved offline</string>
     <string name="detail_add_to_list">Add to list</string>
     <string name="detail_tab_episodes">Episodes</string>
-    <string name="detail_tab_similar">You May Also Like</string>
+    <string name="detail_tab_similar">Similar</string>
     <string name="detail_tab_trailer">Trailer</string>
     <string name="detail_tab_about">About</string>
     <string name="detail_trailer_empty">No trailers found for this title yet</string>

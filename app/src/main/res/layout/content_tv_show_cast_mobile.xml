@@ -4,7 +4,7 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:background="#181818"
+    android:background="@color/cinema_surface"
     android:paddingTop="14dp"
     android:paddingBottom="20dp">
 
@@ -18,7 +18,7 @@
         android:letterSpacing="0.08"
         android:text="@string/tv_show_cast"
         android:textAllCaps="true"
-        android:textColor="#99FFFFFF"
+        android:textColor="@color/cinema_text_muted"
         android:textSize="11sp"
         android:textStyle="bold"
         app:layout_constraintEnd_toEndOf="parent"
