@@ -57,6 +57,12 @@ class SupportTvFragment : Fragment() {
             horizontal = true,
             animate = false,
         )
+        SupportHubBinder.bindSupporters(
+            requireContext(),
+            binding.llSupportSupporters,
+            binding.tvSupportSupportersTitle,
+            binding.tvSupportSupportersSubtitle,
+        )
         SupportHubBinder.bindImpact(requireContext(), binding.llSupportImpact)
         SupportHubBinder.bindFaq(requireContext(), binding.llSupportFaq)
 

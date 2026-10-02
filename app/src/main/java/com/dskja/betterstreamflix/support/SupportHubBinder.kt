@@ -13,9 +13,64 @@ import com.dskja.betterstreamflix.utils.ExperimentalMobileDesign
 import com.google.android.material.color.MaterialColors
 
 /**
- * Binds Impact goals + FAQ rows into Support hub containers.
+ * Binds Impact goals, FAQ rows, and supporters into Support hub containers.
  */
 object SupportHubBinder {
+
+    fun bindSupporters(
+        context: Context,
+        container: LinearLayout?,
+        titleView: TextView? = null,
+        subtitleView: TextView? = null,
+    ) {
+        container ?: return
+        container.removeAllViews()
+        val supporters = SupportersCatalog.load(context)
+        if (supporters.isEmpty()) {
+            titleView?.visibility = View.GONE
+            subtitleView?.visibility = View.GONE
+            container.visibility = View.GONE
+            return
+        }
+        titleView?.visibility = View.VISIBLE
+        subtitleView?.visibility = View.VISIBLE
+        container.visibility = View.VISIBLE
+
+        val inflater = LayoutInflater.from(context)
+        val exp = ExperimentalMobileDesign.enabled()
+        val glassBg = ExperimentalMobileDesign.glassCardBackground()
+        supporters.forEachIndexed { index, supporter ->
+            val row = inflater.inflate(R.layout.item_support_supporter, container, false)
+            if (exp) {
+                row.setBackgroundResource(glassBg)
+            }
+            row.findViewById<TextView>(R.id.tv_support_supporter_name).text = supporter.name
+            val noteView = row.findViewById<TextView>(R.id.tv_support_supporter_note)
+            if (supporter.note.isNotBlank()) {
+                noteView.text = supporter.note
+                noteView.visibility = View.VISIBLE
+            } else {
+                noteView.visibility = View.GONE
+            }
+            val lp = LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT,
+            ).apply {
+                if (index > 0) {
+                    topMargin = context.resources.getDimensionPixelSize(R.dimen.support_card_spacing)
+                }
+            }
+            container.addView(row, lp)
+            SupportUiBinder.wireInteractive(row)
+            if (exp) {
+                row.visibility = View.INVISIBLE
+                row.postDelayed({
+                    row.visibility = View.VISIBLE
+                    ExpMotion.popIn(row)
+                }, 40L * index)
+            }
+        }
+    }
 
     fun bindImpact(context: Context, container: LinearLayout?) {
         container ?: return

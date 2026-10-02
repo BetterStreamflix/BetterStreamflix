@@ -62,6 +62,7 @@ class SupportPreviewMobileFragment : Fragment() {
                 binding.previewBanner.root,
                 binding.llPreviewProviders,
                 binding.llPreviewImpact,
+                binding.llPreviewSupporters,
                 binding.llPreviewFaq,
             )
             sections.forEachIndexed { index, section ->
@@ -113,6 +114,12 @@ class SupportPreviewMobileFragment : Fragment() {
             animate = true,
         )
         SupportHubBinder.bindImpact(requireContext(), binding.llPreviewImpact)
+        SupportHubBinder.bindSupporters(
+            requireContext(),
+            binding.llPreviewSupporters,
+            binding.tvPreviewSupportersTitle,
+            binding.tvPreviewSupportersSubtitle,
+        )
         SupportHubBinder.bindFaq(requireContext(), binding.llPreviewFaq)
     }
 

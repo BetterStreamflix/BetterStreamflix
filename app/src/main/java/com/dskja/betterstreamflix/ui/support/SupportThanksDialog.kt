@@ -12,6 +12,7 @@ import com.dskja.betterstreamflix.R
 import com.dskja.betterstreamflix.databinding.DialogSupportThanksBinding
 import com.dskja.betterstreamflix.support.SupportLinkOpener
 import com.dskja.betterstreamflix.support.SupportProvider
+import com.dskja.betterstreamflix.support.SupportersCatalog
 import com.dskja.betterstreamflix.utils.ExpMotion
 import com.dskja.betterstreamflix.utils.ExpPressEffects.applyExpPress
 import com.dskja.betterstreamflix.utils.ExperimentalMobileDesign
@@ -37,6 +38,13 @@ class SupportThanksDialog(
             attributes = attributes?.apply {
                 windowAnimations = R.style.SupportDialogAnimation
             }
+        }
+
+        val names = SupportersCatalog.displayNames(context)
+        binding.tvSupportThanksBody.text = if (names.isNotBlank()) {
+            context.getString(R.string.support_thanks_body_with_supporters, names)
+        } else {
+            context.getString(R.string.support_thanks_body)
         }
 
         if (ExperimentalMobileDesign.enabled()) {

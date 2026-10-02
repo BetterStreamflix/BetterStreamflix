@@ -8,6 +8,7 @@ import androidx.fragment.app.Fragment
 import androidx.navigation.fragment.findNavController
 import com.dskja.betterstreamflix.BuildConfig
 import com.dskja.betterstreamflix.databinding.FragmentAboutMobileBinding
+import com.dskja.betterstreamflix.support.SupportHubBinder
 import com.dskja.betterstreamflix.support.SupportLinkOpener
 import com.dskja.betterstreamflix.support.SupportProvider
 import com.dskja.betterstreamflix.support.SupportUrls
@@ -35,6 +36,13 @@ class SettingsAboutMobileFragment : Fragment() {
         binding.tvAboutVersion.text = getString(
             com.dskja.betterstreamflix.R.string.settings_about_version_name,
             BuildConfig.VERSION_NAME,
+        )
+
+        SupportHubBinder.bindSupporters(
+            requireContext(),
+            binding.llAboutSupporters,
+            binding.tvAboutSupportersTitle,
+            binding.tvAboutSupportersSubtitle,
         )
 
         if (ExperimentalMobileDesign.enabled()) {
@@ -99,6 +107,7 @@ class SettingsAboutMobileFragment : Fragment() {
             }
             listOf(
                 binding.btnAboutSupportHub,
+                binding.llAboutSupporters,
                 binding.btnAboutGithub,
                 binding.btnAboutBmc,
                 binding.btnAboutSponsors,
