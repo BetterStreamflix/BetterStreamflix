@@ -55,6 +55,7 @@ import com.dskja.betterstreamflix.providers.TmdbProvider
 import com.dskja.betterstreamflix.player.SerienStreamBypassHelper
 import com.dskja.betterstreamflix.utils.AppLanguageManager
 import com.dskja.betterstreamflix.utils.CatalogSortMode
+import com.dskja.betterstreamflix.utils.SearchSortMode
 import com.dskja.betterstreamflix.utils.CrashReporter
 import com.dskja.betterstreamflix.utils.ExpDialogChrome
 import com.dskja.betterstreamflix.utils.ExperimentalMobileDesign
@@ -1063,6 +1064,19 @@ class SettingsMobileFragment : PreferenceFragmentCompat() {
                     preference.value = mode.name
                 }
                 ProviderChangeNotifier.notifyProviderChanged()
+                true
+            }
+        }
+
+        findPreference<ListPreference>("SEARCH_SORT_MODE")?.apply {
+            value = UserPreferences.searchSortMode.name
+            summaryProvider = ListPreference.SimpleSummaryProvider.getInstance()
+            setOnPreferenceChangeListener { preference, newValue ->
+                val mode = SearchSortMode.fromKey(newValue as String)
+                UserPreferences.searchSortMode = mode
+                if (preference is ListPreference) {
+                    preference.value = mode.name
+                }
                 true
             }
         }

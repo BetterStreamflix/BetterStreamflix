@@ -834,6 +834,15 @@
                 android:defaultValue="DEFAULT"
                 app:iconSpaceReserved="false" />
 
+            <ListPreference
+                android:key="SEARCH_SORT_MODE"
+                android:title="@string/settings_search_sort_title"
+                android:summary="%s"
+                android:entries="@array/search_sort_names"
+                android:entryValues="@array/search_sort_values"
+                android:defaultValue="PROVIDER_DEFAULT"
+                app:iconSpaceReserved="false" />
+
             <SwitchPreference
                 android:key="CAST_ENABLED"
                 android:title="@string/settings_cast_enabled_title"
