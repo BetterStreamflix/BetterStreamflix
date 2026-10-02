@@ -73,23 +73,48 @@
         app:layout_constraintTop_toBottomOf="@id/btn_tv_show_season_picker"
         tools:visibility="visible" />
 
-    <TextView
-        android:id="@+id/tv_tv_show_episodes_empty"
+    <LinearLayout
+        android:id="@+id/ll_tv_show_episodes_empty"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_marginTop="24dp"
         android:layout_marginBottom="24dp"
-        android:fontFamily="@font/manrope"
-        android:gravity="center"
+        android:gravity="center_horizontal"
+        android:orientation="vertical"
         android:paddingStart="24dp"
         android:paddingEnd="24dp"
-        android:text="@string/season_empty"
-        android:textColor="#8AFFFFFF"
-        android:textSize="14sp"
         android:visibility="gone"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@id/btn_tv_show_season_picker"
-        tools:visibility="gone" />
+        tools:visibility="gone">
+
+        <TextView
+            android:id="@+id/tv_tv_show_episodes_empty"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:fontFamily="@font/manrope"
+            android:gravity="center"
+            android:text="@string/season_empty"
+            android:textColor="#8AFFFFFF"
+            android:textSize="14sp" />
+
+        <TextView
+            android:id="@+id/btn_tv_show_episodes_retry"
+            android:layout_width="wrap_content"
+            android:layout_height="40dp"
+            android:layout_marginTop="12dp"
+            android:background="@drawable/bg_detail_season_chip"
+            android:fontFamily="@font/outfit"
+            android:gravity="center"
+            android:paddingStart="18dp"
+            android:paddingEnd="18dp"
+            android:text="@string/loading_error_retry"
+            android:textColor="#FFFFFF"
+            android:textSize="14sp"
+            android:textStyle="bold"
+            android:visibility="gone"
+            tools:visibility="visible" />
+    </LinearLayout>
 
 </androidx.constraintlayout.widget.ConstraintLayout>

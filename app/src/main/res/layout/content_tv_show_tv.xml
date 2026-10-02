@@ -243,9 +243,24 @@
         android:focusable="true"
         android:focusableInTouchMode="true"
         android:nextFocusLeft="@id/btn_tv_show_trailer"
-        android:nextFocusRight="@id/btn_tv_show_share"
+        android:nextFocusRight="@id/btn_tv_show_watched"
         android:text="@string/option_show_download"
         app:layout_constraintStart_toEndOf="@id/btn_tv_show_trailer"
+        app:layout_constraintTop_toBottomOf="@id/tv_tv_show_overview" />
+
+    <TextView
+        android:id="@+id/btn_tv_show_watched"
+        style="@style/AppTheme.Widget.Tv.Button"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="25dp"
+        android:layout_marginTop="30dp"
+        android:focusable="true"
+        android:focusableInTouchMode="true"
+        android:nextFocusLeft="@id/btn_tv_show_download"
+        android:nextFocusRight="@id/btn_tv_show_share"
+        android:text="@string/option_show_watched"
+        app:layout_constraintStart_toEndOf="@id/btn_tv_show_download"
         app:layout_constraintTop_toBottomOf="@id/tv_tv_show_overview" />
 
     <TextView
@@ -257,10 +272,10 @@
         android:layout_marginTop="30dp"
         android:focusable="true"
         android:focusableInTouchMode="true"
-        android:nextFocusLeft="@id/btn_tv_show_download"
+        android:nextFocusLeft="@id/btn_tv_show_watched"
         android:nextFocusRight="@id/btn_tv_show_favorite"
         android:text="@string/detail_share"
-        app:layout_constraintStart_toEndOf="@id/btn_tv_show_download"
+        app:layout_constraintStart_toEndOf="@id/btn_tv_show_watched"
         app:layout_constraintTop_toBottomOf="@id/tv_tv_show_overview" />
 
     <ImageView

@@ -1,6 +1,5 @@
 package com.dskja.betterstreamflix.adapters.viewholders
 
-import android.view.animation.AnimationUtils
 import androidx.core.view.isVisible
 import androidx.navigation.findNavController
 import androidx.recyclerview.widget.RecyclerView
@@ -8,15 +7,16 @@ import androidx.viewbinding.ViewBinding
 import com.bumptech.glide.Glide
 import com.bumptech.glide.load.resource.drawable.DrawableTransitionOptions
 import com.dskja.betterstreamflix.R
+import com.dskja.betterstreamflix.adapters.AppAdapter
 import com.dskja.betterstreamflix.utils.TvFocusZoom
 import com.dskja.betterstreamflix.utils.ExpMotion
 import com.dskja.betterstreamflix.utils.ExpPressEffects.applyExpPress
 import com.dskja.betterstreamflix.utils.ExperimentalMobileDesign
 import com.dskja.betterstreamflix.databinding.ItemSeasonMobileBinding
 import com.dskja.betterstreamflix.databinding.ItemSeasonTvBinding
-import com.dskja.betterstreamflix.fragments.tv_show.TvShowMobileFragmentDirections
 import com.dskja.betterstreamflix.fragments.tv_show.TvShowTvFragmentDirections
 import com.dskja.betterstreamflix.models.Season
+import com.dskja.betterstreamflix.ui.DetailTab
 
 class SeasonViewHolder(
     private val _binding: ViewBinding
@@ -43,20 +43,12 @@ class SeasonViewHolder(
     }
 
     private fun displayMobileItem(binding: ItemSeasonMobileBinding) {
+        // Mobile detail prefers the in-page Episodes tab. Keep SeasonMobileFragment in the
+        // nav graph for deep links / leftovers, but do not navigate there from season chips.
         binding.root.apply {
             setOnClickListener {
                 ExpMotion.hapticTap(it)
-                findNavController().navigate(
-                    TvShowMobileFragmentDirections.actionTvShowToSeason(
-                        tvShowId = season.tvShow?.id ?: "",
-                        tvShowTitle = season.tvShow?.title ?: "",
-                        tvShowPoster = season.tvShow?.poster,
-                        tvShowBanner = season.tvShow?.banner,
-                        seasonId = season.id,
-                        seasonNumber = season.number,
-                        seasonTitle = season.displayTitle(),
-                    )
-                )
+                (bindingAdapter as? AppAdapter)?.onDetailTabSelectedListener?.invoke(DetailTab.EPISODES)
             }
         }
 
@@ -134,7 +126,6 @@ class SeasonViewHolder(
                 .into(this)
         }
         val watched = season.isFullyWatched()
-        val wasWatched = binding.ivSeasonWatchedRibbon.isVisible
         binding.ivSeasonWatchedRibbon.isVisible = watched
 
         binding.tvSeasonTitle.text = season.displayTitle()
