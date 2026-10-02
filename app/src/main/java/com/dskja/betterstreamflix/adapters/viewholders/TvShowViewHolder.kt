@@ -33,6 +33,7 @@ import com.bumptech.glide.load.resource.drawable.DrawableTransitionOptions
 import com.dskja.betterstreamflix.R
 import com.dskja.betterstreamflix.utils.TvFocusZoom
 import com.dskja.betterstreamflix.adapters.AppAdapter
+import com.dskja.betterstreamflix.adapters.submitAppList
 import com.dskja.betterstreamflix.database.AppDatabase
 import com.dskja.betterstreamflix.databinding.*
 import com.dskja.betterstreamflix.fragments.home.HomeTvFragment
@@ -985,7 +986,7 @@ class TvShowViewHolder(
         }
         binding.hgvTvShowSeasons.apply {
             setRowHeight(ViewGroup.LayoutParams.WRAP_CONTENT)
-            adapter = AppAdapter().apply { submitList(tvShow.seasons.onEach { it.itemType = AppAdapter.Type.SEASON_TV_ITEM }) }
+            submitAppList(tvShow.seasons.onEach { it.itemType = AppAdapter.Type.SEASON_TV_ITEM })
             setItemSpacing(20)
         }
     }
@@ -1002,11 +1003,9 @@ class TvShowViewHolder(
             ExpMotion.pulseAccentRule(binding.root.findViewById(R.id.v_tv_show_directors_rule))
         }
         binding.rvTvShowDirectors.apply {
-            adapter = AppAdapter().apply {
-                submitList(tvShow.directors.onEach {
-                    it.itemType = AppAdapter.Type.PEOPLE_MOBILE_ITEM
-                })
-            }
+            submitAppList(tvShow.directors.onEach {
+                it.itemType = AppAdapter.Type.PEOPLE_MOBILE_ITEM
+            })
             if (itemDecorationCount == 0) {
                 addItemDecoration(SpacingItemDecoration(20.dp(context)))
             }
@@ -1033,11 +1032,9 @@ class TvShowViewHolder(
         }
         binding.hgvTvShowDirectors.apply {
             setRowHeight(ViewGroup.LayoutParams.WRAP_CONTENT)
-            adapter = AppAdapter().apply {
-                submitList(tvShow.directors.onEach {
-                    it.itemType = AppAdapter.Type.PEOPLE_TV_ITEM
-                })
-            }
+            submitAppList(tvShow.directors.onEach {
+                it.itemType = AppAdapter.Type.PEOPLE_TV_ITEM
+            })
             setItemSpacing(80)
         }
     }
@@ -1054,11 +1051,9 @@ class TvShowViewHolder(
             ExpMotion.staggerFirstFill(binding.rvTvShowCast)
         }
         binding.rvTvShowCast.apply {
-            adapter = AppAdapter().apply {
-                submitList(tvShow.cast.onEach {
-                    it.itemType = AppAdapter.Type.PEOPLE_MOBILE_ITEM
-                })
-            }
+            submitAppList(tvShow.cast.onEach {
+                it.itemType = AppAdapter.Type.PEOPLE_MOBILE_ITEM
+            })
             if (itemDecorationCount == 0) {
                 addItemDecoration(SpacingItemDecoration(10.dp(context)))
             }
@@ -1086,11 +1081,9 @@ class TvShowViewHolder(
         }
         binding.hgvTvShowCast.apply {
             setRowHeight(ViewGroup.LayoutParams.WRAP_CONTENT)
-            adapter = AppAdapter().apply {
-                submitList(tvShow.cast.onEach {
-                    it.itemType = AppAdapter.Type.PEOPLE_TV_ITEM
-                })
-            }
+            submitAppList(tvShow.cast.onEach {
+                it.itemType = AppAdapter.Type.PEOPLE_TV_ITEM
+            })
             setItemSpacing(20)
         }
     }
@@ -1119,14 +1112,12 @@ class TvShowViewHolder(
             } else if (grid.spanCount != 3) {
                 grid.spanCount = 3
             }
-            adapter = AppAdapter().apply {
-                submitList(tvShow.recommendations.onEach {
-                    when (it) {
-                        is Movie -> it.itemType = AppAdapter.Type.MOVIE_GRID_MOBILE_ITEM
-                        is TvShow -> it.itemType = AppAdapter.Type.TV_SHOW_GRID_MOBILE_ITEM
-                    }
-                })
-            }
+            submitAppList(tvShow.recommendations.onEach {
+                when (it) {
+                    is Movie -> it.itemType = AppAdapter.Type.MOVIE_GRID_MOBILE_ITEM
+                    is TvShow -> it.itemType = AppAdapter.Type.TV_SHOW_GRID_MOBILE_ITEM
+                }
+            })
             if (itemDecorationCount == 0) {
                 addItemDecoration(SpacingItemDecoration(10.dp(context)))
             }
@@ -1156,14 +1147,12 @@ class TvShowViewHolder(
         }
         binding.hgvTvShowRecommendations.apply {
             setRowHeight(ViewGroup.LayoutParams.WRAP_CONTENT)
-            adapter = AppAdapter().apply {
-                submitList(tvShow.recommendations.onEach {
-                    when (it) {
-                        is Movie -> it.itemType = AppAdapter.Type.MOVIE_TV_ITEM
-                        is TvShow -> it.itemType = AppAdapter.Type.TV_SHOW_TV_ITEM
-                    }
-                })
-            }
+            submitAppList(tvShow.recommendations.onEach {
+                when (it) {
+                    is Movie -> it.itemType = AppAdapter.Type.MOVIE_TV_ITEM
+                    is TvShow -> it.itemType = AppAdapter.Type.TV_SHOW_TV_ITEM
+                }
+            })
             setItemSpacing(20)
         }
     }
