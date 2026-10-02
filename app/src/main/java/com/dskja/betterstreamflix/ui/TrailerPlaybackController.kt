@@ -325,23 +325,39 @@ object TrailerPlaybackController {
         fragmentManager: androidx.fragment.app.FragmentManager?,
         trailerUrl: String,
     ) {
+        val leanback = DeviceCapabilities.isLeanbackDevice(context) ||
+            DeviceCapabilities.isAmazonFireTv(context)
         val st = installedSmartTube(context)
         val items = buildList {
-            add(context.getString(R.string.trailer_player_in_app))
+            // Leanback: never offer the phone WebView dialog — native apps only.
+            if (!leanback) add(context.getString(R.string.trailer_player_in_app))
             add(context.getString(R.string.youtube))
             if (st.isNotEmpty()) add(context.getString(R.string.smarttube))
         }
         alertBuilder(context)
             .setTitle(R.string.watch_trailer_with)
             .setItems(items.toTypedArray()) { _, which ->
-                when (which) {
-                    0 -> openInApp(context, activity, fragmentManager, trailerUrl)
-                    1 -> openYoutube(context, trailerUrl)
-                    else -> {
-                        if (st.size > 1) {
-                            showSmartTubeVersionDialog(context, st, trailerUrl, save = false)
-                        } else {
-                            launchSmartTube(context, st.first(), trailerUrl)
+                if (leanback) {
+                    when (which) {
+                        0 -> openYoutube(context, trailerUrl)
+                        else -> {
+                            if (st.size > 1) {
+                                showSmartTubeVersionDialog(context, st, trailerUrl, save = false)
+                            } else {
+                                launchSmartTube(context, st.first(), trailerUrl)
+                            }
+                        }
+                    }
+                } else {
+                    when (which) {
+                        0 -> openInApp(context, activity, fragmentManager, trailerUrl)
+                        1 -> openYoutube(context, trailerUrl)
+                        else -> {
+                            if (st.size > 1) {
+                                showSmartTubeVersionDialog(context, st, trailerUrl, save = false)
+                            } else {
+                                launchSmartTube(context, st.first(), trailerUrl)
+                            }
                         }
                     }
                 }
@@ -356,6 +372,19 @@ object TrailerPlaybackController {
         fragmentManager: androidx.fragment.app.FragmentManager?,
         trailerUrl: String,
     ) {
+        // Leanback / Fire TV: WebView trailers are fragile — prefer native apps.
+        if (DeviceCapabilities.isLeanbackDevice(context) ||
+            DeviceCapabilities.isAmazonFireTv(context)
+        ) {
+            val st = installedSmartTube(context)
+            when {
+                st.contains(SMARTTUBE_STABLE_PACKAGE) ->
+                    launchSmartTube(context, SMARTTUBE_STABLE_PACKAGE, trailerUrl)
+                st.isNotEmpty() -> launchSmartTube(context, st.first(), trailerUrl)
+                else -> openYoutube(context, trailerUrl)
+            }
+            return
+        }
         val id = youtubeVideoId(trailerUrl)
         if (id.isNullOrBlank() || fragmentManager == null || activity == null) {
             openYoutube(context, trailerUrl)
@@ -370,9 +399,28 @@ object TrailerPlaybackController {
     }
 
     private fun openYoutube(context: Context, trailerUrl: String) {
-        val intent = Intent(Intent.ACTION_VIEW, Uri.parse(trailerUrl))
+        val uri = Uri.parse(trailerUrl)
+        val candidates = buildList {
+            if (DeviceCapabilities.isLeanbackDevice(context) ||
+                DeviceCapabilities.isAmazonFireTv(context)
+            ) {
+                add(YOUTUBE_TV_PACKAGE)
+                add(YOUTUBE_TV_PACKAGE_ALT)
+            }
+            add(YOUTUBE_PACKAGE)
+        }.distinct().filter { isPackageInstalled(context, it) }
+
+        for (pkg in candidates) {
+            val intent = Intent(Intent.ACTION_VIEW, uri).apply { setPackage(pkg) }
+            val launched = runCatching {
+                context.startActivity(intent)
+                true
+            }.getOrDefault(false)
+            if (launched) return
+        }
+
         try {
-            context.startActivity(intent)
+            context.startActivity(Intent(Intent.ACTION_VIEW, uri))
         } catch (_: ActivityNotFoundException) {
             ExpDialogChrome.notify(
                 context,
@@ -380,6 +428,18 @@ object TrailerPlaybackController {
                 R.string.settings_trailer_player_title,
             )
         }
+    }
+
+    /** Prefer YouTube TV packages on Leanback; null when none installed. */
+    fun preferredYoutubePackage(context: Context): String? {
+        val leanback = DeviceCapabilities.isLeanbackDevice(context) ||
+            DeviceCapabilities.isAmazonFireTv(context)
+        val order = if (leanback) {
+            listOf(YOUTUBE_TV_PACKAGE, YOUTUBE_TV_PACKAGE_ALT, YOUTUBE_PACKAGE)
+        } else {
+            listOf(YOUTUBE_PACKAGE, YOUTUBE_TV_PACKAGE, YOUTUBE_TV_PACKAGE_ALT)
+        }
+        return order.firstOrNull { isPackageInstalled(context, it) }
     }
 
     private fun handleSmartTube(context: Context, trailerUrl: String) {

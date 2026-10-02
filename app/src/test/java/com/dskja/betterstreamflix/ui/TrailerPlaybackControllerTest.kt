@@ -78,4 +78,40 @@ class TrailerPlaybackControllerTest {
             TrailerPlaybackController.unregisterActiveSession(session)
         }
     }
+
+    @Test
+    fun resolvePreferredPlayer_leanbackStoredInApp_overridesToSmartTube() {
+        val result = TrailerPlaybackController.resolvePreferredPlayer(
+            stored = TrailerPlaybackController.PLAYER_IN_APP,
+            leanback = true,
+            smartTubeStableInstalled = true,
+            smartTubeAnyInstalled = true,
+            youtubeInstalled = true,
+        )
+        assertEquals(TrailerPlaybackController.PLAYER_SMARTTUBE_STABLE, result)
+    }
+
+    @Test
+    fun resolvePreferredPlayer_leanbackNoSmartTube_usesYoutube() {
+        val result = TrailerPlaybackController.resolvePreferredPlayer(
+            stored = null,
+            leanback = true,
+            smartTubeStableInstalled = false,
+            smartTubeAnyInstalled = false,
+            youtubeInstalled = true,
+        )
+        assertEquals(TrailerPlaybackController.PLAYER_YOUTUBE, result)
+    }
+
+    @Test
+    fun youtubeVideoId_parsesShortAndEmbed() {
+        assertEquals(
+            "dQw4w9WgXcQ",
+            TrailerPlaybackController.youtubeVideoId("https://youtu.be/dQw4w9WgXcQ"),
+        )
+        assertEquals(
+            "dQw4w9WgXcQ",
+            TrailerPlaybackController.youtubeVideoId("https://www.youtube.com/embed/dQw4w9WgXcQ"),
+        )
+    }
 }
