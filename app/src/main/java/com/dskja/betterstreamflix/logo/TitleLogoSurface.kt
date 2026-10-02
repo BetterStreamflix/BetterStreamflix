@@ -28,6 +28,8 @@ object TitleLogoSurface {
         allowAlternateOnFail: Boolean = true,
         stillCurrent: (() -> Boolean)? = null,
         onResolved: ((String, LogoSource) -> Unit)? = null,
+        onLogoReady: ((String) -> Unit)? = null,
+        onLogoFailed: (() -> Unit)? = null,
     ) {
         TmdbLogoBinder.cancel(anchor)
         anchor.setTag(TITLE_TAG, movie.title)
@@ -46,14 +48,18 @@ object TitleLogoSurface {
                     resolveMovie(
                         anchor, movie, imageView, titleView,
                         hideUntilReady, persist, currentCheck, onResolved,
+                        onLogoReady, onLogoFailed,
                     )
                 }
             },
+            onLogoReady = onLogoReady,
+            onLogoFailed = onLogoFailed,
         )
         if (TmdbLogoPicker.shouldUpgradeLogo(current, movie.logoLanguage, wantedLang)) {
             resolveMovie(
                 anchor, movie, imageView, titleView,
                 hideUntilReady, persist, currentCheck, onResolved,
+                onLogoReady, onLogoFailed,
             )
         }
     }
@@ -68,6 +74,8 @@ object TitleLogoSurface {
         allowAlternateOnFail: Boolean = true,
         stillCurrent: (() -> Boolean)? = null,
         onResolved: ((String, LogoSource) -> Unit)? = null,
+        onLogoReady: ((String) -> Unit)? = null,
+        onLogoFailed: (() -> Unit)? = null,
     ) {
         TmdbLogoBinder.cancel(anchor)
         anchor.setTag(TITLE_TAG, tvShow.title)
@@ -86,14 +94,18 @@ object TitleLogoSurface {
                     resolveTv(
                         anchor, tvShow, imageView, titleView,
                         hideUntilReady, persist, currentCheck, onResolved,
+                        onLogoReady, onLogoFailed,
                     )
                 }
             },
+            onLogoReady = onLogoReady,
+            onLogoFailed = onLogoFailed,
         )
         if (TmdbLogoPicker.shouldUpgradeLogo(current, tvShow.logoLanguage, wantedLang)) {
             resolveTv(
                 anchor, tvShow, imageView, titleView,
                 hideUntilReady, persist, currentCheck, onResolved,
+                onLogoReady, onLogoFailed,
             )
         }
     }
@@ -183,6 +195,8 @@ object TitleLogoSurface {
         persist: Boolean,
         stillCurrent: () -> Boolean,
         onResolved: ((String, LogoSource) -> Unit)?,
+        onLogoReady: ((String) -> Unit)?,
+        onLogoFailed: (() -> Unit)?,
     ) {
         val wantedLang = UserPreferences.currentProvider?.language
         TmdbLogoBinder.resolve(
@@ -211,6 +225,8 @@ object TitleLogoSurface {
                     title = movie.title,
                     hideUntilReady = hideUntilReady,
                     stillCurrent = stillCurrent,
+                    onLogoReady = onLogoReady,
+                    onLogoFailed = onLogoFailed,
                 )
             }
         }
@@ -225,6 +241,8 @@ object TitleLogoSurface {
         persist: Boolean,
         stillCurrent: () -> Boolean,
         onResolved: ((String, LogoSource) -> Unit)?,
+        onLogoReady: ((String) -> Unit)?,
+        onLogoFailed: (() -> Unit)?,
     ) {
         val wantedLang = UserPreferences.currentProvider?.language
         TmdbLogoBinder.resolve(
@@ -253,6 +271,8 @@ object TitleLogoSurface {
                     title = tvShow.title,
                     hideUntilReady = hideUntilReady,
                     stillCurrent = stillCurrent,
+                    onLogoReady = onLogoReady,
+                    onLogoFailed = onLogoFailed,
                 )
             }
         }
