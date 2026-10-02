@@ -67,8 +67,8 @@ class NekostreamExtractor : Extractor() {
         val sourceHint = Uri.parse(streamPageUrl).getQueryParameter("s")
             ?.takeIf { it.isNotBlank() }
 
-        // megaplay.buzz currently serves the playable m3u8 only from getSourcesNew;
-        // legacy getSources returns tracks/enc without a plaintext sources.file.
+        // Prefer getSourcesNew; both endpoints now commonly return encrypted `enc`
+        // instead of plaintext sources.file. Decrypt is handled below.
         val typeQuery = streamType?.let { "&type=$it" }.orEmpty()
         val sourceQuery = sourceHint?.let { "&s=$it" }.orEmpty()
         val sourcesCandidates = listOf(
@@ -77,6 +77,9 @@ class NekostreamExtractor : Extractor() {
             "$origin/stream/getSourcesNew?id=$fileId$typeQuery",
             "$origin/stream/getSources?id=$fileId$typeQuery",
         )
+
+        val aesKey = resolveAesKey(pageBody)
+        val aesIv = resolveAesIv(pageBody)
 
         var lastError: Exception? = null
         for (sourcesUrl in sourcesCandidates) {
@@ -98,8 +101,7 @@ class NekostreamExtractor : Extractor() {
                     }
                     continue
                 }
-                val source = sources.sources?.file
-                    ?: sources.sources?.list?.firstOrNull { !it.file.isNullOrBlank() }?.file
+                val source = resolveSourceFile(sources, aesKey, aesIv)
                 if (source.isNullOrBlank()) {
                     lastError = Exception("Nekostream source not found — try another server")
                     continue
@@ -158,11 +160,52 @@ class NekostreamExtractor : Extractor() {
             RegexOption.IGNORE_CASE,
         ).find(pageBody)?.groupValues?.getOrNull(1)?.let { return it }
 
+        Regex(
+            """<title>\s*File\s+(\d+)\s+-""",
+            RegexOption.IGNORE_CASE,
+        ).find(pageBody)?.groupValues?.getOrNull(1)?.let { return it }
+
         // Fallback: first data-id near the player container.
         return Regex(
             """class=["'][^"']*form-area[^"']*["'][^>]*data-id=["']([^"']+)["']""",
             RegexOption.IGNORE_CASE,
         ).find(pageBody)?.groupValues?.getOrNull(1)
+    }
+
+    private fun resolveSourceFile(
+        sources: SourcesResponse,
+        aesKey: String,
+        aesIv: String,
+    ): String? {
+        sources.sources?.file?.takeIf { it.isNotBlank() }?.let { return it }
+        sources.sources?.list?.firstOrNull { !it.file.isNullOrBlank() }?.file?.let { return it }
+
+        val enc = sources.enc?.takeIf { it.isNotBlank() } ?: return null
+        val decrypted = MegaPlayEncDecrypt.decrypt(enc, aesKey, aesIv) ?: return null
+        val parsed = runCatching {
+            Gson().fromJson(decrypted, EncodedSourcePayload::class.java)
+        }.getOrNull()
+        return parsed?.file?.takeIf { it.isNotBlank() }
+            ?: Regex(""""file"\s*:\s*"([^"]+)"""")
+                .find(decrypted)
+                ?.groupValues
+                ?.getOrNull(1)
+    }
+
+    private fun resolveAesKey(pageBody: String): String {
+        return Regex(
+            """(?:trustAesKey|TRUST_AES_KEY)\s*[:=]\s*["']([^"']+)["']""",
+            RegexOption.IGNORE_CASE,
+        ).find(pageBody)?.groupValues?.getOrNull(1)
+            ?: MegaPlayEncDecrypt.DEFAULT_AES_KEY
+    }
+
+    private fun resolveAesIv(pageBody: String): String {
+        return Regex(
+            """(?:trustAesIv|TRUST_AES_IV)\s*[:=]\s*["']([^"']+)["']""",
+            RegexOption.IGNORE_CASE,
+        ).find(pageBody)?.groupValues?.getOrNull(1)
+            ?: MegaPlayEncDecrypt.DEFAULT_AES_IV
     }
 
     private fun getText(
@@ -198,6 +241,7 @@ class NekostreamExtractor : Extractor() {
     private data class SourcesResponse(
         val sources: Sources? = null,
         val tracks: List<Track>? = null,
+        val enc: String? = null,
     ) {
         data class Sources(
             val file: String? = null,
@@ -216,6 +260,10 @@ class NekostreamExtractor : Extractor() {
             val default: Boolean? = null,
         )
     }
+
+    private data class EncodedSourcePayload(
+        val file: String? = null,
+    )
 
     private companion object {
         const val USER_AGENT =
