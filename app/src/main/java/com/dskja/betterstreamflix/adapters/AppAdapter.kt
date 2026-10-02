@@ -1249,3 +1249,13 @@ class AppAdapter(
         else -> "item:${runCatching { itemType.name }.getOrDefault(javaClass.simpleName)}"
     }
 }
+
+/**
+ * Reuse an existing [AppAdapter] on a child RecyclerView / HorizontalGridView so
+ * parent rebinds (detail DB merges, trailer remote fill) do not restart Glide loads
+ * or drop horizontal scroll/focus position.
+ */
+fun RecyclerView.submitAppList(items: List<AppAdapter.Item>) {
+    val child = (adapter as? AppAdapter) ?: AppAdapter().also { adapter = it }
+    child.submitList(items)
+}

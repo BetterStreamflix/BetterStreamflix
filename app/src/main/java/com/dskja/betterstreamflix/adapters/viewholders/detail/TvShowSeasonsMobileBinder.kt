@@ -148,8 +148,6 @@ private fun TvShowViewHolder.bindSeasonEpisodes(
             )
             val upNextIndex = episodes.indexOfFirst { it.id == tvShow.episodeToWatch?.id }
             binding.rvTvShowEpisodes.post {
-                binding.rvTvShowEpisodes.requestLayout()
-                (binding.rvTvShowEpisodes.parent as? View)?.requestLayout()
                 if (upNextIndex >= 0) {
                     binding.rvTvShowEpisodes.scrollToPosition(upNextIndex)
                 }

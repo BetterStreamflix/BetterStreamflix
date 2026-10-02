@@ -33,6 +33,7 @@ import androidx.fragment.app.Fragment
 import com.dskja.betterstreamflix.R
 import com.dskja.betterstreamflix.utils.TvFocusZoom
 import com.dskja.betterstreamflix.adapters.AppAdapter
+import com.dskja.betterstreamflix.adapters.submitAppList
 import com.dskja.betterstreamflix.database.AppDatabase
 import com.dskja.betterstreamflix.download.DownloadContentKey
 import com.dskja.betterstreamflix.download.OfflineBadgeStore
@@ -1071,11 +1072,9 @@ class MovieViewHolder(
             ExpMotion.staggerFirstFill(binding.rvMovieCast)
         }
         binding.rvMovieCast.apply {
-            adapter = AppAdapter().apply {
-                submitList(movie.cast.onEach {
-                    it.itemType = AppAdapter.Type.PEOPLE_MOBILE_ITEM
-                })
-            }
+            submitAppList(movie.cast.onEach {
+                it.itemType = AppAdapter.Type.PEOPLE_MOBILE_ITEM
+            })
             if (itemDecorationCount == 0) {
                 addItemDecoration(SpacingItemDecoration(20.dp(context)))
             }
@@ -1103,11 +1102,9 @@ class MovieViewHolder(
         }
         binding.hgvMovieCast.apply {
             setRowHeight(ViewGroup.LayoutParams.WRAP_CONTENT)
-            adapter = AppAdapter().apply {
-                submitList(movie.cast.onEach {
-                    it.itemType = AppAdapter.Type.PEOPLE_TV_ITEM
-                })
-            }
+            submitAppList(movie.cast.onEach {
+                it.itemType = AppAdapter.Type.PEOPLE_TV_ITEM
+            })
             setItemSpacing(80)
         }
     }
@@ -1124,11 +1121,9 @@ class MovieViewHolder(
             ExpMotion.pulseAccentRule(binding.root.findViewById(R.id.v_movie_directors_rule))
         }
         binding.rvMovieDirectors.apply {
-            adapter = AppAdapter().apply {
-                submitList(movie.directors.onEach {
-                    it.itemType = AppAdapter.Type.PEOPLE_MOBILE_ITEM
-                })
-            }
+            submitAppList(movie.directors.onEach {
+                it.itemType = AppAdapter.Type.PEOPLE_MOBILE_ITEM
+            })
             if (itemDecorationCount == 0) {
                 addItemDecoration(SpacingItemDecoration(20.dp(context)))
             }
@@ -1155,11 +1150,9 @@ class MovieViewHolder(
         }
         binding.hgvMovieDirectors.apply {
             setRowHeight(ViewGroup.LayoutParams.WRAP_CONTENT)
-            adapter = AppAdapter().apply {
-                submitList(movie.directors.onEach {
-                    it.itemType = AppAdapter.Type.PEOPLE_TV_ITEM
-                })
-            }
+            submitAppList(movie.directors.onEach {
+                it.itemType = AppAdapter.Type.PEOPLE_TV_ITEM
+            })
             setItemSpacing(80)
         }
     }
@@ -1189,14 +1182,12 @@ class MovieViewHolder(
             } else if (grid.spanCount != 3) {
                 grid.spanCount = 3
             }
-            adapter = AppAdapter().apply {
-                submitList(movie.recommendations.onEach {
-                    when (it) {
-                        is Movie -> it.itemType = AppAdapter.Type.MOVIE_GRID_MOBILE_ITEM
-                        is TvShow -> it.itemType = AppAdapter.Type.TV_SHOW_GRID_MOBILE_ITEM
-                    }
-                })
-            }
+            submitAppList(movie.recommendations.onEach {
+                when (it) {
+                    is Movie -> it.itemType = AppAdapter.Type.MOVIE_GRID_MOBILE_ITEM
+                    is TvShow -> it.itemType = AppAdapter.Type.TV_SHOW_GRID_MOBILE_ITEM
+                }
+            })
             if (itemDecorationCount == 0) {
                 addItemDecoration(SpacingItemDecoration(10.dp(context)))
             }
@@ -1226,14 +1217,12 @@ class MovieViewHolder(
         }
         binding.hgvMovieRecommendations.apply {
             setRowHeight(ViewGroup.LayoutParams.WRAP_CONTENT)
-            adapter = AppAdapter().apply {
-                submitList(movie.recommendations.onEach {
-                    when (it) {
-                        is Movie -> it.itemType = AppAdapter.Type.MOVIE_TV_ITEM
-                        is TvShow -> it.itemType = AppAdapter.Type.TV_SHOW_TV_ITEM
-                    }
-                })
-            }
+            submitAppList(movie.recommendations.onEach {
+                when (it) {
+                    is Movie -> it.itemType = AppAdapter.Type.MOVIE_TV_ITEM
+                    is TvShow -> it.itemType = AppAdapter.Type.TV_SHOW_TV_ITEM
+                }
+            })
             setItemSpacing(20)
         }
     }

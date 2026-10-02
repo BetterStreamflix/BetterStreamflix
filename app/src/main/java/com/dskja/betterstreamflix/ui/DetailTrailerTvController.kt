@@ -6,6 +6,7 @@ import androidx.lifecycle.findViewTreeLifecycleOwner
 import androidx.lifecycle.lifecycleScope
 import com.dskja.betterstreamflix.R
 import com.dskja.betterstreamflix.adapters.AppAdapter
+import com.dskja.betterstreamflix.adapters.submitAppList
 import com.dskja.betterstreamflix.databinding.ContentDetailTrailerTvBinding
 import com.dskja.betterstreamflix.models.Trailer
 import com.dskja.betterstreamflix.utils.ExpMotion
@@ -56,17 +57,13 @@ object DetailTrailerTvController {
                 clipToPadding = false
                 isFocusable = true
                 descendantFocusability = ViewGroup.FOCUS_AFTER_DESCENDANTS
-                val items = trailers.take(5).map { (rowTitle, url, type) ->
-                    Trailer(title = rowTitle, url = url, type = type).also {
-                        it.itemType = AppAdapter.Type.TRAILER_TV_ITEM
-                    }
-                }
-                val existing = adapter as? AppAdapter
-                if (existing != null) {
-                    existing.submitList(items)
-                } else {
-                    adapter = AppAdapter().apply { submitList(items) }
-                }
+                submitAppList(
+                    trailers.take(5).map { (rowTitle, url, type) ->
+                        Trailer(title = rowTitle, url = url, type = type).also {
+                            it.itemType = AppAdapter.Type.TRAILER_TV_ITEM
+                        }
+                    },
+                )
             }
             if (ExperimentalMobileDesign.enabled()) {
                 ExpMotion.staggerFirstFill(binding.hgvDetailTrailers)

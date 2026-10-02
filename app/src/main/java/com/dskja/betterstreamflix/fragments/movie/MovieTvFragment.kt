@@ -16,6 +16,7 @@ import com.dskja.betterstreamflix.adapters.AppAdapter
 import com.dskja.betterstreamflix.database.AppDatabase
 import com.dskja.betterstreamflix.databinding.FragmentMovieTvBinding
 import com.dskja.betterstreamflix.models.Movie
+import com.dskja.betterstreamflix.ui.DetailContentSignatures
 import com.dskja.betterstreamflix.ui.DetailLoadingErrorChrome
 import com.dskja.betterstreamflix.utils.DeviceCapabilities
 import com.dskja.betterstreamflix.utils.Http409CacheGuard
@@ -38,6 +39,8 @@ class MovieTvFragment : Fragment() {
 
     private val appAdapter = AppAdapter()
     private var watchFocusedOnce = false
+    private var lastContentSignature: List<Any?>? = null
+    private var lastBannerKey: String? = null
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -97,6 +100,8 @@ class MovieTvFragment : Fragment() {
     override fun onDestroyView() {
         com.dskja.betterstreamflix.ui.TrailerPlaybackController.silenceAllActive()
         _binding?.let { appAdapter.onSaveInstanceState(it.vgvMovie) }
+        lastContentSignature = null
+        lastBannerKey = null
         _binding = null
         super.onDestroyView()
     }
@@ -126,11 +131,22 @@ class MovieTvFragment : Fragment() {
     }
 
     private fun displayMovie(movie: Movie) {
-        binding.ivMovieBanner.loadMovieBanner(movie) {
-            if (!DeviceCapabilities.shouldReduceHomeEffects(requireContext())) {
-                transition(DrawableTransitionOptions.withCrossFade())
-            } else {
-                this
+        val signature = DetailContentSignatures.movie(movie)
+        if (lastContentSignature == signature) {
+            // Favorite-only / list-state refresh: hero CTA already updated in place.
+            return
+        }
+        lastContentSignature = signature
+
+        val bannerKey = "${movie.banner}|${movie.poster}"
+        if (lastBannerKey != bannerKey) {
+            lastBannerKey = bannerKey
+            binding.ivMovieBanner.loadMovieBanner(movie) {
+                if (!DeviceCapabilities.shouldReduceHomeEffects(requireContext())) {
+                    transition(DrawableTransitionOptions.withCrossFade())
+                } else {
+                    this
+                }
             }
         }
 

@@ -9,6 +9,7 @@ import com.bumptech.glide.load.resource.drawable.DrawableTransitionOptions
 import com.dskja.betterstreamflix.R
 import com.dskja.betterstreamflix.models.Movie
 import com.dskja.betterstreamflix.models.TvShow
+import com.dskja.betterstreamflix.utils.ArtworkUrls
 import com.dskja.betterstreamflix.utils.ExpMotion
 import com.dskja.betterstreamflix.utils.ExperimentalMobileDesign
 import com.dskja.betterstreamflix.utils.loadMovieBanner
@@ -21,12 +22,17 @@ import com.dskja.betterstreamflix.utils.loadTvShowBanner
 object DetailCoverAtmosphere {
 
     fun bindMovie(cover: ImageView, soft: ImageView?, movie: Movie) {
-        cover.loadMovieBanner(movie, hero = false) {
-            centerCrop()
-            transition(DrawableTransitionOptions.withCrossFade(320))
+        val sharpUrl = ArtworkUrls.bannerOrPoster(movie.banner, movie.poster, hero = false)
+        if (cover.getTag(R.id.detail_cover_url_tag) != sharpUrl) {
+            cover.setTag(R.id.detail_cover_url_tag, sharpUrl)
+            cover.loadMovieBanner(movie, hero = false) {
+                centerCrop()
+                transition(DrawableTransitionOptions.withCrossFade(320))
+            }
         }
-        bindSoft(soft) { softCover ->
-            softCover.loadMovieBanner(movie, hero = false) {
+        bindSoft(soft, softUrlKey = ArtworkUrls.bannerOrPoster(movie.banner, movie.poster, hero = true)) { softCover ->
+            // Soft wash uses w1280 — cheaper decode under the blur.
+            softCover.loadMovieBanner(movie, hero = true) {
                 centerCrop()
                 transition(DrawableTransitionOptions.withCrossFade(320))
             }
@@ -35,12 +41,16 @@ object DetailCoverAtmosphere {
     }
 
     fun bindTvShow(cover: ImageView, soft: ImageView?, tvShow: TvShow) {
-        cover.loadTvShowBanner(tvShow, hero = false) {
-            centerCrop()
-            transition(DrawableTransitionOptions.withCrossFade(320))
+        val sharpUrl = ArtworkUrls.bannerOrPoster(tvShow.banner, tvShow.poster, hero = false)
+        if (cover.getTag(R.id.detail_cover_url_tag) != sharpUrl) {
+            cover.setTag(R.id.detail_cover_url_tag, sharpUrl)
+            cover.loadTvShowBanner(tvShow, hero = false) {
+                centerCrop()
+                transition(DrawableTransitionOptions.withCrossFade(320))
+            }
         }
-        bindSoft(soft) { softCover ->
-            softCover.loadTvShowBanner(tvShow, hero = false) {
+        bindSoft(soft, softUrlKey = ArtworkUrls.bannerOrPoster(tvShow.banner, tvShow.poster, hero = true)) { softCover ->
+            softCover.loadTvShowBanner(tvShow, hero = true) {
                 centerCrop()
                 transition(DrawableTransitionOptions.withCrossFade(320))
             }
@@ -48,15 +58,21 @@ object DetailCoverAtmosphere {
         maybeKenBurns(cover)
     }
 
-    private fun bindSoft(soft: ImageView?, load: (ImageView) -> Unit) {
+    private fun bindSoft(soft: ImageView?, softUrlKey: String?, load: (ImageView) -> Unit) {
         soft ?: return
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             soft.visibility = View.VISIBLE
-        soft.alpha = 0.38f
-            load(soft)
-            soft.setRenderEffect(
-                RenderEffect.createBlurEffect(22f, 22f, Shader.TileMode.CLAMP),
-            )
+            soft.alpha = 0.38f
+            if (soft.getTag(R.id.detail_cover_url_tag) != softUrlKey) {
+                soft.setTag(R.id.detail_cover_url_tag, softUrlKey)
+                load(soft)
+            }
+            if (soft.getTag(R.id.detail_cover_blur_tag) != true) {
+                soft.setRenderEffect(
+                    RenderEffect.createBlurEffect(22f, 22f, Shader.TileMode.CLAMP),
+                )
+                soft.setTag(R.id.detail_cover_blur_tag, true)
+            }
         } else {
             // Skip the second decode; veil alone handles the fade into tabs.
             soft.setImageDrawable(null)
