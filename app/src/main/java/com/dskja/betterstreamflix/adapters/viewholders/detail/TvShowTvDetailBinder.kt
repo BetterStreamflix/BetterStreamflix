@@ -30,6 +30,7 @@ import com.dskja.betterstreamflix.models.Episode
 import com.dskja.betterstreamflix.models.Season
 import com.dskja.betterstreamflix.models.Video
 import com.dskja.betterstreamflix.ui.DetailTab
+import com.dskja.betterstreamflix.ui.DetailWatchLabels
 import com.dskja.betterstreamflix.ui.FeaturedSwiperChrome
 import com.dskja.betterstreamflix.ui.SpacingItemDecoration
 import com.dskja.betterstreamflix.ui.TrailerPlaybackController
@@ -254,36 +255,31 @@ internal fun TvShowViewHolder.bindTvShowTvDetail(binding: ContentTvShowTvBinding
                 findNavController().navigate(R.id.player, args)
             }
         }
-        text = when {
-            isIptvProvider() -> context.getString(R.string.movie_watch_now)
-            episodeToWatch == null -> context.getString(R.string.movie_watch_now)
-            else -> context.getString(
-                R.string.tv_show_watch_season_episode,
-                episodeSeason?.number ?: 1,
-                episodeToWatch.number,
-            )
-        }
+        text = DetailWatchLabels.tvShow(
+            context = context,
+            tvShow = tvShow,
+            seasonNumber = episodeSeason?.number,
+            episodeNumber = episodeToWatch?.number,
+            iptv = isIptvProvider(),
+        )
     }
 
     binding.pbTvShowProgressEpisode.apply {
-        val watchHistory = episodeToWatch?.watchHistory
-        progress = when {
-            watchHistory != null -> (watchHistory.lastPlaybackPositionMillis * 100 / watchHistory.durationMillis.toDouble()).toInt()
-            else -> 0
-        }
-        isVisible = watchHistory != null
+        val percent = DetailWatchLabels.progressPercent(episodeToWatch?.watchHistory)
+        progress = percent
+        isVisible = percent in 1..95
     }
 
     fun rewireTvCtaFocus() {
         com.dskja.betterstreamflix.utils.TvFocusChain.linkHorizontal(
             binding.btnTvShowWatchNow,
+            binding.btnTvShowFavorite,
             binding.btnTvShowTrailer,
             binding.btnTvShowDownload,
-            binding.root.findViewById(R.id.btn_tv_show_watched),
         )
         com.dskja.betterstreamflix.utils.TvFocusChain.linkHorizontal(
+            binding.root.findViewById(R.id.btn_tv_show_watched),
             binding.root.findViewById(R.id.btn_tv_show_share),
-            binding.btnTvShowFavorite,
         )
     }
 
@@ -472,13 +468,10 @@ internal fun TvShowViewHolder.bindTvShowTvDetail(binding: ContentTvShowTvBinding
     }
 
     binding.btnTvShowFavorite.apply {
-        fun Boolean.drawable() = when (this) {
-            true -> R.drawable.ic_favorite_enable
-            false -> R.drawable.ic_favorite_disable
-        }
-
         fun applyFavoriteState(inList: Boolean) {
-            setImageDrawable(ContextCompat.getDrawable(context, inList.drawable()))
+            text = context.getString(
+                if (inList) R.string.home_swiper_in_my_list else R.string.detail_action_list,
+            )
             contentDescription = context.getString(
                 if (inList) R.string.detail_remove_from_list else R.string.detail_add_to_list,
             )

@@ -156,6 +156,12 @@
     <string name="detail_action_download">Download</string>
     <string name="detail_action_watched">Watched</string>
     <string name="detail_action_share">Share</string>
+    <string name="detail_watch_resume">Resume · %1$d%%</string>
+    <string name="detail_watch_resume_episode">Resume S%1$d E%2$d · %3$s</string>
+    <string name="detail_episode_resume">Resume · %1$s</string>
+    <string name="detail_episode_watched">Watched</string>
+    <string name="detail_episodes_load_failed">Couldn’t load episodes. Try again.</string>
+    <string name="detail_episodes_heading">Episodes</string>
     <string name="home_swiper_my_list">+ My List</string>
     <string name="home_swiper_in_my_list">In My List</string>
     <string name="home_swiper_all_episodes">All Episodes Available</string>

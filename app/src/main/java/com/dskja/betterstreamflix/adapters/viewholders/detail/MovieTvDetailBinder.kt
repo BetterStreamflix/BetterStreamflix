@@ -45,6 +45,7 @@ import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.dskja.betterstreamflix.download.DownloadContentKey
 import com.dskja.betterstreamflix.download.DetailDownloadLabels
 import com.dskja.betterstreamflix.ui.DetailRating
+import com.dskja.betterstreamflix.ui.DetailWatchLabels
 
 internal fun MovieViewHolder.bindMovieTvDetail(binding: ContentMovieTvBinding) {
     binding.ivMoviePoster.run {
@@ -203,8 +204,8 @@ internal fun MovieViewHolder.bindMovieTvDetail(binding: ContentMovieTvBinding) {
     }
 
     binding.btnMovieWatchNow.apply {
-        // Dual CTA: Watch now always streams online; completed downloads use the Download button.
-        text = context.getString(R.string.movie_watch_now)
+        // Dual CTA: Watch streams online; completed downloads use the Download button.
+        text = DetailWatchLabels.movie(context, movie)
         setOnClickListener {
             ExpMotion.hapticTap(it)
             checkProviderAndRun {
@@ -220,28 +221,21 @@ internal fun MovieViewHolder.bindMovieTvDetail(binding: ContentMovieTvBinding) {
     }
 
     binding.pbMovieProgress.apply {
-        val watchHistory = movie.watchHistory
-
-        progress = when {
-            watchHistory != null -> (watchHistory.lastPlaybackPositionMillis * 100 / watchHistory.durationMillis.toDouble()).toInt()
-            else -> 0
-        }
-        visibility = when {
-            watchHistory != null -> View.VISIBLE
-            else -> View.GONE
-        }
+        val percent = DetailWatchLabels.progressPercent(movie.watchHistory)
+        progress = percent
+        visibility = if (percent in 1..95) View.VISIBLE else View.GONE
     }
 
     fun rewireTvCtaFocus() {
         com.dskja.betterstreamflix.utils.TvFocusChain.linkHorizontal(
             binding.btnMovieWatchNow,
+            binding.btnMovieFavorite,
             binding.btnMovieTrailer,
             binding.btnMovieDownload,
-            binding.root.findViewById(R.id.btn_movie_watched),
         )
         com.dskja.betterstreamflix.utils.TvFocusChain.linkHorizontal(
+            binding.root.findViewById(R.id.btn_movie_watched),
             binding.root.findViewById(R.id.btn_movie_share),
-            binding.btnMovieFavorite,
         )
     }
 
@@ -411,14 +405,10 @@ internal fun MovieViewHolder.bindMovieTvDetail(binding: ContentMovieTvBinding) {
     }
 
     binding.btnMovieFavorite.apply {
-
-        fun Boolean.drawable() = when (this) {
-            true -> R.drawable.ic_favorite_enable
-            false -> R.drawable.ic_favorite_disable
-        }
-
         fun applyFavoriteState(inList: Boolean) {
-            setImageDrawable(ContextCompat.getDrawable(context, inList.drawable()))
+            text = context.getString(
+                if (inList) R.string.home_swiper_in_my_list else R.string.detail_action_list,
+            )
             contentDescription = context.getString(
                 if (inList) R.string.detail_remove_from_list else R.string.detail_add_to_list,
             )

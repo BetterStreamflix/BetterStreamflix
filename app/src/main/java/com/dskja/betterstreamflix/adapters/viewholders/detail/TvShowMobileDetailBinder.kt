@@ -30,6 +30,7 @@ import com.dskja.betterstreamflix.models.Episode
 import com.dskja.betterstreamflix.models.Season
 import com.dskja.betterstreamflix.models.Video
 import com.dskja.betterstreamflix.ui.DetailTab
+import com.dskja.betterstreamflix.ui.DetailWatchLabels
 import com.dskja.betterstreamflix.ui.FeaturedSwiperChrome
 import com.dskja.betterstreamflix.ui.SpacingItemDecoration
 import com.dskja.betterstreamflix.ui.TrailerPlaybackController
@@ -255,24 +256,19 @@ internal fun TvShowViewHolder.bindTvShowMobileDetail(binding: ContentTvShowMobil
                 findNavController().navigate(R.id.player, args)
             }
         }
-        text = when {
-            isIptvProvider() -> context.getString(R.string.movie_watch_now)
-            episodeToWatch == null -> context.getString(R.string.movie_watch_now)
-            else -> context.getString(
-                R.string.tv_show_watch_season_episode,
-                episodeSeason?.number ?: 1,
-                episodeToWatch.number,
-            )
-        }
+        text = DetailWatchLabels.tvShow(
+            context = context,
+            tvShow = tvShow,
+            seasonNumber = episodeSeason?.number,
+            episodeNumber = episodeToWatch?.number,
+            iptv = isIptvProvider(),
+        )
     }
 
     binding.pbTvShowProgressEpisode.apply {
-        val watchHistory = episodeToWatch?.watchHistory
-        progress = when {
-            watchHistory != null -> (watchHistory.lastPlaybackPositionMillis * 100 / watchHistory.durationMillis.toDouble()).toInt()
-            else -> 0
-        }
-        isVisible = watchHistory != null
+        val percent = DetailWatchLabels.progressPercent(episodeToWatch?.watchHistory)
+        progress = percent
+        isVisible = percent in 1..95
     }
 
     binding.btnTvShowTrailer.apply {
@@ -336,11 +332,19 @@ internal fun TvShowViewHolder.bindTvShowMobileDetail(binding: ContentTvShowMobil
     }
 
     binding.btnTvShowDownload.let { downloadBtn ->
+        val downloadColumn = binding.root.findViewById<View>(R.id.ll_tv_show_download_column)
         if (isIptvProvider()) {
-            downloadBtn.isVisible = false
+            if (downloadColumn != null) {
+                downloadColumn.isVisible = false
+            } else {
+                downloadBtn.isVisible = false
+            }
             downloadBtn.setOnClickListener(null)
             downloadBtn.setOnLongClickListener(null)
         } else {
+            if (downloadColumn != null) {
+                downloadColumn.isVisible = true
+            }
             downloadBtn.isVisible = true
             downloadBtn.applyExpPress()
             val seasonForDownload = tvShow.seasons.firstOrNull { it.episodes.isNotEmpty() }
@@ -498,18 +502,11 @@ internal fun TvShowViewHolder.bindTvShowMobileDetail(binding: ContentTvShowMobil
     }
 
     binding.btnTvShowFavorite.apply {
-        fun applyState(inList: Boolean) {
-            setImageDrawable(
-                ContextCompat.getDrawable(
-                    context,
-                    if (inList) R.drawable.ic_list_added else R.drawable.ic_list_add,
-                )
-            )
-            val description = context.getString(
+        fun applyState(inList: Boolean, animate: Boolean = false) {
+            FeaturedSwiperChrome.bindListButton(this, inList, animate)
+            contentDescription = context.getString(
                 if (inList) R.string.detail_remove_from_list else R.string.detail_add_to_list,
             )
-            contentDescription = description
-            androidx.appcompat.widget.TooltipCompat.setTooltipText(this, description)
         }
 
         applyExpPress()
@@ -533,8 +530,7 @@ internal fun TvShowViewHolder.bindTvShowMobileDetail(binding: ContentTvShowMobil
                         tvShow.poster = resolved.poster
                         tvShow.banner = resolved.banner
                         tvShow.isFavorite = target
-                        applyState(target)
-                        ExpMotion.softScale(binding.btnTvShowFavorite)
+                        applyState(target, animate = true)
                     }
                 }
             }

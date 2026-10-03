@@ -74,6 +74,12 @@
     <string name="tv_show_seasons_count">%1$d Staffeln</string>
     <string name="tv_show_season_count_one">%1$d Staffel</string>
     <string name="detail_remove_from_list">Von Liste entfernen</string>
+    <string name="detail_watch_resume">Fortsetzen · %1$d%%</string>
+    <string name="detail_watch_resume_episode">Fortsetzen S%1$d E%2$d · %3$s</string>
+    <string name="detail_episode_resume">Fortsetzen · %1$s</string>
+    <string name="detail_episode_watched">Gesehen</string>
+    <string name="detail_episodes_load_failed">Episoden konnten nicht geladen werden. Erneut versuchen.</string>
+    <string name="detail_episodes_heading">Episoden</string>
     <string name="detail_download">Herunterladen</string>
     <string name="main_menu_theme_change">Design ändern</string>
     <string name="theme_default">Standard</string>

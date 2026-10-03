@@ -158,7 +158,7 @@ private fun TvShowViewHolder.bindSeasonEpisodes(
             binding.rvTvShowEpisodes.visibility = View.GONE
             binding.pbTvShowEpisodesLoading.visibility = View.GONE
             binding.llTvShowEpisodesEmpty.visibility = View.VISIBLE
-            binding.tvTvShowEpisodesEmpty.setText(R.string.season_empty)
+            binding.tvTvShowEpisodesEmpty.setText(R.string.detail_episodes_load_failed)
             binding.btnTvShowEpisodesRetry.visibility = View.VISIBLE
             binding.btnTvShowEpisodesRetry.setOnClickListener {
                 ExpMotion.hapticTap(it)

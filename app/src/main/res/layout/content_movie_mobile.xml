@@ -83,10 +83,10 @@
         android:layout_marginEnd="48dp"
         android:layout_marginBottom="8dp"
         android:elevation="0dp"
-        android:paddingStart="2dp"
-        android:paddingTop="4dp"
-        android:paddingEnd="2dp"
-        android:paddingBottom="4dp"
+        android:paddingStart="4dp"
+        android:paddingTop="6dp"
+        android:paddingEnd="4dp"
+        android:paddingBottom="6dp"
         app:layout_constraintBottom_toBottomOf="@id/space_movie_art_stage"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent">
@@ -115,7 +115,7 @@
             android:shadowDy="2"
             android:shadowRadius="16"
             android:textColor="@color/cinema_text"
-            android:textSize="32sp"
+            android:textSize="30sp"
             android:textStyle="bold"
             tools:text="Resident Evil" />
     </FrameLayout>
@@ -293,29 +293,61 @@
         app:barrierDirection="bottom"
         app:constraint_referenced_ids="tv_movie_overview,tv_movie_overview_more" />
 
-    <TextView
-        android:id="@+id/btn_movie_watch_now"
+    <!-- Primary pair: Watch + My List (equal weight), then quieter utility icons. -->
+    <LinearLayout
+        android:id="@+id/ll_movie_primary_cta"
         android:layout_width="0dp"
-        android:layout_height="56dp"
+        android:layout_height="wrap_content"
         android:layout_marginStart="20dp"
-        android:layout_marginTop="16dp"
+        android:layout_marginTop="14dp"
         android:layout_marginEnd="20dp"
-        android:background="@drawable/bg_detail_watch_now"
-        android:drawablePadding="10dp"
-        android:elevation="6dp"
-        android:fontFamily="@font/outfit"
-        android:gravity="center"
-        android:letterSpacing="0.04"
-        android:paddingStart="16dp"
-        android:paddingEnd="16dp"
-        android:text="@string/movie_watch_now"
-        android:textAllCaps="true"
-        android:textColor="@color/cinema_cta_ink"
-        android:textSize="16sp"
-        android:textStyle="bold"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/barrier_movie_synopsis" />
+        app:layout_constraintTop_toBottomOf="@id/barrier_movie_synopsis">
+
+        <TextView
+            android:id="@+id/btn_movie_watch_now"
+            android:layout_width="0dp"
+            android:layout_height="@dimen/detail_watch_cta_height"
+            android:layout_weight="1"
+            android:background="@drawable/bg_detail_watch_now"
+            android:drawablePadding="8dp"
+            android:elevation="2dp"
+            android:ellipsize="end"
+            android:fontFamily="@font/outfit"
+            android:gravity="center"
+            android:letterSpacing="0.02"
+            android:maxLines="1"
+            android:paddingStart="12dp"
+            android:paddingEnd="12dp"
+            android:text="@string/movie_watch_now"
+            android:textAllCaps="false"
+            android:textColor="@color/cinema_cta_ink"
+            android:textSize="15sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/btn_movie_favorite"
+            android:layout_width="0dp"
+            android:layout_height="@dimen/detail_watch_cta_height"
+            android:layout_marginStart="10dp"
+            android:layout_weight="1"
+            android:background="@drawable/bg_detail_mylist_capsule"
+            android:drawablePadding="8dp"
+            android:ellipsize="end"
+            android:fontFamily="@font/outfit"
+            android:gravity="center"
+            android:letterSpacing="0.02"
+            android:maxLines="1"
+            android:paddingStart="12dp"
+            android:paddingEnd="12dp"
+            android:text="@string/home_swiper_my_list"
+            android:textColor="@color/cinema_text"
+            android:textSize="15sp"
+            android:textStyle="bold" />
+    </LinearLayout>
 
     <ProgressBar
         android:id="@+id/pb_movie_progress"
@@ -325,50 +357,23 @@
         android:layout_marginTop="8dp"
         android:backgroundTint="#80646464"
         android:progressTint="@color/cinema_text"
-        app:layout_constraintEnd_toEndOf="@id/btn_movie_watch_now"
-        app:layout_constraintStart_toStartOf="@id/btn_movie_watch_now"
-        app:layout_constraintTop_toBottomOf="@id/btn_movie_watch_now"
+        app:layout_constraintEnd_toEndOf="@id/ll_movie_primary_cta"
+        app:layout_constraintStart_toStartOf="@id/ll_movie_primary_cta"
+        app:layout_constraintTop_toBottomOf="@id/ll_movie_primary_cta"
         tools:progress="80" />
 
     <LinearLayout
         android:id="@+id/ll_movie_cta_row"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:layout_marginStart="4dp"
-        android:layout_marginTop="14dp"
-        android:layout_marginEnd="4dp"
+        android:layout_marginStart="8dp"
+        android:layout_marginTop="12dp"
+        android:layout_marginEnd="8dp"
         android:gravity="center"
         android:orientation="horizontal"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@id/pb_movie_progress">
-
-        <LinearLayout
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:gravity="center_horizontal"
-            android:orientation="vertical">
-
-            <ImageView
-                android:id="@+id/btn_movie_favorite"
-                android:layout_width="56dp"
-                android:layout_height="56dp"
-                android:background="@drawable/bg_detail_square_chip"
-                android:contentDescription="@string/detail_add_to_list"
-                android:padding="14dp"
-                android:src="@drawable/ic_list_add" />
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
-                android:fontFamily="@font/outfit"
-                android:letterSpacing="0.02"
-                android:text="@string/detail_action_list"
-                android:textColor="@color/cinema_text_muted"
-                android:textSize="11sp" />
-        </LinearLayout>
 
         <LinearLayout
             android:id="@+id/ll_movie_trailer_column"
@@ -380,18 +385,18 @@
 
             <ImageView
                 android:id="@+id/btn_movie_trailer"
-                android:layout_width="56dp"
-                android:layout_height="56dp"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
                 android:background="@drawable/bg_detail_square_chip"
                 android:contentDescription="@string/movie_trailer"
-                android:padding="14dp"
+                android:padding="12dp"
                 android:scaleType="fitCenter"
                 android:src="@drawable/ic_trailer_play" />
 
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
+                android:layout_marginTop="6dp"
                 android:fontFamily="@font/outfit"
                 android:letterSpacing="0.02"
                 android:text="@string/detail_action_trailer"
@@ -400,6 +405,7 @@
         </LinearLayout>
 
         <LinearLayout
+            android:id="@+id/ll_movie_download_column"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
@@ -408,17 +414,17 @@
 
             <ImageView
                 android:id="@+id/btn_movie_download"
-                android:layout_width="56dp"
-                android:layout_height="56dp"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
                 android:background="@drawable/bg_detail_square_chip"
                 android:contentDescription="@string/option_show_download"
-                android:padding="13dp"
+                android:padding="11dp"
                 android:src="@drawable/ic_player_settings_download" />
 
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
+                android:layout_marginTop="6dp"
                 android:fontFamily="@font/outfit"
                 android:letterSpacing="0.02"
                 android:text="@string/detail_action_download"
@@ -427,6 +433,7 @@
         </LinearLayout>
 
         <LinearLayout
+            android:id="@+id/ll_movie_watched_column"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
@@ -435,17 +442,17 @@
 
             <ImageView
                 android:id="@+id/btn_movie_watched"
-                android:layout_width="56dp"
-                android:layout_height="56dp"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
                 android:background="@drawable/bg_detail_square_chip"
                 android:contentDescription="@string/option_show_watched"
-                android:padding="12dp"
+                android:padding="10dp"
                 android:src="@drawable/ic_watched" />
 
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
+                android:layout_marginTop="6dp"
                 android:fontFamily="@font/outfit"
                 android:letterSpacing="0.02"
                 android:text="@string/detail_action_watched"
@@ -463,17 +470,17 @@
 
             <ImageView
                 android:id="@+id/btn_movie_share"
-                android:layout_width="56dp"
-                android:layout_height="56dp"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
                 android:background="@drawable/bg_detail_square_chip"
                 android:contentDescription="@string/detail_share"
-                android:padding="13dp"
+                android:padding="11dp"
                 android:src="@drawable/ic_detail_share" />
 
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
+                android:layout_marginTop="6dp"
                 android:fontFamily="@font/outfit"
                 android:letterSpacing="0.02"
                 android:text="@string/detail_action_share"
