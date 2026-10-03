@@ -157,9 +157,11 @@ fun ImageView.loadMoviePoster(
     onReady: (Drawable) -> Unit = {},
     configure: RequestBuilder<Drawable>.() -> RequestBuilder<Drawable> = { this },
 ) {
-    loadRecoverableArtwork(movie.poster, configure, onReady) { staleUrl, onUpdated ->
+    val url = ArtworkUrls.preferPoster(movie.poster) ?: movie.poster
+    loadRecoverableArtwork(url, configure, onReady) { staleUrl, onUpdated ->
         ArtworkRepairCoordinator.repairMovieArtwork(this, movie, staleUrl) { refreshedMovie ->
-            val refreshedUrl = refreshedMovie.poster
+            val refreshedUrl = ArtworkUrls.preferPoster(refreshedMovie.poster)
+                ?: refreshedMovie.poster
             if (!refreshedUrl.isNullOrBlank() && refreshedUrl != staleUrl) {
                 onUpdated(refreshedUrl)
             }
@@ -168,22 +170,33 @@ fun ImageView.loadMoviePoster(
 }
 
 /**
- * [hero] keeps the wide w1280 size for cards; detail pages pass `false` to get
- * the original file, which stays sharp behind a full-screen banner.
+ * [hero] true → w1280 (soft washes / cheap layers).
+ * [hero] false → original (Featured, detail covers, TV full-bleed banners).
  */
 fun ImageView.loadMovieBanner(
     movie: Movie,
     hero: Boolean = true,
     configure: RequestBuilder<Drawable>.() -> RequestBuilder<Drawable> = { this },
 ) {
-    val url = ArtworkUrls.bannerOrPoster(movie.banner, movie.poster, hero = hero)
+    val url = if (hero) {
+        ArtworkUrls.bannerOrPoster(movie.banner, movie.poster, hero = true)
+    } else {
+        ArtworkUrls.featuredBannerOrPoster(movie.banner, movie.poster)
+    }
     loadRecoverableArtwork(url, configure) { staleUrl, onUpdated ->
         ArtworkRepairCoordinator.repairMovieArtwork(this, movie, staleUrl) { refreshedMovie ->
-            val refreshedUrl = ArtworkUrls.bannerOrPoster(
-                refreshedMovie.banner,
-                refreshedMovie.poster,
-                hero = hero,
-            )
+            val refreshedUrl = if (hero) {
+                ArtworkUrls.bannerOrPoster(
+                    refreshedMovie.banner,
+                    refreshedMovie.poster,
+                    hero = true,
+                )
+            } else {
+                ArtworkUrls.featuredBannerOrPoster(
+                    refreshedMovie.banner,
+                    refreshedMovie.poster,
+                )
+            }
             if (!refreshedUrl.isNullOrBlank() && refreshedUrl != staleUrl) {
                 onUpdated(refreshedUrl)
             }
@@ -196,9 +209,11 @@ fun ImageView.loadTvShowPoster(
     onReady: (Drawable) -> Unit = {},
     configure: RequestBuilder<Drawable>.() -> RequestBuilder<Drawable> = { this },
 ) {
-    loadRecoverableArtwork(tvShow.poster, configure, onReady) { staleUrl, onUpdated ->
+    val url = ArtworkUrls.preferPoster(tvShow.poster) ?: tvShow.poster
+    loadRecoverableArtwork(url, configure, onReady) { staleUrl, onUpdated ->
         ArtworkRepairCoordinator.repairTvShowArtwork(this, tvShow, staleUrl) { refreshedTvShow ->
-            val refreshedUrl = refreshedTvShow.poster
+            val refreshedUrl = ArtworkUrls.preferPoster(refreshedTvShow.poster)
+                ?: refreshedTvShow.poster
             if (!refreshedUrl.isNullOrBlank() && refreshedUrl != staleUrl) {
                 onUpdated(refreshedUrl)
             }
@@ -211,14 +226,25 @@ fun ImageView.loadTvShowBanner(
     hero: Boolean = true,
     configure: RequestBuilder<Drawable>.() -> RequestBuilder<Drawable> = { this },
 ) {
-    val url = ArtworkUrls.bannerOrPoster(tvShow.banner, tvShow.poster, hero = hero)
+    val url = if (hero) {
+        ArtworkUrls.bannerOrPoster(tvShow.banner, tvShow.poster, hero = true)
+    } else {
+        ArtworkUrls.featuredBannerOrPoster(tvShow.banner, tvShow.poster)
+    }
     loadRecoverableArtwork(url, configure) { staleUrl, onUpdated ->
         ArtworkRepairCoordinator.repairTvShowArtwork(this, tvShow, staleUrl) { refreshedTvShow ->
-            val refreshedUrl = ArtworkUrls.bannerOrPoster(
-                refreshedTvShow.banner,
-                refreshedTvShow.poster,
-                hero = hero,
-            )
+            val refreshedUrl = if (hero) {
+                ArtworkUrls.bannerOrPoster(
+                    refreshedTvShow.banner,
+                    refreshedTvShow.poster,
+                    hero = true,
+                )
+            } else {
+                ArtworkUrls.featuredBannerOrPoster(
+                    refreshedTvShow.banner,
+                    refreshedTvShow.poster,
+                )
+            }
             if (!refreshedUrl.isNullOrBlank() && refreshedUrl != staleUrl) {
                 onUpdated(refreshedUrl)
             }
@@ -230,9 +256,16 @@ fun ImageView.loadTvShowCardArtwork(
     tvShow: TvShow,
     configure: RequestBuilder<Drawable>.() -> RequestBuilder<Drawable> = { this },
 ) {
-    loadRecoverableArtwork(tvShow.poster ?: tvShow.banner, configure) { staleUrl, onUpdated ->
+    val url = ArtworkUrls.preferPoster(tvShow.poster)
+        ?: ArtworkUrls.preferPoster(tvShow.banner)
+        ?: tvShow.poster
+        ?: tvShow.banner
+    loadRecoverableArtwork(url, configure) { staleUrl, onUpdated ->
         ArtworkRepairCoordinator.repairTvShowArtwork(this, tvShow, staleUrl) { refreshedTvShow ->
-            val refreshedUrl = refreshedTvShow.poster ?: refreshedTvShow.banner
+            val refreshedUrl = ArtworkUrls.preferPoster(refreshedTvShow.poster)
+                ?: ArtworkUrls.preferPoster(refreshedTvShow.banner)
+                ?: refreshedTvShow.poster
+                ?: refreshedTvShow.banner
             if (!refreshedUrl.isNullOrBlank() && refreshedUrl != staleUrl) {
                 onUpdated(refreshedUrl)
             }

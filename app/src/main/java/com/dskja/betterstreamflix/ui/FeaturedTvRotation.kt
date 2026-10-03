@@ -3,6 +3,7 @@ package com.dskja.betterstreamflix.ui
 import com.dskja.betterstreamflix.adapters.AppAdapter
 import com.dskja.betterstreamflix.models.Movie
 import com.dskja.betterstreamflix.models.TvShow
+import com.dskja.betterstreamflix.utils.ArtworkUrls
 
 /**
  * Pure helpers for the TV Featured swiper: index wrap, coercion, and banner
@@ -21,9 +22,10 @@ object FeaturedTvRotation {
         return (coerceIndex(selectedIndex, size) + 1) % size
     }
 
+    /** Full-quality Featured banner (TMDb original when applicable). */
     fun bannerOf(item: AppAdapter.Item?): String? = when (item) {
-        is Movie -> item.banner
-        is TvShow -> item.banner
+        is Movie -> ArtworkUrls.featuredBannerOrPoster(item.banner, item.poster)
+        is TvShow -> ArtworkUrls.featuredBannerOrPoster(item.banner, item.poster)
         else -> null
     }
 

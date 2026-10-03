@@ -15,6 +15,44 @@ class ArtworkUrlsTest {
     }
 
     @Test
+    fun preferFeaturedUsesOriginal() {
+        assertEquals(
+            "https://image.tmdb.org/t/p/original/abc.jpg",
+            ArtworkUrls.preferFeatured("https://image.tmdb.org/t/p/w300/abc.jpg"),
+        )
+        assertEquals(
+            "https://image.tmdb.org/t/p/original/abc.jpg",
+            ArtworkUrls.preferFeatured("https://image.tmdb.org/t/p/w1280/abc.jpg"),
+        )
+    }
+
+    @Test
+    fun preferPosterUsesW780() {
+        assertEquals(
+            "https://image.tmdb.org/t/p/w780/poster.jpg",
+            ArtworkUrls.preferPoster("https://image.tmdb.org/t/p/w185/poster.jpg"),
+        )
+    }
+
+    @Test
+    fun featuredBannerOrPosterPrefersOriginalBanner() {
+        assertEquals(
+            "https://image.tmdb.org/t/p/original/banner.jpg",
+            ArtworkUrls.featuredBannerOrPoster(
+                banner = "https://image.tmdb.org/t/p/w500/banner.jpg",
+                poster = "https://image.tmdb.org/t/p/w500/poster.jpg",
+            ),
+        )
+        assertEquals(
+            "https://image.tmdb.org/t/p/original/poster.jpg",
+            ArtworkUrls.featuredBannerOrPoster(
+                banner = null,
+                poster = "https://image.tmdb.org/t/p/w342/poster.jpg",
+            ),
+        )
+    }
+
+    @Test
     fun preferOriginalUpgradesThumbnailSizes() {
         assertEquals(
             "https://image.tmdb.org/t/p/original/abc.jpg",
