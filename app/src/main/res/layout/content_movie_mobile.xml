@@ -4,9 +4,9 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:paddingBottom="32dp">
+    android:paddingBottom="8dp">
 
-    <!-- Full-bleed cover: tied to this hero block so it always reaches the tabs. -->
+    <!-- Full-bleed cover through CTAs; atmospheric veil only (no opaque floor). -->
     <ImageView
         android:id="@+id/iv_movie_cover"
         android:layout_width="0dp"
@@ -24,9 +24,9 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
-        app:layout_constraintGuide_percent="0.55" />
+        app:layout_constraintGuide_percent="0.72" />
 
-    <!-- Soft / blurred wash over the lower cover toward the tabs. -->
+    <!-- Soft wash reserved for the lowest band — kept faint so it never reads as a slab. -->
     <ImageView
         android:id="@+id/iv_movie_cover_soft"
         android:layout_width="0dp"
@@ -196,14 +196,9 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginStart="6dp"
-            android:background="@drawable/bg_detail_rating_chip"
             android:fontFamily="@font/outfit"
-            android:paddingStart="8dp"
-            android:paddingTop="3dp"
-            android:paddingEnd="8dp"
-            android:paddingBottom="3dp"
             android:textColor="@color/cinema_text"
-            android:textSize="12sp"
+            android:textSize="13sp"
             android:textStyle="bold"
             android:visibility="gone"
             tools:text="8.4"
@@ -257,8 +252,12 @@
         android:fontFamily="@font/manrope"
         android:letterSpacing="0.01"
         android:lineSpacingExtra="5dp"
-        android:lineSpacingMultiplier="1.08"
+        android:lineSpacingMultiplier="1.12"
         android:maxLines="3"
+        android:shadowColor="#99000000"
+        android:shadowDx="0"
+        android:shadowDy="1"
+        android:shadowRadius="8"
         android:textColor="@color/cinema_text_soft"
         android:textSize="15sp"
         app:layout_constraintEnd_toEndOf="parent"
@@ -314,11 +313,11 @@
             android:layout_weight="1"
             android:background="@drawable/bg_detail_watch_now"
             android:drawablePadding="8dp"
-            android:elevation="2dp"
+            android:elevation="0dp"
             android:ellipsize="end"
             android:fontFamily="@font/outfit"
             android:gravity="center"
-            android:letterSpacing="0.02"
+            android:letterSpacing="0.01"
             android:maxLines="1"
             android:paddingStart="12dp"
             android:paddingEnd="12dp"
