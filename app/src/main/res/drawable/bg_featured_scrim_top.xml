@@ -1,11 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Light top vignette for status bar / floating chrome readability. -->
+<!-- Soft status-bar vignette only. -->
 <shape xmlns:android="http://schemas.android.com/apk/res/android"
     android:shape="rectangle">
     <gradient
         android:angle="90"
-        android:centerColor="#400A0A0C"
+        android:centerColor="#260A0A0C"
         android:endColor="#00000000"
-        android:startColor="#B30A0A0C"
+        android:startColor="#660A0A0C"
         android:type="linear" />
 </shape>

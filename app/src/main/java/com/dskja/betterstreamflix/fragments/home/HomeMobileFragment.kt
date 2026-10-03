@@ -153,8 +153,9 @@ class HomeMobileFragment : Fragment() {
             recycledViewPool.setMaxRecycledViews(AppAdapter.Type.MOVIE_MOBILE_ITEM.ordinal, 12)
             recycledViewPool.setMaxRecycledViews(AppAdapter.Type.TV_SHOW_MOBILE_ITEM.ordinal, 12)
             recycledViewPool.setMaxRecycledViews(AppAdapter.Type.CATEGORY_MOBILE_ITEM.ordinal, 6)
+            // Tight Featured→shelf gap so the window bg never reads as a black band.
             addItemDecoration(
-                SpacingItemDecoration(20.dp(requireContext()))
+                SpacingItemDecoration(10.dp(requireContext()))
             )
         }
 

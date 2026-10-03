@@ -1,10 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <layer-list xmlns:android="http://schemas.android.com/apk/res/android">
-    <item android:gravity="bottom">
+    <item
+        android:left="10dp"
+        android:right="10dp"
+        android:top="42dp">
         <shape android:shape="rectangle">
-            <size android:height="3dp" />
+            <size android:height="2dp" />
             <solid android:color="@color/cinema_text" />
-            <corners android:radius="2dp" />
+            <corners android:radius="1dp" />
         </shape>
     </item>
 </layer-list>

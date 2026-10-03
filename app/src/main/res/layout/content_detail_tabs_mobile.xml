@@ -7,17 +7,17 @@
     android:background="@drawable/bg_detail_tabs_surface"
     android:fillViewport="true"
     android:overScrollMode="never"
-    android:paddingTop="4dp"
+    android:paddingTop="8dp"
     android:scrollbars="none">
 
     <LinearLayout
         android:id="@+id/ll_detail_tabs"
         android:layout_width="wrap_content"
-        android:layout_height="52dp"
+        android:layout_height="48dp"
         android:gravity="center_vertical"
         android:orientation="horizontal"
-        android:paddingStart="8dp"
-        android:paddingEnd="8dp">
+        android:paddingStart="12dp"
+        android:paddingEnd="12dp">
 
         <TextView
             android:id="@+id/tab_detail_episodes"
@@ -25,13 +25,13 @@
             android:layout_height="match_parent"
             android:fontFamily="@font/outfit"
             android:gravity="center"
-            android:letterSpacing="0.06"
-            android:paddingStart="16dp"
-            android:paddingEnd="16dp"
+            android:letterSpacing="0.02"
+            android:paddingStart="14dp"
+            android:paddingEnd="14dp"
             android:text="@string/detail_tab_episodes"
-            android:textAllCaps="true"
+            android:textAllCaps="false"
             android:textColor="@color/cinema_text_faint"
-            android:textSize="12sp"
+            android:textSize="15sp"
             android:textStyle="bold"
             tools:background="@drawable/bg_detail_tab_underline"
             tools:textColor="@color/cinema_text" />
@@ -42,13 +42,13 @@
             android:layout_height="match_parent"
             android:fontFamily="@font/outfit"
             android:gravity="center"
-            android:letterSpacing="0.06"
-            android:paddingStart="16dp"
-            android:paddingEnd="16dp"
+            android:letterSpacing="0.02"
+            android:paddingStart="14dp"
+            android:paddingEnd="14dp"
             android:text="@string/detail_tab_similar"
-            android:textAllCaps="true"
+            android:textAllCaps="false"
             android:textColor="@color/cinema_text_faint"
-            android:textSize="12sp"
+            android:textSize="15sp"
             android:textStyle="bold" />
 
         <TextView
@@ -57,13 +57,13 @@
             android:layout_height="match_parent"
             android:fontFamily="@font/outfit"
             android:gravity="center"
-            android:letterSpacing="0.06"
-            android:paddingStart="16dp"
-            android:paddingEnd="16dp"
+            android:letterSpacing="0.02"
+            android:paddingStart="14dp"
+            android:paddingEnd="14dp"
             android:text="@string/detail_tab_trailer"
-            android:textAllCaps="true"
+            android:textAllCaps="false"
             android:textColor="@color/cinema_text_faint"
-            android:textSize="12sp"
+            android:textSize="15sp"
             android:textStyle="bold" />
 
         <TextView
@@ -72,13 +72,13 @@
             android:layout_height="match_parent"
             android:fontFamily="@font/outfit"
             android:gravity="center"
-            android:letterSpacing="0.06"
-            android:paddingStart="16dp"
-            android:paddingEnd="16dp"
+            android:letterSpacing="0.02"
+            android:paddingStart="14dp"
+            android:paddingEnd="14dp"
             android:text="@string/detail_tab_about"
-            android:textAllCaps="true"
+            android:textAllCaps="false"
             android:textColor="@color/cinema_text_faint"
-            android:textSize="12sp"
+            android:textSize="15sp"
             android:textStyle="bold" />
     </LinearLayout>
 </HorizontalScrollView>
