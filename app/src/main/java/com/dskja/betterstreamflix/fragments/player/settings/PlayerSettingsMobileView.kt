@@ -503,6 +503,16 @@ class PlayerSettingsMobileView @JvmOverloads constructor(
                         else -> {}
                     }
                 }
+                setOnLongClickListener {
+                    if (item is Settings.Server) {
+                        ExpMotion.hapticTap(it)
+                        settingsView.onServerPlayWith?.invoke(item)
+                        settingsView.hide()
+                        true
+                    } else {
+                        false
+                    }
+                }
             }
 
             // CLEAN RESET

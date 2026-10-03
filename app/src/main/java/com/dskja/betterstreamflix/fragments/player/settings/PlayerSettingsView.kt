@@ -399,6 +399,11 @@ abstract class PlayerSettingsView @JvmOverloads constructor(
         this.onServerSelected = onServerSelected
     }
 
+    protected var onServerPlayWith: ((Settings.Server) -> Unit)? = null
+    fun setOnServerPlayWithListener(onServerPlayWith: (server: Settings.Server) -> Unit) {
+        this.onServerPlayWith = onServerPlayWith
+    }
+
 
     interface Item
 

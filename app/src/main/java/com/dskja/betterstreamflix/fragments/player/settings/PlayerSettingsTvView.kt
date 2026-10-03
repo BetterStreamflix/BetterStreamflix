@@ -442,6 +442,15 @@ class PlayerSettingsTvView @JvmOverloads constructor(
                         else -> {}
                     }
                 }
+                setOnLongClickListener {
+                    if (item is Settings.Server) {
+                        settingsView.onServerPlayWith?.invoke(item)
+                        settingsView.hide()
+                        true
+                    } else {
+                        false
+                    }
+                }
             }
 
             binding.ivSettingIcon.apply {

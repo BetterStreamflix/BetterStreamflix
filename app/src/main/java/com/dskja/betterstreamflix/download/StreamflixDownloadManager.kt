@@ -203,6 +203,21 @@ object StreamflixDownloadManager {
         get(context).maxParallelDownloads = max.coerceIn(1, 4)
     }
 
+    /**
+     * Pause work, tear down SimpleCache/DownloadManager, and rebuild against the
+     * current [DownloadStorage.cacheDir]. Call after changing storage location.
+     */
+    fun relocate(context: Context) {
+        val app = context.applicationContext
+        synchronized(this) {
+            runCatching {
+                downloadManager?.pauseDownloads()
+            }
+            release()
+            get(app)
+        }
+    }
+
     fun release() {
         synchronized(this) {
             downloadManager?.release()

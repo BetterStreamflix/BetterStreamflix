@@ -3,6 +3,7 @@ package com.dskja.betterstreamflix.download
 import android.content.Context
 import android.os.Environment
 import android.os.StatFs
+import com.dskja.betterstreamflix.R
 import com.dskja.betterstreamflix.utils.UserPreferences
 import java.io.File
 
@@ -24,13 +25,49 @@ object DownloadStorage {
                 publicMoviesDownloads()
             DownloadStorageLocation.REMOVABLE ->
                 removableAppDownloadsDir(app) ?: appExternalDownloads(app)
-            DownloadStorageLocation.CUSTOM_FOLDER ->
-                DownloadTreeAccess.media3CacheDir(app)
+            DownloadStorageLocation.CUSTOM_FOLDER -> {
+                if (!DownloadTreeAccess.validateCustomStorage(app)) {
+                    // Permission lost or SD ejected — fall back without pretending.
+                    appExternalDownloads(app)
+                } else {
+                    DownloadTreeAccess.media3CacheDir(app)
+                }
+            }
         }
         return ensureWritableDir(preferred) ?: appExternalDownloads(app).also { fallback ->
-            // Scoped storage often blocks bare public Movies mkdirs on API 29+.
-            // Fall back to app-external so downloads still work; path summary reflects reality.
             if (!fallback.exists()) fallback.mkdirs()
+        }
+    }
+
+    /**
+     * Whether the configured storage is currently usable for new downloads / offline play.
+     */
+    fun isStorageAvailable(context: Context): Boolean {
+        return when (location()) {
+            DownloadStorageLocation.CUSTOM_FOLDER ->
+                DownloadTreeAccess.validateCustomStorage(context) &&
+                    ensureWritableDir(downloadsDir(context)) != null
+            DownloadStorageLocation.REMOVABLE ->
+                removableAppDownloadsDir(context) != null
+            else -> ensureWritableDir(downloadsDir(context)) != null
+        }
+    }
+
+    fun storageUnavailableReason(context: Context): Int? {
+        return when {
+            location() == DownloadStorageLocation.CUSTOM_FOLDER &&
+                DownloadTreeAccess.hasTree() &&
+                !DownloadTreeAccess.hasPersistedPermission(context) ->
+                R.string.settings_download_storage_permission_lost
+            location() == DownloadStorageLocation.REMOVABLE &&
+                !hasRemovableStorage(context) ->
+                R.string.settings_download_storage_removable_unavailable
+            location() == DownloadStorageLocation.CUSTOM_FOLDER &&
+                !DownloadTreeAccess.validateCustomStorage(context) ->
+                R.string.settings_download_storage_unavailable
+            !isStorageAvailable(context) ->
+                R.string.settings_download_storage_unavailable
+            else -> null
         }
     }
 
@@ -113,16 +150,30 @@ object DownloadStorage {
     }
 
     fun absolutePathSummary(context: Context): String {
-        if (location() == DownloadStorageLocation.CUSTOM_FOLDER) {
-            val treeName = DownloadTreeAccess.displayName(context)
-            val cachePath = downloadsDir(context).absolutePath
-            return if (!treeName.isNullOrBlank()) {
-                "$treeName · $cachePath"
-            } else {
-                cachePath
+        val cachePath = downloadsDir(context).absolutePath
+        return when (location()) {
+            DownloadStorageLocation.CUSTOM_FOLDER -> {
+                val treeName = DownloadTreeAccess.displayName(context)
+                val volume = DownloadTreeAccess.volumeLabel(
+                    context,
+                    DownloadTreeAccess.volumeIdFromTree(DownloadTreeAccess.treeUri()),
+                )
+                buildString {
+                    if (!treeName.isNullOrBlank()) {
+                        append(context.getString(R.string.settings_download_storage_saf_label, treeName))
+                        append('\n')
+                    }
+                    if (!volume.isNullOrBlank()) {
+                        append(context.getString(R.string.settings_download_storage_volume_label, volume))
+                        append('\n')
+                    }
+                    append(context.getString(R.string.settings_download_storage_cache_path, cachePath))
+                }
             }
+            DownloadStorageLocation.REMOVABLE ->
+                context.getString(R.string.settings_download_storage_cache_path, cachePath)
+            else -> cachePath
         }
-        return downloadsDir(context).absolutePath
     }
 
     fun usedBytes(context: Context): Long =

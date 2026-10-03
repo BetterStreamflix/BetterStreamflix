@@ -157,7 +157,7 @@ class SettingsTvFragment : LeanbackPreferenceFragmentCompat() {
     }
 
     private val pickDownloadFolderLauncher = registerForActivityResult(
-        ActivityResultContracts.OpenDocumentTree()
+        com.dskja.betterstreamflix.download.DownloadTreeAccess.PersistableOpenDocumentTree()
     ) { uri: Uri? ->
         DownloadsSettingsController.onDownloadFolderPicked(this, { key -> findPreference(key) }, uri)
     }
