@@ -1,9 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- Soft atmospheric banner wash — art remains visible (no opaque black floor). -->
 <shape xmlns:android="http://schemas.android.com/apk/res/android"
     android:shape="rectangle">
     <gradient
         android:angle="90"
-        android:startColor="#0E1715"
-        android:endColor="#99418E7F"
+        android:centerColor="#4D121218"
+        android:endColor="#00121218"
+        android:startColor="#B3121218"
         android:type="linear" />
 </shape>
