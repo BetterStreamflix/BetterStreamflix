@@ -9,24 +9,41 @@
     android:paddingBottom="12dp">
 
     <TextView
+        android:id="@+id/tv_tv_show_episodes_heading"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="16dp"
+        android:layout_marginTop="8dp"
+        android:layout_marginEnd="12dp"
+        android:fontFamily="@font/syne"
+        android:text="@string/detail_episodes_heading"
+        android:textColor="@color/cinema_text"
+        android:textSize="20sp"
+        android:textStyle="bold"
+        app:layout_constraintEnd_toStartOf="@id/btn_tv_show_season_picker"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
+
+    <TextView
         android:id="@+id/btn_tv_show_season_picker"
         android:layout_width="wrap_content"
-        android:layout_height="42dp"
-        android:layout_marginStart="16dp"
-        android:layout_marginTop="10dp"
+        android:layout_height="36dp"
+        android:layout_marginTop="6dp"
+        android:layout_marginEnd="16dp"
         android:background="@drawable/bg_detail_season_chip"
         android:drawablePadding="8dp"
         android:fontFamily="@font/outfit"
         android:gravity="center_vertical"
-        android:paddingStart="16dp"
-        android:paddingEnd="14dp"
+        android:paddingStart="14dp"
+        android:paddingEnd="12dp"
         android:textColor="@color/cinema_text"
-        android:textSize="14sp"
+        android:textSize="13sp"
         android:textStyle="bold"
         app:drawableEndCompat="@drawable/ic_exp_chevron_down"
         app:drawableTint="@color/cinema_text"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintBottom_toBottomOf="@id/tv_tv_show_episodes_heading"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toTopOf="@id/tv_tv_show_episodes_heading"
         tools:text="Season 1" />
 
     <!-- Kept as a gone stub so older binding/AppAdapter paths that still
@@ -44,7 +61,7 @@
         android:id="@+id/rv_tv_show_episodes"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:layout_marginTop="4dp"
+        android:layout_marginTop="10dp"
         android:clipChildren="false"
         android:clipToPadding="false"
         android:nestedScrollingEnabled="false"
@@ -56,7 +73,7 @@
         app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/btn_tv_show_season_picker"
+        app:layout_constraintTop_toBottomOf="@id/tv_tv_show_episodes_heading"
         tools:itemCount="3"
         tools:listitem="@layout/item_episode_detail_mobile" />
 
@@ -70,7 +87,7 @@
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/btn_tv_show_season_picker"
+        app:layout_constraintTop_toBottomOf="@id/tv_tv_show_episodes_heading"
         tools:visibility="visible" />
 
     <LinearLayout
@@ -86,7 +103,7 @@
         android:visibility="gone"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/btn_tv_show_season_picker"
+        app:layout_constraintTop_toBottomOf="@id/tv_tv_show_episodes_heading"
         tools:visibility="gone">
 
         <TextView

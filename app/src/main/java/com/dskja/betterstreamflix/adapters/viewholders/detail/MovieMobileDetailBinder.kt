@@ -46,6 +46,7 @@ import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.dskja.betterstreamflix.download.DownloadContentKey
 import com.dskja.betterstreamflix.fragments.movie.MovieMobileFragment
 import com.dskja.betterstreamflix.ui.DetailRating
+import com.dskja.betterstreamflix.ui.DetailWatchLabels
 
 internal fun MovieViewHolder.bindMovieMobileDetail(binding: ContentMovieMobileBinding) {
     // Poster stub stays gone; cover lives inside this hero block.
@@ -191,8 +192,8 @@ internal fun MovieViewHolder.bindMovieMobileDetail(binding: ContentMovieMobileBi
     }
 
     binding.btnMovieWatchNow.apply {
-        // Dual CTA: Watch now always streams online; completed downloads use the Download button.
-        text = context.getString(R.string.movie_watch_now)
+        // Dual CTA: Watch streams online; completed downloads use the Download button.
+        text = DetailWatchLabels.movie(context, movie)
         FeaturedSwiperChrome.wireWatchButton(this)
         applyExpPress()
         setOnClickListener {
@@ -211,15 +212,9 @@ internal fun MovieViewHolder.bindMovieMobileDetail(binding: ContentMovieMobileBi
 
     binding.pbMovieProgress.apply {
         val watchHistory = movie.watchHistory
-
-        progress = when {
-            watchHistory != null -> (watchHistory.lastPlaybackPositionMillis * 100 / watchHistory.durationMillis.toDouble()).toInt()
-            else -> 0
-        }
-        visibility = when {
-            watchHistory != null -> View.VISIBLE
-            else -> View.GONE
-        }
+        val percent = DetailWatchLabels.progressPercent(watchHistory)
+        progress = percent
+        visibility = if (percent in 1..95) View.VISIBLE else View.GONE
     }
 
     binding.btnMovieTrailer.apply {
@@ -284,11 +279,19 @@ internal fun MovieViewHolder.bindMovieMobileDetail(binding: ContentMovieMobileBi
 
     binding.btnMovieDownload.apply {
         applyExpPress()
+        val downloadColumn = binding.root.findViewById<View>(R.id.ll_movie_download_column)
         if (isIptvProvider()) {
-            visibility = View.GONE
+            if (downloadColumn != null) {
+                downloadColumn.visibility = View.GONE
+            } else {
+                visibility = View.GONE
+            }
             setOnClickListener(null)
             setOnLongClickListener(null)
         } else {
+            if (downloadColumn != null) {
+                downloadColumn.visibility = View.VISIBLE
+            }
             visibility = View.VISIBLE
             val contentKey = movieDownloadContentKey()
             val playOffline = contentKey != null && OfflineBadgeStore.isCompleted(context, contentKey)
@@ -422,18 +425,11 @@ internal fun MovieViewHolder.bindMovieMobileDetail(binding: ContentMovieMobileBi
     }
 
     binding.btnMovieFavorite.apply {
-        fun applyState(inList: Boolean) {
-            setImageDrawable(
-                ContextCompat.getDrawable(
-                    context,
-                    if (inList) R.drawable.ic_list_added else R.drawable.ic_list_add,
-                )
-            )
-            val description = context.getString(
+        fun applyState(inList: Boolean, animate: Boolean = false) {
+            FeaturedSwiperChrome.bindListButton(this, inList, animate)
+            contentDescription = context.getString(
                 if (inList) R.string.detail_remove_from_list else R.string.detail_add_to_list,
             )
-            contentDescription = description
-            androidx.appcompat.widget.TooltipCompat.setTooltipText(this, description)
         }
 
         applyExpPress()
@@ -457,8 +453,7 @@ internal fun MovieViewHolder.bindMovieMobileDetail(binding: ContentMovieMobileBi
                         movie.poster = resolved.poster
                         movie.banner = resolved.banner
                         movie.isFavorite = target
-                        applyState(target)
-                        ExpMotion.softScale(binding.btnMovieFavorite)
+                        applyState(target, animate = true)
                     }
                 }
             }
