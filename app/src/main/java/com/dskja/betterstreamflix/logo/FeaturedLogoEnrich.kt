@@ -118,16 +118,16 @@ object FeaturedLogoEnrich {
         start()
     }
 
-    /** Prefetch next slide banner (1280×720) on unmetered networks. */
+    /** Prefetch next slide banner at Featured decode size on unmetered networks. */
     fun prefetchBanner(context: Context, bannerUrl: String?) {
         if (bannerUrl.isNullOrBlank()) return
         if (!isDefinitelyUnmetered(context)) return
+        val url = com.dskja.betterstreamflix.utils.ArtworkUrls.preferFeatured(bannerUrl)
+            ?: bannerUrl
+        val (w, h) = com.dskja.betterstreamflix.ui.FeaturedSwiperChrome.artworkOverride(context)
         com.bumptech.glide.Glide.with(context.applicationContext)
-            .load(bannerUrl)
-            .preload(
-                com.dskja.betterstreamflix.ui.FeaturedSwiperChrome.ARTWORK_WIDTH,
-                com.dskja.betterstreamflix.ui.FeaturedSwiperChrome.ARTWORK_HEIGHT,
-            )
+            .load(url)
+            .preload(w, h)
     }
 
     fun cancel(anchor: View) {

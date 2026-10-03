@@ -37,6 +37,7 @@ import com.dskja.betterstreamflix.models.Video
 import com.dskja.betterstreamflix.providers.Provider
 import com.dskja.betterstreamflix.ui.ShowOptionsMobileDialog
 import com.dskja.betterstreamflix.ui.ShowOptionsTvDialog
+import com.dskja.betterstreamflix.utils.ArtworkUrls
 import com.dskja.betterstreamflix.utils.EpisodeManager
 import com.dskja.betterstreamflix.utils.UserPreferences
 import com.dskja.betterstreamflix.utils.format
@@ -143,9 +144,13 @@ class EpisodeViewHolder(
 
         binding.ivEpisodePoster.apply {
             clipToOutline = true
+            val dens = resources.displayMetrics.density
+            val h = (96f * dens).toInt().coerceAtLeast(160)
+            val w = (h * 16 / 9f).toInt().coerceAtLeast(240)
             Glide.with(context)
-                .load(episode.poster)
+                .load(ArtworkUrls.preferW500(episode.poster) ?: episode.poster)
                 .error(R.drawable.glide_fallback_cover)
+                .override(w, h)
                 .centerCrop()
                 .transition(DrawableTransitionOptions.withCrossFade())
                 .into(this)
@@ -242,9 +247,13 @@ class EpisodeViewHolder(
 
         binding.ivEpisodePoster.apply {
             clipToOutline = true
+            val dens = resources.displayMetrics.density
+            val h = (96f * dens).toInt().coerceAtLeast(160)
+            val w = (h * 16 / 9f).toInt().coerceAtLeast(240)
             Glide.with(context)
-                .load(episode.poster)
+                .load(ArtworkUrls.preferW500(episode.poster) ?: episode.poster)
                 .error(R.drawable.glide_fallback_cover)
+                .override(w, h)
                 .centerCrop()
                 .transition(DrawableTransitionOptions.withCrossFade())
                 .into(this)
@@ -464,10 +473,14 @@ class EpisodeViewHolder(
 
         binding.ivEpisodePoster.apply {
             clipToOutline = true
+            val dens = resources.displayMetrics.density
+            val h = (96f * dens).toInt().coerceAtLeast(160)
+            val w = (h * 16 / 9f).toInt().coerceAtLeast(240)
             var request = Glide.with(context)
-                .load(episode.poster)
+                .load(ArtworkUrls.preferW500(episode.poster) ?: episode.poster)
                 .error(R.drawable.glide_fallback_cover)
                 .fallback(R.drawable.glide_fallback_cover)
+                .override(w, h)
                 .centerCrop()
             if (!DeviceCapabilities.shouldReduceHomeEffects(context)) {
                 request = request.transition(DrawableTransitionOptions.withCrossFade())
@@ -475,9 +488,8 @@ class EpisodeViewHolder(
             request.into(this)
         }
         binding.ivEpisodeWatchedRibbon.let { ribbon ->
-            val wasVisible = ribbon.visibility == View.VISIBLE
             ribbon.visibility = if (episode.isWatched) View.VISIBLE else View.GONE
-if (!episode.isWatched) {
+            if (!episode.isWatched) {
                 ribbon.background = null
             }
         }
@@ -751,7 +763,10 @@ if (!episode.isWatched) {
                 when (val fragment = context.toActivity()?.getCurrentFragment()) {
                     is HomeTvFragment -> {
                         if (hasFocus) {
-                            fragment.pinBackground(episode.tvShow?.banner)
+                            val show = episode.tvShow
+                            fragment.pinBackground(
+                                ArtworkUrls.featuredBannerOrPoster(show?.banner, show?.poster),
+                            )
                         } else {
                             fragment.releasePinnedBackground()
                         }
@@ -894,12 +909,16 @@ if (!episode.isWatched) {
         val tvShow = episode.tvShow
         val reduce = DeviceCapabilities.shouldReduceHomeEffects(context)
         if (tvShow == null) {
+            val dens = resources.displayMetrics.density
+            val h = (120f * dens).toInt().coerceAtLeast(180)
+            val w = (h * 16 / 9f).toInt().coerceAtLeast(280)
             var request = Glide.with(context)
-                .load(episode.poster)
+                .load(ArtworkUrls.preferW500(episode.poster) ?: episode.poster)
                 .error(R.drawable.glide_fallback_cover)
                 .apply {
                     if (withFallback) fallback(R.drawable.glide_fallback_cover)
                 }
+                .override(w, h)
                 .centerCrop()
             if (!reduce) {
                 request = request.transition(DrawableTransitionOptions.withCrossFade())

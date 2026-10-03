@@ -9,11 +9,20 @@ object ArtworkUrls {
     private val tmdbSize = Regex("""(image\.tmdb\.org/t/p/)(w\d+|original)(/)""")
     private val tmdbSizeAlt = Regex("""(themoviedb\.org/t/p/)(w\d+|original)(/)""")
 
-    /** Prefer a wide TMDb size suitable for full-bleed heroes. */
+    /**
+     * Wide TMDb size for mid-weight hero washes (soft blur layers, cheap prefetch).
+     * Full-bleed Featured / detail covers should use [preferFeatured] / [preferOriginal].
+     */
     fun preferHero(url: String?): String? = replaceSize(url, "w1280")
+
+    /** Full-bleed Featured / TV home background — never upsample a tiny bitmap. */
+    fun preferFeatured(url: String?): String? = replaceSize(url, "original")
 
     /** Original / max quality when the surface can show it (detail banner). */
     fun preferOriginal(url: String?): String? = replaceSize(url, "original")
+
+    /** Shelf / grid posters — sharp on xxhdpi without pulling full original. */
+    fun preferPoster(url: String?): String? = replaceSize(url, "w780")
 
     fun preferW500(url: String?): String? = replaceSize(url, "w500")
 
@@ -42,10 +51,21 @@ object ArtworkUrls {
         return ordered.ifEmpty { listOf(value) }
     }
 
+    /**
+     * @param hero when true, uses w1280 (soft / secondary washes).
+     *   Featured and detail covers should pass `hero = false` for original.
+     */
     fun bannerOrPoster(banner: String?, poster: String?, hero: Boolean = true): String? {
         val primary = if (hero) preferHero(banner) else preferOriginal(banner)
         if (!primary.isNullOrBlank()) return primary
         return if (hero) preferHero(poster) else preferOriginal(poster)
+    }
+
+    /** Featured swiper / TV home backdrop — always original when TMDb. */
+    fun featuredBannerOrPoster(banner: String?, poster: String?): String? {
+        val primary = preferFeatured(banner)
+        if (!primary.isNullOrBlank()) return primary
+        return preferFeatured(poster)
     }
 
     private fun replaceSize(url: String?, size: String): String? {

@@ -117,6 +117,7 @@ import com.dskja.betterstreamflix.utils.getCurrentFragment
 import com.dskja.betterstreamflix.utils.loadMovieBanner
 import com.dskja.betterstreamflix.utils.loadMoviePoster
 import com.dskja.betterstreamflix.utils.ArtworkRepair
+import com.dskja.betterstreamflix.utils.ArtworkUrls
 import com.dskja.betterstreamflix.utils.toActivity
 import java.util.Locale
 import com.dskja.betterstreamflix.utils.UserPreferences
@@ -361,8 +362,12 @@ class MovieViewHolder(
         }
 
         binding.ivMoviePoster.loadMoviePoster(movie) {
-            centerCrop()
-            transition(DrawableTransitionOptions.withCrossFade())
+            val dens = binding.ivMoviePoster.resources.displayMetrics.density
+            val h = (200f * dens).toInt().coerceAtLeast(300)
+            val w = (h * 2 / 3f).toInt().coerceAtLeast(200)
+            override(w, h)
+                .centerCrop()
+                .transition(DrawableTransitionOptions.withCrossFade())
         }
         bindRibbons(binding.ivMovieFavoriteRibbon, binding.ivMovieWatchedRibbon, binding.ivMovieDownloadRibbon)
 
@@ -476,7 +481,9 @@ class MovieViewHolder(
                 when (val fragment = context.toActivity()?.getCurrentFragment()) {
                     is HomeTvFragment -> {
                         if (hasFocus) {
-                            fragment.pinBackground(movie.banner)
+                            fragment.pinBackground(
+                                ArtworkUrls.featuredBannerOrPoster(movie.banner, movie.poster),
+                            )
                         } else {
                             fragment.releasePinnedBackground()
                         }
@@ -486,9 +493,13 @@ class MovieViewHolder(
         }
 
         binding.ivMoviePoster.loadMoviePoster(movie) {
+            val dens = binding.ivMoviePoster.resources.displayMetrics.density
+            val h = (200f * dens).toInt().coerceAtLeast(300)
+            val w = (h * 2 / 3f).toInt().coerceAtLeast(200)
             fallback(R.drawable.glide_fallback_cover)
-            centerCrop()
-            transition(DrawableTransitionOptions.withCrossFade())
+                .override(w, h)
+                .centerCrop()
+                .transition(DrawableTransitionOptions.withCrossFade())
         }
         bindRibbons(binding.ivMovieFavoriteRibbon, binding.ivMovieWatchedRibbon, binding.ivMovieDownloadRibbon)
         binding.pbMovieProgress.apply {
@@ -551,8 +562,12 @@ class MovieViewHolder(
         }
 
         binding.ivMoviePoster.loadMoviePoster(movie) {
-            centerCrop()
-            transition(DrawableTransitionOptions.withCrossFade())
+            val dens = binding.ivMoviePoster.resources.displayMetrics.density
+            val h = (200f * dens).toInt().coerceAtLeast(300)
+            val w = (h * 2 / 3f).toInt().coerceAtLeast(200)
+            override(w, h)
+                .centerCrop()
+                .transition(DrawableTransitionOptions.withCrossFade())
         }
         bindRibbons(binding.ivMovieFavoriteRibbon, binding.ivMovieWatchedRibbon, binding.ivMovieDownloadRibbon)
 
@@ -646,9 +661,13 @@ class MovieViewHolder(
             }
         }
         binding.ivMoviePoster.loadMoviePoster(movie) {
+            val dens = binding.ivMoviePoster.resources.displayMetrics.density
+            val h = (200f * dens).toInt().coerceAtLeast(300)
+            val w = (h * 2 / 3f).toInt().coerceAtLeast(200)
             fallback(R.drawable.glide_fallback_cover)
-            centerCrop()
-            transition(DrawableTransitionOptions.withCrossFade())
+                .override(w, h)
+                .centerCrop()
+                .transition(DrawableTransitionOptions.withCrossFade())
         }
         bindRibbons(binding.ivMovieFavoriteRibbon, binding.ivMovieWatchedRibbon, binding.ivMovieDownloadRibbon)
         binding.pbMovieProgress.apply {
@@ -802,8 +821,9 @@ class MovieViewHolder(
     }
 
     private fun displaySwiperMobileItem(binding: ItemCategorySwiperMobileBinding) {
-        binding.ivSwiperBackground.loadMovieBanner(movie) {
-            override(FeaturedSwiperChrome.ARTWORK_WIDTH, FeaturedSwiperChrome.ARTWORK_HEIGHT)
+        val (artW, artH) = FeaturedSwiperChrome.artworkOverride(binding.ivSwiperBackground)
+        binding.ivSwiperBackground.loadMovieBanner(movie, hero = false) {
+            override(artW, artH)
                 .centerCrop()
                 .transition(DrawableTransitionOptions.withCrossFade())
         }

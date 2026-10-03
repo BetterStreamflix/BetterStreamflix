@@ -146,7 +146,10 @@ class TvShowTvFragment : Fragment() {
         val bannerKey = "${tvShow.banner}|${tvShow.poster}"
         if (lastBannerKey != bannerKey) {
             lastBannerKey = bannerKey
-            binding.ivTvShowBanner.loadTvShowBanner(tvShow) {
+            binding.ivTvShowBanner.loadTvShowBanner(tvShow, hero = false) {
+                val (w, h) = com.dskja.betterstreamflix.ui.FeaturedSwiperChrome
+                    .tvBackdropOverride(requireContext())
+                override(w, h)
                 if (!DeviceCapabilities.shouldReduceHomeEffects(requireContext())) {
                     transition(DrawableTransitionOptions.withCrossFade())
                 } else {

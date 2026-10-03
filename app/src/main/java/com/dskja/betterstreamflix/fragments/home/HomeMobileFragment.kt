@@ -451,15 +451,20 @@ class HomeMobileFragment : Fragment() {
     fun updateExperimentalHeroArt(show: com.dskja.betterstreamflix.models.Show?) {
         if (_binding == null || !ExperimentalMobileDesign.enabled()) return
         val art = when (show) {
-            is Movie -> show.banner ?: show.poster
-            is TvShow -> show.banner ?: show.poster
+            is Movie -> com.dskja.betterstreamflix.utils.ArtworkUrls
+                .featuredBannerOrPoster(show.banner, show.poster)
+            is TvShow -> com.dskja.betterstreamflix.utils.ArtworkUrls
+                .featuredBannerOrPoster(show.banner, show.poster)
             else -> null
         }
         if (art == currentHeroArt) return
         currentHeroArt = art
         if (!art.isNullOrBlank()) {
+            val (w, h) = com.dskja.betterstreamflix.ui.FeaturedSwiperChrome
+                .artworkOverride(binding.ivHomeBackground)
             Glide.with(binding.ivHomeBackground)
                 .load(art)
+                .override(w, h)
                 .transition(DrawableTransitionOptions.withCrossFade(450))
                 .centerCrop()
                 .listener(object : com.bumptech.glide.request.RequestListener<android.graphics.drawable.Drawable> {

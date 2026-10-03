@@ -39,8 +39,10 @@ import com.dskja.betterstreamflix.utils.ProviderChangeNotifier
 import com.dskja.betterstreamflix.utils.HomeCatalogPipeline
 import com.dskja.betterstreamflix.ui.FeaturedAdvancePolicy
 import com.dskja.betterstreamflix.ui.FeaturedHeroController
+import com.dskja.betterstreamflix.ui.FeaturedSwiperChrome
 import com.dskja.betterstreamflix.ui.FeaturedTvRotation
 import com.dskja.betterstreamflix.logo.FeaturedLogoEnrich
+import com.dskja.betterstreamflix.utils.ArtworkUrls
 
 class HomeTvFragment : Fragment() {
 
@@ -241,15 +243,7 @@ class HomeTvFragment : Fragment() {
         if (swiperHasFocus == null && !swiperHasLastFocus) return
         val target = _binding?.ivHomeBackground ?: return
         if (!target.isAttachedToWindow) return
-
-        var request = Glide.with(target)
-            .load(uri)
-            .centerCrop()
-            .thumbnail(0.25f)
-        if (!DeviceCapabilities.shouldReduceHomeEffects(target.context)) {
-            request = request.transition(DrawableTransitionOptions.withCrossFade(180))
-        }
-        request.into(target)
+        loadFeaturedBackdrop(target, uri)
         swiperHasLastFocus = swiperHasFocus ?: swiperHasLastFocus
     }
 
@@ -257,10 +251,16 @@ class HomeTvFragment : Fragment() {
         isBackgroundPinned = true
         val target = _binding?.ivHomeBackground ?: return
         if (!target.isAttachedToWindow) return
+        loadFeaturedBackdrop(target, uri)
+    }
+
+    private fun loadFeaturedBackdrop(target: android.widget.ImageView, uri: String?) {
+        val url = ArtworkUrls.preferFeatured(uri) ?: uri
+        val (w, h) = FeaturedSwiperChrome.tvBackdropOverride(target.context)
         var request = Glide.with(target)
-            .load(uri)
+            .load(url)
+            .override(w, h)
             .centerCrop()
-            .thumbnail(0.25f)
         if (!DeviceCapabilities.shouldReduceHomeEffects(target.context)) {
             request = request.transition(DrawableTransitionOptions.withCrossFade(180))
         }

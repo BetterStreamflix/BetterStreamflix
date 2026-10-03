@@ -101,6 +101,7 @@ import com.dskja.betterstreamflix.utils.dp
 import com.dskja.betterstreamflix.utils.loadTvShowBanner
 import com.dskja.betterstreamflix.utils.loadTvShowPoster
 import com.dskja.betterstreamflix.utils.ArtworkRepair
+import com.dskja.betterstreamflix.utils.ArtworkUrls
 import com.dskja.betterstreamflix.providers.Provider
 import java.util.Locale
 import com.dskja.betterstreamflix.models.Trailer
@@ -356,8 +357,13 @@ class TvShowViewHolder(
     private fun setPoster(imageView: ImageView) {
         imageView.scaleType = if (isIptvProvider()) ImageView.ScaleType.FIT_CENTER else ImageView.ScaleType.CENTER_CROP
         imageView.loadTvShowPoster(tvShow) {
+            val dens = imageView.resources.displayMetrics.density
+            val h = (200f * dens).toInt().coerceAtLeast(300)
+            val w = (h * 2 / 3f).toInt().coerceAtLeast(200)
             fallback(R.drawable.glide_fallback_cover)
-            transition(DrawableTransitionOptions.withCrossFade())
+                .override(w, h)
+                .centerCrop()
+                .transition(DrawableTransitionOptions.withCrossFade())
         }
     }
 
@@ -465,7 +471,9 @@ class TvShowViewHolder(
                 TvFocusZoom.apply(this, hasFocus)
                 (context.toActivity()?.getCurrentFragment() as? HomeTvFragment)?.let { fragment ->
                     if (hasFocus) {
-                        fragment.pinBackground(tvShow.banner)
+                        fragment.pinBackground(
+                            ArtworkUrls.featuredBannerOrPoster(tvShow.banner, tvShow.poster),
+                        )
                     } else {
                         fragment.releasePinnedBackground()
                     }
@@ -682,8 +690,9 @@ class TvShowViewHolder(
     }
 
     private fun displaySwiperMobileItem(binding: ItemCategorySwiperMobileBinding) {
-        binding.ivSwiperBackground.loadTvShowBanner(tvShow) {
-            override(FeaturedSwiperChrome.ARTWORK_WIDTH, FeaturedSwiperChrome.ARTWORK_HEIGHT)
+        val (artW, artH) = FeaturedSwiperChrome.artworkOverride(binding.ivSwiperBackground)
+        binding.ivSwiperBackground.loadTvShowBanner(tvShow, hero = false) {
+            override(artW, artH)
                 .centerCrop()
                 .transition(DrawableTransitionOptions.withCrossFade())
         }

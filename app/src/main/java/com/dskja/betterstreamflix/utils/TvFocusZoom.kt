@@ -9,8 +9,13 @@ object TvFocusZoom {
     fun apply(view: View, hasFocus: Boolean) {
         if (DeviceCapabilities.shouldReduceHomeEffects(view.context)) {
             view.clearAnimation()
+            // Still lift elevation so focus remains readable without motion.
+            view.elevation = if (hasFocus) 12f * view.resources.displayMetrics.density else 0f
+            view.isSelected = hasFocus
             return
         }
+        view.elevation = if (hasFocus) 10f * view.resources.displayMetrics.density else 0f
+        view.isSelected = hasFocus
         val anim = AnimationUtils.loadAnimation(
             view.context,
             if (hasFocus) R.anim.zoom_in else R.anim.zoom_out,
