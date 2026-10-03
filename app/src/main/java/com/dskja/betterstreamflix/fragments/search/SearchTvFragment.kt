@@ -43,12 +43,13 @@ class SearchTvFragment : Fragment() {
 
     private val http409Guard = Http409CacheGuard()
 
-        private var _binding: FragmentSearchTvBinding? = null
+    private var _binding: FragmentSearchTvBinding? = null
     private val binding get() = _binding!!
 
     private val database get() = AppDatabase.getInstance(requireContext())
     private val viewModel by viewModelsFactory { SearchViewModel(database) }
     private var currentGridColumns: Int = 1
+    private var gridConfiguredForColumns: Int = -1
 
     private val appAdapter by lazy {
         AppAdapter().apply {
@@ -99,18 +100,23 @@ class SearchTvFragment : Fragment() {
         initializeSearch()
 
         viewLifecycleOwner.lifecycleScope.launch {
-            viewModel.state.flowWithLifecycle(lifecycle, Lifecycle.State.STARTED).collect { state ->
+            viewModel.state
+                .flowWithLifecycle(viewLifecycleOwner.lifecycle, Lifecycle.State.STARTED)
+                .collect { state ->
+                val ui = _binding ?: return@collect
 
                 when (state) {
                     is State.Searching, is State.GlobalSearching -> {
-                        binding.isLoading.apply {
+                        // Drop opposite-shaped rows before local↔global column changes.
+                        clearSearchGrid()
+                        ui.isLoading.apply {
                             root.visibility = View.VISIBLE
                             com.dskja.betterstreamflix.utils.ExpPressEffects.showLoadingSkeleton(root, true)
                             gIsLoadingRetry.visibility = View.GONE
                         }
-                        binding.root.findViewById<View>(R.id.tv_search_empty)?.visibility = View.GONE
-                        binding.root.findViewById<View>(R.id.v_search_empty_rule)?.visibility = View.GONE
-                        binding.root.findViewById<View>(R.id.btn_search_empty_cta)?.visibility = View.GONE
+                        ui.root.findViewById<View>(R.id.tv_search_empty)?.visibility = View.GONE
+                        ui.root.findViewById<View>(R.id.v_search_empty_rule)?.visibility = View.GONE
+                        ui.root.findViewById<View>(R.id.btn_search_empty_cta)?.visibility = View.GONE
                         appAdapter.isLoading = false
                         appAdapter.setOnLoadMoreListener(null)
                     }
@@ -118,19 +124,19 @@ class SearchTvFragment : Fragment() {
                     is State.SuccessSearching -> {
                         displaySearch(state.results, state.hasMore)
                         appAdapter.isLoading = false
-                        binding.vgvSearch.visibility = View.VISIBLE
-                        binding.isLoading.root.visibility = View.GONE
+                        ui.vgvSearch.visibility = View.VISIBLE
+                        ui.isLoading.root.visibility = View.GONE
                         com.dskja.betterstreamflix.utils.ExpPressEffects.showLoadingSkeleton(
-                            binding.isLoading.root, false,
+                            ui.isLoading.root, false,
                         )
                     }
                     is State.SuccessGlobalSearching -> {
                         displayGlobalSearch(state.providerResults)
                         appAdapter.isLoading = false
-                        binding.vgvSearch.visibility = View.VISIBLE
-                        binding.isLoading.root.visibility = View.GONE
+                        ui.vgvSearch.visibility = View.VISIBLE
+                        ui.isLoading.root.visibility = View.GONE
                         com.dskja.betterstreamflix.utils.ExpPressEffects.showLoadingSkeleton(
-                            binding.isLoading.root, false,
+                            ui.isLoading.root, false,
                         )
                     }
                     is State.FailedSearching -> {
@@ -144,7 +150,7 @@ class SearchTvFragment : Fragment() {
                         if (appAdapter.isLoading) {
                             appAdapter.isLoading = false
                         } else {
-                            binding.isLoading.apply {
+                            ui.isLoading.apply {
                                 com.dskja.betterstreamflix.utils.ExpPressEffects.showLoadingSkeleton(root, false)
                                 gIsLoadingRetry.visibility = View.VISIBLE
                                 com.dskja.betterstreamflix.utils.ExpPressEffects.animateLoadingError(root)
@@ -157,9 +163,9 @@ class SearchTvFragment : Fragment() {
                                 btnIsLoadingErrorDetails.setOnClickListener {
                                     LoggingUtils.showErrorDialog(requireContext(), state.error)
                                 }
-                                binding.vgvSearch.visibility = View.INVISIBLE
-                                binding.etSearch.nextFocusDownId = binding.isLoading.btnIsLoadingRetry.id
-                                binding.isLoading.btnIsLoadingRetry.nextFocusUpId = binding.etSearch.id
+                                ui.vgvSearch.visibility = View.INVISIBLE
+                                ui.etSearch.nextFocusDownId = ui.isLoading.btnIsLoadingRetry.id
+                                ui.isLoading.btnIsLoadingRetry.nextFocusUpId = ui.etSearch.id
                             }
                         }
                     }
@@ -261,9 +267,10 @@ class SearchTvFragment : Fragment() {
             addTextChangedListener(object : TextWatcher {
                 override fun afterTextChanged(s: Editable?) {
                     if (s.isNullOrBlank()) {
-                                val isIptv = UserPreferences.currentProvider is IptvProvider
-        val hintStringRes = if (isIptv) R.string.search_input_hint_iptv else R.string.search_input_hint
-        binding.etSearch.hint = getString(hintStringRes)
+                        val iptv = UserPreferences.currentProvider is IptvProvider
+                        val hintRes =
+                            if (iptv) R.string.search_input_hint_iptv else R.string.search_input_hint
+                        binding.etSearch.hint = getString(hintRes)
                     }
                 }
                 override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
@@ -484,29 +491,58 @@ class SearchTvFragment : Fragment() {
     }
 
     private fun focusSearchContent(): Boolean {
-        val hasResults = appAdapter.itemCount > 0 && binding.vgvSearch.visibility == View.VISIBLE
+        val ui = _binding ?: return false
+        val gridVisible = ui.vgvSearch.visibility == View.VISIBLE
+        val focusableChild = if (gridVisible && appAdapter.itemCount > 0) {
+            ui.vgvSearch.findFocus()
+                ?: ui.vgvSearch.getChildAt(0)?.takeIf { it.hasFocusable() }
+        } else {
+            null
+        }
         return when {
-            hasResults -> {
-                binding.vgvSearch.requestFocus()
+            focusableChild != null || (gridVisible && appAdapter.itemCount > 0 && ui.vgvSearch.hasFocusable()) -> {
+                ui.vgvSearch.requestFocus()
             }
-            binding.llGlobalSearch.visibility == View.VISIBLE -> {
-                binding.llGlobalSearch.requestFocus()
+            ui.llGlobalSearch.visibility == View.VISIBLE -> {
+                ui.llGlobalSearch.requestFocus()
             }
             else -> false
         }
     }
 
-    private fun displaySearch(list: List<AppAdapter.Item>, hasMore: Boolean) {
-        currentGridColumns = if (viewModel.query == "") 5 else 6
-        binding.vgvSearch.setNumColumns(currentGridColumns)
+    private fun clearSearchGrid() {
+        val ui = _binding ?: return
+        appAdapter.submitList(emptyList())
+        appAdapter.setOnLoadMoreListener(null)
+        gridConfiguredForColumns = -1
+        ui.vgvSearch.visibility = View.INVISIBLE
+    }
 
-        appAdapter.submitList(list.onEach {
+    private fun submitSearchGrid(columns: Int, items: List<AppAdapter.Item>) {
+        val ui = _binding ?: return
+        if (gridConfiguredForColumns != columns) {
+            // Never call setNumColumns while the opposite item shape is still bound.
+            if (appAdapter.itemCount > 0) {
+                appAdapter.submitList(emptyList())
+            }
+            currentGridColumns = columns
+            ui.vgvSearch.setNumColumns(columns)
+            gridConfiguredForColumns = columns
+        }
+        appAdapter.submitList(items)
+        ui.vgvSearch.visibility = View.VISIBLE
+    }
+
+    private fun displaySearch(list: List<AppAdapter.Item>, hasMore: Boolean) {
+        val columns = if (viewModel.query == "") 5 else 6
+        val stamped = list.onEach {
             when (it) {
                 is Genre -> it.itemType = AppAdapter.Type.GENRE_GRID_TV_ITEM
                 is Movie -> it.itemType = AppAdapter.Type.MOVIE_GRID_TV_ITEM
                 is TvShow -> it.itemType = AppAdapter.Type.TV_SHOW_GRID_TV_ITEM
             }
-        })
+        }
+        submitSearchGrid(columns, stamped)
 
         binding.root.findViewById<View>(R.id.tv_search_empty)?.let { emptyView ->
             val showEmpty = list.isEmpty() && viewModel.query.isNotBlank()
@@ -533,11 +569,14 @@ class SearchTvFragment : Fragment() {
     private fun displayGlobalSearch(providerResults: List<ProviderResult>) {
         val categories = providerResults.map { providerResult ->
             val headerTitle = when (val state = providerResult.state) {
-                is ProviderResult.State.Loading -> "${providerResult.provider.name} - ${getString(R.string.searching)}"
-                is ProviderResult.State.Error -> "${providerResult.provider.name} - ${getString(R.string.search_error)}"
+                is ProviderResult.State.Loading ->
+                    "${providerResult.provider.name} - ${getString(R.string.searching)}"
+                is ProviderResult.State.Error ->
+                    "${providerResult.provider.name} - ${getString(R.string.search_error)}"
                 is ProviderResult.State.Success -> {
                     val count = state.results.size
-                    val resultText = if (count == 1) getString(R.string.result) else getString(R.string.results)
+                    val resultText =
+                        if (count == 1) getString(R.string.result) else getString(R.string.results)
                     "${providerResult.provider.name} - $count $resultText"
                 }
             }
@@ -550,17 +589,34 @@ class SearchTvFragment : Fragment() {
             } ?: emptyList()
 
             Category(name = headerTitle, list = items).apply {
+                // Stable DiffUtil id across Loading → Success title changes.
+                identityKey = "search-global:${providerResult.provider.name}"
                 itemType = AppAdapter.Type.CATEGORY_TV_ITEM
             }
         }
 
-        currentGridColumns = 1
-        binding.vgvSearch.setNumColumns(currentGridColumns) // La lista de categorías es una sola columna vertical
-        appAdapter.submitList(categories)
+        submitSearchGrid(columns = 1, items = categories)
         appAdapter.setOnLoadMoreListener(null)
-        binding.root.findViewById<View>(R.id.tv_search_empty)?.visibility = View.GONE
-        binding.root.findViewById<View>(R.id.v_search_empty_rule)?.visibility = View.GONE
-        binding.root.findViewById<View>(R.id.btn_search_empty_cta)?.visibility = View.GONE
+
+        val allDone = providerResults.isNotEmpty() &&
+            providerResults.none { it.state is ProviderResult.State.Loading }
+        val totalHits = providerResults.sumOf {
+            (it.state as? ProviderResult.State.Success)?.results?.size ?: 0
+        }
+        val showEmpty = allDone && totalHits == 0 && viewModel.query.isNotBlank()
+        binding.root.findViewById<View>(R.id.tv_search_empty)?.let { emptyView ->
+            ExpEmptyChrome.bind(
+                emptyView = emptyView,
+                emptyRule = binding.root.findViewById(R.id.v_search_empty_rule),
+                emptyCta = binding.root.findViewById(R.id.btn_search_empty_cta),
+                visible = showEmpty,
+                onCtaClick = {
+                    binding.etSearch.setText("")
+                    viewModel.search("")
+                    binding.etSearch.requestFocus()
+                },
+            )
+        }
     }
 
     private fun updateGlobalSearchContentDescription() {

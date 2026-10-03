@@ -113,20 +113,35 @@ class SearchViewModel(
                 State.SuccessSearching(
                     results = state.results.map { item ->
                         when (item) {
-                            is Movie -> moviesById[item.id]
-                                ?.takeIf { db ->
-                                    !item.isSame(db) ||
-                                        (item.logo.isNullOrBlank() && !db.logo.isNullOrBlank())
+                            is Movie -> {
+                                val merged = moviesById[item.id]
+                                    ?.takeIf { db ->
+                                        !item.isSame(db) ||
+                                            (item.logo.isNullOrBlank() && !db.logo.isNullOrBlank())
+                                    }
+                                    ?.let { item.copy().merge(it) }
+                                    ?: item
+                                // Preserve adapter type across Room merge copies (TV/mobile grid stamps).
+                                val sourceType = runCatching { item.itemType }.getOrNull()
+                                if (sourceType != null && runCatching { merged.itemType }.isFailure) {
+                                    merged.itemType = sourceType
                                 }
-                                ?.let { item.copy().merge(it) }
-                                ?: item
-                            is TvShow -> tvShowsById[item.id]
-                                ?.takeIf { db ->
-                                    !item.isSame(db) ||
-                                        (item.logo.isNullOrBlank() && !db.logo.isNullOrBlank())
+                                merged
+                            }
+                            is TvShow -> {
+                                val merged = tvShowsById[item.id]
+                                    ?.takeIf { db ->
+                                        !item.isSame(db) ||
+                                            (item.logo.isNullOrBlank() && !db.logo.isNullOrBlank())
+                                    }
+                                    ?.let { item.copy().merge(it) }
+                                    ?: item
+                                val sourceType = runCatching { item.itemType }.getOrNull()
+                                if (sourceType != null && runCatching { merged.itemType }.isFailure) {
+                                    merged.itemType = sourceType
                                 }
-                                ?.let { item.copy().merge(it) }
-                                ?: item
+                                merged
+                            }
                             else -> item
                         }
                     },
@@ -324,13 +339,16 @@ class SearchViewModel(
         }
     }
 
-    // FUNCIÓN DE BÚSQUEDA GLOBAL AÑADIDA
     fun searchGlobal(query: String, currentLanguage: String) {
         searchJob?.cancel()
         loadMoreJob?.cancel()
         globalSearchJob?.cancel()
         globalSearchJob = viewModelScope.launch(Dispatchers.IO) {
             _state.emit(State.GlobalSearching)
+            this@SearchViewModel.query = query
+            page = 1
+            rawLocalResults = emptyList()
+            rawLocalHasMore = false
 
             val isCurrentProviderIptv = UserPreferences.currentProvider is IptvProvider
             val targetProviders = Provider.providers.keys
@@ -351,6 +369,7 @@ class SearchViewModel(
 
             val mutableResults = initialResults.toMutableList()
             val resultsLock = Any()
+            val requestedQuery = query
 
             targetProviders.forEachIndexed { index, provider ->
                 launch {
@@ -360,15 +379,12 @@ class SearchViewModel(
                                 timeoutMs = ProviderSmoke.SEARCH_TIMEOUT_MS,
                                 label = "searchGlobal(${provider.name})",
                             ) {
-                                provider.search(query)
+                                provider.search(requestedQuery)
                             }.onEach { item ->
-                            // ========= ¡AQUÍ ESTÁ LA MAGIA! =========
-                            // Le ponemos el sello a cada resultado
                             when (item) {
                                 is Movie -> item.providerName = provider.name
                                 is TvShow -> item.providerName = provider.name
                             }
-                            // =======================================
                         })
                         ProviderResult(provider, ProviderResult.State.Success(results))
                     } catch (e: CancellationException) {
@@ -377,6 +393,9 @@ class SearchViewModel(
                         Log.e("SearchViewModel", "searchGlobal for ${provider.name}: ", e)
                         ProviderResult(provider, ProviderResult.State.Error(e))
                     }
+
+                    // Drop stale provider hits if the user started a newer search.
+                    if (this@SearchViewModel.query != requestedQuery) return@launch
 
                     val snapshot = synchronized(resultsLock) {
                         mutableResults[index] = next
