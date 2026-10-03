@@ -1,8 +1,10 @@
 package com.dskja.betterstreamflix.adapters.viewholders
 
+import android.graphics.drawable.Drawable
 import android.view.View
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.FragmentManager
+import androidx.preference.PreferenceManager
 import androidx.recyclerview.widget.RecyclerView
 import androidx.viewbinding.ViewBinding
 import com.bumptech.glide.Glide
@@ -11,9 +13,9 @@ import com.bumptech.glide.load.engine.GlideException
 import com.bumptech.glide.load.resource.drawable.DrawableTransitionOptions
 import com.bumptech.glide.request.RequestListener
 import com.bumptech.glide.request.target.Target
-import android.graphics.drawable.Drawable
 import com.dskja.betterstreamflix.databinding.ItemTrailerTvBinding
 import com.dskja.betterstreamflix.models.Trailer
+import com.dskja.betterstreamflix.models.TrailerCatalog
 import com.dskja.betterstreamflix.ui.TrailerPlaybackController
 import com.dskja.betterstreamflix.utils.ExpMotion
 import com.dskja.betterstreamflix.utils.TvFocusZoom
@@ -36,15 +38,20 @@ class TrailerViewHolder(
     private fun displayTvItem(binding: ItemTrailerTvBinding) {
         binding.tvTrailerTitle.text = trailer.title
         binding.tvTrailerMeta.text = trailer.type
+        val official = trailer.official || TrailerCatalog.isOfficialTitle(trailer.title)
+        binding.tvTrailerOfficialBadge.visibility = if (official) View.VISIBLE else View.GONE
 
         // Hide play chrome until the thumb is ready (parity with mobile hide-until-ready).
         binding.ivTrailerPlay.visibility = View.INVISIBLE
         binding.ivTrailerPlay.alpha = 0f
 
+        val thumbQuality = PreferenceManager.getDefaultSharedPreferences(binding.root.context)
+            .getString(TrailerCatalog.KEY_TRAILER_THUMB_QUALITY, TrailerCatalog.THUMB_QUALITY_DEFAULT)
+            ?: TrailerCatalog.THUMB_QUALITY_DEFAULT
         val ytId = TrailerPlaybackController.youtubeVideoId(trailer.url)
         if (ytId != null) {
             Glide.with(binding.ivTrailerThumb)
-                .load("https://img.youtube.com/vi/$ytId/hqdefault.jpg")
+                .load(TrailerCatalog.youtubeThumbUrl(ytId, thumbQuality))
                 .centerCrop()
                 .transition(DrawableTransitionOptions.withCrossFade(160))
                 .listener(object : RequestListener<Drawable> {

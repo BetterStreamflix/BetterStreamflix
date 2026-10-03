@@ -584,9 +584,17 @@
                 android:key="preferred_player"
                 android:title="@string/settings_trailer_player_title"
                 android:summary="@string/settings_trailer_player_summary"
-                android:entries="@array/trailer_player_names"
-                android:entryValues="@array/trailer_player_values"
-                android:defaultValue="in_app" />
+                android:entries="@array/trailer_player_names_tv"
+                android:entryValues="@array/trailer_player_values_tv"
+                android:defaultValue="ask" />
+
+            <ListPreference
+                android:key="trailer_thumb_quality"
+                android:title="@string/settings_trailer_thumb_quality_title"
+                android:summary="@string/settings_trailer_thumb_quality_summary"
+                android:entries="@array/trailer_thumb_quality_names"
+                android:entryValues="@array/trailer_thumb_quality_values"
+                android:defaultValue="hq" />
 
             <Preference
                 android:key="preferred_player_reset"

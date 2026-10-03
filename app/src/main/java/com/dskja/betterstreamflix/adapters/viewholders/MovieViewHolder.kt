@@ -1,5 +1,6 @@
 package com.dskja.betterstreamflix.adapters.viewholders
 
+import com.dskja.betterstreamflix.models.TrailerCatalog
 import com.dskja.betterstreamflix.adapters.viewholders.detail.bindMovieMobileDetail
 import com.dskja.betterstreamflix.adapters.viewholders.detail.bindMovieTvDetail
 
@@ -162,18 +163,6 @@ class MovieViewHolder(
     private val TAG = "TrailerChoiceDebug" // Logging Tag
 
     companion object {
-        private const val KEY_PREFERRED_PLAYER = "preferred_player"
-        private const val KEY_SMARTTUBE_PACKAGE = "preferred_smarttube_package" // New key for saving the exact package
-        private const val PLAYER_YOUTUBE = "youtube"
-        private const val PLAYER_SMARTTUBE = "smarttube"
-        private const val PLAYER_SMARTTUBE_STABLE = "smarttube_stable"
-        private const val PLAYER_SMARTTUBE_BETA = "smarttube_beta"
-        private const val PLAYER_ASK = "ask"
-        private const val SMARTTUBE_STABLE_PACKAGE = "org.smarttube.stable"
-        private const val SMARTTUBE_BETA_PACKAGE = "org.smarttube.beta"
-        private const val YOUTUBE_PACKAGE = "com.google.android.youtube"
-        private const val YOUTUBE_TV_PACKAGE = "com.google.android.tv.youtube"
-
         const val DETAIL_SECTION_RECOMMENDATIONS = "detail_section_recommendations"
         const val DETAIL_SECTION_TRAILER = "detail_section_trailer"
         const val DETAIL_SECTION_ABOUT = "detail_section_about"
@@ -298,107 +287,6 @@ class MovieViewHolder(
                 }
             }
             .show()
-    }
-
-    internal fun isPackageInstalled(packageName: String): Boolean {
-        return try {
-            context.packageManager.getPackageInfo(packageName, 0)
-            true
-        } catch (e: PackageManager.NameNotFoundException) {
-            false
-        }
-    }
-
-    internal fun getInstalledSmartTubePackages(): List<String> {
-        val installed = mutableListOf<String>()
-        if (isPackageInstalled(SMARTTUBE_STABLE_PACKAGE)) installed.add(SMARTTUBE_STABLE_PACKAGE)
-        if (isPackageInstalled(SMARTTUBE_BETA_PACKAGE)) installed.add(SMARTTUBE_BETA_PACKAGE)
-        return installed
-    }
-
-    internal fun launchSmartTube(packageName: String, trailerUrl: String) {
-        val intent = Intent(Intent.ACTION_VIEW, trailerUrl.toUri())
-        intent.setPackage(packageName)
-        context.startActivity(intent)
-    }
-
-    internal fun showSmartTubeVersionDialog(packages: List<String>, trailerUrl: String, shouldSavePreference: Boolean) {
-        val prefs = PreferenceManager.getDefaultSharedPreferences(context)
-        val editor = prefs.edit()
-        
-        val items = packages.map { pkg ->
-            if (pkg == SMARTTUBE_STABLE_PACKAGE) context.getString(R.string.smarttube_stable)
-            else context.getString(R.string.smarttube_beta)
-        }.toTypedArray()
-
-        (if (ExperimentalMobileDesign.enabled()) MaterialAlertDialogBuilder(context) else AlertDialog.Builder(context))
-            .setTitle(context.getString(R.string.choose_smarttube_version))
-            .setItems(items) { _, which ->
-                val selectedPackage = packages[which]
-                
-                if (shouldSavePreference) {
-                    // Salva la scelta dell'utente se la preferenza principale è "smarttube"
-                    editor.putString(KEY_SMARTTUBE_PACKAGE, selectedPackage).apply()
-                    Log.d(TAG, "SmartTube version saved: $selectedPackage")
-                }
-                
-                launchSmartTube(selectedPackage, trailerUrl)
-            }
-            .create()
-            .also { com.dskja.betterstreamflix.ui.TrailerPlaybackController.polishChooserDialog(it) }
-    }
-
-    internal fun safeLaunchYoutube(intent: Intent) {
-        try {
-            context.startActivity(intent)
-        } catch (e: Exception) {
-            Log.e(TAG, "Failed to launch YouTube intent", e)
-            val message = context.getString(R.string.player_external_player_error_video)
-            if (ExperimentalMobileDesign.enabled()) {
-                ExpDialogChrome.showInfo(
-                    context,
-                    R.string.youtube,
-                    message,
-                ) { ctx ->
-                    MaterialAlertDialogBuilder(ctx)
-                }
-            } else {
-                Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
-            }
-        }
-    }
-
-    internal fun handleSmartTubeSelection(trailerUrl: String, logPrefix: String) {
-        val prefs = PreferenceManager.getDefaultSharedPreferences(context)
-        val savedPackage = prefs.getString(KEY_SMARTTUBE_PACKAGE, null)
-        val stPackages = getInstalledSmartTubePackages()
-
-        Log.d(TAG, "$logPrefix: SmartTube packages found: ${stPackages.size}. Saved package: $savedPackage")
-        
-        if (stPackages.isEmpty()) {
-            // Caso 1: Nessuna SmartTube installata. Fallback su YouTube.
-            Log.d(TAG, "$logPrefix: No SmartTube installed, falling back to YouTube")
-            safeLaunchYoutube(Intent(Intent.ACTION_VIEW, trailerUrl.toUri()))
-            return
-        }
-
-        if (stPackages.size == 1) {
-            // Caso 2: Una sola SmartTube installata. Avvia direttamente.
-            Log.d(TAG, "$logPrefix: Only one SmartTube installed: ${stPackages[0]}. Launching directly.")
-            launchSmartTube(stPackages[0], trailerUrl)
-            return
-        }
-        
-        // Caso 3: Stable e Beta installate.
-        if (savedPackage != null && stPackages.contains(savedPackage)) {
-            // Caso 3a: Versione preferita è installata. Avvia direttamente la versione salvata.
-            Log.d(TAG, "$logPrefix: Saved SmartTube version found: $savedPackage. Launching directly.")
-            launchSmartTube(savedPackage, trailerUrl)
-        } else {
-            // Caso 3b: Nessuna preferenza salvata O la versione salvata non è più installata. Chiedi all'utente e salva la nuova scelta.
-            Log.d(TAG, "$logPrefix: Saved version invalid or missing. Asking user which version to use.")
-            showSmartTubeVersionDialog(stPackages, trailerUrl, true)
-        }
     }
 
     internal fun handleTrailerClick(trailer: String, logPrefix: String = "Movie") {
@@ -996,7 +884,7 @@ class MovieViewHolder(
                             imdbId = movie.imdbId,
                         )
                     }
-                    val url = remote.firstOrNull()?.second?.takeIf { it.isNotBlank() } ?: return@launch
+                    val url = TrailerCatalog.preferredPlayableUrl(remote) ?: return@launch
                     if (movie.trailer.isNullOrBlank()) movie.trailer = url
                     playTrailer(url)
                 }

@@ -2,6 +2,7 @@ package com.dskja.betterstreamflix.ui
 
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class TrailerPlaybackControllerTest {
@@ -113,5 +114,56 @@ class TrailerPlaybackControllerTest {
             "dQw4w9WgXcQ",
             TrailerPlaybackController.youtubeVideoId("https://www.youtube.com/embed/dQw4w9WgXcQ"),
         )
+    }
+
+    @Test
+    fun youtubeVideoId_parsesShorts() {
+        assertEquals(
+            "dQw4w9WgXcQ",
+            TrailerPlaybackController.youtubeVideoId("https://www.youtube.com/shorts/dQw4w9WgXcQ"),
+        )
+    }
+
+    @Test
+    fun youtubeVideoId_nullForVimeo() {
+        assertNull(TrailerPlaybackController.youtubeVideoId("https://vimeo.com/123456"))
+        assertTrue(TrailerPlaybackController.isVimeoUrl("https://vimeo.com/123456"))
+    }
+
+    @Test
+    fun resolvePreferredPlayer_leanbackAskWhenNothingInstalled() {
+        val result = TrailerPlaybackController.resolvePreferredPlayer(
+            stored = null,
+            leanback = true,
+            smartTubeStableInstalled = false,
+            smartTubeAnyInstalled = false,
+            youtubeInstalled = false,
+        )
+        assertEquals(TrailerPlaybackController.PLAYER_ASK, result)
+    }
+
+    @Test
+    fun resolvePreferredPlayer_leanbackAnySmartTubeWithoutStable() {
+        val result = TrailerPlaybackController.resolvePreferredPlayer(
+            stored = null,
+            leanback = true,
+            smartTubeStableInstalled = false,
+            smartTubeAnyInstalled = true,
+            youtubeInstalled = true,
+        )
+        assertEquals(TrailerPlaybackController.PLAYER_SMARTTUBE, result)
+    }
+
+    @Test
+    fun youtubePackagePreferenceOrder_leanbackPrefersTvPackages() {
+        val order = TrailerPlaybackController.youtubePackagePreferenceOrder(leanback = true)
+        assertEquals(TrailerPlaybackController.YOUTUBE_TV_PACKAGE, order.first())
+        assertTrue(order.contains(TrailerPlaybackController.YOUTUBE_TV_PACKAGE_ALT))
+    }
+
+    @Test
+    fun youtubePackagePreferenceOrder_mobilePrefersPhoneYoutube() {
+        val order = TrailerPlaybackController.youtubePackagePreferenceOrder(leanback = false)
+        assertEquals(TrailerPlaybackController.YOUTUBE_PACKAGE, order.first())
     }
 }

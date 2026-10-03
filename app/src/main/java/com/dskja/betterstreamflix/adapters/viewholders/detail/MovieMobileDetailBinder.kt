@@ -1,5 +1,6 @@
 package com.dskja.betterstreamflix.adapters.viewholders.detail
 
+import com.dskja.betterstreamflix.models.TrailerCatalog
 import android.content.Intent
 import android.view.View
 import android.widget.TextView
@@ -268,7 +269,7 @@ internal fun MovieViewHolder.bindMovieMobileDetail(binding: ContentMovieMobileBi
                         imdbId = movie.imdbId,
                     )
                 }
-                val first = remote.firstOrNull()?.second?.takeIf { it.isNotBlank() }
+                val first = TrailerCatalog.preferredPlayableUrl(remote)
                 if (!first.isNullOrBlank()) {
                     if (movie.trailer.isNullOrBlank()) movie.trailer = first
                     play(first)
