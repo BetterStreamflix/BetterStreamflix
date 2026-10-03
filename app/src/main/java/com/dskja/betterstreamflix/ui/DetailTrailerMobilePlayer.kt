@@ -20,10 +20,13 @@ import androidx.lifecycle.DefaultLifecycleObserver
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.findViewTreeLifecycleOwner
 import androidx.lifecycle.lifecycleScope
+import androidx.preference.PreferenceManager
 import com.bumptech.glide.Glide
 import com.dskja.betterstreamflix.R
 import com.dskja.betterstreamflix.databinding.ContentDetailTrailerMobileBinding
 import com.dskja.betterstreamflix.databinding.ItemDetailTrailerRowMobileBinding
+import com.dskja.betterstreamflix.models.TrailerCatalog
+import com.dskja.betterstreamflix.models.TrailerEntry
 import com.dskja.betterstreamflix.utils.ExpMotion
 import com.dskja.betterstreamflix.utils.ExpPressEffects.applyExpPress
 import com.dskja.betterstreamflix.utils.TmdbUtils
@@ -34,8 +37,10 @@ import kotlinx.coroutines.withContext
 
 /**
  * Shared in-tab trailer stage for Movie/TV mobile detail.
- * Always uses the built-in youtube-nocookie IFrame player — independent of
- * [TrailerPlaybackController.play] preferences used by the hero CTA.
+ *
+ * Default path uses the youtube-nocookie IFrame player. When the user prefers
+ * YouTube / SmartTube in settings, list taps route through
+ * [TrailerPlaybackController.play] instead of forcing the WebView.
  *
  * Lifecycle: pauses/blanks on fragment pause, detach, and recycle so Home stays silent.
  */
@@ -43,7 +48,7 @@ class DetailTrailerMobilePlayer(
     private val binding: ContentDetailTrailerMobileBinding,
 ) : TrailerPlaybackController.ActiveSession {
     private val context = binding.root.context
-    private val web: WebView = binding.wvDetailTrailer
+    private var web: WebView? = binding.wvDetailTrailer
     private val loading = binding.pbDetailTrailerLoading
     private val shimmer = binding.vDetailTrailerShimmer
     private val errorPanel = binding.llDetailTrailerError
@@ -56,7 +61,7 @@ class DetailTrailerMobilePlayer(
     private var activeTitle: String? = null
     private var loadedUrl: String? = null
     private var contentKey: String? = null
-    private var muted = true
+    private var muted = readStartMuted()
     private var hasAutoPlayed = false
     private var configured = false
     private var fetchJob: Job? = null
@@ -65,10 +70,10 @@ class DetailTrailerMobilePlayer(
     private var previousOrientation: Int? = null
     private var previousSystemUi: Int? = null
     private var boundLifecycleOwner: LifecycleOwner? = null
+    private var thumbQuality = readThumbQuality()
 
     private val lifecycleObserver = object : DefaultLifecycleObserver {
         override fun onPause(owner: LifecycleOwner) {
-            // Detail under Home / leaving Trailer tab / app background — kill audio.
             silence()
         }
 
@@ -93,10 +98,11 @@ class DetailTrailerMobilePlayer(
         ensureConfigured()
         attachLifecycle()
         TrailerPlaybackController.registerActiveSession(this)
+        thumbQuality = readThumbQuality()
+        muted = readStartMuted()
 
         val key = listOf(tmdbId.orEmpty(), imdbId.orEmpty(), title, seedUrl.orEmpty()).joinToString("|")
         if (contentKey == key && binding.llDetailTrailerList.childCount > 0) {
-            // Parent rebind with unchanged content — keep rows + WebView, skip reinflate.
             return
         }
         fetchJob?.cancel()
@@ -120,7 +126,7 @@ class DetailTrailerMobilePlayer(
         setLoading(false)
 
         val seed = seedUrl?.takeIf { it.isNotBlank() }?.let { url ->
-            listOf(Triple("$title $trailerLabel", url, trailerLabel))
+            listOf(TrailerEntry.fromSeed("$title $trailerLabel", url, trailerLabel))
         }.orEmpty()
         if (seed.isNotEmpty()) {
             bindRows(seed, autoplay = !hasAutoPlayed)
@@ -137,7 +143,7 @@ class DetailTrailerMobilePlayer(
                     imdbId = imdbId,
                 )
             }
-            val trailers = (seed + remote).distinctBy { it.second }
+            val trailers = TrailerCatalog.mergeTrailers(seed, remote)
             bindRows(trailers, autoplay = !hasAutoPlayed)
         }
     }
@@ -145,19 +151,27 @@ class DetailTrailerMobilePlayer(
     fun pauseAndBlank() {
         exitFullscreen()
         loadedUrl = null
-        TrailerPlaybackController.pauseTrailerMedia(web)
-        web.stopLoading()
-        web.loadUrl("about:blank")
+        val w = web
+        TrailerPlaybackController.pauseTrailerMedia(w)
+        w?.stopLoading()
+        w?.loadUrl("about:blank")
         setLoading(false)
     }
 
-    /** Recycle / destroy path — cancel work and drop registry entry. */
+    /** Recycle / destroy path — cancel work, destroy WebView, drop registry entry. */
     fun release() {
         fetchJob?.cancel()
         fetchJob = null
         detachLifecycle()
         TrailerPlaybackController.unregisterActiveSession(this)
         pauseAndBlank()
+        destroyWebView()
+    }
+
+    private fun destroyWebView() {
+        val w = web ?: return
+        TrailerPlaybackController.destroyTrailerWebView(w)
+        web = null
     }
 
     private fun attachLifecycle() {
@@ -175,12 +189,16 @@ class DetailTrailerMobilePlayer(
 
     @SuppressLint("SetJavaScriptEnabled", "AddJavascriptInterface")
     private fun ensureConfigured() {
-        if (configured) return
+        val recreated = ensureWebViewPresent()
+        if (configured && !recreated) return
         configured = true
         sizeStage()
-        TrailerPlaybackController.configureTrailerWebView(web)
-        web.addJavascriptInterface(TrailerJsBridge(), JS_BRIDGE)
-        web.webChromeClient = object : WebChromeClient() {
+        val w = web ?: return
+        TrailerPlaybackController.configureTrailerWebView(w)
+        // Avoid duplicate bridge if this WebView was already wired.
+        runCatching { w.removeJavascriptInterface(JS_BRIDGE) }
+        w.addJavascriptInterface(TrailerJsBridge(), JS_BRIDGE)
+        w.webChromeClient = object : WebChromeClient() {
             override fun onShowCustomView(view: View?, callback: CustomViewCallback?) {
                 if (view == null) return
                 if (customView != null) {
@@ -194,14 +212,9 @@ class DetailTrailerMobilePlayer(
                 exitFullscreen()
             }
         }
-        web.webViewClient = object : WebViewClient() {
+        w.webViewClient = object : WebViewClient() {
             override fun onPageFinished(view: WebView?, url: String?) {
-                if (errorPanel.visibility != View.VISIBLE &&
-                    url != null &&
-                    url != "about:blank"
-                ) {
-                    // Keep shimmer until IFrame ready/error events.
-                }
+                // Keep shimmer until IFrame ready/error events.
             }
 
             override fun onReceivedError(
@@ -214,37 +227,56 @@ class DetailTrailerMobilePlayer(
                 }
             }
         }
-        binding.root.addOnAttachStateChangeListener(object : View.OnAttachStateChangeListener {
-            override fun onViewAttachedToWindow(v: View) {
-                TrailerPlaybackController.registerActiveSession(this@DetailTrailerMobilePlayer)
-                attachLifecycle()
-            }
+        if (binding.root.getTag(R.id.detail_trailer_webview_configured_tag) != true) {
+            binding.root.setTag(R.id.detail_trailer_webview_configured_tag, true)
+            binding.root.addOnAttachStateChangeListener(object : View.OnAttachStateChangeListener {
+                override fun onViewAttachedToWindow(v: View) {
+                    TrailerPlaybackController.registerActiveSession(this@DetailTrailerMobilePlayer)
+                    attachLifecycle()
+                }
 
-            override fun onViewDetachedFromWindow(v: View) {
-                // Tab switch / navigate away — stop audio even if VH is cached.
-                silence()
-                TrailerPlaybackController.unregisterActiveSession(this@DetailTrailerMobilePlayer)
+                override fun onViewDetachedFromWindow(v: View) {
+                    silence()
+                    TrailerPlaybackController.unregisterActiveSession(this@DetailTrailerMobilePlayer)
+                }
+            })
+            muteBtn.setOnClickListener {
+                ExpMotion.hapticTap(it)
+                toggleMute()
             }
-        })
-        muteBtn.setOnClickListener {
-            ExpMotion.hapticTap(it)
-            toggleMute()
+            fullscreenBtn.setOnClickListener {
+                ExpMotion.hapticTap(it)
+                requestFullscreen()
+            }
+            binding.btnDetailTrailerRetry.setOnClickListener {
+                ExpMotion.hapticTap(it)
+                val url = activeUrl ?: return@setOnClickListener
+                val title = activeTitle.orEmpty()
+                hasAutoPlayed = false
+                playSelected(title, url, forceReload = true)
+            }
+            muteBtn.applyExpPress()
+            fullscreenBtn.applyExpPress()
+            binding.btnDetailTrailerRetry.applyExpPress()
+            binding.btnDetailTrailerOpenExternal.applyExpPress()
         }
-        fullscreenBtn.setOnClickListener {
-            ExpMotion.hapticTap(it)
-            requestFullscreen()
-        }
-        binding.btnDetailTrailerRetry.setOnClickListener {
-            ExpMotion.hapticTap(it)
-            val url = activeUrl ?: return@setOnClickListener
-            val title = activeTitle.orEmpty()
-            hasAutoPlayed = false
-            playInline(title, url, forceReload = true)
-        }
-        muteBtn.applyExpPress()
-        fullscreenBtn.applyExpPress()
-        binding.btnDetailTrailerRetry.applyExpPress()
-        binding.btnDetailTrailerOpenExternal.applyExpPress()
+    }
+
+    /** @return true when a new WebView was created after a prior destroy. */
+    private fun ensureWebViewPresent(): Boolean {
+        if (web != null) return false
+        val created = WebView(context)
+        created.id = R.id.wv_detail_trailer
+        stage.addView(
+            created,
+            0,
+            FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT,
+            ),
+        )
+        web = created
+        return true
     }
 
     private fun sizeStage() {
@@ -252,14 +284,24 @@ class DetailTrailerMobilePlayer(
         val playerHeight = ((metrics.widthPixels - (32 * metrics.density)) * 9f / 16f)
             .toInt()
             .coerceIn((180 * metrics.density).toInt(), (metrics.heightPixels * 0.45f).toInt())
-        web.layoutParams = web.layoutParams.apply { height = playerHeight }
+        web?.layoutParams = web?.layoutParams?.apply { height = playerHeight }
         stage.minimumHeight = playerHeight
         shimmer.layoutParams = shimmer.layoutParams.apply { height = playerHeight }
         stage.clipToOutline = true
         stage.outlineProvider = android.view.ViewOutlineProvider.BACKGROUND
     }
 
-    private fun bindRows(trailers: List<Triple<String, String, String>>, autoplay: Boolean) {
+    private fun prefersExternalPlayer(): Boolean {
+        val prefs = PreferenceManager.getDefaultSharedPreferences(context)
+        val stored = prefs.getString(TrailerPlaybackController.KEY_PREFERRED_PLAYER, null)
+        val preferred = TrailerPlaybackController.resolvePreferredPlayer(context, stored)
+        return preferred == TrailerPlaybackController.PLAYER_YOUTUBE ||
+            preferred == TrailerPlaybackController.PLAYER_SMARTTUBE ||
+            preferred == TrailerPlaybackController.PLAYER_SMARTTUBE_STABLE ||
+            preferred == TrailerPlaybackController.PLAYER_SMARTTUBE_BETA
+    }
+
+    private fun bindRows(trailers: List<TrailerEntry>, autoplay: Boolean) {
         binding.llDetailTrailerList.removeAllViews()
         if (trailers.isEmpty()) {
             binding.tvDetailTrailerEmpty.visibility = View.VISIBLE
@@ -273,23 +315,22 @@ class DetailTrailerMobilePlayer(
         binding.tvDetailTrailerMoreLabel.visibility =
             if (trailers.size > 1) View.VISIBLE else View.GONE
         val inflater = LayoutInflater.from(context)
-        trailers.take(5).forEach { (rowTitle, url, type) ->
+        trailers.take(TrailerCatalog.MAX_LIST_ITEMS).forEach { entry ->
             val row = ItemDetailTrailerRowMobileBinding.inflate(
                 inflater,
                 binding.llDetailTrailerList,
                 false,
             )
-            row.root.setTag(R.id.detail_trailer_row_url_tag, url)
-            row.tvDetailTrailerTitle.text = rowTitle
-            row.tvDetailTrailerMeta.text = type
-            val official = rowTitle.contains("Official", ignoreCase = true) ||
-                rowTitle.contains("Offiziell", ignoreCase = true)
-            row.tvDetailTrailerBadge.visibility = if (official) View.VISIBLE else View.GONE
+            row.root.setTag(R.id.detail_trailer_row_url_tag, entry.url)
+            row.tvDetailTrailerTitle.text = entry.title
+            row.tvDetailTrailerMeta.text = entry.type
+            row.tvDetailTrailerBadge.visibility =
+                if (entry.official) View.VISIBLE else View.GONE
             row.tvDetailTrailerDesc.visibility = View.GONE
-            val ytId = TrailerPlaybackController.youtubeVideoId(url)
+            val ytId = TrailerPlaybackController.youtubeVideoId(entry.url)
             if (ytId != null) {
                 Glide.with(row.ivDetailTrailerThumb)
-                    .load("https://img.youtube.com/vi/$ytId/hqdefault.jpg")
+                    .load(TrailerCatalog.youtubeThumbUrl(ytId, thumbQuality))
                     .centerCrop()
                     .into(row.ivDetailTrailerThumb)
             } else {
@@ -297,27 +338,56 @@ class DetailTrailerMobilePlayer(
             }
             val play = View.OnClickListener {
                 ExpMotion.hapticTap(it)
-                playInline(rowTitle, url, forceReload = true)
+                playSelected(entry.title, entry.url, forceReload = true)
             }
             row.root.setOnClickListener(play)
             row.ivDetailTrailerPlay.setOnClickListener(play)
             binding.llDetailTrailerList.addView(row.root)
         }
 
-        val preferred = activeUrl?.takeIf { url -> trailers.any { it.second == url } }
-            ?: trailers.first().second
-        val preferredTitle = trailers.first { it.second == preferred }.first
-        if (autoplay || activeUrl == preferred) {
-            playInline(preferredTitle, preferred, forceReload = autoplay && !hasAutoPlayed)
+        val preferred = activeUrl?.takeIf { url -> trailers.any { it.url == url } }
+            ?: TrailerCatalog.preferredPlayableUrl(trailers)
+            ?: trailers.first().url
+        val preferredTitle = trailers.firstOrNull { it.url == preferred }?.title
+            ?: trailers.first().title
+        val externalOnly = prefersExternalPlayer()
+        if (externalOnly) {
+            // Show list + chrome for external open; do not autoplay WebView audio.
+            stage.visibility = View.GONE
+            chromeBar.visibility = View.GONE
+            highlightRow(preferred)
+            if (autoplay && !hasAutoPlayed) {
+                hasAutoPlayed = true
+                // Do not auto-launch external apps on tab open — wait for tap.
+            }
+        } else if (autoplay || activeUrl == preferred) {
+            playSelected(preferredTitle, preferred, forceReload = autoplay && !hasAutoPlayed)
         } else {
             highlightRow(preferred)
         }
     }
 
+    private fun playSelected(title: String, url: String, forceReload: Boolean) {
+        if (prefersExternalPlayer()) {
+            activeUrl = url
+            activeTitle = title
+            highlightRow(url)
+            TrailerPlaybackController.play(
+                context = context,
+                activity = context as? androidx.fragment.app.FragmentActivity,
+                trailerUrl = url,
+            )
+            return
+        }
+        playInline(title, url, forceReload)
+    }
+
     private fun playInline(title: String, url: String, forceReload: Boolean) {
+        ensureConfigured()
+        val w = web
         val ytId = TrailerPlaybackController.youtubeVideoId(url)
-        if (ytId.isNullOrBlank()) {
-            TrailerPlaybackController.openExternalYoutube(context, url)
+        if (ytId.isNullOrBlank() || w == null) {
+            TrailerPlaybackController.openExternalTrailer(context, url)
             return
         }
         val alreadyPlaying = !forceReload && loadedUrl == url
@@ -330,17 +400,18 @@ class DetailTrailerMobilePlayer(
         updateMuteIcon()
         binding.btnDetailTrailerOpenExternal.setOnClickListener {
             ExpMotion.hapticTap(it)
-            TrailerPlaybackController.openExternalYoutube(context, url)
+            TrailerPlaybackController.openExternalTrailer(context, url)
         }
         highlightRow(url)
         if (alreadyPlaying) return
         errorPanel.visibility = View.GONE
-        web.visibility = View.VISIBLE
+        // Hide-until-ready: keep WebView invisible under shimmer until IFrame ready.
+        w.visibility = View.INVISIBLE
         setLoading(true)
         hasAutoPlayed = true
         loadedUrl = url
         TrailerPlaybackController.loadTrailerEmbed(
-            web = web,
+            web = w,
             videoId = ytId,
             autoplay = true,
             muted = muted,
@@ -364,13 +435,14 @@ class DetailTrailerMobilePlayer(
 
     private fun toggleMute() {
         muted = !muted
+        persistStartMuted(muted)
         updateMuteIcon()
         val js = if (muted) {
             "try{if(window.AndroidTrailerPlayer){window.AndroidTrailerPlayer.mute();}}catch(e){}"
         } else {
             "try{if(window.AndroidTrailerPlayer){window.AndroidTrailerPlayer.unMute();}}catch(e){}"
         }
-        web.evaluateJavascript(js, null)
+        web?.evaluateJavascript(js, null)
     }
 
     private fun updateMuteIcon() {
@@ -390,7 +462,7 @@ class DetailTrailerMobilePlayer(
 
     private fun showError() {
         setLoading(false)
-        web.visibility = View.INVISIBLE
+        web?.visibility = View.INVISIBLE
         errorPanel.visibility = View.VISIBLE
         chromeBar.visibility = View.VISIBLE
     }
@@ -398,7 +470,7 @@ class DetailTrailerMobilePlayer(
     private fun onPlayerReady() {
         binding.root.post {
             setLoading(false)
-            web.visibility = View.VISIBLE
+            web?.visibility = View.VISIBLE
             errorPanel.visibility = View.GONE
         }
     }
@@ -408,7 +480,7 @@ class DetailTrailerMobilePlayer(
     }
 
     private fun requestFullscreen() {
-        web.evaluateJavascript(
+        web?.evaluateJavascript(
             "try{if(window.AndroidTrailerPlayer&&window.AndroidTrailerPlayer.getIframe){" +
                 "var f=window.AndroidTrailerPlayer.getIframe();" +
                 "if(f&&f.requestFullscreen){f.requestFullscreen();}" +
@@ -470,6 +542,21 @@ class DetailTrailerMobilePlayer(
         }
         previousSystemUi = null
     }
+
+    private fun readStartMuted(): Boolean =
+        PreferenceManager.getDefaultSharedPreferences(context)
+            .getBoolean(TrailerCatalog.KEY_TRAILER_START_MUTED, true)
+
+    private fun persistStartMuted(value: Boolean) {
+        PreferenceManager.getDefaultSharedPreferences(context).edit()
+            .putBoolean(TrailerCatalog.KEY_TRAILER_START_MUTED, value)
+            .apply()
+    }
+
+    private fun readThumbQuality(): String =
+        PreferenceManager.getDefaultSharedPreferences(context)
+            .getString(TrailerCatalog.KEY_TRAILER_THUMB_QUALITY, TrailerCatalog.THUMB_QUALITY_DEFAULT)
+            ?: TrailerCatalog.THUMB_QUALITY_DEFAULT
 
     private inner class TrailerJsBridge {
         @JavascriptInterface

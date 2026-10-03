@@ -820,6 +820,13 @@
     <string name="settings_trailer_player_ask">Ask every time</string>
     <string name="settings_trailer_player_reset">Reset SmartTube version choice</string>
     <string name="settings_trailer_player_reset_summary">Forces the app to ask again which SmartTube version (Stable/Beta) to use.</string>
+    <string name="settings_trailer_thumb_quality_title">Trailer thumbnail quality</string>
+    <string name="settings_trailer_thumb_quality_summary">Image quality for trailer list posters</string>
+    <string name="settings_trailer_thumb_quality_hq">High (default)</string>
+    <string name="settings_trailer_thumb_quality_max">Maximum</string>
+    <string name="settings_trailer_thumb_quality_sd">Standard</string>
+    <string name="settings_trailer_start_muted_title">Start trailers muted</string>
+    <string name="settings_trailer_start_muted_summary">In-app trailer tab starts muted until you unmute</string>
 
     <string name="backup_category_title">Backup and Restore</string>
     <string name="settings_screen_backup_summary">Export or restore favorites, history and saved app data</string>

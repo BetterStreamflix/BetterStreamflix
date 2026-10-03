@@ -42,6 +42,26 @@
             android:padding="12dp"
             android:src="@drawable/ic_trailer_play"
             tools:ignore="ContentDescription" />
+
+        <TextView
+            android:id="@+id/tv_trailer_official_badge"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="top|start"
+            android:layout_margin="8dp"
+            android:background="@drawable/bg_detail_trailer_official_badge"
+            android:fontFamily="@font/manrope"
+            android:paddingStart="8dp"
+            android:paddingTop="3dp"
+            android:paddingEnd="8dp"
+            android:paddingBottom="3dp"
+            android:text="@string/detail_trailer_official_badge"
+            android:textAllCaps="true"
+            android:textColor="#121218"
+            android:textSize="10sp"
+            android:textStyle="bold"
+            android:visibility="gone"
+            tools:visibility="visible" />
     </FrameLayout>
 
     <TextView

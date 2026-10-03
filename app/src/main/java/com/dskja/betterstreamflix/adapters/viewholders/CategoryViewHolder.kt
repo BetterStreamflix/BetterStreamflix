@@ -33,22 +33,30 @@ import com.dskja.betterstreamflix.models.Show
 import com.dskja.betterstreamflix.models.TvShow
 import com.dskja.betterstreamflix.logo.FeaturedLogoEnrich
 import com.dskja.betterstreamflix.logo.TmdbLogoBinder
+import com.dskja.betterstreamflix.models.TrailerCatalog
 import com.dskja.betterstreamflix.ui.FeaturedAdvancePolicy
 import com.dskja.betterstreamflix.ui.FeaturedHeroController
 import com.dskja.betterstreamflix.ui.FeaturedProviderSwitch
 import com.dskja.betterstreamflix.ui.FeaturedSwiperChrome
 import com.dskja.betterstreamflix.ui.FeaturedTvRotation
 import com.dskja.betterstreamflix.ui.SpacingItemDecoration
+import com.dskja.betterstreamflix.ui.TrailerPlaybackController
 import com.dskja.betterstreamflix.utils.DeviceCapabilities
 import com.dskja.betterstreamflix.utils.ExperimentalMobileDesign
 import com.dskja.betterstreamflix.utils.ExpMotion
 import com.dskja.betterstreamflix.utils.HomeCatalogPipeline
+import com.dskja.betterstreamflix.utils.TmdbUtils
 import com.dskja.betterstreamflix.utils.dp
 import com.dskja.betterstreamflix.utils.format
 import com.dskja.betterstreamflix.utils.getCurrentFragment
 import com.dskja.betterstreamflix.utils.toActivity
 import java.util.Locale
+import androidx.lifecycle.findViewTreeLifecycleOwner
+import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 class CategoryViewHolder(
     private val _binding: ViewBinding
@@ -1066,6 +1074,10 @@ class CategoryViewHolder(
                     )
                 }
             }
+            // Long-press Watch → trailer (parity with mobile Featured).
+            setOnLongClickListener { view ->
+                playFeaturedTrailer(selected, view)
+            }
             setOnKeyListener { _, _, event ->
                 if (event.action == KeyEvent.ACTION_DOWN &&
                     event.keyCode == KeyEvent.KEYCODE_DPAD_RIGHT
@@ -1077,6 +1089,13 @@ class CategoryViewHolder(
                         advanceFeatured()
                     }
                     return@setOnKeyListener true
+                }
+                // Menu / long-press remote: play trailer when available.
+                if (event.action == KeyEvent.ACTION_DOWN &&
+                    (event.keyCode == KeyEvent.KEYCODE_MENU ||
+                        event.keyCode == KeyEvent.KEYCODE_INFO)
+                ) {
+                    return@setOnKeyListener playFeaturedTrailer(selected, this)
                 }
                 false
             }
@@ -1276,6 +1295,90 @@ class CategoryViewHolder(
         }
         container.visibility = View.VISIBLE
         return true
+    }
+
+    /**
+     * Featured TV trailer path (parity with mobile long-press on Watch).
+     * @return true when a trailer play/lookup was started.
+     */
+    private fun playFeaturedTrailer(selected: Show, anchor: View): Boolean {
+        fun play(url: String) {
+            ExpMotion.hapticTap(anchor)
+            val activity = context.toActivity() as? androidx.fragment.app.FragmentActivity
+            TrailerPlaybackController.play(
+                context = anchor.context,
+                activity = activity,
+                trailerUrl = url,
+            )
+        }
+        when (selected) {
+            is Movie -> {
+                val existing = selected.trailer
+                if (!existing.isNullOrBlank()) {
+                    play(existing)
+                    return true
+                }
+                val year = selected.released?.format("yyyy")?.toIntOrNull()
+                if (!TmdbUtils.hasTrailerLookupKeys(
+                        tmdbId = selected.tmdbId,
+                        imdbId = selected.imdbId,
+                        title = selected.title,
+                        year = year,
+                    )
+                ) {
+                    return false
+                }
+                ExpMotion.hapticTap(anchor)
+                itemView.findViewTreeLifecycleOwner()?.lifecycleScope?.launch {
+                    val remote = withContext(Dispatchers.IO) {
+                        TmdbUtils.listYoutubeTrailers(
+                            tmdbId = selected.tmdbId,
+                            isTv = false,
+                            title = selected.title,
+                            year = year,
+                            imdbId = selected.imdbId,
+                        )
+                    }
+                    val url = TrailerCatalog.preferredPlayableUrl(remote) ?: return@launch
+                    if (selected.trailer.isNullOrBlank()) selected.trailer = url
+                    play(url)
+                }
+                return true
+            }
+            is TvShow -> {
+                val existing = selected.trailer
+                if (!existing.isNullOrBlank()) {
+                    play(existing)
+                    return true
+                }
+                val year = selected.released?.format("yyyy")?.toIntOrNull()
+                if (!TmdbUtils.hasTrailerLookupKeys(
+                        tmdbId = selected.tmdbId,
+                        imdbId = selected.imdbId,
+                        title = selected.title,
+                        year = year,
+                    )
+                ) {
+                    return false
+                }
+                ExpMotion.hapticTap(anchor)
+                itemView.findViewTreeLifecycleOwner()?.lifecycleScope?.launch {
+                    val remote = withContext(Dispatchers.IO) {
+                        TmdbUtils.listYoutubeTrailers(
+                            tmdbId = selected.tmdbId,
+                            isTv = true,
+                            title = selected.title,
+                            year = year,
+                            imdbId = selected.imdbId,
+                        )
+                    }
+                    val url = TrailerCatalog.preferredPlayableUrl(remote) ?: return@launch
+                    if (selected.trailer.isNullOrBlank()) selected.trailer = url
+                    play(url)
+                }
+                return true
+            }
+        }
     }
 
     private fun applyExperimentalTvSwiperChrome(binding: ContentCategorySwiperTvBinding) {

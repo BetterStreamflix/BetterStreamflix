@@ -2,6 +2,7 @@ package com.dskja.betterstreamflix.ui
 
 import android.view.View
 import android.view.ViewGroup
+import android.widget.TextView
 import androidx.lifecycle.findViewTreeLifecycleOwner
 import androidx.lifecycle.lifecycleScope
 import com.dskja.betterstreamflix.R
@@ -9,6 +10,8 @@ import com.dskja.betterstreamflix.adapters.AppAdapter
 import com.dskja.betterstreamflix.adapters.submitAppList
 import com.dskja.betterstreamflix.databinding.ContentDetailTrailerTvBinding
 import com.dskja.betterstreamflix.models.Trailer
+import com.dskja.betterstreamflix.models.TrailerCatalog
+import com.dskja.betterstreamflix.models.TrailerEntry
 import com.dskja.betterstreamflix.utils.ExpMotion
 import com.dskja.betterstreamflix.utils.ExperimentalMobileDesign
 import com.dskja.betterstreamflix.utils.TmdbUtils
@@ -19,7 +22,7 @@ import kotlinx.coroutines.withContext
 
 /**
  * Leanback detail trailer row: hide-until-ready, stable adapter, fixed row height,
- * Cinema Ink header polish. Play/focus/SmartTube policy lives in
+ * Cinema Ink header polish, empty state. Play/focus/SmartTube policy lives in
  * [TrailerPlaybackController] + [com.dskja.betterstreamflix.adapters.viewholders.TrailerViewHolder].
  */
 object DetailTrailerTvController {
@@ -43,13 +46,24 @@ object DetailTrailerTvController {
 
         val density = binding.root.resources.displayMetrics.density
         val rowHeightPx = (ROW_HEIGHT_DP * density).toInt()
+        val emptyView = binding.root.findViewById<TextView>(R.id.tv_detail_trailer_empty)
 
-        fun bindRows(trailers: List<Triple<String, String, String>>) {
+        fun bindRows(trailers: List<TrailerEntry>, lookupFinished: Boolean) {
             if (trailers.isEmpty()) {
-                binding.root.visibility = View.GONE
+                if (lookupFinished) {
+                    // Section was included for lookup — show empty copy instead of silent GONE.
+                    binding.root.visibility = View.VISIBLE
+                    binding.hgvDetailTrailers.visibility = View.GONE
+                    emptyView?.visibility = View.VISIBLE
+                } else {
+                    binding.root.visibility = View.GONE
+                    emptyView?.visibility = View.GONE
+                }
                 return
             }
+            emptyView?.visibility = View.GONE
             binding.root.visibility = View.VISIBLE
+            binding.hgvDetailTrailers.visibility = View.VISIBLE
             binding.hgvDetailTrailers.apply {
                 setRowHeight(rowHeightPx)
                 setItemSpacing((24 * density).toInt())
@@ -58,8 +72,13 @@ object DetailTrailerTvController {
                 isFocusable = true
                 descendantFocusability = ViewGroup.FOCUS_AFTER_DESCENDANTS
                 submitAppList(
-                    trailers.take(5).map { (rowTitle, url, type) ->
-                        Trailer(title = rowTitle, url = url, type = type).also {
+                    trailers.take(TrailerCatalog.MAX_LIST_ITEMS).map { entry ->
+                        Trailer(
+                            title = entry.title,
+                            url = entry.url,
+                            type = entry.type,
+                            official = entry.official,
+                        ).also {
                             it.itemType = AppAdapter.Type.TRAILER_TV_ITEM
                         }
                     },
@@ -71,11 +90,14 @@ object DetailTrailerTvController {
         }
 
         val seed = seedUrl?.takeIf { it.isNotBlank() }?.let { url ->
-            listOf(Triple("$title $trailerLabel", url, trailerLabel))
+            listOf(TrailerEntry.fromSeed("$title $trailerLabel", url, trailerLabel))
         }.orEmpty()
 
         // Hide-until-ready: empty seed stays GONE until TMDb returns rows.
-        if (seed.isNotEmpty()) bindRows(seed) else binding.root.visibility = View.GONE
+        if (seed.isNotEmpty()) bindRows(seed, lookupFinished = false) else {
+            binding.root.visibility = View.GONE
+            emptyView?.visibility = View.GONE
+        }
 
         val owner = binding.root.findViewTreeLifecycleOwner() ?: return
         (binding.root.getTag(R.id.detail_trailer_player_tag) as? Job)?.cancel()
@@ -89,11 +111,11 @@ object DetailTrailerTvController {
                     imdbId = imdbId,
                 )
             }
-            val trailers = (seed + remote).distinctBy { it.second }
+            val trailers = TrailerCatalog.mergeTrailers(seed, remote)
             if (trailers.isNotEmpty() && seedUrl.isNullOrBlank()) {
-                onTrailerSeeded?.invoke(trailers.first().second)
+                TrailerCatalog.preferredPlayableUrl(trailers)?.let { onTrailerSeeded?.invoke(it) }
             }
-            bindRows(trailers)
+            bindRows(trailers, lookupFinished = true)
         }
         binding.root.setTag(R.id.detail_trailer_player_tag, job)
     }

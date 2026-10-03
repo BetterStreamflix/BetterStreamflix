@@ -636,6 +636,22 @@
                 android:defaultValue="in_app"
                 app:iconSpaceReserved="false" />
 
+            <ListPreference
+                android:key="trailer_thumb_quality"
+                android:title="@string/settings_trailer_thumb_quality_title"
+                android:summary="@string/settings_trailer_thumb_quality_summary"
+                android:entries="@array/trailer_thumb_quality_names"
+                android:entryValues="@array/trailer_thumb_quality_values"
+                android:defaultValue="hq"
+                app:iconSpaceReserved="false" />
+
+            <SwitchPreference
+                android:key="trailer_start_muted"
+                android:title="@string/settings_trailer_start_muted_title"
+                android:summary="@string/settings_trailer_start_muted_summary"
+                android:defaultValue="true"
+                app:iconSpaceReserved="false" />
+
             <Preference
                 android:key="preferred_player_reset"
                 android:title="@string/settings_trailer_player_reset"
