@@ -1178,12 +1178,9 @@ class MovieViewHolder(
 
     private fun displayAboutMobile(binding: ContentDetailAboutMobileBinding) {
         binding.root.tag = DETAIL_SECTION_ABOUT
-        val overview = movie.overview.orEmpty()
-        binding.tvDetailAboutOverview.text = overview
-        binding.tvDetailAboutOverview.visibility =
-            if (overview.isBlank()) View.GONE else View.VISIBLE
-        binding.tvDetailAboutOverviewLabel.visibility =
-            if (overview.isBlank()) View.GONE else View.VISIBLE
+        // Hero already shows synopsis — About keeps extras (quality / provider / IDs).
+        binding.tvDetailAboutOverview.visibility = View.GONE
+        binding.tvDetailAboutOverviewLabel.visibility = View.GONE
 
         // Legacy cast/crew walls stay gone — Actor / Cast / Director systems cover them.
         binding.tvDetailAboutFeaturing.visibility = View.GONE

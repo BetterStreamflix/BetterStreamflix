@@ -21,7 +21,7 @@
         app:layout_constraintTop_toTopOf="parent"
         tools:ignore="ContentDescription" />
 
-        <ImageView
+    <ImageView
         android:id="@+id/iv_episode_download_ribbon"
         android:layout_width="32dp"
         android:layout_height="32dp"
@@ -34,7 +34,7 @@
         tools:ignore="ContentDescription"
         tools:visibility="visible" />
 
-<ImageView
+    <ImageView
         android:id="@+id/iv_episode_watched_ribbon"
         android:layout_width="32dp"
         android:layout_height="32dp"
@@ -56,7 +56,7 @@
         android:layout_marginEnd="24dp"
         android:layout_marginBottom="20dp"
         android:backgroundTint="#CC646464"
-        android:progressTint="#FFFFFF"
+        android:progressTint="@color/cinema_text"
         app:layout_constraintBottom_toBottomOf="@id/iv_episode_poster"
         app:layout_constraintEnd_toEndOf="@id/iv_episode_poster"
         app:layout_constraintStart_toStartOf="@id/iv_episode_poster"
@@ -66,9 +66,11 @@
         android:id="@+id/tv_episode_info"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:layout_marginTop="0dp"
+        android:layout_marginTop="8dp"
+        android:fontFamily="@font/manrope"
         android:gravity="center"
-        android:textSize="16sp"
+        android:textColor="@color/cinema_text_muted"
+        android:textSize="14sp"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@id/iv_episode_poster"
@@ -79,9 +81,10 @@
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:ellipsize="end"
+        android:fontFamily="@font/outfit"
         android:gravity="center"
         android:maxLines="2"
-        android:textColor="#FFFFFF"
+        android:textColor="@color/cinema_text"
         android:textSize="18sp"
         android:textStyle="bold"
         app:layout_constraintEnd_toEndOf="parent"
@@ -95,8 +98,10 @@
         android:layout_height="wrap_content"
         android:layout_marginTop="4dp"
         android:ellipsize="end"
+        android:fontFamily="@font/manrope"
         android:gravity="center"
         android:maxLines="1"
+        android:textColor="@color/cinema_text_muted"
         android:textSize="12sp"
         android:textStyle="bold"
         app:layout_constraintEnd_toEndOf="parent"
@@ -112,9 +117,11 @@
         android:layout_marginTop="6dp"
         android:layout_marginEnd="10dp"
         android:ellipsize="end"
+        android:fontFamily="@font/manrope"
         android:maxLines="5"
         android:scrollHorizontally="false"
         android:singleLine="false"
+        android:textColor="@color/cinema_text_soft"
         android:textSize="12sp"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"

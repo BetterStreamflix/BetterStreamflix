@@ -228,9 +228,17 @@ class EpisodeViewHolder(
             true
         }
 
-        // No permanent "up next" border — blue outline looked like a stuck focus ring.
-        binding.root.setBackgroundResource(0)
-        binding.root.setPadding(0, binding.root.paddingTop, 0, binding.root.paddingBottom)
+        // Soft elevated row; no permanent "up next" border (looked like stuck focus).
+        binding.root.setBackgroundResource(R.drawable.bg_detail_episode_row)
+
+        binding.flEpisodeThumb.apply {
+            clipToOutline = true
+            outlineProvider = object : android.view.ViewOutlineProvider() {
+                override fun getOutline(view: View, outline: android.graphics.Outline) {
+                    outline.setRoundRect(0, 0, view.width, view.height, 10f * resources.displayMetrics.density)
+                }
+            }
+        }
 
         binding.ivEpisodePoster.apply {
             clipToOutline = true
@@ -248,7 +256,7 @@ class EpisodeViewHolder(
         bindEpisodeProgress(binding.pbEpisodeProgress)
 
         val title = episode.title ?: context.getString(R.string.episode_number, episode.number)
-        binding.tvEpisodeTitle.text = "${episode.number}. $title"
+        binding.tvEpisodeTitle.text = "E${episode.number} · $title"
         binding.tvEpisodeTitle.setTextColor(
             ContextCompat.getColor(context, R.color.cinema_text),
         )
@@ -256,6 +264,17 @@ class EpisodeViewHolder(
         binding.tvEpisodeMeta.text = buildDetailMetaLine()
         binding.tvEpisodeMeta.visibility =
             if (binding.tvEpisodeMeta.text.isNullOrBlank()) View.GONE else View.VISIBLE
+        val accent = com.dskja.betterstreamflix.ui.DetailWatchLabels.episodeMetaAccent(
+            context,
+            episode.watchHistory,
+            episode.isWatched,
+        )
+        binding.tvEpisodeMeta.setTextColor(
+            ContextCompat.getColor(
+                context,
+                if (accent != null) R.color.cinema_text else R.color.cinema_text_muted,
+            ),
+        )
 
         val ageBadge = contentRatingBadge(episode.tvShow?.contentRating)
         binding.tvEpisodeAgeRating.apply {
@@ -266,13 +285,13 @@ class EpisodeViewHolder(
         binding.tvEpisodeOverview.apply {
             text = episode.overview.orEmpty()
             visibility = if (episode.overview.isNullOrBlank()) View.GONE else View.VISIBLE
-            maxLines = 3
+            maxLines = 2
             ellipsize = android.text.TextUtils.TruncateAt.END
             var expanded = false
             setOnClickListener {
                 ExpMotion.hapticTap(it)
                 expanded = !expanded
-                maxLines = if (expanded) Integer.MAX_VALUE else 3
+                maxLines = if (expanded) Integer.MAX_VALUE else 2
             }
         }
 
@@ -308,8 +327,13 @@ class EpisodeViewHolder(
                 else -> "${rem}m"
             }
         }
-        val date = episode.released?.format("MMM d, yyyy")
-        return listOfNotNull(runtime, date).joinToString("  ")
+        val accent = com.dskja.betterstreamflix.ui.DetailWatchLabels.episodeMetaAccent(
+            context,
+            episode.watchHistory,
+            episode.isWatched,
+        )
+        val date = if (accent == null) episode.released?.format("MMM d, yyyy") else null
+        return listOfNotNull(runtime, accent, date).joinToString(" · ")
     }
 
     private fun contentRatingBadge(raw: String?): String? {
