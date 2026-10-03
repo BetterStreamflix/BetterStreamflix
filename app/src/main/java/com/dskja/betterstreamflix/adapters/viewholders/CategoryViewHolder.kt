@@ -214,19 +214,28 @@ class CategoryViewHolder(
     ) {
         binding.tvCategoryTitle.text = category.name
 
-        // Empty shelves must not stay focusable — Leanback DPAD search stalls on an
-        // empty HorizontalGridView (focus black hole near the bottom of home).
+        // Empty shelves must not own DPAD focus (empty HGV is a Leanback black hole).
+        // Keep the title row visible so Search global Loading/Error/0-result headers stay
+        // on screen; Home filters empties before submit so it never relies on GONE rows.
         if (category.list.isEmpty()) {
-            binding.root.visibility = View.GONE
+            binding.root.visibility = View.VISIBLE
+            binding.root.isFocusable = false
+            binding.root.isFocusableInTouchMode = false
+            binding.root.descendantFocusability = ViewGroup.FOCUS_BLOCK_DESCENDANTS
             binding.hgvCategory.apply {
+                visibility = View.GONE
                 isFocusable = false
                 adapter = null
             }
             return
         }
         binding.root.visibility = View.VISIBLE
+        binding.root.isFocusable = false
+        binding.root.isFocusableInTouchMode = false
+        binding.root.descendantFocusability = ViewGroup.FOCUS_AFTER_DESCENDANTS
 
         binding.hgvCategory.apply {
+            visibility = View.VISIBLE
             setRowHeight(ViewGroup.LayoutParams.WRAP_CONTENT)
 
             val categoryAdapter = (adapter as? AppAdapter) ?: AppAdapter().also { adapter = it }

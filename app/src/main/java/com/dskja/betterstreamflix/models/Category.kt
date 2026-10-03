@@ -10,6 +10,12 @@ class Category(
     var selectedIndex: Int = 0
     var itemSpacing: Int = 0
 
+    /**
+     * Optional DiffUtil-stable id. Search global rows keep the provider name here while
+     * [name] shows transient status ("Searching", counts) so progressive updates rebind
+     * instead of remove/insert nested Leanback shelves.
+     */
+    var identityKey: String? = null
 
     override lateinit var itemType: AppAdapter.Type
 
@@ -19,12 +25,14 @@ class Category(
         list: List<AppAdapter.Item> = this.list,
         selectedIndex: Int = this.selectedIndex,
         itemSpacing: Int = this.itemSpacing,
+        identityKey: String? = this.identityKey,
     ) = Category(
         name,
         list,
     ).also {
         it.selectedIndex = selectedIndex
         it.itemSpacing = itemSpacing
+        it.identityKey = identityKey
         if (::itemType.isInitialized) {
             it.itemType = itemType
         }
@@ -40,6 +48,7 @@ class Category(
         if (list != other.list) return false
         if (selectedIndex != other.selectedIndex) return false
         if (itemSpacing != other.itemSpacing) return false
+        if (identityKey != other.identityKey) return false
         if (!::itemType.isInitialized || !other::itemType.isInitialized) return false
         return itemType == other.itemType
     }
@@ -49,6 +58,7 @@ class Category(
         result = 31 * result + list.hashCode()
         result = 31 * result + selectedIndex
         result = 31 * result + itemSpacing
+        result = 31 * result + (identityKey?.hashCode() ?: 0)
         result = 31 * result + (if (::itemType.isInitialized) itemType.hashCode() else 0)
         return result
     }

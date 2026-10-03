@@ -718,56 +718,73 @@ class AppAdapter(
         }
 
         val adjustedPosition = header?.let { position - 1 } ?: position
+        val item = items.getOrNull(adjustedPosition)
         when (holder) {
-            is CategoryViewHolder -> holder.bind(
-                items[adjustedPosition] as Category,
-                onMovieClickListener,
-                onTvShowClickListener,
-                onMovieLongClickListener,
-                onTvShowLongClickListener,
-            )
-            is EpisodeViewHolder -> holder.bind(
-                items[adjustedPosition] as Episode
-            ) // Tu original no pasaba listener, lo respeto
+            is CategoryViewHolder -> {
+                val category = item as? Category ?: return
+                holder.bind(
+                    category,
+                    onMovieClickListener,
+                    onTvShowClickListener,
+                    onMovieLongClickListener,
+                    onTvShowLongClickListener,
+                )
+            }
+            is EpisodeViewHolder -> {
+                val episode = item as? Episode ?: return
+                holder.bind(episode)
+            }
             is FooterViewHolder -> footer?.bind?.invoke(holder.binding)
-            is FavoriteSectionHeaderViewHolder -> holder.bind(
-                items[adjustedPosition] as FavoriteSectionHeader
-            )
+            is FavoriteSectionHeaderViewHolder -> {
+                val headerItem = item as? FavoriteSectionHeader ?: return
+                holder.bind(headerItem)
+            }
             is LoadingViewHolder -> holder.bind()
             is SupportBannerViewHolder -> holder.bind(
                 onSupportBannerClickListener,
                 onSupportBannerDismissListener,
             )
-            is GenreViewHolder -> holder.bind(
-                items[adjustedPosition] as Genre
-            ) // Tu original no pasaba listener, lo respeto
+            is GenreViewHolder -> {
+                val genre = item as? Genre ?: return
+                holder.bind(genre)
+            }
             is HeaderViewHolder -> header?.bind?.invoke(holder.binding)
-            is MovieViewHolder -> holder.bind(
-                items[adjustedPosition] as Movie,
-                onMovieClickListener,
-                onMovieLongClickListener,
-                onMovieKeyListener,
-                isItemSelectedListener?.invoke(items[adjustedPosition]) == true,
-            ) // Los listeners se manejan dentro del ViewHolder
-            is PeopleViewHolder -> holder.bind(
-                items[adjustedPosition] as People
-            ) // Tu original no pasaba listener, lo respeto
-            is ProviderViewHolder -> holder.bind(
-                items[adjustedPosition] as Provider
-            ) // Tu original no pasaba listener, lo respeto
-            is SeasonViewHolder -> holder.bind(
-                items[adjustedPosition] as Season
-            ) // Tu original no pasaba listener, lo respeto
-            is TrailerViewHolder -> holder.bind(
-                items[adjustedPosition] as Trailer
-            )
-            is TvShowViewHolder -> holder.bind(
-                items[adjustedPosition] as TvShow,
-                onTvShowClickListener,
-                onTvShowLongClickListener,
-                onTvShowKeyListener,
-                isItemSelectedListener?.invoke(items[adjustedPosition]) == true,
-            ) // Los listeners se manejan dentro del ViewHolder
+            is MovieViewHolder -> {
+                val movie = item as? Movie ?: return
+                holder.bind(
+                    movie,
+                    onMovieClickListener,
+                    onMovieLongClickListener,
+                    onMovieKeyListener,
+                    isItemSelectedListener?.invoke(movie) == true,
+                )
+            }
+            is PeopleViewHolder -> {
+                val people = item as? People ?: return
+                holder.bind(people)
+            }
+            is ProviderViewHolder -> {
+                val provider = item as? Provider ?: return
+                holder.bind(provider)
+            }
+            is SeasonViewHolder -> {
+                val season = item as? Season ?: return
+                holder.bind(season)
+            }
+            is TrailerViewHolder -> {
+                val trailer = item as? Trailer ?: return
+                holder.bind(trailer)
+            }
+            is TvShowViewHolder -> {
+                val tvShow = item as? TvShow ?: return
+                holder.bind(
+                    tvShow,
+                    onTvShowClickListener,
+                    onTvShowLongClickListener,
+                    onTvShowKeyListener,
+                    isItemSelectedListener?.invoke(tvShow) == true,
+                )
+            }
         }
 
         val state = states[holder.layoutPosition]
@@ -1235,7 +1252,7 @@ class AppAdapter(
     }
 
     private fun Item.baseIdentityKey(): String = when (this) {
-        is Category -> "category:${name}"
+        is Category -> "category:${identityKey ?: name}"
         is Episode -> "episode:${id}"
         is FavoriteSectionHeader -> "favorite-header:${section.key}"
         is SupportBannerItem -> "support-banner:${id}"
