@@ -132,7 +132,36 @@ object TvLibrefutbolProvider : IptvProvider, ProviderConfigUrl {
         val channels = mutableListOf<TvShow>()
         val seenIds = mutableSetOf<String>()
 
-        // 1. Extraer canales del div#channels (Deportes iniciales)
+        SportsIptvStreamResolver.collectChannelAnchors(doc).forEach { (href, title, imgSrc) ->
+            val link = when {
+                href.startsWith("http") -> href
+                href.startsWith("/") -> "${baseUrl}$href"
+                href.isNotEmpty() -> "$baseUrl/$href"
+                else -> ""
+            }
+            val img = when {
+                imgSrc.startsWith("http") -> imgSrc
+                imgSrc.startsWith("/") -> "$baseUrl$imgSrc"
+                imgSrc.isNotEmpty() -> "$baseUrl/$imgSrc"
+                else -> ""
+            }
+            if (link.isNotEmpty() && isValidChannel(link, title)) {
+                val cleanTitle = cleanChannelTitle(title)
+                if (seenIds.add(link)) {
+                    channels.add(
+                        TvShow(
+                            id = link,
+                            title = cleanTitle,
+                            poster = img,
+                            banner = img,
+                            providerName = name,
+                        ),
+                    )
+                }
+            }
+        }
+
+        // Legacy: div#channels a.channel-card
         doc.select("div#channels a.channel-card").forEach { element ->
             val title = element.selectFirst("p")?.text()?.trim() ?: ""
             val href = element.attr("href")
@@ -198,8 +227,8 @@ object TvLibrefutbolProvider : IptvProvider, ProviderConfigUrl {
             }
         }
 
-        // 3. Fallback: Buscar todos los enlaces .php en el documento
-        if (channels.isEmpty()) {
+        // Fallback: Buscar todos los enlaces .php en el documento
+        if (channels.size < 10) {
             doc.select("a[href*='.php']").forEach { element ->
                 val href = element.attr("href")
                 val link = if (href.startsWith("http")) href else if (href.isNotEmpty()) "${TvLibrefutbolProvider.baseUrl}/$href" else ""
@@ -450,14 +479,13 @@ object TvLibrefutbolProvider : IptvProvider, ProviderConfigUrl {
                 userAgent = USER_AGENT,
             )
             if (playlistUrl.isNullOrBlank()) {
-                Log.e(TAG, "Servidor offline (sin playlist)")
-                return@withContext Video("")
+                throw Exception("Tv Libre Futbol: stream offline or 404 (try another server)")
             }
 
             currentPlaylistUrl = playlistUrl
             val localServerUrl = startLocalServer(playlistUrl)
             if (localServerUrl.isEmpty()) {
-                return@withContext Video("")
+                throw Exception("Tv Libre Futbol: could not start local playlist proxy")
             }
 
             Video(
@@ -466,7 +494,7 @@ object TvLibrefutbolProvider : IptvProvider, ProviderConfigUrl {
             )
         } catch (e: Exception) {
             Log.e(TAG, "Error: ${e.message}")
-            Video("")
+            throw e
         }
     }
 

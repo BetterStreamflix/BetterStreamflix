@@ -16,6 +16,30 @@ import org.jsoup.nodes.Document
  */
 object SportsIptvStreamResolver {
 
+    /**
+     * Modern LatAm grids use `a.channel` (with aria-label) instead of
+     * `div#channels a.channel-card`. Collect both shapes.
+     */
+    fun collectChannelAnchors(document: Document): List<Triple<String, String, String>> {
+        val out = linkedMapOf<String, Triple<String, String, String>>()
+        document.select(
+            "a.channel[href], a.channel-card[href], " +
+                "div#channels a[href], div#regional-seo-links a[href]",
+        ).forEach { element ->
+            val href = element.attr("href").trim()
+            if (href.isBlank() || href == "#" || href.startsWith("javascript:", true)) return@forEach
+            val title = element.attr("aria-label").trim()
+                .ifBlank { element.selectFirst("p")?.text()?.trim().orEmpty() }
+                .ifBlank { element.selectFirst("img")?.attr("alt")?.trim().orEmpty() }
+                .ifBlank { element.text().trim() }
+            val img = element.selectFirst("img")?.attr("src")?.trim().orEmpty()
+            if (title.isNotBlank()) {
+                out.putIfAbsent(href, Triple(href, title, img))
+            }
+        }
+        return out.values.toList()
+    }
+
     private val PLAYLIST_PATTERNS = listOf(
         Regex("""["'](https:\\?/\\?/[^"']+playlist\.php[^"']+)["']"""),
         Regex("""["'](https:[^"']+playlist\.php[^"']+)["']"""),
@@ -188,6 +212,8 @@ object SportsIptvStreamResolver {
                 .header("Referer", referer)
                 .build()
             client.newCall(request).execute().use { response ->
+                // Soft-miss on 404/410 so callers can try the next Opción server.
+                if (response.code == 404 || response.code == 410) return null
                 if (!response.isSuccessful) return null
                 response.body?.string()
             }

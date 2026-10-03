@@ -21,12 +21,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Buy Me a Coffee short-link constant (`buymeacoff.ee/betterstreamflix`) alongside the canonical URL
 
 ### Fixed
+- IPTV / live playback: DaddyLive retired `daddy3.php` embeds (HTTP 404) now fall back to `daddy.php` / dembed mirrors; MAGISTV M3U parser accepts bare `EXTINF` lines and drops `sinurl.com` placeholders; LatAm grids parse modern `a.channel` home cards after `parrilla-directo.php` 404s; shared `LiveStreamHtmlExtractor` picks up `const SRC = "…m3u8"` and skips ad iframes
 - Trailer reliability: Vimeo no longer forced into YouTube packages; in-app WebView hide-until-ready + destroy on recycle; mobile Trailer tab honors YouTube/SmartTube prefs; Leanback settings drop misleading in-app option; dead SmartTube helpers removed from detail ViewHolders
 - Anikoto playback: MegaPlay/Nekostream `getSources` now returns AES-encrypted `enc` instead of plaintext `sources.file` — decrypt that payload so Play works again
 - Sentry P2 leftover **BETTERSTREAMFLIX-Q**: TMDb Home Discover shelves no longer let a child `ClassCastException` fail the outer Home scope — soft-shelf uses its own `coroutineScope`, merges `List<Movie>+List<Tv>` without unsafe `List<MultiItem>` casts, and CrashReporter/Sentry drop TMDb ClassCast soft-noise
 - GuardaSerie detail parser treats `/detail/film-` as movies (parity with Eurostreaming mirrors)
 
 ### Changed
+- SportsBite quarantined (embedindia player is JS/ad-gated with no plaintext HLS); use StreamSports99 or show quarantined providers to override
+- Shared `M3uPlaylistParser` for Pluto / MAGISTV / IPTV-org / PelotaLibre playlists (dead-host filter + bare EXTINF)
 - Altadefinizione01 default mirror → `altadefinizione-01.surf`
 - StreamingIta quarantined (default domain dead); override Main URL in settings if a live mirror appears
 - Support impact: Trakt VIP goal editorial progress nudged after first community coffee

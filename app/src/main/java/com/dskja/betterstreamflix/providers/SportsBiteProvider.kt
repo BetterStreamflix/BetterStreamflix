@@ -396,7 +396,7 @@ object SportsBiteProvider : IptvProvider, ProviderConfigUrl {
             throw Exception("SportsBite: invalid embed URL for ${server.name}")
         }
         val html = fetchHtml(embedUrl)
-            ?: throw Exception("SportsBite: could not load embed page for ${server.name}")
+            ?: throw Exception("SportsBite: could not load embed page for ${server.name} (try another server)")
         var m3u8 = LiveStreamHtmlExtractor.extractM3u8(html)
         if (m3u8.isNullOrBlank()) {
             val nested = LiveStreamHtmlExtractor.extractEmbedUrl(html)
@@ -414,9 +414,29 @@ object SportsBiteProvider : IptvProvider, ProviderConfigUrl {
                 }
             }
         }
+        // Some embeds only expose SRC after the JW/Clappr bundle boots; scrape common mirrors.
         if (m3u8.isNullOrBlank()) {
-            Log.e(TAG, "No m3u8 for $embedUrl")
-            throw Exception("SportsBite: no m3u8 stream found for ${server.name} (source may be offline)")
+            for (mirrorHost in listOf("embed.ppv.st", "embed.cr7siuu.xyz")) {
+                if (!embedUrl.contains("embedindia.st")) break
+                val mirrored = embedUrl.replace("embedindia.st", mirrorHost)
+                val mirroredHtml = fetchHtml(mirrored, referer = "$baseUrl/") ?: continue
+                m3u8 = LiveStreamHtmlExtractor.extractM3u8(mirroredHtml)
+                if (!m3u8.isNullOrBlank()) {
+                    return@withContext Video(
+                        source = m3u8,
+                        headers = mapOf(
+                            "User-Agent" to USER_AGENT,
+                            "Referer" to mirrored,
+                        ),
+                    )
+                }
+            }
+        }
+        if (m3u8.isNullOrBlank()) {
+            Log.e(TAG, "No m3u8 for $embedUrl (JS-gated embed)")
+            throw Exception(
+                "SportsBite: stream unavailable — embed is offline or blocked (try StreamSports99)",
+            )
         }
         Video(
             source = m3u8,

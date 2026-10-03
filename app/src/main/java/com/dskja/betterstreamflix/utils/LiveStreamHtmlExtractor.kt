@@ -13,6 +13,14 @@ object LiveStreamHtmlExtractor {
         """https?://[^"'\\\s<>]+?\.m3u8[^"'\\\s<>]*""",
         RegexOption.IGNORE_CASE,
     )
+    private val PROTOCOL_RELATIVE_M3U8 = Regex(
+        """(?<![:\w])//[^"'\\\s<>]+?\.m3u8[^"'\\\s<>]*""",
+        RegexOption.IGNORE_CASE,
+    )
+    private val ASSIGNED_SRC_M3U8 = Regex(
+        """(?:const|let|var)\s+SRC\s*=\s*["'](https?://[^"']+\.m3u8[^"']*)["']""",
+        RegexOption.IGNORE_CASE,
+    )
     private val ATOB_M3U8 = Regex("""atob\('([^']+)'\)""")
     private val XOR_ARRAY = Regex(
         """var\s+_(\w+)=\[([^\]]+)\],_(\w+)=(\d+),_(\w+)=(\d+)""",
@@ -22,15 +30,33 @@ object LiveStreamHtmlExtractor {
         """var\s+(\w+)=((?:\w+\(\w+\)\+?)+);\s*var\s+_p2pMode""",
     )
 
+    private val AD_EMBED_HOST_MARKERS = listOf(
+        "exmxbxe.",
+        "assetrage.",
+        "llvpn.com",
+        "histats.",
+        "aclib.",
+        "wpnxis",
+        "blogspot.com",
+    )
+
     fun extractM3u8(html: String): String? {
         if (html.isBlank()) return null
+        extractAssignedSrcM3u8(html)?.let { return it }
         extractCdnLiveTvM3u8(html)?.let { return it }
         extractXorArrayM3u8(html)?.let { return it }
         extractAtobM3u8(html)?.let { return it }
         extractSourceTagM3u8(html)?.let { return it }
         extractClapprM3u8(html)?.let { return it }
-        return GENERIC_M3U8.find(html)?.value?.replace("\\/", "/")
+        GENERIC_M3U8.find(html)?.value?.replace("\\/", "/")?.let { return it }
+        PROTOCOL_RELATIVE_M3U8.find(html)?.value
+            ?.replace("\\/", "/")
+            ?.let { return "https:$it" }
+        return null
     }
+
+    fun extractAssignedSrcM3u8(html: String): String? =
+        ASSIGNED_SRC_M3U8.find(html)?.groupValues?.getOrNull(1)?.replace("\\/", "/")
 
     fun extractSourceTagM3u8(html: String): String? {
         Regex(
@@ -49,6 +75,10 @@ object LiveStreamHtmlExtractor {
             """source\s*:\s*["'](https?://[^"']+\.m3u8[^"']*)["']""",
             RegexOption.IGNORE_CASE,
         ).find(html)?.groupValues?.getOrNull(1)?.let { return it.replace("\\/", "/") }
+        Regex(
+            """source\s*:\s*["'](//[^"']+\.m3u8[^"']*)["']""",
+            RegexOption.IGNORE_CASE,
+        ).find(html)?.groupValues?.getOrNull(1)?.let { return "https:${it.replace("\\/", "/")}" }
         Regex(
             """sources?\s*:\s*\[\s*["'](https?://[^"']+\.m3u8[^"']*)["']""",
             RegexOption.IGNORE_CASE,
@@ -100,30 +130,74 @@ object LiveStreamHtmlExtractor {
     }
 
     fun extractEmbedUrl(html: String): String? {
+        val candidates = linkedSetOf<String>()
+
         Regex(
             """<iframe[^>]+id=["']thatframe["'][^>]+src=["']([^"']+)["']""",
             RegexOption.IGNORE_CASE,
-        ).find(html)?.groupValues?.getOrNull(1)?.let { return it }
+        ).find(html)?.groupValues?.getOrNull(1)?.let { candidates += it }
         Regex(
             """<iframe[^>]+src=["']([^"']+)["'][^>]+id=["']thatframe["']""",
             RegexOption.IGNORE_CASE,
-        ).find(html)?.groupValues?.getOrNull(1)?.let { return it }
+        ).find(html)?.groupValues?.getOrNull(1)?.let { candidates += it }
         Regex(
             """<iframe[^>]+class=["'][^"']*video[^"']*["'][^>]+src=["']([^"']+)["']""",
             RegexOption.IGNORE_CASE,
-        ).findAll(html).lastOrNull()?.groupValues?.getOrNull(1)?.let { return it }
+        ).findAll(html).forEach { candidates += it.groupValues[1] }
         Regex(
             """<iframe[^>]+src=["'](https?://[^"']+)["']""",
             RegexOption.IGNORE_CASE,
-        ).findAll(html)
-            .map { it.groupValues[1] }
-            .firstOrNull {
-                it.contains("embed", true) ||
-                    it.contains("player", true) ||
-                    it.contains("stream", true)
-            }
-            ?.let { return it }
-        return null
+        ).findAll(html).forEach { candidates += it.groupValues[1] }
+
+        val scored = candidates
+            .map { it.trim() }
+            .filter { it.startsWith("http", ignoreCase = true) }
+            .filterNot { isAdEmbed(it) }
+        scored.firstOrNull { isDaddyLivePlayerEmbed(it) }?.let { return it }
+        scored.firstOrNull {
+            it.contains("embed", true) ||
+                it.contains("player", true) ||
+                it.contains("stream", true) ||
+                it.contains("premiumtv", true)
+        }?.let { return it }
+        return scored.firstOrNull()
+    }
+
+    /**
+     * DaddyLive retired `daddy3.php` (HTTP 404). Prefer `daddy.php` on the same host
+     * and the current dembed mirror.
+     */
+    fun normalizeDaddyLiveEmbed(embedUrl: String): List<String> {
+        val trimmed = embedUrl.trim()
+        if (trimmed.isBlank()) return emptyList()
+        val out = linkedSetOf<String>()
+        out += trimmed
+        val daddyN = Regex(
+            """^(https?://[^/]+)/premiumtv/daddy(\d+)\.php(\?.*)?$""",
+            RegexOption.IGNORE_CASE,
+        ).matchEntire(trimmed)
+        if (daddyN != null) {
+            val host = daddyN.groupValues[1]
+            val query = daddyN.groupValues[3]
+            out += "$host/premiumtv/daddy.php$query"
+            out += "https://dembed.top/premiumtv/daddy.php$query"
+            out += "https://daddyliveplayer.st/premiumtv/daddy.php$query"
+        } else if (trimmed.contains("/premiumtv/daddy.php", ignoreCase = true)) {
+            val query = trimmed.substringAfter("daddy.php", "")
+            out += "https://dembed.top/premiumtv/daddy.php$query"
+            out += "https://daddyliveplayer.st/premiumtv/daddy.php$query"
+        }
+        return out.toList()
+    }
+
+    private fun isDaddyLivePlayerEmbed(url: String): Boolean =
+        url.contains("premiumtv/daddy", ignoreCase = true) ||
+            url.contains("dembed.top", ignoreCase = true) ||
+            url.contains("daddyliveplayer.", ignoreCase = true)
+
+    private fun isAdEmbed(url: String): Boolean {
+        val lower = url.lowercase()
+        return AD_EMBED_HOST_MARKERS.any { it in lower }
     }
 
     private fun decodeBase64Chunk(value: String): String {
