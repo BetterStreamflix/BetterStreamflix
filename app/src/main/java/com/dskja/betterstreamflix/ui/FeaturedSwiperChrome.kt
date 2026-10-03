@@ -1,5 +1,6 @@
 package com.dskja.betterstreamflix.ui
 
+import android.content.Context
 import android.view.View
 import android.widget.TextView
 import androidx.appcompat.widget.TooltipCompat
@@ -23,6 +24,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlin.math.max
+import kotlin.math.roundToInt
 
 /**
  * Shared chrome for the Featured card: TMDb title logo centered over the cover,
@@ -30,9 +33,46 @@ import kotlinx.coroutines.withContext
  */
 object FeaturedSwiperChrome {
 
-    /** Wide enough to stay sharp on the full-width Featured card. */
-    const val ARTWORK_WIDTH = 1280
-    const val ARTWORK_HEIGHT = 720
+    /**
+     * Floor for Glide decode / prefetch. The mobile Featured card is tall
+     * (580dp+); decoding at 1280×720 used to upsample into ~xxhdpi view pixels
+     * and looked soft. Prefer [artworkOverride] at bind time.
+     */
+    const val ARTWORK_WIDTH = 1920
+    const val ARTWORK_HEIGHT = 1920
+
+    private const val MAX_ARTWORK_WIDTH = 3840
+    private const val MAX_ARTWORK_HEIGHT = 2560
+
+    /**
+     * Glide override matching the Featured surface in device pixels so
+     * centerCrop never stretches a tiny bitmap across a tall hero.
+     */
+    fun artworkOverride(view: View): Pair<Int, Int> = artworkOverride(view.context, view)
+
+    fun artworkOverride(context: Context, view: View? = null): Pair<Int, Int> {
+        val dm = context.resources.displayMetrics
+        val cardHeightPx = runCatching {
+            context.resources.getDimensionPixelSize(R.dimen.home_featured_card_height)
+        }.getOrDefault((580f * dm.density).roundToInt())
+        val width = max(
+            max(view?.width ?: 0, dm.widthPixels),
+            ARTWORK_WIDTH,
+        ).coerceAtMost(MAX_ARTWORK_WIDTH)
+        val height = max(
+            max(view?.height ?: 0, cardHeightPx),
+            ARTWORK_HEIGHT,
+        ).coerceAtMost(MAX_ARTWORK_HEIGHT)
+        return width to height
+    }
+
+    /** TV home / detail full-bleed backdrop override. */
+    fun tvBackdropOverride(context: Context): Pair<Int, Int> {
+        val dm = context.resources.displayMetrics
+        val width = max(dm.widthPixels, 1920).coerceAtMost(MAX_ARTWORK_WIDTH)
+        val height = max(dm.heightPixels, 1080).coerceAtMost(MAX_ARTWORK_HEIGHT)
+        return width to height
+    }
 
     /**
      * Binds any existing logo immediately. Upgrades blank / non-TMDb logos via a

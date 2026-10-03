@@ -43,6 +43,29 @@ class FeaturedTvRotationTest {
     }
 
     @Test
+    fun bannerOfUpgradesTmdbSizesToOriginal() {
+        val movie = Movie(
+            id = "m1",
+            title = "Movie",
+            banner = "https://image.tmdb.org/t/p/w500/banner.jpg",
+            poster = "https://image.tmdb.org/t/p/w185/poster.jpg",
+        )
+        assertEquals(
+            "https://image.tmdb.org/t/p/original/banner.jpg",
+            FeaturedTvRotation.bannerOf(movie),
+        )
+        val posterOnly = TvShow(
+            id = "t1",
+            title = "Show",
+            poster = "https://image.tmdb.org/t/p/w342/poster.jpg",
+        )
+        assertEquals(
+            "https://image.tmdb.org/t/p/original/poster.jpg",
+            FeaturedTvRotation.bannerOf(posterOnly),
+        )
+    }
+
+    @Test
     fun rotationSequenceCyclesThroughAllItems() {
         val size = 4
         var index = 0
