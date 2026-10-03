@@ -59,33 +59,24 @@ object ExternalMpvBackend : PlayerBackend {
 
     /** Pure intent builder for unit tests / shared handoff. */
     fun buildIntent(handoff: Handoff, packageName: String?): Intent {
-        val uri = Uri.parse(handoff.url)
-        val headerArray = handoff.headers.flatMap { listOf(it.key, it.value) }.toTypedArray()
-        return Intent(Intent.ACTION_VIEW).apply {
-            setDataAndType(uri, "video/*")
-            if (!packageName.isNullOrBlank()) setPackage(packageName)
-            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-            if (headerArray.isNotEmpty()) {
-                putExtra("headers", headerArray)
-                putExtra(
-                    "http_header_list",
-                    handoff.headers.entries.joinToString("\r\n") { "${it.key}: ${it.value}" },
-                )
-            }
-            if (handoff.positionMs > 0L) {
-                putExtra("position", handoff.positionMs.toInt())
-                putExtra("seek_position", handoff.positionMs)
-            }
-            if (!handoff.title.isNullOrBlank()) {
-                putExtra("title", handoff.title)
-                putExtra(Intent.EXTRA_TITLE, handoff.title)
-            }
-            if (!handoff.subtitleUri.isNullOrBlank()) {
-                putExtra("subs", Uri.parse(handoff.subtitleUri))
-                putExtra("subtitle", handoff.subtitleUri)
-                putExtra("subtitles_location", handoff.subtitleUri)
-            }
-        }
+        val resolved = ExternalStreamHandoff.Resolved(
+            uri = Uri.parse(handoff.url),
+            mimeType = "video/*",
+            grantRead = false,
+        )
+        val request = ExternalStreamHandoff.Request(
+            sourceUrl = handoff.url,
+            headers = handoff.headers,
+            positionMs = handoff.positionMs,
+            title = handoff.title,
+            subtitleUri = handoff.subtitleUri,
+        )
+        return ExternalStreamHandoff.buildViewIntent(
+            context = null,
+            resolved = resolved,
+            request = request,
+            packageName = packageName,
+        )
     }
 
     fun open(

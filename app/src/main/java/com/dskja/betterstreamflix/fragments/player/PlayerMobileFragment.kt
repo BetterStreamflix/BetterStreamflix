@@ -1086,7 +1086,7 @@ class PlayerMobileFragment : Fragment() {
 
         binding.pvPlayer.controller.binding.btnExoExternalPlayer.setOnClickListener {
             ExpMotion.hapticTap(it)
-            openCurrentStreamExternally(forceChooser = true)
+            openCurrentStreamExternally(forceChooser = false)
         }
 
         binding.pvPlayer.controller.binding.exoReplay.setOnClickListener {
@@ -1250,6 +1250,19 @@ class PlayerMobileFragment : Fragment() {
         }
         binding.settings.setOnDownloadWithClickedListener {
             openCurrentStreamWithDownloader()
+        }
+        binding.settings.setOnServerPlayWithListener { serverItem ->
+            val selected = servers.firstOrNull { it.id == serverItem.id }
+            if (selected == null) {
+                notifyPlayer(R.string.player_server_unavailable, R.string.player_settings_servers_title)
+                return@setOnServerPlayWithListener
+            }
+            if (currentServer?.id == selected.id && currentVideo != null && !isOfflinePlayback()) {
+                openCurrentStreamExternally(forceChooser = true)
+                return@setOnServerPlayWithListener
+            }
+            pendingPlayWithAfterResolve = true
+            viewModel.getVideo(selected)
         }
     }
 
@@ -1734,6 +1747,10 @@ class PlayerMobileFragment : Fragment() {
         }
 
         binding.pvPlayer.controller.binding.btnExoExternalPlayer.setOnClickListener {
+            openCurrentStreamExternally(forceChooser = false)
+        }
+        if (pendingPlayWithAfterResolve && !isOfflinePlayback()) {
+            pendingPlayWithAfterResolve = false
             openCurrentStreamExternally(forceChooser = true)
         }
         playbackListener?.let { runCatching { player.removeListener(it) } }
@@ -3067,6 +3084,8 @@ class PlayerMobileFragment : Fragment() {
     private var currentExtraBuffering = false
     private var currentSoftwareDecoder = false
     private var currentExternalPlayerTried = false
+    private var pendingPlayWithAfterResolve = false
+
 
     private fun buildPlayer(extraBuffering: Boolean): ExoPlayer {
         return PlayerBuilderFactory.build(
@@ -3536,7 +3555,7 @@ class PlayerMobileFragment : Fragment() {
                 mimeType = video.type,
                 title = fileName,
             ),
-            forceChooser = true,
+            forceChooser = false,
         )
         if (ok) {
             com.dskja.betterstreamflix.utils.ExpDialogChrome.notify(

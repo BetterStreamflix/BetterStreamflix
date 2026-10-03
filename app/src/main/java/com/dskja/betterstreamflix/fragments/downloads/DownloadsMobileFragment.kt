@@ -495,23 +495,18 @@ class DownloadsMobileFragment : Fragment() {
             val localUri = withContext(Dispatchers.IO) {
                 OfflinePlayback.exportShareUri(requireContext(), row.entity)?.toString()
             }
-            val source = localUri
-                ?: row.entity.streamUrl.takeIf { it.startsWith("http") }
-            if (source.isNullOrBlank()) {
-                showDownloadError(R.string.downloads_share_cache_only)
+            // Cache-only Media3 downloads have no file another app can open.
+            // Do not fall back to a possibly expired CDN URL.
+            if (localUri.isNullOrBlank()) {
+                showDownloadError(R.string.downloads_play_with_cache_only)
                 return@launch
             }
-            val headers = runCatching {
-                val o = org.json.JSONObject(row.entity.headersJson.ifBlank { "{}" })
-                o.keys().asSequence().associateWith { o.getString(it) }
-            }.getOrDefault(emptyMap())
             ExternalStreamHandoff.launch(
                 requireActivity(),
                 ExternalStreamHandoff.Request(
-                    sourceUrl = source,
-                    headers = headers,
+                    sourceUrl = localUri,
                     title = row.entity.title,
-                    mimeType = row.entity.mimeType,
+                    mimeType = row.entity.mimeType.ifBlank { "video/*" },
                 ),
                 forceChooser = true,
             )
@@ -541,7 +536,7 @@ class DownloadsMobileFragment : Fragment() {
                 mimeType = row.entity.mimeType,
                 title = row.entity.title,
             ),
-            forceChooser = true,
+            forceChooser = false,
         )
         if (ok) {
             ExpDialogChrome.notify(requireContext(), R.string.external_download_started)

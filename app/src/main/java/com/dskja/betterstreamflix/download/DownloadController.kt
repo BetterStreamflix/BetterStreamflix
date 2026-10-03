@@ -630,6 +630,12 @@ object DownloadController {
     }
 
     private fun guardNetworkAndStorage(context: Context): DownloadEnqueueOutcome.Failed? {
+        DownloadStorage.storageUnavailableReason(context)?.let { reasonRes ->
+            return DownloadEnqueueOutcome.Failed(
+                DownloadErrorCode.NOSPACE,
+                context.getString(reasonRes),
+            )
+        }
         if (!DownloadStorage.hasEnoughSpace(context)) {
             return DownloadEnqueueOutcome.Failed(DownloadErrorCode.NOSPACE, "Not enough storage")
         }

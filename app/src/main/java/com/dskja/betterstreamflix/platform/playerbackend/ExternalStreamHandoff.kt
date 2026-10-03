@@ -4,6 +4,8 @@ import android.app.Activity
 import android.app.PendingIntent
 import android.content.ActivityNotFoundException
 import android.content.BroadcastReceiver
+import android.content.ClipData
+import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
@@ -12,17 +14,14 @@ import android.net.Uri
 import android.os.Build
 import android.util.Base64
 import android.util.Log
-import androidx.core.content.FileProvider
 import com.dskja.betterstreamflix.R
 import com.dskja.betterstreamflix.extractors.StreamMime
 import com.dskja.betterstreamflix.utils.ExpDialogChrome
 import com.dskja.betterstreamflix.utils.UserPreferences
-import java.io.File
-import java.io.FileOutputStream
 
 /**
  * Hands a resolved playable HTTP(S) (or local) stream URI to an external player
- * via [Intent.ACTION_VIEW], with optional remembered default package.
+ * via [Intent.ACTION_VIEW], with package-aware headers and optional remembered default.
  */
 object ExternalStreamHandoff {
     private const val TAG = "ExternalStreamHandoff"
@@ -41,6 +40,8 @@ object ExternalStreamHandoff {
         val uri: Uri,
         val mimeType: String,
         val grantRead: Boolean,
+        /** True when we wrote a local m3u8 that likely has relative segments — warn UX. */
+        val fragilePlaylist: Boolean = false,
     )
 
     fun resolveSource(context: Context, request: Request): Resolved? {
@@ -53,49 +54,46 @@ object ExternalStreamHandoff {
             if (!extracted.isNullOrBlank()) {
                 return Resolved(Uri.parse(extracted), mime, grantRead = false)
             }
-            return try {
-                val file = File(context.cacheDir, "stream_external.m3u8")
-                FileOutputStream(file).use { it.write(playlist.toByteArray()) }
-                val uri = FileProvider.getUriForFile(
-                    context,
-                    "${context.packageName}.provider",
-                    file,
-                )
-                Resolved(uri, "application/vnd.apple.mpegurl", grantRead = true)
-            } catch (e: Exception) {
-                Log.w(TAG, "Failed to materialize HLS playlist: ${e.message}")
-                null
-            }
+            // Relative-only playlists break in most external players over content://.
+            return null
         }
-        return Resolved(Uri.parse(raw), mime, grantRead = raw.startsWith("content://"))
+        return Resolved(
+            Uri.parse(raw),
+            mime,
+            grantRead = raw.startsWith("content://") || raw.startsWith("file://"),
+        )
     }
 
     fun buildViewIntent(
+        context: Context?,
         resolved: Resolved,
         request: Request,
         packageName: String?,
     ): Intent {
         val headerArray = request.headers.flatMap { listOf(it.key, it.value) }.toTypedArray()
-        val headerLines = request.headers.entries.joinToString("\r\n") { "${it.key}: ${it.value}" }
+        val headerLinesLf = request.headers.entries.joinToString("\n") { "${it.key}: ${it.value}" }
+        val referer = request.headers.entries.firstOrNull {
+            it.key.equals("Referer", ignoreCase = true)
+        }?.value
+        val userAgent = request.headers.entries.firstOrNull {
+            it.key.equals("User-Agent", ignoreCase = true)
+        }?.value
+
         return Intent(Intent.ACTION_VIEW).apply {
             setDataAndType(resolved.uri, resolved.mimeType)
             if (!packageName.isNullOrBlank()) setPackage(packageName)
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             if (resolved.grantRead) {
                 addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                if (context != null) {
+                    clipData = ClipData.newUri(context.contentResolver, "stream", resolved.uri)
+                }
             }
-            if (headerArray.isNotEmpty()) {
-                putExtra("headers", headerArray)
-                putExtra("extra_headers", request.headers.map { "${it.key}: ${it.value}" }.toTypedArray())
-                putExtra("http_header_list", headerLines)
-                request.headers["Referer"]?.let { putExtra("referer", it) }
-                request.headers["User-Agent"]?.let { putExtra("user-agent", it) }
-            }
+            putExtra("return_result", true)
             if (request.positionMs > 0L) {
                 putExtra("position", request.positionMs.toInt())
                 putExtra("seek_position", request.positionMs)
             }
-            putExtra("return_result", true)
             if (!request.title.isNullOrBlank()) {
                 putExtra("title", request.title)
                 putExtra(Intent.EXTRA_TITLE, request.title)
@@ -105,13 +103,69 @@ object ExternalStreamHandoff {
                 putExtra("subtitle", request.subtitleUri)
                 putExtra("subtitles_location", request.subtitleUri)
             }
+            applyPlayerHeaders(
+                packageName = packageName,
+                headerArray = headerArray,
+                headerLinesLf = headerLinesLf,
+                referer = referer,
+                userAgent = userAgent,
+                headers = request.headers,
+            )
+        }
+    }
+
+    /** Package-aware header extras (MX / mpv / Brouken / generic). */
+    fun Intent.applyPlayerHeaders(
+        packageName: String?,
+        headerArray: Array<String>,
+        headerLinesLf: String,
+        referer: String?,
+        userAgent: String?,
+        headers: Map<String, String>,
+    ) {
+        if (headers.isEmpty()) return
+        val pkg = packageName.orEmpty()
+        when {
+            pkg.startsWith("com.mxtech.videoplayer") -> {
+                putExtra("headers", headerArray)
+                referer?.let { putExtra("referer", it) }
+                userAgent?.let { putExtra("user-agent", it) }
+            }
+            pkg == "is.xyz.mpv" || pkg == "com.brouken.player" -> {
+                // Historical mpv-android / Just (Brouken) keys.
+                putExtra("http-header-fields", headerLinesLf)
+                putExtra("headers", headerArray)
+                referer?.let {
+                    putExtra("referrer", it)
+                    putExtra("referer", it)
+                }
+                userAgent?.let { putExtra("user-agent", it) }
+            }
+            pkg == "org.videolan.vlc" -> {
+                // VLC Android has no documented HTTP header intent extras.
+                // Still attach generic keys some forks honor.
+                putExtra("http-header-fields", headerLinesLf)
+                referer?.let { putExtra("referrer", it) }
+                userAgent?.let { putExtra("user-agent", it) }
+            }
+            else -> {
+                putExtra("headers", headerArray)
+                putExtra("extra_headers", headers.map { "${it.key}: ${it.value}" }.toTypedArray())
+                putExtra("http-header-fields", headerLinesLf)
+                putExtra("http_header_list", headerLinesLf)
+                referer?.let {
+                    putExtra("referer", it)
+                    putExtra("referrer", it)
+                }
+                userAgent?.let { putExtra("user-agent", it) }
+            }
         }
     }
 
     fun preferredPackage(context: Context): String? {
         val saved = UserPreferences.externalPlayerPackage.trim()
         if (saved.isNotEmpty() && isPackageInstalled(context, saved)) return saved
-        return ExternalMpvBackend.preferredInstalledPackage(context)
+        return null
     }
 
     fun rememberChosenPackage(packageName: String?) {
@@ -128,17 +182,19 @@ object ExternalStreamHandoff {
         val probe = Intent(Intent.ACTION_VIEW).apply {
             setDataAndType(Uri.parse("https://example.com/video.mp4"), "video/*")
         }
-        val flags = PackageManager.MATCH_DEFAULT_ONLY
-        return context.packageManager.queryIntentActivities(probe, flags)
+        return context.packageManager.queryIntentActivities(probe, PackageManager.MATCH_DEFAULT_ONLY)
             .filter { it.activityInfo?.packageName != context.packageName }
+            .distinctBy { it.activityInfo.packageName }
     }
 
     fun canResolve(context: Context): Boolean =
-        preferredPackage(context) != null || listInstalledPlayers(context).isNotEmpty()
+        preferredPackage(context) != null ||
+            ExternalMpvBackend.preferredInstalledPackage(context) != null ||
+            listInstalledPlayers(context).isNotEmpty()
 
     /**
-     * Launch an external player. Returns false when nothing can handle the intent.
-     * When [forceChooser] is true, always shows the system chooser and remembers the pick.
+     * @param forceChooser when true, always show the system chooser (and remember the pick).
+     *                     when false, use the remembered default / installed candidate first.
      */
     fun launch(
         activity: Activity,
@@ -154,21 +210,38 @@ object ExternalStreamHandoff {
             )
             return false
         }
-        val preferred = if (forceChooser) null else preferredPackage(activity)
-        if (!preferred.isNullOrBlank()) {
-            val direct = buildViewIntent(resolved, request, preferred)
-            if (direct.resolveActivity(activity.packageManager) != null) {
-                return try {
-                    activity.startActivity(direct)
-                    true
-                } catch (e: ActivityNotFoundException) {
-                    Log.w(TAG, "Preferred player missing: ${e.message}")
-                    clearPreferredPackage()
-                    launchChooser(activity, resolved, request)
+        if (!forceChooser) {
+            val preferred = preferredPackage(activity)
+                ?: ExternalMpvBackend.preferredInstalledPackage(activity)
+            if (!preferred.isNullOrBlank()) {
+                val direct = buildViewIntent(activity, resolved, request, preferred)
+                grantUriIfNeeded(activity, resolved, preferred)
+                if (direct.resolveActivity(activity.packageManager) != null) {
+                    return try {
+                        activity.startActivity(direct)
+                        true
+                    } catch (e: ActivityNotFoundException) {
+                        Log.w(TAG, "Preferred player missing: ${e.message}")
+                        if (preferred == UserPreferences.externalPlayerPackage) {
+                            clearPreferredPackage()
+                        }
+                        launchChooser(activity, resolved, request)
+                    }
                 }
             }
         }
         return launchChooser(activity, resolved, request)
+    }
+
+    private fun grantUriIfNeeded(activity: Activity, resolved: Resolved, packageName: String) {
+        if (!resolved.grantRead) return
+        runCatching {
+            activity.grantUriPermission(
+                packageName,
+                resolved.uri,
+                Intent.FLAG_GRANT_READ_URI_PERMISSION,
+            )
+        }
     }
 
     private fun launchChooser(
@@ -176,10 +249,9 @@ object ExternalStreamHandoff {
         resolved: Resolved,
         request: Request,
     ): Boolean {
-        val intent = buildViewIntent(resolved, request, packageName = null)
-        if (intent.resolveActivity(activity.packageManager) == null &&
-            listInstalledPlayers(activity).isEmpty()
-        ) {
+        val intent = buildViewIntent(activity, resolved, request, packageName = null)
+        val players = listInstalledPlayers(activity)
+        if (intent.resolveActivity(activity.packageManager) == null && players.isEmpty()) {
             ExpDialogChrome.notify(
                 activity,
                 R.string.external_player_none_found,
@@ -223,7 +295,7 @@ object ExternalStreamHandoff {
             val component = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                 intent.getParcelableExtra(
                     Intent.EXTRA_CHOSEN_COMPONENT,
-                    android.content.ComponentName::class.java,
+                    ComponentName::class.java,
                 )
             } else {
                 @Suppress("DEPRECATION")

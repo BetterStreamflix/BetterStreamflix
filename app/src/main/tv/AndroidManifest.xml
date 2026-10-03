@@ -160,6 +160,22 @@
             </intent-filter>
         </receiver>
 
+        <receiver
+            android:name=".platform.playerbackend.ExternalPlayerChosenReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="com.dskja.betterstreamflix.ACTION_EXTERNAL_PLAYER_CHOSEN" />
+            </intent-filter>
+        </receiver>
+
+        <receiver
+            android:name=".download.ExternalDownloaderChosenReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="com.dskja.betterstreamflix.ACTION_EXTERNAL_DOWNLOADER_CHOSEN" />
+            </intent-filter>
+        </receiver>
+
     </application>
 
 </manifest>

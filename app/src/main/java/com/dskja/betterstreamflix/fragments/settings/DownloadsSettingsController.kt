@@ -67,7 +67,7 @@ object DownloadsSettingsController {
                 }
                 if (location != UserPreferences.downloadStorageLocation) {
                     UserPreferences.downloadStorageLocation = location
-                    StreamflixDownloadManager.release()
+                    StreamflixDownloadManager.relocate(context)
                     refreshSummaries(findPreference, context)
                     ExpDialogChrome.notify(context, R.string.settings_download_storage_changed)
                 }
@@ -82,7 +82,7 @@ object DownloadsSettingsController {
 
         findPreference("DOWNLOAD_STORAGE_CLEAR_FOLDER")?.setOnPreferenceClickListener {
             DownloadTreeAccess.clearTree(context)
-            StreamflixDownloadManager.release()
+            StreamflixDownloadManager.relocate(context)
             refreshSummaries(findPreference, context)
             ExpDialogChrome.notify(context, R.string.settings_download_storage_folder_cleared)
             true
@@ -331,7 +331,7 @@ object DownloadsSettingsController {
         if (uri == null) return
         val ok = DownloadTreeAccess.persistTree(context, uri)
         if (ok) {
-            StreamflixDownloadManager.release()
+            StreamflixDownloadManager.relocate(context)
             ExpDialogChrome.notify(context, R.string.settings_download_storage_folder_set)
         } else {
             ExpDialogChrome.notify(context, R.string.settings_download_storage_folder_failed)

@@ -2,6 +2,7 @@ package com.dskja.betterstreamflix.download
 
 import android.content.Context
 import android.net.Uri
+import android.util.Log
 import androidx.core.content.FileProvider
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
@@ -12,6 +13,7 @@ import org.json.JSONArray
 import java.io.File
 
 object OfflinePlayback {
+    private const val TAG = "OfflinePlayback"
     fun contentKeyFor(videoType: Video.Type, providerName: String): String {
         return when (videoType) {
             is Video.Type.Movie -> DownloadContentKey.movie(providerName, videoType.id)
@@ -71,6 +73,15 @@ object OfflinePlayback {
 
     fun buildLocalVideo(context: Context, item: DownloadItemEntity): Video? {
         if (item.state != DownloadItemState.COMPLETED.name) return null
+        DownloadStorage.storageUnavailableReason(context)?.let {
+            Log.w(TAG, "Offline storage unavailable: ${context.getString(it)}")
+            return null
+        }
+        val cacheRoot = DownloadStorage.cacheDir(context)
+        if (!cacheRoot.exists() || !cacheRoot.canRead()) {
+            Log.w(TAG, "Offline cache dir missing: ${cacheRoot.absolutePath}")
+            return null
+        }
         val media3Id = item.media3Id
         val download = runCatching {
             StreamflixDownloadManager.get(context).downloadIndex.getDownload(media3Id)
