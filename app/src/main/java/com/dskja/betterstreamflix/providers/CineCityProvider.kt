@@ -5,6 +5,7 @@ import kotlinx.coroutines.sync.withLock
 
 import com.dskja.betterstreamflix.utils.UserPreferences
 import com.dskja.betterstreamflix.utils.M3uChannelIdCodec
+import com.dskja.betterstreamflix.utils.M3uPlaylistParser
 
 import android.util.Base64
 import android.util.Log
@@ -93,16 +94,15 @@ object CineCityProvider : IptvProvider, ProviderConfigUrl {
 
         return try {
             val decodedUrl = String(Base64.decode(OBFUSCATED_PLAYLIST, Base64.DEFAULT))
-            Log.d(TAG, "🗺️ Obteniendo lista desde origen seguro.")
-
             val request = Request.Builder().url(decodedUrl).build()
             val body = client.newCall(request).execute().body?.string() ?: return emptyList()
             val channels = parseM3U(body)
+            Log.d(TAG, "MAGISTV channels=${channels.size}")
             cachedChannels = channels
             lastFetchTime = now
             channels
         } catch (e: Exception) {
-            Log.e(TAG, "❌ Error obteniendo M3U de CineCity: ${e.message}")
+            Log.e(TAG, "Error fetching MAGISTV M3U: ${e.message}")
             cachedChannels ?: emptyList()
         }
     }
@@ -187,11 +187,18 @@ object CineCityProvider : IptvProvider, ProviderConfigUrl {
 
     override suspend fun getVideo(server: Video.Server): Video {
         val payload = M3uChannelIdCodec.decode(server.id)
-        val headers = M3uChannelIdCodec.playbackHeaders(server.id)
+        if (!M3uPlaylistParser.isPlayableUrl(payload.url)) {
+            throw Exception("MAGISTV: channel URL missing or dead placeholder (try another channel)")
+        }
+        val headers = M3uChannelIdCodec.playbackHeaders(server.id).toMutableMap()
+        if (!headers.containsKey("User-Agent")) {
+            headers["User-Agent"] =
+                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/118.0.0.0 Safari/537.36"
+        }
         return Video(
             source = payload.url,
             subtitles = emptyList(),
-            headers = headers.takeIf { it.isNotEmpty() },
+            headers = headers,
         )
     }
 
@@ -207,35 +214,18 @@ object CineCityProvider : IptvProvider, ProviderConfigUrl {
         )
     }
 
-    private fun parseM3U(m3uRaw: String): List<M3UChannel> {
-        val channels = mutableListOf<M3UChannel>()
-        var curName = ""; var curLogo = ""; var curGroup = ""
-        var curUA: String? = null; var curRef: String? = null; var curOrigin: String? = null
-
-        for (line in m3uRaw.lines()) {
-            val t = line.trim()
-            if (t.startsWith("#EXTINF")) {
-                curName = t.substringAfterLast(",").trim()
-                curLogo = Regex("""tvg-logo="([^"]+)"""").find(t)?.groupValues?.get(1) ?: ""
-                curGroup = Regex("""group-title="([^"]+)"""").find(t)?.groupValues?.get(1) ?: ""
-                curUA = Regex("""http-user-agent="([^"]+)"""").find(t)?.groupValues?.get(1)
-                curRef = Regex("""http-referrer="([^"]+)"""").find(t)?.groupValues?.get(1)
-                curOrigin = Regex("""http-origin="([^"]+)"""").find(t)?.groupValues?.get(1)
-            } else if (t.startsWith("#EXTVLCOPT:")) {
-                when {
-                    t.contains("http-user-agent=") -> curUA = t.substringAfter("http-user-agent=").trim()
-                    t.contains("http-referrer=") -> curRef = t.substringAfter("http-referrer=").trim()
-                    t.contains("http-origin=") -> curOrigin = t.substringAfter("http-origin=").trim()
-                }
-            } else if (t.startsWith("http")) {
-                if (curName.isNotEmpty()) {
-                    channels.add(M3UChannel(curName, t, curLogo, curGroup, curUA, curRef, curOrigin))
-                    curName = ""; curLogo = ""; curGroup = ""; curUA = null; curRef = null; curOrigin = null
-                }
-            }
+    private fun parseM3U(m3uRaw: String): List<M3UChannel> =
+        M3uPlaylistParser.parse(m3uRaw).map {
+            M3UChannel(
+                name = it.name,
+                url = it.url,
+                logo = it.logo,
+                group = it.group,
+                userAgent = it.userAgent,
+                referrer = it.referrer,
+                origin = it.origin,
+            )
         }
-        return channels
-    }
 
     override suspend fun listLiveChannels(aroundId: String?, limit: Int): List<com.dskja.betterstreamflix.iptv.IptvLiveSession.Channel> {
         val channels = getAllChannels()

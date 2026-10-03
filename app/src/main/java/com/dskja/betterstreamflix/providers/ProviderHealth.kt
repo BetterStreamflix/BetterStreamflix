@@ -23,6 +23,8 @@ object ProviderHealth {
         "Doramasflix",
         // Domain dead as of 2026-10 (streamingita.homes NXDOMAIN); keep entry for URL override.
         "StreamingIta",
+        // Embedindia player is JS/ad-gated with no plaintext m3u8; catalog still loads via PPV API.
+        "SportsBite",
     )
 
     /** High-traffic providers that smoke harnesses should prioritize. */
@@ -45,6 +47,10 @@ object ProviderHealth {
         "KinoGer",
         "AnyMovie",
         "HiAnime",
+        "DaddyLive TV",
+        "MAGISTV",
+        "CableVisionHD",
+        "StreamSports99",
     )
 
     fun isQuarantined(provider: Provider): Boolean =

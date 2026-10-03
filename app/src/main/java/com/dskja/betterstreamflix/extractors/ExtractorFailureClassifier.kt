@@ -42,6 +42,13 @@ object ExtractorFailureClassifier {
             msg.contains("Unpack failed", ignoreCase = true) ||
             msg.contains("Pluto channel URL missing", ignoreCase = true) ||
             msg.contains("Pluto info card is not playable", ignoreCase = true) ||
+            msg.contains("MAGISTV: channel URL missing", ignoreCase = true) ||
+            msg.contains("stream offline or 404", ignoreCase = true) ||
+            msg.contains("DaddyLive TV:", ignoreCase = true) ||
+            msg.contains("SportsBite:", ignoreCase = true) ||
+            msg.contains("CableVisionHD:", ignoreCase = true) ||
+            msg.contains("TvPorInternet:", ignoreCase = true) ||
+            msg.contains("Tv Libre Futbol:", ignoreCase = true) ||
             msg.contains("No se encontró", ignoreCase = true) ||
             msg.contains("No se encontraron", ignoreCase = true) ||
             msg.contains("No se pudo desempacar", ignoreCase = true) ||
