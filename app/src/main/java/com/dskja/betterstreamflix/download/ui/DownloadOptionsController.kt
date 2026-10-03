@@ -292,6 +292,16 @@ object DownloadOptionsController {
             R.string.download_options_storage,
             DownloadStorage.formatBytes(DownloadStorage.freeBytes(activity)),
         )
+        DownloadStorage.storageUnavailableReason(activity)?.let { reason ->
+            storageView.append("\n")
+            storageView.append(activity.getString(reason))
+        }
+        val externalHint = view.findViewById<TextView?>(R.id.tv_download_options_hint)
+        externalHint?.let {
+            val base = it.text?.toString().orEmpty()
+            val note = activity.getString(R.string.download_options_external_hint)
+            it.text = if (base.isBlank()) note else "$base\n$note"
+        }
         if (ExperimentalMobileDesign.enabled()) {
             view.setBackgroundResource(ExperimentalMobileDesign.bottomSheetBackground())
             storageView.setBackgroundResource(ExperimentalMobileDesign.metaPillBackground())
@@ -412,6 +422,8 @@ object DownloadOptionsController {
                     ?: currentPrepared.servers.firstOrNull()
                 val video = candidate?.video
                 val url = video?.source.orEmpty()
+                // External managers receive the resolved master/progressive URL.
+                // HLS quality keys only apply to in-app Media3 downloads.
                 val ok = ExternalDownloadHandoff.launch(
                     activity,
                     ExternalDownloadHandoff.Request(
@@ -421,7 +433,7 @@ object DownloadOptionsController {
                         mimeType = video?.type,
                         title = currentPrepared.title,
                     ),
-                    forceChooser = true,
+                    forceChooser = false,
                 )
                 if (ok) {
                     ExpDialogChrome.notify(activity, R.string.external_download_started)

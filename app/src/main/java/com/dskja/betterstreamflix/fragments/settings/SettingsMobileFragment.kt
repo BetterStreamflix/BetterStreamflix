@@ -41,6 +41,7 @@ import com.dskja.betterstreamflix.download.DownloadQualityPreset
 import com.dskja.betterstreamflix.download.DownloadRepository
 import com.dskja.betterstreamflix.download.DownloadStorage
 import com.dskja.betterstreamflix.download.DownloadStorageLocation
+import com.dskja.betterstreamflix.download.DownloadTreeAccess
 import com.dskja.betterstreamflix.download.StreamflixDownloadManager
 import com.dskja.betterstreamflix.providers.AnimeOnlineNinjaProvider
 import com.dskja.betterstreamflix.providers.FrenchStreamProvider
@@ -141,7 +142,7 @@ class SettingsMobileFragment : PreferenceFragmentCompat() {
     }
 
     private val pickDownloadFolderLauncher = registerForActivityResult(
-        ActivityResultContracts.OpenDocumentTree()
+        DownloadTreeAccess.PersistableOpenDocumentTree()
     ) { uri: Uri? ->
         DownloadsSettingsController.onDownloadFolderPicked(this, { key -> findPreference(key) }, uri)
     }
