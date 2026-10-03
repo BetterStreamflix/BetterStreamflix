@@ -6,6 +6,7 @@ class Trailer(
     val title: String,
     val url: String,
     val type: String = "Trailer",
+    val official: Boolean = false,
 ) : AppAdapter.Item {
 
     override lateinit var itemType: AppAdapter.Type
@@ -14,7 +15,8 @@ class Trailer(
         title: String = this.title,
         url: String = this.url,
         type: String = this.type,
-    ) = Trailer(title, url, type).also {
+        official: Boolean = this.official,
+    ) = Trailer(title, url, type, official).also {
         if (::itemType.isInitialized) {
             it.itemType = itemType
         }
@@ -27,6 +29,7 @@ class Trailer(
         if (title != other.title) return false
         if (url != other.url) return false
         if (type != other.type) return false
+        if (official != other.official) return false
         if (!::itemType.isInitialized || !other::itemType.isInitialized) return false
         return itemType == other.itemType
     }
@@ -35,6 +38,7 @@ class Trailer(
         var result = title.hashCode()
         result = 31 * result + url.hashCode()
         result = 31 * result + type.hashCode()
+        result = 31 * result + official.hashCode()
         result = 31 * result + (if (::itemType.isInitialized) itemType.hashCode() else 0)
         return result
     }

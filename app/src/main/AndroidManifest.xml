@@ -35,6 +35,7 @@
         <package android:name="org.smarttube.beta" />
         <package android:name="com.google.android.youtube" />
         <package android:name="com.google.android.tv.youtube" />
+        <package android:name="com.google.android.youtube.tv" />
 
         <!-- External players -->
         <package android:name="is.xyz.mpv" />

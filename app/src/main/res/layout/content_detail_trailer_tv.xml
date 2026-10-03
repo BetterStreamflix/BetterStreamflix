@@ -48,4 +48,23 @@
         app:layout_constraintTop_toBottomOf="@id/v_detail_trailer_rule"
         tools:listitem="@layout/item_trailer_tv" />
 
+    <TextView
+        android:id="@+id/tv_detail_trailer_empty"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="70dp"
+        android:layout_marginTop="26dp"
+        android:layout_marginEnd="70dp"
+        android:layout_marginBottom="20dp"
+        android:fontFamily="@font/manrope"
+        android:minHeight="120dp"
+        android:text="@string/detail_trailer_empty"
+        android:textColor="#8AFFFFFF"
+        android:textSize="16sp"
+        android:visibility="gone"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/v_detail_trailer_rule"
+        tools:visibility="visible" />
+
 </androidx.constraintlayout.widget.ConstraintLayout>

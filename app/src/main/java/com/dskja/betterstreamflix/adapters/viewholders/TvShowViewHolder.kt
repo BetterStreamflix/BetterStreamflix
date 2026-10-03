@@ -1,5 +1,6 @@
 package com.dskja.betterstreamflix.adapters.viewholders
 
+import com.dskja.betterstreamflix.models.TrailerCatalog
 import com.dskja.betterstreamflix.adapters.viewholders.detail.bindTvShowMobileDetail
 import com.dskja.betterstreamflix.adapters.viewholders.detail.bindTvShowTvDetail
 import com.dskja.betterstreamflix.adapters.viewholders.detail.bindTvShowSeasonsMobile
@@ -665,94 +666,6 @@ class TvShowViewHolder(
         }
     }
 
-    internal fun isPackageInstalled(packageName: String): Boolean {
-        return try {
-            context.packageManager.getPackageInfo(packageName, 0)
-            true
-        } catch (e: Exception) {
-            false
-        }
-    }
-
-    internal fun getInstalledSmartTubePackages(): List<String> {
-        val installed = mutableListOf<String>()
-        if (isPackageInstalled("org.smarttube.stable")) installed.add("org.smarttube.stable")
-        if (isPackageInstalled("org.smarttube.beta")) installed.add("org.smarttube.beta")
-        return installed
-    }
-
-    internal fun launchSmartTube(packageName: String, trailerUrl: String) {
-        val intent = Intent(Intent.ACTION_VIEW, trailerUrl.toUri())
-        intent.setPackage(packageName)
-        context.startActivity(intent)
-    }
-
-    internal fun showSmartTubeVersionDialog(packages: List<String>, trailerUrl: String, shouldSavePreference: Boolean) {
-        val prefs = PreferenceManager.getDefaultSharedPreferences(context)
-        val editor = prefs.edit()
-
-        val items = packages.map { pkg ->
-            if (pkg == "org.smarttube.stable") context.getString(R.string.smarttube_stable)
-            else context.getString(R.string.smarttube_beta)
-        }.toTypedArray()
-
-        (if (ExperimentalMobileDesign.enabled()) MaterialAlertDialogBuilder(context) else AlertDialog.Builder(context))
-            .setTitle(context.getString(R.string.choose_smarttube_version))
-            .setItems(items) { _, which ->
-                val selectedPackage = packages[which]
-
-                if (shouldSavePreference) {
-                    editor.putString("preferred_smarttube_package", selectedPackage).apply()
-                }
-
-                launchSmartTube(selectedPackage, trailerUrl)
-            }
-            .create()
-            .also { com.dskja.betterstreamflix.ui.TrailerPlaybackController.polishChooserDialog(it) }
-    }
-
-    internal fun handleSmartTubeSelection(trailerUrl: String) {
-        val prefs = PreferenceManager.getDefaultSharedPreferences(context)
-        val savedPackage = prefs.getString("preferred_smarttube_package", null)
-        val stPackages = getInstalledSmartTubePackages()
-
-        if (stPackages.isEmpty()) {
-            context.startActivity(Intent(Intent.ACTION_VIEW, trailerUrl.toUri()))
-            return
-        }
-
-        if (stPackages.size == 1) {
-            launchSmartTube(stPackages[0], trailerUrl)
-            return
-        }
-
-        if (savedPackage != null && stPackages.contains(savedPackage)) {
-            launchSmartTube(savedPackage, trailerUrl)
-        } else {
-            showSmartTubeVersionDialog(stPackages, trailerUrl, true)
-        }
-    }
-
-    internal fun safeLaunchYoutube(intent: Intent) {
-        try {
-            context.startActivity(intent)
-        } catch (e: Exception) {
-            Log.e("TvShowViewHolder", "Failed to launch YouTube intent", e)
-            val message = context.getString(R.string.player_external_player_error_video)
-            if (ExperimentalMobileDesign.enabled()) {
-                ExpDialogChrome.showInfo(
-                    context,
-                    R.string.youtube,
-                    message,
-                ) { ctx ->
-                    MaterialAlertDialogBuilder(ctx)
-                }
-            } else {
-                Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
-            }
-        }
-    }
-
     internal fun handleTrailerClick(trailer: String) {
         val activity = context.toActivity()
         val fragment = activity?.getCurrentFragment() as? Fragment
@@ -852,12 +765,27 @@ class TvShowViewHolder(
                             imdbId = tvShow.imdbId,
                         )
                     }
-                    val url = remote.firstOrNull()?.second?.takeIf { it.isNotBlank() } ?: return@launch
+                    val url = TrailerCatalog.preferredPlayableUrl(remote) ?: return@launch
                     if (tvShow.trailer.isNullOrBlank()) tvShow.trailer = url
                     playTrailer(url)
                 }
                 true
             }
+            androidx.appcompat.widget.TooltipCompat.setTooltipText(
+                this,
+                if (!tvShow.trailer.isNullOrBlank() ||
+                    TmdbUtils.hasTrailerLookupKeys(
+                        tmdbId = tvShow.tmdbId,
+                        imdbId = tvShow.imdbId,
+                        title = tvShow.title,
+                        year = tvShow.released?.format("yyyy")?.toIntOrNull(),
+                    )
+                ) {
+                    context.getString(R.string.home_swiper_trailer)
+                } else {
+                    text
+                },
+            )
         }
 
         FeaturedSwiperChrome.bindListButton(binding.btnSwiperAddToList, tvShow.isFavorite)

@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Trailer system overhaul: ranked `TrailerEntry` catalog (official → trailer → teaser), multi-trailer lists (up to 8), TV empty state + official badges, Featured TV long-press/Menu trailer path, trailer thumbnail quality + start-muted settings, YouTube TV alt package visibility
 - Play with / open in external player (VLC, MX, MPV…): player chrome, player overflow, and Downloads — remembers optional default package
 - Download with… for ADM and similar download managers from download options, player overflow, and Downloads (URL + headers handoff)
 - SD card / removable storage for offline downloads (`REMOVABLE` via app-specific secondary volume) plus custom folder picker (SAF tree URI) in Downloads settings
@@ -20,6 +21,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Buy Me a Coffee short-link constant (`buymeacoff.ee/betterstreamflix`) alongside the canonical URL
 
 ### Fixed
+- Trailer reliability: Vimeo no longer forced into YouTube packages; in-app WebView hide-until-ready + destroy on recycle; mobile Trailer tab honors YouTube/SmartTube prefs; Leanback settings drop misleading in-app option; dead SmartTube helpers removed from detail ViewHolders
 - Anikoto playback: MegaPlay/Nekostream `getSources` now returns AES-encrypted `enc` instead of plaintext `sources.file` — decrypt that payload so Play works again
 - Sentry P2 leftover **BETTERSTREAMFLIX-Q**: TMDb Home Discover shelves no longer let a child `ClassCastException` fail the outer Home scope — soft-shelf uses its own `coroutineScope`, merges `List<Movie>+List<Tv>` without unsafe `List<MultiItem>` casts, and CrashReporter/Sentry drop TMDb ClassCast soft-noise
 - GuardaSerie detail parser treats `/detail/film-` as movies (parity with Eurostreaming mirrors)

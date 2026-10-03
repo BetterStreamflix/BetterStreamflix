@@ -1,5 +1,6 @@
 package com.dskja.betterstreamflix.fragments.season
 
+import com.dskja.betterstreamflix.models.TrailerCatalog
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
@@ -203,7 +204,7 @@ class SeasonTvFragment : Fragment() {
                 )
             }
             if (!isAdded || _binding == null) return@launch
-            val url = remote.firstOrNull()?.second?.takeIf { it.isNotBlank() }
+            val url = TrailerCatalog.preferredPlayableUrl(remote)
             if (url.isNullOrBlank()) return@launch
 
             binding.btnSeasonTrailer.isVisible = true

@@ -370,7 +370,7 @@ object TmdbUtils {
     }
 
     /**
-     * Trailers/teasers for a title: (title, watch URL, type label).
+     * Trailers/teasers for a title.
      * Prefers official YouTube; falls back to Vimeo when no YouTube exists.
      * Resolves a TMDb id via [tmdbId], [imdbId], or title+year when needed.
      * When [seasonNumber] is set for TV, uses the season videos endpoint.
@@ -382,7 +382,7 @@ object TmdbUtils {
         year: Int? = null,
         imdbId: String? = null,
         seasonNumber: Int? = null,
-    ): List<Triple<String, String, String>> {
+    ): List<com.dskja.betterstreamflix.models.TrailerEntry> {
         if (!UserPreferences.enableTmdb) return emptyList()
         val lang = UserPreferences.currentProvider?.language
         val id = tmdbId?.trim()?.toIntOrNull()
@@ -424,16 +424,9 @@ object TmdbUtils {
                 }
             }.orEmpty()
             rankTrailerVideos(videos)
-                .mapNotNull { video ->
-                    val url = videoWatchUrl(video) ?: return@mapNotNull null
-                    Triple(
-                        video.name?.takeIf { it.isNotBlank() } ?: "Trailer",
-                        url,
-                        video.type?.value ?: "Trailer",
-                    )
-                }
-                .distinctBy { it.second }
-                .take(5)
+                .mapNotNull { video -> toTrailerEntry(video) }
+                .distinctBy { it.url }
+                .take(com.dskja.betterstreamflix.models.TrailerCatalog.MAX_LIST_ITEMS)
         }.getOrDefault(emptyList())
     }
 
@@ -446,29 +439,32 @@ object TmdbUtils {
         }
     }
 
+    private fun toTrailerEntry(video: TMDb3.Video): com.dskja.betterstreamflix.models.TrailerEntry? {
+        val url = videoWatchUrl(video) ?: return null
+        val name = video.name?.takeIf { it.isNotBlank() } ?: "Trailer"
+        val official = video.official == true ||
+            com.dskja.betterstreamflix.models.TrailerCatalog.isOfficialTitle(name)
+        return com.dskja.betterstreamflix.models.TrailerEntry(
+            title = name,
+            url = url,
+            type = video.type?.value ?: "Trailer",
+            official = official,
+            site = video.site?.value ?: "YouTube",
+        )
+    }
+
     /**
      * Prefer YouTube; if none, accept Vimeo. Within the pool: official first,
      * then trailer/teaser/clip, then newer [publishedAt].
      */
-    private fun rankTrailerVideos(videos: List<TMDb3.Video>): List<TMDb3.Video> {
-        val withKey = videos.filter { !it.key.isNullOrBlank() && it.site != null }
-        val youtube = withKey.filter { it.site == TMDb3.Video.VideoSite.YOUTUBE }
-        val pool = if (youtube.isNotEmpty()) {
-            youtube
-        } else {
-            withKey.filter { it.site == TMDb3.Video.VideoSite.VIMEO }
-        }
-        return pool.sortedWith(
-            compareBy<TMDb3.Video> { if (it.official == true) 0 else 1 }
-                .thenBy {
-                    when (it.type) {
-                        TMDb3.Video.VideoType.TRAILER -> 0
-                        TMDb3.Video.VideoType.TEASER -> 1
-                        TMDb3.Video.VideoType.CLIP -> 2
-                        else -> 3
-                    }
-                }
-                .thenByDescending { it.publishedAt.orEmpty() },
+    internal fun rankTrailerVideos(videos: List<TMDb3.Video>): List<TMDb3.Video> {
+        return com.dskja.betterstreamflix.models.TrailerCatalog.rankVideos(
+            videos = videos,
+            siteOf = { it.site?.value },
+            keyOf = { it.key },
+            officialOf = { it.official == true },
+            typeOf = { it.type?.value },
+            publishedAtOf = { it.publishedAt },
         )
     }
 

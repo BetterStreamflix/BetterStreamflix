@@ -292,11 +292,35 @@ object TrailerPlaybackController {
     }
 
     fun openExternalYoutube(context: Context, trailerUrl: String) {
+        openExternalTrailer(context, trailerUrl)
+    }
+
+    /**
+     * Open a trailer URL externally. YouTube IDs target YouTube / YouTube TV packages;
+     * Vimeo and other hosts use a generic VIEW intent (never forced into YouTube).
+     */
+    fun openExternalTrailer(context: Context, trailerUrl: String) {
+        if (trailerUrl.isBlank()) {
+            ExpDialogChrome.notify(
+                context,
+                R.string.trailer_player_unavailable,
+                R.string.settings_trailer_player_title,
+            )
+            return
+        }
+        if (isVimeoUrl(trailerUrl) || youtubeVideoId(trailerUrl) == null) {
+            openGenericExternal(context, trailerUrl)
+            return
+        }
         openYoutube(context, trailerUrl)
     }
 
+    fun isVimeoUrl(trailerUrl: String): Boolean =
+        trailerUrl.contains("vimeo.com", ignoreCase = true)
+
     fun youtubeVideoId(trailerUrl: String): String? {
         if (trailerUrl.isBlank()) return null
+        if (isVimeoUrl(trailerUrl)) return null
         Regex("""(?:v=|youtu\.be/|embed/|shorts/)([A-Za-z0-9_-]{6,})""")
             .find(trailerUrl)?.groupValues?.getOrNull(1)
             ?.let { return it }
@@ -318,6 +342,14 @@ object TrailerPlaybackController {
             }
         }.getOrNull()
     }
+
+    /** Pure package preference order for unit tests. */
+    fun youtubePackagePreferenceOrder(leanback: Boolean): List<String> =
+        if (leanback) {
+            listOf(YOUTUBE_TV_PACKAGE, YOUTUBE_TV_PACKAGE_ALT, YOUTUBE_PACKAGE)
+        } else {
+            listOf(YOUTUBE_PACKAGE, YOUTUBE_TV_PACKAGE, YOUTUBE_TV_PACKAGE_ALT)
+        }
 
     private fun showChooser(
         context: Context,
@@ -387,11 +419,11 @@ object TrailerPlaybackController {
         }
         val id = youtubeVideoId(trailerUrl)
         if (id.isNullOrBlank() || fragmentManager == null || activity == null) {
-            openYoutube(context, trailerUrl)
+            openExternalTrailer(context, trailerUrl)
             return
         }
         if (fragmentManager.isStateSaved) {
-            openYoutube(context, trailerUrl)
+            openExternalTrailer(context, trailerUrl)
             return
         }
         InAppTrailerDialog.newInstance(id, trailerUrl)
@@ -400,18 +432,16 @@ object TrailerPlaybackController {
 
     private fun openYoutube(context: Context, trailerUrl: String) {
         val uri = Uri.parse(trailerUrl)
-        val candidates = buildList {
-            if (DeviceCapabilities.isLeanbackDevice(context) ||
-                DeviceCapabilities.isAmazonFireTv(context)
-            ) {
-                add(YOUTUBE_TV_PACKAGE)
-                add(YOUTUBE_TV_PACKAGE_ALT)
-            }
-            add(YOUTUBE_PACKAGE)
-        }.distinct().filter { isPackageInstalled(context, it) }
+        val leanback = DeviceCapabilities.isLeanbackDevice(context) ||
+            DeviceCapabilities.isAmazonFireTv(context)
+        val candidates = youtubePackagePreferenceOrder(leanback)
+            .filter { isPackageInstalled(context, it) }
 
         for (pkg in candidates) {
-            val intent = Intent(Intent.ACTION_VIEW, uri).apply { setPackage(pkg) }
+            val intent = Intent(Intent.ACTION_VIEW, uri).apply {
+                setPackage(pkg)
+                applyExternalLaunchFlags(context, this)
+            }
             val launched = runCatching {
                 context.startActivity(intent)
                 true
@@ -419,8 +449,15 @@ object TrailerPlaybackController {
             if (launched) return
         }
 
+        openGenericExternal(context, trailerUrl)
+    }
+
+    private fun openGenericExternal(context: Context, trailerUrl: String) {
+        val uri = Uri.parse(trailerUrl)
         try {
-            context.startActivity(Intent(Intent.ACTION_VIEW, uri))
+            val intent = Intent(Intent.ACTION_VIEW, uri)
+            applyExternalLaunchFlags(context, intent)
+            context.startActivity(intent)
         } catch (_: ActivityNotFoundException) {
             ExpDialogChrome.notify(
                 context,
@@ -430,16 +467,18 @@ object TrailerPlaybackController {
         }
     }
 
+    private fun applyExternalLaunchFlags(context: Context, intent: Intent) {
+        if (context !is android.app.Activity) {
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        }
+    }
+
     /** Prefer YouTube TV packages on Leanback; null when none installed. */
     fun preferredYoutubePackage(context: Context): String? {
         val leanback = DeviceCapabilities.isLeanbackDevice(context) ||
             DeviceCapabilities.isAmazonFireTv(context)
-        val order = if (leanback) {
-            listOf(YOUTUBE_TV_PACKAGE, YOUTUBE_TV_PACKAGE_ALT, YOUTUBE_PACKAGE)
-        } else {
-            listOf(YOUTUBE_PACKAGE, YOUTUBE_TV_PACKAGE, YOUTUBE_TV_PACKAGE_ALT)
-        }
-        return order.firstOrNull { isPackageInstalled(context, it) }
+        return youtubePackagePreferenceOrder(leanback)
+            .firstOrNull { isPackageInstalled(context, it) }
     }
 
     private fun handleSmartTube(context: Context, trailerUrl: String) {
@@ -580,10 +619,15 @@ object TrailerPlaybackController {
             root.findViewById<FrameLayout>(R.id.fl_trailer_player).minimumHeight = playerHeight
 
             configureTrailerWebView(web)
+            // Hide-until-ready: keep WebView invisible until the document finishes.
+            web.visibility = View.INVISIBLE
             web.webChromeClient = WebChromeClient()
             web.webViewClient = object : WebViewClient() {
                 override fun onPageFinished(view: WebView?, url: String?) {
-                    if (errorPanel.visibility != View.VISIBLE) {
+                    if (errorPanel.visibility != View.VISIBLE &&
+                        url != null &&
+                        url != "about:blank"
+                    ) {
                         loading.visibility = View.GONE
                         web.visibility = View.VISIBLE
                     }
@@ -602,7 +646,7 @@ object TrailerPlaybackController {
             loadEmbed(web, loading, errorPanel)
 
             fun openExternal() {
-                openYoutube(requireContext(), watchUrl)
+                openExternalTrailer(requireContext(), watchUrl)
             }
 
             root.findViewById<ImageButton>(R.id.btn_trailer_close).setOnClickListener {
@@ -668,7 +712,7 @@ object TrailerPlaybackController {
 
         private fun loadEmbed(web: WebView, loading: ProgressBar, errorPanel: View) {
             errorPanel.visibility = View.GONE
-            web.visibility = View.VISIBLE
+            web.visibility = View.INVISIBLE
             loading.visibility = View.VISIBLE
             loadTrailerEmbed(web, videoId)
         }

@@ -30,6 +30,7 @@
         <package android:name="org.smarttube.beta" />
         <package android:name="com.google.android.youtube" />
         <package android:name="com.google.android.tv.youtube" />
+        <package android:name="com.google.android.youtube.tv" />
         <package android:name="is.xyz.mpv" />
         <package android:name="com.brouken.player" />
         <package android:name="org.videolan.vlc" />

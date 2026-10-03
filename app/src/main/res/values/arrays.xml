@@ -58,6 +58,31 @@
         <item>ask</item>
     </string-array>
 
+    <!-- Leanback: no in-app WebView option (runtime also remaps in_app). -->
+    <string-array name="trailer_player_names_tv">
+        <item>@string/youtube</item>
+        <item>@string/smarttube_stable</item>
+        <item>@string/smarttube_beta</item>
+        <item>@string/settings_trailer_player_ask</item>
+    </string-array>
+    <string-array name="trailer_player_values_tv">
+        <item>youtube</item>
+        <item>smarttube_stable</item>
+        <item>smarttube_beta</item>
+        <item>ask</item>
+    </string-array>
+
+    <string-array name="trailer_thumb_quality_names">
+        <item>@string/settings_trailer_thumb_quality_hq</item>
+        <item>@string/settings_trailer_thumb_quality_max</item>
+        <item>@string/settings_trailer_thumb_quality_sd</item>
+    </string-array>
+    <string-array name="trailer_thumb_quality_values">
+        <item>hq</item>
+        <item>max</item>
+        <item>sd</item>
+    </string-array>
+
     <string-array name="player_backend_names">
         <item>@string/platform_player_backend_exo</item>
         <item>@string/platform_player_backend_mpv</item>
