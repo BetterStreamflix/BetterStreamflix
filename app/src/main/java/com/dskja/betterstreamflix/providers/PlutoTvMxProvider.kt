@@ -7,6 +7,7 @@ import kotlinx.coroutines.withContext
 
 import com.dskja.betterstreamflix.utils.UserPreferences
 import com.dskja.betterstreamflix.utils.M3uChannelIdCodec
+import com.dskja.betterstreamflix.utils.M3uPlaylistParser
 
 import android.util.Log
 import com.dskja.betterstreamflix.adapters.AppAdapter
@@ -231,15 +232,22 @@ object PlutoTvMxProvider : IptvProvider, ProviderConfigUrl {
             throw Exception("Pluto info card is not playable")
         }
         val payload = M3uChannelIdCodec.decode(server.id)
-        if (payload.url.isBlank() || !payload.url.startsWith("http")) {
+        if (payload.url.isBlank() || !M3uPlaylistParser.isPlayableUrl(payload.url)) {
             throw Exception("Pluto channel URL missing or invalid")
         }
-        val headers = M3uChannelIdCodec.playbackHeaders(server.id)
+        val headers = M3uChannelIdCodec.playbackHeaders(server.id).toMutableMap()
+        if (!headers.containsKey("User-Agent")) {
+            headers["User-Agent"] =
+                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/118.0.0.0 Safari/537.36"
+        }
+        if (!headers.containsKey("Referer")) {
+            headers["Referer"] = "https://pluto.tv/"
+        }
         Log.d(TAG, "Playing Pluto: ${payload.url} headers=${headers.keys}")
         return Video(
             source = payload.url,
             subtitles = emptyList(),
-            headers = headers.takeIf { it.isNotEmpty() },
+            headers = headers,
         )
     }
 
@@ -259,41 +267,18 @@ object PlutoTvMxProvider : IptvProvider, ProviderConfigUrl {
         )
     }
 
-    private fun parseM3U(m3uRaw: String): List<M3UChannel> {
-        val channels = mutableListOf<M3UChannel>()
-        val lines = m3uRaw.lines()
-
-        var curName = ""
-        var curLogo = ""
-        var curGroup = ""
-        var curUA: String? = null
-        var curRef: String? = null
-        var curOrigin: String? = null
-
-        for (line in lines) {
-            val t = line.trim()
-            if (t.startsWith("#EXTINF")) {
-                curName = t.substringAfterLast(",").trim()
-                curLogo = Regex("""tvg-logo="([^"]+)"""").find(t)?.groupValues?.get(1) ?: ""
-                curGroup = Regex("""group-title="([^"]+)"""").find(t)?.groupValues?.get(1) ?: ""
-                curUA = Regex("""http-user-agent="([^"]+)"""").find(t)?.groupValues?.get(1)
-                curRef = Regex("""http-referrer="([^"]+)"""").find(t)?.groupValues?.get(1)
-                curOrigin = Regex("""http-origin="([^"]+)"""").find(t)?.groupValues?.get(1)
-            } else if (t.startsWith("#EXTVLCOPT:")) {
-                when {
-                    t.contains("http-user-agent=") -> curUA = t.substringAfter("http-user-agent=").trim()
-                    t.contains("http-referrer=") -> curRef = t.substringAfter("http-referrer=").trim()
-                    t.contains("http-origin=") -> curOrigin = t.substringAfter("http-origin=").trim()
-                }
-            } else if (t.startsWith("http")) {
-                if (curName.isNotEmpty()) {
-                    channels.add(M3UChannel(curName, t, curLogo, curGroup, curUA, curRef, curOrigin))
-                    curName = ""; curLogo = ""; curGroup = ""; curUA = null; curRef = null; curOrigin = null
-                }
-            }
+    private fun parseM3U(m3uRaw: String): List<M3UChannel> =
+        M3uPlaylistParser.parse(m3uRaw).map {
+            M3UChannel(
+                name = it.name,
+                url = it.url,
+                logo = it.logo,
+                group = it.group,
+                userAgent = it.userAgent,
+                referrer = it.referrer,
+                origin = it.origin,
+            )
         }
-        return channels
-    }
 
     override suspend fun listLiveChannels(aroundId: String?, limit: Int): List<com.dskja.betterstreamflix.iptv.IptvLiveSession.Channel> {
         val channels = getAllChannels()

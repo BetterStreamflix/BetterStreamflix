@@ -5,6 +5,7 @@ import kotlinx.coroutines.sync.withLock
 
 import com.dskja.betterstreamflix.utils.UserPreferences
 import com.dskja.betterstreamflix.utils.M3uChannelIdCodec
+import com.dskja.betterstreamflix.utils.M3uPlaylistParser
 
 import android.util.Log
 import com.dskja.betterstreamflix.adapters.AppAdapter
@@ -261,41 +262,18 @@ object IptvOrgProvider : IptvProvider, ProviderConfigUrl {
         )
     }
 
-    private fun parseM3U(m3uRaw: String): List<M3UChannel> {
-        val channels = mutableListOf<M3UChannel>()
-        val lines = m3uRaw.lines()
-        var curName = ""
-        var curLogo = ""
-        var curGroup = ""
-        var curUA: String? = null
-        var curRef: String? = null
-        var curOrigin: String? = null
-
-        for (line in lines) {
-            val t = line.trim()
-            if (t.startsWith("#EXTINF")) {
-                curName = t.substringAfterLast(",").trim()
-                curLogo = Regex("""tvg-logo="([^"]+)"""").find(t)?.groupValues?.get(1) ?: ""
-                curGroup = Regex("""group-title="([^"]+)"""").find(t)?.groupValues?.get(1) ?: ""
-                curUA = Regex("""http-user-agent="([^"]+)"""").find(t)?.groupValues?.get(1)
-                curRef = Regex("""http-referrer="([^"]+)"""").find(t)?.groupValues?.get(1)
-                curOrigin = Regex("""http-origin="([^"]+)"""").find(t)?.groupValues?.get(1)
-            } else if (t.startsWith("#EXTVLCOPT:")) {
-                when {
-                    t.contains("http-user-agent=") -> curUA = t.substringAfter("http-user-agent=").trim()
-                    t.contains("http-referrer=") -> curRef = t.substringAfter("http-referrer=").trim()
-                    t.contains("http-origin=") -> curOrigin = t.substringAfter("http-origin=").trim()
-                }
-            } else if (t.startsWith("http")) {
-                if (curName.isNotEmpty()) {
-                    channels.add(M3UChannel(curName, t, curLogo, curGroup, curUA, curRef, curOrigin))
-                    curName = ""; curLogo = ""; curGroup = ""
-                    curUA = null; curRef = null; curOrigin = null
-                }
-            }
+    private fun parseM3U(m3uRaw: String): List<M3UChannel> =
+        M3uPlaylistParser.parse(m3uRaw).map {
+            M3UChannel(
+                name = it.name,
+                url = it.url,
+                logo = it.logo,
+                group = it.group,
+                userAgent = it.userAgent,
+                referrer = it.referrer,
+                origin = it.origin,
+            )
         }
-        return channels
-    }
 
     override suspend fun getMovies(page: Int): List<Movie> = emptyList()
     override suspend fun getMovie(id: String): Movie = Movie(id = id, title = "Live", poster = "")
