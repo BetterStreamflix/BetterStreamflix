@@ -8,7 +8,8 @@
     android:layout_marginEnd="24dp"
     android:background="@drawable/bg_support_banner"
     android:contentDescription="@string/support_banner_title"
-    android:focusable="true"
+    android:descendantFocusability="afterDescendants"
+    android:focusable="false"
     android:minHeight="@dimen/support_banner_height"
     android:padding="18dp">
 
@@ -17,6 +18,11 @@
         android:layout_height="wrap_content"
         android:layout_gravity="center_vertical"
         android:layout_marginEnd="48dp"
+        android:orientation="vertical">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
         android:gravity="center_vertical"
         android:orientation="horizontal">
 
@@ -66,14 +72,36 @@
             android:background="@drawable/bg_support_btn_primary"
             android:contentDescription="@string/support_banner_cta"
             android:focusable="true"
+            android:focusableInTouchMode="true"
             android:gravity="center"
             android:minWidth="120dp"
+            android:nextFocusDown="@id/btn_support_banner_never"
             android:paddingStart="20dp"
             android:paddingEnd="20dp"
             android:text="@string/support_banner_cta"
             android:textColor="@color/support_on_accent"
             android:textSize="@dimen/support_text_cta"
             android:textStyle="bold" />
+    </LinearLayout>
+
+        <TextView
+            android:id="@+id/btn_support_banner_never"
+            android:layout_width="wrap_content"
+            android:layout_height="@dimen/support_button_height"
+            android:layout_marginStart="52dp"
+            android:layout_marginTop="12dp"
+            android:background="@drawable/bg_support_btn_secondary"
+            android:focusable="true"
+            android:focusableInTouchMode="true"
+            android:fontFamily="@font/manrope"
+            android:gravity="center"
+            android:nextFocusRight="@id/btn_support_banner_dismiss"
+            android:nextFocusUp="@id/btn_support_banner_cta"
+            android:paddingStart="18dp"
+            android:paddingEnd="18dp"
+            android:text="@string/support_startup_never_again"
+            android:textColor="@color/support_text_primary"
+            android:textSize="@dimen/support_text_caption" />
     </LinearLayout>
 
     <ImageButton
@@ -84,6 +112,9 @@
         android:background="@android:color/transparent"
         android:contentDescription="@string/support_banner_dismiss_cd"
         android:focusable="true"
+        android:focusableInTouchMode="true"
+        android:nextFocusDown="@id/btn_support_banner_never"
+        android:nextFocusLeft="@id/btn_support_banner_cta"
         android:padding="10dp"
         android:src="@drawable/ic_support_close"
         android:tint="@color/support_text_tertiary"

@@ -6,6 +6,7 @@ import android.graphics.Color
 import android.graphics.drawable.ColorDrawable
 import android.os.Bundle
 import android.view.LayoutInflater
+import android.view.View
 import android.view.Window
 import android.view.WindowManager
 import com.dskja.betterstreamflix.R
@@ -31,10 +32,16 @@ class SupportStartupTvDialog(
 
         window?.apply {
             setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
-            setLayout(
-                (context.resources.displayMetrics.widthPixels * 0.92f).toInt(),
-                WindowManager.LayoutParams.WRAP_CONTENT,
+            val metrics = context.resources.displayMetrics
+            val width = (metrics.widthPixels * 0.92f).toInt()
+            val maxHeight = (metrics.heightPixels * 0.88f).toInt()
+            binding.root.measure(
+                View.MeasureSpec.makeMeasureSpec(width, View.MeasureSpec.EXACTLY),
+                View.MeasureSpec.makeMeasureSpec(maxHeight, View.MeasureSpec.AT_MOST),
             )
+            // Cap the window so the opt-out stays reachable. A wrap-content dialog
+            // taller than the TV was clipping "Never show again on start".
+            setLayout(width, binding.root.measuredHeight.coerceIn(1, maxHeight))
             attributes = attributes?.apply {
                 windowAnimations = R.style.SupportDialogAnimation
             }
