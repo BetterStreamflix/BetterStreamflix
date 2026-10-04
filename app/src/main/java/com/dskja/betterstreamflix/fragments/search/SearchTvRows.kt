@@ -13,8 +13,8 @@ import com.dskja.betterstreamflix.models.TvShow
  */
 object SearchTvRows {
 
-    const val MAX_LOCAL = 48
-    const val MAX_GLOBAL_PER_PROVIDER = 16
+    const val MAX_LOCAL = SearchResultGuard.MAX_LOCAL_RESULTS
+    const val MAX_GLOBAL_PER_PROVIDER = SearchResultGuard.MAX_GLOBAL_PER_PROVIDER
     const val GENRE_COLUMNS = 5
     const val RESULT_COLUMNS = 6
     const val GLOBAL_COLUMNS = 1
@@ -71,5 +71,21 @@ object SearchTvRows {
             }
         }
         return Grid(columns = GLOBAL_COLUMNS, items = categories)
+    }
+
+    /**
+     * Where DPAD Down from the sort chips should land.
+     * An empty or invisible grid is not a safe Leanback target.
+     */
+    fun chipDownId(
+        hasGridItems: Boolean,
+        emptyCtaVisible: Boolean,
+        gridId: Int,
+        emptyCtaId: Int,
+        fallbackId: Int,
+    ): Int = when {
+        hasGridItems -> gridId
+        emptyCtaVisible -> emptyCtaId
+        else -> fallbackId
     }
 }

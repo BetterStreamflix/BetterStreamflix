@@ -92,6 +92,8 @@
     <string name="search_input_hint">Filme / Serien suchen</string>
     <string name="search_input_hint_iptv">Kanäle suchen</string>
     <string name="global_search">Globale Suche</string>
+    <string name="global_search_cd_on">Globale Suche, an, Schalter</string>
+    <string name="global_search_cd_off">Globale Suche, aus, Schalter</string>
     <string name="search_sort_default">Relevanz</string>
     <string name="search_sort_newest">Neueste</string>
     <string name="search_filter_year">Jahr</string>

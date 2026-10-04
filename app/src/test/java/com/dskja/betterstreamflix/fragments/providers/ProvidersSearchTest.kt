@@ -59,4 +59,18 @@ class ProvidersSearchTest {
         val list = listOf(stub("AniWorld"), stub("SerienStream"))
         assertTrue(ProvidersSearch.filter(list, "zzz").isEmpty())
     }
+
+    @Test
+    fun foldsGermanDiacritics() {
+        val list = listOf(stub("Größe"), stub("Müller"), stub("KinoGer"))
+        assertEquals(listOf("Größe"), ProvidersSearch.filter(list, "grosse").map { it.name })
+        assertEquals(listOf("Müller"), ProvidersSearch.filter(list, "muller").map { it.name })
+    }
+
+    @Test
+    fun focusDownAvoidsEmptyList() {
+        assertEquals(ProvidersSearch.FocusDown.LIST, ProvidersSearch.focusDown(true, false))
+        assertEquals(ProvidersSearch.FocusDown.EMPTY_CTA, ProvidersSearch.focusDown(false, true))
+        assertEquals(ProvidersSearch.FocusDown.STAY, ProvidersSearch.focusDown(false, false))
+    }
 }
