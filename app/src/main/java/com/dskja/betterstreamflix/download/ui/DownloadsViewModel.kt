@@ -63,6 +63,8 @@ class DownloadsViewModel(
         val providerFilter = UserPreferences.downloadFilterCurrentProvider
         val providerName = UserPreferences.currentProvider?.name
         var filtered = items
+            .groupBy { it.contentKey }
+            .map { (_, rows) -> rows.maxBy { it.updatedAt } }
         if (providerFilter && !providerName.isNullOrBlank()) {
             filtered = filtered.filter { it.providerName == providerName }
         }
@@ -101,8 +103,7 @@ class DownloadsViewModel(
             .sortedWith(sorter)
         buildList {
             val relevantPacks = packs.filter { pack ->
-                filtered.any { it.seasonPackId == pack.id } ||
-                    selectedFilter == DownloadsFilter.ALL
+                filtered.any { it.seasonPackId == pack.id }
             }
             if (active.isNotEmpty()) {
                 add(DownloadRowUiModel.Header(appContext.getString(com.dskja.betterstreamflix.R.string.downloads_section_active)))

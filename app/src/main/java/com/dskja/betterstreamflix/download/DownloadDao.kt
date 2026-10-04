@@ -62,4 +62,7 @@ interface DownloadDao {
 
     @Query("SELECT * FROM download_items WHERE seasonPackId = :packId ORDER BY sortIndex ASC")
     suspend fun itemsForPack(packId: String): List<DownloadItemEntity>
+
+    @Query("UPDATE download_items SET seasonPackId = :packId, sortIndex = :sortIndex WHERE id = :id")
+    suspend fun assignPack(id: String, packId: String, sortIndex: Int)
 }

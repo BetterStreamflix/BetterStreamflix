@@ -12,6 +12,7 @@ object PlaybackProgress {
     const val TIME_UNSET: Long = Long.MIN_VALUE + 1
 
     const val RESUME_REWIND_MS: Long = 10_000L
+    private const val MIN_PROGRAM_MS: Long = 60_000L
     const val STARTED_POSITION_MS: Long = 20_000L
     const val RESUME_APPLY_MAX_POSITION_MS: Long = 1_500L
 
@@ -24,14 +25,16 @@ object PlaybackProgress {
     }
 
     fun hasFinished(positionMs: Long, durationMs: Long): Boolean {
-        if (!hasKnownDuration(durationMs)) return false
+        // A short HLS window (live or a partial offline playlist) is not a program.
+        if (!hasKnownDuration(durationMs) || durationMs < MIN_PROGRAM_MS) return false
         return positionMs > durationMs * 0.90
     }
 
     fun hasReallyFinished(positionMs: Long, durationMs: Long, autoplayBufferSec: Long): Boolean {
-        if (!hasKnownDuration(durationMs)) return false
+        if (!hasKnownDuration(durationMs) || durationMs < MIN_PROGRAM_MS) return false
         val bufferMs = autoplayBufferSec.coerceAtLeast(0L) * 1000L
-        return positionMs >= durationMs - bufferMs
+        return positionMs >= durationMs - bufferMs &&
+            positionMs > durationMs * 0.90
     }
 
     /**

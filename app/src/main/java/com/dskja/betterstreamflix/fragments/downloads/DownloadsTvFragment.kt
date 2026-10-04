@@ -384,12 +384,16 @@ class DownloadsTvFragment : Fragment() {
                 showDownloadError(R.string.downloads_play_with_cache_only)
                 return@launch
             }
+            val shareUri = android.net.Uri.parse(localUri)
             ExternalStreamHandoff.launch(
                 requireActivity(),
                 ExternalStreamHandoff.Request(
                     sourceUrl = localUri,
                     title = row.entity.title,
-                    mimeType = row.entity.mimeType.ifBlank { "video/*" },
+                    mimeType = OfflinePlayback.mimeForShareUri(
+                        shareUri,
+                        row.entity.mimeType.ifBlank { "video/*" },
+                    ),
                 ),
                 forceChooser = true,
             )
