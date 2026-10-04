@@ -297,25 +297,13 @@ class BypassWebViewActivity : AppCompatActivity() {
     }
 
     private fun injectPlayerGateAssist() {
-        // SerienStream shows Turnstile/ALTCHA inside #playerPrepareModal (often dark).
-        val js = """
-            (function(){
-              try {
-                var modal = document.querySelector('#playerPrepareModal');
-                if (modal) {
-                  modal.classList.add('show');
-                  modal.style.display = 'block';
-                  modal.removeAttribute('aria-hidden');
-                  document.body.classList.add('modal-open');
-                }
-                var triggers = document.querySelectorAll('[data-bs-target="#playerPrepareModal"], button.link-box, a.link-box');
-                if (triggers && triggers.length) {
-                  try { triggers[0].click(); } catch (e) {}
-                }
-              } catch (e) {}
-            })();
-        """.trimIndent()
-        runCatching { webView.evaluateJavascript(js, null) }
+        // Copy data-play-url `t` into the captcha form, then open the modal.
+        runCatching {
+            webView.evaluateJavascript(
+                com.dskja.betterstreamflix.player.SerienStreamBypassHelper.playerGateAssistJs(),
+                null,
+            )
+        }
     }
 
     private fun maybeCaptureHoster(url: String) {

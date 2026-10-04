@@ -1,5 +1,6 @@
 package com.dskja.betterstreamflix.player
 
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -36,6 +37,52 @@ class SerienStreamBypassHelperTest {
         val jar = "laravel_session=abc; rememberLogin=1"
         assertTrue(
             SerienStreamBypassHelper.canSkipInteractiveBypass(jar, accountConfirmed = false),
+        )
+    }
+
+    @Test
+    fun shouldSkipStreamCaptcha_requiresClearanceNotLoginToken() {
+        assertFalse(
+            SerienStreamBypassHelper.shouldSkipStreamCaptcha(
+                "laravel_session=abc; XSRF-TOKEN=tok",
+            ),
+        )
+        assertFalse(
+            SerienStreamBypassHelper.shouldSkipStreamCaptcha(
+                "aniworld_session=abc; rememberLogin=1",
+            ),
+        )
+        assertTrue(
+            SerienStreamBypassHelper.shouldSkipStreamCaptcha(
+                "cf_clearance=ok; laravel_session=abc",
+            ),
+        )
+    }
+
+    @Test
+    fun extractStreamToken_readsBridgeAndPlayUrl() {
+        val bridge = """
+            <script>
+            var t = "eyJpdiI6IlJoY1ZQeVVaVVBCTHNGZmp3bnBuSlE9PSI";
+            window.parent.postMessage({ type: 'frameBridge', v: 1, t: t }, origin);
+            </script>
+        """.trimIndent()
+        assertTrue(SerienStreamBypassHelper.looksLikeStreamTokenGate(bridge))
+        assertEquals(
+            "eyJpdiI6IlJoY1ZQeVVaVVBCTHNGZmp3bnBuSlE9PSI",
+            SerienStreamBypassHelper.extractStreamToken(bridge),
+        )
+        assertEquals(
+            "abc+defgh",
+            SerienStreamBypassHelper.extractStreamToken("https://serienstream.to/r?t=abc%2Bdefgh"),
+        )
+        assertTrue(SerienStreamBypassHelper.playerGateAssistJs().contains("player-prepare-token"))
+    }
+
+    @Test
+    fun hasWebSessionCookie_acceptsAniWorldSession() {
+        assertTrue(
+            SerienStreamBypassHelper.hasWebSessionCookie("aniworld_session=51ou69gg1o3sbp2m"),
         )
     }
 

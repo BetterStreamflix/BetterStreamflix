@@ -507,9 +507,10 @@ object SerienStreamProvider : Provider {
                 val link = card.selectFirst("a[href^=/serie/]")?.attr("href")
                     ?: return@mapNotNull null
                 val title = card.selectFirst("h6.show-title")?.text()?.trim().orEmpty()
-                if (title.isBlank()) return@mapNotNull null
+                val showId = getTvShowIdFromLink(link)
+                if (showId.isBlank() || title.isBlank()) return@mapNotNull null
                 TvShow(
-                    id = getTvShowIdFromLink(link),
+                    id = showId,
                     title = title,
                     poster = normalizeImageUrl(card.extractPoster())
                 )
@@ -645,6 +646,8 @@ object SerienStreamProvider : Provider {
                     ?.let { href -> getTvShowIdFromLink(href) }
                     ?.trim().orEmpty()
                 val title = el.selectFirst("h6")?.text()?.trim().orEmpty()
+                    .ifBlank { el.selectFirst("img[alt]")?.attr("alt")?.trim().orEmpty() }
+                    .ifBlank { el.selectFirst("a[title]")?.attr("title")?.trim().orEmpty() }
                 if (showId.isBlank() || title.isBlank()) return@mapNotNull null
                 shows.add(
                     TvShow(
@@ -682,22 +685,25 @@ object SerienStreamProvider : Provider {
 
         val filmography = document.select("div.row.g-3 > div").mapNotNull { card ->
             val href = card.selectFirst("a")?.attr("href").orEmpty()
-            val title = card.selectFirst("h6 a")?.text()
-                ?: card.selectFirst("h6")?.text()
-                ?: return@mapNotNull null
+            val title = card.selectFirst("h6 a")?.text()?.trim().orEmpty()
+                .ifBlank { card.selectFirst("h6")?.text()?.trim().orEmpty() }
+                .ifBlank { card.selectFirst("img[alt]")?.attr("alt")?.trim().orEmpty() }
+            if (title.isBlank() || href.isBlank()) return@mapNotNull null
+            val itemId = getTvShowIdFromLink(href)
+            if (itemId.isBlank()) return@mapNotNull null
             val poster = card.selectFirst("img")?.let { img ->
                 img.attr("data-src").takeIf { it.isNotEmpty() } ?: img.attr("src")
             }?.let { normalizeImageUrl(it) }
             val lowerHref = href.lowercase()
             if (lowerHref.contains("/filme") || lowerHref.contains("/movie") || lowerHref.contains("/film/")) {
                 Movie(
-                    id = getTvShowIdFromLink(href),
+                    id = itemId,
                     title = title,
                     poster = poster,
                 )
             } else {
                 TvShow(
-                    id = getTvShowIdFromLink(href),
+                    id = itemId,
                     title = title,
                     poster = poster,
                 )
@@ -777,10 +783,7 @@ object SerienStreamProvider : Provider {
         val playUrl = server.src.ifBlank { server.id }
         val resolved = resolvePlayUrl(playUrl)
         if (isSerienStreamHost(resolved) || resolved.contains("/r?", ignoreCase = true)) {
-            // Stale "signed in" must not keep skipping captcha after a live gate hit.
-            UserPreferences.serienStreamAccountConfirmed = false
-            UserPreferences.serienStreamSessionValidatedOk = false
-            UserPreferences.serienStreamSessionValidatedAtMs = System.currentTimeMillis()
+            // The bridge still holds the stream token. That is not a dead login.
             throw Exception(
                 "SerienStream stream gate is still active. Complete verification, tap Weiter, then Continue.",
             )
@@ -855,6 +858,7 @@ object SerienStreamProvider : Provider {
                 return NetworkClient.default.newBuilder()
                     .readTimeout(30, TimeUnit.SECONDS)
                     .connectTimeout(30, TimeUnit.SECONDS)
+                    .callTimeout(45, TimeUnit.SECONDS)
                     .applyBrowserHeaders()
                     .build()
             }
@@ -863,6 +867,7 @@ object SerienStreamProvider : Provider {
                 return NetworkClient.trustAll.newBuilder()
                     .readTimeout(30, TimeUnit.SECONDS)
                     .connectTimeout(30, TimeUnit.SECONDS)
+                    .callTimeout(45, TimeUnit.SECONDS)
                     .applyBrowserHeaders()
                     .followRedirects(true)
                     .followSslRedirects(true)

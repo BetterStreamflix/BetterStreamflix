@@ -126,46 +126,7 @@ object AniWorldProvider : Provider, ProviderConfigUrl {
     override suspend fun getHome(): List<Category> {
         preloadSeriesAlphabetAsync()
         val document = service.getHome()
-
-        val categories = mutableListOf<Category>()
-
-        fun coverList(selector: String): List<TvShow> =
-            document.select(selector).mapNotNull { el ->
-                val id = el.selectFirst("a")
-                    ?.attr("href")?.substringAfter("/anime/stream/")
-                    ?.trim().orEmpty()
-                val title = el.selectFirst("a h3")?.text()?.trim().orEmpty()
-                if (id.isBlank() || title.isBlank()) return@mapNotNull null
-                TvShow(
-                    id = id,
-                    title = title,
-                    poster = el.selectFirst("img")
-                        ?.attr("data-src")?.let { src -> URL + src },
-                )
-            }
-
-        categories.add(
-            Category(
-                name = "Beliebt bei AniWorld",
-                list = coverList("div.container > div:nth-child(7) > div.previews div.coverListItem"),
-            )
-        )
-
-        categories.add(
-            Category(
-                name = "Neue Animes",
-                list = coverList("div.container > div:nth-child(11) > div.previews div.coverListItem"),
-            )
-        )
-
-        categories.add(
-            Category(
-                name = "Derzeit beliebte Animes",
-                list = coverList("div.container > div:nth-child(16) > div.previews div.coverListItem"),
-            )
-        )
-
-        return categories
+        return AniWorldHtml.homeShelves(document, URL).filter { it.list.isNotEmpty() }
     }
 
     override suspend fun search(query: String, page: Int): List<AppAdapter.Item> {
@@ -270,8 +231,9 @@ object AniWorldProvider : Provider, ProviderConfigUrl {
                 ?: "",
             trailer = document.selectFirst("div[itemprop='trailer'] a")
                 ?.attr("href"),
-            poster = document.selectFirst("div.seriesCoverBox img")
-                ?.attr("data-src")?.let { URL + it },
+            poster = absoluteMedia(
+                document.selectFirst("div.seriesCoverBox img")?.attr("data-src"),
+            ),
             banner = document.selectFirst("#series > section > div.backdrop")
                 ?.attr("style")
                 ?.replace("background-image: url(/", "")?.replace(")", "")
@@ -280,18 +242,22 @@ object AniWorldProvider : Provider, ProviderConfigUrl {
 
             seasons = document.select("#stream > ul:nth-child(1) > li")
                 .filter { it.select("a").isNotEmpty() }
-                .mapIndexed { index, it ->
+                .mapIndexedNotNull { index, it ->
                     val seasonText = it.selectFirst("a")?.text() ?: ""
                     val seasonNumber = when {
                         seasonText.contains("Filme", true) || seasonText.contains("Specials", true) -> 0
                         else -> Regex("""\d+""").find(seasonText)?.value?.toIntOrNull() ?: (index + 1)
                     }
+                    val seasonId = it.selectFirst("a")
+                        ?.attr("href")?.substringAfter("/anime/stream/")
+                        ?.trim().orEmpty()
+                    val seasonTitle = it.selectFirst("a")?.attr("title")?.trim().orEmpty()
+                        .ifBlank { seasonText.trim() }
+                    if (seasonId.isBlank() || seasonTitle.isBlank()) return@mapIndexedNotNull null
                     Season(
-                        id = it.selectFirst("a")
-                            ?.attr("href")?.substringAfter("/anime/stream/")
-                            ?: "",
+                        id = seasonId,
                         number = seasonNumber,
-                        title = it.selectFirst("a")?.attr("title") ?: seasonText,
+                        title = seasonTitle,
                     )
                 },
             genres = document.select(".genres li").map {
@@ -343,7 +309,10 @@ object AniWorldProvider : Provider, ProviderConfigUrl {
     }
 
     override suspend fun getEpisodesBySeason(seasonId: String): List<Episode> {
-        val (tvShowId, season) = seasonId.split("/")
+        val parts = seasonId.split("/")
+        if (parts.size < 2 || parts[0].isBlank() || parts[1].isBlank()) return emptyList()
+        val tvShowId = parts[0]
+        val season = parts[1]
 
         val document = service.getSeason(tvShowId, season)
 
@@ -354,16 +323,18 @@ object AniWorldProvider : Provider, ProviderConfigUrl {
         }
         val tmdbEpisodes = tmdbTvShow?.let { TmdbUtils.getEpisodesBySeason(it.id, seasonNumber, language = language) } ?: emptyList()
 
-        val episodes = document.select("tbody tr").map {
+        val episodes = document.select("tbody tr").mapNotNull {
             val epNumber = it.selectFirst("meta")?.attr("content")?.toIntOrNull() ?: 0
-            val tmdbEp = tmdbEpisodes.find { it.number == epNumber }
-            
+            val tmdbEp = tmdbEpisodes.find { ep -> ep.number == epNumber }
+            val episodeId = it.selectFirst("a")
+                ?.attr("href")?.substringAfter("/anime/stream/")
+                ?.trim().orEmpty()
+            val title = tmdbEp?.title ?: it.selectFirst("strong")?.text()?.trim().orEmpty()
+            if (episodeId.isBlank() || title.isBlank()) return@mapNotNull null
             Episode(
-                id = it.selectFirst("a")
-                    ?.attr("href")?.substringAfter("/anime/stream/")
-                    ?: "",
+                id = episodeId,
                 number = epNumber,
-                title = tmdbEp?.title ?: it.selectFirst("strong")?.text(),
+                title = title,
                 poster = tmdbEp?.poster,
                 overview = tmdbEp?.overview
             )
@@ -388,12 +359,16 @@ object AniWorldProvider : Provider, ProviderConfigUrl {
                     ?.attr("href")?.substringAfter("/anime/stream/")
                     ?.trim().orEmpty()
                 val title = it.selectFirst("h3")?.text()?.trim().orEmpty()
+                    .ifBlank {
+                        it.selectFirst("a")?.attr("title")?.substringBefore(" stream")?.trim().orEmpty()
+                    }
                 if (showId.isBlank() || title.isBlank()) return@mapNotNull null
+                val img = it.selectFirst("img")
+                val rawPoster = img?.attr("data-src")?.ifBlank { img.attr("src") }
                 TvShow(
                     id = showId,
                     title = title,
-                    poster = it.selectFirst("img")
-                        ?.attr("data-src")?.let { src -> URL + src },
+                    poster = absoluteMedia(rawPoster),
                 )
             }
         )
@@ -414,10 +389,9 @@ object AniWorldProvider : Provider, ProviderConfigUrl {
                 ?.text()
                 ?: document.selectFirst("h1")?.text()
                 ?: "",
-            image = document.selectFirst(".seriesCoverBox img, .person-image img, img")
-                ?.attr("data-src")
-                ?.takeIf { it.isNotBlank() }
-                ?.let { if (it.startsWith("http")) it else URL + it },
+            image = absoluteMedia(
+                document.selectFirst(".seriesCoverBox img, .person-image img, img")?.attr("data-src"),
+            ),
             biography = document.selectFirst("p.seri_des, .series-description p, span.description-text")
                 ?.let { el -> el.attr("data-full-description").ifBlank { el.text() } }
                 ?.takeIf { it.isNotBlank() },
@@ -431,13 +405,22 @@ object AniWorldProvider : Provider, ProviderConfigUrl {
                 TvShow(
                     id = showId,
                     title = title,
-                    poster = it.selectFirst("img")
-                        ?.attr("data-src")?.let { src -> URL + src },
+                    poster = absoluteMedia(it.selectFirst("img")?.attr("data-src")),
                 )
             }
         )
 
         return people
+    }
+
+    private fun absoluteMedia(raw: String?): String? {
+        val src = raw?.trim().orEmpty()
+        if (src.isBlank() || src.startsWith("data:", ignoreCase = true)) return null
+        if (src.startsWith("http://", ignoreCase = true) || src.startsWith("https://", ignoreCase = true)) {
+            return src
+        }
+        if (src.startsWith("//")) return "https:$src"
+        return URL.trimEnd('/') + "/" + src.removePrefix("/")
     }
 
     private fun getPeopleIdFromLink(link: String): String {
@@ -465,7 +448,11 @@ object AniWorldProvider : Provider, ProviderConfigUrl {
     }
 
     override suspend fun getServers(id: String, videoType: Video.Type): List<Video.Server> {
-        val (tvShowId, seasonId, episodeId) = id.split("/")
+        val parts = id.split("/")
+        if (parts.size < 3 || parts.any { it.isBlank() }) return emptyList()
+        val tvShowId = parts[0]
+        val seasonId = parts[1]
+        val episodeId = parts[2]
 
         val document = service.getEpisode(tvShowId, seasonId, episodeId)
 
@@ -578,7 +565,7 @@ object AniWorldProvider : Provider, ProviderConfigUrl {
             private fun isAniWorldHost(host: String?): Boolean {
                 val h = host?.lowercase(Locale.US)?.removePrefix("www.").orEmpty()
                 if (h.isBlank()) return false
-                return h == "aniworld.to" || h.endsWith(".aniworld.to")
+                return h == "aniworld.to" || h.endsWith(".aniworld.to") || h.contains("aniworld")
             }
 
             private fun OkHttpClient.Builder.applyAniWorldSession(): OkHttpClient.Builder {
@@ -604,6 +591,7 @@ object AniWorldProvider : Provider, ProviderConfigUrl {
                     .cache(appCache)
                     .readTimeout(30, TimeUnit.SECONDS)
                     .connectTimeout(30, TimeUnit.SECONDS)
+                    .callTimeout(45, TimeUnit.SECONDS)
                 return clientBuilder
                     .dns(DnsResolver.doh)
                     .applyAniWorldSession()
@@ -628,6 +616,7 @@ object AniWorldProvider : Provider, ProviderConfigUrl {
                         .cache(appCache)
                         .readTimeout(30, TimeUnit.SECONDS)
                         .connectTimeout(30, TimeUnit.SECONDS)
+                        .callTimeout(45, TimeUnit.SECONDS)
                         .sslSocketFactory(sslSocketFactory, trustAllCerts[0] as X509TrustManager)
                         .hostnameVerifier { _, _ -> true }
 

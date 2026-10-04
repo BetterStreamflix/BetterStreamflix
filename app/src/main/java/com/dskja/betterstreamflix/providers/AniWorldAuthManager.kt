@@ -105,21 +105,8 @@ object AniWorldAuthManager {
      * login/session token is present.
      */
     fun canSkipInteractiveBypass(): Boolean {
-        val cookies = UserPreferences.aniWorldSessionCookies
-        if (SerienStreamBypassHelper.looksLikeClearanceSolved(
-                SerienStreamBypassHelper.sanitizeSessionCookies(cookies),
-            )
-        ) {
-            return true
-        }
-        val validatedAt = UserPreferences.aniWorldSessionValidatedAtMs
-        val validatedOk = UserPreferences.aniWorldSessionValidatedOk
-        if (validatedAt > 0L && !validatedOk) {
-            return false
-        }
-        return SerienStreamBypassHelper.canSkipInteractiveBypass(
-            cookieHeader = cookies,
-            accountConfirmed = UserPreferences.aniWorldAccountConfirmed || isLoggedIn(),
+        return SerienStreamBypassHelper.shouldSkipStreamCaptcha(
+            UserPreferences.aniWorldSessionCookies,
         )
     }
 
@@ -377,7 +364,7 @@ object AniWorldAuthManager {
             val form = okhttp3.FormBody.Builder()
                 .add("email", trimmed)
                 .add("password", password)
-                .add("remember", "on")
+                .add("autoLogin", "on")
                 .apply {
                     if (!token.isNullOrBlank()) add("_token", token)
                 }
@@ -483,6 +470,7 @@ object AniWorldAuthManager {
                 "PHPSESSID",
                 "phpsessid",
                 "laravel_session",
+                "aniworld_session",
                 "XSRF-TOKEN",
                 "xsrf-token",
                 "altcha",

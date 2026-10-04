@@ -217,13 +217,15 @@ object KinoGerProvider : Provider, ProviderConfigUrl {
     }
 
     private fun requiresClearance(html: String): Boolean {
+        if (hasUsableContent(html)) return false
         return html.contains("Just a moment", ignoreCase = true) ||
             html.contains("cf-browser-verification", ignoreCase = true) ||
             html.contains("Checking your browser", ignoreCase = true) ||
             html.contains("cf-mitigated", ignoreCase = true) ||
-            html.contains("challenge-platform", ignoreCase = true) &&
-            html.contains("cdn-cgi", ignoreCase = true) &&
-            !hasUsableContent(html)
+            (
+                html.contains("challenge-platform", ignoreCase = true) &&
+                    html.contains("cdn-cgi", ignoreCase = true)
+                )
     }
 
     private fun hasUsableContent(html: String): Boolean {

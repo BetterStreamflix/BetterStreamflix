@@ -107,6 +107,7 @@ object FilmoProvider : Provider, ProviderConfigUrl {
                     .cookieJar(jar)
                     .readTimeout(30, TimeUnit.SECONDS)
                     .connectTimeout(30, TimeUnit.SECONDS)
+                    .callTimeout(45, TimeUnit.SECONDS)
                     .followRedirects(false)
                     .followSslRedirects(false)
                     .build()

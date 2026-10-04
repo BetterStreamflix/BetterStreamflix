@@ -43,9 +43,19 @@ import retrofit2.http.Path
 object HDFilmeProvider : Provider, ProviderConfigUrl {
 
     override val name: String = "HDFilme"
-    override val defaultBaseUrl = "https://hdfilme.cafe/"
+    override val defaultBaseUrl = "https://hdfilme.ceo/"
     override val baseUrl: String
-        get() = UserPreferences.getProviderCache(this, UserPreferences.PROVIDER_URL).ifBlank { defaultBaseUrl }
+        get() = migrateBaseUrl(
+            UserPreferences.getProviderCache(this, UserPreferences.PROVIDER_URL).ifBlank { defaultBaseUrl },
+        )
+
+    /** hdfilme.cafe permanently redirects to hdfilme.ceo. */
+    private fun migrateBaseUrl(raw: String): String {
+        val migrated = raw.trim()
+            .replace("hdfilme.cafe", "hdfilme.ceo")
+            .ifBlank { defaultBaseUrl }
+        return if (migrated.endsWith("/")) migrated else "$migrated/"
+    }
     override val changeUrlMutex = Mutex()
 
     override suspend fun onChangeUrl(forceRefresh: Boolean): String = changeUrlMutex.withLock {
@@ -68,6 +78,7 @@ object HDFilmeProvider : Provider, ProviderConfigUrl {
                 val clientBuilder = OkHttpClient.Builder()
                     .readTimeout(30, TimeUnit.SECONDS)
                     .connectTimeout(30, TimeUnit.SECONDS)
+                    .callTimeout(45, TimeUnit.SECONDS)
                     .followRedirects(false)
                     .followSslRedirects(false)
 
@@ -88,10 +99,12 @@ object HDFilmeProvider : Provider, ProviderConfigUrl {
                 override fun intercept(chain: Interceptor.Chain): Response {
                     var request = chain.request()
                     var response = chain.proceed(request)
+                    var hops = 0
 
-                    while (response.isRedirect) {
+                    while (response.isRedirect && hops < 5) {
                         val location = response.header("Location") ?: break
                         val newUrl = request.url.resolve(location) ?: break
+                        hops++
 
                         request = request.newBuilder()
                             .url(newUrl)
@@ -151,6 +164,8 @@ object HDFilmeProvider : Provider, ProviderConfigUrl {
 
     override suspend fun getHome(): List<Category> {
         val doc = service.getHome()
+        val modern = parseModernHome(doc)
+        if (modern.isNotEmpty()) return modern
         val categories = mutableListOf<Category>()
 
         val sliderItems = coroutineScope {
@@ -184,6 +199,30 @@ object HDFilmeProvider : Provider, ProviderConfigUrl {
         }
 
         return categories
+    }
+
+    private fun parseModernHome(doc: Document): List<Category> {
+        val categories = mutableListOf<Category>()
+        val featured = HDFilmeHtml.parseSlides(doc).map { it.toCatalogItem() }
+        if (featured.isNotEmpty()) {
+            categories.add(Category(name = Category.FEATURED, list = featured))
+        }
+        HDFilmeHtml.parseRows(doc).forEach { row ->
+            val items = row.cards.map { it.toCatalogItem() }
+            if (items.isNotEmpty()) {
+                categories.add(Category(name = row.name, list = items))
+            }
+        }
+        return categories.filter { it.list.isNotEmpty() }
+    }
+
+    private fun HDFilmeHtml.Card.toCatalogItem(): AppAdapter.Item {
+        val poster = normalizeUrl(image)
+        return if (series) {
+            TvShow(id = href, title = title, poster = poster, banner = poster)
+        } else {
+            Movie(id = href, title = title, poster = poster, banner = poster)
+        }
     }
 
     private suspend fun parseSliderItem(el: Element): Movie? {
@@ -320,18 +359,26 @@ object HDFilmeProvider : Provider, ProviderConfigUrl {
     private suspend fun getSerialDocument(doc: Document): Document? {
         val imdbId = extractImdbId(doc) ?: return null
         val numeric = imdbId.removePrefix("tt")
-        return runCatching {
-            service.getPage("https://meinecloud.click/serial/$numeric")
-        }.getOrElse {
-            runCatching {
-                val check = service.getRawPage("https://meinecloud.click/serials.php?task=check&id_imdb=$imdbId")
-                    .string()
-                val playerUrl = Regex("\"player_url\"\\s*:\\s*\"([^\"]+)\"")
-                    .find(check)?.groupValues?.get(1)
-                    ?.replace("\\/", "/")
-                if (!playerUrl.isNullOrBlank()) service.getPage(playerUrl) else null
-            }.getOrNull()
+        val hosts = listOf("https://devideosrc.co", "https://meinecloud.click")
+        for (host in hosts) {
+            val page = runCatching { service.getPage("$host/serial/$numeric") }.getOrNull()
+            if (page != null && page.select("._season-eps, ._ep, ._player-mirrors").isNotEmpty()) {
+                return page
+            }
         }
+        return runCatching {
+            var check = ""
+            for (host in hosts) {
+                check = runCatching {
+                    service.getRawPage("$host/serials.php?task=check&id_imdb=$imdbId").string()
+                }.getOrDefault("")
+                if (check.contains("player_url")) break
+            }
+            val playerUrl = Regex("\"player_url\"\\s*:\\s*\"([^\"]+)\"")
+                .find(check)?.groupValues?.get(1)
+                ?.replace("\\/", "/")
+            if (!playerUrl.isNullOrBlank()) service.getPage(playerUrl) else null
+        }.getOrNull()
     }
 
     private fun serialSeasonNumber(season: Element, serialDoc: Document): Int? {
@@ -445,7 +492,7 @@ object HDFilmeProvider : Provider, ProviderConfigUrl {
                     .map { sitemap ->
                         async {
                             runCatching {
-                                parseSitemap(service.getRawPage("$baseUrl/$sitemap"))
+                                parseSitemap(service.getRawPage("$baseUrl/$sitemap"), maxEntries = SITEMAP_ENTRY_CAP)
                             }.getOrDefault(emptyList())
                         }
                     }
@@ -464,15 +511,16 @@ object HDFilmeProvider : Provider, ProviderConfigUrl {
         }
     }
 
-    private fun parseSitemap(body: ResponseBody): List<SitemapEntry> = body.use { responseBody ->
+    private fun parseSitemap(body: ResponseBody, maxEntries: Int = SITEMAP_ENTRY_CAP): List<SitemapEntry> = body.use { responseBody ->
         val parser = android.util.Xml.newPullParser().apply {
             setInput(responseBody.charStream())
         }
-        val entries = ArrayList<SitemapEntry>()
+        val cap = minOf(maxEntries, SITEMAP_ENTRY_CAP)
+        val entries = ArrayList<SitemapEntry>(cap)
         var event = parser.eventType
 
         // Stop while parsing. take() after a full dual-sitemap materialization OOMs first.
-        while (entries.size < SITEMAP_ENTRY_CAP && event != org.xmlpull.v1.XmlPullParser.END_DOCUMENT) {
+        while (entries.size < cap && event != org.xmlpull.v1.XmlPullParser.END_DOCUMENT) {
             if (event == org.xmlpull.v1.XmlPullParser.START_TAG && parser.name == "loc") {
                 val url = parser.nextText().trim()
                 if (url.isNotBlank()) {

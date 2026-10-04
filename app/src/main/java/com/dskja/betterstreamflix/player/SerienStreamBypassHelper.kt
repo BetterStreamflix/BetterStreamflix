@@ -163,6 +163,80 @@ object SerienStreamBypassHelper {
     }
 
     /**
+     * The episode `/r?t=` bridge still requires Turnstile/ALTCHA together with
+     * the stream token. A login jar is forwarded into that form; it does not
+     * replace it. Only a solved clearance cookie may skip the interactive gate.
+     */
+    fun shouldSkipStreamCaptcha(cookieHeader: String): Boolean {
+        val cleaned = sanitizeSessionCookies(cookieHeader)
+        if (cleaned.isBlank()) return false
+        return looksLikeClearanceSolved(cleaned)
+    }
+
+    /** SerienStream iframe bridge that posts `t` back to the captcha form. */
+    fun looksLikeStreamTokenGate(html: String): Boolean {
+        if (html.isBlank()) return false
+        val lower = html.lowercase(Locale.US)
+        return lower.contains("framebridge") ||
+            lower.contains("player-prepare-token") ||
+            lower.contains("episode-redirect-gate")
+    }
+
+    /**
+     * Stream token carried by `/r?t=` or the bridge page (`var t = "..."`).
+     * The captcha form submits this value; an empty `t` always fails.
+     */
+    fun extractStreamToken(pageOrUrl: String): String? {
+        if (pageOrUrl.isBlank()) return null
+        val fromQuery = Regex("""[?&]t=([^&"'#\s]+)""", RegexOption.IGNORE_CASE)
+            .find(pageOrUrl)
+            ?.groupValues
+            ?.getOrNull(1)
+            ?.let { raw ->
+                runCatching { java.net.URLDecoder.decode(raw, Charsets.UTF_8.name()) }.getOrDefault(raw)
+            }
+            ?.trim()
+            ?.takeIf { it.length >= 8 }
+        if (!fromQuery.isNullOrBlank()) return fromQuery
+        return Regex("""\bt\s*=\s*["']([^"']{8,})["']""")
+            .find(pageOrUrl)
+            ?.groupValues
+            ?.getOrNull(1)
+            ?.trim()
+            ?.takeIf { it.isNotBlank() }
+    }
+
+    /**
+     * Fill `#player-prepare-token` from the first host button before the user
+     * submits Turnstile/ALTCHA. Showing the modal alone posts an empty `t`.
+     */
+    fun playerGateAssistJs(): String = """
+        (function(){
+          try {
+            var btn = document.querySelector('button.link-box[data-play-url], a.link-box[data-play-url]');
+            var token = '';
+            if (btn) {
+              var play = btn.getAttribute('data-play-url') || '';
+              var match = play.match(/[?&]t=([^&]+)/);
+              if (match) {
+                try { token = decodeURIComponent(match[1]); } catch (e) { token = match[1]; }
+              }
+              try { btn.click(); } catch (e) {}
+            }
+            var input = document.getElementById('player-prepare-token');
+            if (input && token && !input.value) input.value = token;
+            var modal = document.querySelector('#playerPrepareModal');
+            if (modal) {
+              modal.classList.add('show');
+              modal.style.display = 'block';
+              modal.removeAttribute('aria-hidden');
+              document.body.classList.add('modal-open');
+            }
+          } catch (e) {}
+        })();
+    """.trimIndent()
+
+    /**
      * Merge [storedHeader] into an outgoing Cookie header. Later names win.
      * Used by OkHttp interceptors so prefs survive CookieManager gaps.
      */
@@ -304,9 +378,11 @@ object SerienStreamBypassHelper {
         val names = cookieNames(sanitizeSessionCookies(cookieHeader))
         return names.any {
             it == "laravel_session" ||
+                it == "aniworld_session" ||
                 it == "phpsessid" ||
                 it == "ci_session" ||
-                it.endsWith("_session")
+                it.endsWith("_session") ||
+                it.endsWith("-session")
         }
     }
 
@@ -440,6 +516,16 @@ object SerienStreamBypassHelper {
                 }
             }
         }
-        runCatching { cookieManager.flush() }
+        flushCookieManager(cookieManager)
+    }
+
+    private fun flushCookieManager(cookieManager: CookieManager) {
+        val flush = Runnable { runCatching { cookieManager.flush() } }
+        val looper = android.os.Looper.myLooper()
+        if (looper != null && looper == android.os.Looper.getMainLooper()) {
+            flush.run()
+        } else {
+            android.os.Handler(android.os.Looper.getMainLooper()).post(flush)
+        }
     }
 }
