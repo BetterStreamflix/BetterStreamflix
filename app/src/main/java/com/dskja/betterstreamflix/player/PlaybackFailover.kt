@@ -39,11 +39,14 @@ object PlaybackFailover {
         val chain = errorChain(error)
         return "unrecognizedinputformat" in chain ||
             "none of the available extractors" in chain ||
+            "response code: 401" in chain ||
             "response code: 403" in chain ||
             "response code: 404" in chain ||
             "response code: 410" in chain ||
             "response code: 451" in chain ||
-            ("httpdatasource" in chain && ("403" in chain || "404" in chain))
+            "timed out" in chain ||
+            "timeoutexception" in chain ||
+            ("httpdatasource" in chain && ("401" in chain || "403" in chain || "404" in chain))
     }
 
     /** HW decoder cannot handle this format (10-bit / exceeds capabilities). */
@@ -66,13 +69,16 @@ object PlaybackFailover {
         externalPlayerAlreadyTried: Boolean = false,
         error: Throwable? = null,
     ): Action {
+        val hardSource = isHardSourceFailure(error)
         // Same stream profile on another hoster won't fix decoder capability — soft-retry first.
-        if (isDecoderCapabilityFailure(error) && !softwareDecoderAlreadyEnabled) {
+        // A 404/timeout is not a decoder problem; hopping servers is.
+        if (!hardSource && isDecoderCapabilityFailure(error) && !softwareDecoderAlreadyEnabled) {
             return Action.RetrySoftwareDecoder
         }
 
-        if (playbackAlreadyStarted && !allowMidPlaybackFailover) {
+        if (playbackAlreadyStarted && !allowMidPlaybackFailover && !hardSource) {
             // Mid-play URI clear on TV looks like a crash-to-home; stop cascading.
+            // Dead CDNs (404) still advance — software decode cannot revive them.
             return when {
                 !softwareDecoderAlreadyEnabled -> Action.RetrySoftwareDecoder
                 externalPlayerAvailable && !externalPlayerAlreadyTried -> Action.TryExternalPlayer
@@ -87,7 +93,7 @@ object PlaybackFailover {
         if (next in 0 until serverCount) {
             return Action.TryNextServer(next)
         }
-        if (!softwareDecoderAlreadyEnabled) {
+        if (!hardSource && !softwareDecoderAlreadyEnabled) {
             return Action.RetrySoftwareDecoder
         }
         if (externalPlayerAvailable && !externalPlayerAlreadyTried) {

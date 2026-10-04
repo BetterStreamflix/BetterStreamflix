@@ -5,7 +5,7 @@ import com.dskja.betterstreamflix.utils.BypassWebSocketEndpointHelper
 import fi.iki.elonen.NanoHTTPD
 import okhttp3.OkHttpClient
 import okhttp3.Request
-import okhttp3.internal.userAgent
+import com.dskja.betterstreamflix.utils.NetworkClient
 import java.io.File
 import java.io.FileInputStream
 import java.io.PipedInputStream
@@ -147,8 +147,14 @@ class CastStreamProxyServer(
         }
 
         val requestBuilder = Request.Builder().url(target).get()
-        val mergedHeaders = linkedMapOf("User-Agent" to userAgent)
+        val mergedHeaders = linkedMapOf("User-Agent" to NetworkClient.USER_AGENT)
         mergedHeaders.putAll(defaultHeaders)
+        val uaKey = mergedHeaders.keys.firstOrNull { it.equals("User-Agent", ignoreCase = true) }
+        val ua = uaKey?.let { mergedHeaders[it] }
+        if (ua.isNullOrBlank() || ua.startsWith("okhttp", ignoreCase = true)) {
+            if (uaKey != null) mergedHeaders.remove(uaKey)
+            mergedHeaders["User-Agent"] = NetworkClient.USER_AGENT
+        }
         // Chromecast cannot send custom headers; VOE/SerienStream CDNs 404 without Referer.
         if (mergedHeaders.keys.none { it.equals("Referer", ignoreCase = true) }) {
             runCatching {

@@ -163,16 +163,24 @@ abstract class PlayerSettingsView @JvmOverloads constructor(
             val player = player ?: return
             if (audio !is Settings.Audio.AudioTrackInformation) return
 
-            player.trackSelectionParameters = player.trackSelectionParameters
+            val selection = player.trackSelectionParameters
                 .buildUpon()
+                .clearOverridesOfType(C.TRACK_TYPE_AUDIO)
                 .setOverrideForType(
                     TrackSelectionOverride(
                         audio.trackGroup.mediaTrackGroup,
                         listOf(audio.trackIndex)
                     )
                 )
-                .setTrackTypeDisabled(audio.trackGroup.type, false)
-                .build()
+                .setTrackTypeDisabled(C.TRACK_TYPE_AUDIO, false)
+            val lang = audio.language
+                ?.substringBefore("-")
+                ?.trim()
+                ?.takeIf { it.isNotEmpty() && !it.equals("und", ignoreCase = true) }
+            if (lang != null) {
+                selection.setPreferredAudioLanguages(lang)
+            }
+            player.trackSelectionParameters = selection.build()
         }
 
     protected var onSubtitleSelected: ((Settings.Subtitle) -> Unit) =
@@ -699,7 +707,7 @@ abstract class PlayerSettingsView @JvmOverloads constructor(
 
                                         AudioTrackInformation(
                                             name = finalName,
-
+                                            language = trackFormat.language,
                                             trackGroup = trackGroup,
                                             trackIndex = trackIndex,
                                         )
@@ -714,7 +722,7 @@ abstract class PlayerSettingsView @JvmOverloads constructor(
 
             class AudioTrackInformation(
                 val name: String,
-
+                val language: String?,
                 val trackGroup: Tracks.Group,
                 val trackIndex: Int,
             ) : Audio() {

@@ -52,6 +52,10 @@ object CastPlaybackHub {
     private var sessionManagerListener: SessionManagerListener<CastSession>? = null
     private var playerListener: Player.Listener? = null
 
+    /** True while a player fragment is showing Cast controls. */
+    @Volatile
+    private var uiAttached: Boolean = false
+
     fun ensureCastContext(context: Context) {
         runCatching {
             val castContext = CastContext.getSharedInstance(context.applicationContext)
@@ -91,6 +95,7 @@ object CastPlaybackHub {
     fun playerOrNull(): CastPlayer? = castPlayer
 
     fun setSessionAvailabilityListener(listener: SessionAvailabilityListener?) {
+        if (listener != null) uiAttached = true
         castPlayer?.setSessionAvailabilityListener(listener)
     }
 
@@ -219,6 +224,7 @@ object CastPlaybackHub {
      * Call from player [androidx.fragment.app.Fragment.onDestroyView].
      */
     fun detachUi(context: Context) {
+        uiAttached = false
         castPlayer?.setSessionAvailabilityListener(null)
         val sessionConnected = runCatching {
             CastContext.getSharedInstance(context.applicationContext)
@@ -226,7 +232,8 @@ object CastPlaybackHub {
                 .currentCastSession
                 ?.isConnected == true
         }.getOrDefault(false)
-        if (!sessionConnected && !isCasting) {
+        // A stale isCasting flag must not keep a dead session's player and proxy alive.
+        if (!sessionConnected) {
             releaseFully()
         }
     }
@@ -257,6 +264,10 @@ object CastPlaybackHub {
 
             override fun onSessionEnded(session: CastSession, error: Int) {
                 markCasting(false)
+                // Player UI already gone: drop CastPlayer so it cannot resume later.
+                mainHandler.post {
+                    if (!uiAttached) releaseFully()
+                }
             }
 
             override fun onSessionSuspended(session: CastSession, reason: Int) = Unit

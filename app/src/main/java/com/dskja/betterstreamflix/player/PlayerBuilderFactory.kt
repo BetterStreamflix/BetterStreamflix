@@ -4,12 +4,14 @@ import android.content.Context
 import android.os.Build
 import androidx.media3.common.AudioAttributes
 import androidx.media3.common.C
+import androidx.media3.common.util.UnstableApi
 import androidx.media3.datasource.DataSource
 import androidx.media3.exoplayer.DefaultLoadControl
 import androidx.media3.exoplayer.DefaultRenderersFactory
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.exoplayer.source.MediaSource
+import androidx.media3.exoplayer.trackselection.DefaultTrackSelector
 import com.dskja.betterstreamflix.utils.DeviceCapabilities
 import com.dskja.betterstreamflix.utils.ProviderAudioLanguage
 import com.dskja.betterstreamflix.utils.SubtitleOffset
@@ -21,6 +23,7 @@ import com.dskja.betterstreamflix.utils.UserPreferences
  * Addresses Android TV / OEM crashes (e.g. Xiaomi TV) via always-on decoder fallback
  * and constrained buffers on Fire Stick / low-RAM devices.
  */
+@OptIn(UnstableApi::class)
 object PlayerBuilderFactory {
 
     data class Options(
@@ -122,16 +125,23 @@ object PlayerBuilderFactory {
             /* handleAudioFocus= */ true,
         )
 
-        var params = player.trackSelectionParameters.buildUpon()
-        val lang = UserPreferences.currentProvider?.language?.substringBefore("-")
-        ProviderAudioLanguage.preferredAudioLanguages(lang)?.let { codes ->
-            params = params.setPreferredAudioLanguages(*codes)
-            params = params.setPreferredTextLanguages(*codes)
+        val selector = player.trackSelector as? DefaultTrackSelector
+        if (selector != null) {
+            val params = selector.buildUponParameters()
+            val lang = UserPreferences.currentProvider?.language?.substringBefore("-")
+            ProviderAudioLanguage.preferredAudioLanguages(lang)?.let { codes ->
+                params.setPreferredAudioLanguages(*codes)
+                params.setPreferredTextLanguages(*codes)
+            }
+            if (options.preferStereoAudio || constrained) {
+                params.setMaxAudioChannelCount(2)
+            }
+            val types = IntArray(player.rendererCount) { index -> player.getRendererType(index) }
+            AudioRendererPolicy.secondaryRendererIndices(types, C.TRACK_TYPE_AUDIO).forEach { index ->
+                params.setRendererDisabled(index, true)
+            }
+            selector.setParameters(params)
         }
-        if (options.preferStereoAudio || constrained) {
-            params = params.setMaxAudioChannelCount(2)
-        }
-        player.trackSelectionParameters = params.build()
         return player
     }
 }
