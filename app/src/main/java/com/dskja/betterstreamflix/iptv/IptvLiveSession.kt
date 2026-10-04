@@ -121,6 +121,34 @@ object IptvLiveSession {
 
     fun size(): Int = channels.size
 
+    /**
+     * Direct play remembers a single channel, and a full window still has to
+     * recenter once the playhead sits on either edge. Otherwise prev/next vanish.
+     */
+    fun needsWindowRefresh(size: Int, index: Int, limit: Int = 250): Boolean {
+        if (limit <= 1) return false
+        if (size <= 1 || index < 0) return true
+        // Shorter than the window means the full catalog is already loaded.
+        if (size < limit) return false
+        val edge = 4
+        return index < edge || index > size - 1 - edge
+    }
+
+    /** Replace the zap list with catalog order from [listLiveChannels]. */
+    fun replaceWindow(list: List<Channel>, provider: Provider? = null) {
+        if (list.isEmpty()) return
+        synchronized(this) {
+            val name = provider?.name
+            if (name != null && providerName != null && providerName != name) {
+                recentIds.clear()
+                IptvZapPreloader.clear()
+            }
+            providerName = name ?: providerName
+            channels.clear()
+            channels.addAll(list)
+        }
+    }
+
     fun hasPrevious(): Boolean = currentIndex() > 0
 
     fun hasNext(): Boolean {
@@ -198,16 +226,31 @@ object IptvLiveSession {
 
     suspend fun ensureLoaded(provider: Provider, aroundId: String?) {
         if (provider !is IptvProvider) return
-        if (channels.isNotEmpty() &&
-            (aroundId == null || channels.any { it.id == aroundId }) &&
-            providerName == provider.name
+        val sameProvider = providerName == provider.name
+        val index = if (aroundId.isNullOrBlank()) {
+            currentIndex()
+        } else {
+            channels.indexOfFirst { it.id == aroundId }
+        }
+        val contains = aroundId.isNullOrBlank() || index >= 0
+        if (sameProvider &&
+            channels.isNotEmpty() &&
+            contains &&
+            !needsWindowRefresh(channels.size, index, limit = 250)
         ) {
             aroundId?.let { setCurrent(it) }
             IptvZapPreloader.warmNeighbors(provider)
             return
         }
         val loaded = provider.listLiveChannels(aroundId = aroundId, limit = 250)
-        remember(loaded, provider)
+        if (loaded.isEmpty()) {
+            aroundId?.let { setCurrent(it) }
+            return
+        }
+        val sameOrder = loaded.map { it.id } == channels.map { it.id }
+        if (!sameOrder || !sameProvider) {
+            replaceWindow(loaded, provider)
+        }
         aroundId?.let { setCurrent(it) }
         IptvZapPreloader.warmNeighbors(provider)
     }

@@ -61,16 +61,17 @@ object M3uPlaylistParser {
             }
 
             if (extinf != null) {
-                curName = extinf.substringAfterLast(",").trim()
-                if (curName.isBlank()) {
-                    curName = Regex("""tvg-name="([^"]+)"""")
-                        .find(extinf)?.groupValues?.get(1)?.trim().orEmpty()
+                // No comma means there is no display label; substringAfterLast would
+                // otherwise keep the whole EXTINF line and hide tvg-name.
+                val commaLabel = if (',' in extinf) extinf.substringAfterLast(",").trim() else ""
+                curName = commaLabel.ifBlank {
+                    attr(extinf, "tvg-name")
                 }
-                curLogo = Regex("""tvg-logo="([^"]+)"""").find(extinf)?.groupValues?.get(1).orEmpty()
-                curGroup = Regex("""group-title="([^"]+)"""").find(extinf)?.groupValues?.get(1).orEmpty()
-                curUA = Regex("""http-user-agent="([^"]+)"""").find(extinf)?.groupValues?.getOrNull(1)
-                curRef = Regex("""http-referrer="([^"]+)"""").find(extinf)?.groupValues?.getOrNull(1)
-                curOrigin = Regex("""http-origin="([^"]+)"""").find(extinf)?.groupValues?.getOrNull(1)
+                curLogo = attr(extinf, "tvg-logo")
+                curGroup = attr(extinf, "group-title")
+                curUA = attr(extinf, "http-user-agent").ifBlank { null }
+                curRef = attr(extinf, "http-referrer").ifBlank { null }
+                curOrigin = attr(extinf, "http-origin").ifBlank { null }
                 continue
             }
 
@@ -91,16 +92,17 @@ object M3uPlaylistParser {
             if (t.startsWith("http://", ignoreCase = true) ||
                 t.startsWith("https://", ignoreCase = true)
             ) {
-                if (curName.isNotEmpty() && isPlayableUrl(t)) {
+                val piped = splitPipeUrl(t)
+                if (curName.isNotEmpty() && isPlayableUrl(piped.url)) {
                     channels.add(
                         Channel(
                             name = curName,
-                            url = t,
+                            url = piped.url,
                             logo = curLogo.takeIf { it.isNotBlank() },
                             group = curGroup.takeIf { it.isNotBlank() },
-                            userAgent = curUA,
-                            referrer = curRef,
-                            origin = curOrigin,
+                            userAgent = curUA ?: piped.userAgent,
+                            referrer = curRef ?: piped.referrer,
+                            origin = curOrigin ?: piped.origin,
                         ),
                     )
                 }
@@ -113,5 +115,42 @@ object M3uPlaylistParser {
             }
         }
         return channels
+    }
+
+    private fun attr(extinf: String, key: String): String {
+        Regex("""$key="([^"]*)"""").find(extinf)?.groupValues?.getOrNull(1)?.let { return it }
+        Regex("""$key='([^']*)'""").find(extinf)?.groupValues?.getOrNull(1)?.let { return it }
+        return ""
+    }
+
+    private data class PipedUrl(
+        val url: String,
+        val userAgent: String? = null,
+        val referrer: String? = null,
+        val origin: String? = null,
+    )
+
+    /** `http://host/a.m3u8|User-Agent=...|Referer=...` is not a playable Exo URL. */
+    private fun splitPipeUrl(raw: String): PipedUrl {
+        if ('|' !in raw) return PipedUrl(raw)
+        val parts = raw.split('|')
+        var userAgent: String? = null
+        var referrer: String? = null
+        var origin: String? = null
+        parts.drop(1).forEach { part ->
+            val key = part.substringBefore('=').trim()
+            val value = part.substringAfter('=', "").trim()
+            if (value.isBlank()) return@forEach
+            when {
+                key.equals("user-agent", true) || key.equals("http-user-agent", true) ->
+                    userAgent = value
+                key.equals("referer", true) ||
+                    key.equals("referrer", true) ||
+                    key.equals("http-referrer", true) -> referrer = value
+                key.equals("origin", true) || key.equals("http-origin", true) ->
+                    origin = value
+            }
+        }
+        return PipedUrl(parts.first().trim(), userAgent, referrer, origin)
     }
 }

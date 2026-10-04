@@ -95,7 +95,8 @@ object CineCityProvider : IptvProvider, ProviderConfigUrl {
         return try {
             val decodedUrl = String(Base64.decode(OBFUSCATED_PLAYLIST, Base64.DEFAULT))
             val request = Request.Builder().url(decodedUrl).build()
-            val body = client.newCall(request).execute().body?.string() ?: return emptyList()
+            val body = client.newCall(request).execute().use { it.body?.string() }
+            if (body.isNullOrBlank()) return emptyList()
             val channels = parseM3U(body)
             Log.d(TAG, "MAGISTV channels=${channels.size}")
             cachedChannels = channels
@@ -171,7 +172,7 @@ object CineCityProvider : IptvProvider, ProviderConfigUrl {
         return TvShow(
             id = id, title = name, poster = logo, banner = logo,
             overview = "Transmisión: $name\nFuente: CineCity M3U.",
-            seasons = emptyList()
+            seasons = listOf(Season(id = id, number = 1, title = "Live"))
         )
     }
 

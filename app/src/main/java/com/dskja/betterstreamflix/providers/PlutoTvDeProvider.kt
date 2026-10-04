@@ -96,7 +96,8 @@ object PlutoTvDeProvider : IptvProvider, ProviderConfigUrl {
 
         try {
             val request = Request.Builder().url(PLAYLIST_URL).build()
-            val body = client.newCall(request).execute().body?.string() ?: return@withContext emptyList()
+            val body = client.newCall(request).execute().use { it.body?.string() }
+            if (body.isNullOrBlank()) return@withContext emptyList()
             val channels = parseM3U(body)
             cachedChannels = channels
             lastFetchTime = now
@@ -213,7 +214,7 @@ object PlutoTvDeProvider : IptvProvider, ProviderConfigUrl {
             poster = logo,
             banner = logo,
             overview = "Canal de Pluto TV: $name\nSeñal obtenida vía lista M3U.",
-            seasons = emptyList()
+            seasons = listOf(Season(id = id, number = 1, title = "Live"))
         )
     }
 

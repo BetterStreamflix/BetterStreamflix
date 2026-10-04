@@ -15,6 +15,9 @@ import com.dskja.betterstreamflix.utils.LiveStreamHtmlExtractor
 import com.dskja.betterstreamflix.utils.M3uChannelIdCodec
 import com.dskja.betterstreamflix.utils.UserPreferences
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
@@ -46,8 +49,9 @@ object NtvProvider : IptvProvider, ProviderConfigUrl {
     private val SERVERS = listOf("kobra", "falcon", "raptor", "phoenix", "titan")
 
     private val client = OkHttpClient.Builder()
-        .connectTimeout(30, TimeUnit.SECONDS)
-        .readTimeout(30, TimeUnit.SECONDS)
+        .connectTimeout(8, TimeUnit.SECONDS)
+        .readTimeout(8, TimeUnit.SECONDS)
+        .callTimeout(10, TimeUnit.SECONDS)
         .build()
 
     private data class Item(
@@ -126,23 +130,23 @@ object NtvProvider : IptvProvider, ProviderConfigUrl {
         return out
     }
 
-    private fun loadMatches(): List<Item> {
-        val out = LinkedHashMap<String, Item>()
-        for (server in SERVERS) {
-            val json = fetchJson("$baseUrl/api/get-matches?server=$server&type=both") ?: continue
-            listOf("live", "upcoming").forEach { key ->
-                val arr = json.optJSONArray(key) ?: return@forEach
-                for (i in 0 until arr.length()) {
-                    val o = arr.optJSONObject(i) ?: continue
-                    val id = o.optString("id").trim()
-                    if (id.isBlank()) continue
-                    val title = o.optString("title").trim()
-                    if (title.isBlank()) continue
-                    var poster = o.optString("poster")
-                    if (poster.startsWith("/")) poster = baseUrl + poster
-                    out.putIfAbsent(
-                        id,
-                        Item(
+    private suspend fun loadMatches(): List<Item> = coroutineScope {
+        val batches = SERVERS.map { server ->
+            async(Dispatchers.IO) {
+                val json = fetchJson("$baseUrl/api/get-matches?server=$server&type=both")
+                    ?: return@async emptyList<Item>()
+                val items = ArrayList<Item>()
+                listOf("live", "upcoming").forEach { key ->
+                    val arr = json.optJSONArray(key) ?: return@forEach
+                    for (i in 0 until arr.length()) {
+                        val o = arr.optJSONObject(i) ?: continue
+                        val id = o.optString("id").trim()
+                        if (id.isBlank()) continue
+                        val title = o.optString("title").trim()
+                        if (title.isBlank()) continue
+                        var poster = o.optString("poster")
+                        if (poster.startsWith("/")) poster = baseUrl + poster
+                        items += Item(
                             id = id,
                             title = title,
                             poster = ChannelCoverResolver.resolveSync(title, poster, logo),
@@ -150,12 +154,15 @@ object NtvProvider : IptvProvider, ProviderConfigUrl {
                             server = server,
                             category = o.optString("category").ifBlank { o.optString("tournament") },
                             live = o.optBoolean("live") || key == "live",
-                        ),
-                    )
+                        )
+                    }
                 }
+                items
             }
-        }
-        return out.values.toList()
+        }.awaitAll()
+        val out = LinkedHashMap<String, Item>()
+        batches.flatten().forEach { out.putIfAbsent(it.id, it) }
+        out.values.toList()
     }
 
     override suspend fun getHome(): List<Category> {

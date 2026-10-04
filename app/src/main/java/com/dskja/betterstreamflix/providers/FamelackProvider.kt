@@ -52,9 +52,9 @@ object FamelackProvider : IptvProvider, ProviderConfigUrl {
     private val HOME_COUNTRIES = LiveCatalogMeta.PRIORITY_COUNTRIES
 
     private val client = OkHttpClient.Builder()
-        .connectTimeout(30, TimeUnit.SECONDS)
-        .readTimeout(45, TimeUnit.SECONDS)
-        .callTimeout(90, TimeUnit.SECONDS)
+        .connectTimeout(10, TimeUnit.SECONDS)
+        .readTimeout(15, TimeUnit.SECONDS)
+        .callTimeout(20, TimeUnit.SECONDS)
         .build()
 
     data class Channel(
@@ -71,7 +71,7 @@ object FamelackProvider : IptvProvider, ProviderConfigUrl {
     private var knownCountries: List<String> = HOME_COUNTRIES
     private var knownCategories: List<String> = HOME_CATEGORIES
     private var lastFetch = 0L
-    private val packCache = mutableMapOf<String, List<Channel>>()
+    private val packCache = java.util.concurrent.ConcurrentHashMap<String, List<Channel>>()
 
     private fun createId(ch: Channel): String = M3uChannelIdCodec.encode(
         url = ch.url,
@@ -88,16 +88,15 @@ object FamelackProvider : IptvProvider, ProviderConfigUrl {
         refreshIndex()
         val out = LinkedHashMap<String, Channel>()
         coroutineScope {
-            val jobs = buildList {
-                HOME_CATEGORIES.forEach { slug ->
-                    add(async { loadCategory(slug) })
-                }
-                HOME_COUNTRIES.forEach { code ->
-                    add(async { loadCountry(code) })
-                }
+            val tasks = buildList<() -> List<Channel>> {
+                HOME_CATEGORIES.forEach { slug -> add { loadCategory(slug) } }
+                HOME_COUNTRIES.forEach { code -> add { loadCountry(code) } }
             }
-            jobs.awaitAll().forEach { list ->
-                list.forEach { out.putIfAbsent(it.id, it) }
+            // Forty country packs at once exhausts memory on TV. Four at a time is enough.
+            tasks.chunked(4).forEach { chunk ->
+                chunk.map { task -> async(Dispatchers.IO) { task() } }.awaitAll().forEach { list ->
+                    list.forEach { out.putIfAbsent(it.id, it) }
+                }
             }
         }
         val list = out.values.sortedBy { it.name.lowercase(Locale.US) }
@@ -143,7 +142,7 @@ object FamelackProvider : IptvProvider, ProviderConfigUrl {
         packCache[key]?.let { return it }
         val url = "$baseUrl/tv/compressed/categories/$slug.json"
         val list = parseChannelArray(fetchGzipJson(url), groupFallback = slug, countryFallback = "")
-        packCache[key] = list
+        if (list.isNotEmpty()) packCache[key] = list
         return list
     }
 
@@ -157,7 +156,7 @@ object FamelackProvider : IptvProvider, ProviderConfigUrl {
             groupFallback = "general",
             countryFallback = normalized,
         )
-        packCache[key] = list
+        if (list.isNotEmpty()) packCache[key] = list
         return list
     }
 

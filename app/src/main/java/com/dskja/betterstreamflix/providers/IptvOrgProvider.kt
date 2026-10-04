@@ -98,7 +98,8 @@ object IptvOrgProvider : IptvProvider, ProviderConfigUrl {
 
         return try {
             val request = Request.Builder().url("$baseUrl/index.m3u").build()
-            val body = client.newCall(request).execute().body?.string() ?: return emptyList()
+            val body = client.newCall(request).execute().use { it.body?.string() }
+            if (body.isNullOrBlank()) return emptyList()
             val channels = parseM3U(body)
             cachedChannels = channels
             lastFetchTime = now
@@ -221,6 +222,9 @@ object IptvOrgProvider : IptvProvider, ProviderConfigUrl {
 
     override suspend fun getVideo(server: Video.Server): Video {
         val payload = M3uChannelIdCodec.decode(server.id)
+        if (!M3uPlaylistParser.isPlayableUrl(payload.url)) {
+            throw Exception("IPTV-Org: channel URL missing or dead (try another channel)")
+        }
         val headers = M3uChannelIdCodec.playbackHeaders(server.id)
         Log.d(TAG, "Play: ${payload.url} headers=${headers.keys}")
         return Video(
