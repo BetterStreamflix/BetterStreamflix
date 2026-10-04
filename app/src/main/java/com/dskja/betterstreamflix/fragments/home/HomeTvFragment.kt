@@ -3,6 +3,7 @@ package com.dskja.betterstreamflix.fragments.home
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
+import android.view.KeyEvent
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -56,6 +57,7 @@ class HomeTvFragment : Fragment() {
     }
 
     private val appAdapter = AppAdapter()
+    private var homeBindSignature: String? = null
 
     private val swiperHandler = Handler(Looper.getMainLooper())
     private var isBackgroundPinned = false
@@ -198,7 +200,14 @@ class HomeTvFragment : Fragment() {
         banner.isFocusable = true
         banner.isFocusableInTouchMode = true
         banner.isClickable = true
-        banner.nextFocusDownId = binding.vgvHome.id
+        banner.nextFocusDownId = R.id.btn_swiper_watch_now
+        banner.setOnKeyListener { _, keyCode, event ->
+            if (event.action != KeyEvent.ACTION_DOWN || keyCode != KeyEvent.KEYCODE_DPAD_DOWN) {
+                return@setOnKeyListener false
+            }
+            focusHomeContent()
+            true
+        }
         banner.nextFocusRightId = R.id.tv_home_profile_chip
         banner.text = text
         banner.contentDescription = getString(R.string.home_catalog_warning_tap_retry)
@@ -223,7 +232,16 @@ class HomeTvFragment : Fragment() {
         )
         _binding?.root?.findViewById<View>(R.id.tv_home_profile_chip)?.let { chip ->
             chip.isFocusableInTouchMode = true
-            chip.nextFocusDownId = binding.vgvHome.id
+            // Watch is created with the Featured row. Point at it by id so DPAD
+            // down does not land on the grid container and die there.
+            chip.nextFocusDownId = R.id.btn_swiper_watch_now
+            chip.setOnKeyListener { _, keyCode, event ->
+                if (event.action != KeyEvent.ACTION_DOWN || keyCode != KeyEvent.KEYCODE_DPAD_DOWN) {
+                    return@setOnKeyListener false
+                }
+                focusHomeContent()
+                true
+            }
         }
     }
 
@@ -251,8 +269,11 @@ class HomeTvFragment : Fragment() {
             .load(url)
             .override(w, h)
             .centerCrop()
+            .error(R.drawable.glide_fallback_cover)
         if (!DeviceCapabilities.shouldReduceHomeEffects(target.context)) {
             request = request.transition(DrawableTransitionOptions.withCrossFade(180))
+        } else {
+            request = request.dontAnimate()
         }
         request.into(target)
     }
@@ -269,7 +290,9 @@ class HomeTvFragment : Fragment() {
             adapter = appAdapter.apply {
                 stateRestorationPolicy = RecyclerView.Adapter.StateRestorationPolicy.PREVENT_WHEN_EMPTY
             }
-            setItemSpacing(resources.getDimension(R.dimen.home_spacing).toInt() * 2)
+            itemAnimator = null
+            descendantFocusability = ViewGroup.FOCUS_AFTER_DESCENDANTS
+            setItemSpacing(resources.getDimension(R.dimen.home_spacing).toInt())
             // Do not requestFocus while the adapter is empty — Leanback then loses the
             // focus target and DPAD stays trapped on the side nav until Movies/etc.
         }
@@ -287,13 +310,45 @@ class HomeTvFragment : Fragment() {
             val b = _binding ?: return@post
             if (b.isLoading.root.visibility == View.VISIBLE) return@post
             val featuredWatch = b.vgvHome.findViewById<View>(R.id.btn_swiper_watch_now)
-            when {
+            val landed = when {
                 featuredWatch != null &&
-                    featuredWatch.visibility == View.VISIBLE &&
+                    featuredWatch.isShown &&
                     featuredWatch.isFocusable -> featuredWatch.requestFocus()
-                else -> b.vgvHome.requestFocus()
+                else -> false
+            }
+            if (!landed) {
+                val shelf = firstShelfFocusable(b.vgvHome)
+                if (shelf != null) shelf.requestFocus() else b.vgvHome.requestFocus()
             }
         }
+    }
+
+    private fun firstShelfFocusable(root: ViewGroup): View? {
+        val grids = ArrayList<View>()
+        fun walk(view: View) {
+            if (view.id == R.id.hgv_category && view.isShown) grids.add(view)
+            if (view is ViewGroup) {
+                for (i in 0 until view.childCount) walk(view.getChildAt(i))
+            }
+        }
+        walk(root)
+        for (grid in grids) {
+            val child = if (grid is ViewGroup && grid.childCount > 0) grid.getChildAt(0) else grid
+            if (child.isShown && child.isFocusable) return child
+        }
+        val banner = root.findViewById<View>(R.id.btn_support_banner_cta)
+        if (banner != null && banner.isShown && banner.isFocusable) return banner
+        return null
+    }
+
+    /** Logo-only Room merges reuse the bound shelves. Returns true when submit can be skipped. */
+    private fun homeUnchanged(categories: List<Category>): Boolean {
+        val signature = HomeCatalogPipeline.homeBindSignature(categories) +
+            "\n" + (UserPreferences.currentProvider?.name ?: "") +
+            "\n" + UserPreferences.homeSupportCardDismissed
+        if (signature == homeBindSignature && appAdapter.items.isNotEmpty()) return true
+        homeBindSignature = signature
+        return false
     }
 
     private fun displayHome(categories: List<Category>) {
@@ -384,6 +439,7 @@ class HomeTvFragment : Fragment() {
                     else -> AppAdapter.Type.CATEGORY_TV_ITEM
                 }
             }
+        if (homeUnchanged(visibleCategories)) return
         visibleCategories
             .forEach { category ->
                 homeItems.add(category)

@@ -27,6 +27,22 @@ class ArtworkUrlsTest {
     }
 
     @Test
+    fun preferFeaturedUpgradesLegacyBestv2Size() {
+        assertEquals(
+            "https://image.tmdb.org/t/p/original/abc.jpg",
+            ArtworkUrls.preferFeatured(
+                "https://image.tmdb.org/t/p/w185_and_h278_bestv2/abc.jpg",
+            ),
+        )
+        assertEquals(
+            "https://image.tmdb.org/t/p/w780/abc.jpg",
+            ArtworkUrls.preferPoster(
+                "https://image.tmdb.org/t/p/w92_and_h138_face/abc.jpg",
+            ),
+        )
+    }
+
+    @Test
     fun preferPosterUsesW780() {
         assertEquals(
             "https://image.tmdb.org/t/p/w780/poster.jpg",

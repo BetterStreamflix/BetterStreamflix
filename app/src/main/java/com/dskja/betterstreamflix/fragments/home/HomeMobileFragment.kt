@@ -1,5 +1,6 @@
 package com.dskja.betterstreamflix.fragments.home
 
+import android.graphics.Rect
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
@@ -21,7 +22,6 @@ import com.dskja.betterstreamflix.models.Movie
 import com.dskja.betterstreamflix.models.TvShow
 import com.dskja.betterstreamflix.ui.HomeProfileChip
 import com.dskja.betterstreamflix.ui.FeaturedTvRotation
-import com.dskja.betterstreamflix.ui.SpacingItemDecoration
 import com.dskja.betterstreamflix.utils.UserPreferences
 import com.dskja.betterstreamflix.utils.dp
 import com.dskja.betterstreamflix.utils.CacheUtils
@@ -49,6 +49,15 @@ class HomeMobileFragment : Fragment() {
     }
 
     private val appAdapter = AppAdapter()
+    private var homeBindSignature: String? = null
+
+    val shelfPool: RecyclerView.RecycledViewPool = RecyclerView.RecycledViewPool().apply {
+        setMaxRecycledViews(AppAdapter.Type.MOVIE_MOBILE_ITEM.ordinal, 16)
+        setMaxRecycledViews(AppAdapter.Type.TV_SHOW_MOBILE_ITEM.ordinal, 16)
+        setMaxRecycledViews(AppAdapter.Type.EPISODE_MOBILE_ITEM.ordinal, 8)
+        setMaxRecycledViews(AppAdapter.Type.MOVIE_CONTINUE_WATCHING_MOBILE_ITEM.ordinal, 8)
+        setMaxRecycledViews(AppAdapter.Type.EPISODE_CONTINUE_WATCHING_MOBILE_ITEM.ordinal, 8)
+    }
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -149,14 +158,11 @@ class HomeMobileFragment : Fragment() {
             }
             setHasFixedSize(true)
             setItemViewCacheSize(8)
-            // Shared pools for poster rows reduce inflate churn while scrolling home.
-            recycledViewPool.setMaxRecycledViews(AppAdapter.Type.MOVIE_MOBILE_ITEM.ordinal, 12)
-            recycledViewPool.setMaxRecycledViews(AppAdapter.Type.TV_SHOW_MOBILE_ITEM.ordinal, 12)
+            itemAnimator = null
             recycledViewPool.setMaxRecycledViews(AppAdapter.Type.CATEGORY_MOBILE_ITEM.ordinal, 6)
-            // Tight Featured→shelf gap so the window bg never reads as a black band.
-            addItemDecoration(
-                SpacingItemDecoration(10.dp(requireContext()))
-            )
+            recycledViewPool.setMaxRecycledViews(AppAdapter.Type.CATEGORY_MOBILE_SWIPER.ordinal, 2)
+            // No gap under Featured — the window color reads as a black band there.
+            addItemDecoration(HomeRowSpacing(8.dp(requireContext())))
         }
 
         refreshProviderLogo()
@@ -368,6 +374,7 @@ class HomeMobileFragment : Fragment() {
                 else -> AppAdapter.Type.CATEGORY_MOBILE_ITEM
             }
         }
+        if (homeUnchanged(visibleCategories)) return
 
         // Stamp SWIPER types only on the isolated FEATURED clones — never on
         // original shelf rows (BETTERSTREAMFLIX-13).
@@ -432,6 +439,34 @@ class HomeMobileFragment : Fragment() {
             // One-shot enter only — skip continuous kenburns on the hero (expensive on mid devices).
             ExpMotion.startAnimation(binding.rvHome, R.anim.exp_fade_slide_up)
             ExpMotion.pulseAccentRule(binding.root.findViewById(R.id.v_home_brand_rule))
+        }
+    }
+
+    /** Logo-only Room merges reuse the bound shelves. Returns true when submit can be skipped. */
+    private fun homeUnchanged(categories: List<Category>): Boolean {
+        val signature = HomeCatalogPipeline.homeBindSignature(categories) +
+            "\n" + (UserPreferences.currentProvider?.name ?: "") +
+            "\n" + UserPreferences.homeSupportCardDismissed
+        if (signature == homeBindSignature && appAdapter.items.isNotEmpty()) return true
+        homeBindSignature = signature
+        return false
+    }
+
+    private class HomeRowSpacing(
+        private val gapPx: Int,
+    ) : RecyclerView.ItemDecoration() {
+        override fun getItemOffsets(
+            outRect: Rect,
+            view: View,
+            parent: RecyclerView,
+            state: RecyclerView.State,
+        ) {
+            val pos = parent.getChildAdapterPosition(view)
+            val count = parent.adapter?.itemCount ?: return
+            if (pos == RecyclerView.NO_POSITION || pos >= count - 1) return
+            val item = (parent.adapter as? AppAdapter)?.items?.getOrNull(pos)
+            val featured = item is Category && Category.isFeaturedName(item.name)
+            outRect.bottom = if (featured) 0 else gapPx
         }
     }
 
