@@ -363,11 +363,17 @@ class MovieViewHolder(
 
         binding.ivMoviePoster.loadMoviePoster(movie) {
             val dens = binding.ivMoviePoster.resources.displayMetrics.density
-            val h = (200f * dens).toInt().coerceAtLeast(300)
-            val w = (h * 2 / 3f).toInt().coerceAtLeast(200)
+            val h = (200f * dens).toInt().coerceAtLeast(400)
+            val w = (h * 2 / 3f).toInt().coerceAtLeast(280)
+            val reduce = DeviceCapabilities.shouldReduceHomeEffects(binding.ivMoviePoster.context)
             override(w, h)
                 .centerCrop()
-                .transition(DrawableTransitionOptions.withCrossFade())
+                .error(R.drawable.glide_fallback_cover)
+                .fallback(R.drawable.glide_fallback_cover)
+                .let { request ->
+                    if (reduce) request.dontAnimate()
+                    else request.transition(DrawableTransitionOptions.withCrossFade(120))
+                }
         }
         bindRibbons(binding.ivMovieFavoriteRibbon, binding.ivMovieWatchedRibbon, binding.ivMovieDownloadRibbon)
 
@@ -494,12 +500,17 @@ class MovieViewHolder(
 
         binding.ivMoviePoster.loadMoviePoster(movie) {
             val dens = binding.ivMoviePoster.resources.displayMetrics.density
-            val h = (200f * dens).toInt().coerceAtLeast(300)
-            val w = (h * 2 / 3f).toInt().coerceAtLeast(200)
+            val h = (200f * dens).toInt().coerceAtLeast(400)
+            val w = (h * 2 / 3f).toInt().coerceAtLeast(280)
+            val reduce = DeviceCapabilities.shouldReduceHomeEffects(binding.ivMoviePoster.context)
             fallback(R.drawable.glide_fallback_cover)
+                .error(R.drawable.glide_fallback_cover)
                 .override(w, h)
                 .centerCrop()
-                .transition(DrawableTransitionOptions.withCrossFade())
+                .let { request ->
+                    if (reduce) request.dontAnimate()
+                    else request.transition(DrawableTransitionOptions.withCrossFade(120))
+                }
         }
         bindRibbons(binding.ivMovieFavoriteRibbon, binding.ivMovieWatchedRibbon, binding.ivMovieDownloadRibbon)
         binding.pbMovieProgress.apply {
@@ -822,10 +833,15 @@ class MovieViewHolder(
 
     private fun displaySwiperMobileItem(binding: ItemCategorySwiperMobileBinding) {
         val (artW, artH) = FeaturedSwiperChrome.artworkOverride(binding.ivSwiperBackground)
+        val reduceArt = DeviceCapabilities.shouldReduceHomeEffects(binding.ivSwiperBackground.context)
         binding.ivSwiperBackground.loadMovieBanner(movie, hero = false) {
             override(artW, artH)
                 .centerCrop()
-                .transition(DrawableTransitionOptions.withCrossFade())
+                .error(R.drawable.glide_fallback_cover)
+                .let { request ->
+                    if (reduceArt) request.dontAnimate()
+                    else request.transition(DrawableTransitionOptions.withCrossFade(160))
+                }
         }
 
         itemView.contentDescription = movie.title

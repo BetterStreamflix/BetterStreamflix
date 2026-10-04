@@ -213,14 +213,87 @@ object HomeCatalogPipeline {
     }
 
     /**
+     * Identity of a home submit that should rebuild shelves.
+     * Title logos are omitted: Room logo merges must not rebind every row.
+     */
+    fun homeBindSignature(categories: List<Category>): String = buildString {
+        append(categories.size)
+        categories.forEach { category ->
+            append('\n')
+            append(category.name)
+            append('#')
+            append(category.list.size)
+            category.list.forEach { item ->
+                append('|')
+                append(homeItemSignature(item))
+            }
+        }
+    }
+
+    /** Drop scraped cards that would render as an empty black shelf tile. */
+    private fun itemHasLabelOrArt(item: AppAdapter.Item): Boolean = when (item) {
+        is Movie -> item.title.isNotBlank() ||
+            !item.poster.isNullOrBlank() ||
+            !item.banner.isNullOrBlank()
+        is TvShow -> item.title.isNotBlank() ||
+            !item.poster.isNullOrBlank() ||
+            !item.banner.isNullOrBlank()
+        is Episode -> !item.title.isNullOrBlank() ||
+            !item.poster.isNullOrBlank() ||
+            !item.tvShow?.title.isNullOrBlank()
+        else -> true
+    }
+
+    private fun homeItemSignature(item: AppAdapter.Item): String = when (item) {
+        is Movie -> listOf(
+            "m",
+            item.id,
+            item.title,
+            item.poster,
+            item.banner,
+            item.isFavorite,
+            item.isWatched,
+            item.watchHistory?.lastPlaybackPositionMillis,
+            item.overview?.length,
+        ).joinToString(",")
+        is TvShow -> listOf(
+            "t",
+            item.id,
+            item.title,
+            item.poster,
+            item.banner,
+            item.isFavorite,
+            item.episodeToWatch?.id,
+            item.episodeToWatch?.watchHistory?.lastPlaybackPositionMillis,
+            item.overview?.length,
+        ).joinToString(",")
+        is Episode -> listOf(
+            "e",
+            item.id,
+            item.title,
+            item.poster,
+            item.number,
+            item.tvShow?.id,
+            item.watchHistory?.lastPlaybackPositionMillis,
+        ).joinToString(",")
+        else -> item.javaClass.simpleName
+    }
+
+    /**
      * Home bind helper: restore FEATURED if filters dropped it, then clone
      * every featured Movie/TvShow so shelf rows can mutate [AppAdapter.Item.itemType]
      * without crashing the ViewPager2 hero (BETTERSTREAMFLIX-13).
      */
     fun isolateFeatured(categories: List<Category>): List<Category> {
-        val visible = categories.filter { it.list.isNotEmpty() }
+        val visible = categories.map { category ->
+            if (Category.isFeaturedName(category.name)) {
+                category
+            } else {
+                category.copy(list = category.list.filter(::itemHasLabelOrArt))
+            }
+        }.filter { it.list.isNotEmpty() }
         val ensured = ensureFeatured(visible, mutableListOf())
-                return ensured.map { cat ->
+        return ensured.map { cat ->
             if (!Category.isFeaturedName(cat.name)) {
                 cat
             } else {

@@ -19,6 +19,7 @@ import com.dskja.betterstreamflix.models.Movie
 import com.dskja.betterstreamflix.models.TvShow
 import com.dskja.betterstreamflix.platform.simkl.SimklSyncHooks
 import com.dskja.betterstreamflix.utils.ArtworkRepair
+import com.dskja.betterstreamflix.utils.DeviceCapabilities
 import com.dskja.betterstreamflix.utils.ExpMotion
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -52,26 +53,39 @@ object FeaturedSwiperChrome {
 
     fun artworkOverride(context: Context, view: View? = null): Pair<Int, Int> {
         val dm = context.resources.displayMetrics
+        val constrained = isConstrainedArtworkDevice(context)
+        val floorW = if (constrained) 1280 else ARTWORK_WIDTH
+        val floorH = if (constrained) 1280 else ARTWORK_HEIGHT
+        val maxW = if (constrained) 1600 else MAX_ARTWORK_WIDTH
+        val maxH = if (constrained) 1600 else MAX_ARTWORK_HEIGHT
         val cardHeightPx = runCatching {
             context.resources.getDimensionPixelSize(R.dimen.home_featured_card_height)
         }.getOrDefault((580f * dm.density).roundToInt())
         val width = max(
             max(view?.width ?: 0, dm.widthPixels),
-            ARTWORK_WIDTH,
-        ).coerceAtMost(MAX_ARTWORK_WIDTH)
+            floorW,
+        ).coerceAtMost(maxW)
         val height = max(
             max(view?.height ?: 0, cardHeightPx),
-            ARTWORK_HEIGHT,
-        ).coerceAtMost(MAX_ARTWORK_HEIGHT)
+            floorH,
+        ).coerceAtMost(maxH)
         return width to height
     }
 
-    /** TV home / detail full-bleed backdrop override. */
+    /** TV home full-bleed backdrop. Matches the screen so Glide does not letterbox a square decode. */
     fun tvBackdropOverride(context: Context): Pair<Int, Int> {
         val dm = context.resources.displayMetrics
-        val width = max(dm.widthPixels, 1920).coerceAtMost(MAX_ARTWORK_WIDTH)
-        val height = max(dm.heightPixels, 1080).coerceAtMost(MAX_ARTWORK_HEIGHT)
+        val constrained = isConstrainedArtworkDevice(context)
+        val maxW = if (constrained) 1920 else MAX_ARTWORK_WIDTH
+        val maxH = if (constrained) 1080 else MAX_ARTWORK_HEIGHT
+        val width = max(dm.widthPixels, if (constrained) 1280 else 1920).coerceAtMost(maxW)
+        val height = max(dm.heightPixels, if (constrained) 720 else 1080).coerceAtMost(maxH)
         return width to height
+    }
+
+    private fun isConstrainedArtworkDevice(context: Context): Boolean {
+        return DeviceCapabilities.isLowRamDevice(context) ||
+            DeviceCapabilities.shouldUseConstrainedPlayback(context)
     }
 
     /**

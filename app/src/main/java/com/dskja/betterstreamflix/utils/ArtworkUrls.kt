@@ -6,8 +6,14 @@ package com.dskja.betterstreamflix.utils
  */
 object ArtworkUrls {
 
-    private val tmdbSize = Regex("""(image\.tmdb\.org/t/p/)(w\d+|original)(/)""")
-    private val tmdbSizeAlt = Regex("""(themoviedb\.org/t/p/)(w\d+|original)(/)""")
+    // Size token may be w300, original, or a legacy compound such as
+    // w185_and_h278_bestv2. Leaving those untouched upscales a thumbnail.
+    private val tmdbSize = Regex(
+        """(image\.tmdb\.org/t/p/)((?:w\d+|h\d+|original)[^/]*)(/)""",
+    )
+    private val tmdbSizeAlt = Regex(
+        """(themoviedb\.org/t/p/)((?:w\d+|h\d+|original)[^/]*)(/)""",
+    )
 
     /**
      * Wide TMDb size for mid-weight hero washes (soft blur layers, cheap prefetch).

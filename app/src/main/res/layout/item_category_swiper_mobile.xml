@@ -34,7 +34,7 @@
         android:background="@drawable/bg_featured_scrim_bottom"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintHeight_percent="0.26"
+        app:layout_constraintHeight_percent="0.20"
         app:layout_constraintStart_toStartOf="parent" />
 
     <!-- Brand-forward title logo — hero signal, no hard plate. -->
@@ -113,7 +113,7 @@
         android:layout_height="wrap_content"
         android:layout_marginStart="24dp"
         android:layout_marginEnd="24dp"
-        android:layout_marginBottom="18dp"
+        android:layout_marginBottom="36dp"
         android:gravity="center"
         android:orientation="horizontal"
         app:layout_constraintBottom_toBottomOf="parent"

@@ -70,6 +70,7 @@ class CategoryViewHolder(
     private var swiperPageCallback: ViewPager2.OnPageChangeCallback? = null
     private var swiperProgressAnimator: android.animation.ObjectAnimator? = null
     private var featuredListStateJob: Job? = null
+    private var lastMobileDotIndex = Int.MIN_VALUE
 
     companion object {
         /** Cap Featured dots so ll_dots_indicator never balloons on long shelves. */
@@ -90,6 +91,7 @@ class CategoryViewHolder(
         swiperProgressAnimator = null
         swiperHandler?.removeCallbacksAndMessages(null)
         swiperHandler = null
+        lastMobileDotIndex = Int.MIN_VALUE
         featuredListStateJob?.cancel()
         featuredListStateJob = null
         when (val binding = _binding) {
@@ -191,6 +193,12 @@ class CategoryViewHolder(
         }
 
         binding.rvCategory.apply {
+            (context.toActivity()?.getCurrentFragment() as? HomeMobileFragment)?.let { home ->
+                setRecycledViewPool(home.shelfPool)
+                itemAnimator = null
+                setItemViewCacheSize(8)
+                isNestedScrollingEnabled = false
+            }
             val categoryAdapter = (adapter as? AppAdapter) ?: AppAdapter().also { adapter = it }
             categoryAdapter.apply {
                 this.onMovieClickListener = onMovieClick
@@ -260,6 +268,9 @@ class CategoryViewHolder(
                 submitList(category.list)
             }
             setItemSpacing(category.itemSpacing)
+            if (context.toActivity()?.getCurrentFragment() is HomeTvFragment) {
+                itemAnimator = null
+            }
 
             isFocusable = true
             descendantFocusability = ViewGroup.FOCUS_AFTER_DESCENDANTS
@@ -363,7 +374,9 @@ class CategoryViewHolder(
             this.onTvShowLongClickListener = onTvShowLongClick
         }
         binding.vpCategorySwiper.apply {
-            offscreenPageLimit = 2
+            // One neighbor is enough for the loop clone; two full-bleed originals
+            // stall mid-range phones while the hero is on screen.
+            offscreenPageLimit = 1
             adapter = pagerAdapter
             // Single submit with loop pages — dual submitList raced DiffUtil vs setCurrentItem.
             pagerAdapter.submitList(items)
@@ -384,6 +397,10 @@ class CategoryViewHolder(
             }
             // Defense: ViewPager2 requires match_parent page roots (BETTERSTREAMFLIX-13).
             post {
+                (getChildAt(0) as? RecyclerView)?.apply {
+                    isNestedScrollingEnabled = false
+                    itemAnimator = null
+                }
                 for (i in 0 until childCount) {
                     getChildAt(i)?.let { child ->
                         child.layoutParams = (child.layoutParams
@@ -441,6 +458,8 @@ class CategoryViewHolder(
             }
 
             private fun syncDots(indicatorPosition: Int) {
+                if (indicatorPosition == lastMobileDotIndex) return
+                lastMobileDotIndex = indicatorPosition
                 category.selectedIndex = indicatorPosition
                 if (exp) {
                     updateExpDots(binding, indicatorPosition)
@@ -762,10 +781,12 @@ class CategoryViewHolder(
         val inactive = expDotInactive
         val activeWidth = 20.dp(context)
         val dotSize = 6.dp(context)
-        TransitionManager.beginDelayedTransition(
-            binding.llDotsIndicator,
-            AutoTransition().setDuration(180),
-        )
+        if (!DeviceCapabilities.shouldReduceHomeEffects(context)) {
+            TransitionManager.beginDelayedTransition(
+                binding.llDotsIndicator,
+                AutoTransition().setDuration(180),
+            )
+        }
         binding.llDotsIndicator.children.forEachIndexed { index, view ->
             val isActive = index == selected
             view.layoutParams = (view.layoutParams as LinearLayout.LayoutParams).apply {
@@ -1056,9 +1077,13 @@ class CategoryViewHolder(
 
         binding.ivSwiperRatingIcon.visibility = binding.tvSwiperRating.visibility
 
-        binding.tvSwiperOverview.text = when (selected) {
-            is Movie -> selected.overview
-            is TvShow -> selected.overview
+        binding.tvSwiperOverview.apply {
+            text = when (selected) {
+                is Movie -> selected.overview
+                is TvShow -> selected.overview
+            }
+            // Empty overview used to reserve five lines of dead space over the backdrop.
+            visibility = if (text.isNullOrBlank()) View.GONE else View.VISIBLE
         }
 
         binding.btnSwiperWatchNow.apply {

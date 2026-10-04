@@ -919,10 +919,14 @@ class EpisodeViewHolder(
         val reduce = DeviceCapabilities.shouldReduceHomeEffects(context)
         if (tvShow == null) {
             val dens = resources.displayMetrics.density
-            val h = (120f * dens).toInt().coerceAtLeast(180)
-            val w = (h * 16 / 9f).toInt().coerceAtLeast(280)
+            val h = (120f * dens).toInt().coerceAtLeast(240)
+            val w = (h * 16 / 9f).toInt().coerceAtLeast(400)
             var request = Glide.with(context)
-                .load(ArtworkUrls.preferW500(episode.poster) ?: episode.poster)
+                .load(
+                    ArtworkUrls.preferPoster(episode.poster)
+                        ?: ArtworkUrls.preferW500(episode.poster)
+                        ?: episode.poster,
+                )
                 .error(R.drawable.glide_fallback_cover)
                 .apply {
                     if (withFallback) fallback(R.drawable.glide_fallback_cover)
