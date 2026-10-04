@@ -31,6 +31,20 @@ class SearchResultGuardTest {
     }
 
     @Test
+    fun sanitize_nullListIsEmpty() {
+        assertTrue(SearchResultGuard.sanitize(null).isEmpty())
+    }
+
+    @Test
+    fun bound_capsAndDropsBlanks() {
+        val hits = (1..30).map { Movie(id = "$it", title = "Title $it") } +
+            Movie(id = "", title = "drop")
+        val out = SearchResultGuard.bound(hits, 4)
+        assertEquals(4, out.size)
+        assertEquals("1", (out.first() as Movie).id)
+    }
+
+    @Test
     fun safeProviderSearch_swallowsThrowableAndReturnsEmpty() {
         val out = SearchResultGuard.safeProviderSearch("boom") {
             error("provider exploded")

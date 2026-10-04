@@ -58,6 +58,9 @@ class SearchViewModel(
     private fun liveDb(): AppDatabase =
         AppDatabase.getInstance(com.dskja.betterstreamflix.BetterStreamflixApp.instance.applicationContext)
 
+    private fun roomLookupIds(ids: List<String>): List<String> =
+        ids.filter { it.isNotBlank() }.distinct().take(SearchResultGuard.ROOM_LOOKUP_LIMIT)
+
     private val _state = MutableStateFlow<State>(State.Searching)
     @OptIn(ExperimentalCoroutinesApi::class)
     val state: Flow<State> = combine(
@@ -67,13 +70,14 @@ class SearchViewModel(
                 is State.SuccessSearching -> {
                     val movies = state.results
                         .filterIsInstance<Movie>()
-                    if (movies.isEmpty()) {
+                    val movieIds = roomLookupIds(movies.map { it.id })
+                    if (movieIds.isEmpty()) {
                         emit(emptyList())
                     } else {
                         val db = runCatching { liveDb() }.getOrNull()
                         if (db == null || !db.isOpen) emit(emptyList())
                         else emitAll(
-                            db.movieDao().getByIds(movies.map { it.id }).catch { e ->
+                            db.movieDao().getByIds(movieIds).catch { e ->
                                 if (e is CancellationException) throw e
                                 Log.w("SearchViewModel", "moviesDb flow failed after provider switch", e)
                                 emit(emptyList())
@@ -89,13 +93,14 @@ class SearchViewModel(
                 is State.SuccessSearching -> {
                     val tvShows = state.results
                         .filterIsInstance<TvShow>()
-                    if (tvShows.isEmpty()) {
+                    val showIds = roomLookupIds(tvShows.map { it.id })
+                    if (showIds.isEmpty()) {
                         emit(emptyList())
                     } else {
                         val db = runCatching { liveDb() }.getOrNull()
                         if (db == null || !db.isOpen) emit(emptyList())
                         else emitAll(
-                            db.tvShowDao().getByIds(tvShows.map { it.id }).catch { e ->
+                            db.tvShowDao().getByIds(showIds).catch { e ->
                                 if (e is CancellationException) throw e
                                 Log.w("SearchViewModel", "tvShowsDb flow failed after provider switch", e)
                                 emit(emptyList())
@@ -152,6 +157,14 @@ class SearchViewModel(
             }
             else -> state
         }
+    }.catch { t ->
+        if (t is CancellationException) throw t
+        Log.e("SearchViewModel", "state flow failed", t)
+        emit(
+            State.FailedSearching(
+                (t as? Exception) ?: Exception(t.message ?: t.javaClass.simpleName, t),
+            ),
+        )
     }.flowOn(Dispatchers.IO)
 
     var query = ""
@@ -270,13 +283,15 @@ class SearchViewModel(
                         _state.emit(State.FailedSearching(Exception("No provider selected")))
                         return@launch
                     }
-                val results = ParentalControlUtils.filterItems(
-                    ProviderSmoke.withProviderTimeout(
-                        timeoutMs = ProviderSmoke.SEARCH_TIMEOUT_MS,
-                        label = "search(${provider.name})",
-                    ) {
-                        SearchResultGuard.sanitize(provider.search(query))
-                    }
+                val results = SearchResultGuard.sanitize(
+                    ParentalControlUtils.filterItems(
+                        ProviderSmoke.withProviderTimeout(
+                            timeoutMs = ProviderSmoke.SEARCH_TIMEOUT_MS,
+                            label = "search(${provider.name})",
+                        ) {
+                            SearchResultGuard.sanitize(provider.search(query))
+                        }
+                    )
                 )
                 val addonHits = runCatching {
                     SearchResultGuard.sanitize(
@@ -284,11 +299,14 @@ class SearchViewModel(
                             .collectSearchResults(provider, query, page = 1),
                     )
                 }.getOrDefault(emptyList())
-                val merged = (results + addonHits).distinctBy { it.searchIdentityKey() }
+                val merged = (results + addonHits)
+                    .distinctBy { it.searchIdentityKey() }
+                    .take(SearchResultGuard.MAX_LOCAL_RESULTS)
                 this@SearchViewModel.query = query
                 page = 1
                 rawLocalResults = merged
-                rawLocalHasMore = merged.isNotEmpty()
+                rawLocalHasMore = results.isNotEmpty() &&
+                    merged.size < SearchResultGuard.MAX_LOCAL_RESULTS
                 rawGlobalResults = emptyList()
                 emitLocalSuccess()
             } catch (e: CancellationException) {
@@ -319,15 +337,17 @@ class SearchViewModel(
                             _state.emit(State.FailedSearching(Exception("No provider selected")))
                             return@launch
                         }
-                    val results = ParentalControlUtils.filterItems(
-                        ProviderSmoke.withProviderTimeout(
-                            timeoutMs = ProviderSmoke.SEARCH_TIMEOUT_MS,
-                            label = "search(${provider.name}, page=${page + 1})",
-                        ) {
-                            SearchResultGuard.sanitize(
-                                provider.search(requestedQuery, page + 1),
-                            )
-                        }
+                    val results = SearchResultGuard.sanitize(
+                        ParentalControlUtils.filterItems(
+                            ProviderSmoke.withProviderTimeout(
+                                timeoutMs = ProviderSmoke.SEARCH_TIMEOUT_MS,
+                                label = "search(${provider.name}, page=${page + 1})",
+                            ) {
+                                SearchResultGuard.sanitize(
+                                    provider.search(requestedQuery, page + 1),
+                                )
+                            }
+                        )
                     )
                     // Drop if the user started a newer search while we were loading.
                     if (query != requestedQuery) return@launch
@@ -336,19 +356,30 @@ class SearchViewModel(
                         .map { it.searchIdentityKey() }
                         .toHashSet()
                     val newUniqueResults = results.filterNot { it.searchIdentityKey() in existingKeys }
+                    val roomLeft = (SearchResultGuard.MAX_LOCAL_RESULTS - rawLocalResults.size)
+                        .coerceAtLeast(0)
+                    val accepted = newUniqueResults.take(roomLeft)
                     page += 1
-                    rawLocalResults = rawLocalResults + newUniqueResults
-                    rawLocalHasMore = newUniqueResults.isNotEmpty()
+                    rawLocalResults = rawLocalResults + accepted
+                    rawLocalHasMore = accepted.isNotEmpty() &&
+                        rawLocalResults.size < SearchResultGuard.MAX_LOCAL_RESULTS
                     emitLocalSuccess()
                 } catch (e: CancellationException) {
                     throw e
                 } catch (t: Throwable) {
                     Log.e("SearchViewModel", "loadMore: ", t)
-                    _state.emit(
-                        State.FailedSearching(
-                            (t as? Exception) ?: Exception(t.message ?: t.javaClass.simpleName, t),
-                        ),
-                    )
+                    // Keep the rows already on screen. Replacing them with the error
+                    // overlay throws away a successful search because one later page failed.
+                    rawLocalHasMore = false
+                    if (rawLocalResults.isNotEmpty()) {
+                        emitLocalSuccess()
+                    } else {
+                        _state.emit(
+                            State.FailedSearching(
+                                (t as? Exception) ?: Exception(t.message ?: t.javaClass.simpleName, t),
+                            ),
+                        )
+                    }
                 }
             }
         }
@@ -393,18 +424,21 @@ class SearchViewModel(
                 launch {
                     val next = try {
                         gate.withPermit {
-                            val results = ParentalControlUtils.filterItems(
-                                ProviderSmoke.withProviderTimeout(
-                                    timeoutMs = ProviderSmoke.SEARCH_TIMEOUT_MS,
-                                    label = "searchGlobal(${provider.name})",
-                                ) {
-                                    SearchResultGuard.sanitize(provider.search(requestedQuery))
-                                }.onEach { item ->
-                                    when (item) {
-                                        is Movie -> item.providerName = provider.name
-                                        is TvShow -> item.providerName = provider.name
-                                    }
-                                },
+                            val results = SearchResultGuard.bound(
+                                ParentalControlUtils.filterItems(
+                                    ProviderSmoke.withProviderTimeout(
+                                        timeoutMs = ProviderSmoke.SEARCH_TIMEOUT_MS,
+                                        label = "searchGlobal(${provider.name})",
+                                    ) {
+                                        SearchResultGuard.sanitize(provider.search(requestedQuery))
+                                    }.onEach { item ->
+                                        when (item) {
+                                            is Movie -> item.providerName = provider.name
+                                            is TvShow -> item.providerName = provider.name
+                                        }
+                                    },
+                                ),
+                                SearchResultGuard.MAX_GLOBAL_PER_PROVIDER,
                             )
                             ProviderResult(provider, ProviderResult.State.Success(results))
                         }

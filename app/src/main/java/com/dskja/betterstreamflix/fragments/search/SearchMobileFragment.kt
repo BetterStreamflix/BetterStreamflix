@@ -18,15 +18,12 @@ import androidx.fragment.app.Fragment
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.flowWithLifecycle
 import androidx.lifecycle.lifecycleScope
+import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.dskja.betterstreamflix.R
 import com.dskja.betterstreamflix.adapters.AppAdapter
 import com.dskja.betterstreamflix.database.AppDatabase
 import com.dskja.betterstreamflix.databinding.FragmentSearchMobileBinding
-import com.dskja.betterstreamflix.models.Category
-import com.dskja.betterstreamflix.models.Genre
-import com.dskja.betterstreamflix.models.Movie
-import com.dskja.betterstreamflix.models.TvShow
 import com.dskja.betterstreamflix.ui.SpacingItemDecoration
 import com.dskja.betterstreamflix.utils.CacheUtils
 import com.dskja.betterstreamflix.utils.Http409CacheGuard
@@ -50,7 +47,9 @@ class SearchMobileFragment : Fragment() {
     private val binding get() = _binding!!
 
     private val database get() = AppDatabase.getInstance(requireContext())
-    private val viewModel by viewModelsFactory { SearchViewModel(database) }
+    private val viewModel by viewModelsFactory {
+        SearchViewModel(runCatching { database }.getOrNull())
+    }
 
     private var appAdapter = AppAdapter()
 
@@ -101,8 +100,9 @@ class SearchMobileFragment : Fragment() {
         initializeSearch()
 
         viewLifecycleOwner.lifecycleScope.launch {
-            viewModel.state.flowWithLifecycle(lifecycle, Lifecycle.State.STARTED).collect { state ->
-                // ========= BLOQUE WHEN MODIFICADO =========
+            viewModel.state.flowWithLifecycle(viewLifecycleOwner.lifecycle, Lifecycle.State.STARTED).collect { state ->
+                val ui = _binding ?: return@collect
+                try {
                 when (state) {
                     is State.Searching, is State.GlobalSearching -> {
                         binding.isLoading.apply {
@@ -120,11 +120,15 @@ class SearchMobileFragment : Fragment() {
                     is State.SuccessSearching -> {
                         displaySearch(state.results, state.hasMore)
                         appAdapter.isLoading = false
-                        ExpMotion.fadeOutAndHide(binding.isLoading.root)
+                        ExpMotion.fadeOutAndHide(ui.isLoading.root)
                     }
                     is State.SuccessGlobalSearching -> {
-                        displayGlobalSearch(state.providerResults)
-                        ExpMotion.fadeOutAndHide(binding.isLoading.root)
+                        val keepLoader = displayGlobalSearch(state.providerResults)
+                        if (keepLoader) {
+                            ui.isLoading.root.isVisible = true
+                        } else {
+                            ExpMotion.fadeOutAndHide(ui.isLoading.root)
+                        }
                     }
                     is State.FailedSearching -> {
                         if (http409Guard.handle(requireContext(), state.error) { retryLastSearch() }) {
@@ -140,7 +144,7 @@ class SearchMobileFragment : Fragment() {
                         if (appAdapter.isLoading) {
                             appAdapter.isLoading = false
                         } else {
-                            binding.isLoading.apply {
+                            ui.isLoading.apply {
                                 com.dskja.betterstreamflix.utils.ExpPressEffects.showLoadingSkeleton(root, false)
                                 gIsLoadingRetry.visibility = View.VISIBLE
                                 com.dskja.betterstreamflix.utils.ExpPressEffects.animateLoadingError(root)
@@ -158,9 +162,16 @@ class SearchMobileFragment : Fragment() {
                         }
                     }
                 }
-                // ===========================================
+                } catch (t: Throwable) {
+                    android.util.Log.e("SearchMobileFragment", "search render failed", t)
+                }
             }
         }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        refreshSortChips()
     }
 
     override fun onDestroyView() {
@@ -286,7 +297,6 @@ class SearchMobileFragment : Fragment() {
         )
 
         binding.btnSearchVoice.apply {
-            requestFocus()
             val showVoice = voiceHelper.isAvailable()
             val wasVisible = visibility == View.VISIBLE
             visibility = if (showVoice) View.VISIBLE else View.GONE
@@ -382,6 +392,15 @@ class SearchMobileFragment : Fragment() {
             adapter = appAdapter.apply {
                 stateRestorationPolicy = RecyclerView.Adapter.StateRestorationPolicy.PREVENT_WHEN_EMPTY
             }
+            val columns = (layoutManager as? GridLayoutManager)?.spanCount ?: SearchMobileRows.GRID_SPAN
+            (layoutManager as? GridLayoutManager)?.spanSizeLookup =
+                object : GridLayoutManager.SpanSizeLookup() {
+                    override fun getSpanSize(position: Int): Int {
+                        val type = runCatching { appAdapter.getItemViewType(position) }
+                            .getOrDefault(AppAdapter.Type.MOVIE_GRID_MOBILE_ITEM.ordinal)
+                        return SearchMobileRows.spanSize(type, columns)
+                    }
+                }
             addItemDecoration(
                 SpacingItemDecoration(10.dp(requireContext()))
             )
@@ -395,26 +414,17 @@ class SearchMobileFragment : Fragment() {
         val chipNewest = binding.root.findViewById<TextView>(R.id.chip_search_sort_newest) ?: return
         val chipYear = binding.root.findViewById<TextView>(R.id.chip_search_filter_year) ?: return
 
-        fun refreshChips() {
-            SearchSortUi.bindChips(
-                chipDefault = chipDefault,
-                chipNewest = chipNewest,
-                chipYear = chipYear,
-                mode = viewModel.currentSortMode(),
-                year = viewModel.currentYearFilter(),
-            )
-        }
-        refreshChips()
+        refreshSortChips()
 
         chipDefault.setOnClickListener {
             ExpMotion.hapticTap(it)
             viewModel.setSortMode(com.dskja.betterstreamflix.utils.SearchSortMode.PROVIDER_DEFAULT)
-            refreshChips()
+            refreshSortChips()
         }
         chipNewest.setOnClickListener {
             ExpMotion.hapticTap(it)
             viewModel.setSortMode(com.dskja.betterstreamflix.utils.SearchSortMode.NEWEST_FIRST)
-            refreshChips()
+            refreshSortChips()
         }
         chipYear.setOnClickListener {
             ExpMotion.hapticTap(it)
@@ -424,7 +434,7 @@ class SearchMobileFragment : Fragment() {
                 resultYears = viewModel.yearsInCurrentResults(),
             ) { year ->
                 viewModel.setYearFilter(year)
-                refreshChips()
+                refreshSortChips()
             }
         }
     }
@@ -525,11 +535,33 @@ class SearchMobileFragment : Fragment() {
         row.addView(clear)
     }
 
+    private fun refreshSortChips() {
+        val root = _binding?.root ?: return
+        val chipDefault = root.findViewById<TextView>(R.id.chip_search_sort_default) ?: return
+        val chipNewest = root.findViewById<TextView>(R.id.chip_search_sort_newest) ?: return
+        val chipYear = root.findViewById<TextView>(R.id.chip_search_filter_year) ?: return
+        SearchSortUi.bindChips(
+            chipDefault = chipDefault,
+            chipNewest = chipNewest,
+            chipYear = chipYear,
+            mode = viewModel.currentSortMode(),
+            year = viewModel.currentYearFilter(),
+        )
+    }
+
+    private fun clearSearchField() {
+        val ui = _binding ?: return
+        ui.etSearch.setText("")
+        ui.etSearch.requestFocus()
+        viewModel.search("")
+    }
+
     private fun displaySearch(list: List<AppAdapter.Item>, hasMore: Boolean) {
+        val rows = SearchMobileRows.local(list)
         binding.root.findViewById<View>(R.id.tv_search_empty)?.let { emptyView ->
             val cta = binding.root.findViewById<View>(R.id.btn_search_empty_cta)
             val emptyRule = binding.root.findViewById<View>(R.id.v_search_empty_rule)
-            val showEmpty = list.isEmpty() && viewModel.query.isNotBlank()
+            val showEmpty = rows.isEmpty() && viewModel.query.isNotBlank()
             if (showEmpty) {
                 if (ExperimentalMobileDesign.enabled()) {
                     emptyView.setBackgroundResource(ExperimentalMobileDesign.glassCardBackground())
@@ -566,11 +598,7 @@ class SearchMobileFragment : Fragment() {
                     }
                     chip.setOnClickListener {
                         ExpMotion.hapticTap(it)
-                        binding.etSearch.setText("")
-                        binding.etSearch.requestFocus()
-                        emptyView.isVisible = false
-                        emptyRule?.isVisible = false
-                        chip.isVisible = false
+                        clearSearchField()
                     }
                 }
             } else {
@@ -585,64 +613,25 @@ class SearchMobileFragment : Fragment() {
                 }
             }
         }
-        appAdapter.submitList(SearchResultGuard.sanitize(list).onEach {
-            when (it) {
-                is Genre -> it.itemType = AppAdapter.Type.GENRE_GRID_MOBILE_ITEM
-                is Movie -> it.itemType = AppAdapter.Type.MOVIE_GRID_MOBILE_ITEM
-                is TvShow -> it.itemType = AppAdapter.Type.TV_SHOW_GRID_MOBILE_ITEM
-            }
-        })
+        appAdapter.submitList(rows)
 
-        if (hasMore && viewModel.query != "") {
+        if (hasMore && viewModel.query.isNotBlank() && rows.size < SearchMobileRows.MAX_LOCAL) {
             appAdapter.setOnLoadMoreListener { viewModel.loadMore() }
         } else {
             appAdapter.setOnLoadMoreListener(null)
         }
     }
 
-    // ========= NUEVA FUNCIÓN PARA MOSTRAR RESULTADOS GLOBALES =========
-    private fun displayGlobalSearch(providerResults: List<ProviderResult>) {
-        val allItems = mutableListOf<AppAdapter.Item>()
-
-        providerResults.forEach { providerResult ->
-            val headerTitle = when (val state = providerResult.state) {
-                is ProviderResult.State.Loading -> "${providerResult.provider.name} - ${getString(R.string.searching)}"
-                is ProviderResult.State.Error -> "${providerResult.provider.name} - ${getString(R.string.search_error)}"
-                is ProviderResult.State.Success -> {
-                    val count = state.results.size
-                    val resultText = if (count == 1) getString(R.string.result) else getString(R.string.results)
-                    "${providerResult.provider.name} - $count $resultText"
-                }
-            }
-
-            val header = Category(
-                name = headerTitle,
-                list = emptyList()
-            ).apply {
-                itemType = AppAdapter.Type.CATEGORY_MOBILE_ITEM
-            }
-            allItems.add(header)
-
-            if (providerResult.state is ProviderResult.State.Success) {
-                val results = SearchResultGuard.sanitize(providerResult.state.results).onEach {
-                    when (it) {
-                        is Movie -> it.itemType = AppAdapter.Type.MOVIE_GRID_MOBILE_ITEM
-                        is TvShow -> it.itemType = AppAdapter.Type.TV_SHOW_GRID_MOBILE_ITEM
-                    }
-                }
-                allItems.addAll(results)
-            }
+    /** @return true while Global Search is still working and has nothing to show yet. */
+    private fun displayGlobalSearch(providerResults: List<ProviderResult>): Boolean {
+        val plan = SearchMobileRows.global(providerResults) { name, count ->
+            val resultText = if (count == 1) getString(R.string.result) else getString(R.string.results)
+            "$name - $count $resultText"
         }
+        appAdapter.submitList(plan.items)
+        appAdapter.setOnLoadMoreListener(null)
 
-        appAdapter.submitList(allItems)
-        appAdapter.setOnLoadMoreListener(null) // Desactivamos la carga infinita en la búsqueda global
-
-        val isEmpty = viewModel.query.isNotBlank() && (
-            providerResults.all { it.state !is ProviderResult.State.Success }
-                || providerResults.sumOf {
-                    (it.state as? ProviderResult.State.Success)?.results?.size ?: 0
-                } == 0
-            )
+        val isEmpty = !plan.stillLoading && !plan.hasHits && viewModel.query.isNotBlank()
         binding.root.findViewById<View>(R.id.tv_search_empty)?.let { emptyView ->
             val cta = binding.root.findViewById<View>(R.id.btn_search_empty_cta)
             val emptyRule = binding.root.findViewById<View>(R.id.v_search_empty_rule)
@@ -682,11 +671,7 @@ class SearchMobileFragment : Fragment() {
                     }
                     chip.setOnClickListener {
                         ExpMotion.hapticTap(it)
-                        binding.etSearch.setText("")
-                        binding.etSearch.requestFocus()
-                        emptyView.isVisible = false
-                        emptyRule?.isVisible = false
-                        chip.isVisible = false
+                        clearSearchField()
                     }
                 }
             } else {
@@ -701,6 +686,6 @@ class SearchMobileFragment : Fragment() {
                 }
             }
         }
+        return plan.stillLoading && !plan.hasHits
     }
-    // ================================================================
 }

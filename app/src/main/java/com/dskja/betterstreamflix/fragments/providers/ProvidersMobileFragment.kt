@@ -308,15 +308,18 @@ class ProvidersMobileFragment : Fragment() {
             emptyCta = emptyCta,
             visible = empty,
             tintOnSurfaceVariant = false,
-            onCtaClick = {
-                if (searching) {
+        )
+        if (empty) {
+            emptyCta.visibility = View.VISIBLE
+            emptyCta.setOnClickListener {
+                if (searchQuery.isNotBlank()) {
                     binding.etProvidersSearch.setText("")
                     binding.etProvidersSearch.requestFocus()
                 } else {
                     binding.sProvidersLanguage.setSelection(0)
                 }
-            },
-        )
+            }
+        }
         binding.rvProviders.visibility = if (empty) View.GONE else View.VISIBLE
     }
 }

@@ -76,4 +76,11 @@ class SearchTvRowsTest {
         assertEquals(SearchTvRows.MAX_GLOBAL_PER_PROVIDER, shelf.list.size)
         assertEquals(SearchTvRows.MAX_GLOBAL_PER_PROVIDER.toString(), shelf.name)
     }
+
+    @Test
+    fun chipDown_skipsEmptyGrid() {
+        assertEquals(10, SearchTvRows.chipDownId(true, false, 10, 20, 30))
+        assertEquals(20, SearchTvRows.chipDownId(false, true, 10, 20, 30))
+        assertEquals(30, SearchTvRows.chipDownId(false, false, 10, 20, 30))
+    }
 }

@@ -68,7 +68,14 @@ object SearchSortUi {
             .setNegativeButton(R.string.option_cancel, null)
             .create()
             .also { dialog ->
-                dialog.setOnShowListener { ExpDialogChrome.polishShown(dialog) }
+                dialog.setOnShowListener {
+                    ExpDialogChrome.polishShown(dialog)
+                    dialog.listView?.apply {
+                        isFocusable = true
+                        isFocusableInTouchMode = true
+                        requestFocus()
+                    }
+                }
                 dialog.show()
             }
     }
