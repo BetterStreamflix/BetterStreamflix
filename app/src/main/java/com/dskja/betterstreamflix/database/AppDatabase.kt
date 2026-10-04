@@ -118,6 +118,32 @@ abstract class AppDatabase : RoomDatabase() {
             return buildDatabase(providerName, profileId, context)
         }
 
+        /**
+         * Opens the provider database for [profileId].
+         * Reuses the process singleton when it already points at that file so sync
+         * cannot close the live connection out from under the UI.
+         * Close the database only when [OpenedDatabase.ownsConnection] is true.
+         */
+        fun openForProfile(
+            providerName: String,
+            context: Context,
+            profileId: String = ProfileManager.activeProfileId,
+        ): OpenedDatabase {
+            val live = INSTANCE?.takeIf {
+                currentProviderName == providerName && currentProfileId == profileId
+            }
+            if (live != null) return OpenedDatabase(live, ownsConnection = false)
+            return OpenedDatabase(
+                buildDatabase(providerName, profileId, context),
+                ownsConnection = true,
+            )
+        }
+
+        class OpenedDatabase(
+            val database: AppDatabase,
+            val ownsConnection: Boolean,
+        )
+
         private fun buildDatabase(
             providerName: String,
             profileId: String,

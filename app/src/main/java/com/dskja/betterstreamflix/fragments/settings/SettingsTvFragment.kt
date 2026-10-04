@@ -333,6 +333,7 @@ class SettingsTvFragment : LeanbackPreferenceFragmentCompat() {
     }
 
     private fun displaySettings() {
+        ProfileScopedPreferenceStore.attach(this)
         updateOverviewLabels()
         updateProviderVisibilityState()
         SupabaseSettingsController.bind(this, lifecycleScope) { key ->
