@@ -70,6 +70,26 @@ class PlayerTeardownPolicyTest {
     }
 
     @Test
+    fun allowHardRelease_whenReplacingAfterDetach() {
+        assertTrue(
+            PlayerTeardownPolicy.allowHardRelease(
+                viewAttached = true,
+                playerViewDetached = true,
+                destroying = false,
+                replacing = true,
+            ),
+        )
+        assertFalse(
+            PlayerTeardownPolicy.allowHardRelease(
+                viewAttached = true,
+                playerViewDetached = false,
+                destroying = false,
+                replacing = true,
+            ),
+        )
+    }
+
+    @Test
     fun allowListenerWork_rejectsTeardownStates() {
         assertTrue(PlayerTeardownPolicy.allowListenerWork(false, false, true))
         assertFalse(PlayerTeardownPolicy.allowListenerWork(true, false, true))

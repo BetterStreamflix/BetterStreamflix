@@ -32,7 +32,6 @@ object PelotaLibreTvHdProvider : IptvProvider, ProviderConfigUrl {
 
     private const val OBFUSCATED_PLAYLIST = "aHR0cHM6Ly9yYXcuZ2l0aHVidXNlcmNvbnRlbnQuY29tL0J1ZGR5Q2hld0NoZXcvc3BvcnRzL3JlZnMvaGVhZHMvbWFpbi9saXZlZXZlbnRzZmlsdGVyLm0zdTg="
 
-    private const val FALLBACK_VIDEO_URL = "https://raw.githubusercontent.com/NANDOFS/ModoPrueba/main/VIDEO/SIN-SE%C3%91AL.mp4"
 
     private val client = OkHttpClient.Builder()
         .connectTimeout(15, TimeUnit.SECONDS)
@@ -264,12 +263,13 @@ object PelotaLibreTvHdProvider : IptvProvider, ProviderConfigUrl {
                     headers = videoHeaders,
                 )
             } else {
-                Log.e(TAG, "Canal muerto — fallback")
-                Video(source = FALLBACK_VIDEO_URL, subtitles = emptyList())
+                Log.e(TAG, "Canal muerto — no fake SIN-SEÑAL success")
+                throw Exception("PelotaLibre: stream offline or 404 (try another server)")
             }
         } catch (e: Exception) {
+            if (e.message?.contains("PelotaLibre:", ignoreCase = true) == true) throw e
             Log.e(TAG, "Error red: ${e.message}")
-            Video(source = FALLBACK_VIDEO_URL, subtitles = emptyList())
+            throw Exception("PelotaLibre: stream offline or 404 (try another server)")
         }
     }
 

@@ -60,11 +60,11 @@
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/rv_tv_show_episodes"
         android:layout_width="0dp"
-        android:layout_height="wrap_content"
+        android:layout_height="480dp"
         android:layout_marginTop="10dp"
         android:clipChildren="false"
         android:clipToPadding="false"
-        android:nestedScrollingEnabled="false"
+        android:nestedScrollingEnabled="true"
         android:orientation="vertical"
         android:overScrollMode="never"
         android:paddingStart="16dp"

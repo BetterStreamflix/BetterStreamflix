@@ -493,16 +493,16 @@ class SearchTvFragment : Fragment() {
     private fun focusSearchContent(): Boolean {
         val ui = _binding ?: return false
         val gridVisible = ui.vgvSearch.visibility == View.VISIBLE
+        // Prefer a real poster/shelf child — the VerticalGridView itself is focusable and
+        // would swallow Back into an empty/Loading grid (Leanback focus trap).
         val focusableChild = if (gridVisible && appAdapter.itemCount > 0) {
-            ui.vgvSearch.findFocus()
+            ui.vgvSearch.findFocus()?.takeIf { it !== ui.vgvSearch && it.hasFocusable() }
                 ?: ui.vgvSearch.getChildAt(0)?.takeIf { it.hasFocusable() }
         } else {
             null
         }
         return when {
-            focusableChild != null || (gridVisible && appAdapter.itemCount > 0 && ui.vgvSearch.hasFocusable()) -> {
-                ui.vgvSearch.requestFocus()
-            }
+            focusableChild != null -> focusableChild.requestFocus()
             ui.llGlobalSearch.visibility == View.VISIBLE -> {
                 ui.llGlobalSearch.requestFocus()
             }
