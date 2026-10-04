@@ -1,5 +1,6 @@
 package com.dskja.betterstreamflix.extractors
 
+import com.dskja.betterstreamflix.utils.withExtractorTimeouts
 import android.util.Log
 import com.dskja.betterstreamflix.models.Video
 import com.google.gson.JsonObject
@@ -19,7 +20,7 @@ class MailRuExtractor : Extractor() {
             
             val metaUrl = "$mainUrl/+/video/meta/$videoId?xemail=&ajax_call=1&func_name=&mna=&mnb=&ext=1&_=$timestamp"
             
-            val client = OkHttpClient.Builder().build()
+            val client = OkHttpClient.Builder().withExtractorTimeouts().build()
             
             val request = Request.Builder()
                 .url(metaUrl)

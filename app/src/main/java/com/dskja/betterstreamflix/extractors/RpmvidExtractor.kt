@@ -1,5 +1,6 @@
 package com.dskja.betterstreamflix.extractors
 
+import com.dskja.betterstreamflix.utils.withExtractorTimeouts
 import com.dskja.betterstreamflix.models.Video
 import androidx.media3.common.MimeTypes
 import okhttp3.Interceptor
@@ -48,7 +49,7 @@ class RpmvidExtractor : Extractor() {
                 return chain.proceed(request)
             }
         })
-        .build()
+        .withExtractorTimeouts().build()
 
     private interface Service {
         @GET

@@ -51,59 +51,22 @@ class VoeExtractor : Extractor() {
 
     override suspend fun extract(link: String): Video {
         try {
-            val service = VoeExtractorService.build(mainUrl, link)
-
-            // Extract path from original link (handles both mainUrl and alias URLs)
             val parsedUrl = URL(link)
             val originalPath = parsedUrl.path + if (parsedUrl.query != null) "?${parsedUrl.query}" else ""
+            val client = VoeExtractorService.client(link)
+            val firstService = VoeExtractorService.create(mainUrl, client)
+            val first = firstService.getSource(originalPath)
+            val origin = "${parsedUrl.protocol}://${parsedUrl.host}"
+            parsePlayer(first, link, origin)?.let { return it }
 
-            val source = service.getSource(originalPath)
-            val scriptTag = source.selectFirst("script[type=application/json]")
-            val encodedStringInScriptTag = scriptTag?.data()?.trim().orEmpty()
-            val encodedString = DecryptHelper.findEncodedRegex(source.html())
-            val decryptedContent = if (encodedString != null) {
-                DecryptHelper.decrypt(encodedString)
-            } else {
-                DecryptHelper.decrypt(encodedStringInScriptTag)
-            }
-
-            val m3u8 = decryptedContent.get("source")?.asString.orEmpty()
-            if (m3u8.isBlank()) {
+            val redirectBase = VoeRedirect.baseUrl(first.html(), parsedUrl.host)
+                ?: throw Exception("VOE source not found")
+            if (redirectBase.trimEnd('/').equals(origin, ignoreCase = true)) {
                 throw Exception("VOE source not found")
             }
-
-            val baseSubtitleScript = source.selectFirst("script")?.data() ?: ""
-            var baseSubtitle = ""
-            if (baseSubtitleScript.isNotBlank()) {
-                val regex = Regex("""var\s+base\s*=\s*['"]([^'"]+)['"]""")
-                baseSubtitle = regex.find(baseSubtitleScript)?.groupValues?.get(1) ?: ""
-            }
-
-            val captions = decryptedContent.getAsJsonArray("captions")
-            val subtitles = if (captions != null) {
-                captions.map { caption ->
-                    val obj = caption.asJsonObject
-                    val file = obj.get("file").asString
-                    Video.Subtitle(
-                        file = if (file.startsWith("http")) file else baseSubtitle + file,
-                        label = obj.get("label").asString,
-                        initialDefault = obj.get("default").asBoolean,
-                        default = if (UserPreferences.serverAutoSubtitlesDisabled) false else obj.get("default").asBoolean
-                    )
-                }
-            } else {
-                emptyList()
-            }
-            return Video(
-                source = m3u8,
-                subtitles = subtitles,
-                useServerSubtitleSetting = true,
-                headers = mapOf(
-                    "Referer" to link,
-                    "Origin" to "${parsedUrl.protocol}://${parsedUrl.host}",
-                    "User-Agent" to "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
-                ),
-            )
+            val second = VoeExtractorService.create(redirectBase, client).getSource(originalPath)
+            return parsePlayer(second, redirectBase, redirectBase.trimEnd('/'))
+                ?: throw Exception("VOE source not found")
         } catch (e: Exception) {
             // Dead VOE embeds (HTTP 404 / megakino stale links) — soft-fail so failover
             // can hop to the next hoster without burning a second extract retry.
@@ -118,12 +81,62 @@ class VoeExtractor : Extractor() {
         }
     }
 
+    private fun parsePlayer(source: Document, referer: String, origin: String): Video? {
+        val scriptJson = source.selectFirst("script[type=application/json]")?.data()?.trim().orEmpty()
+        val decryptedContent = DecryptHelper.firstPlayable(
+            listOfNotNull(
+                DecryptHelper.findEncodedRegex(source.html()),
+                scriptJson.takeIf { it.isNotBlank() },
+            ),
+        ) ?: return null
+        val m3u8 = decryptedContent.get("source")?.asString.orEmpty()
+        if (m3u8.isBlank()) return null
+
+        val baseSubtitleScript = source.selectFirst("script")?.data() ?: ""
+        val baseSubtitle = Regex("""var\s+base\s*=\s*['"]([^'"]+)['"]""")
+            .find(baseSubtitleScript)
+            ?.groupValues
+            ?.getOrNull(1)
+            .orEmpty()
+
+        val captions = decryptedContent.getAsJsonArray("captions")
+        val subtitles = captions?.mapNotNull { caption ->
+            val obj = caption.asJsonObject
+            val file = obj.get("file")?.takeIf { !it.isJsonNull }?.asString?.takeIf { it.isNotBlank() }
+                ?: return@mapNotNull null
+            val label = obj.get("label")?.takeIf { !it.isJsonNull }?.asString ?: "Subtitle"
+            val isDefault = obj.get("default")?.takeIf { !it.isJsonNull }?.asBoolean == true
+            Video.Subtitle(
+                file = if (file.startsWith("http")) file else baseSubtitle + file,
+                label = label,
+                initialDefault = isDefault,
+                default = if (UserPreferences.serverAutoSubtitlesDisabled) false else isDefault,
+            )
+        }.orEmpty()
+
+        val originBase = origin.trimEnd('/')
+        val refererHeader = referer.ifBlank { "$originBase/" }
+        return Video(
+            source = m3u8,
+            subtitles = subtitles,
+            useServerSubtitleSetting = true,
+            headers = mapOf(
+                "Referer" to refererHeader,
+                "Origin" to originBase,
+                "User-Agent" to VoeExtractorService.USER_AGENT,
+            ),
+        )
+    }
+
 
     private interface VoeExtractorService {
 
         companion object {
-            suspend fun build(baseUrl: String, originalLink: String): VoeExtractorService {
-                val client = OkHttpClient.Builder()
+            const val USER_AGENT =
+                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
+
+            fun client(originalLink: String): OkHttpClient {
+                return OkHttpClient.Builder()
                     .dns(DnsResolver.doh)
                     .followRedirects(true)
                     .followSslRedirects(true)
@@ -131,44 +144,21 @@ class VoeExtractor : Extractor() {
                     .addInterceptor { chain ->
                         val request = chain.request().newBuilder()
                             .header("Referer", originalLink)
+                            .header("User-Agent", USER_AGENT)
                             .build()
                         chain.proceed(request)
                     }
                     .build()
+            }
 
-                val retrofitVOE = Retrofit.Builder()
-                    .baseUrl(baseUrl)
-                    .client(client)
-                    .addConverterFactory(JsoupConverterFactory.create())
-
-                    .build()
-                val retrofitVOEBuiled = retrofitVOE.create(VoeExtractorService::class.java)
-
-                // Extract path from original link (handles both mainUrl and alias URLs)
-                val relativePath = if (originalLink.startsWith(baseUrl)) {
-                    originalLink.replace(baseUrl, "")
-                } else {
-                    // If link doesn't start with baseUrl, extract path directly (alias URL)
-                    val parsedUrl = URL(originalLink)
-                    parsedUrl.path + if (parsedUrl.query != null) "?${parsedUrl.query}" else ""
-                }
-
-                val retrofitVOEhtml = retrofitVOEBuiled.getSource(relativePath).html()
-
-                val regex = Regex("""https://([a-zA-Z0-9.-]+)(?:/[^'"]*)?""")
-                val match = regex.find(retrofitVOEhtml)
-                val redirectBaseUrl = if (match != null) {
-                    "https://${match.groupValues[1]}/"
-                } else {
-                    throw Exception("Base url not found for VOE")
-                }
-
-                val retrofitRedirected = Retrofit.Builder()
-                    .baseUrl(redirectBaseUrl)
-                    .client(client)
+            fun create(baseUrl: String, httpClient: OkHttpClient): VoeExtractorService {
+                val normalized = if (baseUrl.endsWith("/")) baseUrl else "$baseUrl/"
+                return Retrofit.Builder()
+                    .baseUrl(normalized)
+                    .client(httpClient)
                     .addConverterFactory(JsoupConverterFactory.create())
                     .build()
-                return retrofitRedirected.create(VoeExtractorService::class.java)
+                    .create(VoeExtractorService::class.java)
             }
         }
 

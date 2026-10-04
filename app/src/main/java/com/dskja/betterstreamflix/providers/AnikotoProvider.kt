@@ -313,6 +313,7 @@ object AnikotoProvider : Provider, ProviderConfigUrl {
         val linkId = server.id.substringBefore("|")
         val referer = server.id.substringAfter("|", baseUrl)
         val link = service.getServerLink(linkId, referer = referer).result?.url
+            ?.takeIf { it.isNotBlank() }
             ?: throw Exception("Anikoto server did not return a stream page")
         return Extractor.extract(link.toAbsoluteUrl(), server)
     }

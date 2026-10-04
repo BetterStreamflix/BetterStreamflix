@@ -1,5 +1,6 @@
 package com.dskja.betterstreamflix.extractors
 
+import com.dskja.betterstreamflix.utils.withExtractorTimeouts
 import com.tanasi.retrofit_jsoup.converter.JsoupConverterFactory
 import com.dskja.betterstreamflix.models.Video
 import okhttp3.OkHttpClient
@@ -37,12 +38,12 @@ class PlusPomlaExtractor : Extractor() {
         // Extract sources from response
         val sources = dataResponse.sources?.map { it.file } ?: emptyList()
         
-        if (sources.isEmpty()) {
-            throw Exception("No sources found")
-        }
-        
+        val file = sources.firstOrNull { it.isNotBlank() }
+            ?: throw Exception("PlusPomla source not found")
+
         return Video(
-            source = sources.first()
+            source = file,
+            headers = mapOf("Referer" to link),
         )
     }
 
@@ -55,7 +56,7 @@ class PlusPomlaExtractor : Extractor() {
                     .connectTimeout(30, TimeUnit.SECONDS)
                     .followRedirects(true)
                     .followSslRedirects(true)
-                    .build()
+                    .withExtractorTimeouts().build()
 
                 val retrofit = Retrofit.Builder()
                     .baseUrl(baseUrl)

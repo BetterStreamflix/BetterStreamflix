@@ -1,5 +1,6 @@
 package com.dskja.betterstreamflix.extractors
 
+import com.dskja.betterstreamflix.utils.withExtractorTimeouts
 import com.dskja.betterstreamflix.models.Video
 import okhttp3.OkHttpClient
 import org.json.JSONObject
@@ -70,7 +71,7 @@ class OnRegardeOuExtractor : Extractor() {
 
         companion object {
             fun build(baseUrl: String): Service {
-                val client = OkHttpClient.Builder().build()
+                val client = OkHttpClient.Builder().withExtractorTimeouts().build()
 
                 return Retrofit.Builder()
                     .baseUrl(baseUrl)

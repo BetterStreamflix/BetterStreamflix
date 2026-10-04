@@ -356,7 +356,7 @@ object AnimeSaturnProvider : Provider, ProviderConfigUrl {
         val payload = JSONObject(playlistBody).optString("d", "")
 
         val source = decodeEmbedPayload(payload, token)
-        if (source.isEmpty()) throw Exception("Saturn embed: empty video source")
+        if (source.isEmpty()) throw Exception("Saturn embed source not found")
         if (source.startsWith("youtube/")) {
             throw Exception("Saturn embed: source is a YouTube embed, not a playable stream")
         }

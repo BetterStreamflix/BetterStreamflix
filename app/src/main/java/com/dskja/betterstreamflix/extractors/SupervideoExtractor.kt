@@ -1,5 +1,6 @@
 package com.dskja.betterstreamflix.extractors
 
+import com.dskja.betterstreamflix.utils.withExtractorTimeouts
 import com.dskja.betterstreamflix.models.Video
 import com.dskja.betterstreamflix.utils.JsUnpacker
 import okhttp3.Interceptor
@@ -28,7 +29,7 @@ class SupervideoExtractor : Extractor() {
                 return chain.proceed(req)
             }
         })
-        .build()
+        .withExtractorTimeouts().build()
     private val service = Retrofit.Builder()
         .baseUrl(mainUrl)
         .addConverterFactory(ScalarsConverterFactory.create())

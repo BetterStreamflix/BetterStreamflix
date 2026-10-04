@@ -1,5 +1,6 @@
 package com.dskja.betterstreamflix.extractors
 
+import com.dskja.betterstreamflix.utils.withExtractorTimeouts
 import android.util.Base64
 import com.dskja.betterstreamflix.models.Video
 import com.dskja.betterstreamflix.utils.JsUnpacker
@@ -16,7 +17,7 @@ class VidGuardExtractor : Extractor() {
         "vembed.net", "bembed.cc", "vgfplay.com", "listeamed.net", "vidguard.to"
     )
 
-    private val client = OkHttpClient()
+    private val client = OkHttpClient.Builder().withExtractorTimeouts().build()
     private val service = Retrofit.Builder()
         .baseUrl(mainUrl)
         .addConverterFactory(ScalarsConverterFactory.create())

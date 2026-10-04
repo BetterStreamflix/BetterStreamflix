@@ -1,5 +1,7 @@
 package com.dskja.betterstreamflix.extractors
 
+import okhttp3.OkHttpClient
+import com.dskja.betterstreamflix.utils.withExtractorTimeouts
 import com.tanasi.retrofit_jsoup.converter.JsoupConverterFactory
 import com.dskja.betterstreamflix.models.Video
 import com.dskja.betterstreamflix.utils.JsUnpacker
@@ -60,7 +62,7 @@ class LamovieExtractor : Extractor() {
                 val retrofit = Retrofit.Builder()
                     .baseUrl(baseUrl)
                     .addConverterFactory(JsoupConverterFactory.create())
-                    .build()
+                    .client(OkHttpClient.Builder().withExtractorTimeouts().build()).build()
 
                 return retrofit.create(Service::class.java)
             }

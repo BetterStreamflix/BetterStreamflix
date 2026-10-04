@@ -1,5 +1,6 @@
 package com.dskja.betterstreamflix.extractors
 
+import com.dskja.betterstreamflix.utils.withExtractorTimeouts
 import android.util.Base64
 import androidx.media3.common.MimeTypes
 import com.dskja.betterstreamflix.models.Video
@@ -198,7 +199,7 @@ class NuuploadExtractor : Extractor() {
             .followSslRedirects(true)
             .connectTimeout(30, TimeUnit.SECONDS)
             .readTimeout(30, TimeUnit.SECONDS)
-            .build()
+            .withExtractorTimeouts().build()
 
         val originUrl = URL(pageUrl)
         val referer = "${originUrl.protocol}://${originUrl.host}/"
@@ -307,7 +308,7 @@ class NuuploadExtractor : Extractor() {
             .followSslRedirects(true)
             .connectTimeout(30, TimeUnit.SECONDS)
             .readTimeout(30, TimeUnit.SECONDS)
-            .build()
+            .withExtractorTimeouts().build()
 
         val response = client.newCall(
             Request.Builder()
@@ -348,7 +349,7 @@ class NuuploadExtractor : Extractor() {
                     .followSslRedirects(true)
                     .connectTimeout(30, TimeUnit.SECONDS)
                     .readTimeout(30, TimeUnit.SECONDS)
-                    .build()
+                    .withExtractorTimeouts().build()
                 return Retrofit.Builder()
                     .baseUrl(baseUrl)
                     .client(client)

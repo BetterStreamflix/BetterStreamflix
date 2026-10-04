@@ -1,5 +1,6 @@
 package com.dskja.betterstreamflix.extractors
 
+import com.dskja.betterstreamflix.utils.withExtractorTimeouts
 import androidx.media3.common.MimeTypes
 import com.dskja.betterstreamflix.models.Video
 import com.dskja.betterstreamflix.utils.DnsResolver
@@ -36,7 +37,7 @@ class VideasyExtractor : Extractor() {
             .readTimeout(30, TimeUnit.SECONDS)
             .writeTimeout(30, TimeUnit.SECONDS)
             .retryOnConnectionFailure(true)
-            .build()
+            .withExtractorTimeouts().build()
     }
 
     fun servers(videoType: Video.Type, language: String): List<Video.Server> {

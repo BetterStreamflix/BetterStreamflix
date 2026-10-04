@@ -451,9 +451,8 @@ object FrenchAnimeProvider : Provider, ProviderConfigUrl {
     }
 
     override suspend fun getVideo(server: Video.Server): Video {
-        val video = Extractor.extract(server.src)
-
-        return video
+        if (server.src.isBlank()) throw Exception("source not found")
+        return Extractor.extract(server.src, server)
     }
 
     private suspend fun fetchTvShows(path: String): List<TvShow> {

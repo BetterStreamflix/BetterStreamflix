@@ -1,5 +1,6 @@
 package com.dskja.betterstreamflix.extractors
 
+import com.dskja.betterstreamflix.utils.withExtractorTimeouts
 import android.util.Base64
 import com.dskja.betterstreamflix.models.Video
 import okhttp3.OkHttpClient
@@ -26,6 +27,7 @@ class GuploadExtractor : Extractor() {
                 .build()
             chain.proceed(request)
         }
+        .withExtractorTimeouts()
         .build()
 
     private val service = Retrofit.Builder()

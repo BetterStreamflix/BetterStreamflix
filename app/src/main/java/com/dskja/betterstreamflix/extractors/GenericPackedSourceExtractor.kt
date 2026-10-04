@@ -1,5 +1,6 @@
 package com.dskja.betterstreamflix.extractors
 
+import com.dskja.betterstreamflix.utils.withExtractorTimeouts
 import com.dskja.betterstreamflix.models.Video
 import com.dskja.betterstreamflix.utils.DnsResolver
 import com.dskja.betterstreamflix.utils.JsUnpacker
@@ -109,7 +110,7 @@ abstract class GenericPackedSourceExtractor : Extractor() {
             fun build(baseUrl: String): Service {
                 val client = OkHttpClient.Builder()
                     .dns(DnsResolver.doh)
-                    .build()
+                    .withExtractorTimeouts().build()
                 return Retrofit.Builder()
                     .baseUrl(if (baseUrl.endsWith("/")) baseUrl else "$baseUrl/")
                     .client(client)

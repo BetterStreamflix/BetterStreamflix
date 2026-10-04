@@ -1,5 +1,6 @@
 package com.dskja.betterstreamflix.extractors
 
+import com.dskja.betterstreamflix.utils.withExtractorTimeouts
 import com.dskja.betterstreamflix.models.Video
 import com.dskja.betterstreamflix.utils.DnsResolver
 import okhttp3.OkHttpClient
@@ -159,7 +160,7 @@ class FrembedExtractor (var newUrl: String = "") : Extractor() {
                 return Retrofit.Builder()
                     .baseUrl(normalizedBase)
                     .addConverterFactory( GsonConverterFactory.create())
-                    .client(clientBuilder.dns(DnsResolver.doh).build())
+                    .client(clientBuilder.dns(DnsResolver.doh).withExtractorTimeouts().build())
                     .build()
                     .create(Service::class.java)
             }

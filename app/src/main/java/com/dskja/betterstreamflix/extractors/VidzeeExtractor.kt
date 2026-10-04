@@ -1,5 +1,6 @@
 package com.dskja.betterstreamflix.extractors
 
+import com.dskja.betterstreamflix.utils.withExtractorTimeouts
 import android.util.Base64
 import androidx.media3.common.MimeTypes
 import com.dskja.betterstreamflix.models.Video
@@ -21,7 +22,7 @@ class VidzeeExtractor : Extractor() {
     private val coreApi = "https://core.vidzee.wtf"
     private val staticPass = "4f2a9c7d1e8b3a6f0d5c2e9a7b1f4d8c"
 
-    private val client = OkHttpClient.Builder().build()
+    private val client = OkHttpClient.Builder().withExtractorTimeouts().build()
 
     data class ServerConfig(
         val name: String,

@@ -1,5 +1,7 @@
 package com.dskja.betterstreamflix.extractors
 
+import okhttp3.OkHttpClient
+import com.dskja.betterstreamflix.utils.withExtractorTimeouts
 import com.tanasi.retrofit_jsoup.converter.JsoupConverterFactory
 import com.dskja.betterstreamflix.models.Video
 import org.jsoup.nodes.Document
@@ -57,7 +59,8 @@ class SaveFilesExtractor: Extractor() {
 
         return Video(
             source = m3u8,
-            subtitles = listOf()
+            subtitles = listOf(),
+            headers = mapOf("Referer" to "$baseUrl/"),
         )
     }
 
@@ -67,7 +70,7 @@ class SaveFilesExtractor: Extractor() {
                 val retrofitRedirected = Retrofit.Builder()
                     .baseUrl("$baseUrl/")
                     .addConverterFactory(JsoupConverterFactory.create())
-                    .build()
+                    .client(OkHttpClient.Builder().withExtractorTimeouts().build()).build()
                 return retrofitRedirected.create(SaveFilesExtractorService::class.java)
             }
         }

@@ -1,5 +1,6 @@
 package com.dskja.betterstreamflix.extractors
 
+import com.dskja.betterstreamflix.utils.withExtractorTimeouts
 import com.dskja.betterstreamflix.models.Video
 import com.dskja.betterstreamflix.utils.JsUnpacker
 import okhttp3.OkHttpClient
@@ -15,7 +16,7 @@ class DroploadExtractor : Extractor() {
     override val mainUrl = "https://dropload.tv"
     override val aliasUrls = listOf("https://dropload.io", "https://dropload.pro","https://dr0pstream.com")
 
-    private val client = OkHttpClient.Builder().build()
+    private val client = OkHttpClient.Builder().withExtractorTimeouts().build()
 
     private val service = Retrofit.Builder()
         .baseUrl(mainUrl)

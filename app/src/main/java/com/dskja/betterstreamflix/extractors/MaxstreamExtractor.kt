@@ -1,5 +1,7 @@
 package com.dskja.betterstreamflix.extractors
 
+import okhttp3.OkHttpClient
+import com.dskja.betterstreamflix.utils.withExtractorTimeouts
 import com.tanasi.retrofit_jsoup.converter.JsoupConverterFactory
 import com.dskja.betterstreamflix.models.Video
 import com.dskja.betterstreamflix.utils.DnsResolver
@@ -42,7 +44,7 @@ class MaxstreamExtractor : Extractor() {
                 val client = okhttp3.OkHttpClient.Builder()
                     .dns(DnsResolver.doh)
                     .followRedirects(true)
-                    .build()
+                    .withExtractorTimeouts().build()
 
                 return Retrofit.Builder()
                     .baseUrl(baseUrl)

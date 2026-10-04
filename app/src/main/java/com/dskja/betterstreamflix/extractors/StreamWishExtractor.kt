@@ -1,5 +1,7 @@
 package com.dskja.betterstreamflix.extractors
 
+import okhttp3.OkHttpClient
+import com.dskja.betterstreamflix.utils.withExtractorTimeouts
 import android.annotation.SuppressLint
 import android.content.Context
 import android.net.Uri
@@ -185,19 +187,27 @@ open class StreamWishExtractor : Extractor() {
     @SuppressLint("SetJavaScriptEnabled")
     suspend fun resolveRedirectWithWebView(context: Context, url: String, mainUrl: String): String =
         withContext(Dispatchers.Main) {
-            val result = withTimeoutOrNull(30000) {
+            val startHost = Uri.parse(url).host
+            val result = withTimeoutOrNull(12_000) {
                 suspendCancellableCoroutine { cont ->
                     val webView = WebView(context)
                     webView.settings.javaScriptEnabled = true
                     webView.settings.domStorageEnabled = true
+
+                    fun accept(candidate: String?): Boolean {
+                        if (candidate.isNullOrBlank() || candidate.contains("about:blank")) return false
+                        val host = Uri.parse(candidate).host
+                        val hopped = !host.isNullOrBlank() && host != startHost
+                        return hopped || candidate.contains("/e/") || candidate.contains("/f/")
+                    }
 
                     webView.webViewClient = object : WebViewClient() {
                         override fun shouldOverrideUrlLoading(
                             view: WebView?,
                             request: WebResourceRequest?
                         ): Boolean {
-                            val newUrl = request?.url.toString()
-                            if (newUrl.contains(mainUrl) || newUrl.contains("/e/")) {
+                            val newUrl = request?.url?.toString()
+                            if (accept(newUrl)) {
                                 if (cont.isActive) cont.resume(newUrl)
                                 webView.destroy()
                                 return true
@@ -205,9 +215,9 @@ open class StreamWishExtractor : Extractor() {
                             return false
                         }
 
-                        override fun onPageFinished(view: WebView?, url: String?) {
-                            if (url != null && (url.contains(mainUrl) || url.contains("/e/") || !url.contains("about:blank"))) {
-                                if (cont.isActive) cont.resume(url)
+                        override fun onPageFinished(view: WebView?, finishedUrl: String?) {
+                            if (accept(finishedUrl) && cont.isActive) {
+                                cont.resume(finishedUrl)
                                 webView.destroy()
                             }
                         }
@@ -263,7 +273,7 @@ open class StreamWishExtractor : Extractor() {
                 val retrofit = Retrofit.Builder()
                     .baseUrl(baseUrl)
                     .addConverterFactory(JsoupConverterFactory.create())
-                    .build()
+                    .client(OkHttpClient.Builder().withExtractorTimeouts().build()).build()
 
                 return retrofit.create(Service::class.java)
             }

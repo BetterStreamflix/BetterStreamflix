@@ -60,8 +60,16 @@ class VidxGoExtractor : Extractor() {
 
         val request = requestBuilder.build()
 
-        val response = client.newCall(request).execute()
-        val html = response.body?.string() ?: throw Exception("Failed to get HTML from VidxGo")
+        val html = client.newCall(request).execute().use { response ->
+            if (response.code == 404 || response.code == 410) {
+                throw Exception("VidxGo source not found (404)")
+            }
+            if (!response.isSuccessful) {
+                throw Exception("VidxGo request failed HTTP ${response.code}")
+            }
+            response.body?.string()?.takeIf { it.isNotBlank() }
+                ?: throw Exception("VidxGo source not found")
+        }
 
         if (link.contains("/t/")) {
             // TV Series logic: the response is JSON-like with an "url" field
@@ -102,6 +110,10 @@ class VidxGoExtractor : Extractor() {
                         val isSuccessful = res.isSuccessful
                         val newHtml = res.body?.string()
                         res.close()
+                        if (statusCode == 404 || statusCode == 410) {
+                            Log.w("TokenManager", "[REFRESH] stopped on HTTP $statusCode")
+                            break
+                        }
                         if (!isSuccessful) {
                             Log.w("TokenManager", "[REFRESH] HTTP response error: $statusCode")
                         }
@@ -222,6 +234,10 @@ class VidxGoExtractor : Extractor() {
                         val isSuccessful = res.isSuccessful
                         val newHtml = res.body?.string()
                         res.close()
+                        if (statusCode == 404 || statusCode == 410) {
+                            Log.w("TokenManager", "[FILM-REFRESH] stopped on HTTP $statusCode")
+                            break
+                        }
                         if (!isSuccessful) {
                             Log.w("TokenManager", "[FILM-REFRESH] HTTP response error: $statusCode")
                         }

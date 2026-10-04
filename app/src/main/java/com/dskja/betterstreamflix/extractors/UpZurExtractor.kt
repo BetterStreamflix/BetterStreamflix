@@ -1,5 +1,6 @@
 package com.dskja.betterstreamflix.extractors
 
+import com.dskja.betterstreamflix.utils.withExtractorTimeouts
 import com.tanasi.retrofit_jsoup.converter.JsoupConverterFactory
 import com.dskja.betterstreamflix.models.Video
 import org.jsoup.nodes.Document
@@ -47,10 +48,12 @@ class UpZurExtractor : Extractor() {
         }
 
         val streamUrl = Regex("""src\s*=\s*["']([^"']+)["']""").find(decodedString)?.groupValues?.get(1)
-            ?: throw Exception("Stream URL not found in decoded script")
+            ?.takeIf { it.isNotBlank() }
+            ?: throw Exception("UpZur source not found")
 
         return Video(
-            source = streamUrl
+            source = streamUrl,
+            headers = mapOf("Referer" to "$mainUrl/"),
         )
     }
 
@@ -58,7 +61,7 @@ class UpZurExtractor : Extractor() {
         companion object {
             val client = OkHttpClient.Builder()
                 .dns(DnsResolver.doh)
-                .build()
+                .withExtractorTimeouts().build()
 
             fun build(baseUrl: String): Service {
                 val retrofit = Retrofit.Builder()

@@ -51,8 +51,11 @@ open class RabbitstreamExtractor : Extractor() {
             )
         }
 
+        val file = sources.sources.map { it.file }.firstOrNull { it.isNotBlank() }
+            ?: throw Exception("Rabbitstream source not found")
         val video = Video(
-            source = sources.sources.map { it.file }.firstOrNull() ?: "",
+            source = file,
+            headers = mapOf("Referer" to "$mainUrl/"),
             subtitles = sources.tracks
                 .filter { it.kind == "captions" }
                 .map {
@@ -100,8 +103,10 @@ open class RabbitstreamExtractor : Extractor() {
                 }
             }
 
+            val file = sources.sources.map { it.file }.firstOrNull { it.isNotBlank() }
+                ?: throw Exception("Megacloud source not found")
             val video = Video(
-                source = sources.sources.map { it.file }.firstOrNull() ?: "",
+                source = file,
                 headers = mapOf("Referer" to hostUrl),
                 subtitles = sources.tracks
                     .filter { it.kind == "captions" }

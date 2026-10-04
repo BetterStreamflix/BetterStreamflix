@@ -1,5 +1,6 @@
 package com.dskja.betterstreamflix.extractors
 
+import com.dskja.betterstreamflix.utils.withExtractorTimeouts
 import android.text.Html
 import android.util.Base64
 import androidx.core.net.toUri
@@ -275,7 +276,7 @@ class VidsrcNetExtractor : Extractor() {
                 .readTimeout(30, TimeUnit.SECONDS)
                 .connectTimeout(30, TimeUnit.SECONDS)
                 .dns(DnsResolver.doh)
-                .build()
+                .withExtractorTimeouts().build()
 
             fun build(baseUrl: String): Service {
                 val retrofit = Retrofit.Builder()

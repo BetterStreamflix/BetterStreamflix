@@ -5,9 +5,9 @@ import androidx.media3.common.MimeTypes
 import com.google.gson.Gson
 import com.dskja.betterstreamflix.models.Video
 import com.dskja.betterstreamflix.utils.DnsResolver
+import com.dskja.betterstreamflix.utils.withExtractorTimeouts
 import okhttp3.OkHttpClient
 import okhttp3.Request
-import java.util.concurrent.TimeUnit
 
 class NekostreamExtractor : Extractor() {
 
@@ -30,9 +30,7 @@ class NekostreamExtractor : Extractor() {
 
     private val client = OkHttpClient.Builder()
         .dns(DnsResolver.doh)
-        .readTimeout(30, TimeUnit.SECONDS)
-        .connectTimeout(15, TimeUnit.SECONDS)
-        .callTimeout(45, TimeUnit.SECONDS)
+        .withExtractorTimeouts()
         .build()
 
     override suspend fun extract(link: String): Video {
@@ -231,6 +229,9 @@ class NekostreamExtractor : Extractor() {
         }
 
         client.newCall(requestBuilder.build()).execute().use { response ->
+            if (response.code == 404 || response.code == 410) {
+                throw Exception("Nekostream source not found (404)")
+            }
             if (!response.isSuccessful) {
                 throw Exception("Nekostream request failed ${response.code}: $url")
             }

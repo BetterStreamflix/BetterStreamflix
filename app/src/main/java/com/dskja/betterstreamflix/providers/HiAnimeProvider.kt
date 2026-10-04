@@ -664,9 +664,9 @@ object HiAnimeProvider : Provider, ProviderConfigUrl {
     }
 
     override suspend fun getVideo(server: Video.Server): Video {
-        val link = service.getLink(server.id)
-
-        return Extractor.extract(link.link)
+        val link = service.getLink(server.id).link
+        if (link.isBlank()) throw Exception("HiAnime source not found")
+        return Extractor.extract(link, server)
     }
 
 

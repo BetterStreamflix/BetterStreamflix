@@ -1,5 +1,6 @@
 package com.dskja.betterstreamflix.extractors
 
+import com.dskja.betterstreamflix.utils.withExtractorTimeouts
 import com.tanasi.retrofit_jsoup.converter.JsoupConverterFactory
 import com.dskja.betterstreamflix.models.Video
 import com.dskja.betterstreamflix.utils.JsUnpacker
@@ -80,6 +81,7 @@ class VidzyExtractor : Extractor() {
                         .build()
                     chain.proceed(request)
                 }
+                .withExtractorTimeouts()
                 .build()
             fun build(baseUrl: String): Service {
                 val retrofit = Retrofit.Builder()

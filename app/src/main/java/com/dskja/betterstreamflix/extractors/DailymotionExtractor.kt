@@ -1,5 +1,6 @@
 package com.dskja.betterstreamflix.extractors
 
+import com.dskja.betterstreamflix.utils.withExtractorTimeouts
 import java.util.Locale
 import java.util.UUID
 import com.tanasi.retrofit_jsoup.converter.JsoupConverterFactory
@@ -60,6 +61,7 @@ class DailymotionExtractor : Extractor() {
                         .build()
                     chain.proceed(request)
                 }
+                .withExtractorTimeouts()
                 .build()
 
             fun build(baseUrl: String): Service {

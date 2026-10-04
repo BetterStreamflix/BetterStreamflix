@@ -11,6 +11,7 @@ import com.dskja.betterstreamflix.adapters.AppAdapter
 import com.dskja.betterstreamflix.database.AniWorldDatabase
 import com.dskja.betterstreamflix.database.dao.TvShowDao
 import com.dskja.betterstreamflix.extractors.Extractor
+import com.dskja.betterstreamflix.extractors.canonicalHosterUrl
 import com.dskja.betterstreamflix.models.Category
 import com.dskja.betterstreamflix.models.Episode
 import com.dskja.betterstreamflix.models.Genre
@@ -499,12 +500,14 @@ object AniWorldProvider : Provider, ProviderConfigUrl {
             .let { response -> response.raw() as okhttp3.Response }
         val videoUrl = response.request.url
 
-        val link = when (server.name) {
-            "VOE" -> "https://voe.sx${videoUrl.encodedPath}"
-            else -> videoUrl.toString()
-        }
+        val link = canonicalHosterUrl(
+            serverName = server.name,
+            resolvedUrl = videoUrl.toString(),
+            encodedPath = videoUrl.encodedPath,
+        )
+        if (link.isBlank()) throw Exception("AniWorld source not found")
 
-        return Extractor.extract(link)
+        return Extractor.extract(link, server)
     }
 
 
