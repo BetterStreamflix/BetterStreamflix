@@ -713,7 +713,7 @@
             <Preference
                 android:key="EXTERNAL_PLAYER_DEFAULT"
                 android:title="@string/settings_external_player_title"
-                android:summary="@string/external_player_default_none"
+                android:summary="@string/settings_external_player_summary"
                 app:iconSpaceReserved="false" />
 
             <Preference

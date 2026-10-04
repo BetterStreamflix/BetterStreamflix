@@ -127,7 +127,7 @@
     <string name="player_picture_in_picture_not_supported">Il PiP non è supportato dal dispositivo in uso</string>
     <string name="player_external_player_title">Avvia con</string>
     <string name="player_external_player_error_video">Stream non ancora pronto</string>
-    <string name="external_player_none_found">Nessun player esterno trovato. Installa VLC, MX Player o simile.</string>
+    <string name="external_player_none_found">Nessun video player trovato. Installa VLC, MX Player, mpv o simile. I download manager sono in Scarica con…</string>
     <string name="external_player_remembered">Player esterno predefinito salvato</string>
     <string name="external_player_clear_default">Cancella player esterno predefinito</string>
     <string name="external_player_clear_default_summary">Chiedi sempre quale app usare</string>
@@ -161,6 +161,7 @@
     <string name="settings_download_storage_volume_label">Volume: %1$s</string>
     <string name="settings_download_storage_cache_path">Cache offline: %1$s</string>
     <string name="settings_external_player_title">Player esterno predefinito</string>
+    <string name="settings_external_player_summary">VLC, MX, mpv per “Avvia con…” (non i download manager)</string>
     <string name="settings_external_downloader_title">Gestore download predefinito</string>
     <string name="settings_external_downloader_summary">ADM e 1DM per «Scarica con…»</string>
     <string name="settings_external_downloader_clear">Cancella gestore download predefinito</string>

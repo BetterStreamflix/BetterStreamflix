@@ -832,6 +832,7 @@ class PlayerMobileFragment : Fragment() {
         super.onPause()
         // Pause immediately when leaving the player screen (Back / bottom nav / Home).
         // Skip while in PiP or casting so background playback can continue intentionally.
+        // Soft leave must not stop/clear — that races OEM surface teardown on Back.
         if (!isInPipMode() &&
             !isCasting &&
             !CastPlaybackHub.isCasting &&
@@ -862,15 +863,9 @@ class PlayerMobileFragment : Fragment() {
         super.onStop()
         // Keep local Exo paused only when we are not casting — otherwise Cast owns playback.
         if (::player.isInitialized && !playerReleased && !isCasting && !CastPlaybackHub.isCasting) {
-            if (isRemoving || isTearingDown || !isInPipMode()) {
-                // Leaving the player (or the activity without PiP) — kill audio hard.
-                runCatching {
-                    player.playWhenReady = false
-                    player.pause()
-                    player.stop()
-                }
-            } else {
-                runCatching { player.pause() }
+            runCatching {
+                player.playWhenReady = false
+                player.pause()
             }
         }
         if (isRemoving || isTearingDown) {
@@ -3115,7 +3110,7 @@ class PlayerMobileFragment : Fragment() {
         if (isTearingDown || !isAdded || _binding == null) return
         releasePlayer(ReleaseMode.HARD_REPLACE)
         if (isTearingDown || !isAdded || _binding == null) return
-        playerReleased = false
+        // Keep playerReleased=true until a new ExoPlayer is assigned (see policy).
         playbackSoftStopped = false
         playerViewDetached = false
         mediaSessionReleased = true
@@ -3167,8 +3162,6 @@ class PlayerMobileFragment : Fragment() {
             DefaultDataSource.Factory(requireContext(), httpDataSource)
         }
 
-        if (isTearingDown || !isAdded || _binding == null) return
-        releasePlayer(ReleaseMode.HARD_REPLACE)
         if (isTearingDown || !isAdded || _binding == null) return
         player = buildPlayer(extraBuffering).also { built ->
                 mediaSession = MediaSession.Builder(requireContext(), built)
@@ -3470,11 +3463,10 @@ class PlayerMobileFragment : Fragment() {
         if (::player.isInitialized && !playerReleased) {
             playbackListener?.let { runCatching { player.removeListener(it) } }
             playbackListener = null
+            // Soft leave: pause only. stop/clear/release race OEM surface teardown on Back.
             runCatching {
                 player.playWhenReady = false
                 player.pause()
-                player.stop()
-                player.clearMediaItems()
             }
             playbackSoftStopped = true
 
@@ -3497,8 +3489,25 @@ class PlayerMobileFragment : Fragment() {
                 )
             }
             if (hardRelease) {
-                runCatching { player.release() }
+                runCatching {
+                    player.stop()
+                    player.clearMediaItems()
+                }
+                val toRelease = player
                 playerReleased = true
+                val doRelease = Runnable {
+                    runCatching { toRelease.release() }
+                }
+                if (PlayerTeardownPolicy.shouldDeferExoRelease(hardRelease = true)) {
+                    val anchor = _binding?.root
+                    if (anchor != null) {
+                        anchor.post(doRelease)
+                    } else {
+                        android.os.Handler(android.os.Looper.getMainLooper()).post(doRelease)
+                    }
+                } else {
+                    doRelease.run()
+                }
             }
         }
     }
