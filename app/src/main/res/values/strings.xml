@@ -865,6 +865,8 @@
     <string name="cloud_sync_sign_out_success">Signed out</string>
     <string name="cloud_sync_invalid_credentials">Enter a valid email and a password of at least 6 characters</string>
     <string name="cloud_sync_error">Cloud sync failed: %1$s</string>
+    <string name="cloud_sync_account_already_linked">This cloud account is already linked to another local profile on this device.</string>
+    <string name="profile_unlock_subtitle">Enter a PIN or pick who\'s watching to continue.</string>
     <string name="cloud_sync_progress_title">Account &amp; sync</string>
     <string name="cloud_sync_progress_connecting">Connecting…</string>
     <string name="cloud_sync_progress_authenticating">Authenticating securely…</string>

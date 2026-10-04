@@ -216,31 +216,14 @@ class HomeTvFragment : Fragment() {
     }
 
     private fun refreshProfileChip() {
-        val chip = _binding?.root?.findViewById<View>(R.id.tv_home_profile_chip) ?: return
-        val profile = com.dskja.betterstreamflix.profiles.ProfileManager.activeProfile()
-        val name = profile?.displayName?.takeIf { it.isNotBlank() }
-            ?: getString(R.string.profile_default)
-        chip.findViewById<android.widget.TextView>(R.id.tv_home_profile_name)?.text = name
-        chip.findViewById<com.dskja.betterstreamflix.profiles.ProfileAvatarView>(R.id.pav_home_profile)
-            ?.bind(
-                avatarKey = profile?.avatarKey
-                    ?: com.dskja.betterstreamflix.profiles.ProfileManager.avatarKeys.first(),
-                displayName = name,
-                textSizeSp = 12f,
-            )
-        chip.visibility = View.VISIBLE
-        chip.isFocusable = true
-        chip.isFocusableInTouchMode = true
-        chip.isClickable = true
-        chip.nextFocusDownId = binding.vgvHome.id
-        chip.setOnClickListener {
-            ExpMotion.hapticTap(it)
-            com.dskja.betterstreamflix.fragments.settings.ProfilesSettingsController.showSwitchDialog(this) {
-                requireActivity().apply {
-                    finish()
-                    startActivity(intent)
-                }
-            }
+        com.dskja.betterstreamflix.ui.HomeProfileChip.refresh(
+            fragment = this,
+            root = _binding?.root,
+            showName = true,
+        )
+        _binding?.root?.findViewById<View>(R.id.tv_home_profile_chip)?.let { chip ->
+            chip.isFocusableInTouchMode = true
+            chip.nextFocusDownId = binding.vgvHome.id
         }
     }
 

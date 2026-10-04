@@ -2,6 +2,8 @@ package com.dskja.betterstreamflix.sync
 
 import android.content.Context
 import android.util.Log
+import com.dskja.betterstreamflix.profiles.ProfileManager
+import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.postgrest.query.filter.FilterOperator
 import io.github.jan.supabase.realtime.PostgresAction
 import io.github.jan.supabase.realtime.RealtimeChannel
@@ -27,16 +29,26 @@ object CloudRealtimeSync {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val lifecycleMutex = Mutex()
 
+    private var activeProfileId: String? = null
     private var activeUserId: String? = null
+    private var owningClient: SupabaseClient? = null
     private var channel: RealtimeChannel? = null
     private var collectorJob: Job? = null
 
     suspend fun start(context: Context, userId: String) {
+        start(context, ProfileManager.activeProfileId, userId)
+    }
+
+    suspend fun start(context: Context, profileId: String, userId: String) {
         if (!SupabaseProvider.isConfigured) return
         val appContext = context.applicationContext
+        val client = SupabaseProvider.clientOrNull(profileId)
+            ?: SupabaseProvider.initializeForProfile(appContext, profileId)
+            ?: return
 
         lifecycleMutex.withLock {
-            if (activeUserId == userId &&
+            if (activeProfileId == profileId &&
+                activeUserId == userId &&
                 channel?.status?.value == RealtimeChannel.Status.SUBSCRIBED
             ) {
                 return@withLock
@@ -44,8 +56,8 @@ object CloudRealtimeSync {
 
             stopLocked()
 
-            val newChannel = SupabaseProvider.client.realtime.channel(
-                "user-media-state-$userId",
+            val newChannel = client.realtime.channel(
+                "user-media-state-$profileId-$userId",
             )
             val changes = newChannel.postgresChangeFlow<PostgresAction>(schema = "public") {
                 table = TABLE
@@ -62,25 +74,27 @@ object CloudRealtimeSync {
                         else -> null
                     }
                     if (state != null) {
-                        CloudSyncManager.applyRealtimeState(appContext, state)
+                        CloudSyncManager.applyRealtimeState(appContext, state, profileId)
                     }
                 }
                 .catch { error ->
                     Log.w(TAG, "Realtime media synchronization stopped", error)
-                    CloudSyncScheduler.enqueue(appContext)
+                    CloudSyncScheduler.enqueue(appContext, profileId)
                 }
                 .launchIn(scope)
 
             try {
                 newChannel.subscribe(blockUntilSubscribed = true)
+                activeProfileId = profileId
                 activeUserId = userId
+                owningClient = client
                 channel = newChannel
                 collectorJob = newCollector
-                Log.i(TAG, "Listening for media changes")
+                Log.i(TAG, "Listening for media changes ($profileId)")
             } catch (error: Throwable) {
                 newCollector.cancel()
                 runCatching {
-                    SupabaseProvider.client.realtime.removeChannel(newChannel)
+                    client.realtime.removeChannel(newChannel)
                 }
                 Log.w(TAG, "Could not start realtime media synchronization", error)
             }
@@ -93,17 +107,28 @@ object CloudRealtimeSync {
         }
     }
 
+    suspend fun stopIfProfile(profileId: String) {
+        lifecycleMutex.withLock {
+            if (activeProfileId == profileId) {
+                stopLocked()
+            }
+        }
+    }
+
     private suspend fun stopLocked() {
         collectorJob?.cancelAndJoin()
         collectorJob = null
+        val client = owningClient
         channel?.let { existingChannel ->
             runCatching {
-                SupabaseProvider.client.realtime.removeChannel(existingChannel)
+                client?.realtime?.removeChannel(existingChannel)
             }.onFailure { error ->
                 Log.w(TAG, "Could not stop realtime media synchronization", error)
             }
         }
         channel = null
+        owningClient = null
         activeUserId = null
+        activeProfileId = null
     }
 }

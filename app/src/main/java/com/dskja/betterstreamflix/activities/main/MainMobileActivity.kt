@@ -228,6 +228,14 @@ class MainMobileActivity : FragmentActivity() {
                     }
                 )
             }
+            binding.root.post {
+                val host = navHost.childFragmentManager.primaryNavigationFragment
+                    ?: navHost
+                com.dskja.betterstreamflix.profiles.ProfileUnlockGate.maybeShow(
+                    activity = this,
+                    hostFragmentProvider = { host },
+                )
+            }
         }
 
         viewModel.checkUpdate()

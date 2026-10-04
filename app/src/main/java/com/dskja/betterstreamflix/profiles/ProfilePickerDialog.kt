@@ -37,6 +37,8 @@ class ProfilePickerDialog : DialogFragment() {
 
     private var manageMode = false
     private var startInManageMode = false
+    /** When true, the picker cannot be dismissed until a profile is unlocked. */
+    private var requireUnlock = false
     private var editorVisible = false
     private var backCallback: OnBackPressedCallback? = null
 
@@ -50,8 +52,8 @@ class ProfilePickerDialog : DialogFragment() {
             )
             setDimAmount(0.65f)
         }
-        isCancelable = true
-        dialog.setCanceledOnTouchOutside(true)
+        isCancelable = !requireUnlock
+        dialog.setCanceledOnTouchOutside(!requireUnlock)
         return dialog
     }
 
@@ -105,10 +107,12 @@ class ProfilePickerDialog : DialogFragment() {
             ExpMotion.hapticTap(it)
             if (editorVisible) {
                 restorePickerView()
-            } else {
+            } else if (!requireUnlock) {
                 dismissAllowingStateLoss()
             }
         }
+        view.findViewById<View>(R.id.btn_profile_picker_close)?.visibility =
+            if (requireUnlock) View.GONE else View.VISIBLE
         view.findViewById<TextView>(R.id.btn_profile_picker_create).setOnClickListener {
             ExpMotion.hapticTap(it)
             showCreateDialog()
@@ -273,7 +277,12 @@ class ProfilePickerDialog : DialogFragment() {
             }
             if (visibility == View.VISIBLE && !wasVisible) ExpMotion.popIn(this)
         }
-        item.findViewById<TextView>(R.id.tv_profile_kids_badge).visibility = View.GONE
+        item.findViewById<TextView>(R.id.tv_profile_kids_badge).apply {
+            visibility = if (profile.isKids) View.VISIBLE else View.GONE
+            if (profile.isKids) {
+                text = context.getString(R.string.profile_kids_badge_short)
+            }
+        }
         item.findViewById<TextView>(R.id.tv_profile_meta).visibility = View.GONE
         item.findViewById<TextView>(R.id.tv_profile_lock).apply {
             visibility = if (!manageMode && profile.pinHash != null) View.VISIBLE else View.GONE
@@ -289,7 +298,7 @@ class ProfilePickerDialog : DialogFragment() {
                 showEditProfileDialog(profile)
                 return@setOnClickListener
             }
-            if (profile.id == activeId) {
+            if (profile.id == activeId && !requireUnlock) {
                 dismissAllowingStateLoss()
                 return@setOnClickListener
             }
@@ -299,6 +308,10 @@ class ProfilePickerDialog : DialogFragment() {
                 } else {
                     completeSwitch(profile)
                 }
+            }
+            if (requireUnlock && profile.id == activeId) {
+                proceedWithTargetPin()
+                return@setOnClickListener
             }
             ProfilesSettingsController.guardParentalExit(this, profile) {
                 proceedWithTargetPin()
@@ -374,7 +387,7 @@ class ProfilePickerDialog : DialogFragment() {
             }
             val created = ProfileManager.create(
                 name = name,
-                isKids = false,
+                isKids = kidsCheck?.isChecked == true,
                 avatarKey = selected,
             )
             if (pin.isNotEmpty()) {
@@ -408,7 +421,10 @@ class ProfilePickerDialog : DialogFragment() {
             imeOptions = EditorInfo.IME_ACTION_DONE
             setSelection(text?.length ?: 0)
         }
-        form.findViewById<CheckBox>(R.id.cb_profile_create_kids)?.visibility = View.GONE
+        val kidsCheck = form.findViewById<CheckBox>(R.id.cb_profile_create_kids)?.apply {
+            visibility = View.VISIBLE
+            isChecked = profile.isKids
+        }
         val pinInput = form.findViewById<EditText>(R.id.et_profile_create_pin)
         val clearPin = form.findViewById<CheckBox>(R.id.cb_profile_clear_pin)
         if (profile.pinHash != null) {
@@ -446,7 +462,7 @@ class ProfilePickerDialog : DialogFragment() {
 
         val cancel = form.findViewById<TextView>(R.id.btn_profile_create_cancel)
         val ok = form.findViewById<TextView>(R.id.btn_profile_create_ok)
-        polishEditorChrome(form, cancel, ok, nameInput, pinInput, null)
+        polishEditorChrome(form, cancel, ok, nameInput, pinInput, kidsCheck)
         cancel.setOnClickListener {
             ExpMotion.hapticTap(it)
             restorePickerView()
@@ -463,6 +479,7 @@ class ProfilePickerDialog : DialogFragment() {
             }
             ProfileManager.rename(profile.id, name)
             ProfileManager.updateAvatar(profile.id, selected)
+            ProfileManager.updateKids(profile.id, kidsCheck?.isChecked == true)
             ProfileManager.setEnabledIntegrations(profile.id, readEnabledIntegrations(form))
             restorePickerView()
             view?.let(::bindProfiles)
@@ -622,12 +639,14 @@ class ProfilePickerDialog : DialogFragment() {
             onManage: (() -> Unit)? = null,
             onCreate: (() -> Unit)? = null,
             startInManageMode: Boolean = false,
+            requireUnlock: Boolean = false,
         ) {
             if (!fragment.isAdded || fragment.childFragmentManager.isStateSaved) return
             val existing = fragment.childFragmentManager.findFragmentByTag(TAG)
             if (existing is ProfilePickerDialog) {
                 if (existing.dialog?.isShowing == true) {
                     if (startInManageMode) existing.enterManageMode(true)
+                    if (requireUnlock) existing.requireUnlock = true
                     return
                 }
                 existing.dismissAllowingStateLoss()
@@ -640,6 +659,7 @@ class ProfilePickerDialog : DialogFragment() {
                 onManageProfiles = onManage
                 onCreateProfile = onCreate
                 this.startInManageMode = startInManageMode
+                this.requireUnlock = requireUnlock
             }.show(fragment.childFragmentManager, TAG)
         }
 
@@ -733,7 +753,7 @@ class ProfilePickerDialog : DialogFragment() {
                 }
                 val created = ProfileManager.create(
                     name = name,
-                    isKids = false,
+                    isKids = kidsCheck?.isChecked == true,
                     avatarKey = selected,
                 )
                 if (pin.isNotEmpty()) {
@@ -852,7 +872,7 @@ class ProfilePickerDialog : DialogFragment() {
             val size = (60 * density).toInt()
             val gap = (10 * density).toInt()
             preview?.bind(selectedKey, previewName.ifBlank { selectedKey }, textSizeSp = 28f)
-            ProfileAvatarStyle.featured(selectedKey).forEach { palette ->
+            ProfileAvatarStyle.all().forEach { palette ->
                 val orb = ProfileAvatarView(context).apply {
                     layoutParams = LinearLayout.LayoutParams(size, size).also {
                         it.setMargins(0, 0, gap, 0)

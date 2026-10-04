@@ -11,6 +11,8 @@ import com.dskja.betterstreamflix.platform.plugins.PluginRegistry
 import com.dskja.betterstreamflix.platform.simkl.SimklConfig
 import com.dskja.betterstreamflix.platform.subtitles.OpenSubtitlesV1Client
 import com.dskja.betterstreamflix.platform.trakt.TraktConfig
+import com.dskja.betterstreamflix.profiles.ProfileManager
+import com.dskja.betterstreamflix.profiles.UserProfile
 import com.dskja.betterstreamflix.utils.UserPreferences
 
 /**
@@ -37,12 +39,17 @@ object IntegrationStatus {
 
     fun trakt(): Snapshot = when {
         !TraktConfig.hasAppCredentials() -> Snapshot(Level.UNAVAILABLE)
-        !UserPreferences.traktEnabled -> Snapshot(Level.DISABLED)
+        !UserPreferences.traktEnabled ||
+            !ProfileManager.isActiveIntegrationEnabled(UserProfile.Integration.TRAKT) ->
+            Snapshot(Level.DISABLED)
         TraktConfig.isSignedIn() -> Snapshot(Level.SIGNED_IN)
         else -> Snapshot(Level.NOT_CONFIGURED)
     }
 
     fun jellyfin(): Snapshot {
+        if (!ProfileManager.isActiveIntegrationEnabled(UserProfile.Integration.JELLYFIN)) {
+            return Snapshot(Level.DISABLED)
+        }
         val url = UserPreferences.jellyfinBaseUrl.trim()
         val token = UserPreferences.jellyfinAccessToken.trim()
         val user = UserPreferences.jellyfinUserId.trim()
@@ -54,6 +61,9 @@ object IntegrationStatus {
     }
 
     fun plex(): Snapshot {
+        if (!ProfileManager.isActiveIntegrationEnabled(UserProfile.Integration.PLEX)) {
+            return Snapshot(Level.DISABLED)
+        }
         val url = UserPreferences.plexBaseUrl.trim()
         val token = UserPreferences.plexToken.trim()
         return when {
@@ -64,7 +74,11 @@ object IntegrationStatus {
     }
 
     fun debrid(): Snapshot {
-        if (!UserPreferences.debridEnabled) return Snapshot(Level.DISABLED)
+        if (!UserPreferences.debridEnabled ||
+            !ProfileManager.isActiveIntegrationEnabled(UserProfile.Integration.DEBRID)
+        ) {
+            return Snapshot(Level.DISABLED)
+        }
         val provider = DebridProviderId.fromId(UserPreferences.debridProvider)
         return if (DebridResolver.activeService() != null) {
             Snapshot(Level.READY, provider.displayName)
@@ -74,13 +88,18 @@ object IntegrationStatus {
     }
 
     fun simkl(): Snapshot = when {
-        !UserPreferences.simklEnabled -> Snapshot(Level.DISABLED)
+        !UserPreferences.simklEnabled ||
+            !ProfileManager.isActiveIntegrationEnabled(UserProfile.Integration.SIMKL) ->
+            Snapshot(Level.DISABLED)
         SimklConfig.configured() -> Snapshot(Level.SIGNED_IN)
         SimklConfig.clientId().isBlank() -> Snapshot(Level.NOT_CONFIGURED)
         else -> Snapshot(Level.NOT_CONFIGURED)
     }
 
     fun openSubtitles(): Snapshot {
+        if (!ProfileManager.isActiveIntegrationEnabled(UserProfile.Integration.OPENSUBTITLES)) {
+            return Snapshot(Level.DISABLED)
+        }
         if (!OpenSubtitlesV1Client.configured()) return Snapshot(Level.NOT_CONFIGURED)
         val jwt = runCatching { UserPreferences.openSubtitlesJwt.isNotBlank() }.getOrDefault(false)
         return if (jwt) Snapshot(Level.SIGNED_IN) else Snapshot(Level.READY)
@@ -104,7 +123,9 @@ object IntegrationStatus {
     }
 
     fun tmdb(): Snapshot = when {
-        !UserPreferences.enableTmdb -> Snapshot(Level.DISABLED)
+        !UserPreferences.enableTmdb ||
+            !ProfileManager.isActiveIntegrationEnabled(UserProfile.Integration.TMDB) ->
+            Snapshot(Level.DISABLED)
         !com.dskja.betterstreamflix.utils.TMDb3.hasApiKey() -> Snapshot(Level.NOT_CONFIGURED)
         else -> Snapshot(Level.READY)
     }

@@ -3,6 +3,8 @@ package com.dskja.betterstreamflix.platform.trakt
 import android.content.Context
 import android.net.Uri
 import com.dskja.betterstreamflix.BuildConfig
+import com.dskja.betterstreamflix.profiles.ProfileManager
+import com.dskja.betterstreamflix.profiles.UserProfile
 import com.dskja.betterstreamflix.utils.UserPreferences
 
 object TraktConfig {
@@ -15,7 +17,9 @@ object TraktConfig {
     const val OAUTH_REDIRECT_URI = "$OAUTH_SCHEME://$OAUTH_HOST/$OAUTH_PATH"
     private const val AUTHORIZE_BASE = "https://trakt.tv/oauth/authorize"
 
-    fun isEnabled(): Boolean = UserPreferences.traktEnabled
+    fun isEnabled(): Boolean =
+        UserPreferences.traktEnabled &&
+            ProfileManager.isActiveIntegrationEnabled(UserProfile.Integration.TRAKT)
 
     /**
      * App-wide client id (BuildConfig). Optional prefs override is only for debug/power users.

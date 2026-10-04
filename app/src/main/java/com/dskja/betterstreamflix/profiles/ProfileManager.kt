@@ -1,18 +1,39 @@
 package com.dskja.betterstreamflix.profiles
 
 import android.content.Context
+import androidx.core.content.edit
+import com.dskja.betterstreamflix.BuildConfig
 import com.dskja.betterstreamflix.database.AppDatabase
+import com.dskja.betterstreamflix.sync.CloudSyncManager
 import com.dskja.betterstreamflix.ui.UserDataNotifier
 import com.dskja.betterstreamflix.utils.ProviderChangeNotifier
 import com.dskja.betterstreamflix.utils.UserDataCache
 import com.dskja.betterstreamflix.utils.UserPreferences
 import java.security.MessageDigest
 import java.util.UUID
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
 
 object ProfileManager {
 
     const val DEFAULT_PROFILE_ID = ProfileStore.DEFAULT_PROFILE_ID
     const val KIDS_DEFAULT_MAX_AGE = 12
+
+    private val lifecycleScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+
+    private val SCOPED_PREF_BASES = listOf(
+        "SHOW_CONTINUE_WATCHING",
+        "SHOW_RECENTLY_WATCHED",
+        "LIBRARY_SCOPE",
+        "PARENTAL_CONTROL_PIN",
+        "PARENTAL_CONTROL_ADMIN_PIN",
+        "PARENTAL_CONTROL_MAX_AGE",
+        "PARENTAL_CONTROL_FAILED_ATTEMPTS",
+        "PARENTAL_CONTROL_LOCKED_UNTIL",
+        "PARENTAL_CONTROL_HARD_LOCKED",
+    )
 
     val avatarKeys = listOf(
         "crimson",
@@ -50,7 +71,7 @@ object ProfileManager {
         appContext = context.applicationContext
         // Never throw out of init — corrupted prefs / Gson failures must not brick startup.
         runCatching { ProfileStore.ensureDefaultExists(appContext) }
-        runCatching { applyKidsParentalDefaults(activeProfile()) }
+        runCatching { applyKidsParentalDefaults(activeProfile(), previous = null) }
     }
 
     fun activeProfile(): UserProfile? =
@@ -145,6 +166,9 @@ object ProfileManager {
         if (updated.isEmpty()) return false
         ProfileStore.saveAll(appContext, updated)
         wipeProfileLocalData(id)
+        lifecycleScope.launch {
+            runCatching { CloudSyncManager.onProfileDeleted(appContext, id) }
+        }
 
         if (activeProfileId == id) {
             val fallback = updated.firstOrNull { it.id == DEFAULT_PROFILE_ID } ?: updated.first()
@@ -156,8 +180,10 @@ object ProfileManager {
     fun switchTo(context: Context, id: String): Boolean {
         require(::appContext.isInitialized) { "ProfileManager.init() must be called first" }
         val profile = profiles().find { it.id == id } ?: return false
+        val previous = activeProfile()
         if (activeProfileId == id) {
-            applyKidsParentalDefaults(profile)
+            applyKidsParentalDefaults(profile, previous)
+            ProfileUnlockGate.markUnlocked(profile.id)
             return true
         }
 
@@ -165,9 +191,13 @@ object ProfileManager {
         touchLastUsed(profile.id)
         AppDatabase.resetInstance()
         UserDataCache.clearMemory()
-        applyKidsParentalDefaults(profile)
+        applyKidsParentalDefaults(profile, previous)
+        ProfileUnlockGate.markUnlocked(profile.id)
         UserDataNotifier.notifyChanged()
         ProviderChangeNotifier.notifyProviderChanged()
+        lifecycleScope.launch {
+            runCatching { CloudSyncManager.onProfileChanged(appContext, profile.id) }
+        }
         return true
     }
 
@@ -194,7 +224,7 @@ object ProfileManager {
             )
         }
         if (ok && profileId == activeProfileId) {
-            applyKidsParentalDefaults(profiles().find { it.id == profileId })
+            applyKidsParentalDefaults(profiles().find { it.id == profileId }, previous = null)
         }
         return ok
     }
@@ -210,6 +240,12 @@ object ProfileManager {
      */
     fun isIntegrationEnabled(profile: UserProfile, integration: String): Boolean =
         profile.enabledIntegrations.isEmpty() || profile.enabledIntegrations.contains(integration)
+
+    /** Gate for runtime Trakt/Simkl/Debrid/TMDb/etc. against the active profile. */
+    fun isActiveIntegrationEnabled(integration: String): Boolean {
+        val profile = activeProfile() ?: return true
+        return isIntegrationEnabled(profile, integration)
+    }
 
     fun setIntegrationEnabled(profileId: String, integration: String, enabled: Boolean): Boolean {
         val profile = profiles().find { it.id == profileId } ?: return false
@@ -253,9 +289,10 @@ object ProfileManager {
 
     /**
      * Kids profiles enforce a content ceiling without requiring the parental PIN flow.
-     * Adult profiles leave parental prefs untouched.
+     * Leaving a kids profile lifts a ceiling that only matched that kids profile so adult
+     * prefs are not stuck tightened forever.
      */
-    private fun applyKidsParentalDefaults(profile: UserProfile?) {
+    private fun applyKidsParentalDefaults(profile: UserProfile?, previous: UserProfile?) {
         if (profile == null) return
         if (profile.isKids) {
             val ceiling = profile.maxAgeRating ?: KIDS_DEFAULT_MAX_AGE
@@ -264,10 +301,15 @@ object ProfileManager {
             ) {
                 UserPreferences.parentalControlMaxAge = ceiling
             }
+        } else if (previous?.isKids == true) {
+            val kidsCeiling = previous.maxAgeRating ?: KIDS_DEFAULT_MAX_AGE
+            if (UserPreferences.parentalControlMaxAge == kidsCeiling) {
+                UserPreferences.parentalControlMaxAge = null
+            }
         }
     }
 
-    /** Delete Room DB files and cached userdata for a removed profile. */
+    /** Delete Room DB files, scoped prefs, and cached userdata for a removed profile. */
     private fun wipeProfileLocalData(profileId: String) {
         if (profileId == DEFAULT_PROFILE_ID) return
         runCatching {
@@ -281,6 +323,23 @@ object ProfileManager {
                 }
             UserDataCache.clearMemory()
             UserDataCache.clearForProfile(appContext, profileId)
+            wipeScopedPreferences(profileId)
+        }
+    }
+
+    private fun wipeScopedPreferences(profileId: String) {
+        val prefs = appContext.getSharedPreferences(
+            "${BuildConfig.APPLICATION_ID}.preferences",
+            Context.MODE_PRIVATE,
+        )
+        prefs.edit {
+            SCOPED_PREF_BASES.forEach { base ->
+                remove(scopedPrefKeyFor(base, profileId))
+            }
+            // Also drop any leftover `_p_<id>` keys for this profile.
+            prefs.all.keys
+                .filter { it.endsWith("_p_$profileId") }
+                .forEach { remove(it) }
         }
     }
 

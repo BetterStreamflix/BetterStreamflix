@@ -16,6 +16,12 @@ class PlexApi(
     private val tokenProvider: () -> String = { UserPreferences.plexToken },
 ) {
     fun configured(): Boolean {
+        if (!com.dskja.betterstreamflix.profiles.ProfileManager.isActiveIntegrationEnabled(
+                com.dskja.betterstreamflix.profiles.UserProfile.Integration.PLEX,
+            )
+        ) {
+            return false
+        }
         val base = baseUrlProvider().trim().trimEnd('/')
         return base.startsWith("http") && tokenProvider().isNotBlank()
     }

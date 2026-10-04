@@ -100,4 +100,62 @@ class ProfileManagerTest {
         assertTrue(updated.enabledIntegrations.contains(UserProfile.Integration.TMDB))
         assertFalse(updated.enabledIntegrations.contains(UserProfile.Integration.DEBRID))
     }
+
+    @Test
+    fun isIntegrationEnabled_emptySetMeansAllOn() {
+        val profile = UserProfile(
+            id = "test",
+            displayName = "Test",
+            avatarKey = "crimson",
+            createdAtMillis = 1L,
+            updatedAtMillis = 1L,
+            enabledIntegrations = emptySet(),
+        )
+        assertTrue(ProfileManager.isIntegrationEnabled(profile, UserProfile.Integration.TRAKT))
+        assertTrue(ProfileManager.isIntegrationEnabled(profile, UserProfile.Integration.TMDB))
+    }
+
+    @Test
+    fun isIntegrationEnabled_respectsExplicitAllowList() {
+        val profile = UserProfile(
+            id = "test",
+            displayName = "Test",
+            avatarKey = "crimson",
+            createdAtMillis = 1L,
+            updatedAtMillis = 1L,
+            enabledIntegrations = setOf(UserProfile.Integration.TMDB),
+        )
+        assertTrue(ProfileManager.isIntegrationEnabled(profile, UserProfile.Integration.TMDB))
+        assertFalse(ProfileManager.isIntegrationEnabled(profile, UserProfile.Integration.TRAKT))
+    }
+
+    @Test
+    fun hasParentalCeiling_trueForKidsOrMaxAge() {
+        val kids = UserProfile(
+            id = "k",
+            displayName = "Kids",
+            avatarKey = "crimson",
+            isKids = true,
+            createdAtMillis = 1L,
+            updatedAtMillis = 1L,
+        )
+        val capped = UserProfile(
+            id = "a",
+            displayName = "Adult",
+            avatarKey = "crimson",
+            maxAgeRating = 16,
+            createdAtMillis = 1L,
+            updatedAtMillis = 1L,
+        )
+        val open = UserProfile(
+            id = "o",
+            displayName = "Open",
+            avatarKey = "crimson",
+            createdAtMillis = 1L,
+            updatedAtMillis = 1L,
+        )
+        assertTrue(ProfileManager.hasParentalCeiling(kids))
+        assertTrue(ProfileManager.hasParentalCeiling(capped))
+        assertFalse(ProfileManager.hasParentalCeiling(open))
+    }
 }

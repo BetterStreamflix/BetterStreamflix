@@ -17,18 +17,23 @@ import com.dskja.betterstreamflix.utils.ExpPressEffects.applyExpPress
 import com.dskja.betterstreamflix.utils.ExperimentalMobileDesign
 
 /**
- * The avatar-only profile switcher that floats in the top-right corner of the
- * mobile browse tabs (home, movies, TV shows) and the TV home chrome.
+ * The profile switcher chip that floats in the top-right corner of browse tabs.
+ * Mobile keeps an avatar-only chrome; TV can show the profile name beside it.
  */
 object HomeProfileChip {
 
-    fun refresh(fragment: Fragment, root: View?) {
+    fun refresh(fragment: Fragment, root: View?, showName: Boolean = false) {
         val chip = root?.findViewById<View>(R.id.tv_home_profile_chip) ?: return
         val profile = ProfileManager.activeProfile()
         val name = profile?.displayName?.takeIf { it.isNotBlank() }
             ?: chip.context.getString(R.string.profile_default)
-        // The chip is avatar-only; the name lives in the tooltip and content description.
-        chip.findViewById<TextView>(R.id.tv_home_profile_name)?.visibility = View.GONE
+        val nameView = chip.findViewById<TextView>(R.id.tv_home_profile_name)
+        if (showName) {
+            nameView?.visibility = View.VISIBLE
+            nameView?.text = name
+        } else {
+            nameView?.visibility = View.GONE
+        }
         chip.findViewById<ProfileAvatarView>(R.id.pav_home_profile)?.bind(
             avatarKey = profile?.avatarKey ?: ProfileManager.avatarKeys.first(),
             displayName = name,
@@ -45,7 +50,7 @@ object HomeProfileChip {
             chip.nextFocusDownId = grid.id
         }
 
-        val chipKey = "${profile?.id.orEmpty()}|$name|${profile?.avatarKey.orEmpty()}"
+        val chipKey = "${profile?.id.orEmpty()}|$name|${profile?.avatarKey.orEmpty()}|$showName"
         if (ExperimentalMobileDesign.enabled()) {
             chip.applyExpPress()
             chip.setBackgroundResource(ExperimentalMobileDesign.chipBackground())
