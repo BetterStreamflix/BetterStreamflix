@@ -198,7 +198,7 @@
     <string name="player_picture_in_picture_not_supported">PiP wird auf diesem Gerät nicht unterstützt</string>
     <string name="player_external_player_title">Abspielen mit</string>
     <string name="player_external_player_error_video">Stream noch nicht bereit</string>
-    <string name="external_player_none_found">Kein externer Player gefunden. Installiere VLC, MX Player oder ähnlich.</string>
+    <string name="external_player_none_found">Kein Videoplayer gefunden. Installiere VLC, MX Player, mpv oder ähnlich. Download-Manager findest du unter Herunterladen mit…</string>
     <string name="external_player_remembered">Standard-Player gespeichert</string>
     <string name="external_player_clear_default">Standard-Player zurücksetzen</string>
     <string name="external_player_clear_default_summary">Immer nachfragen, welche App genutzt wird</string>
@@ -233,6 +233,7 @@
     <string name="settings_download_storage_volume_label">Datenträger: %1$s</string>
     <string name="settings_download_storage_cache_path">Offline-Cache: %1$s</string>
     <string name="settings_external_player_title">Standard externer Player</string>
+    <string name="settings_external_player_summary">VLC, MX, mpv für „Abspielen mit…“ (keine Download-Manager)</string>
     <string name="settings_external_downloader_title">Standard Download-Manager</string>
     <string name="settings_external_downloader_summary">ADM und 1DM für „Herunterladen mit…“</string>
     <string name="settings_external_downloader_clear">Standard Download-Manager zurücksetzen</string>
@@ -871,7 +872,7 @@
     <string name="exp_cd_pip">Bild-in-Bild</string>
     <string name="exp_cd_aspect_ratio">Seitenverhältnis</string>
     <string name="exp_cd_settings">Einstellungen</string>
-    <string name="exp_cd_external_player">Externer Player</string>
+    <string name="exp_cd_external_player">Mit externem Videoplayer abspielen</string>
     <string name="exp_cd_close">Schließen</string>
     <string name="exp_player_error_title">Wiedergabe fehlgeschlagen</string>
     <string name="player_cast_unsupported_stream">Dieser Stream kann nicht gecastet werden (Inline-Playlist). Anderen Server versuchen.</string>

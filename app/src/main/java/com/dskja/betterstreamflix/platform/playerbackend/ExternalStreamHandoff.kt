@@ -1,9 +1,7 @@
 package com.dskja.betterstreamflix.platform.playerbackend
 
 import android.app.Activity
-import android.app.PendingIntent
 import android.content.ActivityNotFoundException
-import android.content.BroadcastReceiver
 import android.content.ClipData
 import android.content.ComponentName
 import android.content.Context
@@ -11,21 +9,46 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.content.pm.ResolveInfo
 import android.net.Uri
-import android.os.Build
 import android.util.Base64
 import android.util.Log
 import com.dskja.betterstreamflix.R
+import com.dskja.betterstreamflix.download.ExternalDownloadHandoff
 import com.dskja.betterstreamflix.extractors.StreamMime
 import com.dskja.betterstreamflix.utils.ExpDialogChrome
 import com.dskja.betterstreamflix.utils.UserPreferences
 
 /**
- * Hands a resolved playable HTTP(S) (or local) stream URI to an external player
+ * Hands a resolved playable HTTP(S) (or local) stream URI to an external **video player**
  * via [Intent.ACTION_VIEW], with package-aware headers and optional remembered default.
+ *
+ * Download managers (ADM / 1DM) are excluded from Play with — use
+ * [ExternalDownloadHandoff] / “Download with…” for those.
  */
 object ExternalStreamHandoff {
     private const val TAG = "ExternalStreamHandoff"
     const val ACTION_PLAYER_CHOSEN = "com.dskja.betterstreamflix.ACTION_EXTERNAL_PLAYER_CHOSEN"
+
+    /** Well-known video player packages preferred for Play with. */
+    val KNOWN_PLAYER_PACKAGES = listOf(
+        "org.videolan.vlc",
+        "com.mxtech.videoplayer.ad",
+        "com.mxtech.videoplayer.pro",
+        "is.xyz.mpv",
+        "com.brouken.player",
+        "org.videolan.vlc.debug",
+        "com.mxtech.videoplayer.beta",
+    )
+
+    /**
+     * Packages that must never appear in Play with and must never be remembered
+     * as the default external player.
+     */
+    val DOWNLOADER_PACKAGE_DENYLIST = (
+        ExternalDownloadHandoff.CANDIDATE_PACKAGES + listOf(
+            "com.vanda.admpro",
+            "com.dv.get",
+        )
+    ).distinct()
 
     data class Request(
         val sourceUrl: String,
@@ -81,6 +104,7 @@ object ExternalStreamHandoff {
 
         return Intent(Intent.ACTION_VIEW).apply {
             setDataAndType(resolved.uri, resolved.mimeType)
+            addCategory(Intent.CATEGORY_DEFAULT)
             if (!packageName.isNullOrBlank()) setPackage(packageName)
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             if (resolved.grantRead) {
@@ -162,15 +186,68 @@ object ExternalStreamHandoff {
         }
     }
 
+    /** Pure: whether [packageName] is a download manager (never a Play-with target). */
+    fun isDownloaderPackage(packageName: String?): Boolean {
+        val pkg = packageName?.trim().orEmpty()
+        if (pkg.isEmpty()) return false
+        if (DOWNLOADER_PACKAGE_DENYLIST.any { it.equals(pkg, ignoreCase = true) }) return true
+        if (ExternalDownloadHandoff.isAdmPackage(pkg)) return true
+        if (ExternalDownloadHandoff.isOneDmPackage(pkg)) return true
+        if (pkg.startsWith("com.dv.adm", ignoreCase = true)) return true
+        if (pkg.startsWith("idm.internet.download.manager", ignoreCase = true)) return true
+        return false
+    }
+
+    /** Pure: Play-with must use ACTION_VIEW + video categories, never download-manager packages. */
+    fun isEligiblePlayerPackage(packageName: String?): Boolean {
+        val pkg = packageName?.trim().orEmpty()
+        if (pkg.isEmpty()) return false
+        return !isDownloaderPackage(pkg)
+    }
+
+    /**
+     * Package ids that must be excluded from a Play-with chooser.
+     * Pure helper for tests / EXTRA_EXCLUDE_COMPONENTS builders.
+     */
+    fun excludePackagesForPlayWith(candidatePackages: Collection<String>): List<String> {
+        return candidatePackages.filter { isDownloaderPackage(it) }.distinct()
+    }
+
+    /**
+     * Activity class names commonly registered by download managers for ACTION_VIEW.
+     * Used when building [android.content.Intent.EXTRA_EXCLUDE_COMPONENTS].
+     */
+    fun downloaderExcludeClassNames(packageName: String): List<String> {
+        if (!isDownloaderPackage(packageName)) return emptyList()
+        return listOf(
+            "$packageName.MainActivity",
+            "$packageName.Downloader",
+            "com.dv.adm.AEditor",
+            "com.dv.get.AEditor",
+            "com.dv.adm.pay.AEditor",
+        ).distinct()
+    }
+
     fun preferredPackage(context: Context): String? {
         val saved = UserPreferences.externalPlayerPackage.trim()
-        if (saved.isNotEmpty() && isPackageInstalled(context, saved)) return saved
+        if (saved.isNotEmpty()) {
+            if (isDownloaderPackage(saved)) {
+                // Corrupted default from an older polluted chooser — clear it.
+                clearPreferredPackage()
+            } else if (isPackageInstalled(context, saved)) {
+                return saved
+            }
+        }
         return null
     }
 
     fun rememberChosenPackage(packageName: String?) {
         val pkg = packageName?.trim().orEmpty()
         if (pkg.isEmpty()) return
+        if (isDownloaderPackage(pkg)) {
+            Log.w(TAG, "Refusing to remember downloader as external player: $pkg")
+            return
+        }
         UserPreferences.externalPlayerPackage = pkg
     }
 
@@ -178,13 +255,64 @@ object ExternalStreamHandoff {
         UserPreferences.externalPlayerPackage = ""
     }
 
+    /**
+     * Discover installed **video players** for Play with.
+     * Uses ACTION_VIEW + video/HLS mime probes and strips known download managers.
+     */
     fun listInstalledPlayers(context: Context): List<ResolveInfo> {
-        val probe = Intent(Intent.ACTION_VIEW).apply {
-            setDataAndType(Uri.parse("https://example.com/video.mp4"), "video/*")
+        val pm = context.packageManager
+        val seen = linkedMapOf<String, ResolveInfo>()
+        val probeMimes = listOf(
+            "video/*",
+            "video/mp4",
+            "application/vnd.apple.mpegurl",
+            "application/x-mpegURL",
+        )
+        for (mime in probeMimes) {
+            val probe = Intent(Intent.ACTION_VIEW).apply {
+                setDataAndType(Uri.parse("content://com.dskja.betterstreamflix.player_probe/video.mp4"), mime)
+                addCategory(Intent.CATEGORY_DEFAULT)
+            }
+            val matches = runCatching {
+                pm.queryIntentActivities(probe, PackageManager.MATCH_DEFAULT_ONLY)
+            }.getOrDefault(emptyList())
+            for (ri in matches) {
+                val pkg = ri.activityInfo?.packageName ?: continue
+                if (pkg == context.packageName) continue
+                if (!isEligiblePlayerPackage(pkg)) continue
+                seen.putIfAbsent(pkg, ri)
+            }
         }
-        return context.packageManager.queryIntentActivities(probe, PackageManager.MATCH_DEFAULT_ONLY)
-            .filter { it.activityInfo?.packageName != context.packageName }
-            .distinctBy { it.activityInfo.packageName }
+        // HTTPS video probe catches players that ignore content:// probes.
+        val httpsProbe = Intent(Intent.ACTION_VIEW).apply {
+            setDataAndType(Uri.parse("https://example.com/video.mp4"), "video/*")
+            addCategory(Intent.CATEGORY_DEFAULT)
+        }
+        val httpsMatches = runCatching {
+            pm.queryIntentActivities(httpsProbe, PackageManager.MATCH_DEFAULT_ONLY)
+        }.getOrDefault(emptyList())
+        for (ri in httpsMatches) {
+            val pkg = ri.activityInfo?.packageName ?: continue
+            if (pkg == context.packageName) continue
+            if (!isEligiblePlayerPackage(pkg)) continue
+            seen.putIfAbsent(pkg, ri)
+        }
+        // Ensure well-known players appear even when OEM query filters are odd.
+        for (pkg in KNOWN_PLAYER_PACKAGES) {
+            if (seen.containsKey(pkg)) continue
+            if (!isPackageInstalled(context, pkg)) continue
+            if (!isEligiblePlayerPackage(pkg)) continue
+            val packaged = Intent(Intent.ACTION_VIEW).apply {
+                setDataAndType(Uri.parse("https://example.com/video.mp4"), "video/*")
+                setPackage(pkg)
+                addCategory(Intent.CATEGORY_DEFAULT)
+            }
+            val ri = runCatching {
+                pm.queryIntentActivities(packaged, PackageManager.MATCH_DEFAULT_ONLY).firstOrNull()
+            }.getOrNull()
+            if (ri != null) seen[pkg] = ri
+        }
+        return seen.values.toList()
     }
 
     fun canResolve(context: Context): Boolean =
@@ -193,7 +321,7 @@ object ExternalStreamHandoff {
             listInstalledPlayers(context).isNotEmpty()
 
     /**
-     * @param forceChooser when true, always show the system chooser (and remember the pick).
+     * @param forceChooser when true, always show the player picker (and remember the pick).
      *                     when false, use the remembered default / installed candidate first.
      */
     fun launch(
@@ -213,24 +341,36 @@ object ExternalStreamHandoff {
         if (!forceChooser) {
             val preferred = preferredPackage(activity)
                 ?: ExternalMpvBackend.preferredInstalledPackage(activity)
-            if (!preferred.isNullOrBlank()) {
-                val direct = buildViewIntent(activity, resolved, request, preferred)
-                grantUriIfNeeded(activity, resolved, preferred)
-                if (direct.resolveActivity(activity.packageManager) != null) {
-                    return try {
-                        activity.startActivity(direct)
-                        true
-                    } catch (e: ActivityNotFoundException) {
-                        Log.w(TAG, "Preferred player missing: ${e.message}")
-                        if (preferred == UserPreferences.externalPlayerPackage) {
-                            clearPreferredPackage()
-                        }
-                        launchChooser(activity, resolved, request)
-                    }
+                    ?.takeIf { isEligiblePlayerPackage(it) }
+            if (!preferred.isNullOrBlank() && isEligiblePlayerPackage(preferred)) {
+                if (startForPackage(activity, resolved, request, preferred)) {
+                    return true
+                }
+                if (preferred == UserPreferences.externalPlayerPackage) {
+                    clearPreferredPackage()
                 }
             }
         }
         return launchChooser(activity, resolved, request)
+    }
+
+    private fun startForPackage(
+        activity: Activity,
+        resolved: Resolved,
+        request: Request,
+        packageName: String,
+    ): Boolean {
+        if (!isEligiblePlayerPackage(packageName)) return false
+        val direct = buildViewIntent(activity, resolved, request, packageName)
+        grantUriIfNeeded(activity, resolved, packageName)
+        if (direct.resolveActivity(activity.packageManager) == null) return false
+        return try {
+            activity.startActivity(direct)
+            true
+        } catch (e: ActivityNotFoundException) {
+            Log.w(TAG, "Preferred player missing: ${e.message}")
+            false
+        }
     }
 
     private fun grantUriIfNeeded(activity: Activity, resolved: Resolved, packageName: String) {
@@ -249,9 +389,8 @@ object ExternalStreamHandoff {
         resolved: Resolved,
         request: Request,
     ): Boolean {
-        val intent = buildViewIntent(activity, resolved, request, packageName = null)
         val players = listInstalledPlayers(activity)
-        if (intent.resolveActivity(activity.packageManager) == null && players.isEmpty()) {
+        if (players.isEmpty()) {
             ExpDialogChrome.notify(
                 activity,
                 R.string.external_player_none_found,
@@ -259,27 +398,51 @@ object ExternalStreamHandoff {
             )
             return false
         }
-        return try {
-            val chooserTitle = activity.getString(R.string.player_external_player_title)
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP_MR1) {
-                val receiver = Intent(ACTION_PLAYER_CHOSEN).apply {
-                    setPackage(activity.packageName)
-                }
-                val pending = PendingIntent.getBroadcast(
-                    activity,
-                    request.sourceUrl.hashCode(),
-                    receiver,
-                    PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_MUTABLE,
-                )
-                activity.startActivity(
-                    Intent.createChooser(intent, chooserTitle, pending.intentSender),
-                )
-            } else {
-                activity.startActivity(Intent.createChooser(intent, chooserTitle))
+        // Custom picker — never use a blind ACTION_VIEW system chooser, which
+        // surfaces ADM/1DM that also register for http(s) / video VIEW.
+        val pm = activity.packageManager
+        val labels = players.map { ri ->
+            buildString {
+                append(ri.loadLabel(pm))
+                append("\n")
+                append(ri.activityInfo.packageName)
             }
+        }.toTypedArray()
+        return try {
+            val builder = androidx.appcompat.app.AlertDialog.Builder(activity)
+                .setTitle(R.string.player_external_player_title)
+                .setItems(labels) { _, which ->
+                    val ri = players.getOrNull(which) ?: return@setItems
+                    val pkg = ri.activityInfo?.packageName ?: return@setItems
+                    if (!isEligiblePlayerPackage(pkg)) {
+                        ExpDialogChrome.notify(
+                            activity,
+                            R.string.external_player_none_found,
+                            R.string.player_external_player_title,
+                        )
+                        return@setItems
+                    }
+                    val intent = buildViewIntent(activity, resolved, request, pkg).apply {
+                        component = ComponentName(pkg, ri.activityInfo.name)
+                    }
+                    grantUriIfNeeded(activity, resolved, pkg)
+                    try {
+                        activity.startActivity(intent)
+                        rememberChosenPackage(pkg)
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Start player failed: $pkg", e)
+                        ExpDialogChrome.notify(
+                            activity,
+                            R.string.external_player_none_found,
+                            R.string.player_external_player_title,
+                        )
+                    }
+                }
+                .setNegativeButton(android.R.string.cancel, null)
+            builder.show()
             true
         } catch (e: Exception) {
-            Log.e(TAG, "Chooser failed", e)
+            Log.e(TAG, "Player picker failed", e)
             ExpDialogChrome.notify(
                 activity,
                 R.string.external_player_none_found,
@@ -289,22 +452,23 @@ object ExternalStreamHandoff {
         }
     }
 
-    fun chosenComponentReceiver(): BroadcastReceiver = object : BroadcastReceiver() {
-        override fun onReceive(context: Context?, intent: Intent?) {
-            if (intent == null) return
-            val component = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                intent.getParcelableExtra(
-                    Intent.EXTRA_CHOSEN_COMPONENT,
-                    ComponentName::class.java,
-                )
-            } else {
-                @Suppress("DEPRECATION")
-                intent.getParcelableExtra(Intent.EXTRA_CHOSEN_COMPONENT)
+    fun chosenComponentReceiver(): android.content.BroadcastReceiver =
+        object : android.content.BroadcastReceiver() {
+            override fun onReceive(context: Context?, intent: Intent?) {
+                if (intent == null) return
+                val component = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+                    intent.getParcelableExtra(
+                        Intent.EXTRA_CHOSEN_COMPONENT,
+                        ComponentName::class.java,
+                    )
+                } else {
+                    @Suppress("DEPRECATION")
+                    intent.getParcelableExtra(Intent.EXTRA_CHOSEN_COMPONENT)
+                }
+                rememberChosenPackage(component?.packageName)
+                Log.i(TAG, "Remembered external player: ${component?.packageName}")
             }
-            rememberChosenPackage(component?.packageName)
-            Log.i(TAG, "Remembered external player: ${component?.packageName}")
         }
-    }
 
     fun isPackageInstalled(context: Context, packageName: String): Boolean =
         runCatching {
