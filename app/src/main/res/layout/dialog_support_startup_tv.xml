@@ -1,9 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
-<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:padding="@dimen/support_dialog_margin">
+    android:fillViewport="false"
+    android:overScrollMode="ifContentScrolls"
+    android:padding="@dimen/support_dialog_margin"
+    android:scrollbars="vertical">
 
     <LinearLayout
         android:layout_width="match_parent"
@@ -43,7 +46,7 @@
                     android:layout_height="wrap_content"
                     android:layout_marginEnd="48dp"
                     android:fontFamily="@font/manrope"
-                    android:text="@string/support_hero_title"
+                    android:text="@string/support_startup_title"
                     android:textColor="@color/support_text_primary"
                     android:textSize="@dimen/support_text_screen_title"
                     android:textStyle="bold" />
@@ -57,6 +60,7 @@
                     android:background="@android:color/transparent"
                     android:contentDescription="@string/support_startup_close_cd"
                     android:focusable="true"
+                    android:nextFocusDown="@id/btn_support_startup_primary"
                     android:padding="8dp"
                     android:src="@drawable/ic_support_close"
                     android:tint="@color/support_text_secondary"
@@ -90,6 +94,7 @@
                 android:focusable="true"
                 android:gravity="center"
                 android:minWidth="240dp"
+                android:nextFocusDown="@id/btn_support_startup_sponsors"
                 android:paddingStart="28dp"
                 android:paddingEnd="28dp"
                 android:text="@string/support_startup_cta_primary"
@@ -111,6 +116,7 @@
                     android:focusable="true"
                     android:gravity="center"
                     android:minWidth="160dp"
+                    android:nextFocusDown="@id/cb_support_startup_never"
                     android:paddingStart="18dp"
                     android:paddingEnd="18dp"
                     android:text="@string/support_startup_cta_sponsors"
@@ -126,6 +132,7 @@
                     android:focusable="true"
                     android:gravity="center"
                     android:minWidth="160dp"
+                    android:nextFocusDown="@id/cb_support_startup_never"
                     android:paddingStart="18dp"
                     android:paddingEnd="18dp"
                     android:text="@string/support_startup_cta_bmc"
@@ -141,6 +148,7 @@
                     android:focusable="true"
                     android:gravity="center"
                     android:minWidth="140dp"
+                    android:nextFocusDown="@id/cb_support_startup_never"
                     android:paddingStart="18dp"
                     android:paddingEnd="18dp"
                     android:text="@string/support_startup_cta_community"
@@ -156,6 +164,7 @@
                     android:focusable="true"
                     android:gravity="center"
                     android:minWidth="140dp"
+                    android:nextFocusDown="@id/cb_support_startup_never"
                     android:paddingStart="18dp"
                     android:paddingEnd="18dp"
                     android:text="@string/support_provider_github_cta"
@@ -165,15 +174,24 @@
 
             <CheckBox
                 android:id="@+id/cb_support_startup_never"
-                android:layout_width="wrap_content"
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="18dp"
+                android:layout_marginTop="16dp"
+                android:background="@drawable/bg_support_btn_secondary"
                 android:buttonTint="@color/support_accent"
                 android:focusable="true"
+                android:focusableInTouchMode="true"
                 android:fontFamily="@font/manrope"
+                android:gravity="center_vertical"
+                android:minHeight="@dimen/support_button_height"
+                android:nextFocusUp="@id/btn_support_startup_primary"
+                android:paddingStart="12dp"
+                android:paddingTop="8dp"
+                android:paddingEnd="16dp"
+                android:paddingBottom="8dp"
                 android:text="@string/support_startup_never_again"
-                android:textColor="@color/support_text_tertiary"
-                android:textSize="@dimen/support_text_caption" />
+                android:textColor="@color/support_text_primary"
+                android:textSize="@dimen/support_text_cta" />
         </LinearLayout>
     </LinearLayout>
-</FrameLayout>
+</ScrollView>
