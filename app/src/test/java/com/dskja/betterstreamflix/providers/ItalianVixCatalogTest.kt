@@ -128,4 +128,47 @@ class ItalianVixCatalogTest {
         assertTrue(items[0] is Movie)
         assertTrue(items[1] is TvShow)
     }
+
+    @Test
+    fun detailTitleSkipsSiteLogo() {
+        val doc = Jsoup.parse(
+            """
+            <html>
+            <head><title>Lanterns | euroStreaming - Serie TV e Film in streaming</title></head>
+            <body>
+              <h1 class="logo-text">eurostreaming</h1>
+              <div class="es-detail-grid"><h2>Lanterns</h2></div>
+            </body>
+            </html>
+            """.trimIndent(),
+        )
+        assertEquals("Lanterns", ItalianVixCatalog.detailTitle(doc))
+    }
+
+    @Test
+    fun linkTitleUsesRankNameAndDropsPlayChrome() {
+        val ranked = Jsoup.parse(
+            """<a class="ranked-link" href="/detail/tv-1-reacher"><span class="rank-num">1</span><span class="rank-name">Reacher</span></a>""",
+        ).selectFirst("a")!!
+        assertEquals("Reacher", ItalianVixCatalog.linkTitle(ranked))
+
+        val play = Jsoup.parse("""<a href="/detail/tv-1-reacher">Guarda ora</a>""").selectFirst("a")!!
+        assertTrue(ItalianVixCatalog.isChromeLinkTitle(ItalianVixCatalog.linkTitle(play)))
+    }
+
+    @Test
+    fun shelfContainerIsTheSectionNotTheTitleDiv() {
+        val doc = Jsoup.parse(
+            """
+            <section class="section">
+              <div><h4 class="section-title">Serie TV</h4></div>
+              <a class="movie-card" href="/detail/tv-1-lanterns"><img alt="Lanterns" src="/a.jpg"></a>
+            </section>
+            """.trimIndent(),
+        )
+        val title = doc.selectFirst(".section-title")!!
+        val shelf = ItalianVixCatalog.shelfContainer(title)
+        assertEquals("section", shelf.tagName())
+        assertEquals(1, ItalianVixCatalog.parseMovieCards("https://alta-definizione.beer/", shelf).size)
+    }
 }

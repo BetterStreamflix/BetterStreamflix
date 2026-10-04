@@ -177,7 +177,7 @@ object AltadefinizioneXProvider : Provider, ProviderConfigUrl {
             doc.select(".section-title, h4.section-title, .fw-bold").forEach { titleEl ->
                 val title = titleEl.ownText().ifBlank { titleEl.text() }.trim()
                 if (title.isBlank() || title.length > 40) return@forEach
-                val section = titleEl.parent()?.parent() ?: titleEl.parent() ?: return@forEach
+                val section = ItalianVixCatalog.shelfContainer(titleEl)
                 val items = parseItems(section)
                 if (items.isNotEmpty()) categories += Category(name = title, list = items)
             }

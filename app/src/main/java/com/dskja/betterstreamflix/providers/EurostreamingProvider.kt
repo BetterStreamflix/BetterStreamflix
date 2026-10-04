@@ -147,10 +147,17 @@ object EurostreamingProvider : Provider, ProviderConfigUrl {
             if (page > 1) return emptyList()
             return try {
                 val doc = getDocument(normalizedBase())
-                doc.select("a[href*=genre_id=]").mapNotNull { a ->
+                val fromGenres = doc.select("a[href*=genre_id=]").mapNotNull { a ->
                     val href = ItalianVixCatalog.absUrl(baseUrl, a.attr("href"))
                     val text = a.text().trim()
                     if (href.isBlank() || text.isBlank()) null else Genre(id = href, name = text)
+                }.distinctBy { it.id }
+                if (fromGenres.isNotEmpty()) return fromGenres
+                doc.select("a[href*=type=movie], a[href*=type=tv]").mapNotNull { a ->
+                    val href = ItalianVixCatalog.absUrl(baseUrl, a.attr("href"))
+                    val text = a.text().trim()
+                    if (href.isBlank() || text.isBlank() || text.length > 40) null
+                    else Genre(id = href, name = text)
                 }.distinctBy { it.id }
             } catch (_: Exception) {
                 emptyList()
@@ -202,9 +209,7 @@ object EurostreamingProvider : Provider, ProviderConfigUrl {
 
     override suspend fun getMovie(id: String): Movie {
         val doc = getDocument(id)
-        val title = ItalianVixCatalog.cleanTitle(
-            doc.selectFirst("h1, .section-title h2, .es-detail-grid h2")?.text().orEmpty(),
-        )
+        val title = ItalianVixCatalog.detailTitle(doc)
         val tmdb = TmdbUtils.getMovie(title, language = language)
         val poster = tmdb?.poster
             ?: doc.selectFirst(".es-detail-poster img, img[src*=/img/]")?.attr("src")
@@ -230,9 +235,7 @@ object EurostreamingProvider : Provider, ProviderConfigUrl {
 
     override suspend fun getTvShow(id: String): TvShow {
         val doc = getDocument(id)
-        val title = ItalianVixCatalog.cleanTitle(
-            doc.selectFirst("h1, .section-title h2, .es-detail-grid h2")?.text().orEmpty(),
-        )
+        val title = ItalianVixCatalog.detailTitle(doc)
         val tmdb = TmdbUtils.getTvShow(title, language = language)
         val poster = tmdb?.poster
             ?: doc.selectFirst(".es-detail-poster img, img[src*=/img/]")?.attr("src")
