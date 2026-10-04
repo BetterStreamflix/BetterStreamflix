@@ -116,17 +116,18 @@ class MovieTvFragment : Fragment() {
     }
 
     private fun requestWatchFocus() {
-        if (watchFocusedOnce) return
         binding.vgvMovie.post {
             if (!isAdded || _binding == null) return@post
             val watch = binding.vgvMovie
                 .findViewHolderForAdapterPosition(0)
                 ?.itemView
                 ?.findViewById<View>(R.id.btn_movie_watch_now)
-            if (watch != null) {
-                watch.requestFocus()
-                watchFocusedOnce = true
-            }
+                ?: return@post
+            // After a progress refresh the list is rebuilt and focus is gone.
+            // Keep an existing focus (cast row, overview) where the user left it.
+            if (watchFocusedOnce && binding.vgvMovie.findFocus() != null) return@post
+            watch.requestFocus()
+            watchFocusedOnce = true
         }
     }
 

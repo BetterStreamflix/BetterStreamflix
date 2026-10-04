@@ -80,6 +80,9 @@
     <string name="detail_episode_watched">Gesehen</string>
     <string name="detail_episodes_load_failed">Episoden konnten nicht geladen werden. Erneut versuchen.</string>
     <string name="detail_episodes_heading">Episoden</string>
+    <string name="detail_watch_choose_episode">Episode wählen</string>
+    <string name="detail_watch_no_episodes">Noch keine Episoden verfügbar</string>
+    <string name="detail_about_empty">Keine weiteren Angaben zu diesem Titel.</string>
     <string name="detail_up_next">Als Nächstes</string>
     <string name="detail_download">Herunterladen</string>
     <string name="main_menu_theme_change">Design ändern</string>

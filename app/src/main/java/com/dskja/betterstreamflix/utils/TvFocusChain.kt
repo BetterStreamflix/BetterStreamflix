@@ -11,4 +11,15 @@ object TvFocusChain {
             view.nextFocusRightId = visible.getOrNull(index + 1)?.id ?: View.NO_ID
         }
     }
+
+    /** DPAD down from the primary CTA row onto the first visible secondary action. */
+    fun linkDown(from: List<View>, target: View?) {
+        val id = target
+            ?.takeIf { it.visibility == View.VISIBLE && it.isFocusable }
+            ?.id
+            ?: View.NO_ID
+        from.filter { it.visibility == View.VISIBLE }.forEach { view ->
+            view.nextFocusDownId = id
+        }
+    }
 }
