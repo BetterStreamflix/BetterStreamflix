@@ -3,6 +3,7 @@ package com.dskja.betterstreamflix.fragments.search
 import android.os.Bundle
 import android.text.Editable
 import android.text.TextWatcher
+import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -11,6 +12,7 @@ import android.view.animation.AlphaAnimation
 import android.view.animation.Animation
 import android.view.inputmethod.EditorInfo
 import android.widget.Toast
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.flowWithLifecycle
@@ -21,8 +23,6 @@ import com.dskja.betterstreamflix.R
 import com.dskja.betterstreamflix.adapters.AppAdapter
 import com.dskja.betterstreamflix.database.AppDatabase
 import com.dskja.betterstreamflix.databinding.FragmentSearchTvBinding
-import com.dskja.betterstreamflix.models.Category
-import com.dskja.betterstreamflix.models.Genre
 import com.dskja.betterstreamflix.models.Movie
 import com.dskja.betterstreamflix.models.TvShow
 import com.dskja.betterstreamflix.utils.CacheUtils
@@ -47,9 +47,17 @@ class SearchTvFragment : Fragment() {
     private val binding get() = _binding!!
 
     private val database get() = AppDatabase.getInstance(requireContext())
-    private val viewModel by viewModelsFactory { SearchViewModel(database) }
+    private val viewModel by viewModelsFactory {
+        SearchViewModel(runCatching { database }.getOrNull())
+    }
     private var currentGridColumns: Int = 1
     private var gridConfiguredForColumns: Int = -1
+    private var gridSubmitAttempts: Int = 0
+
+    private val voicePermissionLauncher =
+        registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+            if (::voiceHelper.isInitialized) voiceHelper.onPermissionResult(granted)
+        }
 
     private val appAdapter by lazy {
         AppAdapter().apply {
@@ -104,16 +112,23 @@ class SearchTvFragment : Fragment() {
                 .flowWithLifecycle(viewLifecycleOwner.lifecycle, Lifecycle.State.STARTED)
                 .collect { state ->
                 val ui = _binding ?: return@collect
+                try {
+                    renderSearchState(ui, state)
+                } catch (t: Throwable) {
+                    Log.e(TAG, "search render failed", t)
+                    runCatching { clearSearchGrid() }
+                    runCatching { hideSearchLoading(ui) }
+                }
+            }
+        }
+    }
 
+    private fun renderSearchState(ui: FragmentSearchTvBinding, state: State) {
                 when (state) {
                     is State.Searching, is State.GlobalSearching -> {
                         // Drop opposite-shaped rows before local↔global column changes.
                         clearSearchGrid()
-                        ui.isLoading.apply {
-                            root.visibility = View.VISIBLE
-                            com.dskja.betterstreamflix.utils.ExpPressEffects.showLoadingSkeleton(root, true)
-                            gIsLoadingRetry.visibility = View.GONE
-                        }
+                        showSearchLoading(ui)
                         ui.root.findViewById<View>(R.id.tv_search_empty)?.visibility = View.GONE
                         ui.root.findViewById<View>(R.id.v_search_empty_rule)?.visibility = View.GONE
                         ui.root.findViewById<View>(R.id.btn_search_empty_cta)?.visibility = View.GONE
@@ -124,27 +139,19 @@ class SearchTvFragment : Fragment() {
                     is State.SuccessSearching -> {
                         displaySearch(state.results, state.hasMore)
                         appAdapter.isLoading = false
-                        ui.vgvSearch.visibility = View.VISIBLE
-                        ui.isLoading.root.visibility = View.GONE
-                        com.dskja.betterstreamflix.utils.ExpPressEffects.showLoadingSkeleton(
-                            ui.isLoading.root, false,
-                        )
                     }
                     is State.SuccessGlobalSearching -> {
                         displayGlobalSearch(state.providerResults)
                         appAdapter.isLoading = false
-                        ui.vgvSearch.visibility = View.VISIBLE
-                        ui.isLoading.root.visibility = View.GONE
-                        com.dskja.betterstreamflix.utils.ExpPressEffects.showLoadingSkeleton(
-                            ui.isLoading.root, false,
-                        )
                     }
                     is State.FailedSearching -> {
+                        disarmSearchLoading(ui)
+                        ui.isLoading.root.visibility = View.VISIBLE
                         if (http409Guard.handle(requireContext(), state.error) {
                                 if (appAdapter.isLoading) appAdapter.isLoading = false
                                 retryLastSearch()
                             }) {
-                            return@collect
+                            return
                         }
                         Toast.makeText(requireContext(), state.error.message ?: "", Toast.LENGTH_SHORT).show()
                         if (appAdapter.isLoading) {
@@ -170,8 +177,6 @@ class SearchTvFragment : Fragment() {
                         }
                     }
                 }
-            }
-        }
     }
 
     override fun onDestroyView() {
@@ -286,34 +291,38 @@ class SearchTvFragment : Fragment() {
 
         voiceHelper = VoiceRecognitionHelper(
             fragment = this,
+            permissionLauncher = voicePermissionLauncher,
             onResult = { query ->
-                binding.btnSearchVoice.clearAnimation()
-                binding.etSearch.setText(query)
+                val ui = _binding ?: return@VoiceRecognitionHelper
+                ui.btnSearchVoice.clearAnimation()
+                ui.etSearch.setText(query)
                 // Honor global-search SwitchCompat the same way submitSearch does.
                 submitSearch()
             },
             onError = { msg ->
+                val ui = _binding ?: return@VoiceRecognitionHelper
                 com.dskja.betterstreamflix.utils.ExpDialogChrome.notify(
                     requireContext(),
                     msg,
                     R.string.voice_search,
                 )
-                binding.btnSearchVoice.clearAnimation()
+                ui.btnSearchVoice.clearAnimation()
                 val isIptv = UserPreferences.currentProvider is IptvProvider
                 val hintStringRes =
                     if (isIptv) R.string.search_input_hint_iptv else R.string.search_input_hint
-                binding.etSearch.hint = getString(hintStringRes)
+                ui.etSearch.hint = getString(hintStringRes)
             },
             onListeningStateChanged = { isListening ->
+                val ui = _binding ?: return@VoiceRecognitionHelper
                 if (isListening) {
-                    binding.btnSearchVoice.startAnimation(blink)
-                    binding.etSearch.hint = getString(R.string.voice_prompt)
+                    ui.btnSearchVoice.startAnimation(blink)
+                    ui.etSearch.hint = getString(R.string.voice_prompt)
                 } else {
-                    binding.btnSearchVoice.clearAnimation()
+                    ui.btnSearchVoice.clearAnimation()
                     val isIptv = UserPreferences.currentProvider is IptvProvider
                     val hintStringRes =
                         if (isIptv) R.string.search_input_hint_iptv else R.string.search_input_hint
-                    binding.etSearch.hint = getString(hintStringRes)
+                    ui.etSearch.hint = getString(hintStringRes)
                 }
             }
         )
@@ -365,8 +374,13 @@ class SearchTvFragment : Fragment() {
 
         refreshRecentSearches()
         initializeSearchSortControls()
-        // Prefer the search field — never focus a mic that may be GONE.
-        binding.etSearch.requestFocus()
+        // Loader covers the grid and is focusable in XML. On Fire OS that full-screen
+        // target crashes Leanback focus search as soon as Search opens.
+        disarmSearchLoading(binding)
+        binding.etSearch.post {
+            val ui = _binding ?: return@post
+            if (ui.etSearch.isShown) ui.etSearch.requestFocus()
+        }
     }
 
     private fun initializeSearchSortControls() {
@@ -510,46 +524,87 @@ class SearchTvFragment : Fragment() {
         }
     }
 
+    private fun disarmSearchLoading(ui: FragmentSearchTvBinding) {
+        ui.isLoading.root.apply {
+            if (hasFocus()) ui.etSearch.requestFocus()
+            isFocusable = false
+            isFocusableInTouchMode = false
+            isClickable = false
+        }
+    }
+
+    private fun showSearchLoading(ui: FragmentSearchTvBinding) {
+        disarmSearchLoading(ui)
+        ui.isLoading.root.visibility = View.VISIBLE
+        com.dskja.betterstreamflix.utils.ExpPressEffects.showLoadingSkeleton(ui.isLoading.root, true)
+        ui.isLoading.gIsLoadingRetry.visibility = View.GONE
+    }
+
+    private fun hideSearchLoading(ui: FragmentSearchTvBinding) {
+        disarmSearchLoading(ui)
+        ui.isLoading.root.visibility = View.GONE
+        com.dskja.betterstreamflix.utils.ExpPressEffects.showLoadingSkeleton(ui.isLoading.root, false)
+    }
+
     private fun clearSearchGrid() {
         val ui = _binding ?: return
+        if (ui.vgvSearch.isComputingLayout) {
+            ui.vgvSearch.post { clearSearchGrid() }
+            return
+        }
         appAdapter.submitList(emptyList())
         appAdapter.setOnLoadMoreListener(null)
         gridConfiguredForColumns = -1
         ui.vgvSearch.visibility = View.INVISIBLE
+        updateResultFocusTargets(hasFocusableContent = false)
     }
 
     private fun submitSearchGrid(columns: Int, items: List<AppAdapter.Item>) {
         val ui = _binding ?: return
+        val grid = ui.vgvSearch
+        val needsMeasure = grid.width <= 0 && gridConfiguredForColumns != columns
+        if ((grid.isComputingLayout || needsMeasure) && gridSubmitAttempts < 8) {
+            gridSubmitAttempts++
+            grid.post { submitSearchGrid(columns, items) }
+            return
+        }
+        gridSubmitAttempts = 0
+        // Hide the loader before the grid lays out. A focusable overlay sibling
+        // makes Leanback throw while setNumColumns / submitList run.
+        hideSearchLoading(ui)
         if (gridConfiguredForColumns != columns) {
             // Never call setNumColumns while the opposite item shape is still bound.
             if (appAdapter.itemCount > 0) {
                 appAdapter.submitList(emptyList())
             }
             currentGridColumns = columns
-            ui.vgvSearch.setNumColumns(columns)
+            runCatching { grid.setNumColumns(columns) }
             gridConfiguredForColumns = columns
         }
         appAdapter.submitList(items)
-        ui.vgvSearch.visibility = View.VISIBLE
+        grid.visibility = View.VISIBLE
+        updateResultFocusTargets(items.isNotEmpty())
+    }
+
+    private fun updateResultFocusTargets(hasFocusableContent: Boolean) {
+        val ui = _binding ?: return
+        val down = if (hasFocusableContent) ui.vgvSearch.id else ui.etSearch.id
+        listOf(
+            R.id.chip_search_sort_default,
+            R.id.chip_search_sort_newest,
+            R.id.chip_search_filter_year,
+        ).forEach { id ->
+            ui.root.findViewById<View>(id)?.nextFocusDownId = down
+        }
     }
 
     private fun displaySearch(list: List<AppAdapter.Item>, hasMore: Boolean) {
         val ui = _binding ?: return
-        val safe = SearchResultGuard.sanitize(list)
-        // Genre browse (empty query) uses 5 cols; title hits use 6. Always clear when
-        // the shape changes so Leanback never lays out Genre tiles as poster cells.
-        val columns = if (viewModel.query.isBlank()) 5 else 6
-        val stamped = safe.onEach {
-            when (it) {
-                is Genre -> it.itemType = AppAdapter.Type.GENRE_GRID_TV_ITEM
-                is Movie -> it.itemType = AppAdapter.Type.MOVIE_GRID_TV_ITEM
-                is TvShow -> it.itemType = AppAdapter.Type.TV_SHOW_GRID_TV_ITEM
-            }
-        }
-        submitSearchGrid(columns, stamped)
+        val plan = SearchTvRows.local(viewModel.query, list)
+        submitSearchGrid(plan.columns, plan.items)
 
         ui.root.findViewById<View>(R.id.tv_search_empty)?.let { emptyView ->
-            val showEmpty = safe.isEmpty() && viewModel.query.isNotBlank()
+            val showEmpty = plan.items.isEmpty() && viewModel.query.isNotBlank()
             ExpEmptyChrome.bind(
                 emptyView = emptyView,
                 emptyRule = ui.root.findViewById(R.id.v_search_empty_rule),
@@ -573,45 +628,22 @@ class SearchTvFragment : Fragment() {
 
     private fun displayGlobalSearch(providerResults: List<ProviderResult>) {
         val ui = _binding ?: return
-        val categories = providerResults.map { providerResult ->
-            val headerTitle = when (val state = providerResult.state) {
-                is ProviderResult.State.Loading ->
-                    "${providerResult.provider.name} - ${getString(R.string.searching)}"
-                is ProviderResult.State.Error ->
-                    "${providerResult.provider.name} - ${getString(R.string.search_error)}"
-                is ProviderResult.State.Success -> {
-                    val count = state.results.size
-                    val resultText =
-                        if (count == 1) getString(R.string.result) else getString(R.string.results)
-                    "${providerResult.provider.name} - $count $resultText"
-                }
-            }
-
-            val items = SearchResultGuard.sanitize(
-                (providerResult.state as? ProviderResult.State.Success)?.results.orEmpty(),
-            ).onEach {
-                when (it) {
-                    is Movie -> it.itemType = AppAdapter.Type.MOVIE_TV_ITEM
-                    is TvShow -> it.itemType = AppAdapter.Type.TV_SHOW_TV_ITEM
-                }
-            }
-
-            Category(name = headerTitle, list = items).apply {
-                // Stable DiffUtil id across Loading → Success title changes.
-                identityKey = "search-global:${providerResult.provider.name}"
-                itemType = AppAdapter.Type.CATEGORY_TV_ITEM
-            }
+        val plan = SearchTvRows.global(providerResults) { name, count ->
+            val resultText = if (count == 1) getString(R.string.result) else getString(R.string.results)
+            "$name - $count $resultText"
         }
-
-        submitSearchGrid(columns = 1, items = categories)
+        val stillWorking = providerResults.any { it.state is ProviderResult.State.Loading }
+        // Loading / error / zero-hit providers are omitted. Empty CATEGORY_TV_ITEM
+        // rows hide their HorizontalGridView and kill the process on DPAD.
+        if (plan.items.isEmpty()) {
+            clearSearchGrid()
+            if (stillWorking) showSearchLoading(ui) else hideSearchLoading(ui)
+        } else {
+            submitSearchGrid(plan.columns, plan.items)
+        }
         appAdapter.setOnLoadMoreListener(null)
 
-        val allDone = providerResults.isNotEmpty() &&
-            providerResults.none { it.state is ProviderResult.State.Loading }
-        val totalHits = providerResults.sumOf {
-            (it.state as? ProviderResult.State.Success)?.results?.size ?: 0
-        }
-        val showEmpty = allDone && totalHits == 0 && viewModel.query.isNotBlank()
+        val showEmpty = !stillWorking && plan.items.isEmpty() && viewModel.query.isNotBlank()
         ui.root.findViewById<View>(R.id.tv_search_empty)?.let { emptyView ->
             ExpEmptyChrome.bind(
                 emptyView = emptyView,
@@ -633,5 +665,9 @@ class SearchTvFragment : Fragment() {
         switch.contentDescription = getString(
             if (switch.isChecked) R.string.global_search_cd_on else R.string.global_search_cd_off,
         )
+    }
+
+    private companion object {
+        const val TAG = "SearchTvFragment"
     }
 }
