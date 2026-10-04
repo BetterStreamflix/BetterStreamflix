@@ -22,6 +22,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Buy Me a Coffee short-link constant (`buymeacoff.ee/betterstreamflix`) alongside the canonical URL
 
 ### Fixed
+- Profile settings no longer write library scope, continue watching, or parental max-age into another profile. A missing per-profile key no longer inherits the default profile's PIN or age ceiling. Turning kids off lifts that profile's kids ceiling. Deleting the active profile does not unlock a PIN or kids fallback. Who's Watching stays locked after closing the editor, and TV can focus Edit, Add, Save, PIN, and avatar controls
+- Cloud sync reuses the live profile database instead of opening a second connection and closing it. Remote rows are written to the profile that fetched them
 - TV Search closed the app on open and while typing: the field is a normal EditText, the loading overlay is not a focus target, empty global shelves are left out of the Leanback grid, nested shelf adapters are kept, Global Search runs one provider at a time, and HDFilme sitemap parsing stops before it exhausts TV memory
 - TV support prompt and Home card: “Never show again on start” is a focusable control on Leanback and uses the same opt-out as mobile, so dismissing it on either platform sticks
 - Playback no longer treats an unknown duration as “finished” (that marked the title watched and cleared resume). Resume seek stays at the start when the saved point is under 10 seconds and does not jump after a manual seek
