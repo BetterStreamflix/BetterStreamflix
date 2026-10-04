@@ -219,7 +219,7 @@ object CloudSyncManager {
                 total = remote.size,
             ),
         )
-        withContext(Dispatchers.IO) { applyRemote(appContext, remote) }
+        withContext(Dispatchers.IO) { applyRemote(appContext, remote, profileId) }
         onProgress(CloudSyncProgress(CloudSyncProgress.Stage.FINALIZING))
         CloudAccountStore.setActiveAccount(
             appContext,
@@ -309,7 +309,7 @@ object CloudSyncManager {
                     ),
                 )
                 withContext(Dispatchers.IO) {
-                    applyRemoteInternal(context, finalRemote)
+                    applyRemoteInternal(context, finalRemote, profileId)
                 }
                 CloudAccountStore.claimLegacyData(context, userId, profileId)
             } else {
@@ -335,7 +335,7 @@ object CloudSyncManager {
                     ),
                 )
                 withContext(Dispatchers.IO) {
-                    applyRemoteInternal(context, remote)
+                    applyRemoteInternal(context, remote, profileId)
                 }
             }
             onProgress(CloudSyncProgress(CloudSyncProgress.Stage.FINALIZING))
@@ -363,7 +363,7 @@ object CloudSyncManager {
         if (!shouldApplyRealtimeState(userId, state, pending)) return@withLock
 
         withContext(Dispatchers.IO) {
-            applyRemote(context.applicationContext, listOf(state))
+            applyRemote(context.applicationContext, listOf(state), profileId)
         }
     }
 
@@ -556,8 +556,9 @@ object CloudSyncManager {
         profileId: String = ProfileManager.activeProfileId,
     ): List<RemoteMediaState> {
         val states = mutableListOf<RemoteMediaState>()
-        existingProviders(context).forEach { provider ->
-            val db = AppDatabase.getInstanceForProvider(provider.name, context, profileId)
+        existingProviders(context, profileId).forEach { provider ->
+            val opened = AppDatabase.openForProfile(provider.name, context, profileId)
+            val db = opened.database
             try {
                 db.movieDao().getAll()
                     .filter { movie ->
@@ -597,28 +598,37 @@ object CloudSyncManager {
                         )
                     }
             } finally {
-                db.close()
+                if (opened.ownsConnection) runCatching { db.close() }
             }
         }
         return states
     }
 
-    private fun applyRemote(context: Context, states: List<RemoteMediaState>) {
+    private fun applyRemote(
+        context: Context,
+        states: List<RemoteMediaState>,
+        profileId: String,
+    ) {
         isApplyingRemote = true
         try {
-            applyRemoteInternal(context, states)
+            applyRemoteInternal(context, states, profileId)
         } finally {
             isApplyingRemote = false
         }
     }
 
-    private fun applyRemoteInternal(context: Context, states: List<RemoteMediaState>) {
+    private fun applyRemoteInternal(
+        context: Context,
+        states: List<RemoteMediaState>,
+        profileId: String,
+    ) {
         states.groupBy { it.provider }.forEach { (providerName, providerStates) ->
             val provider = providerByName(providerName) ?: run {
                 Log.w(TAG, "Skipping state for unavailable provider $providerName")
                 return@forEach
             }
-            val db = AppDatabase.getInstanceForProvider(provider.name, context)
+            val opened = AppDatabase.openForProfile(provider.name, context, profileId)
+            val db = opened.database
             try {
                 val statesToApply = providerStates.filter { state ->
                     shouldApplyRemoteState(db, state)
@@ -690,14 +700,18 @@ object CloudSyncManager {
                     }
                 }
 
-                UserDataCache.writeMovies(context, provider, db.movieDao().getAll())
-                UserDataCache.writeTvShows(context, provider, db.tvShowDao().getAllForBackup())
-                UserDataCache.writeEpisodes(context, provider, db.episodeDao().getAllForBackup())
+                if (profileId == ProfileManager.activeProfileId) {
+                    UserDataCache.writeMovies(context, provider, db.movieDao().getAll())
+                    UserDataCache.writeTvShows(context, provider, db.tvShowDao().getAllForBackup())
+                    UserDataCache.writeEpisodes(context, provider, db.episodeDao().getAllForBackup())
+                }
             } finally {
-                db.close()
+                if (opened.ownsConnection) runCatching { db.close() }
             }
         }
-        UserDataNotifier.notifyChanged()
+        if (profileId == ProfileManager.activeProfileId) {
+            UserDataNotifier.notifyChanged()
+        }
     }
 
     /**
@@ -766,8 +780,10 @@ object CloudSyncManager {
     ).maxOrNull() ?: Long.MIN_VALUE
 
     private fun clearLocalUserState(context: Context) {
-        existingProviders(context).forEach { provider ->
-            val db = AppDatabase.getInstanceForProvider(provider.name, context)
+        val profileId = ProfileManager.activeProfileId
+        existingProviders(context, profileId).forEach { provider ->
+            val opened = AppDatabase.openForProfile(provider.name, context, profileId)
+            val db = opened.database
             try {
                 db.runInTransaction {
                     db.movieDao().clearUserState()
@@ -775,17 +791,17 @@ object CloudSyncManager {
                     db.episodeDao().clearUserState()
                 }
             } finally {
-                db.close()
+                if (opened.ownsConnection) runCatching { db.close() }
             }
         }
         UserDataCache.clearAll(context)
         UserDataNotifier.notifyChanged()
     }
 
-    private fun existingProviders(context: Context): List<Provider> = allProviders()
+    private fun existingProviders(context: Context, profileId: String): List<Provider> = allProviders()
         .distinctBy { it.name }
         .filter { provider ->
-        context.getDatabasePath(AppDatabase.databaseNameFor(provider.name)).exists()
+            context.getDatabasePath(AppDatabase.databaseNameFor(provider.name, profileId)).exists()
         }
 
     private fun allProviders(): List<Provider> = (Provider.providers.keys +

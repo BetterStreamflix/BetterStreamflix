@@ -172,18 +172,19 @@ object ProfileManager {
 
         if (activeProfileId == id) {
             val fallback = updated.firstOrNull { it.id == DEFAULT_PROFILE_ID } ?: updated.first()
-            switchTo(appContext, fallback.id)
+            val fallbackNeedsGate = fallback.pinHash != null || fallback.isKids
+            switchTo(appContext, fallback.id, markUnlocked = !fallbackNeedsGate)
         }
         return true
     }
 
-    fun switchTo(context: Context, id: String): Boolean {
+    fun switchTo(context: Context, id: String, markUnlocked: Boolean = true): Boolean {
         require(::appContext.isInitialized) { "ProfileManager.init() must be called first" }
         val profile = profiles().find { it.id == id } ?: return false
         val previous = activeProfile()
         if (activeProfileId == id) {
             applyKidsParentalDefaults(profile, previous)
-            ProfileUnlockGate.markUnlocked(profile.id)
+            if (markUnlocked) ProfileUnlockGate.markUnlocked(profile.id)
             return true
         }
 
@@ -192,7 +193,7 @@ object ProfileManager {
         AppDatabase.resetInstance()
         UserDataCache.clearMemory()
         applyKidsParentalDefaults(profile, previous)
-        ProfileUnlockGate.markUnlocked(profile.id)
+        if (markUnlocked) ProfileUnlockGate.markUnlocked(profile.id)
         UserDataNotifier.notifyChanged()
         ProviderChangeNotifier.notifyProviderChanged()
         lifecycleScope.launch {
@@ -217,6 +218,7 @@ object ProfileManager {
     }
 
     fun updateKids(profileId: String, isKids: Boolean): Boolean {
+        val previous = profiles().find { it.id == profileId }
         val ok = updateProfile(profileId) {
             it.copy(
                 isKids = isKids,
@@ -224,7 +226,7 @@ object ProfileManager {
             )
         }
         if (ok && profileId == activeProfileId) {
-            applyKidsParentalDefaults(profiles().find { it.id == profileId }, previous = null)
+            applyKidsParentalDefaults(profiles().find { it.id == profileId }, previous)
         }
         return ok
     }
@@ -294,26 +296,50 @@ object ProfileManager {
      */
     private fun applyKidsParentalDefaults(profile: UserProfile?, previous: UserProfile?) {
         if (profile == null) return
-        if (profile.isKids) {
-            val ceiling = profile.maxAgeRating ?: KIDS_DEFAULT_MAX_AGE
-            if (UserPreferences.parentalControlMaxAge == null ||
-                (UserPreferences.parentalControlMaxAge ?: 99) > ceiling
-            ) {
-                UserPreferences.parentalControlMaxAge = ceiling
-            }
-        } else if (previous?.isKids == true) {
-            val kidsCeiling = previous.maxAgeRating ?: KIDS_DEFAULT_MAX_AGE
-            if (UserPreferences.parentalControlMaxAge == kidsCeiling) {
-                UserPreferences.parentalControlMaxAge = null
-            }
+        val ceiling = if (profile.isKids) {
+            profile.maxAgeRating ?: KIDS_DEFAULT_MAX_AGE
+        } else {
+            previous?.maxAgeRating ?: KIDS_DEFAULT_MAX_AGE
         }
+        val next = kidsCeilingToApply(
+            becomingKids = profile.isKids,
+            previousWasKids = previous?.isKids == true,
+            currentMaxAge = UserPreferences.parentalControlMaxAge,
+            kidsCeiling = ceiling,
+        )
+        if (next != UserPreferences.parentalControlMaxAge) {
+            UserPreferences.parentalControlMaxAge = next
+        }
+    }
+
+    /**
+     * Pure ceiling decision used by [applyKidsParentalDefaults].
+     * Returns the age that should be stored, or null when the kids tighten should be lifted.
+     */
+    internal fun kidsCeilingToApply(
+        becomingKids: Boolean,
+        previousWasKids: Boolean,
+        currentMaxAge: Int?,
+        kidsCeiling: Int,
+    ): Int? {
+        if (becomingKids) {
+            if (currentMaxAge == null || currentMaxAge > kidsCeiling) return kidsCeiling
+            return currentMaxAge
+        }
+        if (previousWasKids && currentMaxAge == kidsCeiling) return null
+        return currentMaxAge
     }
 
     /** Delete Room DB files, scoped prefs, and cached userdata for a removed profile. */
     private fun wipeProfileLocalData(profileId: String) {
         if (profileId == DEFAULT_PROFILE_ID) return
         runCatching {
-            AppDatabase.resetInstance()
+            // Only drop the live connection when this profile is the one on screen.
+            // Wiping a background profile must not close the active database.
+            if (profileId == activeProfileId) {
+                AppDatabase.resetInstance()
+                UserDataCache.clearMemory()
+            }
             val dir = appContext.getDatabasePath("placeholder").parentFile ?: return@runCatching
             dir.listFiles()
                 ?.filter { it.name.startsWith("${profileId}__") || it.name.contains("${profileId}__") }
@@ -321,7 +347,6 @@ object ProfileManager {
                     runCatching { file.delete() }
                     runCatching { appContext.deleteDatabase(file.name) }
                 }
-            UserDataCache.clearMemory()
             UserDataCache.clearForProfile(appContext, profileId)
             wipeScopedPreferences(profileId)
         }
