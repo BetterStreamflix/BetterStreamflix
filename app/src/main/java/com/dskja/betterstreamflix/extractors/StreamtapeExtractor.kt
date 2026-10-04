@@ -2,6 +2,8 @@ package com.dskja.betterstreamflix.extractors
 
 import com.tanasi.retrofit_jsoup.converter.JsoupConverterFactory
 import com.dskja.betterstreamflix.models.Video
+import com.dskja.betterstreamflix.utils.withExtractorTimeouts
+import okhttp3.OkHttpClient
 import okhttp3.ResponseBody
 import org.jsoup.nodes.Document
 import retrofit2.Response
@@ -65,6 +67,7 @@ class StreamtapeExtractor : Extractor() {
             fun build(baseUrl: String): StreamtapeExtractorService {
                 val retrofit = Retrofit.Builder()
                     .baseUrl(baseUrl)
+                    .client(OkHttpClient.Builder().withExtractorTimeouts().build())
                     .addConverterFactory(JsoupConverterFactory.create())
                     .build()
 

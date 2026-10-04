@@ -3,6 +3,7 @@ package com.dskja.betterstreamflix.extractors
 import com.tanasi.retrofit_jsoup.converter.JsoupConverterFactory
 import com.dskja.betterstreamflix.models.Video
 import com.dskja.betterstreamflix.utils.JsUnpacker
+import com.dskja.betterstreamflix.utils.withExtractorTimeouts
 import org.jsoup.nodes.Document
 import retrofit2.Retrofit
 import retrofit2.http.GET
@@ -92,6 +93,7 @@ class MixDropExtractor : Extractor() {
                 val client = okhttp3.OkHttpClient.Builder()
                     .followRedirects(true)
                     .followSslRedirects(true)
+                    .withExtractorTimeouts()
                     .addInterceptor { chain ->
                         val request = chain.request().newBuilder()
                             .header("Referer", baseUrl)

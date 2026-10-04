@@ -344,9 +344,10 @@ object FilmPalastProvider : Provider {
 
     override suspend fun getMovies(page: Int): List<Movie> {
         val document = withSslFallback { it.getMovies(page) }
-        val movies = document.select("div#content article").map { article ->
+        val movies = document.select("div#content article").mapNotNull { article ->
             val href = article.selectFirst("h2 a")?.attr("href") ?: ""
-            val title = article.selectFirst("h2 a")?.text() ?: ""
+            val title = article.selectFirst("h2 a")?.text()?.trim() ?: ""
+            if (href.substringAfterLast("/").isBlank() || title.isBlank()) return@mapNotNull null
             val posterSrc = article.selectFirst("a img")?.attr("src") ?: ""
 
             val fullPosterUrl = if (posterSrc.startsWith("/")) {
@@ -371,9 +372,10 @@ object FilmPalastProvider : Provider {
 
     override suspend fun getTvShows(page: Int): List<TvShow> {
         val document = withSslFallback { it.getTvShows(page) }
-        val shows = document.select("div#content article").map { article ->
+        val shows = document.select("div#content article").mapNotNull { article ->
             val href = article.selectFirst("h2 a")?.attr("href") ?: ""
-            val title = article.selectFirst("h2 a")?.text() ?: ""
+            val title = article.selectFirst("h2 a")?.text()?.trim() ?: ""
+            if (href.substringAfterLast("/").isBlank() || title.isBlank()) return@mapNotNull null
             val posterSrc = article.selectFirst("a img")?.attr("src") ?: ""
 
             val fullPosterUrl = if (posterSrc.startsWith("/")) {
@@ -486,10 +488,11 @@ object FilmPalastProvider : Provider {
     override suspend fun getGenre(id: String, page: Int): Genre {
         val document = withSslFallback { it.getGenre(id, page) }
 
-        val shows = document.select("div#content article").map { article ->
+        val shows = document.select("div#content article").mapNotNull { article ->
             val aTag = article.selectFirst("h2 a")
             val href = aTag?.attr("href").orEmpty()
-            val title = aTag?.text().orEmpty()
+            val title = aTag?.text()?.trim().orEmpty()
+            if (href.substringAfterLast("/").isBlank() || title.isBlank()) return@mapNotNull null
 
             val posterSrc = article.selectFirst("a img")?.attr("src").orEmpty()
             val fullPosterUrl = if (posterSrc.startsWith("/")) {
@@ -579,9 +582,10 @@ object FilmPalastProvider : Provider {
         }
         
         // Parse filmography (same structure as movies/series)
-        val filmography = document.select("div#content article").map { article ->
+        val filmography = document.select("div#content article").mapNotNull { article ->
             val href = article.selectFirst("h2 a")?.attr("href") ?: ""
-            val title = article.selectFirst("h2 a")?.text() ?: ""
+            val title = article.selectFirst("h2 a")?.text()?.trim() ?: ""
+            if (href.substringAfterLast("/").isBlank() || title.isBlank()) return@mapNotNull null
             val posterSrc = article.selectFirst("a img")?.attr("src") ?: ""
 
             val fullPosterUrl = if (posterSrc.startsWith("/")) {

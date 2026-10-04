@@ -5,6 +5,7 @@ import com.dskja.betterstreamflix.models.Video
 import com.dskja.betterstreamflix.utils.DecryptHelper
 import com.dskja.betterstreamflix.utils.DnsResolver
 import com.dskja.betterstreamflix.utils.UserPreferences
+import com.dskja.betterstreamflix.utils.withExtractorTimeouts
 import okhttp3.OkHttpClient
 import org.jsoup.nodes.Document
 import retrofit2.Retrofit
@@ -126,6 +127,7 @@ class VoeExtractor : Extractor() {
                     .dns(DnsResolver.doh)
                     .followRedirects(true)
                     .followSslRedirects(true)
+                    .withExtractorTimeouts()
                     .addInterceptor { chain ->
                         val request = chain.request().newBuilder()
                             .header("Referer", originalLink)
@@ -163,6 +165,7 @@ class VoeExtractor : Extractor() {
 
                 val retrofitRedirected = Retrofit.Builder()
                     .baseUrl(redirectBaseUrl)
+                    .client(client)
                     .addConverterFactory(JsoupConverterFactory.create())
                     .build()
                 return retrofitRedirected.create(VoeExtractorService::class.java)

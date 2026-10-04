@@ -22,6 +22,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Buy Me a Coffee short-link constant (`buymeacoff.ee/betterstreamflix`) alongside the canonical URL
 
 ### Fixed
+- TV support prompt and Home card: “Never show again on start” is a focusable control on Leanback and uses the same opt-out as mobile, so dismissing it on either platform sticks
+- Playback no longer treats an unknown duration as “finished” (that marked the title watched and cleared resume). Resume seek stays at the start when the saved point is under 10 seconds and does not jump after a manual seek
+- Autoplay walks past an empty season instead of stopping
+- VOE’s redirected player keeps the same timed client; Closeload, MixDrop, Dood, Filemoon, Vidsrc, PrimeSrc, Vidrock, Uqload, Ok.ru, Streamtape, and Rabbitstream fail inside the failover window
+- AniWorld genre rows and FilmPalast movie, series, genre, and filmography rows drop blank titles
+- M3U channels that only set tvg-name are kept; LatAm sports hops time out after 6 seconds
+- Detail heroes with a known logo no longer flash the text title first
+- Download storage copy states that a custom folder grants the volume while adaptive files stay in the app folder
 - Player leave crash: soft-stop pauses only (no stop/clear on Back); defer ExoPlayer.release one main-looper frame after PlayerView detach; never reset playerReleased until a new instance is assigned
 - Play with vs Download with: Play with lists video players only (VLC/MX/mpv…), excludes ADM/1DM from picker and remembered default; Download with remains ADM/1DM
 - Mega audit polish: AniWorld Home + SerienStream genre blank-title filters; DaddyLive drop retired `watch`/daddy3-first hops; HDFilme no YouTube-as-Embed; PelotaLibre hard-fail non-HLS probes; VidxGo cancelable token refresh; Firestream/Meinecloud nested extract without retry amplify + OkHttp timeouts; IPTV `!!` cache races + LatAm local HLS bounded thread pool + callTimeouts; SoloLatino/FlixLatam PoW time caps; Home TV focus steal on logo rematerialize; Featured dots out of DPAD; Platform settings switch snapback; Search TV mic focus; VLC header-aware LAN proxy for Play with; ADM/1DM HLS gate; Cast local subtitle proxy + allowlisted LAN IPTV; OpenSubtitles UA/timeouts; NetworkClient 429 sleep cap
