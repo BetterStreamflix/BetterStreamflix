@@ -221,9 +221,8 @@ object GuardaSerieProvider : Provider, ProviderConfigUrl {
         return root.select(".slider-item a[href*=/detail/]").mapNotNull { a ->
             val href = a.attr("href")
             val img = a.selectFirst("img")
-            val title = img?.attr("alt")?.ifBlank { null }
-                ?: a.attr("title").ifBlank { a.text() }
-            if (title.isBlank()) return@mapNotNull null
+            val title = ItalianVixCatalog.linkTitle(a)
+            if (ItalianVixCatalog.isChromeLinkTitle(title)) return@mapNotNull null
             val poster = img?.attr("src")?.let { absUrl(it) }.orEmpty()
             parseDetailItem(href, title.trim(), poster)
         }.distinctBy { show ->
@@ -259,9 +258,8 @@ object GuardaSerieProvider : Provider, ProviderConfigUrl {
 
         return root.select("a[href*=/detail/]").mapNotNull { a ->
             val href = a.attr("href")
-            val title = a.attr("title").ifBlank { a.selectFirst("img")?.attr("alt") }.orEmpty()
-                .ifBlank { a.text() }
-            if (title.isBlank() || title.equals("Guarda ora", ignoreCase = true)) return@mapNotNull null
+            val title = ItalianVixCatalog.linkTitle(a)
+            if (ItalianVixCatalog.isChromeLinkTitle(title)) return@mapNotNull null
             val poster = a.selectFirst("img")?.attr("src")?.let { absUrl(it) }.orEmpty()
             parseDetailItem(href, title.trim(), poster)
         }.distinctBy { show ->

@@ -113,9 +113,7 @@ object AltadefinizioneProvider : Provider, ProviderConfigUrl {
             doc.select(".section-title").forEach { titleEl ->
                 val title = titleEl.text().trim()
                 if (title.isBlank()) return@forEach
-                val section = titleEl.closest("section, .section, .home-section, div")
-                    ?: titleEl.parent()
-                    ?: return@forEach
+                val section = ItalianVixCatalog.shelfContainer(titleEl)
                 val items = parseItems(section)
                 if (items.isNotEmpty()) {
                     categories += Category(name = title, list = items)
@@ -199,9 +197,7 @@ object AltadefinizioneProvider : Provider, ProviderConfigUrl {
 
     override suspend fun getMovie(id: String): Movie {
         val doc = getDocument(id)
-        val title = ItalianVixCatalog.cleanTitle(
-            doc.selectFirst("h1, .section-title h2, .es-detail-grid h2")?.text().orEmpty(),
-        )
+        val title = ItalianVixCatalog.detailTitle(doc)
         val tmdb = TmdbUtils.getMovie(title, language = language)
         val poster = tmdb?.poster
             ?: doc.selectFirst(".es-detail-poster img, img[src*=/img/]")?.attr("src")
@@ -227,9 +223,7 @@ object AltadefinizioneProvider : Provider, ProviderConfigUrl {
 
     override suspend fun getTvShow(id: String): TvShow {
         val doc = getDocument(id)
-        val title = ItalianVixCatalog.cleanTitle(
-            doc.selectFirst("h1, .section-title h2, .es-detail-grid h2")?.text().orEmpty(),
-        )
+        val title = ItalianVixCatalog.detailTitle(doc)
         val tmdb = TmdbUtils.getTvShow(title, language = language)
         val poster = tmdb?.poster
             ?: doc.selectFirst(".es-detail-poster img, img[src*=/img/]")?.attr("src")

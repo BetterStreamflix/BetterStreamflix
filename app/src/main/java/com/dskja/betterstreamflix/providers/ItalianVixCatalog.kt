@@ -136,8 +136,7 @@ internal object ItalianVixCatalog {
         seasonNum: Int,
         language: String,
     ): List<Episode> {
-        val title = doc.selectFirst("h1, h2, .section-title h2, .es-detail-grid h2")
-            ?.text()?.trim().orEmpty()
+        val title = detailTitle(doc)
         val tmdbTvShow = TmdbUtils.getTvShow(cleanTitle(title), language = language)
         val tmdbEpisodes = if (tmdbTvShow != null) {
             TmdbUtils.getEpisodesBySeason(tmdbTvShow.id, seasonNum, language = language)
@@ -216,5 +215,62 @@ internal object ItalianVixCatalog {
     fun showId(show: Show): String = when (show) {
         is Movie -> show.id
         is TvShow -> show.id
+    }
+
+    /**
+     * Detail pages put the site name in the header `h1`. Prefer the real heading.
+     */
+    fun detailTitle(doc: Document): String {
+        val preferred = doc.selectFirst("h1.detail-title, .es-detail-grid h2, .es-detail-info h2")
+            ?.text()
+            ?.let(::cleanTitle)
+            .orEmpty()
+        if (preferred.isNotBlank() && !isSiteChromeTitle(preferred)) return preferred
+
+        doc.select("h2").asSequence()
+            .map { cleanTitle(it.text()) }
+            .firstOrNull { it.isNotBlank() && !isSiteChromeTitle(it) }
+            ?.let { return it }
+
+        val fromDocument = cleanTitle(doc.title())
+        if (fromDocument.isNotBlank() && !isSiteChromeTitle(fromDocument)) return fromDocument
+
+        return doc.select("h1").asSequence()
+            .map { cleanTitle(it.text()) }
+            .firstOrNull { it.isNotBlank() && !isSiteChromeTitle(it) }
+            .orEmpty()
+    }
+
+    fun isSiteChromeTitle(title: String): Boolean {
+        return when (title.trim().lowercase()) {
+            "", "eurostreaming", "altadefinizione", "guardaserie", "guarda serie", "cerca", "home" -> true
+            else -> false
+        }
+    }
+
+    /** Shelf heading sits inside the section that also holds the cards, not the inner title div. */
+    fun shelfContainer(titleEl: Element): Element {
+        return titleEl.closest("section")
+            ?: titleEl.parent()?.parent()
+            ?: titleEl.parent()
+            ?: titleEl
+    }
+
+    fun linkTitle(anchor: Element): String {
+        val rank = anchor.selectFirst(".rank-name")?.text()?.trim().orEmpty()
+        if (rank.isNotBlank()) return rank
+        val titled = anchor.attr("title").ifBlank {
+            anchor.selectFirst("img")?.attr("alt").orEmpty()
+        }.trim()
+        if (titled.isNotBlank()) return titled
+        return anchor.text().trim()
+    }
+
+    fun isChromeLinkTitle(title: String): Boolean {
+        val normalized = title.trim()
+        return normalized.isBlank() ||
+            normalized.equals("Guarda ora", true) ||
+            normalized.equals("Riproduci", true) ||
+            normalized.equals("Altre info", true)
     }
 }

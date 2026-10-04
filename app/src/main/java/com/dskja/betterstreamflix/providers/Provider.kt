@@ -132,7 +132,7 @@ interface Provider {
             AltadefinizioneProvider to ProviderSupport(movies = true, tvShows = true),
             AltadefinizioneXProvider to ProviderSupport(movies = true, tvShows = true),
             EurostreamingProvider to ProviderSupport(movies = true, tvShows = true),
-            GuardaFlixProvider to ProviderSupport(movies = true, tvShows = false),
+            GuardaFlixProvider to ProviderSupport(movies = true, tvShows = true),
             CB01Provider to ProviderSupport(movies = true, tvShows = true),
             AnimeUnityProvider to ProviderSupport(movies = true, tvShows = true),
             AnimeSaturnProvider to ProviderSupport(movies = false, tvShows = true),
