@@ -20,6 +20,7 @@
     <item name="exp_search_recent_queries_tag" type="id" />
     <item name="profile_chip_key_tag" type="id" />
     <item name="tmdb_logo_expected_url_tag" type="id" />
+    <item name="artwork_load_generation" type="id" />
     <item name="title_logo_expected_title_tag" type="id" />
     <item name="player_logo_resolved_url_tag" type="id" />
     <!-- View ids that only existed on removed experimental layouts.

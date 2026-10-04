@@ -6,13 +6,12 @@ package com.dskja.betterstreamflix.utils
  */
 object ArtworkUrls {
 
-    // Size token may be w300, original, or a legacy compound such as
-    // w185_and_h278_bestv2. Leaving those untouched upscales a thumbnail.
-    private val tmdbSize = Regex(
-        """(image\.tmdb\.org/t/p/)((?:w\d+|h\d+|original)[^/]*)(/)""",
-    )
-    private val tmdbSizeAlt = Regex(
-        """(themoviedb\.org/t/p/)((?:w\d+|h\d+|original)[^/]*)(/)""",
+    // Size token may be w300, original, h632, or a compound crop such as
+    // w185_and_h278_bestv2. Anything left in the path is upscaled and soft.
+    private val tmdbSizeToken = Regex(
+        """(image\.tmdb\.org/t/p/|themoviedb\.org/t/p/)""" +
+            """((?:w\d+|h\d+|original)[^/]*)""" +
+            """(/)""",
     )
 
     /**
@@ -39,21 +38,18 @@ object ArtworkUrls {
 
     /**
      * Ordered size ladder for logo Glide retries.
-     * Respects [UserPreferences.tmdbLogoQuality] when available.
+     * Always original first. The old `w1280_first` preference has no Settings
+     * control anymore and was leaving wordmarks on the softer tier.
      */
     fun logoSizeLadder(url: String?): List<String> {
         val value = url?.trim().orEmpty()
         if (value.isEmpty()) return emptyList()
-        val originalFirst = try {
-            UserPreferences.tmdbLogoQuality != "w1280_first"
-        } catch (_: Throwable) {
-            true
-        }
-        val ordered = if (originalFirst) {
-            listOfNotNull(preferOriginal(value), preferHero(value), preferW500(value), preferW300(value))
-        } else {
-            listOfNotNull(preferHero(value), preferOriginal(value), preferW500(value), preferW300(value))
-        }.distinct()
+        val ordered = listOfNotNull(
+            preferOriginal(value),
+            preferHero(value),
+            preferW500(value),
+            preferW300(value),
+        ).distinct()
         return ordered.ifEmpty { listOf(value) }
     }
 
@@ -77,11 +73,7 @@ object ArtworkUrls {
     private fun replaceSize(url: String?, size: String): String? {
         val value = url?.trim().orEmpty()
         if (value.isEmpty()) return null
-        return tmdbSizeAlt.replace(
-            tmdbSize.replace(value) { match ->
-                "${match.groupValues[1]}$size${match.groupValues[3]}"
-            },
-        ) { match ->
+        return tmdbSizeToken.replace(value) { match ->
             "${match.groupValues[1]}$size${match.groupValues[3]}"
         }
     }
@@ -93,11 +85,7 @@ object ArtworkUrls {
     fun logoFileIdentity(url: String?): String {
         val value = url?.trim().orEmpty()
         if (value.isEmpty()) return ""
-        val stripped = tmdbSizeAlt.replace(
-            tmdbSize.replace(value) { match ->
-                "${match.groupValues[1]}*${match.groupValues[3]}"
-            },
-        ) { match ->
+        val stripped = tmdbSizeToken.replace(value) { match ->
             "${match.groupValues[1]}*${match.groupValues[3]}"
         }
         return stripped.lowercase()

@@ -8,6 +8,7 @@ import com.bumptech.glide.load.DataSource
 import com.bumptech.glide.load.engine.GlideException
 import com.bumptech.glide.request.RequestListener
 import com.bumptech.glide.request.target.Target
+import com.dskja.betterstreamflix.R
 import com.dskja.betterstreamflix.database.AppDatabase
 import com.dskja.betterstreamflix.models.Movie
 import com.dskja.betterstreamflix.models.TvShow
@@ -88,20 +89,32 @@ private object ArtworkRepairCoordinator {
     }
 }
 
+private fun ImageView.bumpArtworkTicket(): Int {
+    val next = ((getTag(R.id.artwork_load_generation) as? Int) ?: 0) + 1
+    setTag(R.id.artwork_load_generation, next)
+    return next
+}
+
 private fun ImageView.loadRecoverableArtwork(
     initialUrl: String?,
     configure: RequestBuilder<Drawable>.() -> RequestBuilder<Drawable>,
     onReady: (Drawable) -> Unit = {},
     onRepair: (staleUrl: String, onUpdated: (String) -> Unit) -> Unit,
 ) {
+    val ticket = bumpArtworkTicket()
     var hasRequestedRepairForBlankUrl = false
 
+    fun stillCurrent(): Boolean {
+        return isAttachedToWindow && getTag(R.id.artwork_load_generation) == ticket
+    }
+
     fun submit(url: String?) {
+        if (!stillCurrent()) return
         val requestedUrl = url
         if (requestedUrl.isNullOrBlank() && !hasRequestedRepairForBlankUrl) {
             hasRequestedRepairForBlankUrl = true
             onRepair("") { refreshedUrl ->
-                if (!isAttachedToWindow || refreshedUrl.isBlank()) return@onRepair
+                if (!stillCurrent() || refreshedUrl.isBlank()) return@onRepair
                 submit(refreshedUrl)
             }
         }
@@ -124,12 +137,13 @@ private fun ImageView.loadRecoverableArtwork(
                     target: Target<Drawable>,
                     isFirstResource: Boolean,
                 ): Boolean {
+                    if (!stillCurrent()) return false
                     if (!ArtworkRepairCoordinator.shouldRepair(requestedUrl, e)) {
                         return false
                     }
 
                     onRepair(requestedUrl.orEmpty()) { refreshedUrl ->
-                        if (!isAttachedToWindow) return@onRepair
+                        if (!stillCurrent()) return@onRepair
                         submit(refreshedUrl)
                     }
                     return false
@@ -142,6 +156,7 @@ private fun ImageView.loadRecoverableArtwork(
                     dataSource: DataSource,
                     isFirstResource: Boolean,
                 ): Boolean {
+                    if (!stillCurrent()) return false
                     onReady(resource)
                     return false
                 }

@@ -10,6 +10,8 @@ import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
 import com.bumptech.glide.Glide
+import com.dskja.betterstreamflix.utils.ArtworkUrls
+import com.dskja.betterstreamflix.utils.TvFocusChain
 import com.dskja.betterstreamflix.R
 import com.dskja.betterstreamflix.download.DownloadItemState
 import com.dskja.betterstreamflix.utils.ExpMotion
@@ -116,6 +118,7 @@ class DownloadsAdapter(
         private val progress: ProgressBar = view.findViewById(R.id.pb_download_season)
         fun bind(item: DownloadRowUiModel.SeasonPack) {
             val pack = item.pack
+            itemView.nextFocusLeftId = R.id.nav_main
             title.text = pack.tvShowTitle
             subtitle.text = itemView.context.getString(
                 R.string.downloads_season_progress,
@@ -174,7 +177,10 @@ class DownloadsAdapter(
                 item.entity.serverName.takeIf { it.isNotBlank() },
                 item.entity.qualityLabel.takeIf { it.isNotBlank() },
             ).joinToString(" · ") + watchedSuffix(item)
-            Glide.with(poster).load(item.entity.posterUrl).centerCrop().into(poster)
+            val posterUrl = ArtworkUrls.preferW500(item.entity.posterUrl) ?: item.entity.posterUrl
+            Glide.with(poster).load(posterUrl).centerCrop().into(poster)
+            TvFocusChain.linkHorizontal(actionPrimary, actionDelete)
+            actionPrimary.nextFocusLeftId = R.id.nav_main
             bindProgress(item)
             bindPrimaryAction(item)
             actionDelete.setOnClickListener {

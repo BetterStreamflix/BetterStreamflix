@@ -57,7 +57,14 @@ fun NavigationUI.setupWithNavController(
                     }
                 }
             }
-        })
+            })
+    navController.currentDestination?.let { destination ->
+        navigationSlideView.menu.forEach { item ->
+            if (destination.matchDestination(item.itemId)) {
+                item.isChecked = true
+            }
+        }
+    }
 }
 
 fun NavDestination.matchDestination(@IdRes destId: Int): Boolean =

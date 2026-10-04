@@ -1,11 +1,15 @@
 package com.tanasi.navigation.widget
 
 import android.content.Context
+import android.graphics.Rect
 import android.util.AttributeSet
 import android.view.Gravity
 import android.view.LayoutInflater
 import android.view.MenuInflater
 import android.view.MenuItem
+import android.view.View
+import android.view.ViewGroup
+import android.view.ViewGroup.MarginLayoutParams
 import android.widget.FrameLayout
 import androidx.annotation.LayoutRes
 import androidx.appcompat.view.SupportMenuInflater
@@ -27,10 +31,15 @@ class NavigationSlideView @JvmOverloads constructor(
     private val presenter = NavigationSlidePresenter()
     private val menuInflater: MenuInflater = SupportMenuInflater(context)
 
-    var isOpen = true
+    var isOpen = false
 
     private var selectedListener: ((item: MenuItem) -> Boolean)? = null
     private var reselectedListener: ((item: MenuItem) -> Boolean)? = null
+
+    private val settleChrome = Runnable {
+        val inside = headerView?.hasFocus() == true || menuView.hasFocus()
+        if (inside) open() else close()
+    }
 
     /**
      * Currently selected menu item ID, or zero if there is no menu.
@@ -100,6 +109,11 @@ class NavigationSlideView @JvmOverloads constructor(
 
         attributes.recycle()
 
+        clipChildren = false
+        clipToPadding = false
+        isFocusable = false
+        descendantFocusability = ViewGroup.FOCUS_AFTER_DESCENDANTS
+
         addView(menuView)
 
         menu.setCallback(object : MenuBuilder.Callback {
@@ -140,19 +154,9 @@ class NavigationSlideView @JvmOverloads constructor(
     }
 
     fun buildNavigation() {
-        headerView?.setOnFocusChangeListener { _, _ ->
-            when {
-                headerView?.hasFocus() == true || menuView.hasFocus() -> open()
-                else -> close()
-            }
-        }
+        headerView?.let { bindChromeListener(it) }
         menuView.forEach { child, item ->
-            child.setOnFocusChangeListener { _, _ ->
-                when {
-                    headerView?.hasFocus() == true || menuView.hasFocus() -> open()
-                    else -> close()
-                }
-            }
+            bindChromeListener(child)
 
             child.setOnClickListener {
                 if (!menu.performItemAction(item, presenter, 0)) {
@@ -187,6 +191,73 @@ class NavigationSlideView @JvmOverloads constructor(
         }
     }
 
+    /**
+     * DPAD into the rail from a row that is not vertically aligned with the
+     * checked icon. The rail is full height; forwarding focus to the checked
+     * row keeps Search / Home / Movies reachable from every shelf.
+     */
+    override fun addFocusables(views: java.util.ArrayList<View>, direction: Int, focusableMode: Int) {
+        if (visibility != View.VISIBLE) return
+        val towardMenu = if (layoutDirection == View.LAYOUT_DIRECTION_RTL) {
+            View.FOCUS_RIGHT
+        } else {
+            View.FOCUS_LEFT
+        }
+        if (direction == towardMenu && !hasFocus()) {
+            isFocusable = true
+            views.add(this)
+            post {
+                if (!isFocused) isFocusable = false
+            }
+            return
+        }
+        isFocusable = false
+        super.addFocusables(views, direction, focusableMode)
+    }
+
+    override fun requestFocus(direction: Int, previouslyFocusedRect: Rect?): Boolean {
+        isFocusable = false
+        val target = menuView.preferredFocusTarget()
+        if (target != null && target.requestFocus()) return true
+        return super.requestFocus(direction, previouslyFocusedRect)
+    }
+
+    override fun onLayout(changed: Boolean, left: Int, top: Int, right: Int, bottom: Int) {
+        val header = headerView
+        var contentTop = paddingTop
+        if (header != null && header.visibility != View.GONE) {
+            val lp = header.layoutParams as MarginLayoutParams
+            val headerLeft = paddingLeft + lp.leftMargin
+            val headerTop = paddingTop + lp.topMargin
+            header.layout(
+                headerLeft,
+                headerTop,
+                headerLeft + header.measuredWidth,
+                headerTop + header.measuredHeight,
+            )
+            contentTop = headerTop + header.measuredHeight + lp.bottomMargin
+        }
+
+        val menu = menuView
+        val lp = menu.layoutParams as MarginLayoutParams
+        val menuLeft = paddingLeft + lp.leftMargin
+        val availableBottom = bottom - top - paddingBottom - lp.bottomMargin
+        val space = (availableBottom - contentTop - menu.measuredHeight).coerceAtLeast(0)
+        val gravity = menuGravity
+        val offset = when {
+            gravity and Gravity.BOTTOM == Gravity.BOTTOM -> space
+            gravity and Gravity.CENTER_VERTICAL == Gravity.CENTER_VERTICAL -> space / 2
+            else -> 0
+        }
+        val menuTop = contentTop + lp.topMargin + offset
+        menu.layout(
+            menuLeft,
+            menuTop,
+            menuLeft + menu.measuredWidth,
+            menuTop + menu.measuredHeight,
+        )
+    }
+
     fun open() {
         isOpen = true
 
@@ -199,6 +270,20 @@ class NavigationSlideView @JvmOverloads constructor(
 
         headerView?.close()
         menuView.close()
+    }
+
+    private fun bindChromeListener(view: View) {
+        view.setOnFocusChangeListener { _, hasFocus ->
+            if (hasFocus) {
+                // Cancel the close posted by the row we just left, or the next
+                // row is marked unfocusable before it can take focus.
+                removeCallbacks(settleChrome)
+                open()
+            } else {
+                removeCallbacks(settleChrome)
+                post(settleChrome)
+            }
+        }
     }
 
 

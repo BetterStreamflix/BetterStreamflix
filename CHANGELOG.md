@@ -22,6 +22,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Buy Me a Coffee short-link constant (`buymeacoff.ee/betterstreamflix`) alongside the canonical URL
 
 ### Fixed
+- TV side menu: collapsed rail accepts DPAD-left from any row, focus no longer drops between items, menu sits under the provider header instead of covering it, and the checked row follows the open screen. Mobile bottom nav labels no longer shift into each other. Shared logo loads stay original-first at the real view size; poster URLs upgrade compound TMDb sizes (`w185_and_h278_bestv2`, `h632`)
 - Search empty state keeps a Clear action on Mobile and TV, sort chips move to that action or the grid, a failed extra page keeps the rows already shown, and German Global Search only lists providers that returned hits. Choose a provider uses a normal text field so the TV screen can open
 - Profile settings no longer write library scope, continue watching, or parental max-age into another profile. A missing per-profile key no longer inherits the default profile's PIN or age ceiling. Turning kids off lifts that profile's kids ceiling. Deleting the active profile does not unlock a PIN or kids fallback. Who's Watching stays locked after closing the editor, and TV can focus Edit, Add, Save, PIN, and avatar controls
 - Cloud sync reuses the live profile database instead of opening a second connection and closing it. Remote rows are written to the profile that fetched them

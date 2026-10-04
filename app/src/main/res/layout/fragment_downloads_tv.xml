@@ -57,6 +57,8 @@
         android:id="@+id/hsv_downloads_filters"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
+        android:descendantFocusability="afterDescendants"
+        android:focusable="false"
         android:paddingTop="12dp"
         android:scrollbars="none"
         app:layout_constraintEnd_toEndOf="parent"

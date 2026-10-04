@@ -26,6 +26,7 @@ import com.dskja.betterstreamflix.ui.ShowOptionsTvDialog
 import com.dskja.betterstreamflix.ui.SpacingItemDecoration
 import com.dskja.betterstreamflix.utils.ExpDialogChrome
 import com.dskja.betterstreamflix.utils.ExpEmptyChrome
+import com.dskja.betterstreamflix.utils.TvFocusChain
 import com.dskja.betterstreamflix.utils.UserPreferences
 import com.dskja.betterstreamflix.utils.dp
 import kotlinx.coroutines.launch
@@ -110,6 +111,7 @@ class FavoritesTvFragment : Fragment() {
         }
         binding.btnFavoritesReorder.setOnClickListener { showSortDialog() }
         binding.btnFavoritesReorderMode.setOnClickListener { setRearrangeMode(!rearrangeMode) }
+        wireFavoriteActionFocus()
         requireActivity().onBackPressedDispatcher.addCallback(viewLifecycleOwner, rearrangeBackCallback)
         setRearrangeMode(false)
         // Focus the favorites grid, not the fragment root (TV DPAD entry).
@@ -118,6 +120,13 @@ class FavoritesTvFragment : Fragment() {
         viewLifecycleOwner.lifecycleScope.launch {
             viewModel.sections.flowWithLifecycle(lifecycle, Lifecycle.State.STARTED).collect(::display)
         }
+    }
+
+    private fun wireFavoriteActionFocus() {
+        TvFocusChain.linkHorizontal(binding.btnFavoritesReorderMode, binding.btnFavoritesReorder)
+        binding.btnFavoritesReorderMode.nextFocusLeftId = R.id.nav_main
+        binding.btnFavoritesReorderMode.nextFocusDownId = binding.rvFavorites.id
+        binding.btnFavoritesReorder.nextFocusDownId = binding.rvFavorites.id
     }
 
     private fun setRearrangeMode(enabled: Boolean) {
@@ -131,6 +140,7 @@ class FavoritesTvFragment : Fragment() {
             text = getString(if (enabled) R.string.favorites_rearrange_off else R.string.favorites_rearrange_on)
         }
         binding.btnFavoritesReorder.isEnabled = !enabled && appAdapter.items.isNotEmpty()
+        wireFavoriteActionFocus()
         configureAdapterInteractions()
         // Prefer range notify over notifyDataSetChanged so Leanback keeps focus/scroll.
         // Full payload selection refresh is enough for rearrange chrome.
@@ -353,6 +363,7 @@ class FavoritesTvFragment : Fragment() {
         binding.tvFavoritesEmpty.isVisible = gridItems.isEmpty()
         binding.rvFavorites.isVisible = gridItems.isNotEmpty()
         binding.btnFavoritesReorder.isEnabled = gridItems.isNotEmpty() && !rearrangeMode
+        wireFavoriteActionFocus()
         ExpEmptyChrome.bind(
             emptyView = binding.tvFavoritesEmpty,
             emptyRule = binding.root.findViewById(R.id.v_favorites_empty_rule),
