@@ -58,9 +58,18 @@ internal fun TvShowViewHolder.bindTvShowTvDetail(binding: ContentTvShowTvBinding
             fallback(R.drawable.glide_fallback_cover)
             transition(DrawableTransitionOptions.withCrossFade())
         }
-        visibility = if (tvShow.poster.isNullOrEmpty()) View.GONE else View.VISIBLE
     }
     binding.tvTvShowTitle.text = tvShow.title
+    fun applyTvBrandChrome(logoReady: Boolean) {
+        // Logo-first Leanback hero: banner owns the stage; poster only when title text falls back.
+        binding.ivTvShowPoster.visibility = when {
+            logoReady -> View.GONE
+            tvShow.poster.isNullOrEmpty() -> View.GONE
+            else -> View.VISIBLE
+        }
+        binding.ivTvShowPoster.alpha = if (logoReady) 0f else 0.92f
+    }
+    applyTvBrandChrome(logoReady = !tvShow.logo.isNullOrBlank())
     com.dskja.betterstreamflix.logo.TitleLogoSurface.bindAndMaybeResolve(
         anchor = binding.root,
         imageView = binding.ivTvShowLogo,
@@ -68,6 +77,8 @@ internal fun TvShowViewHolder.bindTvShowTvDetail(binding: ContentTvShowTvBinding
         tvShow = tvShow,
         persist = true,
         allowAlternateOnFail = true,
+        onLogoReady = { applyTvBrandChrome(logoReady = true) },
+        onLogoFailed = { applyTvBrandChrome(logoReady = false) },
     )
 
     binding.tvTvShowRating.apply {
@@ -117,7 +128,7 @@ internal fun TvShowViewHolder.bindTvShowTvDetail(binding: ContentTvShowTvBinding
             isFocusable = false
             setOnClickListener(null)
         } else {
-            text = tvShow.genres.joinToString(", ") { it.name }
+            text = tvShow.genres.joinToString(" · ") { it.name }
             isVisible = true
             isFocusable = true
             isFocusableInTouchMode = true
@@ -157,7 +168,7 @@ internal fun TvShowViewHolder.bindTvShowTvDetail(binding: ContentTvShowTvBinding
 
     binding.tvTvShowOverview.apply {
         text = tvShow.overview
-        val collapsedLines = 4
+        val collapsedLines = 5
         maxLines = collapsedLines
         ellipsize = android.text.TextUtils.TruncateAt.END
         var expanded = false

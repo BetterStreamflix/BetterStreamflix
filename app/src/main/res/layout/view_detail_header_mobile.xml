@@ -61,7 +61,7 @@
                 android:fontFamily="@font/manrope"
                 android:gravity="center"
                 android:maxLines="1"
-                android:textColor="#FFFFFF"
+                android:textColor="@color/cinema_text"
                 android:textSize="15sp"
                 android:textStyle="bold"
                 android:visibility="invisible"

@@ -33,6 +33,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - GuardaSerie detail parser treats `/detail/film-` as movies (parity with Eurostreaming mirrors)
 
 ### Changed
+- Detail pages: denser Cinema Ink heroes, logo-first Leanback CTAs, Season banner chrome, softer black-bar washes, circular TV cast, up-next episode accent
 - SportsBite quarantined (embedindia player is JS/ad-gated with no plaintext HLS); use StreamSports99 or show quarantined providers to override
 - Shared `M3uPlaylistParser` for Pluto / MAGISTV / IPTV-org / PelotaLibre playlists (dead-host filter + bare EXTINF)
 - Altadefinizione01 default mirror → `altadefinizione-01.surf`
