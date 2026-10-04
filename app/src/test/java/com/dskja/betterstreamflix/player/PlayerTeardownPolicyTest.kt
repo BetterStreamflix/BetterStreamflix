@@ -8,20 +8,31 @@ import org.junit.Test
 class PlayerTeardownPolicyTest {
 
     @Test
-    fun softStop_doesNotIncludeExoRelease() {
+    fun softStop_doesNotStopClearOrReleaseExo() {
+        assertFalse(PlayerTeardownPolicy.softStopSteps.contains("stop_clear_media"))
         assertFalse(PlayerTeardownPolicy.softStopSteps.contains("release_exo_player"))
-        assertTrue(PlayerTeardownPolicy.hardReleaseSteps.last() == "release_exo_player")
+        assertFalse(PlayerTeardownPolicy.softStopSteps.contains("defer_release_exo_player"))
+        assertFalse(PlayerTeardownPolicy.allowStopClearOnSoftLeave())
+        assertTrue(PlayerTeardownPolicy.hardReleaseSteps.contains("stop_clear_media"))
+        assertTrue(PlayerTeardownPolicy.hardReleaseSteps.last() == "defer_release_exo_player")
         assertEquals(
-            PlayerTeardownPolicy.softStopSteps.size + 1,
+            PlayerTeardownPolicy.softStopSteps.size + 2,
             PlayerTeardownPolicy.hardReleaseSteps.size,
         )
     }
 
     @Test
-    fun softStop_releasesSessionBeforePlayerWork() {
+    fun softStop_pausesBeforeDetachAndSessionRelease() {
         val steps = PlayerTeardownPolicy.softStopSteps
+        assertTrue(steps.indexOf("pause_playback") < steps.indexOf("detach_player_view"))
         assertTrue(steps.indexOf("detach_player_view") < steps.indexOf("release_media_session"))
-        assertTrue(steps.indexOf("release_media_session") < steps.indexOf("pause_stop_clear_media"))
+        assertTrue(steps.indexOf("release_media_session") < steps.indexOf("remove_player_listeners"))
+    }
+
+    @Test
+    fun hardRelease_alwaysDefersExoRelease() {
+        assertTrue(PlayerTeardownPolicy.shouldDeferExoRelease(hardRelease = true))
+        assertFalse(PlayerTeardownPolicy.shouldDeferExoRelease(hardRelease = false))
     }
 
     @Test
@@ -87,6 +98,13 @@ class PlayerTeardownPolicyTest {
                 replacing = true,
             ),
         )
+    }
+
+    @Test
+    fun allowReuseAfterHardRelease_requiresNewInstance() {
+        assertTrue(PlayerTeardownPolicy.allowReuseAfterHardRelease(playerReleased = false, newPlayerAssigned = false))
+        assertFalse(PlayerTeardownPolicy.allowReuseAfterHardRelease(playerReleased = true, newPlayerAssigned = false))
+        assertTrue(PlayerTeardownPolicy.allowReuseAfterHardRelease(playerReleased = true, newPlayerAssigned = true))
     }
 
     @Test

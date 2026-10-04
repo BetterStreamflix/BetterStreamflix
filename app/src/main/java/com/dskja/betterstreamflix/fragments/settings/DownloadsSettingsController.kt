@@ -426,12 +426,16 @@ object DownloadsSettingsController {
             }
         findPreference("DOWNLOAD_STORAGE_CLEAR_FOLDER")?.isEnabled = DownloadTreeAccess.hasTree()
 
-        val playerPkg = UserPreferences.externalPlayerPackage
+        var playerPkg = UserPreferences.externalPlayerPackage
+        if (playerPkg.isNotBlank() && ExternalStreamHandoff.isDownloaderPackage(playerPkg)) {
+            ExternalStreamHandoff.clearPreferredPackage()
+            playerPkg = ""
+        }
         findPreference("EXTERNAL_PLAYER_DEFAULT")?.summary =
             if (playerPkg.isNotBlank()) {
                 context.getString(R.string.external_player_default_summary, playerPkg)
             } else {
-                context.getString(R.string.external_player_default_none)
+                context.getString(R.string.settings_external_player_summary)
             }
         findPreference("EXTERNAL_PLAYER_CLEAR")?.isEnabled = playerPkg.isNotBlank()
 

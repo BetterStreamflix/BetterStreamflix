@@ -801,8 +801,9 @@ class PlayerTvFragment : Fragment() {
 
     override fun onPause() {
         super.onPause()
-        // Brief onPause flashes are common on Android TV / Fire TV. Only hard-stop
+        // Brief onPause flashes are common on Android TV / Fire TV. Only pause
         // when the fragment is actually leaving — otherwise wait for onStop.
+        // Soft leave must not stop/clear — that races OEM surface teardown on Back.
         if ((isRemoving || isTearingDown) &&
             ::player.isInitialized &&
             !playerReleased &&
@@ -826,9 +827,6 @@ class PlayerTvFragment : Fragment() {
             runCatching {
                 player.playWhenReady = false
                 player.pause()
-                if (isRemoving || isTearingDown) {
-                    player.stop()
-                }
             }
         }
         if (isRemoving || isTearingDown) {
@@ -2623,7 +2621,7 @@ class PlayerTvFragment : Fragment() {
             if (isTearingDown || !isAdded || _binding == null) return
             releasePlayer(ReleaseMode.HARD_REPLACE)
             if (isTearingDown || !isAdded || _binding == null) return
-            playerReleased = false
+            // Keep playerReleased=true until a new ExoPlayer is assigned (see policy).
             playbackSoftStopped = false
             playerViewDetached = false
             mediaSessionReleased = true
@@ -2953,11 +2951,10 @@ class PlayerTvFragment : Fragment() {
         if (::player.isInitialized && !playerReleased) {
             playbackListener?.let { runCatching { player.removeListener(it) } }
             playbackListener = null
+            // Soft leave: pause only. stop/clear/release race OEM surface teardown on Back.
             runCatching {
                 player.playWhenReady = false
                 player.pause()
-                player.stop()
-                player.clearMediaItems()
             }
             playbackSoftStopped = true
 
@@ -2980,8 +2977,25 @@ class PlayerTvFragment : Fragment() {
                 )
             }
             if (hardRelease) {
-                runCatching { player.release() }
+                runCatching {
+                    player.stop()
+                    player.clearMediaItems()
+                }
+                val toRelease = player
                 playerReleased = true
+                val doRelease = Runnable {
+                    runCatching { toRelease.release() }
+                }
+                if (PlayerTeardownPolicy.shouldDeferExoRelease(hardRelease = true)) {
+                    val anchor = _binding?.root
+                    if (anchor != null) {
+                        anchor.post(doRelease)
+                    } else {
+                        android.os.Handler(android.os.Looper.getMainLooper()).post(doRelease)
+                    }
+                } else {
+                    doRelease.run()
+                }
             }
         }
     }
