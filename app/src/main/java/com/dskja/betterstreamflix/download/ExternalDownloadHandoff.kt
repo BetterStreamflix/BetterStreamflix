@@ -190,43 +190,6 @@ object ExternalDownloadHandoff {
         else -> ADM_EDITOR_CLASSES
     }
 
-    private fun buildAdmEditorIntent(
-        url: String,
-        fileName: String,
-        packageName: String,
-        request: Request,
-    ): Intent {
-        // Prefer explicit AEditor component — ACTION_VIEW alone often fails to enqueue.
-        val className = admEditorClassCandidates(packageName).first()
-        return Intent(Intent.ACTION_MAIN).apply {
-            component = ComponentName(packageName, className)
-            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-            putExtra(Intent.EXTRA_TEXT, url)
-            putExtra("com.android.extra.filename", fileName)
-            putExtra("filename", fileName)
-            if (!request.title.isNullOrBlank()) {
-                putExtra(Intent.EXTRA_TITLE, request.title)
-            }
-            putCookieAndUaExtras(request)
-        }
-    }
-
-    private fun buildOneDmIntent(
-        url: String,
-        fileName: String,
-        packageName: String,
-        request: Request,
-    ): Intent {
-        return Intent(Intent.ACTION_VIEW, Uri.parse(url)).apply {
-            component = ComponentName(packageName, "$packageName.Downloader")
-            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-            putExtra("extra_filename", fileName)
-            putExtra("com.android.extra.filename", fileName)
-            putExtra(Intent.EXTRA_TEXT, url)
-            putCookieAndUaExtras(request)
-        }
-    }
-
     private fun buildGenericPackageViewIntent(
         url: String,
         fileName: String,
@@ -252,17 +215,6 @@ object ExternalDownloadHandoff {
         putExtra("User-Agent", request.headers["User-Agent"] ?: request.headers["user-agent"])
         putExtra("referer", request.headers["Referer"] ?: request.headers["referer"])
         putExtra("Referer", request.headers["Referer"] ?: request.headers["referer"])
-    }
-
-    fun buildGenericViewIntent(request: Request): Intent {
-        val uri = Uri.parse(request.url.trim())
-        return Intent(Intent.ACTION_VIEW, uri).apply {
-            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-            putExtra(Intent.EXTRA_TEXT, request.url)
-            if (!request.fileName.isNullOrBlank()) {
-                putExtra("com.android.extra.filename", sanitizeFileName(request.fileName))
-            }
-        }
     }
 
     fun buildSendIntent(request: Request): Intent {
@@ -351,6 +303,17 @@ object ExternalDownloadHandoff {
             ExpDialogChrome.notify(
                 activity,
                 R.string.external_download_invalid_url,
+                R.string.external_download_with_title,
+            )
+            return false
+        }
+        val looksLikeHls = url.substringBefore('?').endsWith(".m3u8", ignoreCase = true) ||
+            request.mimeType?.contains("mpegurl", ignoreCase = true) == true ||
+            request.mimeType?.contains("m3u8", ignoreCase = true) == true
+        if (looksLikeHls) {
+            ExpDialogChrome.notify(
+                activity,
+                R.string.external_download_hls_unsupported,
                 R.string.external_download_with_title,
             )
             return false

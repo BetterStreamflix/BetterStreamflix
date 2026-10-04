@@ -59,5 +59,12 @@ class CastPlaylistRewriterTest {
         assertTrue(CastStreamProxyServer.isBlockedProxyTarget("http://localhost/x"))
         assertTrue(CastStreamProxyServer.isBlockedProxyTarget("http://192.168.1.1/admin"))
         assertTrue(CastStreamProxyServer.isBlockedProxyTarget("http://10.0.0.5/"))
+        // Explicitly wrapped LAN IPTV hosts are allowlisted.
+        assertTrue(
+            !CastStreamProxyServer.isBlockedProxyTarget(
+                "http://192.168.1.50/live.m3u8",
+                allowedHosts = setOf("192.168.1.50"),
+            ),
+        )
     }
 }

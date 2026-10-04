@@ -125,10 +125,16 @@ abstract class Extractor {
             VidxGoExtractor()
         )
 
-        suspend fun extract(link: String, server: Video.Server? = null): Video {
+        suspend fun extract(
+            link: String,
+            server: Video.Server? = null,
+            maxAttempts: Int = 2,
+        ): Video {
             var lastError: Exception? = null
+            val attempts = maxAttempts.coerceAtLeast(1)
             // Transient hoster flaps are common — retry once before surfacing failure.
-            repeat(2) { attempt ->
+            // Nested wrapper hops (Firestream/Meinecloud) pass maxAttempts=1 to avoid amplify.
+            repeat(attempts) { attempt ->
                 try {
                     val video = extractOnce(link, server)
                     // Ensure HLS/DASH get a MIME so ExoPlayer does not sniff HTML error pages as progressive.
@@ -139,7 +145,7 @@ abstract class Extractor {
                     Log.w("Extractor", "extract attempt ${attempt + 1} failed for $link: ${e.message}")
                     // Permanent empty responses — do not burn a second attempt.
                     if (ExtractorFailureClassifier.isPermanent(e)) throw e
-                    if (attempt == 0) delay(350)
+                    if (attempt < attempts - 1) delay(350)
                 }
             }
             throw lastError ?: Exception("No extractors found for URL: $link")

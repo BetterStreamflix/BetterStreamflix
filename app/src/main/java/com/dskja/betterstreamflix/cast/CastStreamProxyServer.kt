@@ -6,12 +6,15 @@ import fi.iki.elonen.NanoHTTPD
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.internal.userAgent
+import java.io.File
+import java.io.FileInputStream
 import java.io.PipedInputStream
 import java.io.PipedOutputStream
 import java.net.InetAddress
 import java.net.URLDecoder
 import java.nio.charset.StandardCharsets
 import java.util.UUID
+import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 
@@ -37,6 +40,8 @@ class CastStreamProxyServer(
     val sessionToken: String = UUID.randomUUID().toString().replace("-", "")
 
     private val pumpExecutor = Executors.newCachedThreadPool()
+    private val allowedHosts = ConcurrentHashMap.newKeySet<String>()
+    private val localFiles = ConcurrentHashMap<String, File>()
 
     fun updateDefaultHeaders(headers: Map<String, String>) {
         defaultHeaders = headers
@@ -53,8 +58,21 @@ class CastStreamProxyServer(
 
     /** Build a Cast-reachable URL that proxies [originalUrl] with the current headers. */
     fun wrap(originalUrl: String): String {
+        runCatching { java.net.URI(originalUrl).host?.lowercase() }
+            .getOrNull()
+            ?.takeIf { it.isNotBlank() }
+            ?.let { allowedHosts.add(it) }
         val base = publicBaseUrl() ?: return originalUrl
         return CastPlaylistRewriter.proxyUrl(base, originalUrl, sessionToken)
+    }
+
+    /** Serve a local subtitle/media file to Chromecast over LAN HTTP. */
+    fun wrapLocalFile(file: File): String? {
+        if (!file.exists() || !file.isFile || file.length() <= 0L) return null
+        val base = publicBaseUrl() ?: return null
+        val id = UUID.randomUUID().toString().replace("-", "")
+        localFiles[id] = file
+        return "$base/f?t=$sessionToken&id=$id"
     }
 
     override fun serve(session: IHTTPSession): Response {
@@ -69,6 +87,7 @@ class CastStreamProxyServer(
                 }
                 session.uri == "/health" ->
                     newFixedLengthResponse(Response.Status.OK, MIME_PLAINTEXT, "ok")
+                session.uri == "/f" || session.uri.startsWith("/f") -> serveLocal(session)
                 session.uri == "/p" || session.uri.startsWith("/p") -> proxy(session)
                 else -> newFixedLengthResponse(Response.Status.NOT_FOUND, MIME_PLAINTEXT, "not found")
             }
@@ -80,6 +99,33 @@ class CastStreamProxyServer(
                 e.message ?: "proxy error",
             )
         }
+    }
+
+    private fun serveLocal(session: IHTTPSession): Response {
+        val presented = session.parms["t"].orEmpty()
+        if (presented.isBlank() || presented != sessionToken) {
+            return newFixedLengthResponse(Response.Status.UNAUTHORIZED, MIME_PLAINTEXT, "unauthorized")
+        }
+        val id = session.parms["id"].orEmpty()
+        val file = localFiles[id]
+            ?: return newFixedLengthResponse(Response.Status.NOT_FOUND, MIME_PLAINTEXT, "missing file")
+        if (!file.exists()) {
+            return newFixedLengthResponse(Response.Status.NOT_FOUND, MIME_PLAINTEXT, "gone")
+        }
+        val mime = when {
+            file.name.endsWith(".vtt", true) -> "text/vtt"
+            file.name.endsWith(".srt", true) -> "application/x-subrip"
+            file.name.endsWith(".ass", true) || file.name.endsWith(".ssa", true) -> "text/x-ssa"
+            else -> "application/octet-stream"
+        }
+        val response = newFixedLengthResponse(
+            Response.Status.OK,
+            mime,
+            FileInputStream(file),
+            file.length(),
+        )
+        response.addHeader("Access-Control-Allow-Origin", "*")
+        return response
     }
 
     private fun proxy(session: IHTTPSession): Response {
@@ -96,7 +142,7 @@ class CastStreamProxyServer(
         if (!target.startsWith("http://") && !target.startsWith("https://")) {
             return newFixedLengthResponse(Response.Status.BAD_REQUEST, MIME_PLAINTEXT, "unsupported scheme")
         }
-        if (isBlockedProxyTarget(target)) {
+        if (isBlockedProxyTarget(target, allowedHosts)) {
             return newFixedLengthResponse(Response.Status.FORBIDDEN, MIME_PLAINTEXT, "blocked target")
         }
 
@@ -208,6 +254,8 @@ class CastStreamProxyServer(
 
     override fun stop() {
         clearDefaultHeaders()
+        allowedHosts.clear()
+        localFiles.clear()
         runCatching { super.stop() }
         runCatching { pumpExecutor.shutdownNow() }
     }
@@ -224,13 +272,19 @@ class CastStreamProxyServer(
                 .build()
 
         /**
-         * Reject loopback / link-local / RFC1918 targets so a LAN peer cannot use
-         * the proxy as an open SSRF relay into the phone's private network.
+         * Reject loopback / link-local / metadata targets. Site-local (RFC1918) is
+         * allowed only when the host was explicitly registered via [wrap] (LAN IPTV).
          */
-        fun isBlockedProxyTarget(url: String): Boolean {
+        fun isBlockedProxyTarget(
+            url: String,
+            allowedHosts: Set<String> = emptySet(),
+        ): Boolean {
             val host = runCatching { java.net.URI(url).host }.getOrNull()?.lowercase() ?: return true
             if (host == "localhost" || host.endsWith(".localhost") || host == "0.0.0.0") return true
             if (host == "::1" || host == "[::1]") return true
+            // AWS/GCP metadata — always blocked.
+            if (host == "169.254.169.254" || host == "metadata.google.internal") return true
+            if (allowedHosts.contains(host)) return false
             val inet = runCatching { InetAddress.getByName(host) }.getOrNull() ?: return false
             return inet.isAnyLocalAddress ||
                 inet.isLoopbackAddress ||

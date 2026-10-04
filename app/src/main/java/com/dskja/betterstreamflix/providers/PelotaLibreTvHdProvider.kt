@@ -85,7 +85,8 @@ object PelotaLibreTvHdProvider : IptvProvider, ProviderConfigUrl {
 
     private fun getAllChannels(): List<M3UChannel> {
         val now = System.currentTimeMillis()
-        if (cachedChannels != null && (now - lastFetchTime) < CACHE_DURATION) return cachedChannels!!
+        val cached = cachedChannels
+        if (cached != null && (now - lastFetchTime) < CACHE_DURATION) return cached
 
         return try {
             val decodedUrl = String(Base64.decode(OBFUSCATED_PLAYLIST, Base64.DEFAULT))
@@ -107,8 +108,8 @@ object PelotaLibreTvHdProvider : IptvProvider, ProviderConfigUrl {
         val categories = mutableListOf<Category>()
 
         val channelCategories = channels
-            .filter { it.group != null && it.group.isNotEmpty() }
-            .groupBy { it.group!! }
+            .mapNotNull { ch -> ch.group?.takeIf { it.isNotEmpty() }?.let { g -> g to ch } }
+            .groupBy({ it.first }, { it.second })
             .map { (groupName, channelList) ->
                 Category(
                     name = groupName,
@@ -253,16 +254,8 @@ object PelotaLibreTvHdProvider : IptvProvider, ProviderConfigUrl {
                     subtitles = emptyList(),
                     headers = videoHeaders.takeIf { it.isNotEmpty() },
                 )
-            } else if (url.contains(".m3u8", ignoreCase = true) && videoHeaders.isNotEmpty()) {
-                // Live HLS probes race with rotating segments / geo. Prefer real
-                // playback with Referer/Origin over the fake "no signal" clip.
-                Log.w(TAG, "Probe failed; attempting live HLS with headers anyway")
-                Video(
-                    source = url,
-                    subtitles = emptyList(),
-                    headers = videoHeaders,
-                )
             } else {
+                // Peeked body was not HLS/DASH — fail permanently so failover advances.
                 Log.e(TAG, "Canal muerto — no fake SIN-SEÑAL success")
                 throw Exception("PelotaLibre: stream offline or 404 (try another server)")
             }

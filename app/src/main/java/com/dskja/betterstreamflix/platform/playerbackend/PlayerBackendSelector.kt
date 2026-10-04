@@ -35,7 +35,7 @@ object ExternalMpvBackend : PlayerBackend {
     val CANDIDATE_PACKAGES = listOf(
         "is.xyz.mpv",
         "com.brouken.player",
-        "org.videolan.vlc",
+        // VLC omitted: it has no reliable HTTP header intent extras for CDN streams.
     )
 
     data class Handoff(

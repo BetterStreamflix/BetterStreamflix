@@ -640,14 +640,19 @@ object SerienStreamProvider : Provider {
         try {
             val shows = mutableListOf<TvShow>()
             val document = withDomainAndSslFallback { it.getGenre(id, page) }
-            document.select("div.row.g-3 > div").map {
+            document.select("div.row.g-3 > div").mapNotNull { el ->
+                val showId = el.selectFirst("a")?.attr("href")
+                    ?.let { href -> getTvShowIdFromLink(href) }
+                    ?.trim().orEmpty()
+                val title = el.selectFirst("h6")?.text()?.trim().orEmpty()
+                if (showId.isBlank() || title.isBlank()) return@mapNotNull null
                 shows.add(
                     TvShow(
-                        id = it.selectFirst("a")?.attr("href")
-                            ?.let { it1 -> getTvShowIdFromLink(it1) } ?: "",
-                        title = it.selectFirst("h6")?.text()?.trim() ?: "",
-                        poster =normalizeImageUrl(it.extractPoster()))
+                        id = showId,
+                        title = title,
+                        poster = normalizeImageUrl(el.extractPoster()),
                     )
+                )
             }
             return Genre(id = id, name = id.replaceFirstChar { it.uppercase() }, shows = shows)
         } catch (e: Exception) {

@@ -43,15 +43,14 @@ object DaddyLiveTvProvider : IptvProvider, ProviderConfigUrl {
         "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"
     private const val CACHE_MS = 15 * 60 * 1000L
     // Prefer paths that still embed working premiumtv/daddy.php players.
-    // `watch` still points at retired daddy3.php (HTTP 404); keep it last as a fallback.
+    // Dropped retired `watch` (daddy3.php → HTTP 404) so failover does not burn the 20s budget.
     private val PLAYERS = listOf(
         "stream" to "Player 1",
         "hub" to "Player 2",
         "casting" to "Player 3",
         "player" to "Player 4",
-        "watch" to "Player 5",
-        "plus" to "Player 6",
-        "cast" to "Player 7",
+        "plus" to "Player 5",
+        "cast" to "Player 6",
     )
     private val SPORTS_KEYS = listOf(
         "sport", "espn", "sky sports", "bein", "nba", "nfl", "nhl", "mlb",
@@ -59,8 +58,9 @@ object DaddyLiveTvProvider : IptvProvider, ProviderConfigUrl {
     )
 
     private val client = OkHttpClient.Builder()
-        .connectTimeout(30, TimeUnit.SECONDS)
-        .readTimeout(30, TimeUnit.SECONDS)
+        .connectTimeout(10, TimeUnit.SECONDS)
+        .readTimeout(12, TimeUnit.SECONDS)
+        .callTimeout(15, TimeUnit.SECONDS)
         .followRedirects(true)
         .build()
 

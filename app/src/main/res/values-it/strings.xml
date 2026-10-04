@@ -129,6 +129,10 @@
     <string name="player_external_player_error_video">Stream non ancora pronto</string>
     <string name="external_player_none_found">Nessun video player trovato. Installa VLC, MX Player, mpv o simile. I download manager sono in Scarica con…</string>
     <string name="external_player_remembered">Player esterno predefinito salvato</string>
+    <string name="player_external_fragile_playlist">Questo stream usa segmenti relativi — i player esterni possono fallire. Preferisci il player in-app.</string>
+    <string name="player_external_vlc_headers_unsupported">VLC non può inviare cookie/header dello stream. Tentativo senza — usa MX Player o mpv per stream protetti.</string>
+    <string name="external_download_hls_unsupported">ADM/1DM non possono scaricare playlist HLS (.m3u8). Usa il Download in-app per questo stream.</string>
+    <string name="external_download_remembered">Gestore download predefinito salvato</string>
     <string name="external_player_clear_default">Cancella player esterno predefinito</string>
     <string name="external_player_clear_default_summary">Chiedi sempre quale app usare</string>
     <string name="external_player_default_summary">Predefinito: %1$s</string>

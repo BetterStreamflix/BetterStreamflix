@@ -103,6 +103,9 @@ class HomeTvFragment : Fragment() {
                                 hideCatalogWarning()
                             }
                             is HomeViewModel.State.SuccessLoading -> {
+                                val hadCatalog = (binding.vgvHome.adapter?.itemCount ?: 0) > 0
+                                val focusInsideHome = binding.vgvHome.hasFocus() ||
+                                    binding.vgvHome.findFocus() != null
                                 displayHome(state.categories)
                                 binding.vgvHome.visibility = View.VISIBLE
                                 binding.isLoading.root.apply {
@@ -117,7 +120,11 @@ class HomeTvFragment : Fragment() {
                                     binding.isLoading.root, false,
                                 )
                                 showCatalogWarning(state.providerWarning)
-                                focusHomeContent()
+                                // Logo-only Room merges rematerialize SuccessLoading — don't
+                                // yank DPAD mid-scroll when focus is already on Home content.
+                                if (!hadCatalog || !focusInsideHome) {
+                                    focusHomeContent()
+                                }
                             }
                             is HomeViewModel.State.FailedLoading -> {
                                 if (http409Guard.handle(requireContext(), state.error) { viewModel.getHome() }) {
