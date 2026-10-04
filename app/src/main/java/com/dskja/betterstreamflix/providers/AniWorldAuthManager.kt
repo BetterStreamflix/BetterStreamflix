@@ -85,11 +85,30 @@ object AniWorldAuthManager {
             )
             if (cookies.isBlank()) return
             origins().forEach { origin ->
-                SerienStreamBypassHelper.applyCookies(origin, cookies)
+                // Do not use applyCookies — that merges SerienStream prefs onto AniWorld.
+                SerienStreamBypassHelper.seedCookiesToManager(origin, cookies)
             }
         }.onFailure {
             Log.w(TAG, "Failed to seed AniWorld cookies: ${it.message}")
         }
+    }
+
+    /** Cookie header OkHttp interceptors should attach on AniWorld hosts. */
+    fun cookieHeaderForRequests(): String {
+        return SerienStreamBypassHelper.sanitizeSessionCookies(
+            UserPreferences.aniWorldSessionCookies,
+        )
+    }
+
+    /**
+     * Skip interactive captcha when clearance **or** a confirmed AniWorld
+     * login/session token is present.
+     */
+    fun canSkipInteractiveBypass(): Boolean {
+        return SerienStreamBypassHelper.canSkipInteractiveBypass(
+            cookieHeader = UserPreferences.aniWorldSessionCookies,
+            accountConfirmed = UserPreferences.aniWorldAccountConfirmed || isLoggedIn(),
+        )
     }
 
     fun persist(cookieHeader: String, displayName: String? = null): Boolean {
@@ -158,7 +177,14 @@ object AniWorldAuthManager {
             return false
         }
         val saved = persist(cleaned)
-        if (saved && SerienStreamBypassHelper.looksLikeAccountSession(cleaned)) {
+        if (saved && (
+                SerienStreamBypassHelper.looksLikeAccountSession(cleaned) ||
+                    (
+                        SerienStreamBypassHelper.looksLikeClearanceSolved(cleaned) &&
+                            SerienStreamBypassHelper.hasWebSessionCookie(cleaned)
+                        )
+                )
+        ) {
             UserPreferences.aniWorldAccountConfirmed = true
         }
         return saved
@@ -374,11 +400,17 @@ object AniWorldAuthManager {
                 )
             }
             val managerCookies = runCatching {
-                CookieManager.getInstance().getCookie("$base/")
+                val cm = CookieManager.getInstance()
+                listOf(
+                    cm.getCookie("$base/").orEmpty(),
+                    cm.getCookie(loginUrl).orEmpty(),
+                    cm.getCookie("$base/account").orEmpty(),
+                ).filter { it.isNotBlank() }.joinToString("; ")
             }.getOrNull().orEmpty()
-            val cookieHeader = listOf(managerCookies, setCookies)
-                .filter { it.isNotBlank() }
-                .joinToString("; ")
+            val cookieHeader = SerienStreamBypassHelper.mergeCookieHeaders(
+                SerienStreamBypassHelper.mergeCookieHeaders(managerCookies, setCookies),
+                UserPreferences.aniWorldSessionCookies,
+            )
             val htmlOk = SerienStreamBypassHelper.looksLikeLoggedInHtml(postBody) ||
                 (!WatchlistImporter.looksLikeLoginPage(postBody, finalUrl) &&
                     SerienStreamBypassHelper.hasWebSessionCookie(cookieHeader))
@@ -391,6 +423,7 @@ object AniWorldAuthManager {
                     leftLoginAfterVisit = true,
                     pageUrl = finalUrl,
                 )
+                seedRuntimeCookies()
                 return@withContext CredentialLoginResult(ok = true, displayName = name)
             }
             lastError = "login"

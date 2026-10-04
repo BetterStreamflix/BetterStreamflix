@@ -454,11 +454,15 @@ class PlayerMobileFragment : Fragment() {
 
                             // Seed pasted/previous session cookies before the CF WebView.
                             SerienStreamBypassHelper.applyStoredSessionCookies(bypassUrl)
+                            SerienStreamAuthManager.seedRuntimeCookies()
                             val stored = UserPreferences.serienStreamSessionCookies
-                            if (SerienStreamBypassHelper.looksLikeClearanceSolved(stored)) {
-                                // Skip interactive bypass only when a real CF clearance cookie exists.
+                            if (SerienStreamAuthManager.canSkipInteractiveBypass()) {
+                                // Clearance cookie OR confirmed login/session token — no captcha.
                                 waitingForBypass = false
                                 bypassDone = true
+                                if (stored.isNotBlank()) {
+                                    applyBypassCookies(bypassUrl, stored)
+                                }
                                 lifecycleScope.launch {
                                     delay(250)
                                     viewModel.reloadServersAfterBypass()

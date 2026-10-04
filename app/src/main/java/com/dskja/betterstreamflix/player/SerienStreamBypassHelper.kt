@@ -127,12 +127,47 @@ object SerienStreamBypassHelper {
         if (cleaned.isNotBlank()) parts += cleaned
         val stored = sanitizeSessionCookies(UserPreferences.serienStreamSessionCookies)
         if (stored.isNotBlank() && stored != cleaned) parts += stored
-        seedCookieHeader(url, parts.joinToString("; "))
+        seedCookiesToManager(url, parts.joinToString("; "))
+    }
+
+    /**
+     * Seed an arbitrary cookie jar into CookieManager for [url] (and related
+     * SerienStream/AniWorld origins). Does **not** merge SerienStream prefs —
+     * use this for AniWorld and for explicit one-shot jars.
+     */
+    fun seedCookiesToManager(url: String, cookieHeader: String) {
+        seedCookieHeader(url, sanitizeSessionCookies(cookieHeader))
     }
 
     /** Apply only the user session cookies (TV / VPN path without QR). */
     fun applyStoredSessionCookies(url: String = SerienStreamProvider.baseUrl) {
         seedCookieHeader(url, sanitizeSessionCookies(UserPreferences.serienStreamSessionCookies))
+    }
+
+    /**
+     * True when interactive CF/ALTCHA WebView/QR must not be shown.
+     *
+     * Real anti-bot clearance **or** a confirmed account login/session token
+     * both suppress captcha. Bare anonymous `laravel_session` / `PHPSESSID`
+     * alone still require the interactive bypass.
+     */
+    fun canSkipInteractiveBypass(
+        cookieHeader: String,
+        accountConfirmed: Boolean = false,
+    ): Boolean {
+        val cleaned = sanitizeSessionCookies(cookieHeader)
+        if (cleaned.isBlank()) return false
+        if (looksLikeClearanceSolved(cleaned)) return true
+        if (looksLikeAccountSession(cleaned)) return true
+        return accountConfirmed && hasWebSessionCookie(cleaned)
+    }
+
+    /**
+     * Merge [storedHeader] into an outgoing Cookie header. Later names win.
+     * Used by OkHttp interceptors so prefs survive CookieManager gaps.
+     */
+    fun mergeOutgoingCookieHeader(existingHeader: String?, storedHeader: String): String {
+        return mergeCookieHeaders(existingHeader.orEmpty(), storedHeader)
     }
 
     /**
@@ -363,16 +398,20 @@ object SerienStreamBypassHelper {
                 add("https://$host/")
                 add("http://$host/")
             }
-            add("https://serienstream.to/")
-            add("https://serienstream.cx/")
-            SerienStreamProvider.candidateDomains().forEach { domain ->
-                add(SerienStreamEndpoints.originFor(domain))
+            // Only mirror across SerienStream origins when the target is a SerienStream host.
+            // AniWorld (and other sites) must not inherit SerienStream cookie fan-out.
+            if (url.isBlank() || isSerienStreamHost(url) || SerienStreamProvider.isSerienStreamHost(host)) {
+                add("https://serienstream.to/")
+                add("https://serienstream.cx/")
+                SerienStreamProvider.candidateDomains().forEach { domain ->
+                    add(SerienStreamEndpoints.originFor(domain))
+                }
+                runCatching {
+                    add(SerienStreamProvider.baseUrl.trimEnd('/') + "/")
+                }
+                // Always seed the official proxy origin (HTTP) alongside hostname mirrors.
+                add(SerienStreamEndpoints.originFor(SerienStreamEndpoints.PROXY_HOST))
             }
-            runCatching {
-                add(SerienStreamProvider.baseUrl.trimEnd('/') + "/")
-            }
-            // Always seed the official proxy origin (HTTP) alongside hostname mirrors.
-            add(SerienStreamEndpoints.originFor(SerienStreamEndpoints.PROXY_HOST))
         }
         val cookieManager = CookieManager.getInstance()
         val byName = linkedMapOf<String, String>()
@@ -384,8 +423,21 @@ object SerienStreamBypassHelper {
                 if (name.isNotBlank()) byName[name] = cookie
             }
         byName.values.forEach { cookie ->
+            // Force Path=/ so CookieManager returns the jar for Home/Search/Detail/Play paths.
+            val withPath = if (cookie.contains("Path=", ignoreCase = true)) {
+                cookie
+            } else {
+                "$cookie; Path=/"
+            }
             targets.forEach { target ->
-                runCatching { cookieManager.setCookie(target, cookie) }
+                runCatching { cookieManager.setCookie(target, withPath) }
+                val targetHost = runCatching { Uri.parse(target).host }.getOrNull()
+                if (!targetHost.isNullOrBlank() && !SerienStreamEndpoints.isProxyHost(targetHost)) {
+                    // Explicit Domain helps hostname mirrors; skip for bare proxy IPs.
+                    runCatching {
+                        cookieManager.setCookie(target, "$withPath; Domain=$targetHost")
+                    }
+                }
             }
         }
         runCatching { cookieManager.flush() }

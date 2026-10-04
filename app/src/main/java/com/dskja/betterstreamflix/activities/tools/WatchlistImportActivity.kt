@@ -464,9 +464,9 @@ class WatchlistImportActivity : AppCompatActivity() {
                 SerienStreamBypassHelper.applyCookies(it, cookies)
             }
         } else if (source == WatchlistImporter.Source.ANIWORLD && cookies.isNotBlank()) {
-            SerienStreamBypassHelper.applyCookies("$hostBase/", cookies)
+            SerienStreamBypassHelper.seedCookiesToManager("$hostBase/", cookies)
             url?.takeIf { it.isNotBlank() }?.let {
-                SerienStreamBypassHelper.applyCookies(it, cookies)
+                SerienStreamBypassHelper.seedCookiesToManager(it, cookies)
             }
         }
         val onLogin = url != null && url.contains("/login", ignoreCase = true)
@@ -609,7 +609,12 @@ class WatchlistImportActivity : AppCompatActivity() {
             notifyUser(R.string.watchlist_import_login_hint)
             return
         }
-        SerienStreamBypassHelper.applyCookies("$hostBase/", cookies)
+        when (source) {
+            WatchlistImporter.Source.SERIENSTREAM ->
+                SerienStreamBypassHelper.applyCookies("$hostBase/", cookies)
+            WatchlistImporter.Source.ANIWORLD ->
+                SerienStreamBypassHelper.seedCookiesToManager("$hostBase/", cookies)
+        }
         val saved = when (source) {
             WatchlistImporter.Source.SERIENSTREAM -> {
                 if (saveSessionOnly) {
@@ -693,9 +698,9 @@ class WatchlistImportActivity : AppCompatActivity() {
                 com.dskja.betterstreamflix.providers.SerienStreamAuthManager.persist(cookies)
             }
             WatchlistImporter.Source.ANIWORLD -> {
-                SerienStreamBypassHelper.applyCookies("$hostBase/", cookies)
+                SerienStreamBypassHelper.seedCookiesToManager("$hostBase/", cookies)
                 webView.url?.takeIf { it.isNotBlank() }?.let {
-                    SerienStreamBypassHelper.applyCookies(it, cookies)
+                    SerienStreamBypassHelper.seedCookiesToManager(it, cookies)
                 }
                 com.dskja.betterstreamflix.providers.AniWorldAuthManager.persist(cookies)
             }

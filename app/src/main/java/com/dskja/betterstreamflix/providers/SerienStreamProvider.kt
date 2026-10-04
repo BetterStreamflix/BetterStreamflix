@@ -796,15 +796,25 @@ object SerienStreamProvider : Provider {
         companion object {
             private fun OkHttpClient.Builder.applyBrowserHeaders(): OkHttpClient.Builder {
                 return addInterceptor { chain ->
-                    val request = chain.request().newBuilder()
+                    val original = chain.request()
+                    val builder = original.newBuilder()
                         .header("User-Agent", NetworkClient.USER_AGENT)
                         .header(
                             "Accept",
                             "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8"
                         )
                         .header("Accept-Language", "de-DE,de;q=0.9,en-US;q=0.8,en;q=0.7")
-                        .build()
-                    chain.proceed(request)
+                    // Always attach the persisted login/session jar. CookieManager alone
+                    // is flaky across proxy IP ↔ hostname switches and after cold start.
+                    val stored = SerienStreamAuthManager.cookieHeaderForRequests()
+                    if (stored.isNotBlank() && isSerienStreamHost(original.url.host)) {
+                        val merged = com.dskja.betterstreamflix.player.SerienStreamBypassHelper
+                            .mergeOutgoingCookieHeader(original.header("Cookie"), stored)
+                        if (merged.isNotBlank()) {
+                            builder.header("Cookie", merged)
+                        }
+                    }
+                    chain.proceed(builder.build())
                 }.cookieJar(NetworkClient.cookieJar)
             }
 
