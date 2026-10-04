@@ -69,7 +69,11 @@ object PlatformSettingsController {
                 is SwitchPreferenceCompat -> {
                     pref.isChecked = get()
                     pref.setOnPreferenceChangeListener { _, v ->
-                        set(v as Boolean)
+                        val checked = v as Boolean
+                        set(checked)
+                        // Persist into UserPreferences, not the default Preference store.
+                        // Still update the widget so the switch does not visually snap back.
+                        pref.isChecked = checked
                         after?.invoke()
                         false
                     }
@@ -77,7 +81,9 @@ object PlatformSettingsController {
                 is SwitchPreference -> {
                     pref.isChecked = get()
                     pref.setOnPreferenceChangeListener { _, v ->
-                        set(v as Boolean)
+                        val checked = v as Boolean
+                        set(checked)
+                        pref.isChecked = checked
                         after?.invoke()
                         false
                     }

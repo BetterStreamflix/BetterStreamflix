@@ -319,7 +319,6 @@ class SearchTvFragment : Fragment() {
         )
 
         binding.btnSearchVoice.apply {
-            requestFocus()
             visibility = if (voiceHelper.isAvailable()) View.VISIBLE else View.GONE
             setOnClickListener {
                 if (!voiceHelper.isListening) voiceHelper.startWithPermissionCheck()
@@ -366,7 +365,8 @@ class SearchTvFragment : Fragment() {
 
         refreshRecentSearches()
         initializeSearchSortControls()
-        binding.root.requestFocus()
+        // Prefer the search field — never focus a mic that may be GONE.
+        binding.etSearch.requestFocus()
     }
 
     private fun initializeSearchSortControls() {

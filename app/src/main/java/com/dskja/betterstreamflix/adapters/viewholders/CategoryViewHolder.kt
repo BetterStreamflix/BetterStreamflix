@@ -1215,7 +1215,6 @@ class CategoryViewHolder(
                 setBackgroundResource(0)
                 setPadding(0, 0, 0, 0)
             }
-            val leanback = DeviceCapabilities.isLeanbackDevice(context)
             val total = category.list.size
             val selectedIndex = category.selectedIndex
             if (!rebuildPageIndicator &&
@@ -1228,7 +1227,8 @@ class CategoryViewHolder(
                 total = total,
                 selected = selectedIndex,
                 exp = exp,
-                leanbackFocusable = leanback,
+                // Dots are decorative page chrome — keep them out of the DPAD chain on TV.
+                leanbackFocusable = false,
                 onSelect = { index ->
                     if (category.selectedIndex == index) return@bindFeaturedPageIndicator
                     category.selectedIndex = index

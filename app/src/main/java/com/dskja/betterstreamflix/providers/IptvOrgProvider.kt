@@ -93,7 +93,8 @@ object IptvOrgProvider : IptvProvider, ProviderConfigUrl {
 
     private fun getAllChannels(): List<M3UChannel> {
         val now = System.currentTimeMillis()
-        if (cachedChannels != null && (now - lastFetchTime) < CACHE_DURATION) return cachedChannels!!
+        val cached = cachedChannels
+        if (cached != null && (now - lastFetchTime) < CACHE_DURATION) return cached
 
         return try {
             val request = Request.Builder().url("$baseUrl/index.m3u").build()
@@ -115,10 +116,13 @@ object IptvOrgProvider : IptvProvider, ProviderConfigUrl {
 
         // 1. Procesamos categorías de canales primero
         val channelCategories = channels
-            .filter { it.group != null && homeGroups.any { target -> it.group!!.contains(target, ignoreCase = true) } }
-            .groupBy { channel ->
-                homeGroups.find { channel.group!!.contains(it, ignoreCase = true) } ?: "Otros"
+            .mapNotNull { channel ->
+                val group = channel.group ?: return@mapNotNull null
+                val matched = homeGroups.find { group.contains(it, ignoreCase = true) }
+                    ?: return@mapNotNull null
+                matched to channel
             }
+            .groupBy({ it.first }, { it.second })
             .map { (groupName, channelList) ->
                 Category(
                     name = groupName,

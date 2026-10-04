@@ -145,6 +145,18 @@ object CastPlaybackHub {
         return server.wrap(originalUrl)
     }
 
+    /** Proxy a local file:// / content:// path for Chromecast subtitle sidecars. */
+    fun wrapLocalForCast(localUri: String): String? {
+        val path = when {
+            localUri.startsWith("file://", ignoreCase = true) ->
+                java.net.URI(localUri).path
+            else -> null
+        } ?: return null
+        val file = java.io.File(path)
+        val server = ensureProxy(emptyMap()) ?: return null
+        return server.wrapLocalFile(file)
+    }
+
     fun clearQueue() = queue.clear()
 
     fun enqueue(item: MediaItem) {

@@ -171,21 +171,24 @@ object LiveStreamHtmlExtractor {
         val trimmed = embedUrl.trim()
         if (trimmed.isBlank()) return emptyList()
         val out = linkedSetOf<String>()
-        out += trimmed
         val daddyN = Regex(
             """^(https?://[^/]+)/premiumtv/daddy(\d+)\.php(\?.*)?$""",
             RegexOption.IGNORE_CASE,
         ).matchEntire(trimmed)
         if (daddyN != null) {
+            // Numbered daddyN.php paths are retired (404). Prefer daddy.php first.
             val host = daddyN.groupValues[1]
             val query = daddyN.groupValues[3]
             out += "$host/premiumtv/daddy.php$query"
             out += "https://dembed.top/premiumtv/daddy.php$query"
             out += "https://daddyliveplayer.st/premiumtv/daddy.php$query"
         } else if (trimmed.contains("/premiumtv/daddy.php", ignoreCase = true)) {
+            out += trimmed
             val query = trimmed.substringAfter("daddy.php", "")
             out += "https://dembed.top/premiumtv/daddy.php$query"
             out += "https://daddyliveplayer.st/premiumtv/daddy.php$query"
+        } else {
+            out += trimmed
         }
         return out.toList()
     }

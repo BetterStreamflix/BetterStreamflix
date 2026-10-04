@@ -82,8 +82,10 @@ object NtvProvider : IptvProvider, ProviderConfigUrl {
 
     private suspend fun refreshCatalog(): Pair<List<Item>, List<Item>> = withContext(Dispatchers.IO) {
         val now = System.currentTimeMillis()
-        if (cachedChannels != null && cachedMatches != null && now - lastFetch < CACHE_MS) {
-            return@withContext cachedChannels!! to cachedMatches!!
+        val channelsSnap = cachedChannels
+        val matchesSnap = cachedMatches
+        if (channelsSnap != null && matchesSnap != null && now - lastFetch < CACHE_MS) {
+            return@withContext channelsSnap to matchesSnap
         }
         ChannelCoverResolver.warm()
         val channels = loadChannels()

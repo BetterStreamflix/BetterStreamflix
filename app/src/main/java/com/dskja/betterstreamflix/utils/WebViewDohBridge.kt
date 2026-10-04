@@ -23,7 +23,6 @@ object WebViewDohBridge {
         "serienstream.to",
         "serienstream.cx",
         "aniworld.to",
-        "s.to",
     )
 
     fun shouldBridge(host: String?): Boolean {

@@ -128,60 +128,39 @@ object AniWorldProvider : Provider, ProviderConfigUrl {
 
         val categories = mutableListOf<Category>()
 
+        fun coverList(selector: String): List<TvShow> =
+            document.select(selector).mapNotNull { el ->
+                val id = el.selectFirst("a")
+                    ?.attr("href")?.substringAfter("/anime/stream/")
+                    ?.trim().orEmpty()
+                val title = el.selectFirst("a h3")?.text()?.trim().orEmpty()
+                if (id.isBlank() || title.isBlank()) return@mapNotNull null
+                TvShow(
+                    id = id,
+                    title = title,
+                    poster = el.selectFirst("img")
+                        ?.attr("data-src")?.let { src -> URL + src },
+                )
+            }
+
         categories.add(
             Category(
                 name = "Beliebt bei AniWorld",
-                list = document.select("div.container > div:nth-child(7) > div.previews div.coverListItem")
-                    .map {
-                        TvShow(
-                            id = it.selectFirst("a")
-                                ?.attr("href")?.substringAfter("/anime/stream/")
-                                ?: "",
-                            title = it.selectFirst("a h3")
-                                ?.text()
-                                ?: "",
-                            poster = it.selectFirst("img")
-                                ?.attr("data-src")?.let { src -> URL + src },
-                        )
-                    }
+                list = coverList("div.container > div:nth-child(7) > div.previews div.coverListItem"),
             )
         )
 
         categories.add(
             Category(
                 name = "Neue Animes",
-                list = document.select("div.container > div:nth-child(11) > div.previews div.coverListItem")
-                    .map {
-                        TvShow(
-                            id = it.selectFirst("a")
-                                ?.attr("href")?.substringAfter("/anime/stream/")
-                                ?: "",
-                            title = it.selectFirst("a h3")
-                                ?.text()
-                                ?: "",
-                            poster = it.selectFirst("img")
-                                ?.attr("data-src")?.let { src -> URL + src },
-                        )
-                    }
+                list = coverList("div.container > div:nth-child(11) > div.previews div.coverListItem"),
             )
         )
 
         categories.add(
             Category(
                 name = "Derzeit beliebte Animes",
-                list = document.select("div.container > div:nth-child(16) > div.previews div.coverListItem")
-                    .map {
-                        TvShow(
-                            id = it.selectFirst("a")
-                                ?.attr("href")?.substringAfter("/anime/stream/")
-                                ?: "",
-                            title = it.selectFirst("a h3")
-                                ?.text()
-                                ?: "",
-                            poster = it.selectFirst("img")
-                                ?.attr("data-src")?.let { src -> URL + src },
-                        )
-                    }
+                list = coverList("div.container > div:nth-child(16) > div.previews div.coverListItem"),
             )
         )
 

@@ -46,8 +46,9 @@ object SportsBiteProvider : IptvProvider, ProviderConfigUrl {
     private const val CACHE_MS = 5 * 60 * 1000L
 
     private val client = OkHttpClient.Builder()
-        .connectTimeout(30, TimeUnit.SECONDS)
-        .readTimeout(30, TimeUnit.SECONDS)
+        .connectTimeout(10, TimeUnit.SECONDS)
+        .readTimeout(12, TimeUnit.SECONDS)
+        .callTimeout(15, TimeUnit.SECONDS)
         .build()
 
     private data class StreamItem(

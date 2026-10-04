@@ -9,14 +9,30 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.*
+import java.util.concurrent.atomic.AtomicReference
 
 object TokenManager {
+    @Volatile
     var latestQuery: String? = null
 
     /** App-lifetime scope for the background token refresh loop (replaces GlobalScope). */
-    internal val refreshScope = kotlinx.coroutines.CoroutineScope(
-        kotlinx.coroutines.SupervisorJob() + kotlinx.coroutines.Dispatchers.IO
+    internal val refreshScope = CoroutineScope(
+        SupervisorJob() + Dispatchers.IO
     )
+
+    private val refreshJob = AtomicReference<Job?>(null)
+
+    /** Cancel any prior refresh loop and start a single replacement job. */
+    fun startRefresh(block: suspend CoroutineScope.() -> Unit) {
+        refreshJob.getAndSet(null)?.cancel()
+        val job = refreshScope.launch(Dispatchers.IO, block = block)
+        refreshJob.set(job)
+        job.invokeOnCompletion { refreshJob.compareAndSet(job, null) }
+    }
+
+    fun stopRefresh() {
+        refreshJob.getAndSet(null)?.cancel()
+    }
 }
 
 class VidxGoExtractor : Extractor() {
@@ -26,8 +42,9 @@ class VidxGoExtractor : Extractor() {
     override suspend fun extract(link: String): Video {
         val client = OkHttpClient.Builder()
             .dns(DnsResolver.doh)
-            .connectTimeout(30, TimeUnit.SECONDS)
-            .readTimeout(30, TimeUnit.SECONDS)
+            .connectTimeout(10, TimeUnit.SECONDS)
+            .readTimeout(15, TimeUnit.SECONDS)
+            .callTimeout(20, TimeUnit.SECONDS)
             .build()
 
         val uri = Uri.parse(link)
@@ -54,12 +71,12 @@ class VidxGoExtractor : Extractor() {
             
             var expireTime = Regex("\"expire\"\\s*:\\s*(\\d+)").find(html)?.groupValues?.get(1)?.toLongOrNull()
             
-            val initialUri = android.net.Uri.parse(videoUrl)
+            val initialUri = Uri.parse(videoUrl)
             TokenManager.latestQuery = initialUri.encodedQuery
             Log.d("TokenManager", "[INIT] Initial token set. expire=${expireTime}, query=${TokenManager.latestQuery?.take(60)}...")
 
-            TokenManager.refreshScope.launch(kotlinx.coroutines.Dispatchers.IO) {
-                while (true) {
+            TokenManager.startRefresh {
+                while (isActive) {
                     val delayMs = if (expireTime != null) {
                         val remaining = expireTime!! - System.currentTimeMillis()
                         val delay = (remaining - 15_000).coerceAtLeast(5_000)
@@ -70,7 +87,8 @@ class VidxGoExtractor : Extractor() {
                         150_000L
                     }
 
-                    kotlinx.coroutines.delay(delayMs)
+                    delay(delayMs)
+                    ensureActive()
                     Log.d("TokenManager", "[REFRESH] Starting token refresh request at: $link")
                     try {
                         val updateRequest = Request.Builder()
@@ -92,7 +110,7 @@ class VidxGoExtractor : Extractor() {
                             expireTime = Regex("\"expire\"\\s*:\\s*(\\d+)").find(newHtml)?.groupValues?.get(1)?.toLongOrNull()
                             val newUrlStr = Regex("\"url\"\\s*:\\s*\"([^\"]+)\"").find(newHtml)?.groupValues?.get(1)?.replace("\\/", "/")
                             if (newUrlStr != null) {
-                                val newUri = android.net.Uri.parse(newUrlStr)
+                                val newUri = Uri.parse(newUrlStr)
                                 TokenManager.latestQuery = newUri.encodedQuery
                                 Log.d("TokenManager", "[REFRESH] New token saved. New expire=${expireTime}, query=${TokenManager.latestQuery?.take(60)}...")
                             } else {
@@ -101,6 +119,8 @@ class VidxGoExtractor : Extractor() {
                         } else {
                             Log.w("TokenManager", "[REFRESH] Empty response body")
                         }
+                    } catch (e: CancellationException) {
+                        throw e
                     } catch (e: Exception) {
                         Log.e("TokenManager", "[REFRESH] Error during token refresh", e)
                         expireTime = System.currentTimeMillis() + 15_000L
@@ -167,16 +187,16 @@ class VidxGoExtractor : Extractor() {
         val filmPathSegment = uri.pathSegments.firstOrNull()
         val filmRefreshUrl = if (filmPathSegment != null) "https://v.vidxgo.co/t/$filmPathSegment" else null
 
-        val initialUri = android.net.Uri.parse(videoUrl)
+        val initialUri = Uri.parse(videoUrl)
         TokenManager.latestQuery = initialUri.encodedQuery
 
         val initialExpireTime = initialExpireRaw
         Log.d("TokenManager", "[FILM-INIT] Token/Expiry extracted from JS. token=$currentToken, expireTime=${initialExpireTime}")
 
         if (filmRefreshUrl != null) {
-            TokenManager.refreshScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+            TokenManager.startRefresh {
                 var expireTime: Long? = initialExpireTime
-                while (true) {
+                while (isActive) {
                     val delayMs = if (expireTime != null) {
                         val remaining = expireTime!! - System.currentTimeMillis()
                         val delay = (remaining - 15_000).coerceAtLeast(5_000)
@@ -187,7 +207,8 @@ class VidxGoExtractor : Extractor() {
                         150_000L
                     }
 
-                    kotlinx.coroutines.delay(delayMs)
+                    delay(delayMs)
+                    ensureActive()
                     Log.d("TokenManager", "[FILM-REFRESH] Starting refresh at: $filmRefreshUrl")
                     try {
                         val updateRequest = Request.Builder()
@@ -209,7 +230,7 @@ class VidxGoExtractor : Extractor() {
                             expireTime = Regex("\"expire\"\\s*:\\s*(\\d+)").find(newHtml)?.groupValues?.get(1)?.toLongOrNull()
                             val newUrlStr = Regex("\"url\"\\s*:\\s*\"([^\"]+)\"").find(newHtml)?.groupValues?.get(1)?.replace("\\/", "/")
                             if (newUrlStr != null) {
-                                val newUri = android.net.Uri.parse(newUrlStr)
+                                val newUri = Uri.parse(newUrlStr)
                                 TokenManager.latestQuery = newUri.encodedQuery
                                 Log.d("TokenManager", "[FILM-REFRESH] New token saved. expire=${expireTime}, query=${TokenManager.latestQuery?.take(60)}...")
                             } else {
@@ -218,6 +239,8 @@ class VidxGoExtractor : Extractor() {
                         } else {
                             Log.w("TokenManager", "[FILM-REFRESH] Empty body")
                         }
+                    } catch (e: CancellationException) {
+                        throw e
                     } catch (e: Exception) {
                         Log.e("TokenManager", "[FILM-REFRESH] Refresh error", e)
                         expireTime = System.currentTimeMillis() + 150_000L
