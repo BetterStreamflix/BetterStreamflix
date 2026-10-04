@@ -1,9 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- Soft collapsing chrome — never a hard 56dp ink plate. -->
 <shape xmlns:android="http://schemas.android.com/apk/res/android"
     android:shape="rectangle">
     <gradient
         android:angle="270"
         android:endColor="#B3121218"
-        android:startColor="#99121218"
+        android:startColor="#66121218"
         android:type="linear" />
 </shape>

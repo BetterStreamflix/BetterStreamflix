@@ -13,6 +13,32 @@
         <item name="android:textSize">16sp</item>
     </style>
 
+    <!-- Detail Leanback primary Watch — filled cinema CTA. -->
+    <style name="AppTheme.Widget.Tv.Button.DetailPrimary" parent="AppTheme.Widget.Tv.Button">
+        <item name="android:background">@drawable/bg_detail_watch_tv</item>
+        <item name="android:fontFamily">@font/outfit</item>
+        <item name="android:paddingTop">10dp</item>
+        <item name="android:paddingBottom">10dp</item>
+        <item name="android:paddingStart">22dp</item>
+        <item name="android:paddingEnd">22dp</item>
+        <item name="android:textColor">@drawable/color_detail_watch_tv_text</item>
+        <item name="android:textSize">17sp</item>
+        <item name="android:textStyle">bold</item>
+    </style>
+
+    <!-- Detail Leanback secondary CTAs — glass capsules. -->
+    <style name="AppTheme.Widget.Tv.Button.DetailSecondary" parent="AppTheme.Widget.Tv.Button">
+        <item name="android:background">@drawable/bg_detail_secondary_tv</item>
+        <item name="android:fontFamily">@font/outfit</item>
+        <item name="android:paddingTop">10dp</item>
+        <item name="android:paddingBottom">10dp</item>
+        <item name="android:paddingStart">18dp</item>
+        <item name="android:paddingEnd">18dp</item>
+        <item name="android:textColor">@drawable/color_detail_secondary_tv_text</item>
+        <item name="android:textSize">15sp</item>
+        <item name="android:textStyle">bold</item>
+    </style>
+
     <style name="AppTheme.Widget.Mobile.Button" parent="AppTheme.Mobile">
         <item name="android:background">@drawable/bg_button_mobile</item>
         <item name="android:paddingTop">6dp</item>

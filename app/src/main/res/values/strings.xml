@@ -162,6 +162,7 @@
     <string name="detail_episode_watched">Watched</string>
     <string name="detail_episodes_load_failed">Couldn’t load episodes. Try again.</string>
     <string name="detail_episodes_heading">Episodes</string>
+    <string name="detail_up_next">Up next</string>
     <string name="home_swiper_my_list">+ My List</string>
     <string name="home_swiper_in_my_list">In My List</string>
     <string name="home_swiper_all_episodes">All Episodes Available</string>

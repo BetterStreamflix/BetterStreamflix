@@ -115,9 +115,7 @@ internal fun MovieViewHolder.bindMovieMobileDetail(binding: ContentMovieMobileBi
             isClickable = false
             setOnClickListener(null)
         } else {
-            text = movie.genres.joinToString(" · ") {
-                it.name.uppercase(Locale.getDefault())
-            }
+            text = movie.genres.joinToString(" · ") { it.name }
             visibility = View.VISIBLE
             movementMethod = null
             isClickable = true
@@ -161,12 +159,13 @@ internal fun MovieViewHolder.bindMovieMobileDetail(binding: ContentMovieMobileBi
         text = movie.overview
         val more = binding.tvMovieOverviewMore
         val hasText = !movie.overview.isNullOrBlank()
-        maxLines = 3
+        val collapsedLines = 2
+        maxLines = collapsedLines
         ellipsize = android.text.TextUtils.TruncateAt.END
         var expanded = false
         fun applyExpand(open: Boolean) {
             expanded = open
-            maxLines = if (open) Integer.MAX_VALUE else 3
+            maxLines = if (open) Integer.MAX_VALUE else collapsedLines
             more.text = context.getString(
                 if (open) R.string.detail_overview_less else R.string.detail_overview_more,
             )
@@ -179,9 +178,9 @@ internal fun MovieViewHolder.bindMovieMobileDetail(binding: ContentMovieMobileBi
             setOnClickListener(toggle)
             more.setOnClickListener(toggle)
             post {
-                val overflowing = lineCount > 3 ||
-                    (text?.length ?: 0) > 160 ||
-                    (layout != null && maxLines == 3 && layout.getEllipsisCount(lineCount.coerceAtLeast(1) - 1) > 0)
+                val overflowing = lineCount > collapsedLines ||
+                    (text?.length ?: 0) > 120 ||
+                    (layout != null && maxLines == collapsedLines && layout.getEllipsisCount(lineCount.coerceAtLeast(1) - 1) > 0)
                 more.visibility = if (overflowing) View.VISIBLE else View.GONE
                 if (!overflowing) setOnClickListener(null)
             }

@@ -63,7 +63,7 @@ object DetailCoverAtmosphere {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             soft.visibility = View.VISIBLE
             // Keep the soft wash faint — stacked with the veil it used to read as a black slab.
-            soft.alpha = 0.16f
+            soft.alpha = 0.10f
             if (soft.getTag(R.id.detail_cover_url_tag) != softUrlKey) {
                 soft.setTag(R.id.detail_cover_url_tag, softUrlKey)
                 load(soft)

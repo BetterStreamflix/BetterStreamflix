@@ -29,6 +29,9 @@ import com.dskja.betterstreamflix.utils.format
 import com.dskja.betterstreamflix.utils.viewModelsFactory
 import com.dskja.betterstreamflix.ui.DetailLoadingErrorChrome
 import com.dskja.betterstreamflix.ui.TrailerPlaybackController
+import com.dskja.betterstreamflix.utils.ArtworkUrls
+import com.bumptech.glide.Glide
+import com.bumptech.glide.load.resource.drawable.DrawableTransitionOptions
 import androidx.core.view.isVisible
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -112,6 +115,10 @@ class SeasonTvFragment : Fragment() {
 
     private fun initializeSeason() {
         binding.tvSeasonTitle.text = args.seasonTitle
+        binding.root.findViewById<android.widget.TextView>(R.id.tv_season_eyebrow)?.apply {
+            text = args.tvShowTitle.ifBlank { getString(R.string.exp_season_eyebrow) }
+        }
+        bindSeasonBanner()
 
         SeasonSwitcher.bind(
             fragment = this,
@@ -173,6 +180,21 @@ class SeasonTvFragment : Fragment() {
             }
             setItemSpacing(resources.getDimension(R.dimen.season_episodes_spacing).toInt())
         }
+    }
+
+    private fun bindSeasonBanner() {
+        val banner = binding.root.findViewById<android.widget.ImageView>(R.id.iv_season_banner)
+            ?: return
+        val url = ArtworkUrls.bannerOrPoster(args.tvShowBanner, args.tvShowPoster, hero = false)
+        if (url.isNullOrBlank()) {
+            banner.setImageDrawable(null)
+            return
+        }
+        Glide.with(banner)
+            .load(url)
+            .centerCrop()
+            .transition(DrawableTransitionOptions.withCrossFade(280))
+            .into(banner)
     }
 
     private fun wireSeasonTrailerButton() {
