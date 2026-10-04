@@ -53,6 +53,12 @@ object DebridResolver {
 
     fun activeService(): DebridService? {
         if (!runCatching { UserPreferences.debridEnabled }.getOrDefault(false)) return null
+        if (!com.dskja.betterstreamflix.profiles.ProfileManager.isActiveIntegrationEnabled(
+                com.dskja.betterstreamflix.profiles.UserProfile.Integration.DEBRID,
+            )
+        ) {
+            return null
+        }
         return when (DebridProviderId.fromId(runCatching { UserPreferences.debridProvider }.getOrNull())) {
             DebridProviderId.REAL_DEBRID -> {
                 val token = runCatching { UserPreferences.realDebridToken }.getOrDefault("")

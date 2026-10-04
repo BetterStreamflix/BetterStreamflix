@@ -33,6 +33,12 @@ object TmdbUtils {
     private val movieAgeCache = ConcurrentHashMap<String, Int>()
     private val tvAgeCache = ConcurrentHashMap<String, Int>()
 
+    private fun tmdbAllowed(): Boolean =
+        UserPreferences.enableTmdb &&
+            com.dskja.betterstreamflix.profiles.ProfileManager.isActiveIntegrationEnabled(
+                com.dskja.betterstreamflix.profiles.UserProfile.Integration.TMDB,
+            )
+
     fun clearLogoCaches() {
         TmdbLogoCache.clearAll()
     }
@@ -201,7 +207,7 @@ object TmdbUtils {
         imdbId: String? = null,
         language: String? = null,
     ): String? {
-        if (!UserPreferences.enableTmdb) return null
+        if (!tmdbAllowed()) return null
         if (!UserPreferences.enableTmdbLogos) return null
         return try {
             withTimeout(LogoConstants.RESOLVE_TIMEOUT_MS) {
@@ -383,7 +389,7 @@ object TmdbUtils {
         imdbId: String? = null,
         seasonNumber: Int? = null,
     ): List<com.dskja.betterstreamflix.models.TrailerEntry> {
-        if (!UserPreferences.enableTmdb) return emptyList()
+        if (!tmdbAllowed()) return emptyList()
         val lang = UserPreferences.currentProvider?.language
         val id = tmdbId?.trim()?.toIntOrNull()
             ?: runCatching {
@@ -565,7 +571,7 @@ object TmdbUtils {
     }
 
     suspend fun getMovie(title: String, year: Int? = null, language: String? = null): Movie? {
-        if (!UserPreferences.enableTmdb) return null
+        if (!tmdbAllowed()) return null
         return try {
             val effectiveYear = year ?: extractYear(title)
             val cacheKey = buildLookupCacheKey("movie-match", title, effectiveYear, language)
@@ -580,7 +586,7 @@ object TmdbUtils {
     }
 
     suspend fun getMovieById(tmdbId: Int, language: String? = null): Movie? {
-        if (!UserPreferences.enableTmdb) return null
+        if (!tmdbAllowed()) return null
         val lang = language ?: UserPreferences.currentProvider?.language
         TmdbCache.getMovie(tmdbId, lang)?.let { cached ->
             return Movie(
@@ -742,7 +748,7 @@ object TmdbUtils {
     }
 
     suspend fun getMovieByImdbId(imdbId: String, language: String? = null): Movie? {
-        if (!UserPreferences.enableTmdb) return null
+        if (!tmdbAllowed()) return null
         val clean = imdbId.trim()
         if (clean.isBlank()) return null
         if (TmdbCache.hasFindImdbMovie(clean)) {
@@ -760,7 +766,7 @@ object TmdbUtils {
     }
 
     suspend fun getTvShow(title: String, year: Int? = null, language: String? = null): TvShow? {
-        if (!UserPreferences.enableTmdb) return null
+        if (!tmdbAllowed()) return null
         return try {
             val effectiveYear = year ?: extractYear(title)
             val cacheKey = buildLookupCacheKey("tv-match", title, effectiveYear, language)
@@ -775,7 +781,7 @@ object TmdbUtils {
     }
 
     suspend fun getTvShowById(tmdbId: Int, language: String? = null): TvShow? {
-        if (!UserPreferences.enableTmdb) return null
+        if (!tmdbAllowed()) return null
         val lang = language ?: UserPreferences.currentProvider?.language
         TmdbCache.getTv(tmdbId, lang)?.let { cached ->
             return TvShow(
@@ -962,7 +968,7 @@ object TmdbUtils {
      * Prefers TMDb artwork when the provider only left a blank or placeholder.
      */
     suspend fun enrichMovieDetail(movie: Movie, language: String? = null): Movie {
-        if (!UserPreferences.enableTmdb) return movie
+        if (!tmdbAllowed()) return movie
         val lang = language ?: UserPreferences.currentProvider?.language
         val year = movie.released?.format("yyyy")?.toIntOrNull()
         val tmdb = when {
@@ -1023,7 +1029,7 @@ object TmdbUtils {
      * Does not replace seasons/episodes from the provider.
      */
     suspend fun enrichTvShowDetail(tvShow: TvShow, language: String? = null): TvShow {
-        if (!UserPreferences.enableTmdb) return tvShow
+        if (!tmdbAllowed()) return tvShow
         val lang = language ?: UserPreferences.currentProvider?.language
         val year = tvShow.released?.format("yyyy")?.toIntOrNull()
         val tmdb = when {
@@ -1079,7 +1085,7 @@ object TmdbUtils {
     }
 
     suspend fun getTvShowByImdbId(imdbId: String, language: String? = null): TvShow? {
-        if (!UserPreferences.enableTmdb) return null
+        if (!tmdbAllowed()) return null
         val clean = imdbId.trim()
         if (clean.isBlank()) return null
         if (TmdbCache.hasFindImdbTv(clean)) {
@@ -1097,7 +1103,7 @@ object TmdbUtils {
     }
 
     suspend fun getEpisodesBySeason(tvShowId: String, seasonNumber: Int, language: String? = null): List<Episode> {
-        if (!UserPreferences.enableTmdb) return listOf()
+        if (!tmdbAllowed()) return listOf()
         return try {
             TMDb3.TvSeasons.details(
                 seriesId = tvShowId.toInt(),
@@ -1117,7 +1123,7 @@ object TmdbUtils {
     }
 
     suspend fun getMovieAgeRating(title: String, year: Int? = null, language: String? = null): Int? {
-        if (!UserPreferences.enableTmdb) return null
+        if (!tmdbAllowed()) return null
 
         val effectiveYear = year ?: extractYear(title)
         val cacheKey = buildLookupCacheKey("movie", title, effectiveYear, language)
@@ -1134,7 +1140,7 @@ object TmdbUtils {
     }
 
     suspend fun getTvShowAgeRating(title: String, year: Int? = null, language: String? = null): Int? {
-        if (!UserPreferences.enableTmdb) return null
+        if (!tmdbAllowed()) return null
 
         val effectiveYear = year ?: extractYear(title)
         val cacheKey = buildLookupCacheKey("tv", title, effectiveYear, language)
@@ -1151,7 +1157,7 @@ object TmdbUtils {
     }
 
     suspend fun getMovieAgeRatingById(id: Int, language: String? = null): Int? {
-        if (!UserPreferences.enableTmdb) return null
+        if (!tmdbAllowed()) return null
 
         val cacheKey = "movie-id|$id|${language.orEmpty()}"
         movieAgeCache[cacheKey]?.let(::decodeAgeRatingCacheValue)?.let { return it }
@@ -1171,7 +1177,7 @@ object TmdbUtils {
     }
 
     suspend fun getTvShowAgeRatingById(id: Int, language: String? = null): Int? {
-        if (!UserPreferences.enableTmdb) return null
+        if (!tmdbAllowed()) return null
 
         val cacheKey = "tv-id|$id|${language.orEmpty()}"
         tvAgeCache[cacheKey]?.let(::decodeAgeRatingCacheValue)?.let { return it }

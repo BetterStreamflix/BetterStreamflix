@@ -22,6 +22,12 @@ class JellyfinApi(
     private val jsonMedia = "application/json; charset=utf-8".toMediaType()
 
     fun configured(): Boolean {
+        if (!com.dskja.betterstreamflix.profiles.ProfileManager.isActiveIntegrationEnabled(
+                com.dskja.betterstreamflix.profiles.UserProfile.Integration.JELLYFIN,
+            )
+        ) {
+            return false
+        }
         val base = baseUrlProvider().trim().trimEnd('/')
         return base.startsWith("http") &&
             tokenProvider().isNotBlank() &&

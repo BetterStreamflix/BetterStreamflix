@@ -36,7 +36,11 @@ object OpenSubtitlesV1Client {
     )
 
     fun configured(): Boolean =
-        runCatching { UserPreferences.openSubtitlesApiKey.isNotBlank() }.getOrDefault(false)
+        runCatching {
+            com.dskja.betterstreamflix.profiles.ProfileManager.isActiveIntegrationEnabled(
+                com.dskja.betterstreamflix.profiles.UserProfile.Integration.OPENSUBTITLES,
+            ) && UserPreferences.openSubtitlesApiKey.isNotBlank()
+        }.getOrDefault(false)
 
     fun signedIn(): Boolean =
         configured() && runCatching { UserPreferences.openSubtitlesJwt.isNotBlank() }.getOrDefault(false)

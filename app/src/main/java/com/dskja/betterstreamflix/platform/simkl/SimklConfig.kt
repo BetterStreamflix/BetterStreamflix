@@ -1,6 +1,8 @@
 package com.dskja.betterstreamflix.platform.simkl
 
 import com.dskja.betterstreamflix.BuildConfig
+import com.dskja.betterstreamflix.profiles.ProfileManager
+import com.dskja.betterstreamflix.profiles.UserProfile
 import com.dskja.betterstreamflix.utils.UserPreferences
 
 object SimklConfig {
@@ -14,6 +16,7 @@ object SimklConfig {
     fun configured(): Boolean =
         runCatching {
             UserPreferences.simklEnabled &&
+                ProfileManager.isActiveIntegrationEnabled(UserProfile.Integration.SIMKL) &&
                 clientId().isNotBlank() &&
                 UserPreferences.simklAccessToken.isNotBlank()
         }.getOrDefault(false)
