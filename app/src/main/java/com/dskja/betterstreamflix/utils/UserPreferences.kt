@@ -217,6 +217,16 @@ object UserPreferences {
             Key.DOWNLOAD_TREE_URI.setString(value.trim().ifEmpty { null })
         }
 
+    /**
+     * Absolute app-specific directory actually used for the Media3 cache.
+     * Survives a revoked SAF grant so offline playback keeps the same files.
+     */
+    var downloadResolvedCacheDir: String
+        get() = Key.DOWNLOAD_RESOLVED_CACHE_DIR.getString().orEmpty()
+        set(value) {
+            Key.DOWNLOAD_RESOLVED_CACHE_DIR.setString(value.trim().ifEmpty { null })
+        }
+
     /** Remembered external player package (empty = always show chooser / auto-detect). */
     var externalPlayerPackage: String
         get() = Key.EXTERNAL_PLAYER_PACKAGE.getString().orEmpty()
@@ -1313,6 +1323,7 @@ object UserPreferences {
         DOWNLOAD_SOFT_LIMIT_GB,
         DOWNLOAD_STORAGE_LOCATION,
         DOWNLOAD_TREE_URI,
+        DOWNLOAD_RESOLVED_CACHE_DIR,
         EXTERNAL_PLAYER_PACKAGE,
         EXTERNAL_DOWNLOADER_PACKAGE,
         DOWNLOAD_SMART_ENABLED,

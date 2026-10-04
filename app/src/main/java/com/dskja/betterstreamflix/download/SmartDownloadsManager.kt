@@ -20,7 +20,14 @@ object SmartDownloadsManager {
     /** In-memory debounce so repeated pause/stop events don't re-trigger work. */
     private val handled = mutableSetOf<String>()
 
-    suspend fun onEpisodeFinished(context: Context, videoType: Video.Type.Episode) {
+    suspend fun onEpisodeFinished(
+        context: Context,
+        videoType: Video.Type.Episode,
+        positionMs: Long = -1L,
+        durationMs: Long = -1L,
+        playbackEnded: Boolean = false,
+    ) {
+        if (!DownloadWatchPolicy.shouldMarkWatched(positionMs, durationMs, playbackEnded)) return
         val key = "${videoType.tvShow.id}:${videoType.season.number}:${videoType.number}:${videoType.id}"
         if (!handled.add(key)) return
         if (handled.size > 64) handled.clear() // bound the debounce set
@@ -44,7 +51,14 @@ object SmartDownloadsManager {
         if (smart) enqueueNextEpisode(context, videoType)
     }
 
-    suspend fun onMovieFinished(context: Context, videoType: Video.Type.Movie) {
+    suspend fun onMovieFinished(
+        context: Context,
+        videoType: Video.Type.Movie,
+        positionMs: Long = -1L,
+        durationMs: Long = -1L,
+        playbackEnded: Boolean = false,
+    ) {
+        if (!DownloadWatchPolicy.shouldMarkWatched(positionMs, durationMs, playbackEnded)) return
         val key = "movie:${videoType.id}"
         if (!handled.add(key)) return
         if (handled.size > 64) handled.clear()

@@ -23,6 +23,12 @@ class PlaybackProgressTest {
     }
 
     @Test
+    fun shortWindowDoesNotCountAsFinished() {
+        assertFalse(PlaybackProgress.hasFinished(28_000L, 30_000L))
+        assertFalse(PlaybackProgress.hasReallyFinished(29_000L, 30_000L, 30L))
+    }
+
+    @Test
     fun knownDurationUsesPercentThresholds() {
         val duration = 100_000L
         assertFalse(PlaybackProgress.hasStarted(400L, duration))

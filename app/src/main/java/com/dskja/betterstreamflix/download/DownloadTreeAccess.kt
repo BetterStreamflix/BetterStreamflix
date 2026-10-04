@@ -31,11 +31,33 @@ object DownloadTreeAccess {
 
     fun hasTree(): Boolean = treeUri() != null
 
+    /**
+     * Volume id from a tree URI string. `ABCD-1234%3AMovies` and
+     * `ABCD-1234:Download` are the same volume. Pure so permission checks
+     * survive the encoding the OS stores versus the encoding we saved.
+     */
+    fun treeVolumeId(uri: String): String {
+        val segment = uri.substringAfterLast('/').substringBefore('?')
+        val decoded = runCatching {
+            java.net.URLDecoder.decode(segment, Charsets.UTF_8.name())
+        }.getOrDefault(segment)
+        return decoded.substringBefore(':').trim()
+    }
+
+    fun sameTree(left: String, right: String): Boolean {
+        if (left == right) return true
+        val a = treeVolumeId(left)
+        val b = treeVolumeId(right)
+        return a.isNotBlank() && a.equals(b, ignoreCase = true)
+    }
+
     /** True when the persisted tree grant is still held by the OS. */
     fun hasPersistedPermission(context: Context): Boolean {
         val uri = treeUri() ?: return false
-        return context.contentResolver.persistedUriPermissions.any {
-            it.uri == uri && it.isReadPermission && it.isWritePermission
+        val wanted = uri.toString()
+        return context.contentResolver.persistedUriPermissions.any { perm ->
+            perm.isReadPermission && perm.isWritePermission &&
+                (perm.uri == uri || sameTree(perm.uri.toString(), wanted))
         }
     }
 
@@ -46,6 +68,7 @@ object DownloadTreeAccess {
             context.contentResolver.takePersistableUriPermission(uri, flags)
             UserPreferences.downloadTreeUri = uri.toString()
             UserPreferences.downloadStorageLocation = DownloadStorageLocation.CUSTOM_FOLDER
+            UserPreferences.downloadResolvedCacheDir = ""
             // Best-effort marker in the user-visible folder explaining where offline
             // Media3 cache actually lives (app-specific dir on the same volume).
             writeLocationReadme(context)
@@ -70,6 +93,7 @@ object DownloadTreeAccess {
             }
         }
         UserPreferences.downloadTreeUri = ""
+        UserPreferences.downloadResolvedCacheDir = ""
         if (UserPreferences.downloadStorageLocation == DownloadStorageLocation.CUSTOM_FOLDER) {
             UserPreferences.downloadStorageLocation = DownloadStorageLocation.INTERNAL
         }
@@ -102,16 +126,37 @@ object DownloadTreeAccess {
      */
     fun media3CacheDir(context: Context): File {
         val app = context.applicationContext
+        val remembered = UserPreferences.downloadResolvedCacheDir.trim()
+        if (remembered.isNotEmpty()) {
+            val dir = File(remembered)
+            // Keep the original cache root even if the SAF grant was revoked.
+            // App-specific dirs do not need that grant. A missing path means the
+            // volume is gone — do not silently switch to internal storage.
+            if (dir.isDirectory && (dir.canRead() || dir.canWrite())) return dir
+            if (!dir.exists()) return dir
+        }
         val volumeHint = volumeIdFromTree(treeUri())
         val secondary = DownloadStorage.removableAppDownloadsDir(app, volumeHint)
-        if (secondary != null) return secondary
-        // Tree on primary volume — still use app-external Movies/downloads.
+        if (secondary != null) {
+            remember(secondary)
+            return secondary
+        }
+        if (!volumeHint.isNullOrBlank()) {
+            return File(app.filesDir, "downloads-volume-missing")
+        }
         val primary = app.getExternalFilesDir(Environment.DIRECTORY_MOVIES)
             ?: app.getExternalFilesDir(null)
             ?: app.filesDir
         val dir = File(primary, DOWNLOADS_FOLDER)
         if (!dir.exists()) dir.mkdirs()
+        remember(dir)
         return dir
+    }
+
+    private fun remember(dir: File) {
+        if (dir.isDirectory && dir.canWrite()) {
+            UserPreferences.downloadResolvedCacheDir = dir.absolutePath
+        }
     }
 
     fun volumeIdFromTree(uri: Uri?): String? {
@@ -132,12 +177,15 @@ object DownloadTreeAccess {
         }?.getDescription(context) ?: volumeId
     }
 
-    /** Validate CUSTOM_FOLDER is usable (permission + writable Media3 dir). */
+    /**
+     * CUSTOM_FOLDER is usable when the app-specific cache dir on that volume
+     * is writable. The SAF grant is not required to keep reading or writing
+     * that directory — losing it must not orphan completed downloads.
+     */
     fun validateCustomStorage(context: Context): Boolean {
-        if (!hasTree()) return false
-        if (!hasPersistedPermission(context)) return false
+        if (!hasTree() && UserPreferences.downloadResolvedCacheDir.isBlank()) return false
         val dir = media3CacheDir(context)
-        return dir.exists() && dir.canWrite()
+        return dir.isDirectory && dir.canWrite()
     }
 
     private fun writeLocationReadme(context: Context) {

@@ -94,11 +94,11 @@ object OfflinePlayback {
         // Only treat Media3-completed downloads with cached bytes as offline playable.
         // Keep source = request.uri so CacheDataSource keys match; never treat https as a
         // local share path (see [exportShareUri]).
-        val hasCachedContent = download != null &&
-            download.state == Download.STATE_COMPLETED &&
-            (download.bytesDownloaded > 0L || item.bytesDownloaded > 0L)
+        // A completed Media3 index is enough. bytesDownloaded can stay 0 for
+        // some HLS jobs; requiring it made playback fall through to the CDN (404).
+        val hasIndex = download != null && download.state == Download.STATE_COMPLETED
         val source = when {
-            hasCachedContent -> download!!.request.uri.toString()
+            hasIndex -> download!!.request.uri.toString()
             item.localUri.isNotBlank() &&
                 !item.localUri.startsWith("http://", ignoreCase = true) &&
                 !item.localUri.startsWith("https://", ignoreCase = true) -> item.localUri
@@ -152,7 +152,7 @@ object OfflinePlayback {
             subtitles = subs,
             // Only stamp Media3 id when the download index has completed bytes —
             // players use this to rebuild MediaItem with streamKeys/customCacheKey.
-            offlineMedia3Id = media3Id.takeIf { hasCachedContent && it.isNotBlank() },
+            offlineMedia3Id = media3Id.takeIf { hasIndex && it.isNotBlank() },
         )
     }
 
@@ -175,10 +175,7 @@ object OfflinePlayback {
             val download = runCatching {
                 StreamflixDownloadManager.get(context).downloadIndex.getDownload(media3Id)
             }.getOrNull()
-            if (download != null &&
-                download.state == Download.STATE_COMPLETED &&
-                (download.bytesDownloaded > 0L)
-            ) {
+            if (download != null && download.state == Download.STATE_COMPLETED) {
                 val builder = download.request.toMediaItem().buildUpon()
                     .setSubtitleConfigurations(subtitleConfigurations)
                 if (mediaMetadata != null) {
@@ -205,7 +202,7 @@ object OfflinePlayback {
      * Share/export for external players.
      * 1) Real on-disk paths in [DownloadItemEntity.localUri]
      * 2) Progressive Media3 cache materialization (mp4/webm/mkv)
-     * HLS/DASH stay null — callers show cache-only copy.
+     * 3) Loopback playlist for a completed HLS/DASH cache (Play with)
      */
     fun exportShareUri(context: Context, item: DownloadItemEntity): Uri? {
         fileFromLocalUri(item.localUri)?.let { file ->
@@ -224,14 +221,42 @@ object OfflinePlayback {
                 mimeHint = item.mimeType,
                 streamUrl = item.streamUrl,
             )
-        }.getOrNull() ?: return null
-        return runCatching {
-            FileProvider.getUriForFile(
-                context,
-                "${context.packageName}.provider",
-                exported,
-            )
         }.getOrNull()
+        if (exported != null) {
+            return runCatching {
+                FileProvider.getUriForFile(
+                    context,
+                    "${context.packageName}.provider",
+                    exported,
+                )
+            }.getOrNull()
+        }
+        val download = runCatching {
+            StreamflixDownloadManager.get(context).downloadIndex.getDownload(item.media3Id)
+        }.getOrNull() ?: return null
+        if (download.state != Download.STATE_COMPLETED) return null
+        val loopback = OfflineCacheProxy.shareUrl(
+            context = context,
+            media3Id = item.media3Id,
+            playlistUri = download.request.uri.toString(),
+            cacheKey = download.request.customCacheKey,
+        ) ?: return null
+        return Uri.parse(loopback)
+    }
+
+    fun mimeForShareUri(uri: Uri, fallback: String): String =
+        mimeForSharePath(uri.toString(), fallback)
+
+    fun mimeForSharePath(pathRaw: String, fallback: String): String {
+        val path = pathRaw.lowercase()
+        return when {
+            path.contains(".m3u8") -> "application/vnd.apple.mpegurl"
+            path.contains(".mpd") -> "application/dash+xml"
+            path.contains(".webm") -> "video/webm"
+            path.contains(".mkv") -> "video/x-matroska"
+            path.contains(".mp4") -> "video/mp4"
+            else -> fallback.ifBlank { "video/*" }
+        }
     }
 
     private fun fileFromLocalUri(path: String): File? {

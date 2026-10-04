@@ -14,13 +14,17 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import org.json.JSONObject
 import java.util.UUID
+import java.util.concurrent.ConcurrentHashMap
 
 class DownloadRepository private constructor(
     private val context: Context,
     private val dao: DownloadDao,
 ) {
+    private val enqueueLocks = ConcurrentHashMap<String, Mutex>()
     fun observeAll(): Flow<List<DownloadItemEntity>> = dao.observeAll()
 
     /**
@@ -123,7 +127,7 @@ class DownloadRepository private constructor(
         streamKeys: List<StreamKey> = emptyList(),
         subtitleUrls: List<Pair<String, String>> = emptyList(),
         smartEnqueued: Boolean = false,
-    ): DownloadItemEntity {
+    ): DownloadItemEntity = enqueueLocks.computeIfAbsent(contentKey) { Mutex() }.withLock {
         val existing = dao.getByContentKey(contentKey)
         if (existing != null && existing.state == DownloadItemState.COMPLETED.name) {
             return existing
@@ -153,6 +157,7 @@ class DownloadRepository private constructor(
 
         val requestBuilder = DownloadRequest.Builder(media3Id, Uri.parse(streamUrl))
             .setMimeType(mime)
+            .setCustomCacheKey(media3Id)
             .setData(title.toByteArray(Charsets.UTF_8))
         if (streamKeys.isNotEmpty()) {
             requestBuilder.setStreamKeys(streamKeys)
@@ -193,27 +198,34 @@ class DownloadRepository private constructor(
             request,
             /* foreground= */ true,
         )
-        return entity
+        entity
     }
 
-    suspend fun pause(id: String) {
+    suspend fun pause(
+        id: String,
+        stopReason: Int = DownloadQueuePolicy.STOP_USER,
+        foreground: Boolean = false,
+    ) {
         val item = dao.getById(id) ?: return
         DownloadService.sendSetStopReason(
             context,
             StreamflixDownloadService::class.java,
             item.media3Id,
-            /* stopReason= */ 1,
-            false,
+            stopReason,
+            foreground,
         )
+        val connectivityHold = stopReason == DownloadQueuePolicy.STOP_CONNECTIVITY
         dao.upsert(
             item.copy(
                 state = DownloadItemState.PAUSED.name,
+                errorCode = if (connectivityHold) DownloadErrorCode.WIFI_REQUIRED.name else "",
+                errorMessage = if (connectivityHold) "Wi-Fi required" else "",
                 updatedAt = System.currentTimeMillis(),
             ),
         )
     }
 
-    suspend fun resume(id: String) {
+    suspend fun resume(id: String, foreground: Boolean = false) {
         val item = dao.getById(id) ?: return
         if (UserPreferences.downloadWifiOnly && DownloadConnectivityMonitor.isMetered(context)) {
             // Soft-gate only: keep the item paused instead of marking a terminal failure.
@@ -237,7 +249,7 @@ class DownloadRepository private constructor(
                 StreamflixDownloadService::class.java,
                 item.media3Id,
                 Download.STOP_REASON_NONE,
-                false,
+                foreground,
             )
         }
         dao.upsert(
@@ -276,6 +288,7 @@ class DownloadRepository private constructor(
                 }
             DownloadRequest.Builder(item.media3Id, Uri.parse(item.streamUrl))
                 .setMimeType(mime)
+                .setCustomCacheKey(item.media3Id)
                 .setData(item.title.toByteArray(Charsets.UTF_8))
                 .build()
         }
@@ -306,7 +319,43 @@ class DownloadRepository private constructor(
     }
 
     suspend fun pauseAll() {
-        getAllOnce().filter { DownloadItemState.fromKey(it.state).isActive }.forEach { pause(it.id) }
+        getAllOnce()
+            .filter { DownloadItemState.fromKey(it.state).isActive }
+            .forEach { pause(it.id, DownloadQueuePolicy.STOP_USER) }
+    }
+
+    /** Wi-Fi-only hold. Leaves rows the user already paused alone. */
+    suspend fun pauseForConnectivity() {
+        getAllOnce()
+            .filter { DownloadQueuePolicy.shouldPauseForConnectivity(DownloadItemState.fromKey(it.state)) }
+            .forEach { item ->
+                runCatching {
+                    pause(item.id, DownloadQueuePolicy.STOP_CONNECTIVITY, foreground = true)
+                }.onFailure { Log.w(TAG, "Connectivity pause skipped: ${it.message}") }
+            }
+    }
+
+    /**
+     * Resume only connectivity holds. Per-id stop-reason clear — never
+     * [DownloadService.sendResumeDownloads], which would also restart a user pause.
+     */
+    suspend fun resumeConnectivityHeld() {
+        if (UserPreferences.downloadWifiOnly && DownloadConnectivityMonitor.isMetered(context)) return
+        val held = getAllOnce().filter {
+            val state = DownloadItemState.fromKey(it.state)
+            DownloadQueuePolicy.shouldResumeAfterConnectivity(
+                stopReason = if (it.errorCode == DownloadErrorCode.WIFI_REQUIRED.name) {
+                    DownloadQueuePolicy.STOP_CONNECTIVITY
+                } else {
+                    DownloadQueuePolicy.STOP_USER
+                },
+                errorCode = it.errorCode,
+            ) && (state == DownloadItemState.PAUSED || state == DownloadItemState.FAILED)
+        }
+        held.forEach { item ->
+            runCatching { resume(item.id, foreground = true) }
+                .onFailure { Log.w(TAG, "Connectivity resume skipped: ${it.message}") }
+        }
     }
 
     suspend fun resumeAll() {
@@ -315,29 +364,7 @@ class DownloadRepository private constructor(
         // which throws BackgroundServiceStartNotAllowedException / IllegalStateException.
         // Prefer a foreground start; if that is still blocked, skip silently until next
         // foreground resume (notification action / Downloads tab).
-        val started = runCatching {
-            DownloadService.sendResumeDownloads(
-                context,
-                StreamflixDownloadService::class.java,
-                /* foreground= */ true,
-            )
-            true
-        }.recoverCatching { first ->
-            Log.w(TAG, "Foreground resume blocked (${first.message}); retrying foreground service start")
-            runCatching {
-                StreamflixDownloadService.start(context)
-                DownloadService.sendResumeDownloads(
-                    context,
-                    StreamflixDownloadService::class.java,
-                    /* foreground= */ true,
-                )
-                true
-            }.getOrElse { second ->
-                Log.w(TAG, "Skipping resumeAll while backgrounded: ${second.message}")
-                false
-            }
-        }.getOrDefault(false)
-        if (!started) return
+        if (!sendResumeDownloads()) return
         // Only resume paused rows. Hard failures (DRM/network/etc.) stay failed until manual retry.
         getAllOnce()
             .filter {
@@ -418,6 +445,35 @@ class DownloadRepository private constructor(
         OfflineVideoCache.clear()
     }
 
+    suspend fun assignPack(id: String, packId: String, sortIndex: Int) {
+        dao.assignPack(id, packId, sortIndex)
+    }
+
+    private fun sendResumeDownloads(): Boolean {
+        return runCatching {
+            DownloadService.sendResumeDownloads(
+                context,
+                StreamflixDownloadService::class.java,
+                /* foreground= */ true,
+            )
+            true
+        }.recoverCatching { first ->
+            Log.w(TAG, "Foreground resume blocked (${first.message}); retrying foreground service start")
+            runCatching {
+                StreamflixDownloadService.start(context)
+                DownloadService.sendResumeDownloads(
+                    context,
+                    StreamflixDownloadService::class.java,
+                    /* foreground= */ true,
+                )
+                true
+            }.getOrElse { second ->
+                Log.w(TAG, "Skipping resume while backgrounded: ${second.message}")
+                false
+            }
+        }.getOrDefault(false)
+    }
+
     suspend fun upsertSeasonPack(pack: DownloadSeasonPackEntity) = dao.upsertSeasonPack(pack)
 
     suspend fun getSeasonPack(id: String) = dao.getSeasonPack(id)
@@ -425,6 +481,10 @@ class DownloadRepository private constructor(
     suspend fun refreshSeasonPack(packId: String) {
         val pack = dao.getSeasonPack(packId) ?: return
         val items = dao.itemsForPack(packId)
+        if (items.isEmpty()) {
+            dao.deleteSeasonPack(packId)
+            return
+        }
         val completed = items.count { it.state == DownloadItemState.COMPLETED.name }
         val failed = items.count { it.state == DownloadItemState.FAILED.name }
         val active = items.any { DownloadItemState.fromKey(it.state).isActive }

@@ -326,19 +326,24 @@ object DownloadController {
                     val label = outcome.prepared.trackOptions.getOrNull(trackIdx)?.label ?: "Auto"
                     val confirmed = confirmEnqueue(context, outcome.prepared, serverIdx, trackIdx, label)
                     if (confirmed is DownloadEnqueueOutcome.Started) {
-                        val item = confirmed.item.copy(seasonPackId = packId, sortIndex = index)
-                        repo.upsert(item)
+                        repo.assignPack(confirmed.item.id, packId, index)
                         started++
                     } else {
                         Log.w(TAG, "Season NeedsOptions confirm failed for ${episode.id}: $confirmed")
                     }
                 }
                 is DownloadEnqueueOutcome.Started -> {
-                    repo.upsert(outcome.item.copy(seasonPackId = packId, sortIndex = index))
+                    repo.assignPack(outcome.item.id, packId, index)
                     started++
                 }
-                is DownloadEnqueueOutcome.AlreadyActive,
-                is DownloadEnqueueOutcome.AlreadyCompleted -> started++
+                is DownloadEnqueueOutcome.AlreadyActive -> {
+                    repo.assignPack(outcome.item.id, packId, index)
+                    started++
+                }
+                is DownloadEnqueueOutcome.AlreadyCompleted -> {
+                    repo.assignPack(outcome.item.id, packId, index)
+                    started++
+                }
                 is DownloadEnqueueOutcome.Failed -> Log.w(TAG, "Season item failed: ${outcome.message}")
             }
         }
@@ -529,48 +534,37 @@ object DownloadController {
         return try {
             val helper = createHelper(context, video)
             prepareHelper(helper)
-            val options = mutableListOf<DownloadTrackOption>()
-            // Default: download all tracks Media3 would pick (empty stream keys = default)
-            options += DownloadTrackOption(
-                label = context.getString(R.string.download_quality_best),
-                streamKeys = emptyList(),
-            )
-            // Expose video track heights when present
-            val mapped = runCatching {
-                val periodCount = helper.periodCount
-                val keys = mutableListOf<Pair<String, List<StreamKey>>>()
-                for (periodIndex in 0 until periodCount) {
-                    val tracks = helper.getTracks(periodIndex)
-                    tracks.groups.forEachIndexed { groupIndex, group ->
-                        if (group.type == androidx.media3.common.C.TRACK_TYPE_VIDEO) {
-                            for (i in 0 until group.length) {
-                                val format = group.getTrackFormat(i)
-                                val height = format.height
-                                if (height > 0) {
-                                    val label = "${height}p"
-                                    val streamKey = StreamKey(periodIndex, groupIndex, i)
-                                    keys += label to listOf(streamKey)
-                                }
-                            }
+            val refs = mutableListOf<DownloadTrackPlan.TrackRef>()
+            val periodCount = helper.periodCount
+            for (periodIndex in 0 until periodCount) {
+                val tracks = helper.getTracks(periodIndex)
+                tracks.groups.forEachIndexed { groupIndex, group ->
+                    val interesting = group.type == androidx.media3.common.C.TRACK_TYPE_VIDEO ||
+                        group.type == androidx.media3.common.C.TRACK_TYPE_AUDIO ||
+                        group.type == androidx.media3.common.C.TRACK_TYPE_TEXT
+                    if (!interesting) return@forEachIndexed
+                    for (i in 0 until group.length) {
+                        val height = if (group.type == androidx.media3.common.C.TRACK_TYPE_VIDEO) {
+                            group.getTrackFormat(i).height
+                        } else {
+                            0
                         }
+                        refs += DownloadTrackPlan.TrackRef(
+                            type = group.type,
+                            periodIndex = periodIndex,
+                            groupIndex = groupIndex,
+                            trackIndex = i,
+                            height = height,
+                        )
                     }
-                }
-                keys.distinctBy { it.first }
-                    .sortedByDescending { it.first.removeSuffix("p").toIntOrNull() ?: 0 }
-                    .map { DownloadTrackOption(it.first, it.second) }
-            }.getOrDefault(emptyList())
-            if (mapped.isNotEmpty()) {
-                options.clear()
-                options += mapped
-                if (mapped.size > 1) {
-                    options += DownloadTrackOption(
-                        label = context.getString(R.string.download_quality_data_saver),
-                        streamKeys = mapped.last().streamKeys,
-                    )
                 }
             }
             helper.release()
-            options
+            DownloadTrackPlan.build(
+                tracks = refs,
+                bestLabel = context.getString(R.string.download_quality_best),
+                dataSaverLabel = context.getString(R.string.download_quality_data_saver),
+            )
         } catch (e: Exception) {
             Log.w(TAG, "prepareTracks failed: ${e.message}")
             listOf(DownloadTrackOption("Auto", emptyList()))

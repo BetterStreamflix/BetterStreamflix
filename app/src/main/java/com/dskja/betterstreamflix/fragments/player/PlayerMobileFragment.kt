@@ -173,6 +173,7 @@ class PlayerMobileFragment : Fragment() {
     private var currentServer: Video.Server? = null
     /** True when [currentServer] is the offline download server — uses cache DataSource. */
     private var playingOffline: Boolean = false
+    private var offlineCacheBlocked: Boolean = false
     private var isIgnoringPip = false
     private var waitingForBypass = false
     private var bypassDone = false
@@ -1608,7 +1609,14 @@ class PlayerMobileFragment : Fragment() {
                 offline != playingOffline
         if (needsReinit) {
             playingOffline = offline
+            offlineCacheBlocked = false
             initializePlayer(extraBuffering, softwareDecoder)
+            if (offlineCacheBlocked || !::player.isInitialized || playerReleased) {
+                if (offline) {
+                    showPlayerError(getString(R.string.player_offline_missing))
+                }
+                return
+            }
             player.playlistMetadata = MediaMetadata.Builder()
                 .setTitle(resolvePlayerTitle())
                 .setMediaServers(servers.map {
@@ -1751,6 +1759,7 @@ class PlayerMobileFragment : Fragment() {
 
             override fun onPlayerError(error: PlaybackException) {
                 super.onPlayerError(error)
+                if (isOfflinePlayback()) suppressBuiltInErrorOverlay()
                 Log.e("PlayerMobileFragment", "onPlayerError: ", error)
                 if (!com.dskja.betterstreamflix.extractors.ExtractorFailureClassifier
                         .isExpectedStreamNoise(error)
@@ -1983,17 +1992,26 @@ class PlayerMobileFragment : Fragment() {
                         database.movieDao().update(it)
                         UserDataCache.syncMovieToCache(appContext, resolvedProvider, it)
                         if (finished) {
-                            SmartDownloadsManager.onMovieFinished(appContext, videoType)
+                            SmartDownloadsManager.onMovieFinished(
+                                appContext,
+                                videoType,
+                                positionMs = position,
+                                durationMs = duration,
+                                playbackEnded = reallyFinished,
+                            )
                         }
                     }
                 }
             is Video.Type.Episode -> {
                 (watchItem as? Episode)?.let { episode ->
-                    if (finished) {
-                        com.dskja.betterstreamflix.download.SmartDownloadsManager.onEpisodeFinished(
-                            appContext,
-                            videoType,
-                        )
+                        if (finished) {
+                            com.dskja.betterstreamflix.download.SmartDownloadsManager.onEpisodeFinished(
+                                appContext,
+                                videoType,
+                                positionMs = position,
+                                durationMs = duration,
+                                playbackEnded = reallyFinished,
+                            )
                         database.episodeDao().resetProgressionFromEpisode(videoType.id)
                         UserDataCache.removeEpisodeFromContinueWatching(
                             appContext,
@@ -2125,18 +2143,19 @@ class PlayerMobileFragment : Fragment() {
      * Offline chrome (pill + cast/external guards) is applied after live chrome so it is not wiped.
      */
     private fun applyLiveControllerChrome(live: Boolean) {
+        val showLive = live && !isOfflinePlayback()
         val controller = binding.pvPlayer.controller.binding
-        controller.exoProgress.isVisible = !live
-        controller.exoRew.isVisible = !live
-        controller.exoFfwd.isVisible = !live
-        controller.exoPosition.isVisible = !live
-        controller.tvTimeSeparator.isVisible = !live
-        controller.exoDuration.isVisible = !live
-        controller.tvLiveIndicator.isVisible = live
+        controller.exoProgress.isVisible = !showLive
+        controller.exoRew.isVisible = !showLive
+        controller.exoFfwd.isVisible = !showLive
+        controller.exoPosition.isVisible = !showLive
+        controller.tvTimeSeparator.isVisible = !showLive
+        controller.exoDuration.isVisible = !showLive
+        controller.tvLiveIndicator.isVisible = showLive
         runCatching {
-            controller.mediaRouteButton.isVisible = !live && UserPreferences.castEnabled && !isOfflinePlayback()
+            controller.mediaRouteButton.isVisible = !showLive && UserPreferences.castEnabled && !isOfflinePlayback()
         }
-        if (live) {
+        if (showLive) {
             val wasLive = controller.tvLiveIndicator.getTag(R.id.exp_enter_animated_tag) == true
             controller.tvLiveIndicator.text = getString(R.string.player_live_badge)
             controller.tvLiveIndicator.isClickable = true
@@ -2204,17 +2223,29 @@ class PlayerMobileFragment : Fragment() {
         val controller = binding.pvPlayer.controller.binding
         val offline = isOfflinePlayback()
         applyOfflineCastExternalGuards(offline)
-        // Never reuse the LIVE red pill on the time row for offline — it sat on top of
-        // exo_position / exo_duration. Offline is signaled in the top subtitle instead.
-        if (!isLiveTvPlayback()) {
+        // The LIVE pill is colorPrimary (#E50914) and shares the time-row start
+        // with exo_position. Hide it for every offline item, including when the
+        // active provider is live TV.
+        if (offline || !isLiveTvPlayback()) {
             controller.tvLiveIndicator.clearAnimation()
             controller.tvLiveIndicator.setOnClickListener(null)
             controller.tvLiveIndicator.isVisible = false
             controller.tvLiveIndicator.isClickable = false
+            controller.btnGoLive.isVisible = false
+            controller.tvLiveChannelMeta.isVisible = false
         }
         if (offline) {
-            // Refresh subtitle so "Play offline" appears even if header ran earlier.
+            suppressBuiltInErrorOverlay()
             updatePlayerHeader()
+        }
+    }
+
+    private fun suppressBuiltInErrorOverlay() {
+        runCatching {
+            binding.pvPlayer.setErrorMessageProvider { android.util.Pair(0, "") }
+            binding.pvPlayer.findViewById<android.view.View>(
+                androidx.media3.ui.R.id.exo_error_message,
+            )?.visibility = android.view.View.GONE
         }
     }
 
@@ -2674,22 +2705,26 @@ class PlayerMobileFragment : Fragment() {
     }
 
     private fun resolvePlayerSubtitle(videoType: Video.Type = currentVideoTypeForUi()): String {
+        if (isOfflinePlayback()) {
+            val base = subtitleBase(videoType)
+            val offlineLabel = getString(R.string.downloads_play_offline)
+            return when {
+                base.isBlank() -> offlineLabel
+                base.contains(offlineLabel, ignoreCase = true) -> base
+                else -> "$base · $offlineLabel"
+            }
+        }
         if (isLiveTvPlayback()) {
             return getString(R.string.player_live_badge)
         }
-        val base = when (videoType) {
-            is Video.Type.Movie -> args.subtitle
-            is Video.Type.Episode -> {
-                val episodeTitle = videoType.title?.takeUnless { it.isBlank() } ?: args.subtitle
-                "S${videoType.season.number} E${videoType.number}  •  $episodeTitle"
-            }
-        }
-        if (!isOfflinePlayback()) return base
-        val offlineLabel = getString(R.string.downloads_play_offline)
-        return when {
-            base.isBlank() -> offlineLabel
-            base.contains(offlineLabel, ignoreCase = true) -> base
-            else -> "$base · $offlineLabel"
+        return subtitleBase(videoType)
+    }
+
+    private fun subtitleBase(videoType: Video.Type): String = when (videoType) {
+        is Video.Type.Movie -> args.subtitle
+        is Video.Type.Episode -> {
+            val episodeTitle = videoType.title?.takeUnless { it.isBlank() } ?: args.subtitle
+            "S${videoType.season.number} E${videoType.number}  •  $episodeTitle"
         }
     }
 
@@ -2882,7 +2917,10 @@ class PlayerMobileFragment : Fragment() {
             return
         }
         val active = runCatching { activePlayer() }.getOrNull() ?: player
-        val duration = active.duration.takeIf { it > 0 } ?: run {
+        val duration = active.duration
+        if (!com.dskja.betterstreamflix.download.DownloadWatchPolicy.isKnownTime(duration) ||
+            duration < 60_000L
+        ) {
             hideNextEpisodeOverlay()
             return
         }
@@ -3027,6 +3065,7 @@ class PlayerMobileFragment : Fragment() {
             safeNavigateUp()
             return
         }
+        if (isOfflinePlayback()) suppressBuiltInErrorOverlay()
         root.findViewById<android.widget.TextView>(R.id.tv_player_error_message)?.text = message
         root.findViewById<View>(R.id.btn_player_error_close)?.let { close ->
             if (ExperimentalMobileDesign.enabled()) {
@@ -3153,6 +3192,7 @@ class PlayerMobileFragment : Fragment() {
                     .playbackCacheDataSourceFactory(requireContext())
             }.getOrElse {
                 Log.w("Player", "Offline cache not ready: ${it.message}")
+                offlineCacheBlocked = true
                 Toast.makeText(
                     requireContext(),
                     R.string.settings_download_storage_unavailable,

@@ -72,6 +72,16 @@ object DownloadEventBridge : DownloadManager.Listener {
     ) {
         val repo = DownloadRepository.get(context)
         val entity = repo.getByMedia3Id(download.request.id) ?: return
+        val state = mapState(download.state)
+        if (DownloadQueuePolicy.isStaleDownloadEvent(
+                entityUpdatedAt = entity.updatedAt,
+                downloadUpdateTimeMs = download.updateTimeMs,
+                entityState = DownloadItemState.fromKey(entity.state),
+                incoming = state,
+            )
+        ) {
+            return
+        }
         val now = System.currentTimeMillis()
         val prev = lastBytes[download.request.id]
         val speed = if (prev != null && now > prev.second) {
@@ -93,15 +103,6 @@ object DownloadEventBridge : DownloadManager.Listener {
         val remaining = (download.contentLength - download.bytesDownloaded).coerceAtLeast(0L)
         val eta = if (speed > 0L && remaining > 0L) remaining / speed else -1L
 
-        val state = when (download.state) {
-            Download.STATE_QUEUED -> DownloadItemState.QUEUED
-            Download.STATE_STOPPED -> DownloadItemState.PAUSED
-            Download.STATE_DOWNLOADING -> DownloadItemState.DOWNLOADING
-            Download.STATE_COMPLETED -> DownloadItemState.COMPLETED
-            Download.STATE_FAILED -> DownloadItemState.FAILED
-            Download.STATE_REMOVING, Download.STATE_RESTARTING -> DownloadItemState.REMOVING
-            else -> DownloadItemState.QUEUED
-        }
         // Terminal states no longer need speed sampling — otherwise lastBytes grows forever.
         if (state != DownloadItemState.DOWNLOADING && state != DownloadItemState.QUEUED) {
             lastBytes.remove(download.request.id)
@@ -124,12 +125,15 @@ object DownloadEventBridge : DownloadManager.Listener {
         val contentLength = download.contentLength.coerceAtLeast(0L)
         val nextSpeed = if (state == DownloadItemState.DOWNLOADING) speed else 0L
         val nextEta = if (state == DownloadItemState.DOWNLOADING) eta else -1L
+        val nextErrorCode = errorCodeFor(state, download, entity, finalException)
         val unchanged = entity.state == state.name &&
             entity.bytesDownloaded == download.bytesDownloaded &&
             entity.progressPct == pct &&
             entity.contentLength == contentLength &&
             entity.speedBytesPerSec == nextSpeed &&
-            entity.etaSeconds == nextEta
+            entity.etaSeconds == nextEta &&
+            entity.errorCode == nextErrorCode &&
+            entity.localUri == localUri
         if (unchanged) {
             refreshAggregateNotification(context, downloadManager)
             return
@@ -144,11 +148,7 @@ object DownloadEventBridge : DownloadManager.Listener {
             speedBytesPerSec = nextSpeed,
             etaSeconds = nextEta,
             localUri = localUri,
-            errorCode = if (state == DownloadItemState.FAILED) {
-                classifyFailure(finalException).name
-            } else {
-                ""
-            },
+            errorCode = nextErrorCode,
             errorMessage = if (state == DownloadItemState.FAILED) errorMessage else "",
         )
 
@@ -187,6 +187,34 @@ object DownloadEventBridge : DownloadManager.Listener {
 
         refreshAggregateNotification(context, downloadManager)
         entity.seasonPackId?.let { repo.refreshSeasonPack(it) }
+    }
+
+    private fun mapState(media3State: Int): DownloadItemState = when (media3State) {
+        Download.STATE_QUEUED -> DownloadItemState.QUEUED
+        Download.STATE_STOPPED -> DownloadItemState.PAUSED
+        Download.STATE_DOWNLOADING -> DownloadItemState.DOWNLOADING
+        Download.STATE_COMPLETED -> DownloadItemState.COMPLETED
+        Download.STATE_FAILED -> DownloadItemState.FAILED
+        Download.STATE_REMOVING, Download.STATE_RESTARTING -> DownloadItemState.REMOVING
+        else -> DownloadItemState.QUEUED
+    }
+
+    private fun errorCodeFor(
+        state: DownloadItemState,
+        download: Download,
+        entity: DownloadItemEntity,
+        finalException: Exception?,
+    ): String = when {
+        state == DownloadItemState.FAILED -> classifyFailure(finalException).name
+        state == DownloadItemState.PAUSED &&
+            download.stopReason == DownloadQueuePolicy.STOP_CONNECTIVITY ->
+            DownloadErrorCode.WIFI_REQUIRED.name
+        state == DownloadItemState.PAUSED &&
+            download.stopReason == DownloadQueuePolicy.STOP_USER -> ""
+        state == DownloadItemState.PAUSED &&
+            entity.errorCode == DownloadErrorCode.WIFI_REQUIRED.name ->
+            DownloadErrorCode.WIFI_REQUIRED.name
+        else -> ""
     }
 
     private fun classifyFailure(e: Exception?): DownloadErrorCode =
