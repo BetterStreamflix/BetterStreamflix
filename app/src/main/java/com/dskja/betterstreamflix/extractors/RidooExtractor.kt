@@ -1,5 +1,6 @@
 package com.dskja.betterstreamflix.extractors
 
+import com.dskja.betterstreamflix.utils.withExtractorTimeouts
 import com.dskja.betterstreamflix.models.Video
 import com.tanasi.retrofit_jsoup.converter.JsoupConverterFactory
 import okhttp3.OkHttpClient
@@ -50,6 +51,7 @@ class RidooExtractor : Extractor() {
                             .build()
                         chain.proceed(request)
                     }
+                    .withExtractorTimeouts()
                     .build()
 
                 val retrofit = Retrofit.Builder()

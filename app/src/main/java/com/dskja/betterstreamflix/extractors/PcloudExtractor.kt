@@ -1,5 +1,6 @@
 package com.dskja.betterstreamflix.extractors
 
+import com.dskja.betterstreamflix.utils.withExtractorTimeouts
 import com.google.gson.JsonParser
 import com.dskja.betterstreamflix.models.Video
 import okhttp3.OkHttpClient
@@ -53,7 +54,7 @@ class PcloudExtractor : Extractor() {
         companion object {
             fun build(): Service {
                 val client = OkHttpClient.Builder()
-                    .build()
+                    .withExtractorTimeouts().build()
 
                 val retrofit = Retrofit.Builder()
                     .baseUrl("https://api.pcloud.com/")

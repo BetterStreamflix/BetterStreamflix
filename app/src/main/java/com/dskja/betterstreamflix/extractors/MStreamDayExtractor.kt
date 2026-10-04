@@ -1,5 +1,7 @@
 package com.dskja.betterstreamflix.extractors
 
+import okhttp3.OkHttpClient
+import com.dskja.betterstreamflix.utils.withExtractorTimeouts
 import android.util.Base64
 import com.tanasi.retrofit_jsoup.converter.JsoupConverterFactory
 import com.dskja.betterstreamflix.models.Video
@@ -28,7 +30,13 @@ class MStreamDayExtractor : Extractor() {
         val service = MStreamDayExtractorService.build(mainUrl, link)
         val source = service.getSource(link.replace(mainUrl, ""))
         val html = source.html()
-        var encodedSource = html.split("window.ADBLOCKER = false;\\n")[1].split("\");</script>")[0]
+        val marker = "window.ADBLOCKER = false;\\n"
+        val start = html.indexOf(marker)
+        if (start < 0) throw Exception("MStreamDay source not found")
+        val tail = html.substring(start + marker.length)
+        val end = tail.indexOf("\");</script>")
+        if (end < 0) throw Exception("MStreamDay source not found")
+        var encodedSource = tail.substring(0, end)
 
         encodedSource = encodedSource.replace("\\u002b", "+")
         encodedSource = encodedSource.replace("\\u0027", "'")
@@ -56,7 +64,11 @@ class MStreamDayExtractor : Extractor() {
                 .split("window.svg={\"stream\":\"")[1]
                 .split("\",\"hash")[0]
             val urlSigDecoded = sigDecode(urlEncoded)
-            return Video(source = urlSigDecoded)
+            if (urlSigDecoded.isBlank()) throw Exception("MStreamDay source not found")
+            return Video(
+                source = urlSigDecoded,
+                headers = mapOf("Referer" to "$mainUrl/"),
+            )
         }
         throw Exception("Could not extract MStreamDayVideo")
     }
@@ -87,7 +99,7 @@ class MStreamDayExtractor : Extractor() {
         companion object {
             fun build(baseUrl: String, originalLink: String): MStreamDayExtractorService {
                 val retrofit = Retrofit.Builder().baseUrl(baseUrl)
-                    .addConverterFactory(JsoupConverterFactory.create()).build()
+                    .addConverterFactory(JsoupConverterFactory.create()).client(OkHttpClient.Builder().withExtractorTimeouts().build()).build()
                 return retrofit.create(MStreamDayExtractorService::class.java)
             }
         }

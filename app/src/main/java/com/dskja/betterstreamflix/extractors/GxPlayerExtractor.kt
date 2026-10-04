@@ -1,5 +1,6 @@
 package com.dskja.betterstreamflix.extractors
 
+import com.dskja.betterstreamflix.utils.withExtractorTimeouts
 import androidx.media3.common.MimeTypes
 import com.dskja.betterstreamflix.models.Video
 import com.dskja.betterstreamflix.utils.DnsResolver
@@ -64,7 +65,7 @@ class GxPlayerExtractor : Extractor() {
                     .dns(DnsResolver.doh)
                     .readTimeout(30, TimeUnit.SECONDS)
                     .connectTimeout(30, TimeUnit.SECONDS)
-                    .build()
+                    .withExtractorTimeouts().build()
 
                 return Retrofit.Builder()
                     .baseUrl(baseUrl)

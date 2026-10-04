@@ -1,5 +1,7 @@
 package com.dskja.betterstreamflix.extractors
 
+import okhttp3.OkHttpClient
+import com.dskja.betterstreamflix.utils.withExtractorTimeouts
 import android.util.Base64
 import com.google.gson.Gson
 import com.google.gson.GsonBuilder
@@ -135,7 +137,7 @@ open class VidplayExtractor : Extractor() {
                                 .create()
                         )
                     )
-                    .build()
+                    .client(OkHttpClient.Builder().withExtractorTimeouts().build()).build()
 
                 return retrofit.create(Service::class.java)
             }

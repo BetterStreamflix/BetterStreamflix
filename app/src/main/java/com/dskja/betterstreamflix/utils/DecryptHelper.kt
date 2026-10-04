@@ -15,6 +15,19 @@ object DecryptHelper {
         return decryptF7(encodedString)
     }
 
+    /** First payload that decrypts to a non-blank `source`. Failed candidates are skipped. */
+    fun firstPlayable(candidates: List<String>): JsonObject? {
+        for (candidate in candidates) {
+            if (candidate.isBlank()) continue
+            val parsed = decrypt(candidate)
+            val source = runCatching {
+                parsed.get("source")?.takeIf { !it.isJsonNull }?.asString
+            }.getOrNull()
+            if (!source.isNullOrBlank()) return parsed
+        }
+        return null
+    }
+
     private fun decryptF7(p8: String): JsonObject {
         return try {
             val vF = rot13(p8)

@@ -1,5 +1,6 @@
 package com.dskja.betterstreamflix.extractors
 
+import com.dskja.betterstreamflix.utils.withExtractorTimeouts
 import android.net.Uri
 import com.dskja.betterstreamflix.models.Video
 import com.tanasi.retrofit_jsoup.converter.JsoupConverterFactory
@@ -53,7 +54,7 @@ class VtubeExtractor : Extractor() {
                 val client = OkHttpClient.Builder()
                     .readTimeout(30, TimeUnit.SECONDS)
                     .connectTimeout(30, TimeUnit.SECONDS)
-                    .build()
+                    .withExtractorTimeouts().build()
 
                 return Retrofit.Builder()
                     .baseUrl(baseUrl)

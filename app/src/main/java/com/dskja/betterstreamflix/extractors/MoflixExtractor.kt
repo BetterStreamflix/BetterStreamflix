@@ -66,25 +66,26 @@ class MoflixExtractor : Extractor() {
     }
 
     override suspend fun extract(link: String): Video {
-        if (link.contains("/playback") || link.contains(".m3u8")) {
-            val source = if (link.contains("/playback")) {
-                val videoId = link.substringAfter("videos/").substringBefore("/playback")
-                try {
-                    Service.build(mainUrl).getPlayback(link, referer = "$mainUrl/watch/$videoId").src ?: ""
-                } catch (e: Exception) {
-                    ""
-                }
-            } else {
-                link
-            }
-
-            return Video(
-                source = source,
-                type = MimeTypes.APPLICATION_M3U8
-            )
+        if (!link.contains("/playback") && !link.contains(".m3u8")) {
+            throw Exception("Moflix source not found")
+        }
+        val source = if (link.contains("/playback")) {
+            val videoId = link.substringAfter("videos/").substringBefore("/playback")
+            val src = Service.build(mainUrl).getPlayback(link, referer = "$mainUrl/watch/$videoId").src
+            if (src.isNullOrBlank()) throw Exception("Moflix source not found")
+            src
+        } else {
+            link
         }
 
-        return Extractor.extract(link)
+        return Video(
+            source = source,
+            type = MimeTypes.APPLICATION_M3U8,
+            headers = mapOf(
+                "Referer" to "$mainUrl/",
+                "User-Agent" to "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:109.0) Gecko/20100101 Firefox/115.0",
+            ),
+        )
     }
 
 

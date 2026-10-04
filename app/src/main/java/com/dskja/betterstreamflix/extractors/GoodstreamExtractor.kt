@@ -1,5 +1,6 @@
 package com.dskja.betterstreamflix.extractors
 
+import com.dskja.betterstreamflix.utils.withExtractorTimeouts
 import com.tanasi.retrofit_jsoup.converter.JsoupConverterFactory
 import com.dskja.betterstreamflix.models.Video
 import okhttp3.OkHttpClient
@@ -59,6 +60,7 @@ class GoodstreamExtractor : Extractor() {
                             .build()
                         chain.proceed(request)
                     }
+                    .withExtractorTimeouts()
                     .build()
 
                 val retrofit = Retrofit.Builder()

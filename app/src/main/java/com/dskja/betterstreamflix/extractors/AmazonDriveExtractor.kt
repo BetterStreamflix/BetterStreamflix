@@ -1,5 +1,6 @@
 package com.dskja.betterstreamflix.extractors
 
+import com.dskja.betterstreamflix.utils.withExtractorTimeouts
 import com.google.gson.JsonArray
 import com.google.gson.JsonObject
 import com.google.gson.JsonParser
@@ -72,6 +73,7 @@ class AmazonDriveExtractor : Extractor() {
                             .build()
                         chain.proceed(request)
                     }
+                    .withExtractorTimeouts()
                     .build()
 
                 val retrofit = Retrofit.Builder()

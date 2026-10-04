@@ -1,5 +1,6 @@
 package com.dskja.betterstreamflix.extractors
 
+import com.dskja.betterstreamflix.utils.withExtractorTimeouts
 import androidx.media3.common.MimeTypes
 import com.tanasi.retrofit_jsoup.converter.JsoupConverterFactory
 import com.dskja.betterstreamflix.models.Video
@@ -28,7 +29,7 @@ open class LoadXExtractor: Extractor() {
     override suspend fun extract(link: String): Video {
         val videoId = link.substringAfterLast("/")
 
-        val client = OkHttpClient()
+        val client = OkHttpClient.Builder().withExtractorTimeouts().build()
 
         val getRequest = Request.Builder()
             .url(link)
@@ -36,6 +37,15 @@ open class LoadXExtractor: Extractor() {
             .build()
 
         val getResponse = client.newCall(getRequest).execute()
+        if (getResponse.code == 404 || getResponse.code == 410) {
+            getResponse.close()
+            throw Exception("LoadX source not found (404)")
+        }
+        if (!getResponse.isSuccessful) {
+            val code = getResponse.code
+            getResponse.close()
+            throw Exception("LoadX request failed HTTP $code")
+        }
         val setCookieHeaders = getResponse.headers("Set-Cookie")
 
         val firePlayerCookie = setCookieHeaders
@@ -51,7 +61,7 @@ open class LoadXExtractor: Extractor() {
             cookie = firePlayerCookie
         )
         val videoUrl = JSONObject(responseBody.string()).optString("videoSource")
-            ?: throw Exception("videoSource not found in response")
+        if (videoUrl.isBlank()) throw Exception("LoadX source not found")
 
         return Video(source = videoUrl,
             type = MimeTypes.APPLICATION_M3U8,
@@ -111,7 +121,7 @@ open class LoadXExtractor: Extractor() {
                 val retrofit = Retrofit.Builder()
                     .baseUrl(baseUrl)
                     .addConverterFactory(JsoupConverterFactory.create())
-                    .build()
+                    .client(OkHttpClient.Builder().withExtractorTimeouts().build()).build()
 
                 return retrofit.create(Service::class.java)
             }

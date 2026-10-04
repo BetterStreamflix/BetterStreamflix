@@ -1,5 +1,6 @@
 package com.dskja.betterstreamflix.extractors
 
+import com.dskja.betterstreamflix.utils.withExtractorTimeouts
 import com.dskja.betterstreamflix.models.Video
 import com.dskja.betterstreamflix.utils.DnsResolver
 import okhttp3.OkHttpClient
@@ -38,6 +39,7 @@ class ShareCloudyExtractor : Extractor() {
                         chain.proceed(newRequest)
                     }
                     .dns(DnsResolver.doh)
+                    .withExtractorTimeouts()
                     .build()
 
                 val retrofit = Retrofit.Builder()

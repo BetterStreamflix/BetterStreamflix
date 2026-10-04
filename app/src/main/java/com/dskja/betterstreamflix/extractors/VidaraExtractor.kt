@@ -1,5 +1,6 @@
 package com.dskja.betterstreamflix.extractors
 
+import com.dskja.betterstreamflix.utils.withExtractorTimeouts
 import com.google.gson.JsonParser
 import com.google.gson.annotations.SerializedName
 import com.dskja.betterstreamflix.models.Video
@@ -82,7 +83,7 @@ class VidaraExtractor : Extractor() {
             fun build(baseUrl: String): Service {
                 val client = OkHttpClient.Builder()
                     .dns(DnsResolver.doh)
-                    .build()
+                    .withExtractorTimeouts().build()
 
                 val retrofit = Retrofit.Builder()
                     .baseUrl(baseUrl)

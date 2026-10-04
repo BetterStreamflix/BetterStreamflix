@@ -1,5 +1,6 @@
 package com.dskja.betterstreamflix.extractors
 
+import com.dskja.betterstreamflix.utils.withExtractorTimeouts
 import android.util.Base64
 import com.google.gson.JsonObject
 import com.google.gson.JsonParser
@@ -21,19 +22,21 @@ class MagaSavorExtractor : Extractor() {
     override suspend fun extract(link: String): Video {
         val service = Service.build(mainUrl)
         val source = service.get(link, mainUrl)
-        val scriptTag = source.selectFirst("script[type=application/json]")
-        val encodedStringInScriptTag = scriptTag?.data()?.trim().orEmpty()
-        val encodedString = DecryptHelper.findEncodedRegex(source.html())
-        val decryptedContent = if (encodedString != null) {
-            DecryptHelper.decrypt(encodedString)
-        } else {
-            DecryptHelper.decrypt(encodedStringInScriptTag)
-        }
+        val scriptJson = source.selectFirst("script[type=application/json]")?.data()?.trim().orEmpty()
+        val decryptedContent = DecryptHelper.firstPlayable(
+            listOfNotNull(DecryptHelper.findEncodedRegex(source.html()), scriptJson.takeIf { it.isNotBlank() }),
+        ) ?: throw Exception("MagaSavor source not found")
         val m3u8 = decryptedContent.get("source")?.asString.orEmpty()
+        if (m3u8.isBlank()) throw Exception("MagaSavor source not found")
 
         return Video(
             source = m3u8,
-            subtitles = listOf()
+            subtitles = listOf(),
+            headers = mapOf(
+                "Referer" to "$mainUrl/",
+                "Origin" to mainUrl,
+                "User-Agent" to USER_AGENT,
+            ),
         )
 
     }
@@ -42,7 +45,7 @@ class MagaSavorExtractor : Extractor() {
         companion object {
             fun build(baseUrl: String): Service = Retrofit.Builder()
                 .baseUrl(baseUrl)
-                .client(OkHttpClient.Builder().build())
+                .client(OkHttpClient.Builder().withExtractorTimeouts().build())
                 .addConverterFactory(JsoupConverterFactory.create())
                 .build()
                 .create(Service::class.java)

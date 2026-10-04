@@ -1,5 +1,6 @@
 package com.dskja.betterstreamflix.extractors
 
+import com.dskja.betterstreamflix.utils.withExtractorTimeouts
 import com.tanasi.retrofit_jsoup.converter.JsoupConverterFactory
 import com.dskja.betterstreamflix.models.Video
 import okhttp3.OkHttpClient
@@ -71,7 +72,7 @@ class VidPlyExtractor : Extractor() {
         companion object {
             fun build(baseUrl: String): Service = Retrofit.Builder()
                 .baseUrl(baseUrl)
-                .client(OkHttpClient.Builder().build())
+                .client(OkHttpClient.Builder().withExtractorTimeouts().build())
                 .addConverterFactory(JsoupConverterFactory.create())
                 .addConverterFactory(ScalarsConverterFactory.create())
                 .build()

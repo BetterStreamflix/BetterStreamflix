@@ -1,5 +1,6 @@
 package com.dskja.betterstreamflix.extractors
 
+import com.dskja.betterstreamflix.utils.withExtractorTimeouts
 import com.google.gson.JsonParser
 import com.dskja.betterstreamflix.models.Video
 import okhttp3.OkHttpClient
@@ -40,10 +41,12 @@ class StreamixExtractor : Extractor() {
         }
         
         val streamingUrl = jsonObject.get("streaming_url")?.asString
-            ?: throw Exception("Streaming URL not found in Streamix API response")
+            ?.takeIf { it.isNotBlank() }
+            ?: throw Exception("Streamix source not found")
 
         return Video(
-            source = streamingUrl
+            source = streamingUrl,
+            headers = mapOf("Referer" to "$apiBaseUrl/"),
         )
     }
 
@@ -52,7 +55,7 @@ class StreamixExtractor : Extractor() {
         companion object {
             fun build(baseUrl: String): Service {
                 val client = OkHttpClient.Builder()
-                    .build()
+                    .withExtractorTimeouts().build()
 
                 val retrofit = Retrofit.Builder()
                     .baseUrl(baseUrl)

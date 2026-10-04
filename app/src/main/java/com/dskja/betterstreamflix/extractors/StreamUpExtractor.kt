@@ -1,5 +1,6 @@
 package com.dskja.betterstreamflix.extractors
 
+import com.dskja.betterstreamflix.utils.withExtractorTimeouts
 import com.google.gson.JsonParser
 import com.dskja.betterstreamflix.models.Video
 import com.dskja.betterstreamflix.utils.DnsResolver
@@ -72,7 +73,7 @@ class StreamUpExtractor : Extractor() {
             fun build(baseUrl: String): Service {
                 val client = OkHttpClient.Builder()
                     .dns(DnsResolver.doh)
-                    .build()
+                    .withExtractorTimeouts().build()
 
                 val retrofit = Retrofit.Builder()
                     .baseUrl(baseUrl)
