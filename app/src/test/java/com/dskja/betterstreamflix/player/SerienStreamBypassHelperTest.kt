@@ -19,6 +19,44 @@ class SerienStreamBypassHelperTest {
         val jar = "laravel_session=abc; XSRF-TOKEN=tok"
         assertTrue(SerienStreamBypassHelper.looksLikeBypassSolved(jar))
         assertFalse(SerienStreamBypassHelper.looksLikeClearanceSolved(jar))
+        // Anonymous session alone must still show captcha.
+        assertFalse(SerienStreamBypassHelper.canSkipInteractiveBypass(jar, accountConfirmed = false))
+    }
+
+    @Test
+    fun canSkipInteractiveBypass_acceptsConfirmedLoginWithoutClearance() {
+        val jar = "laravel_session=abc; XSRF-TOKEN=tok"
+        assertTrue(
+            SerienStreamBypassHelper.canSkipInteractiveBypass(jar, accountConfirmed = true),
+        )
+    }
+
+    @Test
+    fun canSkipInteractiveBypass_acceptsRememberLoginWithoutClearance() {
+        val jar = "laravel_session=abc; rememberLogin=1"
+        assertTrue(
+            SerienStreamBypassHelper.canSkipInteractiveBypass(jar, accountConfirmed = false),
+        )
+    }
+
+    @Test
+    fun canSkipInteractiveBypass_acceptsClearance() {
+        assertTrue(
+            SerienStreamBypassHelper.canSkipInteractiveBypass(
+                "cf_clearance=ok; PHPSESSID=x",
+                accountConfirmed = false,
+            ),
+        )
+    }
+
+    @Test
+    fun mergeOutgoingCookieHeader_prefersStoredSession() {
+        val merged = SerienStreamBypassHelper.mergeOutgoingCookieHeader(
+            "PHPSESSID=old",
+            "laravel_session=keep; PHPSESSID=new",
+        )
+        assertTrue(merged.contains("laravel_session=keep"))
+        assertTrue(merged.contains("PHPSESSID=new"))
     }
 
     @Test

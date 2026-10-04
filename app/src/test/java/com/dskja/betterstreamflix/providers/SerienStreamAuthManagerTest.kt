@@ -156,4 +156,21 @@ class SerienStreamAuthManagerTest {
         )
         assertNull(SerienStreamAuthManager.parseLoginCsrfToken("<html></html>"))
     }
+
+    @Test
+    fun canSkipInteractiveBypass_helpersAlignWithAccountMarkers() {
+        // Pure helper coverage — AuthManager.canSkipInteractiveBypass needs prefs/Android.
+        assertTrue(
+            com.dskja.betterstreamflix.player.SerienStreamBypassHelper.canSkipInteractiveBypass(
+                "rememberLogin=1; laravel_session=x",
+                accountConfirmed = false,
+            ),
+        )
+        assertFalse(
+            com.dskja.betterstreamflix.player.SerienStreamBypassHelper.canSkipInteractiveBypass(
+                "laravel_session=x",
+                accountConfirmed = false,
+            ),
+        )
+    }
 }

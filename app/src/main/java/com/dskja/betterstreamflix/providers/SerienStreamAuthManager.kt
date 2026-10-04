@@ -61,6 +61,24 @@ object SerienStreamAuthManager {
             SerienStreamBypassHelper.looksLikeAccountSession(cookies)
     }
 
+    /**
+     * Skip interactive captcha/WebView/QR when clearance **or** a confirmed
+     * login/session token is present.
+     */
+    fun canSkipInteractiveBypass(): Boolean {
+        return SerienStreamBypassHelper.canSkipInteractiveBypass(
+            cookieHeader = UserPreferences.serienStreamSessionCookies,
+            accountConfirmed = UserPreferences.serienStreamAccountConfirmed || isLoggedIn(),
+        )
+    }
+
+    /** Cookie header that OkHttp interceptors should attach on SerienStream hosts. */
+    fun cookieHeaderForRequests(): String {
+        return SerienStreamBypassHelper.sanitizeSessionCookies(
+            UserPreferences.serienStreamSessionCookies,
+        )
+    }
+
     fun snapshot(): SessionSnapshot {
         val cookies = SerienStreamBypassHelper.sanitizeSessionCookies(
             UserPreferences.serienStreamSessionCookies,
@@ -146,9 +164,17 @@ object SerienStreamAuthManager {
             return false
         }
         val saved = persist(cleaned)
-        // Only remember-me / explicit account cookies confirm sign-in from paste.
-        // A bare laravel_session is anonymous until WebView HTML proof or validate.
-        if (saved && SerienStreamBypassHelper.looksLikeAccountSession(cleaned)) {
+        // Remember-me / explicit account cookies confirm sign-in from paste.
+        // Clearance + session cookie from a browser login jar also counts — the
+        // pasted token is meant to suppress captcha without another WebView proof.
+        if (saved && (
+                SerienStreamBypassHelper.looksLikeAccountSession(cleaned) ||
+                    (
+                        SerienStreamBypassHelper.looksLikeClearanceSolved(cleaned) &&
+                            SerienStreamBypassHelper.hasWebSessionCookie(cleaned)
+                        )
+                )
+        ) {
             UserPreferences.serienStreamAccountConfirmed = true
         }
         return saved
@@ -474,11 +500,17 @@ object SerienStreamAuthManager {
                 )
             }
             val managerCookies = runCatching {
-                android.webkit.CookieManager.getInstance().getCookie("$base/")
+                val cm = android.webkit.CookieManager.getInstance()
+                listOf(
+                    cm.getCookie("$base/").orEmpty(),
+                    cm.getCookie(loginUrl).orEmpty(),
+                    cm.getCookie("$base/account").orEmpty(),
+                ).filter { it.isNotBlank() }.joinToString("; ")
             }.getOrNull().orEmpty()
-            val cookieHeader = listOf(managerCookies, setCookies)
-                .filter { it.isNotBlank() }
-                .joinToString("; ")
+            val cookieHeader = SerienStreamBypassHelper.mergeCookieHeaders(
+                SerienStreamBypassHelper.mergeCookieHeaders(managerCookies, setCookies),
+                UserPreferences.serienStreamSessionCookies,
+            )
             val htmlOk = SerienStreamBypassHelper.looksLikeLoggedInHtml(postBody) ||
                 (!WatchlistImporter.looksLikeLoginPage(postBody, finalUrl) &&
                     SerienStreamBypassHelper.hasWebSessionCookie(cookieHeader))
@@ -491,6 +523,8 @@ object SerienStreamAuthManager {
                     leftLoginAfterVisit = true,
                     pageUrl = finalUrl,
                 )
+                // Re-seed immediately so Home/Search/Play pick up the jar without restart.
+                seedRuntimeCookies()
                 return@withContext CredentialLoginResult(ok = true, displayName = name)
             }
             lastError = "login"

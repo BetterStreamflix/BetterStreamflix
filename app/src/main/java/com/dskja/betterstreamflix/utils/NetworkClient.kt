@@ -49,10 +49,39 @@ object NetworkClient {
         }
 
         override fun loadForRequest(url: HttpUrl): List<Cookie> {
-            val cookieString = cookieManager.getCookie(url.toString()) ?: return emptyList()
-            return cookieString.split(";").mapNotNull {
-                Cookie.parse(url, it.trim())
+            val fromManager = cookieManager.getCookie(url.toString()).orEmpty()
+            // Merge persisted SerienStream / AniWorld login jars so Home/Search/Detail/Play
+            // keep working even when CookieManager lost Path/Domain entries after a restart.
+            val stored = storedSessionCookiesForHost(url.host)
+            val merged = when {
+                fromManager.isBlank() -> stored
+                stored.isBlank() -> fromManager
+                else -> com.dskja.betterstreamflix.player.SerienStreamBypassHelper
+                    .mergeOutgoingCookieHeader(fromManager, stored)
             }
+            if (merged.isBlank()) return emptyList()
+            return merged.split(";").mapNotNull { part ->
+                val trimmed = part.trim()
+                if (trimmed.isBlank() || !trimmed.contains("=")) null
+                else Cookie.parse(url, trimmed)
+            }
+        }
+    }
+
+    private fun storedSessionCookiesForHost(host: String?): String {
+        val h = host?.lowercase()?.removePrefix("www.").orEmpty()
+        if (h.isBlank()) return ""
+        return try {
+            when {
+                com.dskja.betterstreamflix.providers.SerienStreamEndpoints.isKnownHost(h) ->
+                    com.dskja.betterstreamflix.providers.SerienStreamAuthManager.cookieHeaderForRequests()
+                h == "aniworld.to" || h.endsWith(".aniworld.to") ->
+                    com.dskja.betterstreamflix.providers.AniWorldAuthManager.cookieHeaderForRequests()
+                else -> ""
+            }
+        } catch (_: Throwable) {
+            // Prefs / providers may not be ready during very early bootstrap.
+            ""
         }
     }
 

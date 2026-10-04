@@ -369,10 +369,12 @@ class PlayerTvFragment : Fragment() {
                                 // Fall through like Mobile — other hosters may still play (H-PLAY-3).
                                 deferToNormalPlayback = true
                             } else {
-                                // Pasted cookies: skip QR when clearance is already present (#112/#117).
+                                // Pasted cookies / login token: skip QR when clearance or
+                                // a confirmed account session is already present (#112/#117).
                                 SerienStreamBypassHelper.applyStoredSessionCookies(bypassUrl)
+                                SerienStreamAuthManager.seedRuntimeCookies()
                                 val stored = UserPreferences.serienStreamSessionCookies
-                                if (SerienStreamBypassHelper.looksLikeClearanceSolved(stored)) {
+                                if (SerienStreamAuthManager.canSkipInteractiveBypass()) {
                                     waitingForBypass = false
                                     bypassDone = true
                                     applyBypassCookies(sToServer.id, stored)
