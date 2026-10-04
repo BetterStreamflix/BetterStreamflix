@@ -233,7 +233,12 @@ object DetailHeaderController {
             hideUntilReady = false,
             contentDescription = title,
             onFailed = {
-                // Keep tag + title fallback only if pixels never arrive; scroll still prefers logo tag.
+                // Only drop this request's tag. A newer bind may already own the slot.
+                if (logo.tag == logoUrl) {
+                    logo.tag = null
+                    logo.setImageDrawable(null)
+                    logo.visibility = View.INVISIBLE
+                }
                 logo.post { onScrolled(root, lastScrollY(root)) }
             },
             onReady = { readyUrl ->

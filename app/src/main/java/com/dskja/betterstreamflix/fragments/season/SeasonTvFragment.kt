@@ -254,6 +254,16 @@ class SeasonTvFragment : Fragment() {
             onCtaClick = { requireActivity().onBackPressedDispatcher.onBackPressed() },
         )
         binding.hgvEpisodes.visibility = if (empty) View.GONE else View.VISIBLE
+        if (empty) {
+            val emptyCta = binding.root.findViewById<View>(R.id.btn_season_empty_cta)
+            emptyCta?.visibility = View.VISIBLE
+            emptyCta?.isFocusable = true
+            emptyCta?.isFocusableInTouchMode = true
+            emptyCta?.setOnClickListener {
+                requireActivity().onBackPressedDispatcher.onBackPressed()
+            }
+            emptyCta?.post { emptyCta.requestFocus() }
+        }
         binding.btnSeasonDownload.isEnabled = !empty
         binding.btnSeasonDownload.alpha = if (empty) 0.4f else 1f
 

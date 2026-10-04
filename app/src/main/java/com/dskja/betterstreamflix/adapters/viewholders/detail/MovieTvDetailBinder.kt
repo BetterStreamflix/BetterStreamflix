@@ -64,7 +64,7 @@ internal fun MovieViewHolder.bindMovieTvDetail(binding: ContentMovieTvBinding) {
         }
         binding.ivMoviePoster.alpha = if (logoReady) 0f else 0.92f
     }
-    applyTvBrandChrome(logoReady = !movie.logo.isNullOrBlank())
+    applyTvBrandChrome(logoReady = false)
     com.dskja.betterstreamflix.logo.TitleLogoSurface.bindAndMaybeResolve(
         anchor = binding.root,
         imageView = binding.ivMovieLogo,
@@ -186,6 +186,7 @@ internal fun MovieViewHolder.bindMovieTvDetail(binding: ContentMovieTvBinding) {
             ellipsize = if (open) null else android.text.TextUtils.TruncateAt.END
         }
         if (!movie.overview.isNullOrBlank()) {
+            visibility = View.VISIBLE
             isFocusable = true
             isFocusableInTouchMode = true
             isClickable = true
@@ -206,8 +207,13 @@ internal fun MovieViewHolder.bindMovieTvDetail(binding: ContentMovieTvBinding) {
             nextFocusDownId = binding.btnMovieWatchNow.id
             binding.btnMovieWatchNow.nextFocusUpId = id
         } else {
+            text = ""
+            visibility = View.GONE
             isFocusable = false
             setOnClickListener(null)
+            val genres = binding.tvMovieGenres
+            binding.btnMovieWatchNow.nextFocusUpId =
+                if (genres.isVisible && genres.isFocusable) genres.id else View.NO_ID
         }
     }
 
@@ -235,16 +241,35 @@ internal fun MovieViewHolder.bindMovieTvDetail(binding: ContentMovieTvBinding) {
     }
 
     fun rewireTvCtaFocus() {
+        val watched = binding.root.findViewById<View>(R.id.btn_movie_watched)
+        val share = binding.root.findViewById<View>(R.id.btn_movie_share)
         com.dskja.betterstreamflix.utils.TvFocusChain.linkHorizontal(
             binding.btnMovieWatchNow,
             binding.btnMovieFavorite,
             binding.btnMovieTrailer,
             binding.btnMovieDownload,
         )
-        com.dskja.betterstreamflix.utils.TvFocusChain.linkHorizontal(
-            binding.root.findViewById(R.id.btn_movie_watched),
-            binding.root.findViewById(R.id.btn_movie_share),
+        val secondary = listOfNotNull(watched, share)
+        if (secondary.isNotEmpty()) {
+            com.dskja.betterstreamflix.utils.TvFocusChain.linkHorizontal(*secondary.toTypedArray())
+        }
+        val downTarget = listOfNotNull(watched, share).firstOrNull {
+            it.visibility == View.VISIBLE && it.isFocusable
+        }
+        com.dskja.betterstreamflix.utils.TvFocusChain.linkDown(
+            listOf(
+                binding.btnMovieWatchNow,
+                binding.btnMovieFavorite,
+                binding.btnMovieTrailer,
+                binding.btnMovieDownload,
+            ),
+            downTarget,
         )
+        listOfNotNull(watched, share).forEach { button ->
+            if (button.visibility == View.VISIBLE) {
+                button.nextFocusUpId = binding.btnMovieWatchNow.id
+            }
+        }
     }
 
     binding.btnMovieTrailer.apply {

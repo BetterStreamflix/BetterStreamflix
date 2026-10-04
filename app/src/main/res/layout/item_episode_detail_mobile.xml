@@ -151,11 +151,9 @@
         android:maxLines="2"
         android:textColor="@color/cinema_text_soft"
         android:textSize="12sp"
-        app:layout_constraintBottom_toBottomOf="@id/fl_episode_thumb"
         app:layout_constraintEnd_toStartOf="@id/btn_episode_download"
         app:layout_constraintStart_toEndOf="@id/fl_episode_thumb"
         app:layout_constraintTop_toBottomOf="@id/tv_episode_meta"
-        app:layout_constraintVertical_bias="0"
         tools:text="Two decades after leaving the family business…" />
 
     <!-- Legacy ids kept for EpisodeViewHolder paths that still touch them. -->

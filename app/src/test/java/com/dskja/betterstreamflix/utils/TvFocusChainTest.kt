@@ -41,6 +41,14 @@ class TvFocusChainTest {
     }
 
     @Test
+    fun linkDownIsPublicApi() {
+        val method = TvFocusChain::class.java.methods.firstOrNull { it.name == "linkDown" }
+        assertNotNull("TvFocusChain.linkDown must remain public", method)
+        assertEquals(2, method!!.parameterTypes.size)
+        assertEquals(Void.TYPE, method.returnType)
+    }
+
+    @Test
     fun linkHorizontalIsPublicApi() {
         val method = TvFocusChain::class.java.methods.firstOrNull { it.name == "linkHorizontal" }
         assertNotNull("TvFocusChain.linkHorizontal must remain public", method)

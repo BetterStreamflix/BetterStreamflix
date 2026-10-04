@@ -214,6 +214,8 @@ class TvShowViewModel(
 
     private val loadingSeasonIds = mutableSetOf<String>()
     private val failedSeasonIds = mutableSetOf<String>()
+    /** Seasons whose episode fetch already finished, including a legitimate empty list. */
+    private val settledSeasonIds = mutableSetOf<String>()
 
     fun beginSeasonEpisodeLoad(seasonId: String): Boolean = loadingSeasonIds.add(seasonId)
 
@@ -233,6 +235,18 @@ class TvShowViewModel(
     fun clearSeasonEpisodeFailure(seasonId: String) {
         loadingSeasonIds.remove(seasonId)
         failedSeasonIds.remove(seasonId)
+    }
+
+    fun markSeasonEpisodesSettled(seasonId: String) {
+        loadingSeasonIds.remove(seasonId)
+        failedSeasonIds.remove(seasonId)
+        settledSeasonIds.add(seasonId)
+    }
+
+    fun isSeasonEpisodesSettled(seasonId: String): Boolean = settledSeasonIds.contains(seasonId)
+
+    fun clearSeasonEpisodesSettled(seasonId: String) {
+        settledSeasonIds.remove(seasonId)
     }
 
     sealed class SeasonState {
@@ -438,7 +452,7 @@ class TvShowViewModel(
             }
 
             database.episodeDao().insertAll(episodes)
-            clearSeasonEpisodeFailure(season.id)
+            markSeasonEpisodesSettled(season.id)
 
             _seasonState.emit(SeasonState.SuccessLoading(tvShow, season, episodes))
         } catch (e: Exception) {
