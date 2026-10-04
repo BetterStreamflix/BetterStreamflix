@@ -564,6 +564,29 @@ object AniWorldProvider : Provider, ProviderConfigUrl {
 
     private interface Service {
         companion object {
+            private fun isAniWorldHost(host: String?): Boolean {
+                val h = host?.lowercase(Locale.US)?.removePrefix("www.").orEmpty()
+                if (h.isBlank()) return false
+                return h == "aniworld.to" || h.endsWith(".aniworld.to")
+            }
+
+            private fun OkHttpClient.Builder.applyAniWorldSession(): OkHttpClient.Builder {
+                return cookieJar(com.dskja.betterstreamflix.utils.NetworkClient.cookieJar)
+                    .addInterceptor { chain ->
+                        val original = chain.request()
+                        val builder = original.newBuilder()
+                        val stored = AniWorldAuthManager.cookieHeaderForRequests()
+                        if (stored.isNotBlank() && isAniWorldHost(original.url.host)) {
+                            val merged = com.dskja.betterstreamflix.player.SerienStreamBypassHelper
+                                .mergeOutgoingCookieHeader(original.header("Cookie"), stored)
+                            if (merged.isNotBlank()) {
+                                builder.header("Cookie", merged)
+                            }
+                        }
+                        chain.proceed(builder.build())
+                    }
+            }
+
             private fun getOkHttpClient(): OkHttpClient {
                 val appCache = Cache(File(BetterStreamflixApp.instance.cacheDir, "okhttpcache"), 10 * 1024 * 1024)
                 val clientBuilder = OkHttpClient.Builder()
@@ -572,6 +595,7 @@ object AniWorldProvider : Provider, ProviderConfigUrl {
                     .connectTimeout(30, TimeUnit.SECONDS)
                 return clientBuilder
                     .dns(DnsResolver.doh)
+                    .applyAniWorldSession()
                     .build()
             }
 
@@ -600,6 +624,7 @@ object AniWorldProvider : Provider, ProviderConfigUrl {
                         .dns(DnsResolver.doh)
                         .followRedirects(true)
                         .followSslRedirects(true)
+                        .applyAniWorldSession()
                         .build()
                 } catch (e: Exception) {
                     throw RuntimeException(e)
