@@ -16,13 +16,15 @@ object ProviderHealth {
         "Einschalten",
         "Series Turcas",
         "FrenchManga",
-        "Poseidonhd2",
-        "SeriesFlix",
         "MKissa",
         "FrenchAnime",
         "Doramasflix",
-        // Domain dead as of 2026-10 (streamingita.homes NXDOMAIN); keep entry for URL override.
+        // Domain dead as of 2026-10 (streamingita.homes is a parked page); keep entry for URL override.
         "StreamingIta",
+        // anymovie.cc is a parked page (parklogic), not a catalog.
+        "AnyMovie",
+        // sflix.to accepts DNS but the HTTPS home times out and no live mirror answers.
+        "SFlix",
         // Embedindia player is JS/ad-gated with no plaintext m3u8; catalog still loads via PPV API.
         "SportsBite",
     )

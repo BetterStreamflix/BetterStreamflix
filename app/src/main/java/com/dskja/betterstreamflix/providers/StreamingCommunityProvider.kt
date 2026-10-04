@@ -52,8 +52,9 @@ class StreamingCommunityProvider(private val _language: String? = null) : Provid
     private val TAG: String
         get() = "SCProviderDebug[$LANG]"
 
-    private val DEFAULT_DOMAIN: String = "streamingunity.win"
+    private val DEFAULT_DOMAIN: String = "streamingunity.fun"
     private val BLOCKED_DOMAINS = setOf("streamingunity.cc", "streamingcommunityz.green", "streamingunity.club", "streamingunity.bike", "streamingcommunityz.buzz")
+    private val RETIRED_DOMAINS = setOf("streamingunity.win")
     override val baseUrl = DEFAULT_DOMAIN
     private var _domain: String? = null
     private var domain: String
@@ -62,9 +63,16 @@ class StreamingCommunityProvider(private val _language: String? = null) : Provid
                 return _domain!!
 
             val storedDomain = UserPreferences.streamingcommunityDomain
+            val host = storedDomain
+                .removePrefix("www.")
+                .substringBefore("/")
+                .lowercase()
+            val retired = host in RETIRED_DOMAINS
 
-            if (storedDomain.isNullOrEmpty() || BLOCKED_DOMAINS.any { storedDomain.contains(it) }) {
-                if (!storedDomain.isNullOrEmpty()) UserPreferences.streamingcommunityDomain = DEFAULT_DOMAIN
+            if (storedDomain.isNullOrEmpty() || BLOCKED_DOMAINS.any { storedDomain.contains(it) } || retired) {
+                if (!storedDomain.isNullOrEmpty()) {
+                    runCatching { UserPreferences.streamingcommunityDomain = DEFAULT_DOMAIN }
+                }
                 _domain = DEFAULT_DOMAIN
             } else {
                 _domain = storedDomain

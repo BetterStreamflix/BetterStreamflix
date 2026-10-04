@@ -11,6 +11,7 @@ import com.dskja.betterstreamflix.models.Category
 import com.dskja.betterstreamflix.models.Episode
 import com.dskja.betterstreamflix.models.Genre
 import com.dskja.betterstreamflix.models.Movie
+import com.dskja.betterstreamflix.models.Season
 import com.dskja.betterstreamflix.models.TvShow
 import com.dskja.betterstreamflix.models.Video
 import com.dskja.betterstreamflix.models.People
@@ -22,6 +23,7 @@ import okhttp3.FormBody
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.HttpUrl.Companion.toHttpUrl
+import org.json.JSONArray
 import org.json.JSONObject
 import org.jsoup.nodes.Document
 import org.jsoup.nodes.Element
@@ -266,16 +268,16 @@ object GuardaFlixProvider : Provider, ProviderConfigUrl {
         doc.select("section.section").forEach { section: Element ->
             val title = section.selectFirst(".section-title, header .section-title")?.text()?.trim()
                 ?: return@forEach
-            val items = section.select("a.card[href*=/film-streaming/], .post-lst li, a.lnk-blk")
+            val items = section.select("a.card[href*=/film-streaming/], a.card[href*=/serie-tv-streaming/], .post-lst li, a.lnk-blk")
                 .mapNotNull { el: Element -> parseGridItem(el) }
             if (items.isNotEmpty()) {
-                categories.add(Category(name = title, list = items.distinctBy { (it as? Movie)?.id ?: it.hashCode() }))
+                categories.add(Category(name = title, list = items.distinctBy { showKey(it) }))
             }
         }
 
         if (categories.isEmpty()) {
-            val items = doc.select("a.card[href*=/film-streaming/]").mapNotNull { parseGridItem(it) }
-            if (items.isNotEmpty()) categories.add(Category(name = "Film", list = items))
+            val items = doc.select("a.card[href*=/film-streaming/], a.card[href*=/serie-tv-streaming/]").mapNotNull { parseGridItem(it) }
+            if (items.isNotEmpty()) categories.add(Category(name = Category.FEATURED, list = items))
         }
 
         return categories
@@ -291,7 +293,11 @@ object GuardaFlixProvider : Provider, ProviderConfigUrl {
             val poster = el.selectFirst("img")?.attr("src")?.let { normalizeUrl(it) } ?: ""
             val rating = el.selectFirst(".card-rating")?.ownText()?.trim()?.toDoubleOrNull()
                 ?: el.selectFirst(".card-rating")?.text()?.replace(Regex("[^0-9.]"), "")?.toDoubleOrNull()
-            return Movie(id = href, title = title, poster = poster, rating = rating)
+            return if (href.contains("/serie-tv-streaming/")) {
+                TvShow(id = href, title = title, poster = poster, rating = rating)
+            } else {
+                Movie(id = href, title = title, poster = poster, rating = rating)
+            }
         }
 
         val title = el.selectFirst(".entry-title, .card-title")?.text()?.trim() ?: return null
@@ -303,12 +309,17 @@ object GuardaFlixProvider : Provider, ProviderConfigUrl {
         val rating = el.selectFirst(".vote, .card-rating")?.ownText()?.trim()?.toDoubleOrNull()
             ?: el.selectFirst(".vote, .card-rating")?.text()?.replace(Regex("[^0-9.]"), "")?.toDoubleOrNull()
 
-        return Movie(
-            id = href,
-            title = title,
-            poster = poster,
-            rating = rating
-        )
+        return if (href.contains("/serie-tv-streaming/")) {
+            TvShow(id = href, title = title, poster = poster, rating = rating)
+        } else {
+            Movie(id = href, title = title, poster = poster, rating = rating)
+        }
+    }
+
+    private fun showKey(item: AppAdapter.Item): Any = when (item) {
+        is Movie -> item.id
+        is TvShow -> item.id
+        else -> item.hashCode()
     }
 
     override suspend fun search(query: String, page: Int): List<AppAdapter.Item> {
@@ -333,9 +344,9 @@ object GuardaFlixProvider : Provider, ProviderConfigUrl {
 
         val doc = if (page > 1) service.search(page, encoded) else service.search(encoded)
 
-        return doc.select("a.card[href*=/film-streaming/], .post-lst li")
+        return doc.select("a.card[href*=/film-streaming/], a.card[href*=/serie-tv-streaming/], .post-lst li")
             .mapNotNull { el: Element -> parseGridItem(el) }
-            .distinctBy { (it as? Movie)?.id ?: it.hashCode() }
+            .distinctBy { showKey(it) }
     }
 
     override suspend fun getMovies(page: Int): List<Movie> {
@@ -347,7 +358,19 @@ object GuardaFlixProvider : Provider, ProviderConfigUrl {
     }
 
     override suspend fun getTvShows(page: Int): List<TvShow> {
-        return emptyList() // GuardaFlix is movies only
+        val url = if (page > 1) {
+            "${baseUrl.trimEnd('/')}/series/page/$page/"
+        } else {
+            "${baseUrl.trimEnd('/')}/series"
+        }
+        return try {
+            service.getPage(url)
+                .select("a.card[href*=/serie-tv-streaming/]")
+                .mapNotNull { parseGridItem(it) as? TvShow }
+                .distinctBy { it.id }
+        } catch (_: Exception) {
+            emptyList()
+        }
     }
 
     override suspend fun getMovie(id: String): Movie {
@@ -437,11 +460,98 @@ object GuardaFlixProvider : Provider, ProviderConfigUrl {
     }
 
     override suspend fun getTvShow(id: String): TvShow {
-        throw Exception("TV shows not supported")
+        val doc = service.getPage(id)
+        val title = doc.selectFirst("h1.hero-title, h1.entry-title, h1")?.text()?.trim().orEmpty()
+        val tmdbTvShow = TmdbUtils.getTvShow(title, language = language)
+        val episodes = parseSeriesEpisodes(doc)
+        val seasons = episodes.map { it.season }.distinct().sorted().map { number ->
+            Season(
+                id = "$id|$number",
+                number = number,
+                title = "Stagione $number",
+                poster = tmdbTvShow?.seasons?.find { it.number == number }?.poster,
+            )
+        }
+        val poster = tmdbTvShow?.poster
+            ?: doc.selectFirst("meta[property=og:image]")?.attr("content")?.let { normalizeUrl(it) }
+            ?: ""
+        return TvShow(
+            id = id,
+            title = title.ifBlank { tmdbTvShow?.title ?: id.substringAfterLast('/') },
+            poster = poster,
+            overview = tmdbTvShow?.overview
+                ?: doc.selectFirst(".hero-overview, .overview, meta[name=description]")?.let {
+                    it.attr("content").ifBlank { it.text() }
+                }?.trim(),
+            rating = tmdbTvShow?.rating,
+            genres = tmdbTvShow?.genres ?: emptyList(),
+            seasons = seasons,
+            banner = tmdbTvShow?.banner,
+            imdbId = tmdbTvShow?.imdbId,
+            trailer = tmdbTvShow?.trailer,
+            runtime = tmdbTvShow?.runtime,
+            providerName = name,
+        )
     }
 
     override suspend fun getEpisodesBySeason(seasonId: String): List<Episode> {
-        throw Exception("TV shows not supported")
+        if ("|" !in seasonId) return emptyList()
+        val showId = seasonId.substringBefore("|")
+        val seasonNum = seasonId.substringAfter("|").toIntOrNull() ?: return emptyList()
+        val doc = service.getPage(showId)
+        val showTitle = doc.selectFirst("h1.hero-title, h1.entry-title, h1")?.text()?.trim().orEmpty()
+        val tmdbTvShow = TmdbUtils.getTvShow(showTitle, language = language)
+        val tmdbEpisodes = if (tmdbTvShow != null) {
+            TmdbUtils.getEpisodesBySeason(tmdbTvShow.id, seasonNum, language = language)
+        } else {
+            emptyList()
+        }
+        return parseSeriesEpisodes(doc)
+            .filter { it.season == seasonNum }
+            .distinctBy { it.episode }
+            .sortedBy { it.episode }
+            .map { ep ->
+                val tmdbEp = tmdbEpisodes.find { it.number == ep.episode }
+                val siteTitle = ep.title.trim().takeUnless {
+                    it.isBlank() || it.equals("Episode", true) || it.equals("Episodio", true)
+                }
+                Episode(
+                    id = "$showId|$seasonNum|${ep.episode}",
+                    number = ep.episode,
+                    title = tmdbEp?.title ?: siteTitle ?: "Episodio ${ep.episode}",
+                    poster = tmdbEp?.poster,
+                    overview = tmdbEp?.overview,
+                )
+            }
+    }
+
+    private data class SeriesEpisode(
+        val url: String,
+        val title: String,
+        val season: Int,
+        val episode: Int,
+    )
+
+    private fun parseSeriesEpisodes(doc: Document): List<SeriesEpisode> {
+        val raw = Regex("""var\s+EPISODES\s*=\s*(\[[\s\S]*?\])\s*;""")
+            .find(doc.html())
+            ?.groupValues
+            ?.getOrNull(1)
+            ?: return emptyList()
+        val array = runCatching { JSONArray(raw) }.getOrNull() ?: return emptyList()
+        return (0 until array.length()).mapNotNull { index ->
+            val obj = array.optJSONObject(index) ?: return@mapNotNull null
+            val url = obj.optString("url")
+            val season = obj.optInt("season")
+            val episode = obj.optInt("episode")
+            if (url.isBlank() || season <= 0 || episode <= 0) return@mapNotNull null
+            SeriesEpisode(
+                url = url,
+                title = obj.optString("title"),
+                season = season,
+                episode = episode,
+            )
+        }
     }
 
     override suspend fun getGenre(id: String, page: Int): Genre {
@@ -491,6 +601,21 @@ object GuardaFlixProvider : Provider, ProviderConfigUrl {
     }
 
     override suspend fun getServers(id: String, videoType: Video.Type): List<Video.Server> {
+        if (id.count { it == '|' } >= 2) {
+            val parts = id.split("|")
+            val showUrl = parts[0]
+            val season = parts.getOrNull(1)?.toIntOrNull()
+            val episode = parts.getOrNull(2)?.toIntOrNull()
+            if (season != null && episode != null) {
+                val match = parseSeriesEpisodes(service.getPage(showUrl))
+                    .find { it.season == season && it.episode == episode }
+                if (match != null) {
+                    val src = normalizeUrl(match.url)
+                    return listOf(Video.Server(id = src, name = "GuardaFlix HLS", src = src))
+                }
+            }
+        }
+
         val doc = service.getPage(id)
         val servers = mutableListOf<Video.Server>()
         val html = doc.html()
