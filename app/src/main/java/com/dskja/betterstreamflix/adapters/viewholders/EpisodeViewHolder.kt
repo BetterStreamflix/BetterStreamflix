@@ -233,8 +233,12 @@ class EpisodeViewHolder(
             true
         }
 
-        // Soft elevated row; no permanent "up next" border (looked like stuck focus).
-        binding.root.setBackgroundResource(R.drawable.bg_detail_episode_row)
+        // Soft elevated row; up-next gets a brighter glass plate (no blue border).
+        val isUpNext = episode.id == episode.tvShow?.episodeToWatch?.id
+        binding.root.setBackgroundResource(
+            if (isUpNext) R.drawable.bg_detail_episode_row_up_next
+            else R.drawable.bg_detail_episode_row,
+        )
 
         binding.flEpisodeThumb.apply {
             clipToOutline = true
@@ -336,11 +340,12 @@ class EpisodeViewHolder(
                 else -> "${rem}m"
             }
         }
+        val upNext = episode.id == episode.tvShow?.episodeToWatch?.id
         val accent = com.dskja.betterstreamflix.ui.DetailWatchLabels.episodeMetaAccent(
             context,
             episode.watchHistory,
             episode.isWatched,
-        )
+        ) ?: if (upNext) context.getString(R.string.detail_up_next) else null
         val date = if (accent == null) episode.released?.format("MMM d, yyyy") else null
         return listOfNotNull(runtime, accent, date).joinToString(" · ")
     }

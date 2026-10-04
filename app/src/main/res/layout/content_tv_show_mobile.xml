@@ -4,7 +4,7 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:paddingBottom="8dp">
+    android:paddingBottom="0dp">
 
     <ImageView
         android:id="@+id/iv_tv_show_cover"
@@ -23,7 +23,7 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
-        app:layout_constraintGuide_percent="0.72" />
+        app:layout_constraintGuide_percent="0.78" />
 
     <ImageView
         android:id="@+id/iv_tv_show_cover_soft"
@@ -227,13 +227,13 @@
             android:layout_weight="1"
             android:ellipsize="end"
             android:fontFamily="@font/outfit"
-            android:letterSpacing="0.04"
+            android:letterSpacing="0.01"
             android:maxLines="1"
-            android:textAllCaps="true"
-            android:textColor="@color/cinema_text_soft"
-            android:textSize="11sp"
-            android:textStyle="bold"
-            tools:text="COMEDY · ANIMATION" />
+            android:textAllCaps="false"
+            android:textColor="@color/cinema_text_muted"
+            android:textSize="13sp"
+            android:textStyle="normal"
+            tools:text="Comedy · Animation" />
     </LinearLayout>
 
     <TextView
@@ -246,15 +246,15 @@
         android:ellipsize="end"
         android:fontFamily="@font/manrope"
         android:letterSpacing="0.01"
-        android:lineSpacingExtra="5dp"
-        android:lineSpacingMultiplier="1.12"
-        android:maxLines="3"
+        android:lineSpacingExtra="4dp"
+        android:lineSpacingMultiplier="1.1"
+        android:maxLines="2"
         android:shadowColor="#99000000"
         android:shadowDx="0"
         android:shadowDy="1"
         android:shadowRadius="8"
         android:textColor="@color/cinema_text_soft"
-        android:textSize="15sp"
+        android:textSize="14sp"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@id/ll_tv_show_meta_row"
@@ -292,7 +292,7 @@
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_marginStart="20dp"
-        android:layout_marginTop="14dp"
+        android:layout_marginTop="12dp"
         android:layout_marginEnd="20dp"
         android:gravity="center_vertical"
         android:orientation="horizontal"

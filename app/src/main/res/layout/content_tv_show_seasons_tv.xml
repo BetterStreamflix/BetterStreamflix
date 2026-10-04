@@ -15,6 +15,7 @@
         android:textColor="@color/cinema_text"
         android:textSize="22sp"
         android:fontFamily="@font/syne"
+        android:letterSpacing="0.01"
         android:textStyle="bold"
         android:accessibilityHeading="true"
         app:layout_constraintEnd_toEndOf="parent"

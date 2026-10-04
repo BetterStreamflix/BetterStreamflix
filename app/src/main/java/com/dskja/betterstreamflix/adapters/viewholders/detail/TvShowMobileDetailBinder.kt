@@ -131,9 +131,7 @@ internal fun TvShowViewHolder.bindTvShowMobileDetail(binding: ContentTvShowMobil
             isClickable = false
             setOnClickListener(null)
         } else {
-            text = tvShow.genres.joinToString(" · ") {
-                it.name.uppercase(Locale.getDefault())
-            }
+            text = tvShow.genres.joinToString(" · ") { it.name }
             isVisible = true
             movementMethod = null
             isClickable = true
@@ -177,12 +175,13 @@ internal fun TvShowViewHolder.bindTvShowMobileDetail(binding: ContentTvShowMobil
         text = tvShow.overview
         val more = binding.tvTvShowOverviewMore
         val hasText = !tvShow.overview.isNullOrBlank()
-        maxLines = 3
+        val collapsedLines = 2
+        maxLines = collapsedLines
         ellipsize = android.text.TextUtils.TruncateAt.END
         var expanded = false
         fun applyExpand(open: Boolean) {
             expanded = open
-            maxLines = if (open) Integer.MAX_VALUE else 3
+            maxLines = if (open) Integer.MAX_VALUE else collapsedLines
             more.text = context.getString(
                 if (open) R.string.detail_overview_less else R.string.detail_overview_more,
             )
@@ -195,9 +194,9 @@ internal fun TvShowViewHolder.bindTvShowMobileDetail(binding: ContentTvShowMobil
             setOnClickListener(toggle)
             more.setOnClickListener(toggle)
             post {
-                val overflowing = lineCount > 3 ||
-                    (text?.length ?: 0) > 160 ||
-                    (layout != null && maxLines == 3 && layout.getEllipsisCount(lineCount.coerceAtLeast(1) - 1) > 0)
+                val overflowing = lineCount > collapsedLines ||
+                    (text?.length ?: 0) > 120 ||
+                    (layout != null && maxLines == collapsedLines && layout.getEllipsisCount(lineCount.coerceAtLeast(1) - 1) > 0)
                 more.visibility = if (overflowing) View.VISIBLE else View.GONE
                 if (!overflowing) setOnClickListener(null)
             }
