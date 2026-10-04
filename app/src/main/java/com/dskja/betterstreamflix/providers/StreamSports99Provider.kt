@@ -53,8 +53,9 @@ object StreamSports99Provider : IptvProvider, ProviderConfigUrl {
     )
 
     private val client = OkHttpClient.Builder()
-        .connectTimeout(30, TimeUnit.SECONDS)
-        .readTimeout(30, TimeUnit.SECONDS)
+        .connectTimeout(10, TimeUnit.SECONDS)
+        .readTimeout(12, TimeUnit.SECONDS)
+        .callTimeout(15, TimeUnit.SECONDS)
         .followRedirects(true)
         .build()
 

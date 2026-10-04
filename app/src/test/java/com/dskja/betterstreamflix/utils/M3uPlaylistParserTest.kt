@@ -56,6 +56,33 @@ class M3uPlaylistParserTest {
     }
 
     @Test
+    fun usesTvgNameWhenExtinfHasNoComma() {
+        val raw = """
+            #EXTM3U
+            #EXTINF:-1 tvg-name="Sky Sports" group-title="Sports"
+            https://edge.example.net/sky/index.m3u8
+        """.trimIndent()
+        val channels = M3uPlaylistParser.parse(raw)
+        assertEquals(1, channels.size)
+        assertEquals("Sky Sports", channels[0].name)
+        assertEquals("Sports", channels[0].group)
+    }
+
+    @Test
+    fun splitsPipeHeadersOffThePlayableUrl() {
+        val raw = """
+            #EXTM3U
+            #EXTINF:-1,Piped
+            http://edge.example.net/live.m3u8|User-Agent=TestAgent|Referer=https://pluto.tv/
+        """.trimIndent()
+        val channels = M3uPlaylistParser.parse(raw)
+        assertEquals(1, channels.size)
+        assertEquals("http://edge.example.net/live.m3u8", channels[0].url)
+        assertEquals("TestAgent", channels[0].userAgent)
+        assertEquals("https://pluto.tv/", channels[0].referrer)
+    }
+
+    @Test
     fun keepsExtvlcoptHeaders() {
         val raw = """
             #EXTM3U

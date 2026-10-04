@@ -57,6 +57,24 @@ object SportsIptvStreamResolver {
         Regex("""https://[^"'\\\s<>]+/(?:stream|embed)\.php\?[^"'\\\s<>]*""", RegexOption.IGNORE_CASE),
     )
 
+    /**
+     * Playlist and segment hosts reject a foreign Origin (embed/regionales → 403).
+     * Use the URL's own origin. Leave HTML page fetches alone so their Referer stays
+     * the parent channel page.
+     */
+    const val MAX_PROXY_SEGMENT_BYTES = 8 * 1024 * 1024
+
+    fun cdnMediaHeaders(url: String): Pair<String, String>? {
+        val needs = url.contains("playlist.php", ignoreCase = true) ||
+            url.contains(":9092") ||
+            url.contains(".m3u8", ignoreCase = true) ||
+            url.contains(".ts", ignoreCase = true)
+        if (!needs) return null
+        val origin = Regex("""^(https?://[^/]+)""").find(url)?.groupValues?.getOrNull(1)
+            ?: return null
+        return origin to "$origin/"
+    }
+
     fun collectServerUrls(document: Document, baseUrl: String): List<Pair<String, String>> {
         val collected = linkedMapOf<String, String>()
 

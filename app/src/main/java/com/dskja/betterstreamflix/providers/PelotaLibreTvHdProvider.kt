@@ -34,8 +34,9 @@ object PelotaLibreTvHdProvider : IptvProvider, ProviderConfigUrl {
 
 
     private val client = OkHttpClient.Builder()
-        .connectTimeout(15, TimeUnit.SECONDS)
-        .readTimeout(15, TimeUnit.SECONDS)
+        .connectTimeout(10, TimeUnit.SECONDS)
+        .readTimeout(12, TimeUnit.SECONDS)
+        .callTimeout(15, TimeUnit.SECONDS)
         .cookieJar(object : CookieJar {
             private val cookieStore = mutableMapOf<String, List<Cookie>>()
             override fun saveFromResponse(url: HttpUrl, cookies: List<Cookie>) {
@@ -92,7 +93,8 @@ object PelotaLibreTvHdProvider : IptvProvider, ProviderConfigUrl {
             val decodedUrl = String(Base64.decode(OBFUSCATED_PLAYLIST, Base64.DEFAULT))
             Log.d(TAG, "Obteniendo lista: $decodedUrl")
             val request = Request.Builder().url(decodedUrl).build()
-            val body = client.newCall(request).execute().body?.string() ?: return emptyList()
+            val body = client.newCall(request).execute().use { it.body?.string() }
+            if (body.isNullOrBlank()) return emptyList()
             val channels = parseM3U(body)
             cachedChannels = channels
             lastFetchTime = now
@@ -187,21 +189,24 @@ object PelotaLibreTvHdProvider : IptvProvider, ProviderConfigUrl {
             poster = logo,
             banner = logo,
             overview = "Live sports channel: $name",
-            seasons = emptyList(),
+            seasons = listOf(Season(id = id, number = 1, title = "Live")),
         )
     }
 
-    override suspend fun getEpisodesBySeason(seasonId: String): List<Episode> = emptyList()
+    override suspend fun getEpisodesBySeason(seasonId: String): List<Episode> =
+        listOf(Episode(id = seasonId, number = 1, title = "Live"))
 
     override suspend fun listLiveChannels(aroundId: String?, limit: Int): List<com.dskja.betterstreamflix.iptv.IptvLiveSession.Channel> {
-        val shows = runCatching { getTvShows(1) }.getOrDefault(emptyList())
-            .filter { it.id !in setOf("creador-info", "apoyo-info", "apoyo-nando") }
-        return com.dskja.betterstreamflix.iptv.IptvChannelWindow.fromShows(
-            shows = shows,
-            aroundId = aroundId,
-            limit = limit,
-            programNowOf = { "En vivo" },
-        )
+        val channels = getAllChannels().map { channel ->
+            com.dskja.betterstreamflix.iptv.IptvLiveSession.Channel(
+                id = createId(channel),
+                name = channel.name,
+                logo = channel.logo,
+                group = channel.group,
+                programNow = "En vivo",
+            )
+        }
+        return com.dskja.betterstreamflix.iptv.IptvChannelWindow.fromChannels(channels, aroundId, limit)
     }
 
     override suspend fun getServers(id: String, videoType: Video.Type): List<Video.Server> {
@@ -221,7 +226,7 @@ object PelotaLibreTvHdProvider : IptvProvider, ProviderConfigUrl {
                 .apply { videoHeaders.forEach { (k, v) -> addHeader(k, v) } }
                 .build()
 
-            val response = client.newCall(checkRequest).execute()
+            client.newCall(checkRequest).execute().use { response ->
             var isAlive = response.isSuccessful
 
             if (isAlive) {
@@ -246,7 +251,6 @@ object PelotaLibreTvHdProvider : IptvProvider, ProviderConfigUrl {
                     }
                 }
             }
-            response.close()
 
             if (isAlive) {
                 Video(
@@ -258,6 +262,7 @@ object PelotaLibreTvHdProvider : IptvProvider, ProviderConfigUrl {
                 // Peeked body was not HLS/DASH — fail permanently so failover advances.
                 Log.e(TAG, "Canal muerto — no fake SIN-SEÑAL success")
                 throw Exception("PelotaLibre: stream offline or 404 (try another server)")
+            }
             }
         } catch (e: Exception) {
             if (e.message?.contains("PelotaLibre:", ignoreCase = true) == true) throw e

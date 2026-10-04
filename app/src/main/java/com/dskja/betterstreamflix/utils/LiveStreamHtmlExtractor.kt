@@ -164,29 +164,25 @@ object LiveStreamHtmlExtractor {
     }
 
     /**
-     * DaddyLive retired `daddy3.php` (HTTP 404). Prefer `daddy.php` on the same host
-     * and the current dembed mirror.
+     * DaddyLive retired `daddy3.php` (HTTP 404) and `daddyliveplayer.st` (TLS fail).
+     * Prefer `daddy.php` on a live host, then dembed and dlive.sx.
      */
     fun normalizeDaddyLiveEmbed(embedUrl: String): List<String> {
         val trimmed = embedUrl.trim()
         if (trimmed.isBlank()) return emptyList()
         val out = linkedSetOf<String>()
-        val daddyN = Regex(
-            """^(https?://[^/]+)/premiumtv/daddy(\d+)\.php(\?.*)?$""",
+        val daddy = Regex(
+            """^(https?://[^/]+)/premiumtv/daddy\d*\.php(\?.*)?$""",
             RegexOption.IGNORE_CASE,
         ).matchEntire(trimmed)
-        if (daddyN != null) {
-            // Numbered daddyN.php paths are retired (404). Prefer daddy.php first.
-            val host = daddyN.groupValues[1]
-            val query = daddyN.groupValues[3]
-            out += "$host/premiumtv/daddy.php$query"
+        if (daddy != null) {
+            val host = daddy.groupValues[1]
+            val query = daddy.groupValues[2]
+            if (!host.contains("daddyliveplayer.", ignoreCase = true)) {
+                out += "$host/premiumtv/daddy.php$query"
+            }
             out += "https://dembed.top/premiumtv/daddy.php$query"
-            out += "https://daddyliveplayer.st/premiumtv/daddy.php$query"
-        } else if (trimmed.contains("/premiumtv/daddy.php", ignoreCase = true)) {
-            out += trimmed
-            val query = trimmed.substringAfter("daddy.php", "")
-            out += "https://dembed.top/premiumtv/daddy.php$query"
-            out += "https://daddyliveplayer.st/premiumtv/daddy.php$query"
+            out += "https://dlive.sx/premiumtv/daddy.php$query"
         } else {
             out += trimmed
         }

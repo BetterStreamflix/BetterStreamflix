@@ -47,13 +47,15 @@ class LiveStreamHtmlExtractorTest {
         val fixed = LiveStreamHtmlExtractor.normalizeDaddyLiveEmbed(
             "https://daddyliveplayer.st/premiumtv/daddy3.php?id=51",
         )
-        // Prefer rewritten daddy.php — do not try retired daddy3 first.
+        // Retired host and daddy3.php must not be tried. dembed is the first live mirror.
         assertEquals(
-            "https://daddyliveplayer.st/premiumtv/daddy.php?id=51",
+            "https://dembed.top/premiumtv/daddy.php?id=51",
             fixed.first(),
         )
         assertTrue(fixed.none { it.contains("daddy3.php") })
+        assertTrue(fixed.none { it.contains("daddyliveplayer.st") })
         assertTrue(fixed.any { it.contains("dembed.top") })
+        assertTrue(fixed.any { it.contains("dlive.sx") })
         assertEquals(
             listOf("https://example.com/other"),
             LiveStreamHtmlExtractor.normalizeDaddyLiveEmbed("https://example.com/other"),

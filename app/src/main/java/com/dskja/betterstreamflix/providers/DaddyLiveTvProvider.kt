@@ -42,15 +42,11 @@ object DaddyLiveTvProvider : IptvProvider, ProviderConfigUrl {
     private const val USER_AGENT =
         "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"
     private const val CACHE_MS = 15 * 60 * 1000L
-    // Prefer paths that still embed working premiumtv/daddy.php players.
-    // Dropped retired `watch` (daddy3.php → HTTP 404) so failover does not burn the 20s budget.
+    // `stream` embeds daddy.php. `casting` is the only other page that is not an ad wall.
+    // hub times out; player/plus/cast are ad iframes and burn the 20s failover budget.
     private val PLAYERS = listOf(
         "stream" to "Player 1",
-        "hub" to "Player 2",
-        "casting" to "Player 3",
-        "player" to "Player 4",
-        "plus" to "Player 5",
-        "cast" to "Player 6",
+        "casting" to "Player 2",
     )
     private val SPORTS_KEYS = listOf(
         "sport", "espn", "sky sports", "bein", "nba", "nfl", "nhl", "mlb",
@@ -280,6 +276,15 @@ object DaddyLiveTvProvider : IptvProvider, ProviderConfigUrl {
 
     override suspend fun getVideo(server: Video.Server): Video = withContext(Dispatchers.IO) {
         val pageUrl = server.src.ifBlank { server.id }
+        val channelId = Regex("""stream-(\d+)\.php""").find(pageUrl)?.groupValues?.getOrNull(1)
+        // daddy.php on the site itself is a small page with the HLS URL.
+        // The /stream/ player HTML is ~600KB of ad script and is only a fallback.
+        if (!channelId.isNullOrBlank()) {
+            resolveDaddyEmbed(
+                "$baseUrl/premiumtv/daddy.php?id=$channelId",
+                referer = "$baseUrl/",
+            )?.let { return@withContext it }
+        }
         val watchReferer = pageUrl
             .replace(Regex("""/(plus|watch|stream|cast|player|casting|hub)/stream-(\d+)\.php"""), "/watch.php?id=$2")
             .ifBlank { "$baseUrl/" }
@@ -298,15 +303,19 @@ object DaddyLiveTvProvider : IptvProvider, ProviderConfigUrl {
             Log.e(TAG, "No embed on $pageUrl")
             throw Exception("DaddyLive TV: no embed found for ${server.name} (try another server)")
         }
+        resolveDaddyEmbed(embedUrl, referer = pageUrl)
+            ?: throw Exception("DaddyLive TV: stream unavailable for ${server.name} (try another server)")
+    }
+
+    private fun resolveDaddyEmbed(embedUrl: String, referer: String): Video? {
         val candidates = LiveStreamHtmlExtractor.normalizeDaddyLiveEmbed(embedUrl)
         var lastError: String? = null
         for (candidate in candidates) {
-            val embedHtml = fetchHtml(candidate, referer = pageUrl)
+            val embedHtml = fetchHtml(candidate, referer = referer)
             if (embedHtml.isNullOrBlank()) {
                 lastError = "embed HTTP miss for $candidate"
                 continue
             }
-            // Retired daddyN.php hosts return a tiny nginx 404 body.
             if (embedHtml.contains("<title>404 Not Found</title>", ignoreCase = true) ||
                 (embedHtml.length < 800 && embedHtml.contains("404 Not Found", ignoreCase = true))
             ) {
@@ -320,7 +329,7 @@ object DaddyLiveTvProvider : IptvProvider, ProviderConfigUrl {
             }
             val embedOrigin = Regex("""^(https?://[^/]+)""").find(candidate)?.groupValues?.getOrNull(1)
                 ?: baseUrl
-            return@withContext Video(
+            return Video(
                 source = m3u8,
                 headers = mapOf(
                     "User-Agent" to USER_AGENT,
@@ -330,9 +339,7 @@ object DaddyLiveTvProvider : IptvProvider, ProviderConfigUrl {
             )
         }
         Log.e(TAG, "DaddyLive resolve failed for $embedUrl ($lastError)")
-        throw Exception(
-            "DaddyLive TV: stream unavailable for ${server.name} (try another server)",
-        )
+        return null
     }
 
     override suspend fun listLiveChannels(aroundId: String?, limit: Int) =
@@ -359,7 +366,7 @@ object DaddyLiveTvProvider : IptvProvider, ProviderConfigUrl {
             .header("Accept", "text/html,application/xhtml+xml")
             .build()
         client.newCall(req).execute().use { resp ->
-            if (!resp.isSuccessful) null else resp.body?.bytes()?.toString(Charsets.ISO_8859_1)
+            if (!resp.isSuccessful) null else resp.body?.string()
         }
     } catch (e: Exception) {
         Log.e(TAG, "fetchHtml ${e.message}")

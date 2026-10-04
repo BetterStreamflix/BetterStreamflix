@@ -47,6 +47,7 @@ object CableVisionHDProvider : IptvProvider, ProviderConfigUrl {
     private var localProxyExecutor: java.util.concurrent.ExecutorService? = null
     private var currentPlaylistUrl: String = ""
     private var localPort: Int = 0
+    private val proxyLock = Any()
 
     private var cachedChannels: List<TvShow>? = null
     private var cachedHome: List<Category>? = null
@@ -81,14 +82,10 @@ object CableVisionHDProvider : IptvProvider, ProviderConfigUrl {
                 .header("Accept-Language", "es-ES,es;q=0.9,en;q=0.8")
                 .header("X-Requested-With", "XMLHttpRequest")
 
-            if (originalUrl.contains("ksdjugfssddeports.com") ||
-                originalUrl.contains("saohgdassregions.com") ||
-                originalUrl.contains("playlist.php") ||
-                originalUrl.contains(".ts") ||
-                originalUrl.contains(":9092")) {
+            SportsIptvStreamResolver.cdnMediaHeaders(originalUrl)?.let { (origin, referer) ->
                 requestBuilder
-                    .header("Origin", "https://embed.ksdjugfssddeports.com")
-                    .header("Referer", "https://embed.ksdjugfssddeports.com/")
+                    .header("Origin", origin)
+                    .header("Referer", referer)
             }
 
             chain.proceed(requestBuilder.build())
@@ -104,9 +101,11 @@ object CableVisionHDProvider : IptvProvider, ProviderConfigUrl {
                 .url(url)
                 .header("Referer", referer)
                 .build()
-            val response = client.newCall(request).execute()
-            val html = response.body?.string() ?: return null
-            Jsoup.parse(html)
+            client.newCall(request).execute().use { response ->
+                if (!response.isSuccessful) return null
+                val html = response.body?.string() ?: return null
+                Jsoup.parse(html)
+            }
         } catch (e: Exception) {
             Log.e(TAG, "Error fetching $url: ${e.message}")
             null
@@ -480,8 +479,6 @@ object CableVisionHDProvider : IptvProvider, ProviderConfigUrl {
 
     override suspend fun getVideo(server: Video.Server): Video = withContext(Dispatchers.IO) {
         try {
-            stopLocalServer()
-
             val playlistUrl = SportsIptvStreamResolver.resolvePlaylistUrl(
                 client = client,
                 serverUrl = server.src.ifBlank { server.id },
@@ -492,8 +489,11 @@ object CableVisionHDProvider : IptvProvider, ProviderConfigUrl {
                 throw Exception("CableVisionHD: stream offline or 404 (try another server)")
             }
 
-            currentPlaylistUrl = playlistUrl
-            val localServerUrl = startLocalServer(playlistUrl)
+            val localServerUrl = synchronized(proxyLock) {
+                stopLocalServer()
+                currentPlaylistUrl = playlistUrl
+                startLocalServer(playlistUrl)
+            }
             if (localServerUrl.isEmpty()) {
                 throw Exception("CableVisionHD: could not start local playlist proxy")
             }
@@ -526,7 +526,8 @@ object CableVisionHDProvider : IptvProvider, ProviderConfigUrl {
     private fun startLocalServer(playlistUrl: String): String {
         try {
             serverSocket = ServerSocket(0)
-            localPort = serverSocket!!.localPort
+            val port = serverSocket!!.localPort
+            localPort = port
             val executor = Executors.newFixedThreadPool(6)
             localProxyExecutor = executor
 
@@ -537,7 +538,7 @@ object CableVisionHDProvider : IptvProvider, ProviderConfigUrl {
                         try {
                             executor.execute {
                                 try {
-                                    handleLocalRequest(clientSocket, playlistUrl)
+                                    handleLocalRequest(clientSocket, playlistUrl, port)
                                 } catch (e: Exception) {
                                     Log.e(TAG, "Error: ${e.message}")
                                 } finally {
@@ -563,7 +564,7 @@ object CableVisionHDProvider : IptvProvider, ProviderConfigUrl {
         }
     }
 
-    private fun handleLocalRequest(clientSocket: Socket, playlistUrl: String) {
+    private fun handleLocalRequest(clientSocket: Socket, playlistUrl: String, port: Int) {
         try {
             val input = clientSocket.getInputStream()
             val output = clientSocket.getOutputStream()
@@ -580,48 +581,34 @@ object CableVisionHDProvider : IptvProvider, ProviderConfigUrl {
 
                 when {
                     path.startsWith("/manifest.m3u8") -> {
-                        val freshManifest = fetchFreshManifest(playlistUrl)
-                        if (freshManifest.isNotEmpty()) {
-                            val manifestBytes = freshManifest.toByteArray()
-                            val responseHeaders = "HTTP/1.1 200 OK\r\n" +
-                                    "Content-Type: application/vnd.apple.mpegurl\r\n" +
-                                    "Content-Length: ${manifestBytes.size}\r\n" +
-                                    "Access-Control-Allow-Origin: *\r\n" +
-                                    "Cache-Control: no-cache\r\n" +
-                                    "Connection: close\r\n\r\n"
-
-                            output.write(responseHeaders.toByteArray())
-                            output.write(manifestBytes)
-                            output.flush()
+                        val freshManifest = fetchFreshManifest(playlistUrl, port)
+                        if (freshManifest.isEmpty()) {
+                            writeProxyResponse(output, 502, "text/plain", "offline".toByteArray())
+                        } else {
+                            writeProxyResponse(
+                                output,
+                                200,
+                                "application/vnd.apple.mpegurl",
+                                freshManifest.toByteArray(),
+                            )
                         }
                     }
 
                     path.startsWith("/segment/") -> {
                         val encodedUrl = path.substring("/segment/".length)
                         val segmentUrl = URLDecoder.decode(encodedUrl, "UTF-8")
-
-                        val segmentReq = Request.Builder()
-                            .url(segmentUrl)
-                            .header("User-Agent", USER_AGENT)
-                            .header("Accept", "*/*")
-                            .header("Origin", "https://embed.ksdjugfssddeports.com")
-                            .header("Referer", "https://embed.ksdjugfssddeports.com/")
-                            .build()
-
-                        val segmentRes = client.newCall(segmentReq).execute()
-
-                        if (segmentRes.isSuccessful) {
-                            val segmentBytes = segmentRes.body?.bytes() ?: ByteArray(0)
-                            val responseHeaders = "HTTP/1.1 200 OK\r\n" +
-                                    "Content-Type: video/mp2t\r\n" +
-                                    "Content-Length: ${segmentBytes.size}\r\n" +
-                                    "Access-Control-Allow-Origin: *\r\n" +
-                                    "Cache-Control: no-cache\r\n" +
-                                    "Connection: close\r\n\r\n"
-
-                            output.write(responseHeaders.toByteArray())
-                            output.write(segmentBytes)
-                            output.flush()
+                        val segmentReq = Request.Builder().url(segmentUrl).build()
+                        client.newCall(segmentReq).execute().use { segmentRes ->
+                            val segmentBytes = if (segmentRes.isSuccessful) {
+                                readCapped(segmentRes.body)
+                            } else {
+                                null
+                            }
+                            if (segmentBytes == null) {
+                                writeProxyResponse(output, 502, "text/plain", "offline".toByteArray())
+                            } else {
+                                writeProxyResponse(output, 200, "video/mp2t", segmentBytes)
+                            }
                         }
                     }
                 }
@@ -633,29 +620,58 @@ object CableVisionHDProvider : IptvProvider, ProviderConfigUrl {
         }
     }
 
-    private fun fetchFreshManifest(playlistUrl: String): String {
+    private fun writeProxyResponse(
+        output: java.io.OutputStream,
+        status: Int,
+        contentType: String,
+        body: ByteArray,
+    ) {
+        val reason = if (status == 200) "OK" else "Bad Gateway"
+        val headers = "HTTP/1.1 $status $reason\r\n" +
+            "Content-Type: $contentType\r\n" +
+            "Content-Length: ${body.size}\r\n" +
+            "Access-Control-Allow-Origin: *\r\n" +
+            "Cache-Control: no-cache\r\n" +
+            "Connection: close\r\n\r\n"
+        output.write(headers.toByteArray())
+        output.write(body)
+        output.flush()
+    }
+
+    private fun readCapped(body: ResponseBody?): ByteArray? {
+        if (body == null) return null
+        val advertised = body.contentLength()
+        if (advertised > SportsIptvStreamResolver.MAX_PROXY_SEGMENT_BYTES) return null
+        body.byteStream().use { stream ->
+            val out = java.io.ByteArrayOutputStream()
+            val tmp = ByteArray(8192)
+            var total = 0
+            while (true) {
+                val n = stream.read(tmp)
+                if (n < 0) break
+                total += n
+                if (total > SportsIptvStreamResolver.MAX_PROXY_SEGMENT_BYTES) return null
+                out.write(tmp, 0, n)
+            }
+            return out.toByteArray()
+        }
+    }
+
+    private fun fetchFreshManifest(playlistUrl: String, port: Int): String {
         try {
-            val request = Request.Builder()
-                .url(playlistUrl)
-                .header("User-Agent", USER_AGENT)
-                .header("Accept", "*/*")
-                .header("Origin", "https://embed.ksdjugfssddeports.com")
-                .header("Referer", "https://embed.ksdjugfssddeports.com/")
-                .build()
-
-            val response = client.newCall(request).execute()
-            val manifestContent = response.body?.string() ?: ""
-
-            if (manifestContent.contains("#EXTM3U")) {
+            val request = Request.Builder().url(playlistUrl).build()
+            client.newCall(request).execute().use { response ->
+                if (!response.isSuccessful) return ""
+                val manifestContent = response.body?.string().orEmpty()
+                if (!manifestContent.contains("#EXTM3U")) return ""
                 return manifestContent.replace(
                     Regex("""https://deportes\.ksdjugfssddeports\.com:9092/([^\s]+)"""),
-                    "http://127.0.0.1:$localPort/segment/https://deportes.ksdjugfssddeports.com:9092/$1"
+                    "http://127.0.0.1:$port/segment/https://deportes.ksdjugfssddeports.com:9092/$1",
                 )
             }
         } catch (e: Exception) {
             Log.e(TAG, "Error: ${e.message}")
         }
-
         return ""
     }
 

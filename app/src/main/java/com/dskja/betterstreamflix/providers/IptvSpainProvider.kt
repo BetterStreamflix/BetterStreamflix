@@ -99,7 +99,8 @@ object IptvSpainProvider : IptvProvider, ProviderConfigUrl {
 
         return try {
             val request = Request.Builder().url(baseUrl).build()
-            val body = client.newCall(request).execute().body?.string() ?: return emptyList()
+            val body = client.newCall(request).execute().use { it.body?.string() }
+            if (body.isNullOrBlank()) return emptyList()
             val channels = parseM3U(body)
             cachedChannels = channels
             lastFetchTime = now
@@ -211,7 +212,7 @@ object IptvSpainProvider : IptvProvider, ProviderConfigUrl {
             poster = logo,
             banner = logo,
             overview = "Canal en Español: $name\nFuente: IPTV-Org",
-            seasons = emptyList()
+            seasons = listOf(Season(id = id, number = 1, title = "Live"))
         )
     }
 
@@ -227,6 +228,9 @@ object IptvSpainProvider : IptvProvider, ProviderConfigUrl {
 
     override suspend fun getVideo(server: Video.Server): Video {
         val payload = M3uChannelIdCodec.decode(server.id)
+        if (!M3uPlaylistParser.isPlayableUrl(payload.url)) {
+            throw Exception("IPTV Spain: channel URL missing or dead (try another channel)")
+        }
         val headers = M3uChannelIdCodec.playbackHeaders(server.id)
         return Video(
             source = payload.url,

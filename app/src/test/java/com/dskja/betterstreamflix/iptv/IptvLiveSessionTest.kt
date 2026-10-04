@@ -97,6 +97,24 @@ class IptvLiveSessionTest {
     }
 
     @Test
+    fun singleChannelSessionNeedsACatalogWindow() {
+        assertTrue(IptvLiveSession.needsWindowRefresh(1, 0, 250))
+        assertFalse(IptvLiveSession.needsWindowRefresh(36, 0, 250))
+        assertFalse(IptvLiveSession.needsWindowRefresh(36, 35, 250))
+        assertFalse(IptvLiveSession.needsWindowRefresh(250, 120, 250))
+        assertTrue(IptvLiveSession.needsWindowRefresh(250, 247, 250))
+        IptvLiveSession.remember(listOf(IptvLiveSession.Channel("c", "C")))
+        IptvLiveSession.replaceWindow(
+            listOf(
+                IptvLiveSession.Channel("a", "A"),
+                IptvLiveSession.Channel("b", "B"),
+                IptvLiveSession.Channel("c", "C"),
+            ),
+        )
+        assertEquals(listOf("a", "b", "c"), IptvLiveSession.snapshot().map { it.id })
+    }
+
+    @Test
     fun rememberMergesById() {
         IptvLiveSession.remember(listOf(IptvLiveSession.Channel("1", "A")))
         IptvLiveSession.remember(listOf(IptvLiveSession.Channel("1", "A-updated"), IptvLiveSession.Channel("2", "B")))
