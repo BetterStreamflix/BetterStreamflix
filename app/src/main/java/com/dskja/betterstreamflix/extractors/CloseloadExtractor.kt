@@ -7,6 +7,7 @@ import com.tanasi.retrofit_jsoup.converter.JsoupConverterFactory
 import com.dskja.betterstreamflix.models.Video
 import com.dskja.betterstreamflix.providers.RidomoviesProvider
 import com.dskja.betterstreamflix.utils.JsUnpacker
+import com.dskja.betterstreamflix.utils.withExtractorTimeouts
 import okhttp3.OkHttpClient
 import org.jsoup.nodes.Document
 import retrofit2.Retrofit
@@ -186,7 +187,7 @@ class CloseloadExtractor : Extractor() {
     private interface Service {
         companion object {
             fun build(baseUrl: String): Service {
-                val client = OkHttpClient.Builder().build()
+                val client = OkHttpClient.Builder().withExtractorTimeouts().build()
                 val retrofit = Retrofit.Builder()
                     .baseUrl(baseUrl)
                     .addConverterFactory(JsoupConverterFactory.create())

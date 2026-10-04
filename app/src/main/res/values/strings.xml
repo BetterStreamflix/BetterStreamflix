@@ -279,7 +279,7 @@
     <string name="downloads_play_with_cache_only">This offline item is stored in the app cache. Open it with Play offline inside BetterStreamflix, or download again with ADM for a shareable file.</string>
     <string name="downloads_service_start_failed">Downloads could not start in the background. Open Downloads to resume.</string>
     <string name="settings_download_storage_removable">SD card / removable storage</string>
-    <string name="settings_download_storage_custom">Custom folder on SD (via system picker)</string>
+    <string name="settings_download_storage_custom">Custom folder (grants the volume; files stay in the app folder)</string>
     <string name="settings_download_storage_pick_folder">Choose download folder</string>
     <string name="settings_download_storage_pick_folder_summary">Pick a folder on SD card or shared storage. Offline cache uses the app folder on that volume.</string>
     <string name="settings_download_storage_pick_folder_set">Folder: %1$s</string>
@@ -1409,7 +1409,7 @@
     <string name="player_bypass_retry_needed_mobile">SerienStream still needs verification. Open play again, finish the captcha, tap Weiter in the page, then Continue.</string>
     <string name="settings_serienstream_domain_current">Current: %1$s</string>
     <string name="settings_download_storage_location">Download storage location</string>
-    <string name="settings_download_storage_location_summary">Choose where offline videos are saved. Existing downloads are not moved automatically.</string>
+    <string name="settings_download_storage_location_summary">Choose where offline videos are saved. A custom folder grants access to that volume; adaptive downloads stay in the app folder there. Existing downloads are not moved automatically.</string>
     <string name="settings_download_storage_internal">App internal storage (secure)</string>
     <string name="settings_download_storage_app_external">App folder on shared storage</string>
     <string name="settings_download_storage_public_movies">Public Movies / BetterStreamflix</string>

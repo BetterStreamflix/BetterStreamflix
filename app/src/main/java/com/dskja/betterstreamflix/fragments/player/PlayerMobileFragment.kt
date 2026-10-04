@@ -50,6 +50,7 @@ import androidx.navigation.fragment.findNavController
 import androidx.navigation.fragment.navArgs
 import com.dskja.betterstreamflix.R
 import com.dskja.betterstreamflix.player.PlaybackFailover
+import com.dskja.betterstreamflix.player.PlaybackProgress
 import com.dskja.betterstreamflix.player.PlaybackLifecycleGuard
 import com.dskja.betterstreamflix.player.PlayerTeardownPolicy
 import com.dskja.betterstreamflix.player.PlayerBuilderFactory
@@ -1906,11 +1907,13 @@ class PlayerMobileFragment : Fragment() {
                         episode ?: database.episodeDao().getById(videoType.id)
                     }
                 }
-                val lastPlaybackPositionMillis = watchItem?.watchHistory
-                    ?.let { it.lastPlaybackPositionMillis - 10.seconds.inWholeMilliseconds }
+                val savedPosition = watchItem?.watchHistory?.lastPlaybackPositionMillis
                 withContext(Dispatchers.Main) {
                     if (!isAdded || playerReleased || !::player.isInitialized) return@withContext
-                    runCatching { player.seekTo(lastPlaybackPositionMillis ?: 0) }
+                    if (savedPosition == null) return@withContext
+                    if (!PlaybackProgress.shouldApplyResume(player.currentPosition)) return@withContext
+                    val target = PlaybackProgress.resumeTargetMs(savedPosition, player.duration)
+                    runCatching { player.seekTo(target) }
                 }
             }
             }
@@ -1939,9 +1942,8 @@ class PlayerMobileFragment : Fragment() {
     }
 
 
-    private fun ExoPlayer.hasStarted(): Boolean {
-        return (this.currentPosition > (this.duration * 0.005) || this.currentPosition > 20.seconds.inWholeMilliseconds)
-    }
+    private fun ExoPlayer.hasStarted(): Boolean =
+        PlaybackProgress.hasStarted(currentPosition, duration)
 
     private suspend fun persistPausedWatchItem(
         videoType: Video.Type,
@@ -1961,10 +1963,14 @@ class PlayerMobileFragment : Fragment() {
             started && !finished -> {
                 watchItem?.isWatched = false
                 watchItem?.watchedDate = null
+                val storedDuration = PlaybackProgress.durationToStore(
+                    duration,
+                    watchItem?.watchHistory?.durationMillis,
+                )
                 watchItem?.watchHistory = WatchItem.WatchHistory(
                     lastEngagementTimeUtcMillis = System.currentTimeMillis(),
                     lastPlaybackPositionMillis = position,
-                    durationMillis = duration,
+                    durationMillis = storedDuration,
                 )
             }
             finished -> {
@@ -2090,14 +2096,15 @@ class PlayerMobileFragment : Fragment() {
         }
     }
 
-    private fun ExoPlayer.hasFinished(): Boolean {
-        return (this.currentPosition > (this.duration * 0.90))
-    }
+    private fun ExoPlayer.hasFinished(): Boolean =
+        PlaybackProgress.hasFinished(currentPosition, duration)
 
-    private fun ExoPlayer.hasReallyFinished(): Boolean {
-        return this.duration > 0 &&
-                this.currentPosition >= (this.duration - UserPreferences.autoplayBuffer * 1000)
-    }
+    private fun ExoPlayer.hasReallyFinished(): Boolean =
+        PlaybackProgress.hasReallyFinished(
+            currentPosition,
+            duration,
+            UserPreferences.autoplayBuffer,
+        )
 
     private fun currentVideoTypeForUi(): Video.Type = when (val type = args.videoType) {
         is Video.Type.Episode -> EpisodeManager.getCurrentEpisode()

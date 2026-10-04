@@ -62,6 +62,10 @@ object M3uPlaylistParser {
 
             if (extinf != null) {
                 curName = extinf.substringAfterLast(",").trim()
+                if (curName.isBlank()) {
+                    curName = Regex("""tvg-name="([^"]+)"""")
+                        .find(extinf)?.groupValues?.get(1)?.trim().orEmpty()
+                }
                 curLogo = Regex("""tvg-logo="([^"]+)"""").find(extinf)?.groupValues?.get(1).orEmpty()
                 curGroup = Regex("""group-title="([^"]+)"""").find(extinf)?.groupValues?.get(1).orEmpty()
                 curUA = Regex("""http-user-agent="([^"]+)"""").find(extinf)?.groupValues?.getOrNull(1)

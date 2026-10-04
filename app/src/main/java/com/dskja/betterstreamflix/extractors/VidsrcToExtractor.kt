@@ -4,6 +4,7 @@ import android.util.Base64
 import com.tanasi.retrofit_jsoup.converter.JsoupConverterFactory
 import com.dskja.betterstreamflix.models.Video
 import com.dskja.betterstreamflix.utils.DnsResolver
+import com.dskja.betterstreamflix.utils.withExtractorTimeouts
 import com.dskja.betterstreamflix.utils.retry
 import okhttp3.OkHttpClient
 import org.jsoup.nodes.Document
@@ -135,6 +136,7 @@ class VidsrcToExtractor : Extractor() {
         companion object {
             val client = OkHttpClient.Builder()
                 .dns(DnsResolver.doh)
+                .withExtractorTimeouts()
                 .build()
             fun build(baseUrl: String): Service {
                 val retrofit = Retrofit.Builder()

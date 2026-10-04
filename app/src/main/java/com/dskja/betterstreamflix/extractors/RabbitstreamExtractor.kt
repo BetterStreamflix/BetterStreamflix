@@ -10,6 +10,7 @@ import com.google.gson.JsonObject
 import com.dskja.betterstreamflix.BuildConfig
 import com.dskja.betterstreamflix.models.Video
 import com.dskja.betterstreamflix.utils.StringConverterFactory
+import com.dskja.betterstreamflix.utils.withExtractorTimeouts
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 import retrofit2.http.GET
@@ -25,6 +26,7 @@ import javax.crypto.Cipher
 import javax.crypto.spec.IvParameterSpec
 import javax.crypto.spec.SecretKeySpec
 import okhttp3.HttpUrl.Companion.toHttpUrl
+import okhttp3.OkHttpClient
 
 open class RabbitstreamExtractor : Extractor() {
 
@@ -201,6 +203,7 @@ open class RabbitstreamExtractor : Extractor() {
             fun build(baseUrl: String): Service {
                 val retrofit = Retrofit.Builder()
                     .baseUrl(baseUrl)
+                    .client(OkHttpClient.Builder().withExtractorTimeouts().build())
                     .addConverterFactory(StringConverterFactory.create())
                     .addConverterFactory(
                         GsonConverterFactory.create(

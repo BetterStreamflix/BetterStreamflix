@@ -223,7 +223,7 @@
     <string name="downloads_play_with_cache_only">Dieser Offline-Eintrag liegt im App-Cache. Spiele ihn offline in BetterStreamflix ab oder lade erneut mit ADM für eine teilbare Datei.</string>
     <string name="downloads_service_start_failed">Downloads konnten im Hintergrund nicht starten. Öffne Downloads, um fortzusetzen.</string>
     <string name="settings_download_storage_removable">SD-Karte / Wechseldatenträger</string>
-    <string name="settings_download_storage_custom">Eigener Ordner auf SD (Systemauswahl)</string>
+    <string name="settings_download_storage_custom">Eigener Ordner (gibt den Datenträger frei; Dateien bleiben im App-Ordner)</string>
     <string name="settings_download_storage_pick_folder">Download-Ordner wählen</string>
     <string name="settings_download_storage_pick_folder_summary">Ordner auf SD-Karte oder gemeinsamem Speicher wählen. Offline-Cache nutzt den App-Ordner auf diesem Datenträger.</string>
     <string name="settings_download_storage_pick_folder_set">Ordner: %1$s</string>
@@ -1212,7 +1212,7 @@
     <string name="player_bypass_retry_needed_mobile">SerienStream braucht noch eine Verifizierung. Erneut abspielen, Captcha lösen, im Popup auf Weiter tippen und danach Continue.</string>
     <string name="settings_serienstream_domain_current">Aktuell: %1$s</string>
     <string name="settings_download_storage_location">Download-Speicherort</string>
-    <string name="settings_download_storage_location_summary">Wähle, wo Offline-Videos gespeichert werden. Vorhandene Downloads werden nicht automatisch verschoben.</string>
+    <string name="settings_download_storage_location_summary">Wähle, wo Offline-Videos gespeichert werden. Ein eigener Ordner gibt den Datenträger frei; adaptive Downloads bleiben dort im App-Ordner. Vorhandene Downloads werden nicht verschoben.</string>
     <string name="settings_download_storage_internal">Interner App-Speicher (sicher)</string>
     <string name="settings_download_storage_app_external">App-Ordner auf gemeinsamem Speicher</string>
     <string name="settings_download_storage_public_movies">Öffentliche Filme / BetterStreamflix</string>

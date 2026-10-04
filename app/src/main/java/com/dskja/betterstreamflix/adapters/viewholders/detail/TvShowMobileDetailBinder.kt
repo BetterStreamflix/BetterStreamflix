@@ -66,8 +66,17 @@ internal fun TvShowViewHolder.bindTvShowMobileDetail(binding: ContentTvShowMobil
 
     binding.tvTvShowTitle.text = tvShow.title
     // Hero logo bind is owned by DetailHeaderController (after body submit).
-    binding.ivTvShowLogo.visibility = View.INVISIBLE
-    binding.tvTvShowTitle.visibility = View.VISIBLE
+    when (com.dskja.betterstreamflix.logo.TitleLogoSlot.state(tvShow.logo, hideUntilReady = true)) {
+        com.dskja.betterstreamflix.logo.TitleLogoSlot.State.SHOW_TITLE -> {
+            binding.ivTvShowLogo.visibility = View.INVISIBLE
+            binding.tvTvShowTitle.visibility = View.VISIBLE
+        }
+        com.dskja.betterstreamflix.logo.TitleLogoSlot.State.LOADING_LOGO,
+        com.dskja.betterstreamflix.logo.TitleLogoSlot.State.SHOW_LOGO -> {
+            binding.ivTvShowLogo.visibility = View.INVISIBLE
+            binding.tvTvShowTitle.visibility = View.INVISIBLE
+        }
+    }
 
     if (ExperimentalMobileDesign.enabled() &&
         binding.root.getTag(R.id.exp_enter_animated_tag) != true

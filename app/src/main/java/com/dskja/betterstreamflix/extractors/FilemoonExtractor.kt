@@ -4,6 +4,7 @@ import android.util.Base64
 import android.util.Log
 import com.dskja.betterstreamflix.models.Video
 import com.dskja.betterstreamflix.utils.DnsResolver
+import com.dskja.betterstreamflix.utils.withExtractorTimeouts
 import okhttp3.OkHttpClient
 import org.json.JSONObject
 import retrofit2.Retrofit
@@ -278,7 +279,9 @@ open class FilemoonExtractor : Extractor() {
 
                 val client = OkHttpClient.Builder()
                     .cookieJar(cookieJar)
-                    .dns(DnsResolver.doh).build()
+                    .dns(DnsResolver.doh)
+                    .withExtractorTimeouts()
+                    .build()
 
                 return Retrofit.Builder()
                     .baseUrl(baseUrl)

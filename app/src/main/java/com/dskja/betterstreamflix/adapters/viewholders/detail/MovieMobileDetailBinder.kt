@@ -61,9 +61,18 @@ internal fun MovieViewHolder.bindMovieMobileDetail(binding: ContentMovieMobileBi
 
     binding.tvMovieTitle.text = movie.title
     // Hero logo bind is owned by DetailHeaderController (after body submit).
-    // Keep the fixed slot reserved (INVISIBLE) so layout does not jump.
-    binding.ivMovieLogo.visibility = View.INVISIBLE
-    binding.tvMovieTitle.visibility = View.VISIBLE
+    // A known logo stays hidden until it decodes — don't flash the title over it.
+    when (com.dskja.betterstreamflix.logo.TitleLogoSlot.state(movie.logo, hideUntilReady = true)) {
+        com.dskja.betterstreamflix.logo.TitleLogoSlot.State.SHOW_TITLE -> {
+            binding.ivMovieLogo.visibility = View.INVISIBLE
+            binding.tvMovieTitle.visibility = View.VISIBLE
+        }
+        com.dskja.betterstreamflix.logo.TitleLogoSlot.State.LOADING_LOGO,
+        com.dskja.betterstreamflix.logo.TitleLogoSlot.State.SHOW_LOGO -> {
+            binding.ivMovieLogo.visibility = View.INVISIBLE
+            binding.tvMovieTitle.visibility = View.INVISIBLE
+        }
+    }
 
     if (ExperimentalMobileDesign.enabled() &&
         binding.root.getTag(R.id.exp_enter_animated_tag) != true

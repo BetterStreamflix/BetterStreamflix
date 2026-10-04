@@ -150,7 +150,7 @@
     <string name="downloads_action_download_with">Scarica con…</string>
     <string name="downloads_play_with_cache_only">Questo elemento offline è nella cache dell\'app. Riproducilo offline in BetterStreamflix oppure scarica di nuovo con ADM per un file condividibile.</string>
     <string name="settings_download_storage_removable">Scheda SD / memoria rimovibile</string>
-    <string name="settings_download_storage_custom">Cartella personalizzata su SD (selettore di sistema)</string>
+    <string name="settings_download_storage_custom">Cartella personalizzata (concede il volume; i file restano nella cartella dell\'app)</string>
     <string name="settings_download_storage_pick_folder">Scegli cartella download</string>
     <string name="settings_download_storage_pick_folder_summary">Scegli una cartella su SD o memoria condivisa. La cache offline usa la cartella app su quel volume.</string>
     <string name="settings_download_storage_pick_folder_set">Cartella: %1$s</string>
