@@ -272,6 +272,7 @@
     <string name="downloads_action_play_with">Play with…</string>
     <string name="downloads_action_download_with">Download with…</string>
     <string name="downloads_play_with_cache_only">This offline item is stored in the app cache. Open it with Play offline inside BetterStreamflix, or download again with ADM for a shareable file.</string>
+    <string name="downloads_service_start_failed">Downloads could not start in the background. Open Downloads to resume.</string>
     <string name="settings_download_storage_removable">SD card / removable storage</string>
     <string name="settings_download_storage_custom">Custom folder on SD (via system picker)</string>
     <string name="settings_download_storage_pick_folder">Choose download folder</string>

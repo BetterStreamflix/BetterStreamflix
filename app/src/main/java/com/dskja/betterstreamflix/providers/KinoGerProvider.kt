@@ -264,26 +264,30 @@ object KinoGerProvider : Provider, ProviderConfigUrl {
             if (!needsWebView) throw e
 
             Log.d(TAG, "Using WebView bypass for $url")
-            val result = providerMutex.withLock {
-                getResolver().getResult(
-                    url = url,
-                    headers = mapOf(
-                        "User-Agent" to BROWSER_UA,
-                        "Accept-Language" to "de-DE,de;q=0.9,en;q=0.8",
-                    ),
-                    completion = { _, htmlText, cookies ->
-                        val hasClearance = cookies.contains("cf_clearance=", ignoreCase = true)
-                        (!requiresClearance(htmlText) && hasUsableContent(htmlText)) || hasClearance
-                    },
-                    shouldAllowNavigation = { targetUrl, _ ->
-                        runCatching {
-                            isProviderUrl(targetUrl) ||
-                                targetUrl.contains("/cdn-cgi/", ignoreCase = true) ||
-                                targetUrl.contains("challenges.cloudflare.com", ignoreCase = true)
-                        }.getOrDefault(false)
-                    },
-                )
-            }
+            // Cap CF WebView so cancelled Search (20s) does not hold providerMutex for 120s.
+            val result = kotlinx.coroutines.withTimeoutOrNull(ProviderSmoke.SEARCH_TIMEOUT_MS + 5_000L) {
+                providerMutex.withLock {
+                    getResolver().getResult(
+                        url = url,
+                        headers = mapOf(
+                            "User-Agent" to BROWSER_UA,
+                            "Accept-Language" to "de-DE,de;q=0.9,en;q=0.8",
+                        ),
+                        completion = { _, htmlText, cookies ->
+                            val hasClearance = cookies.contains("cf_clearance=", ignoreCase = true)
+                            (!requiresClearance(htmlText) && hasUsableContent(htmlText)) || hasClearance
+                        },
+                        shouldAllowNavigation = { targetUrl, _ ->
+                            runCatching {
+                                isProviderUrl(targetUrl) ||
+                                    targetUrl.contains("/cdn-cgi/", ignoreCase = true) ||
+                                    targetUrl.contains("challenges.cloudflare.com", ignoreCase = true)
+                            }.getOrDefault(false)
+                        },
+                        timeoutMs = ProviderSmoke.SEARCH_TIMEOUT_MS,
+                    )
+                }
+            } ?: throw Exception("KinoGer Cloudflare bypass timed out")
             CookieManager.getInstance().let { manager ->
                 if (android.os.Looper.myLooper() == android.os.Looper.getMainLooper()) {
                     manager.flush()

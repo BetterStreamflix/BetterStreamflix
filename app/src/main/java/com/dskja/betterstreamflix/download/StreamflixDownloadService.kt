@@ -89,6 +89,7 @@ class StreamflixDownloadService : DownloadService(
                         "StreamflixDownloadService",
                         "Background start also blocked: ${backgroundBlocked.message}",
                     )
+                    DownloadNotifier.notifyServiceStartFailed(app)
                 }
             } catch (e: Exception) {
                 android.util.Log.w(
@@ -101,6 +102,7 @@ class StreamflixDownloadService : DownloadService(
                             "StreamflixDownloadService",
                             "Unable to start download service: ${it.message}",
                         )
+                        DownloadNotifier.notifyServiceStartFailed(app)
                     }
             }
         }

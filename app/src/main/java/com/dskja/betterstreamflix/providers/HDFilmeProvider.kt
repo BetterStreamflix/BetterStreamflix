@@ -419,7 +419,9 @@ object HDFilmeProvider : Provider, ProviderConfigUrl {
                 .map { it.url }
                 .toList()
 
-            val detailSemaphore = Semaphore(4)
+            // Keep detail fan-out low — Global Search already gates providers; nested
+            // Semaphore(4) × 2 providers OOM-kills Fire TV sticks.
+            val detailSemaphore = Semaphore(2)
             coroutineScope {
                 matchingUrls.map { url ->
                     async {
@@ -547,7 +549,7 @@ object HDFilmeProvider : Provider, ProviderConfigUrl {
             val doc = if (page > 1) service.getMovies(page) else service.getMovies()
 
             coroutineScope {
-                val detailSemaphore = Semaphore(4)
+                val detailSemaphore = Semaphore(2)
                 doc.select("div.listing.grid[id=dle-content] div.item.relative.mt-3").map { element ->
                     async {
                         detailSemaphore.withPermit {
@@ -570,7 +572,7 @@ object HDFilmeProvider : Provider, ProviderConfigUrl {
             val doc = if (page > 1) service.getTvShows(page) else service.getTvShows()
 
             coroutineScope {
-                val detailSemaphore = Semaphore(4)
+                val detailSemaphore = Semaphore(2)
                 doc.select("div.listing.grid[id=dle-content] div.item.relative.mt-3").map { element ->
                     async {
                         detailSemaphore.withPermit {

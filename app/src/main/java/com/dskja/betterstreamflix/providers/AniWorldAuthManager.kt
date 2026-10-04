@@ -105,8 +105,20 @@ object AniWorldAuthManager {
      * login/session token is present.
      */
     fun canSkipInteractiveBypass(): Boolean {
+        val cookies = UserPreferences.aniWorldSessionCookies
+        if (SerienStreamBypassHelper.looksLikeClearanceSolved(
+                SerienStreamBypassHelper.sanitizeSessionCookies(cookies),
+            )
+        ) {
+            return true
+        }
+        val validatedAt = UserPreferences.aniWorldSessionValidatedAtMs
+        val validatedOk = UserPreferences.aniWorldSessionValidatedOk
+        if (validatedAt > 0L && !validatedOk) {
+            return false
+        }
         return SerienStreamBypassHelper.canSkipInteractiveBypass(
-            cookieHeader = UserPreferences.aniWorldSessionCookies,
+            cookieHeader = cookies,
             accountConfirmed = UserPreferences.aniWorldAccountConfirmed || isLoggedIn(),
         )
     }
@@ -499,6 +511,11 @@ object AniWorldAuthManager {
                     }
                 }
         }
-        runCatching { cookieManager.flush() }
+        val flush = Runnable { runCatching { cookieManager.flush() } }
+        if (android.os.Looper.myLooper() == android.os.Looper.getMainLooper()) {
+            flush.run()
+        } else {
+            android.os.Handler(android.os.Looper.getMainLooper()).post(flush)
+        }
     }
 }

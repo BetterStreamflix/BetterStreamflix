@@ -94,11 +94,12 @@ class WebViewResolver(private val context: Context) {
         valueScript: String? = null,
         pageReadyScriptProvider: ((currentUrl: String, html: String, cookies: String) -> String?)? = null,
         showImmediately: Boolean = false,
+        timeoutMs: Long = 120_000L,
     ): Result = mutex.withLock {
         Log.d(TAG, "[WebView] Fetching: $url (IsTV: $isTv)")
         pollingCount = 0
         loginKeyboardPrimed = false
-        val result = withTimeoutOrNull(120000) {
+        val result = withTimeoutOrNull(timeoutMs.coerceAtLeast(1_000L)) {
             suspendCancellableCoroutine { continuation ->
                 mainHandler.post {
                     setupWebView(

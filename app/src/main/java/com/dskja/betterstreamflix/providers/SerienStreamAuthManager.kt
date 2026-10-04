@@ -66,8 +66,22 @@ object SerienStreamAuthManager {
      * login/session token is present.
      */
     fun canSkipInteractiveBypass(): Boolean {
+        val cookies = UserPreferences.serienStreamSessionCookies
+        // Clearance always skips. Account/session skip only when we have not recently
+        // observed a failed validation / stream-gate (stale accountConfirmed).
+        if (SerienStreamBypassHelper.looksLikeClearanceSolved(
+                SerienStreamBypassHelper.sanitizeSessionCookies(cookies),
+            )
+        ) {
+            return true
+        }
+        val validatedAt = UserPreferences.serienStreamSessionValidatedAtMs
+        val validatedOk = UserPreferences.serienStreamSessionValidatedOk
+        if (validatedAt > 0L && !validatedOk) {
+            return false
+        }
         return SerienStreamBypassHelper.canSkipInteractiveBypass(
-            cookieHeader = UserPreferences.serienStreamSessionCookies,
+            cookieHeader = cookies,
             accountConfirmed = UserPreferences.serienStreamAccountConfirmed || isLoggedIn(),
         )
     }
@@ -582,6 +596,11 @@ object SerienStreamAuthManager {
                     }
                 }
         }
-        runCatching { cookieManager.flush() }
+        val flush = Runnable { runCatching { cookieManager.flush() } }
+        if (android.os.Looper.myLooper() == android.os.Looper.getMainLooper()) {
+            flush.run()
+        } else {
+            android.os.Handler(android.os.Looper.getMainLooper()).post(flush)
+        }
     }
 }

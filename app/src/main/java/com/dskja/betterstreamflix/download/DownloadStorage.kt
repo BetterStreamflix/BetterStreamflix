@@ -12,7 +12,9 @@ object DownloadStorage {
     private const val PUBLIC_FOLDER = "BetterStreamflix"
     private const val MIN_FREE_BYTES = 500L * 1024L * 1024L
 
-    fun location(): DownloadStorageLocation = UserPreferences.downloadStorageLocation
+    fun location(): DownloadStorageLocation = runCatching {
+        UserPreferences.downloadStorageLocation
+    }.getOrDefault(DownloadStorageLocation.INTERNAL)
 
     fun downloadsDir(context: Context): File {
         val app = context.applicationContext
@@ -54,21 +56,23 @@ object DownloadStorage {
     }
 
     fun storageUnavailableReason(context: Context): Int? {
-        return when {
-            location() == DownloadStorageLocation.CUSTOM_FOLDER &&
-                DownloadTreeAccess.hasTree() &&
-                !DownloadTreeAccess.hasPersistedPermission(context) ->
-                R.string.settings_download_storage_permission_lost
-            location() == DownloadStorageLocation.REMOVABLE &&
-                !hasRemovableStorage(context) ->
-                R.string.settings_download_storage_removable_unavailable
-            location() == DownloadStorageLocation.CUSTOM_FOLDER &&
-                !DownloadTreeAccess.validateCustomStorage(context) ->
-                R.string.settings_download_storage_unavailable
-            !isStorageAvailable(context) ->
-                R.string.settings_download_storage_unavailable
-            else -> null
-        }
+        return runCatching {
+            when {
+                location() == DownloadStorageLocation.CUSTOM_FOLDER &&
+                    DownloadTreeAccess.hasTree() &&
+                    !DownloadTreeAccess.hasPersistedPermission(context) ->
+                    R.string.settings_download_storage_permission_lost
+                location() == DownloadStorageLocation.REMOVABLE &&
+                    !hasRemovableStorage(context) ->
+                    R.string.settings_download_storage_removable_unavailable
+                location() == DownloadStorageLocation.CUSTOM_FOLDER &&
+                    !DownloadTreeAccess.validateCustomStorage(context) ->
+                    R.string.settings_download_storage_unavailable
+                !isStorageAvailable(context) ->
+                    R.string.settings_download_storage_unavailable
+                else -> null
+            }
+        }.getOrNull()
     }
 
     private fun appExternalDownloads(app: Context): File {

@@ -73,13 +73,18 @@ object OfflinePlayback {
 
     fun buildLocalVideo(context: Context, item: DownloadItemEntity): Video? {
         if (item.state != DownloadItemState.COMPLETED.name) return null
-        DownloadStorage.storageUnavailableReason(context)?.let {
-            Log.w(TAG, "Offline storage unavailable: ${context.getString(it)}")
+        val unavailable = runCatching {
+            DownloadStorage.storageUnavailableReason(context)
+        }.getOrNull()
+        if (unavailable != null) {
+            runCatching {
+                Log.w(TAG, "Offline storage unavailable: ${context.getString(unavailable)}")
+            }
             return null
         }
-        val cacheRoot = DownloadStorage.cacheDir(context)
-        if (!cacheRoot.exists() || !cacheRoot.canRead()) {
-            Log.w(TAG, "Offline cache dir missing: ${cacheRoot.absolutePath}")
+        val cacheRoot = runCatching { DownloadStorage.cacheDir(context) }.getOrNull()
+        if (cacheRoot == null || !cacheRoot.exists() || !cacheRoot.canRead()) {
+            runCatching { Log.w(TAG, "Offline cache dir missing: ${cacheRoot?.absolutePath}") }
             return null
         }
         val media3Id = item.media3Id
@@ -197,11 +202,40 @@ object OfflinePlayback {
     }
 
     /**
-     * Share/export only works for real on-disk files. Cache-only Media3 downloads have no
-     * file path — callers must handle null (external share disabled).
+     * Share/export for external players.
+     * 1) Real on-disk paths in [DownloadItemEntity.localUri]
+     * 2) Progressive Media3 cache materialization (mp4/webm/mkv)
+     * HLS/DASH stay null — callers show cache-only copy.
      */
     fun exportShareUri(context: Context, item: DownloadItemEntity): Uri? {
-        val path = item.localUri.takeIf { it.isNotBlank() } ?: return null
+        fileFromLocalUri(item.localUri)?.let { file ->
+            return runCatching {
+                FileProvider.getUriForFile(
+                    context,
+                    "${context.packageName}.provider",
+                    file,
+                )
+            }.getOrNull()
+        }
+        val exported = runCatching {
+            StreamflixDownloadManager.exportProgressiveShareFile(
+                context = context,
+                media3Id = item.media3Id,
+                mimeHint = item.mimeType,
+                streamUrl = item.streamUrl,
+            )
+        }.getOrNull() ?: return null
+        return runCatching {
+            FileProvider.getUriForFile(
+                context,
+                "${context.packageName}.provider",
+                exported,
+            )
+        }.getOrNull()
+    }
+
+    private fun fileFromLocalUri(path: String): File? {
+        if (path.isBlank()) return null
         if (path.startsWith("http://", ignoreCase = true) ||
             path.startsWith("https://", ignoreCase = true)
         ) {
@@ -212,11 +246,6 @@ object OfflinePlayback {
             path.startsWith("/") -> File(path)
             else -> return null
         }
-        if (!file.exists()) return null
-        return FileProvider.getUriForFile(
-            context,
-            "${context.packageName}.provider",
-            file,
-        )
+        return file.takeIf { it.exists() && it.canRead() }
     }
 }

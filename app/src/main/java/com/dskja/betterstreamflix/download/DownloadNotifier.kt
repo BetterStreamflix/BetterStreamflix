@@ -101,6 +101,26 @@ object DownloadNotifier {
         }
     }
 
+    /** Surface FGS start failures so QUEUED items are not silently stuck. */
+    fun notifyServiceStartFailed(context: Context) {
+        ensureChannel(context)
+        val notification = NotificationCompat.Builder(context, CHANNEL_ID)
+            .setSmallIcon(R.drawable.ic_menu_downloads)
+            .setContentTitle(context.getString(R.string.downloads_title))
+            .setContentText(context.getString(R.string.downloads_service_start_failed))
+            .setStyle(
+                NotificationCompat.BigTextStyle()
+                    .bigText(context.getString(R.string.downloads_service_start_failed)),
+            )
+            .setAutoCancel(true)
+            .setContentIntent(openDownloadsIntent(context))
+            .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+            .build()
+        runCatching {
+            NotificationManagerCompat.from(context).notify(NOTIFICATION_ID_ACTIVE, notification)
+        }
+    }
+
     fun cancelActive(context: Context) {
         NotificationManagerCompat.from(context).cancel(NOTIFICATION_ID_ACTIVE)
     }

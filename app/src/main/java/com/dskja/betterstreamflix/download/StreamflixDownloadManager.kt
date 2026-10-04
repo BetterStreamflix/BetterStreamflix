@@ -138,8 +138,9 @@ object StreamflixDownloadManager {
 
     fun cacheDataSourceFactory(context: Context): CacheDataSource.Factory {
         val manager = get(context)
-        val cache = simpleCache ?: error("cache not ready")
-        val upstream = dataSourceFactory ?: error("factory not ready")
+        val cache = requireCacheReady()
+        val upstream = dataSourceFactory
+            ?: throw IOException("download data source factory not ready")
         return CacheDataSource.Factory()
             .setCache(cache)
             .setUpstreamDataSourceFactory(upstream)
@@ -154,15 +155,98 @@ object StreamflixDownloadManager {
      *
      * MediaItem must come from [DownloadRequest.toMediaItem] (stream keys + cache key)
      * so HLS/DASH variants match what was downloaded — see [OfflinePlayback.buildOfflineMediaItem].
+     *
+     * Throws [IOException] (soft) instead of crashing when cache is mid-relocate.
      */
     fun playbackCacheDataSourceFactory(context: Context): CacheDataSource.Factory {
         get(context)
-        val cache = simpleCache ?: error("cache not ready")
+        val cache = requireCacheReady()
         return CacheDataSource.Factory()
             .setCache(cache)
             .setUpstreamDataSourceFactory(OfflineCacheMissDataSource.Factory)
             .setCacheWriteDataSinkFactory(null)
             .setFlags(CacheDataSource.FLAG_BLOCK_ON_CACHE)
+    }
+
+    private fun requireCacheReady(): SimpleCache {
+        return simpleCache
+            ?: throw IOException("offline cache not ready — retry after storage settles")
+    }
+
+    /**
+     * Copy a completed progressive Media3 download out of SimpleCache into a shareable
+     * temp file for external players. Returns null for HLS/DASH / incomplete / oversized.
+     */
+    fun exportProgressiveShareFile(
+        context: Context,
+        media3Id: String,
+        mimeHint: String = "",
+        streamUrl: String = "",
+        maxBytes: Long = 1_500L * 1024L * 1024L,
+    ): java.io.File? {
+        if (media3Id.isBlank()) return null
+        runCatching { get(context) }.getOrElse { return null }
+        val cache = simpleCache ?: return null
+        val download = downloadManager?.downloadIndex?.getDownload(media3Id) ?: return null
+        if (download.state != Download.STATE_COMPLETED) return null
+        val mime = mimeHint.ifBlank { download.request.mimeType.orEmpty() }
+        if (isAdaptiveStream(mime, streamUrl.ifBlank { download.request.uri.toString() })) {
+            return null
+        }
+        val lengthHint = download.contentLength.takeIf { it > 0L }
+            ?: download.bytesDownloaded
+        if (lengthHint > maxBytes) return null
+
+        val ext = when {
+            mime.contains("mp4", ignoreCase = true) ||
+                streamUrl.contains(".mp4", ignoreCase = true) -> "mp4"
+            mime.contains("webm", ignoreCase = true) -> "webm"
+            mime.contains("mkv", ignoreCase = true) ||
+                mime.contains("matroska", ignoreCase = true) -> "mkv"
+            else -> "bin"
+        }
+        val out = java.io.File(context.cacheDir, "share_${media3Id.hashCode()}.$ext")
+        return runCatching {
+            val dataSource = CacheDataSource.Factory()
+                .setCache(cache)
+                .setUpstreamDataSourceFactory(OfflineCacheMissDataSource.Factory)
+                .setCacheWriteDataSinkFactory(null)
+                .setFlags(CacheDataSource.FLAG_BLOCK_ON_CACHE)
+                .createDataSource()
+            val dataSpec = DataSpec(download.request.uri)
+            dataSource.open(dataSpec)
+            try {
+                java.io.FileOutputStream(out).use { fos ->
+                    val buf = ByteArray(64 * 1024)
+                    var written = 0L
+                    while (true) {
+                        val read = dataSource.read(buf, 0, buf.size)
+                        if (read == androidx.media3.common.C.RESULT_END_OF_INPUT) break
+                        if (read < 0) break
+                        written += read
+                        if (written > maxBytes) {
+                            fos.close()
+                            out.delete()
+                            return@runCatching null
+                        }
+                        fos.write(buf, 0, read)
+                    }
+                }
+            } finally {
+                runCatching { dataSource.close() }
+            }
+            out.takeIf { it.exists() && it.length() > 0L }
+        }.getOrNull()
+    }
+
+    private fun isAdaptiveStream(mime: String, url: String): Boolean {
+        val m = mime.lowercase()
+        val u = url.lowercase()
+        return m.contains("mpegurl") ||
+            m.contains("dash+xml") ||
+            m.contains("x-mpegurl") ||
+            u.contains(".m3u8") ||
+            u.contains(".mpd")
     }
 
     /**
