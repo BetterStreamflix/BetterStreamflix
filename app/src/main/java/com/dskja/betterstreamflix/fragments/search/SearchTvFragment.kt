@@ -173,10 +173,24 @@ class SearchTvFragment : Fragment() {
                                 ui.vgvSearch.visibility = View.INVISIBLE
                                 ui.etSearch.nextFocusDownId = ui.isLoading.btnIsLoadingRetry.id
                                 ui.isLoading.btnIsLoadingRetry.nextFocusUpId = ui.etSearch.id
+                                pointSortChips(
+                                    SearchTvRows.chipDownId(
+                                        hasGridItems = false,
+                                        emptyCtaVisible = false,
+                                        gridId = ui.vgvSearch.id,
+                                        emptyCtaId = ui.isLoading.btnIsLoadingRetry.id,
+                                        fallbackId = ui.isLoading.btnIsLoadingRetry.id,
+                                    )
+                                )
                             }
                         }
                     }
                 }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        refreshSortChips()
     }
 
     override fun onDestroyView() {
@@ -328,7 +342,10 @@ class SearchTvFragment : Fragment() {
         )
 
         binding.btnSearchVoice.apply {
-            visibility = if (voiceHelper.isAvailable()) View.VISIBLE else View.GONE
+            val voiceVisible = voiceHelper.isAvailable()
+            visibility = if (voiceVisible) View.VISIBLE else View.GONE
+            binding.btnSearchClear.nextFocusRightId =
+                if (voiceVisible) id else View.NO_ID
             setOnClickListener {
                 if (!voiceHelper.isListening) voiceHelper.startWithPermissionCheck()
             }
@@ -388,24 +405,15 @@ class SearchTvFragment : Fragment() {
         val chipNewest = binding.root.findViewById<android.widget.TextView>(R.id.chip_search_sort_newest) ?: return
         val chipYear = binding.root.findViewById<android.widget.TextView>(R.id.chip_search_filter_year) ?: return
 
-        fun refreshChips() {
-            SearchSortUi.bindChips(
-                chipDefault = chipDefault,
-                chipNewest = chipNewest,
-                chipYear = chipYear,
-                mode = viewModel.currentSortMode(),
-                year = viewModel.currentYearFilter(),
-            )
-        }
-        refreshChips()
+        refreshSortChips()
 
         chipDefault.setOnClickListener {
             viewModel.setSortMode(com.dskja.betterstreamflix.utils.SearchSortMode.PROVIDER_DEFAULT)
-            refreshChips()
+            refreshSortChips()
         }
         chipNewest.setOnClickListener {
             viewModel.setSortMode(com.dskja.betterstreamflix.utils.SearchSortMode.NEWEST_FIRST)
-            refreshChips()
+            refreshSortChips()
         }
         chipYear.setOnClickListener {
             SearchSortUi.showYearPicker(
@@ -414,7 +422,7 @@ class SearchTvFragment : Fragment() {
                 resultYears = viewModel.yearsInCurrentResults(),
             ) { year ->
                 viewModel.setYearFilter(year)
-                refreshChips()
+                refreshSortChips()
             }
         }
     }
@@ -556,7 +564,7 @@ class SearchTvFragment : Fragment() {
         appAdapter.setOnLoadMoreListener(null)
         gridConfiguredForColumns = -1
         ui.vgvSearch.visibility = View.INVISIBLE
-        updateResultFocusTargets(hasFocusableContent = false)
+        pointSortChips(ui.etSearch.id)
     }
 
     private fun submitSearchGrid(columns: Int, items: List<AppAdapter.Item>) {
@@ -578,23 +586,56 @@ class SearchTvFragment : Fragment() {
                 appAdapter.submitList(emptyList())
             }
             currentGridColumns = columns
-            runCatching { grid.setNumColumns(columns) }
-            gridConfiguredForColumns = columns
+            val applied = runCatching { grid.setNumColumns(columns) }.isSuccess
+            if (applied) gridConfiguredForColumns = columns
         }
         appAdapter.submitList(items)
         grid.visibility = View.VISIBLE
-        updateResultFocusTargets(items.isNotEmpty())
     }
 
-    private fun updateResultFocusTargets(hasFocusableContent: Boolean) {
+    private fun refreshSortChips() {
+        val root = _binding?.root ?: return
+        val chipDefault = root.findViewById<android.widget.TextView>(R.id.chip_search_sort_default) ?: return
+        val chipNewest = root.findViewById<android.widget.TextView>(R.id.chip_search_sort_newest) ?: return
+        val chipYear = root.findViewById<android.widget.TextView>(R.id.chip_search_filter_year) ?: return
+        SearchSortUi.bindChips(
+            chipDefault = chipDefault,
+            chipNewest = chipNewest,
+            chipYear = chipYear,
+            mode = viewModel.currentSortMode(),
+            year = viewModel.currentYearFilter(),
+        )
+    }
+
+    private fun pointSortChips(downId: Int) {
         val ui = _binding ?: return
-        val down = if (hasFocusableContent) ui.vgvSearch.id else ui.etSearch.id
         listOf(
             R.id.chip_search_sort_default,
             R.id.chip_search_sort_newest,
             R.id.chip_search_filter_year,
         ).forEach { id ->
-            ui.root.findViewById<View>(id)?.nextFocusDownId = down
+            ui.root.findViewById<View>(id)?.nextFocusDownId = downId
+        }
+    }
+
+    private fun bindSearchEmpty(ui: FragmentSearchTvBinding, visible: Boolean) {
+        val emptyView = ui.root.findViewById<View>(R.id.tv_search_empty)
+        val cta = ui.root.findViewById<android.widget.TextView>(R.id.btn_search_empty_cta)
+        ExpEmptyChrome.bind(
+            emptyView = emptyView,
+            emptyRule = ui.root.findViewById(R.id.v_search_empty_rule),
+            emptyCta = cta,
+            visible = visible,
+        )
+        if (!visible || cta == null) return
+        // Shared empty chrome hides the action unless the experimental mobile theme is on.
+        cta.visibility = View.VISIBLE
+        cta.nextFocusUpId = R.id.chip_search_filter_year
+        cta.setOnClickListener {
+            val binding = _binding ?: return@setOnClickListener
+            binding.etSearch.setText("")
+            viewModel.search("")
+            binding.etSearch.requestFocus()
         }
     }
 
@@ -602,24 +643,19 @@ class SearchTvFragment : Fragment() {
         val ui = _binding ?: return
         val plan = SearchTvRows.local(viewModel.query, list)
         submitSearchGrid(plan.columns, plan.items)
-
-        ui.root.findViewById<View>(R.id.tv_search_empty)?.let { emptyView ->
-            val showEmpty = plan.items.isEmpty() && viewModel.query.isNotBlank()
-            ExpEmptyChrome.bind(
-                emptyView = emptyView,
-                emptyRule = ui.root.findViewById(R.id.v_search_empty_rule),
-                emptyCta = ui.root.findViewById(R.id.btn_search_empty_cta),
-                visible = showEmpty,
-                onCtaClick = {
-                    val binding = _binding ?: return@bind
-                    binding.etSearch.setText("")
-                    viewModel.search("")
-                    binding.etSearch.requestFocus()
-                },
+        val showEmpty = plan.items.isEmpty() && viewModel.query.isNotBlank()
+        bindSearchEmpty(ui, showEmpty)
+        pointSortChips(
+            SearchTvRows.chipDownId(
+                hasGridItems = plan.items.isNotEmpty(),
+                emptyCtaVisible = showEmpty,
+                gridId = ui.vgvSearch.id,
+                emptyCtaId = R.id.btn_search_empty_cta,
+                fallbackId = ui.etSearch.id,
             )
-        }
+        )
 
-        if (hasMore && viewModel.query.isNotBlank()) {
+        if (hasMore && viewModel.query.isNotBlank() && plan.items.size < SearchTvRows.MAX_LOCAL) {
             appAdapter.setOnLoadMoreListener { viewModel.loadMore() }
         } else {
             appAdapter.setOnLoadMoreListener(null)
@@ -644,20 +680,16 @@ class SearchTvFragment : Fragment() {
         appAdapter.setOnLoadMoreListener(null)
 
         val showEmpty = !stillWorking && plan.items.isEmpty() && viewModel.query.isNotBlank()
-        ui.root.findViewById<View>(R.id.tv_search_empty)?.let { emptyView ->
-            ExpEmptyChrome.bind(
-                emptyView = emptyView,
-                emptyRule = ui.root.findViewById(R.id.v_search_empty_rule),
-                emptyCta = ui.root.findViewById(R.id.btn_search_empty_cta),
-                visible = showEmpty,
-                onCtaClick = {
-                    val binding = _binding ?: return@bind
-                    binding.etSearch.setText("")
-                    viewModel.search("")
-                    binding.etSearch.requestFocus()
-                },
+        bindSearchEmpty(ui, showEmpty)
+        pointSortChips(
+            SearchTvRows.chipDownId(
+                hasGridItems = plan.items.isNotEmpty(),
+                emptyCtaVisible = showEmpty,
+                gridId = ui.vgvSearch.id,
+                emptyCtaId = R.id.btn_search_empty_cta,
+                fallbackId = ui.etSearch.id,
             )
-        }
+        )
     }
 
     private fun updateGlobalSearchContentDescription() {

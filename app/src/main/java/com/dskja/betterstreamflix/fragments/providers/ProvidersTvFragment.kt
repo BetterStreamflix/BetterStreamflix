@@ -70,11 +70,13 @@ class ProvidersTvFragment : Fragment() {
 
         initializeProviders()
         initializeProviderSearch()
+        disarmProviderLoading()
 
         viewLifecycleOwner.lifecycleScope.launch {
             viewModel.state.flowWithLifecycle(lifecycle, Lifecycle.State.STARTED).collect { state ->
                 when (state) {
                     ProvidersViewModel.State.Loading -> binding.isLoading.apply {
+                        disarmProviderLoading()
                         root.visibility = View.VISIBLE
                         com.dskja.betterstreamflix.utils.ExpPressEffects.showLoadingSkeleton(root, true)
                         gIsLoadingRetry.visibility = View.GONE
@@ -242,17 +244,8 @@ class ProvidersTvFragment : Fragment() {
             setOnKeyListener { _, keyCode, event ->
                 if (event.action != KeyEvent.ACTION_DOWN) return@setOnKeyListener false
                 if (keyCode == KeyEvent.KEYCODE_DPAD_DOWN) {
-                    when {
-                        binding.rvProviders.isVisible && appAdapter.itemCount > 0 -> {
-                            binding.rvProviders.requestFocus()
-                            true
-                        }
-                        binding.btnProvidersEmptyCta.isVisible -> {
-                            binding.btnProvidersEmptyCta.requestFocus()
-                            true
-                        }
-                        else -> false
-                    }
+                    moveProviderSearchDown()
+                    true
                 } else {
                     false
                 }
@@ -262,7 +255,10 @@ class ProvidersTvFragment : Fragment() {
                 override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
                 override fun afterTextChanged(s: Editable?) {
                     searchQuery = s?.toString().orEmpty()
-                    binding.btnProvidersSearchClear.isVisible = searchQuery.isNotBlank()
+                    val showClear = searchQuery.isNotBlank()
+                    binding.btnProvidersSearchClear.isVisible = showClear
+                    binding.etProvidersSearch.nextFocusRightId =
+                        if (showClear) binding.btnProvidersSearchClear.id else View.NO_ID
                     applyProviderFilter(requestListFocus = false)
                 }
             })
@@ -274,20 +270,32 @@ class ProvidersTvFragment : Fragment() {
         }
         binding.btnProvidersSearchClear.setOnKeyListener { _, keyCode, event ->
             if (event.action == KeyEvent.ACTION_DOWN && keyCode == KeyEvent.KEYCODE_DPAD_DOWN) {
-                when {
-                    binding.rvProviders.isVisible && appAdapter.itemCount > 0 -> {
-                        binding.rvProviders.requestFocus()
-                        true
-                    }
-                    binding.btnProvidersEmptyCta.isVisible -> {
-                        binding.btnProvidersEmptyCta.requestFocus()
-                        true
-                    }
-                    else -> false
-                }
+                moveProviderSearchDown()
+                true
             } else {
                 false
             }
+        }
+    }
+
+    private fun disarmProviderLoading() {
+        val root = _binding?.isLoading?.root ?: return
+        root.isFocusable = false
+        root.isFocusableInTouchMode = false
+        root.isClickable = false
+    }
+
+    private fun moveProviderSearchDown() {
+        val ui = _binding ?: return
+        when (
+            ProvidersSearch.focusDown(
+                hasRows = ui.rvProviders.isVisible && appAdapter.itemCount > 0,
+                emptyCtaVisible = ui.btnProvidersEmptyCta.isVisible,
+            )
+        ) {
+            ProvidersSearch.FocusDown.LIST -> ui.rvProviders.requestFocus()
+            ProvidersSearch.FocusDown.EMPTY_CTA -> ui.btnProvidersEmptyCta.requestFocus()
+            ProvidersSearch.FocusDown.STAY -> Unit
         }
     }
 
@@ -352,15 +360,25 @@ class ProvidersTvFragment : Fragment() {
             emptyCta = binding.btnProvidersEmptyCta,
             visible = empty,
             tintOnSurfaceVariant = false,
-            onCtaClick = {
-                if (searching) {
+        )
+        if (empty) {
+            binding.btnProvidersEmptyCta.visibility = View.VISIBLE
+            binding.btnProvidersEmptyCta.setOnClickListener {
+                if (searchQuery.isNotBlank()) {
                     binding.etProvidersSearch.setText("")
                     binding.etProvidersSearch.requestFocus()
                 } else {
                     applyLanguageFilter(0)
                 }
-            },
-        )
+            }
+        }
+        val downId = when (ProvidersSearch.focusDown(hasRows = !empty, emptyCtaVisible = empty)) {
+            ProvidersSearch.FocusDown.LIST -> binding.rvProviders.id
+            ProvidersSearch.FocusDown.EMPTY_CTA -> binding.btnProvidersEmptyCta.id
+            ProvidersSearch.FocusDown.STAY -> binding.etProvidersSearch.id
+        }
+        binding.etProvidersSearch.nextFocusDownId = downId
+        binding.btnProvidersSearchClear.nextFocusDownId = downId
         when {
             !empty && requestListFocus -> {
                 binding.rvProviders.requestFocus()

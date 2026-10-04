@@ -13,8 +13,17 @@ import kotlinx.coroutines.CancellationException
  */
 object SearchResultGuard {
 
-    fun sanitize(items: List<AppAdapter.Item>): List<AppAdapter.Item> {
-        if (items.isEmpty()) return items
+    /** Local Search stops paging once the grid is holding this many rows. */
+    const val MAX_LOCAL_RESULTS = 96
+
+    /** One Global Search provider shelf / section. Keeps DE fan-out off the TV heap. */
+    const val MAX_GLOBAL_PER_PROVIDER = 16
+
+    /** Room `IN (:ids)` blows past the SQLite bind limit around 999. */
+    const val ROOM_LOOKUP_LIMIT = 400
+
+    fun sanitize(items: List<AppAdapter.Item>?): List<AppAdapter.Item> {
+        if (items.isNullOrEmpty()) return emptyList()
         return items.mapNotNull { item ->
             when (item) {
                 is Movie -> item.takeIf { it.id.isNotBlank() && it.title.isNotBlank() }
@@ -25,9 +34,12 @@ object SearchResultGuard {
         }
     }
 
+    fun bound(items: List<AppAdapter.Item>?, limit: Int): List<AppAdapter.Item> =
+        sanitize(items).take(limit.coerceAtLeast(0))
+
     fun safeProviderSearch(
         label: String,
-        block: () -> List<AppAdapter.Item>,
+        block: () -> List<AppAdapter.Item>?,
     ): List<AppAdapter.Item> {
         return try {
             sanitize(block())

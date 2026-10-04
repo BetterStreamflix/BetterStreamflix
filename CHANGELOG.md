@@ -22,6 +22,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Buy Me a Coffee short-link constant (`buymeacoff.ee/betterstreamflix`) alongside the canonical URL
 
 ### Fixed
+- Search empty state keeps a Clear action on Mobile and TV, sort chips move to that action or the grid, a failed extra page keeps the rows already shown, and German Global Search only lists providers that returned hits. Choose a provider uses a normal text field so the TV screen can open
 - Profile settings no longer write library scope, continue watching, or parental max-age into another profile. A missing per-profile key no longer inherits the default profile's PIN or age ceiling. Turning kids off lifts that profile's kids ceiling. Deleting the active profile does not unlock a PIN or kids fallback. Who's Watching stays locked after closing the editor, and TV can focus Edit, Add, Save, PIN, and avatar controls
 - Cloud sync reuses the live profile database instead of opening a second connection and closing it. Remote rows are written to the profile that fetched them
 - Extractors and anime playback: VOE follows the player hop instead of the first CDN URL and AniWorld “VOE - DUB/SUB” links stay on voe.sx; MegaPlay accepts standard Base64; empty hoster sources fail over instead of playing a blank URL; Nekostream, VidxGo, and LoadX treat HTTP 404 as final; StreamWish stops on the embed instead of the first page; extractor HTTP calls stay inside the failover window
