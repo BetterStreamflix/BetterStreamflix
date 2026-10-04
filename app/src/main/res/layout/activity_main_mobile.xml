@@ -52,6 +52,8 @@
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:theme="@style/Theme.AppCompat"
+        app:itemHorizontalTranslationEnabled="false"
+        app:itemIconSize="22dp"
         app:itemIconTint="@color/nav_item_app"
         app:itemTextAppearanceActive="@style/BottomNavLabelStyle"
         app:itemTextAppearanceInactive="@style/BottomNavLabelStyle"

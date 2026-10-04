@@ -1,26 +1,27 @@
 package com.dskja.betterstreamflix.utils
 
 import android.view.View
-import android.view.animation.AnimationUtils
-import com.dskja.betterstreamflix.R
 
 /** Shared TV focus zoom — skipped on Fire Stick / reduce-motion / low-RAM. */
 object TvFocusZoom {
     fun apply(view: View, hasFocus: Boolean) {
-        if (DeviceCapabilities.shouldReduceHomeEffects(view.context)) {
-            view.clearAnimation()
-            // Still lift elevation so focus remains readable without motion.
-            view.elevation = if (hasFocus) 12f * view.resources.displayMetrics.density else 0f
-            view.isSelected = hasFocus
+        view.clearAnimation()
+        view.animate().cancel()
+        val reduce = DeviceCapabilities.shouldReduceHomeEffects(view.context)
+        val density = view.resources.displayMetrics.density
+        view.elevation = if (hasFocus) (if (reduce) 12f else 10f) * density else 0f
+        view.isSelected = hasFocus
+        if (reduce) {
+            view.scaleX = 1f
+            view.scaleY = 1f
             return
         }
-        view.elevation = if (hasFocus) 10f * view.resources.displayMetrics.density else 0f
-        view.isSelected = hasFocus
-        val anim = AnimationUtils.loadAnimation(
-            view.context,
-            if (hasFocus) R.anim.zoom_in else R.anim.zoom_out,
-        )
-        anim.fillAfter = true
-        view.startAnimation(anim)
+        // Scale from the current size. The old zoom_out clip always started at
+        // 108%, so a recycled row popped larger than its neighbors.
+        view.animate()
+            .scaleX(if (hasFocus) 1.08f else 1f)
+            .scaleY(if (hasFocus) 1.08f else 1f)
+            .setDuration(if (hasFocus) 180L else 120L)
+            .start()
     }
 }

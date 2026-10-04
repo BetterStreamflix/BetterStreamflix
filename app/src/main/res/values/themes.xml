@@ -42,11 +42,11 @@
         <item name="category_swiper_gradient_drawable">@drawable/fg_category_swiper_default</item>
     </style>
 
-    <style name="BottomNavLabelStyle" parent="Widget.Design.BottomNavigationView">
+    <style name="BottomNavLabelStyle" parent="TextAppearance.AppCompat.Caption">
         <item name="android:textSize">11sp</item>
     </style>
 
-    <style name="BottomNavLabelStyleExp" parent="Widget.Design.BottomNavigationView">
+    <style name="BottomNavLabelStyleExp" parent="TextAppearance.AppCompat.Caption">
         <item name="android:textSize">10sp</item>
         <item name="android:fontFamily">@font/manrope_family</item>
         <item name="android:letterSpacing">0.08</item>

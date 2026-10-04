@@ -13,6 +13,7 @@ import androidx.lifecycle.flowWithLifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.navigation.fragment.findNavController
 import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.recyclerview.widget.RecyclerView
 import com.dskja.betterstreamflix.R
 import com.dskja.betterstreamflix.databinding.FragmentDownloadsTvBinding
 import com.dskja.betterstreamflix.download.DownloadController
@@ -35,6 +36,7 @@ import com.dskja.betterstreamflix.models.TvShow
 import com.dskja.betterstreamflix.models.Video
 import com.dskja.betterstreamflix.providers.Provider
 import com.dskja.betterstreamflix.utils.ExpEmptyChrome
+import com.dskja.betterstreamflix.utils.TvFocusChain
 import com.dskja.betterstreamflix.utils.UserPreferences
 import com.dskja.betterstreamflix.utils.viewModelsFactory
 import kotlinx.coroutines.Dispatchers
@@ -72,9 +74,29 @@ class DownloadsTvFragment : Fragment() {
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
-        binding.rvDownloads.layoutManager = LinearLayoutManager(requireContext())
+        binding.rvDownloads.layoutManager = object : LinearLayoutManager(requireContext()) {
+            override fun onInterceptFocusSearch(focused: View, direction: Int): View? {
+                if (direction == View.FOCUS_LEFT) {
+                    val row = binding.rvDownloads.findContainingItemView(focused)
+                    val primary = row?.findViewById<View>(R.id.btn_download_primary)
+                    val delete = row?.findViewById<View>(R.id.btn_download_delete)
+                    val atLeftEdge = primary == null || focused == primary || focused == row
+                    if (atLeftEdge && focused != delete) {
+                        return activity?.findViewById(R.id.nav_main)
+                    }
+                }
+                if (direction == View.FOCUS_UP) {
+                    val row = binding.rvDownloads.findContainingItemView(focused)
+                    val position = row?.let(binding.rvDownloads::getChildAdapterPosition)
+                        ?: RecyclerView.NO_POSITION
+                    if (position == 0) return binding.chipFilterAll
+                }
+                return super.onInterceptFocusSearch(focused, direction)
+            }
+        }
         binding.rvDownloads.itemAnimator = null
         binding.rvDownloads.adapter = adapter
+        wireDownloadFocus()
         binding.btnDownloadsMenu.setOnClickListener { showMenu(it) }
         binding.chipFilterAll.setOnClickListener { viewModel.setFilter(DownloadsFilter.ALL) }
         binding.chipFilterDownloading.setOnClickListener { viewModel.setFilter(DownloadsFilter.DOWNLOADING) }
@@ -121,6 +143,17 @@ class DownloadsTvFragment : Fragment() {
                 if (!empty) {
                     binding.tvDownloadsEmpty.setTag(R.id.exp_enter_animated_tag, null)
                 }
+                val downId = if (empty) {
+                    emptyCta?.id ?: binding.chipFilterAll.id
+                } else {
+                    binding.rvDownloads.id
+                }
+                listOf(
+                    binding.chipFilterAll,
+                    binding.chipFilterDownloading,
+                    binding.chipFilterCompleted,
+                    binding.chipFilterFailed,
+                ).forEach { chip -> chip.nextFocusDownId = downId }
                 if (empty && binding.rvDownloads.hasFocus()) {
                     emptyCta?.requestFocus() ?: binding.chipFilterAll.requestFocus()
                 }
@@ -148,6 +181,28 @@ class DownloadsTvFragment : Fragment() {
         }
         viewModel.refreshStorage()
         styleFilters(viewModel.currentFilter())
+    }
+
+    private fun wireDownloadFocus() {
+        binding.hsvDownloadsFilters.isFocusable = false
+        TvFocusChain.linkHorizontal(
+            binding.chipFilterAll,
+            binding.chipFilterDownloading,
+            binding.chipFilterCompleted,
+            binding.chipFilterFailed,
+        )
+        binding.chipFilterAll.nextFocusLeftId = R.id.nav_main
+        listOf(
+            binding.chipFilterAll,
+            binding.chipFilterDownloading,
+            binding.chipFilterCompleted,
+            binding.chipFilterFailed,
+        ).forEach { chip ->
+            chip.nextFocusUpId = binding.btnDownloadsMenu.id
+            chip.nextFocusDownId = binding.rvDownloads.id
+        }
+        binding.btnDownloadsMenu.nextFocusDownId = binding.chipFilterAll.id
+        binding.btnDownloadsMenu.nextFocusLeftId = binding.chipFilterFailed.id
     }
 
     private fun updateBanner(lowSpace: Boolean, wifiPaused: Boolean) {

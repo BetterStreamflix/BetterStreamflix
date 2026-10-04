@@ -2,6 +2,7 @@ package com.dskja.betterstreamflix.utils
 
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class ArtworkUrlsTest {
@@ -117,6 +118,51 @@ class ArtworkUrlsTest {
                 poster = "https://image.tmdb.org/t/p/w500/poster.jpg",
             ),
         )
+    }
+
+    @Test
+    fun preferPosterUpgradesCompoundAndHeightSizes() {
+        assertEquals(
+            "https://image.tmdb.org/t/p/w780/poster.jpg",
+            ArtworkUrls.preferPoster("https://image.tmdb.org/t/p/w185_and_h278_bestv2/poster.jpg"),
+        )
+        assertEquals(
+            "https://image.tmdb.org/t/p/w780/poster.jpg",
+            ArtworkUrls.preferPoster("https://image.tmdb.org/t/p/w300_and_h450_face/poster.jpg"),
+        )
+        assertEquals(
+            "https://image.tmdb.org/t/p/w780/banner.jpg",
+            ArtworkUrls.preferPoster("https://image.tmdb.org/t/p/h632/banner.jpg"),
+        )
+    }
+
+    @Test
+    fun logoSizeLadderIsOriginalFirst() {
+        assertEquals(
+            listOf(
+                "https://image.tmdb.org/t/p/original/logo.png",
+                "https://image.tmdb.org/t/p/w1280/logo.png",
+                "https://image.tmdb.org/t/p/w500/logo.png",
+                "https://image.tmdb.org/t/p/w300/logo.png",
+            ),
+            ArtworkUrls.logoSizeLadder("https://image.tmdb.org/t/p/w185/logo.png"),
+        )
+        assertTrue(ArtworkUrls.logoSizeLadder("  ").isEmpty())
+        assertEquals(
+            listOf("https://cdn.example.com/logo.png"),
+            ArtworkUrls.logoSizeLadder("https://cdn.example.com/logo.png"),
+        )
+    }
+
+    @Test
+    fun logoFileIdentityCollapsesCompoundSizes() {
+        val compound = ArtworkUrls.logoFileIdentity(
+            "https://image.tmdb.org/t/p/w300_and_h450_face/logo.png",
+        )
+        val original = ArtworkUrls.logoFileIdentity(
+            "https://image.tmdb.org/t/p/original/logo.png",
+        )
+        assertEquals(original, compound)
     }
 
     @Test
