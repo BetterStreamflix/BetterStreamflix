@@ -404,12 +404,14 @@ object CloudAccountSettingsController {
 
     private fun showError(fragment: Fragment, error: Throwable) {
         val ctx = fragment.context ?: return
-        ExpDialogChrome.notify(
-            ctx,
-            fragment.getString(
+        val message = when (error) {
+            is com.dskja.betterstreamflix.sync.CloudAccountAlreadyLinkedException ->
+                fragment.getString(R.string.cloud_sync_account_already_linked)
+            else -> fragment.getString(
                 R.string.cloud_sync_error,
                 error.message ?: error.javaClass.simpleName,
-            ),
-        )
+            )
+        }
+        ExpDialogChrome.notify(ctx, message)
     }
 }

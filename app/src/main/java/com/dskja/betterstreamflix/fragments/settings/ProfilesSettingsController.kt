@@ -106,8 +106,17 @@ object ProfilesSettingsController {
         }
 
         findPreference("PROFILE_KIDS")?.let { pref ->
-            pref.isVisible = false
-            pref.isEnabled = false
+            val switch = pref as? SwitchPreferenceCompat
+            if (switch != null) {
+                switch.isVisible = true
+                switch.isEnabled = true
+                switch.setOnPreferenceChangeListener { _, newValue ->
+                    val profileId = ProfileManager.activeProfileId
+                    ProfileManager.updateKids(profileId, newValue as Boolean)
+                    refresh(findPreference, context, fragment)
+                    true
+                }
+            }
         }
 
         findPreference("PROFILE_PIN")?.setOnPreferenceClickListener {
@@ -431,7 +440,7 @@ object ProfilesSettingsController {
             val density = context.resources.displayMetrics.density
             preview.bind(selected, profile.displayName, textSizeSp = 22f)
             label.setText(ProfileAvatarStyle.paletteFor(selected).titleRes)
-            ProfileAvatarStyle.featured(selected).forEach { palette ->
+            ProfileAvatarStyle.all().forEach { palette ->
                 val orb = ProfileAvatarView(context).apply {
                     layoutParams = LinearLayout.LayoutParams(
                         (56 * density).toInt(),

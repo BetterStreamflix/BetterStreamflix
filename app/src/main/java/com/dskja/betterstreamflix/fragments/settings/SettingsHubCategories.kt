@@ -74,9 +74,9 @@ internal object SettingsHubCategories {
         val provider = com.dskja.betterstreamflix.utils.UserPreferences.currentProvider
         val cards = mutableListOf(
             SettingsHubCard(
-                id = "library_parental",
-                titleRes = R.string.settings_screen_library_title,
-                summaryRes = R.string.settings_screen_library_summary,
+                id = "profiles",
+                titleRes = R.string.settings_screen_profiles_title,
+                summaryRes = R.string.settings_screen_profiles_summary,
                 iconRes = R.drawable.ic_favorite_enable,
                 target = SettingsHubTarget.PreferenceScreen("screen_profiles"),
             ),

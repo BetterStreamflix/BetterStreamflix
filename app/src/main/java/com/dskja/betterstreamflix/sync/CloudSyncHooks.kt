@@ -5,6 +5,7 @@ import com.dskja.betterstreamflix.database.AppDatabase
 import com.dskja.betterstreamflix.models.Episode
 import com.dskja.betterstreamflix.models.Movie
 import com.dskja.betterstreamflix.models.TvShow
+import com.dskja.betterstreamflix.profiles.ProfileManager
 import com.dskja.betterstreamflix.providers.Provider
 
 object CloudSyncHooks {
@@ -52,8 +53,12 @@ object CloudSyncHooks {
         state: (userId: String, now: Long) -> RemoteMediaState,
     ) {
         if (CloudSyncManager.isApplyingRemote) return
-        val userId = CloudSyncManager.currentUserId() ?: return
-        CloudMutationStore.enqueue(context.applicationContext, state(userId, System.currentTimeMillis()))
-        CloudSyncScheduler.enqueue(context)
+        val appContext = context.applicationContext
+        val profileId = ProfileManager.activeProfileId
+        val userId = CloudSyncManager.currentUserId()
+            ?: CloudAccountStore.activeUserId(appContext, profileId)
+            ?: return
+        CloudMutationStore.enqueue(appContext, state(userId, System.currentTimeMillis()), profileId)
+        CloudSyncScheduler.enqueue(appContext, profileId, userId)
     }
 }

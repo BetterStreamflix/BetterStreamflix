@@ -96,6 +96,14 @@ class MainTvActivity : FragmentActivity() {
             UserPreferences.currentProvider?.let {
                 navController.navigate(R.id.home)
             }
+            binding.root.post {
+                val host = navHostFragment.childFragmentManager.primaryNavigationFragment
+                    ?: navHostFragment
+                com.dskja.betterstreamflix.profiles.ProfileUnlockGate.maybeShow(
+                    activity = this,
+                    hostFragmentProvider = { host },
+                )
+            }
         }
 
         binding.navMain.setupWithNavController(navController)

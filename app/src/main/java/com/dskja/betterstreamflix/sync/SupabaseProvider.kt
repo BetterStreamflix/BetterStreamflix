@@ -3,6 +3,7 @@ package com.dskja.betterstreamflix.sync
 import android.content.Context
 import android.net.Uri
 import com.dskja.betterstreamflix.BetterStreamflixApp
+import com.dskja.betterstreamflix.profiles.ProfileManager
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.auth.Auth
 import io.github.jan.supabase.auth.SettingsSessionManager
@@ -19,18 +20,28 @@ object SupabaseProvider {
     private const val SESSION_KEY = "streamflix_supabase_session"
     private val clientsMutex = Mutex()
 
+    private data class ProfileClient(
+        val fingerprint: String,
+        val client: SupabaseClient,
+    )
+
+    private val clients = mutableMapOf<String, ProfileClient>()
+
     @Volatile
-    private var clientInstance: SupabaseClient? = null
-    @Volatile
-    private var clientFingerprint: String? = null
+    private var activeProfileId: String = ProfileManager.DEFAULT_PROFILE_ID
 
     val isConfigured: Boolean
         get() = readConfig(BetterStreamflixApp.instance)?.let { it.first.isNotEmpty() } == true
 
+    /** Active profile's client — prefer [clientFor] when the profile is known. */
     val client: SupabaseClient
-        get() = clientInstance ?: error("Supabase has not been initialized")
+        get() = clientOrNull(activeProfileId)
+            ?: error("Supabase has not been initialized for profile $activeProfileId")
 
-    fun activeClientOrNull(): SupabaseClient? = clientInstance
+    fun activeClientOrNull(): SupabaseClient? = clientOrNull(activeProfileId)
+
+    fun clientOrNull(profileId: String): SupabaseClient? =
+        clients[profileId]?.client
 
     fun configured(context: Context): Boolean = readConfig(context) != null
 
@@ -50,43 +61,79 @@ object SupabaseProvider {
             .putString(URL_KEY, normalizedUrl)
             .putString(PUBLIC_KEY, publicKey.trim())
             .apply()
-        clientInstance = null
-        clientFingerprint = null
+        // Drop cached clients so the next initialize rebuilds against the new project.
+        // close() is suspend — clearConfig handles orderly shutdown.
+        clients.clear()
     }
 
     suspend fun initialize(context: Context) {
-        val config = readConfig(context)
-            ?: return
+        initializeForProfile(context, ProfileManager.activeProfileId)
+    }
+
+    suspend fun initializeForProfile(context: Context, profileId: String): SupabaseClient? {
+        val config = readConfig(context) ?: return null
         val fingerprint = config.first + "\u0000" + config.second
-        clientInstance?.takeIf { clientFingerprint == fingerprint }?.let { return }
-        clientsMutex.withLock {
-            clientInstance?.takeIf { clientFingerprint == fingerprint }?.let { return@withLock }
+        clients[profileId]?.takeIf { it.fingerprint == fingerprint }?.let {
+            activeProfileId = profileId
+            return it.client
+        }
+        return clientsMutex.withLock {
+            clients[profileId]?.takeIf { it.fingerprint == fingerprint }?.let {
+                activeProfileId = profileId
+                return@withLock it.client
+            }
+            // Drop a stale client for this profile (config fingerprint changed).
+            clients.remove(profileId)?.client?.let { client -> try { client.close() } catch (_: Throwable) {} }
             createSupabaseClient(
                 supabaseUrl = config.first,
                 supabaseKey = config.second,
             ) {
                 install(Auth) {
                     sessionManager = SettingsSessionManager(
-                        key = "$SESSION_KEY-${fingerprint.hashCode()}",
+                        key = sessionKey(profileId, fingerprint),
                     )
                 }
                 install(Postgrest)
                 install(Realtime)
-            }.also {
-                clientInstance = it
-                clientFingerprint = fingerprint
+            }.also { created ->
+                clients[profileId] = ProfileClient(fingerprint, created)
+                activeProfileId = profileId
+            }
+        }
+    }
+
+    suspend fun clientFor(context: Context, profileId: String): SupabaseClient {
+        return initializeForProfile(context, profileId)
+            ?: error("Supabase is not configured")
+    }
+
+    suspend fun removeProfile(profileId: String) {
+        clientsMutex.withLock {
+            clients.remove(profileId)?.client?.let { client -> try { client.close() } catch (_: Throwable) {} }
+            if (activeProfileId == profileId) {
+                activeProfileId = ProfileManager.DEFAULT_PROFILE_ID
             }
         }
     }
 
     suspend fun clearConfig(context: Context) {
-        clientInstance?.close()
-        clientInstance = null
-        clientFingerprint = null
+        clientsMutex.withLock {
+            clients.values.forEach { entry -> try { entry.client.close() } catch (_: Throwable) {} }
+            clients.clear()
+        }
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
             .edit()
             .clear()
             .apply()
+    }
+
+    /**
+     * Default keeps the legacy unsuffixed session key so existing installs stay signed in.
+     * Other profiles use `$legacy-$profileId`.
+     */
+    internal fun sessionKey(profileId: String, fingerprint: String): String {
+        val legacy = "$SESSION_KEY-${fingerprint.hashCode()}"
+        return if (profileId == ProfileManager.DEFAULT_PROFILE_ID) legacy else "$legacy-$profileId"
     }
 
     private fun readConfig(context: Context): Pair<String, String>? {
