@@ -124,7 +124,11 @@ object FeaturedLogoEnrich {
         if (!isDefinitelyUnmetered(context)) return
         val url = com.dskja.betterstreamflix.utils.ArtworkUrls.preferFeatured(bannerUrl)
             ?: bannerUrl
-        val (w, h) = com.dskja.betterstreamflix.ui.FeaturedSwiperChrome.artworkOverride(context)
+        val (w, h) = if (com.dskja.betterstreamflix.utils.DeviceCapabilities.isLeanbackDevice(context)) {
+            com.dskja.betterstreamflix.ui.FeaturedSwiperChrome.tvBackdropOverride(context)
+        } else {
+            com.dskja.betterstreamflix.ui.FeaturedSwiperChrome.artworkOverride(context)
+        }
         com.bumptech.glide.Glide.with(context.applicationContext)
             .load(url)
             .preload(w, h)

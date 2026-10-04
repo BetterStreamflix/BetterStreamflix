@@ -56,6 +56,26 @@ class HomeCatalogPipelineTest {
     }
 
     @Test
+    fun homeBindSignatureIgnoresLogoOnlyChanges() {
+        val base = Movie(id = "1", title = "A", poster = "p", banner = "b")
+        val withLogo = Movie(id = "1", title = "A", poster = "p", banner = "b").apply {
+            logo = "https://image.tmdb.org/t/p/original/logo.png"
+        }
+        val sigA = HomeCatalogPipeline.homeBindSignature(
+            listOf(Category(name = Category.FEATURED, list = listOf(base))),
+        )
+        val sigB = HomeCatalogPipeline.homeBindSignature(
+            listOf(Category(name = Category.FEATURED, list = listOf(withLogo))),
+        )
+        assertEquals(sigA, sigB)
+        val newPoster = Movie(id = "1", title = "A", poster = "p2", banner = "b")
+        val sigC = HomeCatalogPipeline.homeBindSignature(
+            listOf(Category(name = Category.FEATURED, list = listOf(newPoster))),
+        )
+        assertTrue(sigA != sigC)
+    }
+
+    @Test
     fun dropsEmptyShelvesAndDedupes() {
         val a = Movie(id = "a", title = "A")
         val dup = Movie(id = "a", title = "A again")
