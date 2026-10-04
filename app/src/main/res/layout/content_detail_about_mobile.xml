@@ -33,6 +33,7 @@
         tools:text="Follow everyone's favorite troublemakers as they navigate school, friendship, and absurdity in South Park, Colorado." />
 
     <View
+        android:id="@+id/v_detail_about_divider"
         android:layout_width="match_parent"
         android:layout_height="1dp"
         android:layout_marginTop="24dp"

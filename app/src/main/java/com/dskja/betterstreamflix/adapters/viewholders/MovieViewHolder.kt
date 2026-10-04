@@ -1261,6 +1261,17 @@ class MovieViewHolder(
             if (anyFact) View.VISIBLE else View.GONE
         binding.llDetailAboutFacts.visibility =
             if (anyFact) View.VISIBLE else View.GONE
+        binding.vDetailAboutDivider.visibility =
+            if (anyFact) View.VISIBLE else View.GONE
+        if (!anyFact) {
+            val overview = movie.overview?.trim().orEmpty()
+            binding.tvDetailAboutOverview.visibility = View.VISIBLE
+            binding.tvDetailAboutOverview.text = overview.ifEmpty {
+                context.getString(R.string.detail_about_empty)
+            }
+            binding.tvDetailAboutOverviewLabel.visibility =
+                if (overview.isEmpty()) View.GONE else View.VISIBLE
+        }
     }
 
 }

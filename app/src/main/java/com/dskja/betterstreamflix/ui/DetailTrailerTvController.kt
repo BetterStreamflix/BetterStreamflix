@@ -89,6 +89,24 @@ object DetailTrailerTvController {
             }
         }
 
+        val lookupKey = listOf(
+            seedUrl.orEmpty(),
+            title,
+            tmdbId.orEmpty(),
+            isTv.toString(),
+            year?.toString().orEmpty(),
+            imdbId.orEmpty(),
+        ).joinToString("\u0001")
+        val previousKey = binding.root.getTag(R.id.detail_trailer_lookup_key_tag) as? String
+        val existingJob = binding.root.getTag(R.id.detail_trailer_player_tag) as? Job
+        val rowsReady = (binding.hgvDetailTrailers.adapter?.itemCount ?: 0) > 0 ||
+            emptyView?.visibility == View.VISIBLE
+        if (previousKey == lookupKey && (existingJob?.isActive == true || rowsReady)) {
+            return
+        }
+        binding.root.setTag(R.id.detail_trailer_lookup_key_tag, lookupKey)
+        existingJob?.cancel()
+
         val seed = seedUrl?.takeIf { it.isNotBlank() }?.let { url ->
             listOf(TrailerEntry.fromSeed("$title $trailerLabel", url, trailerLabel))
         }.orEmpty()
@@ -100,7 +118,6 @@ object DetailTrailerTvController {
         }
 
         val owner = binding.root.findViewTreeLifecycleOwner() ?: return
-        (binding.root.getTag(R.id.detail_trailer_player_tag) as? Job)?.cancel()
         val job = owner.lifecycleScope.launch {
             val remote = withContext(Dispatchers.IO) {
                 TmdbUtils.listYoutubeTrailers(

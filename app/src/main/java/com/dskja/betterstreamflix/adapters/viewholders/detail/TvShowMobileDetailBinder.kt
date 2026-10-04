@@ -64,17 +64,24 @@ internal fun TvShowViewHolder.bindTvShowMobileDetail(binding: ContentTvShowMobil
         tvShow = tvShow,
     )
 
-    binding.tvTvShowTitle.text = tvShow.title
-    // Hero logo bind is owned by DetailHeaderController (after body submit).
-    when (com.dskja.betterstreamflix.logo.TitleLogoSlot.state(tvShow.logo, hideUntilReady = true)) {
-        com.dskja.betterstreamflix.logo.TitleLogoSlot.State.SHOW_TITLE -> {
-            binding.ivTvShowLogo.visibility = View.INVISIBLE
-            binding.tvTvShowTitle.visibility = View.VISIBLE
-        }
-        com.dskja.betterstreamflix.logo.TitleLogoSlot.State.LOADING_LOGO,
-        com.dskja.betterstreamflix.logo.TitleLogoSlot.State.SHOW_LOGO -> {
-            binding.ivTvShowLogo.visibility = View.INVISIBLE
-            binding.tvTvShowTitle.visibility = View.INVISIBLE
+    val logoReady = com.dskja.betterstreamflix.ui.DetailHeroLogo.restore(
+        logoView = binding.ivTvShowLogo,
+        titleView = binding.tvTvShowTitle,
+        logoUrl = tvShow.logo,
+        title = tvShow.title,
+    )
+    if (!logoReady) {
+        val fragment = context.toActivity()?.getCurrentFragment() as? TvShowMobileFragment
+        val pageRoot = fragment?.view
+        if (fragment != null && pageRoot != null && fragment.isAdded) {
+            itemView.post {
+                if (!itemView.isAttachedToWindow || !fragment.isAdded) return@post
+                com.dskja.betterstreamflix.ui.DetailHeaderController.bindTvShow(
+                    fragment,
+                    pageRoot,
+                    tvShow,
+                )
+            }
         }
     }
 
@@ -181,9 +188,17 @@ internal fun TvShowViewHolder.bindTvShowMobileDetail(binding: ContentTvShowMobil
     }
 
     binding.tvTvShowOverview.apply {
-        text = tvShow.overview
         val more = binding.tvTvShowOverviewMore
         val hasText = !tvShow.overview.isNullOrBlank()
+        if (!hasText) {
+            text = ""
+            visibility = View.GONE
+            more.visibility = View.GONE
+            setOnClickListener(null)
+            return@apply
+        }
+        visibility = View.VISIBLE
+        text = tvShow.overview
         val collapsedLines = 2
         maxLines = collapsedLines
         ellipsize = android.text.TextUtils.TruncateAt.END

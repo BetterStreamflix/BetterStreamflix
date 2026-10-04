@@ -2,6 +2,8 @@ package com.dskja.betterstreamflix.ui
 
 import com.dskja.betterstreamflix.models.WatchItem
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class DetailWatchLabelsTest {
@@ -29,6 +31,13 @@ class DetailWatchLabelsTest {
                 ),
             ),
         )
+    }
+
+    @Test
+    fun showsEpisodePicker_onlyWithoutAnEpisode() {
+        assertTrue(DetailWatchLabels.showsEpisodePicker(iptv = false, episodeNumber = null))
+        assertFalse(DetailWatchLabels.showsEpisodePicker(iptv = true, episodeNumber = null))
+        assertFalse(DetailWatchLabels.showsEpisodePicker(iptv = false, episodeNumber = 2))
     }
 
     @Test

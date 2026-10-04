@@ -69,7 +69,7 @@ internal fun TvShowViewHolder.bindTvShowTvDetail(binding: ContentTvShowTvBinding
         }
         binding.ivTvShowPoster.alpha = if (logoReady) 0f else 0.92f
     }
-    applyTvBrandChrome(logoReady = !tvShow.logo.isNullOrBlank())
+    applyTvBrandChrome(logoReady = false)
     com.dskja.betterstreamflix.logo.TitleLogoSurface.bindAndMaybeResolve(
         anchor = binding.root,
         imageView = binding.ivTvShowLogo,
@@ -178,6 +178,7 @@ internal fun TvShowViewHolder.bindTvShowTvDetail(binding: ContentTvShowTvBinding
             ellipsize = if (open) null else android.text.TextUtils.TruncateAt.END
         }
         if (!tvShow.overview.isNullOrBlank()) {
+            visibility = View.VISIBLE
             isFocusable = true
             isFocusableInTouchMode = true
             isClickable = true
@@ -198,8 +199,13 @@ internal fun TvShowViewHolder.bindTvShowTvDetail(binding: ContentTvShowTvBinding
             nextFocusDownId = binding.btnTvShowWatchNow.id
             binding.btnTvShowWatchNow.nextFocusUpId = id
         } else {
+            text = ""
+            visibility = View.GONE
             isFocusable = false
             setOnClickListener(null)
+            val genres = binding.tvTvShowGenres
+            binding.btnTvShowWatchNow.nextFocusUpId =
+                if (genres.isVisible && genres.isFocusable) genres.id else View.NO_ID
         }
     }
     val episodeToWatch = tvShow.episodeToWatch
@@ -233,6 +239,12 @@ internal fun TvShowViewHolder.bindTvShowTvDetail(binding: ContentTvShowTvBinding
                                     seasonTitle = season.title ?: "Season ${season.number}",
                                 ),
                             )
+                        } else {
+                            android.widget.Toast.makeText(
+                                context,
+                                R.string.detail_watch_no_episodes,
+                                android.widget.Toast.LENGTH_SHORT,
+                            ).show()
                         }
                     }
                     return@checkProviderAndRun
@@ -282,16 +294,35 @@ internal fun TvShowViewHolder.bindTvShowTvDetail(binding: ContentTvShowTvBinding
     }
 
     fun rewireTvCtaFocus() {
+        val watched = binding.root.findViewById<View>(R.id.btn_tv_show_watched)
+        val share = binding.root.findViewById<View>(R.id.btn_tv_show_share)
         com.dskja.betterstreamflix.utils.TvFocusChain.linkHorizontal(
             binding.btnTvShowWatchNow,
             binding.btnTvShowFavorite,
             binding.btnTvShowTrailer,
             binding.btnTvShowDownload,
         )
-        com.dskja.betterstreamflix.utils.TvFocusChain.linkHorizontal(
-            binding.root.findViewById(R.id.btn_tv_show_watched),
-            binding.root.findViewById(R.id.btn_tv_show_share),
+        val secondary = listOfNotNull(watched, share)
+        if (secondary.isNotEmpty()) {
+            com.dskja.betterstreamflix.utils.TvFocusChain.linkHorizontal(*secondary.toTypedArray())
+        }
+        val downTarget = listOfNotNull(watched, share).firstOrNull {
+            it.visibility == View.VISIBLE && it.isFocusable
+        }
+        com.dskja.betterstreamflix.utils.TvFocusChain.linkDown(
+            listOf(
+                binding.btnTvShowWatchNow,
+                binding.btnTvShowFavorite,
+                binding.btnTvShowTrailer,
+                binding.btnTvShowDownload,
+            ),
+            downTarget,
         )
+        listOfNotNull(watched, share).forEach { button ->
+            if (button.visibility == View.VISIBLE) {
+                button.nextFocusUpId = binding.btnTvShowWatchNow.id
+            }
+        }
     }
 
     binding.btnTvShowTrailer.apply {

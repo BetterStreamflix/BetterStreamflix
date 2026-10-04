@@ -122,14 +122,15 @@ class TvShowMobileFragment : Fragment() {
                         tvShow.seasons.firstOrNull { it.id == seasonState.season.id }
                             ?.episodes = seasonState.episodes
                         seasonState.season.episodes = seasonState.episodes
-                        // Only rebuild the episodes body — skip full list churn on other tabs.
+                        // DiffUtil treats an unchanged show as the same row, so an empty
+                        // or failed fetch would leave the spinner up. Rebind the section.
                         if (selectedTab == DetailTab.EPISODES) {
-                            rebuildBody(scrollTabsToTop = false)
+                            refreshSeasonsRow()
                         }
                     }
                     is TvShowViewModel.SeasonState.FailedLoading -> {
                         if (selectedTab == DetailTab.EPISODES) {
-                            rebuildBody(scrollTabsToTop = false)
+                            refreshSeasonsRow()
                         }
                     }
                     else -> Unit
@@ -220,6 +221,14 @@ class TvShowMobileFragment : Fragment() {
     fun loadSeasonEpisodes(season: Season) {
         val tvShow = currentTvShow ?: return
         viewModel.loadSeasonEpisodes(tvShow, season)
+    }
+
+    private fun refreshSeasonsRow() {
+        val index = appAdapter.items.indexOfFirst { item ->
+            item is TvShow &&
+                runCatching { item.itemType }.getOrNull() == AppAdapter.Type.TV_SHOW_SEASONS_MOBILE
+        }
+        if (index >= 0) appAdapter.notifyItemChanged(index)
     }
 
     private fun rebuildBody(scrollTabsToTop: Boolean) {

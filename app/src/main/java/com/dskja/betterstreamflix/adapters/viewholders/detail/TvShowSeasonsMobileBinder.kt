@@ -147,9 +147,13 @@ private fun TvShowViewHolder.bindSeasonEpisodes(
                 },
             )
             val upNextIndex = episodes.indexOfFirst { it.id == tvShow.episodeToWatch?.id }
-            binding.rvTvShowEpisodes.post {
-                if (upNextIndex >= 0) {
-                    binding.rvTvShowEpisodes.scrollToPosition(upNextIndex)
+            val scrollKey = "${season.id}:$upNextIndex"
+            if (binding.rvTvShowEpisodes.getTag(R.id.detail_episodes_scroll_key) != scrollKey) {
+                binding.rvTvShowEpisodes.setTag(R.id.detail_episodes_scroll_key, scrollKey)
+                binding.rvTvShowEpisodes.post {
+                    if (upNextIndex >= 0) {
+                        binding.rvTvShowEpisodes.scrollToPosition(upNextIndex)
+                    }
                 }
             }
         }
@@ -163,6 +167,7 @@ private fun TvShowViewHolder.bindSeasonEpisodes(
             binding.btnTvShowEpisodesRetry.setOnClickListener {
                 ExpMotion.hapticTap(it)
                 seasonUi.clearSeasonEpisodeFailure(season.id)
+                seasonUi.clearSeasonEpisodesSettled(season.id)
                 binding.btnTvShowEpisodesRetry.visibility = View.GONE
                 binding.llTvShowEpisodesEmpty.visibility = View.GONE
                 binding.pbTvShowEpisodesLoading.visibility = View.VISIBLE
@@ -178,6 +183,9 @@ private fun TvShowViewHolder.bindSeasonEpisodes(
             binding.pbTvShowEpisodesLoading.visibility = View.VISIBLE
             adapter.submitList(emptyList())
         }
+        seasonUi?.isSeasonEpisodesSettled(season.id) == true -> {
+            showSettledEmptyEpisodes(binding, adapter)
+        }
         else -> {
             binding.rvTvShowEpisodes.visibility = View.GONE
             binding.llTvShowEpisodesEmpty.visibility = View.GONE
@@ -187,6 +195,18 @@ private fun TvShowViewHolder.bindSeasonEpisodes(
             requestSeasonEpisodes(binding, season, seasonUi)
         }
     }
+}
+
+private fun showSettledEmptyEpisodes(
+    binding: ContentTvShowSeasonsMobileBinding,
+    adapter: AppAdapter,
+) {
+    binding.rvTvShowEpisodes.visibility = View.GONE
+    binding.pbTvShowEpisodesLoading.visibility = View.GONE
+    binding.btnTvShowEpisodesRetry.visibility = View.GONE
+    binding.llTvShowEpisodesEmpty.visibility = View.VISIBLE
+    binding.tvTvShowEpisodesEmpty.setText(R.string.season_empty)
+    adapter.submitList(emptyList())
 }
 
 private fun TvShowViewHolder.requestSeasonEpisodes(
@@ -230,7 +250,11 @@ private fun TvShowViewHolder.requestSeasonEpisodes(
         result.onSuccess { loaded ->
             season.episodes = loaded
             tvShow.seasons.firstOrNull { it.id == season.id }?.episodes = loaded
-            if (seasonUi?.selectedSeasonId == season.id || seasonUi == null) {
+            seasonUi?.markSeasonEpisodesSettled(season.id)
+            if (loaded.isEmpty()) {
+                val adapter = binding.rvTvShowEpisodes.adapter as? AppAdapter ?: return@onSuccess
+                showSettledEmptyEpisodes(binding, adapter)
+            } else if (seasonUi?.selectedSeasonId == season.id || seasonUi == null) {
                 bindSeasonEpisodes(binding, season, seasonUi)
             }
         }.onFailure {

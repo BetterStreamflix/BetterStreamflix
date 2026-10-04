@@ -251,16 +251,20 @@ class EpisodeViewHolder(
 
         binding.ivEpisodePoster.apply {
             clipToOutline = true
-            val dens = resources.displayMetrics.density
-            val h = (96f * dens).toInt().coerceAtLeast(160)
-            val w = (h * 16 / 9f).toInt().coerceAtLeast(240)
-            Glide.with(context)
-                .load(ArtworkUrls.preferW500(episode.poster) ?: episode.poster)
-                .error(R.drawable.glide_fallback_cover)
-                .override(w, h)
-                .centerCrop()
-                .transition(DrawableTransitionOptions.withCrossFade())
-                .into(this)
+            val posterUrl = ArtworkUrls.preferW500(episode.poster) ?: episode.poster
+            if (getTag(R.id.detail_episode_poster_url_tag) != posterUrl || drawable == null) {
+                setTag(R.id.detail_episode_poster_url_tag, posterUrl)
+                val dens = resources.displayMetrics.density
+                val h = (96f * dens).toInt().coerceAtLeast(160)
+                val w = (h * 16 / 9f).toInt().coerceAtLeast(240)
+                Glide.with(context)
+                    .load(posterUrl)
+                    .error(R.drawable.glide_fallback_cover)
+                    .override(w, h)
+                    .centerCrop()
+                    .transition(DrawableTransitionOptions.withCrossFade())
+                    .into(this)
+            }
         }
 
         binding.ivEpisodeWatchedRibbon.visibility =

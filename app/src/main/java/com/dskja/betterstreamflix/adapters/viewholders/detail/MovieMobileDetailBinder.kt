@@ -59,18 +59,24 @@ internal fun MovieViewHolder.bindMovieMobileDetail(binding: ContentMovieMobileBi
         movie = movie,
     )
 
-    binding.tvMovieTitle.text = movie.title
-    // Hero logo bind is owned by DetailHeaderController (after body submit).
-    // A known logo stays hidden until it decodes — don't flash the title over it.
-    when (com.dskja.betterstreamflix.logo.TitleLogoSlot.state(movie.logo, hideUntilReady = true)) {
-        com.dskja.betterstreamflix.logo.TitleLogoSlot.State.SHOW_TITLE -> {
-            binding.ivMovieLogo.visibility = View.INVISIBLE
-            binding.tvMovieTitle.visibility = View.VISIBLE
-        }
-        com.dskja.betterstreamflix.logo.TitleLogoSlot.State.LOADING_LOGO,
-        com.dskja.betterstreamflix.logo.TitleLogoSlot.State.SHOW_LOGO -> {
-            binding.ivMovieLogo.visibility = View.INVISIBLE
-            binding.tvMovieTitle.visibility = View.INVISIBLE
+    val logoReady = com.dskja.betterstreamflix.ui.DetailHeroLogo.restore(
+        logoView = binding.ivMovieLogo,
+        titleView = binding.tvMovieTitle,
+        logoUrl = movie.logo,
+        title = movie.title,
+    )
+    if (!logoReady) {
+        val fragment = context.toActivity()?.getCurrentFragment() as? MovieMobileFragment
+        val pageRoot = fragment?.view
+        if (fragment != null && pageRoot != null && fragment.isAdded) {
+            itemView.post {
+                if (!itemView.isAttachedToWindow || !fragment.isAdded) return@post
+                com.dskja.betterstreamflix.ui.DetailHeaderController.bindMovie(
+                    fragment,
+                    pageRoot,
+                    movie,
+                )
+            }
         }
     }
 
@@ -165,9 +171,20 @@ internal fun MovieViewHolder.bindMovieMobileDetail(binding: ContentMovieMobileBi
     }
 
     binding.tvMovieOverview.apply {
-        text = movie.overview
         val more = binding.tvMovieOverviewMore
         val hasText = !movie.overview.isNullOrBlank()
+        if (!hasText) {
+            text = ""
+            visibility = View.GONE
+            more.visibility = View.GONE
+            setOnClickListener(null)
+            val genres = binding.tvMovieGenres
+            binding.btnMovieWatchNow.nextFocusUpId =
+                if (genres.isVisible && genres.isFocusable) genres.id else View.NO_ID
+            return@apply
+        }
+        visibility = View.VISIBLE
+        text = movie.overview
         val collapsedLines = 2
         maxLines = collapsedLines
         ellipsize = android.text.TextUtils.TruncateAt.END

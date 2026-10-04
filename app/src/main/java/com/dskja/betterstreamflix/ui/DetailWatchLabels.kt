@@ -31,8 +31,11 @@ object DetailWatchLabels {
         episodeNumber: Int?,
         iptv: Boolean,
     ): String {
-        if (iptv || episodeNumber == null) {
+        if (iptv) {
             return context.getString(R.string.movie_watch_now)
+        }
+        if (showsEpisodePicker(iptv = false, episodeNumber)) {
+            return context.getString(R.string.detail_watch_choose_episode)
         }
         val season = seasonNumber ?: 1
         val history = tvShow.episodeToWatch?.watchHistory
@@ -54,6 +57,10 @@ object DetailWatchLabels {
             )
         }
     }
+
+    /** Watch cannot start until the user picks an episode. */
+    fun showsEpisodePicker(iptv: Boolean, episodeNumber: Int?): Boolean =
+        !iptv && episodeNumber == null
 
     fun episodeMetaAccent(context: Context, history: WatchItem.WatchHistory?, watched: Boolean): String? {
         val percent = progressPercent(history)
