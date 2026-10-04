@@ -190,7 +190,7 @@ object EinschaltenProvider : Provider, ProviderConfigUrl {
                 return (0 until genresJson.length()).mapNotNull { i ->
                     val genreObj = genresJson.optJSONObject(i) ?: return@mapNotNull null
                     val genreId = genreObj.optInt("id", 0)
-                    val genreName = genreObj.optString("name", "")
+                    val genreName = genreObj.optString("name", "").trim()
                     
                     if (genreId > 0 && genreName.isNotBlank()) {
                         Genre(id = genreId.toString(), name = genreName)
@@ -219,6 +219,9 @@ object EinschaltenProvider : Provider, ProviderConfigUrl {
             val moviesArray = jsonResponse.optJSONArray("data") ?: JSONArray()
             
             return parseMoviesFromJsonArray(moviesArray)
+                .filter { it.id.isNotBlank() && it.title.isNotBlank() }
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            throw e
         } catch (e: Exception) {
             return emptyList()
         }

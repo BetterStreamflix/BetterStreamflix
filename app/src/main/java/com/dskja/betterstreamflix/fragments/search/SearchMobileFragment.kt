@@ -578,7 +578,7 @@ class SearchMobileFragment : Fragment() {
                 }
             }
         }
-        appAdapter.submitList(list.onEach {
+        appAdapter.submitList(SearchResultGuard.sanitize(list).onEach {
             when (it) {
                 is Genre -> it.itemType = AppAdapter.Type.GENRE_GRID_MOBILE_ITEM
                 is Movie -> it.itemType = AppAdapter.Type.MOVIE_GRID_MOBILE_ITEM
@@ -617,7 +617,7 @@ class SearchMobileFragment : Fragment() {
             allItems.add(header)
 
             if (providerResult.state is ProviderResult.State.Success) {
-                val results = providerResult.state.results.onEach {
+                val results = SearchResultGuard.sanitize(providerResult.state.results).onEach {
                     when (it) {
                         is Movie -> it.itemType = AppAdapter.Type.MOVIE_GRID_MOBILE_ITEM
                         is TvShow -> it.itemType = AppAdapter.Type.TV_SHOW_GRID_MOBILE_ITEM

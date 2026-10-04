@@ -370,29 +370,37 @@ object HDFilmeProvider : Provider, ProviderConfigUrl {
     }
 
     override suspend fun search(query: String, page: Int): List<AppAdapter.Item> {
-        if (query.isBlank()) {
-            if (page > 1) return emptyList()
+        return try {
+            if (query.isBlank()) {
+                if (page > 1) return emptyList()
 
-            val doc = service.getHome()
+                val doc = service.getHome()
 
-            val genreContainer = doc.selectFirst("div.dropdown-hover:has(span:containsOwn(Genre))")
-            val genreLinks = genreContainer?.select("div.dropdown-content a[href]") ?: emptyList()
+                val genreContainer = doc.selectFirst("div.dropdown-hover:has(span:containsOwn(Genre))")
+                val genreLinks = genreContainer?.select("div.dropdown-content a[href]") ?: emptyList()
 
-            return genreLinks.mapNotNull { a ->
-                val href = a.attr("href").trim()
-                val text = a.text().trim()
-                if (href.isBlank() || text.isBlank()) return@mapNotNull null
+                return genreLinks.mapNotNull { a ->
+                    val href = a.attr("href").trim()
+                    val text = a.text().trim()
+                    if (href.isBlank() || text.isBlank()) return@mapNotNull null
 
-                Genre(
-                    id = href,
-                    name = text
-                )
+                    Genre(
+                        id = href,
+                        name = text
+                    )
+                }
             }
-        }
 
-        // The site's DLE search currently dies in sfilter/filter.php. Its
-        // generated sitemap remains current and contains the complete index.
-        return searchSitemap(query, page)
+            // The site's DLE search currently dies in sfilter/filter.php. Its
+            // generated sitemap remains current and contains the complete index.
+            searchSitemap(query, page)
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            throw e
+        } catch (oom: OutOfMemoryError) {
+            emptyList()
+        } catch (_: Exception) {
+            emptyList()
+        }
     }
 
     private suspend fun searchSitemap(query: String, page: Int): List<AppAdapter.Item> {
@@ -433,12 +441,23 @@ object HDFilmeProvider : Provider, ProviderConfigUrl {
         return try {
             sitemapEntries ?: coroutineScope {
                 listOf("news_pages.xml", "news_pages2.xml")
-                    .map { sitemap -> async { parseSitemap(service.getRawPage("$baseUrl/$sitemap")) } }
+                    .map { sitemap ->
+                        async {
+                            runCatching {
+                                parseSitemap(service.getRawPage("$baseUrl/$sitemap"))
+                            }.getOrDefault(emptyList())
+                        }
+                    }
                     .awaitAll()
                     .flatten()
                     .distinctBy { it.url }
+                    // Cap memory on Android TV — full dual sitemaps can OOM-kill Search.
+                    .take(8_000)
                     .also { sitemapEntries = it }
             }
+        } catch (oom: OutOfMemoryError) {
+            sitemapEntries = emptyList()
+            emptyList()
         } finally {
             sitemapMutex.unlock()
         }
