@@ -3,6 +3,7 @@ package com.dskja.betterstreamflix.extractors
 import com.tanasi.retrofit_jsoup.converter.JsoupConverterFactory
 import com.dskja.betterstreamflix.models.Video
 import com.dskja.betterstreamflix.utils.StringConverterFactory
+import com.dskja.betterstreamflix.utils.withExtractorTimeouts
 import okhttp3.OkHttpClient
 import org.jsoup.nodes.Document
 import retrofit2.Response
@@ -82,6 +83,7 @@ open class DoodLaExtractor : Extractor() {
         companion object {
             fun build(baseUrl: String): Service {
                 val client = OkHttpClient.Builder()
+                    .withExtractorTimeouts()
                     .build()
 
                 val retrofit = Retrofit.Builder()

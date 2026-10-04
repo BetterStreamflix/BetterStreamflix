@@ -26,6 +26,19 @@ class M3uPlaylistParserTest {
     }
 
     @Test
+    fun usesTvgNameWhenCommaLabelIsBlank() {
+        val raw = """
+            #EXTM3U
+            #EXTINF:-1 tvg-name="BBC One" tvg-logo="https://logo/bbc.png" group-title="UK",
+            https://edge.example.net/bbc/index.m3u8
+        """.trimIndent()
+        val channels = M3uPlaylistParser.parse(raw)
+        assertEquals(1, channels.size)
+        assertEquals("BBC One", channels[0].name)
+        assertEquals("UK", channels[0].group)
+    }
+
+    @Test
     fun skipsDeadPlaceholderHosts() {
         val raw = """
             #EXTM3U

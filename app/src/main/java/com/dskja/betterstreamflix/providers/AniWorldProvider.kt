@@ -382,14 +382,15 @@ object AniWorldProvider : Provider, ProviderConfigUrl {
                 ?.text()?.substringBefore(" Animes")
                 ?: "",
 
-            shows = document.select(".seriesListContainer > div").map {
+            shows = document.select(".seriesListContainer > div").mapNotNull {
+                val showId = it.selectFirst("a")
+                    ?.attr("href")?.substringAfter("/anime/stream/")
+                    ?.trim().orEmpty()
+                val title = it.selectFirst("h3")?.text()?.trim().orEmpty()
+                if (showId.isBlank() || title.isBlank()) return@mapNotNull null
                 TvShow(
-                    id = it.selectFirst("a")
-                        ?.attr("href")?.substringAfter("/anime/stream/")
-                        ?: "",
-                    title = it.selectFirst("h3")
-                        ?.text()
-                        ?: "",
+                    id = showId,
+                    title = title,
                     poster = it.selectFirst("img")
                         ?.attr("data-src")?.let { src -> URL + src },
                 )

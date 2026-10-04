@@ -3,6 +3,7 @@ package com.dskja.betterstreamflix.extractors
 import com.tanasi.retrofit_jsoup.converter.JsoupConverterFactory
 import com.dskja.betterstreamflix.models.Video
 import com.dskja.betterstreamflix.utils.DnsResolver
+import com.dskja.betterstreamflix.utils.withExtractorTimeouts
 import okhttp3.OkHttpClient
 import okhttp3.Interceptor
 import org.jsoup.nodes.Document
@@ -61,6 +62,7 @@ class UqloadExtractor : Extractor() {
             fun build(baseUrl: String): Service {
                 val client = OkHttpClient.Builder()
                     .dns(DnsResolver.doh)
+                    .withExtractorTimeouts()
                     .addInterceptor { chain ->
                         val request = chain.request().newBuilder()
                             .header("User-Agent", USER_AGENT)

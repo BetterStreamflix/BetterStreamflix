@@ -2,6 +2,7 @@ package com.dskja.betterstreamflix.extractors
 
 import com.tanasi.retrofit_jsoup.converter.JsoupConverterFactory
 import com.dskja.betterstreamflix.models.Video
+import com.dskja.betterstreamflix.utils.withExtractorTimeouts
 import okhttp3.OkHttpClient
 import org.json.JSONArray
 import org.json.JSONObject
@@ -108,6 +109,7 @@ class OkruExtractor : Extractor() {
             fun build(baseUrl: String): Service {
                 val client = OkHttpClient.Builder()
                     .followRedirects(true)
+                    .withExtractorTimeouts()
                     .addInterceptor { chain ->
                         val request = chain.request().newBuilder()
                             .header(

@@ -4,6 +4,7 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Document
+import java.util.concurrent.TimeUnit
 
 /**
  * Shared playback helpers for the LatAm sports IPTV mirrors
@@ -85,7 +86,9 @@ object SportsIptvStreamResolver {
         pageReferer: String,
         userAgent: String,
     ): String? {
-        val firstDoc = fetchDocument(client, serverUrl, pageReferer, userAgent) ?: return null
+        // Each hop gets a short call budget so four lookups cannot burn a minute.
+        val hop = client.newBuilder().callTimeout(6, TimeUnit.SECONDS).build()
+        val firstDoc = fetchDocument(hop, serverUrl, pageReferer, userAgent) ?: return null
         val coreUrl = findCoreOrEmbedUrl(firstDoc, serverUrl)
             ?: serverUrl.takeIf { it.contains("core.php", ignoreCase = true) }
             ?: return null
@@ -93,7 +96,7 @@ object SportsIptvStreamResolver {
         val coreDoc = if (coreUrl == serverUrl) {
             firstDoc
         } else {
-            fetchDocument(client, coreUrl, serverUrl, userAgent) ?: return null
+            fetchDocument(hop, coreUrl, serverUrl, userAgent) ?: return null
         }
 
         val embedUrl = findKsdjugEmbed(coreDoc.html())
@@ -108,7 +111,7 @@ object SportsIptvStreamResolver {
                 ?.let { absoluteUrl(it, coreUrl) }
             ?: return null
 
-        val embedHtml = fetchHtml(client, embedUrl, coreUrl, userAgent) ?: return null
+        val embedHtml = fetchHtml(hop, embedUrl, coreUrl, userAgent) ?: return null
         extractPlaylistUrl(embedHtml, embedUrl)?.let { return it }
 
         // One more hop: some embeds nest another player iframe.
@@ -118,7 +121,7 @@ object SportsIptvStreamResolver {
                 RegexOption.IGNORE_CASE,
             ).find(embedHtml)?.value?.replace("\\/", "/")
         if (!nested.isNullOrBlank() && !nested.equals(embedUrl, true)) {
-            val nestedHtml = fetchHtml(client, nested, embedUrl, userAgent) ?: return null
+            val nestedHtml = fetchHtml(hop, nested, embedUrl, userAgent) ?: return null
             return extractPlaylistUrl(nestedHtml, nested)
         }
         return null
