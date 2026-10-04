@@ -10,6 +10,10 @@ import io.github.jan.supabase.auth.SettingsSessionManager
 import io.github.jan.supabase.createSupabaseClient
 import io.github.jan.supabase.postgrest.Postgrest
 import io.github.jan.supabase.realtime.Realtime
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
@@ -19,6 +23,8 @@ object SupabaseProvider {
     private const val PUBLIC_KEY = "public_key"
     private const val SESSION_KEY = "streamflix_supabase_session"
     private val clientsMutex = Mutex()
+    private val mapLock = Any()
+    private val closer = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     private data class ProfileClient(
         val fingerprint: String,
@@ -41,7 +47,7 @@ object SupabaseProvider {
     fun activeClientOrNull(): SupabaseClient? = clientOrNull(activeProfileId)
 
     fun clientOrNull(profileId: String): SupabaseClient? =
-        clients[profileId]?.client
+        synchronized(mapLock) { clients[profileId]?.client }
 
     fun configured(context: Context): Boolean = readConfig(context) != null
 
@@ -62,8 +68,12 @@ object SupabaseProvider {
             .putString(PUBLIC_KEY, publicKey.trim())
             .apply()
         // Drop cached clients so the next initialize rebuilds against the new project.
-        // close() is suspend — clearConfig handles orderly shutdown.
-        clients.clear()
+        val stale = synchronized(mapLock) {
+            val snapshot = clients.values.map { it.client }
+            clients.clear()
+            snapshot
+        }
+        closeQuietly(stale)
     }
 
     suspend fun initialize(context: Context) {
@@ -73,17 +83,11 @@ object SupabaseProvider {
     suspend fun initializeForProfile(context: Context, profileId: String): SupabaseClient? {
         val config = readConfig(context) ?: return null
         val fingerprint = config.first + "\u0000" + config.second
-        clients[profileId]?.takeIf { it.fingerprint == fingerprint }?.let {
-            activeProfileId = profileId
-            return it.client
-        }
+        cachedClient(profileId, fingerprint)?.let { return it }
         return clientsMutex.withLock {
-            clients[profileId]?.takeIf { it.fingerprint == fingerprint }?.let {
-                activeProfileId = profileId
-                return@withLock it.client
-            }
-            // Drop a stale client for this profile (config fingerprint changed).
-            clients.remove(profileId)?.client?.let { client -> try { client.close() } catch (_: Throwable) {} }
+            cachedClient(profileId, fingerprint)?.let { return@withLock it }
+            val stale = synchronized(mapLock) { clients.remove(profileId)?.client }
+            if (stale != null) closeQuietly(listOf(stale))
             createSupabaseClient(
                 supabaseUrl = config.first,
                 supabaseKey = config.second,
@@ -96,11 +100,21 @@ object SupabaseProvider {
                 install(Postgrest)
                 install(Realtime)
             }.also { created ->
-                clients[profileId] = ProfileClient(fingerprint, created)
-                activeProfileId = profileId
+                synchronized(mapLock) {
+                    clients[profileId] = ProfileClient(fingerprint, created)
+                    activeProfileId = profileId
+                }
             }
         }
     }
+
+    private fun cachedClient(profileId: String, fingerprint: String): SupabaseClient? =
+        synchronized(mapLock) {
+            clients[profileId]?.takeIf { it.fingerprint == fingerprint }?.let {
+                activeProfileId = profileId
+                it.client
+            }
+        }
 
     suspend fun clientFor(context: Context, profileId: String): SupabaseClient {
         return initializeForProfile(context, profileId)
@@ -108,23 +122,40 @@ object SupabaseProvider {
     }
 
     suspend fun removeProfile(profileId: String) {
-        clientsMutex.withLock {
-            clients.remove(profileId)?.client?.let { client -> try { client.close() } catch (_: Throwable) {} }
-            if (activeProfileId == profileId) {
-                activeProfileId = ProfileManager.DEFAULT_PROFILE_ID
+        val stale = clientsMutex.withLock {
+            synchronized(mapLock) {
+                val removed = clients.remove(profileId)?.client
+                if (activeProfileId == profileId) {
+                    activeProfileId = ProfileManager.DEFAULT_PROFILE_ID
+                }
+                removed
             }
         }
+        if (stale != null) closeQuietly(listOf(stale))
     }
 
     suspend fun clearConfig(context: Context) {
-        clientsMutex.withLock {
-            clients.values.forEach { entry -> try { entry.client.close() } catch (_: Throwable) {} }
-            clients.clear()
+        val stale = clientsMutex.withLock {
+            synchronized(mapLock) {
+                val snapshot = clients.values.map { it.client }
+                clients.clear()
+                snapshot
+            }
         }
+        closeQuietly(stale)
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
             .edit()
             .clear()
             .apply()
+    }
+
+    private fun closeQuietly(clientsToClose: List<SupabaseClient>) {
+        if (clientsToClose.isEmpty()) return
+        closer.launch {
+            clientsToClose.forEach { client ->
+                runCatching { client.close() }
+            }
+        }
     }
 
     /**

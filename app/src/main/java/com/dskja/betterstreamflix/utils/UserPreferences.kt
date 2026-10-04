@@ -1154,40 +1154,22 @@ object UserPreferences {
         prefs.edit { putString("FAVORITE_SORT_MODE_$providerName", mode) }
     }
 
-    private fun profileScopedBoolean(key: Key): Boolean? {
-        val scoped = ProfileManager.scopedPrefKey(key.name)
-        return when {
-            prefs.contains(scoped) -> prefs.getBoolean(scoped, false)
-            scoped != key.name && prefs.contains(key.name) -> prefs.getBoolean(key.name, false)
-            else -> null
-        }
-    }
+    private fun profileScopedBoolean(key: Key): Boolean? =
+        readBoolean(ProfileManager.scopedPrefKey(key.name))
 
     private fun setProfileScopedBoolean(key: Key, value: Boolean) {
         prefs.edit { putBoolean(ProfileManager.scopedPrefKey(key.name), value) }
     }
 
-    private fun profileScopedString(key: Key): String? {
-        val scoped = ProfileManager.scopedPrefKey(key.name)
-        return when {
-            prefs.contains(scoped) -> prefs.getString(scoped, null)
-            scoped != key.name && prefs.contains(key.name) -> prefs.getString(key.name, null)
-            else -> null
-        }
-    }
+    private fun profileScopedString(key: Key): String? =
+        readString(ProfileManager.scopedPrefKey(key.name))
 
     private fun setProfileScopedString(key: Key, value: String) {
         prefs.edit { putString(ProfileManager.scopedPrefKey(key.name), value) }
     }
 
-    private fun profileScopedInt(key: Key): Int? {
-        val scoped = ProfileManager.scopedPrefKey(key.name)
-        return when {
-            prefs.contains(scoped) -> prefs.getInt(scoped, 0)
-            scoped != key.name && prefs.contains(key.name) -> prefs.getInt(key.name, 0)
-            else -> null
-        }
-    }
+    private fun profileScopedInt(key: Key): Int? =
+        readInt(ProfileManager.scopedPrefKey(key.name))
 
     private fun setProfileScopedInt(key: Key, value: Int?) {
         val scoped = ProfileManager.scopedPrefKey(key.name)
@@ -1196,13 +1178,35 @@ object UserPreferences {
         }
     }
 
-    private fun profileScopedLong(key: Key): Long? {
-        val scoped = ProfileManager.scopedPrefKey(key.name)
-        return when {
-            prefs.contains(scoped) -> prefs.getLong(scoped, 0L)
-            scoped != key.name && prefs.contains(key.name) -> prefs.getLong(key.name, 0L)
-            else -> null
-        }
+    private fun profileScopedLong(key: Key): Long? =
+        readLong(ProfileManager.scopedPrefKey(key.name))
+
+    /**
+     * Profile-scoped keys never fall back to the unsuffixed default-profile value.
+     * That fallback copied parental PINs, age ceilings, and library toggles onto
+     * every other profile. A missing key means "unset" for this profile.
+     * Readers tolerate a string left behind by a Preference widget on an int key.
+     */
+    private fun readBoolean(key: String): Boolean? {
+        if (!prefs.contains(key)) return null
+        return runCatching { prefs.getBoolean(key, false) }.getOrNull()
+    }
+
+    private fun readString(key: String): String? {
+        if (!prefs.contains(key)) return null
+        return runCatching { prefs.getString(key, null) }.getOrNull()
+    }
+
+    private fun readInt(key: String): Int? {
+        if (!prefs.contains(key)) return null
+        runCatching { return prefs.getInt(key, 0) }
+        return runCatching { prefs.getString(key, null)?.trim()?.toIntOrNull() }.getOrNull()
+    }
+
+    private fun readLong(key: String): Long? {
+        if (!prefs.contains(key)) return null
+        runCatching { return prefs.getLong(key, 0L) }
+        return runCatching { prefs.getString(key, null)?.trim()?.toLongOrNull() }.getOrNull()
     }
 
     private fun setProfileScopedLong(key: Key, value: Long) {

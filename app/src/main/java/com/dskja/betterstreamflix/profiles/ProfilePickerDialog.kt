@@ -9,6 +9,7 @@ import android.text.InputType
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.HorizontalScrollView
 import android.view.WindowManager
 import android.view.inputmethod.EditorInfo
 import android.widget.CheckBox
@@ -191,10 +192,11 @@ class ProfilePickerDialog : DialogFragment() {
             orientation = LinearLayout.HORIZONTAL
             gravity = android.view.Gravity.CENTER
             layoutParams = LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT,
                 ViewGroup.LayoutParams.WRAP_CONTENT,
             )
         }
+        var focusTarget: View? = null
         profiles.forEachIndexed { index, profile ->
             val item = runCatching {
                 inflater.inflate(R.layout.item_profile_picker, row, false)
@@ -207,6 +209,7 @@ class ProfilePickerDialog : DialogFragment() {
                 ViewGroup.LayoutParams.WRAP_CONTENT,
             )
             bindProfileItem(item, profile, activeId)
+            if (profile.id == activeId) focusTarget = item
             item.alpha = 0f
             item.translationY = 18f * density
             item.animate()
@@ -251,13 +254,35 @@ class ProfilePickerDialog : DialogFragment() {
                 textSize = 15f
                 setTypeface(typeface, android.graphics.Typeface.BOLD)
             })
+            isFocusable = true
+            isClickable = true
+            contentDescription = getString(R.string.profile_add_profile)
             setOnClickListener {
                 ExpMotion.hapticTap(it)
                 showCreateDialog()
             }
         }
         row.addView(add)
-        column.addView(row)
+        val scroller = HorizontalScrollView(requireContext()).apply {
+            isHorizontalScrollBarEnabled = false
+            isFocusable = false
+            descendantFocusability = ViewGroup.FOCUS_AFTER_DESCENDANTS
+            layoutParams = LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT,
+            )
+            addView(row)
+        }
+        scroller.post {
+            val extra = scroller.width - row.width
+            if (extra > 0) {
+                row.setPadding(extra / 2, 0, extra / 2, 0)
+            }
+        }
+        column.addView(scroller)
+        (focusTarget ?: row.getChildAt(0))?.post {
+            (focusTarget ?: row.getChildAt(0))?.requestFocus()
+        }
     }
 
     private fun bindProfileItem(item: View, profile: UserProfile, activeId: String) {
@@ -484,8 +509,47 @@ class ProfilePickerDialog : DialogFragment() {
             restorePickerView()
             view?.let(::bindProfiles)
         }
+        val deleteBtn = form.findViewById<TextView>(R.id.btn_profile_create_delete)
+        if (ProfileManager.profiles().size > 1) {
+            deleteBtn?.visibility = View.VISIBLE
+            deleteBtn?.setOnClickListener {
+                ExpMotion.hapticTap(it)
+                confirmDeleteProfile(profile)
+            }
+        }
         showEditorPanel(editor, form)
         nameInput.requestFocus()
+    }
+
+    private fun confirmDeleteProfile(profile: UserProfile) {
+        val context = requireContext()
+        val builder = if (ExperimentalMobileDesign.enabled()) {
+            MaterialAlertDialogBuilder(context)
+        } else {
+            AlertDialog.Builder(context)
+        }
+        builder
+            .setMessage(getString(R.string.profile_delete_confirm, profile.displayName))
+            .setPositiveButton(android.R.string.ok) { _, _ ->
+                val wasActive = profile.id == ProfileManager.activeProfileId
+                if (!ProfileManager.delete(profile.id)) return@setPositiveButton
+                if (wasActive && ProfileUnlockGate.requiresGateForActive()) {
+                    restorePickerView()
+                    return@setPositiveButton
+                }
+                if (wasActive) {
+                    dismissAllowingStateLoss()
+                    onProfileSwitched?.invoke()
+                } else {
+                    restorePickerView()
+                }
+            }
+            .setNegativeButton(android.R.string.cancel, null)
+            .create()
+            .also { dialog ->
+                dialog.setOnShowListener { ExpDialogChrome.polishButtons(dialog) }
+                dialog.show()
+            }
     }
 
     private fun polishEditorChrome(
@@ -534,7 +598,25 @@ class ProfilePickerDialog : DialogFragment() {
         backCallback?.isEnabled = true
         isCancelable = false
         dialog?.setCanceledOnTouchOutside(false)
+        capEditorScroll(form)
         ExpMotion.enterScreen(form)
+    }
+
+    private fun capEditorScroll(form: View) {
+        val scroll = form.findViewById<View>(R.id.sv_profile_create_form) ?: return
+        val max = (resources.displayMetrics.heightPixels * 0.62f).toInt()
+        scroll.post {
+            val width = scroll.width.takeIf { it > 0 } ?: form.width
+            if (width <= 0) return@post
+            scroll.measure(
+                View.MeasureSpec.makeMeasureSpec(width, View.MeasureSpec.EXACTLY),
+                View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED),
+            )
+            if (scroll.measuredHeight > max) {
+                scroll.layoutParams = scroll.layoutParams.apply { height = max }
+                scroll.requestLayout()
+            }
+        }
     }
 
     private fun restorePickerView() {
@@ -545,8 +627,10 @@ class ProfilePickerDialog : DialogFragment() {
         root.findViewById<View>(R.id.sv_profile_picker)?.visibility = View.VISIBLE
         editorVisible = false
         backCallback?.isEnabled = false
-        isCancelable = true
-        dialog?.setCanceledOnTouchOutside(true)
+        isCancelable = !requireUnlock
+        dialog?.setCanceledOnTouchOutside(!requireUnlock)
+        root.findViewById<View>(R.id.btn_profile_picker_close)?.visibility =
+            if (requireUnlock) View.GONE else View.VISIBLE
         bindProfiles(root)
     }
 
@@ -785,6 +869,24 @@ class ProfilePickerDialog : DialogFragment() {
             }
             dialog.show()
             nameInput.requestFocus()
+            capEditorScroll(view)
+        }
+
+        private fun capEditorScroll(form: View) {
+            val scroll = form.findViewById<View>(R.id.sv_profile_create_form) ?: return
+            val max = (form.resources.displayMetrics.heightPixels * 0.62f).toInt()
+            scroll.post {
+                val width = scroll.width.takeIf { it > 0 } ?: form.width
+                if (width <= 0) return@post
+                scroll.measure(
+                    View.MeasureSpec.makeMeasureSpec(width, View.MeasureSpec.EXACTLY),
+                    View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED),
+                )
+                if (scroll.measuredHeight > max) {
+                    scroll.layoutParams = scroll.layoutParams.apply { height = max }
+                    scroll.requestLayout()
+                }
+            }
         }
 
         private fun wireAdvancedSection(view: View, profile: UserProfile?) {
@@ -879,6 +981,9 @@ class ProfilePickerDialog : DialogFragment() {
                     }
                     bind(palette.key, ProfileAvatarStyle.initialFor(palette.key), textSizeSp = 16f)
                     isSelected = palette.key == selectedKey
+                    isFocusable = true
+                    isClickable = true
+                    contentDescription = context.getString(palette.titleRes)
                     foreground = context.getDrawable(R.drawable.bg_profile_avatar_select_ring)
                     if (ExperimentalMobileDesign.enabled()) {
                         with(com.dskja.betterstreamflix.utils.ExpPressEffects) { applyExpPress() }

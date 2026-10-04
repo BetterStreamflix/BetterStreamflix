@@ -451,6 +451,9 @@ object ProfilesSettingsController {
                     }
                     bind(palette.key, ProfileAvatarStyle.initialFor(palette.key), textSizeSp = 16f)
                     isSelected = palette.key == selected
+                    isFocusable = true
+                    isClickable = true
+                    contentDescription = context.getString(palette.titleRes)
                     foreground = context.getDrawable(R.drawable.bg_profile_avatar_select_ring)
                     if (ExperimentalMobileDesign.enabled()) {
                         with(ExpPressEffects) { applyExpPress() }
@@ -525,6 +528,12 @@ object ProfilesSettingsController {
             if (ProfileManager.setPin(ProfileManager.activeProfileId, pin)) {
                 notifyUser(context, context.getString(R.string.profile_pin_saved), R.string.profile_pin_title)
                 refresh(findPreference, context, fragment)
+            } else {
+                notifyUser(
+                    context,
+                    context.getString(R.string.profile_pin_invalid_format),
+                    R.string.profile_pin_title,
+                )
             }
         }
     }
