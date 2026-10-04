@@ -54,6 +54,9 @@ class TvFocusChainTest {
         assertNotNull("TvFocusChain.linkHorizontal must remain public", method)
         assertTrue(method!!.parameterTypes.isNotEmpty())
         assertEquals(Void.TYPE, method.returnType)
+        val vertical = TvFocusChain::class.java.methods.firstOrNull { it.name == "linkVertical" }
+        assertNotNull("TvFocusChain.linkVertical must remain public", vertical)
+        assertEquals(Void.TYPE, vertical!!.returnType)
     }
 
     @Test

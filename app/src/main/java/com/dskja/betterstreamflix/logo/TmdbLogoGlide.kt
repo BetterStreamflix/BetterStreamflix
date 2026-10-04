@@ -8,6 +8,7 @@ import android.view.View
 import android.widget.ImageView
 import com.bumptech.glide.Glide
 import com.bumptech.glide.load.DataSource
+import com.bumptech.glide.load.DecodeFormat
 import com.bumptech.glide.load.engine.DiskCacheStrategy
 import com.bumptech.glide.load.engine.GlideException
 import com.bumptech.glide.request.RequestListener
@@ -18,7 +19,7 @@ import com.dskja.betterstreamflix.utils.ArtworkUrls
 
 /**
  * Shared Glide load for TMDb title logos:
- * original → w1280 → w500 → w300, with identity tags, view-size override, and optional flash-hide.
+ * original → w1280 → w500 → w300, with identity tags, full view-size decode, and optional flash-hide.
  */
 object TmdbLogoGlide {
 
@@ -62,16 +63,9 @@ object TmdbLogoGlide {
         if (hideUntilReady) {
             imageView.visibility = View.INVISIBLE
         }
-        // Prefer height-based decode so wide match_parent slots do not squash wordmarks.
+        // 1:1 with the laid-out slot. A 3×-height cap upscaled wide wordmarks.
+        val overrideW = imageView.width.takeIf { it > 0 }
         val overrideH = imageView.height.takeIf { it > 0 }
-            ?: imageView.layoutParams?.height?.takeIf { it > 0 }
-        val overrideW = overrideH?.let { h ->
-            val laidOutW = imageView.width.takeIf { it > 0 }
-                ?: imageView.layoutParams?.width?.takeIf { it > 0 }
-            // Cap at ~3× height for typical TMDb logo aspect; never exceed laid-out width.
-            val budget = (h * 3).coerceAtLeast(h)
-            laidOutW?.coerceAtMost(budget) ?: budget
-        }
 
         fun attempt(index: Int) {
             val url = sizes.getOrNull(index)
@@ -93,6 +87,7 @@ object TmdbLogoGlide {
             // Let ImageView scaleType (fitStart / fitCenter) own alignment — no Glide transform.
             var request = Glide.with(imageView)
                 .load(url)
+                .format(DecodeFormat.PREFER_ARGB_8888)
                 .diskCacheStrategy(DiskCacheStrategy.AUTOMATIC)
                 .dontTransform()
                 .transition(

@@ -75,7 +75,12 @@ class MainTvActivity : FragmentActivity() {
             .setDuration(800)
             .setStartDelay(400)
             .withEndAction {
-                _binding?.ivSplashOverlay?.visibility = View.GONE
+                val splash = _binding?.ivSplashOverlay ?: return@withEndAction
+                val focused = window?.currentFocus
+                splash.visibility = View.GONE
+                if (focused == null || focused == splash) {
+                    _binding?.navMainFragment?.requestFocus()
+                }
             }
 
         val navHostFragment = this.supportFragmentManager
@@ -156,7 +161,12 @@ class MainTvActivity : FragmentActivity() {
                     binding.navMain.visibility = View.VISIBLE
                     updateNavigationVisibility()
                 }
-                else -> binding.navMain.visibility = View.GONE
+                else -> {
+                    if (binding.navMain.hasFocus()) {
+                        binding.navMainFragment.requestFocus()
+                    }
+                    binding.navMain.visibility = View.GONE
+                }
             }
         }
 
@@ -292,12 +302,23 @@ class MainTvActivity : FragmentActivity() {
     }
     
     private fun updateNavigationVisibility() {
-        UserPreferences.currentProvider?.let { provider ->
-            binding.navMain.menu.findItem(R.id.movies)?.isVisible = Provider.supportsMovies(provider)
-            val tvShowsItem = binding.navMain.menu.findItem(R.id.tv_shows)
-            tvShowsItem?.isVisible = Provider.supportsTvShows(provider)
-            tvShowsItem?.title = if (provider is IptvProvider)
-                getString(R.string.main_menu_all_channels) else getString(R.string.main_menu_tv_shows)
+        val provider = UserPreferences.currentProvider ?: return
+        val supportsMovies = Provider.supportsMovies(provider)
+        val supportsTvShows = Provider.supportsTvShows(provider)
+        binding.navMain.menu.findItem(R.id.movies)?.isVisible = supportsMovies
+        val tvShowsItem = binding.navMain.menu.findItem(R.id.tv_shows)
+        tvShowsItem?.isVisible = supportsTvShows
+        tvShowsItem?.title = if (provider is IptvProvider) {
+            getString(R.string.main_menu_all_channels)
+        } else {
+            getString(R.string.main_menu_tv_shows)
+        }
+
+        val navController = (supportFragmentManager.findFragmentById(R.id.nav_main_fragment) as? NavHostFragment)
+            ?.navController ?: return
+        when (navController.currentDestination?.id) {
+            R.id.movies -> if (!supportsMovies) navController.navigate(R.id.tv_shows)
+            R.id.tv_shows -> if (!supportsTvShows) navController.navigate(R.id.home)
         }
     }
 

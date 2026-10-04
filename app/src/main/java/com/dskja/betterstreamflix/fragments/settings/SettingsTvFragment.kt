@@ -311,7 +311,10 @@ class SettingsTvFragment : LeanbackPreferenceFragmentCompat() {
         SettingsListStyler.attach(view, isTv = true)
         ensureSettingsHub(view)
         consumeSettingsDeepLink()
-        view.post { listView?.requestFocus() }
+        view.post {
+            listView?.nextFocusLeftId = R.id.nav_main
+            listView?.requestFocus()
+        }
     }
 
     private fun consumeSettingsDeepLink() {
