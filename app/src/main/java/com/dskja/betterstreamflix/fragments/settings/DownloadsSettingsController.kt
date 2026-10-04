@@ -148,7 +148,7 @@ object DownloadsSettingsController {
                     ExternalDownloadHandoff.rememberChosenPackage(installed.getOrNull(which))
                     dialog.dismiss()
                     refreshSummaries(findPreference, context)
-                    ExpDialogChrome.notify(context, R.string.external_download_started)
+                    ExpDialogChrome.notify(context, R.string.external_download_remembered)
                 }
                 .setNegativeButton(android.R.string.cancel, null)
                 .create()

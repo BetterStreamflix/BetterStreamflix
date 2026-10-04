@@ -18,6 +18,8 @@ import okhttp3.*
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Document
 import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.Executors
+import java.util.concurrent.RejectedExecutionException
 import java.util.concurrent.TimeUnit
 import java.net.ServerSocket
 import java.net.Socket
@@ -42,6 +44,7 @@ object CableVisionHDProvider : IptvProvider, ProviderConfigUrl {
 
     private var serverSocket: ServerSocket? = null
     private var localServerThread: Thread? = null
+    private var localProxyExecutor: java.util.concurrent.ExecutorService? = null
     private var currentPlaylistUrl: String = ""
     private var localPort: Int = 0
 
@@ -90,8 +93,9 @@ object CableVisionHDProvider : IptvProvider, ProviderConfigUrl {
 
             chain.proceed(requestBuilder.build())
         }
-        .connectTimeout(30, TimeUnit.SECONDS)
-        .readTimeout(30, TimeUnit.SECONDS)
+        .connectTimeout(10, TimeUnit.SECONDS)
+        .readTimeout(12, TimeUnit.SECONDS)
+        .callTimeout(15, TimeUnit.SECONDS)
         .build()
 
     private suspend fun fetchDocument(url: String, referer: String = baseUrl): Document? {
@@ -320,7 +324,7 @@ object CableVisionHDProvider : IptvProvider, ProviderConfigUrl {
         cachedHome?.let { return@coroutineScope it }
 
         try {
-            val all = if (cachedChannels != null) cachedChannels!! else {
+            val all = cachedChannels ?: run {
                 val doc = fetchDocument(channelsUrl) ?: throw Exception("No se pudo cargar")
                 val channels = extractChannelsFromHtml(doc)
                 cachedChannels = channels
@@ -510,8 +514,10 @@ object CableVisionHDProvider : IptvProvider, ProviderConfigUrl {
         try {
             serverSocket?.close()
             localServerThread?.interrupt()
+            localProxyExecutor?.shutdownNow()
             serverSocket = null
             localServerThread = null
+            localProxyExecutor = null
         } catch (e: Exception) {
             Log.e(TAG, "Error deteniendo servidor: ${e.message}")
         }
@@ -521,18 +527,26 @@ object CableVisionHDProvider : IptvProvider, ProviderConfigUrl {
         try {
             serverSocket = ServerSocket(0)
             localPort = serverSocket!!.localPort
+            val executor = Executors.newFixedThreadPool(6)
+            localProxyExecutor = executor
 
             localServerThread = Thread {
                 try {
                     while (!Thread.currentThread().isInterrupted) {
                         val clientSocket = serverSocket?.accept() ?: break
-                        Thread {
-                            try {
-                                handleLocalRequest(clientSocket, playlistUrl)
-                            } catch (e: Exception) {
-                                Log.e(TAG, "Error: ${e.message}")
+                        try {
+                            executor.execute {
+                                try {
+                                    handleLocalRequest(clientSocket, playlistUrl)
+                                } catch (e: Exception) {
+                                    Log.e(TAG, "Error: ${e.message}")
+                                } finally {
+                                    runCatching { clientSocket.close() }
+                                }
                             }
-                        }.start()
+                        } catch (_: RejectedExecutionException) {
+                            runCatching { clientSocket.close() }
+                        }
                     }
                 } catch (e: Exception) {
                     if (!Thread.currentThread().isInterrupted) {

@@ -43,9 +43,9 @@ class MeinecloudExtractor : Extractor() {
             .filterNot { MeinecloudEmbedHelper.isMeinecloudUrl(it) }
 
         var lastError: Exception? = null
-        for (mirror in mirrors) {
+        for (mirror in mirrors.take(3)) {
             try {
-                return Extractor.extract(mirror)
+                return Extractor.extract(mirror, maxAttempts = 1)
             } catch (e: Exception) {
                 lastError = e
             }
@@ -109,6 +109,9 @@ class MeinecloudExtractor : Extractor() {
                     .dns(DnsResolver.doh)
                     .followRedirects(true)
                     .followSslRedirects(true)
+                    .connectTimeout(10, java.util.concurrent.TimeUnit.SECONDS)
+                    .readTimeout(15, java.util.concurrent.TimeUnit.SECONDS)
+                    .callTimeout(20, java.util.concurrent.TimeUnit.SECONDS)
                     .build()
                 return Retrofit.Builder()
                     .baseUrl(if (baseUrl.endsWith("/")) baseUrl else "$baseUrl/")

@@ -6,7 +6,9 @@ import androidx.core.net.toUri
 import com.google.gson.annotations.SerializedName
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import com.dskja.betterstreamflix.platform.subtitles.OpenSubtitlesV1Client
 import okhttp3.OkHttpClient
+import okhttp3.Request
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 import retrofit2.http.GET
@@ -14,7 +16,7 @@ import retrofit2.http.Path
 import java.io.File
 import java.io.FileInputStream
 import java.io.FileOutputStream
-import java.net.URL
+import java.util.concurrent.TimeUnit
 import java.util.zip.GZIPInputStream
 
 object OpenSubtitles {
@@ -84,8 +86,21 @@ object OpenSubtitles {
             ".${File(subtitle.subDownloadLink).extension.ifBlank { "gz" }}"
         )
 
-        URL(subtitle.subDownloadLink).openStream().use { input ->
-            FileOutputStream(zip).use { output -> input.copyTo(output) }
+        val client = OkHttpClient.Builder()
+            .connectTimeout(15, TimeUnit.SECONDS)
+            .readTimeout(30, TimeUnit.SECONDS)
+            .callTimeout(45, TimeUnit.SECONDS)
+            .build()
+        val request = Request.Builder()
+            .url(subtitle.subDownloadLink)
+            .header("User-Agent", OpenSubtitlesV1Client.userAgent())
+            .build()
+        client.newCall(request).execute().use { response ->
+            if (!response.isSuccessful) {
+                throw Exception("OpenSubtitles download HTTP ${response.code}")
+            }
+            val body = response.body ?: throw Exception("OpenSubtitles empty body")
+            FileOutputStream(zip).use { output -> body.byteStream().copyTo(output) }
         }
 
         val subtitleFile = File(
@@ -183,9 +198,12 @@ object OpenSubtitles {
         companion object {
             fun build(): Service {
                 val client = OkHttpClient.Builder()
+                    .connectTimeout(15, TimeUnit.SECONDS)
+                    .readTimeout(30, TimeUnit.SECONDS)
+                    .callTimeout(45, TimeUnit.SECONDS)
                     .addInterceptor { chain ->
                         val requestBuilder = chain.request().newBuilder()
-                            .addHeader("User-Agent", "TemporaryUserAgent")
+                            .header("User-Agent", OpenSubtitlesV1Client.userAgent())
 
                         chain.proceed(requestBuilder.build())
                     }

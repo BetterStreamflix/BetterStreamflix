@@ -32,11 +32,10 @@ object CineCityProvider : IptvProvider, ProviderConfigUrl {
 
     private const val OBFUSCATED_PLAYLIST = "aHR0cHM6Ly9yYXcuZ2l0aHVidXNlcmNvbnRlbnQuY29tL0NJTkVDSVRZMjAyMy9jaW5lY2l0eS9jaW5lY2l0eS5uZXQvcHJpbmNpcGFsLm0zdQ=="
 
-    private const val FALLBACK_VIDEO_URL = "https://raw.githubusercontent.com/NANDOFS/ModoPrueba/main/VIDEO/SIN-SE%C3%91AL.mp4"
-
     private val client = OkHttpClient.Builder()
         .connectTimeout(15, TimeUnit.SECONDS)
         .readTimeout(15, TimeUnit.SECONDS)
+        .callTimeout(20, TimeUnit.SECONDS)
         .cookieJar(object : CookieJar {
             private val cookieStore = mutableMapOf<String, List<Cookie>>()
             override fun saveFromResponse(url: HttpUrl, cookies: List<Cookie>) {
@@ -90,7 +89,8 @@ object CineCityProvider : IptvProvider, ProviderConfigUrl {
 
     private fun getAllChannels(): List<M3UChannel> {
         val now = System.currentTimeMillis()
-        if (cachedChannels != null && (now - lastFetchTime) < CACHE_DURATION) return cachedChannels!!
+        val cached = cachedChannels
+        if (cached != null && (now - lastFetchTime) < CACHE_DURATION) return cached
 
         return try {
             val decodedUrl = String(Base64.decode(OBFUSCATED_PLAYLIST, Base64.DEFAULT))
@@ -112,8 +112,8 @@ object CineCityProvider : IptvProvider, ProviderConfigUrl {
         val categories = mutableListOf<Category>()
 
         val channelCategories = channels
-            .filter { it.group != null && it.group.isNotEmpty() }
-            .groupBy { it.group!! }
+            .mapNotNull { ch -> ch.group?.takeIf { it.isNotEmpty() }?.let { g -> g to ch } }
+            .groupBy({ it.first }, { it.second })
             .map { (groupName, channelList) ->
                 Category(
                     name = groupName,

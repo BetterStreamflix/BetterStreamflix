@@ -1094,7 +1094,8 @@ object HDFilmeProvider : Provider, ProviderConfigUrl {
         }
 
         if (mirrors.isNotEmpty()) return mirrors.values.toList()
-        val fallback = lastEmbedUrl ?: iframeCandidates.first()
+        val fallback = lastEmbedUrl
+            ?: throw Exception("HDFilme: no playable hoster mirrors (youtube-only embeds)")
         return listOf(Video.Server(id = fallback, name = "Embed", src = normalizeUrl(fallback)))
     }
 

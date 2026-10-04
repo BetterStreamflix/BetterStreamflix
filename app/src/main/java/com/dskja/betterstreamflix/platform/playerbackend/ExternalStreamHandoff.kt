@@ -12,10 +12,12 @@ import android.net.Uri
 import android.util.Base64
 import android.util.Log
 import com.dskja.betterstreamflix.R
+import com.dskja.betterstreamflix.cast.CastPlaybackHub
 import com.dskja.betterstreamflix.download.ExternalDownloadHandoff
 import com.dskja.betterstreamflix.extractors.StreamMime
 import com.dskja.betterstreamflix.utils.ExpDialogChrome
 import com.dskja.betterstreamflix.utils.UserPreferences
+import java.io.File
 
 /**
  * Hands a resolved playable HTTP(S) (or local) stream URI to an external **video player**
@@ -77,8 +79,19 @@ object ExternalStreamHandoff {
             if (!extracted.isNullOrBlank()) {
                 return Resolved(Uri.parse(extracted), mime, grantRead = false)
             }
-            // Relative-only playlists break in most external players over content://.
-            return null
+            // Relative-only playlists: materialize a temp file so Play with can at least open.
+            val temp = runCatching {
+                File.createTempFile("bsf-ext-", ".m3u8", context.cacheDir).also { file ->
+                    file.writeText(playlist)
+                    file.deleteOnExit()
+                }
+            }.getOrNull() ?: return null
+            return Resolved(
+                Uri.fromFile(temp),
+                mime,
+                grantRead = true,
+                fragilePlaylist = true,
+            )
         }
         return Resolved(
             Uri.parse(raw),
@@ -338,6 +351,13 @@ object ExternalStreamHandoff {
             )
             return false
         }
+        if (resolved.fragilePlaylist) {
+            ExpDialogChrome.notify(
+                activity,
+                R.string.player_external_fragile_playlist,
+                R.string.player_external_player_title,
+            )
+        }
         if (!forceChooser) {
             val preferred = preferredPackage(activity)
                 ?: ExternalMpvBackend.preferredInstalledPackage(activity)
@@ -361,8 +381,9 @@ object ExternalStreamHandoff {
         packageName: String,
     ): Boolean {
         if (!isEligiblePlayerPackage(packageName)) return false
-        val direct = buildViewIntent(activity, resolved, request, packageName)
-        grantUriIfNeeded(activity, resolved, packageName)
+        val effective = maybeProxyForVlc(activity, resolved, request, packageName)
+        val direct = buildViewIntent(activity, effective.first, effective.second, packageName)
+        grantUriIfNeeded(activity, effective.first, packageName)
         if (direct.resolveActivity(activity.packageManager) == null) return false
         return try {
             activity.startActivity(direct)
@@ -371,6 +392,38 @@ object ExternalStreamHandoff {
             Log.w(TAG, "Preferred player missing: ${e.message}")
             false
         }
+    }
+
+    /**
+     * VLC Android ignores HTTP header extras. When headers are required, wrap the
+     * stream through the local Cast proxy so VLC fetches a plain LAN URL.
+     */
+    private fun maybeProxyForVlc(
+        activity: Activity,
+        resolved: Resolved,
+        request: Request,
+        packageName: String,
+    ): Pair<Resolved, Request> {
+        if (packageName != "org.videolan.vlc" && packageName != "org.videolan.vlc.debug") {
+            return resolved to request
+        }
+        if (request.headers.isEmpty()) return resolved to request
+        val original = resolved.uri.toString()
+        if (!original.startsWith("http://") && !original.startsWith("https://")) {
+            return resolved to request
+        }
+        CastPlaybackHub.ensureCastContext(activity.applicationContext)
+        val proxied = CastPlaybackHub.wrapForCast(original, request.headers)
+        if (proxied == original || !CastPlaybackHub.lastWrapUsedProxy) {
+            ExpDialogChrome.notify(
+                activity,
+                R.string.player_external_vlc_headers_unsupported,
+                R.string.player_external_player_title,
+            )
+            return resolved to request
+        }
+        return Resolved(Uri.parse(proxied), resolved.mimeType, grantRead = false) to
+            request.copy(sourceUrl = proxied, headers = emptyMap())
     }
 
     private fun grantUriIfNeeded(activity: Activity, resolved: Resolved, packageName: String) {

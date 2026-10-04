@@ -82,7 +82,27 @@ object CastMediaFactory {
     ): MediaItem {
         val castUri = resolveCastUri(source, headers, extractedFallback)
         val subs = if (UserPreferences.castSubtitlesEnabled) {
-            subtitleConfigurations
+            // Chromecast cannot read phone file:// / content:// paths — proxy locals
+            // or keep only http(s) sidecar tracks.
+            subtitleConfigurations.mapNotNull { cfg ->
+                val uri = cfg.uri?.toString().orEmpty()
+                when {
+                    uri.startsWith("http://", ignoreCase = true) ||
+                        uri.startsWith("https://", ignoreCase = true) -> cfg
+                    uri.startsWith("file://", ignoreCase = true) ||
+                        uri.startsWith("content://", ignoreCase = true) -> {
+                        val proxied = CastPlaybackHub.wrapLocalForCast(uri)
+                        if (proxied == null) null
+                        else MediaItem.SubtitleConfiguration.Builder(proxied.toUri())
+                            .setMimeType(cfg.mimeType)
+                            .setLabel(cfg.label)
+                            .setLanguage(cfg.language)
+                            .setSelectionFlags(cfg.selectionFlags)
+                            .build()
+                    }
+                    else -> null
+                }
+            }
         } else {
             emptyList()
         }

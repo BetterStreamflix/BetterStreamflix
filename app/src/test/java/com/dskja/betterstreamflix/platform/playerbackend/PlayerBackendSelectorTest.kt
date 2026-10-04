@@ -7,6 +7,7 @@ class PlayerBackendSelectorTest {
     @Test
     fun candidatePackagesPreferMpvFirst() {
         assertEquals("is.xyz.mpv", ExternalMpvBackend.CANDIDATE_PACKAGES.first())
-        assertEquals(3, ExternalMpvBackend.CANDIDATE_PACKAGES.size)
+        assertEquals(2, ExternalMpvBackend.CANDIDATE_PACKAGES.size)
+        assertEquals(false, ExternalMpvBackend.CANDIDATE_PACKAGES.contains("org.videolan.vlc"))
     }
 }

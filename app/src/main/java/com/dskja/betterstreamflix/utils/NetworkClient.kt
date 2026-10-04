@@ -106,13 +106,18 @@ object NetworkClient {
         val request = chain.request()
         val response = chain.proceed(request)
         if (request.method == "GET" && response.code == 429) {
+            // Cap sleep so OkHttp dispatcher threads are not stranded on burst 429s.
             val waitMs = response.header("Retry-After")
                 ?.toLongOrNull()
-                ?.coerceIn(0, 5)
+                ?.coerceIn(0, 1)
                 ?.times(1000)
-            if (waitMs != null) {
+            if (waitMs != null && waitMs > 0) {
                 response.close()
-                Thread.sleep(waitMs)
+                try {
+                    Thread.sleep(waitMs)
+                } catch (_: InterruptedException) {
+                    Thread.currentThread().interrupt()
+                }
                 chain.proceed(request)
             } else {
                 response

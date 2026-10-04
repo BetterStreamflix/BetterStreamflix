@@ -248,7 +248,12 @@ object FlixLatamProvider : Provider, ProviderConfigUrl {
         val prefix = "0".repeat(difficulty)
         var nonce = 0
         val md = MessageDigest.getInstance("SHA-256")
-        while (true) {
+        val deadline = System.nanoTime() + 2_000_000_000L // 2s wall budget
+        val maxNonce = 5_000_000
+        while (nonce < maxNonce && System.nanoTime() < deadline) {
+            if (nonce and 0x3FFF == 0 && Thread.interrupted()) {
+                throw InterruptedException("FlixLatam PoW cancelled")
+            }
             val input = challenge + nonce
             val hashBytes = md.digest(input.toByteArray(Charsets.UTF_8))
             val hashStr = hashBytes.joinToString("") { "%02x".format(it) }
@@ -258,6 +263,7 @@ object FlixLatamProvider : Provider, ProviderConfigUrl {
             }
             nonce++
         }
+        throw Exception("FlixLatam: PoW challenge timed out")
     }
 
     private fun decryptAES(encrypted: String, aesKey: ByteArray): String? {

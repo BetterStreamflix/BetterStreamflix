@@ -201,6 +201,10 @@
     <string name="player_external_player_error_video">Stream noch nicht bereit</string>
     <string name="external_player_none_found">Kein Videoplayer gefunden. Installiere VLC, MX Player, mpv oder ähnlich. Download-Manager findest du unter Herunterladen mit…</string>
     <string name="external_player_remembered">Standard-Player gespeichert</string>
+    <string name="player_external_fragile_playlist">Dieser Stream nutzt relative Segmente — externe Player können scheitern. Besser den In-App-Player verwenden.</string>
+    <string name="player_external_vlc_headers_unsupported">VLC kann Stream-Cookies/Header nicht senden. Versuch ohne — für geschützte Streams MX Player oder mpv nutzen.</string>
+    <string name="external_download_hls_unsupported">ADM/1DM können HLS-Playlists (.m3u8) nicht laden. Nutze den In-App-Download für diesen Stream.</string>
+    <string name="external_download_remembered">Standard-Download-Manager gespeichert</string>
     <string name="external_player_clear_default">Standard-Player zurücksetzen</string>
     <string name="external_player_clear_default_summary">Immer nachfragen, welche App genutzt wird</string>
     <string name="external_player_default_summary">Standard: %1$s</string>
