@@ -81,6 +81,7 @@ import com.dskja.betterstreamflix.databinding.ItemSupportBannerMobileBinding
 import com.dskja.betterstreamflix.databinding.ItemSupportBannerTvBinding
 import com.dskja.betterstreamflix.utils.ExperimentalMobileDesign
 import com.dskja.betterstreamflix.utils.ExpMotion
+import com.dskja.betterstreamflix.utils.UserPreferences
 import com.dskja.betterstreamflix.support.SupportUiBinder
 import com.dskja.betterstreamflix.adapters.viewholders.TrailerViewHolder
 import com.dskja.betterstreamflix.databinding.ContentDetailTrailerTvBinding
@@ -1141,6 +1142,20 @@ class AppAdapter(
                 ExpMotion.hapticTap(it)
                 onDismiss?.invoke()
             }
+            root.findViewById<View>(R.id.btn_support_banner_never)?.let { never ->
+                root.isFocusable = false
+                root.isFocusableInTouchMode = false
+                (root as? android.view.ViewGroup)?.descendantFocusability =
+                    android.view.ViewGroup.FOCUS_AFTER_DESCENDANTS
+                never.setOnClickListener {
+                    ExpMotion.hapticTap(it)
+                    UserPreferences.neverShowSupportOnStart = true
+                    onDismiss?.invoke()
+                }
+                SupportUiBinder.applyFocusScale(never)
+            }
+            SupportUiBinder.applyFocusScale(cta)
+            SupportUiBinder.applyFocusScale(dismiss)
             SupportUiBinder.applyFocusScale(root)
             if (ExperimentalMobileDesign.enabled()) {
                 root.setBackgroundResource(ExperimentalMobileDesign.glassCardBackground())
