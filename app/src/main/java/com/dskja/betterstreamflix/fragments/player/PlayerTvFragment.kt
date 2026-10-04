@@ -759,7 +759,7 @@ class PlayerTvFragment : Fragment() {
                 viewLifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
                     viewModel.playPreviousOrNextEpisode.collect { nextEpisode ->
                         if (isTearingDown || !isAdded || _binding == null) return@collect
-                        releasePlayer(ReleaseMode.HARD_REPLACE)
+                        releasePlayer(ReleaseMode.SOFT_LEAVE)
                         isSetupDone = false
 
                         val live = UserPreferences.currentProvider is IptvProvider
@@ -1087,7 +1087,7 @@ class PlayerTvFragment : Fragment() {
     ) {
         if (isTearingDown || !isAdded || _binding == null) return
         EpisodeManager.getPreviousEpisode()
-        releasePlayer(ReleaseMode.HARD_REPLACE)
+        releasePlayer(ReleaseMode.SOFT_LEAVE)
         isSetupDone = false
         val live = UserPreferences.currentProvider is IptvProvider
         val navArgs = Bundle().apply {
@@ -1126,7 +1126,7 @@ class PlayerTvFragment : Fragment() {
     ) {
         if (isTearingDown || !isAdded || _binding == null) return
         EpisodeManager.getNextEpisode()
-        releasePlayer(ReleaseMode.HARD_REPLACE)
+        releasePlayer(ReleaseMode.SOFT_LEAVE)
         isSetupDone = false
         val live = UserPreferences.currentProvider is IptvProvider
         val navArgs = Bundle().apply {
@@ -1507,6 +1507,7 @@ class PlayerTvFragment : Fragment() {
             startPositionMs: Long? = null,
             shouldPlay: Boolean = true,
         ) {
+            if (isTearingDown || !isAdded || _binding == null) return
             currentVideo = video
             currentServer = server
             val offline = server.id.equals(PlayerViewModel.OFFLINE_SERVER_ID, ignoreCase = true) ||
@@ -1831,7 +1832,9 @@ class PlayerTvFragment : Fragment() {
                 player.seekTo(currentPosition)
             }
 
+            if (isTearingDown || playerReleased || !isAdded || _binding == null) return
             player.prepare()
+            if (isTearingDown || playerReleased) return
             player.playWhenReady = shouldPlay
         }
 
@@ -2617,12 +2620,13 @@ class PlayerTvFragment : Fragment() {
         }
 
         private fun initializePlayer(extraBuffering: Boolean, softwareDecoder: Boolean = currentSoftwareDecoder) {
+            if (isTearingDown || !isAdded || _binding == null) return
             releasePlayer(ReleaseMode.HARD_REPLACE)
+            if (isTearingDown || !isAdded || _binding == null) return
             playerReleased = false
             playbackSoftStopped = false
             playerViewDetached = false
             mediaSessionReleased = true
-            isTearingDown = false
             currentExtraBuffering = extraBuffering
             currentSoftwareDecoder = softwareDecoder
             PlaybackLifecycleGuard.register(playbackStopHandle)
@@ -2654,12 +2658,19 @@ class PlayerTvFragment : Fragment() {
             httpDataSource = OkHttpDataSource.Factory(okHttpClient)
 
             dataSourceFactory = if (playingOffline) {
-                // Always wrap so sidecar subtitle file:// paths bypass FLAG_BLOCK_ON_CACHE.
-                DefaultDataSource.Factory(
-                    requireContext(),
+                val offlineFactory = runCatching {
                     com.dskja.betterstreamflix.download.StreamflixDownloadManager
-                        .playbackCacheDataSourceFactory(requireContext()),
-                )
+                        .playbackCacheDataSourceFactory(requireContext())
+                }.getOrElse {
+                    android.util.Log.w("Player", "Offline cache not ready: ${it.message}")
+                    android.widget.Toast.makeText(
+                        requireContext(),
+                        R.string.settings_download_storage_unavailable,
+                        android.widget.Toast.LENGTH_SHORT,
+                    ).show()
+                    return
+                }
+                DefaultDataSource.Factory(requireContext(), offlineFactory)
             } else {
                 DefaultDataSource.Factory(requireContext(), httpDataSource)
             }
@@ -2951,11 +2962,21 @@ class PlayerTvFragment : Fragment() {
             playbackSoftStopped = true
 
             val hardRelease = when (mode) {
-                ReleaseMode.HARD_REPLACE, ReleaseMode.HARD_DESTROY -> true
+                ReleaseMode.HARD_DESTROY -> PlayerTeardownPolicy.allowHardRelease(
+                    viewAttached = _binding != null,
+                    playerViewDetached = playerViewDetached,
+                    destroying = true,
+                )
+                ReleaseMode.HARD_REPLACE -> PlayerTeardownPolicy.allowHardRelease(
+                    viewAttached = _binding != null,
+                    playerViewDetached = playerViewDetached,
+                    destroying = false,
+                    replacing = true,
+                )
                 ReleaseMode.SOFT_LEAVE -> PlayerTeardownPolicy.allowHardRelease(
                     viewAttached = _binding != null,
                     playerViewDetached = playerViewDetached,
-                    destroying = mode == ReleaseMode.HARD_DESTROY,
+                    destroying = false,
                 )
             }
             if (hardRelease) {

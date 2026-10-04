@@ -223,6 +223,13 @@ class CategoryViewHolder(
             binding.root.isFocusableInTouchMode = false
             binding.root.descendantFocusability = ViewGroup.FOCUS_BLOCK_DESCENDANTS
             binding.hgvCategory.apply {
+                // Clear DPAD focus before emptying — nulling adapter under a focused child
+                // throws Leanback IllegalStateException on year-filter / progressive rebinds.
+                if (hasFocus() || findFocus() != null) {
+                    findFocus()?.clearFocus()
+                    clearFocus()
+                }
+                (adapter as? AppAdapter)?.submitList(emptyList())
                 visibility = View.GONE
                 isFocusable = false
                 adapter = null

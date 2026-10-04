@@ -400,6 +400,7 @@ class DetailTrailerMobilePlayer(
         updateMuteIcon()
         binding.btnDetailTrailerOpenExternal.setOnClickListener {
             ExpMotion.hapticTap(it)
+            pauseAndBlank()
             TrailerPlaybackController.openExternalTrailer(context, url)
         }
         highlightRow(url)

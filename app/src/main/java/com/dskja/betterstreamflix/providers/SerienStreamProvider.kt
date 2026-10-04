@@ -506,9 +506,11 @@ object SerienStreamProvider : Provider {
             .mapNotNull { card ->
                 val link = card.selectFirst("a[href^=/serie/]")?.attr("href")
                     ?: return@mapNotNull null
+                val title = card.selectFirst("h6.show-title")?.text()?.trim().orEmpty()
+                if (title.isBlank()) return@mapNotNull null
                 TvShow(
                     id = getTvShowIdFromLink(link),
-                    title = card.selectFirst("h6.show-title")?.text().orEmpty(),
+                    title = title,
                     poster = normalizeImageUrl(card.extractPoster())
                 )
             }
@@ -770,6 +772,10 @@ object SerienStreamProvider : Provider {
         val playUrl = server.src.ifBlank { server.id }
         val resolved = resolvePlayUrl(playUrl)
         if (isSerienStreamHost(resolved) || resolved.contains("/r?", ignoreCase = true)) {
+            // Stale "signed in" must not keep skipping captcha after a live gate hit.
+            UserPreferences.serienStreamAccountConfirmed = false
+            UserPreferences.serienStreamSessionValidatedOk = false
+            UserPreferences.serienStreamSessionValidatedAtMs = System.currentTimeMillis()
             throw Exception(
                 "SerienStream stream gate is still active. Complete verification, tap Weiter, then Continue.",
             )

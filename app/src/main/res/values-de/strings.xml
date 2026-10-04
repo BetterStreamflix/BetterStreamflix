@@ -216,6 +216,7 @@
     <string name="downloads_action_play_with">Abspielen mit…</string>
     <string name="downloads_action_download_with">Herunterladen mit…</string>
     <string name="downloads_play_with_cache_only">Dieser Offline-Eintrag liegt im App-Cache. Spiele ihn offline in BetterStreamflix ab oder lade erneut mit ADM für eine teilbare Datei.</string>
+    <string name="downloads_service_start_failed">Downloads konnten im Hintergrund nicht starten. Öffne Downloads, um fortzusetzen.</string>
     <string name="settings_download_storage_removable">SD-Karte / Wechseldatenträger</string>
     <string name="settings_download_storage_custom">Eigener Ordner auf SD (Systemauswahl)</string>
     <string name="settings_download_storage_pick_folder">Download-Ordner wählen</string>

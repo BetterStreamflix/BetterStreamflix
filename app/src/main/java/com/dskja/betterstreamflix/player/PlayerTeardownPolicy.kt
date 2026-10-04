@@ -32,12 +32,23 @@ object PlayerTeardownPolicy {
     val hardReleaseSteps: List<String> = softStopSteps + "release_exo_player"
 
     /**
-     * Hard-release is safe when the fragment view is gone, or when PlayerView has
-     * already been detached and we are inside destroy.
+     * Hard-release is safe when:
+     * - the fragment view is gone, or
+     * - PlayerView is already detached and we are destroying, or
+     * - in-place episode/server replace after PlayerView was unbound ([replacing]).
+     *
+     * Soft Back leave keeps [replacing]=false so Exo stays alive until destroy.
      */
-    fun allowHardRelease(viewAttached: Boolean, playerViewDetached: Boolean, destroying: Boolean): Boolean {
+    fun allowHardRelease(
+        viewAttached: Boolean,
+        playerViewDetached: Boolean,
+        destroying: Boolean,
+        replacing: Boolean = false,
+    ): Boolean {
         if (!viewAttached) return true
-        return destroying && playerViewDetached
+        if (destroying && playerViewDetached) return true
+        if (replacing && playerViewDetached) return true
+        return false
     }
 
     /** Whether listener/UI work may still run. */

@@ -107,10 +107,15 @@ object DownloadEventBridge : DownloadManager.Listener {
             lastBytes.remove(download.request.id)
         }
 
-        val localUri = if (state == DownloadItemState.COMPLETED) {
-            download.request.uri.toString()
-        } else {
-            entity.localUri
+        // Never persist a remote CDN URL as localUri — that poisoned Play with / share
+        // (exportShareUri rejects http(s)). Keep a real file path if we already have one;
+        // otherwise leave blank so progressive Media3 export can materialize a share file.
+        val localUri = when {
+            state != DownloadItemState.COMPLETED -> entity.localUri
+            entity.localUri.isNotBlank() &&
+                !entity.localUri.startsWith("http://", ignoreCase = true) &&
+                !entity.localUri.startsWith("https://", ignoreCase = true) -> entity.localUri
+            else -> ""
         }
 
         val errorMessage = finalException?.message

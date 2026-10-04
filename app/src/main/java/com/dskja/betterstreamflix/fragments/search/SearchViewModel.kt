@@ -437,7 +437,7 @@ class SearchViewModel(
 
     companion object {
         /** Parallel Global Search providers. Higher values OOM-kill Fire TV DE fan-out. */
-        const val GLOBAL_SEARCH_CONCURRENCY = 3
+        const val GLOBAL_SEARCH_CONCURRENCY = 2
     }
 }
 

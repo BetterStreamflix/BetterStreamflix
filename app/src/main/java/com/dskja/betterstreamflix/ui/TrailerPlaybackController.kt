@@ -645,8 +645,14 @@ object TrailerPlaybackController {
             }
             loadEmbed(web, loading, errorPanel)
 
-            fun openExternal() {
+            fun openExternal(dismissAfter: Boolean) {
+                // Silence in-app WebView before handing off — YouTube icon used to leave
+                // the embed playing under the external app (dual audio).
+                pauseTrailerMedia(web)
+                web.stopLoading()
+                web.loadUrl("about:blank")
                 openExternalTrailer(requireContext(), watchUrl)
+                if (dismissAfter) dismissAllowingStateLoss()
             }
 
             root.findViewById<ImageButton>(R.id.btn_trailer_close).setOnClickListener {
@@ -655,12 +661,11 @@ object TrailerPlaybackController {
             }
             root.findViewById<ImageButton>(R.id.btn_trailer_youtube).setOnClickListener {
                 ExpMotion.hapticTap(it)
-                openExternal()
+                openExternal(dismissAfter = true)
             }
             root.findViewById<TextView>(R.id.btn_trailer_open_external).setOnClickListener {
                 ExpMotion.hapticTap(it)
-                openExternal()
-                dismissAllowingStateLoss()
+                openExternal(dismissAfter = true)
             }
             root.findViewById<TextView>(R.id.btn_trailer_retry).setOnClickListener {
                 ExpMotion.hapticTap(it)
@@ -668,8 +673,7 @@ object TrailerPlaybackController {
             }
             root.findViewById<TextView>(R.id.btn_trailer_error_youtube).setOnClickListener {
                 ExpMotion.hapticTap(it)
-                openExternal()
-                dismissAllowingStateLoss()
+                openExternal(dismissAfter = true)
             }
 
             if (ExperimentalMobileDesign.enabled()) {
@@ -714,7 +718,8 @@ object TrailerPlaybackController {
             errorPanel.visibility = View.GONE
             web.visibility = View.INVISIBLE
             loading.visibility = View.VISIBLE
-            loadTrailerEmbed(web, videoId)
+            // IFrame API so pauseTrailerMedia / onPause can reach the player.
+            loadTrailerEmbed(web, videoId, useIframeApi = true)
         }
 
         private fun showError(loading: ProgressBar, web: WebView, errorPanel: View) {

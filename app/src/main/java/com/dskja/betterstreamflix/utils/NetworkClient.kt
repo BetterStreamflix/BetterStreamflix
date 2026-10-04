@@ -40,11 +40,12 @@ object NetworkClient {
             cookies.forEach { cookie ->
                 cookieManager.setCookie(url.toString(), cookie.toString())
             }
-            // CookieManager.flush() hits disk — throttle bursts of Set-Cookie headers.
+            // CookieManager.flush() hits disk and must run on the main thread on some
+            // WebView / OEM builds — throttle bursts and post off OkHttp threads.
             val now = android.os.SystemClock.elapsedRealtime()
             if (now - lastCookieFlush > 5_000) {
                 lastCookieFlush = now
-                cookieManager.flush()
+                flushCookieManagerOnMain()
             }
         }
 
@@ -65,6 +66,17 @@ object NetworkClient {
                 if (trimmed.isBlank() || !trimmed.contains("=")) null
                 else Cookie.parse(url, trimmed)
             }
+        }
+    }
+
+    private fun flushCookieManagerOnMain() {
+        val flush = Runnable {
+            runCatching { cookieManager.flush() }
+        }
+        if (android.os.Looper.myLooper() == android.os.Looper.getMainLooper()) {
+            flush.run()
+        } else {
+            android.os.Handler(android.os.Looper.getMainLooper()).post(flush)
         }
     }
 

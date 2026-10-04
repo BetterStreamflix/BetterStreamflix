@@ -173,23 +173,49 @@ abstract class Extractor {
             // non appartiene a nessun estrattore specifico, ma il link risolto sì (es. filemoon).
             if (finalLink.contains("mysync.mov/stream/")) {
                 try {
+                    // Bounded timeouts — bare OkHttpClient hangs forever on dead peers and
+                    // coroutine cancel cannot interrupt blocking execute().
                     val client = okhttp3.OkHttpClient.Builder()
                         .followRedirects(true)
                         .followSslRedirects(true)
+                        .connectTimeout(10, java.util.concurrent.TimeUnit.SECONDS)
+                        .readTimeout(15, java.util.concurrent.TimeUnit.SECONDS)
+                        .writeTimeout(15, java.util.concurrent.TimeUnit.SECONDS)
+                        .callTimeout(20, java.util.concurrent.TimeUnit.SECONDS)
                         .build()
-                    
+
                     val responseBody = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
                         val request = okhttp3.Request.Builder()
                             .url(finalLink)
                             .header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36")
                             .build()
-                        client.newCall(request).execute().use { it.body?.string() }
-                    } ?: ""
-                    
+                        val call = client.newCall(request)
+                        kotlinx.coroutines.suspendCancellableCoroutine<String> { cont ->
+                            cont.invokeOnCancellation { runCatching { call.cancel() } }
+                            call.enqueue(object : okhttp3.Callback {
+                                override fun onFailure(call: okhttp3.Call, e: java.io.IOException) {
+                                    if (cont.isActive) {
+                                        cont.resumeWith(Result.failure(e))
+                                    }
+                                }
+
+                                override fun onResponse(call: okhttp3.Call, response: okhttp3.Response) {
+                                    response.use { resp ->
+                                        val body = runCatching { resp.body?.string().orEmpty() }
+                                            .getOrDefault("")
+                                        if (cont.isActive) {
+                                            cont.resumeWith(Result.success(body))
+                                        }
+                                    }
+                                }
+                            })
+                        }
+                    }
+
                     val redirectUrl = responseBody.substringAfter("window.location.replace(\"", "").substringBefore("\"")
                         .ifEmpty { responseBody.substringAfter("window.location.href = \"", "").substringBefore("\"") }
                         .ifEmpty { responseBody.substringAfter("src=\"", "").substringBefore("\"") }
-                    
+
                     if (redirectUrl.isNotEmpty() && redirectUrl.startsWith("http")) {
                         Log.d("Extractor", "Universal Bridge resolved: $finalLink -> $redirectUrl")
                         finalLink = redirectUrl
