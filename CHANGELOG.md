@@ -21,6 +21,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Buy Me a Coffee short-link constant (`buymeacoff.ee/betterstreamflix`) alongside the canonical URL
 
 ### Fixed
+- German-provider TV Search process kills: sanitize blank id/title rows, catch Errors (not only Exceptions) on search paths, cap Global Search concurrency for DE HTML/WebView/sitemap fan-out, harden SerienStream/AniWorld/KinoGer/FilmPalast/Filmo/HDFilme/MEGAKino/MStream/Einschalten search parsers
 - TV Search Leanback crashes: clear grid before local↔global column changes, stable global category identity across Loading→Success titles, empty category rows stay title-only (non-focusable) instead of `GONE`, safer adapter binds + view-lifecycle collect, `searchGlobal` keeps query/stale-hit guards
 - IPTV / live playback: DaddyLive retired `daddy3.php` embeds (HTTP 404) now fall back to `daddy.php` / dembed mirrors; MAGISTV M3U parser accepts bare `EXTINF` lines and drops `sinurl.com` placeholders; LatAm grids parse modern `a.channel` home cards after `parrilla-directo.php` 404s; shared `LiveStreamHtmlExtractor` picks up `const SRC = "…m3u8"` and skips ad iframes
 - Trailer reliability: Vimeo no longer forced into YouTube packages; in-app WebView hide-until-ready + destroy on recycle; mobile Trailer tab honors YouTube/SmartTube prefs; Leanback settings drop misleading in-app option; dead SmartTube helpers removed from detail ViewHolders

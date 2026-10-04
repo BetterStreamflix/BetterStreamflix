@@ -203,47 +203,62 @@ object MStreamProvider : Provider {
     }
 
     override suspend fun search(query: String, page: Int): List<AppAdapter.Item> {
-        var genres = listOf(
-            "Drama",
-            "Action",
-            "Animation",
-            "Abenteuer",
-            "Familie",
-            "Fantasy",
-            "Komödie",
-            "Thriller",
-            "Krimi",
-            "Mystery",
-            "Horror",
-            "Liebesfilm",
-            "Historie",
-            "Kriegsfilm",
-            "Western",
-            "Musik",
-            "Dokumentarfilm",
-            "Action & Adventure",
-            "Sci-Fi & Fantasy",
-            "Soap",
-            "Kids",
-            "Anime",
-            "Science Fiction"
-        )
-        if (query.isEmpty() && page == 1) {
-            return genres.map {
-                Genre(id = it.replace(" & ", "-").replace(" / ", "-").replace(" ", "-"), name = it)
-            }
-        }
-        if (page > 1) return emptyList()
-
-        val document = getService().getSearch(query)
-        val json = JSONObject(document.string())
-        return (json.getJSONArray("results").map {
-            if (it?.optBoolean("is_series") == true) getTvShowObj(it)
-            else if (it?.getString("model_type") == "movie" || it?.getString("model_type") == "title") getMovieObj(
-                it, true
+        return try {
+            var genres = listOf(
+                "Drama",
+                "Action",
+                "Animation",
+                "Abenteuer",
+                "Familie",
+                "Fantasy",
+                "Komödie",
+                "Thriller",
+                "Krimi",
+                "Mystery",
+                "Horror",
+                "Liebesfilm",
+                "Historie",
+                "Kriegsfilm",
+                "Western",
+                "Musik",
+                "Dokumentarfilm",
+                "Action & Adventure",
+                "Sci-Fi & Fantasy",
+                "Soap",
+                "Kids",
+                "Anime",
+                "Science Fiction"
             )
-            else null
-        }).mapNotNull { it }
+            if (query.isEmpty() && page == 1) {
+                return genres.map {
+                    Genre(id = it.replace(" & ", "-").replace(" / ", "-").replace(" ", "-"), name = it)
+                }
+            }
+            if (page > 1) return emptyList()
+
+            val document = getService().getSearch(query)
+            val json = JSONObject(document.string())
+            (json.optJSONArray("results") ?: return emptyList()).map {
+                if (it?.optBoolean("is_series") == true) getTvShowObj(it)
+                else if (
+                    it?.optString("model_type") == "movie" ||
+                    it?.optString("model_type") == "title"
+                ) {
+                    getMovieObj(it, true)
+                } else null
+            }.mapNotNull { it }
+                .filter { item ->
+                    when (item) {
+                        is Movie -> item.id.isNotBlank() && item.title.isNotBlank()
+                        is TvShow -> item.id.isNotBlank() && item.title.isNotBlank()
+                        else -> true
+                    }
+                }
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            throw e
+        } catch (_: Exception) {
+            emptyList()
+        }
     }
 
     override suspend fun getMovies(page: Int): List<Movie> {

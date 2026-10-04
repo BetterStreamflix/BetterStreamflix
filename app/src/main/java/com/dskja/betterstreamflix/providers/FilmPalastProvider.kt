@@ -203,29 +203,39 @@ object FilmPalastProvider : Provider {
 
 
     override suspend fun search(query: String, page: Int): List<AppAdapter.Item> {
-        if (query.isEmpty()) {
-            val document = withSslFallback { it.getHome() }
-            val genres = document.select("aside#sidebar section#genre ul li a").map { element ->
-                val text = element.text()
-                Genre(text, text)
+        return try {
+            if (query.isEmpty()) {
+                val document = withSslFallback { it.getHome() }
+                return document.select("aside#sidebar section#genre ul li a").mapNotNull { element ->
+                    val text = element.text().trim()
+                    if (text.isBlank()) return@mapNotNull null
+                    Genre(text, text)
+                }
             }
-            return genres
-        }
-        var document = withSslFallback { it.searchNoPage(query) }
+            // Retrofit @Path encodes; do not pre-encode or spaces become %2520.
+            var document = withSslFallback { it.searchNoPage(query.trim()) }
 
-        if (page > 1){
-            val paging = document.selectFirst("div#paging a.pageing.button-small.rb")
-            if (paging != null){
-                document = withSslFallback { it.search(query, page) }
-            } else {
-                return emptyList()
+            if (page > 1) {
+                val paging = document.selectFirst("div#paging a.pageing.button-small.rb")
+                if (paging != null) {
+                    document = withSslFallback { it.search(query.trim(), page) }
+                } else {
+                    return emptyList()
+                }
             }
+
+            parseArticles(document).filter { item ->
+                when (item) {
+                    is Movie -> item.id.isNotBlank() && item.title.isNotBlank()
+                    is TvShow -> item.id.isNotBlank() && item.title.isNotBlank()
+                    else -> true
+                }
+            }
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            throw e
+        } catch (t: Throwable) {
+            emptyList()
         }
-
-        val results = parseArticles(document)
-
-        return results
-
     }
 
 

@@ -346,11 +346,13 @@ object FilmoProvider : Provider, ProviderConfigUrl {
                     add(Movie(id = absoluteUrl(url), title = title))
                 }
             }
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            throw e
         } catch (_: Exception) {
             try {
                 val document = getService().search(query)
                 extractCsrf(document)
-                parseMovieCards(document)
+                parseMovieCards(document).filter { it.id.isNotBlank() && it.title.isNotBlank() }
             } catch (_: Exception) {
                 emptyList()
             }

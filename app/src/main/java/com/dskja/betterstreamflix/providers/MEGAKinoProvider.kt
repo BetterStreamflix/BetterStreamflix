@@ -345,37 +345,45 @@ object MEGAKinoProvider : Provider, ProviderConfigUrl {
     }
 
     override suspend fun search(query: String, page: Int): List<AppAdapter.Item> {
-        ensureToken()
-        if (query.isEmpty()) {
-            val document = getService().getHome()
-            val genres = mutableListOf<AppAdapter.Item>()
+        return try {
+            ensureToken()
+            if (query.isEmpty()) {
+                val document = getService().getHome()
+                val genres = mutableListOf<AppAdapter.Item>()
 
-            val genreBlock = document.select("div.side-block:has(div.side-block__title:contains(Genres))").firstOrNull() 
-                ?: document.select("div.side-block").find { it.select("div.side-block__title").text() == "Genres" }
+                val genreBlock = document.select("div.side-block:has(div.side-block__title:contains(Genres))").firstOrNull()
+                    ?: document.select("div.side-block").find { it.select("div.side-block__title").text() == "Genres" }
 
-            if (genreBlock != null) {
-                genreBlock.select("ul.side-block__content li a").forEach { element ->
-                    val id = element.attr("href")
-                    val name = element.text()
-                    if (id.isNotEmpty() && name.isNotEmpty()) {
-                        genres.add(Genre(id, name))
+                if (genreBlock != null) {
+                    genreBlock.select("ul.side-block__content li a").forEach { element ->
+                        val id = element.attr("href").trim()
+                        val name = element.text().trim()
+                        if (id.isNotEmpty() && name.isNotEmpty()) {
+                            genres.add(Genre(id, name))
+                        }
                     }
                 }
+                return genres
             }
-            return genres
-        }
-        
-        val resultFrom = (page - 1) * 20 + 1
-        
-        return try {
+
+            val resultFrom = (page - 1) * 20 + 1
+
             val document = getService().search(
                 searchStart = page,
                 resultFrom = resultFrom,
                 story = query
             )
-            
-            parseContentItems(document)
-        } catch (e: Exception) {
+
+            parseContentItems(document).filter { item ->
+                when (item) {
+                    is Movie -> item.id.isNotBlank() && item.title.isNotBlank()
+                    is TvShow -> item.id.isNotBlank() && item.title.isNotBlank()
+                    else -> true
+                }
+            }
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            throw e
+        } catch (_: Exception) {
             emptyList()
         }
     }

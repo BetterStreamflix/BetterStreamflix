@@ -26,6 +26,8 @@ import kotlinx.coroutines.flow.emitAll
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.transformLatest
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.withPermit
 
 // DEFINICIONES DE ESTADO Y RESULTADOS (Fuera de la clase para mejor acceso)
 sealed class State {
@@ -273,12 +275,14 @@ class SearchViewModel(
                         timeoutMs = ProviderSmoke.SEARCH_TIMEOUT_MS,
                         label = "search(${provider.name})",
                     ) {
-                        provider.search(query)
+                        SearchResultGuard.sanitize(provider.search(query))
                     }
                 )
                 val addonHits = runCatching {
-                    com.dskja.betterstreamflix.platform.plugins.PluginManager
-                        .collectSearchResults(provider, query, page = 1)
+                    SearchResultGuard.sanitize(
+                        com.dskja.betterstreamflix.platform.plugins.PluginManager
+                            .collectSearchResults(provider, query, page = 1),
+                    )
                 }.getOrDefault(emptyList())
                 val merged = (results + addonHits).distinctBy { it.searchIdentityKey() }
                 this@SearchViewModel.query = query
@@ -289,9 +293,14 @@ class SearchViewModel(
                 emitLocalSuccess()
             } catch (e: CancellationException) {
                 throw e
-            } catch (e: Exception) {
-                Log.e("SearchViewModel", "search: ", e)
-                _state.emit(State.FailedSearching(e))
+            } catch (t: Throwable) {
+                // Errors (OOM from DE HTML/sitemap scrapes) must not kill the TV process.
+                Log.e("SearchViewModel", "search: ", t)
+                _state.emit(
+                    State.FailedSearching(
+                        (t as? Exception) ?: Exception(t.message ?: t.javaClass.simpleName, t),
+                    ),
+                )
             }
         }
     }
@@ -315,7 +324,9 @@ class SearchViewModel(
                             timeoutMs = ProviderSmoke.SEARCH_TIMEOUT_MS,
                             label = "search(${provider.name}, page=${page + 1})",
                         ) {
-                            provider.search(requestedQuery, page + 1)
+                            SearchResultGuard.sanitize(
+                                provider.search(requestedQuery, page + 1),
+                            )
                         }
                     )
                     // Drop if the user started a newer search while we were loading.
@@ -331,9 +342,13 @@ class SearchViewModel(
                     emitLocalSuccess()
                 } catch (e: CancellationException) {
                     throw e
-                } catch (e: Exception) {
-                    Log.e("SearchViewModel", "loadMore: ", e)
-                    _state.emit(State.FailedSearching(e))
+                } catch (t: Throwable) {
+                    Log.e("SearchViewModel", "loadMore: ", t)
+                    _state.emit(
+                        State.FailedSearching(
+                            (t as? Exception) ?: Exception(t.message ?: t.javaClass.simpleName, t),
+                        ),
+                    )
                 }
             }
         }
@@ -370,28 +385,40 @@ class SearchViewModel(
             val mutableResults = initialResults.toMutableList()
             val resultsLock = Any()
             val requestedQuery = query
+            // Cap fan-out (DE catalogs especially): WebView/sitemap/HTML scrapes in
+            // parallel OOM-kill low-RAM Android TV sticks.
+            val gate = Semaphore(permits = GLOBAL_SEARCH_CONCURRENCY)
 
             targetProviders.forEachIndexed { index, provider ->
                 launch {
                     val next = try {
-                        val results = ParentalControlUtils.filterItems(
-                            ProviderSmoke.withProviderTimeout(
-                                timeoutMs = ProviderSmoke.SEARCH_TIMEOUT_MS,
-                                label = "searchGlobal(${provider.name})",
-                            ) {
-                                provider.search(requestedQuery)
-                            }.onEach { item ->
-                            when (item) {
-                                is Movie -> item.providerName = provider.name
-                                is TvShow -> item.providerName = provider.name
-                            }
-                        })
-                        ProviderResult(provider, ProviderResult.State.Success(results))
+                        gate.withPermit {
+                            val results = ParentalControlUtils.filterItems(
+                                ProviderSmoke.withProviderTimeout(
+                                    timeoutMs = ProviderSmoke.SEARCH_TIMEOUT_MS,
+                                    label = "searchGlobal(${provider.name})",
+                                ) {
+                                    SearchResultGuard.sanitize(provider.search(requestedQuery))
+                                }.onEach { item ->
+                                    when (item) {
+                                        is Movie -> item.providerName = provider.name
+                                        is TvShow -> item.providerName = provider.name
+                                    }
+                                },
+                            )
+                            ProviderResult(provider, ProviderResult.State.Success(results))
+                        }
                     } catch (e: CancellationException) {
                         throw e
-                    } catch (e: Exception) {
-                        Log.e("SearchViewModel", "searchGlobal for ${provider.name}: ", e)
-                        ProviderResult(provider, ProviderResult.State.Error(e))
+                    } catch (t: Throwable) {
+                        Log.e("SearchViewModel", "searchGlobal for ${provider.name}: ", t)
+                        ProviderResult(
+                            provider,
+                            ProviderResult.State.Error(
+                                (t as? Exception)
+                                    ?: Exception(t.message ?: t.javaClass.simpleName, t),
+                            ),
+                        )
                     }
 
                     // Drop stale provider hits if the user started a newer search.
@@ -406,6 +433,11 @@ class SearchViewModel(
                 }
             }
         }
+    }
+
+    companion object {
+        /** Parallel Global Search providers. Higher values OOM-kill Fire TV DE fan-out. */
+        const val GLOBAL_SEARCH_CONCURRENCY = 3
     }
 }
 
