@@ -1,18 +1,12 @@
 package com.dskja.betterstreamflix.providers
 
-import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.withLock
-
-import com.dskja.betterstreamflix.BetterStreamflixApp
-import com.dskja.betterstreamflix.utils.UserPreferences
-
 import android.content.Context
 import androidx.work.Constraints
 import androidx.work.ExistingWorkPolicy
 import androidx.work.NetworkType
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
-import com.tanasi.retrofit_jsoup.converter.JsoupConverterFactory
+import com.dskja.betterstreamflix.BetterStreamflixApp
 import com.dskja.betterstreamflix.adapters.AppAdapter
 import com.dskja.betterstreamflix.database.AniWorldDatabase
 import com.dskja.betterstreamflix.database.dao.TvShowDao
@@ -29,12 +23,17 @@ import com.dskja.betterstreamflix.providers.SerienStreamProvider.SerienStreamSer
 import com.dskja.betterstreamflix.utils.AniWorldUpdateTvShowWorker
 import com.dskja.betterstreamflix.utils.DnsResolver
 import com.dskja.betterstreamflix.utils.TmdbUtils
+import com.dskja.betterstreamflix.utils.UserPreferences
+import com.tanasi.retrofit_jsoup.converter.JsoupConverterFactory
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import okhttp3.Cache
 import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.OkHttpClient
@@ -191,23 +190,52 @@ object AniWorldProvider : Provider, ProviderConfigUrl {
 
     override suspend fun search(query: String, page: Int): List<AppAdapter.Item> {
         if (query.isEmpty()) {
-            val document = service.getGenres()
-
-            val genres = document.select("#seriesContainer h3").map {
-                Genre(
-                    id = it.text().lowercase(Locale.getDefault()),
-                    name = it.text(),
-                )
+            return try {
+                val document = service.getGenres()
+                document.select("#seriesContainer h3").mapNotNull {
+                    val name = it.text().trim()
+                    if (name.isBlank()) return@mapNotNull null
+                    Genre(
+                        id = name.lowercase(Locale.getDefault()),
+                        name = name,
+                    )
+                }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (t: Throwable) {
+                emptyList()
             }
-
-            return genres
         }
 
         val lowerQuery = query.trim().lowercase(Locale.getDefault())
+        if (lowerQuery.isBlank()) return emptyList()
         val limit = chunkSize
         val offset = (page - 1) * chunkSize
-        val results = getDao().searchTvShows(lowerQuery, limit, offset)
-        return results
+
+        // Prefer local catalog; fall back to live AJAX so Search never throws / kills TV.
+        val local = runCatching {
+            getDao().searchTvShows(lowerQuery, limit, offset)
+        }.getOrElse { emptyList() }
+            .filter { it.id.isNotBlank() && it.title.isNotBlank() }
+
+        if (local.isNotEmpty() || page > 1) return local
+
+        return try {
+            service.search(query)
+                .mapNotNull { item ->
+                    val link = item.link.trim()
+                    val title = item.title.trim()
+                    if (link.isBlank() || title.isBlank()) return@mapNotNull null
+                    val id = link.substringAfter("/anime/stream/").substringBefore('/').trim()
+                    if (id.isBlank()) return@mapNotNull null
+                    TvShow(id = id, title = title)
+                }
+                .distinctBy { it.id }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (_: Throwable) {
+            emptyList()
+        }
     }
 
     override suspend fun getMovies(page: Int): List<Movie> {

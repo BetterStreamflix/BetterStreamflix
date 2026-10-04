@@ -22,6 +22,7 @@ import com.dskja.betterstreamflix.utils.NetworkClient
 import com.dskja.betterstreamflix.utils.TMDb3
 import com.dskja.betterstreamflix.utils.TmdbUtils
 import com.dskja.betterstreamflix.utils.UserPreferences
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
@@ -141,7 +142,19 @@ object SerienStreamProvider : Provider {
     private fun baseUrlFor(domain: String): String = originFor(domain)
 
     private fun isCopyrightBlockDocument(document: Document): Boolean {
-        return com.dskja.betterstreamflix.utils.WebViewDohBridge.isCopyrightBlockPage(document.html())
+        // Avoid materializing the full HTML string (TV OOM) — sample title/body text only.
+        val sample = buildString {
+            append(document.title())
+            append(' ')
+            document.selectFirst("body")?.let { body ->
+                append(body.ownText())
+                body.children().take(8).forEach { child ->
+                    append(' ')
+                    append(child.ownText())
+                }
+            }
+        }
+        return com.dskja.betterstreamflix.utils.WebViewDohBridge.isCopyrightBlockPage(sample)
     }
 
     private fun isSslFailure(error: Throwable): Boolean {
@@ -446,31 +459,40 @@ object SerienStreamProvider : Provider {
     }
 
     override suspend fun search(query: String, page: Int): List<AppAdapter.Item> {
-        if (query.isEmpty()) {
-            val document = withDomainAndSslFallback { it.getSeriesListWithCategories() }
-            return document
-                .select("div[data-group='genres'] .list-inline-item a")
-                .map {
-                    Genre(
-                        id = it.attr("href").substringAfterLast("/"),
-                        name = it.text().trim()
+        return try {
+            if (query.isEmpty()) {
+                val document = withDomainAndSslFallback { it.getSeriesListWithCategories() }
+                return document
+                    .select("div[data-group='genres'] .list-inline-item a")
+                    .mapNotNull {
+                        val id = it.attr("href").substringAfterLast("/").trim()
+                        val name = it.text().trim()
+                        if (id.isBlank() || name.isBlank()) return@mapNotNull null
+                        Genre(id = id, name = name)
+                    }
+            }
+            val document = withDomainAndSslFallback { it.search(query, page) }
+            document
+                .select("div.search-results-list div.card.cover-card")
+                .mapNotNull { card ->
+                    val link = card.selectFirst("a[href^=\"/serie/\"], a[href^=/serie/]")?.attr("href")
+                        ?: return@mapNotNull null
+                    val id = getTvShowIdFromLink(link)
+                    val title = card.selectFirst("h6.show-title")?.text()?.trim().orEmpty()
+                    if (id.isBlank() || title.isBlank()) return@mapNotNull null
+                    TvShow(
+                        id = id,
+                        title = title,
+                        poster = normalizeImageUrl(card.extractPoster()),
                     )
                 }
+                .distinctBy { it.id }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (t: Throwable) {
+            Log.e(TAG, "search failed: ${t.message}", t)
+            emptyList()
         }
-        val document = withDomainAndSslFallback { it.search(query, page) }
-        return document
-            .select("div.search-results-list div.card.cover-card")
-            .mapNotNull { card ->
-                val link = card.selectFirst("a[href^=/serie/]")?.attr("href")
-                    ?: return@mapNotNull null
-
-                TvShow(
-                    id = getTvShowIdFromLink(link),
-                    title = card.selectFirst("h6.show-title")?.text().orEmpty(),
-                    poster = normalizeImageUrl(card.extractPoster())
-                )
-            }
-            .distinctBy { it.id }
     }
 
     override suspend fun getMovies(page: Int): List<Movie> {

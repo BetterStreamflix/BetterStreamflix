@@ -534,8 +534,12 @@ class SearchTvFragment : Fragment() {
     }
 
     private fun displaySearch(list: List<AppAdapter.Item>, hasMore: Boolean) {
-        val columns = if (viewModel.query == "") 5 else 6
-        val stamped = list.onEach {
+        val ui = _binding ?: return
+        val safe = SearchResultGuard.sanitize(list)
+        // Genre browse (empty query) uses 5 cols; title hits use 6. Always clear when
+        // the shape changes so Leanback never lays out Genre tiles as poster cells.
+        val columns = if (viewModel.query.isBlank()) 5 else 6
+        val stamped = safe.onEach {
             when (it) {
                 is Genre -> it.itemType = AppAdapter.Type.GENRE_GRID_TV_ITEM
                 is Movie -> it.itemType = AppAdapter.Type.MOVIE_GRID_TV_ITEM
@@ -544,14 +548,15 @@ class SearchTvFragment : Fragment() {
         }
         submitSearchGrid(columns, stamped)
 
-        binding.root.findViewById<View>(R.id.tv_search_empty)?.let { emptyView ->
-            val showEmpty = list.isEmpty() && viewModel.query.isNotBlank()
+        ui.root.findViewById<View>(R.id.tv_search_empty)?.let { emptyView ->
+            val showEmpty = safe.isEmpty() && viewModel.query.isNotBlank()
             ExpEmptyChrome.bind(
                 emptyView = emptyView,
-                emptyRule = binding.root.findViewById(R.id.v_search_empty_rule),
-                emptyCta = binding.root.findViewById(R.id.btn_search_empty_cta),
+                emptyRule = ui.root.findViewById(R.id.v_search_empty_rule),
+                emptyCta = ui.root.findViewById(R.id.btn_search_empty_cta),
                 visible = showEmpty,
                 onCtaClick = {
+                    val binding = _binding ?: return@bind
                     binding.etSearch.setText("")
                     viewModel.search("")
                     binding.etSearch.requestFocus()
@@ -559,7 +564,7 @@ class SearchTvFragment : Fragment() {
             )
         }
 
-        if (hasMore && viewModel.query != "") {
+        if (hasMore && viewModel.query.isNotBlank()) {
             appAdapter.setOnLoadMoreListener { viewModel.loadMore() }
         } else {
             appAdapter.setOnLoadMoreListener(null)
@@ -567,6 +572,7 @@ class SearchTvFragment : Fragment() {
     }
 
     private fun displayGlobalSearch(providerResults: List<ProviderResult>) {
+        val ui = _binding ?: return
         val categories = providerResults.map { providerResult ->
             val headerTitle = when (val state = providerResult.state) {
                 is ProviderResult.State.Loading ->
@@ -581,12 +587,14 @@ class SearchTvFragment : Fragment() {
                 }
             }
 
-            val items = (providerResult.state as? ProviderResult.State.Success)?.results?.onEach {
+            val items = SearchResultGuard.sanitize(
+                (providerResult.state as? ProviderResult.State.Success)?.results.orEmpty(),
+            ).onEach {
                 when (it) {
                     is Movie -> it.itemType = AppAdapter.Type.MOVIE_TV_ITEM
                     is TvShow -> it.itemType = AppAdapter.Type.TV_SHOW_TV_ITEM
                 }
-            } ?: emptyList()
+            }
 
             Category(name = headerTitle, list = items).apply {
                 // Stable DiffUtil id across Loading → Success title changes.
@@ -604,13 +612,14 @@ class SearchTvFragment : Fragment() {
             (it.state as? ProviderResult.State.Success)?.results?.size ?: 0
         }
         val showEmpty = allDone && totalHits == 0 && viewModel.query.isNotBlank()
-        binding.root.findViewById<View>(R.id.tv_search_empty)?.let { emptyView ->
+        ui.root.findViewById<View>(R.id.tv_search_empty)?.let { emptyView ->
             ExpEmptyChrome.bind(
                 emptyView = emptyView,
-                emptyRule = binding.root.findViewById(R.id.v_search_empty_rule),
-                emptyCta = binding.root.findViewById(R.id.btn_search_empty_cta),
+                emptyRule = ui.root.findViewById(R.id.v_search_empty_rule),
+                emptyCta = ui.root.findViewById(R.id.btn_search_empty_cta),
                 visible = showEmpty,
                 onCtaClick = {
+                    val binding = _binding ?: return@bind
                     binding.etSearch.setText("")
                     viewModel.search("")
                     binding.etSearch.requestFocus()

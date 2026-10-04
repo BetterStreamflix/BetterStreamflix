@@ -22,6 +22,7 @@ import com.dskja.betterstreamflix.utils.TmdbUtils
 import com.dskja.betterstreamflix.utils.UserPreferences
 import com.dskja.betterstreamflix.utils.WebViewResolver
 import com.tanasi.retrofit_jsoup.converter.JsoupConverterFactory
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import okhttp3.HttpUrl.Companion.toHttpUrl
@@ -283,7 +284,15 @@ object KinoGerProvider : Provider, ProviderConfigUrl {
                     },
                 )
             }
-            CookieManager.getInstance().flush()
+            CookieManager.getInstance().let { manager ->
+                if (android.os.Looper.myLooper() == android.os.Looper.getMainLooper()) {
+                    manager.flush()
+                } else {
+                    android.os.Handler(android.os.Looper.getMainLooper()).post {
+                        runCatching { manager.flush() }
+                    }
+                }
+            }
 
             runCatching {
                 val retried = svc.getDocument(url)
@@ -405,7 +414,15 @@ object KinoGerProvider : Provider, ProviderConfigUrl {
             // Live site uses GET /?do=search&subaction=search&story=… (Sep 2026 scrape).
             val searchUrl = KinoGerHtml.buildSearchUrl(normalizedBaseUrl(), query, page)
             val document = getDocument(searchUrl)
-            parseShorts(document)
+            parseShorts(document).filter { item ->
+                when (item) {
+                    is Movie -> item.id.isNotBlank() && item.title.isNotBlank()
+                    is TvShow -> item.id.isNotBlank() && item.title.isNotBlank()
+                    else -> true
+                }
+            }
+        } catch (e: CancellationException) {
+            throw e
         } catch (_: Exception) {
             // Legacy POST fallback if GET layout fails after CF clearance.
             try {
@@ -417,7 +434,13 @@ object KinoGerProvider : Provider, ProviderConfigUrl {
                         resultFrom = resultFrom,
                         story = query,
                     ),
-                )
+                ).filter { item ->
+                    when (item) {
+                        is Movie -> item.id.isNotBlank() && item.title.isNotBlank()
+                        is TvShow -> item.id.isNotBlank() && item.title.isNotBlank()
+                        else -> true
+                    }
+                }
             } catch (_: Exception) {
                 emptyList()
             }
