@@ -26,18 +26,20 @@ object DownloadStorage {
             DownloadStorageLocation.PUBLIC_MOVIES ->
                 publicMoviesDownloads()
             DownloadStorageLocation.REMOVABLE ->
-                removableAppDownloadsDir(app) ?: appExternalDownloads(app)
-            DownloadStorageLocation.CUSTOM_FOLDER -> {
-                if (!DownloadTreeAccess.validateCustomStorage(app)) {
-                    // Permission lost or SD ejected — fall back without pretending.
-                    appExternalDownloads(app)
-                } else {
-                    DownloadTreeAccess.media3CacheDir(app)
-                }
-            }
+                removableAppDownloadsDir(app) ?: File(app.filesDir, "downloads-volume-missing")
+            DownloadStorageLocation.CUSTOM_FOLDER ->
+                DownloadTreeAccess.media3CacheDir(app)
         }
-        return ensureWritableDir(preferred) ?: appExternalDownloads(app).also { fallback ->
-            if (!fallback.exists()) fallback.mkdirs()
+        ensureWritableDir(preferred)?.let { return it }
+        if (preferred.isDirectory && preferred.canRead()) return preferred
+        if (location() == DownloadStorageLocation.CUSTOM_FOLDER ||
+            location() == DownloadStorageLocation.REMOVABLE
+        ) {
+            // Never retarget an open SimpleCache onto a different volume.
+            return preferred
+        }
+        return ensureWritableDir(appExternalDownloads(app)) ?: File(app.filesDir, DIR_NAME).also {
+            if (!it.exists()) it.mkdirs()
         }
     }
 
@@ -58,13 +60,14 @@ object DownloadStorage {
     fun storageUnavailableReason(context: Context): Int? {
         return runCatching {
             when {
-                location() == DownloadStorageLocation.CUSTOM_FOLDER &&
-                    DownloadTreeAccess.hasTree() &&
-                    !DownloadTreeAccess.hasPersistedPermission(context) ->
-                    R.string.settings_download_storage_permission_lost
                 location() == DownloadStorageLocation.REMOVABLE &&
                     !hasRemovableStorage(context) ->
                     R.string.settings_download_storage_removable_unavailable
+                location() == DownloadStorageLocation.CUSTOM_FOLDER &&
+                    !DownloadTreeAccess.validateCustomStorage(context) &&
+                    DownloadTreeAccess.hasTree() &&
+                    !DownloadTreeAccess.hasPersistedPermission(context) ->
+                    R.string.settings_download_storage_permission_lost
                 location() == DownloadStorageLocation.CUSTOM_FOLDER &&
                     !DownloadTreeAccess.validateCustomStorage(context) ->
                     R.string.settings_download_storage_unavailable
@@ -169,6 +172,13 @@ object DownloadStorage {
                     }
                     if (!volume.isNullOrBlank()) {
                         append(context.getString(R.string.settings_download_storage_volume_label, volume))
+                        append('\n')
+                    }
+                    if (DownloadTreeAccess.hasTree() &&
+                        !DownloadTreeAccess.hasPersistedPermission(context) &&
+                        DownloadTreeAccess.validateCustomStorage(context)
+                    ) {
+                        append(context.getString(R.string.settings_download_storage_permission_lost))
                         append('\n')
                     }
                     append(context.getString(R.string.settings_download_storage_cache_path, cachePath))

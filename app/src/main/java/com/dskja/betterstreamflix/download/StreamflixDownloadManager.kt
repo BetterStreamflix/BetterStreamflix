@@ -103,9 +103,10 @@ object StreamflixDownloadManager {
                     connectivityActionMutex.withLock {
                         val repo = DownloadRepository.get(app)
                         if (UserPreferences.downloadWifiOnly && type != DownloadNetworkType.WIFI) {
-                            repo.pauseAll()
+                            // Hold only in-flight work. A user pause keeps its own stop reason.
+                            repo.pauseForConnectivity()
                         } else if (type != DownloadNetworkType.NONE) {
-                            repo.resumeAll()
+                            repo.resumeConnectivityHeld()
                         }
                     }
                 }
@@ -182,7 +183,7 @@ object StreamflixDownloadManager {
         media3Id: String,
         mimeHint: String = "",
         streamUrl: String = "",
-        maxBytes: Long = 1_500L * 1024L * 1024L,
+        maxBytes: Long = 8L * 1024L * 1024L * 1024L,
     ): java.io.File? {
         if (media3Id.isBlank()) return null
         runCatching { get(context) }.getOrElse { return null }
@@ -213,7 +214,10 @@ object StreamflixDownloadManager {
                 .setCacheWriteDataSinkFactory(null)
                 .setFlags(CacheDataSource.FLAG_BLOCK_ON_CACHE)
                 .createDataSource()
-            val dataSpec = DataSpec(download.request.uri)
+            val dataSpec = offlineDataSpec(
+                uri = download.request.uri,
+                cacheKey = download.request.customCacheKey,
+            )
             dataSource.open(dataSpec)
             try {
                 java.io.FileOutputStream(out).use { fos ->
@@ -237,6 +241,30 @@ object StreamflixDownloadManager {
             }
             out.takeIf { it.exists() && it.length() > 0L }
         }.getOrNull()
+    }
+
+    /**
+     * Open a completed download from the offline cache. [cacheKey] is the
+     * DownloadRequest custom cache key and applies only to the primary playlist
+     * URI — segments are keyed by their own URLs.
+     */
+    fun openOfflineSource(context: Context, uri: Uri, cacheKey: String?): DataSource {
+        get(context)
+        val cache = requireCacheReady()
+        val dataSource = CacheDataSource.Factory()
+            .setCache(cache)
+            .setUpstreamDataSourceFactory(OfflineCacheMissDataSource.Factory)
+            .setCacheWriteDataSinkFactory(null)
+            .setFlags(CacheDataSource.FLAG_BLOCK_ON_CACHE)
+            .createDataSource()
+        dataSource.open(offlineDataSpec(uri, cacheKey))
+        return dataSource
+    }
+
+    private fun offlineDataSpec(uri: Uri, cacheKey: String?): DataSpec {
+        val builder = DataSpec.Builder().setUri(uri)
+        if (!cacheKey.isNullOrBlank()) builder.setKey(cacheKey)
+        return builder.build()
     }
 
     private fun isAdaptiveStream(mime: String, url: String): Boolean {
