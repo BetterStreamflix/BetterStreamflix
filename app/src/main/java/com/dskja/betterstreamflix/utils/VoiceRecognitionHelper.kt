@@ -10,8 +10,8 @@ import android.speech.RecognitionListener
 import android.speech.RecognizerIntent
 import android.speech.SpeechRecognizer
 import android.util.Log
+import androidx.activity.result.ActivityResultLauncher
 import androidx.appcompat.app.AlertDialog
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import com.dskja.betterstreamflix.R
@@ -20,6 +20,11 @@ import java.util.*
 
 class VoiceRecognitionHelper(
     private val fragment: Fragment,
+    /**
+     * Registered on the Fragment instance (field), never from onViewCreated.
+     * registerForActivityResult after the fragment is created throws and closes Search.
+     */
+    private val permissionLauncher: ActivityResultLauncher<String>,
     private val onResult: (String) -> Unit,
     private val onError: (String) -> Unit,
     private val onListeningStateChanged: (Boolean) -> Unit
@@ -31,12 +36,12 @@ class VoiceRecognitionHelper(
     var isListening: Boolean = false
         private set
 
-    private val permissionLauncher =
-        fragment.registerForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted ->
-            if (isGranted) startRecognition() else {
-                onError(context.getString(R.string.voice_error_permission_denied))
-            }
+    fun onPermissionResult(isGranted: Boolean) {
+        if (!fragment.isAdded) return
+        if (isGranted) startRecognition() else {
+            onError(context.getString(R.string.voice_error_permission_denied))
         }
+    }
 
     fun startWithPermissionCheck() {
         val permission = Manifest.permission.RECORD_AUDIO

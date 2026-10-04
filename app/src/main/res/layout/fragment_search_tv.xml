@@ -18,11 +18,14 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent">
 
-        <androidx.leanback.widget.SearchEditText
+        <!-- Plain EditText: Leanback SearchEditText inflates StreamingTextView dots and
+             crashes Search on open when those bitmaps cannot be decoded. -->
+        <EditText
             android:id="@+id/et_search"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_marginEnd="12dp"
+            android:background="@android:color/transparent"
             android:drawableStart="@drawable/ic_search"
             android:drawablePadding="10dp"
             android:drawableTint="#FFFFFF"
@@ -31,15 +34,19 @@
             android:gravity="center_vertical"
             android:hint="@string/search_input_hint"
             android:imeOptions="actionSearch"
+            android:importantForAutofill="no"
             android:inputType="text"
             android:maxLines="1"
             android:nextFocusRight="@+id/btn_search_clear"
             android:nextFocusDown="@id/ll_global_search"
             android:padding="14dp"
+            android:textColor="#FFFFFF"
+            android:textColorHint="#99FFFFFF"
             android:textSize="16sp"
             app:layout_constraintEnd_toStartOf="@+id/btn_search_clear"
             app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toTopOf="parent" />
+            app:layout_constraintTop_toTopOf="parent"
+            tools:ignore="Autofill,LabelFor" />
 
         <ImageView
             android:id="@+id/btn_search_clear"
