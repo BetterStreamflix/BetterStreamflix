@@ -103,10 +103,16 @@ class PlayerSettingsTvView @JvmOverloads constructor(
     }
 
     override fun focusSearch(focused: View, direction: Int): View {
-        return when {
-            binding.rvSettings.hasFocus() -> focused
-            else -> super.focusSearch(focused, direction)
+        // Keep DPAD inside the settings list. Returning the focused view for every
+        // direction sticks focus on one row; returning null lets focus fall
+        // through to the player controls behind the panel.
+        if (visibility == View.VISIBLE && binding.rvSettings.hasFocus()) {
+            val next = android.view.FocusFinder.getInstance()
+                .findNextFocus(binding.rvSettings, focused, direction)
+            if (next != null) return next
+            return focused
         }
+        return super.focusSearch(focused, direction) ?: focused
     }
 
     private var lastRevealedSetting: Setting? = null
@@ -181,7 +187,19 @@ class PlayerSettingsTvView @JvmOverloads constructor(
         if (setting == Setting.SUBTITLE_OFFSET) {
             focusSelectedSubtitleOffset()
         } else {
-            binding.rvSettings.requestFocus()
+            focusFirstSettingsItem()
+        }
+    }
+
+    private fun focusFirstSettingsItem() {
+        binding.rvSettings.post {
+            if (currentSettings == Setting.SUBTITLE_OFFSET) return@post
+            val first = binding.rvSettings.layoutManager?.findViewByPosition(0)
+            if (first != null) {
+                first.requestFocus()
+            } else {
+                binding.rvSettings.requestFocus()
+            }
         }
     }
 

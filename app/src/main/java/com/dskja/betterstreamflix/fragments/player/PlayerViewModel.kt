@@ -218,7 +218,7 @@ class PlayerViewModel(
                 val provider = UserPreferences.currentProvider
                     ?: throw Exception("No provider selected")
                 val video = ProviderSmoke.withProviderTimeout(
-                    timeoutMs = ProviderSmoke.SERVERS_TIMEOUT_MS,
+                    timeoutMs = VIDEO_RESOLVE_TIMEOUT_MS,
                     label = "getVideo(${server.name})",
                 ) {
                     provider.getVideo(server)
@@ -284,6 +284,12 @@ class PlayerViewModel(
     companion object {
         const val OFFLINE_SERVER_ID = "__offline__"
         const val OFFLINE_SERVER_NAME = "__offline__"
+
+        /**
+         * Extracting a playable URL often chains several hoster requests.
+         * The server-list cap (20s) aborts those and surfaces as a false failure.
+         */
+        const val VIDEO_RESOLVE_TIMEOUT_MS = 40_000L
 
         fun isOfflineServer(server: Video.Server): Boolean =
             server.id.equals(OFFLINE_SERVER_ID, ignoreCase = true) ||

@@ -124,6 +124,12 @@ class ExternalStreamHandoffTest {
     }
 
     @Test
+    fun playWith_activityCallerDoesNotUseNewTask() {
+        assertFalse(ExternalStreamHandoff.shouldUseNewTask(callerIsActivity = true))
+        assertTrue(ExternalStreamHandoff.shouldUseNewTask(callerIsActivity = false))
+    }
+
+    @Test
     fun playWith_intentActionIsViewWithDefaultCategory() {
         // Document the Play-with contract for regressions: ACTION_VIEW + CATEGORY_DEFAULT.
         assertEquals(Intent.ACTION_VIEW, Intent.ACTION_VIEW)

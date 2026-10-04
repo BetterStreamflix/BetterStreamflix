@@ -11,10 +11,11 @@ import android.content.pm.ResolveInfo
 import android.net.Uri
 import android.util.Base64
 import android.util.Log
+import androidx.core.content.FileProvider
 import com.dskja.betterstreamflix.R
 import com.dskja.betterstreamflix.cast.CastPlaybackHub
 import com.dskja.betterstreamflix.download.ExternalDownloadHandoff
-import com.dskja.betterstreamflix.extractors.StreamMime
+import com.dskja.betterstreamflix.player.PlaybackMime
 import com.dskja.betterstreamflix.utils.ExpDialogChrome
 import com.dskja.betterstreamflix.utils.UserPreferences
 import java.io.File
@@ -72,7 +73,7 @@ object ExternalStreamHandoff {
     fun resolveSource(context: Context, request: Request): Resolved? {
         val raw = request.sourceUrl.trim()
         if (raw.isBlank()) return null
-        val mime = StreamMime.coalesce(request.mimeType, raw) ?: "video/*"
+        val mime = PlaybackMime.forPlayback(request.mimeType, raw)
         if (raw.startsWith("data:application/vnd.apple.mpegurl;base64,")) {
             val playlist = decodeBase64Uri(raw) ?: return null
             val extracted = extractUrlFromPlaylist(playlist)
@@ -86,8 +87,12 @@ object ExternalStreamHandoff {
                     file.deleteOnExit()
                 }
             }.getOrNull() ?: return null
+            // file:// intents throw FileUriExposedException on modern Android.
+            val uri = runCatching {
+                FileProvider.getUriForFile(context, "${context.packageName}.provider", temp)
+            }.getOrElse { Uri.fromFile(temp) }
             return Resolved(
-                Uri.fromFile(temp),
+                uri,
                 mime,
                 grantRead = true,
                 fragilePlaylist = true,
@@ -119,7 +124,11 @@ object ExternalStreamHandoff {
             setDataAndType(resolved.uri, resolved.mimeType)
             addCategory(Intent.CATEGORY_DEFAULT)
             if (!packageName.isNullOrBlank()) setPackage(packageName)
-            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            // NEW_TASK from an Activity puts the player in another task, so Back
+            // returns Home instead of this app. Non-activity callers still need it.
+            if (shouldUseNewTask(callerIsActivity = context is Activity)) {
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            }
             if (resolved.grantRead) {
                 addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
                 if (context != null) {
@@ -198,6 +207,9 @@ object ExternalStreamHandoff {
             }
         }
     }
+
+    /** Activity callers must not set [Intent.FLAG_ACTIVITY_NEW_TASK]. */
+    fun shouldUseNewTask(callerIsActivity: Boolean): Boolean = !callerIsActivity
 
     /** Pure: whether [packageName] is a download manager (never a Play-with target). */
     fun isDownloaderPackage(packageName: String?): Boolean {
@@ -475,10 +487,12 @@ object ExternalStreamHandoff {
                         )
                         return@setItems
                     }
-                    val intent = buildViewIntent(activity, resolved, request, pkg).apply {
+                    val (effectiveResolved, effectiveRequest) =
+                        maybeProxyForVlc(activity, resolved, request, pkg)
+                    val intent = buildViewIntent(activity, effectiveResolved, effectiveRequest, pkg).apply {
                         component = ComponentName(pkg, ri.activityInfo.name)
                     }
-                    grantUriIfNeeded(activity, resolved, pkg)
+                    grantUriIfNeeded(activity, effectiveResolved, pkg)
                     try {
                         activity.startActivity(intent)
                         rememberChosenPackage(pkg)
