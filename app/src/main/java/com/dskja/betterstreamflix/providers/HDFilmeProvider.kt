@@ -60,6 +60,7 @@ object HDFilmeProvider : Provider, ProviderConfigUrl {
     override val language: String = "de"
 
     private const val USER_AGENT = "User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+    private const val SITEMAP_ENTRY_CAP = 4_000
 
     private interface HDFilmeService {
         companion object {
@@ -396,9 +397,8 @@ object HDFilmeProvider : Provider, ProviderConfigUrl {
             searchSitemap(query, page)
         } catch (e: kotlinx.coroutines.CancellationException) {
             throw e
-        } catch (oom: OutOfMemoryError) {
-            emptyList()
-        } catch (_: Exception) {
+        } catch (_: Throwable) {
+            // OutOfMemoryError and other Errors must not close the TV process.
             emptyList()
         }
     }
@@ -419,9 +419,8 @@ object HDFilmeProvider : Provider, ProviderConfigUrl {
                 .map { it.url }
                 .toList()
 
-            // Keep detail fan-out low — Global Search already gates providers; nested
-            // Semaphore(4) × 2 providers OOM-kills Fire TV sticks.
-            val detailSemaphore = Semaphore(2)
+            // One detail page at a time. Nested fan-out on top of Global Search OOMs Fire TV.
+            val detailSemaphore = Semaphore(1)
             coroutineScope {
                 matchingUrls.map { url ->
                     async {
@@ -453,11 +452,11 @@ object HDFilmeProvider : Provider, ProviderConfigUrl {
                     .awaitAll()
                     .flatten()
                     .distinctBy { it.url }
-                    // Cap memory on Android TV — full dual sitemaps can OOM-kill Search.
-                    .take(8_000)
                     .also { sitemapEntries = it }
             }
-        } catch (oom: OutOfMemoryError) {
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            throw e
+        } catch (_: Throwable) {
             sitemapEntries = emptyList()
             emptyList()
         } finally {
@@ -472,7 +471,8 @@ object HDFilmeProvider : Provider, ProviderConfigUrl {
         val entries = ArrayList<SitemapEntry>()
         var event = parser.eventType
 
-        while (event != org.xmlpull.v1.XmlPullParser.END_DOCUMENT) {
+        // Stop while parsing. take() after a full dual-sitemap materialization OOMs first.
+        while (entries.size < SITEMAP_ENTRY_CAP && event != org.xmlpull.v1.XmlPullParser.END_DOCUMENT) {
             if (event == org.xmlpull.v1.XmlPullParser.START_TAG && parser.name == "loc") {
                 val url = parser.nextText().trim()
                 if (url.isNotBlank()) {

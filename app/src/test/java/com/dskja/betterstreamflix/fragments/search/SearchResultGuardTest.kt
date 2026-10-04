@@ -52,6 +52,6 @@ class SearchResultGuardTest {
 
     @Test
     fun globalSearchConcurrency_isCappedForTv() {
-        assertTrue(SearchViewModel.GLOBAL_SEARCH_CONCURRENCY in 1..4)
+        assertEquals(1, SearchViewModel.GLOBAL_SEARCH_CONCURRENCY)
     }
 }

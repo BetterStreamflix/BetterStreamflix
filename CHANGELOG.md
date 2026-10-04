@@ -22,6 +22,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Buy Me a Coffee short-link constant (`buymeacoff.ee/betterstreamflix`) alongside the canonical URL
 
 ### Fixed
+- TV Search closed the app on open and while typing: the field is a normal EditText, the loading overlay is not a focus target, empty global shelves are left out of the Leanback grid, nested shelf adapters are kept, Global Search runs one provider at a time, and HDFilme sitemap parsing stops before it exhausts TV memory
 - TV support prompt and Home card: “Never show again on start” is a focusable control on Leanback and uses the same opt-out as mobile, so dismissing it on either platform sticks
 - Playback no longer treats an unknown duration as “finished” (that marked the title watched and cleared resume). Resume seek stays at the start when the saved point is under 10 seconds and does not jump after a manual seek
 - Autoplay walks past an empty season instead of stopping

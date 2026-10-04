@@ -13,6 +13,7 @@ import android.view.inputmethod.EditorInfo
 import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.flowWithLifecycle
@@ -54,6 +55,11 @@ class SearchMobileFragment : Fragment() {
     private var appAdapter = AppAdapter()
 
     private lateinit var voiceHelper: VoiceRecognitionHelper
+
+    private val voicePermissionLauncher =
+        registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+            if (::voiceHelper.isInitialized) voiceHelper.onPermissionResult(granted)
+        }
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -238,6 +244,7 @@ class SearchMobileFragment : Fragment() {
 
         voiceHelper = VoiceRecognitionHelper(
             fragment = this,
+            permissionLauncher = voicePermissionLauncher,
             onResult = { query ->
                 binding.btnSearchVoice.clearAnimation()
                 binding.etSearch.setText(query)

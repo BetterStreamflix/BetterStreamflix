@@ -436,8 +436,11 @@ class SearchViewModel(
     }
 
     companion object {
-        /** Parallel Global Search providers. Higher values OOM-kill Fire TV DE fan-out. */
-        const val GLOBAL_SEARCH_CONCURRENCY = 2
+        /**
+         * Parallel Global Search providers. Fire TV sticks die when two WebView/sitemap
+         * scrapes run together; one at a time stays inside the process heap.
+         */
+        const val GLOBAL_SEARCH_CONCURRENCY = 1
     }
 }
 
