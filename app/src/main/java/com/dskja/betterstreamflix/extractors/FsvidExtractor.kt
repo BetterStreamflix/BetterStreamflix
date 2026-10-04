@@ -1,5 +1,6 @@
 package com.dskja.betterstreamflix.extractors
 
+import com.dskja.betterstreamflix.utils.withExtractorTimeouts
 import com.dskja.betterstreamflix.models.Video
 import com.dskja.betterstreamflix.utils.DnsResolver
 import com.dskja.betterstreamflix.utils.JsUnpacker
@@ -31,6 +32,7 @@ class FsvidExtractor : Extractor() {
             chain.proceed(newRequest)
         }
         .dns(DnsResolver.doh)
+        .withExtractorTimeouts()
         .build()
 
     private val service = Retrofit.Builder()
@@ -61,7 +63,11 @@ class FsvidExtractor : Extractor() {
             ?: throw Exception("Stream URL not found in src field")
 
         return Video(
-            source = m3u8
+            source = m3u8,
+            headers = mapOf(
+                "User-Agent" to DEFAULT_USER_AGENT,
+                "Referer" to "$mainUrl/",
+            ),
         )
     }
 }

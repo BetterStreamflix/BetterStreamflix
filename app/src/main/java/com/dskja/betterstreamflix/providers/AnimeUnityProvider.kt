@@ -1230,6 +1230,7 @@ object AnimeUnityProvider : Provider, ProviderConfigUrl {
     }
 
     override suspend fun getVideo(server: Video.Server): Video {
+        if (server.src.isBlank()) throw Exception("AnimeUnity source not found")
         return VixcloudExtractor().extract(server.src)
     }
 

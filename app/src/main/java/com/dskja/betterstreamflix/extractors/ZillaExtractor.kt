@@ -1,5 +1,6 @@
 package com.dskja.betterstreamflix.extractors
 
+import com.dskja.betterstreamflix.utils.withExtractorTimeouts
 import com.dskja.betterstreamflix.models.Video
 import androidx.media3.common.MimeTypes
 import kotlinx.coroutines.Dispatchers
@@ -18,7 +19,7 @@ class ZillaExtractor : Extractor() {
             .connectTimeout(10, TimeUnit.SECONDS)
             .readTimeout(10, TimeUnit.SECONDS)
             .followRedirects(true)
-            .build()
+            .withExtractorTimeouts().build()
     }
 
     override suspend fun extract(link: String): Video {

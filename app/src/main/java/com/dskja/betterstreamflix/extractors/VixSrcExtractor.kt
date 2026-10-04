@@ -1,5 +1,6 @@
 package com.dskja.betterstreamflix.extractors
 
+import com.dskja.betterstreamflix.utils.withExtractorTimeouts
 import android.util.Base64
 import android.util.Log
 import androidx.media3.common.MimeTypes
@@ -124,7 +125,7 @@ class VixSrcExtractor : Extractor() {
             val client = OkHttpClient.Builder()
                 .dns(DnsResolver.doh)
                 .readTimeout(15, TimeUnit.SECONDS)
-                .build()
+                .withExtractorTimeouts().build()
             val headersBuilder = okhttp3.Headers.Builder()
             finalHeaders.forEach { (k, v) -> headersBuilder.add(k, v) }
             val request = Request.Builder().url(finalUrl).headers(headersBuilder.build()).build()
@@ -318,6 +319,7 @@ class VixSrcExtractor : Extractor() {
                             .build()
                         chain.proceed(request)
                     }
+                    .withExtractorTimeouts()
                     .build()
                 return Retrofit.Builder()
                     .baseUrl(baseUrl)

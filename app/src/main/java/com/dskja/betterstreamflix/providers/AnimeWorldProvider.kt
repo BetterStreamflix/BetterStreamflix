@@ -687,12 +687,15 @@ object AnimeWorldProvider : Provider, ProviderConfigUrl {
     override suspend fun getVideo(server: Video.Server): Video {
         val link = withSslFallback { it.getLink(server.id, 0) }
 
+        val grabber = link.grabber
+        if (grabber.isBlank()) throw Exception("AnimeWorld source not found")
         if (server.name == "Streamtape")
-            return Extractor.extract(link.grabber.substringBeforeLast("/"))
+            return Extractor.extract(grabber.substringBeforeLast("/"), server)
 
         return Video(
-            source = link.grabber,
-            subtitles = listOf()
+            source = grabber,
+            subtitles = listOf(),
+            headers = mapOf("Referer" to "$URL/"),
         )
     }
 

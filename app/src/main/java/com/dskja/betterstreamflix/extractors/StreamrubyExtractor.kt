@@ -1,5 +1,7 @@
 package com.dskja.betterstreamflix.extractors
 
+import okhttp3.OkHttpClient
+import com.dskja.betterstreamflix.utils.withExtractorTimeouts
 import com.dskja.betterstreamflix.models.Video
 import com.dskja.betterstreamflix.utils.JsUnpacker
 import com.dskja.betterstreamflix.utils.UserPreferences
@@ -39,9 +41,16 @@ class StreamrubyExtractor: Extractor() {
 
         val finalUrl = Regex("""file\s*:\s*["']([^"']+)["']""")
             .find(unPacked)?.groupValues?.get(1)
-            ?: throw Exception("No file link found in unpacked JS")
+            ?.takeIf { it.isNotBlank() }
+            ?: throw Exception("Streamruby source not found")
 
-        return Video(source = finalUrl)
+        return Video(
+            source = finalUrl,
+            headers = mapOf(
+                "Referer" to "$baseUrl/",
+                "User-Agent" to DEFAULT_USER_AGENT,
+            ),
+        )
     }
 
     private interface Service {
@@ -56,7 +65,7 @@ class StreamrubyExtractor: Extractor() {
                 val retrofit = Retrofit.Builder()
                     .baseUrl(baseUrl)
                     .addConverterFactory(JsoupConverterFactory.create())
-                    .build()
+                    .client(OkHttpClient.Builder().withExtractorTimeouts().build()).build()
                 return retrofit.create(Service::class.java)
             }
         }

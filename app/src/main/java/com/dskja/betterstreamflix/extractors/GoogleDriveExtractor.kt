@@ -1,5 +1,6 @@
 package com.dskja.betterstreamflix.extractors
 
+import com.dskja.betterstreamflix.utils.withExtractorTimeouts
 import androidx.media3.common.MimeTypes
 import com.google.gson.JsonParser
 import com.dskja.betterstreamflix.models.Video
@@ -103,6 +104,7 @@ class GoogleDriveExtractor : Extractor() {
                             .build()
                         chain.proceed(request)
                     }
+                    .withExtractorTimeouts()
                     .build()
 
                 val retrofit = Retrofit.Builder()

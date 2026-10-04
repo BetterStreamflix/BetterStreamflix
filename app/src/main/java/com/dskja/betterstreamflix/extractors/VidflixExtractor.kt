@@ -1,5 +1,6 @@
 package com.dskja.betterstreamflix.extractors
 
+import com.dskja.betterstreamflix.utils.withExtractorTimeouts
 import com.dskja.betterstreamflix.models.Video
 import okhttp3.OkHttpClient
 import retrofit2.Retrofit
@@ -43,7 +44,7 @@ class VidflixExtractor : Extractor() {
     private interface Service {
         companion object {
             fun build(baseUrl: String): Service {
-                val client = OkHttpClient.Builder().build()
+                val client = OkHttpClient.Builder().withExtractorTimeouts().build()
                 val retrofit = Retrofit.Builder()
                     .baseUrl(baseUrl)
                     .client(client)

@@ -1,5 +1,7 @@
 package com.dskja.betterstreamflix.extractors
 
+import okhttp3.OkHttpClient
+import com.dskja.betterstreamflix.utils.withExtractorTimeouts
 import android.annotation.SuppressLint
 import android.content.Context
 import android.net.Uri
@@ -216,7 +218,7 @@ class UpzoneExtractor : Extractor() {
                 return Retrofit.Builder()
                     .baseUrl(baseUrl)
                     .addConverterFactory(JsoupConverterFactory.create())
-                    .build()
+                    .client(OkHttpClient.Builder().withExtractorTimeouts().build()).build()
                     .create(Service::class.java)
             }
         }

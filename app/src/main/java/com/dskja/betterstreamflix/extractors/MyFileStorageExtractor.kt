@@ -1,5 +1,7 @@
 package com.dskja.betterstreamflix.extractors
 
+import okhttp3.OkHttpClient
+import com.dskja.betterstreamflix.utils.withExtractorTimeouts
 import com.dskja.betterstreamflix.models.Video
 import com.dskja.betterstreamflix.utils.StringConverterFactory
 import okhttp3.ResponseBody
@@ -74,7 +76,7 @@ class MyFileStorageExtractor : Extractor() {
                 val retrofit = Retrofit.Builder()
                     .baseUrl(baseUrl)
                     .addConverterFactory(StringConverterFactory.create())
-                    .build()
+                    .client(OkHttpClient.Builder().withExtractorTimeouts().build()).build()
 
                 return retrofit.create(Service::class.java)
             }

@@ -1,5 +1,6 @@
 package com.dskja.betterstreamflix.extractors
 
+import com.dskja.betterstreamflix.utils.withExtractorTimeouts
 import com.tanasi.retrofit_jsoup.converter.JsoupConverterFactory
 import com.dskja.betterstreamflix.models.Video
 import com.dskja.betterstreamflix.utils.JsUnpacker
@@ -54,7 +55,7 @@ open class VidoraExtractor : Extractor() {
     private interface Service {
         companion object {
             fun build(baseUrl: String): Service {
-                val client = OkHttpClient.Builder().build()
+                val client = OkHttpClient.Builder().withExtractorTimeouts().build()
                 val retrofit = Retrofit.Builder()
                     .baseUrl(baseUrl)
                     .addConverterFactory(JsoupConverterFactory.create())

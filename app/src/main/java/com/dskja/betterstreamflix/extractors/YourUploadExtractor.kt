@@ -1,5 +1,6 @@
 package com.dskja.betterstreamflix.extractors
 
+import com.dskja.betterstreamflix.utils.withExtractorTimeouts
 import com.dskja.betterstreamflix.models.Video
 import com.dskja.betterstreamflix.utils.DnsResolver
 import com.tanasi.retrofit_jsoup.converter.JsoupConverterFactory
@@ -45,7 +46,7 @@ class YourUploadExtractor : Extractor() {
             fun build(baseUrl: String): YourUploadExtractorService {
                 val client = OkHttpClient.Builder()
                     .dns(DnsResolver.doh)
-                    .build()
+                    .withExtractorTimeouts().build()
 
                 val retrofit = Retrofit.Builder()
                     .baseUrl(baseUrl)

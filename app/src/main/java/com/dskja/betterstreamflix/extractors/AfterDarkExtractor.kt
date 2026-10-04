@@ -1,5 +1,6 @@
 package com.dskja.betterstreamflix.extractors
 
+import com.dskja.betterstreamflix.utils.withExtractorTimeouts
 import android.net.Uri
 import androidx.media3.common.MimeTypes
 import com.dskja.betterstreamflix.models.Video
@@ -34,7 +35,7 @@ class AfterDarkExtractor( var newUrl: String = "" ) : Extractor() {
             .readTimeout(15, TimeUnit.SECONDS)
             .connectTimeout(15, TimeUnit.SECONDS)
             .dns(DnsResolver.doh)
-            .build()
+            .withExtractorTimeouts().build()
     }
 
     private fun buildPayload(title: String, type: String, tmdbId: String, imdbId: String, year: String, season: Int = 1, episode: Int = 1): String {
@@ -66,7 +67,10 @@ class AfterDarkExtractor( var newUrl: String = "" ) : Extractor() {
                     .build()
 
                 val response = client.newCall(request).execute()
-                val body = response.body?.string() ?: continue
+                val body = response.use { resp ->
+                    if (resp.code == 404 || resp.code == 410 || !resp.isSuccessful) return@use null
+                    resp.body?.string()
+                } ?: continue
                 
                 if (body.contains("\"error\":") && body.contains("\"details\":")) continue
 
@@ -147,7 +151,9 @@ class AfterDarkExtractor( var newUrl: String = "" ) : Extractor() {
                         }
                     }
                 }
-            } catch (e: Exception) { }
+            } catch (e: Exception) {
+                android.util.Log.w("AfterDarkExtractor", "provider $pName skipped: ${e.message}")
+            }
         }
         
         return allServers
