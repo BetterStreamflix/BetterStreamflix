@@ -66,23 +66,11 @@ object SerienStreamAuthManager {
      * login/session token is present.
      */
     fun canSkipInteractiveBypass(): Boolean {
-        val cookies = UserPreferences.serienStreamSessionCookies
-        // Clearance always skips. Account/session skip only when we have not recently
-        // observed a failed validation / stream-gate (stale accountConfirmed).
-        if (SerienStreamBypassHelper.looksLikeClearanceSolved(
-                SerienStreamBypassHelper.sanitizeSessionCookies(cookies),
-            )
-        ) {
-            return true
-        }
-        val validatedAt = UserPreferences.serienStreamSessionValidatedAtMs
-        val validatedOk = UserPreferences.serienStreamSessionValidatedOk
-        if (validatedAt > 0L && !validatedOk) {
-            return false
-        }
-        return SerienStreamBypassHelper.canSkipInteractiveBypass(
-            cookieHeader = cookies,
-            accountConfirmed = UserPreferences.serienStreamAccountConfirmed || isLoggedIn(),
+        // A stored login token is not a solved stream gate. `/r?t=` still needs
+        // Turnstile/ALTCHA with that token filled in. Skipping the WebView drops
+        // `t` and used to mark the account dead on the next play.
+        return SerienStreamBypassHelper.shouldSkipStreamCaptcha(
+            UserPreferences.serienStreamSessionCookies,
         )
     }
 

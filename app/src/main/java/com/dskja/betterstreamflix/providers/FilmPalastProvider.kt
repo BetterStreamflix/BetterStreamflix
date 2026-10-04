@@ -84,6 +84,12 @@ object FilmPalastProvider : Provider {
 
     private val episodeCodeRegex = Regex("""S\d+E\d+""", RegexOption.IGNORE_CASE)
 
+    private fun headingTitle(link: Element?): String {
+        val visible = link?.text()?.trim().orEmpty()
+        val titled = link?.attr("title")?.trim().orEmpty()
+        return if (titled.length > visible.length + 2) titled else visible.ifBlank { titled }
+    }
+
     private fun absolutePoster(posterSrc: String): String =
         when {
             posterSrc.startsWith("/") -> "https://filmpalast.to$posterSrc"
@@ -100,10 +106,16 @@ object FilmPalastProvider : Provider {
         val coverLink = article.selectFirst("a[href*=/stream/]")
         val href = headingLink?.attr("href")?.trim().orEmpty()
             .ifBlank { coverLink?.attr("href")?.trim().orEmpty() }
-        val title = headingLink?.text()?.trim().orEmpty()
-            .ifBlank { headingLink?.attr("title")?.trim().orEmpty() }
-            .ifBlank { coverLink?.attr("title")?.trim().orEmpty() }
-            .ifBlank { article.selectFirst("a[href*=/stream/] img, a img, img[alt]")?.attr("alt")?.trim().orEmpty() }
+        val visible = headingLink?.text()?.trim().orEmpty()
+        val titled = headingLink?.attr("title")?.trim().orEmpty()
+        val title = when {
+            titled.length > visible.length + 2 -> titled
+            visible.isNotBlank() -> visible
+            titled.isNotBlank() -> titled
+            else -> coverLink?.attr("title")?.trim().orEmpty()
+        }.ifBlank {
+            article.selectFirst("a[href*=/stream/] img, a img, img[alt]")?.attr("alt")?.trim().orEmpty()
+        }
         val id = href.substringAfterLast('/').trim()
         if (title.isBlank() || id.isBlank()) return null
 
@@ -244,9 +256,7 @@ object FilmPalastProvider : Provider {
         val relativeId = BASE_URL + "stream/" + id;
         val document = withSslFallback { it.getMoviePage(relativeId) }
         val title = document.selectFirst("h2")?.text() ?: ""
-        val poster = document.selectFirst("img.cover2")?.attr("src")?.let {
-            if (it.startsWith("http")) it else "${BASE_URL.removeSuffix("/")}$it"
-        }
+        val poster = document.selectFirst("img.cover2")?.attr("src")?.let { absolutePoster(it) }
         val description = document.selectFirst("span[itemprop=description]")?.text()
         val rating = document.selectFirst("div#star-rate")?.attr("data-rating")?.toDoubleOrNull()
         val genres =
@@ -297,13 +307,12 @@ object FilmPalastProvider : Provider {
         val keywords = listOf("bigwarp", "vinovo")
         for (block in serverBlocks) {
             val name = block.selectFirst("li.hostBg p.hostName")?.text()?.trim() ?: "Unbekannt"
-            var linkElement = block.selectFirst("a[href]")
-            var url = linkElement?.attr("href")?.trim()
-            if (linkElement == null){
-                linkElement = block.selectFirst("a[data-player-url]")
-                url = linkElement?.attr("data-player-url")?.trim();
-            }
-
+            // Live play buttons expose data-player-url. The href twin is often commented out.
+            val playerUrl = block.selectFirst("a[data-player-url]")?.attr("data-player-url")?.trim()
+            val href = block.select("a[href]").map { it.attr("href").trim() }
+                .firstOrNull { it.startsWith("http://") || it.startsWith("https://") || it.startsWith("//") }
+            val url = (playerUrl?.takeIf { it.startsWith("http") || it.startsWith("//") } ?: href)
+                ?.let { if (it.startsWith("//")) "https:$it" else it }
 
             if (!url.isNullOrEmpty()) {
                 val displayName = if (keywords.none { name.lowercase().contains(it) }) {
@@ -345,16 +354,13 @@ object FilmPalastProvider : Provider {
     override suspend fun getMovies(page: Int): List<Movie> {
         val document = withSslFallback { it.getMovies(page) }
         val movies = document.select("div#content article").mapNotNull { article ->
-            val href = article.selectFirst("h2 a")?.attr("href") ?: ""
-            val title = article.selectFirst("h2 a")?.text()?.trim() ?: ""
-            if (href.substringAfterLast("/").isBlank() || title.isBlank()) return@mapNotNull null
+            val link = article.selectFirst("h2 a")
+            val href = link?.attr("href").orEmpty()
+            val title = headingTitle(link)
+            if (title.isBlank() || href.substringAfterLast("/").isBlank()) return@mapNotNull null
             val posterSrc = article.selectFirst("a img")?.attr("src") ?: ""
 
-            val fullPosterUrl = if (posterSrc.startsWith("/")) {
-                "https://filmpalast.to$posterSrc"
-            } else {
-                posterSrc
-            }
+            val fullPosterUrl = absolutePoster(posterSrc)
 
             val info = article.select("*").toInfo()
 
@@ -373,16 +379,13 @@ object FilmPalastProvider : Provider {
     override suspend fun getTvShows(page: Int): List<TvShow> {
         val document = withSslFallback { it.getTvShows(page) }
         val shows = document.select("div#content article").mapNotNull { article ->
-            val href = article.selectFirst("h2 a")?.attr("href") ?: ""
-            val title = article.selectFirst("h2 a")?.text()?.trim() ?: ""
-            if (href.substringAfterLast("/").isBlank() || title.isBlank()) return@mapNotNull null
+            val link = article.selectFirst("h2 a")
+            val href = link?.attr("href").orEmpty()
+            val title = headingTitle(link)
+            if (title.isBlank() || href.substringAfterLast("/").isBlank()) return@mapNotNull null
             val posterSrc = article.selectFirst("a img")?.attr("src") ?: ""
 
-            val fullPosterUrl = if (posterSrc.startsWith("/")) {
-                "https://filmpalast.to$posterSrc"
-            } else {
-                posterSrc
-            }
+            val fullPosterUrl = absolutePoster(posterSrc)
 
             val info = article.select("*").toInfo()
                 
@@ -402,9 +405,7 @@ object FilmPalastProvider : Provider {
         val relativeId = BASE_URL + "stream/" + id
         val document = withSslFallback { it.getTvShow(relativeId) }
         val title = document.selectFirst("h2")?.text() ?: ""
-        val poster = document.selectFirst("img.cover2")?.attr("src")?.let {
-            if (it.startsWith("http")) it else "${BASE_URL.removeSuffix("/")}$it"
-        }
+        val poster = document.selectFirst("img.cover2")?.attr("src")?.let { absolutePoster(it) }
         val description = document.selectFirst("span[itemprop=description]")?.text()
         val rating = document.selectFirst("div#star-rate")?.attr("data-rating")?.toDoubleOrNull()
         val genres = document.select("ul#detail-content-list > li:has(p:matchesOwn(Kategorien, Genre)) a")
@@ -491,15 +492,11 @@ object FilmPalastProvider : Provider {
         val shows = document.select("div#content article").mapNotNull { article ->
             val aTag = article.selectFirst("h2 a")
             val href = aTag?.attr("href").orEmpty()
-            val title = aTag?.text()?.trim().orEmpty()
+            val title = headingTitle(aTag)
             if (href.substringAfterLast("/").isBlank() || title.isBlank()) return@mapNotNull null
 
             val posterSrc = article.selectFirst("a img")?.attr("src").orEmpty()
-            val fullPosterUrl = if (posterSrc.startsWith("/")) {
-                "https://filmpalast.to$posterSrc"
-            } else {
-                posterSrc
-            }
+            val fullPosterUrl = absolutePoster(posterSrc)
 
             val info = article.select("*").toInfo()
 
@@ -583,16 +580,13 @@ object FilmPalastProvider : Provider {
         
         // Parse filmography (same structure as movies/series)
         val filmography = document.select("div#content article").mapNotNull { article ->
-            val href = article.selectFirst("h2 a")?.attr("href") ?: ""
-            val title = article.selectFirst("h2 a")?.text()?.trim() ?: ""
+            val link = article.selectFirst("h2 a")
+            val href = link?.attr("href").orEmpty()
+            val title = headingTitle(link)
             if (href.substringAfterLast("/").isBlank() || title.isBlank()) return@mapNotNull null
             val posterSrc = article.selectFirst("a img")?.attr("src") ?: ""
 
-            val fullPosterUrl = if (posterSrc.startsWith("/")) {
-                "https://filmpalast.to$posterSrc"
-            } else {
-                posterSrc
-            }
+            val fullPosterUrl = absolutePoster(posterSrc)
 
             val info = article.select("*").toInfo()
 
@@ -662,6 +656,7 @@ object FilmPalastProvider : Provider {
                 return base.newBuilder()
                     .readTimeout(30, TimeUnit.SECONDS)
                     .connectTimeout(30, TimeUnit.SECONDS)
+                    .callTimeout(45, TimeUnit.SECONDS)
                     .build()
             }
 
