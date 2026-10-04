@@ -123,8 +123,11 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
-import okhttp3.OkHttpClient
-import okhttp3.internal.userAgent
+import com.dskja.betterstreamflix.player.PlaybackHttp
+import com.dskja.betterstreamflix.player.PlaybackMediaItems
+import com.dskja.betterstreamflix.player.PlaybackMime
+import com.dskja.betterstreamflix.player.PlaybackRequestHeaders
+import com.dskja.betterstreamflix.ui.TrailerPlaybackController
 import java.util.Locale
 import com.dskja.betterstreamflix.extractors.TokenManager
 
@@ -153,6 +156,8 @@ class PlayerMobileFragment : Fragment() {
     private var castPlayer: CastPlayer? = null
     private var castEndedListener: Player.Listener? = null
     private var isCasting = false
+    /** Skip one onResume auto-play after handing off to an external player. */
+    private var skipNextAutoResume = false
     private var lastCastHeaders: Map<String, String> = emptyMap()
     private lateinit var httpDataSource: HttpDataSource.Factory
     private lateinit var dataSourceFactory: DataSource.Factory
@@ -274,32 +279,14 @@ class PlayerMobileFragment : Fragment() {
         }
 
         val currentPosition = player.currentPosition
-        val currentSubtitleConfigurations =
-            player.currentMediaItem?.localConfiguration?.subtitleConfigurations?.map {
-                MediaItem.SubtitleConfiguration.Builder(it.uri)
-                    .setMimeType(it.mimeType)
-                    .setLabel(it.label)
-                    .setLanguage(it.language)
-                    .setSelectionFlags(0)
-                    .build()
-            } ?: listOf()
-        player.setMediaItem(
-            MediaItem.Builder()
-                .setUri(mediaUri)
-                .setMimeType(player.currentMediaItem?.localConfiguration?.mimeType)
-                .setSubtitleConfigurations(
-                    currentSubtitleConfigurations
-                            + MediaItem.SubtitleConfiguration.Builder(uri)
-                        .setMimeType(fileName.toSubtitleMimeType())
-                        .setLabel(fileName)
-                        .setSelectionFlags(C.SELECTION_FLAG_DEFAULT)
-                        .build()
-                )
-                .setMediaMetadata(player.mediaMetadata)
-                .build()
+        installExtraSubtitle(
+            MediaItem.SubtitleConfiguration.Builder(uri)
+                .setMimeType(fileName.toSubtitleMimeType())
+                .setLabel(fileName)
+                .setSelectionFlags(C.SELECTION_FLAG_DEFAULT)
+                .build(),
+            currentPosition,
         )
-        player.seekTo(currentPosition)
-        player.play()
     }
 
     override fun onCreateView(
@@ -335,14 +322,9 @@ class PlayerMobileFragment : Fragment() {
             isSetupDone = true
         }
         isIgnoringPip = false
-        if (::player.isInitialized && !playerReleased) {
+        if (::player.isInitialized && !playerReleased && _binding != null) {
             binding.pvPlayer.useController = true
-            // Resume playback after returning from bypass or any pause
-            if (!player.isPlaying) {
-                runCatching { player.play() }
-            }
-            // onPause stops progress / live-edge watchers without stopping Exo —
-            // restart them when playback is still active (PiP overlays, focus blips).
+            maybeResumeLocalPlayback()
             if (player.isPlaying) {
                 startProgressHandler()
                 if (isLiveTvPlayback()) startLiveEdgeWatcher()
@@ -375,6 +357,7 @@ class PlayerMobileFragment : Fragment() {
             binding.root.findViewById<View>(R.id.ll_player_error)
                 ?.setBackgroundResource(ExperimentalMobileDesign.glassCardBackground())
         }
+        runCatching { TrailerPlaybackController.silenceAllActive() }
         initializePlayer(false)
         setupCastControls()
         initializeVideo()
@@ -396,12 +379,10 @@ class PlayerMobileFragment : Fragment() {
                 if (isTearingDown || !isAdded || _binding == null) return@collect
                 when (state) {
                     PlayerViewModel.State.LoadingServers -> {
-                        // Keep an idle surface while getServers runs (C-PLAY-1); avoid a
-                        // fake playing URI if a prior session left media installed.
-                        if (::player.isInitialized && !player.isPlaying) {
+                        // Pause only. stop/clear while PlayerView still owns the surface
+                        // races OEM codec teardown (crash on open and on Back).
+                        if (::player.isInitialized && !playerReleased && !player.isPlaying) {
                             player.playWhenReady = false
-                            player.stop()
-                            player.clearMediaItems()
                         }
                     }
                     is PlayerViewModel.State.SuccessLoadingServers -> {
@@ -541,12 +522,10 @@ class PlayerMobileFragment : Fragment() {
                     }
 
                     is PlayerViewModel.State.LoadingVideo -> {
-                        // Do not install an empty media URI — that leaves 0:00/0:00 with
-                        // playWhenReady looking like "Playing" while nothing can buffer.
-                        if (::player.isInitialized && !player.isPlaying) {
+                        // Do not stop/clear an attached surface while the next server
+                        // resolves — that is the same OEM crash as leaving the player.
+                        if (::player.isInitialized && !playerReleased && !player.isPlaying) {
                             player.playWhenReady = false
-                            player.stop()
-                            player.clearMediaItems()
                         }
                     }
 
@@ -665,32 +644,16 @@ class PlayerMobileFragment : Fragment() {
                         }
                         val fileName = state.uri.getFileName(requireContext()) ?: state.uri.toString()
                         val currentPosition = player.currentPosition
-                        val currentSubtitleConfigurations = player.currentMediaItem?.localConfiguration?.subtitleConfigurations?.map {
-                            MediaItem.SubtitleConfiguration.Builder(it.uri)
-                                .setMimeType(it.mimeType)
-                                .setLabel(it.label)
-                                .setLanguage(it.language)
-                                .setSelectionFlags(0)
-                                .build()
-                        } ?: listOf()
-                        player.setMediaItem(
-                            MediaItem.Builder()
-                                .setUri(mediaUri)
-                                .setMimeType(player.currentMediaItem?.localConfiguration?.mimeType)
-                                .setSubtitleConfigurations(
-                                    currentSubtitleConfigurations + MediaItem.SubtitleConfiguration.Builder(state.uri)
-                                        .setMimeType(fileName.toSubtitleMimeType())
-                                        .setLabel(fileName)
-                                        .setLanguage(state.subtitle.languageName)
-                                        .setSelectionFlags(C.SELECTION_FLAG_DEFAULT)
-                                        .build()
-                                )
-                                .setMediaMetadata(player.mediaMetadata)
-                                .build()
-                        )
                         UserPreferences.subtitleName = (state.subtitle.languageName ?: fileName).substringBefore(" ")
-                        player.seekTo(currentPosition)
-                        player.play()
+                        installExtraSubtitle(
+                            MediaItem.SubtitleConfiguration.Builder(state.uri)
+                                .setMimeType(fileName.toSubtitleMimeType())
+                                .setLabel(fileName)
+                                .setLanguage(state.subtitle.languageName)
+                                .setSelectionFlags(C.SELECTION_FLAG_DEFAULT)
+                                .build(),
+                            currentPosition,
+                        )
                     }
                     is PlayerViewModel.SubtitleState.FailedDownloadingOpenSubtitle -> {
                         notifyPlayer("${state.subtitle.subFileName}: ${state.error.message}", R.string.player_settings_open_subtitles_title)
@@ -718,32 +681,16 @@ class PlayerMobileFragment : Fragment() {
                         }
                         val fileName = state.uri.getFileName(requireContext()) ?: state.uri.toString()
                         val currentPosition = player.currentPosition
-                        val currentSubtitleConfigurations = player.currentMediaItem?.localConfiguration?.subtitleConfigurations?.map {
-                            MediaItem.SubtitleConfiguration.Builder(it.uri)
-                                .setMimeType(it.mimeType)
-                                .setLabel(it.label)
-                                .setLanguage(it.language)
-                                .setSelectionFlags(0)
-                                .build()
-                        } ?: listOf()
-                        player.setMediaItem(
-                            MediaItem.Builder()
-                                .setUri(mediaUri)
-                                .setMimeType(player.currentMediaItem?.localConfiguration?.mimeType)
-                                .setSubtitleConfigurations(
-                                    currentSubtitleConfigurations + MediaItem.SubtitleConfiguration.Builder(state.uri)
-                                        .setMimeType(fileName.toSubtitleMimeType())
-                                        .setLabel(state.subtitle.releaseName ?: state.subtitle.name ?: fileName)
-                                        .setLanguage(state.subtitle.lang ?: state.subtitle.language ?: "Unknown")
-                                        .setSelectionFlags(C.SELECTION_FLAG_DEFAULT)
-                                        .build()
-                                )
-                                .setMediaMetadata(player.mediaMetadata)
-                                .build()
-                        )
                         UserPreferences.subtitleName = (state.subtitle.releaseName ?: state.subtitle.name ?: fileName).substringBefore(" ")
-                        player.seekTo(currentPosition)
-                        player.play()
+                        installExtraSubtitle(
+                            MediaItem.SubtitleConfiguration.Builder(state.uri)
+                                .setMimeType(fileName.toSubtitleMimeType())
+                                .setLabel(state.subtitle.releaseName ?: state.subtitle.name ?: fileName)
+                                .setLanguage(state.subtitle.lang ?: state.subtitle.language ?: "Unknown")
+                                .setSelectionFlags(C.SELECTION_FLAG_DEFAULT)
+                                .build(),
+                            currentPosition,
+                        )
                     }
                     is PlayerViewModel.SubtitleState.FailedDownloadingSubDLSubtitle -> {
                         notifyPlayer("${state.subtitle.name}: ${state.error.message}", R.string.player_settings_subdl_title)
@@ -1677,24 +1624,12 @@ class PlayerMobileFragment : Fragment() {
 
         val currentPosition = player.currentPosition
 
-        lastCastHeaders = buildMap {
-            put("User-Agent", userAgent)
-            video.headers?.forEach { (k, v) -> put(k, v) }
-            // SerienStream/VOE often omit Referer on Video — Chromecast then 404s.
-            if (keys.none { it.equals("Referer", ignoreCase = true) }) {
-                val hoster = server.src.takeIf { it.startsWith("http") }
-                    ?: video.source.takeIf { it.startsWith("http") }
-                if (!hoster.isNullOrBlank()) {
-                    put("Referer", hoster)
-                    runCatching {
-                        val uri = android.net.Uri.parse(hoster)
-                        val host = uri.host
-                        val scheme = uri.scheme ?: "https"
-                        if (!host.isNullOrBlank()) put("Origin", "$scheme://$host")
-                    }
-                }
-            }
-        }
+        lastCastHeaders = PlaybackRequestHeaders.build(
+            fallbackUserAgent = NetworkClient.USER_AGENT,
+            videoHeaders = video.headers,
+            pageUrl = server.src,
+            sourceUrl = video.source,
+        )
 
         httpDataSource.setDefaultRequestProperties(lastCastHeaders)
 
@@ -1722,9 +1657,7 @@ class PlayerMobileFragment : Fragment() {
         } else {
             val mediaItemBuilder = MediaItem.Builder()
                 .setUri(video.source.toUri())
-                .setMimeType(
-                    com.dskja.betterstreamflix.extractors.StreamMime.coalesce(video.type, video.source),
-                )
+                .setMimeType(PlaybackMime.forPlayback(video.type, video.source))
             if (isLiveTvPlayback()) {
                 mediaItemBuilder.setLiveConfiguration(
                     com.dskja.betterstreamflix.iptv.IptvLivePlayback.liveConfigurationForProvider(
@@ -1909,7 +1842,9 @@ class PlayerMobileFragment : Fragment() {
                 }
                 val savedPosition = watchItem?.watchHistory?.lastPlaybackPositionMillis
                 withContext(Dispatchers.Main) {
-                    if (!isAdded || playerReleased || !::player.isInitialized) return@withContext
+                    if (!isAdded || playerReleased || isTearingDown || playbackSoftStopped || !::player.isInitialized) {
+                        return@withContext
+                    }
                     if (savedPosition == null) return@withContext
                     if (!PlaybackProgress.shouldApplyResume(player.currentPosition)) return@withContext
                     val target = PlaybackProgress.resumeTargetMs(savedPosition, player.duration)
@@ -1923,8 +1858,70 @@ class PlayerMobileFragment : Fragment() {
 
         if (isTearingDown || playerReleased || !isAdded || _binding == null) return
         player.prepare()
-        if (isTearingDown || playerReleased) return
-        player.play()
+        playLocalIfForeground()
+    }
+
+    private fun maybeResumeLocalPlayback() {
+        if (isTearingDown || playbackSoftStopped || playerReleased || !::player.isInitialized) return
+        if (isCasting || CastPlaybackHub.isCasting) {
+            runCatching {
+                player.volume = 0f
+                player.playWhenReady = false
+            }
+            return
+        }
+        if (skipNextAutoResume) {
+            skipNextAutoResume = false
+            return
+        }
+        // IDLE means nothing is prepared yet — play() would look like a dead "Playing" state.
+        if (!player.isPlaying && player.playbackState != androidx.media3.common.Player.STATE_IDLE) {
+            runCatching {
+                player.volume = 1f
+                player.play()
+            }
+        }
+    }
+
+    private fun playLocalIfForeground() {
+        if (isTearingDown || playbackSoftStopped || playerReleased || !::player.isInitialized) return
+        if (isCasting || CastPlaybackHub.isCasting) {
+            runCatching {
+                player.volume = 0f
+                player.playWhenReady = false
+                player.pause()
+            }
+            return
+        }
+        runCatching {
+            player.volume = 1f
+            player.play()
+        }
+    }
+
+    private fun installExtraSubtitle(
+        configuration: MediaItem.SubtitleConfiguration,
+        resumePositionMs: Long,
+    ) {
+        if (isTearingDown || playerReleased || !::player.isInitialized) return
+        val current = player.currentMediaItem ?: return
+        runCatching {
+            player.setMediaItem(
+                PlaybackMediaItems.addSubtitle(current, configuration),
+                resumePositionMs.coerceAtLeast(0L),
+            )
+            player.prepare()
+        }
+        playLocalIfForeground()
+    }
+
+    private fun pauseLocalForHandoff() {
+        skipNextAutoResume = true
+        if (!::player.isInitialized || playerReleased) return
+        runCatching {
+            player.playWhenReady = false
+            player.pause()
+        }
     }
 
     private fun enterPIPMode() {
@@ -3126,7 +3123,7 @@ class PlayerMobileFragment : Fragment() {
         PlaybackLifecycleGuard.register(playbackStopHandle)
 
         var tokenLogged = false
-        val okHttpClient = NetworkClient.default.newBuilder()
+        val okHttpClient = PlaybackHttp.newStreamingClient().newBuilder()
             .addInterceptor { chain ->
                 var request = chain.request()
                 
@@ -3219,9 +3216,15 @@ class PlayerMobileFragment : Fragment() {
                 }
 
                 override fun onCastSessionUnavailable() {
-                    if (view == null) {
+                    if (view == null || isTearingDown) {
                         CastPlaybackHub.markCasting(false)
                         isCasting = false
+                        if (::player.isInitialized && !playerReleased) {
+                            runCatching {
+                                player.playWhenReady = false
+                                player.pause()
+                            }
+                        }
                         return
                     }
                     switchPlaybackToLocal()
@@ -3368,7 +3371,9 @@ class PlayerMobileFragment : Fragment() {
         if (!::player.isInitialized || playerReleased) return
         val position = player.currentPosition
         val playWhenReady = player.playWhenReady
+        player.volume = 0f
         player.playWhenReady = false
+        runCatching { player.pause() }
 
         val video = currentVideo
         val server = currentServer
@@ -3418,6 +3423,7 @@ class PlayerMobileFragment : Fragment() {
         val playWhenReady = cp?.playWhenReady ?: true
         runCatching { cp?.stop() }
         if (player.currentMediaItem != null) {
+            player.volume = 1f
             player.seekTo(position)
             player.playWhenReady = playWhenReady
         }
@@ -3549,6 +3555,7 @@ class PlayerMobileFragment : Fragment() {
             return
         }
         isIgnoringPip = true
+        pauseLocalForHandoff()
         val videoTitle = when {
             isLiveTvPlayback() -> resolvePlayerTitle()
             else -> when (val type = args.videoType) {
@@ -3592,6 +3599,7 @@ class PlayerMobileFragment : Fragment() {
             is Video.Type.Movie -> type.title
             is Video.Type.Episode -> "${type.tvShow.title}.S${type.season.number}E${type.number}"
         }
+        pauseLocalForHandoff()
         val ok = com.dskja.betterstreamflix.download.ExternalDownloadHandoff.launch(
             requireActivity(),
             com.dskja.betterstreamflix.download.ExternalDownloadHandoff.Request(

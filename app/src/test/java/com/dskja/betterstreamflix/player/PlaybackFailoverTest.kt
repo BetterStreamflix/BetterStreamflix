@@ -126,4 +126,36 @@ class PlaybackFailoverTest {
             ),
         )
     }
+
+    @Test
+    fun hard404SkipsSoftwareDecoderAndTriesNextServer() {
+        val error = Exception("Source error", Exception("Response code: 404"))
+        val action = PlaybackFailover.decide(
+            currentServerIndex = 0,
+            serverCount = 3,
+            playbackAlreadyStarted = true,
+            softwareDecoderAlreadyEnabled = false,
+            allowMidPlaybackFailover = false,
+            error = error,
+        )
+        assertEquals(PlaybackFailover.Action.TryNextServer(1), action)
+    }
+
+    @Test
+    fun hard404OnLastServerGivesUpInsteadOfSoftwareRetry() {
+        val error = Exception("HttpDataSourceException Response code: 404")
+        val action = PlaybackFailover.decide(
+            currentServerIndex = 2,
+            serverCount = 3,
+            playbackAlreadyStarted = false,
+            softwareDecoderAlreadyEnabled = false,
+            error = error,
+        )
+        assertEquals(PlaybackFailover.Action.GiveUp, action)
+    }
+
+    @Test
+    fun timeoutIsHardSourceFailure() {
+        assertTrue(PlaybackFailover.isHardSourceFailure(Exception("getVideo(VOE) timed out after 40000ms")))
+    }
 }
