@@ -85,8 +85,16 @@ class TmdbProvider private constructor(override val language: String) : Provider
         try {
             requireTmdbApiKey()
             return buildHomeCategories()
+        } catch (e: ClassCastException) {
+            // Production still reported BETTERSTREAMFLIX-Q — never hard-fail Home.
+            Log.e("TmdbProvider", "TMDB home ClassCast soft-fail: ${e.message}", e)
+            return emptyList()
         } catch (e: Exception) {
             if (e is kotlinx.coroutines.CancellationException) throw e
+            if (e.cause is ClassCastException) {
+                Log.e("TmdbProvider", "TMDB home ClassCast (cause) soft-fail: ${e.message}", e)
+                return emptyList()
+            }
             Log.e("TmdbProvider", "TMDB home failed: ${e.message}", e)
             throw Exception(classifyTmdbFailure(e), e)
         }
@@ -856,12 +864,19 @@ class TmdbProvider private constructor(override val language: String) : Provider
                 // Prefer real German hosters first (SerienStream etc.) — extractors often
                 // return optimistic dead servers that waste failover into "not available".
                 val nativeProviders: List<Provider> = buildList {
-                    if (videoType is Video.Type.Episode) add(SerienStreamProvider)
+                    if (videoType is Video.Type.Episode) {
+                        add(SerienStreamProvider)
+                        add(AniWorldProvider)
+                    }
+                    add(VavooVodProvider.DE)
                     add(KinoGerProvider)
                     add(HDFilmeProvider)
                     add(MEGAKinoProvider)
                     add(FilmPalastProvider)
-                    if (videoType is Video.Type.Movie) add(FilmoProvider)
+                    if (videoType is Video.Type.Movie) {
+                        add(KellerKinoProvider)
+                        add(FilmoProvider)
+                    }
                 }
                 val nativeServers = resolveGermanNativeServers(
                     providers = nativeProviders,
@@ -1198,6 +1213,9 @@ class TmdbProvider private constructor(override val language: String) : Provider
         FilmPalastProvider -> "filmpalast"
         FilmoProvider -> "filmo"
         SerienStreamProvider -> "serienstream"
+        AniWorldProvider -> "aniworld"
+        KellerKinoProvider -> "kellerkino"
+        VavooVodProvider.DE -> "vavoo"
         else -> provider.name.lowercase().replace(Regex("[^a-z0-9]+"), "")
     }
 
@@ -1208,6 +1226,9 @@ class TmdbProvider private constructor(override val language: String) : Provider
         "filmpalast" -> FilmPalastProvider
         "filmo" -> FilmoProvider
         "serienstream" -> SerienStreamProvider
+        "aniworld" -> AniWorldProvider
+        "kellerkino" -> KellerKinoProvider
+        "vavoo" -> VavooVodProvider.DE
         else -> null
     }
 

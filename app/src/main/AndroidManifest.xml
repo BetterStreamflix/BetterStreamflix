@@ -143,7 +143,9 @@
         <activity
             android:name=".activities.tools.WatchlistImportActivity"
             android:exported="false"
-            android:theme="@style/AppTheme.Mobile" />
+            android:theme="@style/AppTheme.Mobile"
+            android:enabled="true"
+            android:excludeFromRecents="true" />
 
         <activity
             android:name=".telegram.TelegramJoinGateActivity"

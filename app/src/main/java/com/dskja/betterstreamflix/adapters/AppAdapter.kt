@@ -121,6 +121,9 @@ class AppAdapter(
     // ---------------------------------
     interface Item {
         var itemType: Type
+
+        /** Safe read — Featured/Room clones can leave lateinit unset (BETTERSTREAMFLIX-1P). */
+        fun itemTypeOrNull(): Type? = runCatching { itemType }.getOrNull()
     }
 
     enum class Type {

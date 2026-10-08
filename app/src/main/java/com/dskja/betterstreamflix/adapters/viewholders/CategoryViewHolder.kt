@@ -14,6 +14,7 @@ import android.transition.AutoTransition
 import android.transition.TransitionManager
 import com.google.android.material.color.MaterialColors
 import kotlin.math.abs
+import androidx.core.os.bundleOf
 import androidx.navigation.findNavController
 import androidx.recyclerview.widget.RecyclerView
 import androidx.viewbinding.ViewBinding
@@ -26,7 +27,6 @@ import com.dskja.betterstreamflix.databinding.ItemCategoryMobileBinding
 import com.dskja.betterstreamflix.databinding.ItemCategoryTvBinding
 import com.dskja.betterstreamflix.fragments.home.HomeMobileFragment
 import com.dskja.betterstreamflix.fragments.home.HomeTvFragment
-import com.dskja.betterstreamflix.fragments.home.HomeTvFragmentDirections
 import com.dskja.betterstreamflix.models.Category
 import com.dskja.betterstreamflix.models.Movie
 import com.dskja.betterstreamflix.models.Show
@@ -1109,16 +1109,23 @@ class CategoryViewHolder(
             setOnClickListener {
                 ExpMotion.hapticTap(it)
                 FeaturedProviderSwitch.runWithProvider(selected) {
-                    findNavController().navigate(
-                        when (selected) {
-                            is Movie -> HomeTvFragmentDirections.actionHomeToMovie(selected.id)
-                            is TvShow -> HomeTvFragmentDirections.actionHomeToTvShow(
-                                id = selected.id,
-                                poster = selected.poster,
-                                banner = selected.banner,
-                            )
-                        }
-                    )
+                    // Global actions work from Home / Movies / TV Shows / Search
+                    // (home-only Safe Args crashed after provider switch — BETTERSTREAMFLIX-2Z).
+                    val nav = findNavController()
+                    when (selected) {
+                        is Movie -> nav.navigate(
+                            R.id.action_global_movie,
+                            bundleOf("id" to selected.id),
+                        )
+                        is TvShow -> nav.navigate(
+                            R.id.action_global_tv_show,
+                            bundleOf(
+                                "id" to selected.id,
+                                "poster" to selected.poster,
+                                "banner" to selected.banner,
+                            ),
+                        )
+                    }
                 }
             }
             // Long-press Watch → trailer (parity with mobile Featured).
