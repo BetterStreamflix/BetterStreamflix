@@ -1603,14 +1603,16 @@ class PlayerMobileFragment : Fragment() {
         val extraBuffering = PlayerSettingsView.Settings.ExtraBuffering.isEnabled
 
         val softwareDecoder = PlayerSettingsView.Settings.SoftwareDecoder.isEnabled
+        val vavooTlsHost = resolveVavooTlsHost(video)
         val needsReinit =
             extraBuffering != currentExtraBuffering ||
                 softwareDecoder != currentSoftwareDecoder ||
-                offline != playingOffline
+                offline != playingOffline ||
+                vavooTlsHost != currentVavooTlsHost
         if (needsReinit) {
             playingOffline = offline
             offlineCacheBlocked = false
-            initializePlayer(extraBuffering, softwareDecoder)
+            initializePlayer(extraBuffering, softwareDecoder, vavooTlsHost)
             if (offlineCacheBlocked || !::player.isInitialized || playerReleased) {
                 if (offline) {
                     showPlayerError(getString(R.string.player_offline_missing))
@@ -3129,6 +3131,13 @@ class PlayerMobileFragment : Fragment() {
 
     private var currentExtraBuffering = false
     private var currentSoftwareDecoder = false
+    private var currentVavooTlsHost: String? = null
+
+    private fun resolveVavooTlsHost(video: Video): String? {
+        val provider = UserPreferences.currentProvider
+        if (provider !is com.dskja.betterstreamflix.providers.VavooProvider) return null
+        return runCatching { java.net.URI(video.source).host }.getOrNull()?.takeIf { it.isNotBlank() }
+    }
     private var currentExternalPlayerTried = false
     private var pendingPlayWithAfterResolve = false
 
@@ -3147,7 +3156,11 @@ class PlayerMobileFragment : Fragment() {
         )
     }
 
-    private fun initializePlayer(extraBuffering: Boolean, softwareDecoder: Boolean = currentSoftwareDecoder) {
+    private fun initializePlayer(
+        extraBuffering: Boolean,
+        softwareDecoder: Boolean = currentSoftwareDecoder,
+        vavooTlsHost: String? = currentVavooTlsHost,
+    ) {
         // Never rebuild after Back/teardown started — clearing isTearingDown here
         // used to resurrect Exo mid-navigateUp (zombie audio / surface race).
         if (isTearingDown || !isAdded || _binding == null) return
@@ -3159,10 +3172,15 @@ class PlayerMobileFragment : Fragment() {
         mediaSessionReleased = true
         currentExtraBuffering = extraBuffering
         currentSoftwareDecoder = softwareDecoder
+        currentVavooTlsHost = vavooTlsHost
         PlaybackLifecycleGuard.register(playbackStopHandle)
 
         var tokenLogged = false
-        val okHttpClient = PlaybackHttp.newStreamingClient().newBuilder()
+        val okHttpBuilder = PlaybackHttp.newStreamingClient().newBuilder()
+        if (!vavooTlsHost.isNullOrBlank()) {
+            com.dskja.betterstreamflix.utils.VavooTls.relaxForHost(okHttpBuilder, vavooTlsHost)
+        }
+        val okHttpClient = okHttpBuilder
             .addInterceptor { chain ->
                 var request = chain.request()
                 

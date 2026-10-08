@@ -251,9 +251,10 @@ class ProviderViewHolder(
     }
 
     private fun switchToProvider() {
-        // Setting currentProvider resets Room + notifies ViewModels to cancel
-        // in-flight Home/catalog work before we tear down the activity task.
-        UserPreferences.currentProvider = provider.provider
+        // Persist the name only — do not reset Room or notify ViewModels while
+        // tearing down the task (that race crashed cold starts until clear-data).
+        // The next Main*Activity onCreate consumes the pending switch and resets.
+        UserPreferences.prepareProviderSwitch(provider.provider)
         context.toActivity()?.apply {
             startActivity(
                 Intent(this, this::class.java).apply {
@@ -304,20 +305,29 @@ class ProviderViewHolder(
                     com.dskja.betterstreamflix.activities.tools.WatchlistImportActivity.SOURCE_ANIWORLD
                 else -> return
             }
-            context.startActivity(
-                Intent(
-                    context,
-                    com.dskja.betterstreamflix.activities.tools.WatchlistImportActivity::class.java,
-                )
-                    .putExtra(
-                        com.dskja.betterstreamflix.activities.tools.WatchlistImportActivity.EXTRA_SOURCE,
-                        source,
-                    )
-                    .putExtra(
-                        com.dskja.betterstreamflix.activities.tools.WatchlistImportActivity.EXTRA_SAVE_SESSION_ONLY,
-                        true,
-                    ),
+            val intent = Intent(
+                context,
+                com.dskja.betterstreamflix.activities.tools.WatchlistImportActivity::class.java,
             )
+                .putExtra(
+                    com.dskja.betterstreamflix.activities.tools.WatchlistImportActivity.EXTRA_SOURCE,
+                    source,
+                )
+                .putExtra(
+                    com.dskja.betterstreamflix.activities.tools.WatchlistImportActivity.EXTRA_SAVE_SESSION_ONLY,
+                    true,
+                )
+            // Soft-fail on TV / Fire builds where the activity may be unavailable
+            // (BETTERSTREAMFLIX-2B ActivityNotFoundException).
+            if (intent.resolveActivity(context.packageManager) == null) {
+                android.widget.Toast.makeText(
+                    context,
+                    R.string.loading_error_retry,
+                    android.widget.Toast.LENGTH_SHORT,
+                ).show()
+                return@onFailure
+            }
+            runCatching { context.startActivity(intent) }
         }
     }
 

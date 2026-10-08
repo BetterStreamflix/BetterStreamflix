@@ -50,11 +50,17 @@ object DeviceCapabilities {
 
     /** Prefer software/extension renderers from the first player build (TV crash mitigation). */
     fun shouldPreferSoftwareDecoder(context: Context): Boolean {
+        // Fire OS 6 (API 25) and older Amazon sticks are especially brittle with HW decode.
+        if (isAmazonFireTv(context) && Build.VERSION.SDK_INT <= 25) return true
         return isAmazonFireTv(context) ||
             isLeanbackDevice(context) ||
             isFragileTvOem() ||
             isLowRamDevice(context)
     }
+
+    /** True for Fire OS 6-era Amazon devices (API ≤ 25). */
+    fun isLegacyFireOs(context: Context): Boolean =
+        isAmazonFireTv(context) && Build.VERSION.SDK_INT <= 25
 
     /** Soften home motion (ken-burns, swiper progress) on constrained devices. */
     fun shouldReduceHomeEffects(context: Context): Boolean {

@@ -13,6 +13,7 @@ import com.dskja.betterstreamflix.utils.ChannelCoverResolver
 import com.dskja.betterstreamflix.utils.LiveCatalogMeta
 import com.dskja.betterstreamflix.utils.LiveStreamHtmlExtractor
 import com.dskja.betterstreamflix.utils.M3uChannelIdCodec
+import com.dskja.betterstreamflix.utils.NetworkClient
 import com.dskja.betterstreamflix.utils.UserPreferences
 import java.util.Locale
 import java.util.concurrent.TimeUnit
@@ -53,7 +54,7 @@ object DaddyLiveTvProvider : IptvProvider, ProviderConfigUrl {
         "tnt sports", "dazn", "golf", "tennis", "ufc", "boxing", "f1", "motogp",
     )
 
-    private val client = OkHttpClient.Builder()
+    private val client = NetworkClient.default.newBuilder()
         .connectTimeout(10, TimeUnit.SECONDS)
         .readTimeout(12, TimeUnit.SECONDS)
         .callTimeout(15, TimeUnit.SECONDS)
@@ -93,9 +94,20 @@ object DaddyLiveTvProvider : IptvProvider, ProviderConfigUrl {
         val now = System.currentTimeMillis()
         cached?.takeIf { now - lastFetch < CACHE_MS }?.let { return@withContext it }
         ChannelCoverResolver.warm()
-        val html = fetchHtml("$baseUrl/24-7-channels.php", referer = "$baseUrl/")
-            ?: fetchHtml("$baseUrl/channels.php", referer = "$baseUrl/")
-            ?: return@withContext emptyList()
+        val roots = linkedSetOf(
+            baseUrl.trimEnd('/'),
+            defaultBaseUrl.trimEnd('/'),
+            "https://dlive.sx",
+            "https://www.dlive.sx",
+        )
+        val html = roots.firstNotNullOfOrNull { root ->
+            fetchHtml("$root/24-7-channels.php", referer = "$root/")
+                ?: fetchHtml("$root/channels.php", referer = "$root/")
+        }
+        if (html.isNullOrBlank()) {
+            Log.w(TAG, "Channel scrape returned empty HTML from ${roots.joinToString()}")
+            return@withContext emptyList()
+        }
         val map = LinkedHashMap<String, String>()
         Regex(
             """href="/watch\.php\?id=(\d+)"[^>]*data-title="([^"]+)"""",

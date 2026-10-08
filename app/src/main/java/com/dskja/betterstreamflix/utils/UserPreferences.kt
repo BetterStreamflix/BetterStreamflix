@@ -124,6 +124,44 @@ object UserPreferences {
         }
     }
 
+    private const val PROVIDER_SWITCH_PENDING = "PROVIDER_SWITCH_PENDING"
+
+    /**
+     * Persist a provider pick for a CLEAR_TASK restart without closing Room or
+     * notifying collectors mid-teardown (that race left the app crash-looping
+     * until clear-data).
+     */
+    fun prepareProviderSwitch(provider: Provider) {
+        Key.CURRENT_PROVIDER.setString(provider.name)
+        prefs.edit { putBoolean(PROVIDER_SWITCH_PENDING, true) }
+        runCatching {
+            ArtworkRepairScheduler.schedule(BetterStreamflixApp.instance, provider)
+        }
+    }
+
+    /**
+     * Call once from Main*Activity.onCreate after a provider switch restart.
+     * Returns true when a pending switch was consumed.
+     */
+    fun consumePendingProviderSwitch(): Boolean {
+        if (!::prefs.isInitialized) return false
+        if (!prefs.getBoolean(PROVIDER_SWITCH_PENDING, false)) return false
+        prefs.edit { putBoolean(PROVIDER_SWITCH_PENDING, false) }
+        runCatching { AppDatabase.resetInstance() }
+        runCatching { TmdbCache.clear() }
+        return true
+    }
+
+    /** Drop a persisted provider name that no longer resolves (corrupt / removed). */
+    fun clearInvalidCurrentProvider() {
+        if (!::prefs.isInitialized) return
+        val name = Key.CURRENT_PROVIDER.getString() ?: return
+        if (currentProvider != null) return
+        debugLog { "Clearing unresolved CURRENT_PROVIDER=$name" }
+        Key.CURRENT_PROVIDER.setString(null)
+        prefs.edit { putBoolean(PROVIDER_SWITCH_PENDING, false) }
+    }
+
     fun getProviderCache(provider: Provider, key: String): String {
         return providerCache
             .optJSONObject(provider.name)
@@ -1380,19 +1418,29 @@ object UserPreferences {
             else -> null
         }
 
-        fun getInt(): Int? = when {
-            prefs.contains(name) -> prefs.getInt(name, 0)
-            else -> null
+        fun getInt(): Int? {
+            if (!::prefs.isInitialized) return null
+            return when {
+                prefs.contains(name) -> prefs.getInt(name, 0)
+                else -> null
+            }
         }
 
-        fun getLong(): Long? = when {
-            prefs.contains(name) -> prefs.getLong(name, 0)
-            else -> null
+        fun getLong(): Long? {
+            if (!::prefs.isInitialized) return null
+            return when {
+                prefs.contains(name) -> prefs.getLong(name, 0)
+                else -> null
+            }
         }
 
-        fun getString(): String? = when {
-            prefs.contains(name) -> prefs.getString(name, null)
-            else -> null
+        fun getString(): String? {
+            // Prefs may be touched from DnsResolver / provider clinit before setup().
+            if (!::prefs.isInitialized) return null
+            return when {
+                prefs.contains(name) -> prefs.getString(name, null)
+                else -> null
+            }
         }
 
         fun setBoolean(value: Boolean?) = value?.let {

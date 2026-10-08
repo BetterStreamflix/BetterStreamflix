@@ -207,22 +207,29 @@ class DownloadRepository private constructor(
         foreground: Boolean = false,
     ) {
         val item = dao.getById(id) ?: return
-        DownloadService.sendSetStopReason(
-            context,
-            StreamflixDownloadService::class.java,
-            item.media3Id,
-            stopReason,
-            foreground,
-        )
+        // Soften FGS pause from background (BOOT / connectivity) — never crash the process.
+        runCatching {
+            DownloadService.sendSetStopReason(
+                context,
+                StreamflixDownloadService::class.java,
+                item.media3Id,
+                stopReason,
+                foreground,
+            )
+        }.onFailure {
+            android.util.Log.w("DownloadRepository", "pause sendSetStopReason: ${it.message}")
+        }
         val connectivityHold = stopReason == DownloadQueuePolicy.STOP_CONNECTIVITY
-        dao.upsert(
-            item.copy(
-                state = DownloadItemState.PAUSED.name,
-                errorCode = if (connectivityHold) DownloadErrorCode.WIFI_REQUIRED.name else "",
-                errorMessage = if (connectivityHold) "Wi-Fi required" else "",
-                updatedAt = System.currentTimeMillis(),
-            ),
-        )
+        runCatching {
+            dao.upsert(
+                item.copy(
+                    state = DownloadItemState.PAUSED.name,
+                    errorCode = if (connectivityHold) DownloadErrorCode.WIFI_REQUIRED.name else "",
+                    errorMessage = if (connectivityHold) "Wi-Fi required" else "",
+                    updatedAt = System.currentTimeMillis(),
+                ),
+            )
+        }
     }
 
     suspend fun resume(id: String, foreground: Boolean = false) {

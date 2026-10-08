@@ -970,12 +970,28 @@ class SettingsTvFragment : LeanbackPreferenceFragmentCompat() {
             }
 
             findPreference<Preference>("provider_autoupdate_now")?.apply {
-                isVisible = portalProvider != null
+                isVisible = portalProvider != null || configProvider != null
                 setOnPreferenceClickListener {
                     val cfg = configProvider ?: return@setOnPreferenceClickListener true
+                    val provider = UserPreferences.currentProvider
                     viewLifecycleOwner.lifecycleScope.launch {
-                        findPreference<EditTextPreference>("provider_url")?.summary =
-                            cfg.onChangeUrl(true)
+                        var summary = runCatching { cfg.onChangeUrl(true) }.getOrDefault(cfg.defaultBaseUrl)
+                        if (provider != null) {
+                            runCatching {
+                                val result = com.dskja.betterstreamflix.utils.DomainRedirectChecker
+                                    .check(summary.ifBlank { cfg.defaultBaseUrl })
+                                if (result.changed) {
+                                    val newUrl = result.finalUrl.trimEnd('/') + "/"
+                                    UserPreferences.setProviderCache(
+                                        provider,
+                                        UserPreferences.PROVIDER_URL,
+                                        newUrl,
+                                    )
+                                    summary = cfg.onChangeUrl(true)
+                                }
+                            }
+                        }
+                        findPreference<EditTextPreference>("provider_url")?.summary = summary
                     }
                     true
                 }
