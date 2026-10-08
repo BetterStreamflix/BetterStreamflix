@@ -367,6 +367,8 @@
         <item name="app_background_color">#181818</item>
         <item name="preferenceTheme">@style/PreferenceThemeOverlayLeanback</item>
         <item name="alertDialogTheme">@style/Theme.AppCompat.Dialog.Alert</item>
+        <!-- Cast MediaRouteChooserDialog requires an AppCompat theme (BETTERSTREAMFLIX-26). -->
+        <item name="mediaRouteTheme">@style/Theme.AppCompat</item>
         <!-- Framework ripples — available without AppCompat parent. -->
         <item name="selectableItemBackground">?android:attr/selectableItemBackground</item>
         <item name="selectableItemBackgroundBorderless">?android:attr/selectableItemBackgroundBorderless</item>

@@ -43,8 +43,10 @@ object DnsResolver : Dns {
         }
         .build()
 
-    private var _url: String = UserPreferences.dohProviderUrl
-    private var _internalDoh: Dns = buildDoh(_url)
+    // Never read UserPreferences during object clinit — prefs may not be
+    // set up yet (BETTERSTREAMFLIX-1Z). App.onCreate calls setDnsUrl().
+    private var _url: String = ""
+    private var _internalDoh: Dns = Dns.SYSTEM
 
     override fun lookup(hostname: String): List<InetAddress> {
         val providerName = if (_url.isEmpty()) "SYSTEM" else _url

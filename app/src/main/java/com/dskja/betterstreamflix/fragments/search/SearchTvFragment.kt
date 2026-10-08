@@ -310,7 +310,7 @@ class SearchTvFragment : Fragment() {
                 val ui = _binding ?: return@VoiceRecognitionHelper
                 ui.btnSearchVoice.clearAnimation()
                 ui.etSearch.setText(query)
-                // Honor global-search SwitchCompat the same way submitSearch does.
+                // Honor global-search toggle the same way submitSearch does.
                 submitSearch()
             },
             onError = { msg ->

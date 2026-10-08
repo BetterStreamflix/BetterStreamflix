@@ -417,9 +417,22 @@ object SportsBiteProvider : IptvProvider, ProviderConfigUrl {
         }
         // Some embeds only expose SRC after the JW/Clappr bundle boots; scrape common mirrors.
         if (m3u8.isNullOrBlank()) {
-            for (mirrorHost in listOf("embed.ppv.st", "embed.cr7siuu.xyz")) {
-                if (!embedUrl.contains("embedindia.st")) break
-                val mirrored = embedUrl.replace("embedindia.st", mirrorHost)
+            for (mirrorHost in listOf(
+                "embed.ppv.st",
+                "embed.cr7siuu.xyz",
+                "embed.weakstream.xyz",
+                "embedstreams.net",
+            )) {
+                if (!embedUrl.contains("embedindia.st") &&
+                    !embedUrl.contains("embed.ppv.st")
+                ) {
+                    break
+                }
+                val mirrored = embedUrl
+                    .replace("embedindia.st", mirrorHost)
+                    .replace("embed.ppv.st", mirrorHost)
+                    .takeIf { it != embedUrl }
+                    ?: continue
                 val mirroredHtml = fetchHtml(mirrored, referer = "$baseUrl/") ?: continue
                 m3u8 = LiveStreamHtmlExtractor.extractM3u8(mirroredHtml)
                 if (!m3u8.isNullOrBlank()) {

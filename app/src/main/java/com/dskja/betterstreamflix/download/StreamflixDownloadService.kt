@@ -77,33 +77,22 @@ class StreamflixDownloadService : DownloadService(
             val app = context.applicationContext
             try {
                 startForeground(app, StreamflixDownloadService::class.java)
-            } catch (foregroundBlocked: IllegalStateException) {
+            } catch (foregroundBlocked: Throwable) {
+                // Includes ForegroundServiceStartNotAllowedException on API 31+
+                // (BOOT_COMPLETED / background — BETTERSTREAMFLIX-2P).
                 android.util.Log.w(
                     "StreamflixDownloadService",
-                    "Foreground start blocked (${foregroundBlocked.message}); trying background start",
+                    "Foreground start blocked (${foregroundBlocked.javaClass.simpleName}: ${foregroundBlocked.message}); trying background start",
                 )
                 try {
                     start(app, StreamflixDownloadService::class.java)
-                } catch (backgroundBlocked: Exception) {
+                } catch (backgroundBlocked: Throwable) {
                     android.util.Log.w(
                         "StreamflixDownloadService",
                         "Background start also blocked: ${backgroundBlocked.message}",
                     )
-                    DownloadNotifier.notifyServiceStartFailed(app)
+                    runCatching { DownloadNotifier.notifyServiceStartFailed(app) }
                 }
-            } catch (e: Exception) {
-                android.util.Log.w(
-                    "StreamflixDownloadService",
-                    "startForeground failed (${e.message}); trying background start",
-                )
-                runCatching { start(app, StreamflixDownloadService::class.java) }
-                    .onFailure {
-                        android.util.Log.w(
-                            "StreamflixDownloadService",
-                            "Unable to start download service: ${it.message}",
-                        )
-                        DownloadNotifier.notifyServiceStartFailed(app)
-                    }
             }
         }
     }

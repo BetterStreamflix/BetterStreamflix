@@ -134,12 +134,15 @@
         app:layout_constraintEnd_toEndOf="@id/hsv_search_recent"
         app:layout_constraintTop_toTopOf="@id/hsv_search_recent" />
 
-    <androidx.appcompat.widget.SwitchCompat
+    <!-- Framework CheckBox: SwitchCompat NPEs under Leanback TV themes
+         (BETTERSTREAMFLIX-27 — StaticLayout null text on Fire TV / Android TV). -->
+    <CheckBox
         android:id="@+id/ll_global_search"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_marginTop="16dp"
         android:background="@drawable/bg_btn_exoplayer_tv"
+        android:buttonTint="@android:color/white"
         android:focusable="true"
         android:focusableInTouchMode="true"
         android:fontFamily="@font/manrope"
@@ -147,6 +150,8 @@
         android:padding="8dp"
         android:text="@string/global_search"
         android:textColor="@android:color/white"
+        android:textOff="@string/global_search"
+        android:textOn="@string/global_search"
         android:textSize="18sp"
         app:layout_constraintEnd_toEndOf="@id/cl_search"
         app:layout_constraintStart_toStartOf="@id/cl_search"

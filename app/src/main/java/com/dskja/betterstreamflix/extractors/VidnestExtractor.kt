@@ -14,6 +14,7 @@ class VidnestExtractor : Extractor() {
 
     override val name = "Vidnest"
     override val mainUrl = "https://vidnest.io"
+    override val aliasUrls = listOf("https://vidnest.fun")
 
     fun extractSubtitles(text: String): List<Video.Subtitle> {
         val tracksBlock = Regex("""tracks\s*:\s*\[(.*?)]""", RegexOption.DOT_MATCHES_ALL)

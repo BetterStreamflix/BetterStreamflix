@@ -94,6 +94,9 @@ class BetterStreamflixApp : Application() {
 
         // 2. Inizializzazione preferenze (con applicationContext)
         UserPreferences.setup(this)
+        // Recover from a persisted provider name that no longer resolves —
+        // otherwise Home opens into a crash loop until clear-data.
+        runCatching { UserPreferences.clearInvalidCurrentProvider() }
         runCatching {
             com.dskja.betterstreamflix.logo.TmdbLogoCache.init(this)
             UserPreferences.applyTmdbLogoTtls()

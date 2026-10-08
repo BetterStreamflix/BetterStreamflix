@@ -116,6 +116,7 @@ abstract class Extractor {
             StreamrubyExtractor(),
             VidaraExtractor(),
             FirestreamExtractor(),
+            FastreamExtractor(),
             MeinecloudExtractor(),
             VidsonicExtractor(),
             HxfileExtractor(),

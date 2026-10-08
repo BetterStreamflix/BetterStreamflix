@@ -123,6 +123,9 @@ class MainMobileActivity : FragmentActivity() {
             }
         )
         super.onCreate(savedInstanceState)
+        // Finish a provider switch after CLEAR_TASK restart (Room reset deferred).
+        UserPreferences.consumePendingProviderSwitch()
+        UserPreferences.clearInvalidCurrentProvider()
         ExperimentalMobileDesign.applyDynamicColors(this)
 
         WindowCompat.setDecorFitsSystemWindows(window, false)

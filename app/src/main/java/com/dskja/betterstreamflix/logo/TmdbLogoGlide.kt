@@ -4,6 +4,8 @@ import android.content.Context
 import android.graphics.drawable.Drawable
 import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
+import android.os.Handler
+import android.os.Looper
 import android.view.View
 import android.widget.ImageView
 import com.bumptech.glide.Glide
@@ -24,6 +26,7 @@ import com.dskja.betterstreamflix.utils.ArtworkUrls
 object TmdbLogoGlide {
 
     private val LOGO_URL_TAG = R.id.tmdb_logo_expected_url_tag
+    private val mainHandler = Handler(Looper.getMainLooper())
 
     fun clear(imageView: ImageView) {
         Glide.with(imageView).clear(imageView)
@@ -106,7 +109,13 @@ object TmdbLogoGlide {
                     ): Boolean {
                         if (!stillCurrent()) return false
                         if (imageView.getTag(LOGO_URL_TAG) != url) return false
-                        attempt(index + 1)
+                        // Never start/clear a load synchronously inside a Glide
+                        // callback (BETTERSTREAMFLIX-2Q CallbackException).
+                        mainHandler.post {
+                            if (stillCurrent() && imageView.getTag(LOGO_URL_TAG) == url) {
+                                attempt(index + 1)
+                            }
+                        }
                         return true
                     }
 
@@ -121,7 +130,11 @@ object TmdbLogoGlide {
                         if (imageView.getTag(LOGO_URL_TAG) != url) return false
                         // Reject degenerate 1×1 / empty draws.
                         if (resource.intrinsicWidth <= 1 || resource.intrinsicHeight <= 1) {
-                            attempt(index + 1)
+                            mainHandler.post {
+                                if (stillCurrent() && imageView.getTag(LOGO_URL_TAG) == url) {
+                                    attempt(index + 1)
+                                }
+                            }
                             return true
                         }
                         if (hideUntilReady) {

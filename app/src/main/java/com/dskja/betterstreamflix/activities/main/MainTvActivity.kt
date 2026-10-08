@@ -61,6 +61,10 @@ class MainTvActivity : FragmentActivity() {
         
         super.onCreate(savedInstanceState)
 
+        // Finish a provider switch after CLEAR_TASK restart (Room reset deferred).
+        UserPreferences.consumePendingProviderSwitch()
+        UserPreferences.clearInvalidCurrentProvider()
+
         if (UserPreferences.castEnabled) {
             CastPlaybackHub.ensureCastContext(this)
         }

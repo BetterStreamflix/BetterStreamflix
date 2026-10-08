@@ -13,6 +13,7 @@ import com.dskja.betterstreamflix.utils.ChannelCoverResolver
 import com.dskja.betterstreamflix.utils.LiveCatalogMeta
 import com.dskja.betterstreamflix.utils.LiveStreamHtmlExtractor
 import com.dskja.betterstreamflix.utils.M3uChannelIdCodec
+import com.dskja.betterstreamflix.utils.NetworkClient
 import com.dskja.betterstreamflix.utils.UserPreferences
 import java.util.Locale
 import java.util.concurrent.TimeUnit
@@ -52,7 +53,7 @@ object StreamSports99Provider : IptvProvider, ProviderConfigUrl {
         "cricket", "rugby", "serie a", "laliga", "bundesliga", "premier",
     )
 
-    private val client = OkHttpClient.Builder()
+    private val client = NetworkClient.default.newBuilder()
         .connectTimeout(10, TimeUnit.SECONDS)
         .readTimeout(12, TimeUnit.SECONDS)
         .callTimeout(15, TimeUnit.SECONDS)
@@ -137,7 +138,8 @@ object StreamSports99Provider : IptvProvider, ProviderConfigUrl {
         categories += LiveCatalogMeta.countryCategories(
             all.groupBy { it.country }.mapValues { (_, v) -> v.map { toShow(it) } },
             limitCountries = 20,
-            perCountry = 12,
+            // Show a fuller shelf; genre/country browse still has the complete catalog.
+            perCountry = 36,
         )
         // Popular countries as dedicated rails
         listOf("us", "gb", "de", "fr", "es", "it", "tr", "br", "pl", "au").forEach { code ->
@@ -252,20 +254,40 @@ object StreamSports99Provider : IptvProvider, ProviderConfigUrl {
     override suspend fun getVideo(server: Video.Server): Video = withContext(Dispatchers.IO) {
         val payload = M3uChannelIdCodec.decode(server.id)
         val playerUrl = payload.url.ifBlank { server.src.ifBlank { server.id } }
-        val html = fetchHtml(playerUrl, referer = "$baseUrl/")
-            ?: throw Exception("StreamSports99: could not load player page for ${server.name}")
-        val m3u8 = LiveStreamHtmlExtractor.extractM3u8(html)
-        if (m3u8.isNullOrBlank()) {
-            Log.e(TAG, "No m3u8 in player page")
-            throw Exception("StreamSports99: no m3u8 stream found for ${server.name} (channel may be offline)")
+        val match = cached?.firstOrNull { createId(it) == server.id }
+        if (match?.status?.equals("offline", ignoreCase = true) == true) {
+            throw Exception("StreamSports99: ${server.name} is marked offline")
         }
-        Video(
-            source = m3u8,
-            headers = mapOf(
-                "User-Agent" to USER_AGENT,
-                "Referer" to "https://cdnlivetv.is/",
-                "Origin" to "https://cdnlivetv.is",
-            ),
+        val candidateUrls = linkedSetOf(
+            playerUrl,
+            playerUrl.replace("cdnlivetv.tv", "cdnlivetv.is"),
+            playerUrl.replace("cdnlivetv.is", "cdnlivetv.tv"),
+        ).filter { it.isNotBlank() }
+        var lastError: Exception? = null
+        for (url in candidateUrls) {
+            val html = fetchHtml(url, referer = "$baseUrl/")
+            if (html.isNullOrBlank()) {
+                lastError = Exception("could not load player page")
+                continue
+            }
+            val m3u8 = LiveStreamHtmlExtractor.extractM3u8(html)
+            if (m3u8.isNullOrBlank()) {
+                lastError = Exception("no m3u8 stream found")
+                continue
+            }
+            return@withContext Video(
+                source = m3u8,
+                headers = mapOf(
+                    "User-Agent" to USER_AGENT,
+                    "Referer" to "https://cdnlivetv.is/",
+                    "Origin" to "https://cdnlivetv.is",
+                ),
+            )
+        }
+        Log.e(TAG, "Playback failed for ${server.name}: ${lastError?.message}")
+        throw Exception(
+            "StreamSports99: playback failed for ${server.name}" +
+                (lastError?.message?.let { " ($it)" } ?: ""),
         )
     }
 

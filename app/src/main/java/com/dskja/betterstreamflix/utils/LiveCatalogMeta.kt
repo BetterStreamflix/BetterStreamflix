@@ -146,6 +146,7 @@ object LiveCatalogMeta {
             .sortedByDescending { it.value.size }
             .take(limitCountries)
             .mapNotNull { (code, shows) ->
+                val visible = shows.take(perCountry)
                 val label = buildString {
                     append(countryFlagEmoji(code))
                     append(' ')
@@ -155,10 +156,14 @@ object LiveCatalogMeta {
                     }
                     append(countryName(code))
                     append(" (")
-                    append(shows.size)
+                    // Show the shelf size users actually see; note remainder when capped.
+                    append(visible.size)
+                    if (shows.size > visible.size) {
+                        append('+')
+                    }
                     append(')')
                 }
-                Category(label, shows.take(perCountry)).takeIf { it.list.isNotEmpty() }
+                Category(label, visible).takeIf { it.list.isNotEmpty() }
             }
     }
 
@@ -172,9 +177,12 @@ object LiveCatalogMeta {
             .sortedByDescending { it.value.size }
             .take(limit)
             .mapNotNull { (code, shows) ->
+                val visible = shows.take(perLang)
+                val countLabel =
+                    if (shows.size > visible.size) "${visible.size}+" else "${visible.size}"
                 Category(
-                    "🗣 ${languageName(code)} (${shows.size})",
-                    shows.take(perLang),
+                    "🗣 ${languageName(code)} ($countLabel)",
+                    visible,
                 ).takeIf { it.list.isNotEmpty() }
             }
     }
