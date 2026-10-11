@@ -8,6 +8,7 @@ import androidx.media3.datasource.DataSource
 import java.io.BufferedOutputStream
 import java.net.ServerSocket
 import java.net.Socket
+import java.security.SecureRandom
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.Executors
 import java.util.concurrent.atomic.AtomicBoolean
@@ -22,9 +23,11 @@ import java.util.concurrent.atomic.AtomicBoolean
 object OfflineCacheProxy {
     private const val TAG = "OfflineCacheProxy"
     private const val MAX_PLAYLIST_BYTES = 2 * 1024 * 1024
+    private const val ROUTE_TTL_MS = 2L * 60L * 60L * 1000L
 
     private val started = AtomicBoolean(false)
     private val routes = ConcurrentHashMap<String, Route>()
+    private val secureRandom = SecureRandom()
     private val io = Executors.newCachedThreadPool { runnable ->
         Thread(runnable, "offline-share").apply { isDaemon = true }
     }
@@ -37,18 +40,47 @@ object OfflineCacheProxy {
         val media3Id: String,
         val playlistUri: String,
         val cacheKey: String?,
+        val token: String,
+        val expiresAtMs: Long,
     )
 
     fun shareUrl(context: Context, media3Id: String, playlistUri: String, cacheKey: String?): String? {
         if (media3Id.isBlank() || playlistUri.isBlank()) return null
         if (!ensureStarted()) return null
-        val id = media3Id.hashCode().toUInt().toString(16)
+        evictExpired()
+        val id = routeIdFor(media3Id)
+        val token = newToken()
         val app = context.applicationContext
-        routes[id] = Route(app, media3Id, playlistUri, cacheKey?.takeIf { it.isNotBlank() })
-        val probe = readPlaylist(routes[id]!!, playlistUri, cacheKey?.takeIf { it.isNotBlank() })
+        val route = Route(
+            appContext = app,
+            media3Id = media3Id,
+            playlistUri = playlistUri,
+            cacheKey = cacheKey?.takeIf { it.isNotBlank() },
+            token = token,
+            expiresAtMs = System.currentTimeMillis() + ROUTE_TTL_MS,
+        )
+        routes[id] = route
+        val probe = readPlaylist(route, playlistUri, cacheKey?.takeIf { it.isNotBlank() })
             ?: return null
         if (!OfflinePlaylistRewrite.looksLikePlaylist(probe)) return null
-        return "http://127.0.0.1:$port/$id/index.m3u8"
+        return "http://127.0.0.1:$port/$id/index.m3u8?t=$token"
+    }
+
+    private fun routeIdFor(media3Id: String): String =
+        Base64.encodeToString(
+            media3Id.toByteArray(Charsets.UTF_8),
+            Base64.URL_SAFE or Base64.NO_WRAP or Base64.NO_PADDING,
+        )
+
+    private fun newToken(): String {
+        val bytes = ByteArray(16)
+        secureRandom.nextBytes(bytes)
+        return Base64.encodeToString(bytes, Base64.URL_SAFE or Base64.NO_WRAP or Base64.NO_PADDING)
+    }
+
+    private fun evictExpired() {
+        val now = System.currentTimeMillis()
+        routes.entries.removeIf { it.value.expiresAtMs <= now }
     }
 
     private fun ensureStarted(): Boolean {
@@ -88,12 +120,24 @@ object OfflineCacheProxy {
                 val header = reader.readLine() ?: break
                 if (header.isEmpty()) break
             }
-            val path = request.split(' ').getOrNull(1)?.substringBefore('?').orEmpty()
-            val query = request.split(' ').getOrNull(1)?.substringAfter('?', missingDelimiterValue = "").orEmpty()
+            val rawPath = request.split(' ').getOrNull(1).orEmpty()
+            val path = rawPath.substringBefore('?')
+            val query = rawPath.substringAfter('?', missingDelimiterValue = "")
             val parts = path.trim('/').split('/')
-            val route = parts.getOrNull(0)?.let { routes[it] }
+            val routeId = parts.getOrNull(0).orEmpty()
+            val route = routes[routeId]
             if (route == null) {
                 writeStatus(client, 404, "text/plain", "missing".toByteArray())
+                return
+            }
+            if (route.expiresAtMs <= System.currentTimeMillis()) {
+                routes.remove(routeId)
+                writeStatus(client, 404, "text/plain", "expired".toByteArray())
+                return
+            }
+            val token = queryParam(query, "t")
+            if (token.isNullOrBlank() || token != route.token) {
+                writeStatus(client, 403, "text/plain", "forbidden".toByteArray())
                 return
             }
             if (parts.getOrNull(1) == "index.m3u8" || parts.size == 1) {
@@ -103,13 +147,13 @@ object OfflineCacheProxy {
                     return
                 }
                 val rewritten = OfflinePlaylistRewrite.rewrite(playlist, route.playlistUri) { absolute ->
-                    segmentUrl(routeId(route), absolute)
+                    segmentUrl(routeId, route.token, absolute)
                 }
                 writeStatus(client, 200, "application/vnd.apple.mpegurl", rewritten.toByteArray(Charsets.UTF_8))
                 return
             }
-            val encoded = query.substringAfter("u=", "").substringBefore('&')
-            val target = decodeUrl(encoded)
+            val encoded = queryParam(query, "u")
+            val target = decodeUrl(encoded.orEmpty())
             if (target.isNullOrBlank()) {
                 writeStatus(client, 400, "text/plain", "bad target".toByteArray())
                 return
@@ -117,7 +161,7 @@ object OfflineCacheProxy {
             val nested = readPlaylist(route, target, cacheKey = null)
             if (nested != null && OfflinePlaylistRewrite.looksLikePlaylist(nested)) {
                 val rewritten = OfflinePlaylistRewrite.rewrite(nested, target) { absolute ->
-                    segmentUrl(routeId(route), absolute)
+                    segmentUrl(routeId, route.token, absolute)
                 }
                 writeStatus(client, 200, "application/vnd.apple.mpegurl", rewritten.toByteArray(Charsets.UTF_8))
                 return
@@ -126,16 +170,19 @@ object OfflineCacheProxy {
         }
     }
 
-    private fun routeId(route: Route): String =
-        routes.entries.firstOrNull { it.value.media3Id == route.media3Id }?.key
-            ?: route.media3Id.hashCode().toUInt().toString(16)
+    private fun queryParam(query: String, key: String): String? {
+        if (query.isBlank()) return null
+        return query.split('&').firstOrNull { it.startsWith("$key=") }
+            ?.substringAfter('=')
+            ?.takeIf { it.isNotBlank() }
+    }
 
-    private fun segmentUrl(routeId: String, absolute: String): String {
+    private fun segmentUrl(routeId: String, token: String, absolute: String): String {
         val encoded = Base64.encodeToString(
             absolute.toByteArray(Charsets.UTF_8),
             Base64.URL_SAFE or Base64.NO_WRAP or Base64.NO_PADDING,
         )
-        return "http://127.0.0.1:$port/$routeId/seg?u=$encoded"
+        return "http://127.0.0.1:$port/$routeId/seg?t=$token&u=$encoded"
     }
 
     private fun decodeUrl(encoded: String): String? {
@@ -209,7 +256,12 @@ object OfflineCacheProxy {
     }
 
     private fun writeStatus(client: Socket, code: Int, type: String, body: ByteArray) {
-        val reason = if (code == 200) "OK" else "ERR"
+        val reason = when (code) {
+            200 -> "OK"
+            403 -> "Forbidden"
+            404 -> "Not Found"
+            else -> "ERR"
+        }
         val header = "HTTP/1.1 $code $reason\r\nContent-Type: $type\r\nContent-Length: ${body.size}\r\nConnection: close\r\n\r\n"
         runCatching {
             val out = client.getOutputStream()

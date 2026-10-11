@@ -63,19 +63,29 @@ object DownloadStorage {
                 location() == DownloadStorageLocation.REMOVABLE &&
                     !hasRemovableStorage(context) ->
                     R.string.settings_download_storage_removable_unavailable
-                location() == DownloadStorageLocation.CUSTOM_FOLDER &&
-                    !DownloadTreeAccess.validateCustomStorage(context) &&
-                    DownloadTreeAccess.hasTree() &&
-                    !DownloadTreeAccess.hasPersistedPermission(context) ->
-                    R.string.settings_download_storage_permission_lost
-                location() == DownloadStorageLocation.CUSTOM_FOLDER &&
-                    !DownloadTreeAccess.validateCustomStorage(context) ->
-                    R.string.settings_download_storage_unavailable
+                location() == DownloadStorageLocation.CUSTOM_FOLDER -> {
+                    val health = DownloadTreeAccess.customStorageHealth(context)
+                    when {
+                        // Volume cache still writable: grant loss is a warning, not a block.
+                        health.volumeOk -> null
+                        health.hasTree && !health.grantOk ->
+                            R.string.settings_download_storage_permission_lost
+                        else -> R.string.settings_download_storage_unavailable
+                    }
+                }
                 !isStorageAvailable(context) ->
                     R.string.settings_download_storage_unavailable
                 else -> null
             }
         }.getOrNull()
+    }
+
+    /** True when PUBLIC_MOVIES is selected but writes fall back to app-external storage. */
+    fun isPublicMoviesFallback(context: Context): Boolean {
+        if (location() != DownloadStorageLocation.PUBLIC_MOVIES) return false
+        val actual = downloadsDir(context).absolutePath
+        val preferred = publicMoviesDownloads().absolutePath
+        return !actual.startsWith(preferred)
     }
 
     private fun appExternalDownloads(app: Context): File {
@@ -160,6 +170,7 @@ object DownloadStorage {
         val cachePath = downloadsDir(context).absolutePath
         return when (location()) {
             DownloadStorageLocation.CUSTOM_FOLDER -> {
+                val health = DownloadTreeAccess.customStorageHealth(context)
                 val treeName = DownloadTreeAccess.displayName(context)
                 val volume = DownloadTreeAccess.volumeLabel(
                     context,
@@ -174,14 +185,18 @@ object DownloadStorage {
                         append(context.getString(R.string.settings_download_storage_volume_label, volume))
                         append('\n')
                     }
-                    if (DownloadTreeAccess.hasTree() &&
-                        !DownloadTreeAccess.hasPersistedPermission(context) &&
-                        DownloadTreeAccess.validateCustomStorage(context)
-                    ) {
+                    if (health.volumeOk && !health.grantOk && health.hasTree) {
                         append(context.getString(R.string.settings_download_storage_permission_lost))
                         append('\n')
                     }
                     append(context.getString(R.string.settings_download_storage_cache_path, cachePath))
+                }
+            }
+            DownloadStorageLocation.PUBLIC_MOVIES -> {
+                if (isPublicMoviesFallback(context)) {
+                    context.getString(R.string.settings_download_storage_public_fallback, cachePath)
+                } else {
+                    cachePath
                 }
             }
             DownloadStorageLocation.REMOVABLE ->
@@ -216,16 +231,32 @@ object DownloadStorage {
     fun isLowSpace(context: Context): Boolean =
         freeBytes(context) < MIN_FREE_BYTES || isOverSoftLimit(context)
 
-    fun formatBytes(bytes: Long): String {
-        if (bytes < 0) return "—"
+    fun formatBytes(bytes: Long): String = formatBytes(context = null, bytes = bytes)
+
+    fun formatBytes(context: Context?, bytes: Long): String {
+        if (bytes < 0) {
+            return context?.getString(R.string.download_size_unknown) ?: "—"
+        }
         val kb = 1024.0
         val mb = kb * 1024
         val gb = mb * 1024
         return when {
-            bytes >= gb -> String.format("%.1f GB", bytes / gb)
-            bytes >= mb -> String.format("%.0f MB", bytes / mb)
-            bytes >= kb -> String.format("%.0f KB", bytes / kb)
-            else -> "$bytes B"
+            bytes >= gb -> {
+                val value = bytes / gb
+                context?.getString(R.string.download_size_gb, value)
+                    ?: String.format("%.1f GB", value)
+            }
+            bytes >= mb -> {
+                val value = bytes / mb
+                context?.getString(R.string.download_size_mb, value)
+                    ?: String.format("%.0f MB", value)
+            }
+            bytes >= kb -> {
+                val value = bytes / kb
+                context?.getString(R.string.download_size_kb, value)
+                    ?: String.format("%.0f KB", value)
+            }
+            else -> context?.getString(R.string.download_size_b, bytes) ?: "$bytes B"
         }
     }
 

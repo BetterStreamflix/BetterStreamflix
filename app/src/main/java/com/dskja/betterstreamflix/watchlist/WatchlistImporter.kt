@@ -2,6 +2,7 @@ package com.dskja.betterstreamflix.watchlist
 
 import android.content.Context
 import android.util.Log
+import com.dskja.betterstreamflix.R
 import com.dskja.betterstreamflix.database.AppDatabase
 import com.dskja.betterstreamflix.models.TvShow
 import com.dskja.betterstreamflix.providers.AniWorldProvider
@@ -244,7 +245,10 @@ object WatchlistImporter {
         items: Collection<ImportedItem>,
     ): Result = withContext(Dispatchers.IO) {
         if (items.isEmpty()) {
-            return@withContext Result(importedCount = 0, errors = listOf("No watchlist items found"))
+            return@withContext Result(
+                importedCount = 0,
+                errors = listOf(context.getString(R.string.watchlist_import_empty)),
+            )
         }
         val provider = providerFor(source)
         val database = AppDatabase.getInstanceForProvider(provider.name, context)
@@ -276,23 +280,30 @@ object WatchlistImporter {
 
     /**
      * OkHttp fallback using WebView CookieManager (via [NetworkClient.cookieJar]).
+     *
+     * @param baseOverride optional WebView / mirror origin (e.g. CUII proxy) so HTTP
+     * fallback does not ignore a successful host failover.
      */
     suspend fun importViaHttp(
         context: Context,
         source: Source,
         cookieHeader: String,
+        baseOverride: String? = null,
     ): Result = withContext(Dispatchers.IO) {
-        val baseUrl = baseUrlFor(source)
+        val baseUrl = (baseOverride?.trimEnd('/')?.plus("/")
+            ?.takeIf { it.isNotBlank() && it != "/" }
+            ?: baseUrlFor(source))
         val seen = linkedMapOf<String, ImportedItem>()
         val errors = mutableListOf<String>()
         var pages = 0
         var nextOverride: String? = null
+        var moviesSkipped = 0
 
         for (page in 1..MAX_PAGES) {
             val urls = if (nextOverride != null) {
                 listOf(nextOverride!!)
             } else {
-                watchlistUrls(source, page)
+                watchlistUrls(source, page, baseOverride)
             }
             var pageItems = emptyList<ImportedItem>()
             var pageHtml: String? = null
@@ -302,13 +313,14 @@ object WatchlistImporter {
                 runCatching {
                     val html = fetchHtml(url, cookieHeader, baseUrl, source)
                     if (looksLikeLoginPage(html, url)) {
-                        errors += "Not logged in (redirected to login)"
+                        errors += context.getString(R.string.watchlist_import_not_logged_in)
                         return@withContext Result(0, errors = errors)
                     }
                     if (looksLikeChallengePage(html)) {
-                        errors += "Bot challenge still active — finish the check in the WebView"
+                        errors += context.getString(R.string.watchlist_import_challenge)
                         return@withContext Result(0, errors = errors)
                     }
+                    moviesSkipped += countMovieLinks(html, baseUrl)
                     val parsed = parseItems(html, baseUrl, source)
                     if (parsed.isNotEmpty() || pageHtml == null) {
                         pageHtml = html
@@ -326,6 +338,7 @@ object WatchlistImporter {
                 if (page == 1) {
                     runCatching {
                         val html = fetchHtml(baseUrl + "account", cookieHeader, baseUrl, source)
+                        moviesSkipped += countMovieLinks(html, baseUrl)
                         pageItems = parseItems(html, baseUrl, source)
                         pageHtml = html
                         pageUrl = baseUrl + "account"
@@ -349,7 +362,11 @@ object WatchlistImporter {
         }
 
         val persisted = persist(context, source, seen.values)
-        persisted.copy(pagesScraped = pages, errors = errors + persisted.errors)
+        persisted.copy(
+            pagesScraped = pages,
+            skippedCount = moviesSkipped.coerceAtLeast(persisted.skippedCount),
+            errors = errors + persisted.errors,
+        )
     }
 
     /** Convenience: persist already-parsed items from WebView scrape. */
@@ -359,17 +376,31 @@ object WatchlistImporter {
         items: Collection<ImportedItem>,
         pagesScraped: Int,
         errors: List<String> = emptyList(),
+        moviesSkipped: Int = 0,
     ): Result {
         val persisted = persist(context, source, items)
-        return persisted.copy(pagesScraped = pagesScraped, errors = errors + persisted.errors)
+        return persisted.copy(
+            pagesScraped = pagesScraped,
+            skippedCount = moviesSkipped.coerceAtLeast(persisted.skippedCount),
+            errors = errors + persisted.errors,
+        )
     }
 
-    @Deprecated("Use importViaHttp or WebView scrape + importParsed", ReplaceWith("importViaHttp(context, source, cookieHeader)"))
-    suspend fun import(
-        context: Context,
-        source: Source,
-        cookieHeader: String,
-    ): Result = importViaHttp(context, source, cookieHeader)
+    /** Count `/film/` watchlist links skipped because Favorites are TV-series only. */
+    fun countMovieLinks(html: String, baseUrl: String): Int {
+        if (html.isBlank()) return 0
+        val doc = Jsoup.parse(html, baseUrl)
+        val seen = linkedSetOf<String>()
+        doc.select("a[href*=/film/], a[data-href*=/film/]").forEach { link ->
+            val href = link.attr("abs:href").ifBlank {
+                link.attr("href").ifBlank { link.attr("data-href") }
+            }
+            val absolute = absolutize(href, baseUrl) ?: return@forEach
+            val path = pathOf(absolute) ?: return@forEach
+            if (isMoviePath(path)) seen.add(path.substringBefore('?'))
+        }
+        return seen.size
+    }
 
     private fun toItemFromCard(card: Element, baseUrl: String, source: Source): ImportedItem? {
         if (card.tagName().equals("a", ignoreCase = true)) {

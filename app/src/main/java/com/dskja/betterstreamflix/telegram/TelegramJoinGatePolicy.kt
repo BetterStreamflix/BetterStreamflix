@@ -4,10 +4,13 @@ import com.dskja.betterstreamflix.support.SupportUrls
 import com.dskja.betterstreamflix.utils.UserPreferences
 
 /**
- * Optional community invite (mobile only).
+ * Soft community invite (mobile only) — dismissible, never a hard lock.
  *
  * Shown once per [CHANNEL_VERSION] until the user dismisses / continues.
  * Joining Telegram or Discord is optional — Close always works.
+ *
+ * Preference keys retain historical `telegramJoinGate*` names for migration;
+ * [Phase] names describe invite state, not an access gate.
  */
 object TelegramJoinGatePolicy {
 
@@ -25,13 +28,19 @@ object TelegramJoinGatePolicy {
     @Deprecated("Invite is dismissible; no dwell required")
     val MIN_OPEN_DWELL_MS: Long = 0L
 
+    /**
+     * Soft invite lifecycle.
+     * - [INVITE_PENDING]: invite should be shown
+     * - [INVITE_OPENED]: user opened a community link (optional bookkeeping)
+     * - [DISMISSED]: user continued / closed without being forced to join
+     */
     enum class Phase {
-        LOCKED,
-        OPENED,
-        UNLOCKED,
+        INVITE_PENDING,
+        INVITE_OPENED,
+        DISMISSED,
     }
 
-    fun phase(): Phase = if (isUnlocked()) Phase.UNLOCKED else Phase.LOCKED
+    fun phase(): Phase = if (isUnlocked()) Phase.DISMISSED else Phase.INVITE_PENDING
 
     fun shouldShowGate(): Boolean = !isUnlocked()
 

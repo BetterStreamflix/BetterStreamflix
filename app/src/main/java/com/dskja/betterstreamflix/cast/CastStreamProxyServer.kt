@@ -28,6 +28,7 @@ import java.util.concurrent.TimeUnit
  *
  * Auth: every `/p` request must carry the per-instance session token issued by [wrap]
  * (H-CAST-1). Private/loopback targets are rejected to limit open-relay SSRF.
+ * Redirects are followed manually with per-hop allowlist checks (CAST-P1-3).
  */
 class CastStreamProxyServer(
     private val httpClient: OkHttpClient = defaultClient(),
@@ -58,12 +59,17 @@ class CastStreamProxyServer(
 
     /** Build a Cast-reachable URL that proxies [originalUrl] with the current headers. */
     fun wrap(originalUrl: String): String {
-        runCatching { java.net.URI(originalUrl).host?.lowercase() }
-            .getOrNull()
-            ?.takeIf { it.isNotBlank() }
-            ?.let { allowedHosts.add(it) }
+        registerAllowedHost(originalUrl)
         val base = publicBaseUrl() ?: return originalUrl
         return CastPlaylistRewriter.proxyUrl(base, originalUrl, sessionToken)
+    }
+
+    /** Register a host discovered while rewriting playlists (CAST-P2-1). */
+    fun registerAllowedHost(url: String) {
+        runCatching { java.net.URI(url).host?.lowercase() }
+            .getOrNull()
+            ?.takeIf { it.isNotBlank() && !isAlwaysBlockedHost(it) }
+            ?.let { allowedHosts.add(it) }
     }
 
     /** Serve a local subtitle/media file to Chromecast over LAN HTTP. */
@@ -85,8 +91,15 @@ class CastStreamProxyServer(
                         it.addHeader("Access-Control-Allow-Headers", "Range, Content-Type")
                     }
                 }
-                session.uri == "/health" ->
-                    newFixedLengthResponse(Response.Status.OK, MIME_PLAINTEXT, "ok")
+                session.uri == "/health" || session.uri.startsWith("/health") -> {
+                    // Require session token — unauthenticated health was an open probe (CAST-P3-1).
+                    val presented = session.parms["t"].orEmpty()
+                    if (presented.isBlank() || presented != sessionToken) {
+                        newFixedLengthResponse(Response.Status.UNAUTHORIZED, MIME_PLAINTEXT, "unauthorized")
+                    } else {
+                        newFixedLengthResponse(Response.Status.OK, MIME_PLAINTEXT, "ok")
+                    }
+                }
                 session.uri == "/f" || session.uri.startsWith("/f") -> serveLocal(session)
                 session.uri == "/p" || session.uri.startsWith("/p") -> proxy(session)
                 else -> newFixedLengthResponse(Response.Status.NOT_FOUND, MIME_PLAINTEXT, "not found")
@@ -96,7 +109,7 @@ class CastStreamProxyServer(
             newFixedLengthResponse(
                 Response.Status.INTERNAL_ERROR,
                 MIME_PLAINTEXT,
-                e.message ?: "proxy error",
+                "proxy error",
             )
         }
     }
@@ -171,29 +184,36 @@ class CastStreamProxyServer(
             requestBuilder.header(key, value)
         }
 
-        val upstream = httpClient.newCall(requestBuilder.build()).execute()
+        val upstream = executeWithValidatedRedirects(requestBuilder.build())
+            ?: return newFixedLengthResponse(Response.Status.FORBIDDEN, MIME_PLAINTEXT, "blocked redirect")
         var transferOwnershipToPump = false
         try {
             val body = upstream.body
             val contentType = body?.contentType()?.toString()
                 ?: upstream.header("Content-Type")
                 ?: "application/octet-stream"
+            val finalUrl = upstream.request.url.toString()
 
             if (!upstream.isSuccessful && body == null) {
                 return newFixedLengthResponse(
                     Response.Status.lookup(upstream.code) ?: Response.Status.INTERNAL_ERROR,
                     MIME_PLAINTEXT,
-                    "upstream ${upstream.code}",
+                    "upstream error",
                 )
             }
 
             val looksLikePlaylist = contentType.contains("mpegurl", ignoreCase = true) ||
                 contentType.contains("m3u8", ignoreCase = true) ||
-                target.substringBefore('?').endsWith(".m3u8", ignoreCase = true)
+                contentType.contains("dash+xml", ignoreCase = true) ||
+                contentType.contains("mpd", ignoreCase = true) ||
+                finalUrl.substringBefore('?').endsWith(".m3u8", ignoreCase = true) ||
+                finalUrl.substringBefore('?').endsWith(".mpd", ignoreCase = true) ||
+                target.substringBefore('?').endsWith(".m3u8", ignoreCase = true) ||
+                target.substringBefore('?').endsWith(".mpd", ignoreCase = true)
 
             if (looksLikePlaylist) {
                 val bytes = body?.bytes() ?: ByteArray(0)
-                val rewritten = maybeRewritePlaylist(target, contentType, bytes)
+                val rewritten = maybeRewritePlaylist(finalUrl.ifBlank { target }, contentType, bytes)
                 val response = newFixedLengthResponse(
                     Response.Status.lookup(upstream.code) ?: Response.Status.OK,
                     contentType,
@@ -215,7 +235,7 @@ class CastStreamProxyServer(
                         input.copyTo(pipedOut, 64 * 1024)
                     }
                 } catch (e: Exception) {
-                    Log.w(TAG, "Cast proxy stream pump ended: ${e.message}")
+                    Log.w(TAG, "Cast proxy stream pump ended")
                 } finally {
                     runCatching { pipedOut.close() }
                     runCatching { upstream.close() }
@@ -243,6 +263,32 @@ class CastStreamProxyServer(
         }
     }
 
+    /**
+     * Follow redirects manually so each hop is re-validated against the allowlist
+     * and always-blocked hosts (metadata / loopback).
+     */
+    private fun executeWithValidatedRedirects(initial: Request): okhttp3.Response? {
+        var request = initial
+        repeat(MAX_REDIRECTS + 1) { hop ->
+            val response = httpClient.newCall(request).execute()
+            if (!response.isRedirect) return response
+            val location = response.header("Location").orEmpty()
+            response.close()
+            if (location.isBlank()) return null
+            val nextUrl = runCatching {
+                java.net.URI(request.url.toString()).resolve(location).toString()
+            }.getOrDefault(location)
+            if (!nextUrl.startsWith("http://") && !nextUrl.startsWith("https://")) return null
+            if (isBlockedProxyTarget(nextUrl, allowedHosts)) {
+                Log.w(TAG, "Blocked cast proxy redirect hop=$hop")
+                return null
+            }
+            registerAllowedHost(nextUrl)
+            request = request.newBuilder().url(nextUrl).build()
+        }
+        return null
+    }
+
     private fun decorate(response: Response, upstream: okhttp3.Response) {
         upstream.header("Accept-Ranges")?.let { response.addHeader("Accept-Ranges", it) }
         upstream.header("Content-Range")?.let { response.addHeader("Content-Range", it) }
@@ -252,10 +298,21 @@ class CastStreamProxyServer(
 
     private fun maybeRewritePlaylist(playlistUrl: String, contentType: String, bytes: ByteArray): ByteArray {
         val text = runCatching { String(bytes, StandardCharsets.UTF_8) }.getOrNull() ?: return bytes
-        if (!text.contains("#EXTM3U")) return bytes
         val base = publicBaseUrl() ?: return bytes
-        return CastPlaylistRewriter.rewrite(text, playlistUrl, base, sessionToken)
-            .toByteArray(StandardCharsets.UTF_8)
+        val looksM3u = text.contains("#EXTM3U")
+        val looksMpd = text.contains("<MPD") || contentType.contains("dash", ignoreCase = true) ||
+            playlistUrl.substringBefore('?').endsWith(".mpd", ignoreCase = true)
+        if (!looksM3u && !looksMpd) return bytes
+        val rewritten = if (looksMpd && !looksM3u) {
+            CastPlaylistRewriter.rewriteMpd(text, playlistUrl, base, sessionToken) { url ->
+                registerAllowedHost(url)
+            }
+        } else {
+            CastPlaylistRewriter.rewrite(text, playlistUrl, base, sessionToken) { url ->
+                registerAllowedHost(url)
+            }
+        }
+        return rewritten.toByteArray(StandardCharsets.UTF_8)
     }
 
     override fun stop() {
@@ -268,14 +325,24 @@ class CastStreamProxyServer(
 
     companion object {
         private const val TAG = "CastStreamProxy"
+        private const val MAX_REDIRECTS = 5
 
         private fun defaultClient(): OkHttpClient =
             OkHttpClient.Builder()
-                .followRedirects(true)
-                .followSslRedirects(true)
+                // Manual redirect validation in [executeWithValidatedRedirects] (CAST-P1-3).
+                .followRedirects(false)
+                .followSslRedirects(false)
                 .connectTimeout(20, TimeUnit.SECONDS)
                 .readTimeout(0, TimeUnit.SECONDS)
                 .build()
+
+        private fun isAlwaysBlockedHost(host: String): Boolean {
+            val h = host.lowercase()
+            if (h == "localhost" || h.endsWith(".localhost") || h == "0.0.0.0") return true
+            if (h == "::1" || h == "[::1]") return true
+            if (h == "169.254.169.254" || h == "metadata.google.internal") return true
+            return false
+        }
 
         /**
          * Reject loopback / link-local / metadata targets. Site-local (RFC1918) is
@@ -286,10 +353,7 @@ class CastStreamProxyServer(
             allowedHosts: Set<String> = emptySet(),
         ): Boolean {
             val host = runCatching { java.net.URI(url).host }.getOrNull()?.lowercase() ?: return true
-            if (host == "localhost" || host.endsWith(".localhost") || host == "0.0.0.0") return true
-            if (host == "::1" || host == "[::1]") return true
-            // AWS/GCP metadata — always blocked.
-            if (host == "169.254.169.254" || host == "metadata.google.internal") return true
+            if (isAlwaysBlockedHost(host)) return true
             if (allowedHosts.contains(host)) return false
             val inet = runCatching { InetAddress.getByName(host) }.getOrNull() ?: return false
             return inet.isAnyLocalAddress ||

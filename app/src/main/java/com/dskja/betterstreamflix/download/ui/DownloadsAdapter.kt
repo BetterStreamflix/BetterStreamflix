@@ -270,7 +270,7 @@ class DownloadsAdapter(
             progressLine.text = if (item.state == DownloadItemState.FAILED) {
                 item.failedSummary(itemView.context)
             } else {
-                item.progressText
+                item.progressText(itemView.context)
             }
             progressLine.contentDescription = itemView.context.getString(
                 R.string.downloads_progress_a11y,

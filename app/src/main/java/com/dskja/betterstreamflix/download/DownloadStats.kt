@@ -61,8 +61,8 @@ object DownloadStats {
     }
 
     fun storageSummary(context: Context): String {
-        val used = DownloadStorage.formatBytes(DownloadStorage.usedBytes(context))
-        val free = DownloadStorage.formatBytes(DownloadStorage.freeBytes(context))
+        val used = DownloadStorage.formatBytes(context, DownloadStorage.usedBytes(context))
+        val free = DownloadStorage.formatBytes(context, DownloadStorage.freeBytes(context))
         val soft = UserPreferences.downloadSoftLimitGb
         return if (soft > 0) {
             context.getString(

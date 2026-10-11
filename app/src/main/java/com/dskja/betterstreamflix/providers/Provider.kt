@@ -50,10 +50,17 @@ interface IptvProvider : Provider {
             if (aroundId != null && out.containsKey(aroundId) && out.size >= limit) break
             page++
         }
+        val list = out.values.toList()
+        val stub = aroundId
+            ?.takeIf { it.isNotBlank() && !out.containsKey(it) }
+            ?.let { id ->
+                com.dskja.betterstreamflix.iptv.IptvLiveSession.Channel(id = id, name = id)
+            }
         return com.dskja.betterstreamflix.iptv.IptvChannelWindow.fromChannels(
-            out.values.toList(),
+            list,
             aroundId,
             limit,
+            forceInclude = stub,
         )
     }
 }

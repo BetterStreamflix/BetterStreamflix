@@ -14,11 +14,11 @@ import com.dskja.betterstreamflix.utils.UserPreferences
 import java.lang.ref.WeakReference
 
 /**
- * Mobile-only Telegram join gate.
+ * Mobile-only soft Telegram/Discord community invite.
  *
- * Primary UI: [TelegramJoinGateOverlay] — a hard View on [android.R.id.content].
- * Retries while locked and Main is started until the overlay is attached.
- * TV is intentionally excluded.
+ * Primary UI: [TelegramJoinGateOverlay] on [android.R.id.content].
+ * Retries while the invite should show and Main is started until the overlay is attached.
+ * Dismissible — never blocks the app permanently. TV is intentionally excluded.
  */
 object TelegramJoinGateController {
 
@@ -45,7 +45,7 @@ object TelegramJoinGateController {
 
     fun isBlocking(): Boolean {
         pruneStaleLaunchLock()
-        // Only while the invite UI is actually on screen (dismissible, not a hard lock).
+        // Only while the invite UI is actually on screen (soft invite, not a hard lock).
         return launching || gateUiAlive
     }
 
@@ -132,7 +132,7 @@ object TelegramJoinGateController {
         if (TelegramJoinGatePolicy.isUnlocked()) {
             SupportStartupController.schedule(activity, isTv = false)
         } else if (TelegramJoinGatePolicy.shouldShowGate()) {
-            Log.w(TAG, "gate finished still locked; will relaunch on resume")
+            Log.w(TAG, "invite finished still pending; will relaunch on resume")
         }
     }
 
@@ -221,7 +221,7 @@ object TelegramJoinGateController {
                 if (retryAttempt >= MAX_RETRY_ATTEMPTS) {
                     Log.e(
                         TAG,
-                        "gate retry exhausted after $MAX_RETRY_ATTEMPTS — soft-dismissing for session",
+                        "invite retry exhausted after $MAX_RETRY_ATTEMPTS — soft-dismissing for session",
                     )
                     // Cap retries: inflate failures (historical BETTERSTREAMFLIX-3J) must
                     // not spam forever. Session dismiss keeps CHANNEL_VERSION re-prompt.

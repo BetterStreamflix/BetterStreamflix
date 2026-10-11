@@ -19,7 +19,7 @@
         app:iconSpaceReserved="false"
         app:key="p_settings_github"
         app:title="@string/settings_github"
-        android:summary="github.com/dskja/BetterStreamflix" />
+        android:summary="github.com/BetterStreamflix/BetterStreamflix" />
 
     <Preference
         app:iconSpaceReserved="false"

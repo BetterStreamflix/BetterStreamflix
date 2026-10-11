@@ -2,6 +2,10 @@ package com.dskja.betterstreamflix.download
 
 import android.content.Context
 import android.util.Log
+import com.dskja.betterstreamflix.R
+import com.dskja.betterstreamflix.models.Episode
+import com.dskja.betterstreamflix.models.Season
+import com.dskja.betterstreamflix.models.TvShow
 import com.dskja.betterstreamflix.models.Video
 import com.dskja.betterstreamflix.utils.UserPreferences
 import org.json.JSONObject
@@ -82,7 +86,7 @@ object SmartDownloadsManager {
     private suspend fun enqueueNextEpisode(context: Context, current: Video.Type.Episode) {
         val provider = UserPreferences.currentProvider ?: return
         if (provider is com.dskja.betterstreamflix.providers.IptvProvider) return
-        if (UserPreferences.downloadWifiOnly && DownloadConnectivityMonitor.isMetered(context)) return
+        if (DownloadConnectivityMonitor.shouldHoldForWifiOnly(context)) return
         if (!DownloadStorage.hasEnoughSpace(context)) return
         if (DownloadConnectivityMonitor.current(context).type == DownloadNetworkType.NONE) return
 
@@ -95,58 +99,56 @@ object SmartDownloadsManager {
         }
         if (existing != null && existing.state != DownloadItemState.FAILED.name) return
 
-        val episodeType = Video.Type.Episode(
+        val episode = Episode(
             id = next.id,
             number = next.number,
             title = next.title,
             poster = next.poster,
             overview = next.overview,
-            tvShow = Video.Type.Episode.TvShow(
+            tvShow = TvShow(
                 id = current.tvShow.id,
                 title = current.tvShow.title,
                 poster = current.tvShow.poster,
                 banner = current.tvShow.banner,
-                releaseDate = current.tvShow.releaseDate,
                 imdbId = current.tvShow.imdbId,
             ),
-            season = Video.Type.Episode.Season(
+            season = Season(
+                id = "",
                 number = next.seasonNumber,
                 title = next.seasonTitle,
             ),
         )
 
-        val servers = runCatching { provider.getServers(next.id, episodeType) }.getOrNull()
-        val server = servers?.firstOrNull() ?: return
-        val video = runCatching { provider.getVideo(server) }.getOrNull() ?: return
-        if (video.source.isBlank()) return
-
-        val contentKey = DownloadContentKey.episode(
-            providerName = provider.name,
-            tvShowId = current.tvShow.id,
-            seasonNumber = next.seasonNumber,
-            episodeNumber = next.number,
-            episodeId = next.id,
-        )
-        DownloadRepository.get(context).enqueueResolved(
-            contentKey = contentKey,
-            providerName = provider.name,
-            kind = DownloadKind.EPISODE,
-            title = current.tvShow.title,
-            subtitle = "S${next.seasonNumber.toString().padStart(2, '0')}" +
-                "E${next.number.toString().padStart(2, '0')}" +
-                (next.title?.let { " · $it" } ?: ""),
-            posterUrl = next.poster ?: current.tvShow.poster.orEmpty(),
-            videoTypeJson = DownloadController.serializeVideoType(episodeType),
-            serverName = server.name,
-            serverId = server.id,
-            qualityLabel = "Auto",
-            mimeType = video.type,
-            streamUrl = video.source,
-            headers = video.headers.orEmpty(),
-            subtitleUrls = video.subtitles.map { it.label to it.file },
-            smartEnqueued = true,
-        )
-        Log.i(TAG, "smart-downloaded next episode S${next.seasonNumber}E${next.number}")
+        val prepared = DownloadController.prepareEpisode(context, episode)
+        when (prepared) {
+            is DownloadEnqueueOutcome.NeedsOptions -> {
+                val trackIdx = when (UserPreferences.downloadQualityPreset) {
+                    DownloadQualityPreset.DATA_SAVER ->
+                        prepared.prepared.trackOptions.lastIndex.coerceAtLeast(0)
+                    else -> 0
+                }.coerceIn(0, prepared.prepared.trackOptions.lastIndex.coerceAtLeast(0))
+                val label = prepared.prepared.trackOptions.getOrNull(trackIdx)?.label
+                    ?: context.getString(R.string.download_quality_auto)
+                val confirmed = DownloadController.confirmEnqueue(
+                    context = context,
+                    prepared = prepared.prepared,
+                    serverIndex = prepared.prepared.selectedServerIndex,
+                    trackIndex = trackIdx,
+                    qualityLabel = label,
+                    smartEnqueued = true,
+                )
+                if (confirmed is DownloadEnqueueOutcome.Started) {
+                    Log.i(TAG, "smart-downloaded next episode S${next.seasonNumber}E${next.number}")
+                }
+            }
+            is DownloadEnqueueOutcome.Started -> {
+                DownloadRepository.get(context).upsert(
+                    prepared.item.copy(smartEnqueued = true),
+                )
+                Log.i(TAG, "smart-downloaded next episode S${next.seasonNumber}E${next.number}")
+            }
+            else -> Unit
+        }
     }
 
     private data class NextEpisode(

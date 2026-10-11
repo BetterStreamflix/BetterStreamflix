@@ -78,12 +78,12 @@ object DownloadController {
             val provider = UserPreferences.currentProvider
                 ?: return@withContext DownloadEnqueueOutcome.Failed(
                     DownloadErrorCode.UNKNOWN,
-                    "No provider",
+                    context.getString(R.string.download_error_no_provider),
                 )
             if (provider is IptvProvider) {
                 return@withContext DownloadEnqueueOutcome.Failed(
                     DownloadErrorCode.IPTV,
-                    "Live TV cannot be downloaded",
+                    context.getString(R.string.download_error_iptv),
                 )
             }
             val contentKey = DownloadContentKey.movie(provider.name, movie.id)
@@ -115,18 +115,18 @@ object DownloadController {
             val provider = UserPreferences.currentProvider
                 ?: return@withContext DownloadEnqueueOutcome.Failed(
                     DownloadErrorCode.UNKNOWN,
-                    "No provider",
+                    context.getString(R.string.download_error_no_provider),
                 )
             if (provider is IptvProvider) {
                 return@withContext DownloadEnqueueOutcome.Failed(
                     DownloadErrorCode.IPTV,
-                    "Live TV cannot be downloaded",
+                    context.getString(R.string.download_error_iptv),
                 )
             }
             val tvShow = episode.tvShow
                 ?: return@withContext DownloadEnqueueOutcome.Failed(
                     DownloadErrorCode.UNKNOWN,
-                    "Missing show",
+                    context.getString(R.string.download_error_missing_show),
                 )
             val seasonNumber = episode.season?.number ?: 1
             val contentKey = DownloadContentKey.episode(
@@ -179,9 +179,15 @@ object DownloadController {
         video: Video,
     ): DownloadEnqueueOutcome = withContext(Dispatchers.IO) {
         val provider = UserPreferences.currentProvider
-            ?: return@withContext DownloadEnqueueOutcome.Failed(DownloadErrorCode.UNKNOWN, "No provider")
+            ?: return@withContext DownloadEnqueueOutcome.Failed(
+                DownloadErrorCode.UNKNOWN,
+                context.getString(R.string.download_error_no_provider),
+            )
         if (provider is IptvProvider) {
-            return@withContext DownloadEnqueueOutcome.Failed(DownloadErrorCode.IPTV, "Live TV cannot be downloaded")
+            return@withContext DownloadEnqueueOutcome.Failed(
+                DownloadErrorCode.IPTV,
+                context.getString(R.string.download_error_iptv),
+            )
         }
         guardNetworkAndStorage(context)?.let { return@withContext it }
 
@@ -248,15 +254,17 @@ object DownloadController {
         serverIndex: Int,
         trackIndex: Int,
         qualityLabel: String,
+        smartEnqueued: Boolean = false,
     ): DownloadEnqueueOutcome = withContext(Dispatchers.IO) {
         guardNetworkAndStorage(context)?.let { return@withContext it }
         val candidate = prepared.servers.getOrNull(serverIndex)
             ?: prepared.servers.firstOrNull()
             ?: return@withContext DownloadEnqueueOutcome.Failed(
                 DownloadErrorCode.NO_SERVERS,
-                "No server",
+                context.getString(R.string.download_error_no_server),
             )
         val track = prepared.trackOptions.getOrNull(trackIndex)
+        val autoLabel = context.getString(R.string.download_quality_auto)
         val item = DownloadRepository.get(context).enqueueResolved(
             contentKey = prepared.contentKey,
             providerName = prepared.providerName,
@@ -267,12 +275,13 @@ object DownloadController {
             videoTypeJson = prepared.videoTypeJson,
             serverName = candidate.server.name,
             serverId = candidate.server.id,
-            qualityLabel = qualityLabel.ifBlank { track?.label ?: "Auto" },
+            qualityLabel = qualityLabel.ifBlank { track?.label ?: autoLabel },
             mimeType = candidate.video.type,
             streamUrl = candidate.video.source,
             headers = candidate.video.headers.orEmpty(),
             streamKeys = track?.streamKeys.orEmpty(),
             subtitleUrls = candidate.video.subtitles.map { it.label to it.file },
+            smartEnqueued = smartEnqueued,
         )
         DownloadEnqueueOutcome.Started(item)
     }
@@ -285,13 +294,22 @@ object DownloadController {
         onEachPrepared: suspend (DownloadPrepareResult) -> Pair<Int, Int>,
     ): DownloadEnqueueOutcome = withContext(Dispatchers.IO) {
         val provider = UserPreferences.currentProvider
-            ?: return@withContext DownloadEnqueueOutcome.Failed(DownloadErrorCode.UNKNOWN, "No provider")
+            ?: return@withContext DownloadEnqueueOutcome.Failed(
+                DownloadErrorCode.UNKNOWN,
+                context.getString(R.string.download_error_no_provider),
+            )
         if (provider is IptvProvider) {
-            return@withContext DownloadEnqueueOutcome.Failed(DownloadErrorCode.IPTV, "Live TV cannot be downloaded")
+            return@withContext DownloadEnqueueOutcome.Failed(
+                DownloadErrorCode.IPTV,
+                context.getString(R.string.download_error_iptv),
+            )
         }
         guardNetworkAndStorage(context)?.let { return@withContext it }
         if (episodes.isEmpty()) {
-            return@withContext DownloadEnqueueOutcome.Failed(DownloadErrorCode.UNKNOWN, "No episodes")
+            return@withContext DownloadEnqueueOutcome.Failed(
+                DownloadErrorCode.UNKNOWN,
+                context.getString(R.string.download_error_no_episodes),
+            )
         }
 
         val packId = DownloadContentKey.seasonPack(provider.name, tvShow.id, seasonNumber)
@@ -323,7 +341,8 @@ object DownloadController {
                         0,
                         outcome.prepared.trackOptions.lastIndex.coerceAtLeast(0),
                     )
-                    val label = outcome.prepared.trackOptions.getOrNull(trackIdx)?.label ?: "Auto"
+                    val label = outcome.prepared.trackOptions.getOrNull(trackIdx)?.label
+                        ?: context.getString(R.string.download_quality_auto)
                     val confirmed = confirmEnqueue(context, outcome.prepared, serverIdx, trackIdx, label)
                     if (confirmed is DownloadEnqueueOutcome.Started) {
                         repo.assignPack(confirmed.item.id, packId, index)
@@ -351,7 +370,7 @@ object DownloadController {
         if (started == 0) {
             DownloadEnqueueOutcome.Failed(
                 DownloadErrorCode.NO_SERVERS,
-                "No episodes queued",
+                context.getString(R.string.download_error_no_episodes_queued),
             )
         } else {
             val pack = repo.getSeasonPack(packId)
@@ -363,7 +382,12 @@ object DownloadController {
                     providerName = provider.name,
                     kind = DownloadKind.EPISODE.name,
                     title = tvShow.title,
-                    subtitle = "Season $seasonNumber · $started/${episodes.size}",
+                    subtitle = context.getString(
+                        R.string.download_season_pack_subtitle,
+                        seasonNumber,
+                        started,
+                        episodes.size,
+                    ),
                     posterUrl = tvShow.poster.orEmpty(),
                     seasonPackId = packId,
                 ),
@@ -386,10 +410,13 @@ object DownloadController {
             provider.getServers(contentId, videoType)
         } catch (e: Exception) {
             Log.e(TAG, "getServers failed", e)
-            return classifyFailure(e)
+            return classifyFailure(context, e)
         }
         if (servers.isEmpty()) {
-            return DownloadEnqueueOutcome.Failed(DownloadErrorCode.NO_SERVERS, "No servers found")
+            return DownloadEnqueueOutcome.Failed(
+                DownloadErrorCode.NO_SERVERS,
+                context.getString(R.string.download_error_no_servers),
+            )
         }
 
         val resolved = mutableListOf<ResolvedServerCandidate>()
@@ -426,8 +453,11 @@ object DownloadController {
         }
 
         if (resolved.isEmpty()) {
-            return lastError?.let { classifyFailure(it) }
-                ?: DownloadEnqueueOutcome.Failed(DownloadErrorCode.NO_SERVERS, "All servers failed")
+            return lastError?.let { classifyFailure(context, it) }
+                ?: DownloadEnqueueOutcome.Failed(
+                    DownloadErrorCode.NO_SERVERS,
+                    context.getString(R.string.download_error_all_servers_failed),
+                )
         }
 
         val tracks = prepareTrackOptions(context, resolved.first().video)
@@ -458,7 +488,7 @@ object DownloadController {
             val videoType = deserializeVideoType(entity.videoTypeJson)
                 ?: return@withContext DownloadEnqueueOutcome.Failed(
                     DownloadErrorCode.UNKNOWN,
-                    "Missing video metadata",
+                    context.getString(R.string.download_error_missing_metadata),
                 )
             DownloadRepository.get(context).remove(entity.id)
             val prepared = when (videoType) {
@@ -506,7 +536,8 @@ object DownloadController {
                         prepared.prepared,
                         prepared.prepared.selectedServerIndex,
                         trackIdx,
-                        prepared.prepared.trackOptions.getOrNull(trackIdx)?.label ?: "Auto",
+                        prepared.prepared.trackOptions.getOrNull(trackIdx)?.label
+                            ?: context.getString(R.string.download_quality_auto),
                     )
                 }
                 else -> prepared
@@ -567,7 +598,9 @@ object DownloadController {
             )
         } catch (e: Exception) {
             Log.w(TAG, "prepareTracks failed: ${e.message}")
-            listOf(DownloadTrackOption("Auto", emptyList()))
+            listOf(
+                DownloadTrackOption(context.getString(R.string.download_quality_auto), emptyList()),
+            )
         }
     }
 
@@ -631,20 +664,29 @@ object DownloadController {
             )
         }
         if (!DownloadStorage.hasEnoughSpace(context)) {
-            return DownloadEnqueueOutcome.Failed(DownloadErrorCode.NOSPACE, "Not enough storage")
+            return DownloadEnqueueOutcome.Failed(
+                DownloadErrorCode.NOSPACE,
+                context.getString(R.string.download_error_nospace),
+            )
         }
         if (DownloadStorage.isOverSoftLimit(context)) {
             return DownloadEnqueueOutcome.Failed(
                 DownloadErrorCode.NOSPACE,
-                "Download soft limit reached — free space or raise the limit in Settings",
+                context.getString(R.string.download_error_soft_limit),
             )
         }
-        if (UserPreferences.downloadWifiOnly && DownloadConnectivityMonitor.isMetered(context)) {
-            return DownloadEnqueueOutcome.Failed(DownloadErrorCode.WIFI_REQUIRED, "Wi-Fi required")
+        if (DownloadConnectivityMonitor.shouldHoldForWifiOnly(context)) {
+            return DownloadEnqueueOutcome.Failed(
+                DownloadErrorCode.WIFI_REQUIRED,
+                context.getString(R.string.download_error_wifi),
+            )
         }
         val net = DownloadConnectivityMonitor.current(context)
         if (net.type == DownloadNetworkType.NONE) {
-            return DownloadEnqueueOutcome.Failed(DownloadErrorCode.NETWORK, "No network")
+            return DownloadEnqueueOutcome.Failed(
+                DownloadErrorCode.NETWORK,
+                context.getString(R.string.download_error_network),
+            )
         }
         return null
     }
@@ -659,15 +701,20 @@ object DownloadController {
     private fun looksLikeDrm(source: String): Boolean =
         source.contains("drm", ignoreCase = true) && source.contains("license", ignoreCase = true)
 
-    private fun classifyFailure(e: Exception): DownloadEnqueueOutcome.Failed {
+    private fun classifyFailure(context: Context, e: Exception): DownloadEnqueueOutcome.Failed {
         val code = DownloadErrorClassifier.classify(e)
         val msg = e.message.orEmpty()
         val display = when (code) {
-            DownloadErrorCode.EMPTY_RESPONSE -> "Empty response"
-            DownloadErrorCode.NO_SERVERS -> "No servers found"
-            DownloadErrorCode.NOT_FOUND -> "Content not found (404)"
-            DownloadErrorCode.EXPIRED -> "Link expired"
-            DownloadErrorCode.FILE_MISSING -> "Local file missing"
+            DownloadErrorCode.EMPTY_RESPONSE ->
+                context.getString(R.string.download_error_empty_response)
+            DownloadErrorCode.NO_SERVERS ->
+                context.getString(R.string.download_error_no_servers)
+            DownloadErrorCode.NOT_FOUND ->
+                context.getString(R.string.download_error_not_found)
+            DownloadErrorCode.EXPIRED ->
+                context.getString(R.string.download_error_expired)
+            DownloadErrorCode.FILE_MISSING ->
+                context.getString(R.string.download_error_file_missing)
             else -> msg.ifBlank { code.name }
         }
         return DownloadEnqueueOutcome.Failed(code, display)
@@ -734,12 +781,4 @@ object DownloadController {
             }
         }.getOrNull()
     }
-
-    private data class Tuple5<A, B, C, D, E>(
-        val a: A,
-        val b: B,
-        val c: C,
-        val d: D,
-        val e: E,
-    )
 }

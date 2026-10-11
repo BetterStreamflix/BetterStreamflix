@@ -1,5 +1,7 @@
 package com.dskja.betterstreamflix.iptv
 
+import com.dskja.betterstreamflix.BetterStreamflixApp
+import com.dskja.betterstreamflix.R
 import com.dskja.betterstreamflix.models.TvShow
 import com.dskja.betterstreamflix.models.Video
 import com.dskja.betterstreamflix.providers.IptvProvider
@@ -29,14 +31,23 @@ object IptvLiveSession {
     private var currentId: String? = null
     @Volatile
     private var providerName: String? = null
+    /**
+     * True when the last [replaceWindow] from [listLiveChannels] returned fewer
+     * channels than requested — the full catalog is already in memory.
+     */
+    @Volatile
+    private var windowComplete: Boolean = false
 
     fun clear() {
         channels.clear()
         recentIds.clear()
         currentId = null
         providerName = null
+        windowComplete = false
         IptvZapPreloader.clear()
     }
+
+    fun isWindowComplete(): Boolean = windowComplete
 
     fun remember(list: List<Channel>, provider: Provider? = null) {
         if (list.isEmpty()) return
@@ -45,6 +56,7 @@ object IptvLiveSession {
             if (name != null && providerName != null && providerName != name) {
                 channels.clear()
                 recentIds.clear()
+                windowComplete = false
                 IptvZapPreloader.clear()
             }
             providerName = name ?: providerName
@@ -128,14 +140,18 @@ object IptvLiveSession {
     fun needsWindowRefresh(size: Int, index: Int, limit: Int = 250): Boolean {
         if (limit <= 1) return false
         if (size <= 1 || index < 0) return true
-        // Shorter than the window means the full catalog is already loaded.
-        if (size < limit) return false
+        // Explicit catalog completeness — do not infer from a short list alone.
+        if (windowComplete) return false
         val edge = 4
         return index < edge || index > size - 1 - edge
     }
 
     /** Replace the zap list with catalog order from [listLiveChannels]. */
-    fun replaceWindow(list: List<Channel>, provider: Provider? = null) {
+    fun replaceWindow(
+        list: List<Channel>,
+        provider: Provider? = null,
+        complete: Boolean? = null,
+    ) {
         if (list.isEmpty()) return
         synchronized(this) {
             val name = provider?.name
@@ -146,6 +162,9 @@ object IptvLiveSession {
             providerName = name ?: providerName
             channels.clear()
             channels.addAll(list)
+            if (complete != null) {
+                windowComplete = complete
+            }
         }
     }
 
@@ -220,9 +239,36 @@ object IptvLiveSession {
             ),
             season = Video.Type.Episode.Season(
                 number = 1,
-                title = "Live",
+                title = liveSeasonTitle(),
             ),
         )
+
+    private fun liveSeasonTitle(): String =
+        runCatching {
+            BetterStreamflixApp.instance.getString(R.string.player_live_season)
+        }.getOrDefault("Live")
+
+    /**
+     * Ensure [aroundId] is in the zap list (stub if the catalog window missed it),
+     * then mark it current. No-op when [aroundId] is blank.
+     */
+    fun ensureCurrentPresent(aroundId: String?, fallbackName: String? = null) {
+        if (aroundId.isNullOrBlank()) return
+        if (channels.any { it.id == aroundId }) {
+            setCurrent(aroundId)
+            return
+        }
+        val stub = Channel(
+            id = aroundId,
+            name = fallbackName?.takeIf { it.isNotBlank() } ?: aroundId,
+        )
+        synchronized(this) {
+            if (channels.none { it.id == aroundId }) {
+                channels.add(0, stub)
+            }
+        }
+        setCurrent(aroundId)
+    }
 
     suspend fun ensureLoaded(provider: Provider, aroundId: String?) {
         if (provider !is IptvProvider) return
@@ -238,20 +284,32 @@ object IptvLiveSession {
             contains &&
             !needsWindowRefresh(channels.size, index, limit = 250)
         ) {
-            aroundId?.let { setCurrent(it) }
+            aroundId?.let { ensureCurrentPresent(it) }
             IptvZapPreloader.warmNeighbors(provider)
             return
         }
-        val loaded = provider.listLiveChannels(aroundId = aroundId, limit = 250)
+        val limit = 250
+        val loaded = provider.listLiveChannels(aroundId = aroundId, limit = limit)
         if (loaded.isEmpty()) {
-            aroundId?.let { setCurrent(it) }
+            aroundId?.let { ensureCurrentPresent(it) }
             return
         }
-        val sameOrder = loaded.map { it.id } == channels.map { it.id }
-        if (!sameOrder || !sameProvider) {
-            replaceWindow(loaded, provider)
+        val withCurrent = if (!aroundId.isNullOrBlank() && loaded.none { it.id == aroundId }) {
+            IptvChannelWindow.fromChannels(
+                loaded,
+                aroundId = aroundId,
+                limit = limit,
+                forceInclude = Channel(id = aroundId, name = aroundId),
+            )
+        } else {
+            loaded
         }
-        aroundId?.let { setCurrent(it) }
+        val sameOrder = withCurrent.map { it.id } == channels.map { it.id }
+        if (!sameOrder || !sameProvider) {
+            // Fewer than requested ⇒ provider exhausted the catalog.
+            replaceWindow(withCurrent, provider, complete = withCurrent.size < limit)
+        }
+        aroundId?.let { ensureCurrentPresent(it) }
         IptvZapPreloader.warmNeighbors(provider)
     }
 }

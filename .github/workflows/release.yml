@@ -102,6 +102,9 @@ jobs:
                 -e "s|{{UPROT_DIRECT_API_BASE}}|$UPROT_DIRECT_API_BASE|g" \
                 -e "s|{{UPROT_DIRECT_KEY}}|$UPROT_DIRECT_KEY|g" \
                 app/src/main/cpp/native-lib.cpp.template > app/src/main/cpp/native-lib.cpp
+          elif [ -f app/src/main/cpp/native-lib.cpp.template ] && [ ! -f app/src/main/cpp/native-lib.cpp ]; then
+            # Local/CI without secrets: use template placeholders so CMake still configures.
+            cp app/src/main/cpp/native-lib.cpp.template app/src/main/cpp/native-lib.cpp
           fi
 
       - name: Make Gradle executable

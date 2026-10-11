@@ -29,9 +29,9 @@ class TelegramJoinGatePolicyTest {
     fun phaseEnumHasExpectedOrder() {
         val values = TelegramJoinGatePolicy.Phase.entries
         assertEquals(3, values.size)
-        assertEquals(TelegramJoinGatePolicy.Phase.LOCKED, values[0])
-        assertEquals(TelegramJoinGatePolicy.Phase.OPENED, values[1])
-        assertEquals(TelegramJoinGatePolicy.Phase.UNLOCKED, values[2])
+        assertEquals(TelegramJoinGatePolicy.Phase.INVITE_PENDING, values[0])
+        assertEquals(TelegramJoinGatePolicy.Phase.INVITE_OPENED, values[1])
+        assertEquals(TelegramJoinGatePolicy.Phase.DISMISSED, values[2])
     }
 
     @Test

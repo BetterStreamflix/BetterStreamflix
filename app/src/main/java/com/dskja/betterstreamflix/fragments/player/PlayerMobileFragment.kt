@@ -157,6 +157,7 @@ class PlayerMobileFragment : Fragment() {
     private var playbackListener: Player.Listener? = null
     private var castPlayer: CastPlayer? = null
     private var castEndedListener: Player.Listener? = null
+    private var castQueueExhaustedListener: (() -> Unit)? = null
     private var isCasting = false
     /** Skip one onResume auto-play after handing off to an external player. */
     private var skipNextAutoResume = false
@@ -735,7 +736,8 @@ class PlayerMobileFragment : Fragment() {
                             } else {
                                 "S${nextEpisode.season.number} E${nextEpisode.number}  •  ${nextEpisode.title}"
                             },
-                            preferredServerName = currentServer?.name,
+                            // Live zap must not reuse the previous channel's server name.
+                            preferredServerName = if (live) null else currentServer?.name,
                         )
 
                     hideNextEpisodeOverlay()
@@ -876,6 +878,8 @@ class PlayerMobileFragment : Fragment() {
             runCatching { castPlayer?.removeListener(listener) }
         }
         castEndedListener = null
+        castQueueExhaustedListener?.let { CastPlaybackHub.removeQueueExhaustedListener(it) }
+        castQueueExhaustedListener = null
         releasePlayer(ReleaseMode.HARD_DESTROY)
         runCatching {
             appContext?.let { CastPlaybackHub.detachUi(it) }
@@ -2368,8 +2372,9 @@ class PlayerMobileFragment : Fragment() {
     private fun applyOfflineCastExternalGuards(offline: Boolean) {
         val controller = binding.pvPlayer.controller.binding
         runCatching {
+            // IPTV live Cast is enabled when wired via CastMediaFactory liveConfiguration.
             controller.mediaRouteButton.isVisible =
-                !offline && !isLiveTvPlayback() && UserPreferences.castEnabled
+                !offline && UserPreferences.castEnabled
             controller.mediaRouteButton.isEnabled = !offline
         }
         controller.btnExoExternalPlayer.isEnabled = !offline
@@ -3370,7 +3375,7 @@ class PlayerMobileFragment : Fragment() {
             binding.pvPlayer.controller.binding.mediaRouteButton
         }.getOrNull() ?: return
 
-        if (!UserPreferences.castEnabled || isLiveTvPlayback() || isOfflinePlayback()) {
+        if (!UserPreferences.castEnabled || isOfflinePlayback()) {
             routeButton.isGone = true
             return
         }
@@ -3405,19 +3410,17 @@ class PlayerMobileFragment : Fragment() {
             castEndedListener?.let { previous ->
                 runCatching { castPlayer?.removeListener(previous) }
             }
-            val endedListener = object : Player.Listener {
-                override fun onPlaybackStateChanged(playbackState: Int) {
-                    if (playbackState != Player.STATE_ENDED) return
-                    if (!isAdded || view == null || isTearingDown) return
-                    // Hub auto-advances queued items; if empty, fall back to local next-episode flow.
-                    if (CastPlaybackHub.queuedCount() > 0) return
-                    if (UserPreferences.autoplay) {
-                        playNextEpisodeAcrossSeasons(autoplay = true)
-                    }
+            // Hub owns Cast END → queue advance. Fragments only react when the queue
+            // is exhausted so local autoplay cannot race removeAt (CAST-P1-1).
+            castQueueExhaustedListener?.let { CastPlaybackHub.removeQueueExhaustedListener(it) }
+            val onQueueExhausted: () -> Unit = {
+                if (isAdded && view != null && !isTearingDown && UserPreferences.autoplay) {
+                    playNextEpisodeAcrossSeasons(autoplay = true)
                 }
             }
-            castEndedListener = endedListener
-            castPlayer?.addListener(endedListener)
+            castQueueExhaustedListener = onQueueExhausted
+            CastPlaybackHub.addQueueExhaustedListener(onQueueExhausted)
+            castEndedListener = null
 
             // Re-attach if a session is already active (e.g. returning from browse).
             if (CastPlaybackHub.isCasting || castPlayer?.isCastSessionAvailable == true) {
@@ -3495,7 +3498,8 @@ class PlayerMobileFragment : Fragment() {
                     provider = UserPreferences.currentProvider,
                     currentVideoType = args.videoType,
                     subtitleConfigurations = emptyList(),
-                    headers = lastCastHeaders,
+                    // Do not override next-episode CDN headers with the previous item's.
+                    headers = emptyMap(),
                 )
             }
             if (prepared != null && isAdded) {
@@ -3697,12 +3701,6 @@ class PlayerMobileFragment : Fragment() {
         }
     }
 
-    private fun releaseCastPlayer() {
-        CastPlaybackHub.releaseFully()
-        castPlayer = null
-        isCasting = false
-    }
-
     private fun isSerienStreamBypassUrl(url: String): Boolean {
         return SerienStreamBypassHelper.isGermanStreamGateHost(url)
     }
@@ -3772,7 +3770,7 @@ class PlayerMobileFragment : Fragment() {
             is Video.Type.Episode -> "${type.tvShow.title}.S${type.season.number}E${type.number}"
         }
         pauseLocalForHandoff()
-        val ok = com.dskja.betterstreamflix.download.ExternalDownloadHandoff.launch(
+        val result = com.dskja.betterstreamflix.download.ExternalDownloadHandoff.launch(
             requireActivity(),
             com.dskja.betterstreamflix.download.ExternalDownloadHandoff.Request(
                 url = video.source,
@@ -3783,7 +3781,7 @@ class PlayerMobileFragment : Fragment() {
             ),
             forceChooser = false,
         )
-        if (ok) {
+        if (result is com.dskja.betterstreamflix.download.ExternalDownloadHandoff.HandoffResult.Started) {
             com.dskja.betterstreamflix.utils.ExpDialogChrome.notify(
                 requireContext(),
                 R.string.external_download_started,

@@ -22,7 +22,6 @@ import java.io.File
  */
 object DownloadTreeAccess {
     private const val TAG = "DownloadTreeAccess"
-    private const val APP_FOLDER = "BetterStreamflix"
     private const val DOWNLOADS_FOLDER = "downloads"
     private const val README_NAME = "BetterStreamflix-offline.txt"
 
@@ -108,18 +107,6 @@ object DownloadTreeAccess {
             ?: uri.toString()
     }
 
-    fun downloadsDocument(context: Context): DocumentFile? {
-        val uri = treeUri() ?: return null
-        if (!hasPersistedPermission(context)) return null
-        val root = DocumentFile.fromTreeUri(context, uri) ?: return null
-        if (!root.canWrite()) return null
-        val appDir = root.findFile(APP_FOLDER)?.takeIf { it.isDirectory }
-            ?: root.createDirectory(APP_FOLDER)
-            ?: return null
-        return appDir.findFile(DOWNLOADS_FOLDER)?.takeIf { it.isDirectory }
-            ?: appDir.createDirectory(DOWNLOADS_FOLDER)
-    }
-
     /**
      * Media3 cache directory for CUSTOM_FOLDER: prefer the removable app-specific
      * folder matching the tree volume UUID.
@@ -178,15 +165,37 @@ object DownloadTreeAccess {
     }
 
     /**
+     * Volume-OK vs grant-OK for CUSTOM_FOLDER.
+     *
+     * App-specific cache dirs do not need the SAF grant. Losing the grant must
+     * not clear [UserPreferences.downloadResolvedCacheDir] or force INTERNAL —
+     * only an explicit clear-folder (settings confirm) may call [clearTree].
+     */
+    data class CustomStorageHealth(
+        val volumeOk: Boolean,
+        val grantOk: Boolean,
+        val hasTree: Boolean,
+    )
+
+    fun customStorageHealth(context: Context): CustomStorageHealth {
+        val tree = hasTree()
+        val grantOk = tree && hasPersistedPermission(context)
+        val remembered = UserPreferences.downloadResolvedCacheDir.trim()
+        if (!tree && remembered.isBlank()) {
+            return CustomStorageHealth(volumeOk = false, grantOk = false, hasTree = false)
+        }
+        val dir = media3CacheDir(context)
+        val volumeOk = dir.isDirectory && dir.canWrite()
+        return CustomStorageHealth(volumeOk = volumeOk, grantOk = grantOk, hasTree = tree)
+    }
+
+    /**
      * CUSTOM_FOLDER is usable when the app-specific cache dir on that volume
      * is writable. The SAF grant is not required to keep reading or writing
      * that directory — losing it must not orphan completed downloads.
      */
-    fun validateCustomStorage(context: Context): Boolean {
-        if (!hasTree() && UserPreferences.downloadResolvedCacheDir.isBlank()) return false
-        val dir = media3CacheDir(context)
-        return dir.isDirectory && dir.canWrite()
-    }
+    fun validateCustomStorage(context: Context): Boolean =
+        customStorageHealth(context).volumeOk
 
     private fun writeLocationReadme(context: Context) {
         runCatching {

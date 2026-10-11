@@ -34,6 +34,20 @@ object DownloadHeaderStore {
     }
 
     /**
+     * Rehydrate in-memory + prefs header maps from Room after process death so
+     * Media3 segment fetches keep Referer/UA/Origin.
+     */
+    fun rebuildFromRoom(context: Context, items: List<DownloadItemEntity>) {
+        for (item in items) {
+            if (item.streamUrl.isBlank() || item.headersJson.isBlank()) continue
+            val headers = decode(item.headersJson)
+            if (headers.isEmpty()) continue
+            put(context, item.media3Id, headers)
+            putForUrl(context, item.streamUrl, headers, media3Id = item.media3Id)
+        }
+    }
+
+    /**
      * Index headers by stream URL and register the download as the active owner
      * of that origin so segment requests can resolve headers safely.
      */

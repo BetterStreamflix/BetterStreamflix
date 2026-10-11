@@ -5,7 +5,8 @@ package com.dskja.betterstreamflix.download
  * local proxy. Relative segment URIs are resolved against [baseUrl] first.
  */
 object OfflinePlaylistRewrite {
-    private val uriAttr = Regex("""URI="([^"]+)"""")
+    private val uriAttrDouble = Regex("""URI="([^"]+)"""")
+    private val uriAttrSingle = Regex("""URI='([^']+)'""")
 
     fun rewrite(
         playlist: String,
@@ -17,11 +18,9 @@ object OfflinePlaylistRewrite {
             val line = raw.trim()
             when {
                 line.isEmpty() -> out.append('\n')
-                line.startsWith("#") &&
-                    (line.startsWith("#EXT-X-KEY") ||
-                        line.startsWith("#EXT-X-MAP") ||
-                        line.startsWith("#EXT-X-MEDIA") ||
-                        line.startsWith("#EXT-X-I-FRAME-STREAM-INF")) -> {
+                // Any #EXT… tag that carries URI="…" / URI='…' (KEY, MAP, MEDIA,
+                // SESSION-KEY, PRELOAD-HINT, PART, I-FRAME-STREAM-INF, …).
+                line.startsWith("#EXT") && (line.contains("URI=\"") || line.contains("URI='")) -> {
                     out.append(rewriteTagUris(line, baseUrl, mapAbsolute))
                     out.append('\n')
                 }
@@ -57,9 +56,14 @@ object OfflinePlaylistRewrite {
         baseUrl: String,
         mapAbsolute: (String) -> String,
     ): String {
-        return uriAttr.replace(line) { match ->
+        var rewritten = uriAttrDouble.replace(line) { match ->
             val absolute = resolve(baseUrl, match.groupValues[1])
             "URI=\"${mapAbsolute(absolute)}\""
         }
+        rewritten = uriAttrSingle.replace(rewritten) { match ->
+            val absolute = resolve(baseUrl, match.groupValues[1])
+            "URI='${mapAbsolute(absolute)}'"
+        }
+        return rewritten
     }
 }

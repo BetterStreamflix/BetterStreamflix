@@ -6,6 +6,7 @@ import android.net.Network
 import android.net.NetworkCapabilities
 import android.net.NetworkRequest
 import android.os.Build
+import com.dskja.betterstreamflix.utils.UserPreferences
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -90,4 +91,12 @@ object DownloadConnectivityMonitor {
     /** True when any network is up — lets UI distinguish offline vs provider errors. */
     fun isOnline(context: Context): Boolean =
         current(context).type != DownloadNetworkType.NONE
+
+    /**
+     * Product rule for Wi‑Fi-only downloads: hold when the preference is on and the
+     * active network is metered (cellular, hotspot, or other metered transports).
+     * Shared by the connectivity watcher, enqueue/resume gates, Smart Downloads, and UI banner.
+     */
+    fun shouldHoldForWifiOnly(context: Context): Boolean =
+        UserPreferences.downloadWifiOnly && isMetered(context)
 }

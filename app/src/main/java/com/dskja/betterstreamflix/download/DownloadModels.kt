@@ -48,6 +48,8 @@ enum class DownloadErrorCode {
     /** Provider/CDN returned HTTP 404 — content removed or bad resolve URL. */
     NOT_FOUND,
     FILE_MISSING,
+    /** Offline cache wiped after the user changed download storage location. */
+    STORAGE_RELOCATED,
     UNSUPPORTED,
     EMPTY_RESPONSE,
     UNKNOWN,

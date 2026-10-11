@@ -1,18 +1,22 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- Narrow FileProvider roots to download/share paths only. -->
 <paths>
-    <external-path
-        name="external"
-        path="." />
-    <external-files-path
-        name="external_files"
-        path="." />
-    <cache-path
-        name="cache"
-        path="." />
-    <external-cache-path
-        name="external_cache"
-        path="." />
     <files-path
-        name="files"
-        path="." />
+        name="downloads_files"
+        path="downloads/" />
+    <files-path
+        name="downloads_volume_missing"
+        path="downloads-volume-missing/" />
+    <external-files-path
+        name="downloads_ext_movies"
+        path="Movies/downloads/" />
+    <external-files-path
+        name="downloads_ext"
+        path="downloads/" />
+    <external-path
+        name="public_movies_downloads"
+        path="Movies/BetterStreamflix/downloads/" />
+    <cache-path
+        name="share_cache"
+        path="share/" />
 </paths>

@@ -1,5 +1,6 @@
 package com.dskja.betterstreamflix.iptv
 
+import android.os.SystemClock
 import android.util.Log
 import com.dskja.betterstreamflix.models.Video
 import com.dskja.betterstreamflix.providers.IptvProvider
@@ -8,10 +9,11 @@ import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicInteger
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.isActive
+import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 
 /**
@@ -23,14 +25,15 @@ object IptvZapPreloader {
     private const val TAG = "IptvZapPreloader"
     private const val MAX_ENTRIES = 12
     private const val MAX_VIDEO_ENTRIES = 6
+    /** Warm server lists go stale quickly on rotating IPTV CDNs. */
+    private const val TTL_MS = 90_000L
     /** Keep last-good m3u8 briefly so zap does not re-scrape immediately. */
     private const val VIDEO_TTL_MS = 90_000L
 
-    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
-    private val generation = AtomicInteger()
-    private val serversByChannelId = ConcurrentHashMap<String, List<Video.Server>>()
-    private val videoByServerId = ConcurrentHashMap<String, CachedVideo>()
-    private val inflight = ConcurrentHashMap<String, Job>()
+    private data class CacheEntry(
+        val servers: List<Video.Server>,
+        val storedAtMs: Long = SystemClock.elapsedRealtime(),
+    )
 
     private data class CachedVideo(
         val video: Video,
@@ -40,19 +43,53 @@ object IptvZapPreloader {
             now - cachedAtMs < VIDEO_TTL_MS
     }
 
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    private val generation = AtomicInteger()
+    /** Access-order LRU; guarded by itself. */
+    private val serversByChannelId =
+        object : LinkedHashMap<String, CacheEntry>(16, 0.75f, /* accessOrder = */ true) {
+            override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, CacheEntry>?): Boolean =
+                size > MAX_ENTRIES
+        }
+    private val videoByServerId = ConcurrentHashMap<String, CachedVideo>()
+    private val inflight = ConcurrentHashMap<String, Job>()
+
     fun clear() {
         generation.incrementAndGet()
         inflight.values.forEach { it.cancel() }
         inflight.clear()
-        serversByChannelId.clear()
+        synchronized(serversByChannelId) {
+            serversByChannelId.clear()
+        }
         videoByServerId.clear()
     }
 
-    fun takeCachedServers(channelId: String): List<Video.Server>? =
-        serversByChannelId[channelId]?.takeIf { it.isNotEmpty() }
+    /** Consume a warm entry (remove-on-take). Expired entries are dropped. */
+    fun takeCachedServers(channelId: String): List<Video.Server>? {
+        synchronized(serversByChannelId) {
+            val entry = serversByChannelId.remove(channelId) ?: return null
+            if (SystemClock.elapsedRealtime() - entry.storedAtMs > TTL_MS) return null
+            return entry.servers.takeIf { it.isNotEmpty() }
+        }
+    }
 
-    fun peekCachedServers(channelId: String): List<Video.Server>? =
-        serversByChannelId[channelId]?.takeIf { it.isNotEmpty() }
+    fun peekCachedServers(channelId: String): List<Video.Server>? {
+        synchronized(serversByChannelId) {
+            val entry = serversByChannelId[channelId] ?: return null
+            if (SystemClock.elapsedRealtime() - entry.storedAtMs > TTL_MS) {
+                serversByChannelId.remove(channelId)
+                return null
+            }
+            return entry.servers.takeIf { it.isNotEmpty() }
+        }
+    }
+
+    fun invalidate(channelId: String) {
+        synchronized(serversByChannelId) {
+            serversByChannelId.remove(channelId)
+        }
+        inflight.remove(channelId)?.cancel()
+    }
 
     fun takeCachedVideo(serverId: String): Video? {
         val hit = videoByServerId[serverId] ?: return null
@@ -74,22 +111,24 @@ object IptvZapPreloader {
 
     fun warmChannel(provider: Provider, channel: IptvLiveSession.Channel) {
         if (provider !is IptvProvider) return
-        if (serversByChannelId.containsKey(channel.id) &&
-            serversByChannelId[channel.id]?.firstOrNull()?.let { videoByServerId.containsKey(it.id) } == true
+        val serversHit = peekCachedServers(channel.id)
+        if (serversHit != null &&
+            serversHit.firstOrNull()?.let { videoByServerId.containsKey(it.id) } == true
         ) {
             return
         }
         if (inflight.containsKey(channel.id)) return
         val gen = generation.get()
-        val job = scope.launch {
+        // Register inflight before launch so a concurrent warm cannot race.
+        lateinit var job: Job
+        job = scope.launch(start = CoroutineStart.LAZY) {
             try {
                 val episode = IptvLiveSession.toEpisodeType(channel)
                 val servers = provider.getServers(channel.id, episode)
                 if (!isActive || gen != generation.get() || servers.isEmpty()) return@launch
                 synchronized(serversByChannelId) {
                     if (gen != generation.get()) return@synchronized
-                    trimIfNeeded()
-                    serversByChannelId[channel.id] = servers
+                    serversByChannelId[channel.id] = CacheEntry(servers)
                 }
                 Log.d(TAG, "warmed ${channel.name} (${servers.size} servers)")
 
@@ -109,6 +148,8 @@ object IptvZapPreloader {
                 throw e
             } catch (e: Exception) {
                 Log.d(TAG, "warm failed ${channel.name}: ${e.message}")
+            } finally {
+                inflight.remove(channel.id, job)
             }
         }
         val previous = inflight.putIfAbsent(channel.id, job)
@@ -116,13 +157,7 @@ object IptvZapPreloader {
             job.cancel()
             return
         }
-        job.invokeOnCompletion { inflight.remove(channel.id, job) }
-    }
-
-    private fun trimIfNeeded() {
-        if (serversByChannelId.size < MAX_ENTRIES) return
-        val drop = serversByChannelId.keys.take(serversByChannelId.size - MAX_ENTRIES + 2)
-        drop.forEach { serversByChannelId.remove(it) }
+        job.start()
     }
 
     private fun trimVideosIfNeeded() {

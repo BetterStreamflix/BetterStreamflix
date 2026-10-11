@@ -70,7 +70,7 @@ object SupportLinkOpener {
             context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(SupportUrls.TELEGRAM_APP_URL)))
             true
         } catch (_: Exception) {
-            ExpDialogChrome.notify(context, R.string.settings_telegram_not_found, R.string.support_hub_title)
+            ExpDialogChrome.notify(context, R.string.settings_telegram_not_found, R.string.settings_telegram)
             open(context, SupportUrls.TELEGRAM_URL, markAppreciation = false)
         }
     }

@@ -172,6 +172,7 @@ class PlayerTvFragment : Fragment() {
     private var playbackListener: Player.Listener? = null
     private var castPlayer: CastPlayer? = null
     private var castEndedListener: Player.Listener? = null
+    private var castQueueExhaustedListener: (() -> Unit)? = null
     private var isCasting = false
     /** Skip one onResume auto-play after handing off to an external player. */
     private var skipNextAutoResume = false
@@ -726,7 +727,10 @@ class PlayerTvFragment : Fragment() {
                                     "S${nextEpisode.season.number} E${nextEpisode.number}  •  ${nextEpisode.title}"
                                 },
                             )
-                            putString("preferredServerName", currentServer?.name)
+                            // Live zap must not reuse the previous channel's server name.
+                            if (!live) {
+                                currentServer?.name?.let { putString("preferredServerName", it) }
+                            }
                         }
 
                         hideNextEpisodeOverlay()
@@ -825,6 +829,8 @@ class PlayerTvFragment : Fragment() {
             runCatching { castPlayer?.removeListener(listener) }
         }
         castEndedListener = null
+        castQueueExhaustedListener?.let { CastPlaybackHub.removeQueueExhaustedListener(it) }
+        castQueueExhaustedListener = null
         releasePlayer(ReleaseMode.HARD_DESTROY)
         runCatching {
             appContext?.let { CastPlaybackHub.detachUi(it) }
@@ -2123,8 +2129,9 @@ class PlayerTvFragment : Fragment() {
         private fun applyOfflineCastExternalGuards(offline: Boolean) {
             val controller = binding.pvPlayer.controller.binding
             runCatching {
+                // IPTV live Cast is enabled when wired via CastMediaFactory liveConfiguration.
                 controller.mediaRouteButton.isVisible =
-                    !offline && !isLiveTvPlayback() && UserPreferences.castEnabled
+                    !offline && UserPreferences.castEnabled
                 controller.mediaRouteButton.isEnabled = !offline
                 controller.mediaRouteButton.isFocusable = !offline
             }
@@ -2264,19 +2271,52 @@ class PlayerTvFragment : Fragment() {
                 return
             }
             val currentId = com.dskja.betterstreamflix.iptv.IptvLiveSession.current()?.id
-            val labels = channels.mapIndexed { index, channel ->
+            val currentMark = getString(R.string.player_live_current_mark)
+            data class GuideRow(
+                val channel: com.dskja.betterstreamflix.iptv.IptvLiveSession.Channel?,
+                val label: String,
+            )
+            val rows = ArrayList<GuideRow>(channels.size + 10)
+            val recent = com.dskja.betterstreamflix.iptv.IptvLiveSession.recent(6)
+                .filter { it.id != currentId }
+            if (recent.isNotEmpty()) {
+                rows += GuideRow(
+                    null,
+                    "—— ${getString(R.string.player_live_recent_channels)} ——",
+                )
+                recent.forEach { channel ->
+                    val catalogIdx = channels.indexOfFirst { it.id == channel.id }
+                    val base = if (catalogIdx >= 0) {
+                        getString(R.string.player_live_channel_meta, catalogIdx + 1, channel.name)
+                    } else {
+                        channel.name
+                    }
+                    val sub = com.dskja.betterstreamflix.iptv.IptvProgramGuide.formatGuideSubtitle(channel)
+                    val label = buildString {
+                        append(base)
+                        append("  ·  ").append(getString(R.string.player_live_recent_badge))
+                        if (!sub.isNullOrBlank()) append('\n').append(sub)
+                    }
+                    rows += GuideRow(channel, label)
+                }
+                rows += GuideRow(
+                    null,
+                    "—— ${getString(R.string.player_live_channel_guide)} ——",
+                )
+            }
+            channels.forEachIndexed { index, channel ->
                 val base = getString(R.string.player_live_channel_meta, index + 1, channel.name)
                 val sub = com.dskja.betterstreamflix.iptv.IptvProgramGuide.formatGuideSubtitle(channel)
-                val mark = if (channel.id == currentId) " ▶" else ""
-                if (sub.isNullOrBlank()) "$base$mark" else "$base$mark\n$sub"
-            }.toTypedArray()
-            val currentIndex = channels.indexOfFirst { it.id == currentId }.coerceAtLeast(0)
+                val mark = if (channel.id == currentId) currentMark else ""
+                val label = if (sub.isNullOrBlank()) "$base$mark" else "$base$mark\n$sub"
+                rows += GuideRow(channel, label)
+            }
             android.app.AlertDialog.Builder(requireContext())
                 .setTitle(R.string.player_live_channel_guide)
-                .setSingleChoiceItems(labels, currentIndex) { dialog, which ->
-                    val channel = channels.getOrNull(which) ?: return@setSingleChoiceItems
+                .setItems(rows.map { it.label }.toTypedArray()) { dialog, which ->
+                    val channel = rows.getOrNull(which)?.channel ?: return@setItems
                     dialog.dismiss()
-                    if (channel.id == currentId) return@setSingleChoiceItems
+                    if (channel.id == currentId) return@setItems
                     com.dskja.betterstreamflix.iptv.IptvLiveSession.setCurrent(channel.id)
                     showLiveCue(R.string.player_live_zapping)
                     viewModel.playLiveChannel(channel)
@@ -2801,7 +2841,7 @@ class PlayerTvFragment : Fragment() {
                 binding.pvPlayer.controller.binding.mediaRouteButton
             }.getOrNull() ?: return
 
-            if (!UserPreferences.castEnabled || isLiveTvPlayback() || isOfflinePlayback()) {
+            if (!UserPreferences.castEnabled || isOfflinePlayback()) {
                 routeButton.isGone = true
                 return
             }
@@ -2846,18 +2886,16 @@ class PlayerTvFragment : Fragment() {
                 castEndedListener?.let { previous ->
                     runCatching { castPlayer?.removeListener(previous) }
                 }
-                val endedListener = object : Player.Listener {
-                    override fun onPlaybackStateChanged(playbackState: Int) {
-                        if (playbackState != Player.STATE_ENDED) return
-                        if (!isAdded || view == null || isTearingDown) return
-                        if (CastPlaybackHub.queuedCount() > 0) return
-                        if (UserPreferences.autoplay) {
-                            playNextEpisodeAcrossSeasons(autoplay = true)
-                        }
+                // Hub owns Cast END → queue advance (CAST-P1-1).
+                castQueueExhaustedListener?.let { CastPlaybackHub.removeQueueExhaustedListener(it) }
+                val onQueueExhausted: () -> Unit = {
+                    if (isAdded && view != null && !isTearingDown && UserPreferences.autoplay) {
+                        playNextEpisodeAcrossSeasons(autoplay = true)
                     }
                 }
-                castEndedListener = endedListener
-                castPlayer?.addListener(endedListener)
+                castQueueExhaustedListener = onQueueExhausted
+                CastPlaybackHub.addQueueExhaustedListener(onQueueExhausted)
+                castEndedListener = null
 
                 if (CastPlaybackHub.isCasting || castPlayer?.isCastSessionAvailable == true) {
                     switchPlaybackToCast()
@@ -2934,7 +2972,7 @@ class PlayerTvFragment : Fragment() {
                         provider = UserPreferences.currentProvider,
                         currentVideoType = args.videoType,
                         subtitleConfigurations = emptyList(),
-                        headers = lastCastHeaders,
+                        headers = emptyMap(),
                     )
                 }
                 if (prepared != null && isAdded) {
@@ -3431,7 +3469,7 @@ class PlayerTvFragment : Fragment() {
             is Video.Type.Episode -> "${type.tvShow.title}.S${type.season.number}E${type.number}"
         }
         pauseLocalForHandoff()
-        val ok = com.dskja.betterstreamflix.download.ExternalDownloadHandoff.launch(
+        val result = com.dskja.betterstreamflix.download.ExternalDownloadHandoff.launch(
             requireActivity(),
             com.dskja.betterstreamflix.download.ExternalDownloadHandoff.Request(
                 url = video.source,
@@ -3442,7 +3480,7 @@ class PlayerTvFragment : Fragment() {
             ),
             forceChooser = false,
         )
-        if (ok) {
+        if (result is com.dskja.betterstreamflix.download.ExternalDownloadHandoff.HandoffResult.Started) {
             com.dskja.betterstreamflix.utils.ExpDialogChrome.notify(
                 requireContext(),
                 R.string.external_download_started,

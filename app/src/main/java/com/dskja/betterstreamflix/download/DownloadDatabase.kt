@@ -12,7 +12,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         DownloadItemEntity::class,
         DownloadSeasonPackEntity::class,
     ],
-    version = 2,
+    version = 3,
     exportSchema = false,
 )
 abstract class DownloadDatabase : RoomDatabase() {
@@ -38,13 +38,22 @@ abstract class DownloadDatabase : RoomDatabase() {
             }
         }
 
+        /** 2→3 persists Media3 StreamKeys for HLS/DASH re-queue after failure. */
+        val MIGRATION_2_3 = object : Migration(2, 3) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    "ALTER TABLE download_items ADD COLUMN streamKeysJson TEXT NOT NULL DEFAULT '[]'",
+                )
+            }
+        }
+
         fun get(context: Context): DownloadDatabase {
             return instance ?: synchronized(this) {
                 instance ?: Room.databaseBuilder(
                     context.applicationContext,
                     DownloadDatabase::class.java,
                     "downloads.db",
-                ).addMigrations(MIGRATION_1_2)
+                ).addMigrations(MIGRATION_1_2, MIGRATION_2_3)
                     .build()
                     .also { instance = it }
             }
