@@ -1150,33 +1150,30 @@ class SettingsTvFragment : LeanbackPreferenceFragmentCompat() {
         }
 
         findPreference<ListPreference>("SELECTED_THEME")?.apply {
-            value = UserPreferences.selectedTheme
+            val locked = ThemeManager.resolveLook(UserPreferences.selectedTheme)
+            if (UserPreferences.selectedTheme != locked) {
+                UserPreferences.selectedTheme = locked
+            }
+            UserPreferences.oledMode = false
+            value = locked
             summaryProvider = Preference.SummaryProvider<ListPreference> { pref ->
-                getString(ThemeManager.titleRes(pref.value ?: ThemeManager.DEFAULT))
+                getString(ThemeManager.titleRes(pref.value ?: ThemeManager.CINEMA_INK))
             }
 
             setOnPreferenceChangeListener { _, newValue ->
-                val newTheme = newValue as String
+                val newTheme = ThemeManager.resolveLook(newValue as String)
+                UserPreferences.oledMode = false
                 UserPreferences.selectedTheme = newTheme
-
-                // Apply the theme and restart the activity
                 restartMainTvWithoutAnimation()
                 true
             }
         }
 
         findPreference<SwitchPreference>("OLED_MODE")?.apply {
-            isChecked = UserPreferences.oledMode ||
-                UserPreferences.selectedTheme == ThemeManager.NERO_AMOLED_OLED
-            setOnPreferenceChangeListener { _, newValue ->
-                val enabled = newValue as Boolean
-                UserPreferences.oledMode = enabled
-                if (!enabled && UserPreferences.selectedTheme == ThemeManager.NERO_AMOLED_OLED) {
-                    UserPreferences.selectedTheme = ThemeManager.DEFAULT
-                }
-                restartMainTvWithoutAnimation()
-                true
-            }
+            isVisible = false
+            isChecked = false
+            UserPreferences.oledMode = false
+            setOnPreferenceChangeListener { _, _ -> false }
         }
 
         findPreference<ListPreference>("APP_LANGUAGE")?.apply {

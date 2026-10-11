@@ -356,8 +356,8 @@ object ProfileManager {
     }
 
     /**
-     * Kids → Kids Bright, adult → Cinema Ink. With [force], overwrites when the kids
-     * flag flips; otherwise only writes when the scoped theme key is missing.
+     * Kids → Cinema-Ink Kids, adult → Cinema-Ink Dark. With [force], overwrites when
+     * the kids flag flips; otherwise only writes when the scoped theme key is missing.
      */
     private fun applyDefaultThemeForProfile(profile: UserProfile, force: Boolean = false) {
         if (!::appContext.isInitialized) return

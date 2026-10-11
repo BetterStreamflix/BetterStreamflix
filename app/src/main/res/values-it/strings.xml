@@ -51,8 +51,10 @@
     <string name="live_hub_source_unavailable">%1$s non disponibile</string>
     <string name="main_menu_theme_change">Cambia Tema</string>
     <string name="theme_default">Predefinito</string>
-    <string name="theme_cinema_ink">Cinema Ink</string>
-    <string name="theme_kids_bright">Kids Bright</string>
+    <string name="theme_cinema_ink">Cinema-Ink Dark</string>
+    <string name="theme_cinema_ink_light">Cinema-Ink Light</string>
+    <string name="theme_kids_bright">Cinema-Ink Kids</string>
+    <string name="settings_looks_locked_summary">Tre Look fissi — Dark, Light o Kids. Niente accenti misti.</string>
     <string name="downloads_profile_folder_label">Cartella profilo: %1$s</string>
     <string name="theme_nero_amoled_oled">Nero Amoled/Oled</string>
 

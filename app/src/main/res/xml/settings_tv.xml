@@ -969,15 +969,17 @@
             <ListPreference
                 android:key="SELECTED_THEME"
                 android:title="@string/settings_theme_title"
+                android:summary="@string/settings_looks_locked_summary"
                 android:entries="@array/theme_names"
                 android:entryValues="@array/theme_values"
-                android:defaultValue="default" />
+                android:defaultValue="cinema_ink" />
 
             <SwitchPreference
                 android:key="OLED_MODE"
                 android:title="@string/settings_oled_mode_title"
                 android:summary="@string/settings_oled_mode_summary"
-                android:defaultValue="false" />
+                android:defaultValue="false"
+                android:visible="false" />
         </PreferenceCategory>
 
         <PreferenceCategory

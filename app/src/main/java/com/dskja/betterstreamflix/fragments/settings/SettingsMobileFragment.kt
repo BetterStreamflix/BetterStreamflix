@@ -1060,12 +1060,19 @@ class SettingsMobileFragment : PreferenceFragmentCompat() {
         }
 
         findPreference<ListPreference>("SELECTED_THEME")?.apply {
-            value = UserPreferences.selectedTheme
+            // Looks Locked: migrate retired themes / OLED half-mix onto one of three Looks.
+            val locked = ThemeManager.resolveLook(UserPreferences.selectedTheme)
+            if (UserPreferences.selectedTheme != locked) {
+                UserPreferences.selectedTheme = locked
+            }
+            UserPreferences.oledMode = false
+            value = locked
             summaryProvider = Preference.SummaryProvider<ListPreference> { pref ->
-                getString(ThemeManager.titleRes(pref.value ?: ThemeManager.DEFAULT))
+                getString(ThemeManager.titleRes(pref.value ?: ThemeManager.CINEMA_INK))
             }
             setOnPreferenceChangeListener { preference, newValue ->
-                val newTheme = newValue as String
+                val newTheme = ThemeManager.resolveLook(newValue as String)
+                UserPreferences.oledMode = false
                 UserPreferences.selectedTheme = newTheme
                 if (preference is ListPreference) {
                     preference.value = newTheme
@@ -1079,20 +1086,11 @@ class SettingsMobileFragment : PreferenceFragmentCompat() {
         }
 
         findPreference<SwitchPreference>("OLED_MODE")?.apply {
-            isChecked = UserPreferences.oledMode ||
-                UserPreferences.selectedTheme == ThemeManager.NERO_AMOLED_OLED
-            setOnPreferenceChangeListener { _, newValue ->
-                val enabled = newValue as Boolean
-                UserPreferences.oledMode = enabled
-                if (!enabled && UserPreferences.selectedTheme == ThemeManager.NERO_AMOLED_OLED) {
-                    UserPreferences.selectedTheme = ThemeManager.DEFAULT
-                }
-                requireActivity().apply {
-                    finish()
-                    startActivity(Intent(this, MainMobileActivity::class.java))
-                }
-                true
-            }
+            // Looks Locked — hide OLED half-mix toggle.
+            isVisible = false
+            isChecked = false
+            UserPreferences.oledMode = false
+            setOnPreferenceChangeListener { _, _ -> false }
         }
 
         findPreference<ListPreference>("APP_LANGUAGE")?.apply {

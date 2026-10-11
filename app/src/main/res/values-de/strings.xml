@@ -99,8 +99,10 @@
     <string name="detail_download">Herunterladen</string>
     <string name="main_menu_theme_change">Design ändern</string>
     <string name="theme_default">Standard</string>
-    <string name="theme_cinema_ink">Cinema Ink</string>
-    <string name="theme_kids_bright">Kids Hell</string>
+    <string name="theme_cinema_ink">Cinema-Ink Dunkel</string>
+    <string name="theme_cinema_ink_light">Cinema-Ink Hell</string>
+    <string name="theme_kids_bright">Cinema-Ink Kids</string>
+    <string name="settings_looks_locked_summary">Drei feste Looks — Dunkel, Hell oder Kids. Keine gemischten Akzente.</string>
     <string name="downloads_profile_folder_label">Profilordner: %1$s</string>
     <string name="theme_nero_amoled_oled">Nero Amoled/Oled</string>
 
