@@ -112,4 +112,13 @@ object ProviderHealth {
         val failures = ProviderSmoke.failureCount(providerName)
         return failures.coerceAtMost(50)
     }
+
+    /**
+     * Display helper — top hosters this profile has learned as stable for [providerName]
+     * via [ProviderServerAb] (Provider A/B). Empty when there is not enough signal yet.
+     */
+    fun learnedStableServers(providerName: String, limit: Int = 3): List<String> =
+        ProviderServerAb.topServers(providerName, limit = limit).map { (key, _) ->
+            key.replaceFirstChar { if (it.isLowerCase()) it.titlecase() else it.toString() }
+        }
 }

@@ -399,6 +399,7 @@ class PlayerTvFragment : Fragment(),
                     }
                     is PlayerViewModel.State.SuccessLoadingServers -> {
                         servers = state.servers
+                        com.dskja.betterstreamflix.providers.ProviderServerAb.clearSession()
 
                         val sToServer = servers.firstOrNull {
                             isSerienStreamBypassUrl(it.id) || isSerienStreamBypassUrl(it.src)
@@ -2030,6 +2031,10 @@ class PlayerTvFragment : Fragment(),
                     binding.pvPlayer.keepScreenOn = isPlaying
 
                     if (isPlaying) {
+                        if (player.hasStarted()) {
+                            com.dskja.betterstreamflix.providers.ProviderServerAb
+                                .notePlaybackStable(currentServer)
+                        }
                         recordRecentlyWatchedStart()
                         ensureSkipIntroProbe()
                         startProgressHandler()
@@ -2116,6 +2121,8 @@ class PlayerTvFragment : Fragment(),
                         )
                     ) {
                         is PlaybackFailover.Action.TryNextServer -> {
+                            com.dskja.betterstreamflix.providers.ProviderServerAb
+                                .notePlaybackUnstable(currentServer)
                             val next = servers.getOrNull(action.nextIndex)
                             if (next != null) {
                                 Log.i(

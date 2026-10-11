@@ -193,6 +193,15 @@ object ProviderHealthSettingsController {
             null
         }
         val detail = row.detail?.takeIf { it.isNotBlank() }
-        return listOfNotNull(status, latency, detail, cta).joinToString(" · ")
+        val learned = com.dskja.betterstreamflix.providers.ProviderHealth
+            .learnedStableServers(row.name, limit = 3)
+            .takeIf { it.isNotEmpty() }
+            ?.let { names ->
+                context.getString(
+                    R.string.settings_provider_health_learned_servers,
+                    names.joinToString(", "),
+                )
+            }
+        return listOfNotNull(status, latency, detail, learned, cta).joinToString(" · ")
     }
 }

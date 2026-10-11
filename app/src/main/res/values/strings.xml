@@ -117,6 +117,7 @@
     <string name="settings_provider_health_status_slow">slow</string>
     <string name="settings_provider_health_status_ok">ok</string>
     <string name="settings_provider_health_latency_ms">%1$d ms</string>
+    <string name="settings_provider_health_learned_servers">prefers %1$s</string>
     <string name="genre_empty">Nothing in this genre yet</string>
     <string name="genre_section_label">Genre</string>
     <string name="season_empty">No episodes in this season</string>

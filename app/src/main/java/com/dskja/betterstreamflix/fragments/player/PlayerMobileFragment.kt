@@ -449,6 +449,7 @@ class PlayerMobileFragment : Fragment(),
                     }
                     is PlayerViewModel.State.SuccessLoadingServers -> {
                         servers = state.servers
+                        com.dskja.betterstreamflix.providers.ProviderServerAb.clearSession()
                         val sToServer = servers.firstOrNull {
                             isSerienStreamBypassUrl(it.id) || isSerienStreamBypassUrl(it.src)
                         }
@@ -1850,6 +1851,10 @@ class PlayerMobileFragment : Fragment(),
                 binding.pvPlayer.keepScreenOn = isPlaying || UserPreferences.keepScreenOnWhenPaused
 
                 if (isPlaying) {
+                    if (::player.isInitialized && player.hasStarted()) {
+                        com.dskja.betterstreamflix.providers.ProviderServerAb
+                            .notePlaybackStable(currentServer)
+                    }
                     recordRecentlyWatchedStart()
                     ensureSkipIntroProbe()
                     startProgressHandler()
@@ -1934,6 +1939,8 @@ class PlayerMobileFragment : Fragment(),
                     is PlaybackFailover.Action.TryNextServer -> {
                         suppressBuiltInErrorOverlay()
                         pendingPlayWithAfterResolve = false
+                        com.dskja.betterstreamflix.providers.ProviderServerAb
+                            .notePlaybackUnstable(currentServer)
                         val next = servers.getOrNull(action.nextIndex)
                         if (next != null) {
                             Log.i(

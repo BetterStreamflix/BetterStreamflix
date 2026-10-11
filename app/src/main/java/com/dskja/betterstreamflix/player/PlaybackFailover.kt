@@ -9,6 +9,10 @@ import com.dskja.betterstreamflix.models.Video
  *
  * Decoder capability failures (BETTERSTREAMFLIX-D) skip hoster hopping and go straight to
  * software-decoder retry — the next server usually has the same AVC profile.
+ *
+ * Server list order is owned by [com.dskja.betterstreamflix.providers.ProviderServerAb]
+ * (Provider A/B): the player emits a stability-ranked list, so “next index” is the next
+ * best remaining hoster for this profile.
  */
 object PlaybackFailover {
 
