@@ -50,6 +50,8 @@ class PlayerTvView @JvmOverloads constructor(
 
     var onMediaPreviousClicked: (() -> Boolean)? = null
     var onMediaNextClicked: (() -> Boolean)? = null
+    /** Captions / CC remote key — toggle subtitles without opening settings. */
+    var onSubtitleToggleClicked: (() -> Boolean)? = null
 
     /** When true, hidden-chrome DPAD L/R zap channels instead of seeking. */
     var isLivePlayback: Boolean = false
@@ -113,6 +115,7 @@ class PlayerTvView @JvmOverloads constructor(
 
         val player = player ?: return super.dispatchKeyEvent(event)
 
+        // Additive remote shortcuts — handled whether chrome is visible or not.
         when (event.keyCode) {
             KeyEvent.KEYCODE_MEDIA_PREVIOUS -> {
                 return if (event.action == KeyEvent.ACTION_DOWN) {
@@ -129,6 +132,31 @@ class PlayerTvView @JvmOverloads constructor(
                     true
                 }
             }
+
+            KeyEvent.KEYCODE_CAPTIONS -> {
+                return if (event.action == KeyEvent.ACTION_DOWN) {
+                    onSubtitleToggleClicked?.invoke() ?: false
+                } else {
+                    true
+                }
+            }
+
+            // ±30s: Fire TV / Android TV rewind & fast-forward (and skip) keys.
+            KeyEvent.KEYCODE_MEDIA_REWIND,
+            KeyEvent.KEYCODE_MEDIA_SKIP_BACKWARD -> {
+                if (!isLivePlayback && event.action == KeyEvent.ACTION_DOWN) {
+                    seekBy(player, -SKIP_30_MS)
+                }
+                return !isLivePlayback
+            }
+
+            KeyEvent.KEYCODE_MEDIA_FAST_FORWARD,
+            KeyEvent.KEYCODE_MEDIA_SKIP_FORWARD -> {
+                if (!isLivePlayback && event.action == KeyEvent.ACTION_DOWN) {
+                    seekBy(player, SKIP_30_MS)
+                }
+                return !isLivePlayback
+            }
         }
 
         if (player.isCommandAvailable(Player.COMMAND_GET_CURRENT_MEDIA_ITEM) && player.isPlayingAd) {
@@ -144,7 +172,7 @@ class PlayerTvView @JvmOverloads constructor(
                     if (isLivePlayback) {
                         onLiveZapPrevious?.invoke()
                     } else {
-                        player.seekTo(player.currentPosition - 10_000)
+                        seekBy(player, -SKIP_10_MS)
                     }
                 }
                 true
@@ -155,7 +183,7 @@ class PlayerTvView @JvmOverloads constructor(
                     if (isLivePlayback) {
                         onLiveZapNext?.invoke()
                     } else {
-                        player.seekTo(player.currentPosition + 10_000)
+                        seekBy(player, SKIP_10_MS)
                     }
                 }
                 true
@@ -164,7 +192,17 @@ class PlayerTvView @JvmOverloads constructor(
         }
     }
 
+    private fun seekBy(player: Player, deltaMs: Long) {
+        if (!player.isCommandAvailable(Player.COMMAND_SEEK_IN_CURRENT_MEDIA_ITEM)) return
+        val duration = player.duration
+        val max = if (duration > 0) duration else Long.MAX_VALUE
+        val target = (player.currentPosition + deltaMs).coerceIn(0L, max)
+        player.seekTo(target)
+    }
+
     private companion object {
         const val TAG = "PlayerTvView"
+        const val SKIP_10_MS = 10_000L
+        const val SKIP_30_MS = 30_000L
     }
 }

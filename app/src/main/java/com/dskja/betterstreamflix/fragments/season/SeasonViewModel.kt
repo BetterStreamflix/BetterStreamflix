@@ -117,8 +117,11 @@ class SeasonViewModel(
                 episode.season = season
             }
 
-            // Fill blank episode overviews from TMDb when the provider omitted them.
-            if (episodes.any { it.overview.isNullOrBlank() } && !tvShow.tmdbId.isNullOrBlank()) {
+            // Fill blank episode titles/overviews from TMDb when the provider omitted them.
+            if (
+                episodes.any { it.overview.isNullOrBlank() || it.title.isNullOrBlank() } &&
+                !tvShow.tmdbId.isNullOrBlank()
+            ) {
                 runCatching {
                     val tmdbEps = com.dskja.betterstreamflix.utils.TmdbUtils.getEpisodesBySeason(
                         tvShowId = tvShow.tmdbId!!,
@@ -126,10 +129,12 @@ class SeasonViewModel(
                     )
                     val byNumber = tmdbEps.associateBy { it.number }
                     episodes.forEach { ep ->
+                        val tmdb = byNumber[ep.number] ?: return@forEach
                         if (ep.overview.isNullOrBlank()) {
-                            byNumber[ep.number]?.overview?.takeIf { it.isNotBlank() }?.let {
-                                ep.overview = it
-                            }
+                            tmdb.overview?.takeIf { it.isNotBlank() }?.let { ep.overview = it }
+                        }
+                        if (ep.title.isNullOrBlank()) {
+                            tmdb.title?.takeIf { it.isNotBlank() }?.let { ep.title = it }
                         }
                     }
                 }

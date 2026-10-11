@@ -98,6 +98,47 @@ abstract class PlayerSettingsView @JvmOverloads constructor(
         onSubtitleProviderListsUpdated()
     }
 
+    /**
+     * Quick CC toggle for TV remotes ([android.view.KeyEvent.KEYCODE_CAPTIONS]).
+     * Turns off the active text track, or restores the last / preferred / first track.
+     * @return true when the key was handled (even if no tracks exist).
+     */
+    fun toggleSubtitles(): Boolean {
+        val player = player ?: return false
+        Settings.Subtitle.init(player, resources)
+        val tracks = Settings.Subtitle.list.filterIsInstance<Settings.Subtitle.TextTrackInformation>()
+        val selected = Settings.Subtitle.selected
+        return when (selected) {
+            is Settings.Subtitle.TextTrackInformation -> {
+                lastSubtitleToggleKey =
+                    UserPreferences.subtitleName?.trim()?.takeIf { it.isNotEmpty() }
+                        ?: selected.language?.takeIf { it.isNotBlank() }
+                        ?: selected.label.takeIf { it.isNotBlank() }
+                onSubtitleSelected.invoke(Settings.Subtitle.None)
+                true
+            }
+            else -> {
+                if (tracks.isEmpty()) return true
+                val key = lastSubtitleToggleKey?.trim().orEmpty().ifEmpty {
+                    UserPreferences.subtitleName?.trim().orEmpty()
+                }
+                val track = if (key.isNotEmpty()) {
+                    tracks.firstOrNull { subtitle ->
+                        subtitle.label.equals(key, ignoreCase = true) ||
+                            subtitle.language.equals(key, ignoreCase = true) ||
+                            subtitle.label.startsWith(key, ignoreCase = true)
+                    }
+                } else {
+                    null
+                } ?: tracks.first()
+                onSubtitleSelected.invoke(track)
+                true
+            }
+        }
+    }
+
+    private var lastSubtitleToggleKey: String? = null
+
     protected open fun onSubtitleProviderListsUpdated() {}
 
     var onHidden: (() -> Unit)? = null

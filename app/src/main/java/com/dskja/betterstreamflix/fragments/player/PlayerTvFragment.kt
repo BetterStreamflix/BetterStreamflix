@@ -303,6 +303,7 @@ class PlayerTvFragment : Fragment() {
         applyExperimentalPlayerChrome()
         binding.pvPlayer.onMediaPreviousClicked = ::handleMediaPrevious
         binding.pvPlayer.onMediaNextClicked = ::handleMediaNext
+        binding.pvPlayer.onSubtitleToggleClicked = ::handleSubtitleToggle
         // Touch brightness/volume gestures are for handsets; skip on Leanback / Fire TV.
         gestureHelper = if (
             DeviceCapabilities.isLeanbackDevice(requireContext()) ||
@@ -896,6 +897,12 @@ class PlayerTvFragment : Fragment() {
             }
             is Video.Type.Movie -> false
         }
+    }
+
+    /** Captions / CC remote key — additive; does not open the settings panel. */
+    private fun handleSubtitleToggle(): Boolean {
+        if (!isAdded || _binding == null || !::player.isInitialized || playerReleased) return false
+        return binding.settings.toggleSubtitles()
     }
 
     private fun applyExperimentalPlayerChrome() {
