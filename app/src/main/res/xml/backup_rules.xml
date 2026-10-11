@@ -7,6 +7,7 @@
     <exclude domain="sharedpref" path="beta_profiles.xml" />
     <exclude domain="sharedpref" path="cloud_account_state.xml" />
     <exclude domain="sharedpref" path="cloud_sync_queue.xml" />
+    <exclude domain="sharedpref" path="cloud_notes_looks_queue.xml" />
     <exclude domain="sharedpref" path="trakt_oauth.xml" />
     <exclude domain="sharedpref" path="download_headers.xml" />
     <!-- Tokens, cookies, parental PIN live in the main prefs file -->

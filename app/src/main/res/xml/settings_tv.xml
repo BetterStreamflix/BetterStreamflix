@@ -1724,6 +1724,14 @@
             <Preference android:key="cloud_sign_up" android:title="@string/cloud_sync_sign_up" android:summary="@string/cloud_sync_sign_up_summary" />
             <Preference android:key="cloud_sign_out" android:title="@string/cloud_sync_sign_out" />
             <Preference android:key="cloud_sync_now" android:title="@string/cloud_sync_now" android:summary="@string/cloud_sync_now_summary" />
+            <Preference
+                android:key="device_link_show_code"
+                android:title="@string/device_link_show_title"
+                android:summary="@string/device_link_show_summary" />
+            <Preference
+                android:key="device_link_enter_code"
+                android:title="@string/device_link_enter_title"
+                android:summary="@string/device_link_enter_summary" />
         </PreferenceCategory>
         <PreferenceCategory
             android:key="pc_remote_find"

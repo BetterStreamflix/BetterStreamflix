@@ -3,10 +3,15 @@ package com.dskja.betterstreamflix.utils
 import android.content.Context
 import androidx.core.content.edit
 import com.dskja.betterstreamflix.profiles.ProfileManager
+import com.dskja.betterstreamflix.sync.CloudSyncHooks
+import org.json.JSONObject
 
 /**
  * Short spoiler-free “where was I?” notes per episode.
  * Stored locally and keyed by active profile so Kids / adult profiles never share notes.
+ *
+ * Value shape is JSON `{text, updatedAtMillis}` for conflict-safe cloud sync.
+ * Plain-string legacy values are dual-read and migrated on first clocked access/write.
  */
 object EpisodeNotesStore {
 
@@ -15,37 +20,72 @@ object EpisodeNotesStore {
 
     private const val PREFS = "episode_notes_prefs"
     private const val KEY_PREFIX = "EPISODE_NOTE_"
+    private const val JSON_TEXT = "text"
+    private const val JSON_UPDATED = "updatedAtMillis"
 
-    fun get(context: Context, episodeId: String): String? {
+    data class NoteRecord(
+        val text: String,
+        val updatedAtMillis: Long,
+    )
+
+    fun get(context: Context, episodeId: String): String? =
+        getRecord(context, episodeId)?.text?.takeIf { it.isNotBlank() }
+
+    fun getRecord(context: Context, episodeId: String): NoteRecord? {
         val id = episodeId.trim()
         if (id.isEmpty()) return null
-        return prefs(context).getString(prefKey(id), null)
-            ?.takeIf { it.isNotBlank() }
+        val raw = prefs(context).getString(prefKey(id), null) ?: return null
+        val decoded = decode(raw) ?: return null
+        // Lazy-migrate plain strings so cloud sync has a clock (local primary).
+        if (!isJsonEnvelope(raw) && decoded.text.isNotBlank()) {
+            val stamped = decoded.copy(updatedAtMillis = System.currentTimeMillis())
+            writeRecord(context, id, stamped, enqueueCloud = false)
+            return stamped
+        }
+        return decoded
     }
 
     fun has(context: Context, episodeId: String): Boolean =
         !get(context, episodeId).isNullOrBlank()
 
     /**
-     * Saves a sanitized note. Empty / whitespace clears the note.
+     * Saves a sanitized note. Empty / whitespace clears the note (tombstone with clock).
      * @return the stored text, or null when cleared.
      */
     fun set(context: Context, episodeId: String, raw: String?): String? {
         val id = episodeId.trim()
         if (id.isEmpty()) return null
         val cleaned = sanitize(raw)
+        val now = System.currentTimeMillis()
         if (cleaned.isEmpty()) {
             clear(context, id)
             return null
         }
-        prefs(context).edit { putString(prefKey(id), cleaned) }
+        writeRecord(context, id, NoteRecord(cleaned, now), enqueueCloud = true)
         return cleaned
     }
 
+    /**
+     * Clears note text but keeps a tombstone clock so clears propagate via cloud LWW.
+     */
     fun clear(context: Context, episodeId: String) {
         val id = episodeId.trim()
         if (id.isEmpty()) return
-        prefs(context).edit { remove(prefKey(id)) }
+        val now = System.currentTimeMillis()
+        writeRecord(context, id, NoteRecord("", now), enqueueCloud = true)
+    }
+
+    /** Apply a remote note (or tombstone) without enqueueing a cloud mutation. */
+    fun applyRemote(context: Context, episodeId: String, text: String, updatedAtMillis: Long) {
+        val id = episodeId.trim()
+        if (id.isEmpty()) return
+        val cleaned = sanitize(text)
+        writeRecord(
+            context,
+            id,
+            NoteRecord(cleaned, updatedAtMillis.coerceAtLeast(0L)),
+            enqueueCloud = false,
+        )
     }
 
     fun preview(text: String?, maxChars: Int = PREVIEW_CHARS): String {
@@ -81,13 +121,23 @@ object EpisodeNotesStore {
     /**
      * All notes for the active profile (episodeId → text).
      * Used by profile export — never leaks other profiles' notes.
+     * Skips tombstones (empty text).
      */
-    fun listForActiveProfile(context: Context): List<Pair<String, String>> {
+    fun listForActiveProfile(context: Context): List<Pair<String, String>> =
+        listRecordsForActiveProfile(context)
+            .filter { it.second.text.isNotBlank() }
+            .map { it.first to it.second.text }
+
+    /**
+     * All note records (including empty tombstones) for the active profile.
+     */
+    fun listRecordsForActiveProfile(context: Context): List<Pair<String, NoteRecord>> {
         val profileId = ProfileManager.activeProfileId
         val isDefault = profileId == ProfileManager.DEFAULT_PROFILE_ID
         val suffix = "_p_$profileId"
-        return prefs(context).all.mapNotNull { (key, value) ->
-            val text = (value as? String)?.takeIf { it.isNotBlank() } ?: return@mapNotNull null
+        val prefs = prefs(context)
+        return prefs.all.mapNotNull { (key, value) ->
+            val raw = value as? String ?: return@mapNotNull null
             if (!key.startsWith(KEY_PREFIX)) return@mapNotNull null
             val rest = key.removePrefix(KEY_PREFIX)
             val episodeId = if (isDefault) {
@@ -98,8 +148,56 @@ object EpisodeNotesStore {
                 rest.removeSuffix(suffix)
             }
             if (episodeId.isBlank()) return@mapNotNull null
-            episodeId to text
+            var record = decode(raw) ?: return@mapNotNull null
+            // Stamp legacy plain strings before cloud collect.
+            if (!isJsonEnvelope(raw) && record.text.isNotBlank()) {
+                record = record.copy(updatedAtMillis = System.currentTimeMillis())
+                writeRecord(context, episodeId, record, enqueueCloud = false)
+            }
+            episodeId to record
         }.sortedBy { it.first }
+    }
+
+    internal fun encode(record: NoteRecord): String =
+        JSONObject()
+            .put(JSON_TEXT, record.text)
+            .put(JSON_UPDATED, record.updatedAtMillis)
+            .toString()
+
+    internal fun decode(raw: String?): NoteRecord? {
+        if (raw.isNullOrBlank()) return null
+        if (isJsonEnvelope(raw)) {
+            return runCatching {
+                val obj = JSONObject(raw)
+                NoteRecord(
+                    text = obj.optString(JSON_TEXT, ""),
+                    updatedAtMillis = obj.optLong(JSON_UPDATED, 0L),
+                )
+            }.getOrNull()
+        }
+        // Legacy plain string.
+        return NoteRecord(text = raw, updatedAtMillis = 0L)
+    }
+
+    internal fun isJsonEnvelope(raw: String): Boolean {
+        val trimmed = raw.trim()
+        if (!trimmed.startsWith("{") || !trimmed.endsWith("}")) return false
+        return runCatching {
+            val obj = JSONObject(trimmed)
+            obj.has(JSON_TEXT) && obj.has(JSON_UPDATED)
+        }.getOrDefault(false)
+    }
+
+    private fun writeRecord(
+        context: Context,
+        episodeId: String,
+        record: NoteRecord,
+        enqueueCloud: Boolean,
+    ) {
+        prefs(context).edit { putString(prefKey(episodeId), encode(record)) }
+        if (enqueueCloud) {
+            CloudSyncHooks.episodeNote(context, episodeId, record.text, record.updatedAtMillis)
+        }
     }
 
     private fun prefKey(episodeId: String): String =

@@ -99,6 +99,7 @@ object CloudSyncManager {
             CloudRealtimeSync.stopIfProfile(profileId)
         }
         CloudMutationStore.clearProfile(appContext, profileId)
+        CloudNotesLooksMutationStore.clearProfile(appContext, profileId)
         CloudAccountStore.clearProfile(appContext, profileId)
         SupabaseProvider.removeProfile(profileId)
     }
@@ -231,6 +232,16 @@ object CloudSyncManager {
             ),
         )
         withContext(Dispatchers.IO) { applyRemote(appContext, remote, profileId) }
+        if (!ProfileManager.isKidsActive()) {
+            runCatching {
+                CloudNotesLooksSync.syncPullApply(
+                    context = appContext,
+                    client = client,
+                    userId = userId,
+                    mergeLocal = true,
+                )
+            }.onFailure { Log.w(TAG, "Notes/Looks sync failed", it) }
+        }
         onProgress(CloudSyncProgress(CloudSyncProgress.Stage.FINALIZING))
         CloudAccountStore.setActiveAccount(
             appContext,
@@ -264,6 +275,17 @@ object CloudSyncManager {
             // Acknowledge stale mutations too. acknowledge() keeps any newer
             // version that was queued while this upload was in progress.
             CloudMutationStore.acknowledge(context, pending, profileId)
+        }
+        if (!ProfileManager.isKidsActive()) {
+            runCatching {
+                CloudNotesLooksSync.flushPending(
+                    context = context,
+                    client = client,
+                    userId = userId,
+                    profileId = profileId,
+                    onProgress = onProgress,
+                )
+            }.onFailure { Log.w(TAG, "Notes/Looks flush failed", it) }
         }
     }
 
@@ -322,6 +344,16 @@ object CloudSyncManager {
                 withContext(Dispatchers.IO) {
                     applyRemoteInternal(context, finalRemote, profileId)
                 }
+                if (!ProfileManager.isKidsActive()) {
+                    runCatching {
+                        CloudNotesLooksSync.syncPullApply(
+                            context = context,
+                            client = client,
+                            userId = userId,
+                            mergeLocal = true,
+                        )
+                    }.onFailure { Log.w(TAG, "Notes/Looks first-login merge failed", it) }
+                }
                 CloudAccountStore.claimLegacyData(context, userId, profileId)
             } else {
                 val local = withContext(Dispatchers.IO) {
@@ -347,6 +379,16 @@ object CloudSyncManager {
                 )
                 withContext(Dispatchers.IO) {
                     applyRemoteInternal(context, remote, profileId)
+                }
+                if (!ProfileManager.isKidsActive()) {
+                    runCatching {
+                        CloudNotesLooksSync.syncPullApply(
+                            context = context,
+                            client = client,
+                            userId = userId,
+                            mergeLocal = false,
+                        )
+                    }.onFailure { Log.w(TAG, "Notes/Looks apply failed", it) }
                 }
             }
             onProgress(CloudSyncProgress(CloudSyncProgress.Stage.FINALIZING))

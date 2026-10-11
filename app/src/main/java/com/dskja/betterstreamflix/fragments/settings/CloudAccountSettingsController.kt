@@ -11,11 +11,16 @@ import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.fragment.app.Fragment
+import androidx.fragment.app.FragmentActivity
 import androidx.lifecycle.LifecycleCoroutineScope
+import androidx.lifecycle.lifecycleScope
 import androidx.preference.Preference
 import com.dskja.betterstreamflix.R
+import com.dskja.betterstreamflix.sync.CloudAccountAlreadyLinkedException
 import com.dskja.betterstreamflix.sync.CloudSyncManager
 import com.dskja.betterstreamflix.sync.CloudSyncProgress
+import com.dskja.betterstreamflix.sync.DeviceLinkSettingsController
+import com.dskja.betterstreamflix.sync.KidsCloudAuthException
 import com.dskja.betterstreamflix.sync.SupabaseProvider
 import com.dskja.betterstreamflix.utils.ExpDialogChrome
 import com.dskja.betterstreamflix.utils.ExpMotion
@@ -32,6 +37,42 @@ object CloudAccountSettingsController {
         } else {
             AlertDialog.Builder(context)
         }
+
+    /**
+     * Link-Code claim path: password dialog with host email prefilled.
+     */
+    fun promptSignInWithEmail(
+        activity: FragmentActivity,
+        prefilledEmail: String,
+        onSuccess: (() -> Unit)? = null,
+    ) {
+        showCredentialsDialog(
+            context = activity,
+            titleRes = R.string.cloud_sync_sign_in,
+            prefilledEmail = prefilledEmail,
+        ) { email, password ->
+            activity.lifecycleScope.launch {
+                runCatching {
+                    CloudSyncManager.signIn(activity, email, password)
+                }.onSuccess {
+                    ExpDialogChrome.notify(activity, R.string.cloud_sync_sign_in_success)
+                    onSuccess?.invoke()
+                }.onFailure { error ->
+                    val message = when (error) {
+                        is CloudAccountAlreadyLinkedException ->
+                            activity.getString(R.string.cloud_sync_account_already_linked)
+                        is KidsCloudAuthException ->
+                            activity.getString(R.string.cloud_sync_kids_sign_in_blocked)
+                        else -> activity.getString(
+                            R.string.cloud_sync_error,
+                            error.message ?: error.javaClass.simpleName,
+                        )
+                    }
+                    ExpDialogChrome.notify(activity, message)
+                }
+            }
+        }
+    }
 
     fun bind(
         fragment: Fragment,
@@ -51,7 +92,7 @@ object CloudAccountSettingsController {
                 kids && email == null ->
                     fragment.getString(R.string.cloud_sync_kids_sign_in_blocked)
                 email != null ->
-                    fragment.getString(R.string.cloud_sync_signed_in_as, email)
+                    fragment.getString(R.string.cloud_sync_signed_in_notes_looks, email)
                 else ->
                     fragment.getString(R.string.cloud_sync_signed_out)
             }
@@ -64,6 +105,11 @@ object CloudAccountSettingsController {
             signUp?.isEnabled = SupabaseProvider.isConfigured && email == null && !kids
             signOut?.isEnabled = SupabaseProvider.isConfigured && email != null
             syncNow?.isEnabled = SupabaseProvider.isConfigured && email != null
+            DeviceLinkSettingsController.bind(
+                fragment,
+                findPreference,
+                onAccountChanged = ::refresh,
+            )
         }
 
         signIn?.setOnPreferenceClickListener {
@@ -152,9 +198,23 @@ object CloudAccountSettingsController {
     private fun showCredentialsDialog(
         fragment: Fragment,
         titleRes: Int,
+        prefilledEmail: String? = null,
         onSubmit: (String, String) -> Unit,
     ) {
-        val context = fragment.requireContext()
+        showCredentialsDialog(
+            context = fragment.requireContext(),
+            titleRes = titleRes,
+            prefilledEmail = prefilledEmail,
+            onSubmit = onSubmit,
+        )
+    }
+
+    private fun showCredentialsDialog(
+        context: android.content.Context,
+        titleRes: Int,
+        prefilledEmail: String? = null,
+        onSubmit: (String, String) -> Unit,
+    ) {
         val density = context.resources.displayMetrics.density
         val padding = (24 * density).toInt()
         val fieldGap = (10 * density).toInt()
@@ -163,6 +223,10 @@ object CloudAccountSettingsController {
             hint = context.getString(R.string.cloud_sync_email_hint)
             inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_EMAIL_ADDRESS
             isSingleLine = true
+            if (!prefilledEmail.isNullOrBlank()) {
+                setText(prefilledEmail.trim())
+                setSelection(text?.length ?: 0)
+            }
             if (exp) {
                 setBackgroundResource(ExperimentalMobileDesign.searchFieldBackground())
                 setPadding(padding, padding, padding, padding)
@@ -239,6 +303,9 @@ object CloudAccountSettingsController {
                 }
                 dialog.dismiss()
                 onSubmit(emailValue, passwordValue)
+            }
+            if (!prefilledEmail.isNullOrBlank()) {
+                password.requestFocus()
             }
         }
         dialog.show()

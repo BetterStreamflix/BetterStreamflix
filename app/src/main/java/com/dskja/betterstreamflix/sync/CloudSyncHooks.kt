@@ -9,6 +9,54 @@ import com.dskja.betterstreamflix.profiles.ProfileManager
 import com.dskja.betterstreamflix.providers.Provider
 
 object CloudSyncHooks {
+    fun episodeNote(
+        context: Context,
+        episodeId: String,
+        text: String,
+        updatedAtMillis: Long,
+    ) {
+        if (CloudSyncManager.isApplyingRemote) return
+        if (ProfileManager.isKidsActive()) return
+        val appContext = context.applicationContext
+        val profileId = ProfileManager.activeProfileId
+        val userId = CloudSyncManager.currentUserId()
+            ?: CloudAccountStore.activeUserId(appContext, profileId)
+            ?: return
+        val id = episodeId.trim()
+        if (id.isEmpty()) return
+        CloudNotesLooksMutationStore.enqueueNote(
+            appContext,
+            userId = userId,
+            episodeId = id,
+            text = text,
+            clientUpdatedAtMillis = updatedAtMillis,
+            profileId = profileId,
+        )
+        CloudSyncScheduler.enqueue(appContext, profileId, userId)
+    }
+
+    fun look(
+        context: Context,
+        look: String,
+        updatedAtMillis: Long,
+    ) {
+        if (CloudSyncManager.isApplyingRemote) return
+        if (ProfileManager.isKidsActive()) return
+        val appContext = context.applicationContext
+        val profileId = ProfileManager.activeProfileId
+        val userId = CloudSyncManager.currentUserId()
+            ?: CloudAccountStore.activeUserId(appContext, profileId)
+            ?: return
+        CloudNotesLooksMutationStore.enqueueLook(
+            appContext,
+            userId = userId,
+            look = look,
+            clientUpdatedAtMillis = updatedAtMillis,
+            profileId = profileId,
+        )
+        CloudSyncScheduler.enqueue(appContext, profileId, userId)
+    }
+
     fun movie(context: Context, provider: Provider, movie: Movie) {
         enqueue(context) { userId, now ->
             RemoteMediaState.fromMovie(userId, provider.name, movie, now)
