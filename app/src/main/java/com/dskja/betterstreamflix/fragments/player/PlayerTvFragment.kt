@@ -175,6 +175,7 @@ class PlayerTvFragment : Fragment() {
     private var castEndedListener: Player.Listener? = null
     private var castQueueExhaustedListener: (() -> Unit)? = null
     private var castQueueChangedListener: ((Int) -> Unit)? = null
+    private var castQueueAdvancedListener: (() -> Unit)? = null
     private var isCasting = false
     /** Skip one onResume auto-play after handing off to an external player. */
     private var skipNextAutoResume = false
@@ -192,6 +193,7 @@ class PlayerTvFragment : Fragment() {
 
     private var servers = listOf<Video.Server>()
     private var zoomToast: Toast? = null
+    private var defaultControllerShowTimeoutMs = 5_000
 
     private var currentVideo: Video? = null
     private var currentServer: Video.Server? = null
@@ -302,7 +304,8 @@ class PlayerTvFragment : Fragment() {
         initializePlayer(false)
         setupCastControls()
         initializeVideo()
-        applyExperimentalPlayerChrome()
+        defaultControllerShowTimeoutMs =
+            binding.pvPlayer.controllerShowTimeoutMs.coerceAtLeast(2_000)
         binding.pvPlayer.onMediaPreviousClicked = ::handleMediaPrevious
         binding.pvPlayer.onMediaNextClicked = ::handleMediaNext
         binding.pvPlayer.onSubtitleToggleClicked = ::handleSubtitleToggle
@@ -371,61 +374,10 @@ class PlayerTvFragment : Fragment() {
                                     return@collect
                                 }
 
-                                waitingForBypass = true
-
-                                val session = BypassSession(
-                                    token = UUID.randomUUID().toString(),
-                                    serverUrl = sToServer.id,
-                                    bypassUrl = bypassUrl,
-                                )
-                                activeBypassSession = session
-
-                                val actualPort = startWebSocketServer()
-                                if (actualPort == -1) {
-                                    clearBypassSession(resetBypassDone = true)
-                                    notifyPlayer("Unable to start TV bypass. Please try again.")
+                                if (!beginInteractiveCaptchaBypass(bypassUrl, sToServer.id)) {
                                     deferToNormalPlayback = true
                                 } else {
-                                    val wsUrl = BypassWebSocketEndpointHelper.getAdvertisedWsUrl(actualPort)
-                                    if (wsUrl.isNullOrBlank()) {
-                                        clearBypassSession(resetBypassDone = true)
-                                        notifyPlayer(getString(R.string.player_bypass_no_lan_ip))
-                                        deferToNormalPlayback = true
-                                    } else {
-                                        val deepLink =
-                                            "betterstreamflix://resolve?ws=${Uri.encode(wsUrl)}&token=${Uri.encode(session.token)}"
-                                        val httpPort = startHttpLandingServer(deepLink)
-                                        val qrContent = if (httpPort != -1) {
-                                            val host = BypassWebSocketEndpointHelper.getLocalIpv4Address()
-                                                ?: UserPreferences.bypassWsAdvertisedHost
-                                                    .trim()
-                                                    .removePrefix("ws://")
-                                                    .removePrefix("wss://")
-                                                    .substringBefore(':')
-                                                    .ifBlank { null }
-                                            if (host != null) {
-                                                "http://$host:$httpPort/resolve?token=${Uri.encode(session.token)}&ws=${Uri.encode(wsUrl)}"
-                                            } else {
-                                                deepLink
-                                            }
-                                        } else {
-                                            deepLink
-                                        }
-
-                                        wsServer?.registerSession(
-                                            session.token,
-                                            JSONObject()
-                                                .put("url", session.bypassUrl)
-                                                .toString()
-                                        )
-                                        requireActivity().runOnUiThread {
-                                            if (!isAdded || _binding == null) return@runOnUiThread
-                                            showQrDialog(qrContent, deepLink, wsUrl)
-                                            Log.d("Bypass", "Advertised WS URL: $wsUrl QR: $qrContent")
-                                        }
-
-                                        return@collect
-                                    }
+                                    return@collect
                                 }
                             }
                         }
@@ -556,10 +508,13 @@ class PlayerTvFragment : Fragment() {
                                     currentExternalPlayerTried = true
                                     val video = currentVideo
                                     if (video != null) {
+                                        val pos = runCatching { player.currentPosition }.getOrDefault(0L)
                                         com.dskja.betterstreamflix.platform.playerbackend.ExternalMpvBackend.open(
                                             requireContext(),
                                             video.source,
                                             video.headers.orEmpty(),
+                                            positionMs = pos,
+                                            title = resolvePlayerTitle(),
                                         )
                                     } else {
                                         viewModel.getVideo(state.server)
@@ -819,6 +774,8 @@ class PlayerTvFragment : Fragment() {
         castQueueExhaustedListener = null
         castQueueChangedListener?.let { CastPlaybackHub.removeQueueChangedListener(it) }
         castQueueChangedListener = null
+        castQueueAdvancedListener?.let { CastPlaybackHub.removeQueueAdvancedListener(it) }
+        castQueueAdvancedListener = null
         releasePlayer(ReleaseMode.HARD_DESTROY)
         runCatching {
             appContext?.let { CastPlaybackHub.detachUi(it) }
@@ -866,6 +823,16 @@ class PlayerTvFragment : Fragment() {
     }
 
     private fun handleMediaPrevious(): Boolean {
+        if (isLiveTvPlayback()) {
+            val channel = com.dskja.betterstreamflix.iptv.IptvLiveSession.previous()
+            if (channel == null) {
+                showLiveCue(R.string.player_live_no_more_channels)
+                return true
+            }
+            showLiveCue(R.string.player_live_zapping)
+            viewModel.playLiveChannel(channel)
+            return true
+        }
         return when (args.videoType) {
             is Video.Type.Episode -> {
                 if (!EpisodeManager.hasPreviousEpisode()) return false
@@ -877,8 +844,20 @@ class PlayerTvFragment : Fragment() {
     }
 
     private fun handleMediaNext(): Boolean {
+        if (isLiveTvPlayback()) {
+            val channel = com.dskja.betterstreamflix.iptv.IptvLiveSession.next()
+            if (channel == null) {
+                showLiveCue(R.string.player_live_no_more_channels)
+                return true
+            }
+            showLiveCue(R.string.player_live_zapping)
+            viewModel.playLiveChannel(channel)
+            return true
+        }
         return when (args.videoType) {
             is Video.Type.Episode -> {
+                // Peek first — do not swallow the key when there is no next episode.
+                if (!EpisodeManager.hasNextEpisode()) return false
                 playNextEpisodeAcrossSeasons()
                 true
             }
@@ -890,9 +869,6 @@ class PlayerTvFragment : Fragment() {
     private fun handleSubtitleToggle(): Boolean {
         if (!isAdded || _binding == null || !::player.isInitialized || playerReleased) return false
         return binding.settings.toggleSubtitles()
-    }
-
-    private fun applyExperimentalPlayerChrome() {
     }
 
     private fun refreshEpisodeNavigation(type: Video.Type.Episode) {
@@ -908,6 +884,9 @@ class PlayerTvFragment : Fragment() {
         val type = args.videoType as? Video.Type.Episode ?: return
 
         lifecycleScope.launch {
+            if (autoplay && viewModel.isVideoResolveInFlight()) {
+                return@launch
+            }
             val hasNextEpisode = withContext(Dispatchers.IO) {
                 EpisodeManager.ensureNextEpisodeAvailable(type, database)
             }
@@ -963,7 +942,7 @@ class PlayerTvFragment : Fragment() {
 
     private fun showOfflineNextEpisodeDialog(nextEpisode: Video.Type.Episode) {
         if (!isAdded || _binding == null) return
-        android.app.AlertDialog.Builder(requireContext())
+        androidx.appcompat.app.AlertDialog.Builder(ExpDialogChrome.themedContext(requireContext()))
             .setTitle(R.string.player_offline_next_title)
             .setMessage(R.string.player_offline_next_message)
             .setPositiveButton(R.string.player_offline_next_online) { _, _ ->
@@ -1020,7 +999,7 @@ class PlayerTvFragment : Fragment() {
 
     private fun showOfflinePreviousEpisodeDialog(previousEpisode: Video.Type.Episode) {
         if (!isAdded || _binding == null) return
-        android.app.AlertDialog.Builder(requireContext())
+        androidx.appcompat.app.AlertDialog.Builder(ExpDialogChrome.themedContext(requireContext()))
             .setTitle(R.string.player_offline_prev_title)
             .setMessage(R.string.player_offline_prev_message)
             .setPositiveButton(R.string.player_offline_next_online) { _, _ ->
@@ -1190,12 +1169,85 @@ class PlayerTvFragment : Fragment() {
     }
 
     private fun launchSolveCaptcha() {
+        // Re-enter the QR / WebSocket bypass flow — clearing cookies + reload alone
+        // cannot solve an active SerienStream / TMDb-DE gate.
+        val bypassUrl = buildSerienStreamBypassUrl(servers)
+        if (bypassUrl.isNullOrBlank()) {
+            clearBypassSession(dismissDialog = true, resetBypassDone = true)
+            notifyPlayer(getString(R.string.player_bypass_retry_needed_mobile))
+            viewModel.reloadServersAfterBypass()
+            return
+        }
+        if (!beginInteractiveCaptchaBypass(bypassUrl)) {
+            viewModel.reloadServersAfterBypass()
+        }
+    }
+
+    /**
+     * Start the TV QR + WebSocket captcha / CF gate session.
+     * @return false when the local bypass endpoint could not start.
+     */
+    private fun beginInteractiveCaptchaBypass(
+        bypassUrl: String,
+        serverUrl: String = servers.firstOrNull()?.id.orEmpty(),
+    ): Boolean {
         clearBypassSession(dismissDialog = true, resetBypassDone = true)
-        viewModel.reloadServersAfterBypass()
+        SerienStreamBypassHelper.applyStoredSessionCookies(bypassUrl)
+        SerienStreamAuthManager.seedRuntimeCookies()
+        waitingForBypass = true
+        val session = BypassSession(
+            token = UUID.randomUUID().toString(),
+            serverUrl = serverUrl,
+            bypassUrl = bypassUrl,
+        )
+        activeBypassSession = session
+        val actualPort = startWebSocketServer()
+        if (actualPort == -1) {
+            clearBypassSession(resetBypassDone = true)
+            notifyPlayer("Unable to start TV bypass. Please try again.")
+            return false
+        }
+        val wsUrl = BypassWebSocketEndpointHelper.getAdvertisedWsUrl(actualPort)
+        if (wsUrl.isNullOrBlank()) {
+            clearBypassSession(resetBypassDone = true)
+            notifyPlayer(getString(R.string.player_bypass_no_lan_ip))
+            return false
+        }
+        val deepLink =
+            "betterstreamflix://resolve?ws=${Uri.encode(wsUrl)}&token=${Uri.encode(session.token)}"
+        val httpPort = startHttpLandingServer(deepLink)
+        val qrContent = if (httpPort != -1) {
+            val host = BypassWebSocketEndpointHelper.getLocalIpv4Address()
+                ?: UserPreferences.bypassWsAdvertisedHost
+                    .trim()
+                    .removePrefix("ws://")
+                    .removePrefix("wss://")
+                    .substringBefore(':')
+                    .ifBlank { null }
+            if (host != null) {
+                "http://$host:$httpPort/resolve?token=${Uri.encode(session.token)}&ws=${Uri.encode(wsUrl)}"
+            } else {
+                deepLink
+            }
+        } else {
+            deepLink
+        }
+        wsServer?.registerSession(
+            session.token,
+            JSONObject()
+                .put("url", session.bypassUrl)
+                .toString(),
+        )
+        if (isAdded && _binding != null) {
+            showQrDialog(qrContent, deepLink, wsUrl)
+            Log.d("Bypass", "Advertised WS URL: $wsUrl QR: $qrContent")
+        }
+        return true
     }
 
     private fun launchUpdateDomain() {
-        val provider = UserPreferences.currentProvider ?: return
+        val provider = StreamFailureReason.domainUpdateTarget(UserPreferences.currentProvider)
+            ?: return
         lifecycleScope.launch {
             val outcome = ProviderDomainUpdater.update(provider)
             val msg = when (outcome) {
@@ -1383,12 +1435,14 @@ class PlayerTvFragment : Fragment() {
                 zoomToast?.show()
 
                 UserPreferences.playerResize = newResize
-                binding.pvPlayer.controllerShowTimeoutMs = binding.pvPlayer.controllerShowTimeoutMs
+                binding.pvPlayer.controllerShowTimeoutMs = defaultControllerShowTimeoutMs
+                binding.pvPlayer.showController()
                 updatePlayerScale()
             }
 
             binding.pvPlayer.controller.binding.exoSettings.setOnClickListener {
-                binding.pvPlayer.controllerShowTimeoutMs = binding.pvPlayer.controllerShowTimeoutMs
+                binding.pvPlayer.controllerShowTimeoutMs = defaultControllerShowTimeoutMs
+                binding.pvPlayer.showController()
                 binding.settings.show()
             }
 
@@ -1781,7 +1835,7 @@ class PlayerTvFragment : Fragment() {
                         if (reallyFinished &&
                             player.playbackState == androidx.media3.common.Player.STATE_ENDED
                         ) {
-                            if (UserPreferences.autoplay) {
+                            if (UserPreferences.autoplay && !viewModel.isVideoResolveInFlight()) {
                                 playNextEpisodeAcrossSeasons(autoplay = true)
                             }
                         }
@@ -1805,7 +1859,8 @@ class PlayerTvFragment : Fragment() {
                             serverCount = servers.size,
                             playbackAlreadyStarted = ::player.isInitialized && player.hasStarted(),
                             softwareDecoderAlreadyEnabled = currentSoftwareDecoder,
-                            allowMidPlaybackFailover = true,
+                            // Soft mid-play: SW rebuild / GiveUp — hard CDN deaths still hop.
+                            allowMidPlaybackFailover = PlaybackFailover.isHardSourceFailure(error),
                             externalPlayerAvailable = !isOfflinePlayback() && (
                                 com.dskja.betterstreamflix.platform.playerbackend.ExternalMpvBackend.canResolve(requireContext()) ||
                                     com.dskja.betterstreamflix.platform.playerbackend.PlayerBackendSelector.shouldHandoffToExternal()
@@ -1841,10 +1896,13 @@ class PlayerTvFragment : Fragment() {
                             currentExternalPlayerTried = true
                             val video = currentVideo
                             if (video != null) {
+                                val pos = runCatching { player.currentPosition }.getOrDefault(0L)
                                 com.dskja.betterstreamflix.platform.playerbackend.ExternalMpvBackend.open(
                                     requireContext(),
                                     video.source,
                                     video.headers.orEmpty(),
+                                    positionMs = pos,
+                                    title = resolvePlayerTitle(),
                                 )
                             }
                         }
@@ -2142,7 +2200,10 @@ class PlayerTvFragment : Fragment() {
 
         private fun currentVideoTypeForUi(): Video.Type = when (val type = args.videoType) {
             is Video.Type.Episode -> EpisodeManager.getCurrentEpisode()
-                ?.takeIf { currentEpisode -> currentEpisode.id == type.id }
+                ?.takeIf { currentEpisode ->
+                    currentEpisode.id == type.id ||
+                        currentEpisode.tvShow.id == type.tvShow.id
+                }
                 ?: type
             is Video.Type.Movie -> type
         }
@@ -2425,7 +2486,7 @@ class PlayerTvFragment : Fragment() {
                 val label = if (sub.isNullOrBlank()) "$base$mark" else "$base$mark\n$sub"
                 rows += GuideRow(channel, label)
             }
-            android.app.AlertDialog.Builder(requireContext())
+            androidx.appcompat.app.AlertDialog.Builder(ExpDialogChrome.themedContext(requireContext()))
                 .setTitle(R.string.player_live_channel_guide)
                 .setItems(rows.map { it.label }.toTypedArray()) { dialog, which ->
                     val channel = rows.getOrNull(which)?.channel ?: return@setItems
@@ -3003,7 +3064,9 @@ class PlayerTvFragment : Fragment() {
                 // Hub owns Cast END → queue advance (CAST-P1-1).
                 castQueueExhaustedListener?.let { CastPlaybackHub.removeQueueExhaustedListener(it) }
                 val onQueueExhausted: () -> Unit = {
-                    if (isAdded && view != null && !isTearingDown && UserPreferences.autoplay) {
+                    if (isAdded && view != null && !isTearingDown && UserPreferences.autoplay &&
+                        !viewModel.isVideoResolveInFlight()
+                    ) {
                         playNextEpisodeAcrossSeasons(autoplay = true)
                     }
                     updateCastQueueChrome()
@@ -3018,6 +3081,17 @@ class PlayerTvFragment : Fragment() {
                 }
                 castQueueChangedListener = onQueueChanged
                 CastPlaybackHub.addQueueChangedListener(onQueueChanged)
+                castQueueAdvancedListener?.let { CastPlaybackHub.removeQueueAdvancedListener(it) }
+                val onQueueAdvanced: () -> Unit = {
+                    if (isAdded && view != null && !isTearingDown) {
+                        updatePlayerHeader()
+                        setupEpisodeNavigationButtons()
+                        scheduleCastNextEpisodeQueue()
+                        updateCastQueueChrome()
+                    }
+                }
+                castQueueAdvancedListener = onQueueAdvanced
+                CastPlaybackHub.addQueueAdvancedListener(onQueueAdvanced)
                 castEndedListener = null
 
                 if (CastPlaybackHub.isCasting || castPlayer?.isCastSessionAvailable == true) {
@@ -3100,7 +3174,7 @@ class PlayerTvFragment : Fragment() {
                     )
                 }
                 if (prepared != null && isAdded) {
-                    CastQueueCoordinator.enqueueExclusive(prepared.mediaItem)
+                    CastQueueCoordinator.enqueueExclusive(prepared.mediaItem, prepared.episode)
                     updateCastQueueChrome()
                 } else if (
                     isAdded &&

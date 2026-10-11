@@ -161,6 +161,7 @@ class PlayerMobileFragment : Fragment() {
     private var castEndedListener: Player.Listener? = null
     private var castQueueExhaustedListener: (() -> Unit)? = null
     private var castQueueChangedListener: ((Int) -> Unit)? = null
+    private var castQueueAdvancedListener: (() -> Unit)? = null
     private var isCasting = false
     /** Skip one onResume auto-play after handing off to an external player. */
     private var skipNextAutoResume = false
@@ -539,8 +540,10 @@ class PlayerMobileFragment : Fragment() {
 
                     is PlayerViewModel.State.SuccessLoadingVideo -> {
                         PlayerSettingsView.Settings.ExtraBuffering.init(state.video.extraBuffering)
-                        if (!currentSoftwareDecoder) {
-                            PlayerSettingsView.Settings.SoftwareDecoder.init(false)
+                        if (PlayerSettingsView.Settings.SoftwareDecoder.selectedValue == null) {
+                            PlayerSettingsView.Settings.SoftwareDecoder.init(
+                                DeviceCapabilities.shouldPreferSoftwareDecoder(requireContext()),
+                            )
                         }
                         displayVideo(state.video, state.server)
                     }
@@ -576,8 +579,9 @@ class PlayerMobileFragment : Fragment() {
                                 }
                             }
                             PlaybackFailover.Action.RetrySoftwareDecoder -> {
-                                currentSoftwareDecoder = true
+                                // Leave currentSoftwareDecoder stale so needsReinit rebuilds Exo.
                                 PlayerSettingsView.Settings.SoftwareDecoder.init(true)
+                                PlayerSettingsView.Settings.SoftwareDecoder.selectedValue = true
                                 showPlayerCue(R.string.player_retry_software_decoder)
                                 viewModel.getVideo(state.server)
                             }
@@ -585,10 +589,13 @@ class PlayerMobileFragment : Fragment() {
                                 currentExternalPlayerTried = true
                                 val video = currentVideo
                                 if (video != null) {
+                                    val pos = runCatching { player.currentPosition }.getOrDefault(0L)
                                     com.dskja.betterstreamflix.platform.playerbackend.ExternalMpvBackend.open(
                                         requireContext(),
                                         video.source,
                                         video.headers.orEmpty(),
+                                        positionMs = pos,
+                                        title = resolvePlayerTitle(),
                                     )
                                 } else {
                                     viewModel.getVideo(state.server)
@@ -869,6 +876,8 @@ class PlayerMobileFragment : Fragment() {
         castQueueExhaustedListener = null
         castQueueChangedListener?.let { CastPlaybackHub.removeQueueChangedListener(it) }
         castQueueChangedListener = null
+        castQueueAdvancedListener?.let { CastPlaybackHub.removeQueueAdvancedListener(it) }
+        castQueueAdvancedListener = null
         releasePlayer(ReleaseMode.HARD_DESTROY)
         runCatching {
             appContext?.let { CastPlaybackHub.detachUi(it) }
@@ -980,8 +989,8 @@ class PlayerMobileFragment : Fragment() {
                 currentServer ?: return@setOnExtraBufferingSelectedListener
             )
         }
-        binding.settings.setOnSoftwareDecoderSelectedListener { useSoftware ->
-            currentSoftwareDecoder = useSoftware
+        binding.settings.setOnSoftwareDecoderSelectedListener {
+            // Flag is already in Settings; leave currentSoftwareDecoder stale so needsReinit fires.
             displayVideo(
                 currentVideo ?: return@setOnSoftwareDecoderSelectedListener,
                 currentServer ?: return@setOnSoftwareDecoderSelectedListener
@@ -1450,6 +1459,10 @@ class PlayerMobileFragment : Fragment() {
         val type = args.videoType as? Video.Type.Episode ?: return
 
         lifecycleScope.launch {
+            if (autoplay && viewModel.isVideoResolveInFlight()) {
+                // Do not cancel an in-flight failover getVideo by navigating away.
+                return@launch
+            }
             val hasNextEpisode = withContext(Dispatchers.IO) {
                 EpisodeManager.ensureNextEpisodeAvailable(type, database)
             }
@@ -1763,7 +1776,7 @@ class PlayerMobileFragment : Fragment() {
                     if (player.hasReallyFinished() &&
                         player.playbackState == androidx.media3.common.Player.STATE_ENDED
                     ) {
-                        if (UserPreferences.autoplay) {
+                        if (UserPreferences.autoplay && !viewModel.isVideoResolveInFlight()) {
                             playNextEpisodeAcrossSeasons(autoplay = true)
                         }
                     }
@@ -1787,7 +1800,8 @@ class PlayerMobileFragment : Fragment() {
                         serverCount = servers.size,
                         playbackAlreadyStarted = ::player.isInitialized && player.hasStarted(),
                         softwareDecoderAlreadyEnabled = currentSoftwareDecoder,
-                        allowMidPlaybackFailover = true,
+                        // Soft mid-play errors: SW rebuild / GiveUp — hard CDN deaths still hop.
+                        allowMidPlaybackFailover = PlaybackFailover.isHardSourceFailure(error),
                         externalPlayerAvailable = !isOfflinePlayback() && (
                             com.dskja.betterstreamflix.platform.playerbackend.ExternalMpvBackend.canResolve(requireContext()) ||
                                 com.dskja.betterstreamflix.platform.playerbackend.PlayerBackendSelector.shouldHandoffToExternal()
@@ -1810,8 +1824,9 @@ class PlayerMobileFragment : Fragment() {
                         }
                     }
                     PlaybackFailover.Action.RetrySoftwareDecoder -> {
-                        currentSoftwareDecoder = true
+                        // Leave currentSoftwareDecoder stale so needsReinit rebuilds Exo.
                         PlayerSettingsView.Settings.SoftwareDecoder.init(true)
+                        PlayerSettingsView.Settings.SoftwareDecoder.selectedValue = true
                         val video = currentVideo
                         val server = currentServer
                         if (video != null && server != null) {
@@ -1823,10 +1838,13 @@ class PlayerMobileFragment : Fragment() {
                         currentExternalPlayerTried = true
                         val video = currentVideo
                         if (video != null) {
+                            val pos = runCatching { player.currentPosition }.getOrDefault(0L)
                             com.dskja.betterstreamflix.platform.playerbackend.ExternalMpvBackend.open(
                                 requireContext(),
                                 video.source,
                                 video.headers.orEmpty(),
+                                positionMs = pos,
+                                title = resolvePlayerTitle(),
                             )
                         }
                     }
@@ -2237,7 +2255,11 @@ class PlayerMobileFragment : Fragment() {
 
     private fun currentVideoTypeForUi(): Video.Type = when (val type = args.videoType) {
         is Video.Type.Episode -> EpisodeManager.getCurrentEpisode()
-            ?.takeIf { currentEpisode -> currentEpisode.id == type.id }
+            ?.takeIf { currentEpisode ->
+                // Same show: prefer EpisodeManager (Cast queue advance syncs index to E₂+).
+                currentEpisode.id == type.id ||
+                    currentEpisode.tvShow.id == type.tvShow.id
+            }
             ?: type
         is Video.Type.Movie -> type
     }
@@ -2848,7 +2870,7 @@ class PlayerMobileFragment : Fragment() {
     }
 
     private fun updatePlayerHeader(videoType: Video.Type = currentVideoTypeForUi()) {
-        val controller = binding.pvPlayer.controller.binding
+        val controller = binding.pvPlayer.controllerOrNull()?.binding ?: return
         val title = resolvePlayerTitle(videoType)
         val subtitle = resolvePlayerSubtitle(videoType)
         val titleChanged = controller.tvExoTitle.text?.toString() != title
@@ -3302,7 +3324,8 @@ class PlayerMobileFragment : Fragment() {
     }
 
     private fun launchUpdateDomain() {
-        val provider = UserPreferences.currentProvider ?: return
+        val provider = StreamFailureReason.domainUpdateTarget(UserPreferences.currentProvider)
+            ?: return
         lifecycleScope.launch {
             val outcome = ProviderDomainUpdater.update(provider)
             val msg = when (outcome) {
@@ -3401,6 +3424,8 @@ class PlayerMobileFragment : Fragment() {
             options = PlayerBuilderFactory.Options(
                 extraBuffering = extraBuffering && !isLiveTvPlayback(),
                 softwareDecoder = currentSoftwareDecoder,
+                softwareDecoderForced =
+                    PlayerSettingsView.Settings.SoftwareDecoder.selectedValue == true,
                 seekIncrementsMs = if (isLiveTvPlayback()) null else 10_000L,
                 preferStereoAudio = false,
                 liveOptimized = isLiveTvPlayback(),
@@ -3547,7 +3572,10 @@ class PlayerMobileFragment : Fragment() {
             // is exhausted so local autoplay cannot race removeAt (CAST-P1-1).
             castQueueExhaustedListener?.let { CastPlaybackHub.removeQueueExhaustedListener(it) }
             val onQueueExhausted: () -> Unit = {
-                if (isAdded && view != null && !isTearingDown && UserPreferences.autoplay) {
+                // EpisodeManager already advanced on each queue claim — autoplay continues to E₃+.
+                if (isAdded && view != null && !isTearingDown && UserPreferences.autoplay &&
+                    !viewModel.isVideoResolveInFlight()
+                ) {
                     playNextEpisodeAcrossSeasons(autoplay = true)
                 }
                 updateCastQueueChrome()
@@ -3562,6 +3590,17 @@ class PlayerMobileFragment : Fragment() {
             }
             castQueueChangedListener = onQueueChanged
             CastPlaybackHub.addQueueChangedListener(onQueueChanged)
+            castQueueAdvancedListener?.let { CastPlaybackHub.removeQueueAdvancedListener(it) }
+            val onQueueAdvanced: () -> Unit = {
+                if (isAdded && view != null && !isTearingDown) {
+                    updatePlayerHeader()
+                    setupEpisodeNavigationButtons()
+                    scheduleCastNextEpisodeQueue()
+                    updateCastQueueChrome()
+                }
+            }
+            castQueueAdvancedListener = onQueueAdvanced
+            CastPlaybackHub.addQueueAdvancedListener(onQueueAdvanced)
             castEndedListener = null
 
             // Re-attach if a session is already active (e.g. returning from browse).
@@ -3646,7 +3685,7 @@ class PlayerMobileFragment : Fragment() {
                 )
             }
             if (prepared != null && isAdded) {
-                CastQueueCoordinator.enqueueExclusive(prepared.mediaItem)
+                CastQueueCoordinator.enqueueExclusive(prepared.mediaItem, prepared.episode)
                 updateCastQueueChrome()
             } else if (
                 isAdded &&

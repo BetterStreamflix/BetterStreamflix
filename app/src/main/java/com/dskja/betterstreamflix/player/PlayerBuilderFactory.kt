@@ -88,7 +88,10 @@ object PlayerBuilderFactory {
             // [Options.softwareDecoder] already encodes Settings Auto (device default) /
             // On / Off — do not OR DeviceCapabilities again or Off becomes a no-op.
             val preferSoftware = options.softwareDecoder
-            // Always enable MediaCodec software fallback; OEM HW-only paths crash to launcher.
+            // Product "Software Decoder" is NOT FFmpeg video decode: Media3's decoder_ffmpeg
+            // module is unpublished on Maven and only ships FfmpegAudioRenderer. Video path
+            // relies on always-on MediaCodec software fallback + player rebuild on retry.
+            // EXTENSION_RENDERER_MODE_* only helps when a local extension AAR is present.
             setEnableDecoderFallback(true)
             if (preferSoftware) {
                 // Forced On → MODE_ON (try extension/SW first). Auto-prefer → PREFER.
