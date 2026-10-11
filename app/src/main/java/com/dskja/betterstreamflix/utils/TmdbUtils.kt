@@ -39,6 +39,13 @@ object TmdbUtils {
                 com.dskja.betterstreamflix.profiles.UserProfile.Integration.TMDB,
             )
 
+    /**
+     * Ratings-only bypass for kids profiles: parental age lookups must still hit TMDb
+     * even when the user disabled the TMDb catalog integration (PS-004).
+     */
+    fun tmdbAllowedForAgeRating(): Boolean =
+        com.dskja.betterstreamflix.profiles.ProfileManager.isKidsActive() || tmdbAllowed()
+
     fun clearLogoCaches() {
         TmdbLogoCache.clearAll()
     }
@@ -1123,7 +1130,7 @@ object TmdbUtils {
     }
 
     suspend fun getMovieAgeRating(title: String, year: Int? = null, language: String? = null): Int? {
-        if (!tmdbAllowed()) return null
+        if (!tmdbAllowedForAgeRating()) return null
 
         val effectiveYear = year ?: extractYear(title)
         val cacheKey = buildLookupCacheKey("movie", title, effectiveYear, language)
@@ -1140,7 +1147,7 @@ object TmdbUtils {
     }
 
     suspend fun getTvShowAgeRating(title: String, year: Int? = null, language: String? = null): Int? {
-        if (!tmdbAllowed()) return null
+        if (!tmdbAllowedForAgeRating()) return null
 
         val effectiveYear = year ?: extractYear(title)
         val cacheKey = buildLookupCacheKey("tv", title, effectiveYear, language)
@@ -1157,7 +1164,7 @@ object TmdbUtils {
     }
 
     suspend fun getMovieAgeRatingById(id: Int, language: String? = null): Int? {
-        if (!tmdbAllowed()) return null
+        if (!tmdbAllowedForAgeRating()) return null
 
         val cacheKey = "movie-id|$id|${language.orEmpty()}"
         movieAgeCache[cacheKey]?.let(::decodeAgeRatingCacheValue)?.let { return it }
@@ -1177,7 +1184,7 @@ object TmdbUtils {
     }
 
     suspend fun getTvShowAgeRatingById(id: Int, language: String? = null): Int? {
-        if (!tmdbAllowed()) return null
+        if (!tmdbAllowedForAgeRating()) return null
 
         val cacheKey = "tv-id|$id|${language.orEmpty()}"
         tvAgeCache[cacheKey]?.let(::decodeAgeRatingCacheValue)?.let { return it }

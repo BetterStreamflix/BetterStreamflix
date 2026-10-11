@@ -48,6 +48,12 @@ import com.dskja.betterstreamflix.ui.DetailRating
 import com.dskja.betterstreamflix.ui.DetailWatchLabels
 
 internal fun MovieViewHolder.bindMovieTvDetail(binding: ContentMovieTvBinding) {
+    DetailParentalGate.guardMovie(
+        itemView,
+        movie,
+        binding.btnMovieWatchNow,
+        binding.btnMovieDownload,
+    )
     binding.ivMoviePoster.run {
         loadMoviePoster(movie) {
             transition(DrawableTransitionOptions.withCrossFade())

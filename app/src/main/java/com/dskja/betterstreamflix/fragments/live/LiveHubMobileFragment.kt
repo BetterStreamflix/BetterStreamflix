@@ -81,6 +81,11 @@ class LiveHubMobileFragment : Fragment() {
                         }
                         hideWarning()
                     }
+                    LiveHubViewModel.State.Restricted -> {
+                        ExpMotion.fadeOutAndHide(binding.isLoading.root)
+                        hideWarning()
+                        displayRestricted()
+                    }
                     is LiveHubViewModel.State.Success -> {
                         display(state.categories)
                         ExpMotion.fadeOutAndHide(binding.isLoading.root)
@@ -114,6 +119,7 @@ class LiveHubMobileFragment : Fragment() {
                                 LoggingUtils.showErrorDialog(requireContext(), state.error)
                             }
                         }
+                        binding.tvLiveHubEmpty.text = getString(R.string.live_hub_empty)
                         binding.tvLiveHubEmpty.isVisible = appAdapter.items.isEmpty()
                     }
                 }
@@ -121,6 +127,11 @@ class LiveHubMobileFragment : Fragment() {
         }
 
         reload()
+    }
+
+    override fun onResume() {
+        super.onResume()
+        HomeProfileChip.refresh(this, _binding?.root)
     }
 
     private fun reload() {
@@ -139,9 +150,17 @@ class LiveHubMobileFragment : Fragment() {
             category.itemSpacing = 10.dp(requireContext())
             category.itemType = AppAdapter.Type.CATEGORY_MOBILE_ITEM
         }
+        binding.tvLiveHubEmpty.text = getString(R.string.live_hub_empty)
         binding.tvLiveHubEmpty.isVisible = categories.isEmpty()
         binding.rvLiveHub.isVisible = categories.isNotEmpty()
         appAdapter.submitList(categories)
+    }
+
+    private fun displayRestricted() {
+        appAdapter.submitList(emptyList())
+        binding.rvLiveHub.isVisible = false
+        binding.tvLiveHubEmpty.text = getString(R.string.live_hub_restricted)
+        binding.tvLiveHubEmpty.isVisible = true
     }
 
     private fun showWarning(warning: String?) {

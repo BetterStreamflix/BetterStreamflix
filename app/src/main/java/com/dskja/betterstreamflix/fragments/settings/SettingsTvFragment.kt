@@ -1883,6 +1883,10 @@ class SettingsTvFragment : LeanbackPreferenceFragmentCompat() {
 
         removePinPreference?.setOnPreferenceClickListener {
             changeParentalSettingWithPinCheck {
+                if (!UserPreferences.canClearParentalPinWhileKidsActive()) {
+                    showSettingsInfo(getString(R.string.settings_parental_pin_clear_kids_blocked))
+                    return@changeParentalSettingWithPinCheck
+                }
                 UserPreferences.parentalControlPin = ""
                 UserPreferences.parentalControlMaxAge = null
                 maxAgePreference?.value = ""
@@ -2044,8 +2048,7 @@ class SettingsTvFragment : LeanbackPreferenceFragmentCompat() {
             }
         }
 
-        val currentPin = UserPreferences.parentalControlPin
-        if (currentPin.isBlank()) {
+        if (UserPreferences.parentalControlPin.isBlank()) {
             onVerified()
             return
         }
@@ -2054,7 +2057,7 @@ class SettingsTvFragment : LeanbackPreferenceFragmentCompat() {
             titleRes = R.string.settings_parental_enter_current_pin_title,
             messageRes = R.string.settings_parental_enter_current_pin_message,
             onSubmit = { enteredPin ->
-                if (enteredPin == currentPin) {
+                if (UserPreferences.verifyParentalControlPin(enteredPin)) {
                     UserPreferences.registerParentalPinSuccess()
                     onVerified()
                     null
@@ -2078,8 +2081,7 @@ class SettingsTvFragment : LeanbackPreferenceFragmentCompat() {
     }
 
     private fun changeAdminSettingWithPinCheck(onVerified: () -> Unit) {
-        val currentAdminPin = UserPreferences.parentalControlAdminPin
-        if (currentAdminPin.isBlank()) {
+        if (UserPreferences.parentalControlAdminPin.isBlank()) {
             onVerified()
             return
         }
@@ -2088,8 +2090,7 @@ class SettingsTvFragment : LeanbackPreferenceFragmentCompat() {
     }
 
     private fun promptForAdminPin(onVerified: () -> Unit) {
-        val currentAdminPin = UserPreferences.parentalControlAdminPin
-        if (currentAdminPin.isBlank()) {
+        if (UserPreferences.parentalControlAdminPin.isBlank()) {
             showSettingsInfo(getString(R.string.settings_parental_set_admin_pin_first))
             return
         }
@@ -2098,7 +2099,7 @@ class SettingsTvFragment : LeanbackPreferenceFragmentCompat() {
             titleRes = R.string.settings_parental_enter_admin_pin_title,
             messageRes = R.string.settings_parental_enter_admin_pin_message,
             onSubmit = { enteredPin ->
-                if (enteredPin == currentAdminPin) {
+                if (UserPreferences.verifyParentalControlAdminPin(enteredPin)) {
                     UserPreferences.unlockParentalControls()
                     onVerified()
                     null
@@ -2127,6 +2128,11 @@ class SettingsTvFragment : LeanbackPreferenceFragmentCompat() {
                 onSubmit = { newPin ->
                     when {
                         newPin.isBlank() -> {
+                            if (!UserPreferences.canClearParentalPinWhileKidsActive()) {
+                                return@promptForPinValue getString(
+                                    R.string.settings_parental_pin_clear_kids_blocked,
+                                )
+                            }
                             UserPreferences.parentalControlPin = ""
                             UserPreferences.parentalControlMaxAge = null
                             maxAgePreference?.value = ""
@@ -2138,6 +2144,7 @@ class SettingsTvFragment : LeanbackPreferenceFragmentCompat() {
                         }
                         newPin.length < 4 -> getString(R.string.settings_parental_pin_too_short)
                         else -> {
+                            // Setter hashes raw PINs before storage.
                             UserPreferences.parentalControlPin = newPin
                             showSettingsInfo(getString(R.string.settings_parental_pin_saved))
                             ProviderChangeNotifier.notifyProviderChanged()

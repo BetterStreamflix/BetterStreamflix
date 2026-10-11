@@ -40,7 +40,10 @@ object OfflinePlayback {
 
     suspend fun findCompletedAnyProvider(context: Context, videoType: Video.Type): DownloadItemEntity? {
         val repo = DownloadRepository.get(context)
-        val all = repo.getAllOnce().filter { it.state == DownloadItemState.COMPLETED.name }
+        val all = repo.getAllOnce().filter {
+            it.state == DownloadItemState.COMPLETED.name &&
+                DownloadProfileScope.matchesActive(it.profileId)
+        }
         return when (videoType) {
             is Video.Type.Movie -> all.firstOrNull {
                 it.kind == DownloadKind.MOVIE.name &&

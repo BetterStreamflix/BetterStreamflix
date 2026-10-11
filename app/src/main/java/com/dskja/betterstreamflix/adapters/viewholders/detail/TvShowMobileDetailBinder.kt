@@ -55,6 +55,12 @@ import com.dskja.betterstreamflix.ui.DetailRating
 import com.bumptech.glide.Glide
 
 internal fun TvShowViewHolder.bindTvShowMobileDetail(binding: ContentTvShowMobileBinding) {
+    DetailParentalGate.guardTvShow(
+        itemView,
+        tvShow,
+        binding.btnTvShowWatchNow,
+        binding.btnTvShowDownload,
+    )
     binding.ivTvShowPoster.visibility = View.GONE
     Glide.with(binding.ivTvShowPoster).clear(binding.ivTvShowPoster)
 

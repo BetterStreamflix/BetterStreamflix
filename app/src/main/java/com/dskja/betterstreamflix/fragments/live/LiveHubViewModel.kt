@@ -19,6 +19,8 @@ class LiveHubViewModel : ViewModel() {
 
     sealed class State {
         data object Loading : State()
+        /** Kids / parental controls — no channels, no playback. */
+        data object Restricted : State()
         data class Success(
             val categories: List<Category>,
             val warning: String? = null,
@@ -33,6 +35,10 @@ class LiveHubViewModel : ViewModel() {
     ) {
         loadJob?.cancel()
         loadJob = viewModelScope.launch {
+            if (LiveHubCatalog.isAgeGated()) {
+                _state.emit(State.Restricted)
+                return@launch
+            }
             _state.emit(State.Loading)
             try {
                 val includeQuarantined = UserPreferences.showQuarantinedProviders

@@ -7,10 +7,11 @@ import androidx.room.PrimaryKey
 @Entity(
     tableName = "download_items",
     indices = [
-        Index(value = ["contentKey"], unique = true),
+        Index(value = ["contentKey", "profileId"], unique = true),
         Index(value = ["media3Id"]),
         Index(value = ["state"]),
         Index(value = ["seasonPackId"]),
+        Index(value = ["profileId"]),
     ],
 )
 data class DownloadItemEntity(
@@ -49,6 +50,11 @@ data class DownloadItemEntity(
     val completedAt: Long = 0L,
     val watchedOffline: Boolean = false,
     val smartEnqueued: Boolean = false,
+    /**
+     * Owning [com.dskja.betterstreamflix.profiles.ProfileManager] id.
+     * Empty string = legacy pre-migration rows (visible only on the default profile).
+     */
+    val profileId: String = "",
 )
 
 @Entity(tableName = "download_season_packs")

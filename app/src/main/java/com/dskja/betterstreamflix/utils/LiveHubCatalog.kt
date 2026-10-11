@@ -39,6 +39,9 @@ object LiveHubCatalog {
     const val SECTION_NEWS = "live_hub_news"
     const val SECTION_CHANNELS = "live_hub_channels"
 
+    /** Live IPTV has no reliable age ratings — block the whole hub under kids/parental. */
+    fun isAgeGated(): Boolean = ParentalControlUtils.isFilteringActive()
+
     enum class Section { SPORT, NEWS, CHANNELS }
 
     private val SPORTS_KEYS = listOf(

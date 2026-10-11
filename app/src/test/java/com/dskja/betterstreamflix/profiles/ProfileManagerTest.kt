@@ -29,7 +29,18 @@ class ProfileManagerTest {
         val first = ProfileManager.hashPin("1234", "profile_a")
         val second = ProfileManager.hashPin("1234", "profile_a")
         assertEquals(first, second)
-        assertEquals(64, first.length)
+        assertTrue(first.startsWith(PinHasher.V2_PREFIX))
+        assertEquals(64, first.removePrefix(PinHasher.V2_PREFIX).length)
+    }
+
+    @Test
+    fun hashPin_writesV2Prefix() {
+        val hash = ProfileManager.hashPin("1234", "profile_a")
+        assertTrue(hash.startsWith("v2:"))
+        assertNotEquals(
+            PinHasher.legacySha256("1234", "profile_a"),
+            hash,
+        )
     }
 
     @Test
@@ -44,6 +55,35 @@ class ProfileManagerTest {
         val pinA = ProfileManager.hashPin("1234", "profile_a")
         val pinB = ProfileManager.hashPin("5678", "profile_a")
         assertNotEquals(pinA, pinB)
+    }
+
+    @Test
+    fun pinHasher_verifyAcceptsLegacySha256() {
+        val legacy = PinHasher.legacySha256("1234", "profile_a")
+        assertTrue(PinHasher.verify("1234", legacy, "profile_a"))
+        assertFalse(PinHasher.verify("9999", legacy, "profile_a"))
+    }
+
+    @Test
+    fun pinHasher_verifyAcceptsV2() {
+        val v2 = PinHasher.hash("1234", "profile_a")
+        assertTrue(PinHasher.verify("1234", v2, "profile_a"))
+        assertFalse(PinHasher.verify("9999", v2, "profile_a"))
+    }
+
+    @Test
+    fun pinHasher_looksLikePlaintextPin() {
+        assertTrue(PinHasher.looksLikePlaintextPin("1234"))
+        assertTrue(PinHasher.looksLikePlaintextPin("12345678"))
+        assertFalse(PinHasher.looksLikePlaintextPin("123"))
+        assertFalse(PinHasher.looksLikePlaintextPin("abcd"))
+        assertFalse(PinHasher.looksLikePlaintextPin(PinHasher.hash("1234", "parental_default")))
+    }
+
+    @Test
+    fun parentalPinSalt_isStable() {
+        assertEquals("parental_kids01", ProfileManager.parentalPinSalt("kids01"))
+        assertEquals("admin_kids01", ProfileManager.adminPinSalt("kids01"))
     }
 
     @Test

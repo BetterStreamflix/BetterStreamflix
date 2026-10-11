@@ -972,6 +972,27 @@ class ProfilePickerDialog : DialogFragment() {
             val clearPin = view.findViewById<CheckBox>(R.id.cb_profile_clear_pin)
             if (clearPin?.isChecked == true && hadExistingPin) {
                 val pin = pinInput?.text?.toString()?.trim().orEmpty()
+                val target = ProfileManager.profiles().find { it.id == profileId }
+                if (target?.isKids == true) {
+                    if (UserPreferences.parentalControlPin.isBlank()) {
+                        ExpDialogChrome.notify(
+                            context,
+                            R.string.profile_kids_pin_clear_blocked,
+                            R.string.profile_pin_title,
+                        )
+                        return false
+                    }
+                    if (!UserPreferences.verifyParentalControlPin(pin)) {
+                        ExpDialogChrome.notify(
+                            context,
+                            R.string.settings_parental_invalid_pin,
+                            R.string.profile_pin_title,
+                        )
+                        return false
+                    }
+                    ProfileManager.clearPin(profileId)
+                    return true
+                }
                 if (!ProfileManager.verifyPin(profileId, pin)) {
                     ExpDialogChrome.notify(
                         context,

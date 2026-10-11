@@ -38,7 +38,8 @@ object SmartDownloadsManager {
 
         val repo = DownloadRepository.get(context)
         val item = repo.getAllOnce().firstOrNull { entity ->
-            entity.kind == DownloadKind.EPISODE.name &&
+            DownloadProfileScope.matchesActive(entity.profileId) &&
+                entity.kind == DownloadKind.EPISODE.name &&
                 videoTypeIdEquals(entity.videoTypeJson, videoType.id)
         }
 
@@ -69,7 +70,8 @@ object SmartDownloadsManager {
 
         val repo = DownloadRepository.get(context)
         val item = repo.getAllOnce().firstOrNull { entity ->
-            entity.kind == DownloadKind.MOVIE.name &&
+            DownloadProfileScope.matchesActive(entity.profileId) &&
+                entity.kind == DownloadKind.MOVIE.name &&
                 videoTypeIdEquals(entity.videoTypeJson, videoType.id)
         } ?: return
 
@@ -94,7 +96,8 @@ object SmartDownloadsManager {
 
         // Skip if the next episode is already downloaded or in flight.
         val existing = DownloadRepository.get(context).getAllOnce().firstOrNull { entity ->
-            entity.kind == DownloadKind.EPISODE.name &&
+            DownloadProfileScope.matchesActive(entity.profileId) &&
+                entity.kind == DownloadKind.EPISODE.name &&
                 videoTypeIdEquals(entity.videoTypeJson, next.id)
         }
         if (existing != null && existing.state != DownloadItemState.FAILED.name) return

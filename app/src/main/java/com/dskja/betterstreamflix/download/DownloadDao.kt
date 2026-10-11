@@ -12,6 +12,23 @@ interface DownloadDao {
     @Query("SELECT * FROM download_items ORDER BY sortIndex ASC, updatedAt DESC")
     fun observeAll(): Flow<List<DownloadItemEntity>>
 
+    /**
+     * Profile-scoped list. Legacy rows (`profileId` empty) are included only when
+     * [profileId] is the default profile id.
+     */
+    @Query(
+        """
+        SELECT * FROM download_items
+        WHERE profileId = :profileId
+           OR (
+                :profileId = 'default'
+                AND (profileId = '' OR profileId = 'default')
+           )
+        ORDER BY sortIndex ASC, updatedAt DESC
+        """,
+    )
+    fun observeForProfile(profileId: String): Flow<List<DownloadItemEntity>>
+
     @Query("SELECT * FROM download_items WHERE state IN (:states) ORDER BY sortIndex ASC, updatedAt DESC")
     fun observeByStates(states: List<String>): Flow<List<DownloadItemEntity>>
 
@@ -21,14 +38,66 @@ interface DownloadDao {
     @Query("SELECT * FROM download_items WHERE contentKey = :contentKey LIMIT 1")
     suspend fun getByContentKey(contentKey: String): DownloadItemEntity?
 
+    @Query(
+        """
+        SELECT * FROM download_items
+        WHERE contentKey = :contentKey
+          AND (
+            profileId = :profileId
+            OR (
+                :profileId = 'default'
+                AND (profileId = '' OR profileId = 'default')
+            )
+          )
+        LIMIT 1
+        """,
+    )
+    suspend fun getByContentKeyForProfile(contentKey: String, profileId: String): DownloadItemEntity?
+
     @Query("SELECT * FROM download_items WHERE media3Id = :media3Id LIMIT 1")
     suspend fun getByMedia3Id(media3Id: String): DownloadItemEntity?
 
     @Query("SELECT contentKey FROM download_items WHERE state = :state")
     fun observeCompletedKeys(state: String = DownloadItemState.COMPLETED.name): Flow<List<String>>
 
+    @Query(
+        """
+        SELECT contentKey FROM download_items
+        WHERE state = :state
+          AND (
+            profileId = :profileId
+            OR (
+                :profileId = 'default'
+                AND (profileId = '' OR profileId = 'default')
+            )
+          )
+        """,
+    )
+    fun observeCompletedKeysForProfile(
+        profileId: String,
+        state: String = DownloadItemState.COMPLETED.name,
+    ): Flow<List<String>>
+
     @Query("SELECT contentKey FROM download_items WHERE state = :state")
     suspend fun completedKeys(state: String = DownloadItemState.COMPLETED.name): List<String>
+
+    @Query(
+        """
+        SELECT contentKey FROM download_items
+        WHERE state = :state
+          AND (
+            profileId = :profileId
+            OR (
+                :profileId = 'default'
+                AND (profileId = '' OR profileId = 'default')
+            )
+          )
+        """,
+    )
+    suspend fun completedKeysForProfile(
+        profileId: String,
+        state: String = DownloadItemState.COMPLETED.name,
+    ): List<String>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsert(item: DownloadItemEntity)

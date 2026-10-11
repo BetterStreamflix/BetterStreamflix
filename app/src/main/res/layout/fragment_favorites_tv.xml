@@ -6,6 +6,16 @@
     android:layout_height="match_parent"
     android:background="?attr/app_background_color">
 
+    <include
+        android:id="@+id/tv_home_profile_chip"
+        layout="@layout/view_profile_home_chip"
+        android:layout_width="wrap_content"
+        android:layout_height="40dp"
+        android:layout_marginTop="8dp"
+        android:layout_marginEnd="48dp"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
+
     <Button
         android:id="@+id/btn_favorites_share"
         android:layout_width="wrap_content"
@@ -45,7 +55,7 @@
         android:layout_width="wrap_content"
         android:layout_height="48dp"
         android:layout_marginTop="8dp"
-        android:layout_marginEnd="32dp"
+        android:layout_marginEnd="28dp"
         android:background="@drawable/bg_favorites_action_tv"
         android:backgroundTint="@null"
         android:paddingStart="18dp"
@@ -54,7 +64,7 @@
         android:text="@string/favorites_reorder_categories"
         android:textColor="@color/favorites_action_text_tv"
         android:textStyle="bold"
-        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintEnd_toStartOf="@id/tv_home_profile_chip"
         app:layout_constraintTop_toTopOf="parent" />
 
     <androidx.constraintlayout.widget.Barrier
@@ -62,7 +72,7 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         app:barrierDirection="bottom"
-        app:constraint_referenced_ids="btn_favorites_share,btn_favorites_reorder_mode,btn_favorites_reorder" />
+        app:constraint_referenced_ids="btn_favorites_share,btn_favorites_reorder_mode,btn_favorites_reorder,tv_home_profile_chip" />
 
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/rv_favorites"
@@ -71,6 +81,7 @@
         android:layout_marginTop="8dp"
         android:clipChildren="false"
         android:clipToPadding="false"
+        android:nextFocusUp="@id/tv_home_profile_chip"
         android:paddingStart="16dp"
         android:paddingTop="16dp"
         android:paddingEnd="16dp"

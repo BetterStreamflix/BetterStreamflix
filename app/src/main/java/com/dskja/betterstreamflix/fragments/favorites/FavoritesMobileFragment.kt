@@ -22,13 +22,14 @@ import com.dskja.betterstreamflix.databinding.FragmentFavoritesMobileBinding
 import com.dskja.betterstreamflix.models.Movie
 import com.dskja.betterstreamflix.models.TvShow
 import com.dskja.betterstreamflix.providers.Provider
+import com.dskja.betterstreamflix.ui.HomeProfileChip
 import com.dskja.betterstreamflix.ui.SpacingItemDecoration
 import com.dskja.betterstreamflix.ui.UserDataNotifier
 import com.dskja.betterstreamflix.utils.ExpDialogChrome
 import com.dskja.betterstreamflix.utils.ExpEmptyChrome
 import com.dskja.betterstreamflix.utils.ExpMotion
 import com.dskja.betterstreamflix.utils.ExperimentalMobileDesign
-import com.dskja.betterstreamflix.utils.UserDataCache
+import com.dskja.betterstreamflix.sync.FavoriteMutations
 import com.dskja.betterstreamflix.utils.UserPreferences
 import com.dskja.betterstreamflix.utils.dp
 import kotlinx.coroutines.Dispatchers
@@ -79,6 +80,7 @@ class FavoritesMobileFragment : Fragment() {
         ExpMotion.enterScreen(binding.root)
         ExperimentalMobileDesign.applyReducedGlass(binding.root)
         ExpMotion.staggerFirstFill(binding.rvFavorites)
+        HomeProfileChip.refresh(this, binding.root)
         val columnCount = maxOf(3, resources.configuration.screenWidthDp / 120)
         val gridLayoutManager = GridLayoutManager(requireContext(), columnCount).apply {
             spanSizeLookup = object : GridLayoutManager.SpanSizeLookup() {
@@ -234,7 +236,7 @@ class FavoritesMobileFragment : Fragment() {
         }
     }
 
-    private fun removeMovieFavorite(appContext: android.content.Context, movie: Movie, currentName: String?) {
+    private suspend fun removeMovieFavorite(appContext: android.content.Context, movie: Movie, currentName: String?) {
         val provider = resolveProvider(movie.providerName, currentName) ?: return
         val ownsDb = provider.name == currentName
         val db = if (ownsDb) {
@@ -243,20 +245,19 @@ class FavoritesMobileFragment : Fragment() {
             AppDatabase.getInstanceForProvider(provider.name, appContext)
         }
         try {
-            db.movieDao().upsertFavorite(movie, false)
-            UserDataCache.removeMovieFromFavorites(appContext, provider, movie.id)
-            com.dskja.betterstreamflix.platform.simkl.SimklSyncHooks.onListToggle(
-                add = false,
-                imdbId = movie.imdbId,
-                tmdbId = movie.tmdbId,
-                isTv = false,
+            FavoriteMutations.setMovieFavorite(
+                appContext,
+                provider,
+                movie,
+                favorite = false,
+                database = db,
             )
         } finally {
             if (!ownsDb) runCatching { db.close() }
         }
     }
 
-    private fun removeTvShowFavorite(appContext: android.content.Context, tvShow: TvShow, currentName: String?) {
+    private suspend fun removeTvShowFavorite(appContext: android.content.Context, tvShow: TvShow, currentName: String?) {
         val provider = resolveProvider(tvShow.providerName, currentName) ?: return
         val ownsDb = provider.name == currentName
         val db = if (ownsDb) {
@@ -265,13 +266,12 @@ class FavoritesMobileFragment : Fragment() {
             AppDatabase.getInstanceForProvider(provider.name, appContext)
         }
         try {
-            db.tvShowDao().upsertFavorite(tvShow, false)
-            UserDataCache.removeTvShowFromFavorites(appContext, provider, tvShow.id)
-            com.dskja.betterstreamflix.platform.simkl.SimklSyncHooks.onListToggle(
-                add = false,
-                imdbId = tvShow.imdbId,
-                tmdbId = tvShow.tmdbId,
-                isTv = true,
+            FavoriteMutations.setTvShowFavorite(
+                appContext,
+                provider,
+                tvShow,
+                favorite = false,
+                database = db,
             )
         } finally {
             if (!ownsDb) runCatching { db.close() }
@@ -450,6 +450,11 @@ class FavoritesMobileFragment : Fragment() {
                 dialog.setOnShowListener { ExpDialogChrome.polishShown(dialog) }
                 dialog.show()
             }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        HomeProfileChip.refresh(this, _binding?.root)
     }
 
     override fun onDestroyView() {

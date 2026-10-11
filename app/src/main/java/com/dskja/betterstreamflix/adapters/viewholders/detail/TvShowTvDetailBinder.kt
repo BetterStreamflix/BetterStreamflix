@@ -53,6 +53,12 @@ import kotlinx.coroutines.withContext
 import com.dskja.betterstreamflix.ui.DetailRating
 
 internal fun TvShowViewHolder.bindTvShowTvDetail(binding: ContentTvShowTvBinding) {
+    DetailParentalGate.guardTvShow(
+        itemView,
+        tvShow,
+        binding.btnTvShowWatchNow,
+        binding.btnTvShowDownload,
+    )
     binding.ivTvShowPoster.run {
         loadTvShowPoster(tvShow) {
             fallback(R.drawable.glide_fallback_cover)

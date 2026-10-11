@@ -16,6 +16,7 @@ import com.dskja.betterstreamflix.providers.Provider.Companion.providers
 import com.dskja.betterstreamflix.providers.TmdbProvider
 import androidx.core.content.edit
 import com.dskja.betterstreamflix.database.AppDatabase
+import com.dskja.betterstreamflix.profiles.PinHasher
 import com.dskja.betterstreamflix.profiles.ProfileManager
 import org.json.JSONObject
 import org.json.JSONArray
@@ -790,16 +791,32 @@ object UserPreferences {
     val isCrossProviderLibrary: Boolean
         get() = libraryScope == LibraryScope.CROSS_PROVIDER
 
+    /**
+     * Stored parental PIN hash (or legacy plaintext until first successful verify).
+     * Assigning a raw digit PIN always hashes via [PinHasher] before write.
+     * Assign `""` to clear.
+     */
     var parentalControlPin: String
         get() = profileScopedString(Key.PARENTAL_CONTROL_PIN) ?: ""
         set(value) {
-            setProfileScopedString(Key.PARENTAL_CONTROL_PIN, value.trim())
+            setProfileScopedString(
+                Key.PARENTAL_CONTROL_PIN,
+                hashParentalPinForStorage(value.trim(), ProfileManager.parentalPinSalt()),
+            )
         }
 
+    /**
+     * Stored admin PIN hash (or legacy plaintext until first successful verify).
+     * Assigning a raw digit PIN always hashes via [PinHasher] before write.
+     * Assign `""` to clear.
+     */
     var parentalControlAdminPin: String
         get() = profileScopedString(Key.PARENTAL_CONTROL_ADMIN_PIN) ?: ""
         set(value) {
-            setProfileScopedString(Key.PARENTAL_CONTROL_ADMIN_PIN, value.trim())
+            setProfileScopedString(
+                Key.PARENTAL_CONTROL_ADMIN_PIN,
+                hashParentalPinForStorage(value.trim(), ProfileManager.adminPinSalt()),
+            )
         }
 
     var parentalControlMaxAge: Int?
@@ -834,6 +851,43 @@ object UserPreferences {
 
     val parentalControlLockRemainingMillis: Long
         get() = (parentalControlLockedUntilMillis - System.currentTimeMillis()).coerceAtLeast(0L)
+
+    /**
+     * Verify the parental PIN. Legacy plaintext values are accepted once and
+     * re-hashed on success (lazy migration).
+     */
+    fun verifyParentalControlPin(entered: String): Boolean {
+        val stored = parentalControlPin
+        if (stored.isBlank()) return false
+        if (PinHasher.looksLikePlaintextPin(stored)) {
+            if (stored != entered) return false
+            // Lazy migrate: setter hashes raw PINs.
+            parentalControlPin = entered
+            return true
+        }
+        return PinHasher.verify(entered, stored, ProfileManager.parentalPinSalt())
+    }
+
+    /** Verify the admin recovery PIN with the same hash / migrate rules. */
+    fun verifyParentalControlAdminPin(entered: String): Boolean {
+        val stored = parentalControlAdminPin
+        if (stored.isBlank()) return false
+        if (PinHasher.looksLikePlaintextPin(stored)) {
+            if (stored != entered) return false
+            parentalControlAdminPin = entered
+            return true
+        }
+        return PinHasher.verify(entered, stored, ProfileManager.adminPinSalt())
+    }
+
+    /**
+     * Kids profiles must keep at least one exit PIN. Clearing the parental PIN
+     * is blocked when kids is active and the profile has no PIN of its own.
+     */
+    fun canClearParentalPinWhileKidsActive(): Boolean {
+        if (!ProfileManager.isKidsActive()) return true
+        return ProfileManager.activeProfile()?.pinHash != null
+    }
 
     fun registerParentalPinSuccess() {
         parentalControlFailedAttempts = 0
@@ -1263,6 +1317,24 @@ object UserPreferences {
 
     private fun setProfileScopedString(key: Key, value: String) {
         prefs.edit { putString(ProfileManager.scopedPrefKey(key.name), value) }
+    }
+
+    /**
+     * New sets always hash. Already-hashed values (v2 / legacy hex) and blanks
+     * pass through so lazy migration can rewrite storage safely.
+     */
+    private fun hashParentalPinForStorage(trimmed: String, saltScope: String): String {
+        if (trimmed.isEmpty()) return ""
+        if (trimmed.startsWith(PinHasher.V2_PREFIX)) return trimmed
+        // Legacy profile-style SHA-256 hex (64 lowercase hex chars).
+        if (trimmed.length == 64 && trimmed.all { it in '0'..'9' || it in 'a'..'f' }) {
+            return trimmed
+        }
+        // Raw digit PIN — always hash on write.
+        if (trimmed.all { it.isDigit() }) {
+            return PinHasher.hash(trimmed, saltScope)
+        }
+        return trimmed
     }
 
     private fun profileScopedInt(key: Key): Int? =

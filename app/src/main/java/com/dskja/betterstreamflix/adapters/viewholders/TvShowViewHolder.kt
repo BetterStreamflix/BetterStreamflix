@@ -273,6 +273,16 @@ class TvShowViewHolder(
     }
 
     internal fun handleDirectPlay(navController: NavController) {
+        if (isIptvProvider() &&
+            com.dskja.betterstreamflix.utils.ParentalControlUtils.isFilteringActive()
+        ) {
+            android.widget.Toast.makeText(
+                itemView.context,
+                R.string.live_hub_restricted,
+                android.widget.Toast.LENGTH_SHORT,
+            ).show()
+            return
+        }
         val videoType = Video.Type.Episode(
             id = tvShow.id,
             number = 1,

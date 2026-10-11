@@ -8,12 +8,15 @@ import com.dskja.betterstreamflix.download.DownloadController
 import com.dskja.betterstreamflix.download.DownloadEventBridge
 import com.dskja.betterstreamflix.download.DownloadItemEntity
 import com.dskja.betterstreamflix.download.DownloadItemState
+import com.dskja.betterstreamflix.download.DownloadParentalFilter
+import com.dskja.betterstreamflix.download.DownloadProfileScope
 import com.dskja.betterstreamflix.download.DownloadRepository
 import com.dskja.betterstreamflix.download.DownloadSeriesFolders
 import com.dskja.betterstreamflix.download.DownloadStats
 import com.dskja.betterstreamflix.download.DownloadStorage
 import com.dskja.betterstreamflix.download.StreamflixDownloadManager
 import com.dskja.betterstreamflix.utils.UserPreferences
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -21,6 +24,8 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.isActive
@@ -62,12 +67,20 @@ class DownloadsViewModel(
         DownloadConnectivityMonitor.shouldHoldForWifiOnly(appContext)
     }.stateIn(viewModelScope, SharingStarted.Eagerly, false)
 
+    @OptIn(ExperimentalCoroutinesApi::class)
     val rows: StateFlow<List<DownloadRowUiModel>> = combine(
-        repo.observeAll(),
+        repo.observeAll().map { items ->
+            items.filter { DownloadProfileScope.matchesActive(it.profileId) }
+        },
         repo.observeSeasonPacks(),
         combine(filter, sort) { f, s -> f to s },
-    ) { items, packs, (selectedFilter, selectedSort) ->
-        buildRows(items, packs, selectedFilter, selectedSort)
+    ) { items, packs, selected ->
+        Triple(items, packs, selected)
+    }.flatMapLatest { (items, packs, selected) ->
+        flow {
+            val ageFiltered = DownloadParentalFilter.filter(items)
+            emit(buildRows(ageFiltered, packs, selected.first, selected.second))
+        }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     fun setFilter(value: DownloadsFilter) {

@@ -103,6 +103,9 @@ class PlayerViewModel(
         playEpisode(Direction.NEXT)
 
     fun playLiveChannel(channel: com.dskja.betterstreamflix.iptv.IptvLiveSession.Channel) {
+        if (com.dskja.betterstreamflix.utils.ParentalControlUtils.isFilteringActive()) {
+            return
+        }
         // Emit-only: destination player VM owns getServers (avoids double-fetch on zap).
         val episode = com.dskja.betterstreamflix.iptv.IptvLiveSession.toEpisodeType(channel)
         com.dskja.betterstreamflix.iptv.IptvLiveSession.setCurrent(channel.id)

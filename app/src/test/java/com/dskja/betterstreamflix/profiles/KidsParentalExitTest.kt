@@ -2,9 +2,16 @@ package com.dskja.betterstreamflix.profiles
 
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
+import org.junit.Before
 import org.junit.Test
 
 class KidsParentalExitTest {
+
+    @Before
+    fun resetGate() {
+        ProfileUnlockGate.elapsedRealtimeMs = { 1_000L }
+        ProfileUnlockGate.clear()
+    }
 
     @Test
     fun hasParentalCeiling_forKidsAndMaxAge() {
@@ -27,8 +34,18 @@ class KidsParentalExitTest {
 
     @Test
     fun requiresGate_kidsWithoutPin() {
-        ProfileUnlockGate.clear()
         assertTrue(ProfileUnlockGate.requiresGate(sample(isKids = true)))
+    }
+
+    @Test
+    fun kidsUnlocked_requiresGateAgainAfterIdle() {
+        val kids = sample(isKids = true)
+        var now = 1_000L
+        ProfileUnlockGate.elapsedRealtimeMs = { now }
+        ProfileUnlockGate.markUnlocked(kids.id)
+        assertFalse(ProfileUnlockGate.requiresGate(kids))
+        now += ProfileUnlockGate.IDLE_TIMEOUT_MS + 1
+        assertTrue(ProfileUnlockGate.requiresGate(kids))
     }
 
     private fun sample(
