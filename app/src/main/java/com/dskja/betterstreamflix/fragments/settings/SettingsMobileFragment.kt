@@ -288,6 +288,7 @@ class SettingsMobileFragment : PreferenceFragmentCompat() {
                 "screen_provider_health" -> getString(R.string.settings_provider_health_title)
                 "screen_provider_passport" -> getString(R.string.settings_provider_passport_title)
                 "screen_notifications" -> getString(R.string.settings_screen_notifications)
+                "screen_parent_dashboard" -> getString(R.string.parent_dashboard_title)
                 else -> getString(R.string.settings_screen_downloads)
             }
         // Deep links (e.g. provider picker gear) must open even when the root
@@ -519,6 +520,17 @@ class SettingsMobileFragment : PreferenceFragmentCompat() {
         PlatformSettingsController.bind(this, lifecycleScope) { key ->
             findPreference(key)
         }
+        com.dskja.betterstreamflix.kids.ParentDashboardController.bind(
+            fragment = this,
+            scope = lifecycleScope,
+            findPreference = { key -> findPreference(key) },
+            onOpenDashboard = {
+                openNestedSettingsScreen(
+                    "screen_parent_dashboard",
+                    getString(R.string.parent_dashboard_title),
+                )
+            },
+        )
         ProfilesSettingsController.bind(
             fragment = this,
             scope = lifecycleScope,

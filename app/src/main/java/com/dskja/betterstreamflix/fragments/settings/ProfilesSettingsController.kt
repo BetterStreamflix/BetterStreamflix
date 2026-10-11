@@ -128,6 +128,18 @@ object ProfilesSettingsController {
                     val enableKids = newValue as Boolean
                     val profile = ProfileManager.activeProfile()
                     if (enableKids &&
+                        !com.dskja.betterstreamflix.kids.KidsFortressPolicy.canEnableKids(
+                            isGuest = profile?.isGuest == true,
+                        )
+                    ) {
+                        notifyUser(
+                            context,
+                            context.getString(R.string.parent_dashboard_guest_no_kids),
+                            R.string.profile_kids_title,
+                        )
+                        return@setOnPreferenceChangeListener false
+                    }
+                    if (enableKids &&
                         profile?.pinHash == null &&
                         UserPreferences.parentalControlPin.isBlank()
                     ) {

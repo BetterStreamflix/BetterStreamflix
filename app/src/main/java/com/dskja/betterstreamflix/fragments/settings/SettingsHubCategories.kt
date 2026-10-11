@@ -101,13 +101,22 @@ internal object SettingsHubCategories {
                 iconRes = R.drawable.ic_favorite_enable,
                 target = SettingsHubTarget.PreferenceScreen("screen_profiles"),
             ),
-            SettingsHubCard(
-                id = "cloud",
-                titleRes = R.string.cloud_sync_title,
-                summaryRes = R.string.cloud_sync_screen_summary,
-                iconRes = R.drawable.ic_refresh,
-                target = SettingsHubTarget.PreferenceScreen("screen_cloud_sync"),
-            ),
+        )
+        if (com.dskja.betterstreamflix.kids.KidsFortress.parentDashboardEligible()) {
+            cards += SettingsHubCard(
+                id = "parent_dashboard",
+                titleRes = R.string.parent_dashboard_title,
+                summaryRes = R.string.parent_dashboard_summary,
+                iconRes = R.drawable.ic_favorite_enable,
+                target = SettingsHubTarget.PreferenceScreen("screen_parent_dashboard"),
+            )
+        }
+        cards += SettingsHubCard(
+            id = "cloud",
+            titleRes = R.string.cloud_sync_title,
+            summaryRes = R.string.cloud_sync_screen_summary,
+            iconRes = R.drawable.ic_refresh,
+            target = SettingsHubTarget.PreferenceScreen("screen_cloud_sync"),
         )
         if (ProviderSettingsVisibility.showSerienStreamSettings(provider)) {
             cards += SettingsHubCard(

@@ -667,8 +667,11 @@ class MainMobileActivity : FragmentActivity() {
             }
         }
         val kidsProfile = ProfileManager.isKidsActive()
-        binding.bnvMain.menu.findItem(R.id.downloads)?.isVisible = !kidsProfile
-        binding.bnvMain.menu.findItem(R.id.live_hub)?.isVisible = liveHubVisible && !kidsProfile
+        // Kids Fortress: kids keep Downloads (isolated DB + folder); Live Hub stays off.
+        binding.bnvMain.menu.findItem(R.id.downloads)?.isVisible =
+            com.dskja.betterstreamflix.kids.KidsFortress.downloadsNavVisible()
+        binding.bnvMain.menu.findItem(R.id.live_hub)?.isVisible =
+            liveHubVisible && com.dskja.betterstreamflix.kids.KidsFortress.liveHubAllowed()
 
         val navHost =
             supportFragmentManager.findFragmentById(R.id.nav_main_fragment) as? NavHostFragment
@@ -679,10 +682,6 @@ class MainMobileActivity : FragmentActivity() {
             }
 
             currentDestinationId == R.id.tv_shows && !supportsTvShows -> {
-                navController.navigate(R.id.home)
-            }
-
-            currentDestinationId == R.id.downloads && kidsProfile -> {
                 navController.navigate(R.id.home)
             }
 
