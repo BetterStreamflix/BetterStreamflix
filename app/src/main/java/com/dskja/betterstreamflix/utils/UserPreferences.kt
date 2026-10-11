@@ -1336,6 +1336,14 @@ object UserPreferences {
             Key.FAVORITE_PROVIDERS.setStringSet(value)
         }
 
+    /**
+     * First-launch onboarding (language → 3 favorites → Kids) finished or skipped.
+     * Existing installs are grandfathered by [com.dskja.betterstreamflix.onboarding.OnboardingPolicy].
+     */
+    var onboardingCompleted: Boolean
+        get() = Key.ONBOARDING_COMPLETED.getBoolean() ?: false
+        set(value) = Key.ONBOARDING_COMPLETED.setBoolean(value)
+
     fun getFavoriteCategoryOrder(providerName: String): List<String> {
         val key = ProfileManager.scopedPrefKey("FAVORITE_CATEGORY_ORDER_$providerName")
         val saved = prefs.getString(key, null)
@@ -1568,6 +1576,7 @@ object UserPreferences {
         UPDATE_CHECK_ENABLED,
         PROVIDER_LANGUAGE,
         FAVORITE_PROVIDERS,
+        ONBOARDING_COMPLETED,
         DOWNLOAD_WIFI_ONLY,
         DOWNLOAD_MAX_CONCURRENT,
         DOWNLOAD_QUALITY_PRESET,

@@ -1995,4 +1995,20 @@
     <string name="platform_url_invalid">Enter a valid http(s) URL</string>
     <string name="home_featured_page">Featured: %1$s</string>
     <string name="home_featured_page_index">%1$d/%2$d</string>
+
+    <!-- First-launch onboarding (≈60s) -->
+    <string name="onboarding_step_of">%1$d / %2$d</string>
+    <string name="onboarding_language_title">Choose your language</string>
+    <string name="onboarding_language_body">Menus and labels use this language. You can change it later in Settings.</string>
+    <string name="onboarding_providers_title">Pick 3 favorite providers</string>
+    <string name="onboarding_providers_body">Star three catalogs you watch most. Favorites float to the top of the provider list.</string>
+    <string name="onboarding_providers_count">%1$d / %2$d selected</string>
+    <string name="onboarding_kids_title">Is this a Kids profile?</string>
+    <string name="onboarding_kids_body">Kids mode limits age ratings and hides Live TV. You can add more profiles later.</string>
+    <string name="onboarding_kids_yes">Yes — Kids</string>
+    <string name="onboarding_kids_no">No — General</string>
+    <string name="onboarding_skip">Skip</string>
+    <string name="onboarding_skip_confirm_title">Skip setup?</string>
+    <string name="onboarding_skip_confirm_body">You can set language, favorites, and Kids later in Settings. Skip only if you want to explore on your own.</string>
+    <string name="onboarding_finish">Go to Home</string>
 </resources>

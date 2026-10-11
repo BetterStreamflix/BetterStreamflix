@@ -264,6 +264,7 @@ class MainTvActivity : FragmentActivity() {
             }
         })
 
+        com.dskja.betterstreamflix.onboarding.OnboardingController.maybeShow(this, isTv = true)
         com.dskja.betterstreamflix.support.SupportStartupController.schedule(this, isTv = true)
 
         handleOpenDownloadsIntent(intent)

@@ -216,8 +216,12 @@ class MainMobileActivity : FragmentActivity() {
             return
         }
 
+        // First-launch onboarding before Telegram invite / Soft support prompts.
+        com.dskja.betterstreamflix.onboarding.OnboardingController.maybeShow(this, isTv = false)
+
         // Hard Telegram gate overlay — after TV redirect so TV never sees it.
         // Must run for every non-TV MainMobileActivity (mobile + universal phone).
+        // Deferred while onboarding owns the cold-start surface.
         if (savedInstanceState == null) {
             com.dskja.betterstreamflix.telegram.TelegramJoinGateController.resetLaunchState()
         }

@@ -9,6 +9,8 @@ import androidx.activity.result.ActivityResultLauncher
 import androidx.fragment.app.FragmentActivity
 import androidx.lifecycle.Lifecycle
 import com.dskja.betterstreamflix.BuildConfig
+import com.dskja.betterstreamflix.onboarding.OnboardingController
+import com.dskja.betterstreamflix.onboarding.OnboardingPolicy
 import com.dskja.betterstreamflix.support.SupportStartupController
 import com.dskja.betterstreamflix.utils.UserPreferences
 import java.lang.ref.WeakReference
@@ -65,6 +67,8 @@ object TelegramJoinGateController {
                 "verPref=${UserPreferences.telegramJoinGateChannelVersion} " +
                 "verPolicy=${TelegramJoinGatePolicy.CHANNEL_VERSION}",
         )
+        // First-launch onboarding owns the cold-start surface; invite waits for restart.
+        if (OnboardingPolicy.shouldShow() || OnboardingController.isShowing()) return
         if (!TelegramJoinGatePolicy.shouldShowGate()) {
             launching = false
             gateUiAlive = false
@@ -77,6 +81,7 @@ object TelegramJoinGateController {
 
     /** Immediate kick — call after setContentView once Main will stay on mobile. */
     fun kickEarly(activity: FragmentActivity) {
+        if (OnboardingPolicy.shouldShow() || OnboardingController.isShowing()) return
         if (!TelegramJoinGatePolicy.shouldShowGate()) return
         ensureGate(activity)
     }
@@ -159,6 +164,7 @@ object TelegramJoinGateController {
 
     private fun ensureGate(activity: FragmentActivity) {
         pruneStaleLaunchLock()
+        if (OnboardingPolicy.shouldShow() || OnboardingController.isShowing()) return
         if (!TelegramJoinGatePolicy.shouldShowGate()) {
             val wasBlocking = launching || gateUiAlive
             launching = false
