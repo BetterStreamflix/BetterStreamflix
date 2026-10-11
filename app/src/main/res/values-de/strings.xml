@@ -1142,7 +1142,9 @@
     <string name="guardaflix_auth_progress_message">Anmeldung läuft…</string>
     <string name="guardaflix_auth_success">GuardaFlix-Anmeldung erfolgreich</string>
     <string name="guardaflix_auth_failed">GuardaFlix-Anmeldung fehlgeschlagen</string>
-    <string name="settings_screen_playback_summary">Qualität, Autoplay, Pufferung, Trailer-Wiedergabe und Player-Verhalten</string>
+    <string name="settings_screen_playback_summary">Daten-Sparmodus, Qualität, Autoplay, Pufferung, Trailer-Wiedergabe und Player-Verhalten</string>
+    <string name="settings_data_saver_title">Daten-Sparmodus</string>
+    <string name="settings_data_saver_summary">Stream max. 720p, kleinere Poster und kein Artwork-Prefetch</string>
     <string name="settings_playback_video_quality_title">Qualität</string>
     <string name="settings_playback_video_quality_summary">Begrenzt die Stream-Auflösung, um mobiles Datenvolumen zu sparen</string>
     <string name="settings_playback_video_quality_auto">Auto</string>

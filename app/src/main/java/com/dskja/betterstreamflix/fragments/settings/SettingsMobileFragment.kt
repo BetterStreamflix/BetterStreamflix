@@ -825,6 +825,14 @@ class SettingsMobileFragment : PreferenceFragmentCompat() {
             }
         }
 
+        findPreference<SwitchPreference>("DATA_SAVER_MODE")?.apply {
+            isChecked = UserPreferences.dataSaverMode
+            setOnPreferenceChangeListener { _, newValue ->
+                UserPreferences.dataSaverMode = newValue as Boolean
+                true
+            }
+        }
+
         findPreference<ListPreference>("PLAYBACK_VIDEO_QUALITY")?.apply {
             value = UserPreferences.playbackVideoQuality.name
             setOnPreferenceChangeListener { _, newValue ->
@@ -2243,6 +2251,7 @@ class SettingsMobileFragment : PreferenceFragmentCompat() {
 
         findPreference<SwitchPreference>("AUTOPLAY")?.isChecked = UserPreferences.autoplay
         findPreference<SwitchPreference>("FORCE_EXTRA_BUFFERING")?.isChecked = UserPreferences.forceExtraBuffering
+        findPreference<SwitchPreference>("DATA_SAVER_MODE")?.isChecked = UserPreferences.dataSaverMode
         findPreference<ListPreference>("PLAYBACK_VIDEO_QUALITY")?.value =
             UserPreferences.playbackVideoQuality.name
         findPreference<SwitchPreference>("PLAYER_GESTURES")?.isChecked = UserPreferences.playerGestures

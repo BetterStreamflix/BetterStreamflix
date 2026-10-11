@@ -887,7 +887,9 @@
     <string name="settings_autoplay_buffer_dialog_message">Set how many seconds before the end of the episode to switch to the next one.</string>
     <string name="autoplay_settings">Autoplay settings</string>
     <string name="player_settings">Player settings</string>
-    <string name="settings_screen_playback_summary">Quality, autoplay, buffering, trailer playback and player behavior</string>
+    <string name="settings_screen_playback_summary">Data saver, quality, autoplay, buffering, trailer playback and player behavior</string>
+    <string name="settings_data_saver_title">Data saver</string>
+    <string name="settings_data_saver_summary">Cap stream quality at 720p, use smaller posters, and turn off artwork prefetch</string>
     <string name="settings_playback_video_quality_title">Video quality</string>
     <string name="settings_playback_video_quality_summary">Cap stream resolution to save mobile data</string>
     <string name="settings_playback_video_quality_auto">Auto</string>

@@ -3,6 +3,9 @@ package com.dskja.betterstreamflix.utils
 /**
  * Normalizes remote artwork URLs so hero / banner loads prefer a sharp size
  * instead of tiny thumbnails that look zoomed and soft when center-cropped.
+ *
+ * When [UserPreferences.dataSaverMode] is on, TMDb size tokens step down so
+ * Glide pulls smaller bitmaps (no Coil path in this app).
  */
 object ArtworkUrls {
 
@@ -14,24 +17,32 @@ object ArtworkUrls {
             """(/)""",
     )
 
+    private fun dataSaver(): Boolean = UserPreferences.dataSaverMode
+
     /**
      * Wide TMDb size for mid-weight hero washes (soft blur layers, cheap prefetch).
      * Full-bleed Featured / detail covers should use [preferFeatured] / [preferOriginal].
      */
-    fun preferHero(url: String?): String? = replaceSize(url, "w1280")
+    fun preferHero(url: String?): String? =
+        replaceSize(url, if (dataSaver()) "w780" else "w1280")
 
     /** Full-bleed Featured / TV home background — never upsample a tiny bitmap. */
-    fun preferFeatured(url: String?): String? = replaceSize(url, "original")
+    fun preferFeatured(url: String?): String? =
+        replaceSize(url, if (dataSaver()) "w780" else "original")
 
     /** Original / max quality when the surface can show it (detail banner). */
-    fun preferOriginal(url: String?): String? = replaceSize(url, "original")
+    fun preferOriginal(url: String?): String? =
+        replaceSize(url, if (dataSaver()) "w1280" else "original")
 
     /** Shelf / grid posters — sharp on xxhdpi without pulling full original. */
-    fun preferPoster(url: String?): String? = replaceSize(url, "w780")
+    fun preferPoster(url: String?): String? =
+        replaceSize(url, if (dataSaver()) "w342" else "w780")
 
-    fun preferW500(url: String?): String? = replaceSize(url, "w500")
+    fun preferW500(url: String?): String? =
+        replaceSize(url, if (dataSaver()) "w185" else "w500")
 
-    fun preferW300(url: String?): String? = replaceSize(url, "w300")
+    fun preferW300(url: String?): String? =
+        replaceSize(url, if (dataSaver()) "w185" else "w300")
 
     /** Title logos: original first, w1280 only as a Glide retry fallback. */
     fun preferLogo(url: String?): String? = preferOriginal(url) ?: preferHero(url)

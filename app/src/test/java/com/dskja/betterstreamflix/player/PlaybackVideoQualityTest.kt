@@ -32,4 +32,13 @@ class PlaybackVideoQualityTest {
         assertTrue(PlaybackVideoQuality.P1080.allowsHeight(1080))
         assertFalse(PlaybackVideoQuality.P1080.allowsHeight(1440))
     }
+
+    @Test
+    fun cappedForDataSaver_autoCapsTo720() {
+        assertEquals(PlaybackVideoQuality.AUTO, PlaybackVideoQuality.AUTO.cappedForDataSaver(false))
+        assertEquals(PlaybackVideoQuality.P1080, PlaybackVideoQuality.P1080.cappedForDataSaver(false))
+        assertEquals(PlaybackVideoQuality.P720, PlaybackVideoQuality.AUTO.cappedForDataSaver(true))
+        assertEquals(PlaybackVideoQuality.P720, PlaybackVideoQuality.P1080.cappedForDataSaver(true))
+        assertEquals(PlaybackVideoQuality.P720, PlaybackVideoQuality.P720.cappedForDataSaver(true))
+    }
 }

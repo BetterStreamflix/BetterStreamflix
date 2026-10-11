@@ -766,6 +766,13 @@
             android:title="@string/player_settings"
             app:iconSpaceReserved="false">
 
+            <SwitchPreference
+                android:key="DATA_SAVER_MODE"
+                android:title="@string/settings_data_saver_title"
+                android:summary="@string/settings_data_saver_summary"
+                android:defaultValue="false"
+                app:iconSpaceReserved="false" />
+
             <ListPreference
                 android:key="PLAYBACK_VIDEO_QUALITY"
                 android:title="@string/settings_playback_video_quality_title"

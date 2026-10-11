@@ -864,6 +864,14 @@ class SettingsTvFragment : LeanbackPreferenceFragmentCompat() {
             }
         }
 
+        findPreference<SwitchPreference>("DATA_SAVER_MODE")?.apply {
+            isChecked = UserPreferences.dataSaverMode
+            setOnPreferenceChangeListener { _, newValue ->
+                UserPreferences.dataSaverMode = newValue as Boolean
+                true
+            }
+        }
+
         findPreference<ListPreference>("PLAYBACK_VIDEO_QUALITY")?.apply {
             value = UserPreferences.playbackVideoQuality.name
             setOnPreferenceChangeListener { _, newValue ->
@@ -2449,6 +2457,7 @@ class SettingsTvFragment : LeanbackPreferenceFragmentCompat() {
         }
         findPreference<SwitchPreference>("AUTOPLAY")?.isChecked = UserPreferences.autoplay
         findPreference<SwitchPreference>("FORCE_EXTRA_BUFFERING")?.isChecked = UserPreferences.forceExtraBuffering
+        findPreference<SwitchPreference>("DATA_SAVER_MODE")?.isChecked = UserPreferences.dataSaverMode
         findPreference<ListPreference>("PLAYBACK_VIDEO_QUALITY")?.value =
             UserPreferences.playbackVideoQuality.name
         findPreference<SwitchPreference>("SERVER_AUTO_SUBTITLES_DISABLED")?.isChecked = UserPreferences.serverAutoSubtitlesDisabled

@@ -5,8 +5,10 @@ import android.widget.ImageView
 import com.bumptech.glide.Glide
 import com.bumptech.glide.RequestBuilder
 import com.bumptech.glide.load.DataSource
+import com.bumptech.glide.load.DecodeFormat
 import com.bumptech.glide.load.engine.GlideException
 import com.bumptech.glide.request.RequestListener
+import com.bumptech.glide.request.RequestOptions
 import com.bumptech.glide.request.target.Target
 import com.dskja.betterstreamflix.R
 import com.dskja.betterstreamflix.database.AppDatabase
@@ -120,6 +122,13 @@ private fun ImageView.loadRecoverableArtwork(
         }
 
         configure(Glide.with(this).load(requestedUrl))
+            .let { builder ->
+                if (UserPreferences.dataSaverMode) {
+                    builder.apply(RequestOptions().format(DecodeFormat.PREFER_RGB_565))
+                } else {
+                    builder
+                }
+            }
             .let {
                 if (ExperimentalMobileDesign.enabled() &&
                     !DeviceCapabilities.shouldReduceHomeEffects(context)

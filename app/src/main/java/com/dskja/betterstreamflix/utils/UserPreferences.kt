@@ -356,6 +356,20 @@ object UserPreferences {
             Key.PLAYBACK_VIDEO_QUALITY.setString(value.name)
         }
 
+    /**
+     * One switch: caps stream quality (Auto→720), lowers poster/banner TMDb sizes,
+     * and disables Glide artwork prefetch.
+     */
+    var dataSaverMode: Boolean
+        get() = Key.DATA_SAVER_MODE.getBoolean() ?: false
+        set(value) {
+            Key.DATA_SAVER_MODE.setBoolean(value)
+        }
+
+    /** Playback quality after applying [dataSaverMode] auto-cap. */
+    val effectivePlaybackVideoQuality: PlaybackVideoQuality
+        get() = playbackVideoQuality.cappedForDataSaver(dataSaverMode)
+
     // --- Full Platform: Trakt / Jellyfin / Plex / Debrid / Player backend ---
 
     var traktEnabled: Boolean
@@ -1465,6 +1479,7 @@ object UserPreferences {
         SUBDL_API_KEY,
         FORCE_EXTRA_BUFFERING,
         PLAYBACK_VIDEO_QUALITY,
+        DATA_SAVER_MODE,
         AUTOPLAY_BUFFER,
         SERVER_AUTO_SUBTITLES_DISABLED,
         ENABLE_TMDB,
