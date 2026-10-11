@@ -382,6 +382,10 @@
     <string name="player_retry_external_player">Opening external player…</string>
     <string name="player_trying_next_server">Trying next server: %1$s</string>
     <string name="player_failover_server_n_of_m">Server %1$d/%2$d</string>
+    <string name="player_stuck_buffering_title">Still loading?</string>
+    <string name="player_stuck_buffering_message">This server looks stuck. Try another before you leave.</string>
+    <string name="player_stuck_try_another_server">Another server</string>
+    <string name="player_stuck_pick_server">Choose server</string>
     <string name="player_all_servers_failed">All servers failed to load the video.</string>
     <string name="player_stream_fail_captcha_title">Captcha needed</string>
     <string name="player_stream_fail_captcha_message">This provider needs a captcha before streams unlock. Solve it once, then play again.</string>

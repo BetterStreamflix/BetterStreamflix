@@ -1044,6 +1044,10 @@
     <string name="player_settings_subtitle_offset_label">Décalage</string>
     <string name="player_settings_subtitle_offset_seconds">%+.1f s</string>
     <string name="player_trying_next_server">Essai du serveur suivant : %1$s</string>
+    <string name="player_stuck_buffering_title">Toujours en chargement ?</string>
+    <string name="player_stuck_buffering_message">Ce serveur semble bloqué. Essayez-en un autre avant de quitter.</string>
+    <string name="player_stuck_try_another_server">Autre serveur</string>
+    <string name="player_stuck_pick_server">Choisir le serveur</string>
     <string name="shared_watchlist_share_action">Partager la liste</string>
     <string name="shared_watchlist_share_subject">Liste BetterStreamflix</string>
     <string name="shared_watchlist_share_needs_supabase">Configurez Supabase sous Compte et synchronisation avant de partager une liste</string>

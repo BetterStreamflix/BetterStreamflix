@@ -123,6 +123,12 @@ class PlayerSettingsTvView @JvmOverloads constructor(
         displaySettings(Setting.MAIN)
     }
 
+    /** Open settings directly on the server list (e.g. stuck buffering / stream error). */
+    fun showServers() {
+        show()
+        displaySettings(Setting.SERVERS)
+    }
+
     /** Netflix-style quick open on the audio / language track picker. */
     fun showAudio() {
         show()

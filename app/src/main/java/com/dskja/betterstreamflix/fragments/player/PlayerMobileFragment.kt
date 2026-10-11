@@ -61,6 +61,7 @@ import com.dskja.betterstreamflix.player.SkipIntroChapters
 import com.dskja.betterstreamflix.player.SkipIntroSilenceProbe
 import com.dskja.betterstreamflix.player.SmartSkipIntro
 import com.dskja.betterstreamflix.player.StreamFailureReason
+import com.dskja.betterstreamflix.player.StuckBufferDetector
 import com.dskja.betterstreamflix.providers.ProviderDomainUpdater
 import com.dskja.betterstreamflix.providers.SerienStreamAuthManager
 import com.dskja.betterstreamflix.utils.CrashReporter
@@ -224,6 +225,9 @@ class PlayerMobileFragment : Fragment(),
 
     private var currentVideo: Video? = null
     private var currentServer: Video.Server? = null
+    private val stuckDetector = StuckBufferDetector()
+    private var stuckHandler: android.os.Handler? = null
+    private var stuckRunnable: Runnable? = null
     /** True when [currentServer] is the offline download server — uses cache DataSource. */
     private var playingOffline: Boolean = false
     private var offlineCacheBlocked: Boolean = false
@@ -589,6 +593,8 @@ class PlayerMobileFragment : Fragment(),
                     }
 
                     is PlayerViewModel.State.LoadingVideo -> {
+                        stuckDetector.setResolveInFlight(true)
+                        hideStuckOverlay()
                         // Do not stop/clear an attached surface while the next server
                         // resolves — that is the same OEM crash as leaving the player.
                         if (::player.isInitialized && !playerReleased && !player.isPlaying) {
@@ -597,6 +603,7 @@ class PlayerMobileFragment : Fragment(),
                     }
 
                     is PlayerViewModel.State.SuccessLoadingVideo -> {
+                        stuckDetector.setResolveInFlight(false)
                         PlayerSettingsView.Settings.ExtraBuffering.init(state.video.extraBuffering)
                         if (PlayerSettingsView.Settings.SoftwareDecoder.selectedValue == null) {
                             PlayerSettingsView.Settings.SoftwareDecoder.init(
@@ -607,6 +614,7 @@ class PlayerMobileFragment : Fragment(),
                     }
 
                     is PlayerViewModel.State.FailedLoadingVideo -> {
+                        stuckDetector.setResolveInFlight(false)
                         when (
                             val action = PlaybackFailover.decide(
                                 currentServerIndex = PlaybackFailover.indexOfServer(servers, state.server),
@@ -1030,6 +1038,16 @@ class PlayerMobileFragment : Fragment(),
             }
             b.settings.isVisible -> {
                 b.settings.onBackPressed()
+            }
+            stuckDetector.isOverlayVisible() -> {
+                // Offer a hoster hop before rage-quit Back exits the player.
+                if (tryStuckServerHop()) {
+                    true
+                } else {
+                    hideStuckOverlay()
+                    openServerPickerFromStuck()
+                    true
+                }
             }
             else -> false
         }
@@ -1717,6 +1735,9 @@ class PlayerMobileFragment : Fragment(),
         if (isTearingDown || !isAdded || _binding == null) return
         currentVideo = video
         currentServer = server
+        stuckDetector.onServerChanged()
+        hideStuckOverlay()
+        configureStuckDetector()
         resetSmartSkipForContent()
         val offline = server.id.equals(PlayerViewModel.OFFLINE_SERVER_ID, ignoreCase = true) ||
             server.name.equals(PlayerViewModel.OFFLINE_SERVER_NAME, ignoreCase = true)
@@ -1891,6 +1912,24 @@ class PlayerMobileFragment : Fragment(),
                 if (playbackState == Player.STATE_READY) {
                     ensureSkipIntroProbe()
                     revealTrailerStreamBridge()
+                    hideStuckOverlay()
+                }
+                val playWhenReady = ::player.isInitialized && !playerReleased && player.playWhenReady
+                stuckDetector.onPlaybackStateChanged(playbackState, playWhenReady)
+            }
+
+            override fun onPositionDiscontinuity(
+                oldPosition: Player.PositionInfo,
+                newPosition: Player.PositionInfo,
+                reason: Int,
+            ) {
+                super.onPositionDiscontinuity(oldPosition, newPosition, reason)
+                if (!mayRunPlayerListenerWork()) return
+                if (reason == Player.DISCONTINUITY_REASON_SEEK ||
+                    reason == Player.DISCONTINUITY_REASON_SEEK_ADJUSTMENT
+                ) {
+                    stuckDetector.onSeek()
+                    hideStuckOverlay()
                 }
             }
 
@@ -1904,6 +1943,7 @@ class PlayerMobileFragment : Fragment(),
                 super.onIsPlayingChanged(isPlaying)
                 if (!mayRunPlayerListenerWork()) return
                 binding.pvPlayer.keepScreenOn = isPlaying || UserPreferences.keepScreenOnWhenPaused
+                stuckDetector.onIsPlayingChanged(isPlaying)
 
                 if (isPlaying) {
                     revealTrailerStreamBridge()
@@ -1911,6 +1951,7 @@ class PlayerMobileFragment : Fragment(),
                         com.dskja.betterstreamflix.providers.ProviderServerAb
                             .notePlaybackStable(currentServer)
                     }
+                    hideStuckOverlay()
                     recordRecentlyWatchedStart()
                     ensureSkipIntroProbe()
                     startProgressHandler()
@@ -3460,6 +3501,123 @@ class PlayerMobileFragment : Fragment(),
         )
     }
 
+    private fun configureStuckDetector() {
+        val enabled = !isLiveTvPlayback() && !isOfflinePlayback() && servers.size >= 2
+        stuckDetector.setEnabled(enabled)
+        stuckDetector.setResolveInFlight(viewModel.isVideoResolveInFlight())
+        if (enabled) startStuckWatch() else stopStuckWatch()
+    }
+
+    private fun startStuckWatch() {
+        if (stuckRunnable != null) return
+        val handler = android.os.Handler(android.os.Looper.getMainLooper())
+        stuckHandler = handler
+        val tick = object : Runnable {
+            override fun run() {
+                if (!mayRunPlayerListenerWork()) {
+                    stuckHandler?.postDelayed(this, StuckBufferDetector.POLL_INTERVAL_MS)
+                    return
+                }
+                stuckDetector.setResolveInFlight(viewModel.isVideoResolveInFlight())
+                if (::player.isInitialized && !playerReleased) {
+                    stuckDetector.onPlaybackStateChanged(player.playbackState, player.playWhenReady)
+                    if (player.isPlaying) {
+                        stuckDetector.onIsPlayingChanged(true)
+                    }
+                }
+                if (stuckDetector.pollShouldOffer(servers.size)) {
+                    stuckDetector.markOffered()
+                    showStuckBufferOffer()
+                }
+                stuckHandler?.postDelayed(this, StuckBufferDetector.POLL_INTERVAL_MS)
+            }
+        }
+        stuckRunnable = tick
+        handler.postDelayed(tick, StuckBufferDetector.POLL_INTERVAL_MS)
+    }
+
+    private fun stopStuckWatch() {
+        stuckRunnable?.let { stuckHandler?.removeCallbacks(it) }
+        stuckRunnable = null
+        stuckHandler = null
+    }
+
+    private fun hideStuckOverlay() {
+        if (!stuckDetector.isOverlayVisible()) return
+        _binding?.root?.findViewById<View>(R.id.ll_player_error)?.isGone = true
+        stuckDetector.dismissOverlay()
+    }
+
+    private fun showStuckBufferOffer() {
+        val root = _binding?.root ?: return
+        if (isTearingDown || !isAdded || servers.size < 2) return
+        val overlay = root.findViewById<View>(R.id.ll_player_error) ?: return
+        stuckDetector.setOverlayVisible(true)
+        root.findViewById<android.widget.TextView>(R.id.tv_player_error_title)
+            ?.setText(R.string.player_stuck_buffering_title)
+        root.findViewById<android.widget.TextView>(R.id.tv_player_error_message)
+            ?.setText(R.string.player_stuck_buffering_message)
+        val actionBtn = root.findViewById<android.widget.TextView>(R.id.btn_player_error_action)
+        actionBtn?.isVisible = true
+        actionBtn?.setText(R.string.player_stuck_try_another_server)
+        if (ExperimentalMobileDesign.enabled()) {
+            actionBtn?.let {
+                with(com.dskja.betterstreamflix.utils.ExpPressEffects) { it.applyExpPress() }
+            }
+        }
+        actionBtn?.setOnClickListener {
+            ExpMotion.hapticTap(it)
+            tryStuckServerHop()
+        }
+        root.findViewById<View>(R.id.btn_player_error_close)?.let { close ->
+            if (close is android.widget.TextView) {
+                close.setText(R.string.player_stuck_pick_server)
+            }
+            if (ExperimentalMobileDesign.enabled()) {
+                with(com.dskja.betterstreamflix.utils.ExpPressEffects) { close.applyExpPress() }
+            }
+            close.setOnClickListener {
+                ExpMotion.hapticTap(it)
+                hideStuckOverlay()
+                openServerPickerFromStuck()
+            }
+        }
+        if (ExperimentalMobileDesign.enabled()) {
+            overlay.setBackgroundResource(ExperimentalMobileDesign.dialogBackground())
+            ExpMotion.fadeInAndShow(overlay)
+        } else {
+            overlay.isVisible = true
+        }
+    }
+
+    /** @return true when a next hoster hop was started. */
+    private fun tryStuckServerHop(): Boolean {
+        if (viewModel.isVideoResolveInFlight()) return false
+        val action = PlaybackFailover.decide(
+            currentServerIndex = PlaybackFailover.indexOfServer(servers, currentServer),
+            serverCount = servers.size,
+            playbackAlreadyStarted = ::player.isInitialized && player.hasStarted(),
+            softwareDecoderAlreadyEnabled = currentSoftwareDecoder,
+            allowMidPlaybackFailover = true,
+        )
+        val nextIndex = (action as? PlaybackFailover.Action.TryNextServer)?.nextIndex
+            ?: return false
+        val next = servers.getOrNull(nextIndex) ?: return false
+        hideStuckOverlay()
+        com.dskja.betterstreamflix.providers.ProviderServerAb.notePlaybackUnstable(currentServer)
+        stuckDetector.onServerChanged()
+        Log.i("PlayerMobileFragment", "Stuck buffering — trying next server: ${next.name}")
+        showFailoverServerCue(nextIndex, servers.size)
+        viewModel.getVideo(next)
+        return true
+    }
+
+    private fun openServerPickerFromStuck() {
+        if (isTearingDown || !isAdded || _binding == null || servers.isEmpty()) return
+        keepControllerVisibleForSettings()
+        binding.settings.showServers()
+    }
+
     private fun showStreamFailure(
         error: Throwable?,
         serversExhausted: Boolean = false,
@@ -4203,6 +4361,8 @@ class PlayerMobileFragment : Fragment(),
 
     private fun releasePlayer(mode: ReleaseMode) {
         stopProgressHandler()
+        stopStuckWatch()
+        stuckDetector.reset()
         stopLiveEdgeWatcher()
         PlaybackLifecycleGuard.unregister(playbackStopHandle)
 
