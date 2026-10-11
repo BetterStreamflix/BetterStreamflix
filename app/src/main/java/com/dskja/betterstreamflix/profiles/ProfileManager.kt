@@ -27,6 +27,7 @@ object ProfileManager {
         "SHOW_RECENTLY_WATCHED",
         "SHOW_NEXT_EPISODES",
         "SHOW_SMART_COLLECTIONS",
+        "HOME_SHELF_BLOCK_ORDER",
         "LIBRARY_SCOPE",
         "PARENTAL_CONTROL_PIN",
         "PARENTAL_CONTROL_ADMIN_PIN",

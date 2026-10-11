@@ -171,6 +171,13 @@ class HomeMobileFragment : Fragment() {
 
         refreshProviderLogo()
         refreshProfileChip()
+        binding.root.findViewById<View>(R.id.btn_home_remix)?.setOnClickListener {
+            ExpMotion.hapticTap(it)
+            com.dskja.betterstreamflix.home.HomeRemixUi.show(this) {
+                homeBindSignature = null
+                viewModel.getHome()
+            }
+        }
         binding.ivProviderLogo.apply {
             isClickable = true
             isFocusable = true
@@ -373,6 +380,12 @@ class HomeMobileFragment : Fragment() {
             ?.also { it.name = getString(R.string.home_smart_de_audio) }
 
         categories
+            .find {
+                it.name == Category.HOME_LIVE || it.identityKey == Category.HOME_LIVE_ID
+            }
+            ?.also { it.name = getString(R.string.home_live_shelf) }
+
+        categories
             .find { it.name == Category.FAVORITE_MOVIES }
             ?.also { it.name = getString(R.string.home_favorite_movies) }
 
@@ -485,7 +498,8 @@ class HomeMobileFragment : Fragment() {
         val signature = HomeCatalogPipeline.homeBindSignature(categories) +
             "\n" + (UserPreferences.currentProvider?.name ?: "") +
             "\n" + com.dskja.betterstreamflix.support.SupportPromptPolicy.shouldShowHomeCard() +
-            "\n" + UserPreferences.supportEpisodesWatchedCount
+            "\n" + UserPreferences.supportEpisodesWatchedCount +
+            "\n" + UserPreferences.homeShelfBlockOrder
         if (signature == homeBindSignature && appAdapter.items.isNotEmpty()) return true
         homeBindSignature = signature
         return false

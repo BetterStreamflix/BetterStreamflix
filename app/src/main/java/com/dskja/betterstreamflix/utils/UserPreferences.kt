@@ -975,6 +975,16 @@ object UserPreferences {
             setProfileScopedBoolean(Key.SHOW_SMART_COLLECTIONS, value)
         }
 
+    /**
+     * Remix Home block order — comma keys `continue,live,collections`
+     * (profile-scoped). See [com.dskja.betterstreamflix.home.HomeRemix].
+     */
+    var homeShelfBlockOrder: String
+        get() = profileScopedString(Key.HOME_SHELF_BLOCK_ORDER).orEmpty()
+        set(value) {
+            setProfileScopedString(Key.HOME_SHELF_BLOCK_ORDER, value.trim())
+        }
+
     /** When true, chronically brittle providers appear in the provider picker. */
     var showQuarantinedProviders: Boolean
         get() = Key.SHOW_QUARANTINED_PROVIDERS.getBoolean() ?: false
@@ -1659,6 +1669,7 @@ object UserPreferences {
         SHOW_RECENTLY_WATCHED,
         SHOW_NEXT_EPISODES,
         SHOW_SMART_COLLECTIONS,
+        HOME_SHELF_BLOCK_ORDER,
         SHOW_QUARANTINED_PROVIDERS,
         SHOW_VAVOO_VOD_PROVIDERS,
         LIBRARY_SCOPE,
