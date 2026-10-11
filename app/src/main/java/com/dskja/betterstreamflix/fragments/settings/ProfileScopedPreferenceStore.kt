@@ -24,6 +24,7 @@ internal object ProfileScopedPreferenceStore {
         "SHOW_RECENTLY_WATCHED",
         "SHOW_NEXT_EPISODES",
         "SHOW_SMART_COLLECTIONS",
+        "KIDS_BEDTIME_ENABLED",
         "PARENTAL_CONTROL_MAX_AGE",
         "SELECTED_THEME",
     )
@@ -81,6 +82,7 @@ internal object ProfileScopedPreferenceStore {
                 "SHOW_NEXT_EPISODES" -> UserPreferences.showNextEpisodes = value
                 "SHOW_SMART_COLLECTIONS" -> UserPreferences.showSmartCollections = value
                 "SHOW_WATCHLIST_WEEK" -> UserPreferences.showWatchlistWeek = value
+                "KIDS_BEDTIME_ENABLED" -> UserPreferences.kidsBedtimeEnabled = value
             }
         }
 
@@ -90,6 +92,7 @@ internal object ProfileScopedPreferenceStore {
             "SHOW_NEXT_EPISODES" -> UserPreferences.showNextEpisodes
             "SHOW_SMART_COLLECTIONS" -> UserPreferences.showSmartCollections
             "SHOW_WATCHLIST_WEEK" -> UserPreferences.showWatchlistWeek
+            "KIDS_BEDTIME_ENABLED" -> UserPreferences.kidsBedtimeEnabled
             else -> defValue
         }
     }

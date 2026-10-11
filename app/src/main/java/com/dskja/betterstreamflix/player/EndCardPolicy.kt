@@ -26,7 +26,8 @@ object EndCardPolicy {
         autoplayEnabled: Boolean,
         hasNextEpisode: Boolean,
         countdownCancelled: Boolean,
-    ): Boolean = autoplayEnabled && hasNextEpisode && !countdownCancelled
+        bedtimeBlocks: Boolean = false,
+    ): Boolean = autoplayEnabled && hasNextEpisode && !countdownCancelled && !bedtimeBlocks
 
     fun countdownLabelSec(remainingSec: Int): Int = remainingSec.coerceAtLeast(0)
 }

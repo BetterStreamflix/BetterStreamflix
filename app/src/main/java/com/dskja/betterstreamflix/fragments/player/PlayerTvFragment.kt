@@ -59,6 +59,7 @@ import com.dskja.betterstreamflix.R
 import com.dskja.betterstreamflix.cast.CastMediaFactory
 import com.dskja.betterstreamflix.cast.CastPlaybackHub
 import com.dskja.betterstreamflix.cast.CastQueueCoordinator
+import com.dskja.betterstreamflix.kids.KidsBedtime
 import com.dskja.betterstreamflix.player.EndCardPolicy
 import com.dskja.betterstreamflix.support.ThanksAfterBingeBinder
 import com.dskja.betterstreamflix.player.FailoverTimelineSession
@@ -145,6 +146,7 @@ import com.dskja.betterstreamflix.utils.UserDataCache.toMovie
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
 import java.util.Locale
@@ -306,6 +308,8 @@ class PlayerTvFragment : Fragment(),
     private var endCardVisible = false
     private var endCardCountdownCancelled = false
     private var endCardCountdownJob: Job? = null
+    private var kidsBedtimeWatchJob: Job? = null
+    private var kidsBedtimeChipArmed = false
 
     private var skipIntroContentId: String? = null
     private var skipIntroConsumed = false
@@ -417,6 +421,7 @@ class PlayerTvFragment : Fragment(),
         binding.pvPlayer.onMediaNextClicked = ::handleMediaNext
         binding.pvPlayer.onSubtitleToggleClicked = ::handleSubtitleToggle
         requestPlayerFocus()
+        startKidsBedtimeWatch()
         // Touch brightness/volume gestures are for handsets; skip on Leanback / Fire TV.
         gestureHelper = if (
             DeviceCapabilities.isLeanbackDevice(requireContext()) ||
@@ -959,6 +964,62 @@ class PlayerTvFragment : Fragment(),
         runCatching { findNavController().navigateUp() }
     }
 
+    private fun startKidsBedtimeWatch() {
+        kidsBedtimeWatchJob?.cancel()
+        kidsBedtimeWatchJob = viewLifecycleOwner.lifecycleScope.launch {
+            while (isActive && isAdded && !isTearingDown) {
+                refreshKidsBedtimeChip()
+                if (isLiveTvPlayback() && KidsBedtime.shouldStopLiveNow()) {
+                    finishForKidsBedtime()
+                    return@launch
+                }
+                if (KidsBedtime.shouldBlockAutoplay()) {
+                    endCardCountdownCancelled = true
+                    endCardCountdownJob?.cancel()
+                }
+                delay(15_000L)
+            }
+        }
+    }
+
+    private fun refreshKidsBedtimeChip() {
+        val chip = _binding?.tvKidsBedtimeChip ?: return
+        if (!KidsBedtime.shouldStopAfterEpisode()) {
+            chip.isGone = true
+            kidsBedtimeChipArmed = false
+            return
+        }
+        chip.isVisible = true
+        chip.text = getString(
+            if (isLiveTvPlayback()) R.string.kids_bedtime_chip_live
+            else R.string.kids_bedtime_chip,
+        )
+        if (!kidsBedtimeChipArmed) {
+            kidsBedtimeChipArmed = true
+            ExpMotion.popIn(chip)
+        }
+    }
+
+    private fun finishForKidsBedtime() {
+        if (isTearingDown || !isAdded) return
+        KidsBedtime.engageLock()
+        endCardCountdownCancelled = true
+        endCardCountdownJob?.cancel()
+        hideEndCardChooser()
+        hideNextEpisodeOverlay()
+        Toast.makeText(
+            requireContext(),
+            R.string.kids_bedtime_stopped_toast,
+            Toast.LENGTH_LONG,
+        ).show()
+        safeNavigateUp()
+        (activity as? androidx.fragment.app.FragmentActivity)?.let { act ->
+            act.window?.decorView?.post {
+                com.dskja.betterstreamflix.kids.KidsBedtimeUi.maybeShowLock(act)
+            }
+        }
+    }
+
     fun onBackPressed(): Boolean {
         val b = _binding ?: return false
         return when {
@@ -1083,6 +1144,10 @@ class PlayerTvFragment : Fragment(),
         val type = args.videoType as? Video.Type.Episode ?: return
 
         lifecycleScope.launch {
+            if (KidsBedtime.shouldBlockAutoplay()) {
+                finishForKidsBedtime()
+                return@launch
+            }
             if (autoplay && viewModel.isVideoResolveInFlight()) {
                 return@launch
             }
@@ -2357,7 +2422,9 @@ class PlayerTvFragment : Fragment(),
                         if (reallyFinished &&
                             player.playbackState == androidx.media3.common.Player.STATE_ENDED
                         ) {
-                            if (com.dskja.betterstreamflix.sync.CastRoomSession.isHost()) {
+                            if (KidsBedtime.shouldStopAfterEpisode()) {
+                                finishForKidsBedtime()
+                            } else if (com.dskja.betterstreamflix.sync.CastRoomSession.isHost()) {
                                 com.dskja.betterstreamflix.sync.CastRoomPlayerHooks
                                     .onLocalPlaybackEnded(this@PlayerTvFragment)
                             } else {
@@ -3525,6 +3592,7 @@ class PlayerTvFragment : Fragment(),
                 autoplayEnabled = UserPreferences.autoplay,
                 hasNextEpisode = hasNext,
                 countdownCancelled = false,
+                bedtimeBlocks = KidsBedtime.shouldBlockAutoplay(),
             )
             if (shouldCountdown) {
                 card.tvEndCardCountdown.isVisible = true

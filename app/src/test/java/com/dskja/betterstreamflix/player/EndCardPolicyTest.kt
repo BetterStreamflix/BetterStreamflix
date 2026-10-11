@@ -74,6 +74,14 @@ class EndCardPolicyTest {
                 countdownCancelled = true,
             ),
         )
+        assertFalse(
+            EndCardPolicy.shouldAutoplayAfterCountdown(
+                autoplayEnabled = true,
+                hasNextEpisode = true,
+                countdownCancelled = false,
+                bedtimeBlocks = true,
+            ),
+        )
     }
 
     @Test

@@ -138,6 +138,17 @@
                 android:entryValues="@array/kids_profile_age_values"
                 android:defaultValue="12" />
 
+            <SwitchPreferenceCompat
+                android:key="KIDS_BEDTIME_ENABLED"
+                android:title="@string/kids_bedtime_title"
+                android:summary="@string/kids_bedtime_summary_off"
+                android:defaultValue="false" />
+
+            <Preference
+                android:key="KIDS_BEDTIME_TIME"
+                android:title="@string/kids_bedtime_time_title"
+                android:summary="@string/kids_bedtime_time_summary_default" />
+
             <Preference
                 android:key="PROFILE_PIN"
                 android:title="@string/profile_pin_title"
