@@ -1801,6 +1801,10 @@
                 android:summary="@string/device_link_enter_summary" />
         </PreferenceCategory>
         <PreferenceCategory
+            android:key="pc_cast_companion"
+            android:title="@string/cast_companion_hub_title"
+            android:summary="@string/cast_companion_hub_summary" />
+        <PreferenceCategory
             android:key="pc_remote_find"
             android:title="@string/remote_find_category_title">
             <Preference

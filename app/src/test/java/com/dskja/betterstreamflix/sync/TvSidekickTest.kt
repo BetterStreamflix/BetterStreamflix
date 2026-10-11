@@ -26,6 +26,15 @@ class TvSidekickTest {
         assertEquals("1:05", TvSidekick.formatPosition(65_000L))
         assertEquals(65_000L, TvSidekick.parsePositionInput("1:05"))
         assertEquals(3_665_000L, TvSidekick.parsePositionInput("1:01:05"))
+        assertEquals(90_000L, TvSidekick.parsePositionInput("90"))
+        assertEquals(10_000L, TvSidekick.parsePositionInput("90", durationMs = 10_000L))
+    }
+
+    @Test
+    fun bareDigitsAreSeconds() {
+        assertEquals(90_000L, TvSidekick.parsePositionInput("90"))
+        assertEquals(0L, TvSidekick.parsePositionInput("0"))
+        assertNull(TvSidekick.parsePositionInput(""))
     }
 
     @Test
@@ -34,6 +43,12 @@ class TvSidekickTest {
         val long = "x".repeat(120)
         assertEquals(80, TvSidekick.sanitizeKeyboard(long)?.length)
         assertEquals("Dune", TvSidekick.sanitizeKeyboard("  Dune  "))
+    }
+
+    @Test
+    fun sanitizeDisplayNameDefaultsGuest() {
+        assertEquals("Guest", TvSidekick.sanitizeDisplayName("   "))
+        assertEquals("Alex", TvSidekick.sanitizeDisplayName(" Alex "))
     }
 
     @Test

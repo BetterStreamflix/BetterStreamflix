@@ -307,6 +307,8 @@ object ProfileManager {
         AppDatabase.resetInstance()
         UserDataCache.clearMemory()
         com.dskja.betterstreamflix.spoilers.SpoilerShield.clearSession()
+        // CC-037 / CC-088: companion sessions are process singletons — clear on profile switch.
+        runCatching { com.dskja.betterstreamflix.sync.CompanionSessions.onProfileSwitched() }
         applyKidsParentalDefaults(profile, previous)
         if (markUnlocked) ProfileUnlockGate.markUnlocked(profile.id)
         UserDataNotifier.notifyChanged()

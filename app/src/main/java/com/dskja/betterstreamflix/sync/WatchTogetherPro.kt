@@ -37,8 +37,32 @@ object WatchTogetherPro {
     fun relativeSeek(currentMs: Long, deltaMs: Long, durationMs: Long? = null): Long =
         TvSidekick.relativeSeek(currentMs, deltaMs, durationMs)
 
-    fun parsePositionInput(raw: String?): Long? =
-        TvSidekick.parsePositionInput(raw)
+    fun parsePositionInput(raw: String?, durationMs: Long? = null): Long? =
+        TvSidekick.parsePositionInput(raw, durationMs)
+
+    /** Skip host heartbeat position overwrite while a sidekick seek is unacked. */
+    fun shouldSkipHeartbeatForSidekick(seenSeekSeq: Long, appliedSeekSeq: Long): Boolean =
+        seenSeekSeq > appliedSeekSeq
+
+    /** Debounce guest drift reports (settle after seek + min interval). */
+    const val DRIFT_REPORT_MIN_INTERVAL_MS: Long = 5_000L
+    const val DRIFT_REPORT_SETTLE_MS: Long = 2_500L
+
+    fun shouldReportDrift(
+        nowMs: Long,
+        lastReportAtMs: Long,
+        lastSeekAtMs: Long,
+        driftMs: Long,
+        lastReportedDriftMs: Long,
+    ): Boolean {
+        if (nowMs - lastSeekAtMs < DRIFT_REPORT_SETTLE_MS) return false
+        if (nowMs - lastReportAtMs < DRIFT_REPORT_MIN_INTERVAL_MS &&
+            kotlin.math.abs(driftMs - lastReportedDriftMs) < HEALTH_GOOD_MS
+        ) {
+            return false
+        }
+        return true
+    }
 
     fun formatPosition(positionMs: Long): String =
         TvSidekick.formatPosition(positionMs)

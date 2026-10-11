@@ -7,7 +7,6 @@ object CastRoomLinks {
     const val HOST = "cast"
     const val HTTPS_HOST = "betterstreamflix.app"
     private val TOKEN_PATTERN = Regex("^[A-Za-z0-9_-]{8,128}$")
-    private val SHORT_CODE_PATTERN = Regex("^[A-Z2-9]{6}$")
     private val LINK_PATTERN = Regex(
         "^(?:(?:betterstreamflix|streamflix)://cast(?:/([^?&#]+)|\\?token=([^&#]+))|" +
             "https?://(?:www\\.)?betterstreamflix\\.app/cast(?:/([^?&#]+)|\\?token=([^&#]+)))",
@@ -33,14 +32,8 @@ object CastRoomLinks {
     fun isValidToken(token: String?): Boolean =
         !token.isNullOrBlank() && TOKEN_PATTERN.matches(token.trim())
 
-    fun normalizeShortCode(raw: String?): String? {
-        if (raw.isNullOrBlank()) return null
-        val cleaned = raw.trim().uppercase()
-            .replace('0', 'O')
-            .replace('1', 'I')
-            .replace('L', 'I')
-        return cleaned.takeIf { SHORT_CODE_PATTERN.matches(it) }
-    }
+    fun normalizeShortCode(raw: String?): String? =
+        CompanionShortCodes.normalize(raw)
 
     fun isValidShortCode(code: String?): Boolean =
         normalizeShortCode(code) != null

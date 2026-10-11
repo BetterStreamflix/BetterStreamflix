@@ -330,6 +330,7 @@ class MainTvActivity : FragmentActivity() {
         registerCastRoomHostConsumer()
         com.dskja.betterstreamflix.remotefind.RemoteFindPadBridge.attach(this)
         com.dskja.betterstreamflix.remotefind.RemoteFindNavBridge.attach(this)
+        com.dskja.betterstreamflix.remotefind.RemoteFindHost.restoreIfNeeded(this)
     }
 
     override fun onNewIntent(intent: Intent) {
@@ -562,6 +563,7 @@ class MainTvActivity : FragmentActivity() {
         com.dskja.betterstreamflix.profiletransfer.ProfileTransferUi.tryFlushPending(this)
         com.dskja.betterstreamflix.sync.CastRoomUi.tryFlushPending(this)
         com.dskja.betterstreamflix.sync.CastHandoffUi.tryFlushPending(this)
+        com.dskja.betterstreamflix.sync.SessionHandoffUi.tryFlushPending(this)
         com.dskja.betterstreamflix.tvlauncher.TvLauncherSync.requestPublish(this)
         val destId = (supportFragmentManager.findFragmentById(binding.navMainFragment.id)
             as? NavHostFragment)?.navController?.currentDestination?.id
@@ -588,6 +590,7 @@ class MainTvActivity : FragmentActivity() {
         com.dskja.betterstreamflix.profiletransfer.ProfileTransferUi.tryFlushPending(this)
         com.dskja.betterstreamflix.sync.CastRoomUi.tryFlushPending(this)
         com.dskja.betterstreamflix.sync.CastHandoffUi.tryFlushPending(this)
+        com.dskja.betterstreamflix.sync.SessionHandoffUi.tryFlushPending(this)
     }
 
     override fun onStop() {
@@ -598,7 +601,12 @@ class MainTvActivity : FragmentActivity() {
     override fun onDestroy() {
         com.dskja.betterstreamflix.remotefind.RemoteFindPadBridge.detach(this)
         com.dskja.betterstreamflix.remotefind.RemoteFindNavBridge.detach(this)
-        com.dskja.betterstreamflix.remotefind.RemoteFindHost.stop()
+        if (isFinishing) {
+            com.dskja.betterstreamflix.remotefind.RemoteFindHost.stop()
+        } else {
+            // Keep session across recreate; sockets restart in onCreate via restoreIfNeeded.
+            com.dskja.betterstreamflix.remotefind.RemoteFindHost.pauseForRecreation()
+        }
         com.dskja.betterstreamflix.sync.CastRoomUi.registerHostConsumer(null)
         castSessionStateListener?.let { CastPlaybackHub.removeSessionStateListener(it) }
         castSessionStateListener = null
@@ -665,6 +673,7 @@ class MainTvActivity : FragmentActivity() {
             com.dskja.betterstreamflix.profiletransfer.ProfileTransferUi.tryFlushPending(this)
             com.dskja.betterstreamflix.sync.CastRoomUi.tryFlushPending(this)
             com.dskja.betterstreamflix.sync.CastHandoffUi.tryFlushPending(this)
+        com.dskja.betterstreamflix.sync.SessionHandoffUi.tryFlushPending(this)
             return
         }
         val host = navHostFragment.childFragmentManager.primaryNavigationFragment
@@ -677,6 +686,7 @@ class MainTvActivity : FragmentActivity() {
                 com.dskja.betterstreamflix.download.DownloadPackUi.tryFlushPending(this)
                 com.dskja.betterstreamflix.profiletransfer.ProfileTransferUi.tryFlushPending(this)
                 com.dskja.betterstreamflix.sync.CastHandoffUi.tryFlushPending(this)
+        com.dskja.betterstreamflix.sync.SessionHandoffUi.tryFlushPending(this)
                 com.dskja.betterstreamflix.sync.CastRoomUi.tryFlushPending(this)
             },
         )

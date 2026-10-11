@@ -46,18 +46,31 @@ object CastHandoffRepository {
 
         revokeOwnedActive(appContext, profileId, userId)
 
-        val shortCode = CastHandoffLinks.newShortCode()
-        val row = buildRow(
-            shortCode = shortCode,
-            hostUserId = userId,
-            provider = provider,
-            videoType = videoType,
-            server = server,
-            positionMs = positionMs.coerceAtLeast(0L),
-        )
-        val inserted = client.from(TABLE)
-            .insert(row) { select(Columns.ALL) }
-            .decodeSingle<RemoteCastHandoff>()
+        val inserted = CompanionShortCodes.mintUnique { shortCode ->
+            val row = buildRow(
+                shortCode = shortCode,
+                hostUserId = userId,
+                provider = provider,
+                videoType = videoType,
+                server = server,
+                positionMs = positionMs.coerceAtLeast(0L),
+            )
+            runCatching {
+                client.from(TABLE)
+                    .insert(row) { select(Columns.ALL) }
+                    .decodeSingle<RemoteCastHandoff>()
+            }.getOrElse { error ->
+                val msg = error.message.orEmpty()
+                if (msg.contains("short_code", ignoreCase = true) ||
+                    msg.contains("unique", ignoreCase = true) ||
+                    msg.contains("23505")
+                ) {
+                    null
+                } else {
+                    throw error
+                }
+            }
+        }
 
         return OfferResult(
             shortCode = inserted.shortCode,
@@ -91,6 +104,8 @@ object CastHandoffRepository {
                 filter {
                     eq("id", handoffId)
                     eq("revoked", false)
+                    // PostgREST IS NULL — do not refresh after claim.
+                    exact("claimed_at", null as Boolean?)
                 }
             }
     }
@@ -126,6 +141,9 @@ object CastHandoffRepository {
         val client = SupabaseProvider.initializeForProfile(appContext, profileId)
             ?: error("Configure Supabase before claiming a Cast Hand-off")
         client.auth.awaitInitialization()
+        if (client.auth.currentSessionOrNull()?.user?.id == null) {
+            error("Sign in to peek a Cast Hand-off")
+        }
 
         val payload = runCatching {
             client.postgrest.rpc(
@@ -150,6 +168,9 @@ object CastHandoffRepository {
         val client = SupabaseProvider.initializeForProfile(appContext, profileId)
             ?: error("Configure Supabase before claiming a Cast Hand-off")
         client.auth.awaitInitialization()
+        if (client.auth.currentSessionOrNull()?.user?.id == null) {
+            error("Sign in to claim a Cast Hand-off")
+        }
 
         val payload = runCatching {
             client.postgrest.rpc(

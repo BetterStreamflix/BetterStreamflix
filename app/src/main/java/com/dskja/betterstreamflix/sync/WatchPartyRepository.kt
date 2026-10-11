@@ -31,6 +31,7 @@ object WatchPartyRepository {
     private const val RPC_DISPLAY_MODE = "set_watch_party_display_mode"
     private const val RPC_CONTROLS_LOCKED = "set_watch_party_controls_locked"
     private const val RPC_KICK = "kick_watch_party_member"
+    private const val RPC_LEAVE = "leave_watch_party_member"
     private const val RPC_REPORT_DRIFT = "report_watch_party_drift"
     private const val RPC_SYNC_HEALTH = "list_watch_party_sync_health"
     /** Short TTL — parties are ephemeral social sessions, not long-lived shares. */
@@ -66,19 +67,32 @@ object WatchPartyRepository {
         endOwnedActiveParties(appContext, profileId, userId)
 
         val token = newShareToken()
-        val shortCode = newUniqueShortCode()
-        val row = buildRow(
-            shareToken = token,
-            shortCode = shortCode,
-            hostUserId = userId,
-            provider = provider,
-            videoType = videoType,
-            server = server,
-            positionMs = positionMs.coerceAtLeast(0L),
-        )
-        val inserted = client.from(TABLE)
-            .insert(row) { select(Columns.ALL) }
-            .decodeSingle<RemoteWatchParty>()
+        val inserted = CompanionShortCodes.mintUnique { shortCode ->
+            val row = buildRow(
+                shareToken = token,
+                shortCode = shortCode,
+                hostUserId = userId,
+                provider = provider,
+                videoType = videoType,
+                server = server,
+                positionMs = positionMs.coerceAtLeast(0L),
+            )
+            runCatching {
+                client.from(TABLE)
+                    .insert(row) { select(Columns.ALL) }
+                    .decodeSingle<RemoteWatchParty>()
+            }.getOrElse { error ->
+                val msg = error.message.orEmpty()
+                if (msg.contains("short_code", ignoreCase = true) ||
+                    msg.contains("unique", ignoreCase = true) ||
+                    msg.contains("23505")
+                ) {
+                    null
+                } else {
+                    throw error
+                }
+            }
+        }
 
         // Register host in lobby presence.
         runCatching {
@@ -94,7 +108,7 @@ object WatchPartyRepository {
             link = WatchPartyLinks.buildUri(inserted.shareToken),
             partyId = inserted.id,
             inLobby = inserted.inLobby,
-            shortCode = inserted.shortCode ?: shortCode,
+            shortCode = inserted.shortCode ?: "",
             displayMode = WatchTogetherPro.normalizeDisplayMode(inserted.displayMode),
         )
     }
@@ -404,12 +418,14 @@ object WatchPartyRepository {
         val client = SupabaseProvider.initializeForProfile(appContext, profileId)
             ?: error("Configure Supabase before using Watch Together remote")
         client.auth.awaitInitialization()
+        val memberKey = WatchPartyMemberIdentity.memberKey(appContext)
         val payload = runCatching {
             client.postgrest.rpc(
                 RPC_SIDEKICK_SEEK,
                 WatchPartySidekickSeekParam(
                     token = token.trim(),
                     positionMs = WatchTogetherPro.clampSeek(positionMs),
+                    memberKey = memberKey,
                 ),
             ).decodeAs<WatchPartyPayload>()
         }.getOrNull()
@@ -427,16 +443,38 @@ object WatchPartyRepository {
         val client = SupabaseProvider.initializeForProfile(appContext, profileId)
             ?: error("Configure Supabase before using Watch Together remote")
         client.auth.awaitInitialization()
+        val memberKey = WatchPartyMemberIdentity.memberKey(appContext)
         val payload = runCatching {
             client.postgrest.rpc(
                 RPC_SIDEKICK_PLAY,
-                WatchPartySidekickPlayParam(token = token.trim(), playing = playing),
+                WatchPartySidekickPlayParam(
+                    token = token.trim(),
+                    playing = playing,
+                    memberKey = memberKey,
+                ),
             ).decodeAs<WatchPartyPayload>()
         }.getOrNull()
         if (payload == null || payload.shareToken.isNullOrBlank()) {
             error("Could not update play state")
         }
         return payload
+    }
+
+    suspend fun leaveMember(context: Context, token: String) {
+        if (!WatchPartyLinks.isValidToken(token)) return
+        val appContext = context.applicationContext
+        val profileId = ProfileManager.activeProfileId
+        val client = SupabaseProvider.initializeForProfile(appContext, profileId) ?: return
+        client.auth.awaitInitialization()
+        runCatching {
+            client.postgrest.rpc(
+                RPC_LEAVE,
+                WatchPartyLeaveParam(
+                    token = token.trim(),
+                    memberKey = WatchPartyMemberIdentity.memberKey(appContext),
+                ),
+            )
+        }.onFailure { Log.w(TAG, "Leave member failed", it) }
     }
 
     suspend fun forceResync(context: Context, token: String, positionMs: Long): WatchPartyPayload {
@@ -710,8 +748,6 @@ object WatchPartyRepository {
 
     private fun newShareToken(): String =
         UUID.randomUUID().toString().replace("-", "")
-
-    private fun newUniqueShortCode(): String = WatchPartyLinks.newShortCode()
 
     private fun requireConfigured() {
         if (!SupabaseProvider.isConfigured) {

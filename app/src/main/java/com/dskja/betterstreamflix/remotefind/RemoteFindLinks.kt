@@ -8,8 +8,13 @@ import java.nio.charset.StandardCharsets
 /**
  * Deep links for Remote Find Phone.
  *
- * QR / custom scheme: `betterstreamflix://remotefind?ws=…&token=…&code=…`
- * HTTPS mirror: `https://betterstreamflix.app/remotefind?ws=…&token=…&code=…`
+ * Preferred QR (custom scheme, no long-lived token):
+ * `betterstreamflix://remotefind?ws=…&code=…`
+ *
+ * HTTPS mirror is code-only (phone discovers WS on LAN):
+ * `https://betterstreamflix.app/remotefind?code=…`
+ *
+ * Legacy links with `token=` are still parsed when present.
  */
 object RemoteFindLinks {
     const val SCHEME = "betterstreamflix"
@@ -23,16 +28,15 @@ object RemoteFindLinks {
     )
 
     data class Target(
-        val wsUrl: String,
-        val token: String,
+        val wsUrl: String?,
+        val token: String?,
         val code: String?,
     )
 
-    fun buildDeepLink(wsUrl: String, token: String, code: String?): String {
+    fun buildDeepLink(wsUrl: String, code: String?): String {
         return buildString {
             append("$SCHEME://$HOST?")
             append("ws=").append(encode(wsUrl.trim()))
-            append("&token=").append(encode(token.trim()))
             val normalized = RemoteFindCode.normalize(code)
             if (normalized != null) {
                 append("&code=").append(encode(normalized))
@@ -40,17 +44,19 @@ object RemoteFindLinks {
         }
     }
 
-    fun buildHttpsLink(wsUrl: String, token: String, code: String?): String {
-        return buildString {
-            append("https://$HTTPS_HOST/$HOST?")
-            append("ws=").append(encode(wsUrl.trim()))
-            append("&token=").append(encode(token.trim()))
-            val normalized = RemoteFindCode.normalize(code)
-            if (normalized != null) {
-                append("&code=").append(encode(normalized))
-            }
-        }
+    /** HTTPS App Link: code only — never embed the session token. */
+    fun buildHttpsLink(code: String?): String {
+        val normalized = RemoteFindCode.normalize(code) ?: return "https://$HTTPS_HOST/$HOST"
+        return "https://$HTTPS_HOST/$HOST?code=${encode(normalized)}"
     }
+
+    @Deprecated("Use buildDeepLink(wsUrl, code) — token must not appear in QR/UDP")
+    fun buildDeepLink(wsUrl: String, token: String, code: String?): String =
+        buildDeepLink(wsUrl, code)
+
+    @Deprecated("Use buildHttpsLink(code) — token must not appear in HTTPS mirrors")
+    fun buildHttpsLink(wsUrl: String, token: String, code: String?): String =
+        buildHttpsLink(code)
 
     fun parse(uri: Uri?): Target? = parse(uri?.toString())
 
@@ -59,15 +65,12 @@ object RemoteFindLinks {
         val match = LINK_PATTERN.find(raw.trim()) ?: return null
         val query = match.groupValues.drop(1).firstOrNull { it.isNotBlank() }.orEmpty()
         val params = parseQuery(query)
-        val ws = params["ws"]?.trim().orEmpty()
-        val token = params["token"]?.trim().orEmpty()
-        if (ws.isBlank() || !TOKEN_PATTERN.matches(token)) return null
-        if (!ws.startsWith("ws://") && !ws.startsWith("wss://")) return null
-        return Target(
-            wsUrl = ws,
-            token = token,
-            code = RemoteFindCode.normalize(params["code"]),
-        )
+        val ws = params["ws"]?.trim()?.takeIf { it.isNotBlank() }
+        val token = params["token"]?.trim()?.takeIf { TOKEN_PATTERN.matches(it) }
+        val code = RemoteFindCode.normalize(params["code"])
+        if (ws == null && code == null && token == null) return null
+        if (ws != null && !ws.startsWith("ws://") && !ws.startsWith("wss://")) return null
+        return Target(wsUrl = ws, token = token, code = code)
     }
 
     fun isValidToken(token: String?): Boolean =

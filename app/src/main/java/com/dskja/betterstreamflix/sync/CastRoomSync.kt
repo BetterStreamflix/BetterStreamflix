@@ -16,6 +16,9 @@ import kotlinx.coroutines.sync.withLock
 /**
  * Host heartbeat + shared poll for Cast Room queue control.
  * Queue mutations are token RPCs; TV applies now-playing changes locally.
+ *
+ * Poll runs for the room lifetime. Heartbeat can pause when the player view
+ * is destroyed without ending the room (phone may still queue / scrub).
  */
 object CastRoomSync {
     private const val TAG = "CastRoomSync"
@@ -49,6 +52,29 @@ object CastRoomSync {
             pollJob?.cancelAndJoin()
             pollJob = null
         }
+    }
+
+    /** Pause host position/play heartbeat only; keep poll alive for room lifetime. */
+    suspend fun pauseHeartbeat() {
+        lifecycleMutex.withLock {
+            hostJob?.cancelAndJoin()
+            hostJob = null
+        }
+    }
+
+    fun pauseHeartbeatAsync() {
+        scope.launch { pauseHeartbeat() }
+    }
+
+    /** Alias for [pauseHeartbeat] — stop heartbeat without killing poll. */
+    suspend fun stopHeartbeatOnly() = pauseHeartbeat()
+
+    fun resumeHeartbeat(
+        context: Context,
+        roomId: String,
+        snapshot: () -> HostSnapshot?,
+    ) {
+        startHostHeartbeat(context, roomId, snapshot)
     }
 
     fun startHostHeartbeat(

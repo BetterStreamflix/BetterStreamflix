@@ -14,13 +14,15 @@ import java.util.concurrent.atomic.AtomicReference
 
 /**
  * Phone-side OkHttp WebSocket client for Remote Find Phone.
+ * Connects, sends `hello:<code>`, then stores the token from `welcome`.
  */
 class RemoteFindClient(
     private val wsUrl: String,
-    private val token: String,
+    private val pairingCode: String,
     private val onStatus: (String) -> Unit = {},
     private val onConnected: () -> Unit = {},
     private val onDisconnected: (String?) -> Unit = {},
+    private val onWelcomeToken: (String) -> Unit = {},
 ) {
     private val mainHandler = Handler(Looper.getMainLooper())
     private val socketRef = AtomicReference<WebSocket?>(null)
@@ -38,7 +40,7 @@ class RemoteFindClient(
         val request = Request.Builder().url(wsUrl).build()
         val socket = client.newWebSocket(request, object : WebSocketListener() {
             override fun onOpen(webSocket: WebSocket, response: Response) {
-                webSocket.send(RemoteFindProtocol.encodeHello(token))
+                webSocket.send(RemoteFindProtocol.encodeHello(pairingCode))
                 mainHandler.post {
                     onConnected()
                     onStatus("connected")
@@ -47,8 +49,14 @@ class RemoteFindClient(
 
             override fun onMessage(webSocket: WebSocket, text: String) {
                 when {
-                    text.startsWith("welcome:") ||
-                        text.startsWith("status:") ||
+                    text.startsWith("welcome:") -> {
+                        val welcome = RemoteFindProtocol.parseWelcome(text)
+                        if (welcome != null) {
+                            onWelcomeToken(welcome.token)
+                        }
+                        mainHandler.post { onStatus(text) }
+                    }
+                    text.startsWith("status:") ||
                         text.startsWith("ack:") ->
                         mainHandler.post { onStatus(text) }
                     text.startsWith("error:") ->
