@@ -502,6 +502,8 @@ class PlayerMobileFragment : Fragment(),
                         failoverTimeline.clear()
                         FailoverTimelineUi.clearErrorTimeline(_binding?.root)
                         com.dskja.betterstreamflix.providers.ProviderServerAb.clearSession()
+                        com.dskja.betterstreamflix.providers.ServerWhy.clearSessionFlags()
+                        paintServerWhyBadges()
                         val sToServer = servers.firstOrNull {
                             isSerienStreamBypassUrl(it.id) || isSerienStreamBypassUrl(it.src)
                         }
@@ -653,6 +655,7 @@ class PlayerMobileFragment : Fragment(),
                             )
                         }
                         failoverTimeline.recordOk(state.server, servers)
+                        maybeShowServerWhyCue(state.server)
                         maybeShowFailoverTimeline()
                         displayVideo(state.video, state.server)
                     }
@@ -3961,12 +3964,47 @@ class PlayerMobileFragment : Fragment(),
     }
 
     private fun showFailoverServerCue(nextIndex: Int, serverCount: Int) {
+        com.dskja.betterstreamflix.providers.ServerWhy.markFailoverHop()
         showPlayerCue(
             getString(
                 R.string.player_failover_server_n_of_m,
                 PlaybackFailover.serverOrdinal(nextIndex),
                 serverCount,
             ),
+        )
+    }
+
+    private fun paintServerWhyBadges() {
+        if (!isAdded) return
+        val providerName = UserPreferences.currentProvider?.name ?: return
+        val labels = servers.associate { server ->
+            val reason = com.dskja.betterstreamflix.providers.ServerWhy.reasonForServer(
+                providerName = providerName,
+                server = server,
+                preferredServerName = args.preferredServerName,
+                orderedServers = servers,
+            )
+            server.id to com.dskja.betterstreamflix.providers.ServerWhy
+                .formatShortLabel(requireContext(), reason)
+        }
+        PlayerSettingsView.Settings.Server.applyWhyLabels(labels)
+    }
+
+    private fun maybeShowServerWhyCue(server: com.dskja.betterstreamflix.models.Video.Server) {
+        if (!isAdded) return
+        val providerName = UserPreferences.currentProvider?.name ?: return
+        val explanation = com.dskja.betterstreamflix.providers.ServerWhy.explainSelection(
+            providerName = providerName,
+            server = server,
+            preferredServerName = args.preferredServerName,
+            orderedServers = servers,
+        )
+        if (explanation.reason == com.dskja.betterstreamflix.providers.ServerWhy.Reason.DEFAULT) {
+            return
+        }
+        showPlayerCue(
+            com.dskja.betterstreamflix.providers.ServerWhy.formatLine(requireContext(), explanation),
+            holdMs = 1_800L,
         )
     }
 
@@ -4075,6 +4113,7 @@ class PlayerMobileFragment : Fragment(),
         val next = servers.getOrNull(nextIndex) ?: return false
         hideStuckOverlay()
         com.dskja.betterstreamflix.providers.ProviderServerAb.notePlaybackUnstable(currentServer)
+        com.dskja.betterstreamflix.providers.ServerWhy.markStuckSwitch()
         stuckDetector.onServerChanged()
         Log.i("PlayerMobileFragment", "Stuck buffering — trying next server: ${next.name}")
         showFailoverServerCue(nextIndex, servers.size)

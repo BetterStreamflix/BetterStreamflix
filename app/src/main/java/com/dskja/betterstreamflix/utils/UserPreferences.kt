@@ -325,6 +325,17 @@ object UserPreferences {
             value.trim(),
         )
 
+    /**
+     * Profile-scoped JSON for [com.dskja.betterstreamflix.providers.ProviderServerPriority]
+     * manual hoster pins (Provider Trust Layer).
+     */
+    var providerServerPriorityJson: String
+        get() = profileScopedString(Key.PROVIDER_SERVER_PRIORITY_JSON).orEmpty()
+        set(value) = setProfileScopedString(
+            Key.PROVIDER_SERVER_PRIORITY_JSON,
+            value.trim(),
+        )
+
     var notifyEpisodeFingerprintsJson: String
         get() = Key.NOTIFY_EPISODE_FINGERPRINTS_JSON.getString().orEmpty()
         set(value) {
@@ -2088,6 +2099,7 @@ object UserPreferences {
         NOTIFY_LIVE_KICKOFF_FP_JSON,
         NOTIFY_LIVE_SCHEDULED_KEYS,
         PROVIDER_SERVER_AB_JSON,
+        PROVIDER_SERVER_PRIORITY_JSON,
         NOTIFY_EPISODE_FINGERPRINTS_JSON,
         NOTIFY_EPISODE_LAST_CHECK_AT,
         DOWNLOAD_FILTER_CURRENT_PROVIDER,

@@ -1595,9 +1595,14 @@ abstract class PlayerSettingsView @JvmOverloads constructor(
             val name: String,
         ) : Item {
             var isSelected: Boolean = false
+            /** Trust Layer badge: pinned / preferred / learned / … */
+            var whyLabel: String = ""
 
             companion object : Settings() {
                 val list = mutableListOf<Server>()
+
+                /** id → short why badge, reapplied after [init] from playlist metadata. */
+                private var whyLabelsById: Map<String, String> = emptyMap()
 
                 val selected: Server?
                     get() = list.find { it.isSelected }
@@ -1608,7 +1613,9 @@ abstract class PlayerSettingsView @JvmOverloads constructor(
                         Server(
                             id = it.id,
                             name = it.name,
-                        )
+                        ).also { server ->
+                            server.whyLabel = whyLabelsById[it.id].orEmpty()
+                        }
                     })
 
                     list.firstOrNull()?.isSelected = true
@@ -1617,7 +1624,18 @@ abstract class PlayerSettingsView @JvmOverloads constructor(
                 fun refresh(player: Player) {
                     list.forEach {
                         it.isSelected = (it.id == player.mediaMetadata.mediaServerId)
+                        it.whyLabel = whyLabelsById[it.id].orEmpty()
                     }
+                }
+
+                fun applyWhyLabels(labels: Map<String, String>) {
+                    whyLabelsById = labels
+                    list.forEach { it.whyLabel = labels[it.id].orEmpty() }
+                }
+
+                fun clearWhyLabels() {
+                    whyLabelsById = emptyMap()
+                    list.forEach { it.whyLabel = "" }
                 }
             }
         }

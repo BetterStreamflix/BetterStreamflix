@@ -197,16 +197,12 @@ class PlayerViewModel(
                 }
                 if (servers.isEmpty()) throw Exception(com.dskja.betterstreamflix.BetterStreamflixApp.instance.getString(com.dskja.betterstreamflix.R.string.error_no_servers_found))
 
-                // Provider A/B: put this profile's most stable hosters first so failover hops wisely.
-                val ordered = if (com.dskja.betterstreamflix.providers.ProviderServerAb.shouldTrack(provider)) {
-                    com.dskja.betterstreamflix.providers.ProviderServerAb.prioritize(
-                        providerName = provider.name,
-                        servers = servers,
-                        preferredServerName = preferredServerName,
-                    )
-                } else {
-                    servers
-                }
+                // Provider Trust Layer: preferred → manual pins → A/B learned → remainder.
+                val ordered = com.dskja.betterstreamflix.providers.ProviderTrustLayer.prioritizeServers(
+                    provider = provider,
+                    servers = servers,
+                    preferredServerName = preferredServerName,
+                )
 
                 Log.i("BetterStreamflix", "[SERVERS LIST] -> Provider: ${provider.name}")
                 Log.i("BetterStreamflix", "[SERVERS LIST] -> Found ${ordered.size} servers: ${ordered.joinToString { it.name }}")

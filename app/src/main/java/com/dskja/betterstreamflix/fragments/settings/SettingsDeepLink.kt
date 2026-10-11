@@ -20,6 +20,10 @@ object SettingsDeepLink {
         pendingScreenKey = "screen_aniworld_auth"
     }
 
+    fun openProviderTrust() {
+        pendingScreenKey = "screen_provider_trust"
+    }
+
     fun openProviderHealth() {
         pendingScreenKey = "screen_provider_health"
     }

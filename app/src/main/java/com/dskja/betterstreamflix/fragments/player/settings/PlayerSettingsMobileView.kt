@@ -563,8 +563,39 @@ class PlayerSettingsMobileView @JvmOverloads constructor(
                 setOnLongClickListener {
                     if (item is Settings.Server) {
                         ExpMotion.hapticTap(it)
-                        settingsView.onServerPlayWith?.invoke(item)
-                        settingsView.hide()
+                        val provider = com.dskja.betterstreamflix.utils.UserPreferences.currentProvider
+                        if (provider != null &&
+                            com.dskja.betterstreamflix.providers.ProviderServerAb.shouldTrack(provider)
+                        ) {
+                            val pinned = com.dskja.betterstreamflix.providers.ProviderServerPriority
+                                .toggle(provider.name, item.name)
+                            val labels = Settings.Server.list.associate { row ->
+                                val reason = when {
+                                    com.dskja.betterstreamflix.providers.ProviderServerPriority
+                                        .isPinnedName(provider.name, row.name) ->
+                                        com.dskja.betterstreamflix.providers.ServerWhy.Reason.PINNED
+                                    else -> com.dskja.betterstreamflix.providers.ServerWhy.Reason.DEFAULT
+                                }
+                                row.id to com.dskja.betterstreamflix.providers.ServerWhy
+                                    .formatShortLabel(context, reason)
+                            }
+                            Settings.Server.applyWhyLabels(labels)
+                            com.dskja.betterstreamflix.utils.ExpDialogChrome.notify(
+                                context,
+                                context.getString(
+                                    if (pinned) {
+                                        R.string.settings_provider_trust_pin_on
+                                    } else {
+                                        R.string.settings_provider_trust_pin_off
+                                    },
+                                    item.name,
+                                ),
+                            )
+                            settingsView.displaySettings(Setting.SERVERS)
+                        } else {
+                            settingsView.onServerPlayWith?.invoke(item)
+                            settingsView.hide()
+                        }
                         true
                     } else {
                         false
@@ -810,6 +841,8 @@ class PlayerSettingsMobileView @JvmOverloads constructor(
                     is Settings.Subtitle.OpenSubtitles.Subtitle -> item.openSubtitle.languageName
 
                     is Settings.Subtitle.SubDLSubtitles.Subtitle -> item.subDLSubtitle.lang?.replaceFirstChar { if (it.isLowerCase()) it.titlecase(java.util.Locale.getDefault()) else it.toString() } ?: ""
+
+                    is Settings.Server -> item.whyLabel
 
                     else -> ""
                 }

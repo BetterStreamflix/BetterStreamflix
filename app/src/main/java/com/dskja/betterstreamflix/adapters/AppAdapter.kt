@@ -77,11 +77,13 @@ import com.dskja.betterstreamflix.models.TvShow
 import com.dskja.betterstreamflix.fragments.favorites.FavoriteSectionHeader
 import com.dskja.betterstreamflix.support.SupportBannerItem
 import com.dskja.betterstreamflix.watchlist.WatchlistDigestBannerItem
+import com.dskja.betterstreamflix.providers.ProviderOutageBannerItem
 import com.dskja.betterstreamflix.R
 import com.dskja.betterstreamflix.databinding.ItemSupportBannerMobileBinding
 import com.dskja.betterstreamflix.databinding.ItemSupportBannerTvBinding
 import com.dskja.betterstreamflix.databinding.ItemWatchlistDigestMobileBinding
 import com.dskja.betterstreamflix.databinding.ItemWatchlistDigestTvBinding
+import com.dskja.betterstreamflix.adapters.viewholders.ProviderOutageBannerViewHolder
 import com.dskja.betterstreamflix.utils.ExperimentalMobileDesign
 import com.dskja.betterstreamflix.utils.ExpMotion
 import com.dskja.betterstreamflix.utils.UserPreferences
@@ -120,6 +122,8 @@ class AppAdapter(
     var onSupportBannerDismissListener: (() -> Unit)? = null
     var onWatchlistDigestClickListener: ((WatchlistDigestBannerItem) -> Unit)? = null
     var onWatchlistDigestDismissListener: ((WatchlistDigestBannerItem) -> Unit)? = null
+    var onProviderOutageBannerClickListener: ((ProviderOutageBannerItem) -> Unit)? = null
+    var onProviderOutageBannerDismissListener: ((ProviderOutageBannerItem) -> Unit)? = null
     var onDetailTabSelectedListener: ((com.dskja.betterstreamflix.ui.DetailTab) -> Unit)? = null
     var selectedDetailTab: com.dskja.betterstreamflix.ui.DetailTab =
         com.dskja.betterstreamflix.ui.DetailTab.SIMILAR
@@ -153,6 +157,9 @@ class AppAdapter(
 
         WATCHLIST_DIGEST_MOBILE_ITEM,
         WATCHLIST_DIGEST_TV_ITEM,
+
+        PROVIDER_OUTAGE_BANNER_MOBILE_ITEM,
+        PROVIDER_OUTAGE_BANNER_TV_ITEM,
 
         GENRE_GRID_MOBILE_ITEM,
         GENRE_GRID_TV_ITEM,
@@ -341,6 +348,21 @@ class AppAdapter(
             Type.WATCHLIST_DIGEST_TV_ITEM -> WatchlistDigestViewHolder(
                 ItemWatchlistDigestTvBinding.inflate(
                     LayoutInflater.from(parent.context),
+                    parent,
+                    false,
+                )
+            )
+
+            Type.PROVIDER_OUTAGE_BANNER_MOBILE_ITEM -> ProviderOutageBannerViewHolder(
+                LayoutInflater.from(parent.context).inflate(
+                    R.layout.item_provider_outage_banner_mobile,
+                    parent,
+                    false,
+                )
+            )
+            Type.PROVIDER_OUTAGE_BANNER_TV_ITEM -> ProviderOutageBannerViewHolder(
+                LayoutInflater.from(parent.context).inflate(
+                    R.layout.item_provider_outage_banner_tv,
                     parent,
                     false,
                 )
@@ -777,6 +799,14 @@ class AppAdapter(
                     banner,
                     onWatchlistDigestClickListener,
                     onWatchlistDigestDismissListener,
+                )
+            }
+            is ProviderOutageBannerViewHolder -> {
+                val banner = item as? ProviderOutageBannerItem ?: return
+                holder.bind(
+                    banner,
+                    onProviderOutageBannerClickListener,
+                    onProviderOutageBannerDismissListener,
                 )
             }
             is GenreViewHolder -> {
@@ -1393,6 +1423,7 @@ class AppAdapter(
         is FavoriteSectionHeader -> "favorite-header:${section.key}"
         is SupportBannerItem -> "support-banner:${id}"
         is WatchlistDigestBannerItem -> "watchlist-digest:${id}:${episodeCount}"
+        is ProviderOutageBannerItem -> "provider-outage:${id}:${level}:${providerNames.joinToString()}"
         is Genre -> "genre:${id}"
         is Movie -> "movie:${id}"
         is People -> "people:${id}"
