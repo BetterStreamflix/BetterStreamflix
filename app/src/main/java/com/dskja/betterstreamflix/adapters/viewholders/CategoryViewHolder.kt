@@ -451,6 +451,18 @@ class CategoryViewHolder(
                 isFocusableInTouchMode = false
                 visibility = View.GONE
             }
+            // P0: empty FF shelf must not leave chip.nextFocusDown → GONE hgv_category.
+            // Loop Down to self; pin (if focusable) is preferred when shown.
+            if (keepForFastForward) {
+                val chip = binding.chipSeriesFastForward
+                val pin = binding.btnShelfPin
+                val downTarget = when {
+                    pin.visibility == View.VISIBLE && pin.isFocusable -> pin.id
+                    else -> chip.id
+                }
+                chip.nextFocusDownId = downTarget
+                chip.nextFocusUpId = chip.nextFocusUpId.takeIf { it != View.NO_ID } ?: chip.id
+            }
             clearShelfWeather(binding.tvCategoryTitle, binding.hgvCategory, binding.tvShelfWeather)
             return
         }
@@ -460,6 +472,10 @@ class CategoryViewHolder(
         binding.root.descendantFocusability = ViewGroup.FOCUS_AFTER_DESCENDANTS
         bindShelfWeather(binding.tvCategoryTitle, binding.hgvCategory, binding.tvShelfWeather)
 
+        // Non-empty: restore chip Down into the shelf grid (XML default).
+        if (SeriesFastForward.supportsShelf(category.name)) {
+            binding.chipSeriesFastForward.nextFocusDownId = R.id.hgv_category
+        }
         binding.hgvCategory.apply {
             visibility = View.VISIBLE
             // setRowHeight requests a layout. Calling it on every rebind while the

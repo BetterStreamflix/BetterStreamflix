@@ -46,6 +46,12 @@ data class ProfileTransferPayload(
         val favoriteSortByProvider: Map<String, String> = emptyMap(),
         val favoriteItemOrderByProvider: Map<String, Map<String, List<String>>> = emptyMap(),
         val favoriteCategoryOrderByProvider: Map<String, List<String>> = emptyMap(),
+        /** Taste Graph JSON bundle (signals / affinity / tokens). Omitted from QR. */
+        val tasteSignalsJson: String? = null,
+        val tasteAffinityJson: String? = null,
+        val tasteQueryTokensJson: String? = null,
+        /** Search Memories JSON array. Omitted from QR. */
+        val searchMemoriesJson: String? = null,
     )
 
     @Serializable
@@ -88,6 +94,11 @@ data class ProfileTransferPayload(
             favoriteSortByProvider = settings.favoriteSortByProvider
                 .entries.take(24)
                 .associate { it.key.take(64) to it.value.take(32) },
+            // Taste / memories are file-export only (too large for QR).
+            tasteSignalsJson = null,
+            tasteAffinityJson = null,
+            tasteQueryTokensJson = null,
+            searchMemoriesJson = null,
         ),
     )
 

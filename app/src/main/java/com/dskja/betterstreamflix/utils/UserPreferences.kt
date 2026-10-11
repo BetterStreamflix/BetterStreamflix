@@ -1002,18 +1002,31 @@ object UserPreferences {
         set(value) = Key.CATALOG_SORT_MODE.setString(value.name)
 
     var searchSortMode: SearchSortMode
-        get() = SearchSortMode.fromKey(Key.SEARCH_SORT_MODE.getString())
-        set(value) = Key.SEARCH_SORT_MODE.setString(value.name)
+        get() = SearchSortMode.fromKey(
+            profileScopedString(Key.SEARCH_SORT_MODE) ?: Key.SEARCH_SORT_MODE.getString(),
+        )
+        set(value) {
+            setProfileScopedString(Key.SEARCH_SORT_MODE, value.name)
+            Key.SEARCH_SORT_MODE.setString(value.name)
+        }
 
-    /** Null means show all years. */
+    /** Null means show all years. Profile-scoped. */
     var searchYearFilter: Int?
-        get() = Key.SEARCH_YEAR_FILTER.getInt()
-        set(value) = Key.SEARCH_YEAR_FILTER.setInt(value)
+        get() = profileScopedInt(Key.SEARCH_YEAR_FILTER) ?: Key.SEARCH_YEAR_FILTER.getInt()
+        set(value) {
+            setProfileScopedInt(Key.SEARCH_YEAR_FILTER, value)
+            Key.SEARCH_YEAR_FILTER.setInt(value)
+        }
 
-    /** Active Search mood chip (Taste Graph). */
+    /** Active Search mood chip (Taste Graph). Profile-scoped. */
     var searchMood: com.dskja.betterstreamflix.taste.TasteMood
-        get() = com.dskja.betterstreamflix.taste.TasteMood.fromKey(Key.SEARCH_MOOD.getString())
-        set(value) = Key.SEARCH_MOOD.setString(value.name)
+        get() = com.dskja.betterstreamflix.taste.TasteMood.fromKey(
+            profileScopedString(Key.SEARCH_MOOD) ?: Key.SEARCH_MOOD.getString(),
+        )
+        set(value) {
+            setProfileScopedString(Key.SEARCH_MOOD, value.name)
+            Key.SEARCH_MOOD.setString(value.name)
+        }
 
     var castEnabled: Boolean
         get() = Key.CAST_ENABLED.getBoolean() ?: true

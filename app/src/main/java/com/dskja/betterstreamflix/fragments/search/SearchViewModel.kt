@@ -75,94 +75,63 @@ class SearchViewModel(
     val state: Flow<State> = combine(
         _state,
         _state.transformLatest { state ->
-            when (state) {
-                is State.SuccessSearching -> {
-                    val movies = state.results
-                        .filterIsInstance<Movie>()
-                    val movieIds = roomLookupIds(movies.map { it.id })
-                    if (movieIds.isEmpty()) {
+            val movies = collectMoviesForRoom(state)
+            val movieIds = roomLookupIds(movies.map { it.id })
+            if (movieIds.isEmpty()) {
+                emit(emptyList())
+            } else {
+                val db = liveDb()
+                if (db == null || !db.isOpen) emit(emptyList())
+                else emitAll(
+                    db.movieDao().getByIds(movieIds).catch { e ->
+                        if (e is CancellationException) throw e
+                        Log.w("SearchViewModel", "moviesDb flow failed after provider switch", e)
                         emit(emptyList())
-                    } else {
-                        val db = liveDb()
-                        if (db == null || !db.isOpen) emit(emptyList())
-                        else emitAll(
-                            db.movieDao().getByIds(movieIds).catch { e ->
-                                if (e is CancellationException) throw e
-                                Log.w("SearchViewModel", "moviesDb flow failed after provider switch", e)
-                                emit(emptyList())
-                            }
-                        )
-                    }
-                }
-                else -> emit(emptyList<Movie>())
+                    },
+                )
             }
         },
         _state.transformLatest { state ->
-            when (state) {
-                is State.SuccessSearching -> {
-                    val tvShows = state.results
-                        .filterIsInstance<TvShow>()
-                    val showIds = roomLookupIds(tvShows.map { it.id })
-                    if (showIds.isEmpty()) {
+            val tvShows = collectTvShowsForRoom(state)
+            val showIds = roomLookupIds(tvShows.map { it.id })
+            if (showIds.isEmpty()) {
+                emit(emptyList())
+            } else {
+                val db = liveDb()
+                if (db == null || !db.isOpen) emit(emptyList())
+                else emitAll(
+                    db.tvShowDao().getByIds(showIds).catch { e ->
+                        if (e is CancellationException) throw e
+                        Log.w("SearchViewModel", "tvShowsDb flow failed after provider switch", e)
                         emit(emptyList())
-                    } else {
-                        val db = liveDb()
-                        if (db == null || !db.isOpen) emit(emptyList())
-                        else emitAll(
-                            db.tvShowDao().getByIds(showIds).catch { e ->
-                                if (e is CancellationException) throw e
-                                Log.w("SearchViewModel", "tvShowsDb flow failed after provider switch", e)
-                                emit(emptyList())
-                            }
-                        )
-                    }
-                }
-                else -> emit(emptyList<TvShow>())
+                    },
+                )
             }
         },
     ) { state, moviesDb, tvShowsDb ->
         when (state) {
             is State.SuccessSearching -> {
-                val moviesById = moviesDb.associateBy { it.id }
-                val tvShowsById = tvShowsDb.associateBy { it.id }
-
+                val merged = mergeRoomFlags(state.results, moviesDb, tvShowsDb)
+                // Re-rank after Room merge so FOR_YOU sees favorite/watched flags.
+                val ranked = reRankAfterRoomMerge(merged)
                 State.SuccessSearching(
-                    results = state.results.map { item ->
-                        when (item) {
-                            is Movie -> {
-                                val merged = moviesById[item.id]
-                                    ?.takeIf { db ->
-                                        !item.isSame(db) ||
-                                            (item.logo.isNullOrBlank() && !db.logo.isNullOrBlank())
-                                    }
-                                    ?.let { item.copy().merge(it) }
-                                    ?: item
-                                // Preserve adapter type across Room merge copies (TV/mobile grid stamps).
-                                val sourceType = runCatching { item.itemType }.getOrNull()
-                                if (sourceType != null && runCatching { merged.itemType }.isFailure) {
-                                    merged.itemType = sourceType
-                                }
-                                merged
-                            }
-                            is TvShow -> {
-                                val merged = tvShowsById[item.id]
-                                    ?.takeIf { db ->
-                                        !item.isSame(db) ||
-                                            (item.logo.isNullOrBlank() && !db.logo.isNullOrBlank())
-                                    }
-                                    ?.let { item.copy().merge(it) }
-                                    ?: item
-                                val sourceType = runCatching { item.itemType }.getOrNull()
-                                if (sourceType != null && runCatching { merged.itemType }.isFailure) {
-                                    merged.itemType = sourceType
-                                }
-                                merged
-                            }
-                            else -> item
-                        }
-                    },
-                    hasMore = state.hasMore
+                    results = ranked,
+                    hasMore = state.hasMore,
                 )
+            }
+            is State.SuccessGlobalSearching -> {
+                val rows = state.providerResults.map { pr ->
+                    when (val st = pr.state) {
+                        is ProviderResult.State.Success -> {
+                            val merged = mergeRoomFlags(st.results, moviesDb, tvShowsDb)
+                            pr.copy(
+                                state = ProviderResult.State.Success(reRankAfterRoomMerge(merged)),
+                            )
+                        }
+                        else -> pr
+                    }
+                }
+                State.SuccessGlobalSearching(rows)
             }
             else -> state
         }
@@ -175,6 +144,73 @@ class SearchViewModel(
             ),
         )
     }.flowOn(Dispatchers.IO)
+
+    private fun collectMoviesForRoom(state: State): List<Movie> = when (state) {
+        is State.SuccessSearching -> state.results.filterIsInstance<Movie>()
+        is State.SuccessGlobalSearching -> state.providerResults.flatMap { pr ->
+            (pr.state as? ProviderResult.State.Success)?.results.orEmpty()
+        }.filterIsInstance<Movie>()
+        else -> emptyList()
+    }
+
+    private fun collectTvShowsForRoom(state: State): List<TvShow> = when (state) {
+        is State.SuccessSearching -> state.results.filterIsInstance<TvShow>()
+        is State.SuccessGlobalSearching -> state.providerResults.flatMap { pr ->
+            (pr.state as? ProviderResult.State.Success)?.results.orEmpty()
+        }.filterIsInstance<TvShow>()
+        else -> emptyList()
+    }
+
+    private fun mergeRoomFlags(
+        items: List<AppAdapter.Item>,
+        moviesDb: List<Movie>,
+        tvShowsDb: List<TvShow>,
+    ): List<AppAdapter.Item> {
+        val moviesById = moviesDb.associateBy { it.id }
+        val tvShowsById = tvShowsDb.associateBy { it.id }
+        return items.map { item ->
+            when (item) {
+                is Movie -> {
+                    val merged = moviesById[item.id]
+                        ?.takeIf { db ->
+                            !item.isSame(db) ||
+                                (item.logo.isNullOrBlank() && !db.logo.isNullOrBlank())
+                        }
+                        ?.let { item.copy().merge(it) }
+                        ?: item
+                    val sourceType = runCatching { item.itemType }.getOrNull()
+                    if (sourceType != null && runCatching { merged.itemType }.isFailure) {
+                        merged.itemType = sourceType
+                    }
+                    merged
+                }
+                is TvShow -> {
+                    val merged = tvShowsById[item.id]
+                        ?.takeIf { db ->
+                            !item.isSame(db) ||
+                                (item.logo.isNullOrBlank() && !db.logo.isNullOrBlank())
+                        }
+                        ?.let { item.copy().merge(it) }
+                        ?: item
+                    val sourceType = runCatching { item.itemType }.getOrNull()
+                    if (sourceType != null && runCatching { merged.itemType }.isFailure) {
+                        merged.itemType = sourceType
+                    }
+                    merged
+                }
+                else -> item
+            }
+        }
+    }
+
+    private fun reRankAfterRoomMerge(items: List<AppAdapter.Item>): List<AppAdapter.Item> {
+        val mode = UserPreferences.searchSortMode
+        val mood = UserPreferences.searchMood
+        if (mode != SearchSortMode.FOR_YOU && mood == TasteMood.ALL) return items
+        val app = BetterStreamflixApp.instance.applicationContext
+        val snap = TasteGraph.snapshot(app)
+        return TasteRanker.apply(items, snap, mood, query)
+    }
 
     var query = ""
     private var page = 1
@@ -189,6 +225,9 @@ class SearchViewModel(
 
     /** Global search rows with Success payloads still unordered / unfiltered. */
     private var rawGlobalResults: List<ProviderResult> = emptyList()
+
+    /** Dedup Taste ingest for concurrent Global Search completions. */
+    private var lastGlobalIngestKey: String? = null
 
     private val providerStateComparator = compareBy<ProviderResult> { providerResult ->
         when (val state = providerResult.state) {
@@ -303,7 +342,10 @@ class SearchViewModel(
                         )
                         return@launch
                     }
-                query = "more like $title"
+                query = BetterStreamflixApp.instance.getString(
+                    R.string.search_query_more_like,
+                    title,
+                )
                 page = 1
                 rawGlobalResults = emptyList()
                 val language = resolveSearchLanguage(provider)
@@ -351,29 +393,73 @@ class SearchViewModel(
         val mode = UserPreferences.searchSortMode
         val year = UserPreferences.searchYearFilter
         val mood = UserPreferences.searchMood
-        val sortMode = if (mode == SearchSortMode.FOR_YOU) {
+        val isIptv = UserPreferences.currentProvider is IptvProvider
+        // IPTV channels have little genre signal — skip mood / FOR_YOU ranking noise.
+        val effectiveMood = if (isIptv) TasteMood.ALL else mood
+        val effectiveMode = if (isIptv && mode == SearchSortMode.FOR_YOU) {
             SearchSortMode.PROVIDER_DEFAULT
         } else {
             mode
+        }
+        val sortMode = if (effectiveMode == SearchSortMode.FOR_YOU) {
+            SearchSortMode.PROVIDER_DEFAULT
+        } else {
+            effectiveMode
         }
         val yearSorted = SearchSort.items(items, sortMode, year)
         val app = BetterStreamflixApp.instance.applicationContext
         val snap = TasteGraph.snapshot(app)
         val withoutNegatives = yearSorted.filter { item ->
             if (item !is Movie && item !is TvShow) return@filter true
-            !snap.isNegative(item.searchIdentityKey())
+            val tmdb = when (item) {
+                is Movie -> com.dskja.betterstreamflix.taste.TasteSnapshot.tmdbKey(item.tmdbId, false)
+                is TvShow -> com.dskja.betterstreamflix.taste.TasteSnapshot.tmdbKey(item.tmdbId, true)
+                else -> null
+            }
+            !snap.isHardHidden(item.searchIdentityKey(), tmdb)
         }
-        val moodFiltered = if (mood == TasteMood.ALL) {
+        val moodFiltered = if (effectiveMood == TasteMood.ALL) {
             withoutNegatives
         } else {
-            withoutNegatives.filter { TasteMoodMatcher.matches(it, mood) }
+            withoutNegatives.filter { TasteMoodMatcher.matches(it, effectiveMood) }
         }
-        return if (mode == SearchSortMode.FOR_YOU || mood != TasteMood.ALL) {
-            TasteRanker.apply(moodFiltered, snap, mood, query)
+        // Drop orphan Category headers when all poster children were filtered out.
+        val withoutOrphanHeaders = dropOrphanCategoryHeaders(moodFiltered)
+        return if (effectiveMode == SearchSortMode.FOR_YOU || effectiveMood != TasteMood.ALL) {
+            TasteRanker.apply(withoutOrphanHeaders, snap, effectiveMood, query)
         } else {
-            moodFiltered
+            withoutOrphanHeaders
         }
     }
+
+    private fun dropOrphanCategoryHeaders(items: List<AppAdapter.Item>): List<AppAdapter.Item> {
+        if (items.none { it is Category }) return items
+        return buildList {
+            var i = 0
+            while (i < items.size) {
+                val item = items[i]
+                if (item is Category) {
+                    var j = i + 1
+                    var hasShow = false
+                    while (j < items.size && items[j] !is Category) {
+                        if (items[j] is Movie || items[j] is TvShow || items[j] is People) {
+                            hasShow = true
+                            break
+                        }
+                        j++
+                    }
+                    if (hasShow) add(item)
+                } else {
+                    add(item)
+                }
+                i++
+            }
+        }
+    }
+
+    /** Visible show count after mood/negatives — used for hasMore / empty paging. */
+    private fun orderedShowCount(items: List<AppAdapter.Item>): Int =
+        orderLocal(items).count { it is Movie || it is TvShow }
 
     private fun orderGlobal(rows: List<ProviderResult>): List<ProviderResult> =
         rows.map { pr ->
@@ -386,20 +472,28 @@ class SearchViewModel(
         }.sortedWith(providerStateComparator)
 
     private suspend fun emitLocalSuccess(recordMemory: Boolean = true) {
+        val ordered = orderLocal(rawLocalResults)
         if (recordMemory) {
             rememberSearchOutcome(
                 query = query,
                 outcome = SearchMemories.outcomeForLocalResults(
-                    rawLocalResults.filter { it is Movie || it is TvShow || it is People },
+                    ordered.filter { it is Movie || it is TvShow || it is People },
                 ),
                 global = false,
             )
         }
+        // hasMore: only continue paging when mood/negatives still leave room AND
+        // the ordered set is non-empty (or mood is ALL so empty means truly empty).
+        val mood = UserPreferences.searchMood
+        val visibleShows = ordered.count { it is Movie || it is TvShow }
+        val hasMore = rawLocalHasMore &&
+            (mood == TasteMood.ALL || visibleShows > 0) &&
+            ordered.size < SearchResultGuard.maxLocalResults()
         _state.emit(
             State.SuccessSearching(
-                results = orderLocal(rawLocalResults),
-                hasMore = rawLocalHasMore,
-            )
+                results = ordered,
+                hasMore = hasMore,
+            ),
         )
     }
 
@@ -407,9 +501,23 @@ class SearchViewModel(
         query: String,
         outcome: SearchMemories.Outcome,
         global: Boolean,
+        bumpTimestamp: Boolean = true,
     ) {
         val app = BetterStreamflixApp.instance.applicationContext
-        SearchMemories.recordOutcome(app, query, outcome, global)
+        if (global) {
+            val key = "$query|$outcome"
+            if (lastGlobalIngestKey == key && outcome == SearchMemories.Outcome.SUCCESS) {
+                return
+            }
+            lastGlobalIngestKey = key
+        }
+        SearchMemories.recordOutcome(
+            app,
+            query,
+            outcome,
+            global,
+            bumpTimestamp = bumpTimestamp,
+        )
         if (outcome == SearchMemories.Outcome.SUCCESS) {
             val top = when {
                 rawLocalResults.isNotEmpty() -> rawLocalResults
@@ -417,7 +525,15 @@ class SearchViewModel(
                     (pr.state as? ProviderResult.State.Success)?.results.orEmpty()
                 }
             }.filter { it is Movie || it is TvShow }
-            TasteGraph.ingestSearchMemory(app, query, top)
+            // Prefer items that already carry genres for affinity bumps.
+            val withGenres = top.filter { item ->
+                when (item) {
+                    is Movie -> item.genres.isNotEmpty()
+                    is TvShow -> item.genres.isNotEmpty()
+                    else -> false
+                }
+            }
+            TasteGraph.ingestSearchMemory(app, query, withGenres.ifEmpty { top })
         }
     }
 
@@ -524,6 +640,8 @@ class SearchViewModel(
 
     private suspend fun searchNormal(provider: Provider, query: String) {
         val language = resolveSearchLanguage(provider)
+        val mood = UserPreferences.searchMood
+        val isIptv = provider is IptvProvider
         val results = SearchResultGuard.sanitize(
             ParentalControlUtils.filterItems(
                 ProviderSmoke.withProviderTimeout(
@@ -545,7 +663,18 @@ class SearchViewModel(
         var merged = (results + addonHits)
             .distinctBy { it.searchIdentityKey() }
 
-        val isIptv = provider is IptvProvider
+        // Blank query + mood → Discover browse by mood genre ids (TMDb assist).
+        if (!isIptv && query.isBlank() && mood != TasteMood.ALL) {
+            val discover = ParentalControlUtils.filterItems(
+                SearchResultGuard.sanitize(
+                    SearchTmdbAssist.discoverByMood(mood, language),
+                ),
+            )
+            if (discover.isNotEmpty()) {
+                merged = (discover + merged).distinctBy { it.searchIdentityKey() }
+            }
+        }
+
         val showHits = merged.count { it is Movie || it is TvShow }
         val hasPeople = merged.any { it is People }
 
@@ -584,9 +713,11 @@ class SearchViewModel(
 
         merged = merged.take(SearchResultGuard.maxLocalResults())
         rawLocalResults = merged
+        val orderedShows = orderedShowCount(merged)
         rawLocalHasMore = results.isNotEmpty() &&
             merged.size < SearchResultGuard.maxLocalResults() &&
-            showHits > 0
+            showHits > 0 &&
+            (mood == TasteMood.ALL || orderedShows > 0)
         emitLocalSuccess()
     }
 
@@ -634,9 +765,13 @@ class SearchViewModel(
                     val accepted = newUniqueResults.take(roomLeft)
                     page += 1
                     rawLocalResults = rawLocalResults + accepted
+                    val mood = UserPreferences.searchMood
+                    val visible = orderedShowCount(rawLocalResults)
                     rawLocalHasMore = accepted.isNotEmpty() &&
-                        rawLocalResults.size < localCap
-                    emitLocalSuccess()
+                        rawLocalResults.size < localCap &&
+                        (mood == TasteMood.ALL || visible > 0)
+                    // Paging must not rewrite memory timestamps.
+                    emitLocalSuccess(recordMemory = false)
                 } catch (e: CancellationException) {
                     throw e
                 } catch (t: Throwable) {
@@ -645,7 +780,7 @@ class SearchViewModel(
                     // overlay throws away a successful search because one later page failed.
                     rawLocalHasMore = false
                     if (rawLocalResults.isNotEmpty()) {
-                        emitLocalSuccess()
+                        emitLocalSuccess(recordMemory = false)
                     } else {
                         _state.emit(
                             State.FailedSearching(

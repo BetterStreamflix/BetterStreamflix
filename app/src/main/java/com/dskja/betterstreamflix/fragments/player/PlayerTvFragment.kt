@@ -2856,6 +2856,14 @@ class PlayerTvFragment : Fragment(),
                     (watchItem as? Movie)?.let {
                         database?.movieDao()?.update(it)
                         UserDataCache.syncMovieToCache(appContext, resolvedProvider, it)
+                        if (started) {
+                            runCatching {
+                                com.dskja.betterstreamflix.taste.TasteFeedback.watchEngagement(
+                                    appContext,
+                                    it,
+                                )
+                            }
+                        }
                         if (finished) {
                             SmartDownloadsManager.onMovieFinished(
                                 appContext,

@@ -105,6 +105,24 @@ object ProfileTransferImporter {
         if (s.parentalControlMaxAge != null) {
             UserPreferences.parentalControlMaxAge = s.parentalControlMaxAge
         }
+        runCatching {
+            val app = com.dskja.betterstreamflix.BetterStreamflixApp.instance.applicationContext
+            if (s.tasteSignalsJson != null ||
+                s.tasteAffinityJson != null ||
+                s.tasteQueryTokensJson != null
+            ) {
+                com.dskja.betterstreamflix.taste.TasteGraphStore.importBundle(
+                    app,
+                    s.tasteSignalsJson,
+                    s.tasteAffinityJson,
+                    s.tasteQueryTokensJson,
+                )
+                com.dskja.betterstreamflix.taste.TasteGraph.invalidate()
+            }
+            s.searchMemoriesJson?.let {
+                com.dskja.betterstreamflix.fragments.search.SearchMemories.importJson(app, it)
+            }
+        }
         s.favoriteSortByProvider.forEach { (provider, mode) ->
             if (provider.isNotBlank() && mode.isNotBlank()) {
                 UserPreferences.setFavoriteSortMode(provider, mode)

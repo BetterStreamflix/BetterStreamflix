@@ -89,10 +89,19 @@ class SeriesFastForwardTest {
     }
 
     @Test
-    fun hasVisitBaselineNeedsWatermarkOrSnapshot() {
+    fun hasVisitBaselineNeedsTimestampAndSnapshotIds() {
         assertFalse(SeriesFastForward.hasVisitBaseline(0L, emptySet()))
-        assertTrue(SeriesFastForward.hasVisitBaseline(10L, emptySet()))
-        assertTrue(SeriesFastForward.hasVisitBaseline(0L, setOf("a")))
+        // Timestamp-only is not a baseline (avoids first-session novelty flicker).
+        assertFalse(SeriesFastForward.hasVisitBaseline(10L, emptySet()))
+        assertFalse(SeriesFastForward.hasVisitBaseline(0L, setOf("a")))
+        assertTrue(SeriesFastForward.hasVisitBaseline(10L, setOf("a")))
+    }
+
+    @Test
+    fun commitVisitIgnoresEmptyIdSets() {
+        // Pure helper: empty commit must not create a timestamp-only baseline.
+        // (UserPreferences-backed commitVisit is integration-tested on device.)
+        assertFalse(SeriesFastForward.hasVisitBaseline(1L, emptySet()))
     }
 
     @Test

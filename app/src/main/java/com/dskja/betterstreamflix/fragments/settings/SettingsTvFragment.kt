@@ -906,6 +906,19 @@ class SettingsTvFragment : LeanbackPreferenceFragmentCompat() {
             true
         }
 
+        findPreference<ListPreference>("SEARCH_SORT_MODE")?.apply {
+            value = UserPreferences.searchSortMode.name
+            summaryProvider = ListPreference.SimpleSummaryProvider.getInstance()
+            setOnPreferenceChangeListener { preference, newValue ->
+                val mode = com.dskja.betterstreamflix.utils.SearchSortMode.fromKey(newValue as String)
+                UserPreferences.searchSortMode = mode
+                if (preference is ListPreference) {
+                    preference.value = mode.name
+                }
+                true
+            }
+        }
+
         findPreference<Preference>("TASTE_CLEAR_HIDDEN")?.setOnPreferenceClickListener {
             com.dskja.betterstreamflix.taste.TasteSignalsUi.showClearHidden(requireContext())
             true
