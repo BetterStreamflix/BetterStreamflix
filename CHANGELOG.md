@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Profile themes + download folders: theme preference is per-profile; Kids defaults to **Cinema-Ink Kids**, adults to **Cinema-Ink Dark**; offline files land in visible `profiles/<Name>` folders (Settings path + Downloads chip show the folder)
 
 ### Added
+- Crossfade Posts (Trailer→Stream): Stream Now keeps a full-bleed cover up and short-crossfades into the first frame (Mobile + TV) while Trailer→Play waits briefly for a hot server — no black flash between trailer and playback
 - Provider A/B: per-profile hoster stability learning — failover and first-pick prioritize servers that work for this user; successes/failures feed `ProviderServerAb`, shown in Provider Health as “prefers …”
 - Episode Notes (“Where was I?”): short spoiler-free per-episode reminders, local and per-profile — Show Options, season rows, and player chip on Mobile + TV
 - One-tap season download (Mobile + TV): queues the whole season into the Smart-Download pipeline with per-series quota + storage checks and clear partial/quota toasts

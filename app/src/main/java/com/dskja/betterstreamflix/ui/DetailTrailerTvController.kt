@@ -175,8 +175,9 @@ object DetailTrailerTvController {
         btn.applyExpPress()
         btn.setOnClickListener {
             ExpMotion.hapticTap(it)
-            session?.onStreamNow?.invoke()
-                ?: TrailerPlayPipeline.activeSession?.onStreamNow?.invoke()
+            val active = session ?: TrailerPlayPipeline.activeSession
+            TrailerStreamCrossfade.arm(active?.target)
+            active?.onStreamNow?.invoke()
         }
         btn.isEnabled = session?.onStreamNow != null ||
             TrailerPlayPipeline.activeSession?.onStreamNow != null

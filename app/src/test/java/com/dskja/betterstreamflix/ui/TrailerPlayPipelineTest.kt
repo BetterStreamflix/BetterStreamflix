@@ -85,4 +85,12 @@ class TrailerPlayPipelineTest {
         TrailerPlayPipeline.endSession()
         assertNull(TrailerPlayPipeline.activeSession)
     }
+
+    @Test
+    fun isServersHot_trueAfterSeed() {
+        val server = Video.Server(id = "srv-1", name = "A", src = "https://example.com/a")
+        TrailerPlayPipeline.seedForTest("movie-1", listOf(server))
+        assertEquals(true, TrailerPlayPipeline.isServersHot("movie-1"))
+        assertEquals(false, TrailerPlayPipeline.isServersHot("other"))
+    }
 }

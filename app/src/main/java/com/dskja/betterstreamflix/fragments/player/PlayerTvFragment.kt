@@ -120,6 +120,7 @@ import com.dskja.betterstreamflix.player.PlaybackMediaItems
 import com.dskja.betterstreamflix.player.PlaybackMime
 import com.dskja.betterstreamflix.player.PlaybackRequestHeaders
 import com.dskja.betterstreamflix.ui.TrailerPlaybackController
+import com.dskja.betterstreamflix.ui.TrailerStreamCrossfade
 import java.util.Calendar
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
@@ -386,6 +387,10 @@ class PlayerTvFragment : Fragment(),
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
+        TrailerStreamCrossfade.attachBridge(
+            bridge = binding.ivTrailerStreamBridge,
+            contentId = args.id,
+        )
         runCatching { TrailerPlaybackController.silenceAllActive() }
         initializePlayer(false)
         setupCastControls()
@@ -530,6 +535,7 @@ class PlayerTvFragment : Fragment(),
 
                     }
                         is PlayerViewModel.State.FailedLoadingServers -> {
+                            revealTrailerStreamBridge()
                             showStreamFailure(
                                 error = state.error,
                                 serversExhausted = true,
@@ -2048,7 +2054,13 @@ class PlayerTvFragment : Fragment(),
                     if (playbackState == Player.STATE_READY) {
                         updatePlayerScale()
                         ensureSkipIntroProbe()
+                        revealTrailerStreamBridge()
                     }
+                }
+
+                override fun onRenderedFirstFrame() {
+                    super.onRenderedFirstFrame()
+                    revealTrailerStreamBridge()
                 }
 
                 override fun onTracksChanged(tracks: androidx.media3.common.Tracks) {
@@ -2080,6 +2092,7 @@ class PlayerTvFragment : Fragment(),
                     binding.pvPlayer.keepScreenOn = isPlaying
 
                     if (isPlaying) {
+                        revealTrailerStreamBridge()
                         if (player.hasStarted()) {
                             com.dskja.betterstreamflix.providers.ProviderServerAb
                                 .notePlaybackStable(currentServer)
@@ -2855,6 +2868,11 @@ class PlayerTvFragment : Fragment(),
                 if (!isAdded || _binding == null) return@launch
                 cue.isGone = true
             }
+        }
+
+        private fun revealTrailerStreamBridge() {
+            val bridge = _binding?.ivTrailerStreamBridge ?: return
+            TrailerStreamCrossfade.revealStream(bridge)
         }
 
         private fun resolvePlayerTitle(videoType: Video.Type = currentVideoTypeForUi()): String {
@@ -3748,6 +3766,7 @@ class PlayerTvFragment : Fragment(),
             b.settings.player = null
             b.settings.subtitleView = null
         }
+        runCatching { TrailerStreamCrossfade.revealStream(b.ivTrailerStreamBridge, durationMs = 0L) }
         playerViewDetached = true
     }
 

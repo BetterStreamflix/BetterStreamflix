@@ -27,6 +27,24 @@
         app:show_timeout="5000"
         app:surface_type="texture_view" />
 
+    <!-- Trailer→Stream bridge: full-bleed cover until first ready frame (no black flash). -->
+    <ImageView
+        android:id="@+id/iv_trailer_stream_bridge"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:background="@color/cinema_ink"
+        android:contentDescription="@null"
+        android:elevation="2dp"
+        android:focusable="false"
+        android:importantForAccessibility="no"
+        android:scaleType="centerCrop"
+        android:visibility="gone"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        tools:visibility="visible" />
+
     <TextView
         android:id="@+id/tv_episode_note_chip"
         android:layout_width="wrap_content"
