@@ -12,7 +12,7 @@
         android:layout_height="wrap_content"
         android:focusable="false"
         android:importantForAccessibility="no"
-        android:text="@string/offline_library_title"
+        android:text="@string/offline_studio_title"
         android:textColor="#FFFFFFFF"
         android:textSize="28sp"
         android:textStyle="bold"
@@ -139,45 +139,103 @@
             android:textSize="13sp" />
     </LinearLayout>
 
-    <LinearLayout
-        android:id="@+id/ll_downloads_modes"
+    <TextView
+        android:id="@+id/tv_offline_studio_status_rail"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:paddingTop="10dp"
+        android:ellipsize="end"
+        android:focusable="false"
+        android:maxLines="2"
+        android:paddingTop="4dp"
+        android:paddingEnd="8dp"
+        android:paddingBottom="2dp"
+        android:textColor="#99FFFFFF"
+        android:textSize="13sp"
+        android:visibility="gone"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/ll_offline_library_badge">
+        app:layout_constraintTop_toBottomOf="@id/ll_offline_library_badge"
+        tools:text="Lane 2 · Health 1 · Expiry 3 · Packs 1"
+        tools:visibility="visible" />
 
-        <TextView
-            android:id="@+id/chip_mode_library"
+    <HorizontalScrollView
+        android:id="@+id/hsv_downloads_modes"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:descendantFocusability="afterDescendants"
+        android:focusable="false"
+        android:paddingTop="8dp"
+        android:scrollbars="none"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/tv_offline_studio_status_rail">
+
+        <LinearLayout
+            android:id="@+id/ll_downloads_modes"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginEnd="8dp"
-            android:background="@drawable/bg_download_filter_chip_selected"
-            android:focusable="true"
-            android:paddingStart="16dp"
-            android:paddingTop="10dp"
-            android:paddingEnd="16dp"
-            android:paddingBottom="10dp"
-            android:text="@string/offline_library_mode"
-            android:textColor="#FF111111"
-            android:textSize="14sp" />
+            android:orientation="horizontal">
 
-        <TextView
-            android:id="@+id/chip_mode_manage"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:background="@drawable/bg_download_filter_chip"
-            android:focusable="true"
-            android:paddingStart="16dp"
-            android:paddingTop="10dp"
-            android:paddingEnd="16dp"
-            android:paddingBottom="10dp"
-            android:text="@string/offline_library_manage_mode"
-            android:textColor="#FFFFFFFF"
-            android:textSize="14sp" />
-    </LinearLayout>
+            <TextView
+                android:id="@+id/chip_mode_library"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginEnd="8dp"
+                android:background="@drawable/bg_download_filter_chip_selected"
+                android:focusable="true"
+                android:paddingStart="16dp"
+                android:paddingTop="10dp"
+                android:paddingEnd="16dp"
+                android:paddingBottom="10dp"
+                android:text="@string/offline_library_mode"
+                android:textColor="#FF111111"
+                android:textSize="14sp" />
+
+            <TextView
+                android:id="@+id/chip_mode_queue"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginEnd="8dp"
+                android:background="@drawable/bg_download_filter_chip"
+                android:focusable="true"
+                android:paddingStart="16dp"
+                android:paddingTop="10dp"
+                android:paddingEnd="16dp"
+                android:paddingBottom="10dp"
+                android:text="@string/offline_studio_mode_queue"
+                android:textColor="#FFFFFFFF"
+                android:textSize="14sp" />
+
+            <TextView
+                android:id="@+id/chip_mode_care"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginEnd="8dp"
+                android:background="@drawable/bg_download_filter_chip"
+                android:focusable="true"
+                android:paddingStart="16dp"
+                android:paddingTop="10dp"
+                android:paddingEnd="16dp"
+                android:paddingBottom="10dp"
+                android:text="@string/offline_studio_mode_care"
+                android:textColor="#FFFFFFFF"
+                android:textSize="14sp" />
+
+            <TextView
+                android:id="@+id/chip_mode_controls"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:background="@drawable/bg_download_filter_chip"
+                android:focusable="true"
+                android:paddingStart="16dp"
+                android:paddingTop="10dp"
+                android:paddingEnd="16dp"
+                android:paddingBottom="10dp"
+                android:text="@string/offline_studio_mode_controls"
+                android:textColor="#FFFFFFFF"
+                android:textSize="14sp" />
+        </LinearLayout>
+    </HorizontalScrollView>
 
     <androidx.constraintlayout.widget.ConstraintLayout
         android:id="@+id/cl_offline_library_search"
@@ -188,7 +246,7 @@
         android:focusable="false"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/ll_downloads_modes">
+        app:layout_constraintTop_toBottomOf="@id/hsv_downloads_modes">
 
         <ImageView
             android:id="@+id/iv_offline_library_search"
@@ -342,6 +400,26 @@
         app:layout_constraintBottom_toBottomOf="@id/hsv_downloads_filters"
         app:layout_constraintEnd_toEndOf="@id/hsv_downloads_filters"
         app:layout_constraintTop_toTopOf="@id/hsv_downloads_filters" />
+
+    <include
+        layout="@layout/view_offline_studio_care"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:visibility="gone"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/hsv_downloads_filters" />
+
+    <include
+        layout="@layout/view_offline_studio_controls"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:visibility="gone"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/hsv_downloads_filters" />
 
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/rv_downloads"

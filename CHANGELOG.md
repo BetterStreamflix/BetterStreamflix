@@ -15,6 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Profile themes + download folders: theme preference is per-profile; Kids defaults to **Cinema-Ink Kids**, adults to **Cinema-Ink Dark**; offline files land in visible `profiles/<Name>` folders (Settings path + Downloads chip show the folder)
 
 ### Added
+- Offline Studio: Downloads hub unifies Library · Queue (lane Watching/Queue/Smart) · Care (health + expiry) · Controls (Smart/quota/Wi‑Fi soft limit + Packs) on Mobile + TV — builds on existing Packs, season one-tap, Lane, Health, Expiry engines
 - Kids Fortress: full kids product — PIN exit, Bedtime, age filter, isolated Continue/Downloads, phone Parent Dashboard (builds on Kids Bedtime / Spoiler / Guest)
 - Watch Together Pro: lobby QR/code, host force-resync / TV-screen mode / control lock, Sync-Health drift, phone remote scrubber over Watch Party (Mobile + TV; no stream relay)
 - Live Picture-in-Picture Zap: muted Mini-Live preview over VOD (in-player, not OS PiP); tap/OK switches to full live with optional Back to VOD — Mobile + TV

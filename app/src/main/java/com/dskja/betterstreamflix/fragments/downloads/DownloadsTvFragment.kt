@@ -36,6 +36,7 @@ import com.dskja.betterstreamflix.download.ui.DownloadsSort
 import com.dskja.betterstreamflix.download.ui.DownloadsViewMode
 import com.dskja.betterstreamflix.download.ui.DownloadsViewModel
 import com.dskja.betterstreamflix.download.ui.OfflineLibraryActions
+import com.dskja.betterstreamflix.download.ui.OfflineStudioController
 import com.dskja.betterstreamflix.fragments.settings.SettingsDeepLink
 import com.dskja.betterstreamflix.models.Episode
 import com.dskja.betterstreamflix.models.Movie
@@ -68,6 +69,7 @@ class DownloadsTvFragment : Fragment() {
 
     private var libraryEntries: List<OfflineLibrary.Entry> = emptyList()
     private var librarySpacing: RecyclerView.ItemDecoration? = null
+    private var studioController: OfflineStudioController? = null
     private val libraryAdapter = AppAdapter().apply {
         onMovieClickListener = { movie ->
             val entity = OfflineLibrary.findMovieEntity(libraryEntries, movie.id)
@@ -118,10 +120,16 @@ class DownloadsTvFragment : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         binding.rvDownloads.itemAnimator = null
+        studioController = OfflineStudioController(
+            fragment = this,
+            root = binding.root,
+            viewModel = viewModel,
+            isTv = true,
+            onScanPackQr = {},
+            styleModeChip = { chip, selected -> styleChip(chip, selected) },
+        ).also { it.attach() }
         wireDownloadFocus()
         binding.btnDownloadsMenu.setOnClickListener { showMenu(it) }
-        binding.chipModeLibrary.setOnClickListener { viewModel.setViewMode(DownloadsViewMode.LIBRARY) }
-        binding.chipModeManage.setOnClickListener { viewModel.setViewMode(DownloadsViewMode.MANAGE) }
         wireOfflineLibrarySearch()
         binding.chipFilterAll.setOnClickListener { viewModel.setFilter(DownloadsFilter.ALL) }
         binding.chipFilterDownloading.setOnClickListener { viewModel.setFilter(DownloadsFilter.DOWNLOADING) }
@@ -159,7 +167,7 @@ class DownloadsTvFragment : Fragment() {
             combine(viewModel.rows, viewModel.selectedFilter) { rows, filter -> rows to filter }
                 .flowWithLifecycle(lifecycle, Lifecycle.State.STARTED)
                 .collect { (rows, filter) ->
-                if (viewModel.currentViewMode() != DownloadsViewMode.MANAGE) return@collect
+                if (viewModel.currentViewMode() != DownloadsViewMode.QUEUE) return@collect
                 adapter.submitList(rows.toList())
                 renderTvEmpty(
                     empty = rows.isEmpty(),
@@ -215,14 +223,23 @@ class DownloadsTvFragment : Fragment() {
 
     private fun applyViewMode(mode: DownloadsViewMode) {
         val library = mode == DownloadsViewMode.LIBRARY
+        val queue = mode == DownloadsViewMode.QUEUE
+        val studioPanel = mode == DownloadsViewMode.CARE || mode == DownloadsViewMode.CONTROLS
         binding.tvDownloadsTitle.setText(
-            if (library) R.string.offline_library_title else R.string.downloads_title,
+            studioController?.modeTitleRes(mode) ?: R.string.offline_studio_title,
         )
         binding.llOfflineLibraryBadge.isVisible = library
         binding.clOfflineLibrarySearch.isVisible = library
-        binding.hsvDownloadsFilters.isVisible = !library
-        styleChip(binding.chipModeLibrary, library)
-        styleChip(binding.chipModeManage, !library)
+        binding.hsvDownloadsFilters.isVisible = queue
+        binding.rvDownloads.isVisible = library || queue
+        studioController?.applyMode(mode)
+        if (studioPanel) {
+            binding.tvDownloadsEmpty.isVisible = false
+            binding.root.findViewById<View>(R.id.v_downloads_empty_rule)?.isVisible = false
+            binding.root.findViewById<View>(R.id.btn_downloads_empty_cta)?.isVisible = false
+            wireDownloadFocus()
+            return
+        }
         librarySpacing?.let { binding.rvDownloads.removeItemDecoration(it) }
         librarySpacing = null
         if (library) {
@@ -361,7 +378,9 @@ class DownloadsTvFragment : Fragment() {
         }
         listOf(
             binding.chipModeLibrary,
-            binding.chipModeManage,
+            binding.chipModeQueue,
+            binding.chipModeCare,
+            binding.chipModeControls,
             binding.chipFilterAll,
             binding.chipFilterDownloading,
             binding.chipFilterCompleted,
@@ -375,7 +394,12 @@ class DownloadsTvFragment : Fragment() {
 
     private fun wireDownloadFocus() {
         binding.hsvDownloadsFilters.isFocusable = false
-        TvFocusChain.linkHorizontal(binding.chipModeLibrary, binding.chipModeManage)
+        TvFocusChain.linkHorizontal(
+            binding.chipModeLibrary,
+            binding.chipModeQueue,
+            binding.chipModeCare,
+            binding.chipModeControls,
+        )
         TvFocusChain.linkHorizontal(
             binding.chipFilterAll,
             binding.chipFilterDownloading,
@@ -384,13 +408,20 @@ class DownloadsTvFragment : Fragment() {
         )
         binding.chipModeLibrary.nextFocusLeftId = R.id.nav_main
         binding.chipFilterAll.nextFocusLeftId = R.id.nav_main
-        listOf(binding.chipModeLibrary, binding.chipModeManage).forEach { chip ->
+        val modeDownId = when (viewModel.currentViewMode()) {
+            DownloadsViewMode.LIBRARY -> binding.etOfflineLibrarySearch.id
+            DownloadsViewMode.QUEUE -> binding.chipFilterAll.id
+            DownloadsViewMode.CARE -> R.id.btn_offline_studio_health_redownload
+            DownloadsViewMode.CONTROLS -> R.id.switch_offline_studio_smart
+        }
+        listOf(
+            binding.chipModeLibrary,
+            binding.chipModeQueue,
+            binding.chipModeCare,
+            binding.chipModeControls,
+        ).forEach { chip ->
             chip.nextFocusUpId = binding.switchDownloadsWifiOnly.id
-            chip.nextFocusDownId = if (viewModel.currentViewMode() == DownloadsViewMode.LIBRARY) {
-                binding.etOfflineLibrarySearch.id
-            } else {
-                binding.chipFilterAll.id
-            }
+            chip.nextFocusDownId = modeDownId
         }
         listOf(
             binding.chipFilterAll,
@@ -398,27 +429,31 @@ class DownloadsTvFragment : Fragment() {
             binding.chipFilterCompleted,
             binding.chipFilterFailed,
         ).forEach { chip ->
-            chip.nextFocusUpId = binding.chipModeLibrary.id
+            chip.nextFocusUpId = binding.chipModeQueue.id
             chip.nextFocusDownId = binding.rvDownloads.id
         }
         binding.etOfflineLibrarySearch.nextFocusUpId = binding.chipModeLibrary.id
         binding.etOfflineLibrarySearch.nextFocusLeftId = R.id.nav_main
         binding.btnDownloadsMenu.nextFocusDownId = binding.switchDownloadsWifiOnly.id
-        binding.btnDownloadsMenu.nextFocusLeftId = binding.chipModeManage.id
+        binding.btnDownloadsMenu.nextFocusLeftId = binding.chipModeControls.id
         binding.switchDownloadsWifiOnly.nextFocusUpId = binding.btnDownloadsMenu.id
         binding.switchDownloadsWifiOnly.nextFocusLeftId = R.id.nav_main
+        val modeChips = listOf(
+            binding.chipModeLibrary,
+            binding.chipModeQueue,
+            binding.chipModeCare,
+            binding.chipModeControls,
+        )
         val healthCta = binding.btnDownloadsHealthRedownload
         if (healthCta.isVisible) {
             binding.switchDownloadsWifiOnly.nextFocusDownId = healthCta.id
             healthCta.nextFocusUpId = binding.switchDownloadsWifiOnly.id
             healthCta.nextFocusDownId = binding.chipModeLibrary.id
             healthCta.nextFocusLeftId = R.id.nav_main
-            listOf(binding.chipModeLibrary, binding.chipModeManage).forEach { chip ->
-                chip.nextFocusUpId = healthCta.id
-            }
+            modeChips.forEach { chip -> chip.nextFocusUpId = healthCta.id }
         } else {
             binding.switchDownloadsWifiOnly.nextFocusDownId = binding.chipModeLibrary.id
-            listOf(binding.chipModeLibrary, binding.chipModeManage).forEach { chip ->
+            modeChips.forEach { chip ->
                 chip.nextFocusUpId = binding.switchDownloadsWifiOnly.id
             }
         }
@@ -784,6 +819,7 @@ class DownloadsTvFragment : Fragment() {
     }
 
     override fun onDestroyView() {
+        studioController = null
         super.onDestroyView()
         _binding = null
     }

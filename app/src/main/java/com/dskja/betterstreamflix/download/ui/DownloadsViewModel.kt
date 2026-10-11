@@ -10,6 +10,7 @@ import com.dskja.betterstreamflix.download.DownloadHealth
 import com.dskja.betterstreamflix.download.DownloadItemEntity
 import com.dskja.betterstreamflix.download.DownloadItemState
 import com.dskja.betterstreamflix.download.DownloadKind
+import com.dskja.betterstreamflix.download.DownloadLane
 import com.dskja.betterstreamflix.download.DownloadLaneFocus
 import com.dskja.betterstreamflix.download.DownloadLanePolicy
 import com.dskja.betterstreamflix.download.DownloadRepository
@@ -19,6 +20,7 @@ import com.dskja.betterstreamflix.download.DownloadStorage
 import com.dskja.betterstreamflix.download.OfflineExpiryPolicy
 import com.dskja.betterstreamflix.download.OfflineLibrary
 import com.dskja.betterstreamflix.download.OfflinePlayback
+import com.dskja.betterstreamflix.download.SmartDownloadsPolicy
 import com.dskja.betterstreamflix.download.StreamflixDownloadManager
 import com.dskja.betterstreamflix.models.Episode
 import com.dskja.betterstreamflix.models.Movie
@@ -72,10 +74,18 @@ class DownloadsViewModel(
     val lowSpace: StateFlow<Boolean> = MutableStateFlow(DownloadStorage.isLowSpace(appContext))
 
     private val wifiOnlyPreferenceTick = MutableStateFlow(0)
+    private val studioPrefsTick = MutableStateFlow(0)
 
     /** Call from Downloads onResume so the Wi‑Fi-only banner tracks Settings toggles. */
     fun refreshWifiPreference() {
         wifiOnlyPreferenceTick.value = wifiOnlyPreferenceTick.value + 1
+        studioPrefsTick.value = studioPrefsTick.value + 1
+    }
+
+    /** Re-read Smart / quota / soft-limit prefs after Studio Controls edits. */
+    fun refreshStudioPreferences() {
+        wifiOnlyPreferenceTick.value = wifiOnlyPreferenceTick.value + 1
+        studioPrefsTick.value = studioPrefsTick.value + 1
     }
 
     /** Rebind collectors when the active profile changed since last bind. */
@@ -111,6 +121,51 @@ class DownloadsViewModel(
             viewModelScope,
             SharingStarted.WhileSubscribed(5_000),
             DownloadHealth.Summary(0, 0, 0, emptyList()),
+        )
+
+    /**
+     * Offline Studio aggregate for Care + Controls + status rail.
+     * Rebuilds when Room rows, packs, or Studio prefs change.
+     */
+    @OptIn(ExperimentalCoroutinesApi::class)
+    val studioSnapshot: StateFlow<OfflineStudioSnapshot> = profileTick
+        .flatMapLatest {
+            combine(
+                repo().observeAll(),
+                repo().observeSeasonPacks(),
+                studioPrefsTick,
+            ) { items, packs, _ ->
+                items to packs
+            }
+        }
+        .mapLatest { (items, packs) ->
+            OfflineStudioSnapshot.build(
+                items = applyParentalFilter(items),
+                packs = packs,
+                smartEnabled = UserPreferences.downloadSmartEnabled,
+                smartLookahead = UserPreferences.downloadSmartLookahead,
+                smartSeriesQuota = UserPreferences.downloadSmartSeriesQuota,
+                autoDeleteWatched = UserPreferences.downloadAutoDeleteWatched,
+                wifiOnly = UserPreferences.downloadWifiOnly,
+                softLimitGb = UserPreferences.downloadSoftLimitGb,
+                maxConcurrent = UserPreferences.downloadMaxConcurrent,
+            )
+        }
+        .flowOn(Dispatchers.Default)
+        .stateIn(
+            viewModelScope,
+            SharingStarted.WhileSubscribed(5_000),
+            OfflineStudioSnapshot.build(
+                items = emptyList(),
+                packs = emptyList(),
+                smartEnabled = UserPreferences.downloadSmartEnabled,
+                smartLookahead = UserPreferences.downloadSmartLookahead,
+                smartSeriesQuota = UserPreferences.downloadSmartSeriesQuota,
+                autoDeleteWatched = UserPreferences.downloadAutoDeleteWatched,
+                wifiOnly = UserPreferences.downloadWifiOnly,
+                softLimitGb = UserPreferences.downloadSoftLimitGb,
+                maxConcurrent = UserPreferences.downloadMaxConcurrent,
+            ),
         )
 
     @OptIn(ExperimentalCoroutinesApi::class)
@@ -198,6 +253,45 @@ class DownloadsViewModel(
                 repo().resumeConnectivityHeld()
             }
         }
+    }
+
+    fun setSmartEnabled(enabled: Boolean) {
+        UserPreferences.downloadSmartEnabled = enabled
+        refreshStudioPreferences()
+    }
+
+    fun setSmartLookahead(value: Int) {
+        UserPreferences.downloadSmartLookahead = SmartDownloadsPolicy.clampLookahead(value)
+        refreshStudioPreferences()
+    }
+
+    fun bumpSmartLookahead(delta: Int) {
+        setSmartLookahead(UserPreferences.downloadSmartLookahead + delta)
+    }
+
+    fun setSmartSeriesQuota(value: Int) {
+        UserPreferences.downloadSmartSeriesQuota = SmartDownloadsPolicy.clampSeriesQuota(value)
+        refreshStudioPreferences()
+    }
+
+    fun bumpSmartSeriesQuota(delta: Int) {
+        setSmartSeriesQuota(UserPreferences.downloadSmartSeriesQuota + delta)
+    }
+
+    fun setAutoDeleteWatched(enabled: Boolean) {
+        UserPreferences.downloadAutoDeleteWatched = enabled
+        refreshStudioPreferences()
+    }
+
+    fun setSoftLimitGb(value: Int) {
+        UserPreferences.downloadSoftLimitGb = value.coerceIn(0, 500)
+        refreshStudioPreferences()
+        refreshStorage()
+    }
+
+    fun bumpSoftLimitGb(delta: Int) {
+        val step = if (delta > 0) 5 else -5
+        setSoftLimitGb(UserPreferences.downloadSoftLimitGb + step)
     }
 
     /** Poll Media3 while the Downloads screen is resumed so progress/speed stay live. */
@@ -425,8 +519,45 @@ class DownloadsViewModel(
                 filtered.any { it.seasonPackId == pack.id }
             }
             if (active.isNotEmpty()) {
-                add(DownloadRowUiModel.Header(appContext.getString(com.dskja.betterstreamflix.R.string.downloads_section_active)))
-                addGroupedBySeries(active, collapsed, seriesTotals)
+                val watching = active.filter {
+                    DownloadLanePolicy.laneOf(it, watchingFocus) == DownloadLane.WATCHING
+                }
+                val queueLane = active.filter {
+                    DownloadLanePolicy.laneOf(it, watchingFocus) == DownloadLane.QUEUE
+                }
+                val smartLane = active.filter {
+                    DownloadLanePolicy.laneOf(it, watchingFocus) == DownloadLane.SMART_AUTO
+                }
+                if (watching.isNotEmpty()) {
+                    add(
+                        DownloadRowUiModel.Header(
+                            appContext.getString(
+                                com.dskja.betterstreamflix.R.string.offline_studio_lane_watching,
+                            ),
+                        ),
+                    )
+                    addGroupedBySeries(watching, collapsed, seriesTotals)
+                }
+                if (queueLane.isNotEmpty()) {
+                    add(
+                        DownloadRowUiModel.Header(
+                            appContext.getString(
+                                com.dskja.betterstreamflix.R.string.offline_studio_lane_queue,
+                            ),
+                        ),
+                    )
+                    addGroupedBySeries(queueLane, collapsed, seriesTotals)
+                }
+                if (smartLane.isNotEmpty()) {
+                    add(
+                        DownloadRowUiModel.Header(
+                            appContext.getString(
+                                com.dskja.betterstreamflix.R.string.offline_studio_lane_smart,
+                            ),
+                        ),
+                    )
+                    addGroupedBySeries(smartLane, collapsed, seriesTotals)
+                }
             }
             if (relevantPacks.isNotEmpty() && selectedFilter != DownloadsFilter.FAILED) {
                 add(DownloadRowUiModel.Header(appContext.getString(com.dskja.betterstreamflix.R.string.downloads_section_seasons)))

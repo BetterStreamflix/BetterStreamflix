@@ -1,7 +1,13 @@
 package com.dskja.betterstreamflix.download.ui
 
-/** Downloads tab surface: poster Offline library vs queue management list. */
+/**
+ * Offline Studio hub surfaces on Downloads (Mobile + TV).
+ * Library = poster grid · Queue = lane-aware manage list · Care = health/expiry ·
+ * Controls = Smart/quota/Wi‑Fi/Packs.
+ */
 enum class DownloadsViewMode {
     LIBRARY,
-    MANAGE,
+    QUEUE,
+    CARE,
+    CONTROLS,
 }
