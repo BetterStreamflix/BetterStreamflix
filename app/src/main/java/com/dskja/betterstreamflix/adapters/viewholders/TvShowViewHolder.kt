@@ -114,8 +114,8 @@ class TvShowViewHolder(
 ) {
 
     internal val context = itemView.context
-    internal val database: AppDatabase
-        get() = AppDatabase.getInstance(context)
+    internal val database: AppDatabase?
+        get() = AppDatabase.getInstanceOrNull(context)
 
     init {
         if (ExperimentalMobileDesign.enabled() &&
@@ -855,9 +855,10 @@ class TvShowViewHolder(
 
         ribbonStateJob = lifecycleOwner.lifecycleScope.launch {
             launch {
+                val db = database ?: return@launch
                 combine(
-                    database.tvShowDao().getByIdAsFlow(boundTvShowId),
-                    database.episodeDao().isTvShowFullyWatchedAsFlow(boundTvShowId),
+                    db.tvShowDao().getByIdAsFlow(boundTvShowId),
+                    db.episodeDao().isTvShowFullyWatchedAsFlow(boundTvShowId),
                 ) { persistedTvShow, isFullyWatched ->
                     (persistedTvShow?.isFavorite ?: tvShow.isFavorite) to isFullyWatched
                 }.collect { (isFavorite, isFullyWatched) ->

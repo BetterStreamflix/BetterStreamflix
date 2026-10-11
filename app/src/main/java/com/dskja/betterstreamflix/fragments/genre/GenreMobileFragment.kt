@@ -41,7 +41,7 @@ class GenreMobileFragment : Fragment() {
     private val binding get() = _binding!!
 
     private val args by navArgs<GenreMobileFragmentArgs>()
-    private val database get() = AppDatabase.getInstance(requireContext())
+    private val database get() = AppDatabase.getInstanceOrNull(requireContext())
     private val viewModel by viewModelsFactory { GenreViewModel(args.id, database, args.name) }
 
     private val appAdapter = AppAdapter()

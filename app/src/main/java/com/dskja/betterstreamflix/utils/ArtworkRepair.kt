@@ -38,14 +38,14 @@ object ArtworkRepair {
     suspend fun resolveMovieForFavorite(context: Context, movie: Movie, favorite: Boolean): Movie {
         if (!favorite || hasUsableArtwork(movie.poster, movie.banner)) return movie
         val provider = UserPreferences.currentProvider ?: return movie
-        val database = AppDatabase.getInstance(context)
+        val database = AppDatabase.getInstanceOrNull(context) ?: return movie
         return repairMovie(context, provider, database, movie) ?: movie
     }
 
     suspend fun resolveTvShowForFavorite(context: Context, tvShow: TvShow, favorite: Boolean): TvShow {
         if (!favorite || hasUsableArtwork(tvShow.poster, tvShow.banner)) return tvShow
         val provider = UserPreferences.currentProvider ?: return tvShow
-        val database = AppDatabase.getInstance(context)
+        val database = AppDatabase.getInstanceOrNull(context) ?: return tvShow
         return repairTvShow(context, provider, database, tvShow) ?: tvShow
     }
 

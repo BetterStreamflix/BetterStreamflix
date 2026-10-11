@@ -20,11 +20,12 @@ object FavoriteMutations {
         provider: Provider,
         movie: Movie,
         favorite: Boolean,
-        database: AppDatabase = AppDatabase.getInstance(context),
+        database: AppDatabase? = null,
     ): Movie {
         val appContext = context.applicationContext
+        val db = database ?: AppDatabase.getInstanceOrNull(appContext) ?: return movie
         val resolved = ArtworkRepair.resolveMovieForFavorite(appContext, movie, favorite)
-        database.movieDao().upsertFavorite(resolved, favorite)
+        db.movieDao().upsertFavorite(resolved, favorite)
         val favorited = resolved.copy(isFavorite = favorite).apply {
             favoritedAtMillis = if (favorite) {
                 resolved.favoritedAtMillis ?: System.currentTimeMillis()
@@ -51,11 +52,12 @@ object FavoriteMutations {
         provider: Provider,
         tvShow: TvShow,
         favorite: Boolean,
-        database: AppDatabase = AppDatabase.getInstance(context),
+        database: AppDatabase? = null,
     ): TvShow {
         val appContext = context.applicationContext
+        val db = database ?: AppDatabase.getInstanceOrNull(appContext) ?: return tvShow
         val resolved = ArtworkRepair.resolveTvShowForFavorite(appContext, tvShow, favorite)
-        database.tvShowDao().upsertFavorite(resolved, favorite)
+        db.tvShowDao().upsertFavorite(resolved, favorite)
         val favorited = resolved.copy(isFavorite = favorite).apply {
             favoritedAtMillis = if (favorite) {
                 resolved.favoritedAtMillis ?: System.currentTimeMillis()

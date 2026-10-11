@@ -151,7 +151,7 @@ object CrossProviderLibrary {
         val current = UserPreferences.currentProvider
         val currentName = current?.name
         val currentDb = if (currentName != null) {
-            runCatching { AppDatabase.getInstance(appContext) }.getOrNull()
+            AppDatabase.getInstanceOrNull(appContext)
         } else {
             null
         }

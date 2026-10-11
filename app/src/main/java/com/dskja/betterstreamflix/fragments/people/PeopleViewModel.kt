@@ -22,7 +22,7 @@ import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.transformLatest
 import kotlinx.coroutines.launch
 
-class PeopleViewModel(private val id: String, private val database: AppDatabase) : ViewModel() {
+class PeopleViewModel(private val id: String, private val database: AppDatabase?) : ViewModel() {
 
     private val _state = MutableStateFlow<State>(State.Loading)
     @OptIn(ExperimentalCoroutinesApi::class)
@@ -35,7 +35,7 @@ class PeopleViewModel(private val id: String, private val database: AppDatabase)
                         .filterIsInstance<Movie>()
                     if (movies.isEmpty()) {
                         emit(emptyList())
-                    } else if (!database.isOpen) {
+                    } else if (database == null || !database.isOpen) {
                         emit(emptyList())
                     } else {
                         emitAll(
@@ -57,7 +57,7 @@ class PeopleViewModel(private val id: String, private val database: AppDatabase)
                         .filterIsInstance<TvShow>()
                     if (tvShows.isEmpty()) {
                         emit(emptyList())
-                    } else if (!database.isOpen) {
+                    } else if (database == null || !database.isOpen) {
                         emit(emptyList())
                     } else {
                         emitAll(

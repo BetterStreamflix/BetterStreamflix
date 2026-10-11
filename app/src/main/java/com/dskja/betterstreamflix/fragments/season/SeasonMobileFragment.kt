@@ -48,7 +48,7 @@ class SeasonMobileFragment : Fragment() {
     private val binding get() = _binding!!
 
     private val args by navArgs<SeasonMobileFragmentArgs>()
-    private val database get() = AppDatabase.getInstance(requireContext())
+    private val database get() = AppDatabase.getInstanceOrNull(requireContext())
     private val viewModel by viewModelsFactory {
         SeasonViewModel(
             args.seasonId,
@@ -148,10 +148,17 @@ class SeasonMobileFragment : Fragment() {
         }
         bindSeasonBanner()
 
+        val db = database
+        if (db == null) {
+            runCatching {
+                androidx.navigation.fragment.findNavController().navigate(R.id.providers)
+            }
+            return
+        }
         SeasonSwitcher.bind(
             fragment = this,
             spinner = binding.spSeasonPicker,
-            database = database,
+            database = db,
             tvShowId = args.tvShowId,
             tvShowTitle = args.tvShowTitle,
             tvShowPoster = args.tvShowPoster,
@@ -212,7 +219,7 @@ class SeasonMobileFragment : Fragment() {
                     ExpMotion.hapticTap(binding.root)
                     viewLifecycleOwner.lifecycleScope.launch {
                         val tvShow = withContext(Dispatchers.IO) {
-                            database.tvShowDao().getById(args.tvShowId)
+                            database?.tvShowDao()?.getById(args.tvShowId)
                         } ?: TvShow(
                             id = args.tvShowId,
                             title = viewModel.tvShowTitle.ifBlank {
@@ -269,7 +276,7 @@ class SeasonMobileFragment : Fragment() {
     private fun wireSeasonTrailerButton() {
         viewLifecycleOwner.lifecycleScope.launch {
             val tvShow = withContext(Dispatchers.IO) {
-                database.tvShowDao().getById(args.tvShowId)
+                database?.tvShowDao()?.getById(args.tvShowId)
             }
             val year = tvShow?.released?.format("yyyy")?.toIntOrNull()
             val canLookup = TmdbUtils.hasTrailerLookupKeys(

@@ -38,7 +38,7 @@ private object ArtworkRepairCoordinator {
 
         repairScope.launch {
             try {
-                val database = AppDatabase.getInstance(imageView.context)
+                val database = AppDatabase.getInstanceOrNull(imageView.context) ?: return@launch
                 val refreshedMovie = ArtworkRepair.repairMovie(
                     context = imageView.context,
                     provider = provider,
@@ -69,7 +69,7 @@ private object ArtworkRepairCoordinator {
 
         repairScope.launch {
             try {
-                val database = AppDatabase.getInstance(imageView.context)
+                val database = AppDatabase.getInstanceOrNull(imageView.context) ?: return@launch
                 val refreshedTvShow = ArtworkRepair.repairTvShow(
                     context = imageView.context,
                     provider = provider,

@@ -643,7 +643,7 @@ class HomeViewModel(
             runCatching {
                 val cached = UserDataCache.read(appContext, provider)
                 _userDataCache.value = cached
-                val db = runCatching { AppDatabase.getInstance(appContext) }.getOrNull()
+                val db = AppDatabase.getInstanceOrNull(appContext)
                     ?: return@launch
                 if (!db.isOpen) return@launch
                 val moviesDeferred = async { db.movieDao().getFavorites().first() }

@@ -31,7 +31,7 @@ object SharedWatchlistImporter {
             }
             val ownsCurrent = UserPreferences.currentProvider?.name == provider.name
             val db = if (ownsCurrent) {
-                AppDatabase.getInstance(appContext)
+                AppDatabase.getInstanceOrNull(appContext) ?: continue
             } else {
                 AppDatabase.getInstanceForProvider(provider.name, appContext)
             }

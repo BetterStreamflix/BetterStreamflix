@@ -203,7 +203,7 @@ object UserDataCache {
         val current = read(context, provider) ?: UserData()
 
         runCatching {
-            val db = AppDatabase.getInstance(context)
+            val db = AppDatabase.getInstanceOrNull(context) ?: return@runCatching
             db.movieDao().getById(id)?.let { movie ->
                 movie.watchHistory = null
                 movie.isWatched = false

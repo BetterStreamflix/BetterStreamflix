@@ -238,7 +238,7 @@ class FavoritesMobileFragment : Fragment() {
         val provider = resolveProvider(movie.providerName, currentName) ?: return
         val ownsDb = provider.name == currentName
         val db = if (ownsDb) {
-            AppDatabase.getInstance(appContext)
+            AppDatabase.getInstanceOrNull(appContext) ?: return
         } else {
             AppDatabase.getInstanceForProvider(provider.name, appContext)
         }
@@ -260,7 +260,7 @@ class FavoritesMobileFragment : Fragment() {
         val provider = resolveProvider(tvShow.providerName, currentName) ?: return
         val ownsDb = provider.name == currentName
         val db = if (ownsDb) {
-            AppDatabase.getInstance(appContext)
+            AppDatabase.getInstanceOrNull(appContext) ?: return
         } else {
             AppDatabase.getInstanceForProvider(provider.name, appContext)
         }

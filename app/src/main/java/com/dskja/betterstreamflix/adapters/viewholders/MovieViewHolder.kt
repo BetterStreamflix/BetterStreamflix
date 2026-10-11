@@ -141,8 +141,8 @@ class MovieViewHolder(
 ) {
 
     internal val context = itemView.context
-    internal val database: AppDatabase
-        get() = AppDatabase.getInstance(context)
+    internal val database: AppDatabase?
+        get() = AppDatabase.getInstanceOrNull(context)
 
     init {
         if (ExperimentalMobileDesign.enabled() &&
@@ -798,7 +798,8 @@ class MovieViewHolder(
 
         ribbonStateJob = lifecycleOwner.lifecycleScope.launch {
             launch {
-                database.movieDao().getByIdAsFlow(boundMovieId).collect { persistedMovie ->
+                val db = database ?: return@launch
+                db.movieDao().getByIdAsFlow(boundMovieId).collect { persistedMovie ->
                     if (movie.id != boundMovieId || persistedMovie == null) return@collect
                     setRibbonVisible(favoriteRibbon, persistedMovie.isFavorite)
                     setRibbonVisible(watchedRibbon, persistedMovie.isWatched)

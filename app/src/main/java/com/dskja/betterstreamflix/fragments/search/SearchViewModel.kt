@@ -56,8 +56,8 @@ class SearchViewModel(
     @Suppress("UNUSED_PARAMETER") database: AppDatabase? = null,
 ) : ViewModel() {
 
-    private fun liveDb(): AppDatabase =
-        AppDatabase.getInstance(com.dskja.betterstreamflix.BetterStreamflixApp.instance.applicationContext)
+    private fun liveDb(): AppDatabase? =
+        AppDatabase.getInstanceOrNull(com.dskja.betterstreamflix.BetterStreamflixApp.instance.applicationContext)
 
     private fun roomLookupIds(ids: List<String>): List<String> =
         ids.filter { it.isNotBlank() }.distinct().take(SearchResultGuard.ROOM_LOOKUP_LIMIT)
@@ -75,7 +75,7 @@ class SearchViewModel(
                     if (movieIds.isEmpty()) {
                         emit(emptyList())
                     } else {
-                        val db = runCatching { liveDb() }.getOrNull()
+                        val db = liveDb()
                         if (db == null || !db.isOpen) emit(emptyList())
                         else emitAll(
                             db.movieDao().getByIds(movieIds).catch { e ->
@@ -98,7 +98,7 @@ class SearchViewModel(
                     if (showIds.isEmpty()) {
                         emit(emptyList())
                     } else {
-                        val db = runCatching { liveDb() }.getOrNull()
+                        val db = liveDb()
                         if (db == null || !db.isOpen) emit(emptyList())
                         else emitAll(
                             db.tvShowDao().getByIds(showIds).catch { e ->

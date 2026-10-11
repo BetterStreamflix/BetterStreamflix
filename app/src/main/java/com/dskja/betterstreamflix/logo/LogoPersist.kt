@@ -29,7 +29,7 @@ object LogoPersist {
         val logo = movie.logo?.takeIf { it.isNotBlank() } ?: return
         withContext(Dispatchers.IO) {
             runCatching {
-                val db = AppDatabase.getInstance(BetterStreamflixApp.instance)
+                val db = AppDatabase.getInstanceOrNull(BetterStreamflixApp.instance) ?: return@runCatching
                 val existing = db.movieDao().getById(movie.id) ?: return@runCatching
                 if (!shouldUpdate(existing.logo, existing.logoLanguage, logo, movie.logoLanguage)) {
                     return@runCatching
@@ -44,7 +44,7 @@ object LogoPersist {
         val logo = tvShow.logo?.takeIf { it.isNotBlank() } ?: return
         withContext(Dispatchers.IO) {
             runCatching {
-                val db = AppDatabase.getInstance(BetterStreamflixApp.instance)
+                val db = AppDatabase.getInstanceOrNull(BetterStreamflixApp.instance) ?: return@runCatching
                 val existing = db.tvShowDao().getById(tvShow.id) ?: return@runCatching
                 if (!shouldUpdate(existing.logo, existing.logoLanguage, logo, tvShow.logoLanguage)) {
                     return@runCatching

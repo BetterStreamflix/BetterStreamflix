@@ -46,9 +46,9 @@ class SearchMobileFragment : Fragment() {
     private var _binding: FragmentSearchMobileBinding? = null
     private val binding get() = _binding!!
 
-    private val database get() = AppDatabase.getInstance(requireContext())
+    private val database get() = AppDatabase.getInstanceOrNull(requireContext())
     private val viewModel by viewModelsFactory {
-        SearchViewModel(runCatching { database }.getOrNull())
+        SearchViewModel(database)
     }
 
     private var appAdapter = AppAdapter()

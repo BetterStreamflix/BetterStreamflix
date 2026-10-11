@@ -17,7 +17,7 @@ object CloudSyncHooks {
 
     fun movie(context: Context, provider: Provider, id: String) {
         if (CloudSyncManager.isApplyingRemote) return
-        val movie = runCatching { AppDatabase.getInstance(context).movieDao().getById(id) }.getOrNull()
+        val movie = AppDatabase.getInstanceOrNull(context)?.movieDao()?.getById(id)
             ?: Movie(id = id)
         movie(context, provider, movie)
     }
@@ -30,7 +30,7 @@ object CloudSyncHooks {
 
     fun tvShow(context: Context, provider: Provider, id: String) {
         if (CloudSyncManager.isApplyingRemote) return
-        val show = runCatching { AppDatabase.getInstance(context).tvShowDao().getById(id) }.getOrNull()
+        val show = AppDatabase.getInstanceOrNull(context)?.tvShowDao()?.getById(id)
             ?: TvShow(id = id)
         tvShow(context, provider, show)
     }
@@ -43,7 +43,7 @@ object CloudSyncHooks {
 
     fun episode(context: Context, provider: Provider, id: String) {
         if (CloudSyncManager.isApplyingRemote) return
-        val episode = runCatching { AppDatabase.getInstance(context).episodeDao().getById(id) }.getOrNull()
+        val episode = AppDatabase.getInstanceOrNull(context)?.episodeDao()?.getById(id)
             ?: Episode(id = id)
         episode(context, provider, episode)
     }

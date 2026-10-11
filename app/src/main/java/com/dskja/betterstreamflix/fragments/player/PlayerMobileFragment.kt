@@ -150,7 +150,7 @@ class PlayerMobileFragment : Fragment() {
         get() = ContentExoControllerMobileBinding.bind(this.findViewById(R.id.cl_exo_controller))
 
     private val args by navArgs<PlayerMobileFragmentArgs>()
-    private val database get() = AppDatabase.getInstance(requireContext())
+    private val database get() = AppDatabase.getInstanceOrNull(requireContext())
     private val viewModel by viewModelsFactory {
         PlayerViewModel(args.videoType, args.id, args.preferredServerName)
     }
@@ -957,7 +957,7 @@ class PlayerMobileFragment : Fragment() {
                 } else if (EpisodeManager.listIsEmpty(type)) {
                     EpisodeManager.clearEpisodes()
                     lifecycleScope.launch(Dispatchers.IO) {
-                        EpisodeManager.addEpisodesFromDb(type, database)
+                        database?.let { EpisodeManager.addEpisodesFromDb(type, it) }
                         withContext(Dispatchers.Main) {
                             EpisodeManager.setCurrentEpisode(type)
                             updatePlayerHeader(type)
@@ -1296,15 +1296,15 @@ class PlayerMobileFragment : Fragment() {
                 val videoType = args.videoType
 
                 val watchItem: WatchItem? = when (videoType) {
-                    is Video.Type.Movie -> database.movieDao().getById(videoType.id)
-                    is Video.Type.Episode -> database.episodeDao().getById(videoType.id)
+                    is Video.Type.Movie -> database?.movieDao()?.getById(videoType.id)
+                    is Video.Type.Episode -> database?.episodeDao()?.getById(videoType.id)
                 }
 
                 when (videoType) {
                     is Video.Type.Movie -> {
                         val provider = UserPreferences.currentProvider ?: return@listener
                         val movie = watchItem as? Movie
-                        movie?.let { database.movieDao().update(it) }
+                        movie?.let { database?.movieDao()?.update(it) }
                         movie?.let { UserDataCache.addMovieToContinueWatching(requireContext(), provider, it) }
                     }
 
@@ -1313,26 +1313,26 @@ class PlayerMobileFragment : Fragment() {
                         val episode = watchItem as? Episode
                         episode?.let {
                             if (player.hasFinished()) {
-                                database.episodeDao().resetProgressionFromEpisode(videoType.id)
+                                database?.episodeDao()?.resetProgressionFromEpisode(videoType.id)
                                 UserDataCache.removeEpisodeFromContinueWatching(requireContext(), provider, it.id)
                             }
-                            database.episodeDao().update(it)
+                            database?.episodeDao()?.update(it)
 
                             if (!player.hasFinished()) {
                                 UserDataCache.addEpisodeToContinueWatching(requireContext(), provider, it)
                             }
 
                             it.tvShow?.let { tvShow ->
-                                database.tvShowDao().getById(tvShow.id)
+                                database?.tvShowDao()?.getById(tvShow.id)
                             }?.let { tvShow ->
-                                val episodeDao = database.episodeDao()
+                                val episodeDao = database?.episodeDao() ?: return@let
                                 val isStillWatching = episodeDao.hasAnyWatchHistoryForTvShow(tvShow.id)
 
                                 val updatedTvShow = tvShow.copy().apply {
                                     merge(tvShow)
                                     isWatching = !player.hasReallyFinished() || isStillWatching
                                 }
-                                database.tvShowDao().update(updatedTvShow)
+                                database?.tvShowDao()?.update(updatedTvShow)
                                 CloudSyncHooks.tvShow(requireContext(), provider, updatedTvShow)
                             }
                         }
@@ -1353,7 +1353,7 @@ class PlayerMobileFragment : Fragment() {
 
     private fun refreshEpisodeNavigation(type: Video.Type.Episode) {
         lifecycleScope.launch(Dispatchers.IO) {
-            EpisodeManager.ensureNextEpisodeAvailable(type, database)
+            database?.let { EpisodeManager.ensureNextEpisodeAvailable(type, it) }
             withContext(Dispatchers.Main) {
                 setupEpisodeNavigationButtons()
             }
@@ -1464,7 +1464,7 @@ class PlayerMobileFragment : Fragment() {
                 return@launch
             }
             val hasNextEpisode = withContext(Dispatchers.IO) {
-                EpisodeManager.ensureNextEpisodeAvailable(type, database)
+                database?.let { EpisodeManager.ensureNextEpisodeAvailable(type, it) }
             }
 
             setupEpisodeNavigationButtons()
@@ -1880,14 +1880,14 @@ class PlayerMobileFragment : Fragment() {
                             UserDataCache.read(appContext, provider)?.continueWatchingMovies
                                 ?.find { it.id == videoType.id }?.toMovie()
                         } else null
-                        movie ?: database.movieDao().getById(videoType.id)
+                        movie ?: database?.movieDao()?.getById(videoType.id)
                     }
                     is Video.Type.Episode -> {
                         var episode = if (provider != null) {
                             UserDataCache.read(appContext, provider)?.continueWatchingEpisodes
                                 ?.find { it.id == videoType.id }?.toEpisode()
                         } else null
-                        episode ?: database.episodeDao().getById(videoType.id)
+                        episode ?: database?.episodeDao()?.getById(videoType.id)
                     }
                 }
                 val savedPosition = watchItem?.watchHistory?.lastPlaybackPositionMillis
@@ -2094,8 +2094,8 @@ class PlayerMobileFragment : Fragment() {
         provider: com.dskja.betterstreamflix.providers.Provider?,
     ) {
         val watchItem: WatchItem? = when (videoType) {
-            is Video.Type.Movie -> database.movieDao().getById(videoType.id)
-            is Video.Type.Episode -> database.episodeDao().getById(videoType.id)
+            is Video.Type.Movie -> database?.movieDao()?.getById(videoType.id)
+            is Video.Type.Episode -> database?.episodeDao()?.getById(videoType.id)
         }
         when {
             started && !finished -> {
@@ -2121,7 +2121,7 @@ class PlayerMobileFragment : Fragment() {
         when (videoType) {
                 is Video.Type.Movie -> {
                     (watchItem as? Movie)?.let {
-                        database.movieDao().update(it)
+                        database?.movieDao()?.update(it)
                         UserDataCache.syncMovieToCache(appContext, resolvedProvider, it)
                         if (finished) {
                             SmartDownloadsManager.onMovieFinished(
@@ -2144,7 +2144,7 @@ class PlayerMobileFragment : Fragment() {
                                 durationMs = duration,
                                 playbackEnded = reallyFinished,
                             )
-                        database.episodeDao().resetProgressionFromEpisode(videoType.id)
+                        database?.episodeDao()?.resetProgressionFromEpisode(videoType.id)
                         UserDataCache.removeEpisodeFromContinueWatching(
                             appContext,
                             resolvedProvider,
@@ -2152,19 +2152,19 @@ class PlayerMobileFragment : Fragment() {
                         )
                         queueNextEpisodeForContinueWatching(resolvedProvider)
                     }
-                    database.episodeDao().update(episode)
+                    database?.episodeDao()?.update(episode)
                     if (!finished) {
                         UserDataCache.syncEpisodeToCache(appContext, resolvedProvider, episode)
                     }
                     episode.tvShow?.let { show ->
-                        database.tvShowDao().getById(show.id)
+                        database?.tvShowDao()?.getById(show.id)
                     }?.let { tvShow ->
-                        val isStillWatching = database.episodeDao().hasAnyWatchHistoryForTvShow(tvShow.id)
+                        val isStillWatching = database?.episodeDao()?.hasAnyWatchHistoryForTvShow(tvShow.id)
                         val updatedTvShow = tvShow.copy().apply {
                             merge(tvShow)
-                            isWatching = !reallyFinished || isStillWatching
+                            isWatching = !reallyFinished || isStillWatching == true
                         }
-                        database.tvShowDao().update(updatedTvShow)
+                        database?.tvShowDao()?.update(updatedTvShow)
                         com.dskja.betterstreamflix.sync.CloudSyncHooks.tvShow(
                             appContext,
                             resolvedProvider,
@@ -2188,8 +2188,8 @@ class PlayerMobileFragment : Fragment() {
     private fun persistRecentlyWatched(videoType: Video.Type, playedAtMillis: Long) {
         when (videoType) {
             is Video.Type.Movie -> {
-                if (database.movieDao().markRecentlyWatched(videoType.id, playedAtMillis) == 0) {
-                    database.movieDao().insert(
+                if (database?.movieDao()?.markRecentlyWatched(videoType.id, playedAtMillis) == 0) {
+                    database?.movieDao()?.insert(
                         Movie(
                             id = videoType.id,
                             title = videoType.title,
@@ -2204,7 +2204,7 @@ class PlayerMobileFragment : Fragment() {
             }
 
             is Video.Type.Episode -> {
-                val storedTvShow = database.tvShowDao().getById(videoType.tvShow.id)
+                val storedTvShow = database?.tvShowDao()?.getById(videoType.tvShow.id)
                     ?: TvShow(
                         id = videoType.tvShow.id,
                         title = videoType.tvShow.title,
@@ -2215,11 +2215,11 @@ class PlayerMobileFragment : Fragment() {
                     ).apply {
                         lastPlayedAtMillis = playedAtMillis
                         lastPlayedEpisodeId = videoType.id
-                        database.tvShowDao().insert(this)
+                        database?.tvShowDao()?.insert(this)
                     }
 
-                if (database.episodeDao().getById(videoType.id) == null) {
-                    database.episodeDao().insert(
+                if (database?.episodeDao()?.getById(videoType.id) == null) {
+                    database?.episodeDao()?.insert(
                         Episode(
                             id = videoType.id,
                             number = videoType.number,
@@ -2234,7 +2234,7 @@ class PlayerMobileFragment : Fragment() {
                         )
                     )
                 }
-                database.tvShowDao().markRecentlyWatched(
+                database?.tvShowDao()?.markRecentlyWatched(
                     id = videoType.tvShow.id,
                     episodeId = videoType.id,
                     playedAtMillis = playedAtMillis,
@@ -2951,7 +2951,7 @@ class PlayerMobileFragment : Fragment() {
 
     private fun queueNextEpisodeForContinueWatching(provider: com.dskja.betterstreamflix.providers.Provider) {
         val nextEpisode = EpisodeManager.peekNextEpisode() ?: return
-        val episodeDao = database.episodeDao()
+        val episodeDao = database?.episodeDao() ?: return
         val persistedNextEpisode = episodeDao.getById(nextEpisode.id)?.apply {
             isWatched = false
             watchedDate = null
@@ -2966,7 +2966,7 @@ class PlayerMobileFragment : Fragment() {
             title = nextEpisode.title,
             poster = nextEpisode.poster,
             overview = nextEpisode.overview,
-            tvShow = database.tvShowDao().getById(nextEpisode.tvShow.id) ?: TvShow(
+            tvShow = database?.tvShowDao()?.getById(nextEpisode.tvShow.id) ?: TvShow(
                 id = nextEpisode.tvShow.id,
                 title = nextEpisode.tvShow.title,
                 poster = nextEpisode.tvShow.poster,
@@ -3101,11 +3101,11 @@ class PlayerMobileFragment : Fragment() {
         nextEpisodePrefetchTargetId = currentEpisode.id
         nextEpisodePrefetchJob?.cancel()
         nextEpisodePrefetchJob = lifecycleScope.launch(Dispatchers.IO) {
-            val loaded = EpisodeManager.ensureNextEpisodeAvailable(currentEpisode, database)
+            val loaded = database?.let { EpisodeManager.ensureNextEpisodeAvailable(currentEpisode, it) }
             withContext(Dispatchers.Main) {
                 if (!isAdded || _binding == null) return@withContext
                 setupEpisodeNavigationButtons()
-                if (loaded && player.isPlaying) {
+                if (loaded == true && player.isPlaying) {
                     updateNextEpisodeOverlay()
                 }
             }

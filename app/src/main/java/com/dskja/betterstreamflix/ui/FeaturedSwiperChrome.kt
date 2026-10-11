@@ -183,7 +183,7 @@ object FeaturedSwiperChrome {
         apply: (Boolean) -> Unit,
     ): Job? {
         val owner = anchor.findViewTreeLifecycleOwner() ?: return null
-        val db = AppDatabase.getInstance(anchor.context)
+        val db = AppDatabase.getInstanceOrNull(anchor.context) ?: return null
         return owner.lifecycleScope.launch {
             db.movieDao().getByIdAsFlow(movieId).collect { persisted ->
                 // Missing Room row ⇒ not in list (keeps CTA honest after deletes).
@@ -199,7 +199,7 @@ object FeaturedSwiperChrome {
         apply: (Boolean) -> Unit,
     ): Job? {
         val owner = anchor.findViewTreeLifecycleOwner() ?: return null
-        val db = AppDatabase.getInstance(anchor.context)
+        val db = AppDatabase.getInstanceOrNull(anchor.context) ?: return null
         return owner.lifecycleScope.launch {
             db.tvShowDao().getByIdAsFlow(tvShowId).collect { persisted ->
                 apply(persisted?.isFavorite == true)
@@ -216,7 +216,7 @@ object FeaturedSwiperChrome {
         val owner = anchor.findViewTreeLifecycleOwner() ?: return
         owner.lifecycleScope.launch(Dispatchers.IO) {
             val provider = UserPreferences.currentProvider ?: return@launch
-            val db = AppDatabase.getInstance(anchor.context)
+            val db = AppDatabase.getInstanceOrNull(anchor.context) ?: return@launch
             val target = !(db.movieDao().getById(movie.id)?.isFavorite ?: movie.isFavorite)
             val resolved = com.dskja.betterstreamflix.sync.FavoriteMutations.setMovieFavorite(
                 context = anchor.context,
@@ -244,7 +244,7 @@ object FeaturedSwiperChrome {
         val owner = anchor.findViewTreeLifecycleOwner() ?: return
         owner.lifecycleScope.launch(Dispatchers.IO) {
             val provider = UserPreferences.currentProvider ?: return@launch
-            val db = AppDatabase.getInstance(anchor.context)
+            val db = AppDatabase.getInstanceOrNull(anchor.context) ?: return@launch
             val target = !(db.tvShowDao().getById(tvShow.id)?.isFavorite ?: tvShow.isFavorite)
             val resolved = com.dskja.betterstreamflix.sync.FavoriteMutations.setTvShowFavorite(
                 context = anchor.context,

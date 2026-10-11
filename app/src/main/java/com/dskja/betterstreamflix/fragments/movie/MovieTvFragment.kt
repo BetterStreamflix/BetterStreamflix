@@ -34,7 +34,7 @@ class MovieTvFragment : Fragment() {
     private val binding get() = _binding!!
 
     private val args by navArgs<MovieTvFragmentArgs>()
-    private val database get() = AppDatabase.getInstance(requireContext())
+    private val database get() = AppDatabase.getInstanceOrNull(requireContext())
     private val viewModel by viewModelsFactory { MovieViewModel(args.id, database) }
 
     private val appAdapter = AppAdapter()
