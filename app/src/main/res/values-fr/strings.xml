@@ -625,6 +625,8 @@
 <string name="download_notification_indeterminate">Preparing…</string>
 <string name="download_notification_pause">Pause</string>
 <string name="download_notification_progress">%1$d%%</string>
+    <string name="download_notification_progress_eta">%1$d%% · %2$s</string>
+    <string name="player_buffer_eta">Mise en mémoire · %1$s</string>
 <string name="download_notification_resume">Resume</string>
 <string name="download_notification_retry">Retry</string>
 <string name="download_options_cellular_confirm_message">« Wi‑Fi uniquement » est activé. Télécharger quand même via les données mobiles ?</string>

@@ -1512,6 +1512,8 @@
     <string name="download_notification_active_one">Wird geladen…</string>
     <string name="download_notification_active_many">%1$d Downloads</string>
     <string name="download_notification_progress">%1$d%%</string>
+    <string name="download_notification_progress_eta">%1$d%% · %2$s</string>
+    <string name="player_buffer_eta">Puffern · %1$s</string>
     <string name="download_notification_indeterminate">Vorbereitung…</string>
     <string name="download_notification_pause">Pausieren</string>
     <string name="download_notification_resume">Fortsetzen</string>
