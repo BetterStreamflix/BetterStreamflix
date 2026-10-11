@@ -29,7 +29,7 @@ object ProfileTransferExporter {
         }.take(ProfileTransferPayload.MAX_FILE_WATCHLIST)
 
         val providers = watchlist.map { it.provider }.filter { it.isNotBlank() }.distinct()
-        val settings = snapshotSettings(providers)
+        val settings = snapshotSettings(app, providers)
         val notes = EpisodeNotesStore.listForActiveProfile(app)
             .take(ProfileTransferPayload.MAX_FILE_NOTES)
             .map { (id, text) ->
@@ -60,7 +60,10 @@ object ProfileTransferExporter {
         )
     }
 
-    private fun snapshotSettings(providers: List<String>): ProfileTransferPayload.SettingsSnapshot {
+    private fun snapshotSettings(
+        appContext: Context,
+        providers: List<String>,
+    ): ProfileTransferPayload.SettingsSnapshot {
         val sort = LinkedHashMap<String, String>()
         val itemOrder = LinkedHashMap<String, Map<String, List<String>>>()
         val catOrder = LinkedHashMap<String, List<String>>()
@@ -94,6 +97,18 @@ object ProfileTransferExporter {
             favoriteSortByProvider = sort,
             favoriteItemOrderByProvider = itemOrder,
             favoriteCategoryOrderByProvider = catOrder,
+            tasteSignalsJson = runCatching {
+                com.dskja.betterstreamflix.taste.TasteGraphStore.exportSignalsJson(appContext)
+            }.getOrNull(),
+            tasteAffinityJson = runCatching {
+                com.dskja.betterstreamflix.taste.TasteGraphStore.exportAffinityJson(appContext)
+            }.getOrNull(),
+            tasteQueryTokensJson = runCatching {
+                com.dskja.betterstreamflix.taste.TasteGraphStore.exportTokensJson(appContext)
+            }.getOrNull(),
+            searchMemoriesJson = runCatching {
+                com.dskja.betterstreamflix.fragments.search.SearchMemories.exportJson(appContext)
+            }.getOrNull(),
         )
     }
 

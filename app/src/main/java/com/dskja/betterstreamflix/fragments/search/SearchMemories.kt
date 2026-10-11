@@ -64,16 +64,51 @@ object SearchMemories {
         query: String,
         outcome: Outcome,
         global: Boolean = false,
+        bumpTimestamp: Boolean = true,
     ) {
         val q = normalize(query) ?: return
-        val now = System.currentTimeMillis()
         val prior = list(context)
-        val entry = Entry(query = q, outcome = outcome, atMs = now, global = global)
+        val existing = prior.firstOrNull { it.query.equals(q, ignoreCase = true) }
+        val atMs = when {
+            !bumpTimestamp && existing != null -> existing.atMs
+            else -> System.currentTimeMillis()
+        }
+        val entry = Entry(query = q, outcome = outcome, atMs = atMs, global = global)
         persist(context, listOf(entry) + prior.filterNot { it.query.equals(q, ignoreCase = true) })
     }
 
     fun clear(context: Context) {
         prefs(context).edit().remove(storageKey()).apply()
+    }
+
+    fun wipeProfile(context: Context, profileId: String) {
+        val p = prefs(context)
+        val key = ProfileManager.scopedPrefKeyFor(KEY, profileId)
+        p.edit().remove(key).apply()
+        val suffix = "_p_$profileId"
+        p.edit().also { editor ->
+            p.all.keys.filter { it.endsWith(suffix) }.forEach { editor.remove(it) }
+        }.apply()
+    }
+
+    /** Export JSON array for profile transfer. */
+    fun exportJson(context: Context): String {
+        val arr = JSONArray()
+        list(context).forEach { e ->
+            arr.put(
+                JSONObject()
+                    .put("q", e.query)
+                    .put("o", e.outcome.key())
+                    .put("t", e.atMs)
+                    .put("g", e.global),
+            )
+        }
+        return arr.toString()
+    }
+
+    fun importJson(context: Context, raw: String?) {
+        if (raw.isNullOrBlank()) return
+        persist(context, parse(raw))
     }
 
     fun outcomeForLocalResults(results: List<*>): Outcome =
@@ -149,11 +184,19 @@ object SearchMemories {
     private fun prefs(context: Context) =
         context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
 
-    /** One-time pull of legacy [SearchRecentStore] string list into v2. */
+    /**
+     * One-time pull of legacy [SearchRecentStore] into the **default** profile only,
+     * so first open on a Kids/secondary profile does not inherit adult recents.
+     */
     private fun migrateLegacyIfNeeded(context: Context) {
         val p = prefs(context)
         val key = storageKey()
         if (p.contains(key)) return
+        // Non-default profiles get an empty scoped list — never the device-wide legacy.
+        if (ProfileManager.activeProfileId != ProfileManager.DEFAULT_PROFILE_ID) {
+            p.edit().putString(key, "[]").apply()
+            return
+        }
         val legacy = runCatching {
             context.applicationContext
                 .getSharedPreferences("search_recent_v1", Context.MODE_PRIVATE)

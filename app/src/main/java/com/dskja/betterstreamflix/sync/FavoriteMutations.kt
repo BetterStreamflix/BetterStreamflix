@@ -43,6 +43,9 @@ object FavoriteMutations {
             }
         } else {
             UserDataCache.removeMovieFromFavorites(appContext, provider, movie.id)
+            runCatching {
+                com.dskja.betterstreamflix.taste.TasteFeedback.favoriteUnboost(appContext, favorited)
+            }
         }
         SimklSyncHooks.onListToggle(
             add = favorite,
@@ -78,6 +81,9 @@ object FavoriteMutations {
             }
         } else {
             UserDataCache.removeTvShowFromFavorites(appContext, provider, tvShow.id)
+            runCatching {
+                com.dskja.betterstreamflix.taste.TasteFeedback.favoriteUnboost(appContext, favorited)
+            }
         }
         SimklSyncHooks.onListToggle(
             add = favorite,

@@ -246,14 +246,24 @@ class HomeTvFragment : Fragment() {
     }
 
     override fun onPause() {
-        // Series Fast-Forward: commit visit watermark + unfiltered shelf snapshot.
-        viewModel.commitHomeVisit()
+        // Series Fast-Forward: commit visit watermark only when leaving Home
+        // (not when opening Movie/TV Detail — that was emptying FF shelves).
+        if (!isPausedForDetailNavigation()) {
+            viewModel.commitHomeVisit()
+        }
         super.onPause()
     }
 
     /** Shelf chip toggle for “new since last visit”. */
     fun setSeriesFastForwardEnabled(enabled: Boolean) {
         viewModel.setSeriesFastForwardEnabled(enabled)
+    }
+
+    /** True when Home paused because Movie/TV Detail was pushed on the nav stack. */
+    private fun isPausedForDetailNavigation(): Boolean {
+        val destId = runCatching { findNavController().currentDestination?.id }.getOrNull()
+            ?: return false
+        return destId == R.id.movie || destId == R.id.tv_show
     }
 
     override fun onStop() {

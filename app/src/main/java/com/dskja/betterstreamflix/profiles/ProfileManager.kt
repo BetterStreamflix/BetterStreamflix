@@ -36,6 +36,9 @@ object ProfileManager {
         "HOME_LAST_VISIT_AT_MS",
         "HOME_VISIT_NEXT_EPISODE_IDS",
         "HOME_VISIT_FAVORITE_TV_IDS",
+        "SEARCH_SORT_MODE",
+        "SEARCH_YEAR_FILTER",
+        "SEARCH_MOOD",
         "KIDS_BEDTIME_ENABLED",
         "KIDS_BEDTIME_MINUTE_OF_DAY",
         "KIDS_BEDTIME_LOCKED",
@@ -540,6 +543,15 @@ object ProfileManager {
             }
             runCatching {
                 com.dskja.betterstreamflix.utils.EpisodeNotesStore.wipeProfile(appContext, profileId)
+            }
+            runCatching {
+                com.dskja.betterstreamflix.taste.TasteGraph.wipeProfile(appContext, profileId)
+            }
+            runCatching {
+                com.dskja.betterstreamflix.fragments.search.SearchMemories.wipeProfile(
+                    appContext,
+                    profileId,
+                )
             }
             runCatching {
                 val folder = com.dskja.betterstreamflix.download.DownloadStorage

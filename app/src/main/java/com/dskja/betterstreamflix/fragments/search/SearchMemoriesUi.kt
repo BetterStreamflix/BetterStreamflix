@@ -84,10 +84,17 @@ object SearchMemoriesUi {
                         onLongPressMoreLike(entry)
                         true
                     }
-                    contentDescription = context.getString(
-                        R.string.taste_memory_more_like_cd,
-                        entry.query,
-                    )
+                    // Keep retry CD and append more-like affordance for TalkBack.
+                    contentDescription = buildString {
+                        append(contentDescriptionFor(context, entry))
+                        append(". ")
+                        append(
+                            context.getString(
+                                R.string.taste_memory_more_like_cd,
+                                entry.query,
+                            ),
+                        )
+                    }
                 }
             }
             applyPress?.invoke(chip)

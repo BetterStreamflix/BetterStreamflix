@@ -413,12 +413,13 @@ class SearchMobileFragment : Fragment() {
                         item = movie,
                         onChanged = { viewModel.reapplyOrdering() },
                         onMoreLike = { item ->
+                            val title = when (item) {
+                                is com.dskja.betterstreamflix.models.Movie -> item.title
+                                is com.dskja.betterstreamflix.models.TvShow -> item.title
+                                else -> ""
+                            }
                             binding.etSearch.setText(
-                                when (item) {
-                                    is com.dskja.betterstreamflix.models.Movie -> item.title
-                                    is com.dskja.betterstreamflix.models.TvShow -> item.title
-                                    else -> ""
-                                },
+                                getString(R.string.search_query_more_like, title),
                             )
                             viewModel.searchMoreLike(item)
                         },
@@ -430,12 +431,13 @@ class SearchMobileFragment : Fragment() {
                         item = show,
                         onChanged = { viewModel.reapplyOrdering() },
                         onMoreLike = { item ->
+                            val title = when (item) {
+                                is com.dskja.betterstreamflix.models.Movie -> item.title
+                                is com.dskja.betterstreamflix.models.TvShow -> item.title
+                                else -> ""
+                            }
                             binding.etSearch.setText(
-                                when (item) {
-                                    is com.dskja.betterstreamflix.models.Movie -> item.title
-                                    is com.dskja.betterstreamflix.models.TvShow -> item.title
-                                    else -> ""
-                                },
+                                getString(R.string.search_query_more_like, title),
                             )
                             viewModel.searchMoreLike(item)
                         },
@@ -576,8 +578,14 @@ class SearchMobileFragment : Fragment() {
                 refreshRecentSearches()
             },
             onLongPressMoreLike = { entry ->
-                binding.etSearch.setText(getString(R.string.search_query_more_like, entry.query))
-                viewModel.search(getString(R.string.search_query_more_like, entry.query))
+                val seed = unwrapMoreLikeQuery(entry.query)
+                val q = getString(R.string.search_query_more_like, seed)
+                binding.etSearch.setText(q)
+                runCatching {
+                    val fake = com.dskja.betterstreamflix.models.Movie(id = "memory:$seed", title = seed)
+                    com.dskja.betterstreamflix.taste.TasteFeedback.moreLike(requireContext(), fake)
+                }
+                viewModel.search(q)
             },
             previousQueries = previousQueries,
             animateNew = if (ExperimentalMobileDesign.enabled()) {
@@ -616,6 +624,19 @@ class SearchMobileFragment : Fragment() {
         ui.etSearch.setText("")
         ui.etSearch.requestFocus()
         viewModel.search("")
+    }
+
+    /** Strip a stacked “more like …” prefix so long-press does not wrap forever. */
+    private fun unwrapMoreLikeQuery(raw: String): String {
+        var q = raw.trim()
+        val marker = getString(R.string.search_query_more_like, "\u0000")
+            .substringBefore("\u0000")
+            .trim()
+            .lowercase()
+        while (marker.isNotEmpty() && q.lowercase().startsWith(marker)) {
+            q = q.drop(marker.length).trim()
+        }
+        return q.ifBlank { raw.trim() }
     }
 
     private fun displaySearch(list: List<AppAdapter.Item>, hasMore: Boolean) {
