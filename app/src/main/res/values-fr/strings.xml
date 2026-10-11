@@ -28,10 +28,17 @@
     <string name="main_menu_change_provider">Changer de fournisseur</string>
     <string name="main_menu_search">Rechercher</string>
     <string name="main_menu_home">Accueil</string>
+    <string name="main_menu_live">Live</string>
     <string name="main_menu_movies">Films</string>
     <string name="main_menu_tv_shows">Séries TV</string>
     <string name="main_menu_all_channels">Toutes les chaînes</string>
     <string name="main_menu_settings">Paramètres</string>
+    <string name="live_hub_title">Live</string>
+    <string name="live_hub_tagline">Sport, infos et chaînes via DaddyLive, StreamSports99 et IPTV</string>
+    <string name="live_hub_section_sport">Sport</string>
+    <string name="live_hub_section_news">Infos</string>
+    <string name="live_hub_section_channels">Chaînes</string>
+    <string name="live_hub_empty">Aucune chaîne live pour le moment — réessayez</string>
     <string name="main_menu_theme_change">Changer de thème</string>
     <string name="theme_default">Par défaut</string>
     <string name="theme_nero_amoled_oled">Noir Amoled/Oled</string>

@@ -154,9 +154,9 @@ class PlayerViewModel(
 
                 val provider = UserPreferences.currentProvider
                     ?: throw Exception("No provider selected")
-                // Live zap: use warm ±1 neighbor servers when available.
+                // Live zap: peek warm ±N neighbor servers (keep cache if getVideo fails).
                 val warmed = if (provider is com.dskja.betterstreamflix.providers.IptvProvider) {
-                    com.dskja.betterstreamflix.iptv.IptvZapPreloader.takeCachedServers(id)
+                    com.dskja.betterstreamflix.iptv.IptvZapPreloader.peekCachedServers(id)
                 } else {
                     null
                 }
@@ -190,7 +190,10 @@ class PlayerViewModel(
                     _state.emit(State.SuccessLoadingServers(servers))
                 }
                 if (provider is com.dskja.betterstreamflix.providers.IptvProvider) {
-                    com.dskja.betterstreamflix.iptv.IptvZapPreloader.warmNeighbors(provider)
+                    com.dskja.betterstreamflix.iptv.IptvZapPreloader.warmNeighbors(
+                        provider,
+                        radius = com.dskja.betterstreamflix.iptv.IptvZapPreloader.DEFAULT_WARM_RADIUS,
+                    )
                 }
             } catch (e: CancellationException) {
                 throw e
@@ -227,7 +230,8 @@ class PlayerViewModel(
                 val provider = UserPreferences.currentProvider
                     ?: throw Exception("No provider selected")
                 val warmedVideo = if (provider is com.dskja.betterstreamflix.providers.IptvProvider) {
-                    com.dskja.betterstreamflix.iptv.IptvZapPreloader.takeCachedVideo(server.id)
+                    // Peek so a mid-resolve failure can retry the same warm m3u8 once.
+                    com.dskja.betterstreamflix.iptv.IptvZapPreloader.peekCachedVideo(server.id)
                 } else {
                     null
                 }
