@@ -2057,4 +2057,11 @@
     <string name="onboarding_skip_confirm_title">Skip setup?</string>
     <string name="onboarding_skip_confirm_body">You can set language, favorites, and Kids later in Settings. Skip only if you want to explore on your own.</string>
     <string name="onboarding_finish">Go to Home</string>
+
+    <string name="widget_continue_watching_title">Continue Watching</string>
+    <string name="widget_continue_watching_description">Resume titles from your Continue Watching list</string>
+    <string name="widget_continue_watching_empty">Nothing in progress — open the app to start watching</string>
+    <string name="widget_live_favorites_title">Live favorites</string>
+    <string name="widget_live_favorites_description">Quick tiles for your favorite Live channels</string>
+    <string name="widget_live_favorites_empty">Favorite a Live channel in the app to pin it here</string>
 </resources>

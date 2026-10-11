@@ -158,6 +158,7 @@
                 <data android:scheme="betterstreamflix" android:host="watch"/>
                 <data android:scheme="streamflix" android:host="watch"/>
                 <data android:scheme="betterstreamflix" android:host="home"/>
+                <data android:scheme="betterstreamflix" android:host="live"/>
             </intent-filter>
             <intent-filter>
                 <action android:name="android.intent.action.VIEW"/>

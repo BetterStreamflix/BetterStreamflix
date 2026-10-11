@@ -31,7 +31,7 @@ object TvWatchDeepLinkRouter {
 
     fun handle(activity: FragmentActivity, data: Uri?): Boolean {
         val target = TvWatchDeepLink.parse(data?.toString()) ?: return false
-        if (!TvLauncherSurface.isEnabled(activity)) return false
+        // Routing works on Mobile + TV; only Channels/Watch Next *publishing* is TV-gated.
         val navHost = activity.supportFragmentManager
             .findFragmentById(R.id.nav_main_fragment) as? NavHostFragment
             ?: return false
