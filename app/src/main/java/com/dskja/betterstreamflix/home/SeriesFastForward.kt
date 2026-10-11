@@ -22,9 +22,17 @@ import com.dskja.betterstreamflix.utils.UserPreferences
  */
 object SeriesFastForward {
 
-    fun supportsShelf(categoryName: String): Boolean =
-        categoryName == Category.NEXT_EPISODES ||
-            categoryName == Category.FAVORITE_TV_SHOWS
+    /** English stamp / identityKey for Next Episodes + Favorite TV. */
+    fun supportsShelf(categoryName: String): Boolean {
+        val n = categoryName.trim()
+        if (n.isEmpty()) return false
+        return n.equals(Category.NEXT_EPISODES, ignoreCase = true) ||
+            n.equals(Category.FAVORITE_TV_SHOWS, ignoreCase = true)
+    }
+
+    /** Prefer [Category.identityKey]; fall back to English [Category.name]. */
+    fun supportsShelf(category: Category): Boolean =
+        supportsShelf(category.identityKey.orEmpty()) || supportsShelf(category.name)
 
     fun isEnabled(): Boolean = UserPreferences.seriesFastForwardEnabled
 
@@ -113,6 +121,16 @@ object SeriesFastForward {
         if (unfilteredCount <= 0) return false
         if (filteredCount > 0) return true
         return isEnabled() && supportsShelf(categoryName)
+    }
+
+    fun keepShelfWhenEmpty(
+        category: Category,
+        unfilteredCount: Int,
+        filteredCount: Int,
+    ): Boolean {
+        if (unfilteredCount <= 0) return false
+        if (filteredCount > 0) return true
+        return isEnabled() && supportsShelf(category)
     }
 
     fun applyToLibraryItem(

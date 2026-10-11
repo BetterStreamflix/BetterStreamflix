@@ -45,6 +45,22 @@ object LeanbackDensityPolicy {
         Mode.COMFORT -> 240
     }
 
+    /**
+     * Ambient Continue strip row height (poster + vertical padding).
+     * Matches shelf poster height so Comfort tiles are not clipped in a fixed 148dp row.
+     */
+    fun ambientStripHeightDp(mode: Mode = mode()): Int =
+        shelfPosterHeightDp(mode) + 8
+
+    /**
+     * Featured hero card height hint (mobile card / density-aware surfaces).
+     * Compact is modestly shorter; Comfort matches the default dimen (580dp).
+     */
+    fun featuredCardHeightDp(mode: Mode = mode()): Int = when (mode) {
+        Mode.COMPACT -> 520
+        Mode.COMFORT -> 580
+    }
+
     fun searchGenreColumns(mode: Mode = mode()): Int = when (mode) {
         Mode.COMPACT -> 6
         Mode.COMFORT -> 4

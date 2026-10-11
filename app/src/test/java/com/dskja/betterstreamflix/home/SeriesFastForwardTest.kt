@@ -17,6 +17,15 @@ class SeriesFastForwardTest {
         assertTrue(SeriesFastForward.supportsShelf(Category.FAVORITE_TV_SHOWS))
         assertFalse(SeriesFastForward.supportsShelf(Category.CONTINUE_WATCHING))
         assertFalse(SeriesFastForward.supportsShelf(Category.FAVORITE_MOVIES))
+        val localized = Category(name = "Nächste Folgen", list = emptyList()).also {
+            it.identityKey = Category.NEXT_EPISODES
+        }
+        assertTrue(SeriesFastForward.supportsShelf(localized))
+        assertFalse(
+            SeriesFastForward.supportsShelf(
+                Category(name = "Nächste Folgen", list = emptyList()),
+            ),
+        )
     }
 
     @Test

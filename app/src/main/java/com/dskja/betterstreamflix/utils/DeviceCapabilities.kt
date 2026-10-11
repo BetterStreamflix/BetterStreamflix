@@ -72,17 +72,29 @@ object DeviceCapabilities {
     fun isLegacyFireOs(context: Context): Boolean =
         isAmazonFireTv(context) && Build.VERSION.SDK_INT <= 25
 
+    /**
+     * Hard home-effect constraints excluding Stick Energy.
+     * Low-RAM / constrained playback / animator-scale 0 — Ambient must stay off.
+     * Stick Energy alone may still enter Ambient with reduced Ken Burns.
+     */
+    fun shouldHardReduceHomeEffects(context: Context): Boolean {
+        if (isLowRamDevice(context)) return true
+        if (shouldUseConstrainedPlayback(context)) return true
+        return isAnimatorDurationScaleOff(context)
+    }
+
+    fun isAnimatorDurationScaleOff(context: Context): Boolean =
+        Build.VERSION.SDK_INT >= 17 &&
+            android.provider.Settings.Global.getFloat(
+                context.contentResolver,
+                android.provider.Settings.Global.ANIMATOR_DURATION_SCALE,
+                1f,
+            ) == 0f
+
     /** Soften home motion (ken-burns, swiper progress) on constrained devices. */
     fun shouldReduceHomeEffects(context: Context): Boolean {
         if (com.dskja.betterstreamflix.ui.StickEnergyMode.isEnabled(context)) return true
-        return isLowRamDevice(context) ||
-            shouldUseConstrainedPlayback(context) ||
-            (Build.VERSION.SDK_INT >= 17 &&
-                android.provider.Settings.Global.getFloat(
-                    context.contentResolver,
-                    android.provider.Settings.Global.ANIMATOR_DURATION_SCALE,
-                    1f,
-                ) == 0f)
+        return shouldHardReduceHomeEffects(context)
     }
 
     /**

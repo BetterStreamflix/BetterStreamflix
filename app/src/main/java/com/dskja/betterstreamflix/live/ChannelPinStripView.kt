@@ -105,7 +105,10 @@ class ChannelPinStripView @JvmOverloads constructor(
                 .placeholder(R.drawable.bg_people_circle)
                 .error(R.drawable.bg_people_circle)
                 .into(image)
-            itemView.contentDescription = show.title
+            itemView.contentDescription = context.getString(
+                R.string.meine_sender_leiste_pin_cd,
+                show.title,
+            )
             itemView.setOnClickListener { onChannelClick?.invoke(show) }
             itemView.setOnLongClickListener {
                 onChannelLongClick?.invoke(show)

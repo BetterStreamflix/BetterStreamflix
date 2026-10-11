@@ -55,6 +55,14 @@ class HomeRemixTest {
             HomeRemix.blockOf(cat(Category.CONTINUE_WATCHING)),
         )
         assertEquals(
+            HomeRemix.Block.CONTINUE,
+            HomeRemix.blockOf(cat(Category.FAMILY_FRIDAY)),
+        )
+        assertEquals(
+            HomeRemix.Block.CONTINUE,
+            HomeRemix.blockOf(cat("New this week", Category.NEW_THIS_WEEK)),
+        )
+        assertEquals(
             HomeRemix.Block.COLLECTIONS,
             HomeRemix.blockOf(cat(Category.SMART_CHILL_EVENING)),
         )

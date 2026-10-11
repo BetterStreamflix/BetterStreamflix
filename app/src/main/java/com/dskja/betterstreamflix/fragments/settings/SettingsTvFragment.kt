@@ -861,7 +861,7 @@ class SettingsTvFragment : LeanbackPreferenceFragmentCompat() {
                 val enabled = newValue as Boolean
                 UserPreferences.homeWatchlistDigestEnabled = enabled
                 if (enabled) {
-                    UserPreferences.homeWatchlistDigestDismissed = false
+                    com.dskja.betterstreamflix.watchlist.WatchlistDigestPolicy.resetForReEnable()
                 }
                 UserDataNotifier.notifyChanged()
                 true
@@ -887,7 +887,9 @@ class SettingsTvFragment : LeanbackPreferenceFragmentCompat() {
         }
 
         findPreference<Preference>("HOME_REMIX_OPEN")?.setOnPreferenceClickListener {
-            com.dskja.betterstreamflix.home.HomeRemixUi.show(this)
+            com.dskja.betterstreamflix.home.HomeRemixUi.show(this) {
+                UserDataNotifier.notifyChanged()
+            }
             true
         }
 
@@ -1342,18 +1344,36 @@ class SettingsTvFragment : LeanbackPreferenceFragmentCompat() {
         }
 
         findPreference<ListPreference>("SELECTED_THEME")?.apply {
+            // Migrate legacy theme ids on Settings open (LOOK-04/05).
             val locked = ThemeManager.resolveLook(UserPreferences.selectedTheme)
-            if (UserPreferences.selectedTheme != locked) {
-                UserPreferences.selectedTheme = locked
+            val kids = com.dskja.betterstreamflix.profiles.ProfileManager.isKidsActive()
+            val clamped = if (kids) {
+                ThemeManager.KIDS_BRIGHT
+            } else {
+                locked
+            }
+            if (UserPreferences.selectedTheme != clamped) {
+                UserPreferences.selectedTheme = clamped
             }
             UserPreferences.oledMode = false
-            value = locked
+            if (kids) {
+                // Kids may only keep Cinema-Ink Kids locally (sync already clamps).
+                entries = arrayOf(getString(R.string.theme_kids_bright))
+                entryValues = arrayOf(ThemeManager.KIDS_BRIGHT)
+            }
+            value = clamped
             summaryProvider = Preference.SummaryProvider<ListPreference> { pref ->
                 getString(ThemeManager.titleRes(pref.value ?: ThemeManager.CINEMA_INK))
             }
 
             setOnPreferenceChangeListener { _, newValue ->
-                val newTheme = ThemeManager.resolveLook(newValue as String)
+                val kidsActive =
+                    com.dskja.betterstreamflix.profiles.ProfileManager.isKidsActive()
+                val newTheme = if (kidsActive) {
+                    ThemeManager.KIDS_BRIGHT
+                } else {
+                    ThemeManager.resolveLook(newValue as String)
+                }
                 UserPreferences.oledMode = false
                 UserPreferences.selectedTheme = newTheme
                 restartMainTvWithoutAnimation()
@@ -1392,6 +1412,9 @@ class SettingsTvFragment : LeanbackPreferenceFragmentCompat() {
             }
             setOnPreferenceChangeListener { _, newValue ->
                 UserPreferences.stickEnergyMode = newValue as Boolean
+                // Density / Large Text restart — Stick Energy also changes Ambient Ken Burns
+                // and Featured motion gates; restart so Home shelves + Ambient rebind cleanly.
+                restartMainTvWithoutAnimation()
                 true
             }
         }
@@ -1399,8 +1422,13 @@ class SettingsTvFragment : LeanbackPreferenceFragmentCompat() {
         findPreference<SwitchPreferenceCompat>("CINEMA_ROOM")?.apply {
             isChecked = UserPreferences.cinemaRoomEnabled
             setOnPreferenceChangeListener { _, newValue ->
-                UserPreferences.cinemaRoomEnabled = newValue as Boolean
-                // Looks stay locked via ThemeManager; Ambient / light hints depend on this master.
+                val enabled = newValue as Boolean
+                UserPreferences.cinemaRoomEnabled = enabled
+                if (enabled) {
+                    com.dskja.betterstreamflix.ui.CinemaRoomController.onCinemaRoomEnabled()
+                }
+                findPreference<SwitchPreferenceCompat>("TV_AMBIENT_MODE")?.isEnabled = enabled
+                findPreference<SwitchPreferenceCompat>("CINEMA_AMBIENT_LIGHT")?.isEnabled = enabled
                 true
             }
         }
@@ -1429,12 +1457,7 @@ class SettingsTvFragment : LeanbackPreferenceFragmentCompat() {
                 " · " + getString(ThemeManager.titleRes(look))
         }
 
-        findPreference<SwitchPreference>("OLED_MODE")?.apply {
-            isVisible = false
-            isChecked = false
-            UserPreferences.oledMode = false
-            setOnPreferenceChangeListener { _, _ -> false }
-        }
+        // OLED half-mix retired (Looks Locked) — preference removed from settings_tv.xml.
 
         findPreference<SwitchPreference>("LARGE_TEXT")?.apply {
             isChecked = UserPreferences.largeText

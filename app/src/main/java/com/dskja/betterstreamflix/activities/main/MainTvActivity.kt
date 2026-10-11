@@ -605,12 +605,17 @@ class MainTvActivity : FragmentActivity() {
         super.onDestroy()
     }
 
+    override fun onUserInteraction() {
+        super.onUserInteraction()
+        val host = currentHomeFragment()
+        // Non-key paths (touch / mouse) reset idle without exiting active Ambient.
+        if (host != null && !host.isAmbientActive()) {
+            host.onAmbientIdleClockReset()
+        }
+    }
+
     override fun dispatchKeyEvent(event: KeyEvent): Boolean {
-        val host = (supportFragmentManager.findFragmentById(R.id.nav_main_fragment)
-            as? NavHostFragment)
-            ?.childFragmentManager
-            ?.primaryNavigationFragment
-            as? com.dskja.betterstreamflix.fragments.home.HomeTvFragment
+        val host = currentHomeFragment()
         if (host != null) {
             if (host.onAmbientKeyEvent(event)) return true
             // Any key while Home is visible resets Ambient idle (when inactive).
@@ -620,6 +625,37 @@ class MainTvActivity : FragmentActivity() {
         }
         return super.dispatchKeyEvent(event)
     }
+
+    /**
+     * Profile unlock, bedtime lock, update dialog — block Ambient enter.
+     * Home loading is checked in [com.dskja.betterstreamflix.fragments.home.HomeTvFragment].
+     */
+    fun isAmbientModalBlocking(): Boolean {
+        if (::updateAppDialog.isInitialized && updateAppDialog.isShowing) return true
+        if (com.dskja.betterstreamflix.kids.KidsBedtimeUi.isLockDialogShowing()) return true
+        if (com.dskja.betterstreamflix.profiles.ProfileUnlockGate.requiresGateForActive()) {
+            return true
+        }
+        val host = (supportFragmentManager.findFragmentById(R.id.nav_main_fragment)
+            as? NavHostFragment)
+            ?.childFragmentManager
+            ?.primaryNavigationFragment
+        if (host?.childFragmentManager?.findFragmentByTag(
+                com.dskja.betterstreamflix.profiles.ProfilePickerDialog.TAG,
+            ) != null
+        ) {
+            return true
+        }
+        return false
+    }
+
+    private fun currentHomeFragment():
+        com.dskja.betterstreamflix.fragments.home.HomeTvFragment? =
+        (supportFragmentManager.findFragmentById(R.id.nav_main_fragment)
+            as? NavHostFragment)
+            ?.childFragmentManager
+            ?.primaryNavigationFragment
+            as? com.dskja.betterstreamflix.fragments.home.HomeTvFragment
 
     private fun showProfileUnlockGateIfNeeded(navHostFragment: NavHostFragment) {
         if (isFinishing || isDestroyed) return

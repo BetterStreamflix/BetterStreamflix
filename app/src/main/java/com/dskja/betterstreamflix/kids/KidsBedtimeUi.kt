@@ -20,6 +20,9 @@ object KidsBedtimeUi {
     @Volatile
     private var lockDialogShowing: Boolean = false
 
+    /** True while the non-dismissible bedtime PIN lock dialog is on screen. */
+    fun isLockDialogShowing(): Boolean = lockDialogShowing
+
     fun enabledSummary(context: Context): String {
         if (!UserPreferences.kidsBedtimeEnabled) {
             return context.getString(R.string.kids_bedtime_summary_off)

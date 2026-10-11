@@ -14,6 +14,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - TV season episode list: per-episode Download CTA (one OK on the Cinema Ink secondary control) wires into `DownloadOptionsController.enqueueEpisode` — long-press options remain as a secondary path
 - Profile themes + download folders: theme preference is per-profile; Kids defaults to **Cinema-Ink Kids**, adults to **Cinema-Ink Dark**; offline files land in visible `profiles/<Name>` folders (Settings path + Downloads chip show the folder)
 
+### Fixed
+- Batch 10 Home & Cinema Fix-All: Series Fast-Forward empty/locale chip, Watchlist Digest kids gate + TV focus, Stick Energy × Ambient, Remix Friday/Week block, Shelf Weather false positives, Ambient density strip, Cinema Room looks/mobile toggles, pin-strip Home-only, and remaining P0–P3 audit items (66)
+
 ### Added
 - Offline Studio: Downloads hub unifies Library · Queue (lane Watching/Queue/Smart) · Care (health + expiry) · Controls (Smart/quota/Wi‑Fi soft limit + Packs) on Mobile + TV — builds on existing Packs, season one-tap, Lane, Health, Expiry engines
 - Kids Fortress: full kids product — PIN exit, Bedtime, age filter, isolated Continue/Downloads, phone Parent Dashboard (builds on Kids Bedtime / Spoiler / Guest)
