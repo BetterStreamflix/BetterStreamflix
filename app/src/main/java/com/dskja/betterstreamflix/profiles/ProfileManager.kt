@@ -60,6 +60,14 @@ object ProfileManager {
 
     private lateinit var appContext: Context
 
+    /**
+     * True when [init] could not ensure a usable profile store. Callers should
+     * force Who's Watching / repair UI rather than skipping the PIN/kids gate.
+     */
+    @Volatile
+    var initFailed: Boolean = false
+        private set
+
     val activeProfileId: String
         get() = if (::appContext.isInitialized) {
             ProfileStore.getActiveId(appContext) ?: DEFAULT_PROFILE_ID
@@ -70,7 +78,11 @@ object ProfileManager {
     fun init(context: Context) {
         appContext = context.applicationContext
         // Never throw out of init — corrupted prefs / Gson failures must not brick startup.
-        runCatching { ProfileStore.ensureDefaultExists(appContext) }
+        val ensured = runCatching { ProfileStore.ensureDefaultExists(appContext) }
+        initFailed = ensured.isFailure
+        if (initFailed) {
+            android.util.Log.e("ProfileManager", "ProfileStore.ensureDefaultExists failed", ensured.exceptionOrNull())
+        }
         runCatching { applyKidsParentalDefaults(activeProfile(), previous = null) }
     }
 

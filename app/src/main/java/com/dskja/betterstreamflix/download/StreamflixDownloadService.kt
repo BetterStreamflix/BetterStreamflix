@@ -2,6 +2,8 @@ package com.dskja.betterstreamflix.download
 
 import android.app.Notification
 import android.content.Context
+import android.content.pm.ServiceInfo
+import android.os.Build
 import androidx.media3.common.util.Util
 import androidx.media3.exoplayer.offline.Download
 import androidx.media3.exoplayer.offline.DownloadManager
@@ -17,6 +19,32 @@ class StreamflixDownloadService : DownloadService(
     R.string.download_notification_channel,
     R.string.download_notification_channel_desc,
 ) {
+    override fun onCreate() {
+        // Beat the FGS timer before Media3 opens SimpleCache (BETTERSTREAMFLIX-2G).
+        runCatching { promoteForegroundPlaceholder() }
+        super.onCreate()
+    }
+
+    private fun promoteForegroundPlaceholder() {
+        val notification = DownloadNotifier.buildForegroundNotification(
+            context = this,
+            title = getString(R.string.download_notification_active_one),
+            progressPct = -1,
+            indeterminate = true,
+            contentText = getString(R.string.download_notification_indeterminate),
+        )
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            startForeground(
+                FOREGROUND_NOTIFICATION_ID,
+                notification,
+                ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC,
+            )
+        } else {
+            @Suppress("DEPRECATION")
+            startForeground(FOREGROUND_NOTIFICATION_ID, notification)
+        }
+    }
+
     override fun getDownloadManager(): DownloadManager =
         StreamflixDownloadManager.get(this)
 
@@ -72,9 +100,19 @@ class StreamflixDownloadService : DownloadService(
          * background start may throw — fall back to a non-foreground start so the
          * job can still be scheduled; the next allowed context (notification tap /
          * Downloads tab) will promote it.
+         *
+         * Warms [StreamflixDownloadManager] before [startForegroundService] so
+         * SimpleCache/OpenHelper work is not on the FGS timer path.
          */
         fun start(context: Context) {
             val app = context.applicationContext
+            runCatching { StreamflixDownloadManager.get(app) }
+                .onFailure {
+                    android.util.Log.w(
+                        "StreamflixDownloadService",
+                        "Download manager warm before FGS failed: ${it.message}",
+                    )
+                }
             try {
                 startForeground(app, StreamflixDownloadService::class.java)
             } catch (foregroundBlocked: Throwable) {

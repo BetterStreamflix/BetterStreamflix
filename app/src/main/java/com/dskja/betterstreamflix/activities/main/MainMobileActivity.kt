@@ -215,6 +215,10 @@ class MainMobileActivity : FragmentActivity() {
 
         if (navHost == null || navController == null) {
             android.util.Log.e("MainMobileActivity", "NavHostFragment missing — aborting setup")
+            runCatching {
+                io.sentry.Sentry.captureMessage("MainMobileActivity NavHostFragment missing")
+            }
+            finish()
             return
         }
 
@@ -231,15 +235,10 @@ class MainMobileActivity : FragmentActivity() {
                     }
                 )
             }
-            binding.root.post {
-                val host = navHost.childFragmentManager.primaryNavigationFragment
-                    ?: navHost
-                com.dskja.betterstreamflix.profiles.ProfileUnlockGate.maybeShow(
-                    activity = this,
-                    hostFragmentProvider = { host },
-                )
-            }
         }
+        // PIN/kids gate keys off process unlock, not only cold create — process death
+        // can restore a non-null savedInstanceState while unlockedProfileId is cleared.
+        binding.root.post { showProfileUnlockGateIfNeeded(navHost) }
 
         viewModel.checkUpdate()
 
@@ -381,6 +380,21 @@ class MainMobileActivity : FragmentActivity() {
         com.dskja.betterstreamflix.telegram.TelegramJoinGateController.onActivityStarted(
             this,
             telegramGateLauncher,
+        )
+        val navHost =
+            supportFragmentManager.findFragmentById(R.id.nav_main_fragment) as? NavHostFragment
+        if (navHost != null) {
+            binding.root.post { showProfileUnlockGateIfNeeded(navHost) }
+        }
+    }
+
+    private fun showProfileUnlockGateIfNeeded(navHost: NavHostFragment) {
+        if (isFinishing || isDestroyed) return
+        if (!com.dskja.betterstreamflix.profiles.ProfileUnlockGate.requiresGateForActive()) return
+        val host = navHost.childFragmentManager.primaryNavigationFragment ?: navHost
+        com.dskja.betterstreamflix.profiles.ProfileUnlockGate.maybeShow(
+            activity = this,
+            hostFragmentProvider = { host },
         )
     }
 

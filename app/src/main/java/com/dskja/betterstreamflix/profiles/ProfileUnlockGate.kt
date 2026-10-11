@@ -7,6 +7,9 @@ import androidx.fragment.app.FragmentActivity
  * Forces Who's Watching on cold start when the active profile is PIN-locked
  * or a kids profile. Once the household unlocks a profile for this process, the
  * gate stays open until the process dies or the unlocked profile changes.
+ *
+ * Also re-checks on [maybeShow] from Activity.onStart so process death with a
+ * restored [android.os.Bundle] cannot skip the PIN/kids challenge.
  */
 object ProfileUnlockGate {
 
@@ -25,6 +28,8 @@ object ProfileUnlockGate {
         unlockedProfileId == profileId
 
     fun requiresGate(profile: UserProfile?): Boolean {
+        // Corrupt / unreadable profiles: force Who's Watching repair, never skip PIN.
+        if (ProfileManager.initFailed) return true
         if (profile == null) return false
         if (isUnlockedFor(profile.id)) return false
         return profile.pinHash != null || profile.isKids
@@ -48,13 +53,17 @@ object ProfileUnlockGate {
         }
         val host = hostFragmentProvider() ?: return
         if (host.childFragmentManager.findFragmentByTag(ProfilePickerDialog.TAG) != null) return
-        ProfilePickerDialog.show(
-            fragment = host,
-            onSwitched = {
-                markUnlocked(ProfileManager.activeProfileId)
-                onUnlocked?.invoke()
-            },
-            requireUnlock = true,
-        )
+        runCatching {
+            ProfilePickerDialog.show(
+                fragment = host,
+                onSwitched = {
+                    markUnlocked(ProfileManager.activeProfileId)
+                    onUnlocked?.invoke()
+                },
+                requireUnlock = true,
+            )
+        }.onFailure {
+            android.util.Log.e("ProfileUnlockGate", "Failed to show unlock picker", it)
+        }
     }
 }
