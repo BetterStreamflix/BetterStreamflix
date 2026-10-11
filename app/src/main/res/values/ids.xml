@@ -54,6 +54,7 @@
     <item name="tv_people_eyebrow" type="id" />
     <item name="tv_people_filmography_label" type="id" />
     <item name="tv_provider_health_pill" type="id" />
+    <item name="tv_provider_passport_pill" type="id" />
     <item name="tv_providers_eyebrow" type="id" />
     <item name="tv_qr_scanner_hint" type="id" />
     <item name="tv_qr_scanner_title" type="id" />

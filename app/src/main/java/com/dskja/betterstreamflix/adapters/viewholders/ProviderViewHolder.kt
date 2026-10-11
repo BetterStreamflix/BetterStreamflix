@@ -16,6 +16,8 @@ import com.bumptech.glide.load.resource.drawable.DrawableTransitionOptions
 import com.dskja.betterstreamflix.R
 import com.dskja.betterstreamflix.fragments.settings.SettingsDeepLink
 import com.dskja.betterstreamflix.providers.AniWorldProvider
+import com.dskja.betterstreamflix.providers.GuardaFlixProvider
+import com.dskja.betterstreamflix.providers.ProviderPassport
 import com.dskja.betterstreamflix.providers.SerienStreamProvider
 import com.dskja.betterstreamflix.utils.ExpMotion
 import com.dskja.betterstreamflix.utils.ExpPressEffects.applyExpPress
@@ -115,13 +117,15 @@ class ProviderViewHolder(
             )
             binding.tvProviderLanguage.text = lang
             bindProviderHealthPill(binding.root, lang)
+            bindProviderPassportPill(binding.root)
             if (binding.root.getTag(R.id.exp_enter_animated_tag) != true) {
                 binding.root.setTag(R.id.exp_enter_animated_tag, true)
                 ExpMotion.popIn(binding.root)
                 ExpMotion.revealHeader(binding.tvProviderName, binding.tvProviderLanguage)
             }
         } else {
-            binding.tvProviderLanguage.text = providerHealthLabel(lang, provider.name)
+            binding.tvProviderLanguage.text = providerMetaLabel(lang, provider.name)
+            bindProviderPassportPill(binding.root)
         }
     }
 
@@ -194,7 +198,7 @@ class ProviderViewHolder(
         val lang = Locale.forLanguageTag(provider.language)
             .let { it.getDisplayLanguage(it) }
             .replaceFirstChar { it.titlecase() }
-        binding.tvProviderLanguage.text = providerHealthLabel(lang, provider.name)
+        binding.tvProviderLanguage.text = providerMetaLabel(lang, provider.name)
         // TMDb providers get the Cinema TMDb accent (TV-INK-09).
         if (provider.name.contains("TMDb", ignoreCase = true)) {
             binding.tvProviderLanguage.setTextColor(
@@ -209,8 +213,7 @@ class ProviderViewHolder(
 
     /** Long-press menu: favorite, domain update (independent of quarantine), login. */
     private fun showTvProviderActions(binding: ItemProviderTvBinding) {
-        val supportsLogin = provider.provider is SerienStreamProvider ||
-            provider.provider is AniWorldProvider
+        val supportsLogin = supportsProviderLogin(provider.provider)
         val offerDomain = ProviderHealth.supportsDomainUpdate(provider.provider)
         val labels = mutableListOf<String>()
         val actions = mutableListOf<() -> Unit>()
@@ -256,7 +259,7 @@ class ProviderViewHolder(
             }
     }
 
-    private fun providerHealthLabel(language: String, providerName: String): String {
+    private fun providerMetaLabel(language: String, providerName: String): String {
         val health = when {
             ProviderHealth.isQuarantinedName(providerName) ->
                 context.getString(R.string.provider_health_quarantined)
@@ -266,8 +269,62 @@ class ProviderViewHolder(
                 context.getString(R.string.provider_health_flaky)
             else -> null
         }
-        return if (health != null) "$language · $health" else language
+        val passport = passportStatusLabel(provider.provider)
+        return listOfNotNull(language, health, passport).joinToString(" · ")
     }
+
+    private fun passportStatusLabel(backend: com.dskja.betterstreamflix.providers.Provider): String? {
+        if (!ProviderPassport.supportsPassport(backend)) return null
+        val status = ProviderPassport.statusForProvider(backend) ?: return null
+        return when (status) {
+            ProviderPassport.Status.SESSION_FRESH ->
+                context.getString(R.string.provider_passport_status_session_fresh)
+            ProviderPassport.Status.CAPTCHA_DUE ->
+                context.getString(R.string.provider_passport_status_captcha_due)
+            ProviderPassport.Status.LOGIN_DUE ->
+                context.getString(R.string.provider_passport_status_login_due)
+        }
+    }
+
+    private fun bindProviderPassportPill(root: View) {
+        val pill = root.findViewById<android.widget.TextView>(R.id.tv_provider_passport_pill)
+            ?: return
+        val label = passportStatusLabel(provider.provider)
+        if (label == null) {
+            pill.visibility = View.GONE
+            return
+        }
+        val status = ProviderPassport.statusForProvider(provider.provider)
+        val wasVisible = pill.visibility == View.VISIBLE
+        pill.text = label
+        val colorAttr = when (status) {
+            ProviderPassport.Status.CAPTCHA_DUE ->
+                androidx.appcompat.R.attr.colorError
+            ProviderPassport.Status.LOGIN_DUE ->
+                com.google.android.material.R.attr.colorTertiary
+            ProviderPassport.Status.SESSION_FRESH,
+            null,
+            -> com.google.android.material.R.attr.colorOnSecondaryContainer
+        }
+        pill.setTextColor(
+            com.google.android.material.color.MaterialColors.getColor(
+                pill,
+                colorAttr,
+                0xFFE8E8E8.toInt(),
+            ),
+        )
+        if (ExperimentalMobileDesign.enabled()) {
+            pill.setBackgroundResource(ExperimentalMobileDesign.metaPillBackground())
+        }
+        pill.visibility = View.VISIBLE
+        if (!wasVisible) ExpMotion.popIn(pill)
+    }
+
+    private fun supportsProviderLogin(
+        backend: com.dskja.betterstreamflix.providers.Provider,
+    ): Boolean = backend is SerienStreamProvider ||
+        backend is AniWorldProvider ||
+        backend is GuardaFlixProvider
 
     private fun selectProviderWithConfirm() {
         val name = provider.name
@@ -363,8 +420,7 @@ class ProviderViewHolder(
 
     private fun bindLoginGear(gear: ImageView?, tvNonFocusable: Boolean) {
         if (gear == null) return
-        val supportsLogin = provider.provider is SerienStreamProvider ||
-            provider.provider is AniWorldProvider
+        val supportsLogin = supportsProviderLogin(provider.provider)
         if (!supportsLogin) {
             gear.visibility = View.GONE
             gear.setOnClickListener(null)
@@ -401,11 +457,21 @@ class ProviderViewHolder(
         when (provider.provider) {
             is SerienStreamProvider -> SettingsDeepLink.openSerienStreamAuth()
             is AniWorldProvider -> SettingsDeepLink.openAniWorldAuth()
+            is GuardaFlixProvider -> SettingsDeepLink.openProviderPassport()
             else -> return
         }
         runCatching {
             itemView.findNavController().navigate(R.id.settings)
         }.onFailure {
+            if (provider.provider is GuardaFlixProvider) {
+                SettingsDeepLink.openProviderPassport()
+                android.widget.Toast.makeText(
+                    context,
+                    R.string.settings_provider_passport_title,
+                    android.widget.Toast.LENGTH_SHORT,
+                ).show()
+                return@onFailure
+            }
             // Providers screen may sit outside a nav host with settings; open
             // session login WebView directly as a fallback.
             val source = when (provider.provider) {

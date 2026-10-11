@@ -82,6 +82,13 @@ internal object SettingsHubCategories {
             iconRes = R.drawable.ic_providers_language,
             target = SettingsHubTarget.PreferenceScreen("screen_provider_health"),
         ),
+        SettingsHubCard(
+            id = "provider_passport",
+            titleRes = R.string.settings_provider_passport_title,
+            summaryRes = R.string.settings_provider_passport_summary,
+            iconRes = R.drawable.ic_providers_language,
+            target = SettingsHubTarget.PreferenceScreen("screen_provider_passport"),
+        ),
     )
 
     fun accountCards(): List<SettingsHubCard> {
