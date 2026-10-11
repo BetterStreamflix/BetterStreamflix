@@ -638,8 +638,10 @@ object UserPreferences {
         }
 
     var selectedTheme: String
-        get() = Key.SELECTED_THEME.getString() ?: "default"
-        set(value) = Key.SELECTED_THEME.setString(value)
+        get() = profileScopedString(Key.SELECTED_THEME)
+            ?: Key.SELECTED_THEME.getString()
+            ?: "default"
+        set(value) = setProfileScopedString(Key.SELECTED_THEME, value)
 
     /**
      * App-wide OLED / true-black surfaces. Persists independently of the accent theme.

@@ -1060,6 +1060,7 @@ class SettingsMobileFragment : PreferenceFragmentCompat() {
         }
 
         findPreference<ListPreference>("SELECTED_THEME")?.apply {
+            value = UserPreferences.selectedTheme
             summaryProvider = Preference.SummaryProvider<ListPreference> { pref ->
                 getString(ThemeManager.titleRes(pref.value ?: ThemeManager.DEFAULT))
             }

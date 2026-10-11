@@ -25,6 +25,18 @@ class ProfileManagerTest {
     }
 
     @Test
+    fun scopedPrefKey_themeIsNamespacedPerProfile() {
+        assertEquals(
+            "SELECTED_THEME",
+            ProfileManager.scopedPrefKeyFor("SELECTED_THEME", ProfileManager.DEFAULT_PROFILE_ID),
+        )
+        assertEquals(
+            "SELECTED_THEME_p_kids01",
+            ProfileManager.scopedPrefKeyFor("SELECTED_THEME", "kids01"),
+        )
+    }
+
+    @Test
     fun hashPin_isDeterministicForSameInput() {
         val first = ProfileManager.hashPin("1234", "profile_a")
         val second = ProfileManager.hashPin("1234", "profile_a")

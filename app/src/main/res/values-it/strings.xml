@@ -51,6 +51,9 @@
     <string name="live_hub_source_unavailable">%1$s non disponibile</string>
     <string name="main_menu_theme_change">Cambia Tema</string>
     <string name="theme_default">Predefinito</string>
+    <string name="theme_cinema_ink">Cinema Ink</string>
+    <string name="theme_kids_bright">Kids Bright</string>
+    <string name="downloads_profile_folder_label">Cartella profilo: %1$s</string>
     <string name="theme_nero_amoled_oled">Nero Amoled/Oled</string>
 
     <string name="search_input_hint">Cerca film, serie TV</string>
