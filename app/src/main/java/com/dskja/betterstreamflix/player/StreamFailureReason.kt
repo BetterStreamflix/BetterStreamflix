@@ -48,7 +48,7 @@ object StreamFailureReason {
         if (isCaptcha(hay, provider, error) ||
             (serversExhausted && isGermanStreamGateProvider(provider))
         ) {
-            val captchaAction = captchaAction(provider)
+            val captchaAction = captchaAction(provider, hay)
             return Presentation(
                 kind = Kind.CAPTCHA,
                 titleRes = R.string.player_stream_fail_captcha_title,
@@ -138,10 +138,17 @@ object StreamFailureReason {
         return if (ProviderHealth.supportsDomainUpdate(target)) Action.UPDATE_DOMAIN else Action.NONE
     }
 
-    /** Solve-captcha WebView only works for SerienStream / AniWorld / TMDb DE gate hosts. */
-    private fun captchaAction(provider: Provider?): Action {
-        return if (supportsCaptchaSolve(provider)) Action.SOLVE_CAPTCHA
-        else domainAction(provider)
+    /**
+     * Solve-captcha WebView only works for SerienStream / AniWorld / TMDb DE gate hosts.
+     * Also infer from the error haystack when the provider instance is unavailable
+     * (e.g. "SerienStream stream gate…" / tmdbde:serienstream ids).
+     */
+    private fun captchaAction(provider: Provider?, hay: String): Action {
+        return if (supportsCaptchaSolve(provider) || looksLikeGermanStreamGate(hay)) {
+            Action.SOLVE_CAPTCHA
+        } else {
+            domainAction(provider)
+        }
     }
 
     fun supportsCaptchaSolve(provider: Provider?): Boolean {
@@ -150,6 +157,16 @@ object StreamFailureReason {
             p is com.dskja.betterstreamflix.providers.AniWorldProvider ||
             (p is com.dskja.betterstreamflix.providers.TmdbProvider &&
                 p.language.lowercase().startsWith("de"))
+    }
+
+    private fun looksLikeGermanStreamGate(hay: String): Boolean {
+        val h = hay.lowercase(java.util.Locale.US)
+        return "stream gate" in h ||
+            "gate is still active" in h ||
+            "serienstream" in h ||
+            "aniworld" in h ||
+            "tmdbde:serienstream" in h ||
+            "tmdbde:aniworld" in h
     }
 
     private fun Action.labelRes(): Int? = when (this) {
