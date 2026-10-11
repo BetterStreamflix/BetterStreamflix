@@ -127,6 +127,15 @@
     <string name="taste_clear_hidden_confirm">Clear</string>
     <string name="settings_taste_clear_title">Hidden &amp; not interested</string>
     <string name="settings_taste_clear_summary">Clear titles you hid from Search ranking</string>
+    <string name="settings_taste_reset_title">Reset taste graph</string>
+    <string name="settings_taste_reset_summary">Clear affinities, more-like seeds, and query tokens</string>
+    <string name="taste_clear_all_title">Reset taste graph?</string>
+    <string name="taste_clear_all_message">This clears hidden titles, affinities, and For-you signals for this profile.</string>
+    <string name="taste_clear_all_confirm">Reset</string>
+    <string name="taste_undo_hide">Undo</string>
+    <string name="taste_hidden_snackbar">Hidden from For you</string>
+    <string name="taste_not_interested_snackbar">Marked not interested</string>
+    <string name="taste_hidden_list_title">Hidden titles</string>
     <string name="taste_memory_more_like_cd">More like %1$s</string>
     <string name="search_query_more_like">more like %1$s</string>
     <string name="search_filter_year">Year</string>
