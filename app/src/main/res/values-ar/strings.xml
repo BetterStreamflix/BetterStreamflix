@@ -98,6 +98,7 @@
 	<string name="movie_runtime_hours_minutes">%d ساعة %d دقيقة</string>
 	<string name="movie_runtime_minutes">%d دقيقة</string>
 	<string name="movie_watch_now">شاهد الآن</string>
+	<string name="trailer_stream_now">شاهد الآن</string>
 	<string name="movie_trailer">الإعلان الترويجي</string>
 	<string name="movie_cast">طاقم العمل</string>
 	<string name="movie_directors">مخرج</string>

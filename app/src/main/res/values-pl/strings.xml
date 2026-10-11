@@ -91,6 +91,7 @@
 
     <string name="movie_item_type">Film</string>
     <string name="movie_watch_now">Ogladaj teraz</string>
+    <string name="trailer_stream_now">Odtwarzaj teraz</string>
     <string name="movie_trailer">Zwiastun</string>
     <string name="movie_cast">Obsada</string>
     <string name="movie_directors">Rezyser</string>

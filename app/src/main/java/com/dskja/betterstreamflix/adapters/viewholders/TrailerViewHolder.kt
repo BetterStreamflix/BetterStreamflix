@@ -13,9 +13,13 @@ import com.bumptech.glide.load.engine.GlideException
 import com.bumptech.glide.load.resource.drawable.DrawableTransitionOptions
 import com.bumptech.glide.request.RequestListener
 import com.bumptech.glide.request.target.Target
+import com.dskja.betterstreamflix.R
+import com.dskja.betterstreamflix.databinding.ContentDetailTrailerTvBinding
 import com.dskja.betterstreamflix.databinding.ItemTrailerTvBinding
 import com.dskja.betterstreamflix.models.Trailer
 import com.dskja.betterstreamflix.models.TrailerCatalog
+import com.dskja.betterstreamflix.ui.DetailTrailerTvController
+import com.dskja.betterstreamflix.ui.TrailerPlayPipeline
 import com.dskja.betterstreamflix.ui.TrailerPlaybackController
 import com.dskja.betterstreamflix.utils.ExpMotion
 import com.dskja.betterstreamflix.utils.TvFocusZoom
@@ -85,9 +89,14 @@ class TrailerViewHolder(
 
         val play = View.OnClickListener {
             ExpMotion.hapticTap(it)
+            TrailerPlayPipeline.activeSession?.target?.let { TrailerPlayPipeline.warm(it) }
             val fragment = resolveHostFragment(binding.root)
             if (fragment != null) {
-                TrailerPlaybackController.play(fragment, trailer.url)
+                TrailerPlaybackController.play(
+                    fragment,
+                    trailer.url,
+                    TrailerPlayPipeline.activeSession,
+                )
             } else {
                 val activity = binding.root.context.toActivity()
                 TrailerPlaybackController.play(
@@ -95,8 +104,10 @@ class TrailerViewHolder(
                     activity,
                     trailer.url,
                     activity?.supportFragmentManager,
+                    TrailerPlayPipeline.activeSession,
                 )
             }
+            promoteStreamCta(binding.root)
         }
         binding.root.setOnClickListener(play)
         binding.ivTrailerPlay.setOnClickListener(play)
@@ -123,5 +134,19 @@ class TrailerViewHolder(
     private fun resolveHostFragment(view: View): Fragment? {
         runCatching { FragmentManager.findFragment<Fragment>(view) }.getOrNull()?.let { return it }
         return view.context.toActivity()?.getCurrentFragment() as? Fragment
+    }
+
+    private fun promoteStreamCta(from: View) {
+        var current: View? = from
+        while (current != null) {
+            val streamBtn = current.findViewById<View?>(R.id.btn_detail_trailer_stream_now)
+            val grid = current.findViewById<View?>(R.id.hgv_detail_trailers)
+            if (streamBtn != null && grid != null) {
+                val binding = ContentDetailTrailerTvBinding.bind(current)
+                DetailTrailerTvController.onTrailerActivated(binding)
+                return
+            }
+            current = current.parent as? View
+        }
     }
 }

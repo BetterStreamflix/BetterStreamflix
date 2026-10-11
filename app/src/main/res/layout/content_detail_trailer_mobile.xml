@@ -42,6 +42,26 @@
             android:indeterminateTint="@color/cinema_text"
             android:visibility="gone" />
 
+        <!-- Post-trailer CTA: big Stream now after YT ENDED. -->
+        <TextView
+            android:id="@+id/btn_detail_trailer_stream_now"
+            android:layout_width="wrap_content"
+            android:layout_height="56dp"
+            android:layout_gravity="center"
+            android:background="@drawable/bg_featured_cta_primary"
+            android:elevation="6dp"
+            android:fontFamily="@font/outfit"
+            android:gravity="center"
+            android:minWidth="220dp"
+            android:paddingStart="28dp"
+            android:paddingEnd="28dp"
+            android:text="@string/trailer_stream_now"
+            android:textColor="@color/cinema_cta_ink"
+            android:textSize="17sp"
+            android:textStyle="bold"
+            android:visibility="gone"
+            tools:visibility="visible" />
+
         <LinearLayout
             android:id="@+id/ll_detail_trailer_error"
             android:layout_width="match_parent"

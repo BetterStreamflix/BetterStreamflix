@@ -26,6 +26,8 @@ import com.dskja.betterstreamflix.fragments.movie.MovieTvFragmentDirections
 import com.dskja.betterstreamflix.models.Video
 import com.dskja.betterstreamflix.ui.DetailTab
 import com.dskja.betterstreamflix.ui.FeaturedSwiperChrome
+import com.dskja.betterstreamflix.ui.DetailTrailerPlayHooks
+import com.dskja.betterstreamflix.ui.TrailerPlayPipeline
 import com.dskja.betterstreamflix.ui.TrailerPlaybackController
 import com.dskja.betterstreamflix.utils.ArtworkRepair
 import com.dskja.betterstreamflix.utils.ExpMotion
@@ -306,10 +308,27 @@ internal fun MovieViewHolder.bindMovieTvDetail(binding: ContentMovieTvBinding) {
             setOnClickListener {
                 ExpMotion.hapticTap(it)
                 if (!trailerUrl.isNullOrBlank()) {
+                    val session = TrailerPlayPipeline.Session(
+                        target = DetailTrailerPlayHooks.movieSession(
+                            movie = movie,
+                            host = binding.root,
+                            leanback = true,
+                        ).target,
+                        onStreamNow = {
+                            checkProviderAndRun {
+                                DetailTrailerPlayHooks.movieSession(
+                                    movie = movie,
+                                    host = binding.root,
+                                    leanback = true,
+                                ).onStreamNow?.invoke()
+                            }
+                        },
+                    )
                     val fragment = context.toActivity()?.getCurrentFragment() as? Fragment
                     if (fragment != null) {
-                        TrailerPlaybackController.play(fragment, trailerUrl)
+                        TrailerPlaybackController.play(fragment, trailerUrl, session)
                     } else {
+                        TrailerPlayPipeline.beginSession(session)
                         handleTrailerClick(trailerUrl, "MovieTv")
                     }
                 }

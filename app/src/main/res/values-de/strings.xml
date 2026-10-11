@@ -62,6 +62,7 @@
     <string name="detail_trailer_more_label">Weitere Trailer</string>
     <string name="detail_similar_empty">Noch keine ähnlichen Titel gefunden</string>
     <string name="detail_trailer_retry">Erneut versuchen</string>
+    <string name="trailer_stream_now">Jetzt streamen</string>
     <string name="detail_trailer_mute">Trailer stummschalten</string>
     <string name="detail_trailer_unmute">Trailer Ton an</string>
     <string name="detail_trailer_fullscreen">Vollbild</string>

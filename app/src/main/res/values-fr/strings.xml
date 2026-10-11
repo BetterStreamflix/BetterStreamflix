@@ -109,6 +109,7 @@
     <string name="movie_runtime_hours_minutes">%d h %d min</string>
     <string name="movie_runtime_minutes">%d min</string>
     <string name="movie_watch_now">Regarder maintenant</string>
+    <string name="trailer_stream_now">Diffuser maintenant</string>
     <string name="movie_trailer">Bande-annonce</string>
     <string name="movie_cast">Casting</string>
     <string name="movie_directors">Réalisateur</string>

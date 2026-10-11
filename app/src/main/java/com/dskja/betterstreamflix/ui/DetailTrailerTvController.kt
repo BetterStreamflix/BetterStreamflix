@@ -13,6 +13,7 @@ import com.dskja.betterstreamflix.models.Trailer
 import com.dskja.betterstreamflix.models.TrailerCatalog
 import com.dskja.betterstreamflix.models.TrailerEntry
 import com.dskja.betterstreamflix.utils.ExpMotion
+import com.dskja.betterstreamflix.utils.ExpPressEffects.applyExpPress
 import com.dskja.betterstreamflix.utils.ExperimentalMobileDesign
 import com.dskja.betterstreamflix.utils.TmdbUtils
 import kotlinx.coroutines.Dispatchers
@@ -22,7 +23,8 @@ import kotlinx.coroutines.withContext
 
 /**
  * Leanback detail trailer row: hide-until-ready, stable adapter, fixed row height,
- * Cinema Ink header polish, empty state. Play/focus/SmartTube policy lives in
+ * Cinema Ink header polish, empty state, Trailer→Play “Jetzt streamen” CTA.
+ * Play/focus/SmartTube policy lives in
  * [TrailerPlaybackController] + [com.dskja.betterstreamflix.adapters.viewholders.TrailerViewHolder].
  */
 object DetailTrailerTvController {
@@ -40,9 +42,12 @@ object DetailTrailerTvController {
         year: Int?,
         imdbId: String?,
         onTrailerSeeded: ((String) -> Unit)? = null,
+        pipelineSession: TrailerPlayPipeline.Session? = null,
     ) {
         binding.root.tag = "detail_section_trailer"
         polishHeader(binding)
+        TrailerPlayPipeline.beginSession(pipelineSession)
+        wireStreamNow(binding, pipelineSession)
 
         val density = binding.root.resources.displayMetrics.density
         val rowHeightPx = (ROW_HEIGHT_DP * density).toInt()
@@ -55,9 +60,11 @@ object DetailTrailerTvController {
                     binding.root.visibility = View.VISIBLE
                     binding.hgvDetailTrailers.visibility = View.GONE
                     emptyView?.visibility = View.VISIBLE
+                    binding.btnDetailTrailerStreamNow.visibility = View.GONE
                 } else {
                     binding.root.visibility = View.GONE
                     emptyView?.visibility = View.GONE
+                    binding.btnDetailTrailerStreamNow.visibility = View.GONE
                 }
                 return
             }
@@ -84,6 +91,13 @@ object DetailTrailerTvController {
                     },
                 )
             }
+            // Leanback has no in-process ENDED — show Stream CTA once trailers are ready,
+            // and promote focus after a trailer tile is activated (see TrailerViewHolder).
+            if (pipelineSession?.onStreamNow != null) {
+                binding.btnDetailTrailerStreamNow.visibility = View.VISIBLE
+            } else {
+                binding.btnDetailTrailerStreamNow.visibility = View.GONE
+            }
             if (ExperimentalMobileDesign.enabled()) {
                 ExpMotion.staggerFirstFill(binding.hgvDetailTrailers)
             }
@@ -102,6 +116,7 @@ object DetailTrailerTvController {
         val rowsReady = (binding.hgvDetailTrailers.adapter?.itemCount ?: 0) > 0 ||
             emptyView?.visibility == View.VISIBLE
         if (previousKey == lookupKey && (existingJob?.isActive == true || rowsReady)) {
+            wireStreamNow(binding, pipelineSession)
             return
         }
         binding.root.setTag(R.id.detail_trailer_lookup_key_tag, lookupKey)
@@ -115,6 +130,7 @@ object DetailTrailerTvController {
         if (seed.isNotEmpty()) bindRows(seed, lookupFinished = false) else {
             binding.root.visibility = View.GONE
             emptyView?.visibility = View.GONE
+            binding.btnDetailTrailerStreamNow.visibility = View.GONE
         }
 
         val owner = binding.root.findViewTreeLifecycleOwner() ?: return
@@ -135,6 +151,35 @@ object DetailTrailerTvController {
             bindRows(trailers, lookupFinished = true)
         }
         binding.root.setTag(R.id.detail_trailer_player_tag, job)
+    }
+
+    /** Call after a Leanback trailer tile launches an external player. */
+    fun onTrailerActivated(binding: ContentDetailTrailerTvBinding) {
+        TrailerPlayPipeline.activeSession?.target?.let { TrailerPlayPipeline.warm(it) }
+        if (TrailerPlayPipeline.activeSession?.onStreamNow == null) return
+        val btn = binding.btnDetailTrailerStreamNow
+        btn.visibility = View.VISIBLE
+        btn.post {
+            if (btn.isShown) btn.requestFocus()
+        }
+        if (ExperimentalMobileDesign.enabled()) {
+            ExpMotion.popIn(btn)
+        }
+    }
+
+    private fun wireStreamNow(
+        binding: ContentDetailTrailerTvBinding,
+        session: TrailerPlayPipeline.Session?,
+    ) {
+        val btn = binding.btnDetailTrailerStreamNow
+        btn.applyExpPress()
+        btn.setOnClickListener {
+            ExpMotion.hapticTap(it)
+            session?.onStreamNow?.invoke()
+                ?: TrailerPlayPipeline.activeSession?.onStreamNow?.invoke()
+        }
+        btn.isEnabled = session?.onStreamNow != null ||
+            TrailerPlayPipeline.activeSession?.onStreamNow != null
     }
 
     private fun polishHeader(binding: ContentDetailTrailerTvBinding) {

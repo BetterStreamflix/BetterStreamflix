@@ -194,6 +194,7 @@
     <string name="detail_trailer_unmute">Unmute trailer</string>
     <string name="detail_trailer_fullscreen">Fullscreen</string>
     <string name="detail_trailer_official_badge">Official</string>
+    <string name="trailer_stream_now">Stream now</string>
     <string name="detail_action_list">My List</string>
     <string name="detail_action_trailer">Trailer</string>
     <string name="detail_action_download">Download</string>

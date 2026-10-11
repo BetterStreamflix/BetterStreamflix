@@ -65,7 +65,9 @@ import com.dskja.betterstreamflix.fragments.tv_show.TvShowTvFragmentDirections
 import com.dskja.betterstreamflix.ui.DetailRating
 import com.dskja.betterstreamflix.ui.DetailTabsController
 import com.dskja.betterstreamflix.ui.DetailTrailerMobilePlayer
+import com.dskja.betterstreamflix.ui.DetailTrailerPlayHooks
 import com.dskja.betterstreamflix.ui.DetailTrailerTvController
+import com.dskja.betterstreamflix.ui.TrailerPlayPipeline
 import com.dskja.betterstreamflix.ui.TrailerPlaybackController
 import com.dskja.betterstreamflix.ui.DetailTab
 import com.dskja.betterstreamflix.ui.TmdbLogoGlide
@@ -1139,6 +1141,30 @@ class TvShowViewHolder(
             ?: DetailTrailerMobilePlayer(binding).also {
                 binding.root.setTag(R.id.detail_trailer_player_tag, it)
             }
+        val seasonNumber = resolveEpisodeSeason(tvShow.episodeToWatch)?.number
+        val base = DetailTrailerPlayHooks.tvShowSession(
+            tvShow = tvShow,
+            host = binding.root,
+            onNoEpisode = {
+                (bindingAdapter as? AppAdapter)?.onDetailTabSelectedListener?.invoke(
+                    DetailTab.EPISODES,
+                )
+            },
+            seasonNumber = seasonNumber,
+            isIptv = isIptvProvider(),
+        )
+        val session = TrailerPlayPipeline.Session(
+            target = base.target,
+            onStreamNow = {
+                checkProviderAndRun {
+                    if (isIptvProvider()) {
+                        handleDirectPlay(binding.root.findNavController())
+                    } else {
+                        base.onStreamNow?.invoke()
+                    }
+                }
+            },
+        )
         player.bind(
             seedUrl = tvShow.trailer,
             title = tvShow.title,
@@ -1148,10 +1174,35 @@ class TvShowViewHolder(
             year = tvShow.released?.format("yyyy")?.toIntOrNull(),
             imdbId = tvShow.imdbId,
             sectionTag = DETAIL_SECTION_TRAILER,
+            pipelineSession = session,
         )
     }
 
     private fun displayTrailerTv(binding: ContentDetailTrailerTvBinding) {
+        val seasonNumber = resolveEpisodeSeason(tvShow.episodeToWatch)?.number
+        val base = DetailTrailerPlayHooks.tvShowSession(
+            tvShow = tvShow,
+            host = binding.root,
+            onNoEpisode = {
+                (bindingAdapter as? AppAdapter)?.onDetailTabSelectedListener?.invoke(
+                    DetailTab.EPISODES,
+                )
+            },
+            seasonNumber = seasonNumber,
+            isIptv = isIptvProvider(),
+        )
+        val session = TrailerPlayPipeline.Session(
+            target = base.target,
+            onStreamNow = {
+                checkProviderAndRun {
+                    if (isIptvProvider()) {
+                        handleDirectPlay(binding.root.findNavController())
+                    } else {
+                        base.onStreamNow?.invoke()
+                    }
+                }
+            },
+        )
         DetailTrailerTvController.bind(
             binding = binding,
             seedUrl = tvShow.trailer,
@@ -1162,6 +1213,7 @@ class TvShowViewHolder(
             year = tvShow.released?.format("yyyy")?.toIntOrNull(),
             imdbId = tvShow.imdbId,
             onTrailerSeeded = { url -> tvShow.trailer = url },
+            pipelineSession = session,
         )
     }
 
