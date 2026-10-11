@@ -23,6 +23,29 @@
         app:show_timeout="2000"
         app:surface_type="texture_view" />
 
+    <TextView
+        android:id="@+id/tv_episode_note_chip"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="16dp"
+        android:layout_marginTop="16dp"
+        android:background="@drawable/bg_skip_intro_button"
+        android:ellipsize="end"
+        android:fontFamily="@font/manrope"
+        android:maxLines="1"
+        android:maxWidth="280dp"
+        android:paddingStart="12dp"
+        android:paddingTop="8dp"
+        android:paddingEnd="12dp"
+        android:paddingBottom="8dp"
+        android:textColor="@color/cinema_text"
+        android:textSize="13sp"
+        android:visibility="gone"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        tools:text="Where was I? · kitchen argument"
+        tools:visibility="visible" />
+
     <com.dskja.betterstreamflix.fragments.player.settings.PlayerSettingsMobileView
         android:id="@+id/settings"
         android:layout_width="0dp"

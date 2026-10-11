@@ -73,6 +73,7 @@ class ShowOptionsMobileDialog(
                     R.id.btn_option_show_favorite,
                     R.id.btn_option_show_watched,
                     R.id.btn_option_show_download,
+                    R.id.btn_option_episode_note,
                     R.id.btn_option_episode_mark_all_previous_watched,
                     R.id.btn_option_program_clear,
                     R.id.btn_option_recently_watched_clear,
@@ -111,6 +112,7 @@ class ShowOptionsMobileDialog(
                 R.id.btn_option_show_favorite,
                 R.id.btn_option_show_watched,
                 R.id.btn_option_show_download,
+                R.id.btn_option_episode_note,
                 R.id.btn_option_episode_mark_all_previous_watched,
                 R.id.btn_option_program_clear,
                 R.id.btn_option_recently_watched_clear,
@@ -248,6 +250,16 @@ class ShowOptionsMobileDialog(
                     dismiss()
                 }
                 visibility = View.VISIBLE
+            }
+        }
+
+        binding.btnOptionEpisodeNote.apply {
+            text = EpisodeNotesUi.optionLabel(context, episode.id)
+            visibility = View.VISIBLE
+            setOnClickListener {
+                ExpMotion.hapticTap(it)
+                EpisodeNotesUi.showEditor(context, episode)
+                dismiss()
             }
         }
 
@@ -482,6 +494,7 @@ class ShowOptionsMobileDialog(
             }
         }
 
+        binding.btnOptionEpisodeNote.visibility = View.GONE
         binding.btnOptionEpisodeMarkAllPreviousWatched.visibility = View.GONE
 
         binding.btnOptionProgramClear.apply {
@@ -591,6 +604,7 @@ class ShowOptionsMobileDialog(
 
         binding.btnOptionShowWatched.visibility = View.GONE
         binding.btnOptionShowDownload.visibility = View.GONE
+        binding.btnOptionEpisodeNote.visibility = View.GONE
         binding.btnOptionEpisodeMarkAllPreviousWatched.visibility = View.GONE
         binding.btnOptionProgramClear.visibility = View.GONE
 

@@ -102,6 +102,16 @@
     <string name="option_clear_recently_watched">Rimuovi da Visti di recente</string>
     <string name="option_clear_all_recently_watched">Svuota Visti di recente</string>
     <string name="option_cancel">Annulla</string>
+    <string name="option_episode_note_add">Dove ero? — aggiungi nota</string>
+    <string name="option_episode_note_edit">Dove ero? — modifica nota</string>
+    <string name="episode_note_title">Dove ero?</string>
+    <string name="episode_note_hint">Breve promemoria senza spoiler — luogo o momento, non il colpo di scena.</string>
+    <string name="episode_note_placeholder">es. litigio in cucina, prima della barca</string>
+    <string name="episode_note_save">Salva</string>
+    <string name="episode_note_clear">Cancella</string>
+    <string name="episode_note_counter">%1$d / %2$d</string>
+    <string name="episode_note_cd">Nota episodio</string>
+    <string name="player_episode_note_label">Dove ero? · %1$s</string>
 
     <string name="episode_item_info">S%d E%d • %s</string>
     <string name="episode_item_info_episode_only">E%d • %s</string>

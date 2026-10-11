@@ -445,6 +445,9 @@ object ProfileManager {
                 )
             }
             runCatching {
+                com.dskja.betterstreamflix.utils.EpisodeNotesStore.wipeProfile(appContext, profileId)
+            }
+            runCatching {
                 val folder = com.dskja.betterstreamflix.download.DownloadStorage
                     .profileDownloadsDir(appContext, profileId)
                 com.dskja.betterstreamflix.download.DownloadStorage.deleteQuietly(folder)

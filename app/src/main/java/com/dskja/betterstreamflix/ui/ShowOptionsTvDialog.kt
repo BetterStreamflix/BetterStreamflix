@@ -94,6 +94,7 @@ class ShowOptionsTvDialog(
         binding.btnOptionShowFavorite,
         binding.btnOptionShowWatched,
         binding.btnOptionShowDownload,
+        binding.btnOptionEpisodeNote,
         binding.btnOptionEpisodeMarkAllPreviousWatched,
         binding.btnOptionProgramClear,
         binding.btnOptionRecentlyWatchedClear,
@@ -236,6 +237,15 @@ class ShowOptionsTvDialog(
                     dismiss()
                 }
                 visibility = View.VISIBLE
+            }
+        }
+
+        binding.btnOptionEpisodeNote.apply {
+            text = EpisodeNotesUi.optionLabel(context, episode.id)
+            visibility = View.VISIBLE
+            setOnClickListener {
+                EpisodeNotesUi.showEditor(context, episode)
+                dismiss()
             }
         }
 
@@ -433,6 +443,7 @@ class ShowOptionsTvDialog(
             }
         }
 
+        binding.btnOptionEpisodeNote.visibility = View.GONE
         binding.btnOptionEpisodeMarkAllPreviousWatched.visibility = View.GONE
 
         binding.btnOptionProgramClear.apply {
@@ -519,6 +530,7 @@ class ShowOptionsTvDialog(
 
         binding.btnOptionShowWatched.visibility = View.GONE
         binding.btnOptionShowDownload.visibility = View.GONE
+        binding.btnOptionEpisodeNote.visibility = View.GONE
         binding.btnOptionEpisodeMarkAllPreviousWatched.visibility = View.GONE
 
         binding.btnOptionProgramClear.visibility = View.GONE

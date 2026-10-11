@@ -1622,6 +1622,16 @@
     <string name="player_offline_prev_message">This episode is not available offline. Play online, or cancel to stay on this episode.</string>
     <string name="download_error_unsupported">Format not supported for download</string>
     <string name="option_show_download">Download</string>
+    <string name="option_episode_note_add">Where was I? — add note</string>
+    <string name="option_episode_note_edit">Where was I? — edit note</string>
+    <string name="episode_note_title">Where was I?</string>
+    <string name="episode_note_hint">Short spoiler-free reminder — place or moment, not the plot twist.</string>
+    <string name="episode_note_placeholder">e.g. kitchen argument, before the boat</string>
+    <string name="episode_note_save">Save</string>
+    <string name="episode_note_clear">Clear</string>
+    <string name="episode_note_counter">%1$d / %2$d</string>
+    <string name="episode_note_cd">Episode note</string>
+    <string name="player_episode_note_label">Where was I? · %1$s</string>
     <string name="season_download">Download season</string>
     <string name="season_download_confirm">Download %1$d episodes?</string>
     <string name="player_settings_download">Download</string>

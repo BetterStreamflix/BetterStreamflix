@@ -1415,6 +1415,16 @@
     <string name="player_offline_prev_message">Diese Folge ist nicht offline verfügbar. Online abspielen oder abbrechen, um bei dieser Folge zu bleiben.</string>
     <string name="download_error_unsupported">Format nicht unterstützbar</string>
     <string name="option_show_download">Herunterladen</string>
+    <string name="option_episode_note_add">Wo war ich? — Notiz hinzufügen</string>
+    <string name="option_episode_note_edit">Wo war ich? — Notiz bearbeiten</string>
+    <string name="episode_note_title">Wo war ich?</string>
+    <string name="episode_note_hint">Kurze spoilerfreie Erinnerung — Ort oder Moment, kein Plot-Twist.</string>
+    <string name="episode_note_placeholder">z. B. Küchenstreit, vor dem Boot</string>
+    <string name="episode_note_save">Speichern</string>
+    <string name="episode_note_clear">Löschen</string>
+    <string name="episode_note_counter">%1$d / %2$d</string>
+    <string name="episode_note_cd">Folgennotiz</string>
+    <string name="player_episode_note_label">Wo war ich? · %1$s</string>
     <string name="season_download">Staffel herunterladen</string>
     <string name="season_download_confirm">%1$d Episoden herunterladen?</string>
     <string name="player_settings_download">Download</string>

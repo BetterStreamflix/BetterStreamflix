@@ -35,11 +35,13 @@ import com.dskja.betterstreamflix.fragments.tv_show.TvShowTvFragmentDirections
 import com.dskja.betterstreamflix.models.Episode
 import com.dskja.betterstreamflix.models.Video
 import com.dskja.betterstreamflix.providers.Provider
+import com.dskja.betterstreamflix.ui.EpisodeNotesUi
 import com.dskja.betterstreamflix.ui.ShowOptionsMobileDialog
 import com.dskja.betterstreamflix.ui.ShowOptionsTvDialog
 import com.dskja.betterstreamflix.utils.ArtworkUrls
 import com.dskja.betterstreamflix.utils.EpisodeDisplayLabels
 import com.dskja.betterstreamflix.utils.EpisodeManager
+import com.dskja.betterstreamflix.utils.EpisodeNotesStore
 import com.dskja.betterstreamflix.utils.UserPreferences
 import com.dskja.betterstreamflix.utils.format
 import com.dskja.betterstreamflix.utils.getCurrentFragment
@@ -301,6 +303,8 @@ class EpisodeViewHolder(
             visibility = if (ageBadge.isNullOrEmpty()) View.GONE else View.VISIBLE
         }
 
+        bindEpisodeNotePreview(binding.tvEpisodeNote)
+
         binding.tvEpisodeOverview.apply {
             text = episode.overview.orEmpty()
             visibility = if (episode.overview.isNullOrBlank()) View.GONE else View.VISIBLE
@@ -311,6 +315,20 @@ class EpisodeViewHolder(
                 ExpMotion.hapticTap(it)
                 expanded = !expanded
                 maxLines = if (expanded) Integer.MAX_VALUE else 2
+            }
+        }
+
+        binding.btnEpisodeNote.apply {
+            visibility = View.VISIBLE
+            contentDescription = EpisodeNotesUi.optionLabel(context, episode.id)
+            alpha = if (EpisodeNotesStore.has(context, episode.id)) 1f else 0.72f
+            setOnClickListener {
+                ExpMotion.hapticTap(it)
+                EpisodeNotesUi.showEditor(context, episode) {
+                    bindEpisodeNotePreview(binding.tvEpisodeNote)
+                    contentDescription = EpisodeNotesUi.optionLabel(context, episode.id)
+                    alpha = if (EpisodeNotesStore.has(context, episode.id)) 1f else 0.72f
+                }
             }
         }
 
@@ -331,6 +349,27 @@ class EpisodeViewHolder(
                     }
                 }
                 bindEpisodeDownloadButtonState(this)
+            }
+        }
+    }
+
+    private fun bindEpisodeNotePreview(noteView: android.widget.TextView) {
+        val note = EpisodeNotesStore.get(context, episode.id)
+        if (note.isNullOrBlank()) {
+            noteView.visibility = View.GONE
+            noteView.text = ""
+            noteView.setOnClickListener(null)
+            return
+        }
+        noteView.visibility = View.VISIBLE
+        noteView.text = context.getString(
+            R.string.player_episode_note_label,
+            EpisodeNotesStore.preview(note),
+        )
+        noteView.setOnClickListener {
+            ExpMotion.hapticTap(it)
+            EpisodeNotesUi.showEditor(context, episode) {
+                bindEpisodeNotePreview(noteView)
             }
         }
     }
@@ -538,6 +577,7 @@ class EpisodeViewHolder(
             val show = meta.isNotBlank()
             visibility = if (show) View.VISIBLE else View.GONE
         }
+        bindEpisodeNotePreview(binding.tvEpisodeNote)
         binding.tvEpisodeOverview.apply {
             val overview = episode.overview?.trim().orEmpty()
             text = overview
