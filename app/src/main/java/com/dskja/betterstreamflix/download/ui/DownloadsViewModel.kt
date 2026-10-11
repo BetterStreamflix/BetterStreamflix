@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import com.dskja.betterstreamflix.download.DownloadConnectivityMonitor
 import com.dskja.betterstreamflix.download.DownloadController
 import com.dskja.betterstreamflix.download.DownloadEventBridge
+import com.dskja.betterstreamflix.download.DownloadHealth
 import com.dskja.betterstreamflix.download.DownloadItemEntity
 import com.dskja.betterstreamflix.download.DownloadItemState
 import com.dskja.betterstreamflix.download.DownloadKind
@@ -97,6 +98,20 @@ class DownloadsViewModel(
     ) { _, _ ->
         DownloadConnectivityMonitor.shouldHoldForWifiOnly(appContext)
     }.stateIn(viewModelScope, SharingStarted.Eagerly, false)
+
+    /** Unplayable / cache-missing count for the Downloads health banner. */
+    @OptIn(ExperimentalCoroutinesApi::class)
+    val healthSummary: StateFlow<DownloadHealth.Summary> = profileTick
+        .flatMapLatest { repo().observeAll() }
+        .mapLatest { items ->
+            DownloadHealth.summarize(applyParentalFilter(items))
+        }
+        .flowOn(Dispatchers.Default)
+        .stateIn(
+            viewModelScope,
+            SharingStarted.WhileSubscribed(5_000),
+            DownloadHealth.Summary(0, 0, 0, emptyList()),
+        )
 
     @OptIn(ExperimentalCoroutinesApi::class)
     val rows: StateFlow<List<DownloadRowUiModel>> = profileTick
@@ -265,6 +280,11 @@ class DownloadsViewModel(
         DownloadController.retryAllFailed(appContext)
         refreshStorage()
     }
+
+    fun redownloadAllUnhealthy() = viewModelScope.launch {
+        DownloadController.redownloadAllUnhealthy(appContext)
+        refreshStorage()
+    }
     fun pausePack(packId: String) = viewModelScope.launch { repo().pausePack(packId) }
     fun resumePack(packId: String) = viewModelScope.launch { repo().resumePack(packId) }
     fun removePack(packId: String) = viewModelScope.launch {
@@ -419,7 +439,10 @@ class DownloadsViewModel(
             if (redownload.isNotEmpty()) {
                 add(
                     DownloadRowUiModel.Header(
-                        appContext.getString(com.dskja.betterstreamflix.R.string.downloads_section_redownload),
+                        appContext.getString(
+                            com.dskja.betterstreamflix.R.string.downloads_section_redownload_count,
+                            redownload.size,
+                        ),
                     ),
                 )
                 addGroupedBySeries(redownload, collapsed, seriesTotals)

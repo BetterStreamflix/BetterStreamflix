@@ -1806,6 +1806,12 @@
     <string name="downloads_section_seasons">Seasons</string>
     <string name="downloads_section_completed">Completed</string>
     <string name="downloads_section_redownload">Re-download needed</string>
+    <string name="downloads_section_redownload_count">Re-download needed · %1$d</string>
+    <string name="downloads_health_unplayable">%1$d episodes unplayable / cache missing</string>
+    <string name="downloads_health_unplayable_one">1 episode unplayable / cache missing</string>
+    <string name="downloads_health_unplayable_mixed">%1$d downloads unplayable / cache missing</string>
+    <string name="downloads_health_redownload_all">Re-download</string>
+    <string name="downloads_health_redownload_all_a11y">Re-download all unplayable offline items</string>
     <string name="downloads_section_failed">Failed</string>
     <string name="downloads_storage_chip">%1$s used · %2$s free</string>
     <string name="downloads_low_space">Low storage. Free space or delete older downloads.</string>

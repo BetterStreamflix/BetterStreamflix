@@ -1605,6 +1605,12 @@
     <string name="downloads_section_seasons">Staffeln</string>
     <string name="downloads_section_completed">Fertig</string>
     <string name="downloads_section_redownload">Erneuter Download nötig</string>
+    <string name="downloads_section_redownload_count">Erneuter Download nötig · %1$d</string>
+    <string name="downloads_health_unplayable">%1$d Folgen unspielbar / Cache fehlt</string>
+    <string name="downloads_health_unplayable_one">1 Folge unspielbar / Cache fehlt</string>
+    <string name="downloads_health_unplayable_mixed">%1$d Downloads unspielbar / Cache fehlt</string>
+    <string name="downloads_health_redownload_all">Erneut laden</string>
+    <string name="downloads_health_redownload_all_a11y">Alle unspielbaren Offline-Inhalte erneut laden</string>
     <string name="downloads_section_failed">Fehler</string>
     <string name="downloads_storage_chip">%1$s belegt · %2$s frei</string>
     <string name="downloads_low_space">Wenig Speicher. Lösche ältere Downloads.</string>

@@ -61,16 +61,21 @@ class DownloadSeriesFoldersTest {
     }
 
     @Test
-    fun needsRedownload_onlyStorageRelocated() {
+    fun needsRedownload_storageRelocatedAndFileMissing() {
         val relocated = sampleEpisode(
             state = DownloadItemState.FAILED.name,
             errorCode = DownloadErrorCode.STORAGE_RELOCATED.name,
+        )
+        val missing = sampleEpisode(
+            state = DownloadItemState.FAILED.name,
+            errorCode = DownloadErrorCode.FILE_MISSING.name,
         )
         val network = sampleEpisode(
             state = DownloadItemState.FAILED.name,
             errorCode = DownloadErrorCode.NETWORK.name,
         )
         assertTrue(DownloadSeriesFolders.needsRedownload(relocated))
+        assertTrue(DownloadSeriesFolders.needsRedownload(missing))
         assertFalse(DownloadSeriesFolders.needsRedownload(network))
     }
 
