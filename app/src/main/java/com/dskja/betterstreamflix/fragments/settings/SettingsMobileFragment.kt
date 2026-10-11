@@ -1432,6 +1432,11 @@ class SettingsMobileFragment : PreferenceFragmentCompat() {
             }
         }
 
+        findPreference<Preference>("HOME_REMIX_OPEN")?.setOnPreferenceClickListener {
+            com.dskja.betterstreamflix.home.HomeRemixUi.show(this)
+            true
+        }
+
         findPreference<Preference>("CLEAR_RECENTLY_WATCHED")?.setOnPreferenceClickListener {
             val glass = if (ExperimentalMobileDesign.enabled()) {
                 ExpDialogChrome.buildGlassMessage(

@@ -83,6 +83,9 @@ class Category(
         const val SMART_CHILL_EVENING = "Chill Evening"
         const val SMART_WITH_KIDS = "With Kids"
         const val SMART_DE_AUDIO = "German Audio"
+        /** Home Live strip (favorites / pinned channels) — Remix Home block. */
+        const val HOME_LIVE = "Live"
+        const val HOME_LIVE_ID = "home_live"
 
         /** True for the Featured constant or a blank legacy name. */
         fun isFeaturedName(name: String?): Boolean {

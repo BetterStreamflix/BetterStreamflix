@@ -15,6 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Profile themes + download folders: theme preference is per-profile; Kids defaults to **Cinema-Ink Kids**, adults to **Cinema-Ink Dark**; offline files land in visible `profiles/<Name>` folders (Settings path + Downloads chip show the folder)
 
 ### Added
+- Remix Home: drag (or arrow) reorder of Continue / Live / Collections shelf blocks — profile-scoped, Mobile + TV Home button + Settings entry; Featured stays first
 - Shelf Weather: Home/search category shelves dim and show a source-health pill when ProviderHealth quarantine/parked or ProviderSmoke circuit/flaky marks the stamped provider bad (Mobile + TV)
 - Provider Passport: per-provider Login/Captcha status (“Sitzung frisch” / “Captcha fällig” / Login due) for SerienStream, AniWorld, and GuardaFlix — Settings screen + hub card (Mobile + TV), picker badges, one-tap manage/solve CTAs
 - Crossfade Posts (Trailer→Stream): Stream Now keeps a full-bleed cover up and short-crossfades into the first frame (Mobile + TV) while Trailer→Play waits briefly for a hot server — no black flash between trailer and playback

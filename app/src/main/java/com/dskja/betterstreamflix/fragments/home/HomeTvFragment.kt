@@ -337,6 +337,13 @@ class HomeTvFragment : Fragment() {
             // Do not requestFocus while the adapter is empty — Leanback then loses the
             // focus target and DPAD stays trapped on the side nav until Movies/etc.
         }
+        binding.root.findViewById<View>(R.id.btn_home_remix)?.setOnClickListener {
+            ExpMotion.hapticTap(it)
+            com.dskja.betterstreamflix.home.HomeRemixUi.show(this) {
+                homeBindSignature = null
+                viewModel.getHome()
+            }
+        }
     }
 
     /**
@@ -387,7 +394,8 @@ class HomeTvFragment : Fragment() {
         val signature = HomeCatalogPipeline.homeBindSignature(categories) +
             "\n" + (UserPreferences.currentProvider?.name ?: "") +
             "\n" + com.dskja.betterstreamflix.support.SupportPromptPolicy.shouldShowHomeCard() +
-            "\n" + UserPreferences.supportEpisodesWatchedCount
+            "\n" + UserPreferences.supportEpisodesWatchedCount +
+            "\n" + UserPreferences.homeShelfBlockOrder
         if (signature == homeBindSignature && appAdapter.items.isNotEmpty()) return true
         homeBindSignature = signature
         return false
@@ -466,6 +474,12 @@ class HomeTvFragment : Fragment() {
         categories
             .find { it.name == Category.SMART_DE_AUDIO }
             ?.also { it.name = getString(R.string.home_smart_de_audio) }
+
+        categories
+            .find {
+                it.name == Category.HOME_LIVE || it.identityKey == Category.HOME_LIVE_ID
+            }
+            ?.also { it.name = getString(R.string.home_live_shelf) }
 
         categories
             .find { it.name == Category.FAVORITE_MOVIES }

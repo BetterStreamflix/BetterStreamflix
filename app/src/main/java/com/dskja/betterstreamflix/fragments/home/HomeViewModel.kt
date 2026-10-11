@@ -27,7 +27,9 @@ import com.dskja.betterstreamflix.utils.UserDataCache.toCached
 import com.dskja.betterstreamflix.utils.UserDataCache.toEpisode
 import com.dskja.betterstreamflix.utils.UserDataCache.toMovie
 import com.dskja.betterstreamflix.utils.UserDataCache.toTvShow
+import com.dskja.betterstreamflix.home.HomeRemix
 import com.dskja.betterstreamflix.smartcollections.SmartCollectionsBuilder
+import com.dskja.betterstreamflix.utils.LiveHubCatalog
 import com.dskja.betterstreamflix.utils.UserPreferences
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
@@ -339,7 +341,7 @@ class HomeViewModel(
                     continueWatching = mergedCw,
                 )
 
-                val libraryShelves = listOfNotNull(
+                val continueShelves = listOfNotNull(
                     Category(
                         name = Category.CONTINUE_WATCHING,
                         list = mergedCw,
@@ -359,11 +361,17 @@ class HomeViewModel(
                         UserPreferences.showRecentlyWatched && rwDeduped.isNotEmpty()
                     },
                     recentlyAdded,
-                ) + smartShelves
+                )
+                val liveShelf = buildHomeLiveShelf(history.favoriteTvShows)
+                val collectionShelves = smartShelves
+                val remixedLibrary = HomeRemix.apply(
+                    categories = continueShelves + listOfNotNull(liveShelf) + collectionShelves,
+                    order = HomeRemix.parseOrder(UserPreferences.homeShelfBlockOrder),
+                )
 
                 val categories = ParentalControlUtils.filterCategories(
                     listOfNotNull(featuredCategory) +
-                        libraryShelves +
+                        remixedLibrary +
                         listOf(
                             Category(
                                 name = Category.FAVORITE_MOVIES,
@@ -445,6 +453,19 @@ class HomeViewModel(
         }
         is Movie -> "${item.providerName}:${item.id}"
         else -> null
+    }
+
+    /** Home Live strip from favorited IPTV / hub channels (Remix Home block). */
+    private fun buildHomeLiveShelf(favoriteTvShows: List<TvShow>): Category? {
+        if (LiveHubCatalog.isAgeGated()) return null
+        val live = favoriteTvShows
+            .filter { LiveHubCatalog.isLiveFavorite(it) }
+            .sortedByDescending { it.favoritedAtMillis ?: 0L }
+            .take(24)
+        if (live.isEmpty()) return null
+        return Category(name = Category.HOME_LIVE, list = live).also {
+            it.identityKey = Category.HOME_LIVE_ID
+        }
     }
 
     /** Drop Recently Watched tiles that are already on Continue / Next shelves. */

@@ -766,6 +766,11 @@ class SettingsTvFragment : LeanbackPreferenceFragmentCompat() {
             }
         }
 
+        findPreference<Preference>("HOME_REMIX_OPEN")?.setOnPreferenceClickListener {
+            com.dskja.betterstreamflix.home.HomeRemixUi.show(this)
+            true
+        }
+
         findPreference<Preference>("CLEAR_RECENTLY_WATCHED")?.setOnPreferenceClickListener {
             val message = getString(R.string.settings_clear_recently_watched_confirm_message)
             expAlertBuilder()
