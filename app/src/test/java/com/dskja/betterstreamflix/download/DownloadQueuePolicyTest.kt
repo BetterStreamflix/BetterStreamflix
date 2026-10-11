@@ -36,6 +36,36 @@ class DownloadQueuePolicyTest {
     }
 
     @Test
+    fun storagePauseAndResumeMirrorConnectivityRules() {
+        assertTrue(DownloadQueuePolicy.shouldPauseForStorage(DownloadItemState.DOWNLOADING))
+        assertFalse(DownloadQueuePolicy.shouldPauseForStorage(DownloadItemState.PAUSED))
+        assertTrue(
+            DownloadQueuePolicy.shouldResumeAfterStorage(
+                DownloadQueuePolicy.STOP_STORAGE,
+                errorCode = "",
+            ),
+        )
+        assertTrue(
+            DownloadQueuePolicy.shouldResumeAfterStorage(
+                stopReason = 0,
+                errorCode = DownloadErrorCode.LOW_STORAGE.name,
+            ),
+        )
+        assertFalse(
+            DownloadQueuePolicy.shouldResumeAfterStorage(
+                DownloadQueuePolicy.STOP_USER,
+                errorCode = "",
+            ),
+        )
+        assertFalse(
+            DownloadQueuePolicy.shouldResumeAfterStorage(
+                DownloadQueuePolicy.STOP_CONNECTIVITY,
+                errorCode = DownloadErrorCode.WIFI_REQUIRED.name,
+            ),
+        )
+    }
+
+    @Test
     fun staleStoppedEventDoesNotRewindQueuedResume() {
         assertTrue(
             DownloadQueuePolicy.isStaleDownloadEvent(

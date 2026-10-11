@@ -18,12 +18,13 @@ import com.dskja.betterstreamflix.download.DownloadController
 import com.dskja.betterstreamflix.download.DownloadItemState
 import com.dskja.betterstreamflix.download.DownloadQualityPreset
 import com.dskja.betterstreamflix.download.DownloadRepository
+import com.dskja.betterstreamflix.download.DownloadResumeScheduler
 import com.dskja.betterstreamflix.download.DownloadStats
 import com.dskja.betterstreamflix.download.DownloadStorage
 import com.dskja.betterstreamflix.download.DownloadStorageLocation
-import com.dskja.betterstreamflix.download.DownloadResumeScheduler
 import com.dskja.betterstreamflix.download.DownloadTreeAccess
 import com.dskja.betterstreamflix.download.ExternalDownloadHandoff
+import com.dskja.betterstreamflix.download.SmartDownloadsPolicy
 import com.dskja.betterstreamflix.download.StreamflixDownloadManager
 import com.dskja.betterstreamflix.platform.playerbackend.ExternalStreamHandoff
 import com.dskja.betterstreamflix.utils.DeviceCapabilities
@@ -344,6 +345,30 @@ object DownloadsSettingsController {
             }
         }
 
+        findPreference("DOWNLOAD_SMART_LOOKAHEAD")?.let { pref ->
+            val list = pref as? ListPreference ?: return@let
+            list.value = UserPreferences.downloadSmartLookahead.toString()
+            list.summaryProvider = ListPreference.SimpleSummaryProvider.getInstance()
+            list.setOnPreferenceChangeListener { _, newValue ->
+                val n = (newValue as String).toIntOrNull()
+                    ?: SmartDownloadsPolicy.DEFAULT_LOOKAHEAD
+                UserPreferences.downloadSmartLookahead = n
+                true
+            }
+        }
+
+        findPreference("DOWNLOAD_SMART_SERIES_QUOTA")?.let { pref ->
+            val list = pref as? ListPreference ?: return@let
+            list.value = UserPreferences.downloadSmartSeriesQuota.toString()
+            list.summaryProvider = ListPreference.SimpleSummaryProvider.getInstance()
+            list.setOnPreferenceChangeListener { _, newValue ->
+                val n = (newValue as String).toIntOrNull()
+                    ?: SmartDownloadsPolicy.DEFAULT_SERIES_QUOTA
+                UserPreferences.downloadSmartSeriesQuota = n
+                true
+            }
+        }
+
         findPreference("DOWNLOAD_AUTO_DELETE_WATCHED")?.let { pref ->
             val sw = pref as? SwitchPreference ?: return@let
             sw.isChecked = UserPreferences.downloadAutoDeleteWatched
@@ -523,6 +548,10 @@ object DownloadsSettingsController {
             UserPreferences.downloadWifiOnly
         (findPreference("DOWNLOAD_SMART_ENABLED") as? SwitchPreference)?.isChecked =
             UserPreferences.downloadSmartEnabled
+        (findPreference("DOWNLOAD_SMART_LOOKAHEAD") as? ListPreference)?.value =
+            UserPreferences.downloadSmartLookahead.toString()
+        (findPreference("DOWNLOAD_SMART_SERIES_QUOTA") as? ListPreference)?.value =
+            UserPreferences.downloadSmartSeriesQuota.toString()
         (findPreference("DOWNLOAD_AUTO_DELETE_WATCHED") as? SwitchPreference)?.isChecked =
             UserPreferences.downloadAutoDeleteWatched
         (findPreference("DOWNLOAD_NOTIFY_COMPLETE") as? SwitchPreference)?.isChecked =

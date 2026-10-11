@@ -344,9 +344,12 @@ class DownloadsAdapter(
         fun bindProgress(item: DownloadRowUiModel.Item) {
             val pct = item.entity.progressPct.coerceIn(0, 100)
             val wasFailed = progressLine.getTag(R.id.exp_enter_animated_tag) == "failed"
-            val wifiHeld = item.state == DownloadItemState.PAUSED &&
-                item.entity.errorCode == DownloadErrorCode.WIFI_REQUIRED.name
-            progress.isIndeterminate = !item.needsRedownload && !wifiHeld && (
+            val softHeld = item.state == DownloadItemState.PAUSED &&
+                (
+                    item.entity.errorCode == DownloadErrorCode.WIFI_REQUIRED.name ||
+                        item.entity.errorCode == DownloadErrorCode.LOW_STORAGE.name
+                    )
+            progress.isIndeterminate = !item.needsRedownload && !softHeld && (
                 item.state == DownloadItemState.PREPARING ||
                     (item.state.isActive && pct <= 0 && item.entity.bytesDownloaded <= 0L)
                 )

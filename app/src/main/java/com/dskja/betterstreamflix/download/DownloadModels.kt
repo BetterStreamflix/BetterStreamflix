@@ -44,6 +44,8 @@ enum class DownloadErrorCode {
     NETWORK,
     NOSPACE,
     WIFI_REQUIRED,
+    /** Soft hold while free space / soft-limit is exhausted. */
+    LOW_STORAGE,
     EXPIRED,
     /** Provider/CDN returned HTTP 404 — content removed or bad resolve URL. */
     NOT_FOUND,

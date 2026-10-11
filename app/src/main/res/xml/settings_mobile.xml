@@ -962,6 +962,22 @@
                 android:defaultValue="false"
                 app:iconSpaceReserved="false" />
 
+            <ListPreference
+                android:key="DOWNLOAD_SMART_LOOKAHEAD"
+                android:title="@string/settings_download_smart_lookahead"
+                android:entries="@array/download_smart_lookahead_entries"
+                android:entryValues="@array/download_smart_lookahead_values"
+                android:defaultValue="3"
+                app:iconSpaceReserved="false" />
+
+            <ListPreference
+                android:key="DOWNLOAD_SMART_SERIES_QUOTA"
+                android:title="@string/settings_download_smart_series_quota"
+                android:entries="@array/download_smart_series_quota_entries"
+                android:entryValues="@array/download_smart_series_quota_values"
+                android:defaultValue="3"
+                app:iconSpaceReserved="false" />
+
             <SwitchPreference
                 android:key="DOWNLOAD_AUTO_DELETE_WATCHED"
                 android:title="@string/settings_download_auto_delete_watched"

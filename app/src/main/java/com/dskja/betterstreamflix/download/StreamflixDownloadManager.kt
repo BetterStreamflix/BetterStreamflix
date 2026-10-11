@@ -51,9 +51,13 @@ object StreamflixDownloadManager {
     @Volatile
     private var connectivityWatcherStarted = false
 
+    @Volatile
+    private var storageWatcherStarted = false
+
     private val executor: Executor = Executors.newFixedThreadPool(2)
     private val connectivityScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val connectivityActionMutex = Mutex()
+    private const val STORAGE_POLL_MS = 15_000L
 
     fun get(context: Context): DownloadManager {
         downloadManager?.let { return it }
@@ -91,6 +95,7 @@ object StreamflixDownloadManager {
             notificationHelper = DownloadNotificationHelper(app, DownloadNotifier.CHANNEL_ID)
             DownloadEventBridge.attach(app)
             startConnectivityWatcher(app)
+            startStorageWatcher(app)
             pruneOrphanedSidecarDirs(app)
             // Rebuild header host/url maps synchronously before any resume/FGS so
             // the first HLS segments after process death still get Referer/UA.
@@ -218,6 +223,25 @@ object StreamflixDownloadManager {
                         }
                     }
                 }
+        }
+    }
+
+    /** Pause in-flight downloads when free space / soft-limit is exhausted. */
+    private fun startStorageWatcher(app: Context) {
+        if (storageWatcherStarted) return
+        storageWatcherStarted = true
+        connectivityScope.launch {
+            while (true) {
+                delay(STORAGE_POLL_MS)
+                connectivityActionMutex.withLock {
+                    val repo = DownloadRepository.get(app)
+                    if (DownloadStorage.isLowSpace(app)) {
+                        repo.pauseForLowStorage()
+                    } else {
+                        repo.resumeStorageHeld()
+                    }
+                }
+            }
         }
     }
 

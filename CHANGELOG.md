@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - TV season episode list: per-episode Download CTA (one OK on the Cinema Ink secondary control) wires into `DownloadOptionsController.enqueueEpisode` — long-press options remain as a secondary path
 
 ### Added
+- Smart Downloads (opt-in, Settings → Downloads, Mobile + TV): auto-queue the next **3** episodes by default, Wi‑Fi only, per-series unwatched quota, and pause in-flight downloads when free space / soft-limit is low — builds on the existing download stack and offline library
 - Watch-Party light: host/join via shareable `party/<token>` link (Mobile + TV); syncs play position + chosen server only through Supabase (no video relay); graceful host end / guest leave; Kids/PIN and offline join queue
 - Smart Skip Intro/Recap on Mobile + TV: chapter marks first, silence probe in the opening minutes, then a conservative episode heuristic — button only while inside a skippable segment (not a 2-minute spam window)
 - Support tip flow (Trinkgeld): after ~10 watched episodes, a subtle dismissible Support/Telegram card on Home (Mobile + TV) with 5-day cool-down, soft-show cap, and never-again — no spam, never blocks playback
@@ -251,7 +252,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Subtitle offset is persisted per video (`movie:<id>`/`episode:<id>`) and restored on every player build instead of being reset globally
 - Media3 audio focus handling enabled (playback pauses on calls/transient focus loss); audio content type set to movie
 - Offline subtitles: subtitle tracks offered by the resolved server are downloaded alongside the video into the download's sidecar directory and injected into offline playback (`SubtitleFetch` + `subtitleUrlsJson`/`subtitlePathsJson`)
-- Smart Downloads (opt-in, Settings → Downloads): automatically enqueue the next episode after one finishes — including season-boundary rollover — and optionally delete watched episode downloads; honours Wi-Fi-only and storage guards
+- Smart Downloads (opt-in, Settings → Downloads): automatically enqueue upcoming episodes after one finishes — including season-boundary rollover — with configurable lookahead / per-series quota, optional delete of watched episode downloads, Wi‑Fi-only holds, and low-storage pause
 - Downloads tab: sort menu (newest/title/size, mobile + TV), "retry all failed", "delete watched", per-item long-press overflow with Share (FileProvider) and Retry, long-press season packs to pause/resume/delete the whole pack, watched badge on finished downloads
 - `DownloadDatabase` migration 1→2 preserves existing downloads (adds `subtitleUrlsJson`, `smartEnqueued`); destructive fallback removed so the Media3 cache is never orphaned
 

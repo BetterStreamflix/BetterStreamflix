@@ -586,7 +586,9 @@ object DownloadOptionsController {
             DownloadErrorCode.NO_SERVERS -> R.string.download_error_no_servers
             DownloadErrorCode.CLOUDFLARE -> R.string.download_error_cloudflare
             DownloadErrorCode.NETWORK -> R.string.download_error_network
-            DownloadErrorCode.NOSPACE -> R.string.download_error_nospace
+            DownloadErrorCode.NOSPACE,
+            DownloadErrorCode.LOW_STORAGE,
+            -> R.string.download_error_nospace
             DownloadErrorCode.WIFI_REQUIRED -> R.string.download_error_wifi
             DownloadErrorCode.EXPIRED -> R.string.download_error_expired
             DownloadErrorCode.NOT_FOUND -> R.string.download_error_not_found

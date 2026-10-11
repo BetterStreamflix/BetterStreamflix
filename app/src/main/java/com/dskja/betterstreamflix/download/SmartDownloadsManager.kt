@@ -13,7 +13,8 @@ import org.json.JSONObject
 /**
  * Netflix-style Smart Downloads (opt-in):
  *  - `downloadAutoDeleteWatched`: remove a finished episode's download.
- *  - `downloadSmartEnabled`:     silently enqueue the next episode.
+ *  - `downloadSmartEnabled`: silently enqueue the next episodes (lookahead).
+ *  - Wi‑Fi only, per-series quota, and low-storage pause are enforced.
  *
  * Invoked from the players' watch-finished paths. All provider/network work is
  * best-effort — failures just skip the smart action, never crash playback.
@@ -53,7 +54,7 @@ object SmartDownloadsManager {
         if (autoDelete && item?.state == DownloadItemState.COMPLETED.name) {
             repo.remove(item.id)
         }
-        if (smart) enqueueNextEpisode(context, videoType, item?.providerName)
+        if (smart) enqueueNextEpisodes(context, videoType, item?.providerName)
     }
 
     suspend fun onMovieFinished(
@@ -85,7 +86,7 @@ object SmartDownloadsManager {
         }
     }
 
-    private suspend fun enqueueNextEpisode(
+    private suspend fun enqueueNextEpisodes(
         context: Context,
         current: Video.Type.Episode,
         finishedProviderName: String?,
@@ -98,27 +99,81 @@ object SmartDownloadsManager {
             ?: return
         if (provider is com.dskja.betterstreamflix.providers.IptvProvider) return
         if (DownloadConnectivityMonitor.shouldHoldForWifiOnly(context)) return
-        if (!DownloadStorage.hasEnoughSpace(context)) return
+        if (DownloadStorage.isLowSpace(context) || !DownloadStorage.hasEnoughSpace(context)) return
         if (DownloadConnectivityMonitor.current(context).type == DownloadNetworkType.NONE) return
+
+        val lookahead = SmartDownloadsPolicy.clampLookahead(UserPreferences.downloadSmartLookahead)
+        val quota = SmartDownloadsPolicy.clampSeriesQuota(UserPreferences.downloadSmartSeriesQuota)
+        val seriesKey = SmartDownloadsPolicy.seriesKeyForShow(provider.name, current.tvShow.id)
 
         val previousProvider = UserPreferences.currentProvider
         if (previousProvider?.name != provider.name) {
             UserPreferences.setCurrentProviderForPlayback(provider)
         }
-        val next = runCatching { findNextEpisode(context, current, provider) }.getOrNull()
+        val upcoming = runCatching {
+            findNextEpisodes(current, provider, lookahead)
+        }.getOrElse { emptyList() }
         if (previousProvider != null && previousProvider.name != provider.name) {
             UserPreferences.setCurrentProviderForPlayback(previousProvider)
         }
-        if (next == null) return
+        if (upcoming.isEmpty()) return
 
-        // Skip if the next episode is already downloaded or in flight.
-        val existing = DownloadRepository.get(context).getAllOnce().firstOrNull { entity ->
-            DownloadProfileScope.matchesActive(entity.profileId) &&
+        val repo = DownloadRepository.get(context)
+        val allItems = repo.getAllOnce().filter { DownloadProfileScope.matchesActive(it.profileId) }
+        val occupancy = SmartDownloadsPolicy.seriesOccupancy(allItems, seriesKey)
+
+        val missing = upcoming.filter { next ->
+            val existing = allItems.firstOrNull { entity ->
                 entity.kind == DownloadKind.EPISODE.name &&
-                videoTypeIdEquals(entity.videoTypeJson, next.id)
+                    videoTypeIdEquals(entity.videoTypeJson, next.id)
+            }
+            existing == null || existing.state == DownloadItemState.FAILED.name
         }
-        if (existing != null && existing.state != DownloadItemState.FAILED.name) return
+        val budget = SmartDownloadsPolicy.enqueueBudget(
+            missingUpcoming = missing.size,
+            occupancy = occupancy,
+            lookahead = lookahead,
+            quota = quota,
+        )
+        if (budget <= 0) {
+            Log.i(TAG, "smart quota/lookahead exhausted for $seriesKey (occupancy=$occupancy)")
+            return
+        }
 
+        if (previousProvider?.name != provider.name) {
+            UserPreferences.setCurrentProviderForPlayback(provider)
+        }
+        try {
+            var enqueued = 0
+            for (next in missing) {
+                if (enqueued >= budget) break
+                if (DownloadStorage.isLowSpace(context) || !DownloadStorage.hasEnoughSpace(context)) {
+                    Log.i(TAG, "smart stop: storage low after $enqueued")
+                    break
+                }
+                if (DownloadConnectivityMonitor.shouldHoldForWifiOnly(context)) {
+                    Log.i(TAG, "smart stop: Wi‑Fi hold after $enqueued")
+                    break
+                }
+                if (enqueueOne(context, current, next)) {
+                    enqueued++
+                }
+            }
+            if (enqueued > 0) {
+                Log.i(TAG, "smart-downloaded $enqueued episode(s) for $seriesKey")
+            }
+        } finally {
+            if (previousProvider != null && previousProvider.name != provider.name) {
+                UserPreferences.setCurrentProviderForPlayback(previousProvider)
+            }
+        }
+    }
+
+    private suspend fun enqueueOne(
+        context: Context,
+        current: Video.Type.Episode,
+        next: NextEpisode,
+    ): Boolean {
         val episode = Episode(
             id = next.id,
             number = next.number,
@@ -138,45 +193,39 @@ object SmartDownloadsManager {
                 title = next.seasonTitle,
             ),
         )
-
-        if (previousProvider?.name != provider.name) {
-            UserPreferences.setCurrentProviderForPlayback(provider)
-        }
-        try {
-            val prepared = DownloadController.prepareEpisode(context, episode)
-            when (prepared) {
-                is DownloadEnqueueOutcome.NeedsOptions -> {
-                    val trackIdx = when (UserPreferences.downloadQualityPreset) {
-                        DownloadQualityPreset.DATA_SAVER ->
-                            prepared.prepared.trackOptions.lastIndex.coerceAtLeast(0)
-                        else -> 0
-                    }.coerceIn(0, prepared.prepared.trackOptions.lastIndex.coerceAtLeast(0))
-                    val label = prepared.prepared.trackOptions.getOrNull(trackIdx)?.label
-                        ?: context.getString(R.string.download_quality_auto)
-                    val confirmed = DownloadController.confirmEnqueue(
-                        context = context,
-                        prepared = prepared.prepared,
-                        serverIndex = prepared.prepared.selectedServerIndex,
-                        trackIndex = trackIdx,
-                        qualityLabel = label,
-                        smartEnqueued = true,
-                    )
-                    if (confirmed is DownloadEnqueueOutcome.Started) {
-                        Log.i(TAG, "smart-downloaded next episode S${next.seasonNumber}E${next.number}")
-                    }
+        val prepared = DownloadController.prepareEpisode(context, episode)
+        return when (prepared) {
+            is DownloadEnqueueOutcome.NeedsOptions -> {
+                val trackIdx = when (UserPreferences.downloadQualityPreset) {
+                    DownloadQualityPreset.DATA_SAVER ->
+                        prepared.prepared.trackOptions.lastIndex.coerceAtLeast(0)
+                    else -> 0
+                }.coerceIn(0, prepared.prepared.trackOptions.lastIndex.coerceAtLeast(0))
+                val label = prepared.prepared.trackOptions.getOrNull(trackIdx)?.label
+                    ?: context.getString(R.string.download_quality_auto)
+                val confirmed = DownloadController.confirmEnqueue(
+                    context = context,
+                    prepared = prepared.prepared,
+                    serverIndex = prepared.prepared.selectedServerIndex,
+                    trackIndex = trackIdx,
+                    qualityLabel = label,
+                    smartEnqueued = true,
+                )
+                if (confirmed is DownloadEnqueueOutcome.Started) {
+                    Log.i(TAG, "smart-downloaded S${next.seasonNumber}E${next.number}")
+                    true
+                } else {
+                    false
                 }
-                is DownloadEnqueueOutcome.Started -> {
-                    DownloadRepository.get(context).upsert(
-                        prepared.item.copy(smartEnqueued = true),
-                    )
-                    Log.i(TAG, "smart-downloaded next episode S${next.seasonNumber}E${next.number}")
-                }
-                else -> Unit
             }
-        } finally {
-            if (previousProvider != null && previousProvider.name != provider.name) {
-                UserPreferences.setCurrentProviderForPlayback(previousProvider)
+            is DownloadEnqueueOutcome.Started -> {
+                DownloadRepository.get(context).upsert(
+                    prepared.item.copy(smartEnqueued = true),
+                )
+                Log.i(TAG, "smart-downloaded S${next.seasonNumber}E${next.number}")
+                true
             }
+            else -> false
         }
     }
 
@@ -191,53 +240,53 @@ object SmartDownloadsManager {
     )
 
     /**
-     * Next episode in the same season; if the current one was the last, the
-     * first episode of the next season. Returns null at the end of a show.
+     * Next [count] episodes after [current], crossing season boundaries.
+     * Returns fewer than [count] at the end of a show.
      */
-    private suspend fun findNextEpisode(
-        context: Context,
+    private suspend fun findNextEpisodes(
         current: Video.Type.Episode,
         provider: com.dskja.betterstreamflix.providers.Provider,
-    ): NextEpisode? {
+        count: Int,
+    ): List<NextEpisode> {
+        if (count <= 0) return emptyList()
         val show = provider.getTvShow(current.tvShow.id)
         val seasons = show.seasons.orEmpty().sortedBy { it.number }
-        if (seasons.isEmpty()) return null
+        if (seasons.isEmpty()) return emptyList()
 
-        val currentSeason = seasons.firstOrNull { it.number == current.season.number }
-            ?: return null
-        val episodes = runCatching { provider.getEpisodesBySeason(currentSeason.id) }
-            .getOrNull()
-            .orEmpty()
-            .sortedBy { it.number }
+        val result = ArrayList<NextEpisode>(count)
+        var seasonIdx = seasons.indexOfFirst { it.number == current.season.number }
+        if (seasonIdx < 0) return emptyList()
 
-        episodes.firstOrNull { it.number == current.number + 1 }?.let { ep ->
-            return NextEpisode(
-                id = ep.id,
-                number = ep.number,
-                seasonNumber = current.season.number,
-                title = ep.title,
-                poster = ep.poster,
-                overview = ep.overview,
-                seasonTitle = currentSeason.title,
-            )
+        var afterNumber = current.number
+        while (result.size < count && seasonIdx < seasons.size) {
+            val season = seasons[seasonIdx]
+            val episodes = runCatching { provider.getEpisodesBySeason(season.id) }
+                .getOrNull()
+                .orEmpty()
+                .sortedBy { it.number }
+            val candidates = if (season.number == current.season.number && result.isEmpty()) {
+                episodes.filter { it.number > afterNumber }
+            } else {
+                episodes
+            }
+            for (ep in candidates) {
+                result.add(
+                    NextEpisode(
+                        id = ep.id,
+                        number = ep.number,
+                        seasonNumber = season.number,
+                        title = ep.title,
+                        poster = ep.poster,
+                        overview = ep.overview,
+                        seasonTitle = season.title,
+                    ),
+                )
+                if (result.size >= count) break
+            }
+            seasonIdx++
+            afterNumber = Int.MIN_VALUE
         }
-
-        // Season boundary: first episode of the next season.
-        val nextSeason = seasons.firstOrNull { it.number > current.season.number } ?: return null
-        val first = runCatching { provider.getEpisodesBySeason(nextSeason.id) }
-            .getOrNull()
-            .orEmpty()
-            .minByOrNull { it.number }
-            ?: return null
-        return NextEpisode(
-            id = first.id,
-            number = first.number,
-            seasonNumber = nextSeason.number,
-            title = first.title,
-            poster = first.poster,
-            overview = first.overview,
-            seasonTitle = nextSeason.title,
-        )
+        return result
     }
 
     private fun videoTypeIdEquals(videoTypeJson: String, id: String): Boolean {
