@@ -4,7 +4,7 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#000000"
+    android:background="@color/cinema_ink"
     tools:context=".fragments.player.PlayerTvFragment">
 
     <!-- texture_view avoids SurfaceView/codec races on Back (OEM TV crash-to-home). -->
@@ -86,7 +86,7 @@
                 android:layout_width="28dp"
                 android:layout_height="2dp"
                 android:layout_marginTop="6dp"
-                android:background="@drawable/bg_exp_accent_rule"
+                android:background="@drawable/bg_cinema_accent_rule"
                 android:visibility="gone" />
 
             <TextView
@@ -179,7 +179,7 @@
             android:id="@+id/tv_brightness_percentage"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:textColor="#FFFFFF"
+            android:textColor="@color/cinema_text"
             android:textSize="12sp"
             android:textStyle="bold"
             android:shadowColor="#000000"
@@ -202,7 +202,7 @@
             android:layout_width="24dp"
             android:layout_height="24dp"
             android:src="@drawable/ic_brightness"
-            app:tint="#FFFFFF" />
+            app:tint="@color/cinema_text" />
     </LinearLayout>
 
     <LinearLayout
@@ -222,7 +222,7 @@
             android:id="@+id/tv_volume_percentage"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:textColor="#FFFFFF"
+            android:textColor="@color/cinema_text"
             android:textSize="12sp"
             android:textStyle="bold"
             android:shadowColor="#000000"
@@ -245,7 +245,7 @@
             android:layout_width="24dp"
             android:layout_height="24dp"
             android:src="@drawable/ic_player_settings_audio"
-            app:tint="#FFFFFF" />
+            app:tint="@color/cinema_text" />
     </LinearLayout>
 
     <LinearLayout
@@ -271,7 +271,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="@string/exp_player_error_title"
-            android:textColor="#FFFFFF"
+            android:textColor="@color/cinema_text"
             android:textSize="20sp"
             android:textStyle="bold" />
 
@@ -281,7 +281,7 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="12dp"
             android:gravity="center"
-            android:textColor="#B3FFFFFF"
+            android:textColor="@color/cinema_text_muted"
             android:textSize="15sp"
             tools:text="Error message" />
 

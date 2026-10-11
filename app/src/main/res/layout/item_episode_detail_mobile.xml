@@ -85,7 +85,7 @@
             android:layout_width="match_parent"
             android:layout_height="3dp"
             android:layout_gravity="bottom"
-            android:backgroundTint="#CC646464"
+            android:backgroundTint="@color/cinema_progress_track"
             android:progressTint="@color/cinema_text"
             android:visibility="gone"
             tools:progress="40"
