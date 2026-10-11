@@ -347,8 +347,14 @@ class HomeViewModel(
                 lastUnfilteredNextEpisodeIds = nextDeduped.map { it.id }.filter { it.isNotBlank() }.toSet()
                 lastUnfilteredFavoriteTvIds =
                     history.favoriteTvShows.map { it.id }.filter { it.isNotBlank() }.toSet()
-                val nextFiltered = SeriesFastForward.filterEpisodes(nextDeduped)
-                val favoriteTvFiltered = SeriesFastForward.filterTvShows(history.favoriteTvShows)
+                val appCtx = BetterStreamflixApp.instance.applicationContext
+                val nextTasteClean = SeriesFastForward.filterTasteHidden(appCtx, nextDeduped)
+                val favTasteClean = SeriesFastForward.filterTasteHidden(
+                    appCtx,
+                    history.favoriteTvShows,
+                )
+                val nextFiltered = SeriesFastForward.filterEpisodes(nextTasteClean)
+                val favoriteTvFiltered = SeriesFastForward.filterTvShows(favTasteClean)
                 val rwDeduped = filterRecentlyWatchedAgainstActive(
                     recentlyWatched = history.recentlyWatched,
                     continueWatching = mergedCw,

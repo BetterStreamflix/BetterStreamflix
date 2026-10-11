@@ -36,9 +36,13 @@ object SearchSort {
         }
 
         return when (mode) {
-            SearchSortMode.PROVIDER_DEFAULT,
-            SearchSortMode.FOR_YOU,
-            -> filtered
+            SearchSortMode.PROVIDER_DEFAULT -> filtered
+            /**
+             * FOR_YOU is a passthrough here — real taste ranking lives in
+             * [com.dskja.betterstreamflix.taste.TasteRanker] via SearchViewModel.
+             * Callers must not treat this as history-aware ranking.
+             */
+            SearchSortMode.FOR_YOU -> filtered
             SearchSortMode.NEWEST_FIRST -> {
                 val shows = mutableListOf<AppAdapter.Item>()
                 val others = mutableListOf<AppAdapter.Item>()

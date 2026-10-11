@@ -304,7 +304,8 @@ class SearchTvFragment : Fragment(), SearchInputBridge.Target {
         binding.etSearch.hint = getString(hintStringRes)
 
         binding.llGlobalSearch.nextFocusUpId = binding.etSearch.id
-        binding.llGlobalSearch.nextFocusDownId = R.id.chip_search_sort_default
+        // Mood strip is between Global and sort — wired in refreshMoodChips().
+        binding.llGlobalSearch.nextFocusDownId = R.id.hsv_search_mood
         binding.vgvSearch.nextFocusUpId = R.id.chip_search_sort_default
         updateGlobalSearchContentDescription()
         binding.llGlobalSearch.setOnCheckedChangeListener { _, _ ->
@@ -456,13 +457,22 @@ class SearchTvFragment : Fragment(), SearchInputBridge.Target {
                         fragment = this@SearchTvFragment,
                         item = movie,
                         onChanged = { viewModel.reapplyOrdering() },
+                        includeFavorite = true,
+                        onFavoriteToggle = {
+                            // Fall through to full Show Options (favorite/download/watched).
+                            com.dskja.betterstreamflix.ui.ShowOptionsTvDialog(
+                                requireContext(),
+                                movie,
+                            ).show()
+                        },
                         onMoreLike = { item ->
+                            val title = when (item) {
+                                is com.dskja.betterstreamflix.models.Movie -> item.title
+                                is com.dskja.betterstreamflix.models.TvShow -> item.title
+                                else -> ""
+                            }
                             binding.etSearch.setText(
-                                when (item) {
-                                    is com.dskja.betterstreamflix.models.Movie -> item.title
-                                    is com.dskja.betterstreamflix.models.TvShow -> item.title
-                                    else -> ""
-                                },
+                                getString(R.string.search_query_more_like, title),
                             )
                             viewModel.searchMoreLike(item)
                         },
@@ -473,13 +483,21 @@ class SearchTvFragment : Fragment(), SearchInputBridge.Target {
                         fragment = this@SearchTvFragment,
                         item = show,
                         onChanged = { viewModel.reapplyOrdering() },
+                        includeFavorite = true,
+                        onFavoriteToggle = {
+                            com.dskja.betterstreamflix.ui.ShowOptionsTvDialog(
+                                requireContext(),
+                                show,
+                            ).show()
+                        },
                         onMoreLike = { item ->
+                            val title = when (item) {
+                                is com.dskja.betterstreamflix.models.Movie -> item.title
+                                is com.dskja.betterstreamflix.models.TvShow -> item.title
+                                else -> ""
+                            }
                             binding.etSearch.setText(
-                                when (item) {
-                                    is com.dskja.betterstreamflix.models.Movie -> item.title
-                                    is com.dskja.betterstreamflix.models.TvShow -> item.title
-                                    else -> ""
-                                },
+                                getString(R.string.search_query_more_like, title),
                             )
                             viewModel.searchMoreLike(item)
                         },
@@ -550,7 +568,7 @@ class SearchTvFragment : Fragment(), SearchInputBridge.Target {
         val padH = (16 * resources.displayMetrics.density).toInt()
         val padV = (10 * resources.displayMetrics.density).toInt()
         val gap = (10 * resources.displayMetrics.density).toInt()
-        com.dskja.betterstreamflix.taste.TasteMoodUi.bind(
+        val bound = com.dskja.betterstreamflix.taste.TasteMoodUi.bindDetailed(
             context = requireContext(),
             row = row,
             selected = viewModel.currentMood(),
@@ -563,6 +581,35 @@ class SearchTvFragment : Fragment(), SearchInputBridge.Target {
                 refreshMoodChips()
             },
         )
+        wireMoodFocusChain(bound)
+    }
+
+    /** Global → first mood chip → sort chips; sort Up → first mood chip. */
+    private fun wireMoodFocusChain(
+        bound: com.dskja.betterstreamflix.taste.TasteMoodUi.Bound,
+    ) {
+        val first = bound.firstChip
+        val last = bound.lastChip
+        val sortDefault = binding.root.findViewById<View>(R.id.chip_search_sort_default)
+        if (first == null) {
+            binding.llGlobalSearch.nextFocusDownId = R.id.chip_search_sort_default
+            return
+        }
+        binding.llGlobalSearch.nextFocusDownId = first.id
+        first.nextFocusUpId = binding.llGlobalSearch.id
+        bound.chips.forEach { chip ->
+            chip.nextFocusDownId = R.id.chip_search_sort_default
+            chip.nextFocusUpId = binding.llGlobalSearch.id
+        }
+        last?.nextFocusRightId = sortDefault?.id ?: View.NO_ID
+        listOf(
+            R.id.chip_search_sort_default,
+            R.id.chip_search_sort_for_you,
+            R.id.chip_search_sort_newest,
+            R.id.chip_search_filter_year,
+        ).forEach { id ->
+            binding.root.findViewById<View>(id)?.nextFocusUpId = first.id
+        }
     }
 
     private fun refreshRecentSearches() {
@@ -576,6 +623,7 @@ class SearchTvFragment : Fragment(), SearchInputBridge.Target {
             binding.root.findViewById<View>(R.id.v_search_recent_edge_fade_end)?.visibility = View.GONE
             binding.etSearch.nextFocusDownId = binding.llGlobalSearch.id
             binding.llGlobalSearch.nextFocusUpId = binding.etSearch.id
+            refreshMoodChips()
             return
         }
         strip.visibility = View.VISIBLE
@@ -620,8 +668,14 @@ class SearchTvFragment : Fragment(), SearchInputBridge.Target {
                 refreshRecentSearches()
             },
             onLongPressMoreLike = { entry ->
-                val q = getString(R.string.search_query_more_like, entry.query)
+                val seed = unwrapMoreLikeQuery(entry.query)
+                val q = getString(R.string.search_query_more_like, seed)
                 binding.etSearch.setText(q)
+                // Seed TasteGraph the same way poster overflow does (title-only seed).
+                runCatching {
+                    val fake = com.dskja.betterstreamflix.models.Movie(id = "memory:$seed", title = seed)
+                    com.dskja.betterstreamflix.taste.TasteFeedback.moreLike(requireContext(), fake)
+                }
                 viewModel.search(q)
             },
             labelColor = ContextCompat.getColor(requireContext(), R.color.cinema_text_muted),
@@ -634,6 +688,26 @@ class SearchTvFragment : Fragment(), SearchInputBridge.Target {
             chip.nextFocusDownId = binding.llGlobalSearch.id
             binding.llGlobalSearch.nextFocusUpId = chip.id
         }
+        // Re-wire mood after memories (global Up may have been overwritten).
+        refreshMoodChips()
+    }
+
+    /** Strip a stacked “more like …” prefix so long-press does not wrap forever. */
+    private fun unwrapMoreLikeQuery(raw: String): String {
+        var q = raw.trim()
+        val prefix = getString(R.string.search_query_more_like, "").trim()
+        // Template is usually "more like %1$s" — take text before the placeholder.
+        val marker = getString(R.string.search_query_more_like, "\u0000")
+            .substringBefore("\u0000")
+            .trim()
+            .lowercase()
+        while (marker.isNotEmpty() && q.lowercase().startsWith(marker)) {
+            q = q.drop(marker.length).trim()
+        }
+        if (prefix.isNotEmpty() && q.equals(prefix, ignoreCase = true)) {
+            q = raw.trim()
+        }
+        return q.ifBlank { raw.trim() }
     }
 
     private fun focusSearchContent(): Boolean {

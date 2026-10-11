@@ -32,6 +32,62 @@ object SearchTmdbAssist {
         val all: List<AppAdapter.Item> get() = people + shows
     }
 
+    /**
+     * Blank Search + mood: browse TMDb multi/Discover by mood heuristics.
+     */
+    suspend fun discoverByMood(
+        mood: com.dskja.betterstreamflix.taste.TasteMood,
+        language: String?,
+    ): List<AppAdapter.Item> {
+        if (mood == com.dskja.betterstreamflix.taste.TasteMood.ALL) return emptyList()
+        return runCatching {
+            when (mood) {
+                com.dskja.betterstreamflix.taste.TasteMood.DE_AUDIO -> {
+                    val movies = TMDb3.Discover.movie(
+                        language = language ?: "de",
+                        page = 1,
+                        withOriginalLanguage = TMDb3.Params.WithBuilder("de"),
+                    ).results.map { movie ->
+                        Movie(
+                            id = movie.id.toString(),
+                            title = movie.title,
+                            overview = movie.overview,
+                            released = movie.releaseDate,
+                            rating = movie.voteAverage.toDouble(),
+                            poster = movie.posterPath?.w500,
+                            banner = movie.backdropPath?.original,
+                            genres = movie.genresIds.map {
+                                com.dskja.betterstreamflix.models.Genre(it.toString(), "")
+                            },
+                            tmdbId = movie.id.toString(),
+                        )
+                    }
+                    movies.distinctBy { it.searchIdentityKey() }.take(MAX_SIMILAR)
+                }
+                else -> {
+                    val seed = moodSearchSeed(mood)
+                    TMDb3.Search.multi(query = seed, language = language, page = 1)
+                        .results.mapNotNull { it.toShowOrNull() }
+                        .distinctBy { it.searchIdentityKey() }
+                        .take(MAX_SIMILAR)
+                }
+            }
+        }.getOrElse { e ->
+            if (e is CancellationException) throw e
+            Log.w(TAG, "discoverByMood failed: ${e.message}")
+            emptyList()
+        }
+    }
+
+    private fun moodSearchSeed(mood: com.dskja.betterstreamflix.taste.TasteMood): String =
+        when (mood) {
+            com.dskja.betterstreamflix.taste.TasteMood.CHILL -> "feel good comedy"
+            com.dskja.betterstreamflix.taste.TasteMood.INTENSE -> "thriller horror"
+            com.dskja.betterstreamflix.taste.TasteMood.KIDS -> "family animation"
+            com.dskja.betterstreamflix.taste.TasteMood.DE_AUDIO -> "deutsch"
+            else -> ""
+        }
+
     suspend fun peopleForQuery(query: String, language: String?): List<People> {
         if (query.isBlank()) return emptyList()
         return runCatching {

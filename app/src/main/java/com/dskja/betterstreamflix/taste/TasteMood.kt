@@ -19,20 +19,29 @@ enum class TasteMood {
     companion object {
         fun fromKey(raw: String?): TasteMood =
             entries.firstOrNull { it.name.equals(raw, ignoreCase = true) } ?: ALL
+
+        /** Moods offered in Search UI (Kids profiles omit Intense). */
+        fun entriesForProfile(kidsProfile: Boolean): List<TasteMood> =
+            if (kidsProfile) {
+                listOf(ALL, CHILL, KIDS, DE_AUDIO)
+            } else {
+                entries.toList()
+            }
     }
 }
 
 object TasteMoodMatcher {
 
-    /** Genres that define an “intense” mood (horror / thriller / action / crime / war). */
-    val INTENSE_GENRE_IDS = setOf(
-        "27", // Horror
-        "53", // Thriller
-        "28", // Action
-        "80", // Crime
-        "10752", // War
-        "37", // Western
-    )
+    /**
+     * Genres that define an “intense” mood — kept in sync with
+     * [SmartCollectionRules.CHILL_BLOCK_GENRE_IDS] plus Action / War.
+     */
+    val INTENSE_GENRE_IDS: Set<String> =
+        SmartCollectionRules.CHILL_BLOCK_GENRE_IDS + setOf(
+            "28", // Action
+            "10752", // War
+            "37", // Western
+        )
 
     fun matches(item: AppAdapter.Item, mood: TasteMood): Boolean {
         if (mood == TasteMood.ALL) return true
@@ -43,12 +52,12 @@ object TasteMoodMatcher {
             TasteMood.CHILL -> SmartCollectionRules.matchesChill(signals)
             TasteMood.KIDS -> SmartCollectionRules.matchesKids(signals)
             TasteMood.DE_AUDIO -> {
-                // Soft: unknown language still allowed so mood doesn’t empty sparse catalogs.
+                // Require at least one language signal — unknown no longer soft-passes.
                 if (signals.originalLanguage.isNullOrBlank() &&
                     signals.providerName.isNullOrBlank() &&
                     signals.preferredAudio.isNullOrBlank()
                 ) {
-                    true
+                    false
                 } else {
                     SmartCollectionRules.matchesDeAudio(signals)
                 }

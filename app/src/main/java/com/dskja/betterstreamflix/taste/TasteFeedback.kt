@@ -29,4 +29,14 @@ object TasteFeedback {
         if (item !is Movie && item !is TvShow) return
         TasteGraph.recordPositive(context, item)
     }
+
+    fun favoriteUnboost(context: Context, item: AppAdapter.Item) {
+        if (item !is Movie && item !is TvShow) return
+        TasteGraph.recordUnfavorite(context, item)
+    }
+
+    fun watchEngagement(context: Context, item: AppAdapter.Item) {
+        if (item !is Movie && item !is TvShow) return
+        TasteGraph.recordWatchEngagement(context, item)
+    }
 }

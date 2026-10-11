@@ -395,6 +395,22 @@ class ShowOptionsTvDialog(
             requestFocus()
         }
 
+        // Taste Graph overflow from Show Options (Home/detail parity with Search).
+        binding.ivOptionsShowPoster.setOnLongClickListener {
+            val activity = context.toActivity() ?: return@setOnLongClickListener false
+            val fragment = activity.supportFragmentManager.fragments
+                .flatMap { it.childFragmentManager.fragments + it }
+                .firstOrNull { it.isVisible && it.view != null }
+                ?: return@setOnLongClickListener false
+            com.dskja.betterstreamflix.taste.TasteSignalsUi.showFor(
+                fragment = fragment,
+                item = freshMovie,
+                onChanged = { dismiss() },
+                onMoreLike = { dismiss() },
+            )
+            true
+        }
+
         binding.btnOptionShowWatched.apply {
             setOnClickListener {
                 checkProviderAndRun(freshMovie) {
@@ -529,6 +545,21 @@ class ShowOptionsTvDialog(
             visibility = View.VISIBLE
 
             requestFocus()
+        }
+
+        binding.ivOptionsShowPoster.setOnLongClickListener {
+            val activity = context.toActivity() ?: return@setOnLongClickListener false
+            val fragment = activity.supportFragmentManager.fragments
+                .flatMap { it.childFragmentManager.fragments + it }
+                .firstOrNull { it.isVisible && it.view != null }
+                ?: return@setOnLongClickListener false
+            com.dskja.betterstreamflix.taste.TasteSignalsUi.showFor(
+                fragment = fragment,
+                item = freshTvShow,
+                onChanged = { dismiss() },
+                onMoreLike = { dismiss() },
+            )
+            true
         }
 
         bindChannelPinOption(freshTvShow)

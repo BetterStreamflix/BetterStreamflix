@@ -5,8 +5,11 @@ import com.dskja.betterstreamflix.adapters.AppAdapter
 import com.dskja.betterstreamflix.models.Category
 import com.dskja.betterstreamflix.models.Movie
 import com.dskja.betterstreamflix.models.TvShow
+import com.dskja.betterstreamflix.fragments.search.searchIdentityKey
 import com.dskja.betterstreamflix.platform.ContinueWatchingMerger
 import com.dskja.betterstreamflix.profiles.ProfileManager
+import com.dskja.betterstreamflix.taste.TasteGraph
+import com.dskja.betterstreamflix.taste.TasteSnapshot
 import com.dskja.betterstreamflix.utils.UserPreferences
 
 /**
@@ -31,8 +34,24 @@ object SmartCollectionsBuilder {
         )
         if (pool.size < SmartCollectionRules.MIN_SHELF_SIZE) return emptyList()
 
+        val taste = TasteGraph.snapshot(appContext)
+        val poolClean = if (taste.hardHidden.isEmpty()) {
+            pool
+        } else {
+            pool.filterNot { item ->
+                val key = item.searchIdentityKey()
+                val tmdb = when (item) {
+                    is Movie -> TasteSnapshot.tmdbKey(item.tmdbId, isTv = false)
+                    is TvShow -> TasteSnapshot.tmdbKey(item.tmdbId, isTv = true)
+                    else -> null
+                }
+                taste.isHardHidden(key, tmdb)
+            }
+        }
+        if (poolClean.size < SmartCollectionRules.MIN_SHELF_SIZE) return emptyList()
+
         val audioLookup = SmartCollectionEnricher.preferredAudioLookup(appContext)
-        val scored = pool.mapNotNull { item ->
+        val scored = poolClean.mapNotNull { item ->
             val signals = SmartCollectionRules.signalsFor(item, audioLookup) ?: return@mapNotNull null
             ScoredTitle(
                 item = item,
