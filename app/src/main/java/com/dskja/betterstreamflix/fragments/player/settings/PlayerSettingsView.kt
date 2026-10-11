@@ -200,7 +200,7 @@ abstract class PlayerSettingsView @JvmOverloads constructor(
                         .clearOverridesOfType(C.TRACK_TYPE_VIDEO)
                         .setMaxVideoBitrate(Int.MAX_VALUE)
                         .setForceHighestSupportedBitrate(false)
-                    UserPreferences.playbackVideoQuality.applyMaxVideoSize(builder)
+                    UserPreferences.effectivePlaybackVideoQuality.applyMaxVideoSize(builder)
                     player.trackSelectionParameters = builder.build()
                     UserPreferences.qualityHeight = null
                 }
@@ -786,7 +786,7 @@ abstract class PlayerSettingsView @JvmOverloads constructor(
                             .sortedByDescending { it.height }
                     )
 
-                    val preferred = UserPreferences.playbackVideoQuality
+                    val preferred = UserPreferences.effectivePlaybackVideoQuality
                     val builder = player.trackSelectionParameters.buildUpon()
                     preferred.applyMaxVideoSize(builder)
 

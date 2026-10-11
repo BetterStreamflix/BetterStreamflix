@@ -37,6 +37,18 @@ enum class PlaybackVideoQuality {
         }
     }
 
+    /**
+     * Data saver auto-caps adaptive Auto (and any higher rung) to 720p.
+     * The stored preference is unchanged; callers use the capped value at play time.
+     */
+    fun cappedForDataSaver(enabled: Boolean): PlaybackVideoQuality {
+        if (!enabled) return this
+        return when (this) {
+            AUTO, P1080 -> P720
+            P720 -> P720
+        }
+    }
+
     companion object {
         fun fromKey(key: String?): PlaybackVideoQuality {
             if (key.isNullOrBlank()) return AUTO

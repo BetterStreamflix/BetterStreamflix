@@ -18,6 +18,7 @@ import com.bumptech.glide.request.RequestOptions
 import com.bumptech.glide.request.target.Target
 import com.dskja.betterstreamflix.R
 import com.dskja.betterstreamflix.utils.ArtworkUrls
+import com.dskja.betterstreamflix.utils.UserPreferences
 
 /**
  * Shared Glide load for TMDb title logos:
@@ -35,6 +36,7 @@ object TmdbLogoGlide {
     }
 
     fun prefetch(context: Context, logoUrl: String?, wifiOnly: Boolean = true) {
+        if (UserPreferences.dataSaverMode) return
         if (wifiOnly && isMetered(context)) return
         val url = ArtworkUrls.preferOriginal(logoUrl)
             ?: ArtworkUrls.preferHero(logoUrl)

@@ -45,6 +45,7 @@ object FeaturedLogoEnrich {
         count: Int = 2,
         wifiOnly: Boolean = true,
     ) {
+        if (UserPreferences.dataSaverMode) return
         if (!UserPreferences.enableTmdb || !UserPreferences.enableTmdbLogos) return
         if (items.isEmpty() || count <= 0) return
         FeaturedNetworkMonitor.ensureRegistered(context)
@@ -120,6 +121,7 @@ object FeaturedLogoEnrich {
 
     /** Prefetch next slide banner at Featured decode size on unmetered networks. */
     fun prefetchBanner(context: Context, bannerUrl: String?) {
+        if (UserPreferences.dataSaverMode) return
         if (bannerUrl.isNullOrBlank()) return
         if (!isDefinitelyUnmetered(context)) return
         val url = com.dskja.betterstreamflix.utils.ArtworkUrls.preferFeatured(bannerUrl)
