@@ -104,4 +104,12 @@ class ExternalDownloadHandoffTest {
         assertTrue(pay.contains("com.dv.adm.AEditor"))
         assertTrue(pay.contains("com.dv.adm.pay.AEditor"))
     }
+
+    @Test
+    fun isAdaptiveStream_detectsExtensionlessHlsAndManifest() {
+        assertTrue(ExternalDownloadHandoff.isAdaptiveStream("https://cdn.example/hls/abcToken", null))
+        assertTrue(ExternalDownloadHandoff.isAdaptiveStream("https://cdn.example/dash/live", null))
+        assertTrue(ExternalDownloadHandoff.isAdaptiveStream("https://cdn.example/x.m3u8?token=1", null))
+        assertFalse(ExternalDownloadHandoff.isAdaptiveStream("https://cdn.example/video.mp4", "video/mp4"))
+    }
 }

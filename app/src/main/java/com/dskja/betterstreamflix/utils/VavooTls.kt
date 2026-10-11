@@ -1,11 +1,18 @@
 package com.dskja.betterstreamflix.utils
 
 import okhttp3.OkHttpClient
+import java.security.KeyStore
 import java.security.SecureRandom
+import java.security.cert.CertificateException
+import java.security.cert.CertificateExpiredException
+import java.security.cert.CertificateNotYetValidException
 import java.security.cert.X509Certificate
+import java.util.Calendar
+import java.util.TimeZone
 import javax.net.ssl.HttpsURLConnection
 import javax.net.ssl.SSLContext
 import javax.net.ssl.TrustManager
+import javax.net.ssl.TrustManagerFactory
 import javax.net.ssl.X509TrustManager
 
 /**
@@ -15,18 +22,50 @@ import javax.net.ssl.X509TrustManager
  * expired certificate. This helper is only attached to the temporary player /
  * probe client created for a resolved Vavoo Live host. Normal BetterStreamflix
  * network traffic keeps the standard TLS validation path.
+ *
+ * Policy: host-scoped hostname verifier + **expiry-only** trust bypass (not
+ * trust-all). Hard time-bomb stops the bypass after [RELAX_UNTIL_YEAR]/[RELAX_UNTIL_MONTH].
  */
 object VavooTls {
+    /** Stop relaxing TLS after this UTC month (exclusive upper bound: first of next month). */
+    private const val RELAX_UNTIL_YEAR = 2027
+    private const val RELAX_UNTIL_MONTH = Calendar.JANUARY // 0-based; January 2027
+
+    private val defaultTrustManager: X509TrustManager by lazy {
+        val factory = TrustManagerFactory.getInstance(TrustManagerFactory.getDefaultAlgorithm())
+        factory.init(null as KeyStore?)
+        factory.trustManagers.filterIsInstance<X509TrustManager>().first()
+    }
+
     private val trustManager = object : X509TrustManager {
-        override fun checkClientTrusted(chain: Array<X509Certificate>, authType: String) = Unit
-        override fun checkServerTrusted(chain: Array<X509Certificate>, authType: String) = Unit
-        override fun getAcceptedIssuers(): Array<X509Certificate> = emptyArray()
+        override fun checkClientTrusted(chain: Array<X509Certificate>, authType: String) =
+            defaultTrustManager.checkClientTrusted(chain, authType)
+
+        override fun checkServerTrusted(chain: Array<X509Certificate>, authType: String) {
+            try {
+                defaultTrustManager.checkServerTrusted(chain, authType)
+            } catch (e: CertificateException) {
+                if (!isExpiryOnlyFailure(chain, e)) throw e
+                // Allowlisted CDN host (hostnameVerifier) presented an expired-but-otherwise
+                // acceptable chain — accept for Vavoo playback only.
+            }
+        }
+
+        override fun getAcceptedIssuers(): Array<X509Certificate> =
+            defaultTrustManager.acceptedIssuers
     }
 
     private val sslSocketFactory by lazy {
         SSLContext.getInstance("TLS").apply {
             init(null, arrayOf<TrustManager>(trustManager), SecureRandom())
         }.socketFactory
+    }
+
+    fun isRelaxationActive(nowMs: Long = System.currentTimeMillis()): Boolean {
+        val cal = Calendar.getInstance(TimeZone.getTimeZone("UTC"))
+        cal.set(RELAX_UNTIL_YEAR, RELAX_UNTIL_MONTH, 1, 0, 0, 0)
+        cal.set(Calendar.MILLISECOND, 0)
+        return nowMs < cal.timeInMillis
     }
 
     /**
@@ -39,6 +78,7 @@ object VavooTls {
     fun applyTo(builder: OkHttpClient.Builder, targetHost: String) {
         val host = targetHost.trim().lowercase()
         if (host.isBlank()) return
+        if (!isRelaxationActive()) return
 
         val defaultVerifier = HttpsURLConnection.getDefaultHostnameVerifier()
 
@@ -59,4 +99,29 @@ object VavooTls {
         return builder
     }
 
+    private fun isExpiryOnlyFailure(
+        chain: Array<X509Certificate>,
+        error: CertificateException,
+    ): Boolean {
+        val messages = generateSequence(error as Throwable) { it.cause }
+            .mapNotNull { it.message }
+            .joinToString(" ")
+            .lowercase()
+        val namedExpiry = generateSequence(error as Throwable) { it.cause }
+            .any { it is CertificateExpiredException || it is CertificateNotYetValidException }
+        if (namedExpiry) return true
+        if ("expired" !in messages && "not yet valid" !in messages) return false
+        if (chain.isEmpty()) return false
+        // Leaf must fail validity only for expiry / not-yet-valid.
+        return try {
+            chain[0].checkValidity()
+            false
+        } catch (_: CertificateExpiredException) {
+            true
+        } catch (_: CertificateNotYetValidException) {
+            true
+        } catch (_: Exception) {
+            false
+        }
+    }
 }

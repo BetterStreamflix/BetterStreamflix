@@ -364,11 +364,13 @@ object ExternalStreamHandoff {
             return false
         }
         if (resolved.fragilePlaylist) {
+            // Relative-only playlists cannot be fetched by external players — refuse handoff.
             ExpDialogChrome.notify(
                 activity,
                 R.string.player_external_fragile_playlist,
                 R.string.player_external_player_title,
             )
+            return false
         }
         if (!forceChooser) {
             val preferred = preferredPackage(activity)
@@ -393,7 +395,7 @@ object ExternalStreamHandoff {
         packageName: String,
     ): Boolean {
         if (!isEligiblePlayerPackage(packageName)) return false
-        val effective = maybeProxyForVlc(activity, resolved, request, packageName)
+        val effective = maybeProxyForHeaderBlindPlayers(activity, resolved, request, packageName)
         val direct = buildViewIntent(activity, effective.first, effective.second, packageName)
         grantUriIfNeeded(activity, effective.first, packageName)
         if (direct.resolveActivity(activity.packageManager) == null) return false
@@ -406,17 +408,26 @@ object ExternalStreamHandoff {
         }
     }
 
+    /** Players that ignore or poorly honor HTTP header intent extras. */
+    fun needsHeaderProxy(packageName: String): Boolean {
+        val pkg = packageName.trim()
+        return pkg == "org.videolan.vlc" ||
+            pkg == "org.videolan.vlc.debug" ||
+            pkg.startsWith("com.mxtech.videoplayer")
+    }
+
     /**
-     * VLC Android ignores HTTP header extras. When headers are required, wrap the
-     * stream through the local Cast proxy so VLC fetches a plain LAN URL.
+     * VLC / MX ignore reliable HTTP header extras. When headers are required, wrap the
+     * stream through the local Cast proxy so the external player fetches a plain LAN URL.
+     * mpv / Brouken keep raw extras (they honor header keys).
      */
-    private fun maybeProxyForVlc(
+    private fun maybeProxyForHeaderBlindPlayers(
         activity: Activity,
         resolved: Resolved,
         request: Request,
         packageName: String,
     ): Pair<Resolved, Request> {
-        if (packageName != "org.videolan.vlc" && packageName != "org.videolan.vlc.debug") {
+        if (!needsHeaderProxy(packageName)) {
             return resolved to request
         }
         if (request.headers.isEmpty()) return resolved to request
@@ -488,7 +499,7 @@ object ExternalStreamHandoff {
                         return@setItems
                     }
                     val (effectiveResolved, effectiveRequest) =
-                        maybeProxyForVlc(activity, resolved, request, pkg)
+                        maybeProxyForHeaderBlindPlayers(activity, resolved, request, pkg)
                     val intent = buildViewIntent(activity, effectiveResolved, effectiveRequest, pkg).apply {
                         component = ComponentName(pkg, ri.activityInfo.name)
                     }

@@ -73,6 +73,14 @@ class ExternalStreamHandoffTest {
     }
 
     @Test
+    fun needsHeaderProxy_coversVlcAndMxNotMpv() {
+        assertTrue(ExternalStreamHandoff.needsHeaderProxy("org.videolan.vlc"))
+        assertTrue(ExternalStreamHandoff.needsHeaderProxy("com.mxtech.videoplayer.ad"))
+        assertFalse(ExternalStreamHandoff.needsHeaderProxy("is.xyz.mpv"))
+        assertFalse(ExternalStreamHandoff.needsHeaderProxy("com.brouken.player"))
+    }
+
+    @Test
     fun playWith_excludesAdmAndOneDmPackages() {
         assertTrue(ExternalStreamHandoff.isDownloaderPackage("com.dv.adm"))
         assertTrue(ExternalStreamHandoff.isDownloaderPackage("com.dv.adm.pay"))

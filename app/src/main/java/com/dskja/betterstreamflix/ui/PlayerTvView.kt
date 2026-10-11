@@ -141,6 +141,30 @@ class PlayerTvView @JvmOverloads constructor(
                 }
             }
 
+            KeyEvent.KEYCODE_CHANNEL_UP -> {
+                return if (isLivePlayback) {
+                    if (event.action == KeyEvent.ACTION_DOWN) {
+                        onLiveZapNext?.invoke() ?: false
+                    } else {
+                        true
+                    }
+                } else {
+                    false
+                }
+            }
+
+            KeyEvent.KEYCODE_CHANNEL_DOWN -> {
+                return if (isLivePlayback) {
+                    if (event.action == KeyEvent.ACTION_DOWN) {
+                        onLiveZapPrevious?.invoke() ?: false
+                    } else {
+                        true
+                    }
+                } else {
+                    false
+                }
+            }
+
             // ±30s: Fire TV / Android TV rewind & fast-forward (and skip) keys.
             KeyEvent.KEYCODE_MEDIA_REWIND,
             KeyEvent.KEYCODE_MEDIA_SKIP_BACKWARD -> {

@@ -492,9 +492,10 @@ abstract class PlayerSettingsView @JvmOverloads constructor(
                 KeepScreenOn,
                 ManualZoom,
             )
+            // Leanback: omit DownloadWith — ADM/1DM handoff is a dead-end on TV remotes
+            // and adaptive streams are common on hosters.
             val listTv = listOf(
                 PlayWith,
-                DownloadWith,
                 Quality,
                 Audio,
                 Subtitle,
