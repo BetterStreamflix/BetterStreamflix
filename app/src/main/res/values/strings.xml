@@ -868,7 +868,12 @@
     <string name="settings_autoplay_buffer_dialog_message">Set how many seconds before the end of the episode to switch to the next one.</string>
     <string name="autoplay_settings">Autoplay settings</string>
     <string name="player_settings">Player settings</string>
-    <string name="settings_screen_playback_summary">Autoplay, buffering, trailer playback and player behavior</string>
+    <string name="settings_screen_playback_summary">Quality, autoplay, buffering, trailer playback and player behavior</string>
+    <string name="settings_playback_video_quality_title">Video quality</string>
+    <string name="settings_playback_video_quality_summary">Cap stream resolution to save mobile data</string>
+    <string name="settings_playback_video_quality_auto">Auto</string>
+    <string name="settings_playback_video_quality_720">720p</string>
+    <string name="settings_playback_video_quality_1080">1080p</string>
     <string name="settings_player_gestures">Player gestures</string>
     <string name="settings_player_gestures_on">On</string>
     <string name="settings_player_gestures_off">Off</string>

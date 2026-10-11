@@ -58,6 +58,7 @@ import com.dskja.betterstreamflix.download.DownloadRepository
 import com.dskja.betterstreamflix.download.DownloadStorage
 import com.dskja.betterstreamflix.download.DownloadStorageLocation
 import com.dskja.betterstreamflix.download.StreamflixDownloadManager
+import com.dskja.betterstreamflix.player.PlaybackVideoQuality
 import com.dskja.betterstreamflix.providers.AnimeOnlineNinjaProvider
 import com.dskja.betterstreamflix.providers.FrenchStreamProvider
 import com.dskja.betterstreamflix.providers.GuardaFlixProvider
@@ -848,6 +849,15 @@ class SettingsTvFragment : LeanbackPreferenceFragmentCompat() {
             isChecked = UserPreferences.forceExtraBuffering
             setOnPreferenceChangeListener { _, newValue ->
                 UserPreferences.forceExtraBuffering = newValue as Boolean
+                true
+            }
+        }
+
+        findPreference<ListPreference>("PLAYBACK_VIDEO_QUALITY")?.apply {
+            value = UserPreferences.playbackVideoQuality.name
+            setOnPreferenceChangeListener { _, newValue ->
+                UserPreferences.playbackVideoQuality =
+                    PlaybackVideoQuality.fromKey(newValue as String)
                 true
             }
         }
@@ -2428,6 +2438,8 @@ class SettingsTvFragment : LeanbackPreferenceFragmentCompat() {
         }
         findPreference<SwitchPreference>("AUTOPLAY")?.isChecked = UserPreferences.autoplay
         findPreference<SwitchPreference>("FORCE_EXTRA_BUFFERING")?.isChecked = UserPreferences.forceExtraBuffering
+        findPreference<ListPreference>("PLAYBACK_VIDEO_QUALITY")?.value =
+            UserPreferences.playbackVideoQuality.name
         findPreference<SwitchPreference>("SERVER_AUTO_SUBTITLES_DISABLED")?.isChecked = UserPreferences.serverAutoSubtitlesDisabled
         DownloadsSettingsController.refresh(
             findPreference = { key -> findPreference(key) },

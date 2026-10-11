@@ -180,12 +180,13 @@ abstract class PlayerSettingsView @JvmOverloads constructor(
 
             when (quality) {
                 is Settings.Quality.Auto -> {
-                    player.trackSelectionParameters = player.trackSelectionParameters
+                    val builder = player.trackSelectionParameters
                         .buildUpon()
                         .clearOverridesOfType(C.TRACK_TYPE_VIDEO)
                         .setMaxVideoBitrate(Int.MAX_VALUE)
                         .setForceHighestSupportedBitrate(false)
-                        .build()
+                    UserPreferences.playbackVideoQuality.applyMaxVideoSize(builder)
+                    player.trackSelectionParameters = builder.build()
                     UserPreferences.qualityHeight = null
                 }
 
@@ -676,11 +677,17 @@ abstract class PlayerSettingsView @JvmOverloads constructor(
                             .sortedByDescending { it.height }
                     )
 
+                    val preferred = UserPreferences.playbackVideoQuality
+                    val builder = player.trackSelectionParameters.buildUpon()
+                    preferred.applyMaxVideoSize(builder)
+
                     list.filterIsInstance<VideoTrackInformation>()
-                        .find { it.height == UserPreferences.qualityHeight }
+                        .find {
+                            it.height == UserPreferences.qualityHeight &&
+                                preferred.allowsHeight(it.height)
+                        }
                         ?.let {
-                            player.trackSelectionParameters = player.trackSelectionParameters
-                                .buildUpon()
+                            builder
                                 .clearOverridesOfType(C.TRACK_TYPE_VIDEO)
                                 .setOverrideForType(
                                     TrackSelectionOverride(
@@ -689,8 +696,9 @@ abstract class PlayerSettingsView @JvmOverloads constructor(
                                     )
                                 )
                                 .setForceHighestSupportedBitrate(false)
-                                .build()
                         }
+
+                    player.trackSelectionParameters = builder.build()
                 }
             }
 

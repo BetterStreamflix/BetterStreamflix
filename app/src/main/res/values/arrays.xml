@@ -231,6 +231,17 @@
         <item>ASK</item>
     </string-array>
 
+    <string-array name="playback_video_quality_entries">
+        <item>@string/settings_playback_video_quality_auto</item>
+        <item>@string/settings_playback_video_quality_720</item>
+        <item>@string/settings_playback_video_quality_1080</item>
+    </string-array>
+    <string-array name="playback_video_quality_values">
+        <item>AUTO</item>
+        <item>P720</item>
+        <item>P1080</item>
+    </string-array>
+
     <string-array name="download_max_concurrent_entries">
         <item>1</item>
         <item>2</item>

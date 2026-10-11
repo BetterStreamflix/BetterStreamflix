@@ -705,6 +705,15 @@
         <PreferenceCategory android:title="@string/player_settings">
 
             <ListPreference
+                android:key="PLAYBACK_VIDEO_QUALITY"
+                android:title="@string/settings_playback_video_quality_title"
+                android:summary="@string/settings_playback_video_quality_summary"
+                android:entries="@array/playback_video_quality_entries"
+                android:entryValues="@array/playback_video_quality_values"
+                android:defaultValue="AUTO"
+                app:useSimpleSummaryProvider="true" />
+
+            <ListPreference
                 android:key="preferred_player"
                 android:title="@string/settings_trailer_player_title"
                 android:summary="@string/settings_trailer_player_summary"

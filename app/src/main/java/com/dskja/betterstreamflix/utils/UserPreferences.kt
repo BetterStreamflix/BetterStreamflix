@@ -9,6 +9,7 @@ import com.dskja.betterstreamflix.BetterStreamflixApp
 import com.dskja.betterstreamflix.BuildConfig
 import com.dskja.betterstreamflix.R
 import com.dskja.betterstreamflix.download.DownloadQualityPreset
+import com.dskja.betterstreamflix.player.PlaybackVideoQuality
 import com.dskja.betterstreamflix.download.DownloadStorageLocation
 import com.dskja.betterstreamflix.fragments.player.settings.PlayerSettingsView
 import com.dskja.betterstreamflix.providers.Provider
@@ -346,6 +347,13 @@ object UserPreferences {
         get() = Key.FORCE_EXTRA_BUFFERING.getBoolean() ?: false
         set(value) {
             Key.FORCE_EXTRA_BUFFERING.setBoolean(value)
+        }
+
+    /** Global stream quality cap: Auto / 720p / 1080p (saves mobile data). */
+    var playbackVideoQuality: PlaybackVideoQuality
+        get() = PlaybackVideoQuality.fromKey(Key.PLAYBACK_VIDEO_QUALITY.getString())
+        set(value) {
+            Key.PLAYBACK_VIDEO_QUALITY.setString(value.name)
         }
 
     // --- Full Platform: Trakt / Jellyfin / Plex / Debrid / Player backend ---
@@ -1429,6 +1437,7 @@ object UserPreferences {
         TMDB_API_KEY,
         SUBDL_API_KEY,
         FORCE_EXTRA_BUFFERING,
+        PLAYBACK_VIDEO_QUALITY,
         AUTOPLAY_BUFFER,
         SERVER_AUTO_SUBTITLES_DISABLED,
         ENABLE_TMDB,
