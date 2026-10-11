@@ -43,6 +43,7 @@ import com.dskja.betterstreamflix.download.DownloadStorage
 import com.dskja.betterstreamflix.download.DownloadStorageLocation
 import com.dskja.betterstreamflix.download.DownloadTreeAccess
 import com.dskja.betterstreamflix.download.StreamflixDownloadManager
+import com.dskja.betterstreamflix.player.PlaybackVideoQuality
 import com.dskja.betterstreamflix.providers.AnimeOnlineNinjaProvider
 import com.dskja.betterstreamflix.providers.FrenchStreamProvider
 import com.dskja.betterstreamflix.providers.GuardaFlixProvider
@@ -809,6 +810,15 @@ class SettingsMobileFragment : PreferenceFragmentCompat() {
             isChecked = UserPreferences.forceExtraBuffering
             setOnPreferenceChangeListener { _, newValue ->
                 UserPreferences.forceExtraBuffering = newValue as Boolean
+                true
+            }
+        }
+
+        findPreference<ListPreference>("PLAYBACK_VIDEO_QUALITY")?.apply {
+            value = UserPreferences.playbackVideoQuality.name
+            setOnPreferenceChangeListener { _, newValue ->
+                UserPreferences.playbackVideoQuality =
+                    PlaybackVideoQuality.fromKey(newValue as String)
                 true
             }
         }
@@ -2222,6 +2232,8 @@ class SettingsMobileFragment : PreferenceFragmentCompat() {
 
         findPreference<SwitchPreference>("AUTOPLAY")?.isChecked = UserPreferences.autoplay
         findPreference<SwitchPreference>("FORCE_EXTRA_BUFFERING")?.isChecked = UserPreferences.forceExtraBuffering
+        findPreference<ListPreference>("PLAYBACK_VIDEO_QUALITY")?.value =
+            UserPreferences.playbackVideoQuality.name
         findPreference<SwitchPreference>("PLAYER_GESTURES")?.isChecked = UserPreferences.playerGestures
         findPreference<SwitchPreference>("KEEP_SCREEN_ON_WHEN_PAUSED")?.isChecked = UserPreferences.keepScreenOnWhenPaused
         findPreference<SwitchPreference>("ALLOW_PHONE_PORTRAIT_PLAYBACK")?.isChecked =

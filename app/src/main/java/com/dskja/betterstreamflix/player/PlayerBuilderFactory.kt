@@ -144,6 +144,7 @@ object PlayerBuilderFactory {
             if (options.preferStereoAudio || constrained) {
                 params.setMaxAudioChannelCount(2)
             }
+            UserPreferences.playbackVideoQuality.applyMaxVideoSize(params)
             val types = IntArray(player.rendererCount) { index -> player.getRendererType(index) }
             AudioRendererPolicy.secondaryRendererIndices(types, C.TRACK_TYPE_AUDIO).forEach { index ->
                 params.setRendererDisabled(index, true)
