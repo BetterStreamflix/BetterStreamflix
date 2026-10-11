@@ -93,6 +93,7 @@ import com.dskja.betterstreamflix.utils.EpisodeManager
 import com.dskja.betterstreamflix.utils.MediaServer
 import com.dskja.betterstreamflix.utils.PlayerGestureHelper
 import com.dskja.betterstreamflix.utils.SubtitleOffset
+import com.dskja.betterstreamflix.utils.TvFocusChain
 import com.dskja.betterstreamflix.providers.IptvProvider
 import com.dskja.betterstreamflix.utils.UserPreferences
 import com.dskja.betterstreamflix.utils.UserDataCache
@@ -177,6 +178,8 @@ class PlayerTvFragment : Fragment() {
     private var castQueueChangedListener: ((Int) -> Unit)? = null
     private var castQueueAdvancedListener: (() -> Unit)? = null
     private var isCasting = false
+    /** True when CastContext/GMS is available on this device (Fire OS often false). */
+    private var castGmsAvailable = false
     /** Skip one onResume auto-play after handing off to an external player. */
     private var skipNextAutoResume = false
     private var lastCastHeaders: Map<String, String> = emptyMap()
@@ -202,7 +205,10 @@ class PlayerTvFragment : Fragment() {
     private var offlineCacheBlocked: Boolean = false
     private var waitingForBypass = false
     private var bypassDone = false
+    /** When true, skip cookie short-circuit and force the QR captcha dialog (Solve captcha CTA). */
+    private var forceBypassQr = false
     private var activeBypassSession: BypassSession? = null
+    private var playerCueHideJob: Job? = null
     private var chooserReceiverRegistered = false
     private var qrDialog: androidx.appcompat.app.AlertDialog? = null
     private var wsServer: BypassWebSocketServer? = null
@@ -309,6 +315,7 @@ class PlayerTvFragment : Fragment() {
         binding.pvPlayer.onMediaPreviousClicked = ::handleMediaPrevious
         binding.pvPlayer.onMediaNextClicked = ::handleMediaNext
         binding.pvPlayer.onSubtitleToggleClicked = ::handleSubtitleToggle
+        requestPlayerFocus()
         // Touch brightness/volume gestures are for handsets; skip on Leanback / Fire TV.
         gestureHelper = if (
             DeviceCapabilities.isLeanbackDevice(requireContext()) ||
@@ -354,7 +361,7 @@ class PlayerTvFragment : Fragment() {
                             val bypassUrl = buildSerienStreamBypassUrl(servers)
                             if (bypassUrl.isNullOrBlank()) {
                                 clearBypassSession(resetBypassDone = true)
-                                notifyPlayer("Unable to prepare TV bypass page.")
+                                notifyPlayer(R.string.player_bypass_prepare_failed)
                                 // Fall through like Mobile — other hosters may still play (H-PLAY-3).
                                 deferToNormalPlayback = true
                             } else {
@@ -363,7 +370,7 @@ class PlayerTvFragment : Fragment() {
                                 SerienStreamBypassHelper.applyStoredSessionCookies(bypassUrl)
                                 SerienStreamAuthManager.seedRuntimeCookies()
                                 val stored = UserPreferences.serienStreamSessionCookies
-                                if (SerienStreamAuthManager.canSkipInteractiveBypass()) {
+                                if (!forceBypassQr && SerienStreamAuthManager.canSkipInteractiveBypass()) {
                                     waitingForBypass = false
                                     bypassDone = true
                                     applyBypassCookies(sToServer.id, stored)
@@ -373,6 +380,7 @@ class PlayerTvFragment : Fragment() {
                                     }
                                     return@collect
                                 }
+                                forceBypassQr = false
 
                                 if (!beginInteractiveCaptchaBypass(bypassUrl, sToServer.id)) {
                                     deferToNormalPlayback = true
@@ -856,10 +864,24 @@ class PlayerTvFragment : Fragment() {
         }
         return when (args.videoType) {
             is Video.Type.Episode -> {
-                // Peek first — do not swallow the key when there is no next episode.
-                if (!EpisodeManager.hasNextEpisode()) return false
-                playNextEpisodeAcrossSeasons()
-                true
+                // While Cast owns the surface, advance the Cast queue — never navigate locally.
+                if (isCastSessionActive()) {
+                    if (CastPlaybackHub.playNextInQueue()) {
+                        updateCastQueueChrome()
+                        true
+                    } else {
+                        Toast.makeText(
+                            requireContext(),
+                            R.string.player_cast_queue_empty,
+                            Toast.LENGTH_SHORT,
+                        ).show()
+                        true
+                    }
+                } else {
+                    if (!EpisodeManager.hasNextEpisode()) return false
+                    playNextEpisodeAcrossSeasons()
+                    true
+                }
             }
             is Video.Type.Movie -> false
         }
@@ -868,7 +890,24 @@ class PlayerTvFragment : Fragment() {
     /** Captions / CC remote key — additive; does not open the settings panel. */
     private fun handleSubtitleToggle(): Boolean {
         if (!isAdded || _binding == null || !::player.isInitialized || playerReleased) return false
+        // Route CC to whichever player owns the surface (CastPlayer while casting).
+        binding.settings.player = activePlayer()
         return binding.settings.toggleSubtitles()
+    }
+
+    /** Public handoff for MainTvActivity / Leanback focus after navigating to player. */
+    fun requestPlayerFocus() {
+        val b = _binding ?: return
+        b.pvPlayer.post {
+            if (_binding == null) return@post
+            b.pvPlayer.requestFocus()
+            b.pvPlayer.showController()
+        }
+    }
+
+    private fun isCastSessionActive(): Boolean = isCasting || CastPlaybackHub.isCasting
+
+    private fun applyExperimentalPlayerChrome() {
     }
 
     private fun refreshEpisodeNavigation(type: Video.Type.Episode) {
@@ -1169,6 +1208,8 @@ class PlayerTvFragment : Fragment() {
     }
 
     private fun launchSolveCaptcha() {
+        // Force QR re-show even when stored cookies would skip interactive bypass (TV-PROV-02).
+        forceBypassQr = true
         // Re-enter the QR / WebSocket bypass flow — clearing cookies + reload alone
         // cannot solve an active SerienStream / TMDb-DE gate.
         val bypassUrl = buildSerienStreamBypassUrl(servers)
@@ -1204,7 +1245,7 @@ class PlayerTvFragment : Fragment() {
         val actualPort = startWebSocketServer()
         if (actualPort == -1) {
             clearBypassSession(resetBypassDone = true)
-            notifyPlayer("Unable to start TV bypass. Please try again.")
+            notifyPlayer(R.string.player_bypass_start_failed)
             return false
         }
         val wsUrl = BypassWebSocketEndpointHelper.getAdvertisedWsUrl(actualPort)
@@ -1281,20 +1322,56 @@ class PlayerTvFragment : Fragment() {
     private fun updateCastQueueChrome() {
         val binding = _binding ?: return
         val badge = binding.pvPlayer.controller.binding.tvCastQueue
-        val casting = isCasting || CastPlaybackHub.isCasting
+        val casting = isCastSessionActive()
         val count = CastPlaybackHub.queuedCount()
         if (!casting || count <= 0) {
             badge.isGone = true
+            badge.setOnClickListener(null)
+            wireTopChromeFocusChain()
             return
         }
-        val nextTitle = CastPlaybackHub.peekNextQueued()
-            ?.mediaMetadata?.title?.toString()?.takeIf { it.isNotBlank() }
-        badge.text = if (nextTitle != null) {
-            getString(R.string.player_cast_queue_next, nextTitle)
+        val meta = CastPlaybackHub.peekNextQueued()?.mediaMetadata
+        // Prefer episode identity (subtitle / SxxExx) over show title.
+        val nextLabel = meta?.subtitle?.toString()?.takeIf { it.isNotBlank() }
+            ?: meta?.artist?.toString()?.takeIf { it.isNotBlank() }
+            ?: meta?.title?.toString()?.takeIf { it.isNotBlank() }
+        badge.text = if (nextLabel != null) {
+            getString(R.string.player_cast_queue_next, nextLabel)
         } else {
             getString(R.string.player_cast_queue_badge, count)
         }
         badge.isVisible = true
+        badge.isFocusable = true
+        badge.isFocusableInTouchMode = true
+        badge.setOnClickListener { showCastQueueDialog() }
+        wireTopChromeFocusChain()
+    }
+
+    private fun showCastQueueDialog() {
+        if (!isAdded || _binding == null) return
+        val options = arrayOf(
+            getString(R.string.player_cast_queue_play_next),
+            getString(R.string.player_cast_queue_clear),
+        )
+        android.app.AlertDialog.Builder(requireContext())
+            .setTitle(R.string.player_cast_queue_dialog_title)
+            .setItems(options) { _, which ->
+                when (which) {
+                    0 -> {
+                        if (!CastPlaybackHub.playNextInQueue()) {
+                            Toast.makeText(
+                                requireContext(),
+                                R.string.player_cast_queue_empty,
+                                Toast.LENGTH_SHORT,
+                            ).show()
+                        }
+                    }
+                    1 -> CastPlaybackHub.clearQueue()
+                }
+                updateCastQueueChrome()
+            }
+            .setNegativeButton(android.R.string.cancel, null)
+            .show()
     }
 
         private fun updatePlayerScale() {
@@ -1423,10 +1500,24 @@ class PlayerTvFragment : Fragment() {
             wirePlayWithChromeButton(binding.pvPlayer.controller.binding)
 
             binding.pvPlayer.controller.binding.exoReplay.setOnClickListener {
-                player.seekTo(0)
+                activePlayer().seekTo(0)
             }
 
+            // Dual skip scheme (documented): progress-bar / hidden-chrome DPAD ±10s here;
+            // MEDIA_REWIND/FF and chrome exo_rew/exo_ffwd use ±30s (PlayerTvView.SKIP_30_MS).
             binding.pvPlayer.controller.binding.exoProgress.setKeyTimeIncrement(10_000)
+
+            runCatching {
+                val c = binding.pvPlayer.controller.binding
+                c.exoRew.setOnClickListener {
+                    binding.pvPlayer.showController()
+                    seekActivePlayerBy(-30_000L)
+                }
+                c.exoFfwd.setOnClickListener {
+                    binding.pvPlayer.showController()
+                    seekActivePlayerBy(30_000L)
+                }
+            }
 
             binding.pvPlayer.controller.binding.btnExoAspectRatio.setOnClickListener {
                 val newResize = UserPreferences.playerResize.next()
@@ -1443,6 +1534,7 @@ class PlayerTvFragment : Fragment() {
             binding.pvPlayer.controller.binding.exoSettings.setOnClickListener {
                 binding.pvPlayer.controllerShowTimeoutMs = defaultControllerShowTimeoutMs
                 binding.pvPlayer.showController()
+                binding.settings.player = activePlayer()
                 binding.settings.show()
             }
 
@@ -1593,6 +1685,45 @@ class PlayerTvFragment : Fragment() {
                 EpisodeManager::hasNextEpisode,
                 ::playNextEpisodeAcrossSeasons
             )
+            wireTransportFocusChain()
+        }
+
+        /** Rewire center transport + top chrome after visibility toggles (episode/live/cast). */
+        private fun wireTransportFocusChain() {
+            val c = binding.pvPlayer.controllerOrNull()?.binding ?: return
+            TvFocusChain.linkHorizontal(
+                c.btnCustomPrev,
+                c.exoRew,
+                c.exoReplay,
+                c.exoPlayPause,
+                c.exoFfwd,
+                c.btnCustomNext,
+            )
+            wireTopChromeFocusChain()
+        }
+
+        private fun wireTopChromeFocusChain() {
+            val c = binding.pvPlayer.controllerOrNull()?.binding ?: return
+            TvFocusChain.linkHorizontal(
+                c.tvCastQueue,
+                c.mediaRouteButton,
+                c.btnExoExternalPlayer,
+            )
+        }
+
+        private fun seekActivePlayerBy(deltaMs: Long) {
+            val p = activePlayer()
+            if (!p.isCommandAvailable(Player.COMMAND_SEEK_IN_CURRENT_MEDIA_ITEM)) {
+                Toast.makeText(
+                    requireContext(),
+                    R.string.player_cast_seek_unavailable,
+                    Toast.LENGTH_SHORT,
+                ).show()
+                return
+            }
+            val duration = p.duration
+            val max = if (duration > 0) duration else Long.MAX_VALUE
+            p.seekTo((p.currentPosition + deltaMs).coerceIn(0L, max))
         }
 
         private fun decodeBase64Uri(uri: String): String? {
@@ -1904,6 +2035,16 @@ class PlayerTvFragment : Fragment() {
                                     positionMs = pos,
                                     title = resolvePlayerTitle(),
                                 )
+                            } else {
+                                // Open target missing after surface teardown — fall through.
+                                val currentIdx = servers.indexOfFirst { it.id == currentServer?.id }
+                                val next = servers.getOrNull(currentIdx + 1)
+                                if (next != null) {
+                                    showFailoverServerCue(currentIdx + 1, servers.size)
+                                    viewModel.getVideo(next)
+                                } else {
+                                    showStreamFailure(error, serversExhausted = true)
+                                }
                             }
                         }
                         PlaybackFailover.Action.GiveUp -> {
@@ -2230,9 +2371,11 @@ class PlayerTvFragment : Fragment() {
             controller.exoDuration.isVisible = !showLive
             controller.tvLiveIndicator.isVisible = showLive
             runCatching {
-                controller.mediaRouteButton.isVisible =
-                    !showLive && UserPreferences.castEnabled && !isOfflinePlayback()
+                controller.exoRew.isVisible = !showLive
+                controller.exoFfwd.isVisible = !showLive
             }
+            // Cast MediaRoute visibility: single policy via applyOfflineCastExternalGuards
+            // (do not hide-then-re-show here for live).
             if (showLive) {
                 controller.tvLiveIndicator.text = getString(R.string.player_live_badge)
                 runCatching {
@@ -2299,12 +2442,14 @@ class PlayerTvFragment : Fragment() {
 
         private fun applyOfflineCastExternalGuards(offline: Boolean) {
             val controller = binding.pvPlayer.controller.binding
+            val live = isLiveTvPlayback() && !offline
             runCatching {
-                // IPTV live Cast is enabled when wired via CastMediaFactory liveConfiguration.
+                // Single castButtonVisible(live, offline, gms) policy — live IPTV Cast is OK
+                // when CastMediaFactory liveConfiguration is wired; never hide-then-re-show.
                 controller.mediaRouteButton.isVisible =
-                    !offline && UserPreferences.castEnabled
-                controller.mediaRouteButton.isEnabled = !offline
-                controller.mediaRouteButton.isFocusable = !offline
+                    castButtonVisible(live = live, offline = offline, gms = castGmsAvailable)
+                controller.mediaRouteButton.isEnabled = !offline && castGmsAvailable
+                controller.mediaRouteButton.isFocusable = !offline && castGmsAvailable
             }
             controller.btnExoExternalPlayer.isEnabled = !offline
             controller.btnExoExternalPlayer.isFocusable = !offline
@@ -2322,6 +2467,14 @@ class PlayerTvFragment : Fragment() {
                 wirePlayWithChromeButton(controller)
             }
             updateCastQueueChrome()
+            wireTransportFocusChain()
+        }
+
+        /** Unified MediaRoute visibility — live does not force-hide Cast. */
+        @Suppress("UNUSED_PARAMETER")
+        private fun castButtonVisible(live: Boolean, offline: Boolean, gms: Boolean): Boolean {
+            // Live IPTV Cast is enabled when wired via CastMediaFactory liveConfiguration.
+            return gms && UserPreferences.castEnabled && !offline
         }
 
         private var liveEdgeWatcher: Runnable? = null
@@ -2436,6 +2589,7 @@ class PlayerTvFragment : Fragment() {
                 showLiveCue(R.string.player_live_zapping)
                 viewModel.playLiveChannel(channel)
             }
+            wireTransportFocusChain()
         }
 
         private fun showLiveChannelGuideDialog() {
@@ -2504,13 +2658,27 @@ class PlayerTvFragment : Fragment() {
             showPlayerCue(getString(messageRes))
         }
 
-        /** Light in-player cue under Exp (failover / live zap / zoom); Toast otherwise. */
+        /** Leanback non-focusable cue pill (cinema glass); Toast as fallback. */
         private fun showPlayerCue(@androidx.annotation.StringRes messageRes: Int) {
             showPlayerCue(getString(messageRes))
         }
 
         private fun showPlayerCue(message: CharSequence) {
-            Toast.makeText(requireContext(), message, Toast.LENGTH_SHORT).show()
+            val cue = _binding?.root?.findViewById<TextView>(R.id.tv_player_cue)
+            if (cue == null) {
+                Toast.makeText(requireContext(), message, Toast.LENGTH_SHORT).show()
+                return
+            }
+            cue.text = message
+            cue.isFocusable = false
+            cue.isFocusableInTouchMode = false
+            cue.isVisible = true
+            playerCueHideJob?.cancel()
+            playerCueHideJob = viewLifecycleOwner.lifecycleScope.launch {
+                delay(2_800)
+                if (!isAdded || _binding == null) return@launch
+                cue.isGone = true
+            }
         }
 
         private fun resolvePlayerTitle(videoType: Video.Type = currentVideoTypeForUi()): String {
@@ -2595,17 +2763,24 @@ class PlayerTvFragment : Fragment() {
             }
         }
 
+        /**
+         * Persist the next episode for the Next Episodes shelf without engagement.
+         * Writing WatchHistory here would park it on Continue Watching (0%) and starve
+         * [EpisodeDao.getNextEpisodesToWatch] (requires no engagement on the show).
+         */
         private fun queueNextEpisodeForContinueWatching(provider: com.dskja.betterstreamflix.providers.Provider) {
             val nextEpisode = EpisodeManager.peekNextEpisode() ?: return
             val episodeDao = database?.episodeDao() ?: return
             val persistedNextEpisode = episodeDao.getById(nextEpisode.id)?.apply {
                 isWatched = false
                 watchedDate = null
-                watchHistory = WatchItem.WatchHistory(
-                    lastEngagementTimeUtcMillis = System.currentTimeMillis(),
-                    lastPlaybackPositionMillis = 0L,
-                    durationMillis = 0L,
-                )
+                // Drop placeholder 0%/0-duration engagement that blocks the Next shelf.
+                if (watchHistory != null &&
+                    watchHistory?.lastPlaybackPositionMillis == 0L &&
+                    watchHistory?.durationMillis == 0L
+                ) {
+                    watchHistory = null
+                }
             } ?: Episode(
                 id = nextEpisode.id,
                 number = nextEpisode.number,
@@ -2625,14 +2800,11 @@ class PlayerTvFragment : Fragment() {
             ).apply {
                 isWatched = false
                 watchedDate = null
-                watchHistory = WatchItem.WatchHistory(
-                    lastEngagementTimeUtcMillis = System.currentTimeMillis(),
-                    lastPlaybackPositionMillis = 0L,
-                    durationMillis = 0L,
-                )
+                watchHistory = null
             }
 
             episodeDao.save(persistedNextEpisode)
+            // syncEpisodeToCache with null history removes any stale CW cache row.
             UserDataCache.syncEpisodeToCache(requireContext(), provider, persistedNextEpisode)
         }
 
@@ -2772,18 +2944,13 @@ class PlayerTvFragment : Fragment() {
                     requireContext(),
                     R.anim.fade_in
                 )
+                // Show without stealing DPAD focus from transport; focus moves only on explicit UP.
                 updateNextEpisodeOverlayAlpha(
                     binding.btnNextEpisodeAction.hasFocus() ||
                         binding.btnNextEpisodeDismiss.hasFocus()
                 )
                 binding.layoutNextEpisodeOverlay.startAnimation(fadeIn)
                 binding.layoutNextEpisodeOverlay.isVisible = true
-                binding.btnNextEpisodeAction.post {
-                    if (_binding == null || !binding.layoutNextEpisodeOverlay.isVisible) {
-                        return@post
-                    }
-                    binding.btnNextEpisodeAction.requestFocus()
-                }
             }
         }
 
@@ -3000,7 +3167,8 @@ class PlayerTvFragment : Fragment() {
 
             if (isCasting) {
                 binding.pvPlayer.player = castPlayer
-                binding.settings.player = player
+                // CC / settings must target CastPlayer while Cast owns the surface.
+                binding.settings.player = castPlayer ?: player
             } else {
                 binding.pvPlayer.player = player
                 binding.settings.player = player
@@ -3016,18 +3184,20 @@ class PlayerTvFragment : Fragment() {
                 binding.pvPlayer.controller.binding.mediaRouteButton
             }.getOrNull() ?: return
 
-            if (!UserPreferences.castEnabled || isOfflinePlayback()) {
-                routeButton.isGone = true
-                return
-            }
-
             // Fire TV / no-GMS builds: CastContext unavailable — keep the button hidden.
-            val castContextOk = runCatching {
+            castGmsAvailable = runCatching {
                 com.google.android.gms.cast.framework.CastContext
                     .getSharedInstance(requireContext().applicationContext)
             }.isSuccess
-            if (!castContextOk) {
+
+            if (!castButtonVisible(
+                    live = isLiveTvPlayback() && !isOfflinePlayback(),
+                    offline = isOfflinePlayback(),
+                    gms = castGmsAvailable,
+                )
+            ) {
                 routeButton.isGone = true
+                wireTopChromeFocusChain()
                 return
             }
 
@@ -3171,6 +3341,7 @@ class PlayerTvFragment : Fragment() {
                         currentVideoType = args.videoType,
                         subtitleConfigurations = emptyList(),
                         headers = emptyMap(),
+                        appContext = requireContext().applicationContext,
                     )
                 }
                 if (prepared != null && isAdded) {
@@ -3243,12 +3414,14 @@ class PlayerTvFragment : Fragment() {
 
             if (_binding != null) {
                 binding.pvPlayer.player = cp
+                binding.settings.player = cp
             }
             isCasting = true
             CastPlaybackHub.markCasting(true)
             if (UserPreferences.castKeepScreenAwake) {
                 activity?.window?.addFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
             }
+            updateCastQueueChrome()
         }
 
         private fun switchPlaybackToLocal() {
@@ -3273,6 +3446,7 @@ class PlayerTvFragment : Fragment() {
             isCasting = false
             CastPlaybackHub.markCasting(false)
             activity?.window?.clearFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+            updateCastQueueChrome()
         }
 
     private enum class ReleaseMode {
@@ -3441,11 +3615,11 @@ class PlayerTvFragment : Fragment() {
             .setView(scrollView)
             .setCancelable(true)
             .setNegativeButton(R.string.bypass_action_cancel) { _, _ ->
-                clearBypassSession(dismissDialog = false, resetBypassDone = true)
+                onBypassQrCancelled()
             }
             .setOnCancelListener {
                 Log.d("Bypass", "QR dialog cancelled")
-                clearBypassSession(dismissDialog = false, resetBypassDone = true)
+                onBypassQrCancelled()
             }
             .create()
 
@@ -3561,6 +3735,24 @@ class PlayerTvFragment : Fragment() {
         qrDialog = null
         stopWebSocketServer()
         stopHttpLandingServer()
+    }
+
+    /** QR cancel: fall through to a non-bypass hoster or surface stream failure (TV-PROV-01). */
+    private fun onBypassQrCancelled() {
+        clearBypassSession(dismissDialog = false, resetBypassDone = true)
+        if (isTearingDown || !isAdded || _binding == null) return
+        val nonBypass = servers.firstOrNull {
+            !isSerienStreamBypassUrl(it.id) && !isSerienStreamBypassUrl(it.src)
+        }
+        if (nonBypass != null) {
+            viewModel.getVideo(nonBypass)
+            return
+        }
+        showStreamFailure(
+            error = Exception(getString(R.string.player_bypass_cancelled)),
+            serversExhausted = true,
+            fallbackMessage = getString(R.string.player_bypass_cancelled),
+        )
     }
 
     private fun onBypassCompleted(token: String, cookies: String?) {

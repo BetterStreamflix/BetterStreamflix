@@ -19,6 +19,8 @@
     <dimen name="detail_tv_logo_height">128dp</dimen>
 
     <dimen name="season_episodes_spacing">30dp</dimen>
+    <!-- Leanback season HGV fixed row height (poster + capped overview + download). -->
+    <dimen name="season_episode_row_height">460dp</dimen>
 
     <!-- Featured full-bleed hero height (phone default). -->
     <dimen name="home_featured_card_height">580dp</dimen>

@@ -49,17 +49,20 @@ object ContinueWatchingMerger {
 
     fun identityKey(item: AppAdapter.Item): String? = when (item) {
         is Movie -> {
+            val provider = item.providerName?.takeIf { it.isNotBlank() } ?: "_"
             val imdb = item.imdbId?.takeIf { it.isNotBlank() }
-            "movie:${imdb ?: item.id}"
+            "movie:$provider:${imdb ?: item.id}"
         }
         is Episode -> {
             val show = item.tvShow
+            val provider = show?.providerName?.takeIf { it.isNotBlank() } ?: "_"
             val showKey = show?.imdbId?.takeIf { it.isNotBlank() } ?: show?.id ?: return null
-            "ep:$showKey"
+            "ep:$provider:$showKey"
         }
         is TvShow -> {
+            val provider = item.providerName?.takeIf { it.isNotBlank() } ?: "_"
             val imdb = item.imdbId?.takeIf { it.isNotBlank() }
-            "show:${imdb ?: item.id}"
+            "show:$provider:${imdb ?: item.id}"
         }
         else -> null
     }

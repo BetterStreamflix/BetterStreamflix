@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.dskja.betterstreamflix.models.Category
 import com.dskja.betterstreamflix.utils.LiveHubCatalog
+import com.dskja.betterstreamflix.utils.ParentalControlUtils
 import com.dskja.betterstreamflix.utils.UserPreferences
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -48,7 +49,8 @@ class LiveHubViewModel : ViewModel() {
                     channelsLabel = channelsLabel,
                     includeQuarantined = includeQuarantined,
                 )
-                if (result.categories.isEmpty()) {
+                val categories = ParentalControlUtils.filterCategories(result.categories)
+                if (categories.isEmpty()) {
                     _state.emit(
                         State.Failed(
                             Exception("No live channels available right now. Try again later."),
@@ -58,7 +60,7 @@ class LiveHubViewModel : ViewModel() {
                 }
                 val warning = result.warnings.takeIf { it.isNotEmpty() }
                     ?.joinToString(separator = " · ")
-                _state.emit(State.Success(result.categories, warning))
+                _state.emit(State.Success(categories, warning))
             } catch (e: Exception) {
                 _state.emit(State.Failed(e))
             }

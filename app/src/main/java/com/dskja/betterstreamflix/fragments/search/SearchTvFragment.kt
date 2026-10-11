@@ -13,6 +13,7 @@ import android.view.animation.Animation
 import android.view.inputmethod.EditorInfo
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.flowWithLifecycle
@@ -83,17 +84,11 @@ class SearchTvFragment : Fragment() {
     private lateinit var voiceHelper: VoiceRecognitionHelper
 
     private fun switchProviderIfNeeded(providerName: String?) {
-        val targetName = providerName?.takeIf { it.isNotBlank() } ?: return
-        if (targetName == UserPreferences.currentProvider?.name) return
-
-        val targetProvider = Provider.providers.keys.find { it.name == targetName } ?: return
-        // Sticky playback handoff — never the full setter (Room reset mid-nav crashes TV).
-        UserPreferences.setCurrentProviderForPlayback(targetProvider)
-        Toast.makeText(
+        com.dskja.betterstreamflix.ui.FeaturedProviderSwitch.switchSticky(
+            providerName,
             requireContext(),
-            getString(R.string.switching_to_provider, targetName),
-            Toast.LENGTH_SHORT,
-        ).show()
+            cueToast = true,
+        )
     }
 
     override fun onCreateView(
@@ -146,7 +141,7 @@ class SearchTvFragment : Fragment() {
                         appAdapter.isLoading = false
                     }
                     is State.FailedSearching -> {
-                        disarmSearchLoading(ui)
+                        com.dskja.betterstreamflix.utils.TvLoadingOverlay.disarm(ui.isLoading.root)
                         ui.isLoading.root.visibility = View.VISIBLE
                         if (http409Guard.handle(requireContext(), state.error) {
                                 if (appAdapter.isLoading) appAdapter.isLoading = false
@@ -157,7 +152,11 @@ class SearchTvFragment : Fragment() {
                         Toast.makeText(requireContext(), state.error.message ?: "", Toast.LENGTH_SHORT).show()
                         if (appAdapter.isLoading) {
                             appAdapter.isLoading = false
-                        } else {
+                        }
+                        // Always bind error chrome when the grid is empty — do not skip
+                        // when a prior SearchingMore left isLoading=true.
+                        val gridEmpty = appAdapter.itemCount == 0
+                        if (gridEmpty) {
                             ui.isLoading.apply {
                                 com.dskja.betterstreamflix.utils.ExpPressEffects.showLoadingSkeleton(root, false)
                                 gIsLoadingRetry.visibility = View.VISIBLE
@@ -205,7 +204,10 @@ class SearchTvFragment : Fragment() {
     private fun retryLastSearch() {
         val query = viewModel.query
         if (binding.llGlobalSearch.isChecked) {
-            val currentLanguage = UserPreferences.currentProvider?.language ?: "es"
+            val currentLanguage = resolveSearchLanguage() ?: run {
+                Toast.makeText(requireContext(), getString(R.string.search_empty_query), Toast.LENGTH_SHORT).show()
+                return
+            }
             viewModel.searchGlobal(query, currentLanguage)
         } else {
             viewModel.search(query)
@@ -221,8 +223,11 @@ class SearchTvFragment : Fragment() {
                 Toast.makeText(requireContext(), getString(R.string.search_empty_query), Toast.LENGTH_SHORT).show()
                 return true
             }
+            val currentLanguage = resolveSearchLanguage() ?: run {
+                Toast.makeText(requireContext(), getString(R.string.search_empty_query), Toast.LENGTH_SHORT).show()
+                return true
+            }
             SearchRecentStore.remember(requireContext(), query)
-            val currentLanguage = UserPreferences.currentProvider?.language ?: "es"
             viewModel.searchGlobal(query, currentLanguage)
         } else {
             if (query.isNotBlank()) {
@@ -232,6 +237,14 @@ class SearchTvFragment : Fragment() {
         }
         refreshRecentSearches()
         return true
+    }
+
+    /** Prefer provider language; never fall back to a hardcoded "es". */
+    private fun resolveSearchLanguage(): String? {
+        return UserPreferences.currentProvider?.language?.takeIf { it.isNotBlank() }
+            ?: UserPreferences.providerLanguage?.takeIf { it.isNotBlank() }
+            ?: UserPreferences.currentLanguage?.takeIf { it.isNotBlank() }
+            ?: java.util.Locale.getDefault().language.takeIf { it.isNotBlank() }
     }
 
     private fun initializeSearch() {
@@ -355,10 +368,9 @@ class SearchTvFragment : Fragment() {
         listOf(binding.btnSearchClear, binding.btnSearchVoice, binding.llGlobalSearch).forEach { view ->
             view.setOnKeyListener { _, keyCode, event ->
                 if (event.action == KeyEvent.ACTION_DOWN && keyCode == KeyEvent.KEYCODE_BACK) {
-                    focusSearchContent()
-                } else {
-                    false
+                    return@setOnKeyListener focusSearchContent()
                 }
+                false
             }
         }
 
@@ -451,7 +463,7 @@ class SearchTvFragment : Fragment() {
 
         val label = android.widget.TextView(requireContext()).apply {
             text = getString(R.string.search_recent_title)
-            setTextColor(0x99FFFFFF.toInt())
+            setTextColor(ContextCompat.getColor(requireContext(), R.color.cinema_text_muted))
             textSize = 14f
             setPadding(0, padV, gap, padV)
         }
@@ -463,7 +475,7 @@ class SearchTvFragment : Fragment() {
                 id = View.generateViewId()
                 text = query
                 textSize = 15f
-                setTextColor(0xFFFFFFFF.toInt())
+                setTextColor(ContextCompat.getColor(requireContext(), R.color.cinema_text))
                 setBackgroundResource(R.drawable.bg_btn_exoplayer_tv)
                 setPadding(padH, padV, padH, padV)
                 isClickable = true
@@ -473,8 +485,12 @@ class SearchTvFragment : Fragment() {
                     binding.etSearch.setText(query)
                     SearchRecentStore.remember(requireContext(), query)
                     if (binding.llGlobalSearch.isChecked) {
-                        val lang = UserPreferences.currentProvider?.language ?: "es"
-                        viewModel.searchGlobal(query, lang)
+                        val lang = resolveSearchLanguage()
+                        if (lang != null) {
+                            viewModel.searchGlobal(query, lang)
+                        } else {
+                            viewModel.search(query)
+                        }
                     } else {
                         viewModel.search(query)
                     }
@@ -542,16 +558,12 @@ class SearchTvFragment : Fragment() {
     }
 
     private fun showSearchLoading(ui: FragmentSearchTvBinding) {
-        disarmSearchLoading(ui)
-        ui.isLoading.root.visibility = View.VISIBLE
-        com.dskja.betterstreamflix.utils.ExpPressEffects.showLoadingSkeleton(ui.isLoading.root, true)
+        com.dskja.betterstreamflix.utils.TvLoadingOverlay.show(ui.isLoading.root)
         ui.isLoading.gIsLoadingRetry.visibility = View.GONE
     }
 
     private fun hideSearchLoading(ui: FragmentSearchTvBinding) {
-        disarmSearchLoading(ui)
-        ui.isLoading.root.visibility = View.GONE
-        com.dskja.betterstreamflix.utils.ExpPressEffects.showLoadingSkeleton(ui.isLoading.root, false)
+        com.dskja.betterstreamflix.utils.TvLoadingOverlay.hide(ui.isLoading.root)
     }
 
     private fun clearSearchGrid() {

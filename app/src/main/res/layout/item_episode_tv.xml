@@ -6,8 +6,7 @@
     android:layout_width="wrap_content"
     android:layout_height="wrap_content"
     android:focusable="true"
-    android:focusableInTouchMode="true"
-    android:nextFocusDown="@id/btn_episode_download">
+    android:focusableInTouchMode="true">
 
     <ImageView
         android:id="@+id/iv_episode_poster"
@@ -139,7 +138,7 @@
         android:layout_marginEnd="10dp"
         android:ellipsize="end"
         android:fontFamily="@font/manrope"
-        android:maxLines="5"
+        android:maxLines="2"
         android:scrollHorizontally="false"
         android:singleLine="false"
         android:textColor="@color/cinema_text_soft"
@@ -149,16 +148,15 @@
         app:layout_constraintTop_toBottomOf="@id/tv_episode_released"
         tools:text="Overview" />
 
-    <!-- One-tap episode download — Cinema Ink secondary CTA, DPAD-activatable. -->
+    <!-- Download affordance — non-focusable on TV (long-press / options); click kept for touch. -->
     <TextView
         android:id="@+id/btn_episode_download"
         style="@style/AppTheme.Widget.Tv.Button.DetailSecondary"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginTop="10dp"
-        android:focusable="true"
-        android:focusableInTouchMode="true"
-        android:nextFocusUp="@id/episode_tv_root"
+        android:focusable="false"
+        android:focusableInTouchMode="false"
         android:text="@string/detail_download"
         android:textSize="14sp"
         app:layout_constraintEnd_toEndOf="parent"

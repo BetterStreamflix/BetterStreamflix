@@ -263,12 +263,7 @@ class TvShowViewHolder(
     }
 
     internal fun checkProviderAndRun(action: () -> Unit) {
-        val providerName = tvShow.providerName
-        if (!providerName.isNullOrBlank() && providerName != UserPreferences.currentProvider?.name) {
-            Provider.findByName(providerName)?.let {
-                UserPreferences.setCurrentProviderForPlayback(it)
-            }
-        }
+        FeaturedProviderSwitch.switchSticky(tvShow.providerName, context)
         action()
     }
 
@@ -310,13 +305,25 @@ class TvShowViewHolder(
             putSerializable("videoType", videoType)
         }
         if (isIptvProvider()) {
-            com.dskja.betterstreamflix.iptv.IptvLiveSession.rememberShows(
-                listOf(tvShow),
-                com.dskja.betterstreamflix.utils.UserPreferences.currentProvider,
-            )
+            val showProvider = com.dskja.betterstreamflix.providers.Provider
+                .findByName(tvShow.providerName.orEmpty())
+                ?: com.dskja.betterstreamflix.utils.UserPreferences.currentProvider
+            // Hub warm already seeded the section — do not collapse zap to one channel.
+            if (!com.dskja.betterstreamflix.iptv.IptvLiveSession.contains(tvShow.id)) {
+                com.dskja.betterstreamflix.iptv.IptvLiveSession.rememberShows(
+                    listOf(tvShow),
+                    showProvider,
+                    clearOnProviderChange = false,
+                )
+            }
             com.dskja.betterstreamflix.iptv.IptvLiveSession.setCurrent(tvShow.id)
         }
-        navController.navigate(R.id.player, args)
+        val liveAction = R.id.action_live_hub_to_player
+        if (navController.currentDestination?.getAction(liveAction) != null) {
+            navController.navigate(liveAction, args)
+        } else {
+            navController.navigate(R.id.player, args)
+        }
     }
 
     private fun tvShowArgs(): Bundle {
@@ -719,7 +726,7 @@ class TvShowViewHolder(
 
         val openTvShow = View.OnClickListener {
             ExpMotion.hapticTap(it)
-            FeaturedProviderSwitch.runWithProvider(tvShow) {
+            FeaturedProviderSwitch.runWithProvider(tvShow, context) {
                 if (isIptvProvider()) {
                     handleDirectPlay(binding.root.findNavController())
                 } else {
@@ -918,10 +925,9 @@ class TvShowViewHolder(
             }
         }
         binding.hgvTvShowSeasons.apply {
-            if (getTag(R.id.tv_shelf_row_height_tag) != true) {
-                setTag(R.id.tv_shelf_row_height_tag, true)
-                setRowHeight((210 * resources.displayMetrics.density).toInt())
-            }
+            // Always pin after bind — Leanback WRAP_CONTENT HGV focus bugs on Fire OS.
+            setRowHeight((210 * resources.displayMetrics.density).toInt())
+            setTag(R.id.tv_shelf_row_height_tag, true)
             submitAppList(tvShow.seasons.onEach { it.itemType = AppAdapter.Type.SEASON_TV_ITEM })
             setItemSpacing(20)
         }
@@ -967,10 +973,9 @@ class TvShowViewHolder(
             }
         }
         binding.hgvTvShowDirectors.apply {
-            if (getTag(R.id.tv_shelf_row_height_tag) != true) {
-                setTag(R.id.tv_shelf_row_height_tag, true)
-                setRowHeight((210 * resources.displayMetrics.density).toInt())
-            }
+            // Always pin after bind — Leanback WRAP_CONTENT HGV focus bugs on Fire OS.
+            setRowHeight((210 * resources.displayMetrics.density).toInt())
+            setTag(R.id.tv_shelf_row_height_tag, true)
             submitAppList(tvShow.directors.onEach {
                 it.itemType = AppAdapter.Type.PEOPLE_TV_ITEM
             })
@@ -1019,10 +1024,9 @@ class TvShowViewHolder(
             }
         }
         binding.hgvTvShowCast.apply {
-            if (getTag(R.id.tv_shelf_row_height_tag) != true) {
-                setTag(R.id.tv_shelf_row_height_tag, true)
-                setRowHeight((210 * resources.displayMetrics.density).toInt())
-            }
+            // Always pin after bind — Leanback WRAP_CONTENT HGV focus bugs on Fire OS.
+            setRowHeight((210 * resources.displayMetrics.density).toInt())
+            setTag(R.id.tv_shelf_row_height_tag, true)
             submitAppList(tvShow.cast.onEach {
                 it.itemType = AppAdapter.Type.PEOPLE_TV_ITEM
             })
@@ -1088,10 +1092,9 @@ class TvShowViewHolder(
             }
         }
         binding.hgvTvShowRecommendations.apply {
-            if (getTag(R.id.tv_shelf_row_height_tag) != true) {
-                setTag(R.id.tv_shelf_row_height_tag, true)
-                setRowHeight((210 * resources.displayMetrics.density).toInt())
-            }
+            // Always pin after bind — Leanback WRAP_CONTENT HGV focus bugs on Fire OS.
+            setRowHeight((210 * resources.displayMetrics.density).toInt())
+            setTag(R.id.tv_shelf_row_height_tag, true)
             submitAppList(tvShow.recommendations.onEach {
                 when (it) {
                     is Movie -> it.itemType = AppAdapter.Type.MOVIE_TV_ITEM

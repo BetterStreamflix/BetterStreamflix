@@ -36,6 +36,12 @@ class NavigationSlideView @JvmOverloads constructor(
     private var selectedListener: ((item: MenuItem) -> Boolean)? = null
     private var reselectedListener: ((item: MenuItem) -> Boolean)? = null
 
+    /**
+     * DPAD-RIGHT from the side rail → content handoff (per destination).
+     * Return true when focus moved into browse content.
+     */
+    var onRequestContentFocus: (() -> Boolean)? = null
+
     private val settleChrome = Runnable {
         val inside = headerView?.hasFocus() == true || menuView.hasFocus()
         if (inside) open() else close()

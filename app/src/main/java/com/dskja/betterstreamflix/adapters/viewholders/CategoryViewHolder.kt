@@ -222,11 +222,10 @@ class CategoryViewHolder(
     ) {
         binding.tvCategoryTitle.text = category.name
 
-        // Empty shelves must not own DPAD focus (empty HGV is a Leanback black hole).
-        // Keep the title row visible so Search global Loading/Error/0-result headers stay
-        // on screen; Home filters empties before submit so it never relies on GONE rows.
+        // Never keep empty CATEGORY shelves on screen — title-only rows still trap Leanback.
+        // Search Global omits empty Success shelves; Home should not submit empties either.
         if (category.list.isEmpty()) {
-            binding.root.visibility = View.VISIBLE
+            binding.root.visibility = View.GONE
             binding.root.isFocusable = false
             binding.root.isFocusableInTouchMode = false
             binding.root.descendantFocusability = ViewGroup.FOCUS_BLOCK_DESCENDANTS
@@ -1148,7 +1147,7 @@ class CategoryViewHolder(
             }
             setOnClickListener {
                 ExpMotion.hapticTap(it)
-                FeaturedProviderSwitch.runWithProvider(selected) {
+                FeaturedProviderSwitch.runWithProvider(selected, context) {
                     // Global actions work from Home / Movies / TV Shows / Search
                     // (home-only Safe Args crashed after provider switch — BETTERSTREAMFLIX-2Z).
                     val nav = findNavController()

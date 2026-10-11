@@ -428,7 +428,25 @@ class HomeViewModel(
                 tvShow?.providerName = providerName
             }
         }
-        if (movies.isEmpty() && episodes.isEmpty() &&
+        val next = cached.nextEpisodes.map {
+            it.toEpisode().apply {
+                tvShow?.providerName = providerName
+            }
+        }
+        val recently = (
+            cached.recentlyWatchedMovies.map {
+                it.toMovie().apply { this.providerName = providerName }
+            } + cached.recentlyWatchedTvShows.map {
+                it.toTvShow().apply { this.providerName = providerName }
+            }
+            ).sortedByDescending { item ->
+                when (item) {
+                    is Movie -> item.lastPlayedAtMillis ?: 0L
+                    is TvShow -> item.lastPlayedAtMillis ?: 0L
+                    else -> 0L
+                }
+            }
+        if (movies.isEmpty() && episodes.isEmpty() && next.isEmpty() && recently.isEmpty() &&
             cached.favoritesMovies.isEmpty() && cached.favoritesTvShows.isEmpty()
         ) {
             return null
@@ -437,8 +455,14 @@ class HomeViewModel(
             continueWatching = (movies + episodes)
                 .sortedByDescending { engagementMillis(it) }
                 .distinctBy { continueWatchingKey(it) },
-            nextEpisodes = emptyList(),
-            recentlyWatched = emptyList(),
+            nextEpisodes = next
+                .sortedByDescending { engagementMillis(it) }
+                .distinctBy { continueWatchingKey(it) },
+            recentlyWatched = filterRecentlyWatchedAgainstActive(
+                recentlyWatched = recently,
+                continueWatching = movies + episodes,
+                nextEpisodes = next,
+            ),
             favoritesMovies = cached.favoritesMovies.map {
                 it.toMovie().apply { this.providerName = providerName }
             },
@@ -667,11 +691,17 @@ class HomeViewModel(
                 val tvShowsDeferred = async { db.tvShowDao().getFavorites().first() }
                 val watchingMoviesDeferred = async { db.movieDao().getWatchingMoviesCapped().first() }
                 val watchingEpisodesDeferred = async { db.episodeDao().getWatchingEpisodesCapped().first() }
+                val nextEpisodesDeferred = async { db.episodeDao().getNextEpisodesToWatch().first() }
+                val recentMoviesDeferred = async { db.movieDao().getRecentlyWatched().first() }
+                val recentTvShowsDeferred = async { db.tvShowDao().getRecentlyWatched().first() }
 
                 val movies = moviesDeferred.await()
                 val tvShows = tvShowsDeferred.await()
                 val watchingMovies = watchingMoviesDeferred.await()
                 val watchingEpisodes = watchingEpisodesDeferred.await()
+                val nextEpisodes = nextEpisodesDeferred.await()
+                val recentMovies = recentMoviesDeferred.await()
+                val recentTvShows = recentTvShowsDeferred.await()
 
                 if (!isActive || provider.name != UserPreferences.currentProvider?.name) return@launch
 
@@ -698,6 +728,21 @@ class HomeViewModel(
                         incoming = watchingEpisodes
                             .filter { it.watchHistory != null }
                             .map { it.toCached() },
+                        idOf = { it.id },
+                    ),
+                    nextEpisodes = preserveCacheOrder(
+                        cached = cached?.nextEpisodes ?: emptyList(),
+                        incoming = nextEpisodes.map { it.toCached() },
+                        idOf = { it.id },
+                    ),
+                    recentlyWatchedMovies = preserveCacheOrder(
+                        cached = cached?.recentlyWatchedMovies ?: emptyList(),
+                        incoming = recentMovies.map { it.toCached() },
+                        idOf = { it.id },
+                    ),
+                    recentlyWatchedTvShows = preserveCacheOrder(
+                        cached = cached?.recentlyWatchedTvShows ?: emptyList(),
+                        incoming = recentTvShows.map { it.toCached() },
                         idOf = { it.id },
                     ),
                 )

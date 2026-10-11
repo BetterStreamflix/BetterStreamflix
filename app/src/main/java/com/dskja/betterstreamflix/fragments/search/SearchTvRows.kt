@@ -13,8 +13,8 @@ import com.dskja.betterstreamflix.models.TvShow
  */
 object SearchTvRows {
 
-    const val MAX_LOCAL = SearchResultGuard.MAX_LOCAL_RESULTS
-    const val MAX_GLOBAL_PER_PROVIDER = SearchResultGuard.MAX_GLOBAL_PER_PROVIDER
+    val MAX_LOCAL: Int get() = SearchResultGuard.maxLocalResults()
+    val MAX_GLOBAL_PER_PROVIDER: Int get() = SearchResultGuard.maxGlobalPerProvider()
     const val GENRE_COLUMNS = 5
     const val RESULT_COLUMNS = 6
     const val GLOBAL_COLUMNS = 1
@@ -27,7 +27,13 @@ object SearchTvRows {
     }
 
     fun local(query: String, items: List<AppAdapter.Item>): Grid {
-        val safe = SearchResultGuard.sanitize(items).take(MAX_LOCAL)
+        val capped = SearchResultGuard.sanitize(items).take(MAX_LOCAL)
+        // Blank Search shows genre chips — hide mature genres under Kids.
+        val safe = if (query.isBlank()) {
+            com.dskja.betterstreamflix.utils.ParentalControlUtils.filterGenreChips(capped)
+        } else {
+            capped
+        }
         safe.forEach { item ->
             when (item) {
                 is Genre -> item.itemType = AppAdapter.Type.GENRE_GRID_TV_ITEM
@@ -55,6 +61,7 @@ object SearchTvRows {
             val success = state as? ProviderResult.State.Success ?: return@mapNotNull null
             val hits = SearchResultGuard.sanitize(success.results)
                 .take(MAX_GLOBAL_PER_PROVIDER)
+            // Never submit empty CATEGORY_TV_ITEM shelves (Leanback focus trap).
             if (hits.isEmpty()) return@mapNotNull null
             hits.forEach { item ->
                 when (item) {

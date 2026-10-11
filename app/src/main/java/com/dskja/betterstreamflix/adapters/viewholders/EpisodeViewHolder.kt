@@ -483,6 +483,8 @@ class EpisodeViewHolder(
             setOnFocusChangeListener { _, hasFocus ->
                 TvFocusZoom.apply(itemView, hasFocus)
             }
+            // Horizontal DPAD: stay on sibling episode cards (download CTA is non-focusable).
+            wireEpisodeSiblingFocus(this)
         }
 
         binding.ivEpisodePoster.apply {
@@ -511,13 +513,13 @@ class EpisodeViewHolder(
 
         bindEpisodeProgress(binding.pbEpisodeProgress)
 
-        binding.root.findViewById<android.widget.TextView>(R.id.tv_episode_number_badge)?.apply {
+        val badgeView = binding.root.findViewById<android.widget.TextView>(R.id.tv_episode_number_badge)
+        badgeView?.apply {
             text = EpisodeDisplayLabels.badge(episode.number)
             visibility = View.VISIBLE
         }
-
-        binding.tvEpisodeInfo.text = EpisodeDisplayLabels.badge(episode.number)
-        binding.tvEpisodeInfo.visibility = View.VISIBLE
+        // Badge already shows E01 — hide duplicate info line (TV-SEAS-05).
+        binding.tvEpisodeInfo.visibility = View.GONE
 
         binding.tvEpisodeTitle.apply {
             text = EpisodeDisplayLabels.readableTitle(episode.title, episode.number) {
@@ -539,24 +541,25 @@ class EpisodeViewHolder(
         binding.tvEpisodeOverview.apply {
             val overview = episode.overview?.trim().orEmpty()
             text = overview
-            // Show overview whenever we have text; layout already caps lines for space.
-            maxLines = 4
+            maxLines = 2
             ellipsize = android.text.TextUtils.TruncateAt.END
             visibility = if (overview.isBlank()) View.GONE else View.VISIBLE
         }
 
         binding.btnEpisodeDownload.apply {
+            // Non-focusable: long-press → ShowOptions (includes Download). Click kept for touch.
+            isFocusable = false
+            isFocusableInTouchMode = false
+            binding.root.nextFocusDownId = View.NO_ID
             val iptv = UserPreferences.currentProvider is com.dskja.betterstreamflix.providers.IptvProvider ||
                 (episode.tvShow?.providerName?.let { Provider.findByName(it) }
                     is com.dskja.betterstreamflix.providers.IptvProvider)
             if (iptv) {
                 visibility = View.GONE
                 setOnClickListener(null)
-                binding.root.nextFocusDownId = View.NO_ID
             } else {
                 visibility = View.VISIBLE
-                binding.root.nextFocusDownId = id
-                nextFocusUpId = binding.root.id
+                contentDescription = context.getString(R.string.player_download_with_long_press)
                 setOnClickListener {
                     ExpMotion.hapticTap(it)
                     val fragment = context.toActivity()?.getCurrentFragment() as? Fragment
@@ -565,11 +568,27 @@ class EpisodeViewHolder(
                         DownloadOptionsController.enqueueEpisode(fragment, episode)
                     }
                 }
-                setOnFocusChangeListener { _, hasFocus ->
-                    TvFocusZoom.apply(this, hasFocus)
-                }
+                // Nested focusable download traps Leanback HGV — keep clickable for OK, not focusable.
+                setOnFocusChangeListener(null)
                 bindEpisodeDownloadButtonState(this as View)
             }
+        }
+    }
+
+    /** Point LEFT/RIGHT at adjacent episode ViewHolders so DPAD never traps in-item. */
+    private fun wireEpisodeSiblingFocus(root: View) {
+        root.post {
+            val rv = root.parent as? RecyclerView ?: return@post
+            val pos = bindingAdapterPosition
+            if (pos == RecyclerView.NO_POSITION) return@post
+            fun ensureId(view: View): Int {
+                if (view.id == View.NO_ID) view.id = View.generateViewId()
+                return view.id
+            }
+            val left = rv.findViewHolderForAdapterPosition(pos - 1)?.itemView
+            val right = rv.findViewHolderForAdapterPosition(pos + 1)?.itemView
+            root.nextFocusLeftId = left?.let { ensureId(it) } ?: View.NO_ID
+            root.nextFocusRightId = right?.let { ensureId(it) } ?: View.NO_ID
         }
     }
 
@@ -653,20 +672,19 @@ class EpisodeViewHolder(
             play()
             return
         }
-        val items = arrayOf(
-            context.getString(R.string.home_swiper_watch_now),
-            context.getString(R.string.continue_watching_go_to_details),
-            context.getString(R.string.option_cancel),
-        )
+        // OK / Details / Cancel buttons — setItems is fragile for Fire OS DPAD focus.
         androidx.appcompat.app.AlertDialog.Builder(context)
             .setTitle(R.string.continue_watching_confirm_title)
-            .setItems(items) { _, which ->
-                when (which) {
-                    0 -> play()
-                    1 -> details()
+            .setPositiveButton(R.string.home_swiper_watch_now) { _, _ -> play() }
+            .setNeutralButton(R.string.continue_watching_go_to_details) { _, _ -> details() }
+            .setNegativeButton(R.string.option_cancel, null)
+            .create()
+            .also { dialog ->
+                dialog.setOnShowListener {
+                    com.dskja.betterstreamflix.utils.ExpDialogChrome.polishButtons(dialog)
                 }
+                dialog.show()
             }
-            .show()
     }
 
     private fun displayContinueWatchingMobileItem(binding: ItemEpisodeContinueWatchingMobileBinding) {

@@ -50,6 +50,7 @@ class MainTvActivity : FragmentActivity() {
     private lateinit var updateAppDialog: UpdateAppTvDialog
 
     private var lastNavHeaderLogoUrl: Any? = null
+    private var castSessionStateListener: ((Boolean) -> Unit)? = null
 
     override fun attachBaseContext(newBase: android.content.Context) {
         super.attachBaseContext(AppLanguageManager.wrap(newBase))
@@ -73,6 +74,8 @@ class MainTvActivity : FragmentActivity() {
         // 4K (1st gen / Fire OS 6) was killing the process right after the splash overlay.
         bindingRootAndChrome()
         deferProviderInits()
+        setupCastStatusStrip()
+        binding.navMain.onRequestContentFocus = { requestBrowseContentFocus() }
 
         binding.ivSplashOverlay.animate()
             .alpha(0f)
@@ -171,12 +174,17 @@ class MainTvActivity : FragmentActivity() {
                     updateNavigationVisibility()
                 }
                 else -> {
-                    if (binding.navMain.hasFocus()) {
-                        binding.navMainFragment.requestFocus()
-                    }
+                    val navHadFocus = binding.navMain.hasFocus()
                     binding.navMain.visibility = View.GONE
+                    if (navHadFocus) {
+                        // Destination-specific handoff — never leave focus on the NavHost container.
+                        binding.navMainFragment.post {
+                            handoffFocusToDestination(destination.id)
+                        }
+                    }
                 }
             }
+            refreshCastStatusStrip(playerVisible = destination.id == R.id.player)
         }
 
         lifecycleScope.launch {
@@ -229,11 +237,11 @@ class MainTvActivity : FragmentActivity() {
                         if (!navController.navigateUp()) {
                             navigateToProviderHome(navController)
                         }
-                        binding.navMain.requestFocus()
+                        binding.root.post { focusHomeContentOrNav() }
                     }
                     R.id.search, R.id.live_hub, R.id.movies, R.id.tv_shows, R.id.favorites, R.id.downloads -> {
                         navigateToProviderHome(navController)
-                        binding.navMain.requestFocus()
+                        binding.root.post { focusHomeContentOrNav() }
                     }
                     R.id.support -> {
                         if (!navController.navigateUp()) {
@@ -320,6 +328,9 @@ class MainTvActivity : FragmentActivity() {
         super.onResume()
         viewModel.checkUpdate()
         com.dskja.betterstreamflix.sync.SharedWatchlistUi.tryFlushPending(this)
+        val destId = (supportFragmentManager.findFragmentById(binding.navMainFragment.id)
+            as? NavHostFragment)?.navController?.currentDestination?.id
+        refreshCastStatusStrip(playerVisible = destId == R.id.player)
     }
 
     override fun onStart() {
@@ -336,6 +347,12 @@ class MainTvActivity : FragmentActivity() {
     override fun onStop() {
         com.dskja.betterstreamflix.profiles.ProfileUnlockGate.markBackgrounded()
         super.onStop()
+    }
+
+    override fun onDestroy() {
+        castSessionStateListener?.let { CastPlaybackHub.removeSessionStateListener(it) }
+        castSessionStateListener = null
+        super.onDestroy()
     }
 
     private fun showProfileUnlockGateIfNeeded(navHostFragment: NavHostFragment) {
@@ -396,9 +413,18 @@ class MainTvActivity : FragmentActivity() {
         val uDeltaX = deltaX ?: UserPreferences.paddingX
         val uDeltaY = deltaY ?: UserPreferences.paddingY
         // Overscan padding must not clip focused Leanback zoom / shelf edges.
+        // Light extra inset so focus zoom on edge tiles is less likely to clip.
+        val focusPad = (4 * resources.displayMetrics.density).toInt()
         binding.root.clipToPadding = false
         binding.root.clipChildren = false
-        binding.root.setPadding(uDeltaX, uDeltaY, uDeltaX, uDeltaY)
+        binding.navMainFragment.clipToPadding = false
+        binding.navMainFragment.clipChildren = false
+        binding.root.setPadding(
+            uDeltaX + focusPad,
+            uDeltaY + focusPad,
+            uDeltaX + focusPad,
+            uDeltaY + focusPad,
+        )
     }
 
     private fun navigateToProviderHome(navController: androidx.navigation.NavController) {
@@ -414,5 +440,101 @@ class MainTvActivity : FragmentActivity() {
                 }
             )
         }
+    }
+
+    private fun focusHomeContentOrNav() {
+        val host = supportFragmentManager
+            .findFragmentById(binding.navMainFragment.id) as? NavHostFragment
+        val home = host?.childFragmentManager?.primaryNavigationFragment
+            as? com.dskja.betterstreamflix.fragments.home.HomeTvFragment
+        if (home?.requestContentFocus() != true) {
+            binding.navMain.requestFocus()
+        }
+    }
+
+    /** Side-nav DPAD-RIGHT → content for the current browse destination. */
+    private fun requestBrowseContentFocus(): Boolean {
+        val frag = getCurrentFragment() ?: return false
+        return when (frag) {
+            is com.dskja.betterstreamflix.fragments.home.HomeTvFragment ->
+                frag.requestContentFocus()
+            is com.dskja.betterstreamflix.fragments.live.LiveHubTvFragment ->
+                frag.requestContentFocus()
+            is com.dskja.betterstreamflix.fragments.movie.MovieTvFragment ->
+                frag.requestContentFocus()
+            is com.dskja.betterstreamflix.fragments.tv_show.TvShowTvFragment ->
+                frag.requestContentFocus()
+            is com.dskja.betterstreamflix.fragments.season.SeasonTvFragment ->
+                frag.requestContentFocus()
+            is com.dskja.betterstreamflix.fragments.player.PlayerTvFragment -> {
+                frag.requestPlayerFocus()
+                true
+            }
+            is com.dskja.betterstreamflix.fragments.search.SearchTvFragment -> {
+                frag.view?.findFocus()?.requestFocus()
+                val grid = frag.view?.findViewById<View>(R.id.vgv_search)
+                grid?.requestFocus() == true || frag.view?.requestFocus() == true
+            }
+            is com.dskja.betterstreamflix.fragments.movies.MoviesTvFragment -> {
+                frag.view?.findViewById<View>(R.id.vgv_movies)?.requestFocus() == true
+            }
+            is com.dskja.betterstreamflix.fragments.tv_shows.TvShowsTvFragment -> {
+                frag.view?.findViewById<View>(R.id.vgv_tv_shows)?.requestFocus() == true
+            }
+            is com.dskja.betterstreamflix.fragments.favorites.FavoritesTvFragment -> {
+                frag.view?.findViewById<View>(R.id.rv_favorites)?.requestFocus() == true
+            }
+            is com.dskja.betterstreamflix.fragments.downloads.DownloadsTvFragment -> {
+                frag.view?.findViewById<View>(R.id.rv_downloads)?.requestFocus() == true ||
+                    frag.view?.requestFocus() == true
+            }
+            else -> frag.view?.requestFocus() == true
+        }
+    }
+
+    private fun handoffFocusToDestination(destinationId: Int) {
+        when (destinationId) {
+            R.id.player ->
+                (getCurrentFragment() as? PlayerTvFragment)?.requestPlayerFocus()
+            R.id.movie ->
+                (getCurrentFragment() as? com.dskja.betterstreamflix.fragments.movie.MovieTvFragment)
+                    ?.requestContentFocus()
+            R.id.tv_show ->
+                (getCurrentFragment() as? com.dskja.betterstreamflix.fragments.tv_show.TvShowTvFragment)
+                    ?.requestContentFocus()
+            R.id.season ->
+                (getCurrentFragment() as? com.dskja.betterstreamflix.fragments.season.SeasonTvFragment)
+                    ?.requestContentFocus()
+            else -> requestBrowseContentFocus()
+        }
+    }
+
+    private fun setupCastStatusStrip() {
+        val stop = binding.btnCastStatusStop
+        stop.setOnClickListener {
+            CastPlaybackHub.stopCasting(this)
+            refreshCastStatusStrip(playerVisible = false)
+        }
+        val listener: (Boolean) -> Unit = {
+            val destId = (supportFragmentManager.findFragmentById(binding.navMainFragment.id)
+                as? NavHostFragment)?.navController?.currentDestination?.id
+            refreshCastStatusStrip(playerVisible = destId == R.id.player)
+        }
+        castSessionStateListener = listener
+        CastPlaybackHub.addSessionStateListener(listener)
+        refreshCastStatusStrip(playerVisible = false)
+    }
+
+    private fun refreshCastStatusStrip(playerVisible: Boolean) {
+        val strip = _binding?.llCastStatusStrip ?: return
+        val casting = CastPlaybackHub.isCasting
+        // Fire/GMS-safe: if Cast never started, strip stays gone.
+        val show = casting && !playerVisible
+        strip.visibility = if (show) View.VISIBLE else View.GONE
+        if (!show) return
+        val title = CastPlaybackHub.lastSubtitle?.takeIf { it.isNotBlank() }
+            ?: CastPlaybackHub.lastTitle?.takeIf { it.isNotBlank() }
+            ?: getString(R.string.player_cast_status_casting)
+        binding.tvCastStatusTitle.text = title
     }
 }

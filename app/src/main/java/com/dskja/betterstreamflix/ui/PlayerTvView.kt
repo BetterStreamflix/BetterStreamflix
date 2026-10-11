@@ -165,21 +165,47 @@ class PlayerTvView @JvmOverloads constructor(
                 }
             }
 
+            KeyEvent.KEYCODE_MEDIA_PLAY -> {
+                if (event.action == KeyEvent.ACTION_DOWN && !player.playWhenReady) {
+                    player.play()
+                }
+                return true
+            }
+
+            KeyEvent.KEYCODE_MEDIA_PAUSE -> {
+                if (event.action == KeyEvent.ACTION_DOWN && player.playWhenReady) {
+                    player.pause()
+                }
+                return true
+            }
+
+            KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE -> {
+                if (event.action == KeyEvent.ACTION_DOWN) {
+                    if (player.isPlaying) player.pause() else player.play()
+                }
+                return true
+            }
+
             // ±30s: Fire TV / Android TV rewind & fast-forward (and skip) keys.
+            // Dual skip scheme: progress-bar DPAD / key-time ±10s; MEDIA_REWIND/FF ±30s.
             KeyEvent.KEYCODE_MEDIA_REWIND,
             KeyEvent.KEYCODE_MEDIA_SKIP_BACKWARD -> {
-                if (!isLivePlayback && event.action == KeyEvent.ACTION_DOWN) {
+                if (isLivePlayback) return false
+                return if (event.action == KeyEvent.ACTION_DOWN) {
                     seekBy(player, -SKIP_30_MS)
+                } else {
+                    true
                 }
-                return !isLivePlayback
             }
 
             KeyEvent.KEYCODE_MEDIA_FAST_FORWARD,
             KeyEvent.KEYCODE_MEDIA_SKIP_FORWARD -> {
-                if (!isLivePlayback && event.action == KeyEvent.ACTION_DOWN) {
+                if (isLivePlayback) return false
+                return if (event.action == KeyEvent.ACTION_DOWN) {
                     seekBy(player, SKIP_30_MS)
+                } else {
+                    true
                 }
-                return !isLivePlayback
             }
         }
 
@@ -216,17 +242,24 @@ class PlayerTvView @JvmOverloads constructor(
         }
     }
 
-    private fun seekBy(player: Player, deltaMs: Long) {
-        if (!player.isCommandAvailable(Player.COMMAND_SEEK_IN_CURRENT_MEDIA_ITEM)) return
+    /** @return false when seek is unavailable (toast shown); true when seek applied or key ignored as UP. */
+    private fun seekBy(player: Player, deltaMs: Long): Boolean {
+        if (!player.isCommandAvailable(Player.COMMAND_SEEK_IN_CURRENT_MEDIA_ITEM)) {
+            Toast.makeText(context, R.string.player_cast_seek_unavailable, Toast.LENGTH_SHORT).show()
+            return false
+        }
         val duration = player.duration
         val max = if (duration > 0) duration else Long.MAX_VALUE
         val target = (player.currentPosition + deltaMs).coerceIn(0L, max)
         player.seekTo(target)
+        return true
     }
 
     private companion object {
         const val TAG = "PlayerTvView"
+        /** Hidden-chrome DPAD L/R and progress-bar key increments (see setKeyTimeIncrement). */
         const val SKIP_10_MS = 10_000L
+        /** MEDIA_REWIND / MEDIA_FAST_FORWARD / chrome ±30 buttons. */
         const val SKIP_30_MS = 30_000L
     }
 }

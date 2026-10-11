@@ -13,6 +13,13 @@ class EpisodeDisplayLabelsTest {
     }
 
     @Test
+    fun seasonEpisodeIsZeroPadded() {
+        assertEquals("S01E01", EpisodeDisplayLabels.seasonEpisode(1, 1))
+        assertEquals("S02E10", EpisodeDisplayLabels.seasonEpisode(2, 10))
+        assertEquals("S00E03", EpisodeDisplayLabels.seasonEpisode(0, 3))
+    }
+
+    @Test
     fun readableTitlePrefersNonBlank() {
         assertEquals(
             "Pilot",

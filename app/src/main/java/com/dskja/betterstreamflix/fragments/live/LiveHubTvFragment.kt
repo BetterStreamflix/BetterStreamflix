@@ -1,6 +1,7 @@
 package com.dskja.betterstreamflix.fragments.live
 
 import android.os.Bundle
+import android.view.KeyEvent
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -54,7 +55,7 @@ class LiveHubTvFragment : Fragment() {
         super.onViewCreated(view, savedInstanceState)
         ExpMotion.enterScreen(binding.root)
         com.dskja.betterstreamflix.utils.ExpPressEffects.wireLoadingRetry(binding.isLoading.root)
-        HomeProfileChip.refresh(this, binding.root, showName = true)
+        refreshProfileChip()
 
         binding.vgvLiveHub.apply {
             setNumColumns(1)
@@ -84,11 +85,7 @@ class LiveHubTvFragment : Fragment() {
                         TvLoadingOverlay.hide(binding.isLoading.root)
                         showWarning(state.warning)
                         warmZapForSections(state.categories)
-                        binding.vgvLiveHub.post {
-                            if (!binding.vgvLiveHub.hasFocus()) {
-                                binding.vgvLiveHub.requestFocus()
-                            }
-                        }
+                        binding.vgvLiveHub.post { focusFirstChannel() }
                     }
                     is LiveHubViewModel.State.Failed -> {
                         Toast.makeText(
@@ -129,7 +126,7 @@ class LiveHubTvFragment : Fragment() {
 
     override fun onResume() {
         super.onResume()
-        HomeProfileChip.refresh(this, _binding?.root, showName = true)
+        refreshProfileChip()
     }
 
     private fun reload() {
@@ -169,16 +166,36 @@ class LiveHubTvFragment : Fragment() {
         }
         banner.text = warning
         banner.isVisible = true
+        banner.isFocusable = true
+        banner.isFocusableInTouchMode = true
+        banner.isClickable = true
+        banner.nextFocusDownId = R.id.vgv_live_hub
+        banner.contentDescription = getString(R.string.home_catalog_warning_tap_retry)
+        banner.setOnKeyListener { _, keyCode, event ->
+            if (event.action != KeyEvent.ACTION_DOWN || keyCode != KeyEvent.KEYCODE_DPAD_DOWN) {
+                return@setOnKeyListener false
+            }
+            focusFirstChannel()
+            true
+        }
         banner.setOnClickListener { reload() }
     }
 
     private fun hideWarning() {
         binding.tvLiveHubWarning.apply {
+            if (isFocused) clearFocus()
+            isFocusable = false
+            isFocusableInTouchMode = false
             isVisible = false
             setOnClickListener(null)
+            setOnKeyListener(null)
         }
     }
 
+    /**
+     * Warm each hub section without wiping prior providers' zap session.
+     * Neighbor warm runs for every IPTV section provider (not only app currentProvider).
+     */
     private fun warmZapForSections(categories: List<Category>) {
         val shows = categories.flatMap { it.list.filterIsInstance<TvShow>() }
         if (shows.isEmpty()) return
@@ -187,7 +204,7 @@ class LiveHubTvFragment : Fragment() {
             val channels = providerShows.map {
                 IptvLiveSession.Channel(id = it.id, name = it.title, logo = it.poster)
             }
-            IptvLiveSession.remember(channels, provider = provider)
+            IptvLiveSession.remember(channels, provider = provider, clearOnProviderChange = false)
             val anchors = providerShows.take(3)
             anchors.firstOrNull()?.let { first ->
                 IptvLiveSession.setCurrent(first.id)
@@ -202,12 +219,36 @@ class LiveHubTvFragment : Fragment() {
         }
     }
 
+    private fun refreshProfileChip() {
+        HomeProfileChip.refresh(
+            fragment = this,
+            root = _binding?.root,
+            showName = true,
+        )
+        _binding?.root?.findViewById<View>(R.id.tv_home_profile_chip)?.let { chip ->
+            chip.isFocusableInTouchMode = true
+            chip.nextFocusDownId = R.id.vgv_live_hub
+            chip.setOnKeyListener { _, keyCode, event ->
+                if (event.action != KeyEvent.ACTION_DOWN || keyCode != KeyEvent.KEYCODE_DPAD_DOWN) {
+                    return@setOnKeyListener false
+                }
+                focusFirstChannel()
+                true
+            }
+        }
+    }
+
+    private fun focusFirstChannel(): Boolean {
+        val grid = _binding?.vgvLiveHub ?: return false
+        if (!grid.isAttachedToWindow || (grid.adapter?.itemCount ?: 0) == 0) return false
+        return HomeProfileChip.focusFirstPoster(grid)
+    }
+
     /** Side-nav Back / focus handoff. */
     fun requestContentFocus(): Boolean {
         val grid = _binding?.vgvLiveHub ?: return false
         if (!grid.isAttachedToWindow || (grid.adapter?.itemCount ?: 0) == 0) return false
-        grid.requestFocus()
-        return true
+        return focusFirstChannel()
     }
 
     override fun onDestroyView() {

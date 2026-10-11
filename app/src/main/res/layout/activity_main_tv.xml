@@ -31,11 +31,60 @@
         android:layout_height="0dp"
         android:background="?attr/app_background_color"
         app:defaultNavHost="true"
-        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintBottom_toTopOf="@id/ll_cast_status_strip"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toEndOf="@id/nav_main"
         app:layout_constraintTop_toTopOf="parent"
         app:navGraph="@navigation/nav_main_graph_tv" />
+
+    <!-- Leanback-safe Cast mini status when casting outside the player (Fire/GMS-safe). -->
+    <LinearLayout
+        android:id="@+id/ll_cast_status_strip"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:background="@drawable/bg_live_indicator"
+        android:focusable="false"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:paddingStart="20dp"
+        android:paddingTop="10dp"
+        android:paddingEnd="16dp"
+        android:paddingBottom="10dp"
+        android:visibility="gone"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toEndOf="@id/nav_main"
+        tools:visibility="visible">
+
+        <TextView
+            android:id="@+id/tv_cast_status_title"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:ellipsize="end"
+            android:maxLines="1"
+            android:textColor="@color/cinema_text"
+            android:textSize="16sp"
+            android:textStyle="bold"
+            tools:text="Casting · Show title" />
+
+        <TextView
+            android:id="@+id/btn_cast_status_stop"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="12dp"
+            android:background="@drawable/bg_btn_exoplayer_tv"
+            android:focusable="true"
+            android:focusableInTouchMode="true"
+            android:paddingStart="14dp"
+            android:paddingTop="8dp"
+            android:paddingEnd="14dp"
+            android:paddingBottom="8dp"
+            android:text="@string/player_cast_status_stop"
+            android:textColor="@color/cinema_text"
+            android:textSize="14sp"
+            android:textStyle="bold" />
+    </LinearLayout>
 
     <!-- Overlay per mostrare la "S" del logo durante il caricamento -->
     <ImageView

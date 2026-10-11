@@ -50,6 +50,7 @@
     <string name="live_hub_section_channels">Channels</string>
     <string name="live_hub_empty">No live channels right now — pull to retry</string>
     <string name="live_hub_restricted">Live TV isn\'t available with Kids or parental controls.</string>
+    <string name="live_hub_empty_tv">No live channels right now — press OK to retry</string>
     <string name="main_menu_theme_change">Change Theme</string>
     <string name="theme_default">Default</string>
     <string name="profile_default">Default</string>
@@ -341,6 +342,14 @@
     <string name="player_stream_fail_action_solve_captcha">Solve captcha</string>
     <string name="player_cast_queue_badge">Cast queue · %1$d</string>
     <string name="player_cast_queue_next">Up next · %1$s</string>
+    <string name="player_cast_queue_badge_cd">Cast queue options</string>
+    <string name="player_cast_queue_dialog_title">Cast queue</string>
+    <string name="player_cast_queue_play_next">Play next</string>
+    <string name="player_cast_queue_clear">Clear queue</string>
+    <string name="player_cast_queue_empty">No next item in Cast queue</string>
+    <string name="player_cast_seek_unavailable">Seek is not available while casting</string>
+    <string name="player_cast_status_stop">Stop</string>
+    <string name="player_cast_status_casting">Casting</string>
     <string name="player_play_with_chrome">Play with</string>
     <string name="player_download_with_long_press">Long-press for Download with… (ADM)</string>
     <string name="settings_show_quarantined_providers_title">Show quarantined providers</string>
@@ -818,6 +827,8 @@
     <string name="player_bypass_qr_emulator_note">Emulator detected: set “Bypass advertised host” in TV settings to your PC LAN IP so the phone can reach this device.</string>
     <string name="player_bypass_retry_needed">Captcha is still required for this title. Scan the QR again with BetterStreamflix.</string>
     <string name="player_bypass_no_lan_ip">No LAN IP found for the QR. Set “Bypass advertised host” in Settings (e.g. 192.168.x.x).</string>
+    <string name="player_bypass_prepare_failed">Unable to prepare TV bypass page.</string>
+    <string name="player_bypass_start_failed">Unable to start TV bypass. Please try again.</string>
     <string name="settings_scan_resolver_invalid_qr">This QR code is not a BetterStreamflix bypass link.</string>
     <string name="settings_scan_resolver_failed">Unable to start QR scanner on this device.</string>
     <string name="settings_scan_resolver_camera_permission_denied">Camera permission is required to scan the QR code.</string>

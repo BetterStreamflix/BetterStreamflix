@@ -301,20 +301,22 @@ class SearchViewModel(
                         }
                     )
                 )
-                val addonHits = runCatching {
-                    SearchResultGuard.sanitize(
-                        com.dskja.betterstreamflix.platform.plugins.PluginManager
-                            .collectSearchResults(provider, query, page = 1),
-                    )
-                }.getOrDefault(emptyList())
+                val addonHits = ParentalControlUtils.filterItems(
+                    runCatching {
+                        SearchResultGuard.sanitize(
+                            com.dskja.betterstreamflix.platform.plugins.PluginManager
+                                .collectSearchResults(provider, query, page = 1),
+                        )
+                    }.getOrDefault(emptyList()),
+                )
                 val merged = (results + addonHits)
                     .distinctBy { it.searchIdentityKey() }
-                    .take(SearchResultGuard.MAX_LOCAL_RESULTS)
+                    .take(SearchResultGuard.maxLocalResults())
                 this@SearchViewModel.query = query
                 page = 1
                 rawLocalResults = merged
                 rawLocalHasMore = results.isNotEmpty() &&
-                    merged.size < SearchResultGuard.MAX_LOCAL_RESULTS
+                    merged.size < SearchResultGuard.maxLocalResults()
                 rawGlobalResults = emptyList()
                 emitLocalSuccess()
             } catch (e: CancellationException) {
@@ -364,13 +366,14 @@ class SearchViewModel(
                         .map { it.searchIdentityKey() }
                         .toHashSet()
                     val newUniqueResults = results.filterNot { it.searchIdentityKey() in existingKeys }
-                    val roomLeft = (SearchResultGuard.MAX_LOCAL_RESULTS - rawLocalResults.size)
+                    val localCap = SearchResultGuard.maxLocalResults()
+                    val roomLeft = (localCap - rawLocalResults.size)
                         .coerceAtLeast(0)
                     val accepted = newUniqueResults.take(roomLeft)
                     page += 1
                     rawLocalResults = rawLocalResults + accepted
                     rawLocalHasMore = accepted.isNotEmpty() &&
-                        rawLocalResults.size < SearchResultGuard.MAX_LOCAL_RESULTS
+                        rawLocalResults.size < localCap
                     emitLocalSuccess()
                 } catch (e: CancellationException) {
                     throw e
@@ -446,7 +449,7 @@ class SearchViewModel(
                                         }
                                     },
                                 ),
-                                SearchResultGuard.MAX_GLOBAL_PER_PROVIDER,
+                                SearchResultGuard.maxGlobalPerProvider(),
                             )
                             ProviderResult(provider, ProviderResult.State.Success(results))
                         }

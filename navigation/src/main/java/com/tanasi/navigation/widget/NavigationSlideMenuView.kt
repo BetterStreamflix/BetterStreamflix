@@ -2,6 +2,7 @@ package com.tanasi.navigation.widget
 
 import android.content.Context
 import android.graphics.drawable.ShapeDrawable
+import android.view.KeyEvent
 import android.view.MenuItem
 import android.view.View
 import android.view.ViewGroup
@@ -193,13 +194,28 @@ class NavigationSlideMenuView(
                 ?: View.NO_ID
             child.nextFocusDownId = chain.getOrNull(index + 1)?.id ?: View.NO_ID
             child.nextFocusLeftId = View.NO_ID
+            // RIGHT is handled via key intercept → requestContentFocus (not a fixed view id).
             child.nextFocusRightId = View.NO_ID
+            child.setOnKeyListener { _, keyCode, event ->
+                if (keyCode == KeyEvent.KEYCODE_DPAD_RIGHT && event.action == KeyEvent.ACTION_DOWN) {
+                    navigationSlideView.onRequestContentFocus?.invoke() == true
+                } else {
+                    false
+                }
+            }
         }
         if (header != null) {
             header.nextFocusDownId = chain.firstOrNull()?.id ?: View.NO_ID
             header.nextFocusUpId = View.NO_ID
             header.nextFocusLeftId = View.NO_ID
             header.nextFocusRightId = View.NO_ID
+            header.setOnKeyListener { _, keyCode, event ->
+                if (keyCode == KeyEvent.KEYCODE_DPAD_RIGHT && event.action == KeyEvent.ACTION_DOWN) {
+                    navigationSlideView.onRequestContentFocus?.invoke() == true
+                } else {
+                    false
+                }
+            }
         }
     }
 

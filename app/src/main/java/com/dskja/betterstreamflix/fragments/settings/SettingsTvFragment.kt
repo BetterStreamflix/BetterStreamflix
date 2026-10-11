@@ -350,6 +350,7 @@ class SettingsTvFragment : LeanbackPreferenceFragmentCompat() {
                 }
             },
         )
+        gateKidsProfileSettingsPrefs()
         ConnectionServicesController.bind(
             fragment = this,
             scope = lifecycleScope,
@@ -1073,6 +1074,7 @@ class SettingsTvFragment : LeanbackPreferenceFragmentCompat() {
             }
         }
 
+        gateCastPreferencesOnGms()
         findPreference<SwitchPreference>("CAST_ENABLED")?.apply {
             isChecked = UserPreferences.castEnabled
             setOnPreferenceChangeListener { _, newValue ->
@@ -2332,6 +2334,51 @@ class SettingsTvFragment : LeanbackPreferenceFragmentCompat() {
         }
     }
 
+    /** Hide Cast toggles on Fire OS / no-GMS where CastContext is unavailable. */
+    private fun gateCastPreferencesOnGms() {
+        val castAvailable = runCatching {
+            com.google.android.gms.cast.framework.CastContext
+                .getSharedInstance(requireContext().applicationContext)
+        }.isSuccess
+        listOf(
+            "CAST_ENABLED",
+            "CAST_SUBTITLES_ENABLED",
+            "CAST_KEEP_SCREEN_AWAKE",
+            "CAST_QUEUE_NEXT_EPISODE",
+        ).forEach { key ->
+            findPreference<Preference>(key)?.isVisible = castAvailable
+        }
+    }
+
+    /**
+     * TV-KIDS-04: while Kids is active, clear-PIN must go through
+     * [ProfilesSettingsController.challengeKidsUnlock] (kids/max-age listeners are already
+     * gated inside ProfilesSettingsController; re-bind PIN clear here without editing that file).
+     */
+    private fun gateKidsProfileSettingsPrefs() {
+        val kidsActive = com.dskja.betterstreamflix.profiles.ProfileManager.isKidsActive()
+        findPreference<Preference>("PROFILE_PIN_CLEAR")?.setOnPreferenceClickListener {
+            val profile = com.dskja.betterstreamflix.profiles.ProfileManager.activeProfile()
+            if (profile?.pinHash == null) return@setOnPreferenceClickListener true
+            ProfilesSettingsController.challengeKidsUnlock(requireContext()) {
+                com.dskja.betterstreamflix.profiles.ProfileManager.clearPin(profile.id)
+                com.dskja.betterstreamflix.utils.ExpDialogChrome.notify(
+                    requireContext(),
+                    getString(R.string.profile_pin_cleared),
+                    R.string.profile_pin_title,
+                )
+                ProfilesSettingsController.refresh(
+                    findPreference = { key -> findPreference(key) },
+                    context = requireContext(),
+                    fragment = this,
+                )
+                gateKidsProfileSettingsPrefs()
+            }
+            true
+        }
+        (findPreference("PROFILE_MAX_AGE") as? ListPreference)?.isEnabled = kidsActive
+    }
+
     override fun onResume() {
         super.onResume()
         applyScreenTitle()
@@ -2342,6 +2389,7 @@ class SettingsTvFragment : LeanbackPreferenceFragmentCompat() {
             findPreference = { key -> findPreference(key) },
             context = requireContext(),
         )
+        gateKidsProfileSettingsPrefs()
         ConnectionServicesController.refresh(
             findPreference = { key -> findPreference(key) },
             context = requireContext(),
