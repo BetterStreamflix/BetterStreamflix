@@ -51,6 +51,8 @@ import androidx.media3.ui.SubtitleView
 import androidx.navigation.fragment.findNavController
 import androidx.navigation.fragment.navArgs
 import com.dskja.betterstreamflix.R
+import com.dskja.betterstreamflix.player.FailoverTimelineSession
+import com.dskja.betterstreamflix.player.FailoverTimelineUi
 import com.dskja.betterstreamflix.player.PlaybackFailover
 import com.dskja.betterstreamflix.player.PlaybackProgress
 import com.dskja.betterstreamflix.player.PlaybackLifecycleGuard
@@ -218,6 +220,7 @@ class PlayerMobileFragment : Fragment(),
     private lateinit var gestureHelper: PlayerGestureHelper
 
     private var servers = listOf<Video.Server>()
+    private val failoverTimeline = FailoverTimelineSession()
     private var zoomToast: Toast? = null
     private var controlsLocked = false
     private var defaultControllerShowTimeoutMs = 2000
@@ -463,6 +466,8 @@ class PlayerMobileFragment : Fragment(),
                     }
                     is PlayerViewModel.State.SuccessLoadingServers -> {
                         servers = state.servers
+                        failoverTimeline.clear()
+                        FailoverTimelineUi.clearErrorTimeline(_binding?.root)
                         com.dskja.betterstreamflix.providers.ProviderServerAb.clearSession()
                         val sToServer = servers.firstOrNull {
                             isSerienStreamBypassUrl(it.id) || isSerienStreamBypassUrl(it.src)
@@ -612,11 +617,14 @@ class PlayerMobileFragment : Fragment(),
                                 DeviceCapabilities.shouldPreferSoftwareDecoder(requireContext()),
                             )
                         }
+                        failoverTimeline.recordOk(state.server, servers)
+                        maybeShowFailoverTimeline()
                         displayVideo(state.video, state.server)
                     }
 
                     is PlayerViewModel.State.FailedLoadingVideo -> {
                         stuckDetector.setResolveInFlight(false)
+                        failoverTimeline.recordServerFailure(state.server, servers, state.error)
                         when (
                             val action = PlaybackFailover.decide(
                                 currentServerIndex = PlaybackFailover.indexOfServer(servers, state.server),
@@ -649,6 +657,7 @@ class PlayerMobileFragment : Fragment(),
                             }
                             PlaybackFailover.Action.RetrySoftwareDecoder -> {
                                 pendingPlayWithAfterResolve = false
+                                failoverTimeline.recordSoftwareDecoder()
                                 // Leave currentSoftwareDecoder stale so needsReinit rebuilds Exo.
                                 PlayerSettingsView.Settings.SoftwareDecoder.init(true)
                                 PlayerSettingsView.Settings.SoftwareDecoder.selectedValue = true
@@ -658,6 +667,7 @@ class PlayerMobileFragment : Fragment(),
                             PlaybackFailover.Action.TryExternalPlayer -> {
                                 pendingPlayWithAfterResolve = false
                                 currentExternalPlayerTried = true
+                                failoverTimeline.recordExternalPlayer()
                                 val video = currentVideo
                                 if (video != null) {
                                     showPlayerCue(R.string.player_retry_external_player)
@@ -1958,6 +1968,9 @@ class PlayerMobileFragment : Fragment(),
                     if (::player.isInitialized && player.hasStarted()) {
                         com.dskja.betterstreamflix.providers.ProviderServerAb
                             .notePlaybackStable(currentServer)
+                        // Mid-play SW rebuilds skip SuccessLoadingVideo — surface timeline here.
+                        failoverTimeline.recordOk(currentServer, servers)
+                        maybeShowFailoverTimeline()
                     }
                     hideStuckOverlay()
                     recordRecentlyWatchedStart()
@@ -2033,6 +2046,7 @@ class PlayerMobileFragment : Fragment(),
                 }
                 if (!isAdded || _binding == null) return
 
+                failoverTimeline.recordServerFailure(currentServer, servers, error)
                 when (
                     val action = PlaybackFailover.decide(
                         currentServerIndex = PlaybackFailover.indexOfServer(servers, currentServer),
@@ -2069,6 +2083,7 @@ class PlayerMobileFragment : Fragment(),
                     PlaybackFailover.Action.RetrySoftwareDecoder -> {
                         suppressBuiltInErrorOverlay()
                         pendingPlayWithAfterResolve = false
+                        failoverTimeline.recordSoftwareDecoder()
                         // Leave currentSoftwareDecoder stale so needsReinit rebuilds Exo.
                         PlayerSettingsView.Settings.SoftwareDecoder.init(true)
                         PlayerSettingsView.Settings.SoftwareDecoder.selectedValue = true
@@ -2082,6 +2097,7 @@ class PlayerMobileFragment : Fragment(),
                     PlaybackFailover.Action.TryExternalPlayer -> {
                         pendingPlayWithAfterResolve = false
                         currentExternalPlayerTried = true
+                        failoverTimeline.recordExternalPlayer()
                         val video = currentVideo
                         if (video != null) {
                             showPlayerCue(R.string.player_retry_external_player)
@@ -3034,13 +3050,15 @@ class PlayerMobileFragment : Fragment(),
         showPlayerCue(getString(messageRes))
     }
 
-    private fun showPlayerCue(message: CharSequence) {
-        if (!ExperimentalMobileDesign.enabled()) {
+    private fun showPlayerCue(message: CharSequence, holdMs: Long = 1_200L) {
+        // Failover timeline always uses an in-player pill so the story is readable.
+        val forcePill = holdMs >= FailoverTimelineUi.SUCCESS_CUE_MS
+        if (!ExperimentalMobileDesign.enabled() && !forcePill) {
             Toast.makeText(requireContext(), message, Toast.LENGTH_SHORT).show()
             return
         }
         val host = binding.root as? android.view.ViewGroup ?: run {
-            Toast.makeText(requireContext(), message, Toast.LENGTH_SHORT).show()
+            Toast.makeText(requireContext(), message, Toast.LENGTH_LONG).show()
             return
         }
         host.findViewWithTag<android.widget.TextView>("exp_live_cue")?.let { existing ->
@@ -3052,16 +3070,25 @@ class PlayerMobileFragment : Fragment(),
             text = message
             gravity = android.view.Gravity.CENTER
             setTextAppearance(R.style.TextAppearance_Lumina_Caption)
-            setBackgroundResource(ExperimentalMobileDesign.metaPillBackground())
+            setBackgroundResource(
+                if (ExperimentalMobileDesign.enabled()) {
+                    ExperimentalMobileDesign.metaPillBackground()
+                } else {
+                    R.drawable.bg_player_cue_tv
+                },
+            )
             val padH = (16 * density).toInt()
             val padV = (10 * density).toInt()
             setPadding(padH, padV, padH, padV)
             elevation = 8f * density
+            maxLines = 3
+            ellipsize = android.text.TextUtils.TruncateAt.END
             setTextColor(
                 com.google.android.material.color.MaterialColors.getColor(
                     this, com.google.android.material.R.attr.colorOnSurface,
                 ),
             )
+            contentDescription = message
         }
         val lp = if (host is androidx.constraintlayout.widget.ConstraintLayout) {
             androidx.constraintlayout.widget.ConstraintLayout.LayoutParams(
@@ -3088,7 +3115,7 @@ class PlayerMobileFragment : Fragment(),
         cue.postDelayed({
             ExpMotion.fadeOutAndHide(cue)
             cue.postDelayed({ runCatching { host.removeView(cue) } }, 280L)
-        }, 1200L)
+        }, holdMs)
     }
 
     private fun revealTrailerStreamBridge() {
@@ -3599,6 +3626,7 @@ class PlayerMobileFragment : Fragment(),
             ?.setText(R.string.player_stuck_buffering_title)
         root.findViewById<android.widget.TextView>(R.id.tv_player_error_message)
             ?.setText(R.string.player_stuck_buffering_message)
+        FailoverTimelineUi.clearErrorTimeline(root)
         val actionBtn = root.findViewById<android.widget.TextView>(R.id.btn_player_error_action)
         actionBtn?.isVisible = true
         actionBtn?.setText(R.string.player_stuck_try_another_server)
@@ -3660,6 +3688,13 @@ class PlayerMobileFragment : Fragment(),
         binding.settings.showServers()
     }
 
+    private fun maybeShowFailoverTimeline() {
+        if (!failoverTimeline.consumeSuccessShow()) return
+        val line = FailoverTimelineUi.formatLine(requireContext(), failoverTimeline.snapshot())
+            ?: return
+        showPlayerCue(line, holdMs = FailoverTimelineUi.SUCCESS_CUE_MS)
+    }
+
     private fun showStreamFailure(
         error: Throwable?,
         serversExhausted: Boolean = false,
@@ -3694,6 +3729,7 @@ class PlayerMobileFragment : Fragment(),
         }
         if (isOfflinePlayback()) suppressBuiltInErrorOverlay()
         root.findViewById<android.widget.TextView>(R.id.tv_player_error_title)?.setText(titleRes)
+        FailoverTimelineUi.bindErrorTimeline(root, failoverTimeline.snapshot())
         root.findViewById<android.widget.TextView>(R.id.tv_player_error_message)?.text = message
         val actionBtn = root.findViewById<android.widget.TextView>(R.id.btn_player_error_action)
         if (action != StreamFailureReason.Action.NONE && actionLabelRes != null) {
