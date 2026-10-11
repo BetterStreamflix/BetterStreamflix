@@ -27,6 +27,7 @@ object ProfileManager {
         "SHOW_RECENTLY_WATCHED",
         "SHOW_NEXT_EPISODES",
         "SHOW_SMART_COLLECTIONS",
+        "SPOILER_SHIELD_ENABLED",
         "HOME_SHELF_BLOCK_ORDER",
         "SERIES_FAST_FORWARD_ENABLED",
         "HOME_LAST_VISIT_AT_MS",
@@ -291,6 +292,7 @@ object ProfileManager {
         touchLastUsed(profile.id)
         AppDatabase.resetInstance()
         UserDataCache.clearMemory()
+        com.dskja.betterstreamflix.spoilers.SpoilerShield.clearSession()
         applyKidsParentalDefaults(profile, previous)
         if (markUnlocked) ProfileUnlockGate.markUnlocked(profile.id)
         UserDataNotifier.notifyChanged()

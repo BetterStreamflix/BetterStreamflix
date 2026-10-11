@@ -3,6 +3,7 @@ package com.dskja.betterstreamflix.adapters.viewholders
 import android.view.View
 import android.view.animation.AnimationUtils
 import android.widget.ImageView
+import android.widget.TextView
 import androidx.lifecycle.findViewTreeLifecycleOwner
 import androidx.lifecycle.lifecycleScope
 import androidx.navigation.findNavController
@@ -39,6 +40,8 @@ import com.dskja.betterstreamflix.providers.Provider
 import com.dskja.betterstreamflix.ui.EpisodeNotesUi
 import com.dskja.betterstreamflix.ui.ShowOptionsMobileDialog
 import com.dskja.betterstreamflix.ui.ShowOptionsTvDialog
+import com.dskja.betterstreamflix.spoilers.SpoilerShield
+import com.dskja.betterstreamflix.spoilers.SpoilerShieldUi
 import com.dskja.betterstreamflix.utils.ArtworkUrls
 import com.dskja.betterstreamflix.utils.EpisodeDisplayLabels
 import com.dskja.betterstreamflix.utils.EpisodeManager
@@ -88,6 +91,7 @@ class EpisodeViewHolder(
             is ItemEpisodeContinueWatchingMobileBinding -> displayContinueWatchingMobileItem(_binding)
             is ItemEpisodeContinueWatchingTvBinding -> displayContinueWatchingTvItem(_binding)
         }
+        applySpoilerShieldAfterBind()
     }
 
     private fun displayMobileItem(binding: ItemEpisodeMobileBinding) {
@@ -1224,5 +1228,72 @@ class EpisodeViewHolder(
             bar.progress = target
         }
     }
+
+
+    private fun shieldedEpisodeTitle(): String = SpoilerShield.displayTitle(
+        episode,
+        episodeNumberFallback = { context.getString(R.string.episode_number, it) },
+    )
+
+    /**
+     * After layout-specific binds: blur poster/title, hide spoiler copy, and gate
+     * the root click until the user unlocks (Kids PIN / adult confirm).
+     */
+    private fun applySpoilerShieldAfterBind() {
+        val shielded = SpoilerShield.isShielded(episode)
+        val poster = itemView.findViewById<ImageView>(R.id.iv_episode_poster)
+        val titleView = itemView.findViewById<TextView>(R.id.tv_episode_title)
+        val overviewView = itemView.findViewById<TextView>(R.id.tv_episode_overview)
+        val infoView = itemView.findViewById<TextView>(R.id.tv_episode_info)
+        if (poster != null) SpoilerShield.applyPosterShield(poster, shielded)
+        if (!shielded) {
+            SpoilerShield.applyTextShield(titleView, false)
+            SpoilerShield.applyTextShield(overviewView, false)
+            SpoilerShield.applyTextShield(infoView, false)
+            return
+        }
+        val safeTitle = shieldedEpisodeTitle()
+        val rawTitle = episode.title?.trim().orEmpty()
+        if (titleView != null) {
+            val current = titleView.text?.toString().orEmpty()
+            titleView.text = when {
+                current.contains(" · ") ->
+                    current.substringBefore(" · ") + " · " + safeTitle
+                rawTitle.isNotEmpty() && current.contains(rawTitle) ->
+                    current.replace(rawTitle, safeTitle)
+                else -> safeTitle
+            }
+            SpoilerShield.applyTextShield(titleView, true)
+        }
+        if (infoView != null && rawTitle.isNotEmpty()) {
+            val current = infoView.text?.toString().orEmpty()
+            if (rawTitle in current) {
+                infoView.text = current.replace(rawTitle, safeTitle)
+            }
+            SpoilerShield.applyTextShield(infoView, true)
+        }
+        if (overviewView != null) {
+            overviewView.text = context.getString(R.string.spoiler_shield_overview_placeholder)
+            overviewView.visibility = View.VISIBLE
+            SpoilerShield.applyTextShield(overviewView, true)
+        }
+        itemView.contentDescription = context.getString(
+            R.string.spoiler_shield_episode_cd,
+            context.getString(R.string.episode_number, episode.number),
+        )
+        itemView.setOnClickListener {
+            ExpMotion.hapticTap(it)
+            val fragment = context.toActivity()?.getCurrentFragment() as? Fragment
+            if (fragment == null) {
+                SpoilerShield.unlockEpisode(episode.id)
+                bind(episode)
+                return@setOnClickListener
+            }
+            SpoilerShieldUi.requestUnlock(fragment, episode) {
+                bind(episode)
+            }
+        }
+    }
+
 
 }

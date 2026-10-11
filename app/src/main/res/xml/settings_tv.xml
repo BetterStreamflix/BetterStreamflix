@@ -244,6 +244,12 @@
             android:key="pc_profile_parental"
             android:title="@string/profile_section_parental">
 
+            <SwitchPreferenceCompat
+                android:key="SPOILER_SHIELD_ENABLED"
+                android:title="@string/settings_spoiler_shield_title"
+                android:summary="@string/settings_spoiler_shield_summary"
+                android:defaultValue="false" />
+
             <EditTextPreference
                 android:key="PARENTAL_CONTROL_PIN"
                 android:title="@string/settings_parental_pin_title"
