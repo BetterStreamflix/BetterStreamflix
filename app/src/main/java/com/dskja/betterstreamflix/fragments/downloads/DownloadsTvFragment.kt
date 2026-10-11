@@ -72,7 +72,7 @@ class DownloadsTvFragment : Fragment() {
                 viewModel.removePack(pack.pack.id)
             }
         },
-        onSeriesToggle = { viewModel.toggleSeriesCollapsed(it.seriesKey) },
+        onSeriesToggle = { viewModel.toggleSeriesFolder(it.seriesKey) },
     )
 
     override fun onCreateView(
