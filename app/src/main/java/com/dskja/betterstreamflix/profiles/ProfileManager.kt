@@ -24,6 +24,7 @@ object ProfileManager {
 
     private val SCOPED_PREF_BASES = listOf(
         "SHOW_CONTINUE_WATCHING",
+        "TV_AMBIENT_MODE",
         "SHOW_RECENTLY_WATCHED",
         "SHOW_NEXT_EPISODES",
         "SHOW_SMART_COLLECTIONS",

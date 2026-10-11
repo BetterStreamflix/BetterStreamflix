@@ -1347,6 +1347,14 @@ class SettingsTvFragment : LeanbackPreferenceFragmentCompat() {
             }
         }
 
+        findPreference<SwitchPreferenceCompat>("TV_AMBIENT_MODE")?.apply {
+            isChecked = UserPreferences.tvAmbientModeEnabled
+            setOnPreferenceChangeListener { _, newValue ->
+                UserPreferences.tvAmbientModeEnabled = newValue as Boolean
+                true
+            }
+        }
+
         findPreference<SwitchPreference>("OLED_MODE")?.apply {
             isVisible = false
             isChecked = false

@@ -1625,6 +1625,9 @@
     <string name="settings_stick_energy_mode_title">Stick energy mode</string>
     <string name="settings_stick_energy_mode_summary">Fire Stick: fewer parallel providers, software-decoder bias, less UI motion (auto-on for Amazon Fire TV)</string>
     <string name="settings_stick_energy_mode_summary_with_codec_comfort">Fire Stick energy mode · Codec Comfort active — software decoder and stable buffers preferred after decode crashes on this device</string>
+    <string name="settings_tv_ambient_mode_title">Ambient Mode</string>
+    <string name="settings_tv_ambient_mode_summary">After idle on Home, softly rotate posters with Continue Watching (high-end TVs; burn-in safe)</string>
+    <string name="tv_ambient_continue_label">Continue</string>
     <string name="settings_oled_mode_title">OLED mode</string>
     <string name="settings_oled_mode_summary">Replace gray surfaces with true black across the app</string>
     <string name="settings_category_accessibility">Accessibility</string>

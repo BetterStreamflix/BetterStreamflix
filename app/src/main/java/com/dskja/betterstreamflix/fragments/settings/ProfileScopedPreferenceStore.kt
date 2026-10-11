@@ -21,6 +21,7 @@ internal object ProfileScopedPreferenceStore {
     val SCOPED_KEYS = setOf(
         "LIBRARY_SCOPE",
         "SHOW_CONTINUE_WATCHING",
+        "TV_AMBIENT_MODE",
         "SHOW_RECENTLY_WATCHED",
         "SHOW_NEXT_EPISODES",
         "SHOW_SMART_COLLECTIONS",
@@ -79,6 +80,7 @@ internal object ProfileScopedPreferenceStore {
         override fun putBoolean(key: String, value: Boolean) {
             when (key) {
                 "SHOW_CONTINUE_WATCHING" -> UserPreferences.showContinueWatching = value
+                "TV_AMBIENT_MODE" -> UserPreferences.tvAmbientModeEnabled = value
                 "SHOW_RECENTLY_WATCHED" -> UserPreferences.showRecentlyWatched = value
                 "SHOW_NEXT_EPISODES" -> UserPreferences.showNextEpisodes = value
                 "SHOW_SMART_COLLECTIONS" -> UserPreferences.showSmartCollections = value
@@ -90,6 +92,7 @@ internal object ProfileScopedPreferenceStore {
 
         override fun getBoolean(key: String, defValue: Boolean): Boolean = when (key) {
             "SHOW_CONTINUE_WATCHING" -> UserPreferences.showContinueWatching
+            "TV_AMBIENT_MODE" -> UserPreferences.tvAmbientModeEnabled
             "SHOW_RECENTLY_WATCHED" -> UserPreferences.showRecentlyWatched
             "SHOW_NEXT_EPISODES" -> UserPreferences.showNextEpisodes
             "SHOW_SMART_COLLECTIONS" -> UserPreferences.showSmartCollections
