@@ -169,7 +169,7 @@
         android:focusable="true"
         android:focusableInTouchMode="true"
         android:fontFamily="@font/manrope"
-        android:nextFocusDown="@id/chip_search_sort_default"
+        android:nextFocusDown="@id/hsv_search_mood"
         android:padding="8dp"
         android:text="@string/global_search"
         android:textColor="@color/cinema_text"
@@ -179,6 +179,29 @@
         app:layout_constraintEnd_toEndOf="@id/cl_search"
         app:layout_constraintStart_toStartOf="@id/cl_search"
         app:layout_constraintTop_toBottomOf="@id/hsv_search_recent" />
+
+    <HorizontalScrollView
+        android:id="@+id/hsv_search_mood"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="10dp"
+        android:clipToPadding="false"
+        android:paddingStart="4dp"
+        android:paddingEnd="4dp"
+        android:scrollbars="none"
+        app:layout_constraintEnd_toEndOf="@id/cl_search"
+        app:layout_constraintStart_toStartOf="@id/cl_search"
+        app:layout_constraintTop_toBottomOf="@id/ll_global_search">
+
+        <LinearLayout
+            android:id="@+id/ll_search_mood"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:paddingTop="4dp"
+            android:paddingBottom="4dp" />
+    </HorizontalScrollView>
 
     <HorizontalScrollView
         android:id="@+id/hsv_search_sort"
@@ -191,7 +214,7 @@
         android:scrollbars="none"
         app:layout_constraintEnd_toEndOf="@id/cl_search"
         app:layout_constraintStart_toStartOf="@id/cl_search"
-        app:layout_constraintTop_toBottomOf="@id/ll_global_search">
+        app:layout_constraintTop_toBottomOf="@id/hsv_search_mood">
 
         <LinearLayout
             android:id="@+id/ll_search_sort"
@@ -212,14 +235,35 @@
                 android:focusableInTouchMode="true"
                 android:fontFamily="@font/manrope"
                 android:nextFocusLeft="@id/ll_global_search"
-                android:nextFocusUp="@id/ll_global_search"
-                android:nextFocusRight="@id/chip_search_sort_newest"
+                android:nextFocusUp="@id/hsv_search_mood"
+                android:nextFocusRight="@id/chip_search_sort_for_you"
                 android:nextFocusDown="@id/vgv_search"
                 android:paddingStart="18dp"
                 android:paddingTop="10dp"
                 android:paddingEnd="18dp"
                 android:paddingBottom="10dp"
                 android:text="@string/search_sort_default"
+                android:textColor="@color/cinema_text_soft"
+                android:textSize="16sp" />
+
+            <TextView
+                android:id="@+id/chip_search_sort_for_you"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginEnd="10dp"
+                android:background="@drawable/bg_search_sort_chip"
+                android:focusable="true"
+                android:focusableInTouchMode="true"
+                android:fontFamily="@font/manrope"
+                android:nextFocusLeft="@id/chip_search_sort_default"
+                android:nextFocusUp="@id/hsv_search_mood"
+                android:nextFocusRight="@id/chip_search_sort_newest"
+                android:nextFocusDown="@id/vgv_search"
+                android:paddingStart="18dp"
+                android:paddingTop="10dp"
+                android:paddingEnd="18dp"
+                android:paddingBottom="10dp"
+                android:text="@string/search_sort_for_you"
                 android:textColor="@color/cinema_text_soft"
                 android:textSize="16sp" />
 
@@ -232,8 +276,8 @@
                 android:focusable="true"
                 android:focusableInTouchMode="true"
                 android:fontFamily="@font/manrope"
-                android:nextFocusLeft="@id/chip_search_sort_default"
-                android:nextFocusUp="@id/ll_global_search"
+                android:nextFocusLeft="@id/chip_search_sort_for_you"
+                android:nextFocusUp="@id/hsv_search_mood"
                 android:nextFocusRight="@id/chip_search_filter_year"
                 android:nextFocusDown="@id/vgv_search"
                 android:paddingStart="18dp"
@@ -253,7 +297,7 @@
                 android:focusableInTouchMode="true"
                 android:fontFamily="@font/manrope"
                 android:nextFocusLeft="@id/chip_search_sort_newest"
-                android:nextFocusUp="@id/ll_global_search"
+                android:nextFocusUp="@id/hsv_search_mood"
                 android:nextFocusDown="@id/vgv_search"
                 android:paddingStart="18dp"
                 android:paddingTop="10dp"

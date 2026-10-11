@@ -83,6 +83,44 @@ object SearchTmdbAssist {
     }
 
     /**
+     * Direct TMDb id → recommendations + similar (skips fuzzy title resolve).
+     */
+    suspend fun similarToTmdb(
+        tmdbId: String,
+        isTv: Boolean,
+        language: String?,
+    ): List<AppAdapter.Item> {
+        val id = tmdbId.toIntOrNull() ?: return emptyList()
+        return runCatching {
+            if (isTv) {
+                val details = TMDb3.TvSeries.details(
+                    seriesId = id,
+                    appendToResponse = listOf(
+                        TMDb3.Params.AppendToResponse.Tv.RECOMMENDATIONS,
+                        TMDb3.Params.AppendToResponse.Tv.SIMILAR,
+                    ),
+                    language = language,
+                )
+                mergeSimilarPages(details.recommendations?.results, details.similar?.results)
+            } else {
+                val details = TMDb3.Movies.details(
+                    movieId = id,
+                    appendToResponse = listOf(
+                        TMDb3.Params.AppendToResponse.Movie.RECOMMENDATIONS,
+                        TMDb3.Params.AppendToResponse.Movie.SIMILAR,
+                    ),
+                    language = language,
+                )
+                mergeSimilarPages(details.recommendations?.results, details.similar?.results)
+            }
+        }.getOrElse { e ->
+            if (e is CancellationException) throw e
+            Log.w(TAG, "similarToTmdb failed: ${e.message}")
+            emptyList()
+        }
+    }
+
+    /**
      * Resolve seed title → TMDb movie/TV → recommendations + similar.
      */
     suspend fun similarTo(seedTitle: String, language: String?): List<AppAdapter.Item> {

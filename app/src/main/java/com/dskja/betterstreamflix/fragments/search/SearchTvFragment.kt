@@ -451,6 +451,40 @@ class SearchTvFragment : Fragment(), SearchInputBridge.Target {
         binding.vgvSearch.apply {
             adapter = appAdapter.apply {
                 stateRestorationPolicy = RecyclerView.Adapter.StateRestorationPolicy.PREVENT_WHEN_EMPTY
+                onMovieLongClickListener = { movie ->
+                    com.dskja.betterstreamflix.taste.TasteSignalsUi.showFor(
+                        fragment = this@SearchTvFragment,
+                        item = movie,
+                        onChanged = { viewModel.reapplyOrdering() },
+                        onMoreLike = { item ->
+                            binding.etSearch.setText(
+                                when (item) {
+                                    is com.dskja.betterstreamflix.models.Movie -> item.title
+                                    is com.dskja.betterstreamflix.models.TvShow -> item.title
+                                    else -> ""
+                                },
+                            )
+                            viewModel.searchMoreLike(item)
+                        },
+                    )
+                }
+                onTvShowLongClickListener = { show ->
+                    com.dskja.betterstreamflix.taste.TasteSignalsUi.showFor(
+                        fragment = this@SearchTvFragment,
+                        item = show,
+                        onChanged = { viewModel.reapplyOrdering() },
+                        onMoreLike = { item ->
+                            binding.etSearch.setText(
+                                when (item) {
+                                    is com.dskja.betterstreamflix.models.Movie -> item.title
+                                    is com.dskja.betterstreamflix.models.TvShow -> item.title
+                                    else -> ""
+                                },
+                            )
+                            viewModel.searchMoreLike(item)
+                        },
+                    )
+                }
             }
             setItemSpacing(resources.getDimension(R.dimen.search_spacing).toInt())
             addOnChildViewHolderSelectedListener(object : OnChildViewHolderSelectedListener() {
@@ -468,6 +502,7 @@ class SearchTvFragment : Fragment(), SearchInputBridge.Target {
         }
 
         refreshRecentSearches()
+        refreshMoodChips()
         initializeSearchSortControls()
         // Loader covers the grid and is focusable in XML. On Fire OS that full-screen
         // target crashes Leanback focus search as soon as Search opens.
@@ -480,6 +515,7 @@ class SearchTvFragment : Fragment(), SearchInputBridge.Target {
 
     private fun initializeSearchSortControls() {
         val chipDefault = binding.root.findViewById<android.widget.TextView>(R.id.chip_search_sort_default) ?: return
+        val chipForYou = binding.root.findViewById<android.widget.TextView>(R.id.chip_search_sort_for_you)
         val chipNewest = binding.root.findViewById<android.widget.TextView>(R.id.chip_search_sort_newest) ?: return
         val chipYear = binding.root.findViewById<android.widget.TextView>(R.id.chip_search_filter_year) ?: return
 
@@ -487,6 +523,10 @@ class SearchTvFragment : Fragment(), SearchInputBridge.Target {
 
         chipDefault.setOnClickListener {
             viewModel.setSortMode(com.dskja.betterstreamflix.utils.SearchSortMode.PROVIDER_DEFAULT)
+            refreshSortChips()
+        }
+        chipForYou?.setOnClickListener {
+            viewModel.setSortMode(com.dskja.betterstreamflix.utils.SearchSortMode.FOR_YOU)
             refreshSortChips()
         }
         chipNewest.setOnClickListener {
@@ -503,6 +543,26 @@ class SearchTvFragment : Fragment(), SearchInputBridge.Target {
                 refreshSortChips()
             }
         }
+    }
+
+    private fun refreshMoodChips() {
+        val row = binding.root.findViewById<android.widget.LinearLayout>(R.id.ll_search_mood) ?: return
+        val padH = (16 * resources.displayMetrics.density).toInt()
+        val padV = (10 * resources.displayMetrics.density).toInt()
+        val gap = (10 * resources.displayMetrics.density).toInt()
+        com.dskja.betterstreamflix.taste.TasteMoodUi.bind(
+            context = requireContext(),
+            row = row,
+            selected = viewModel.currentMood(),
+            padH = padH,
+            padV = padV,
+            gap = gap,
+            tvFocusable = true,
+            onSelect = { mood ->
+                viewModel.setMood(mood)
+                refreshMoodChips()
+            },
+        )
     }
 
     private fun refreshRecentSearches() {
@@ -558,6 +618,11 @@ class SearchTvFragment : Fragment(), SearchInputBridge.Target {
             onClear = {
                 SearchMemories.clear(requireContext())
                 refreshRecentSearches()
+            },
+            onLongPressMoreLike = { entry ->
+                val q = getString(R.string.search_query_more_like, entry.query)
+                binding.etSearch.setText(q)
+                viewModel.search(q)
             },
             labelColor = ContextCompat.getColor(requireContext(), R.color.cinema_text_muted),
             clearColor = 0xB3FFFFFF.toInt(),
@@ -652,12 +717,14 @@ class SearchTvFragment : Fragment(), SearchInputBridge.Target {
         val chipDefault = root.findViewById<android.widget.TextView>(R.id.chip_search_sort_default) ?: return
         val chipNewest = root.findViewById<android.widget.TextView>(R.id.chip_search_sort_newest) ?: return
         val chipYear = root.findViewById<android.widget.TextView>(R.id.chip_search_filter_year) ?: return
+        val chipForYou = root.findViewById<android.widget.TextView>(R.id.chip_search_sort_for_you)
         SearchSortUi.bindChips(
             chipDefault = chipDefault,
             chipNewest = chipNewest,
             chipYear = chipYear,
             mode = viewModel.currentSortMode(),
             year = viewModel.currentYearFilter(),
+            chipForYou = chipForYou,
         )
     }
 
@@ -665,6 +732,7 @@ class SearchTvFragment : Fragment(), SearchInputBridge.Target {
         val ui = _binding ?: return
         listOf(
             R.id.chip_search_sort_default,
+            R.id.chip_search_sort_for_you,
             R.id.chip_search_sort_newest,
             R.id.chip_search_filter_year,
         ).forEach { id ->

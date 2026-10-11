@@ -277,6 +277,12 @@
                 app:iconSpaceReserved="false" />
 
             <Preference
+                android:key="TASTE_CLEAR_HIDDEN"
+                android:title="@string/settings_taste_clear_title"
+                android:summary="@string/settings_taste_clear_summary"
+                app:iconSpaceReserved="false" />
+
+            <Preference
                 android:key="CLEAR_RECENTLY_WATCHED"
                 android:title="@string/settings_clear_recently_watched_title"
                 android:summary="@string/settings_clear_recently_watched_summary"

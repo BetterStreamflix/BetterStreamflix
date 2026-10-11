@@ -30,6 +30,7 @@ object SearchMemoriesUi {
         chipBackground: (SearchMemories.Outcome) -> Int,
         onRetry: (SearchMemories.Entry) -> Unit,
         onClear: () -> Unit,
+        onLongPressMoreLike: ((SearchMemories.Entry) -> Unit)? = null,
         animateNew: ((TextView, Int) -> Unit)? = null,
         previousQueries: Set<String> = emptySet(),
         labelColor: Int? = null,
@@ -76,6 +77,17 @@ object SearchMemoriesUi {
                         it.animate().scaleX(1f).scaleY(1f).setDuration(120).start()
                     }.start()
                     onRetry(entry)
+                }
+                if (onLongPressMoreLike != null && entry.outcome == SearchMemories.Outcome.SUCCESS) {
+                    setOnLongClickListener {
+                        ExpMotion.hapticTap(it)
+                        onLongPressMoreLike(entry)
+                        true
+                    }
+                    contentDescription = context.getString(
+                        R.string.taste_memory_more_like_cd,
+                        entry.query,
+                    )
                 }
             }
             applyPress?.invoke(chip)

@@ -973,6 +973,11 @@ object UserPreferences {
         get() = Key.SEARCH_YEAR_FILTER.getInt()
         set(value) = Key.SEARCH_YEAR_FILTER.setInt(value)
 
+    /** Active Search mood chip (Taste Graph). */
+    var searchMood: com.dskja.betterstreamflix.taste.TasteMood
+        get() = com.dskja.betterstreamflix.taste.TasteMood.fromKey(Key.SEARCH_MOOD.getString())
+        set(value) = Key.SEARCH_MOOD.setString(value.name)
+
     var castEnabled: Boolean
         get() = Key.CAST_ENABLED.getBoolean() ?: true
         set(value) = Key.CAST_ENABLED.setBoolean(value)
@@ -2008,6 +2013,7 @@ object UserPreferences {
         CATALOG_SORT_MODE,
         SEARCH_SORT_MODE,
         SEARCH_YEAR_FILTER,
+        SEARCH_MOOD,
         CAST_ENABLED,
         CAST_SUBTITLES_ENABLED,
         CAST_KEEP_SCREEN_AWAKE,

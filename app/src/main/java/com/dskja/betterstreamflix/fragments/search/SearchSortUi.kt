@@ -38,9 +38,11 @@ object SearchSortUi {
         chipYear: TextView,
         mode: SearchSortMode,
         year: Int?,
+        chipForYou: TextView? = null,
     ) {
         styleChip(chipDefault, mode == SearchSortMode.PROVIDER_DEFAULT)
         styleChip(chipNewest, mode == SearchSortMode.NEWEST_FIRST)
+        chipForYou?.let { styleChip(it, mode == SearchSortMode.FOR_YOU) }
         styleChip(chipYear, year != null)
         chipYear.text = yearChipLabel(chipYear.context, year)
     }

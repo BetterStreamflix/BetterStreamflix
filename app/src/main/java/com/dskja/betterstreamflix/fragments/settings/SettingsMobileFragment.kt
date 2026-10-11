@@ -1599,6 +1599,11 @@ class SettingsMobileFragment : PreferenceFragmentCompat() {
             true
         }
 
+        findPreference<Preference>("TASTE_CLEAR_HIDDEN")?.setOnPreferenceClickListener {
+            com.dskja.betterstreamflix.taste.TasteSignalsUi.showClearHidden(requireContext())
+            true
+        }
+
         findPreference<Preference>("CLEAR_RECENTLY_WATCHED")?.setOnPreferenceClickListener {
             val glass = if (ExperimentalMobileDesign.enabled()) {
                 ExpDialogChrome.buildGlassMessage(
