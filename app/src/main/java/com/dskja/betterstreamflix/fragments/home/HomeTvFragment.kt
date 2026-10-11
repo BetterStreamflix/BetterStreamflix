@@ -482,6 +482,10 @@ class HomeTvFragment : Fragment() {
             ?.also { it.name = getString(R.string.home_live_shelf) }
 
         categories
+            .find { it.name == Category.FAMILY_FRIDAY }
+            ?.also { it.name = getString(R.string.home_family_friday) }
+
+        categories
             .find { it.name == Category.FAVORITE_MOVIES }
             ?.also { it.name = getString(R.string.home_favorite_movies) }
 
