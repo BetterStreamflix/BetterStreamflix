@@ -23,6 +23,7 @@ object WatchPartyPlayerHooks {
         fun servers(): List<Video.Server>
         fun positionMs(): Long
         fun isPlaying(): Boolean
+        fun durationMs(): Long? = null
         fun seekTo(positionMs: Long)
         fun setPlayWhenReady(playing: Boolean)
         fun requestServer(server: Video.Server)
@@ -76,7 +77,7 @@ object WatchPartyPlayerHooks {
         if (WatchPartySession.isInLobby()) return
         if (bridge.isLiveOrOffline()) {
             fragment.viewLifecycleOwner.lifecycleScope.launch {
-                teardown(fragment, endHost = WatchPartySession.isHost())
+                teardown(fragment, endHost = false)
             }
             return
         }
@@ -91,12 +92,20 @@ object WatchPartyPlayerHooks {
                         server = bridge.currentServer(),
                     )
                 }
-                // TV / host also polls for phone-remote sidekick commands.
+                // TV / host polls for phone-remote sidekick only in tv_screen mode.
                 val token = WatchPartySession.token ?: return
                 WatchPartySync.startGuest(
                     context = ctx,
                     token = token,
-                    listener = { payload -> applyHostSidekick(fragment, bridge, payload) },
+                    listener = { payload ->
+                        if (WatchTogetherPro.isTvScreenMode(payload.displayMode) ||
+                            WatchPartySession.isTvScreenMode()
+                        ) {
+                            applyHostSidekick(fragment, bridge, payload)
+                        } else {
+                            WatchPartySession.updateFromPayload(payload)
+                        }
+                    },
                     onEnded = {
                         fragment.viewLifecycleOwner.lifecycleScope.launch(Dispatchers.Main) {
                             if (!fragment.isAdded) return@launch
@@ -132,7 +141,28 @@ object WatchPartyPlayerHooks {
 
     fun onLocalControlChanged(fragment: Fragment, bridge: PlayerBridge) {
         if (WatchPartySession.isRemote()) return
-        if (!WatchPartySession.isHost() || WatchPartySession.isInLobby()) return
+        if (WatchPartySession.isInLobby()) return
+
+        // CC-002: when host locked controls, guests must not lead — snap back.
+        if (WatchPartySession.isGuest() && WatchPartySession.hostControlsLocked) {
+            fragment.viewLifecycleOwner.lifecycleScope.launch(Dispatchers.Main) {
+                if (!fragment.isAdded) return@launch
+                val target = WatchPartySession.lastAppliedPositionMs
+                if (target >= 0L &&
+                    WatchPartySync.shouldSeek(bridge.positionMs(), target)
+                ) {
+                    bridge.seekTo(target)
+                }
+                WatchPartySession.lastAppliedPlaying?.let { playing ->
+                    if (bridge.isPlaying() != playing) {
+                        bridge.setPlayWhenReady(playing)
+                    }
+                }
+            }
+            return
+        }
+
+        if (!WatchPartySession.isHost()) return
         val partyId = WatchPartySession.partyId ?: return
         WatchPartySync.publishHostNow(
             context = fragment.requireContext(),
@@ -153,7 +183,14 @@ object WatchPartyPlayerHooks {
     ) {
         fragment.viewLifecycleOwner.lifecycleScope.launch(Dispatchers.Main) {
             if (!fragment.isAdded || !WatchPartySession.isHost()) return@launch
+            // CC-001: only apply phone remote commands in tv_screen mode.
+            if (!WatchTogetherPro.isTvScreenMode(payload.displayMode)) {
+                WatchPartySession.updateFromPayload(payload)
+                return@launch
+            }
             WatchPartySession.updateFromPayload(payload)
+            WatchPartySession.lastSeenSidekickSeekSeq =
+                maxOf(WatchPartySession.lastSeenSidekickSeekSeq, payload.sidekickSeekSeq)
 
             if (WatchTogetherPro.shouldApplySeek(
                     payload.sidekickSeekSeq,
@@ -161,7 +198,10 @@ object WatchPartyPlayerHooks {
                     payload.sidekickSeekMs,
                 )
             ) {
-                val target = WatchTogetherPro.clampSeek(payload.sidekickSeekMs!!)
+                val target = WatchTogetherPro.clampSeek(
+                    payload.sidekickSeekMs!!,
+                    bridge.durationMs(),
+                )
                 bridge.seekTo(target)
                 WatchPartySession.lastAppliedSeekSeq = payload.sidekickSeekSeq
                 WatchPartySession.lastAppliedPositionMs = target
@@ -205,7 +245,7 @@ object WatchPartyPlayerHooks {
                 ) {
                     WatchPartySession.lastAppliedServerKey = remoteServerKey
                     bridge.requestServer(match)
-                    return@launch
+                    // CC-085: still apply seek/play this tick after requesting server.
                 }
                 WatchPartySession.lastAppliedServerKey = remoteServerKey
             }
@@ -214,12 +254,21 @@ object WatchPartyPlayerHooks {
                 payload.syncRevision,
                 WatchPartySession.lastAppliedSyncRevision,
             )
-            val shouldSeek = force ||
-                WatchPartySync.shouldSeek(bridge.positionMs(), payload.positionMs)
-            if (shouldSeek) {
-                bridge.seekTo(payload.positionMs.coerceAtLeast(0L))
-                WatchPartySession.lastAppliedPositionMs = payload.positionMs
+            val locked = payload.hostControlsLocked
+            val target = WatchTogetherPro.clampSeek(payload.positionMs, bridge.durationMs())
+            val drifted = WatchPartySync.shouldSeek(bridge.positionMs(), target)
+            // When locked, snap on any meaningful drift so local scrub cannot lead.
+            if (force || drifted) {
+                bridge.seekTo(target)
+                WatchPartySession.lastGuestSeekAtMs = System.currentTimeMillis()
+                WatchPartySession.lastAppliedPositionMs = target
                 WatchPartySession.lastAppliedSyncRevision = payload.syncRevision
+            } else if (locked &&
+                kotlin.math.abs(bridge.positionMs() - target) > 250L
+            ) {
+                bridge.seekTo(target)
+                WatchPartySession.lastGuestSeekAtMs = System.currentTimeMillis()
+                WatchPartySession.lastAppliedPositionMs = target
             }
 
             if (WatchPartySession.lastAppliedPlaying != payload.playing) {
@@ -230,7 +279,18 @@ object WatchPartyPlayerHooks {
             val drift = WatchPartySyncHealth.driftBetween(bridge.positionMs(), payload.positionMs)
             WatchPartySession.lastLocalDriftMs = drift
             val token = WatchPartySession.token
-            if (token != null) {
+            val now = System.currentTimeMillis()
+            if (token != null &&
+                WatchTogetherPro.shouldReportDrift(
+                    nowMs = now,
+                    lastReportAtMs = WatchPartySession.lastDriftReportAtMs,
+                    lastSeekAtMs = WatchPartySession.lastGuestSeekAtMs,
+                    driftMs = drift,
+                    lastReportedDriftMs = WatchPartySession.lastReportedDriftMs,
+                )
+            ) {
+                WatchPartySession.lastDriftReportAtMs = now
+                WatchPartySession.lastReportedDriftMs = drift
                 fragment.viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
                     WatchPartyRepository.reportDrift(fragment.requireContext(), token, drift)
                 }
@@ -256,8 +316,9 @@ object WatchPartyPlayerHooks {
 
     fun onDestroyView(fragment: Fragment) {
         fragment.lifecycleScope.launch {
-            // Host leaving player ends the party so guests disconnect gracefully.
-            teardown(fragment, endHost = WatchPartySession.isHost())
+            // CC-056: stop heartbeat/polls only — do not end the party or clear session.
+            // Explicit End / Leave owns teardown.
+            WatchPartySync.stop()
         }
     }
 

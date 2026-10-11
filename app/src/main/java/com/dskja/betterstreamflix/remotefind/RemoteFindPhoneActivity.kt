@@ -1,6 +1,5 @@
 package com.dskja.betterstreamflix.remotefind
 
-import android.annotation.SuppressLint
 import android.os.Bundle
 import android.text.Editable
 import android.text.TextWatcher
@@ -24,33 +23,54 @@ class RemoteFindPhoneActivity : AppCompatActivity() {
     private var lastY = 0f
     private var moved = false
     private var suppressEcho = false
+    private var lastPadSendAt = 0L
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         binding = ActivityRemoteFindPhoneBinding.inflate(layoutInflater)
         setContentView(binding.root)
+        bindFromIntent(intent)
+    }
 
-        val ws = intent.getStringExtra(EXTRA_WS).orEmpty()
-        val token = intent.getStringExtra(EXTRA_TOKEN).orEmpty()
-        val code = intent.getStringExtra(EXTRA_CODE)
-        if (ws.isBlank() || token.isBlank()) {
+    override fun onNewIntent(intent: android.content.Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        client?.close()
+        client = null
+        bindFromIntent(intent)
+    }
+
+    private fun bindFromIntent(intent: android.content.Intent?) {
+        val ws = intent?.getStringExtra(EXTRA_WS).orEmpty()
+        val code = intent?.getStringExtra(EXTRA_CODE)
+        val legacyToken = intent?.getStringExtra(EXTRA_TOKEN)
+        if (ws.isBlank() || (code.isNullOrBlank() && legacyToken.isNullOrBlank())) {
             Toast.makeText(this, R.string.remote_find_invalid_link, Toast.LENGTH_SHORT).show()
             finish()
             return
         }
-        RemoteFindSession.beginPhone(token, code, ws)
+        val pairingCode = RemoteFindCode.normalize(code) ?: legacyToken.orEmpty()
+        RemoteFindSession.beginPhone(legacyToken, RemoteFindCode.normalize(code), ws)
+        RemoteFindSession.registerPhoneLeave {
+            runOnUiThread { leaveAndFinish() }
+        }
         binding.tvRemoteFindTitle.text = getString(
             R.string.remote_find_phone_title_with_code,
-            code ?: "······",
+            RemoteFindCode.normalize(code) ?: "······",
         )
         bindControls()
         client = RemoteFindClient(
             wsUrl = ws,
-            token = token,
+            pairingCode = pairingCode,
             onStatus = { status ->
                 binding.tvRemoteFindStatus.text = when {
-                    status.startsWith("welcome:") ->
-                        getString(R.string.remote_find_phone_ready, status.substringAfter(':'))
+                    status.startsWith("welcome:") -> {
+                        val welcome = RemoteFindProtocol.parseWelcome(status)
+                        getString(
+                            R.string.remote_find_phone_ready,
+                            welcome?.code ?: status.substringAfter(':').substringBefore(':'),
+                        )
+                    }
                     status.startsWith("error:") ->
                         getString(R.string.remote_find_phone_error, status.substringAfter(':'))
                     else -> getString(R.string.remote_find_phone_connected)
@@ -63,11 +83,15 @@ class RemoteFindPhoneActivity : AppCompatActivity() {
                 binding.tvRemoteFindStatus.text =
                     getString(R.string.remote_find_phone_disconnected, reason ?: "—")
             },
+            onWelcomeToken = { token ->
+                RemoteFindSession.updatePhoneToken(token)
+            },
         ).also { it.connect() }
     }
 
-    @SuppressLint("ClickableViewAccessibility")
     private fun bindControls() {
+        binding.etRemoteFindQuery.contentDescription =
+            getString(R.string.remote_find_keyboard_hint)
         binding.etRemoteFindQuery.addTextChangedListener(object : TextWatcher {
             override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) = Unit
             override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) = Unit
@@ -103,7 +127,11 @@ class RemoteFindPhoneActivity : AppCompatActivity() {
             ExpMotion.hapticTap(it)
             client?.send(RemoteFindProtocol.encodeTap())
         }
-        binding.flRemoteFindPad.setOnTouchListener { _, event ->
+        binding.flRemoteFindPad.isClickable = true
+        binding.flRemoteFindPad.setOnClickListener {
+            client?.send(RemoteFindProtocol.encodeTap())
+        }
+        binding.flRemoteFindPad.setOnTouchListener { v, event ->
             when (event.actionMasked) {
                 MotionEvent.ACTION_DOWN -> {
                     lastX = event.x
@@ -116,15 +144,19 @@ class RemoteFindPhoneActivity : AppCompatActivity() {
                     val dy = event.y - lastY
                     if (abs(dx) > 1f || abs(dy) > 1f) {
                         moved = true
-                        client?.send(RemoteFindProtocol.encodePad(dx, dy))
-                        lastX = event.x
-                        lastY = event.y
+                        val now = android.os.SystemClock.uptimeMillis()
+                        if (now - lastPadSendAt >= 32L) {
+                            lastPadSendAt = now
+                            client?.send(RemoteFindProtocol.encodePad(dx, dy))
+                            lastX = event.x
+                            lastY = event.y
+                        }
                     }
                     true
                 }
                 MotionEvent.ACTION_UP -> {
                     if (!moved) {
-                        client?.send(RemoteFindProtocol.encodeTap())
+                        v.performClick()
                     }
                     true
                 }
@@ -139,10 +171,20 @@ class RemoteFindPhoneActivity : AppCompatActivity() {
         client?.send(RemoteFindProtocol.encodeSubmit())
     }
 
-    override fun onDestroy() {
+    fun leaveAndFinish() {
         client?.close()
         client = null
         if (RemoteFindSession.isPhone()) {
+            RemoteFindSession.clear()
+        }
+        if (!isFinishing) finish()
+    }
+
+    override fun onDestroy() {
+        RemoteFindSession.registerPhoneLeave(null)
+        client?.close()
+        client = null
+        if (RemoteFindSession.isPhone() && isFinishing) {
             RemoteFindSession.clear()
         }
         super.onDestroy()

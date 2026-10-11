@@ -2,6 +2,7 @@ package com.dskja.betterstreamflix.sync
 
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -31,5 +32,51 @@ class WatchTogetherProTest {
         assertEquals(20_000L, WatchTogetherPro.relativeSeek(10_000L, 10_000L))
         assertEquals(90_000L, WatchTogetherPro.parsePositionInput("1:30"))
         assertEquals("1:30", WatchTogetherPro.formatPosition(90_000L))
+    }
+
+    @Test
+    fun bareDigitsAreSecondsAndClampToDuration() {
+        assertEquals(90_000L, WatchTogetherPro.parsePositionInput("90"))
+        assertEquals(5_000L, WatchTogetherPro.parsePositionInput("90", durationMs = 5_000L))
+        assertNull(WatchTogetherPro.parsePositionInput(" "))
+    }
+
+    @Test
+    fun heartbeatSkipsWhileSidekickSeekUnacked() {
+        assertTrue(WatchTogetherPro.shouldSkipHeartbeatForSidekick(3L, 2L))
+        assertFalse(WatchTogetherPro.shouldSkipHeartbeatForSidekick(2L, 2L))
+        assertFalse(WatchTogetherPro.shouldSkipHeartbeatForSidekick(1L, 2L))
+    }
+
+    @Test
+    fun driftReportsDebounceAfterSeekAndInterval() {
+        val now = 10_000L
+        assertFalse(
+            WatchTogetherPro.shouldReportDrift(
+                nowMs = now,
+                lastReportAtMs = 0L,
+                lastSeekAtMs = now - 500L,
+                driftMs = 4_000L,
+                lastReportedDriftMs = -1L,
+            ),
+        )
+        assertFalse(
+            WatchTogetherPro.shouldReportDrift(
+                nowMs = now,
+                lastReportAtMs = now - 1_000L,
+                lastSeekAtMs = now - 5_000L,
+                driftMs = 500L,
+                lastReportedDriftMs = 400L,
+            ),
+        )
+        assertTrue(
+            WatchTogetherPro.shouldReportDrift(
+                nowMs = now,
+                lastReportAtMs = now - 6_000L,
+                lastSeekAtMs = now - 5_000L,
+                driftMs = 4_000L,
+                lastReportedDriftMs = 400L,
+            ),
+        )
     }
 }

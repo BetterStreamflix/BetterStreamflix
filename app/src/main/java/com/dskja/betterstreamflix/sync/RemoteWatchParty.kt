@@ -118,12 +118,20 @@ data class WatchPartyCodeParam(
 data class WatchPartySidekickSeekParam(
     @SerialName("p_token") val token: String,
     @SerialName("p_position_ms") val positionMs: Long,
+    @SerialName("p_member_key") val memberKey: String? = null,
 )
 
 @Serializable
 data class WatchPartySidekickPlayParam(
     @SerialName("p_token") val token: String,
     @SerialName("p_playing") val playing: Boolean,
+    @SerialName("p_member_key") val memberKey: String? = null,
+)
+
+@Serializable
+data class WatchPartyLeaveParam(
+    @SerialName("p_token") val token: String,
+    @SerialName("p_member_key") val memberKey: String,
 )
 
 @Serializable

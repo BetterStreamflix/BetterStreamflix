@@ -225,6 +225,52 @@ class PlayerMobileFragment : Fragment(),
             }
         }
 
+    private val castRoomBridge =
+        object : com.dskja.betterstreamflix.sync.CastRoomPlayerHooks.PlayerBridge {
+            override fun isLiveOrOffline(): Boolean =
+                isLiveTvPlayback() || isOfflinePlayback()
+
+            override fun videoType(): Video.Type = args.videoType
+
+            override fun positionMs(): Long =
+                runCatching { activePlayer().currentPosition }.getOrDefault(0L)
+
+            override fun isPlaying(): Boolean =
+                runCatching { activePlayer().isPlaying }.getOrDefault(false)
+
+            override fun setPlayWhenReady(playing: Boolean) {
+                runCatching {
+                    activePlayer().playWhenReady = playing
+                    if (playing) activePlayer().play() else activePlayer().pause()
+                }
+            }
+
+            override fun seekTo(positionMs: Long) {
+                runCatching { activePlayer().seekTo(positionMs.coerceAtLeast(0L)) }
+            }
+
+            override fun currentCastRoomIndex(): Int =
+                com.dskja.betterstreamflix.sync.CastRoomUi.latestPayload()?.nowPlayingIndex ?: 0
+        }
+
+    fun castRoomApplyRemotePlaying(playing: Boolean) {
+        if (!isAdded || _binding == null) return
+        com.dskja.betterstreamflix.sync.CastRoomPlayerHooks.applyRemotePlaying(
+            this,
+            castRoomBridge,
+            playing,
+        )
+    }
+
+    fun castRoomApplyRemoteSeek(positionMs: Long) {
+        if (!isAdded || _binding == null) return
+        com.dskja.betterstreamflix.sync.CastRoomPlayerHooks.applyRemoteSeek(
+            this,
+            castRoomBridge,
+            positionMs,
+        )
+    }
+
     private lateinit var player: ExoPlayer
     private var playbackListener: Player.Listener? = null
     private var bufferEtaController: com.dskja.betterstreamflix.player.BufferEtaController? = null
@@ -542,7 +588,20 @@ class PlayerMobileFragment : Fragment(),
                                     viewModel.getVideo(selected)
                                 }
                                 val preferredServer = state.servers.firstOrNull {
+                                    !args.preferredServerId.isNullOrBlank() && it.id == args.preferredServerId
+                                } ?: state.servers.firstOrNull {
                                     it.name.equals(args.preferredServerName, ignoreCase = true)
+                                } ?: state.servers.firstOrNull {
+                                    !com.dskja.betterstreamflix.sync.CastHandoffSession
+                                        .preferredServerIdOrNull().isNullOrBlank() &&
+                                        it.id == com.dskja.betterstreamflix.sync.CastHandoffSession
+                                        .preferredServerIdOrNull()
+                                } ?: state.servers.firstOrNull {
+                                    it.name.equals(
+                                        com.dskja.betterstreamflix.sync.CastHandoffSession
+                                            .preferredServerNameOrNull(),
+                                        ignoreCase = true,
+                                    )
                                 }
                                 val playServer = state.servers.firstOrNull {
                                     !isSerienStreamBypassUrl(it.id) && !isSerienStreamBypassUrl(it.src)
@@ -618,7 +677,20 @@ class PlayerMobileFragment : Fragment(),
                                 viewModel.getVideo(selected)
                             }
                             val preferredServer = state.servers.firstOrNull {
+                                !args.preferredServerId.isNullOrBlank() && it.id == args.preferredServerId
+                            } ?: state.servers.firstOrNull {
                                 it.name.equals(args.preferredServerName, ignoreCase = true)
+                            } ?: state.servers.firstOrNull {
+                                !com.dskja.betterstreamflix.sync.CastHandoffSession
+                                    .preferredServerIdOrNull().isNullOrBlank() &&
+                                    it.id == com.dskja.betterstreamflix.sync.CastHandoffSession
+                                    .preferredServerIdOrNull()
+                            } ?: state.servers.firstOrNull {
+                                it.name.equals(
+                                    com.dskja.betterstreamflix.sync.CastHandoffSession
+                                        .preferredServerNameOrNull(),
+                                    ignoreCase = true,
+                                )
                             }
                             viewModel.getVideo(preferredServer ?: state.servers.first())
                         }
@@ -1045,6 +1117,7 @@ class PlayerMobileFragment : Fragment(),
         isTearingDown = true
         com.dskja.betterstreamflix.sync.WatchPartyPlayerHooks.onDestroyView(this)
         com.dskja.betterstreamflix.sync.CastHandoffPlayerHooks.onDestroyView(this)
+        com.dskja.betterstreamflix.sync.SessionHandoffPlayerHooks.onDestroyView(this)
         com.dskja.betterstreamflix.sync.CastRoomPlayerHooks.onDestroyView(this)
         livePipZapController?.release()
         livePipZapController = null
@@ -1926,32 +1999,7 @@ class PlayerMobileFragment : Fragment(),
         )
         com.dskja.betterstreamflix.sync.CastRoomPlayerHooks.ensureHostHeartbeat(
             this,
-            object : com.dskja.betterstreamflix.sync.CastRoomPlayerHooks.PlayerBridge {
-                override fun isLiveOrOffline(): Boolean =
-                    isLiveTvPlayback() || isOfflinePlayback()
-
-                override fun videoType(): Video.Type = args.videoType
-
-                override fun positionMs(): Long =
-                    runCatching { activePlayer().currentPosition }.getOrDefault(0L)
-
-                override fun isPlaying(): Boolean =
-                    runCatching { activePlayer().isPlaying }.getOrDefault(false)
-
-                override fun setPlayWhenReady(playing: Boolean) {
-                    runCatching {
-                        activePlayer().playWhenReady = playing
-                        if (playing) activePlayer().play() else activePlayer().pause()
-                    }
-                }
-
-                override fun seekTo(positionMs: Long) {
-                    runCatching { activePlayer().seekTo(positionMs.coerceAtLeast(0L)) }
-                }
-
-                override fun currentCastRoomIndex(): Int =
-                    com.dskja.betterstreamflix.sync.CastRoomUi.latestPayload()?.nowPlayingIndex ?: 0
-            },
+            castRoomBridge,
         )
         com.dskja.betterstreamflix.sync.CastRoomPlayerHooks.refreshChrome(
             binding.pvPlayer.controller.binding.btnExoCastRoom,
@@ -2358,7 +2406,12 @@ class PlayerMobileFragment : Fragment(),
                     ) {
                         return@withContext
                     }
-                    val target = PlaybackProgress.resumeTargetMs(savedPosition, player.duration)
+                    // Session / Cast handoff: seek exactly — no Continue Watching rewind.
+                    val target = if (handoffPosition != null) {
+                        handoffPosition
+                    } else {
+                        PlaybackProgress.resumeTargetMs(savedPosition, player.duration)
+                    }
                     runCatching { player.seekTo(target) }
                 }
             }

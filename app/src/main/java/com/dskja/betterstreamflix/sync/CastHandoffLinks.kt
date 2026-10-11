@@ -7,7 +7,6 @@ object CastHandoffLinks {
     /** Distinct from Session Handoff (`handoff`) — this is TV→Phone Cast Hand-off. */
     const val HOST = "casthand"
     const val HTTPS_HOST = "betterstreamflix.app"
-    private val SHORT_CODE_PATTERN = Regex("^[A-Z2-9]{6}$")
     private val LINK_PATTERN = Regex(
         "^(?:(?:betterstreamflix|streamflix)://casthand(?:/([^?&#]+)|\\?code=([^&#]+))|" +
             "https?://(?:www\\.)?betterstreamflix\\.app/casthand(?:/([^?&#]+)|\\?code=([^&#]+)))",
@@ -32,23 +31,14 @@ object CastHandoffLinks {
         return normalizeShortCode(code)
     }
 
-    fun normalizeShortCode(raw: String?): String? {
-        if (raw.isNullOrBlank()) return null
-        val cleaned = raw.trim().uppercase()
-            .replace('0', 'O')
-            .replace('1', 'I')
-            .replace('L', 'I')
-        return cleaned.takeIf { SHORT_CODE_PATTERN.matches(it) }
-    }
+    fun normalizeShortCode(raw: String?): String? =
+        CompanionShortCodes.normalize(raw)
 
     fun isValidShortCode(code: String?): Boolean =
         normalizeShortCode(code) != null
 
     /** Short codes: A–Z and 2–9 (no 0/1/O/I/L confusion on the wire). */
-    fun newShortCode(random: () -> Int = { kotlin.random.Random.nextInt(0, 32) }): String {
-        val alphabet = "ABCDEFGHJKMNPQRSTUVWXYZ23456789"
-        return buildString(6) {
-            repeat(6) { append(alphabet[random() % alphabet.length]) }
-        }
-    }
+    fun newShortCode(random: (() -> Int)? = null): String =
+        if (random != null) CompanionShortCodes.newShortCode(random)
+        else CompanionShortCodes.newShortCode()
 }

@@ -177,6 +177,23 @@ class SearchMobileFragment : Fragment() {
         refreshSortChips()
     }
 
+    /** Cast Room / TV Sidekick keyboard — fill Search and run. */
+    fun applySidekickQuery(query: String) {
+        if (!isAdded || _binding == null) return
+        val cleaned = query.trim()
+        if (cleaned.isEmpty()) return
+        binding.etSearch.setText(cleaned)
+        binding.etSearch.setSelection(cleaned.length)
+        hideKeyboard()
+        SearchMemories.rememberAttempt(requireContext(), cleaned, global = binding.swGlobalSearch.isChecked)
+        if (binding.swGlobalSearch.isChecked) {
+            viewModel.searchGlobal(cleaned, resolveSearchLanguage())
+        } else {
+            viewModel.search(cleaned)
+        }
+        refreshRecentSearches()
+    }
+
     override fun onDestroyView() {
         if (::voiceHelper.isInitialized) {
             runCatching { voiceHelper.stopRecognition() }

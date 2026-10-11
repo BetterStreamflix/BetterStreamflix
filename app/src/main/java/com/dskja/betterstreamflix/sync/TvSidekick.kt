@@ -24,8 +24,17 @@ object TvSidekick {
         return cleaned.takeIf { it.isNotEmpty() }
     }
 
+    private val URL_PATTERN = Regex(
+        "(?i)\\b(?:https?://|www\\.|betterstreamflix://|streamflix://)\\S+",
+    )
+    private val CONTROL_CHARS = Regex("[\\p{Cntrl}]")
+
     fun sanitizeChatBody(raw: String?): String? {
         val trimmed = raw?.trim().orEmpty()
+            .replace(CONTROL_CHARS, "")
+            .replace(URL_PATTERN, "")
+            .replace(Regex("\\s+"), " ")
+            .trim()
         if (trimmed.isEmpty()) return null
         return trimmed.take(MAX_CHAT_CHARS)
     }
@@ -61,28 +70,35 @@ object TvSidekick {
         }
     }
 
-    fun parsePositionInput(raw: String?): Long? {
+    /**
+     * Parse scrubber input. Bare digits are seconds (e.g. `90` → 90s).
+     * `m:ss` / `h:mm:ss` are also supported. Result is milliseconds.
+     */
+    fun parsePositionInput(raw: String?, durationMs: Long? = null): Long? {
         val text = raw?.trim().orEmpty()
         if (text.isEmpty()) return null
-        if (text.all { it.isDigit() }) {
-            return text.toLongOrNull()?.coerceAtLeast(0L)
-        }
-        val parts = text.split(':').map { it.trim() }
-        if (parts.any { it.toIntOrNull() == null }) return null
-        return when (parts.size) {
-            2 -> {
-                val m = parts[0].toLong()
-                val s = parts[1].toLong()
-                if (s !in 0..59) null else (m * 60 + s) * 1000L
+        val parsed = if (text.all { it.isDigit() }) {
+            val seconds = text.toLongOrNull() ?: return null
+            (seconds.coerceAtLeast(0L)) * 1000L
+        } else {
+            val parts = text.split(':').map { it.trim() }
+            if (parts.any { it.toIntOrNull() == null }) return null
+            when (parts.size) {
+                2 -> {
+                    val m = parts[0].toLong()
+                    val s = parts[1].toLong()
+                    if (s !in 0..59) null else (m * 60 + s) * 1000L
+                }
+                3 -> {
+                    val h = parts[0].toLong()
+                    val m = parts[1].toLong()
+                    val s = parts[2].toLong()
+                    if (m !in 0..59 || s !in 0..59) null else ((h * 3600) + (m * 60) + s) * 1000L
+                }
+                else -> null
             }
-            3 -> {
-                val h = parts[0].toLong()
-                val m = parts[1].toLong()
-                val s = parts[2].toLong()
-                if (m !in 0..59 || s !in 0..59) null else ((h * 3600) + (m * 60) + s) * 1000L
-            }
-            else -> null
-        }
+        } ?: return null
+        return clampSeek(parsed, durationMs)
     }
 
     fun formatMessageLine(displayName: String, kind: String, body: String): String =

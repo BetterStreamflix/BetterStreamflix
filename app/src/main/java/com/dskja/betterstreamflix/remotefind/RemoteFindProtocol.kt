@@ -3,8 +3,12 @@ package com.dskja.betterstreamflix.remotefind
 /**
  * Wire protocol for Remote Find Phone (LAN WebSocket text frames).
  *
+ * Pairing model (LAN-trust): UDP offers never carry the long-lived session token.
+ * Phone connects and sends `hello:<code>` first; TV returns the token in `welcome`.
+ * Token is rotated each [RemoteFindHost.start] / Show Code cycle.
+ *
  * Phone → TV:
- * - `hello:<token>`
+ * - `hello:<code>` pairing challenge (short code, not the WS token)
  * - `keyset:<text>` replace search query
  * - `key:<text>` append to search query
  * - `keyback` backspace
@@ -15,7 +19,7 @@ package com.dskja.betterstreamflix.remotefind
  * - `ping`
  *
  * TV → Phone:
- * - `welcome:<code>`
+ * - `welcome:<code>:<token>`
  * - `ack:hello`
  * - `status:<text>`
  * - `error:<reason>`
@@ -26,7 +30,7 @@ object RemoteFindProtocol {
     private const val MAX_TEXT_CHARS = 200
 
     sealed class Inbound {
-        data class Hello(val token: String) : Inbound()
+        data class Hello(val code: String) : Inbound()
         data class KeySet(val text: String) : Inbound()
         data class KeyAppend(val text: String) : Inbound()
         data object KeyBack : Inbound()
@@ -38,7 +42,9 @@ object RemoteFindProtocol {
         data class Unknown(val raw: String) : Inbound()
     }
 
-    fun encodeHello(token: String): String = "hello:${token.trim()}"
+    data class Welcome(val code: String, val token: String)
+
+    fun encodeHello(code: String): String = "hello:${code.trim()}"
     fun encodeKeySet(text: String): String = "keyset:${sanitizeText(text)}"
     fun encodeKeyAppend(text: String): String = "key:${sanitizeText(text)}"
     fun encodeKeyBack(): String = "keyback"
@@ -49,7 +55,8 @@ object RemoteFindProtocol {
     fun encodeBack(): String = "back"
     fun encodePing(): String = "ping"
 
-    fun encodeWelcome(code: String): String = "welcome:${code.trim()}"
+    fun encodeWelcome(code: String, token: String): String =
+        "welcome:${code.trim()}:${token.trim()}"
     fun encodeAckHello(): String = "ack:hello"
     fun encodeStatus(text: String): String = "status:${sanitizeText(text)}"
     fun encodeError(reason: String): String = "error:${sanitizeText(reason)}"
@@ -74,6 +81,17 @@ object RemoteFindProtocol {
             message.equals("ping", ignoreCase = true) -> Inbound.Ping
             else -> Inbound.Unknown(message)
         }
+    }
+
+    fun parseWelcome(raw: String?): Welcome? {
+        if (raw.isNullOrBlank() || !raw.startsWith("welcome:")) return null
+        val body = raw.removePrefix("welcome:")
+        val sep = body.indexOf(':')
+        if (sep <= 0) return null
+        val code = body.substring(0, sep).trim()
+        val token = body.substring(sep + 1).trim()
+        if (code.isBlank() || token.isBlank()) return null
+        return Welcome(code = code, token = token)
     }
 
     private fun parsePad(body: String): Inbound {

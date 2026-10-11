@@ -1400,6 +1400,10 @@
     <string name="cast_room_joined">Joined Cast Room — browse titles and add them to the TV queue</string>
     <string name="cast_room_not_joined">Join a Cast Room first</string>
     <string name="cast_room_already_controller">Leave the current Cast Room before hosting</string>
+    <string name="cast_room_end_host_first">End the Cast Room you are hosting before joining as a remote</string>
+    <string name="cast_room_kids_blocked_host">Cast Room hosting is not available on Kids profiles</string>
+    <string name="cast_room_kids_blocked_item">That title is blocked on this Kids profile — skipped</string>
+    <string name="cast_room_rate_limited">Slow down — try that Cast Room action again in a moment</string>
     <string name="cast_room_companion_title">TV queue remote</string>
     <string name="tv_sidekick_title">TV Sidekick</string>
     <string name="tv_sidekick_now_playing">Now on TV: %1$s · %2$s</string>
@@ -1435,12 +1439,18 @@
     <string name="cast_room_pause_action">Pause TV</string>
     <string name="cast_room_resume_action">Resume TV</string>
     <string name="cast_room_scan_unavailable">QR scanning is not available on this device</string>
-    <string name="remote_find_category_title">Remote Find Phone</string>
+    <string name="cast_companion_hub_title">Cast Companion</string>
+    <string name="cast_companion_hub_summary">Room queue, Watch Together, handoffs, and TV touchpad</string>
+    <string name="companion_busy_watch_together">End Watch Together before starting Cast Room</string>
+    <string name="companion_busy_cast_room">End Cast Room before starting Watch Together</string>
+    <string name="remote_find_category_title">Companion · Remote Find Phone</string>
     <string name="remote_find_host_summary">Show a code so your phone becomes a touchpad and search keyboard</string>
     <string name="remote_find_host_active_summary">Hosting · code %1$s — phone can type Search</string>
     <string name="remote_find_host_failed_lan">Could not start Remote Find — check Wi‑Fi / LAN address</string>
     <string name="remote_find_host_qr_title">Pair phone remote</string>
     <string name="remote_find_host_qr_message">Scan the QR or type the code on your phone (same Wi‑Fi). Phone becomes a touchpad and Search keyboard.</string>
+    <string name="remote_find_host_phone_connected">Phone connected — typing and touchpad are live.</string>
+    <string name="remote_find_kids_blocked">Remote Find hosting is unavailable on Kids / locked profiles</string>
     <string name="remote_find_code_label">Code %1$s</string>
     <string name="remote_find_qr_cd">QR code to pair phone as TV remote</string>
     <string name="remote_find_show_code_action">Show pairing code</string>
@@ -1477,8 +1487,8 @@
     <string name="remote_find_touchpad_cd">Touchpad for TV focus</string>
     <string name="remote_find_touchpad_hint">Swipe to move · tap to select</string>
     <string name="remote_find_search_button_cd">Show phone remote pairing code</string>
-    <string name="cast_room_category_title">Cast Room</string>
-    <string name="session_handoff_category_title">Session Handoff</string>
+    <string name="cast_room_category_title">Companion · Cast Room (TV queue)</string>
+    <string name="session_handoff_category_title">Companion · Session Handoff (Phone→TV)</string>
     <string name="session_handoff_cd">Send to TV</string>
     <string name="session_handoff_cd_offering">Sending to TV — code %1$s</string>
     <string name="session_handoff_offer_title">Continue on TV</string>
@@ -1503,6 +1513,12 @@
     <string name="session_handoff_unknown_provider">Install or select the same provider on this TV</string>
     <string name="session_handoff_nav_failed">Could not open the player</string>
     <string name="session_handoff_use_code">Use the 6-character code on TV Settings → Session Handoff</string>
+    <string name="session_handoff_claim_queued_offline">Code saved — claim when you are back online</string>
+    <string name="session_handoff_claim_prefer_tv">Session Handoff is meant for the TV. Continue only if this device should play.</string>
+    <string name="session_handoff_offer_prefer_phone">Create the handoff code on your phone, then enter it on the TV.</string>
+    <string name="session_handoff_claim_confirm_title">Continue this title here?</string>
+    <string name="session_handoff_claim_position_note">Resume at %1$s</string>
+    <string name="session_handoff_claim_server_note">Server: %1$s</string>
     <string name="cast_handoff_cd">Cast Hand-off to phone</string>
     <string name="cast_handoff_cd_offering">Cast Hand-off — code active</string>
     <string name="cast_handoff_menu_title">Cast Hand-off</string>
@@ -1521,7 +1537,7 @@
     <string name="cast_handoff_needs_sign_in">Sign in under Account &amp; sync to offer a Cast Hand-off</string>
     <string name="cast_handoff_offline">Connect to the internet to offer or claim a Cast Hand-off</string>
     <string name="cast_handoff_unavailable_live_offline">Cast Hand-off is not available for Live TV or offline playback</string>
-    <string name="cast_handoff_category_title">Cast Hand-off</string>
+    <string name="cast_handoff_category_title">Companion · Cast Hand-off (TV→Phone)</string>
     <string name="cast_handoff_claim_title">Enter Cast Hand-off code</string>
     <string name="cast_handoff_claim_summary">Type the 6-character code shown on the TV to continue here</string>
     <string name="cast_handoff_claim_message">Enter the code from the TV to open the same title at the same position.</string>
@@ -1533,6 +1549,7 @@
     <string name="cast_handoff_claim_privacy_note">Only playback position and chosen server are transferred. Stream URLs stay on each device.</string>
     <string name="cast_handoff_claim_needs_supabase">Set up Supabase under Account &amp; sync to claim. The code was saved for later.</string>
     <string name="cast_handoff_claim_queued_offline">You are offline — you will be asked to claim when you are back online</string>
+    <string name="cast_handoff_claim_prefer_phone">Cast Hand-off is meant for the phone. Continue only if this device should play.</string>
     <string name="cast_handoff_claim_failed">Cast Hand-off claim failed: %1$s</string>
     <string name="cast_handoff_claim_failed_nav">Could not open the player for this Cast Hand-off</string>
     <string name="cast_handoff_claim_success">Continuing from TV</string>
@@ -2752,7 +2769,13 @@
 
     <string name="watch_together_pro_menu_title">Watch Together Pro</string>
     <string name="watch_together_pro_lobby_title">Watch Together lobby</string>
-    <string name="watch_together_pro_category_title">Watch Together Pro</string>
+    <string name="watch_party_kick_action">Remove %1$s</string>
+    <string name="watch_party_kick_done">Guest removed</string>
+    <string name="watch_party_kick_failed">Could not remove guest: %1$s</string>
+    <string name="watch_party_kids_blocked">Watch Together is not available on Kids profiles. Switch to an adult profile first.</string>
+    <string name="watch_together_pro_category_title">Companion · Watch Together Pro</string>
+    <string name="watch_party_pause_all_action">Pause everyone</string>
+    <string name="watch_party_pause_all_done">Paused for the whole party</string>
     <string name="watch_party_show_code_action">Show QR &amp; code</string>
     <string name="watch_party_show_code_summary">Share the 6-character lobby code or QR for phones</string>
     <string name="watch_party_code_label">Code %1$s</string>

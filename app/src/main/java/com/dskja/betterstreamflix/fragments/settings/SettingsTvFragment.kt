@@ -2735,6 +2735,10 @@ class SettingsTvFragment : LeanbackPreferenceFragmentCompat() {
         )
         SerienStreamAuthSettingsController.refresh { key -> findPreference(key) }
         AniWorldAuthSettingsController.refresh { key -> findPreference(key) }
+        com.dskja.betterstreamflix.sync.WatchPartySettingsController.refresh(
+            fragment = this,
+            findPreference = { key -> findPreference(key) },
+        )
         settingsHubController?.updateVisibility()
 
         findPreference<EditTextPreference>("provider_streamingcommunity_domain")?.apply {

@@ -22,23 +22,6 @@ object WatchPartySettingsController {
         val openRemote = findPreference(KEY_OPEN_REMOTE)
         val showCode = findPreference(KEY_SHOW_CODE)
 
-        fun refresh() {
-            val hosting = WatchPartySession.isHost()
-            val remote = WatchPartySession.isRemote()
-            joinCode?.isVisible = !hosting
-            openRemote?.isVisible = remote
-            showCode?.isVisible = hosting
-            showCode?.summary = if (hosting) {
-                fragment.getString(
-                    R.string.watch_party_code_label,
-                    WatchPartySession.shortCode ?: "------",
-                )
-            } else {
-                fragment.getString(R.string.watch_party_show_code_summary)
-            }
-            joinCode?.summary = fragment.getString(R.string.watch_party_join_code_summary)
-        }
-
         joinCode?.setOnPreferenceClickListener {
             promptCode(fragment)
             true
@@ -54,7 +37,31 @@ object WatchPartySettingsController {
             true
         }
 
-        refresh()
+        refresh(fragment, findPreference)
+    }
+
+    /** CC-054: call from Settings onResume so Open remote / Show code stay accurate. */
+    fun refresh(
+        fragment: Fragment,
+        findPreference: (String) -> Preference?,
+    ) {
+        val joinCode = findPreference(KEY_JOIN_CODE)
+        val openRemote = findPreference(KEY_OPEN_REMOTE)
+        val showCode = findPreference(KEY_SHOW_CODE)
+        val hosting = WatchPartySession.isHost()
+        val remote = WatchPartySession.isRemote()
+        joinCode?.isVisible = !hosting
+        openRemote?.isVisible = remote
+        showCode?.isVisible = hosting
+        showCode?.summary = if (hosting) {
+            fragment.getString(
+                R.string.watch_party_code_label,
+                WatchPartySession.shortCode ?: "------",
+            )
+        } else {
+            fragment.getString(R.string.watch_party_show_code_summary)
+        }
+        joinCode?.summary = fragment.getString(R.string.watch_party_join_code_summary)
     }
 
     private fun promptCode(fragment: Fragment) {

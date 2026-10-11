@@ -44,6 +44,16 @@ object CastRoomUi {
     @Volatile
     private var latestPayload: CastRoomPayload? = null
 
+    /** Live-refresh callback for an open controller panel (CC-033). */
+    @Volatile
+    private var controllerPanelRefresh: WeakReference<(CastRoomPayload) -> Unit>? = null
+
+    /** Client-side throttle for token mutate RPCs (CC-014). */
+    private const val MUTATE_MIN_INTERVAL_MS = 450L
+    private val mutateLock = Any()
+    @Volatile
+    private var lastMutateAtMs: Long = 0L
+
     interface HostConsumer {
         fun onCastRoomPlayItem(item: CastRoomItemPayload, preferredServerName: String?)
         fun onCastRoomSetPlaying(playing: Boolean)
@@ -58,8 +68,25 @@ object CastRoomUi {
 
     fun latestPayload(): CastRoomPayload? = latestPayload
 
+    /** Clear in-memory room role when the active profile switches (CC-037). */
+    fun onProfileSwitched() {
+        promptedPendingTokens.clear()
+        confirmInFlight = false
+        controllerPanelRefresh = null
+        latestPayload = null
+        CastRoomSession.clear()
+        CoroutineScopeIo.launch { CastRoomSync.stop() }
+    }
+
     fun hostAndShowQr(fragment: Fragment) {
         val context = fragment.context ?: return
+        if (CompanionSessions.refuseIfOtherCompanionActive(context, CompanionSessions.Kind.CAST_ROOM)) {
+            return
+        }
+        if (com.dskja.betterstreamflix.profiles.ProfileManager.isKidsActive()) {
+            ExpDialogChrome.notify(context, R.string.cast_room_kids_blocked_host)
+            return
+        }
         if (!SupabaseProvider.isConfigured) {
             ExpDialogChrome.notify(context, R.string.cast_room_needs_supabase)
             return
@@ -186,6 +213,7 @@ object CastRoomUi {
             }
             CastRoomSession.clear()
             latestPayload = null
+            controllerPanelRefresh = null
             if (fragment.isAdded) {
                 ExpDialogChrome.notify(ctx, R.string.cast_room_ended)
             }
@@ -197,6 +225,7 @@ object CastRoomUi {
             CastRoomSync.stop()
             CastRoomSession.clear()
             latestPayload = null
+            controllerPanelRefresh = null
             fragment.context?.let {
                 ExpDialogChrome.notify(it, R.string.cast_room_left)
             }
@@ -401,6 +430,10 @@ object CastRoomUi {
         if (!CastRoomSession.isHost()) return
         val consumer = hostConsumerRef?.get()
         applySidekickCommands(context.applicationContext, payload, consumer)
+        val token = CastRoomSession.token
+        if (token != null) {
+            maybeToastHostChat(context.applicationContext, token)
+        }
 
         if (payload.revision == CastRoomSession.lastAppliedRevision &&
             CastRoomSession.lastAppliedPlaying == payload.playing
@@ -414,7 +447,26 @@ object CastRoomUi {
             CastRoomSession.lastAppliedRevision = payload.revision
             CastRoomSession.lastAppliedPlaying = payload.playing
             if (item != null) {
-                consumer?.onCastRoomPlayItem(item, item.preferredServerName)
+                // CC-013/032: kids host must not auto-play adult queue items.
+                if (com.dskja.betterstreamflix.profiles.ProfileManager.isKidsActive()) {
+                    CoroutineScopeIo.launch {
+                        val allowed = isKidsAllowedItem(item)
+                        if (!allowed) {
+                            android.os.Handler(android.os.Looper.getMainLooper()).post {
+                                ExpDialogChrome.notify(
+                                    context.applicationContext,
+                                    R.string.cast_room_kids_blocked_item,
+                                )
+                            }
+                            return@launch
+                        }
+                        android.os.Handler(android.os.Looper.getMainLooper()).post {
+                            consumer?.onCastRoomPlayItem(item, item.preferredServerName)
+                        }
+                    }
+                } else {
+                    consumer?.onCastRoomPlayItem(item, item.preferredServerName)
+                }
             }
             return
         }
@@ -423,6 +475,32 @@ object CastRoomUi {
             consumer?.onCastRoomSetPlaying(payload.playing)
         }
         CastRoomSession.lastAppliedRevision = payload.revision
+    }
+
+    private suspend fun isKidsAllowedItem(item: CastRoomItemPayload): Boolean {
+        return runCatching {
+            when (item.mediaType) {
+                "movie" -> {
+                    val movie = com.dskja.betterstreamflix.models.Movie(
+                        id = item.mediaId,
+                        title = item.title.ifBlank { "Movie" },
+                        released = item.releaseDate,
+                        poster = item.poster,
+                    )
+                    com.dskja.betterstreamflix.utils.ParentalControlUtils.isAllowed(movie)
+                }
+                "episode" -> {
+                    val show = com.dskja.betterstreamflix.models.TvShow(
+                        id = item.showId ?: item.mediaId,
+                        title = item.showTitle ?: item.title.ifBlank { "Show" },
+                        released = item.releaseDate,
+                        poster = item.showPoster ?: item.poster,
+                    )
+                    com.dskja.betterstreamflix.utils.ParentalControlUtils.isAllowed(show)
+                }
+                else -> false
+            }
+        }.getOrDefault(false)
     }
 
     private fun applySidekickCommands(
@@ -445,12 +523,41 @@ object CastRoomUi {
                 payload.sidekickText,
             )
         ) {
-            CastRoomSession.lastAppliedTextSeq = payload.sidekickTextSeq
+            val seq = payload.sidekickTextSeq
+            CastRoomSession.lastAppliedTextSeq = seq
             val text = TvSidekick.sanitizeKeyboard(payload.sidekickText) ?: return
             consumer?.onCastRoomSidekickText(text)
             val token = CastRoomSession.token ?: return
             CoroutineScopeIo.launch {
-                runCatching { CastRoomRepository.ackSidekickText(appContext, token) }
+                runCatching { CastRoomRepository.ackSidekickText(appContext, token, seq) }
+            }
+        }
+    }
+
+    private fun maybeToastHostChat(appContext: Context, token: String) {
+        CoroutineScopeIo.launch {
+            val messages = runCatching {
+                CastRoomRepository.listMessages(appContext, token, limit = 8)
+            }.getOrDefault(emptyList())
+            if (messages.isEmpty()) return@launch
+            val lastSeen = CastRoomSession.lastHostChatSeenAt
+            val fresh = if (lastSeen.isNullOrBlank()) {
+                // First poll while hosting: seed watermark, don't toast backlog.
+                emptyList()
+            } else {
+                messages.filter { (it.createdAt ?: "") > lastSeen }
+            }
+            val newest = messages.maxByOrNull { it.createdAt.orEmpty() }?.createdAt
+            if (!newest.isNullOrBlank()) {
+                CastRoomSession.lastHostChatSeenAt = newest
+            }
+            if (fresh.isEmpty()) return@launch
+            val line = fresh.last()
+            android.os.Handler(android.os.Looper.getMainLooper()).post {
+                ExpDialogChrome.notify(
+                    appContext,
+                    TvSidekick.formatMessageLine(line.displayName, line.kind, line.body),
+                )
             }
         }
     }
@@ -479,9 +586,12 @@ object CastRoomUi {
                     runCatching { CastRoomRepository.fetchByToken(activity, token) }
                 }
             }
-            confirmInFlight = false
-            if (activity.isFinishing || activity.isDestroyed) return@launch
+            if (activity.isFinishing || activity.isDestroyed) {
+                confirmInFlight = false
+                return@launch
+            }
             result.onFailure { error ->
+                confirmInFlight = false
                 CastRoomPendingJoin.acknowledge(activity, token)
                 promptedPendingTokens.remove(token)
                 ExpDialogChrome.notify(
@@ -493,7 +603,11 @@ object CastRoomUi {
                 )
                 return@launch
             }
-            val payload = result.getOrNull() ?: return@launch
+            val payload = result.getOrNull()
+            if (payload == null) {
+                confirmInFlight = false
+                return@launch
+            }
             val count = payload.items.size
             val detail = buildString {
                 append(activity.getString(R.string.cast_room_join_privacy_note))
@@ -506,6 +620,7 @@ object CastRoomUi {
                     ),
                 )
             }
+            // CC-061: clear confirmInFlight only after dialog dismiss.
             androidx.appcompat.app.AlertDialog.Builder(activity)
                 .setTitle(R.string.cast_room_join_confirm_title)
                 .setMessage(detail)
@@ -522,6 +637,9 @@ object CastRoomUi {
                     CastRoomPendingJoin.acknowledge(activity, token)
                     promptedPendingTokens.remove(token)
                 }
+                .setOnDismissListener {
+                    confirmInFlight = false
+                }
                 .show()
         }
     }
@@ -531,6 +649,11 @@ object CastRoomUi {
         token: String,
         payload: CastRoomPayload,
     ) {
+        // CC-015: joining while hosting would demote host locally and orphan the room.
+        if (CastRoomSession.isHost()) {
+            ExpDialogChrome.notify(activity, R.string.cast_room_end_host_first)
+            return
+        }
         CastRoomSession.beginController(token, payload.id, payload.shortCode)
         latestPayload = payload
         startControllerPolling(activity.applicationContext, token)
@@ -563,10 +686,15 @@ object CastRoomUi {
         CastRoomSync.startPolling(
             context = context,
             token = token,
-            listener = { payload -> latestPayload = payload },
+            listener = { payload ->
+                latestPayload = payload
+                // CC-033: live-refresh open controller panel from poll.
+                controllerPanelRefresh?.get()?.invoke(payload)
+            },
             onEnded = {
                 CastRoomSession.clear()
                 latestPayload = null
+                controllerPanelRefresh = null
                 CoroutineScopeIo.launch { CastRoomSync.stop() }
             },
         )
@@ -582,34 +710,40 @@ object CastRoomUi {
         }
         scroll.addView(list)
 
-        val now = CastRoomQueue.nowPlaying(payload)
-        list.addView(
-            TextView(context).apply {
-                text = if (now == null) {
-                    context.getString(R.string.cast_room_queue_empty)
-                } else {
-                    context.getString(
-                        R.string.tv_sidekick_now_playing,
-                        CastRoomQueue.displayLabel(now),
-                        TvSidekick.formatPosition(payload.positionMs),
-                    )
-                }
-                textSize = 16f
-                setPadding(0, 0, 0, 12)
-            },
-        )
+        val nowPlayingView = TextView(context).apply {
+            textSize = 16f
+            setPadding(0, 0, 0, 12)
+        }
+        fun bindNowPlaying(p: CastRoomPayload) {
+            val now = CastRoomQueue.nowPlaying(p)
+            nowPlayingView.text = if (now == null) {
+                context.getString(R.string.cast_room_queue_empty)
+            } else {
+                context.getString(
+                    R.string.tv_sidekick_now_playing,
+                    CastRoomQueue.displayLabel(now),
+                    TvSidekick.formatPosition(p.positionMs),
+                )
+            }
+        }
+        bindNowPlaying(payload)
+        list.addView(nowPlayingView)
 
         list.addView(sectionLabel(context, R.string.tv_sidekick_scrubber_title))
         list.addView(
             scrubberRow(context) { deltaMs ->
-                val target = TvSidekick.relativeSeek(payload.positionMs, deltaMs)
+                val base = latestPayload?.positionMs ?: payload.positionMs
+                val target = TvSidekick.relativeSeek(base, deltaMs)
                 mutate(fragment, token) { CastRoomRepository.seek(context, it, target) }
             },
         )
         list.addView(
             Button(context).apply {
                 text = context.getString(R.string.tv_sidekick_scrub_to_action)
-                setOnClickListener { promptAbsoluteSeek(fragment, token, payload.positionMs) }
+                setOnClickListener {
+                    val base = latestPayload?.positionMs ?: payload.positionMs
+                    promptAbsoluteSeek(fragment, token, base)
+                }
             },
         )
 
@@ -682,21 +816,30 @@ object CastRoomUi {
         list.addView(reactionRow(context, fragment, token, chatView))
 
         list.addView(sectionLabel(context, R.string.cast_room_companion_title))
-        payload.items.forEachIndexed { index, item ->
-            val row = TextView(context).apply {
-                val marker = if (index == payload.nowPlayingIndex) "▶ " else "${index + 1}. "
-                text = marker + CastRoomQueue.displayLabel(item)
-                textSize = 15f
-                setPadding(0, 18, 0, 18)
-                isClickable = true
-                setOnClickListener {
-                    showItemActions(fragment, token, payload, index, item)
-                }
-            }
-            list.addView(row)
+        val queueContainer = LinearLayout(context).apply {
+            orientation = LinearLayout.VERTICAL
         }
+        fun bindQueue(p: CastRoomPayload) {
+            queueContainer.removeAllViews()
+            p.items.forEachIndexed { index, item ->
+                queueContainer.addView(
+                    TextView(context).apply {
+                        val marker = if (index == p.nowPlayingIndex) "▶ " else "${index + 1}. "
+                        text = marker + CastRoomQueue.displayLabel(item)
+                        textSize = 15f
+                        setPadding(0, 18, 0, 18)
+                        isClickable = true
+                        setOnClickListener {
+                            showItemActions(fragment, token, p, index, item)
+                        }
+                    },
+                )
+            }
+        }
+        bindQueue(payload)
+        list.addView(queueContainer)
 
-        androidx.appcompat.app.AlertDialog.Builder(context)
+        val dialog = androidx.appcompat.app.AlertDialog.Builder(context)
             .setTitle(R.string.tv_sidekick_title)
             .setView(scroll)
             .setNeutralButton(R.string.cast_room_skip_action) { _, _ ->
@@ -705,14 +848,34 @@ object CastRoomUi {
             .setNegativeButton(
                 if (payload.playing) R.string.cast_room_pause_action else R.string.cast_room_resume_action,
             ) { _, _ ->
+                val playing = latestPayload?.playing ?: payload.playing
                 mutate(fragment, token) {
-                    CastRoomRepository.setPlaying(context, it, !payload.playing)
+                    CastRoomRepository.setPlaying(context, it, !playing)
                 }
             }
             .setPositiveButton(R.string.cast_room_leave_action) { _, _ ->
                 leaveController(fragment)
             }
-            .show()
+            .setOnDismissListener {
+                if (controllerPanelRefresh?.get() != null) {
+                    controllerPanelRefresh = null
+                }
+            }
+            .create()
+
+        controllerPanelRefresh = WeakReference { p ->
+            if (!fragment.isAdded || !dialog.isShowing) return@WeakReference
+            fragment.viewLifecycleOwner.lifecycleScope.launch(Dispatchers.Main) {
+                if (!fragment.isAdded || !dialog.isShowing) return@launch
+                bindNowPlaying(p)
+                bindQueue(p)
+                dialog.getButton(androidx.appcompat.app.AlertDialog.BUTTON_NEGATIVE)?.setText(
+                    if (p.playing) R.string.cast_room_pause_action else R.string.cast_room_resume_action,
+                )
+                refreshSidekickChat(fragment, token, chatView)
+            }
+        }
+        dialog.show()
     }
 
     private fun sectionLabel(context: Context, titleRes: Int): TextView =
@@ -872,6 +1035,14 @@ object CastRoomUi {
         block: suspend (String) -> CastRoomPayload,
     ) {
         val context = fragment.context ?: return
+        val now = android.os.SystemClock.elapsedRealtime()
+        synchronized(mutateLock) {
+            if (now - lastMutateAtMs < MUTATE_MIN_INTERVAL_MS) {
+                ExpDialogChrome.notify(context, R.string.cast_room_rate_limited)
+                return
+            }
+            lastMutateAtMs = now
+        }
         fragment.viewLifecycleOwner.lifecycleScope.launch {
             val result = withContext(Dispatchers.IO) {
                 runCatching { block(token) }
@@ -879,7 +1050,13 @@ object CastRoomUi {
             if (!fragment.isAdded) return@launch
             result.onSuccess { payload ->
                 latestPayload = payload
-                renderControllerPanel(fragment, payload)
+                // Prefer live refresh of the open panel over stacking another dialog.
+                val refresh = controllerPanelRefresh?.get()
+                if (refresh != null) {
+                    refresh(payload)
+                } else {
+                    renderControllerPanel(fragment, payload)
+                }
             }.onFailure { error ->
                 ExpDialogChrome.notify(
                     context,

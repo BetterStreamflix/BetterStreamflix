@@ -4,10 +4,8 @@ import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
 import com.dskja.betterstreamflix.R
 import com.dskja.betterstreamflix.models.Video
-import com.dskja.betterstreamflix.utils.ExpDialogChrome
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 
 /**
  * Thin glue between TV/Mobile player and Cast Room host session.
@@ -51,7 +49,7 @@ object CastRoomPlayerHooks {
         if (bridge.isLiveOrOffline()) return
         val roomId = CastRoomSession.roomId ?: return
         val ctx = fragment.requireContext().applicationContext
-        CastRoomSync.startHostHeartbeat(ctx, roomId) {
+        CastRoomSync.resumeHeartbeat(ctx, roomId) {
             CastRoomSync.HostSnapshot(
                 nowPlayingIndex = bridge.currentCastRoomIndex(),
                 positionMs = bridge.positionMs(),
@@ -88,37 +86,13 @@ object CastRoomPlayerHooks {
         CastRoomUi.onPlaybackEndedAdvance(ctx)
     }
 
-    suspend fun teardown(fragment: Fragment, endHost: Boolean) {
-        val roomId = CastRoomSession.roomId
-        val wasHost = CastRoomSession.isHost()
-        // Controllers keep their session when leaving an unrelated player.
-        if (!wasHost) return
-        CastRoomSync.stop()
-        if (endHost) {
-            val ctx = fragment.context?.applicationContext
-            if (ctx != null) {
-                withContext(Dispatchers.IO) {
-                    runCatching { CastRoomRepository.endRoom(ctx, roomId) }
-                }
-            }
-            CastRoomSession.clear()
-        }
-    }
-
     fun onDestroyView(fragment: Fragment) {
-        // Leaving the player does not end the Cast Room — phone can still queue.
-        // Host heartbeat pauses until the next item starts.
-        fragment.lifecycleScope.launch {
-            if (CastRoomSession.isHost()) {
-                CastRoomSync.stop()
-            }
+        // Leaving the player does not end the Cast Room — poll stays alive so
+        // Sidekick seek/play/queue still apply via the activity HostConsumer.
+        // Only pause host heartbeat until the next item starts.
+        if (CastRoomSession.isHost()) {
+            CastRoomSync.pauseHeartbeatAsync()
         }
         refreshChrome(null)
-    }
-
-    fun notifyHostReady(fragment: Fragment, bridge: PlayerBridge) {
-        ensureHostHeartbeat(fragment, bridge)
-        refreshChrome(fragment.view?.findViewById(R.id.btn_exo_cast_room))
-        ExpDialogChrome.notify(fragment.requireContext(), R.string.cast_room_host_ready)
     }
 }

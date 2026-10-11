@@ -427,6 +427,82 @@ class MainMobileActivity : FragmentActivity() {
             this,
             telegramGateLauncher,
         )
+        registerCastRoomHostConsumer()
+    }
+
+    /** CC-009: Mobile host needs the same Sidekick consumer as TV. */
+    private fun registerCastRoomHostConsumer() {
+        com.dskja.betterstreamflix.sync.CastRoomUi.registerHostConsumer(
+            object : com.dskja.betterstreamflix.sync.CastRoomUi.HostConsumer {
+                override fun onCastRoomPlayItem(
+                    item: com.dskja.betterstreamflix.sync.CastRoomItemPayload,
+                    preferredServerName: String?,
+                ) {
+                    com.dskja.betterstreamflix.sync.CastRoomUi.navigateHostToItem(
+                        this@MainMobileActivity,
+                        item,
+                    )
+                }
+
+                override fun onCastRoomSetPlaying(playing: Boolean) {
+                    val navHost =
+                        supportFragmentManager.findFragmentById(R.id.nav_main_fragment) as? NavHostFragment
+                    val player = navHost?.childFragmentManager?.primaryNavigationFragment
+                        as? PlayerMobileFragment
+                    player?.castRoomApplyRemotePlaying(playing)
+                }
+
+                override fun onCastRoomSeek(positionMs: Long) {
+                    runOnUiThread {
+                        val navHost =
+                            supportFragmentManager.findFragmentById(R.id.nav_main_fragment) as? NavHostFragment
+                        val player = navHost?.childFragmentManager?.primaryNavigationFragment
+                            as? PlayerMobileFragment
+                        player?.castRoomApplyRemoteSeek(positionMs)
+                    }
+                }
+
+                override fun onCastRoomSidekickText(text: String) {
+                    runOnUiThread {
+                        applySidekickKeyboardQuery(text)
+                    }
+                }
+
+                override fun onCastRoomEnded() {
+                    runOnUiThread {
+                        com.dskja.betterstreamflix.utils.ExpDialogChrome.notify(
+                            this@MainMobileActivity,
+                            R.string.cast_room_ended,
+                        )
+                    }
+                }
+            },
+        )
+    }
+
+    private fun applySidekickKeyboardQuery(text: String) {
+        val query = com.dskja.betterstreamflix.sync.TvSidekick.sanitizeKeyboard(text) ?: return
+        val navController =
+            (supportFragmentManager.findFragmentById(R.id.nav_main_fragment) as? NavHostFragment)
+                ?.navController
+        runCatching { navController?.navigate(R.id.search) }
+        binding.root.post {
+            val frag = getCurrentFragment()
+                as? com.dskja.betterstreamflix.fragments.search.SearchMobileFragment
+            if (frag != null) {
+                frag.applySidekickQuery(query)
+            } else {
+                binding.root.postDelayed({
+                    (getCurrentFragment()
+                        as? com.dskja.betterstreamflix.fragments.search.SearchMobileFragment)
+                        ?.applySidekickQuery(query)
+                }, 350L)
+            }
+            com.dskja.betterstreamflix.utils.ExpDialogChrome.notify(
+                this,
+                getString(R.string.tv_sidekick_keyboard_applied, query),
+            )
+        }
     }
 
     override fun onResume() {
@@ -440,6 +516,7 @@ class MainMobileActivity : FragmentActivity() {
         com.dskja.betterstreamflix.download.DownloadPackUi.tryFlushPending(this)
         com.dskja.betterstreamflix.sync.CastRoomUi.tryFlushPending(this)
         com.dskja.betterstreamflix.sync.CastHandoffUi.tryFlushPending(this)
+        com.dskja.betterstreamflix.sync.SessionHandoffUi.tryFlushPending(this)
     }
 
     override fun onStart() {
@@ -466,6 +543,7 @@ class MainMobileActivity : FragmentActivity() {
         com.dskja.betterstreamflix.profiletransfer.ProfileTransferUi.tryFlushPending(this)
         com.dskja.betterstreamflix.sync.CastRoomUi.tryFlushPending(this)
         com.dskja.betterstreamflix.sync.CastHandoffUi.tryFlushPending(this)
+        com.dskja.betterstreamflix.sync.SessionHandoffUi.tryFlushPending(this)
     }
 
     override fun onStop() {
@@ -482,6 +560,7 @@ class MainMobileActivity : FragmentActivity() {
             com.dskja.betterstreamflix.profiletransfer.ProfileTransferUi.tryFlushPending(this)
             com.dskja.betterstreamflix.sync.CastRoomUi.tryFlushPending(this)
             com.dskja.betterstreamflix.sync.CastHandoffUi.tryFlushPending(this)
+        com.dskja.betterstreamflix.sync.SessionHandoffUi.tryFlushPending(this)
             return
         }
         val host = navHost.childFragmentManager.primaryNavigationFragment ?: navHost
@@ -495,6 +574,7 @@ class MainMobileActivity : FragmentActivity() {
                 com.dskja.betterstreamflix.profiletransfer.ProfileTransferUi.tryFlushPending(this)
                 com.dskja.betterstreamflix.sync.CastRoomUi.tryFlushPending(this)
                 com.dskja.betterstreamflix.sync.CastHandoffUi.tryFlushPending(this)
+        com.dskja.betterstreamflix.sync.SessionHandoffUi.tryFlushPending(this)
             },
         )
     }
@@ -506,6 +586,7 @@ class MainMobileActivity : FragmentActivity() {
     }
 
     override fun onDestroy() {
+        com.dskja.betterstreamflix.sync.CastRoomUi.registerHostConsumer(null)
         CastPlaybackHub.removeSessionStateListener(castSessionListener)
         dismissUpdateDialog()
         // Cancel deferred posts only — clearing launching here races the gate Activity

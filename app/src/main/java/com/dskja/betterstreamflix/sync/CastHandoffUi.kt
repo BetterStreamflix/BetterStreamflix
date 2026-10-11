@@ -18,6 +18,7 @@ import com.dskja.betterstreamflix.download.DownloadConnectivityMonitor
 import com.dskja.betterstreamflix.models.Video
 import com.dskja.betterstreamflix.profiles.ProfileUnlockGate
 import com.dskja.betterstreamflix.providers.Provider
+import com.dskja.betterstreamflix.utils.DeviceCapabilities
 import com.dskja.betterstreamflix.utils.ExpDialogChrome
 import com.dskja.betterstreamflix.utils.QrUtils
 import com.dskja.betterstreamflix.utils.UserPreferences
@@ -214,6 +215,16 @@ object CastHandoffUi {
             ExpDialogChrome.notify(activity, R.string.cast_handoff_invalid_code)
             return
         }
+        // Prefer phone for Cast claim (TV→Phone).
+        val isTv = DeviceCapabilities.isLeanbackDevice(activity) ||
+            DeviceCapabilities.isAmazonFireTv(activity)
+        if (isTv) {
+            Toast.makeText(
+                activity,
+                R.string.cast_handoff_claim_prefer_phone,
+                Toast.LENGTH_LONG,
+            ).show()
+        }
         if (ProfileUnlockGate.requiresGateForActive()) {
             CastHandoffPendingClaim.enqueue(appContext, cleaned)
             return
@@ -221,6 +232,11 @@ object CastHandoffUi {
         if (!SupabaseProvider.isConfigured) {
             CastHandoffPendingClaim.enqueue(appContext, cleaned)
             ExpDialogChrome.notify(activity, R.string.cast_handoff_claim_needs_supabase)
+            return
+        }
+        if (CloudSyncManager.currentUserId() == null) {
+            CastHandoffPendingClaim.enqueue(appContext, cleaned)
+            ExpDialogChrome.notify(activity, R.string.cast_handoff_needs_sign_in)
             return
         }
         if (!DownloadConnectivityMonitor.isOnline(appContext)) {
@@ -234,6 +250,7 @@ object CastHandoffUi {
     fun tryFlushPending(activity: FragmentActivity) {
         if (ProfileUnlockGate.requiresGateForActive()) return
         if (!SupabaseProvider.isConfigured) return
+        if (CloudSyncManager.currentUserId() == null) return
         if (!DownloadConnectivityMonitor.isOnline(activity)) return
         val pending = CastHandoffPendingClaim.peek(activity)
         val next = pending.firstOrNull { it !in promptedPendingCodes } ?: return
@@ -354,6 +371,7 @@ object CastHandoffUi {
                 handoffId = payload.id,
                 positionMs = payload.positionMs,
                 serverName = payload.serverName,
+                serverId = payload.serverId,
             )
             val args = playerArgs(videoType, payload)
             val navHost =
@@ -408,7 +426,14 @@ object CastHandoffUi {
             "title" to title,
             "subtitle" to subtitle,
             "videoType" to videoType,
-            "preferredServerName" to payload.serverName,
+            "preferredServerName" to (
+                payload.serverName?.takeIf { it.isNotBlank() }
+                    ?: CastHandoffSession.preferredServerNameOrNull()
+                ),
+            "preferredServerId" to (
+                payload.serverId?.takeIf { it.isNotBlank() }
+                    ?: CastHandoffSession.preferredServerIdOrNull()
+                ),
         )
     }
 
