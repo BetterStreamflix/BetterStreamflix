@@ -267,6 +267,7 @@ class MainTvActivity : FragmentActivity() {
         com.dskja.betterstreamflix.support.SupportStartupController.schedule(this, isTv = true)
 
         handleOpenDownloadsIntent(intent)
+        handleOpenLiveIntent(intent)
         handleSharedWatchlistIntent(intent)
     }
 
@@ -274,6 +275,7 @@ class MainTvActivity : FragmentActivity() {
         super.onNewIntent(intent)
         setIntent(intent)
         handleOpenDownloadsIntent(intent)
+        handleOpenLiveIntent(intent)
         handleSharedWatchlistIntent(intent)
     }
 
@@ -295,6 +297,18 @@ class MainTvActivity : FragmentActivity() {
         val navController = navHost.navController
         if (navController.currentDestination?.id != R.id.downloads) {
             runCatching { navController.navigate(R.id.downloads) }
+        }
+    }
+
+    /** Notification / deep-link tap → Live hub (parity with [MainMobileActivity]). */
+    private fun handleOpenLiveIntent(intent: Intent?) {
+        if (intent?.getBooleanExtra("open_live", false) != true) return
+        val navHost =
+            supportFragmentManager.findFragmentById(R.id.nav_main_fragment) as? NavHostFragment
+                ?: return
+        val navController = navHost.navController
+        if (navController.currentDestination?.id != R.id.live_hub) {
+            runCatching { navController.navigate(R.id.live_hub) }
         }
     }
 

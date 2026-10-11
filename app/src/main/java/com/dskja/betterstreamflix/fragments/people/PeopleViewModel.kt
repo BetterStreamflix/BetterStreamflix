@@ -118,7 +118,7 @@ class PeopleViewModel(private val id: String, private val database: AppDatabase?
 
         try {
             val provider = UserPreferences.currentProvider
-                ?: throw Exception("No provider selected")
+                ?: throw Exception(com.dskja.betterstreamflix.BetterStreamflixApp.instance.getString(com.dskja.betterstreamflix.R.string.error_no_provider_selected))
             val people = try {
                 val loaded = ProviderSmoke.withProviderTimeout(
                     timeoutMs = ProviderSmoke.DETAIL_TIMEOUT_MS,
@@ -172,7 +172,7 @@ class PeopleViewModel(private val id: String, private val database: AppDatabase?
 
             try {
                 val provider = UserPreferences.currentProvider
-                    ?: throw Exception("No provider selected")
+                    ?: throw Exception(com.dskja.betterstreamflix.BetterStreamflixApp.instance.getString(com.dskja.betterstreamflix.R.string.error_no_provider_selected))
                 val people = ProviderSmoke.withProviderTimeout(
                     timeoutMs = ProviderSmoke.DETAIL_TIMEOUT_MS,
                     label = "getPeople(${provider.name}, page=${page + 1})",

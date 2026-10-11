@@ -132,7 +132,7 @@ class MovieViewModel(
 
         try {
             val provider = UserPreferences.currentProvider
-                ?: throw IllegalStateException("No provider selected")
+                ?: throw IllegalStateException(com.dskja.betterstreamflix.BetterStreamflixApp.instance.getString(com.dskja.betterstreamflix.R.string.error_no_provider_selected))
             val movie = ProviderSmoke.withProviderTimeout(
                 timeoutMs = ProviderSmoke.DETAIL_TIMEOUT_MS,
                 label = "getMovie(${provider.name})",

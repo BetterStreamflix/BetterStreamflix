@@ -41,7 +41,7 @@ open class VidoraExtractor : Extractor() {
             source = fileRegex.find(unpacked)?.groupValues?.get(1)
         }
 
-        if (source == null) throw Exception("No source found")
+        if (source == null) throw Exception(com.dskja.betterstreamflix.BetterStreamflixApp.instance.getString(com.dskja.betterstreamflix.R.string.error_no_source_found))
 
         return Video(
             source = source,

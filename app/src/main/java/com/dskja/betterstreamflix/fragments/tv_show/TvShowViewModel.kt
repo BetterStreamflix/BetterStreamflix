@@ -310,7 +310,7 @@ class TvShowViewModel(
 
         try {
             val provider = UserPreferences.currentProvider
-                ?: throw IllegalStateException("No provider selected")
+                ?: throw IllegalStateException(com.dskja.betterstreamflix.BetterStreamflixApp.instance.getString(com.dskja.betterstreamflix.R.string.error_no_provider_selected))
             val tvShow = ProviderSmoke.withProviderTimeout(
                 timeoutMs = ProviderSmoke.DETAIL_TIMEOUT_MS,
                 label = "getTvShow(${provider.name})",
@@ -451,7 +451,7 @@ class TvShowViewModel(
 
         try {
             val episodes = UserPreferences.currentProvider?.getEpisodesBySeason(season.id)
-                ?: throw IllegalStateException("No provider selected")
+                ?: throw IllegalStateException(com.dskja.betterstreamflix.BetterStreamflixApp.instance.getString(com.dskja.betterstreamflix.R.string.error_no_provider_selected))
             val ids = episodes.map { it.id }
             val episodeMap = episodes.associateBy { it.id }
 

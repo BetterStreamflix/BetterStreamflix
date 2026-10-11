@@ -288,7 +288,7 @@ class SearchViewModel(
             try {
                 val provider = UserPreferences.currentProvider
                     ?: run {
-                        _state.emit(State.FailedSearching(Exception("No provider selected")))
+                        _state.emit(State.FailedSearching(Exception(com.dskja.betterstreamflix.BetterStreamflixApp.instance.getString(com.dskja.betterstreamflix.R.string.error_no_provider_selected))))
                         return@launch
                     }
                 val results = SearchResultGuard.sanitize(
@@ -344,7 +344,7 @@ class SearchViewModel(
                 try {
                     val provider = UserPreferences.currentProvider
                         ?: run {
-                            _state.emit(State.FailedSearching(Exception("No provider selected")))
+                            _state.emit(State.FailedSearching(Exception(com.dskja.betterstreamflix.BetterStreamflixApp.instance.getString(com.dskja.betterstreamflix.R.string.error_no_provider_selected))))
                             return@launch
                         }
                     val results = SearchResultGuard.sanitize(

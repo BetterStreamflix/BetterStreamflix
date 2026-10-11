@@ -163,7 +163,7 @@ class LiveHubTvFragment : Fragment() {
     }
 
     private fun bindEmptyChrome(visible: Boolean) {
-        binding.tvLiveHubEmpty.text = getString(R.string.live_hub_empty)
+        binding.tvLiveHubEmpty.text = getString(R.string.live_hub_empty_tv)
         ExpEmptyChrome.bind(
             emptyView = binding.tvLiveHubEmpty,
             emptyRule = binding.vLiveHubEmptyRule,

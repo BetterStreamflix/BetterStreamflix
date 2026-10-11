@@ -508,7 +508,7 @@ object SuperStreamProvider : Provider {
     }
 
     override suspend fun getVideo(server: Video.Server): Video {
-        return server.video ?: throw Exception("No source found")
+        return server.video ?: throw Exception(com.dskja.betterstreamflix.BetterStreamflixApp.instance.getString(com.dskja.betterstreamflix.R.string.error_no_source_found))
     }
 
 

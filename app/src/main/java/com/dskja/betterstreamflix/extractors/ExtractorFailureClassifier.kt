@@ -7,10 +7,18 @@ package com.dskja.betterstreamflix.extractors
  */
 object ExtractorFailureClassifier {
 
+    private fun matchesLocalized(msg: String, resId: Int): Boolean {
+        val localized = runCatching {
+            com.dskja.betterstreamflix.BetterStreamflixApp.instance.getString(resId)
+        }.getOrNull() ?: return false
+        return localized.isNotBlank() && msg.contains(localized, ignoreCase = true)
+    }
+
     fun isPermanent(error: Throwable): Boolean {
         val msg = error.message.orEmpty()
         return (error as? retrofit2.HttpException)?.code() == 404 ||
             msg.contains("No source found", ignoreCase = true) ||
+            matchesLocalized(msg, com.dskja.betterstreamflix.R.string.error_no_source_found) ||
             msg.contains("source not found", ignoreCase = true) ||
             msg.contains("no playable mirrors", ignoreCase = true) ||
             msg.contains("No extractors found", ignoreCase = true) ||
