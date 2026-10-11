@@ -34,6 +34,7 @@
 	<string name="main_menu_settings">الإعدادات</string>
 	<string name="live_hub_title">مباشر</string>
 	<string name="live_hub_tagline">رياضة وأخبار وقنوات من DaddyLive وStreamSports99 وIPTV</string>
+	<string name="live_hub_section_favorites">المفضلة</string>
 	<string name="live_hub_section_sport">رياضة</string>
 	<string name="live_hub_section_news">أخبار</string>
 	<string name="live_hub_section_channels">قنوات</string>

@@ -16,12 +16,8 @@ import androidx.recyclerview.widget.RecyclerView
 import com.dskja.betterstreamflix.R
 import com.dskja.betterstreamflix.adapters.AppAdapter
 import com.dskja.betterstreamflix.databinding.FragmentLiveHubTvBinding
-import com.dskja.betterstreamflix.iptv.IptvLiveSession
-import com.dskja.betterstreamflix.iptv.IptvZapPreloader
 import com.dskja.betterstreamflix.models.Category
 import com.dskja.betterstreamflix.models.TvShow
-import com.dskja.betterstreamflix.providers.IptvProvider
-import com.dskja.betterstreamflix.providers.Provider
 import com.dskja.betterstreamflix.ui.HomeProfileChip
 import com.dskja.betterstreamflix.utils.CacheUtils
 import com.dskja.betterstreamflix.utils.ExpDialogChrome
@@ -85,7 +81,7 @@ class LiveHubTvFragment : Fragment() {
                         display(state.categories)
                         TvLoadingOverlay.hide(binding.isLoading.root)
                         showWarning(state.warning)
-                        warmZapForSections(state.categories)
+                        warmSportZapRing(state.categories)
                         binding.vgvLiveHub.post { focusFirstChannel() }
                     }
                     LiveHubViewModel.State.Empty -> {
@@ -137,6 +133,9 @@ class LiveHubTvFragment : Fragment() {
     override fun onResume() {
         super.onResume()
         refreshProfileChip()
+        if (appAdapter.items.isNotEmpty()) {
+            viewModel.refreshFavoritesShelf()
+        }
     }
 
     private fun reload() {
@@ -144,6 +143,7 @@ class LiveHubTvFragment : Fragment() {
             sportLabel = getString(R.string.live_hub_section_sport),
             newsLabel = getString(R.string.live_hub_section_news),
             channelsLabel = getString(R.string.live_hub_section_channels),
+            favoritesLabel = getString(R.string.live_hub_section_favorites),
         )
     }
 
@@ -157,6 +157,8 @@ class LiveHubTvFragment : Fragment() {
             category.itemSpacing = 16.dp(requireContext())
             category.itemType = AppAdapter.Type.CATEGORY_TV_ITEM
         }
+        // Section-scoped zap (Favorites / Sport / News / Channels) — Sport uses dedicated ring.
+        LiveHubSectionZap.bindCategories(visible)
         bindEmptyChrome(visible = visible.isEmpty())
         binding.vgvLiveHub.isVisible = visible.isNotEmpty()
         appAdapter.submitList(visible)
@@ -216,30 +218,14 @@ class LiveHubTvFragment : Fragment() {
     }
 
     /**
-     * Warm each hub section without wiping prior providers' zap session.
-     * Neighbor warm runs for every IPTV section provider (not only app currentProvider).
+     * Pre-warm the dedicated Sport zap ring (same-provider sport siblings).
+     * Other shelves warm on tap via [LiveHubSectionZap.preparePlayback].
      */
-    private fun warmZapForSections(categories: List<Category>) {
-        val shows = categories.flatMap { it.list.filterIsInstance<TvShow>() }
-        if (shows.isEmpty()) return
-        shows.groupBy { it.providerName.orEmpty() }.forEach { (providerName, providerShows) ->
-            val provider = Provider.findByName(providerName) as? IptvProvider ?: return@forEach
-            val channels = providerShows.map {
-                IptvLiveSession.Channel(id = it.id, name = it.title, logo = it.poster)
-            }
-            IptvLiveSession.remember(channels, provider = provider, clearOnProviderChange = false)
-            val anchors = providerShows.take(3)
-            anchors.firstOrNull()?.let { first ->
-                IptvLiveSession.setCurrent(first.id)
-            }
-            anchors.forEach { show ->
-                IptvZapPreloader.warmChannel(
-                    provider,
-                    IptvLiveSession.Channel(id = show.id, name = show.title, logo = show.poster),
-                )
-            }
-            IptvZapPreloader.warmNeighbors(provider, radius = 2)
+    private fun warmSportZapRing(categories: List<Category>) {
+        val sport = categories.firstOrNull {
+            it.identityKey == com.dskja.betterstreamflix.utils.LiveHubCatalog.SECTION_SPORT
         }
+        LiveHubSectionZap.warmSportRing(sport)
     }
 
     private fun refreshProfileChip() {
@@ -275,6 +261,7 @@ class LiveHubTvFragment : Fragment() {
     }
 
     override fun onDestroyView() {
+        LiveHubSectionZap.clear()
         super.onDestroyView()
         _binding = null
     }

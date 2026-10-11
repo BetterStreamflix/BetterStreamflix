@@ -35,6 +35,7 @@
     <string name="main_menu_settings">Paramètres</string>
     <string name="live_hub_title">Live</string>
     <string name="live_hub_tagline">Sport, infos et chaînes via DaddyLive, StreamSports99 et IPTV</string>
+    <string name="live_hub_section_favorites">Favoris</string>
     <string name="live_hub_section_sport">Sport</string>
     <string name="live_hub_section_news">Infos</string>
     <string name="live_hub_section_channels">Chaînes</string>

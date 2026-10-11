@@ -45,6 +45,7 @@
     <string name="main_menu_favorites">My Lists</string>
     <string name="live_hub_title">Live</string>
     <string name="live_hub_tagline">Sports, news, and channels from DaddyLive, StreamSports99, and IPTV</string>
+    <string name="live_hub_section_favorites">Favorites</string>
     <string name="live_hub_section_sport">Sport</string>
     <string name="live_hub_section_news">News</string>
     <string name="live_hub_section_channels">Channels</string>
