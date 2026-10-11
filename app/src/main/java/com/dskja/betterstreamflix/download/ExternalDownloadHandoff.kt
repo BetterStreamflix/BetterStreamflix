@@ -106,14 +106,25 @@ object ExternalDownloadHandoff {
 
     /** HLS/DASH playlists cannot be handed to ADM/1DM as a single file URL. */
     fun isAdaptiveStream(url: String?, mimeType: String?): Boolean {
-        val path = url.orEmpty().substringBefore('?').lowercase()
+        val raw = url.orEmpty()
+        val path = raw.substringBefore('?').lowercase()
         val mime = mimeType.orEmpty().lowercase()
         return path.endsWith(".m3u8") ||
             path.endsWith(".mpd") ||
+            path.contains(".m3u8") ||
+            path.contains(".mpd") ||
+            path.contains("/hls/") ||
+            path.contains("/dash/") ||
+            path.contains("/manifest") ||
+            path.contains("playlist.m3u") ||
+            // Extensionless tokenized HLS (e.g. /hls/{token}) — still a playlist.
+            (path.contains("/hls") && !path.endsWith(".mp4") && !path.endsWith(".mkv") &&
+                !path.endsWith(".ts") && !path.endsWith(".webm")) ||
             mime.contains("mpegurl") ||
             mime.contains("m3u8") ||
             mime.contains("dash+xml") ||
-            mime.contains("mpd")
+            mime.contains("mpd") ||
+            raw.trimStart().startsWith("#EXTM3U")
     }
 
     fun isDashStream(url: String?, mimeType: String?): Boolean {

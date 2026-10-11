@@ -23,28 +23,30 @@ class PlayerMobileView @JvmOverloads constructor(
     private var cachedController: PlayerControlView? = null
 
     /**
-     * Safely resolve Exo PlayerControlView. Never throw — OEM/Media3 misses must not
-     * crash mobile playback (parity with [PlayerTvView] / GitHub #103).
+     * Resolve the layout PlayerControlView. Prefer [controllerOrNull] on hot paths —
+     * never invent a detached ghost controller (chrome updates would be invisible).
      */
     val controller: PlayerControlView
-        get() {
-            cachedController?.let { return it }
-            val resolved = runCatching {
-                val field = PlayerView::class.java.getDeclaredField("controller")
-                field.isAccessible = true
-                field.get(this) as? PlayerControlView
-            }.onFailure {
-                Log.w(TAG, "controller reflection failed: ${it.message}")
-            }.getOrNull()
-                ?: findViewById(androidx.media3.ui.R.id.exo_controller)
-            cachedController = resolved
-            if (resolved != null) return resolved
-            Log.e(TAG, "PlayerControlView missing — using detached fallback")
-            return PlayerControlView(context).also { cachedController = it }
-        }
+        get() = controllerOrNull()
+            ?: error("PlayerControlView missing from PlayerMobileView layout")
 
     /** Non-throwing access for hot paths that can no-op when controller is absent. */
-    fun controllerOrNull(): PlayerControlView? = runCatching { controller }.getOrNull()
+    fun controllerOrNull(): PlayerControlView? {
+        cachedController?.let { return it }
+        val resolved = runCatching {
+            val field = PlayerView::class.java.getDeclaredField("controller")
+            field.isAccessible = true
+            field.get(this) as? PlayerControlView
+        }.onFailure {
+            Log.w(TAG, "controller reflection failed: ${it.message}")
+        }.getOrNull()
+            ?: findViewById(androidx.media3.ui.R.id.exo_controller)
+        if (resolved == null) {
+            Log.e(TAG, "PlayerControlView missing — skipping chrome binds")
+        }
+        cachedController = resolved
+        return resolved
+    }
 
     var isManualZoomEnabled: Boolean = false
         private set
