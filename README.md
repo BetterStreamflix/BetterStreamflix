@@ -80,7 +80,7 @@ This app provides a user interface for accessing publicly available streaming co
 - Multiple providers (incl. SerienStream via [serien.domains](https://serien.domains) proxy)
 - Offline downloads with configurable storage location
 - Chromecast queue + subtitles
-- Optional Experimental UI (Lumina) and platform Integrations hub (Trakt VIP-gated, Jellyfin, Plex, …)
+- Optional Experimental UI (Lumina) and platform Integrations hub (Trakt VIP-gated, Jellyfin, Plex, …). The standalone `experimental-ui/` Vite tree is an archive/prototype only — not built by Android CI (see [`experimental-ui/README.md`](./experimental-ui/README.md)).
 - Resume from last playback position
 - In-app update from this repository’s releases
 

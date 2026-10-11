@@ -111,8 +111,21 @@ object ProfilesSettingsController {
                 switch.isVisible = true
                 switch.isEnabled = true
                 switch.setOnPreferenceChangeListener { _, newValue ->
+                    val enableKids = newValue as Boolean
+                    val profile = ProfileManager.activeProfile()
+                    if (enableKids &&
+                        profile?.pinHash == null &&
+                        UserPreferences.parentalControlPin.isBlank()
+                    ) {
+                        notifyUser(
+                            context,
+                            context.getString(R.string.profile_kids_requires_exit_pin),
+                            R.string.profile_kids_title,
+                        )
+                        return@setOnPreferenceChangeListener false
+                    }
                     val profileId = ProfileManager.activeProfileId
-                    ProfileManager.updateKids(profileId, newValue as Boolean)
+                    ProfileManager.updateKids(profileId, enableKids)
                     refresh(findPreference, context, fragment)
                     true
                 }
@@ -560,6 +573,15 @@ object ProfilesSettingsController {
         val active = ProfileManager.activeProfile()
         if (active?.pinHash != null) {
             promptPin(context, active) { onAllowed() }
+            return
+        }
+        // Kids without any exit PIN must not silently unlock adult profiles.
+        if (active?.isKids == true) {
+            notifyUser(
+                context,
+                context.getString(R.string.profile_kids_exit_requires_pin),
+                R.string.profile_kids_title,
+            )
             return
         }
         onAllowed()

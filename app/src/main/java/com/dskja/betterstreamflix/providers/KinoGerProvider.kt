@@ -26,7 +26,9 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import okhttp3.HttpUrl.Companion.toHttpUrl
+import okhttp3.Interceptor
 import okhttp3.OkHttpClient
+import okhttp3.Response
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Document
 import retrofit2.HttpException
@@ -148,6 +150,55 @@ object KinoGerProvider : Provider, ProviderConfigUrl {
 
     private fun isProviderUrl(url: String): Boolean = isKinoGerHost(url)
 
+    /**
+     * Persist HTTP redirect hops into [UserPreferences.PROVIDER_URL] so domain drift
+     * survives without a second CUSTOM_DOMAIN store.
+     */
+    private class DomainTrackingInterceptor : Interceptor {
+        override fun intercept(chain: Interceptor.Chain): Response {
+            val originalUrl = chain.request().url
+            val response = chain.proceed(chain.request())
+            val finalUrl = response.request.url
+
+            val originalHost = originalUrl.host.removePrefix("www.")
+            val finalHost = finalUrl.host.removePrefix("www.")
+            if (finalHost.isBlank() || finalHost.equals(originalHost, ignoreCase = true)) {
+                return response
+            }
+            // Only follow redirects that still look like KinoGer mirrors.
+            if (!finalHost.contains("kinoger", ignoreCase = true)) {
+                return response
+            }
+
+            val defaultPort =
+                (finalUrl.scheme == "https" && finalUrl.port == 443) ||
+                    (finalUrl.scheme == "http" && finalUrl.port == 80)
+            val origin = buildString {
+                append(finalUrl.scheme)
+                append("://")
+                append(finalUrl.host)
+                if (!defaultPort) {
+                    append(':')
+                    append(finalUrl.port)
+                }
+                append('/')
+            }
+            val cached = UserPreferences.getProviderCache(
+                KinoGerProvider,
+                UserPreferences.PROVIDER_URL,
+            )
+            if (!cached.equals(origin, ignoreCase = true)) {
+                UserPreferences.setProviderCache(
+                    KinoGerProvider,
+                    UserPreferences.PROVIDER_URL,
+                    origin,
+                )
+                Log.i(TAG, "Persisted redirected KinoGer domain: $origin")
+            }
+            return response
+        }
+    }
+
     private fun buildOkHttpClient(): OkHttpClient {
         return OkHttpClient.Builder()
             .addInterceptor { chain ->
@@ -174,11 +225,14 @@ object KinoGerProvider : Provider, ProviderConfigUrl {
                     .build()
                 chain.proceed(request)
             }
+            .addInterceptor(DomainTrackingInterceptor())
             .cookieJar(NetworkClient.cookieJar)
             .readTimeout(30, TimeUnit.SECONDS)
             .connectTimeout(20, TimeUnit.SECONDS)
             .callTimeout(45, TimeUnit.SECONDS)
             .dns(DnsResolver.doh)
+            .followRedirects(true)
+            .followSslRedirects(true)
             .build()
     }
 

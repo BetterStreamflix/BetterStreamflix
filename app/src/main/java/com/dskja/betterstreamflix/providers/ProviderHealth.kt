@@ -29,6 +29,30 @@ object ProviderHealth {
         "SportsBite",
     )
 
+    /**
+     * Config-URL providers that should surface an "Update domain" CTA when
+     * quarantined or when the home circuit is open. Includes DE mirrors that
+     * commonly hop domains (KellerKino, KinoGer).
+     */
+    val domainUpdateAllowlist: Set<String> = setOf(
+        "Kellerkino",
+        "KinoGer",
+        "SerienStream",
+        "HDFilme",
+        "MEGAKino",
+        "Filmpalast",
+        "StreamingIta",
+        "AnyMovie",
+        "SFlix",
+        "CineHax",
+        "Wiflix",
+        "Frembed",
+    )
+
+    fun supportsDomainUpdate(provider: Provider): Boolean =
+        provider is ProviderConfigUrl &&
+            (domainUpdateAllowlist.contains(provider.name) || isQuarantined(provider))
+
     /** High-traffic providers that smoke harnesses should prioritize. */
     val topSmokeNames: List<String> = listOf(
         "SerienStream",

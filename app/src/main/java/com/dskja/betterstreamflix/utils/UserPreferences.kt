@@ -736,6 +736,16 @@ object UserPreferences {
             Key.SHOW_QUARANTINED_PROVIDERS.setBoolean(value)
         }
 
+    /**
+     * When true, Vavoo VOD language variants appear as selectable catalog providers
+     * in the picker. Vavoo VOD remains available inside TMDb DE aggregation regardless.
+     */
+    var showVavooVodProviders: Boolean
+        get() = Key.SHOW_VAVOO_VOD_PROVIDERS.getBoolean() ?: false
+        set(value) {
+            Key.SHOW_VAVOO_VOD_PROVIDERS.setBoolean(value)
+        }
+
     enum class LibraryScope(val key: String) {
         /** Favorites / continue watching only from the active provider DB. */
         PER_PROVIDER("per_provider"),
@@ -1302,6 +1312,7 @@ object UserPreferences {
         SHOW_CONTINUE_WATCHING,
         SHOW_RECENTLY_WATCHED,
         SHOW_QUARANTINED_PROVIDERS,
+        SHOW_VAVOO_VOD_PROVIDERS,
         LIBRARY_SCOPE,
         PARENTAL_CONTROL_PIN,
         PARENTAL_CONTROL_ADMIN_PIN,
