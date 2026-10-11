@@ -24,6 +24,15 @@
         app:menuGravity="center"
         app:menuSpacing="8dp" />
 
+    <com.dskja.betterstreamflix.live.ChannelPinStripView
+        android:id="@+id/channel_pin_strip"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:visibility="gone"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toEndOf="@id/nav_main"
+        app:layout_constraintTop_toTopOf="parent" />
+
     <androidx.fragment.app.FragmentContainerView
         android:id="@+id/nav_main_fragment"
         android:name="androidx.navigation.fragment.NavHostFragment"
@@ -34,7 +43,7 @@
         app:layout_constraintBottom_toTopOf="@id/ll_cast_status_strip"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toEndOf="@id/nav_main"
-        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/channel_pin_strip"
         app:navGraph="@navigation/nav_main_graph_tv" />
 
     <!-- Leanback-safe Cast mini status when casting outside the player (Fire/GMS-safe). -->

@@ -37,6 +37,12 @@
     <string name="main_menu_search">Suche</string>
     <string name="main_menu_home">Startseite</string>
     <string name="main_menu_live">Live</string>
+    <string name="meine_sender_leiste_title">Meine Sender</string>
+    <string name="meine_sender_leiste_add">Hinzufügen</string>
+    <string name="meine_sender_leiste_pin">Zur Sender-Leiste</string>
+    <string name="meine_sender_leiste_unpin">Von Sender-Leiste entfernen</string>
+    <string name="meine_sender_leiste_pinned">Zur Sender-Leiste hinzugefügt</string>
+    <string name="meine_sender_leiste_unpinned">%1$s von Sender-Leiste entfernt</string>
     <string name="main_menu_movies">Filme</string>
     <string name="main_menu_tv_shows">Serien</string>
     <string name="main_menu_all_channels">Alle Kanäle</string>

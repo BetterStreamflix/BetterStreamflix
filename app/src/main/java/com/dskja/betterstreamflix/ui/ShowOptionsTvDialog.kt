@@ -92,6 +92,7 @@ class ShowOptionsTvDialog(
     private fun actionButtons(): List<android.widget.TextView> = listOf(
         binding.btnOptionEpisodeOpenTvShow,
         binding.btnOptionShowFavorite,
+        binding.btnOptionChannelPin,
         binding.btnOptionShowWatched,
         binding.btnOptionShowDownload,
         binding.btnOptionEpisodeNote,
@@ -173,6 +174,7 @@ class ShowOptionsTvDialog(
         }
 
         binding.btnOptionShowFavorite.visibility = View.GONE
+        binding.btnOptionChannelPin.visibility = View.GONE
 
         binding.btnOptionShowWatched.apply {
             setOnClickListener {
@@ -358,6 +360,7 @@ class ShowOptionsTvDialog(
         styleSubtitlePill()
 
         binding.btnOptionEpisodeOpenTvShow.visibility = View.GONE
+        binding.btnOptionChannelPin.visibility = View.GONE
 
         val freshMovie = database?.movieDao()?.getById(movie.id) ?: movie
         val recentlyWatchedAt = freshMovie.lastPlayedAtMillis ?: movie.lastPlayedAtMillis
@@ -528,6 +531,8 @@ class ShowOptionsTvDialog(
             requestFocus()
         }
 
+        bindChannelPinOption(freshTvShow)
+
         binding.btnOptionShowWatched.visibility = View.GONE
         binding.btnOptionShowDownload.visibility = View.GONE
         binding.btnOptionEpisodeNote.visibility = View.GONE
@@ -548,6 +553,38 @@ class ShowOptionsTvDialog(
                 dismiss()
             }
             visibility = if (recentlyWatchedAt != null) View.VISIBLE else View.GONE
+        }
+    }
+
+    private fun bindChannelPinOption(tvShow: TvShow) {
+        val btn = binding.btnOptionChannelPin
+        val isLive = com.dskja.betterstreamflix.utils.LiveHubCatalog.isLiveFavorite(tvShow)
+        if (!isLive || tvShow.providerName.isNullOrBlank()) {
+            btn.visibility = View.GONE
+            return
+        }
+        val pinned = com.dskja.betterstreamflix.live.ChannelPinStore.isPinned(context, tvShow)
+        btn.text = context.getString(
+            if (pinned) R.string.meine_sender_leiste_unpin
+            else R.string.meine_sender_leiste_pin,
+        )
+        btn.visibility = View.VISIBLE
+        btn.setOnClickListener {
+            val activity = context.toActivity() as? androidx.fragment.app.FragmentActivity
+            if (activity != null) {
+                val nowPinned = com.dskja.betterstreamflix.live.ChannelPinStripController
+                    .pinFromShowOptions(activity, tvShow)
+                android.widget.Toast.makeText(
+                    context,
+                    if (nowPinned) {
+                        context.getString(R.string.meine_sender_leiste_pinned)
+                    } else {
+                        context.getString(R.string.meine_sender_leiste_unpinned, tvShow.title)
+                    },
+                    android.widget.Toast.LENGTH_SHORT,
+                ).show()
+            }
+            dismiss()
         }
     }
 }

@@ -30,6 +30,7 @@ import com.dskja.betterstreamflix.activities.tools.BypassWebViewActivity
 import com.dskja.betterstreamflix.cast.CastPlaybackHub
 import com.dskja.betterstreamflix.databinding.ActivityMainMobileBinding
 import com.dskja.betterstreamflix.fragments.player.PlayerMobileFragment
+import com.dskja.betterstreamflix.live.ChannelPinStripController
 import com.dskja.betterstreamflix.player.PlaybackLifecycleGuard
 import com.dskja.betterstreamflix.providers.AnimeOnlineNinjaProvider
 import com.dskja.betterstreamflix.providers.Cine24hProvider
@@ -82,6 +83,8 @@ class MainMobileActivity : FragmentActivity() {
 
     private var _binding: ActivityMainMobileBinding? = null
     private val binding get() = _binding!!
+
+    private var channelPinStripController: ChannelPinStripController? = null
 
         /** Tracks prior Nav destination for Clean Exit audio/focus. */
     private var lastNavDestinationId: Int? = null
@@ -285,6 +288,11 @@ class MainMobileActivity : FragmentActivity() {
         updateNavigationVisibility()
         updateBottomNavigationVisibility(navController.currentDestination?.id)
 
+        channelPinStripController = ChannelPinStripController(this, binding.channelPinStrip).also {
+            it.attach()
+            it.onDestinationChanged(navController.currentDestination?.id)
+        }
+
         navController.addOnDestinationChangedListener { _, destination, _ ->
             val leavingPlayer = lastNavDestinationId == R.id.player && destination.id != R.id.player
             if (destination.id != R.id.player) {
@@ -299,6 +307,7 @@ class MainMobileActivity : FragmentActivity() {
             }
             updateNavigationVisibility(destination.id)
             updateBottomNavigationVisibility(destination.id)
+            channelPinStripController?.onDestinationChanged(destination.id)
             binding.mainContent.post { binding.mainContent.requestApplyInsets() }
             lastNavDestinationId = destination.id
         }

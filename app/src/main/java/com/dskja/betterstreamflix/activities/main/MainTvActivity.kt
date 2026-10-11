@@ -21,6 +21,7 @@ import com.dskja.betterstreamflix.database.AppDatabase
 import com.dskja.betterstreamflix.databinding.ActivityMainTvBinding
 import com.dskja.betterstreamflix.databinding.ContentHeaderMenuMainTvBinding
 import com.dskja.betterstreamflix.fragments.player.PlayerTvFragment
+import com.dskja.betterstreamflix.live.ChannelPinStripController
 import com.dskja.betterstreamflix.player.PlaybackLifecycleGuard
 import com.dskja.betterstreamflix.player.PlayerCleanExit
 import com.dskja.betterstreamflix.ui.TrailerPlaybackController
@@ -46,6 +47,8 @@ class MainTvActivity : FragmentActivity() {
 
     private var _binding: ActivityMainTvBinding? = null
     private val binding get() = _binding!!
+
+    private var channelPinStripController: ChannelPinStripController? = null
 
     private val viewModel by viewModels<MainViewModel>()
 
@@ -131,6 +134,11 @@ class MainTvActivity : FragmentActivity() {
         binding.navMain.setupWithNavController(navController)
         updateNavigationVisibility()
 
+        channelPinStripController = ChannelPinStripController(this, binding.channelPinStrip).also {
+            it.attach()
+            it.onDestinationChanged(navController.currentDestination?.id)
+        }
+
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             binding.navMainFragment.isFocusedByDefault = true
         }
@@ -144,6 +152,7 @@ class MainTvActivity : FragmentActivity() {
                     runCatching { TrailerPlaybackController.silenceAllActive() }
                 }
             }
+            channelPinStripController?.onDestinationChanged(destination.id)
             binding.navMain.headerView?.apply {
                 val header = ContentHeaderMenuMainTvBinding.bind(this)
 
