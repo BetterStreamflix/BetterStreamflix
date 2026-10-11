@@ -38,6 +38,7 @@ import com.dskja.betterstreamflix.models.TvShow
 import com.dskja.betterstreamflix.logo.FeaturedLogoEnrich
 import com.dskja.betterstreamflix.logo.TmdbLogoBinder
 import com.dskja.betterstreamflix.models.TrailerCatalog
+import com.dskja.betterstreamflix.profiles.ProfileManager
 import com.dskja.betterstreamflix.providers.ShelfWeather
 import com.dskja.betterstreamflix.ui.FeaturedAdvancePolicy
 import com.dskja.betterstreamflix.ui.FeaturedHeroController
@@ -179,7 +180,11 @@ class CategoryViewHolder(
 
     private fun bindShelfPin(button: ImageButton?) {
         val btn = button ?: return
-        if (!isHomeShelfContext() || !HomeShelfLayout.isPinnable(category)) {
+        if (!isHomeShelfContext() ||
+            ProfileManager.isKidsActive() ||
+            ProfileManager.isGuestActive() ||
+            !HomeShelfLayout.isPinnable(category)
+        ) {
             btn.visibility = View.GONE
             btn.setOnClickListener(null)
             return
@@ -216,6 +221,10 @@ class CategoryViewHolder(
         contentView: View,
         pill: TextView,
     ) {
+        if (ProfileManager.isKidsActive() || ProfileManager.isGuestActive()) {
+            clearShelfWeather(titleView, contentView, pill)
+            return
+        }
         val forecast = ShelfWeather.forecast(category)
         titleView.alpha = forecast.titleAlpha
         contentView.alpha = forecast.contentAlpha
@@ -238,10 +247,19 @@ class CategoryViewHolder(
         }
         val provider = forecast.providerName.orEmpty()
         val wasVisible = pill.visibility == View.VISIBLE
+        val previousLevel = pill.getTag(R.id.tv_shelf_weather) as? ShelfWeather.Level
         pill.text = context.getString(labelRes)
-        pill.contentDescription = context.getString(cdRes, provider)
+        val cd = context.getString(cdRes, provider)
+        pill.contentDescription = cd
         pill.visibility = View.VISIBLE
+        pill.setTag(R.id.tv_shelf_weather, forecast.level)
         if (!wasVisible) ExpMotion.popIn(pill)
+        // Announce when forecast becomes stormy (or first warn bind).
+        if (forecast.level == ShelfWeather.Level.STORM &&
+            previousLevel != ShelfWeather.Level.STORM
+        ) {
+            pill.announceForAccessibility(cd)
+        }
     }
 
     private fun clearShelfWeather(
@@ -259,10 +277,9 @@ class CategoryViewHolder(
     private fun bindSeriesFastForwardChip(
         chip: TextView,
         emptyHint: TextView,
-        categoryName: String,
         listEmpty: Boolean,
     ) {
-        if (!SeriesFastForward.supportsShelf(categoryName)) {
+        if (!SeriesFastForward.supportsShelf(category)) {
             chip.visibility = View.GONE
             chip.setOnClickListener(null)
             chip.setOnKeyListener(null)
@@ -322,7 +339,6 @@ class CategoryViewHolder(
         bindSeriesFastForwardChip(
             chip = binding.chipSeriesFastForward,
             emptyHint = binding.tvSeriesFastForwardEmpty,
-            categoryName = category.name,
             listEmpty = category.list.isEmpty(),
         )
         bindShelfPin(binding.btnShelfPin)
@@ -416,7 +432,6 @@ class CategoryViewHolder(
         bindSeriesFastForwardChip(
             chip = binding.chipSeriesFastForward,
             emptyHint = binding.tvSeriesFastForwardEmpty,
-            categoryName = category.name,
             listEmpty = category.list.isEmpty(),
         )
         bindShelfPin(binding.btnShelfPin)
@@ -426,7 +441,7 @@ class CategoryViewHolder(
         // Series Fast-Forward is the exception: keep title + focusable chip so the filter
         // can be turned off when the filtered list is empty.
         if (category.list.isEmpty()) {
-            val keepForFastForward = SeriesFastForward.supportsShelf(category.name)
+            val keepForFastForward = SeriesFastForward.supportsShelf(category)
             if (!keepForFastForward) {
                 binding.root.visibility = View.GONE
                 binding.root.isFocusable = false
@@ -1354,9 +1369,15 @@ class CategoryViewHolder(
             visibility = if (text.isNullOrBlank()) View.GONE else View.VISIBLE
         }
 
+        val featuredTitle = when (selected) {
+            is Movie -> selected.title
+            is TvShow -> selected.title
+            else -> context.getString(R.string.a11y_untitled)
+        }
         binding.btnSwiperWatchNow.apply {
             FeaturedSwiperChrome.wireWatchButton(this)
             text = FeaturedHeroController.watchCtaLabel(context, selected)
+            contentDescription = context.getString(R.string.a11y_featured_watch, featuredTitle)
             // DPAD: left → side nav (parity with shelf tiles); up → profile chip;
             // down stays unset so VerticalGridView focus search lands on the next shelf
             // (forcing parent.id traps DPAD-down / freezes remote near bottom).
@@ -1439,7 +1460,7 @@ class CategoryViewHolder(
             is Movie -> selected.isFavorite
             is TvShow -> selected.isFavorite
         }
-        FeaturedSwiperChrome.bindListButton(binding.btnSwiperAddToList, inList)
+        FeaturedSwiperChrome.bindListButton(binding.btnSwiperAddToList, inList, title = featuredTitle)
         binding.btnSwiperAddToList.apply {
             nextFocusLeftId = R.id.btn_swiper_watch_now
             (context.toActivity()?.findViewById<View>(R.id.tv_home_profile_chip))?.let { chip ->
@@ -1483,7 +1504,11 @@ class CategoryViewHolder(
                     return@observeListState
                 }
                 selected.isFavorite = favorite
-                FeaturedSwiperChrome.bindListButton(binding.btnSwiperAddToList, favorite)
+                FeaturedSwiperChrome.bindListButton(
+                    binding.btnSwiperAddToList,
+                    favorite,
+                    title = featuredTitle,
+                )
             }
             is TvShow -> FeaturedSwiperChrome.observeListStateTv(
                 anchor = binding.root,
@@ -1494,7 +1519,11 @@ class CategoryViewHolder(
                     return@observeListStateTv
                 }
                 selected.isFavorite = favorite
-                FeaturedSwiperChrome.bindListButton(binding.btnSwiperAddToList, favorite)
+                FeaturedSwiperChrome.bindListButton(
+                    binding.btnSwiperAddToList,
+                    favorite,
+                    title = featuredTitle,
+                )
             }
             else -> null
         }

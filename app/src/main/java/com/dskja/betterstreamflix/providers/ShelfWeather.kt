@@ -9,7 +9,8 @@ import com.dskja.betterstreamflix.models.TvShow
  * Shelf Weather — dim / warn category shelves when their catalog source health is bad.
  *
  * Coupled to [ProviderHealth] quarantine / parked defaults and [ProviderSmoke]
- * circuit / flaky counters. Personal mixed shelves use the worst stamped provider.
+ * circuit / flaky counters. Mixed personal shelves use majority / dominant-provider
+ * rules (not worst-of-one).
  */
 object ShelfWeather {
 
@@ -76,23 +77,59 @@ object ShelfWeather {
         return forecastForProviders(names)
     }
 
+    /**
+     * Stamped provider names (one entry per item). Falls back to [Category.identityKey]
+     * only when it matches a known [Provider] name — never `home_*` / human titles.
+     */
     fun providerNames(category: Category): List<String> {
-        val fromItems = LinkedHashSet<String>()
+        val fromItems = ArrayList<String>()
         for (item in category.list) {
             val name = providerNameOf(item) ?: continue
             if (name.isNotBlank()) fromItems.add(name)
         }
-        val identity = category.identityKey?.trim().orEmpty()
-        if (fromItems.isEmpty() && identity.isNotEmpty() && !Category.isFeaturedName(identity)) {
-            fromItems.add(identity)
+        if (fromItems.isEmpty()) {
+            val identity = category.identityKey?.trim().orEmpty()
+            if (identity.isNotEmpty() &&
+                !Category.isFeaturedName(identity) &&
+                isKnownProviderName(identity)
+            ) {
+                fromItems.add(identity)
+            }
         }
-        return fromItems.toList()
+        return fromItems
     }
 
+    /**
+     * Mixed shelves: warn only when a strict majority of stamped items are unhealthy,
+     * or when the unique dominant provider is unhealthy. A single bad stamp among many
+     * healthy ones stays clear.
+     */
     fun forecastForProviders(providerNames: Collection<String>): Forecast {
+        if (providerNames.isEmpty()) return CLEAR
+        val list = providerNames.map { it.trim() }.filter { it.isNotEmpty() }
+        if (list.isEmpty()) return CLEAR
+        if (list.size == 1) return forecastForProvider(list.first())
+
+        val counts = list.groupingBy { it }.eachCount()
+        val dominantEntry = counts.entries.maxByOrNull { it.value }
+        val dominantName = dominantEntry?.key
+        val dominantCount = dominantEntry?.value ?: 0
+        val uniquelyDominant = dominantName != null &&
+            counts.values.count { it == dominantCount } == 1
+
+        if (uniquelyDominant) {
+            val dominantForecast = forecastForProvider(dominantName!!)
+            if (dominantForecast.shouldWarn) return dominantForecast
+        }
+
+        val unhealthyItemCount = list.count { forecastForProvider(it).shouldWarn }
+        val majorityUnhealthy = unhealthyItemCount * 2 > list.size
+        if (!majorityUnhealthy) return CLEAR
+
         var worst = CLEAR
-        for (name in providerNames) {
+        for (name in list.distinct()) {
             val next = forecastForProvider(name)
+            if (!next.shouldWarn) continue
             if (severityRank(next.level) < severityRank(worst.level)) {
                 worst = next
             }
@@ -115,6 +152,31 @@ object ShelfWeather {
                 Forecast(Level.HAZE, Reason.FLAKY, name)
             else -> CLEAR
         }
+    }
+
+    /** Compact digest for Home bind signatures (quarantine + non-zero smoke). */
+    fun healthSmokeDigest(): String {
+        val q = ProviderHealth.quarantinedNames.size
+        val parked = ProviderHealth.parkedDefaultNames.size
+        val smokeBits = runCatching {
+            Provider.providers.keys.mapNotNull { provider ->
+                val name = provider.name
+                val fails = ProviderSmoke.failureCount(name)
+                val open = ProviderSmoke.peekHomeCircuitOpen(name)
+                if (fails <= 0 && !open) null else "$name:$fails:${if (open) 1 else 0}"
+            }.sorted().joinToString(";")
+        }.getOrDefault("")
+        return "q=$q|p=$parked|s=$smokeBits"
+    }
+
+    private fun isKnownProviderName(name: String): Boolean {
+        // Reject shelf/human ids early; accept registry + health name sets.
+        if (name.startsWith("home_", ignoreCase = true)) return false
+        if (Category.isFeaturedName(name)) return false
+        if (ProviderHealth.quarantinedNames.contains(name)) return true
+        if (ProviderHealth.parkedDefaultNames.contains(name)) return true
+        if (ProviderHealth.topSmokeNames.contains(name)) return true
+        return runCatching { Provider.findByName(name) != null }.getOrDefault(false)
     }
 
     private fun severityRank(level: Level): Int = when (level) {

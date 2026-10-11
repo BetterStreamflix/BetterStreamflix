@@ -44,6 +44,7 @@
     <string name="meine_sender_leiste_unpin">Unpin from My channels</string>
     <string name="meine_sender_leiste_pinned">Pinned to My channels</string>
     <string name="meine_sender_leiste_unpinned">Removed %1$s from My channels</string>
+    <string name="meine_sender_leiste_pin_cd">%1$s. Long-press to unpin</string>
     <string name="main_menu_movies">Movies</string>
     <string name="main_menu_tv_shows">TV Shows</string>
     <string name="main_menu_all_channels">All Channels</string>
@@ -1856,6 +1857,11 @@
     <string name="settings_stick_energy_mode_summary_with_codec_comfort">Fire Stick energy mode · Codec Comfort active — software decoder and stable buffers preferred after decode crashes on this device</string>
     <string name="settings_tv_ambient_mode_title">Ambient Mode</string>
     <string name="settings_tv_ambient_mode_summary">After idle on Home, softly rotate posters with Continue Watching (high-end TVs; burn-in safe)</string>
+    <string name="settings_cinema_room_mobile_summary">Living-room Markenkern for linked TVs — Looks, Ambient idle, Trailer→Play dissolve. Adult-visible; kids stay on Kids Bright.</string>
+    <string name="settings_tv_ambient_mode_mobile_summary">When Cinema Room is on, idle Ambient posters run on TV Home (nested under Cinema Room)</string>
+    <string name="a11y_featured_watch">Watch %1$s</string>
+    <string name="a11y_featured_my_list">My List for %1$s</string>
+    <string name="a11y_featured_in_my_list">%1$s in My List</string>
     <string name="tv_ambient_continue_label">Continue</string>
     <string name="settings_cinema_room_title">Cinema Room</string>
     <string name="settings_cinema_room_summary">Living-room Markenkern — Looks, Ambient, Trailer→Play, Skip, End-Card, Clean Exit</string>

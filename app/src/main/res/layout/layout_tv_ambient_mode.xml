@@ -66,9 +66,10 @@
             android:layout_height="wrap_content"
             android:fontFamily="@font/syne"
             android:letterSpacing="0.06"
+            android:contentDescription="@string/cinema_room_brand_label"
             android:text="@string/cinema_room_brand_label"
             android:textAllCaps="true"
-            android:textColor="@color/cinema_text"
+            android:textColor="?attr/colorOnSurface"
             android:textSize="18sp" />
 
         <TextView
@@ -79,7 +80,7 @@
             android:fontFamily="@font/manrope"
             android:letterSpacing="0.04"
             android:text="@string/cinema_room_wake_hint"
-            android:textColor="@color/cinema_text_muted"
+            android:textColor="?attr/colorOnSurfaceVariant"
             android:textSize="13sp" />
     </LinearLayout>
 
@@ -101,7 +102,7 @@
             android:letterSpacing="0.08"
             android:text="@string/tv_ambient_continue_label"
             android:textAllCaps="true"
-            android:textColor="@color/cinema_text_muted"
+            android:textColor="?attr/colorOnSurfaceVariant"
             android:textSize="13sp" />
 
         <TextView
@@ -112,14 +113,15 @@
             android:ellipsize="end"
             android:fontFamily="@font/syne"
             android:maxLines="1"
-            android:textColor="@color/cinema_text"
+            android:textColor="?attr/colorOnSurface"
             android:textSize="28sp"
             tools:text="Severance" />
 
+        <!-- Height set at runtime via LeanbackDensityPolicy.ambientStripHeightDp(). -->
         <androidx.leanback.widget.HorizontalGridView
             android:id="@+id/hgv_ambient_continue"
             android:layout_width="match_parent"
-            android:layout_height="148dp"
+            android:layout_height="188dp"
             android:layout_marginTop="14dp"
             android:clipChildren="false"
             android:clipToPadding="false"

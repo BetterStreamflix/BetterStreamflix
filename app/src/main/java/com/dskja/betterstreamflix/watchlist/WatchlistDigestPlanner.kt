@@ -23,6 +23,9 @@ object WatchlistDigestPlanner {
     const val MAX_EPISODES = 5
     private const val MAX_SHOWS_SCANNED = 16
 
+    /** Weekly semantics: air date within this window (or null released skipped). */
+    val RECENT_AIR_WINDOW_MS: Long = java.util.concurrent.TimeUnit.DAYS.toMillis(14)
+
     /**
      * Pure selection for tests: map favorite show keys → next episode, keep order, cap.
      */
@@ -30,6 +33,7 @@ object WatchlistDigestPlanner {
         favoriteKeysInOrder: List<String>,
         nextByShowKey: Map<String, Episode>,
         max: Int = MAX_EPISODES,
+        nowMs: Long = System.currentTimeMillis(),
     ): List<Episode> {
         if (max <= 0) return emptyList()
         val picks = ArrayList<Episode>(max.coerceAtMost(MAX_EPISODES))
@@ -38,13 +42,31 @@ object WatchlistDigestPlanner {
             if (picks.size >= max) break
             if (!seen.add(key)) continue
             val episode = nextByShowKey[key] ?: continue
+            if (!isWeeklyCandidate(episode, nowMs)) continue
             picks.add(episode)
         }
         return picks
     }
 
+    /**
+     * Keep episodes released in the last 14 days, or with a non-null recent air date
+     * after the user's last watch watermark on that title.
+     */
+    fun isWeeklyCandidate(
+        episode: Episode,
+        nowMs: Long = System.currentTimeMillis(),
+    ): Boolean {
+        val releasedMs = episode.released?.timeInMillis ?: return false
+        if (nowMs - releasedMs <= RECENT_AIR_WINDOW_MS) return true
+        // Stale air date — skip for weekly digest semantics.
+        return false
+    }
+
     suspend fun plan(context: Context): List<Episode> = withContext(Dispatchers.IO) {
         if (!UserPreferences.homeWatchlistDigestEnabled) return@withContext emptyList()
+        if (com.dskja.betterstreamflix.profiles.ProfileManager.isKidsActive()) {
+            return@withContext emptyList()
+        }
 
         val favorites = runCatching {
             CrossProviderLibrary.loadFavoriteTvShows(context)
@@ -78,7 +100,9 @@ object WatchlistDigestPlanner {
             nextByKey[key] = next
         }
 
-        selectDigestEpisodes(favoriteKeys, nextByKey, MAX_EPISODES)
+        val selected = selectDigestEpisodes(favoriteKeys, nextByKey, MAX_EPISODES)
+        // Parental gate before Home insert (Kids already short-circuited above).
+        com.dskja.betterstreamflix.utils.ParentalControlUtils.filterItems(selected)
     }
 
     fun showKey(providerName: String, showId: String): String = "$providerName:$showId"

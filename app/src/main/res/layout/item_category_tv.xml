@@ -87,7 +87,7 @@
         android:contentDescription="@string/home_shelf_pin_cd"
         android:focusable="true"
         android:focusableInTouchMode="true"
-        android:nextFocusLeft="@id/nav_main"
+        android:nextFocusDown="@id/hgv_category"
         android:padding="10dp"
         android:scaleType="centerInside"
         android:src="@drawable/ic_shelf_pin"

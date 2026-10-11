@@ -445,12 +445,17 @@ class PlayerTvFragment : Fragment(),
             contentId = args.id,
             onTimeout = {
                 val bridge = _binding?.ivTrailerStreamBridge ?: return@attachBridge
+                // Cinema Room player chrome invariants — Skip / End-Card / Clean Exit stay on.
+                val chrome = com.dskja.betterstreamflix.ui.CinemaRoomPolicy.playerChromeInvariants(
+                    UserPreferences.cinemaRoomEnabled,
+                )
                 TrailerStreamCrossfade.revealStream(
                     bridge,
                     durationMs = TrailerStreamCrossfade.revealDurationMs(
                         UserPreferences.cinemaRoomEnabled,
                     ),
                 )
+                if (!chrome.skipIntroAvailable) showSkipIntroButton(false)
             },
         )
         runCatching { TrailerPlaybackController.silenceAllActive() }
@@ -3336,10 +3341,16 @@ class PlayerTvFragment : Fragment(),
 
         private fun revealTrailerStreamBridge() {
             val bridge = _binding?.ivTrailerStreamBridge ?: return
+            val chrome = com.dskja.betterstreamflix.ui.CinemaRoomPolicy.playerChromeInvariants(
+                UserPreferences.cinemaRoomEnabled,
+            )
             val duration = TrailerStreamCrossfade.revealDurationMs(
                 UserPreferences.cinemaRoomEnabled,
             )
             TrailerStreamCrossfade.revealStream(bridge, durationMs = duration)
+            // Wire invariants at reveal so Settings “Player pillars” copy stays honest.
+            if (!chrome.endCardAvailable) hideEndCardChooser()
+            if (!chrome.skipIntroAvailable) showSkipIntroButton(false)
         }
 
         private fun resolvePlayerTitle(videoType: Video.Type = currentVideoTypeForUi()): String {

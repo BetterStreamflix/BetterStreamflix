@@ -69,11 +69,30 @@ class HomeTvFragment : Fragment() {
         cinemaRoomController?.onUserActivity()
     }
 
+    /** Non-key interaction idle reset (does not exit an active Ambient session). */
+    fun onAmbientIdleClockReset() {
+        cinemaRoomController?.resetIdleClock()
+    }
+
+    /** Pref / Live Command / Stick Energy flipped while Ambient may be active. */
+    fun onAmbientGatesChanged() {
+        cinemaRoomController?.recheckGatesWhileActive()
+    }
+
     /**
      * @return true if Ambient fully handled the key (e.g. BACK while active).
      */
     fun onAmbientKeyEvent(event: KeyEvent): Boolean =
         cinemaRoomController?.onKeyEvent(event) == true
+
+    /** Dialogs / loading that must block Ambient enter. */
+    fun isAmbientModalBlocking(): Boolean {
+        val act = activity as? com.dskja.betterstreamflix.activities.main.MainTvActivity
+        if (act?.isAmbientModalBlocking() == true) return true
+        val loading = _binding?.isLoading?.root
+        if (loading != null && loading.visibility == View.VISIBLE) return true
+        return false
+    }
 
     /** Shared pool for nested shelf HorizontalGridViews (parity with mobile shelfPool). */
     val shelfPool: RecyclerView.RecycledViewPool = RecyclerView.RecycledViewPool().apply {
@@ -147,6 +166,7 @@ class HomeTvFragment : Fragment() {
                 binding.root.findViewById(R.id.btn_home_remix),
                 binding.root.findViewById(R.id.tv_home_catalog_warning),
             ),
+            modalBlocking = { isAmbientModalBlocking() },
         )
 
         // Single HomeViewModel (no provider key). ViewModel owns getHome on provider change;
@@ -176,7 +196,8 @@ class HomeTvFragment : Fragment() {
                                 showCatalogWarning(state.providerWarning)
                                 // Logo-only Room merges rematerialize SuccessLoading — don't
                                 // yank DPAD mid-scroll when focus is already on Home content.
-                                if (!hadCatalog || !focusInsideHome) {
+                                // Ambient strip focus lives outside vgvHome — never steal it.
+                                if ((!hadCatalog || !focusInsideHome) && !isAmbientActive()) {
                                     focusHomeContent()
                                 }
                             }
@@ -388,11 +409,17 @@ class HomeTvFragment : Fragment() {
             // Do not requestFocus while the adapter is empty — Leanback then loses the
             // focus target and DPAD stays trapped on the side nav until Movies/etc.
         }
-        binding.root.findViewById<View>(R.id.btn_home_remix)?.setOnClickListener {
-            ExpMotion.hapticTap(it)
-            com.dskja.betterstreamflix.home.HomeRemixUi.show(this) {
-                homeBindSignature = null
-                viewModel.getHome()
+        binding.root.findViewById<View>(R.id.btn_home_remix)?.let { remix ->
+            val hideRemix = com.dskja.betterstreamflix.profiles.ProfileManager.isKidsActive() ||
+                com.dskja.betterstreamflix.profiles.ProfileManager.isGuestActive()
+            remix.visibility = if (hideRemix) View.GONE else View.VISIBLE
+            remix.setOnClickListener {
+                if (hideRemix) return@setOnClickListener
+                ExpMotion.hapticTap(it)
+                com.dskja.betterstreamflix.home.HomeRemixUi.show(this) {
+                    homeBindSignature = null
+                    viewModel.getHome()
+                }
             }
         }
     }
@@ -435,6 +462,8 @@ class HomeTvFragment : Fragment() {
             val child = if (grid is ViewGroup && grid.childCount > 0) grid.getChildAt(0) else grid
             if (child.isShown && child.isFocusable) return child
         }
+        val outageCta = root.findViewById<View>(R.id.btn_provider_outage_cta)
+        if (outageCta != null && outageCta.isShown && outageCta.isFocusable) return outageCta
         val digestCta = root.findViewById<View>(R.id.btn_watchlist_digest_cta)
         if (digestCta != null && digestCta.isShown && digestCta.isFocusable) return digestCta
         val banner = root.findViewById<View>(R.id.btn_support_banner_cta)
@@ -454,6 +483,8 @@ class HomeTvFragment : Fragment() {
             "\n" + com.dskja.betterstreamflix.support.SupportPromptPolicy.shouldShowHomeCard() +
             "\n" + UserPreferences.supportEpisodesWatchedCount +
             "\n" + UserPreferences.homeShelfBlockOrder +
+            "\n" + UserPreferences.homeShelfPinsJson +
+            "\n" + com.dskja.betterstreamflix.providers.ShelfWeather.healthSmokeDigest() +
             "\n" + com.dskja.betterstreamflix.watchlist.WatchlistDigestPolicy.shouldShow(
                 watchlistDigestEpisodes,
             ) +
@@ -607,13 +638,16 @@ class HomeTvFragment : Fragment() {
                     banner.episodes,
                 )
                 val first = result.firstEpisode
-                if (first != null) {
+                val navigated = if (first != null) {
                     com.dskja.betterstreamflix.watchlist.WatchlistDigestQueue.navigateToEpisode(
                         findNavController(),
                         requireContext(),
                         first,
                     )
+                } else {
+                    false
                 }
+                if (result.seededCount <= 0 && !navigated) return@launch
                 val without = appAdapter.items.filterNot {
                     it is com.dskja.betterstreamflix.watchlist.WatchlistDigestBannerItem
                 }
@@ -685,6 +719,9 @@ class HomeTvFragment : Fragment() {
             trustSnapshot,
             requireContext(),
         )
+        val outageNames = com.dskja.betterstreamflix.providers.ProviderOutagePolicy
+            .relevantOutageNames(trustSnapshot)
+        var digestRecorded = false
         visibleCategories
             .forEach { category ->
                 homeItems.add(category)
@@ -699,7 +736,7 @@ class HomeTvFragment : Fragment() {
                     ) {
                         homeItems.add(
                             com.dskja.betterstreamflix.providers.ProviderOutageBannerItem(
-                                providerNames = trustSnapshot.outageProviderNames,
+                                providerNames = outageNames.ifEmpty { trustSnapshot.outageProviderNames },
                                 level = trustSnapshot.outageLevel,
                             ).apply {
                                 itemType = AppAdapter.Type.PROVIDER_OUTAGE_BANNER_TV_ITEM
@@ -718,6 +755,10 @@ class HomeTvFragment : Fragment() {
                                 itemType = AppAdapter.Type.WATCHLIST_DIGEST_TV_ITEM
                             }
                         )
+                        if (!digestRecorded) {
+                            com.dskja.betterstreamflix.watchlist.WatchlistDigestPolicy.recordShown()
+                            digestRecorded = true
+                        }
                     }
                     if (com.dskja.betterstreamflix.support.SupportPromptPolicy.shouldShowHomeCard() &&
                         homeItems.none { it is com.dskja.betterstreamflix.support.SupportBannerItem }
@@ -740,7 +781,7 @@ class HomeTvFragment : Fragment() {
             homeItems.add(
                 1.coerceAtMost(homeItems.size),
                 com.dskja.betterstreamflix.providers.ProviderOutageBannerItem(
-                    providerNames = trustSnapshot.outageProviderNames,
+                    providerNames = outageNames.ifEmpty { trustSnapshot.outageProviderNames },
                     level = trustSnapshot.outageLevel,
                 ).apply {
                     itemType = AppAdapter.Type.PROVIDER_OUTAGE_BANNER_TV_ITEM
@@ -768,6 +809,10 @@ class HomeTvFragment : Fragment() {
                     itemType = AppAdapter.Type.WATCHLIST_DIGEST_TV_ITEM
                 }
             )
+            if (!digestRecorded) {
+                com.dskja.betterstreamflix.watchlist.WatchlistDigestPolicy.recordShown()
+                digestRecorded = true
+            }
         }
         if (com.dskja.betterstreamflix.support.SupportPromptPolicy.shouldShowHomeCard() &&
             homeItems.none { it is com.dskja.betterstreamflix.support.SupportBannerItem } &&

@@ -882,30 +882,31 @@ object UserPreferences {
     /**
      * Weekly Watchlist Digest home card (5 new episodes from My List → one-tap queue).
      * Default on — soft dismiss uses cool-down; hard hide via [homeWatchlistDigestDismissed].
+     * Profile-scoped so adult Never / cap never bleeds into Kids.
      */
     var homeWatchlistDigestEnabled: Boolean
-        get() = Key.HOME_WATCHLIST_DIGEST_ENABLED.getBoolean() ?: true
-        set(value) = Key.HOME_WATCHLIST_DIGEST_ENABLED.setBoolean(value)
+        get() = profileScopedBoolean(Key.HOME_WATCHLIST_DIGEST_ENABLED) ?: true
+        set(value) = setProfileScopedBoolean(Key.HOME_WATCHLIST_DIGEST_ENABLED, value)
 
     var homeWatchlistDigestDismissed: Boolean
-        get() = Key.HOME_WATCHLIST_DIGEST_DISMISSED.getBoolean() ?: false
-        set(value) = Key.HOME_WATCHLIST_DIGEST_DISMISSED.setBoolean(value)
+        get() = profileScopedBoolean(Key.HOME_WATCHLIST_DIGEST_DISMISSED) ?: false
+        set(value) = setProfileScopedBoolean(Key.HOME_WATCHLIST_DIGEST_DISMISSED, value)
 
     var homeWatchlistDigestLastDismissedAtMs: Long
-        get() = Key.HOME_WATCHLIST_DIGEST_LAST_DISMISSED_AT_MS.getLong() ?: 0L
-        set(value) = Key.HOME_WATCHLIST_DIGEST_LAST_DISMISSED_AT_MS.setLong(value)
+        get() = profileScopedLong(Key.HOME_WATCHLIST_DIGEST_LAST_DISMISSED_AT_MS) ?: 0L
+        set(value) = setProfileScopedLong(Key.HOME_WATCHLIST_DIGEST_LAST_DISMISSED_AT_MS, value)
 
     var homeWatchlistDigestLastShownAtMs: Long
-        get() = Key.HOME_WATCHLIST_DIGEST_LAST_SHOWN_AT_MS.getLong() ?: 0L
-        set(value) = Key.HOME_WATCHLIST_DIGEST_LAST_SHOWN_AT_MS.setLong(value)
+        get() = profileScopedLong(Key.HOME_WATCHLIST_DIGEST_LAST_SHOWN_AT_MS) ?: 0L
+        set(value) = setProfileScopedLong(Key.HOME_WATCHLIST_DIGEST_LAST_SHOWN_AT_MS, value)
 
     var homeWatchlistDigestShowCount: Int
-        get() = Key.HOME_WATCHLIST_DIGEST_SHOW_COUNT.getInt() ?: 0
-        set(value) = Key.HOME_WATCHLIST_DIGEST_SHOW_COUNT.setInt(value)
+        get() = profileScopedInt(Key.HOME_WATCHLIST_DIGEST_SHOW_COUNT) ?: 0
+        set(value) = setProfileScopedInt(Key.HOME_WATCHLIST_DIGEST_SHOW_COUNT, value)
 
     var homeWatchlistDigestLastQueuedAtMs: Long
-        get() = Key.HOME_WATCHLIST_DIGEST_LAST_QUEUED_AT_MS.getLong() ?: 0L
-        set(value) = Key.HOME_WATCHLIST_DIGEST_LAST_QUEUED_AT_MS.setLong(value)
+        get() = profileScopedLong(Key.HOME_WATCHLIST_DIGEST_LAST_QUEUED_AT_MS) ?: 0L
+        set(value) = setProfileScopedLong(Key.HOME_WATCHLIST_DIGEST_LAST_QUEUED_AT_MS, value)
 
     /**
      * Thanks After Binge — soft Support nudge after a season finale.

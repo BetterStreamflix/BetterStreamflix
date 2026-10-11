@@ -17,6 +17,7 @@ import com.dskja.betterstreamflix.models.Category
 import com.dskja.betterstreamflix.models.TvShow
 import com.dskja.betterstreamflix.notifications.LiveReminderStore
 import com.dskja.betterstreamflix.ui.AmbientModePolicy
+import com.dskja.betterstreamflix.ui.FeaturedAdvancePolicy
 import com.dskja.betterstreamflix.ui.UserDataNotifier
 import com.dskja.betterstreamflix.utils.DeviceCapabilities
 import com.dskja.betterstreamflix.utils.ExpMotion
@@ -227,14 +228,17 @@ class LiveCommandController(
             reminderCount = 0,
             remindersEnabled = UserPreferences.notifyLiveFavoriteStarting,
             ambientEnabled = UserPreferences.tvAmbientModeEnabled,
-            ambientAvailable = isTv && run {
-                val ctx = fragment.requireContext()
-                AmbientModePolicy.highEndOk(
-                    reduceHomeEffects = DeviceCapabilities.shouldReduceHomeEffects(ctx),
-                    touchExploration = false,
-                    reduceMotion = false,
-                )
-            },
+            ambientAvailable = isTv &&
+                UserPreferences.cinemaRoomEnabled &&
+                run {
+                    val ctx = fragment.requireContext()
+                    AmbientModePolicy.highEndOk(
+                        hardReduceEffects = DeviceCapabilities.shouldHardReduceHomeEffects(ctx),
+                        touchExploration = FeaturedAdvancePolicy.isTouchExplorationEnabled(ctx),
+                        reduceMotion = DeviceCapabilities.isAnimatorDurationScaleOff(ctx),
+                        highContrast = UserPreferences.highContrast,
+                    )
+                },
             pipCandidateCount = pipCandidates,
             isTv = isTv,
         )
@@ -284,6 +288,15 @@ class LiveCommandController(
                 selectMode(LiveCommandMode.REMINDERS)
             }
             LiveCommandPolicy.CommandAction.AMBIENT -> {
+                if (!UserPreferences.cinemaRoomEnabled) {
+                    Toast.makeText(
+                        ctx,
+                        R.string.live_command_toast_ambient_off,
+                        Toast.LENGTH_SHORT,
+                    ).show()
+                    refreshActions()
+                    return
+                }
                 val next = !UserPreferences.tvAmbientModeEnabled
                 UserPreferences.tvAmbientModeEnabled = next
                 Toast.makeText(
@@ -292,6 +305,16 @@ class LiveCommandController(
                     else R.string.live_command_toast_ambient_off,
                     Toast.LENGTH_SHORT,
                 ).show()
+                // Exit Ambient immediately when toggled off while Home is showing it.
+                (fragment.activity as? com.dskja.betterstreamflix.activities.main.MainTvActivity)
+                    ?.let { act ->
+                        val home = act.supportFragmentManager
+                            .findFragmentById(com.dskja.betterstreamflix.R.id.nav_main_fragment)
+                            as? androidx.navigation.fragment.NavHostFragment
+                        val host = home?.childFragmentManager?.primaryNavigationFragment
+                            as? com.dskja.betterstreamflix.fragments.home.HomeTvFragment
+                        host?.onAmbientGatesChanged()
+                    }
                 refreshActions()
             }
             LiveCommandPolicy.CommandAction.PIP_ZAP -> {

@@ -57,9 +57,15 @@ object FeaturedSwiperChrome {
         val floorH = if (constrained) 1280 else ARTWORK_HEIGHT
         val maxW = if (constrained) 1600 else MAX_ARTWORK_WIDTH
         val maxH = if (constrained) 1600 else MAX_ARTWORK_HEIGHT
+        // Leanback Density: Compact modestly shortens the Featured card (DENS-02).
+        val densityHintDp = LeanbackDensityPolicy.featuredCardHeightDp()
         val cardHeightPx = runCatching {
             context.resources.getDimensionPixelSize(R.dimen.home_featured_card_height)
-        }.getOrDefault((580f * dm.density).roundToInt())
+        }.getOrDefault((densityHintDp * dm.density).roundToInt()).let { dimenPx ->
+            val hintPx = (densityHintDp * dm.density).roundToInt()
+            // Prefer the smaller of dimen vs density hint so Compact can shrink.
+            minOf(dimenPx, hintPx)
+        }
         val width = max(
             max(view?.width ?: 0, dm.widthPixels),
             floorW,
@@ -159,7 +165,12 @@ object FeaturedSwiperChrome {
         button.compoundDrawableTintList = null
     }
 
-    fun bindListButton(button: TextView, inList: Boolean, animate: Boolean = false) {
+    fun bindListButton(
+        button: TextView,
+        inList: Boolean,
+        animate: Boolean = false,
+        title: String? = null,
+    ) {
         button.text = button.context.getString(
             if (inList) R.string.home_swiper_in_my_list else R.string.home_swiper_my_list,
         )
@@ -169,6 +180,13 @@ object FeaturedSwiperChrome {
         )
         TextViewCompat.setCompoundDrawablesRelativeWithIntrinsicBounds(button, icon, null, null, null)
         TooltipCompat.setTooltipText(button, button.text)
+        val label = title?.takeIf { it.isNotBlank() }
+        if (label != null) {
+            button.contentDescription = button.context.getString(
+                if (inList) R.string.a11y_featured_in_my_list else R.string.a11y_featured_my_list,
+                label,
+            )
+        }
         if (animate) ExpMotion.softScale(button)
     }
 
@@ -229,7 +247,7 @@ object FeaturedSwiperChrome {
                 movie.isFavorite = target
                 movie.poster = resolved.poster
                 movie.banner = resolved.banner
-                bindListButton(button, target, animate = true)
+                bindListButton(button, target, animate = true, title = movie.title)
                 onDone?.invoke(target)
             }
         }
@@ -257,7 +275,7 @@ object FeaturedSwiperChrome {
                 tvShow.isFavorite = target
                 tvShow.poster = resolved.poster
                 tvShow.banner = resolved.banner
-                bindListButton(button, target, animate = true)
+                bindListButton(button, target, animate = true, title = tvShow.title)
                 onDone?.invoke(target)
             }
         }

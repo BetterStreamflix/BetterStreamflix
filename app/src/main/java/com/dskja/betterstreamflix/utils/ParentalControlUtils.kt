@@ -73,7 +73,7 @@ object ParentalControlUtils {
             val filteredItems = filterItems(category.list)
             if (filteredItems.isEmpty()) {
                 // Keep Series Fast-Forward shelves so the chip stays reachable when empty.
-                if (com.dskja.betterstreamflix.home.SeriesFastForward.supportsShelf(category.name) &&
+                if (com.dskja.betterstreamflix.home.SeriesFastForward.supportsShelf(category) &&
                     com.dskja.betterstreamflix.home.SeriesFastForward.isEnabled()
                 ) {
                     category.copy(list = emptyList()).also { emptyCategory ->

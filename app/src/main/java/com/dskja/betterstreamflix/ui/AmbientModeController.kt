@@ -8,13 +8,14 @@ import android.os.Handler
 import android.os.Looper
 import android.view.KeyEvent
 import android.view.View
+import android.view.ViewGroup
+import android.view.accessibility.AccessibilityManager
 import android.view.animation.AccelerateDecelerateInterpolator
 import android.widget.ImageView
 import android.widget.TextView
 import androidx.fragment.app.Fragment
 import androidx.leanback.widget.HorizontalGridView
 import com.bumptech.glide.Glide
-import com.bumptech.glide.load.resource.drawable.DrawableTransitionOptions
 import com.bumptech.glide.request.target.CustomTarget
 import com.bumptech.glide.request.transition.Transition
 import com.dskja.betterstreamflix.R
@@ -38,6 +39,7 @@ class AmbientModeController(
     private val root: View,
     private val homeContent: View,
     private val homeChrome: List<View>,
+    private val modalBlocking: () -> Boolean = { false },
 ) {
     private val handler = Handler(Looper.getMainLooper())
     private val stripAdapter = AppAdapter()
@@ -49,6 +51,7 @@ class AmbientModeController(
     private val imageB: ImageView = ambientRoot.findViewById(R.id.iv_ambient_b)
     private val glowView: View? = ambientRoot.findViewById(R.id.v_ambient_glow)
     private val brandChrome: View? = ambientRoot.findViewById(R.id.ll_cinema_room_brand)
+    private val brandLabel: TextView? = ambientRoot.findViewById(R.id.tv_cinema_room_brand)
     private val titleView: TextView = ambientRoot.findViewById(R.id.tv_ambient_title)
     private val strip: HorizontalGridView = ambientRoot.findViewById(R.id.hgv_ambient_continue)
     private var glowTarget: CustomTarget<Bitmap>? = null
@@ -60,9 +63,28 @@ class AmbientModeController(
     private var lastActivityAt = System.currentTimeMillis()
     private var active = false
     private var kenBurns: AnimatorSet? = null
+    private var a11yManager: AccessibilityManager? = null
+    private val a11yListener =
+        AccessibilityManager.AccessibilityStateChangeListener { recheckGatesWhileActive() }
+    private val touchExplorationListener =
+        AccessibilityManager.TouchExplorationStateChangeListener { recheckGatesWhileActive() }
+
     private val idleCheck = object : Runnable {
         override fun run() {
-            if (!fragment.isAdded || !enabled()) {
+            if (!fragment.isAdded) {
+                scheduleIdleCheck()
+                return
+            }
+            // While active: exit if prefs / a11y / Stick Energy / modal gates flip.
+            if (active) {
+                if (!enabled() || !highEndOk() || modalBlocking()) {
+                    exit(restoreFocus = true)
+                } else {
+                    scheduleIdleCheck()
+                }
+                return
+            }
+            if (!enabled()) {
                 scheduleIdleCheck()
                 return
             }
@@ -72,7 +94,7 @@ class AmbientModeController(
                     highEndOk = highEndOk(),
                     idleElapsedMs = elapsed,
                     poolSize = pool.size,
-                    modalBlocking = false,
+                    modalBlocking = modalBlocking(),
                     alreadyActive = active,
                 )
             ) {
@@ -115,6 +137,9 @@ class AmbientModeController(
         ambientRoot.visibility = View.GONE
         ambientRoot.isFocusable = false
         ambientRoot.isClickable = false
+        applyStripDensityHeight()
+        brandLabel?.contentDescription =
+            fragment.getString(R.string.cinema_room_brand_label)
     }
 
     fun isActive(): Boolean = active
@@ -125,6 +150,25 @@ class AmbientModeController(
             exit(restoreFocus = true)
         } else {
             scheduleIdleCheck()
+        }
+    }
+
+    /** Reset idle clock without exiting an active Ambient session (scroll / touch). */
+    fun resetIdleClock() {
+        lastActivityAt = System.currentTimeMillis()
+        if (!active) scheduleIdleCheck()
+    }
+
+    /**
+     * Pref / Live Command / Stick Energy flipped — exit if gates no longer allow Ambient.
+     */
+    fun recheckGatesWhileActive() {
+        if (!active) {
+            scheduleIdleCheck()
+            return
+        }
+        if (!enabled() || !highEndOk() || modalBlocking()) {
+            exit(restoreFocus = true)
         }
     }
 
@@ -142,10 +186,17 @@ class AmbientModeController(
             return false
         }
         val stripFocused = strip.hasFocus() || strip.findFocus() != null
+        // Activate: let the strip click fire, then exit without stealing focus back.
+        if (stripFocused && AmbientModePolicy.isStripActivateKey(event.keyCode)) {
+            handler.post {
+                if (active) exit(restoreFocus = false)
+            }
+            return false
+        }
         if (AmbientModePolicy.shouldExitOnKey(event.keyCode, stripFocused)) {
             exit(restoreFocus = true)
-            // BACK is consumed so we don't also leave Home.
-            return event.keyCode == KeyEvent.KEYCODE_BACK
+            // Consume every wake key so restored Home does not also handle it.
+            return true
         }
         return false
     }
@@ -178,30 +229,41 @@ class AmbientModeController(
 
     fun onStart() {
         lastActivityAt = System.currentTimeMillis()
+        applyStripDensityHeight()
+        registerA11yListeners()
         scheduleIdleCheck()
     }
 
     fun onStop() {
+        unregisterA11yListeners()
         handler.removeCallbacksAndMessages(null)
         if (active) exit(restoreFocus = false)
     }
 
     fun destroy() {
+        unregisterA11yListeners()
+        if (active) exit(restoreFocus = false)
         handler.removeCallbacksAndMessages(null)
         kenBurns?.cancel()
         kenBurns = null
+        cancelViewAnimators()
         clearGlow()
+        runCatching { Glide.with(imageA).clear(imageA) }
+        runCatching { Glide.with(imageB).clear(imageB) }
+        imageA.setImageDrawable(null)
+        imageB.setImageDrawable(null)
         brandChrome?.visibility = View.GONE
         active = false
     }
 
     private fun enter() {
         if (active || pool.isEmpty() || !fragment.isAdded) return
-        if (!enabled() || !highEndOk()) return
+        if (!enabled() || !highEndOk() || modalBlocking()) return
         active = true
         imageIndex = 0
         burnTick = 0
         showingA = true
+        applyStripDensityHeight()
         // Pause Featured auto-rotate while Ambient owns the canvas.
         (fragment as? com.dskja.betterstreamflix.fragments.home.HomeTvFragment)
             ?.resetSwiperSchedule()
@@ -216,6 +278,7 @@ class AmbientModeController(
         showImage(pool[0], crossfade = false)
         scheduleImageLoop()
         handler.postDelayed(burnInShift, AmbientModePolicy.BURN_IN_SHIFT_MS)
+        scheduleIdleCheck()
         strip.post {
             if (!active) return@post
             if (stripAdapter.itemCount > 0) {
@@ -278,23 +341,21 @@ class AmbientModeController(
         val incoming = if (showingA) imageB else imageA
         val outgoing = if (showingA) imageA else imageB
         titleView.text = image.title
+        titleView.contentDescription = image.title.ifBlank {
+            fragment.getString(R.string.a11y_untitled)
+        }
         val ctx = fragment.context ?: return
         val (w, h) = FeaturedSwiperChrome.tvBackdropOverride(ctx)
         val url = ArtworkUrls.preferFeatured(image.url) ?: image.url
         val crossfadeMs = CinemaRoomPolicy.ambientCrossfadeMs(UserPreferences.cinemaRoomEnabled)
-        var req = Glide.with(incoming)
+        // View alpha crossfade only — avoid Glide transition + alpha double-dissolve.
+        Glide.with(incoming)
             .load(url)
             .override(w, h)
             .centerCrop()
             .error(R.drawable.glide_fallback_cover)
-        if (crossfade) {
-            req = req.transition(
-                DrawableTransitionOptions.withCrossFade(crossfadeMs),
-            )
-        } else {
-            req = req.dontAnimate()
-        }
-        req.into(incoming)
+            .dontAnimate()
+            .into(incoming)
         if (crossfade) {
             incoming.alpha = 0f
             incoming.animate().alpha(1f).setDuration(crossfadeMs.toLong()).start()
@@ -311,13 +372,18 @@ class AmbientModeController(
 
     private fun startKenBurns(view: ImageView) {
         kenBurns?.cancel()
+        view.animate().cancel()
+        view.translationX = 0f
+        view.translationY = 0f
         view.scaleX = 1f
         view.scaleY = 1f
-        val scaleX = ObjectAnimator.ofFloat(view, View.SCALE_X, 1f, 1.06f)
-        val scaleY = ObjectAnimator.ofFloat(view, View.SCALE_Y, 1f, 1.06f)
+        val stickEnergy = fragment.context?.let { StickEnergyMode.isEnabled(it) } == true
+        val end = AmbientModePolicy.kenBurnsScaleEnd(stickEnergy)
+        val scaleX = ObjectAnimator.ofFloat(view, View.SCALE_X, 1f, end)
+        val scaleY = ObjectAnimator.ofFloat(view, View.SCALE_Y, 1f, end)
         kenBurns = AnimatorSet().apply {
             playTogether(scaleX, scaleY)
-            duration = AmbientModePolicy.KEN_BURNS_MS
+            duration = AmbientModePolicy.kenBurnsDurationMs(stickEnergy)
             interpolator = AccelerateDecelerateInterpolator()
             start()
         }
@@ -344,10 +410,26 @@ class AmbientModeController(
             if (stamped.isEmpty()) View.GONE else View.VISIBLE
     }
 
+    private fun applyStripDensityHeight() {
+        val ctx = fragment.context ?: return
+        val density = ctx.resources.displayMetrics.density
+        val hDp = LeanbackDensityPolicy.ambientStripHeightDp()
+        val hPx = (hDp * density).toInt()
+        val lp = strip.layoutParams ?: return
+        if (lp.height == hPx) return
+        lp.height = hPx
+        strip.layoutParams = lp
+        (strip.parent as? ViewGroup)?.requestLayout()
+    }
+
     private fun scheduleIdleCheck() {
         handler.removeCallbacks(idleCheck)
-        if (!fragment.isAdded || active) return
-        if (!enabled() || !highEndOk() || pool.isEmpty()) return
+        if (!fragment.isAdded) return
+        if (active) {
+            handler.postDelayed(idleCheck, AmbientModePolicy.ACTIVE_GATE_RECHECK_MS)
+            return
+        }
+        if (!enabled() || !highEndOk() || pool.isEmpty() || modalBlocking()) return
         val remaining = (AmbientModePolicy.IDLE_ENTER_MS -
             (System.currentTimeMillis() - lastActivityAt)).coerceAtLeast(1_000L)
         handler.postDelayed(idleCheck, remaining)
@@ -359,16 +441,19 @@ class AmbientModeController(
     }
 
     private fun enabled(): Boolean = CinemaRoomPolicy.ambientAllowed(
-        cinemaRoomEnabled = UserPreferences.cinemaRoomEnabled,
-        ambientPrefEnabled = UserPreferences.tvAmbientModeEnabled,
+        cinemaRoomEnabled = CinemaRoomPolicy.resolveEnabled(UserPreferences.cinemaRoomEnabled),
+        ambientPrefEnabled = AmbientModePolicy.resolvePrefEnabled(
+            UserPreferences.tvAmbientModeEnabled,
+        ),
     )
 
     private fun highEndOk(): Boolean {
         val ctx = fragment.context ?: return false
         return AmbientModePolicy.highEndOk(
-            reduceHomeEffects = DeviceCapabilities.shouldReduceHomeEffects(ctx),
+            hardReduceEffects = DeviceCapabilities.shouldHardReduceHomeEffects(ctx),
             touchExploration = FeaturedAdvancePolicy.isTouchExplorationEnabled(ctx),
-            reduceMotion = FeaturedAdvancePolicy.shouldReduceMotion(ctx),
+            reduceMotion = DeviceCapabilities.isAnimatorDurationScaleOff(ctx),
+            highContrast = UserPreferences.highContrast,
         )
     }
 
@@ -381,6 +466,8 @@ class AmbientModeController(
         if (show) {
             brandChrome?.alpha = 0f
             brandChrome?.animate()?.alpha(1f)?.setDuration(420L)?.start()
+            brandLabel?.contentDescription =
+                fragment.getString(R.string.cinema_room_brand_label)
         }
     }
 
@@ -427,5 +514,33 @@ class AmbientModeController(
         if (ctx != null && target != null) {
             runCatching { Glide.with(ctx).clear(target) }
         }
+    }
+
+    private fun cancelViewAnimators() {
+        ambientRoot.animate().cancel()
+        homeContent.animate().cancel()
+        homeChrome.forEach { it.animate().cancel() }
+        imageA.animate().cancel()
+        imageB.animate().cancel()
+        brandChrome?.animate()?.cancel()
+    }
+
+    private fun registerA11yListeners() {
+        val ctx = fragment.context ?: return
+        val am = ctx.getSystemService(AccessibilityManager::class.java) ?: return
+        a11yManager = am
+        runCatching {
+            am.addAccessibilityStateChangeListener(a11yListener)
+            am.addTouchExplorationStateChangeListener(touchExplorationListener)
+        }
+    }
+
+    private fun unregisterA11yListeners() {
+        val am = a11yManager ?: return
+        runCatching {
+            am.removeAccessibilityStateChangeListener(a11yListener)
+            am.removeTouchExplorationStateChangeListener(touchExplorationListener)
+        }
+        a11yManager = null
     }
 }

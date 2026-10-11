@@ -227,6 +227,23 @@ class HomeCatalogPipelineTest {
     }
 
     @Test
+    fun isolateFeaturedKeepsEmptyFastForwardShelves() {
+        val emptyNext = Category(name = "Nächste Folgen", list = emptyList()).also {
+            it.identityKey = Category.NEXT_EPISODES
+        }
+        val emptyFav = Category(name = Category.FAVORITE_TV_SHOWS, list = emptyList())
+        val isolated = HomeCatalogPipeline.isolateFeatured(
+            listOf(
+                Category(name = Category.FEATURED, list = listOf(Movie(id = "1", title = "A"))),
+                emptyNext,
+                emptyFav,
+            ),
+        )
+        assertTrue(isolated.any { it.identityKey == Category.NEXT_EPISODES })
+        assertTrue(isolated.any { it.name == Category.FAVORITE_TV_SHOWS })
+    }
+
+    @Test
     fun blankLegacyFeaturedNameNormalizesToConstant() {
         val movie = Movie(id = "1", title = "Legacy")
         val result = HomeCatalogPipeline.process(

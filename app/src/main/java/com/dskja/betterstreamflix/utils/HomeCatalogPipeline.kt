@@ -332,7 +332,7 @@ object HomeCatalogPipeline {
             } else {
                 category.copy(list = category.list.filter(::itemHasLabelOrArt))
             }
-        }.filter { it.list.isNotEmpty() }
+        }.filter { keepAfterIsolate(it) }
         val ensured = ensureFeatured(visible, mutableListOf())
         return ensured.map { cat ->
             if (!Category.isFeaturedName(cat.name)) {
@@ -350,7 +350,16 @@ object HomeCatalogPipeline {
                         .coerceIn(0, (featuredList.size - 1).coerceAtLeast(0)),
                 )
             }
-        }.filter { it.list.isNotEmpty() }
+        }.filter { keepAfterIsolate(it) }
+    }
+
+    /**
+     * Drop empty rows except Series Fast-Forward shelves (chip must stay reachable
+     * when the filter empties Next / Favorite TV — gate on identityKey or English name).
+     */
+    private fun keepAfterIsolate(category: Category): Boolean {
+        if (category.list.isNotEmpty()) return true
+        return com.dskja.betterstreamflix.home.SeriesFastForward.supportsShelf(category)
     }
 
     /** Public: restore FEATURED after parental / live-DB filters drop it. */

@@ -32,6 +32,13 @@ object ProfileManager {
         "SHOW_SMART_COLLECTIONS",
         "SPOILER_SHIELD_ENABLED",
         "HOME_SHELF_BLOCK_ORDER",
+        "HOME_SHELF_PINS_JSON",
+        "HOME_WATCHLIST_DIGEST_ENABLED",
+        "HOME_WATCHLIST_DIGEST_DISMISSED",
+        "HOME_WATCHLIST_DIGEST_LAST_DISMISSED_AT_MS",
+        "HOME_WATCHLIST_DIGEST_LAST_SHOWN_AT_MS",
+        "HOME_WATCHLIST_DIGEST_SHOW_COUNT",
+        "HOME_WATCHLIST_DIGEST_LAST_QUEUED_AT_MS",
         "SERIES_FAST_FORWARD_ENABLED",
         "HOME_LAST_VISIT_AT_MS",
         "HOME_VISIT_NEXT_EPISODE_IDS",
@@ -450,6 +457,13 @@ object ProfileManager {
         }
         // Seed kids/adult shell themes when this profile has never picked one.
         applyDefaultThemeForProfile(profile, force = false)
+        // Kids session start: Cinema Room looksHint clamps to Kids Bright locally
+        // (parity with cloud clampLookForActiveProfile).
+        if (profile.isKids && profile.id == activeProfileId) {
+            runCatching {
+                com.dskja.betterstreamflix.ui.CinemaRoomController.applyLooksHintForActiveProfile()
+            }
+        }
     }
 
     /**

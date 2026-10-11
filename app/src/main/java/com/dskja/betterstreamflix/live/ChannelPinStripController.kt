@@ -46,9 +46,10 @@ class ChannelPinStripController(
     }
 
     fun onDestinationChanged(destinationId: Int?) {
+        // Pin strip is Home chrome (and Live Hub); hide on Search/Settings/Favorites/…
         destinationAllowsStrip = when (destinationId) {
-            R.id.player -> false
-            else -> true
+            R.id.home, R.id.live_hub -> true
+            else -> false
         }
         applyVisibility()
         if (destinationAllowsStrip) refresh()
@@ -67,8 +68,22 @@ class ChannelPinStripController(
                     CrossProviderLibrary.loadFavoriteTvShows(activity)
                 }.getOrDefault(emptyList())
                     .filter { LiveHubCatalog.isLiveFavorite(it) }
+                    .map { LiveHubCatalog.enrichEpgLite(it) }
                 ChannelPinStore.seedFromFavoritesIfEmpty(activity, favorites)
-                ChannelPinStore.resolveShows(activity, favorites)
+                ChannelPinStore.resolveShows(activity, favorites).map { show ->
+                    // Merge programNow from Live Hub favorites when pin stubs omit EPG.
+                    val key = LiveHubCatalog.identityKey(show)
+                    val fromHub = favorites.firstOrNull { LiveHubCatalog.identityKey(it) == key }
+                    if (fromHub != null) {
+                        if (show.programNow.isNullOrBlank()) {
+                            show.programNow = LiveHubCatalog.programNowOf(fromHub)
+                        }
+                        if (show.poster.isNullOrBlank()) show.poster = fromHub.poster
+                    } else {
+                        LiveHubCatalog.enrichEpgLite(show)
+                    }
+                    show
+                }
             }
             if (!destinationAllowsStrip || ProfileManager.isKidsActive()) {
                 strip.isVisible = false

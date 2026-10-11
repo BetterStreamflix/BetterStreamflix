@@ -54,6 +54,9 @@ object StickEnergyMode {
      * Ken-burns, Featured advance, focus zoom, Glide transitions, etc.
      * Delegates to [DeviceCapabilities.shouldReduceHomeEffects], which already
      * folds Stick Energy Mode in.
+     *
+     * Ambient is special-cased: Stick Energy alone does not hard-off enter
+     * ([AmbientModePolicy.highEndOk]); Ambient uses reduced Ken Burns instead.
      */
     fun shouldReduceUiMotion(context: Context): Boolean =
         DeviceCapabilities.shouldReduceHomeEffects(context)
