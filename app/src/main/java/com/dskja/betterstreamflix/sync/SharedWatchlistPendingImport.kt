@@ -1,10 +1,11 @@
 package com.dskja.betterstreamflix.sync
 
 import android.content.Context
+import com.dskja.betterstreamflix.profiles.ProfileManager
 
-/** Offline queue for share-link imports until network + Supabase are available. */
+/** Offline queue for share-link imports until network + Supabase are available (per profile). */
 object SharedWatchlistPendingImport {
-    private const val PREFS = "shared_watchlist_pending"
+    private const val PREFS_BASE = "shared_watchlist_pending"
     private const val KEY_TOKENS = "tokens"
 
     @Synchronized
@@ -31,7 +32,10 @@ object SharedWatchlistPendingImport {
     }
 
     private fun prefs(context: Context) =
-        context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        context.applicationContext.getSharedPreferences(
+            ProfileManager.scopedPrefKey(PREFS_BASE),
+            Context.MODE_PRIVATE,
+        )
 
     private fun read(context: Context): List<String> {
         val raw = prefs(context).getString(KEY_TOKENS, null) ?: return emptyList()

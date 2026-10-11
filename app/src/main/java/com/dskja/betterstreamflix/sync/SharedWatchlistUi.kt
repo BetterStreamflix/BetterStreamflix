@@ -14,6 +14,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 object SharedWatchlistUi {
+    private val promptedPendingTokens = mutableSetOf<String>()
 
     fun shareCurrentList(fragment: Fragment) {
         val context = fragment.context ?: return
@@ -25,6 +26,24 @@ object SharedWatchlistUi {
             ExpDialogChrome.notify(context, R.string.shared_watchlist_share_needs_sign_in)
             return
         }
+        val options = arrayOf(
+            context.getString(R.string.shared_watchlist_share_action),
+            context.getString(R.string.shared_watchlist_revoke_action),
+        )
+        androidx.appcompat.app.AlertDialog.Builder(context)
+            .setTitle(R.string.shared_watchlist_share_menu_title)
+            .setItems(options) { _, which ->
+                when (which) {
+                    0 -> publishAndShare(fragment)
+                    1 -> confirmRevoke(fragment)
+                }
+            }
+            .setNegativeButton(android.R.string.cancel, null)
+            .show()
+    }
+
+    private fun publishAndShare(fragment: Fragment) {
+        val context = fragment.context ?: return
         if (!DownloadConnectivityMonitor.isOnline(context)) {
             ExpDialogChrome.notify(context, R.string.shared_watchlist_share_offline)
             return
@@ -59,6 +78,44 @@ object SharedWatchlistUi {
                     ctx,
                     ctx.getString(
                         R.string.shared_watchlist_share_failed,
+                        error.message ?: error.javaClass.simpleName,
+                    ),
+                )
+            }
+        }
+    }
+
+    private fun confirmRevoke(fragment: Fragment) {
+        val context = fragment.context ?: return
+        if (!DownloadConnectivityMonitor.isOnline(context)) {
+            ExpDialogChrome.notify(context, R.string.shared_watchlist_share_offline)
+            return
+        }
+        androidx.appcompat.app.AlertDialog.Builder(context)
+            .setTitle(R.string.shared_watchlist_revoke_confirm_title)
+            .setMessage(R.string.shared_watchlist_revoke_confirm_message)
+            .setNegativeButton(android.R.string.cancel, null)
+            .setPositiveButton(R.string.shared_watchlist_revoke_action) { _, _ ->
+                revokeSharedList(fragment)
+            }
+            .show()
+    }
+
+    fun revokeSharedList(fragment: Fragment) {
+        val context = fragment.context ?: return
+        fragment.viewLifecycleOwner.lifecycleScope.launch {
+            val result = withContext(Dispatchers.IO) {
+                runCatching { SharedWatchlistRepository.revokeCurrentSharedList(context) }
+            }
+            if (!fragment.isAdded) return@launch
+            val ctx = fragment.context ?: return@launch
+            result.onSuccess {
+                ExpDialogChrome.notify(ctx, R.string.shared_watchlist_revoke_success)
+            }.onFailure { error ->
+                ExpDialogChrome.notify(
+                    ctx,
+                    ctx.getString(
+                        R.string.shared_watchlist_revoke_failed,
                         error.message ?: error.javaClass.simpleName,
                     ),
                 )
@@ -115,6 +172,7 @@ object SharedWatchlistUi {
                         }
                         importResult.onSuccess { result ->
                             SharedWatchlistPendingImport.acknowledge(appContext, token)
+                            promptedPendingTokens.remove(token.trim())
                             ExpDialogChrome.notify(
                                 activity,
                                 activity.getString(
@@ -122,6 +180,7 @@ object SharedWatchlistUi {
                                     result.imported,
                                     result.alreadyPresent,
                                     result.skippedUnknownProvider,
+                                    result.skippedAgeRestricted,
                                 ),
                             )
                         }.onFailure { error ->
@@ -139,9 +198,20 @@ object SharedWatchlistUi {
         }
     }
 
+    /**
+     * Peeks the per-profile pending queue and, when an [FragmentActivity] is available,
+     * shows the same confirm dialog as [handleIncomingToken]. Never silent-imports.
+     */
     fun tryFlushPending(context: Context) {
         if (!SupabaseProvider.isConfigured) return
         if (!DownloadConnectivityMonitor.isOnline(context)) return
-        // Best-effort; WorkManager / sync path also flushes.
+        val activity = context as? FragmentActivity ?: return
+        if (activity.isFinishing) return
+        val appContext = activity.applicationContext
+        val token = SharedWatchlistPendingImport.peek(appContext)
+            .firstOrNull { it !in promptedPendingTokens }
+            ?: return
+        promptedPendingTokens.add(token)
+        handleIncomingToken(activity, token)
     }
 }

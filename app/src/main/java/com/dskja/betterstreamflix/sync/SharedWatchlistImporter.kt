@@ -6,7 +6,7 @@ import com.dskja.betterstreamflix.models.Movie
 import com.dskja.betterstreamflix.models.TvShow
 import com.dskja.betterstreamflix.providers.Provider
 import com.dskja.betterstreamflix.ui.UserDataNotifier
-import com.dskja.betterstreamflix.utils.UserDataCache
+import com.dskja.betterstreamflix.utils.ParentalControlUtils
 import com.dskja.betterstreamflix.utils.UserPreferences
 
 object SharedWatchlistImporter {
@@ -14,6 +14,7 @@ object SharedWatchlistImporter {
         val imported: Int,
         val skippedUnknownProvider: Int,
         val alreadyPresent: Int,
+        val skippedAgeRestricted: Int = 0,
     )
 
     suspend fun importPayload(context: Context, payload: SharedWatchlistPayload): Result {
@@ -21,6 +22,7 @@ object SharedWatchlistImporter {
         var imported = 0
         var skipped = 0
         var already = 0
+        var skippedAge = 0
         val now = System.currentTimeMillis()
 
         for (item in payload.items) {
@@ -56,8 +58,17 @@ object SharedWatchlistImporter {
                             isFavorite = true
                             favoritedAtMillis = now
                         }
-                        db.movieDao().upsertFavorite(movie, true)
-                        UserDataCache.addMovieToFavorites(appContext, provider, movie)
+                        if (!ParentalControlUtils.isAllowed(movie)) {
+                            skippedAge++
+                            continue
+                        }
+                        FavoriteMutations.setMovieFavorite(
+                            appContext,
+                            provider,
+                            movie,
+                            favorite = true,
+                            database = db,
+                        )
                         imported++
                     }
                     "tv_show" -> {
@@ -79,8 +90,17 @@ object SharedWatchlistImporter {
                             isFavorite = true
                             favoritedAtMillis = now
                         }
-                        db.tvShowDao().upsertFavorite(show, true)
-                        UserDataCache.addTvShowToFavorites(appContext, provider, show)
+                        if (!ParentalControlUtils.isAllowed(show)) {
+                            skippedAge++
+                            continue
+                        }
+                        FavoriteMutations.setTvShowFavorite(
+                            appContext,
+                            provider,
+                            show,
+                            favorite = true,
+                            database = db,
+                        )
                         imported++
                     }
                     else -> skipped++
@@ -93,6 +113,6 @@ object SharedWatchlistImporter {
             UserDataNotifier.notifyChanged()
             CloudSyncScheduler.enqueue(appContext)
         }
-        return Result(imported, skipped, already)
+        return Result(imported, skipped, already, skippedAge)
     }
 }

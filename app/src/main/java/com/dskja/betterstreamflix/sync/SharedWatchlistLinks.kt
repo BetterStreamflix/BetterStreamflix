@@ -6,6 +6,7 @@ object SharedWatchlistLinks {
     const val SCHEME = "betterstreamflix"
     const val HOST = "list"
     private val TOKEN_PATTERN = Regex("^[A-Za-z0-9_-]{8,128}$")
+    // Prefer betterstreamflix://; keep streamflix:// for legacy deep links already in the wild.
     private val LINK_PATTERN = Regex(
         "^(?:betterstreamflix|streamflix)://list(?:/([^?&#]+)|\\?token=([^&#]+))",
         RegexOption.IGNORE_CASE,
