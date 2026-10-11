@@ -23,6 +23,7 @@ import com.dskja.betterstreamflix.databinding.FragmentDownloadsTvBinding
 import com.dskja.betterstreamflix.download.DownloadController
 import com.dskja.betterstreamflix.download.DownloadItemEntity
 import com.dskja.betterstreamflix.download.DownloadItemState
+import com.dskja.betterstreamflix.download.DownloadKind
 import com.dskja.betterstreamflix.download.ExternalDownloadHandoff
 import com.dskja.betterstreamflix.download.OfflineLibrary
 import com.dskja.betterstreamflix.download.OfflinePlayback
@@ -524,6 +525,9 @@ class DownloadsTvFragment : Fragment() {
                 labels += 4 to R.string.downloads_action_play_with
             }
         }
+        if (row.entity.kind == DownloadKind.EPISODE.name) {
+            labels += 6 to R.string.downloads_pack_share
+        }
         // Leanback/TV: no ADM/1DM handoff (external downloader prefs are hidden too).
         if (row.state == DownloadItemState.FAILED) {
             labels += 2 to R.string.downloads_action_retry
@@ -539,6 +543,11 @@ class DownloadsTvFragment : Fragment() {
                         viewModel.remove(row.id)
                     }
                     4 -> playWithExternal(row)
+                    6 -> com.dskja.betterstreamflix.download.DownloadPackUi.shareItems(
+                        this@DownloadsTvFragment,
+                        listOf(row.entity),
+                        row.entity.title,
+                    )
                 }
             }
             .show()
@@ -546,6 +555,7 @@ class DownloadsTvFragment : Fragment() {
 
     private fun showPackMenu(pack: DownloadRowUiModel.SeasonPack, anchor: View) {
         val labels = listOf(
+            4 to R.string.downloads_pack_share,
             1 to R.string.downloads_pack_pause,
             2 to R.string.downloads_pack_resume,
             3 to R.string.downloads_pack_delete,
@@ -554,6 +564,10 @@ class DownloadsTvFragment : Fragment() {
         androidx.appcompat.app.AlertDialog.Builder(requireContext())
             .setItems(titles) { _, which ->
                 when (labels[which].first) {
+                    4 -> com.dskja.betterstreamflix.download.DownloadPackUi.shareSeasonPack(
+                        this@DownloadsTvFragment,
+                        pack.pack,
+                    )
                     1 -> viewModel.pausePack(pack.pack.id)
                     2 -> viewModel.resumePack(pack.pack.id)
                     3 -> confirmDestructive(R.string.downloads_delete_confirm) {

@@ -176,6 +176,22 @@
                     android:host="betterstreamflix.app"
                     android:pathPrefix="/party" />
             </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+                <category android:name="android.intent.category.BROWSABLE"/>
+                <data android:scheme="betterstreamflix" android:host="pack"/>
+                <data android:scheme="streamflix" android:host="pack"/>
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+                <category android:name="android.intent.category.BROWSABLE"/>
+                <data
+                    android:scheme="https"
+                    android:host="betterstreamflix.app"
+                    android:pathPrefix="/pack" />
+            </intent-filter>
         </activity>
 
         <provider

@@ -1,5 +1,7 @@
 package com.dskja.betterstreamflix.fragments.downloads
 
+import android.app.Activity
+import android.content.Intent
 import android.os.Bundle
 import android.text.Editable
 import android.text.TextWatcher
@@ -9,6 +11,7 @@ import android.view.ViewGroup
 import android.view.inputmethod.EditorInfo
 import android.widget.PopupMenu
 import android.widget.Toast
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.os.bundleOf
 import androidx.core.view.isVisible
 import androidx.fragment.app.Fragment
@@ -21,11 +24,14 @@ import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.dskja.betterstreamflix.R
+import com.dskja.betterstreamflix.activities.tools.QrScannerActivity
 import com.dskja.betterstreamflix.adapters.AppAdapter
 import com.dskja.betterstreamflix.databinding.FragmentDownloadsMobileBinding
 import com.dskja.betterstreamflix.download.DownloadController
 import com.dskja.betterstreamflix.download.DownloadItemEntity
 import com.dskja.betterstreamflix.download.DownloadItemState
+import com.dskja.betterstreamflix.download.DownloadKind
+import com.dskja.betterstreamflix.download.DownloadPackUi
 import com.dskja.betterstreamflix.download.ExternalDownloadHandoff
 import com.dskja.betterstreamflix.download.OfflineLibrary
 import com.dskja.betterstreamflix.download.OfflinePlayback
@@ -63,6 +69,15 @@ class DownloadsMobileFragment : Fragment() {
 
     private val viewModel by viewModelsFactory {
         DownloadsViewModel(requireContext().applicationContext)
+    }
+
+    private val scanPackQrLauncher = registerForActivityResult(
+        ActivityResultContracts.StartActivityForResult(),
+    ) { result ->
+        if (result.resultCode != Activity.RESULT_OK) return@registerForActivityResult
+        val raw = result.data?.getStringExtra(QrScannerActivity.EXTRA_QR_VALUE).orEmpty()
+        val activity = activity ?: return@registerForActivityResult
+        DownloadPackUi.handleIncomingRaw(activity, raw)
     }
 
     private var libraryEntries: List<OfflineLibrary.Entry> = emptyList()
@@ -565,7 +580,8 @@ class DownloadsMobileFragment : Fragment() {
                 .setChecked(viewModel.currentSort() == DownloadsSort.SIZE)
             sortMenu.setGroupCheckable(0, true, true)
             menu.add(0, 13, 7, R.string.downloads_action_storage)
-            menu.add(0, 5, 8, R.string.downloads_action_settings)
+            menu.add(0, 14, 8, R.string.download_pack_scan_qr)
+            menu.add(0, 5, 9, R.string.downloads_action_settings)
             setOnMenuItemClickListener {
                 when (it.itemId) {
                     1 -> viewModel.pauseAll()
@@ -587,6 +603,7 @@ class DownloadsMobileFragment : Fragment() {
                     10 -> viewModel.setSort(DownloadsSort.NEWEST)
                     11 -> viewModel.setSort(DownloadsSort.TITLE)
                     12 -> viewModel.setSort(DownloadsSort.SIZE)
+                    14 -> scanDownloadPackQr()
                 }
                 true
             }
@@ -632,6 +649,7 @@ class DownloadsMobileFragment : Fragment() {
             row.entity.streamUrl,
             row.entity.mimeType,
         )
+        val isEpisode = row.entity.kind == DownloadKind.EPISODE.name
         PopupMenu(requireContext(), anchor).apply {
             if (row.state == DownloadItemState.COMPLETED) {
                 menu.add(0, 1, 0, R.string.downloads_action_share)
@@ -639,13 +657,16 @@ class DownloadsMobileFragment : Fragment() {
                     menu.add(0, 4, 1, R.string.downloads_action_play_with)
                 }
             }
+            if (isEpisode) {
+                menu.add(0, 6, 2, R.string.downloads_pack_share)
+            }
             if (row.entity.streamUrl.startsWith("http") && !isAdaptive) {
-                menu.add(0, 5, 2, R.string.downloads_action_download_with)
+                menu.add(0, 5, 3, R.string.downloads_action_download_with)
             }
             if (row.state == DownloadItemState.FAILED) {
-                menu.add(0, 2, 3, R.string.downloads_action_retry)
+                menu.add(0, 2, 4, R.string.downloads_action_retry)
             }
-            menu.add(0, 3, 4, R.string.downloads_action_delete)
+            menu.add(0, 3, 5, R.string.downloads_action_delete)
             setOnMenuItemClickListener {
                 when (it.itemId) {
                     1 -> share(row)
@@ -655,6 +676,11 @@ class DownloadsMobileFragment : Fragment() {
                     }
                     4 -> playWithExternal(row)
                     5 -> downloadWithExternal(row)
+                    6 -> com.dskja.betterstreamflix.download.DownloadPackUi.shareItems(
+                        this@DownloadsMobileFragment,
+                        listOf(row.entity),
+                        row.entity.title,
+                    )
                 }
                 true
             }
@@ -664,11 +690,16 @@ class DownloadsMobileFragment : Fragment() {
 
     private fun showPackMenu(pack: DownloadRowUiModel.SeasonPack, anchor: View) {
         PopupMenu(requireContext(), anchor).apply {
-            menu.add(0, 1, 0, R.string.downloads_pack_pause)
-            menu.add(0, 2, 1, R.string.downloads_pack_resume)
-            menu.add(0, 3, 2, R.string.downloads_pack_delete)
+            menu.add(0, 4, 0, R.string.downloads_pack_share)
+            menu.add(0, 1, 1, R.string.downloads_pack_pause)
+            menu.add(0, 2, 2, R.string.downloads_pack_resume)
+            menu.add(0, 3, 3, R.string.downloads_pack_delete)
             setOnMenuItemClickListener {
                 when (it.itemId) {
+                    4 -> com.dskja.betterstreamflix.download.DownloadPackUi.shareSeasonPack(
+                        this@DownloadsMobileFragment,
+                        pack.pack,
+                    )
                     1 -> viewModel.pausePack(pack.pack.id)
                     2 -> viewModel.resumePack(pack.pack.id)
                     3 -> confirmDestructive(R.string.downloads_pack_delete_confirm) {
@@ -852,6 +883,10 @@ class DownloadsMobileFragment : Fragment() {
                 }
             }
         }
+    }
+
+    private fun scanDownloadPackQr() {
+        scanPackQrLauncher.launch(Intent(requireContext(), QrScannerActivity::class.java))
     }
 
     /** Prefer the download's stamped provider so autoplay/retry resolve the right catalog. */

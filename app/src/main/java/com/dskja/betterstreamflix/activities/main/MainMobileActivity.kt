@@ -374,6 +374,7 @@ class MainMobileActivity : FragmentActivity() {
         val deepLinkRestore = intent.data?.let { data ->
             com.dskja.betterstreamflix.sync.SharedWatchlistLinks.parseToken(data) != null ||
                 com.dskja.betterstreamflix.sync.WatchPartyLinks.parseToken(data) != null ||
+                com.dskja.betterstreamflix.download.DownloadPackLinks.parse(data) != null ||
                 com.dskja.betterstreamflix.widgets.WidgetDeepLinks.parse(data) != null ||
                 com.dskja.betterstreamflix.tvlauncher.TvWatchDeepLink.parse(data.toString()) != null
         } == true
@@ -397,6 +398,7 @@ class MainMobileActivity : FragmentActivity() {
         )
         com.dskja.betterstreamflix.sync.SharedWatchlistUi.tryFlushPending(this)
         com.dskja.betterstreamflix.sync.WatchPartyUi.tryFlushPending(this)
+        com.dskja.betterstreamflix.download.DownloadPackUi.tryFlushPending(this)
     }
 
     override fun onStart() {
@@ -413,6 +415,7 @@ class MainMobileActivity : FragmentActivity() {
         }
         com.dskja.betterstreamflix.sync.SharedWatchlistUi.tryFlushPending(this)
         com.dskja.betterstreamflix.sync.WatchPartyUi.tryFlushPending(this)
+        com.dskja.betterstreamflix.download.DownloadPackUi.tryFlushPending(this)
     }
 
     override fun onStop() {
@@ -425,6 +428,7 @@ class MainMobileActivity : FragmentActivity() {
         if (!com.dskja.betterstreamflix.profiles.ProfileUnlockGate.requiresGateForActive()) {
             com.dskja.betterstreamflix.sync.SharedWatchlistUi.tryFlushPending(this)
             com.dskja.betterstreamflix.sync.WatchPartyUi.tryFlushPending(this)
+            com.dskja.betterstreamflix.download.DownloadPackUi.tryFlushPending(this)
             return
         }
         val host = navHost.childFragmentManager.primaryNavigationFragment ?: navHost
@@ -434,6 +438,7 @@ class MainMobileActivity : FragmentActivity() {
             onUnlocked = {
                 com.dskja.betterstreamflix.sync.SharedWatchlistUi.tryFlushPending(this)
                 com.dskja.betterstreamflix.sync.WatchPartyUi.tryFlushPending(this)
+                com.dskja.betterstreamflix.download.DownloadPackUi.tryFlushPending(this)
             },
         )
     }
@@ -878,6 +883,12 @@ class MainMobileActivity : FragmentActivity() {
         val partyToken = com.dskja.betterstreamflix.sync.WatchPartyLinks.parseToken(data)
         if (partyToken != null) {
             com.dskja.betterstreamflix.sync.WatchPartyUi.handleIncomingToken(this, partyToken)
+            return true
+        }
+
+        val packPayload = com.dskja.betterstreamflix.download.DownloadPackLinks.parse(data)
+        if (packPayload != null) {
+            com.dskja.betterstreamflix.download.DownloadPackUi.handleIncoming(this, packPayload)
             return true
         }
 
