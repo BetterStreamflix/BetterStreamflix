@@ -432,6 +432,18 @@ class HomeTvFragment : Fragment() {
             }
 
         categories
+            .find { it.name == Category.SMART_CHILL_EVENING }
+            ?.also { it.name = getString(R.string.home_smart_chill_evening) }
+
+        categories
+            .find { it.name == Category.SMART_WITH_KIDS }
+            ?.also { it.name = getString(R.string.home_smart_with_kids) }
+
+        categories
+            .find { it.name == Category.SMART_DE_AUDIO }
+            ?.also { it.name = getString(R.string.home_smart_de_audio) }
+
+        categories
             .find { it.name == Category.FAVORITE_MOVIES }
             ?.also { it.name = getString(R.string.home_favorite_movies) }
 

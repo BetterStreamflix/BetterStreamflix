@@ -614,6 +614,7 @@ object TmdbUtils {
                 recommendations = cached.recommendations.map { it.toShow() },
             ).also { movie ->
                 movie.contentRating = cached.contentRating
+                movie.originalLanguage = cached.originalLanguage
                 movie.logo = cached.logo
                     ?.takeIf { UserPreferences.enableTmdbLogos }
                     ?.takeUnless { url -> TmdbLogoCache.isBlacklisted(url) }
@@ -696,6 +697,9 @@ object TmdbUtils {
                 recommendations = recommendations,
             ).also {
                 it.contentRating = contentRating
+                it.originalLanguage = details.originalLanguage.takeIf { langCode ->
+                    langCode.isNotBlank()
+                }
                 it.logo = logo.takeIf { UserPreferences.enableTmdbLogos }
                 it.logoLanguage = stampedLang
                 it.logoSource = if (UserPreferences.enableTmdbLogos) {
@@ -717,6 +721,7 @@ object TmdbUtils {
                     banner = result.banner,
                     imdbId = result.imdbId,
                     contentRating = contentRating,
+                    originalLanguage = result.originalLanguage,
                     logo = logo,
                     logoLanguage = stampedLang,
                     genres = result.genres.map { it.id to it.name },
@@ -816,6 +821,7 @@ object TmdbUtils {
                 recommendations = cached.recommendations.map { it.toShow() },
             ).also { tvShow ->
                 tvShow.contentRating = cached.contentRating
+                tvShow.originalLanguage = cached.originalLanguage
                 tvShow.logo = cached.logo
                     ?.takeIf { UserPreferences.enableTmdbLogos }
                     ?.takeUnless { url -> TmdbLogoCache.isBlacklisted(url) }
@@ -908,6 +914,9 @@ object TmdbUtils {
                 recommendations = recommendations,
             ).also {
                 it.contentRating = contentRating
+                it.originalLanguage = details.originalLanguage.takeIf { langCode ->
+                    langCode.isNotBlank()
+                }
                 it.logo = logo.takeIf { UserPreferences.enableTmdbLogos }
                 it.logoLanguage = stampedLang
                 it.logoSource = if (UserPreferences.enableTmdbLogos) {
@@ -928,6 +937,7 @@ object TmdbUtils {
                     banner = result.banner,
                     imdbId = result.imdbId,
                     contentRating = contentRating,
+                    originalLanguage = result.originalLanguage,
                     logo = logo,
                     logoLanguage = stampedLang,
                     seasons = result.seasons.map {
@@ -999,6 +1009,7 @@ object TmdbUtils {
         ).apply {
             tmdbId = movie.tmdbId ?: tmdb.tmdbId
             contentRating = movie.contentRating ?: tmdb.contentRating
+            originalLanguage = movie.originalLanguage ?: tmdb.originalLanguage
             providerName = movie.providerName
             isFavorite = movie.isFavorite
             isWatched = movie.isWatched
@@ -1061,6 +1072,7 @@ object TmdbUtils {
         ).apply {
             tmdbId = tvShow.tmdbId ?: tmdb.tmdbId
             contentRating = tvShow.contentRating ?: tmdb.contentRating
+            originalLanguage = tvShow.originalLanguage ?: tmdb.originalLanguage
             providerName = tvShow.providerName
             isFavorite = tvShow.isFavorite
             lastPlayedAtMillis = tvShow.lastPlayedAtMillis

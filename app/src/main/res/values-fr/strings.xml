@@ -66,6 +66,9 @@
     <string name="home_continue_watching">Continuer à regarder</string>
     <string name="home_next_episodes">Épisodes suivants</string>
     <string name="home_recently_watched">Regardés récemment</string>
+    <string name="home_smart_chill_evening">Soirée chill</string>
+    <string name="home_smart_with_kids">Avec les kids</string>
+    <string name="home_smart_de_audio">Audio allemand</string>
     <string name="home_favorite_movies">Films favoris</string>
     <string name="home_favorite_tv_shows">Séries TV favorites</string>
     <string name="home_catalog_warning_tap_retry">Appuyer pour réessayer le catalogue</string>
@@ -993,6 +996,8 @@
     <string name="error_no_source_found">Aucune source trouvée</string>
     <string name="settings_show_next_episodes_title">Afficher Épisodes suivants</string>
     <string name="settings_show_next_episodes_summary">Afficher la rangée Épisodes suivants sur l\'écran d\'accueil pour les séries en cours</string>
+    <string name="settings_show_smart_collections_title">Afficher les Smart Collections</string>
+    <string name="settings_show_smart_collections_summary">Rayons dynamiques depuis la watchlist et Continuer à regarder — soirée chill, avec kids, audio allemand</string>
     <string name="detail_up_next">À suivre</string>
     <string name="detail_action_list">Ma liste</string>
     <string name="detail_action_trailer">Bande-annonce</string>

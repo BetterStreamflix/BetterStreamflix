@@ -1362,6 +1362,15 @@ class SettingsMobileFragment : PreferenceFragmentCompat() {
             }
         }
 
+        findPreference<SwitchPreferenceCompat>("SHOW_SMART_COLLECTIONS")?.apply {
+            isChecked = UserPreferences.showSmartCollections
+            setOnPreferenceChangeListener { _, newValue ->
+                UserPreferences.showSmartCollections = newValue as Boolean
+                UserDataNotifier.notifyChanged()
+                true
+            }
+        }
+
         findPreference<Preference>("CLEAR_RECENTLY_WATCHED")?.setOnPreferenceClickListener {
             val glass = if (ExperimentalMobileDesign.enabled()) {
                 ExpDialogChrome.buildGlassMessage(

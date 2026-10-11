@@ -57,6 +57,10 @@ class TvShow(
     @Ignore
     var contentRating: String? = null
 
+    /** ISO-639-1 original language from TMDb (e.g. "de"). Not persisted. */
+    @Ignore
+    var originalLanguage: String? = null
+
     /**
      * Live Hub / IPTV EPG-lite “now playing” label (runtime only).
      * Populated from catalog group / provider schedule when available.
@@ -209,6 +213,7 @@ class TvShow(
         lastPlayedEpisodeId = this@TvShow.lastPlayedEpisodeId
         lastPlayedEpisode = this@TvShow.lastPlayedEpisode
         contentRating = this@TvShow.contentRating
+        originalLanguage = this@TvShow.originalLanguage
         programNow = this@TvShow.programNow
         programNext = this@TvShow.programNext
         logo = this@TvShow.logo
