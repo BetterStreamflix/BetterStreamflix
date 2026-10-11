@@ -6,6 +6,8 @@ import androidx.navigation.fragment.NavHostFragment
 import com.dskja.betterstreamflix.R
 import com.dskja.betterstreamflix.fragments.player.PlayerMobileFragment
 import com.dskja.betterstreamflix.fragments.player.PlayerTvFragment
+import com.dskja.betterstreamflix.onboarding.OnboardingController
+import com.dskja.betterstreamflix.onboarding.OnboardingPolicy
 import com.dskja.betterstreamflix.ui.support.SupportStartupMobileDialog
 import com.dskja.betterstreamflix.ui.support.SupportStartupTvDialog
 import com.dskja.betterstreamflix.utils.getCurrentFragment
@@ -24,10 +26,12 @@ object SupportStartupController {
     fun schedule(activity: FragmentActivity, isTv: Boolean) {
         if (!SupportPromptPolicy.shouldShowStartup()) return
         if (activity.isFinishing) return
+        if (OnboardingPolicy.shouldShow() || OnboardingController.isShowing()) return
 
         activity.window.decorView.postDelayed({
             if (activity.isFinishing || activity.isDestroyed) return@postDelayed
             if (!activity.lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED)) return@postDelayed
+            if (OnboardingPolicy.shouldShow() || OnboardingController.isShowing()) return@postDelayed
             if (!SupportPromptPolicy.shouldShowStartup()) return@postDelayed
             if (isPlaybackActive(activity)) return@postDelayed
 

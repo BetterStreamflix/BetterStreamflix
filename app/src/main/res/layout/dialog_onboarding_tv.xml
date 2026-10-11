@@ -1,0 +1,197 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:padding="28dp">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="@drawable/bg_onboarding_dialog"
+        android:orientation="horizontal"
+        android:padding="28dp">
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="0.34"
+            android:orientation="vertical">
+
+            <TextView
+                android:id="@+id/tv_onboarding_brand"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:fontFamily="@font/syne"
+                android:text="@string/app_name"
+                android:textColor="@color/cinema_text"
+                android:textSize="28sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/tv_onboarding_step"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="10dp"
+                android:fontFamily="@font/manrope"
+                android:textColor="@color/cinema_text_muted"
+                android:textSize="14sp"
+                tools:text="1 / 3" />
+
+            <TextView
+                android:id="@+id/tv_onboarding_title"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="18dp"
+                android:fontFamily="@font/fraunces"
+                android:textColor="@color/cinema_text"
+                android:textSize="32sp"
+                android:textStyle="bold"
+                tools:text="Choose your language" />
+
+            <View
+                android:layout_width="40dp"
+                android:layout_height="3dp"
+                android:layout_marginTop="12dp"
+                android:background="@color/cinema_stroke" />
+
+            <TextView
+                android:id="@+id/tv_onboarding_body"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:fontFamily="@font/manrope"
+                android:lineSpacingExtra="3dp"
+                android:textColor="@color/cinema_text_soft"
+                android:textSize="16sp"
+                tools:text="Pick the language for menus and labels." />
+
+            <View
+                android:layout_width="0dp"
+                android:layout_height="0dp"
+                android:layout_weight="1" />
+
+            <TextView
+                android:id="@+id/btn_onboarding_skip"
+                android:layout_width="match_parent"
+                android:layout_height="52dp"
+                android:background="@drawable/bg_onboarding_secondary"
+                android:focusable="true"
+                android:fontFamily="@font/manrope"
+                android:gravity="center"
+                android:nextFocusRight="@id/btn_onboarding_primary"
+                android:text="@string/onboarding_skip"
+                android:textColor="@color/cinema_text_soft"
+                android:textSize="15sp" />
+
+            <TextView
+                android:id="@+id/btn_onboarding_primary"
+                android:layout_width="match_parent"
+                android:layout_height="52dp"
+                android:layout_marginTop="10dp"
+                android:background="@drawable/bg_onboarding_primary"
+                android:focusable="true"
+                android:fontFamily="@font/manrope"
+                android:gravity="center"
+                android:nextFocusLeft="@id/btn_onboarding_skip"
+                android:text="@string/bypass_action_continue"
+                android:textColor="@color/cinema_cta_ink"
+                android:textSize="16sp"
+                android:textStyle="bold" />
+        </LinearLayout>
+
+        <FrameLayout
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_marginStart="28dp"
+            android:layout_weight="0.66">
+
+            <ScrollView
+                android:id="@+id/panel_onboarding_language"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:fillViewport="true"
+                android:scrollbars="vertical">
+
+                <LinearLayout
+                    android:id="@+id/ll_onboarding_languages"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical" />
+            </ScrollView>
+
+            <LinearLayout
+                android:id="@+id/panel_onboarding_providers"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:orientation="vertical"
+                android:visibility="gone">
+
+                <TextView
+                    android:id="@+id/tv_onboarding_provider_count"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:fontFamily="@font/manrope"
+                    android:textColor="@color/cinema_text_muted"
+                    android:textSize="15sp"
+                    tools:text="0 / 3 selected" />
+
+                <ScrollView
+                    android:layout_width="match_parent"
+                    android:layout_height="0dp"
+                    android:layout_marginTop="10dp"
+                    android:layout_weight="1"
+                    android:scrollbars="vertical">
+
+                    <LinearLayout
+                        android:id="@+id/ll_onboarding_providers"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical" />
+                </ScrollView>
+            </LinearLayout>
+
+            <LinearLayout
+                android:id="@+id/panel_onboarding_kids"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:gravity="center_vertical"
+                android:orientation="vertical"
+                android:visibility="gone">
+
+                <TextView
+                    android:id="@+id/btn_onboarding_kids_no"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:background="@drawable/bg_onboarding_choice"
+                    android:focusable="true"
+                    android:fontFamily="@font/manrope"
+                    android:gravity="center"
+                    android:minHeight="64dp"
+                    android:nextFocusDown="@id/btn_onboarding_kids_yes"
+                    android:padding="18dp"
+                    android:text="@string/onboarding_kids_no"
+                    android:textColor="@color/cinema_text"
+                    android:textSize="18sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:id="@+id/btn_onboarding_kids_yes"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="14dp"
+                    android:background="@drawable/bg_onboarding_choice"
+                    android:focusable="true"
+                    android:fontFamily="@font/manrope"
+                    android:gravity="center"
+                    android:minHeight="64dp"
+                    android:nextFocusUp="@id/btn_onboarding_kids_no"
+                    android:padding="18dp"
+                    android:text="@string/onboarding_kids_yes"
+                    android:textColor="@color/cinema_text"
+                    android:textSize="18sp"
+                    android:textStyle="bold" />
+            </LinearLayout>
+        </FrameLayout>
+    </LinearLayout>
+</FrameLayout>

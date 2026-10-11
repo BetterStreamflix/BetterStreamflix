@@ -1815,4 +1815,20 @@
     <string name="player_trying_next_server">Nächster Server wird versucht: %1$s</string>
     <string name="trailer_player_in_app">Trailer in der App</string>
     <string name="trailer_player_unavailable">Keine App zum Abspielen dieses Trailers gefunden</string>
+
+    <!-- First-launch onboarding (≈60s) -->
+    <string name="onboarding_step_of">%1$d / %2$d</string>
+    <string name="onboarding_language_title">Sprache wählen</string>
+    <string name="onboarding_language_body">Menüs und Beschriftungen nutzen diese Sprache. Später unter Einstellungen änderbar.</string>
+    <string name="onboarding_providers_title">3 Lieblings-Provider wählen</string>
+    <string name="onboarding_providers_body">Markiere drei Kataloge, die du am häufigsten nutzt. Favoriten erscheinen oben in der Provider-Liste.</string>
+    <string name="onboarding_providers_count">%1$d / %2$d ausgewählt</string>
+    <string name="onboarding_kids_title">Kinderprofil?</string>
+    <string name="onboarding_kids_body">Kids-Modus begrenzt Altersfreigaben und blendet Live-TV aus. Weitere Profile kannst du später anlegen.</string>
+    <string name="onboarding_kids_yes">Ja — Kids</string>
+    <string name="onboarding_kids_no">Nein — Allgemein</string>
+    <string name="onboarding_skip">Überspringen</string>
+    <string name="onboarding_skip_confirm_title">Setup überspringen?</string>
+    <string name="onboarding_skip_confirm_body">Sprache, Favoriten und Kids kannst du später in den Einstellungen setzen. Nur überspringen, wenn du selbst erkunden willst.</string>
+    <string name="onboarding_finish">Zur Startseite</string>
 </resources>

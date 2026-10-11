@@ -29,6 +29,7 @@
     <dimen name="cinema_radius_sm">10dp</dimen>
     <dimen name="cinema_radius_md">16dp</dimen>
     <dimen name="cinema_radius_lg">26dp</dimen>
+    <dimen name="onboarding_choice_gap">8dp</dimen>
 
     <!-- TV player settings side panel (width percent set in layout; clamps below). -->
     <dimen name="player_settings_panel_min_width">280dp</dimen>
