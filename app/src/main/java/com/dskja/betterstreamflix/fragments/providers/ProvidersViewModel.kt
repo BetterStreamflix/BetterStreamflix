@@ -47,6 +47,11 @@ class ProvidersViewModel : ViewModel() {
                     ) {
                         return@filter false
                     }
+                    if (!UserPreferences.showVavooVodProviders &&
+                        it is com.dskja.betterstreamflix.providers.VavooVodProvider
+                    ) {
+                        return@filter false
+                    }
                     if (isFavoritesFilter) {
                         favorites.contains(it.name)
                     } else {

@@ -4,7 +4,9 @@ import android.content.Intent
 import android.graphics.drawable.PictureDrawable
 import android.view.View
 import android.widget.ImageView
+import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
+import androidx.lifecycle.lifecycleScope
 import androidx.navigation.findNavController
 import androidx.recyclerview.widget.RecyclerView
 import androidx.viewbinding.ViewBinding
@@ -13,7 +15,9 @@ import com.bumptech.glide.load.resource.drawable.DrawableTransitionOptions
 import com.dskja.betterstreamflix.R
 import com.dskja.betterstreamflix.fragments.settings.SettingsDeepLink
 import com.dskja.betterstreamflix.providers.AniWorldProvider
+import com.dskja.betterstreamflix.providers.ProviderConfigUrl
 import com.dskja.betterstreamflix.providers.SerienStreamProvider
+import com.dskja.betterstreamflix.utils.DomainRedirectChecker
 import com.dskja.betterstreamflix.utils.ExpMotion
 import com.dskja.betterstreamflix.utils.ExpPressEffects.applyExpPress
 import com.dskja.betterstreamflix.utils.ExperimentalMobileDesign
@@ -24,6 +28,9 @@ import com.dskja.betterstreamflix.providers.ProviderHealth
 import com.dskja.betterstreamflix.providers.ProviderSmoke
 import com.dskja.betterstreamflix.utils.UserPreferences
 import com.dskja.betterstreamflix.utils.toActivity
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.util.Locale
 
 class ProviderViewHolder(
@@ -208,6 +215,7 @@ class ProviderViewHolder(
         val name = provider.name
         val needsConfirm = ProviderHealth.isQuarantinedName(name) ||
             ProviderSmoke.isHomeCircuitOpen(name)
+        val offerDomainUpdate = ProviderHealth.supportsDomainUpdate(provider.provider)
         if (!needsConfirm) {
             switchToProvider()
             return
@@ -237,6 +245,13 @@ class ProviderViewHolder(
                 switchToProvider()
             }
             .setNegativeButton(android.R.string.cancel, null)
+        if (offerDomainUpdate) {
+            builder.setNeutralButton(R.string.provider_update_domain) { _, _ ->
+                ExpMotion.hapticTap(itemView)
+                updateProviderDomain()
+            }
+        }
+        builder
             .create()
             .also { dialog ->
                 dialog.setOnShowListener {
@@ -248,6 +263,49 @@ class ProviderViewHolder(
                 }
                 dialog.show()
             }
+    }
+
+    private fun updateProviderDomain() {
+        val config = provider.provider as? ProviderConfigUrl ?: return
+        val activity = context.toActivity() ?: return
+        activity.lifecycleScope.launch {
+            val outcome = withContext(Dispatchers.IO) {
+                runCatching {
+                    val start = UserPreferences.getProviderCache(
+                        provider.provider,
+                        UserPreferences.PROVIDER_URL,
+                    ).ifBlank { config.defaultBaseUrl }
+                    val result = DomainRedirectChecker.check(start)
+                    if (result.changed) {
+                        val newUrl = result.finalUrl.trimEnd('/') + "/"
+                        UserPreferences.setProviderCache(
+                            provider.provider,
+                            UserPreferences.PROVIDER_URL,
+                            newUrl,
+                        )
+                        config.onChangeUrl(true)
+                        Result.success(newUrl)
+                    } else {
+                        Result.success(null)
+                    }
+                }.getOrElse { Result.failure(it) }
+            }
+            val msg = when {
+                outcome.isFailure ->
+                    context.getString(
+                        R.string.provider_update_domain_failed,
+                        outcome.exceptionOrNull()?.message ?: "?",
+                    )
+                outcome.getOrNull() != null ->
+                    context.getString(
+                        R.string.provider_update_domain_updated,
+                        outcome.getOrNull(),
+                    )
+                else ->
+                    context.getString(R.string.provider_update_domain_unchanged)
+            }
+            Toast.makeText(context, msg, Toast.LENGTH_LONG).show()
+        }
     }
 
     private fun switchToProvider() {

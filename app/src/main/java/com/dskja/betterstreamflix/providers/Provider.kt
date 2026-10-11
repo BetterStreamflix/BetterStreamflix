@@ -151,6 +151,13 @@ interface Provider {
             VavooProvider("fr") to ProviderSupport(movies = false, tvShows = true),
             VavooProvider("es") to ProviderSupport(movies = false, tvShows = true),
             VavooProvider("pl") to ProviderSupport(movies = false, tvShows = true),
+            // Optional catalog providers — picker visibility gated by settings flag.
+            VavooVodProvider.DE to ProviderSupport(movies = true, tvShows = true),
+            VavooVodProvider.IT to ProviderSupport(movies = true, tvShows = true),
+            VavooVodProvider.FR to ProviderSupport(movies = true, tvShows = true),
+            VavooVodProvider.ES to ProviderSupport(movies = true, tvShows = true),
+            VavooVodProvider.PL to ProviderSupport(movies = true, tvShows = true),
+            VavooVodProvider.EN to ProviderSupport(movies = true, tvShows = true),
             FilmyOnlineCcProvider to ProviderSupport(movies = true, tvShows = true),
             ZaluknijProvider to ProviderSupport(movies = true, tvShows = true),
             TvporinternetHDProvider to ProviderSupport(movies = false, tvShows = true),

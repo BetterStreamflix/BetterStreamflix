@@ -1,16 +1,24 @@
-# React + Vite
+# experimental-ui (archive / prototype)
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+This folder is a **standalone React + Vite prototype** (Lumina explorations). It is
+**not** part of the Android app build or CI.
 
-Currently, two official plugins are available:
+- Android CI (`.github/workflows/pr-ci.yml`, `apk-build.yml`) does **not** install
+  or build this package.
+- Shipping Experimental UI / Lumina lives inside the Android app
+  (`ExperimentalMobileDesign`, theme overlays) — not this Vite tree.
+- Keep this directory for design experiments or archive reference; do not couple
+  it to Gradle or GitHub Actions unless a maintainer explicitly decides otherwise.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+## Local preview (optional)
 
-## React Compiler
+```bash
+cd experimental-ui
+npm install
+npm run dev
+```
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## React notes
 
-## Expanding the Oxlint configuration
-
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and Oxlint's TypeScript related rules in your project.
+The Vite template may mention React Compiler / Oxlint; those are local to this
+prototype and unrelated to the Android Kotlin codebase.

@@ -111,6 +111,10 @@
     <string name="provider_confirm_title">Anbieter wechseln?</string>
     <string name="provider_confirm_quarantined">%1$s ist in Quarantäne und kann oft fehlschlagen. Trotzdem wechseln?</string>
     <string name="provider_confirm_unstable">%1$s wirkt gerade instabil. Trotzdem wechseln?</string>
+    <string name="provider_update_domain">Domain aktualisieren</string>
+    <string name="provider_update_domain_updated">Domain aktualisiert auf %1$s</string>
+    <string name="provider_update_domain_unchanged">Keine Weiterleitung — Domain unverändert</string>
+    <string name="provider_update_domain_failed">Domain konnte nicht aktualisiert werden: %1$s</string>
     <string name="provider_health_unstable">instabil</string>
     <string name="provider_health_flaky">unzuverlässig</string>
     <string name="genre_empty">In diesem Genre ist noch nichts</string>
@@ -560,6 +564,8 @@
     <string name="profile_delete_confirm">Profil \"%1$s\" löschen? Der Wiedergabeverlauf dieses Profils wird entfernt.</string>
     <string name="profile_kids_title">Kinderprofil</string>
     <string name="profile_kids_summary">Jüngere Altersfreigabe und sicherere Standardwerte</string>
+    <string name="profile_kids_exit_requires_pin">Lege eine Eltern-PIN oder Profil-PIN fest, bevor du Kids verlässt</string>
+    <string name="profile_kids_requires_exit_pin">Kids-Profile brauchen eine Eltern-PIN (oder eine PIN auf diesem Profil), damit Erwachsene sicher wechseln können</string>
     <string name="profile_avatar_title">Avatar-Stil</string>
     <string name="profile_avatar_forest">Forest</string>
     <string name="profile_avatar_ocean">Ocean</string>
@@ -603,7 +609,8 @@
     <string name="settings_autoupdate">Haupt-URL beim Start aktualisieren</string>
     <string name="settings_autoupdate_on">An</string>
     <string name="settings_autoupdate_off">Aus</string>
-    <string name="settings_autoupdate_now">Haupt-URL jetzt aktualisieren</string>
+    <string name="settings_autoupdate_now">Domain jetzt aktualisieren</string>
+    <string name="settings_autoupdate_now_summary">Folgt Weiterleitungen und speichert die aktuelle Domain (KellerKino, KinoGer, …)</string>
     <string name="settings_autoplay">Nächste Folge automatisch abspielen</string>
     <string name="settings_autoplay_on">An</string>
     <string name="settings_autoplay_off">Aus</string>
@@ -1085,6 +1092,8 @@
     <string name="player_all_servers_failed">Alle Server konnten das Video nicht laden.</string>
     <string name="settings_show_quarantined_providers_title">Quarantäne-Provider anzeigen</string>
     <string name="settings_show_quarantined_providers_summary">Instabile Provider im Auswahlmenü einblenden</string>
+    <string name="settings_show_vavoo_vod_title">Vavoo-VOD-Provider anzeigen</string>
+    <string name="settings_show_vavoo_vod_summary">Vavoo VOD als wählbare Katalog-Provider listen (auch in TMDb DE genutzt)</string>
     <string name="settings_view_crash_log_title">Letztes Crash-Log anzeigen</string>
     <string name="settings_view_crash_log_summary">Zeigt den letzten lokalen Crash-Bericht</string>
     <string name="settings_view_crash_log_empty">Keine Crash-Logs gefunden</string>

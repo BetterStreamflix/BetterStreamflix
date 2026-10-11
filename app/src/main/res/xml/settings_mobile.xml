@@ -28,6 +28,13 @@
                 android:defaultValue="false"
                 app:iconSpaceReserved="false" />
 
+            <SwitchPreferenceCompat
+                android:key="SHOW_VAVOO_VOD_PROVIDERS"
+                android:title="@string/settings_show_vavoo_vod_title"
+                android:summary="@string/settings_show_vavoo_vod_summary"
+                android:defaultValue="false"
+                app:iconSpaceReserved="false" />
+
             <EditTextPreference
                 android:key="TMDB_API_KEY"
                 android:title="@string/settings_tmdb_api_key"
@@ -1428,6 +1435,7 @@
                 android:icon="@drawable/ic_refresh"
                 android:key="provider_autoupdate_now"
                 android:title="@string/settings_autoupdate_now"
+                android:summary="@string/settings_autoupdate_now_summary"
                 app:iconSpaceReserved="false" />
 
             <SwitchPreference

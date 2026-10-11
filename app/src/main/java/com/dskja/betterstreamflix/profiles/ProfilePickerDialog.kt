@@ -27,6 +27,7 @@ import com.dskja.betterstreamflix.fragments.settings.ProfilesSettingsController
 import com.dskja.betterstreamflix.utils.ExpDialogChrome
 import com.dskja.betterstreamflix.utils.ExpMotion
 import com.dskja.betterstreamflix.utils.ExperimentalMobileDesign
+import com.dskja.betterstreamflix.utils.UserPreferences
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 
 /** Centered profile switcher popup with avatar orbs and optional PIN gate. */
@@ -310,7 +311,9 @@ class ProfilePickerDialog : DialogFragment() {
         }
         item.findViewById<TextView>(R.id.tv_profile_meta).visibility = View.GONE
         item.findViewById<TextView>(R.id.tv_profile_lock).apply {
-            visibility = if (!manageMode && profile.pinHash != null) View.VISIBLE else View.GONE
+            // PIN and Kids both require the unlock gate on cold start / session switch.
+            val locked = profile.pinHash != null || profile.isKids
+            visibility = if (!manageMode && locked) View.VISIBLE else View.GONE
         }
         item.findViewById<ImageView>(R.id.iv_profile_edit_badge).apply {
             visibility = if (manageMode) View.VISIBLE else View.GONE
@@ -410,9 +413,19 @@ class ProfilePickerDialog : DialogFragment() {
                 )
                 return@setOnClickListener
             }
+            val kids = kidsCheck?.isChecked == true
+            // Kids need a parental PIN or a profile PIN so adults can leave safely.
+            if (kids && pin.isEmpty() && UserPreferences.parentalControlPin.isBlank()) {
+                ExpDialogChrome.notify(
+                    requireContext(),
+                    R.string.profile_kids_requires_exit_pin,
+                    R.string.profile_kids_title,
+                )
+                return@setOnClickListener
+            }
             val created = ProfileManager.create(
                 name = name,
-                isKids = kidsCheck?.isChecked == true,
+                isKids = kids,
                 avatarKey = selected,
             )
             if (pin.isNotEmpty()) {
@@ -502,9 +515,22 @@ class ProfilePickerDialog : DialogFragment() {
             if (!applyPinFromForm(requireContext(), form, profile.id, hadExistingPin = profile.pinHash != null)) {
                 return@setOnClickListener
             }
+            val becomingKids = kidsCheck?.isChecked == true
+            val refreshed = ProfileManager.profiles().find { it.id == profile.id } ?: profile
+            if (becomingKids &&
+                refreshed.pinHash == null &&
+                UserPreferences.parentalControlPin.isBlank()
+            ) {
+                ExpDialogChrome.notify(
+                    requireContext(),
+                    R.string.profile_kids_requires_exit_pin,
+                    R.string.profile_kids_title,
+                )
+                return@setOnClickListener
+            }
             ProfileManager.rename(profile.id, name)
             ProfileManager.updateAvatar(profile.id, selected)
-            ProfileManager.updateKids(profile.id, kidsCheck?.isChecked == true)
+            ProfileManager.updateKids(profile.id, becomingKids)
             ProfileManager.setEnabledIntegrations(profile.id, readEnabledIntegrations(form))
             restorePickerView()
             view?.let(::bindProfiles)

@@ -182,6 +182,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Sentry drops JobCancellationException noise; `isSendDefaultPii` disabled
 - Cast stream proxy closes upstream OkHttp responses on playlist/error paths
 
+## [1.1.3] - 2026-10-11
+
+### Added
+- CineHax: WordPress nonce ajax + TMDb3 detail enrichment (ConfigUrl kept)
+- KinoGer: auto-persist redirected domains into `PROVIDER_URL`
+- Firestream: additive token-blob resolve fallback (Meinecloud path unchanged)
+- Settings flag to show Vavoo VOD as selectable catalog providers
+- Provider picker “Update domain” CTA for quarantined/unstable ConfigUrl providers (Kellerkino, KinoGer, …)
+- Kids profile exit hardening: require parental or profile PIN before leaving Kids
+
+### Changed
+- experimental-ui README clarifies archive/prototype status (not Android CI)
+- Provider settings “Update domain now” copy + summary for redirect sync
+- App version set to **1.1.3** (`versionCode` 10103)
+
 ## [1.1.2] - 2026-10-11
 
 ### Fixed

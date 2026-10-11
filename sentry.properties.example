@@ -1,10 +1,17 @@
-# Copy to sentry.properties for local release uploads (optional).
+# Copy to sentry.properties for local ProGuard/R8 mapping uploads (optional).
 # Runtime crash reporting uses the DSN baked into SentryBootstrap / manifests —
 # this file is only for Gradle (org/project + mapping upload auth).
+#
+# === Mapping upload checklist (docs only — do not ship a release from agents) ===
+# 1. Copy this file to sentry.properties (gitignored) OR set CI secret SENTRY_AUTH_TOKEN.
+# 2. Token scopes: project:releases, org:read (project:write for source context).
+# 3. Release workflow (.github/workflows/release.yml) passes SENTRY_AUTH_TOKEN into
+#    the Gradle/Sentry plugin when maintainers deliberately cut a GitHub Release.
+# 4. Verify after a real maintainer release: Sentry → Releases → mapping uploaded
+#    for the versionName / versionCode that shipped.
+# 5. Never commit auth.token. Prefer the CI secret over a local token.
 defaults.org=betterstreamflix
 defaults.project=betterstreamflix
 
 # Org auth token from https://sentry.io/settings/account/api/auth-tokens/
-# Required scopes: project:releases, org:read (and project:write for source context).
-# Prefer CI secret SENTRY_AUTH_TOKEN over committing a token.
 # auth.token=sntrys_YOUR_ORG_AUTH_TOKEN

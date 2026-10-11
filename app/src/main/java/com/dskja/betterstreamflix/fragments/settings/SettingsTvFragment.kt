@@ -631,6 +631,14 @@ class SettingsTvFragment : LeanbackPreferenceFragmentCompat() {
             }
         }
 
+        findPreference<SwitchPreferenceCompat>("SHOW_VAVOO_VOD_PROVIDERS")?.apply {
+            isChecked = UserPreferences.showVavooVodProviders
+            setOnPreferenceChangeListener { _, newValue ->
+                UserPreferences.showVavooVodProviders = newValue as Boolean
+                true
+            }
+        }
+
         findPreference<Preference>("VIEW_CRASH_LOG")?.setOnPreferenceClickListener {
             com.dskja.betterstreamflix.ui.CrashLogDialog.show(requireContext())
             true

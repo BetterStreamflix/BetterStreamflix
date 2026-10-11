@@ -79,6 +79,10 @@
     <string name="provider_confirm_title">Switch provider?</string>
     <string name="provider_confirm_quarantined">%1$s is quarantined and may fail often. Switch anyway?</string>
     <string name="provider_confirm_unstable">%1$s looks unstable right now. Switch anyway?</string>
+    <string name="provider_update_domain">Update domain</string>
+    <string name="provider_update_domain_updated">Domain updated to %1$s</string>
+    <string name="provider_update_domain_unchanged">No redirect — domain unchanged</string>
+    <string name="provider_update_domain_failed">Could not update domain: %1$s</string>
     <string name="provider_health_unstable">unstable</string>
     <string name="provider_health_flaky">flaky</string>
     <string name="genre_empty">Nothing in this genre yet</string>
@@ -310,6 +314,8 @@
     <string name="player_all_servers_failed">All servers failed to load the video.</string>
     <string name="settings_show_quarantined_providers_title">Show quarantined providers</string>
     <string name="settings_show_quarantined_providers_summary">Include brittle/unstable providers in the picker</string>
+    <string name="settings_show_vavoo_vod_title">Show Vavoo VOD providers</string>
+    <string name="settings_show_vavoo_vod_summary">List Vavoo VOD as selectable catalog providers (also used inside TMDb DE)</string>
     <string name="settings_view_crash_log_title">View last crash log</string>
     <string name="settings_view_crash_log_summary">Show the most recent local crash report</string>
     <string name="settings_view_crash_log_empty">No crash logs found</string>
@@ -665,6 +671,8 @@
     <string name="profile_delete_confirm">Delete profile \"%1$s\"? Watch history for this profile will be removed.</string>
     <string name="profile_kids_title">Kids profile</string>
     <string name="profile_kids_summary">Applies a younger max age and safer defaults</string>
+    <string name="profile_kids_exit_requires_pin">Set a parental PIN or a profile PIN before leaving Kids</string>
+    <string name="profile_kids_requires_exit_pin">Kids profiles need a parental PIN (or a PIN on this profile) so adults can leave safely</string>
     <string name="profile_avatar_title">Avatar style</string>
     <string name="profile_avatar_forest">Forest</string>
     <string name="profile_avatar_ocean">Ocean</string>
@@ -793,7 +801,8 @@
     <string name="settings_autoupdate">Refresh main URL on startup</string>
     <string name="settings_autoupdate_on">On</string>
     <string name="settings_autoupdate_off">Off</string>
-    <string name="settings_autoupdate_now">Refresh main URL now</string>
+    <string name="settings_autoupdate_now">Update domain now</string>
+    <string name="settings_autoupdate_now_summary">Follow redirects and save the live domain (KellerKino, KinoGer, …)</string>
     <string name="settings_autoplay">Autoplay next episode</string>
     <string name="settings_autoplay_on">On</string>
     <string name="settings_autoplay_off">Off</string>
