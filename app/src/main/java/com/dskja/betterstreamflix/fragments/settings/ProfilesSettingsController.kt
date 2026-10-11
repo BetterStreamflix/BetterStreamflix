@@ -79,8 +79,20 @@ object ProfilesSettingsController {
         scope: LifecycleCoroutineScope,
         findPreference: (String) -> Preference?,
         onProfileSwitched: (() -> Unit)? = null,
+        onExportProfile: (() -> Unit)? = null,
+        onImportProfile: (() -> Unit)? = null,
     ) {
         val context = fragment.requireContext()
+
+        findPreference("PROFILE_EXPORT")?.setOnPreferenceClickListener {
+            onExportProfile?.invoke()
+            true
+        }
+
+        findPreference("PROFILE_IMPORT")?.setOnPreferenceClickListener {
+            onImportProfile?.invoke()
+            true
+        }
 
         findPreference("PROFILE_SWITCH")?.setOnPreferenceClickListener {
             showSwitchDialog(fragment, findPreference, onProfileSwitched)

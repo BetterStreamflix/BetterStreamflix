@@ -112,6 +112,16 @@
                 android:key="PROFILE_DELETE"
                 android:title="@string/profile_delete_title"
                 android:summary="@string/profile_delete_summary" />
+
+            <Preference
+                android:key="PROFILE_EXPORT"
+                android:title="@string/profile_transfer_export_title"
+                android:summary="@string/profile_transfer_export_summary" />
+
+            <Preference
+                android:key="PROFILE_IMPORT"
+                android:title="@string/profile_transfer_import_title"
+                android:summary="@string/profile_transfer_import_summary" />
         </PreferenceCategory>
 
         <PreferenceCategory
