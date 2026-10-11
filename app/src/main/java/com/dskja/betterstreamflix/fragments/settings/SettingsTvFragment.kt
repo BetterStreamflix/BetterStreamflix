@@ -911,6 +911,11 @@ class SettingsTvFragment : LeanbackPreferenceFragmentCompat() {
             true
         }
 
+        findPreference<Preference>("TASTE_CLEAR_ALL")?.setOnPreferenceClickListener {
+            com.dskja.betterstreamflix.taste.TasteSignalsUi.showClearAll(requireContext())
+            true
+        }
+
         findPreference<Preference>("CLEAR_RECENTLY_WATCHED")?.setOnPreferenceClickListener {
             val message = getString(R.string.settings_clear_recently_watched_confirm_message)
             expAlertBuilder()

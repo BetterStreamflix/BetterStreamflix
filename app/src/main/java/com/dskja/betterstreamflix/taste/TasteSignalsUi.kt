@@ -93,4 +93,29 @@ object TasteSignalsUi {
                 dialog.show()
             }
     }
+
+    fun showClearAll(
+        context: Context,
+        onCleared: (() -> Unit)? = null,
+    ) {
+        val themed = ExpDialogChrome.themedContext(context)
+        val builder = if (ExperimentalMobileDesign.enabled()) {
+            MaterialAlertDialogBuilder(themed)
+        } else {
+            AlertDialog.Builder(themed)
+        }
+        builder
+            .setTitle(R.string.taste_clear_all_title)
+            .setMessage(R.string.taste_clear_all_message)
+            .setPositiveButton(R.string.taste_clear_all_confirm) { _, _ ->
+                TasteGraph.clearAll(context)
+                onCleared?.invoke()
+            }
+            .setNegativeButton(android.R.string.cancel, null)
+            .create()
+            .also { dialog ->
+                dialog.setOnShowListener { ExpDialogChrome.polishShown(dialog) }
+                dialog.show()
+            }
+    }
 }
