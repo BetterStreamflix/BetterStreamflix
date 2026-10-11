@@ -24,6 +24,10 @@ object UserDataCache {
     private val gson = Gson()
     private val memoryCache = ConcurrentHashMap<String, UserData>()
 
+    /**
+     * Disk/JSON user library snapshot. Intentionally CW + favorites only —
+     * Next Episodes and Recently Watched are Room-sourced (see HomeViewModel).
+     */
     data class UserData(
         val favoritesMovies: List<CachedMovie> = emptyList(),
         val favoritesTvShows: List<CachedTvShow> = emptyList(),

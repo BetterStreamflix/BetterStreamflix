@@ -26,11 +26,27 @@ object TraktContinueWatching {
     suspend fun load(): List<AppAdapter.Item> {
         if (!TraktConfig.configured()) return emptyList()
         return runCatching {
-            parsePlayback(TraktClient.fetchPlayback())
+            enrichPosters(parsePlayback(TraktClient.fetchPlayback()))
         }.getOrElse {
             Log.w(TAG, "load failed: ${it.message}")
             emptyList()
         }
+    }
+
+    private suspend fun enrichPosters(items: List<AppAdapter.Item>): List<AppAdapter.Item> {
+        items.filterIsInstance<Movie>().forEach { movie ->
+            if (!movie.poster.isNullOrBlank()) return@forEach
+            val poster = runCatching {
+                val byImdb = movie.imdbId?.takeIf { it.isNotBlank() }?.let {
+                    com.dskja.betterstreamflix.utils.TmdbUtils.getMovieByImdbId(it)?.poster
+                }
+                byImdb ?: movie.id.toIntOrNull()?.let {
+                    com.dskja.betterstreamflix.utils.TmdbUtils.getMovieById(it)?.poster
+                }
+            }.getOrNull()
+            if (!poster.isNullOrBlank()) movie.poster = poster
+        }
+        return items
     }
 
     fun parsePlayback(items: JSONArray): List<AppAdapter.Item> {
@@ -45,7 +61,7 @@ object TraktContinueWatching {
                     val movie = row.optJSONObject("movie") ?: continue
                     val ids = movie.optJSONObject("ids")
                     val imdb = ids?.optString("imdb")?.ifBlank { null }
-                    val tmdb = ids?.opt("tmdb")?.toString()
+                    val tmdb = ids?.opt("tmdb")?.toString()?.takeIf { it.isNotBlank() && it != "null" }
                     val runtimeMin = movie.optInt("runtime", 0).takeIf { it > 0 } ?: 120
                     val duration = runtimeMin * 60_000L
                     val mapped = Movie(

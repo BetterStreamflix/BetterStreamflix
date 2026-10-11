@@ -1274,6 +1274,11 @@ class MovieViewHolder(
             }
         }.joinToString(" · ")
         bindFact(binding.tvDetailAboutIdsLabel, binding.tvDetailAboutIds, ids.ifBlank { null })
+        if (!movie.tmdbId.isNullOrBlank()) {
+            binding.tvDetailAboutIds.setTextColor(
+                ContextCompat.getColor(context, R.color.cinema_tmdb),
+            )
+        }
 
         val anyFact = listOf(
             binding.tvDetailAboutQuality,

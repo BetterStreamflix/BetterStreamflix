@@ -41,6 +41,22 @@ object HomeCatalogPipeline {
             get() = warnings.takeIf { it.isNotEmpty() }?.joinToString(" · ")
     }
 
+    private fun appString(resId: Int, vararg args: Any): String =
+        runCatching {
+            com.dskja.betterstreamflix.BetterStreamflixApp.instance.getString(resId, *args)
+        }.getOrElse {
+            // Unit tests / pre-Application boot — English fallbacks match values/strings.xml.
+            when (resId) {
+                com.dskja.betterstreamflix.R.string.home_catalog_empty_from_provider ->
+                    "Empty catalog from ${args.getOrNull(0)}"
+                com.dskja.betterstreamflix.R.string.home_catalog_no_usable_rows ->
+                    "No usable rows from ${args.getOrNull(0)}"
+                com.dskja.betterstreamflix.R.string.home_featured_restored_from ->
+                    "Featured shelf restored from “${args.getOrNull(0)}”"
+                else -> args.joinToString(" ")
+            }
+        }
+
     fun process(
         provider: Provider,
         categories: List<Category>,
@@ -49,7 +65,15 @@ object HomeCatalogPipeline {
         val warnings = mutableListOf<String>()
         val merged = categories + addonRows
         if (merged.isEmpty()) {
-            return Result(emptyList(), listOf("Empty catalog from ${provider.name}"))
+            return Result(
+                emptyList(),
+                listOf(
+                    appString(
+                        com.dskja.betterstreamflix.R.string.home_catalog_empty_from_provider,
+                        provider.name,
+                    ),
+                ),
+            )
         }
 
         val stamped = merged.mapNotNull { category ->
@@ -57,7 +81,15 @@ object HomeCatalogPipeline {
         }
 
         if (stamped.isEmpty()) {
-            return Result(emptyList(), listOf("No usable rows from ${provider.name}"))
+            return Result(
+                emptyList(),
+                listOf(
+                    appString(
+                        com.dskja.betterstreamflix.R.string.home_catalog_no_usable_rows,
+                        provider.name,
+                    ),
+                ),
+            )
         }
 
         val withFeatured = ensureFeatured(stamped, warnings)
@@ -159,7 +191,12 @@ object HomeCatalogPipeline {
                 }
         } ?: return categories
 
-        warnings.add("Featured shelf restored from “${donor.name.ifBlank { "catalog" }}”")
+        warnings.add(
+            appString(
+                com.dskja.betterstreamflix.R.string.home_featured_restored_from,
+                donor.name.ifBlank { "catalog" },
+            ),
+        )
         val featuredItems = cloneShowItems(
             donor.list.filter { item ->
                 (item is Movie || item is TvShow) && !isPluginTipItem(item)
@@ -274,6 +311,7 @@ object HomeCatalogPipeline {
             item.poster,
             item.number,
             item.tvShow?.id,
+            item.isWatched,
             item.watchHistory?.lastPlaybackPositionMillis,
         ).joinToString(",")
         else -> item.javaClass.simpleName

@@ -141,6 +141,20 @@ class CategoryViewHolder(
         }
     }
 
+    /** Map stable English Category constants to locale strings when they still leak into UI. */
+    private fun localizedCategoryTitle(name: String): String {
+        val res = itemView.resources
+        return when {
+            Category.isFeaturedName(name) -> res.getString(R.string.home_featured_title)
+            name == Category.CONTINUE_WATCHING -> res.getString(R.string.home_continue_watching)
+            name == Category.NEXT_EPISODES -> res.getString(R.string.home_next_episodes)
+            name == Category.RECENTLY_WATCHED -> res.getString(R.string.home_recently_watched)
+            name == Category.FAVORITE_MOVIES -> res.getString(R.string.home_favorite_movies)
+            name == Category.FAVORITE_TV_SHOWS -> res.getString(R.string.home_favorite_tv_shows)
+            else -> name
+        }
+    }
+
     private fun displayMobileItem(
         binding: ItemCategoryMobileBinding,
         onMovieClick: ((Movie) -> Unit)?,
@@ -148,7 +162,19 @@ class CategoryViewHolder(
         onMovieLongClick: ((Movie) -> Unit)?,
         onTvShowLongClick: ((TvShow) -> Unit)?,
     ) {
-        binding.tvCategoryTitle.text = category.name
+        binding.tvCategoryTitle.text = localizedCategoryTitle(category.name)
+
+        // Empty shelves: hide the horizontal list (parity with TV empty-shelf defense).
+        // Home usually filters empties before submit; this guards Search / edge rebinds.
+        if (category.list.isEmpty()) {
+            binding.root.visibility = View.VISIBLE
+            binding.rvCategory.visibility = View.GONE
+            binding.rvCategory.isNestedScrollingEnabled = false
+            (binding.rvCategory.adapter as? AppAdapter)?.submitList(emptyList())
+            return
+        }
+        binding.root.visibility = View.VISIBLE
+        binding.rvCategory.visibility = View.VISIBLE
 
         if (ExperimentalMobileDesign.enabled()) {
             binding.tvCategoryTitle.setBackgroundResource(ExperimentalMobileDesign.chipBackground())
@@ -220,7 +246,7 @@ class CategoryViewHolder(
         onMovieLongClick: ((Movie) -> Unit)?,
         onTvShowLongClick: ((TvShow) -> Unit)?,
     ) {
-        binding.tvCategoryTitle.text = category.name
+        binding.tvCategoryTitle.text = localizedCategoryTitle(category.name)
 
         // Never keep empty CATEGORY shelves on screen — title-only rows still trap Leanback.
         // Search Global omits empty Success shelves; Home should not submit empties either.
@@ -258,6 +284,11 @@ class CategoryViewHolder(
                 setRowHeight(ViewGroup.LayoutParams.WRAP_CONTENT)
             }
 
+            (context.toActivity()?.getCurrentFragment() as? HomeTvFragment)?.let { home ->
+                setRecycledViewPool(home.shelfPool)
+                itemAnimator = null
+                setItemViewCacheSize(8)
+            }
             val categoryAdapter = (adapter as? AppAdapter) ?: AppAdapter().also { adapter = it }
             categoryAdapter.apply {
                 this.onMovieClickListener = onMovieClick
@@ -267,9 +298,6 @@ class CategoryViewHolder(
                 submitList(category.list)
             }
             setItemSpacing(category.itemSpacing)
-            if (context.toActivity()?.getCurrentFragment() is HomeTvFragment) {
-                itemAnimator = null
-            }
 
             isFocusable = true
             descendantFocusability = ViewGroup.FOCUS_AFTER_DESCENDANTS
@@ -692,11 +720,9 @@ class CategoryViewHolder(
     }
 
     private val expDotInactive: Int
-        get() = androidx.core.graphics.ColorUtils.setAlphaComponent(
-            MaterialColors.getColor(
-                context, com.google.android.material.R.attr.colorOnSurface, 0xFFFFFFFF.toInt(),
-            ),
-            0x59,
+        get() = androidx.core.content.ContextCompat.getColor(
+            context,
+            R.color.cinema_glass_bright,
         )
 
     private fun applyExperimentalSwiperChrome(binding: ContentCategorySwiperMobileBinding) {
@@ -804,8 +830,9 @@ class CategoryViewHolder(
             label.contentDescription = label.text
             return
         }
-        val activeColor = MaterialColors.getColor(
-            context, androidx.appcompat.R.attr.colorPrimary, 0xFFFFFFFF.toInt(),
+        val activeColor = androidx.core.content.ContextCompat.getColor(
+            context,
+            R.color.cinema_text,
         )
         val inactive = expDotInactive
         val activeWidth = 20.dp(context)
@@ -872,15 +899,26 @@ class CategoryViewHolder(
                     total,
                 )
                 contentDescription = text
-                setTextColor(0xCCFFFFFF.toInt())
+                setTextColor(
+                    androidx.core.content.ContextCompat.getColor(
+                        context,
+                        R.color.cinema_text_soft,
+                    ),
+                )
                 textSize = 14f
                 importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_YES
             }
             container.addView(label)
             return
         }
-        val activeColor = 0xFFFFFFFF.toInt()
-        val inactiveColor = 0x66FFFFFF
+        val activeColor = androidx.core.content.ContextCompat.getColor(
+            context,
+            R.color.cinema_text,
+        )
+        val inactiveColor = androidx.core.content.ContextCompat.getColor(
+            context,
+            R.color.cinema_glass_bright,
+        )
         val density = context.resources.displayMetrics.density
         val inactiveSize = (7 * density).toInt()
         val activeWidth = (22 * density).toInt()
@@ -953,7 +991,7 @@ class CategoryViewHolder(
             binding.tvCategoryTitle.visibility = View.GONE
         } else {
             binding.tvCategoryTitle.visibility = View.VISIBLE
-            binding.tvCategoryTitle.text = category.name
+            binding.tvCategoryTitle.text = localizedCategoryTitle(category.name)
         }
         category.selectedIndex = FeaturedTvRotation.coerceIndex(
             category.selectedIndex,
@@ -1138,11 +1176,8 @@ class CategoryViewHolder(
             }
             if (ExperimentalMobileDesign.enabled()) {
                 setBackgroundResource(ExperimentalMobileDesign.primaryButtonBackground())
-                setTextColor(
-                    MaterialColors.getColor(
-                        this, com.google.android.material.R.attr.colorOnPrimary,
-                    ),
-                )
+                // Keep Cinema CTA ink — Material onPrimary would wipe cinema_cta_ink.
+                FeaturedSwiperChrome.wireWatchButton(this)
                 with(com.dskja.betterstreamflix.utils.ExpPressEffects) { applyExpPress() }
             }
             setOnClickListener {
@@ -1354,20 +1389,14 @@ class CategoryViewHolder(
             return true
         }
         if (container.childCount != total) return false
-        val activeColor = if (exp) {
-            MaterialColors.getColor(
-                context, androidx.appcompat.R.attr.colorPrimary, 0xFFFFFFFF.toInt(),
-            )
-        } else {
-            0xFFFFFFFF.toInt()
-        }
-        val inactiveColor = if (exp) {
-            MaterialColors.getColor(
-                context, com.google.android.material.R.attr.colorOnSurfaceVariant, 0x66FFFFFF,
-            )
-        } else {
-            0x66FFFFFF
-        }
+        val activeColor = androidx.core.content.ContextCompat.getColor(
+            context,
+            R.color.cinema_text,
+        )
+        val inactiveColor = androidx.core.content.ContextCompat.getColor(
+            context,
+            R.color.cinema_glass_bright,
+        )
         val dotSize = if (exp) 6.dp(context) else 15
         val activeWidth = if (exp) 28 else 15
         val safeSelected = selected.coerceIn(0, total - 1)

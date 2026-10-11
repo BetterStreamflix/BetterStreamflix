@@ -115,9 +115,13 @@ class HomeViewModel(
                 favoriteTvShows = raw.favoriteTvShows,
             )
 
-            // Stale-while-revalidate: if Room is empty, surface JSON cache until sync fills it.
+            // Stale-while-revalidate: if Room CW is empty, surface JSON cache until sync fills it.
+            // UserDataCache is CW+favorites only — overlay Room Next/RW when present.
             if (movies.isEmpty() && localEpisodes.isEmpty() && localNext.isEmpty()) {
-                val cachedFallback = historyFromUserDataCache()
+                val cachedFallback = historyFromUserDataCache(
+                    nextEpisodes = localNext,
+                    recentlyWatched = raw.recentlyWatched,
+                )
                 if (cachedFallback != null) {
                     emit(cachedFallback)
                 } else {
@@ -156,11 +160,15 @@ class HomeViewModel(
             // A dead Room / closed DB must not kill the combine collector (infinite spinner).
             Log.e("HomeViewModel", "homeHistory failed", e)
             CrashReporter.logNonFatal("HomeViewModel", "homeHistory failed", e)
+            val roomNextRw = quickRoomNextAndRecentlyWatched()
             emit(
-                historyFromUserDataCache() ?: HomeHistory(
+                historyFromUserDataCache(
+                    nextEpisodes = roomNextRw?.first.orEmpty(),
+                    recentlyWatched = roomNextRw?.second.orEmpty(),
+                ) ?: HomeHistory(
                     continueWatching = emptyList(),
-                    nextEpisodes = emptyList(),
-                    recentlyWatched = emptyList(),
+                    nextEpisodes = roomNextRw?.first.orEmpty(),
+                    recentlyWatched = roomNextRw?.second.orEmpty(),
                     favoritesMovies = emptyList(),
                     favoriteTvShows = emptyList(),
                 )
@@ -261,78 +269,94 @@ class HomeViewModel(
                     }
                 }
 
-                val categories = ParentalControlUtils.filterCategories(listOfNotNull(
-
-                    // FEATURED
-                    state.categories
-                        .find { Category.isFeaturedName(it.name) }
-                        ?.let { category ->
-                            category.copy(
-                                list = category.list.map(::mergeItem)
-                            )
-                        },
-
-                    // CONTINUE WATCHING (local + Trakt + self-host extras merged once)
-                    Category(
-                        name = Category.CONTINUE_WATCHING,
-                        list = com.dskja.betterstreamflix.platform.ContinueWatchingMerger.merge(
-                            local = history.continueWatching
-                                .sortedByDescending {
-                                    when (it) {
-                                        is Episode -> it.watchHistory?.lastEngagementTimeUtcMillis
-                                            ?: it.watchedDate?.timeInMillis
-                                            ?: 0L
-
-                                        is Movie -> it.watchHistory?.lastEngagementTimeUtcMillis
-                                            ?: it.watchedDate?.timeInMillis
-                                            ?: 0L
-
-                                        else -> 0L
-                                    }
-                                }
-                                .distinctBy { continueWatchingKey(it) },
-                            remoteExtras = state.categories
-                                .filter {
-                                    com.dskja.betterstreamflix.platform.ContinueWatchingMerger
-                                        .isProviderContinueWatching(it.name)
-                                }
-                                .flatMap { it.list } + traktCw,
-                        ),
-                    ).takeIf { UserPreferences.showContinueWatching },
-
-                    // NEXT EPISODES — separate from mid-watch resume
-                    Category(
-                        name = Category.NEXT_EPISODES,
-                        list = history.nextEpisodes,
-                    ).takeIf {
-                        UserPreferences.showNextEpisodes && history.nextEpisodes.isNotEmpty()
-                    },
-
-                    Category(
-                        name = Category.RECENTLY_WATCHED,
-                        list = history.recentlyWatched,
-                    ).takeIf { UserPreferences.showRecentlyWatched },
-
-                    // FAVORITES
-                    Category(
-                        name = Category.FAVORITE_MOVIES,
-                        list = history.favoritesMovies,
-                    ),
-                    Category(
-                        name = Category.FAVORITE_TV_SHOWS,
-                        list = history.favoriteTvShows,
-                    ),
-                ) + state.categories
-                    .filter {
-                        !Category.isFeaturedName(it.name) &&
-                            !com.dskja.betterstreamflix.platform.ContinueWatchingMerger
-                                .isProviderContinueWatching(it.name)
-                    }
-                    .map { category ->
+                val featuredCategory = state.categories
+                    .find { Category.isFeaturedName(it.name) }
+                    ?.let { category ->
                         category.copy(
                             list = category.list.map(::mergeItem)
                         )
-                    })
+                    }
+
+                val mergedCw = com.dskja.betterstreamflix.platform.ContinueWatchingMerger.merge(
+                    local = history.continueWatching
+                        .sortedByDescending {
+                            when (it) {
+                                is Episode -> it.watchHistory?.lastEngagementTimeUtcMillis
+                                    ?: it.watchedDate?.timeInMillis
+                                    ?: 0L
+
+                                is Movie -> it.watchHistory?.lastEngagementTimeUtcMillis
+                                    ?: it.watchedDate?.timeInMillis
+                                    ?: 0L
+
+                                else -> 0L
+                            }
+                        }
+                        .distinctBy { continueWatchingKey(it) },
+                    remoteExtras = state.categories
+                        .filter {
+                            com.dskja.betterstreamflix.platform.ContinueWatchingMerger
+                                .isProviderContinueWatching(it.name)
+                        }
+                        .flatMap { it.list } + traktCw,
+                )
+                val cwKeys = mergedCw.mapNotNull {
+                    com.dskja.betterstreamflix.platform.ContinueWatchingMerger.identityKey(it)
+                }.toSet()
+                // Drop Next tiles that already appear on merged CW (remote extras can overlap).
+                val nextDeduped = history.nextEpisodes.filter { ep ->
+                    val key = com.dskja.betterstreamflix.platform.ContinueWatchingMerger
+                        .identityKey(ep)
+                    key == null || key !in cwKeys
+                }
+                val rwDeduped = filterRecentlyWatchedAgainstActive(
+                    recentlyWatched = history.recentlyWatched,
+                    continueWatching = mergedCw,
+                    nextEpisodes = nextDeduped,
+                )
+                val libraryShelves = listOfNotNull(
+                    Category(
+                        name = Category.CONTINUE_WATCHING,
+                        list = mergedCw,
+                    ).takeIf {
+                        UserPreferences.showContinueWatching && mergedCw.isNotEmpty()
+                    },
+                    Category(
+                        name = Category.NEXT_EPISODES,
+                        list = nextDeduped,
+                    ).takeIf {
+                        UserPreferences.showNextEpisodes && nextDeduped.isNotEmpty()
+                    },
+                    Category(
+                        name = Category.RECENTLY_WATCHED,
+                        list = rwDeduped,
+                    ).takeIf {
+                        UserPreferences.showRecentlyWatched && rwDeduped.isNotEmpty()
+                    },
+                )
+
+                val categories = ParentalControlUtils.filterCategories(
+                    listOfNotNull(featuredCategory) +
+                        libraryShelves +
+                        listOf(
+                            Category(
+                                name = Category.FAVORITE_MOVIES,
+                                list = history.favoritesMovies,
+                            ),
+                            Category(
+                                name = Category.FAVORITE_TV_SHOWS,
+                                list = history.favoriteTvShows,
+                            ),
+                        ) +
+                        com.dskja.betterstreamflix.platform.ContinueWatchingMerger
+                            .filterProviderCategories(state.categories)
+                            .filter { !Category.isFeaturedName(it.name) }
+                            .map { category ->
+                                category.copy(
+                                    list = category.list.map(::mergeItem)
+                                )
+                            }
+                )
 
                 State.SuccessLoading(
                     HomeCatalogPipeline.ensureFeaturedShelf(categories),
@@ -399,22 +423,35 @@ class HomeViewModel(
         continueWatching: List<AppAdapter.Item>,
         nextEpisodes: List<Episode>,
     ): List<AppAdapter.Item> {
+        val merger = com.dskja.betterstreamflix.platform.ContinueWatchingMerger
         val activeKeys = buildSet {
+            continueWatching.mapNotNullTo(this) { merger.identityKey(it) }
+            nextEpisodes.mapNotNullTo(this) { merger.identityKey(it) }
+            // Also keep provider:id keys for local-only matches without IMDb.
             continueWatching.mapNotNullTo(this) { continueWatchingKey(it) }
             nextEpisodes.mapNotNullTo(this) { continueWatchingKey(it) }
         }
         if (activeKeys.isEmpty()) return recentlyWatched
         return recentlyWatched.filter { item ->
-            val key = when (item) {
+            val identity = merger.identityKey(item)
+            val localKey = when (item) {
                 is Movie -> "${item.providerName}:${item.id}"
                 is TvShow -> "${item.providerName}:${item.id}"
                 else -> null
             }
-            key == null || key !in activeKeys
+            (identity == null || identity !in activeKeys) &&
+                (localKey == null || localKey !in activeKeys)
         }
     }
 
-    private fun historyFromUserDataCache(): HomeHistory? {
+    /**
+     * JSON [UserDataCache] stores Continue Watching + favorites only — no Next/RW fields.
+     * Callers should pass Room Next/RW overlays when the DB is still readable.
+     */
+    private fun historyFromUserDataCache(
+        nextEpisodes: List<Episode> = emptyList(),
+        recentlyWatched: List<AppAdapter.Item> = emptyList(),
+    ): HomeHistory? {
         val providerName = UserPreferences.currentProvider?.name
         val cached = _userDataCache.value ?: run {
             val provider = UserPreferences.currentProvider ?: return null
@@ -451,17 +488,34 @@ class HomeViewModel(
         ) {
             return null
         }
+        val continueWatching = (movies + episodes)
+            .sortedByDescending { engagementMillis(it) }
+            .distinctBy { continueWatchingKey(it) }
+        val nextMerged = (next + nextEpisodes)
+            .sortedByDescending { engagementMillis(it) }
+            .distinctBy { continueWatchingKey(it) }
+        val recentlyMerged = (recently + recentlyWatched)
+            .sortedByDescending { item ->
+                when (item) {
+                    is Movie -> item.lastPlayedAtMillis ?: 0L
+                    is TvShow -> item.lastPlayedAtMillis ?: 0L
+                    else -> 0L
+                }
+            }
+            .distinctBy { item ->
+                when (item) {
+                    is Movie -> "${item.providerName}:${item.id}"
+                    is TvShow -> "${item.providerName}:${item.id}"
+                    else -> item.hashCode().toString()
+                }
+            }
         return HomeHistory(
-            continueWatching = (movies + episodes)
-                .sortedByDescending { engagementMillis(it) }
-                .distinctBy { continueWatchingKey(it) },
-            nextEpisodes = next
-                .sortedByDescending { engagementMillis(it) }
-                .distinctBy { continueWatchingKey(it) },
+            continueWatching = continueWatching,
+            nextEpisodes = nextMerged,
             recentlyWatched = filterRecentlyWatchedAgainstActive(
-                recentlyWatched = recently,
-                continueWatching = movies + episodes,
-                nextEpisodes = next,
+                recentlyWatched = recentlyMerged,
+                continueWatching = continueWatching,
+                nextEpisodes = nextMerged,
             ),
             favoritesMovies = cached.favoritesMovies.map {
                 it.toMovie().apply { this.providerName = providerName }
@@ -470,6 +524,28 @@ class HomeViewModel(
                 it.toTvShow().apply { this.providerName = providerName }
             },
         )
+    }
+
+    /** Best-effort Room Next/RW when the primary history load failed; never blocks long. */
+    private suspend fun quickRoomNextAndRecentlyWatched(): Pair<List<Episode>, List<AppAdapter.Item>>? {
+        val db = liveDatabase()
+        if (db == null || !db.isOpen) return null
+        return try {
+            withTimeout(1_200L) {
+                val raw = CrossProviderLibrary.loadHomeHistory(
+                    BetterStreamflixApp.instance.applicationContext,
+                )
+                raw.nextEpisodes to raw.recentlyWatched
+            }
+        } catch (e: TimeoutCancellationException) {
+            Log.w("HomeViewModel", "quick Room Next/RW timed out")
+            null
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            Log.w("HomeViewModel", "quick Room Next/RW failed", e)
+            null
+        }
     }
 
     private suspend fun enrichContinueWatchingEpisodes(episodes: List<Episode>): List<Episode> = coroutineScope {
@@ -546,7 +622,7 @@ class HomeViewModel(
         userDataCacheJob?.cancel()
         getHomeJob = viewModelScope.launch(Dispatchers.IO) {
             val provider = UserPreferences.currentProvider ?: run {
-                _state.emit(State.FailedLoading(IllegalStateException("No provider selected")))
+                _state.emit(State.FailedLoading(IllegalStateException(com.dskja.betterstreamflix.BetterStreamflixApp.instance.getString(com.dskja.betterstreamflix.R.string.error_no_provider_selected))))
                 return@launch
             }
 

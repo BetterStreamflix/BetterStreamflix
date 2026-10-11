@@ -70,7 +70,7 @@ class LiveHubTvFragment : Fragment() {
             viewModel.state.flowWithLifecycle(lifecycle, Lifecycle.State.STARTED).collect { state ->
                 when (state) {
                     LiveHubViewModel.State.Loading -> {
-                        binding.tvLiveHubEmpty.isVisible = false
+                        showEmpty(visible = false)
                         TvLoadingOverlay.show(binding.isLoading.root)
                         binding.isLoading.gIsLoadingRetry.visibility = View.GONE
                         hideWarning()
@@ -86,6 +86,11 @@ class LiveHubTvFragment : Fragment() {
                         showWarning(state.warning)
                         warmZapForSections(state.categories)
                         binding.vgvLiveHub.post { focusFirstChannel() }
+                    }
+                    LiveHubViewModel.State.Empty -> {
+                        display(emptyList())
+                        TvLoadingOverlay.hide(binding.isLoading.root)
+                        hideWarning()
                     }
                     is LiveHubViewModel.State.Failed -> {
                         Toast.makeText(
@@ -114,8 +119,7 @@ class LiveHubTvFragment : Fragment() {
                             binding.vgvLiveHub.visibility = View.GONE
                             btnIsLoadingRetry.requestFocus()
                         }
-                        binding.tvLiveHubEmpty.text = getString(R.string.live_hub_empty)
-                        binding.tvLiveHubEmpty.isVisible = appAdapter.items.isEmpty()
+                        showEmpty(visible = appAdapter.items.isEmpty())
                     }
                 }
             }
@@ -138,17 +142,23 @@ class LiveHubTvFragment : Fragment() {
     }
 
     private fun display(categories: List<Category>) {
-        categories.forEach { category ->
+        // Omit empty sections after load (parity with Home isolateFeatured style).
+        val visible = categories.filter { it.list.isNotEmpty() }
+        visible.forEach { category ->
             category.list.filterIsInstance<TvShow>().forEach { show ->
                 show.itemType = AppAdapter.Type.TV_SHOW_TV_ITEM
             }
             category.itemSpacing = 16.dp(requireContext())
             category.itemType = AppAdapter.Type.CATEGORY_TV_ITEM
         }
+        showEmpty(visible = visible.isEmpty())
+        binding.vgvLiveHub.isVisible = visible.isNotEmpty()
+        appAdapter.submitList(visible)
+    }
+
+    private fun showEmpty(visible: Boolean) {
         binding.tvLiveHubEmpty.text = getString(R.string.live_hub_empty)
-        binding.tvLiveHubEmpty.isVisible = categories.isEmpty()
-        binding.vgvLiveHub.isVisible = categories.isNotEmpty()
-        appAdapter.submitList(categories)
+        binding.tvLiveHubEmpty.isVisible = visible
     }
 
     private fun displayRestricted() {

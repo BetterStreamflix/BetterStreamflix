@@ -19,6 +19,11 @@ import kotlinx.coroutines.flow.first
  */
 object CrossProviderLibrary {
 
+    /** Global caps after cross-provider concat so rails stay browseable. */
+    private const val GLOBAL_CW_CAP = 25
+    private const val GLOBAL_NEXT_CAP = 25
+    private const val GLOBAL_RW_CAP = 20
+
     data class HomeHistory(
         val continueWatching: List<AppAdapter.Item>,
         /** Next unwatched episode after the last finished one (separate Home shelf). */
@@ -97,13 +102,16 @@ object CrossProviderLibrary {
         return HomeHistory(
             continueWatching = continueWatching
                 .sortedByDescending { engagementMillis(it) }
-                .distinctBy { continueWatchingKey(it) },
+                .distinctBy { continueWatchingKey(it) }
+                .take(GLOBAL_CW_CAP),
             nextEpisodes = nextEpisodes
                 .sortedByDescending { engagementMillis(it) }
-                .distinctBy { continueWatchingKey(it) },
+                .distinctBy { continueWatchingKey(it) }
+                .take(GLOBAL_NEXT_CAP),
             recentlyWatched = recentlyWatched
                 .sortedByDescending { recentlyWatchedMillis(it) }
-                .distinctBy { libraryItemKey(it) },
+                .distinctBy { libraryItemKey(it) }
+                .take(GLOBAL_RW_CAP),
             favoriteMovies = favoriteMovies.sortedByDescending { it.favoritedAtMillis ?: 0L },
             favoriteTvShows = favoriteTvShows.sortedByDescending { it.favoritedAtMillis ?: 0L },
         )
@@ -114,6 +122,16 @@ object CrossProviderLibrary {
 
     suspend fun loadFavoriteTvShows(context: Context): List<TvShow> =
         loadHomeHistory(context).favoriteTvShows
+
+    /** Clears Recently Watched across every DB in the active library scope. */
+    suspend fun clearRecentlyWatched(context: Context) {
+        forEachScopedProviderDb(context) { _, db ->
+            runCatching {
+                db.movieDao().clearAllRecentlyWatched()
+                db.tvShowDao().clearAllRecentlyWatched()
+            }
+        }
+    }
 
     private fun engagementMillis(item: AppAdapter.Item): Long = when (item) {
         is Movie -> item.watchHistory?.lastEngagementTimeUtcMillis

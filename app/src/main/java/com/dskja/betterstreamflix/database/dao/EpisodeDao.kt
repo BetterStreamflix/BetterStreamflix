@@ -42,7 +42,8 @@ interface EpisodeDao {
             ORDER BY s.number, e.number
             LIMIT 1
         )
-        WHERE tv_shows.isWatching = 1 AND NOT EXISTS (
+        WHERE (tv_shows.isWatching = 1 OR tv_shows.lastPlayedAtMillis IS NOT NULL)
+          AND NOT EXISTS (
             SELECT 1
             FROM episodes e
             WHERE e.tvShow = episodes.tvShow AND e.lastEngagementTimeUtcMillis IS NOT NULL
