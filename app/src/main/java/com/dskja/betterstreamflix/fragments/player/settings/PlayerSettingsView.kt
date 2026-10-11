@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.res.Resources
 import android.graphics.Color
 import android.util.AttributeSet
+import android.widget.Toast
 import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.media3.common.C
 import androidx.media3.common.Player
@@ -14,6 +15,7 @@ import androidx.media3.ui.CaptionStyleCompat
 import androidx.media3.ui.DefaultTrackNameProvider
 import androidx.media3.ui.SubtitleView
 import com.dskja.betterstreamflix.R
+import com.dskja.betterstreamflix.player.SeriesAudioPreference
 import com.dskja.betterstreamflix.utils.OpenSubtitles
 import com.dskja.betterstreamflix.utils.mediaServers
 import com.dskja.betterstreamflix.utils.SubDL
@@ -36,6 +38,19 @@ abstract class PlayerSettingsView @JvmOverloads constructor(
 ) : ConstraintLayout(context, attrs, defStyleAttr) {
 
     private var playerEventsListener: Player.Listener? = null
+    private var applyingSeriesAudio = false
+
+    /**
+     * TvShow id for episode playback. When set, audio picks stick as
+     * “always DE” (etc.) for later episodes of the same series.
+     */
+    var seriesId: String? = null
+        set(value) {
+            val normalized = value?.trim()?.takeIf { it.isNotEmpty() }
+            if (field == normalized) return
+            field = normalized
+            player?.let { refreshAudioSettings(it) }
+        }
 
     var player: Player? = null
         set(value) {
@@ -49,7 +64,7 @@ abstract class PlayerSettingsView @JvmOverloads constructor(
             value?.let {
                 Settings.Server.init(it)
                 Settings.Quality.init(it, resources)
-                Settings.Audio.init(it, resources)
+                refreshAudioSettings(it)
                 Settings.Subtitle.init(it, resources)
                 Settings.Speed.refresh(it)
 
@@ -64,7 +79,7 @@ abstract class PlayerSettingsView @JvmOverloads constructor(
                         }
                         if (events.contains(Player.EVENT_TRACKS_CHANGED)) {
                             Settings.Quality.init(current, resources)
-                            Settings.Audio.init(current, resources)
+                            refreshAudioSettings(current)
                             Settings.Subtitle.init(current, resources)
                         }
                         if (events.contains(Player.EVENT_PLAYBACK_PARAMETERS_CHANGED)) {
@@ -217,18 +232,72 @@ abstract class PlayerSettingsView @JvmOverloads constructor(
     protected var onAudioSelected: ((Settings.Audio) -> Unit) =
         fun(audio) {
             val player = player ?: return
-            if (audio !is Settings.Audio.AudioTrackInformation) return
+            when (audio) {
+                is Settings.Audio.AlwaysForSeries -> {
+                    val id = seriesId ?: return
+                    if (audio.preferredCode != null) {
+                        SeriesAudioPreference.clear(context, id)
+                        Toast.makeText(
+                            context,
+                            R.string.player_audio_always_cleared,
+                            Toast.LENGTH_SHORT,
+                        ).show()
+                    } else {
+                        val lang = Settings.Audio.selected
+                            ?.language
+                            ?.let { SeriesAudioPreference.canonical(it) }
+                            ?: return
+                        SeriesAudioPreference.set(context, id, lang)
+                        Toast.makeText(
+                            context,
+                            context.getString(
+                                R.string.player_audio_always_saved,
+                                SeriesAudioPreference.displayCode(lang),
+                            ),
+                            Toast.LENGTH_SHORT,
+                        ).show()
+                    }
+                    refreshAudioSettings(player)
+                }
 
-            val selection = player.trackSelectionParameters
-                .buildUpon()
-                .clearOverridesOfType(C.TRACK_TYPE_AUDIO)
-                .setOverrideForType(
-                    TrackSelectionOverride(
-                        audio.trackGroup.mediaTrackGroup,
-                        listOf(audio.trackIndex)
-                    )
-                )
-                .setTrackTypeDisabled(C.TRACK_TYPE_AUDIO, false)
+                is Settings.Audio.AudioTrackInformation -> {
+                    selectAudioTrack(player, audio)
+                    val id = seriesId
+                    val lang = SeriesAudioPreference.canonical(audio.language)
+                    if (id != null && lang != null) {
+                        SeriesAudioPreference.set(context, id, lang)
+                        Toast.makeText(
+                            context,
+                            context.getString(
+                                R.string.player_audio_always_saved,
+                                SeriesAudioPreference.displayCode(lang),
+                            ),
+                            Toast.LENGTH_SHORT,
+                        ).show()
+                    }
+                    refreshAudioSettings(player)
+                }
+            }
+        }
+
+    private fun selectAudioTrack(
+        player: Player,
+        audio: Settings.Audio.AudioTrackInformation,
+    ) {
+        val selection = player.trackSelectionParameters
+            .buildUpon()
+            .clearOverridesOfType(C.TRACK_TYPE_AUDIO)
+            .setOverrideForType(
+                TrackSelectionOverride(
+                    audio.trackGroup.mediaTrackGroup,
+                    listOf(audio.trackIndex),
+                ),
+            )
+            .setTrackTypeDisabled(C.TRACK_TYPE_AUDIO, false)
+        val codes = SeriesAudioPreference.exoCodes(audio.language ?: "")
+        if (codes.isNotEmpty()) {
+            selection.setPreferredAudioLanguages(*codes)
+        } else {
             val lang = audio.language
                 ?.substringBefore("-")
                 ?.trim()
@@ -236,8 +305,48 @@ abstract class PlayerSettingsView @JvmOverloads constructor(
             if (lang != null) {
                 selection.setPreferredAudioLanguages(lang)
             }
-            player.trackSelectionParameters = selection.build()
         }
+        applyingSeriesAudio = true
+        try {
+            player.trackSelectionParameters = selection.build()
+        } finally {
+            applyingSeriesAudio = false
+        }
+    }
+
+    private fun refreshAudioSettings(player: Player) {
+        Settings.Audio.init(player, resources, seriesId, context)
+        if (!applyingSeriesAudio) {
+            applySeriesAudioPreference(player)
+        }
+    }
+
+    /** Re-select the sticky series language when tracks become available. */
+    private fun applySeriesAudioPreference(player: Player) {
+        val id = seriesId ?: return
+        val preferred = SeriesAudioPreference.get(context, id) ?: return
+        val match = Settings.Audio.list
+            .filterIsInstance<Settings.Audio.AudioTrackInformation>()
+            .firstOrNull { SeriesAudioPreference.matches(preferred, it.language) }
+            ?: return
+        if (match.isSelected) return
+        selectAudioTrack(player, match)
+        Settings.Audio.init(player, resources, seriesId, context)
+    }
+
+    /** Subtitle text for the main Audio row when a series sticky is active. */
+    fun audioPreferenceSubLabel(): String? {
+        val id = seriesId ?: return Settings.Audio.selected?.name
+        val preferred = SeriesAudioPreference.get(context, id)
+        return if (preferred != null) {
+            context.getString(
+                R.string.player_audio_always_series,
+                SeriesAudioPreference.displayCode(preferred),
+            )
+        } else {
+            Settings.Audio.selected?.name
+        }
+    }
 
     protected var onSubtitleSelected: ((Settings.Subtitle) -> Unit) =
         fun(subtitle) {
@@ -743,12 +852,17 @@ abstract class PlayerSettingsView @JvmOverloads constructor(
         sealed class Audio : Item {
 
             companion object : Settings() {
-                val list = mutableListOf<AudioTrackInformation>()
+                val list = mutableListOf<Audio>()
 
                 val selected: AudioTrackInformation?
-                    get() = list.find { it.isSelected }
+                    get() = list.filterIsInstance<AudioTrackInformation>().find { it.isSelected }
 
-                fun init(player: Player, resources: Resources) {
+                fun init(
+                    player: Player,
+                    resources: Resources,
+                    seriesId: String? = null,
+                    context: Context? = null,
+                ) {
                     val currentServerId = player.currentMediaItem?.mediaMetadata?.extras?.getString("mediaServerId")
                     val servers = player.playlistMetadata.mediaServers
                     val currentServer = servers.find { it.id == currentServerId }
@@ -758,37 +872,71 @@ abstract class PlayerSettingsView @JvmOverloads constructor(
                     }
 
                     list.clear()
-                    list.addAll(
-                        player.currentTracks.groups
-                            .filter { it.type == C.TRACK_TYPE_AUDIO }
-                            .flatMap { trackGroup ->
-                                trackGroup.supportedTrackFormats
-                                    .filter { it.format.selectionFlags and C.SELECTION_FLAG_FORCED == 0 }
-                                    .map { (trackIndex, trackFormat) ->
-                                        val trackName = DefaultTrackNameProvider(resources)
-                                            .getTrackName(trackFormat)
-                                        
-                                        val finalName = when {
-                                            trackName.isBlank() || trackName.lowercase() == "und" || trackName.lowercase() == "unknown" -> {
-                                                if (serverTag != null) "Audio $serverTag" else "Track ${trackIndex + 1}"
-                                            }
-                                            else -> trackName
-                                        }
+                    val tracks = player.currentTracks.groups
+                        .filter { it.type == C.TRACK_TYPE_AUDIO }
+                        .flatMap { trackGroup ->
+                            trackGroup.supportedTrackFormats
+                                .filter { it.format.selectionFlags and C.SELECTION_FLAG_FORCED == 0 }
+                                .map { (trackIndex, trackFormat) ->
+                                    val trackName = DefaultTrackNameProvider(resources)
+                                        .getTrackName(trackFormat)
 
-                                        AudioTrackInformation(
-                                            name = finalName,
-                                            language = trackFormat.language,
-                                            trackGroup = trackGroup,
-                                            trackIndex = trackIndex,
-                                        )
+                                    val finalName = when {
+                                        trackName.isBlank() ||
+                                            trackName.lowercase() == "und" ||
+                                            trackName.lowercase() == "unknown" -> {
+                                            if (serverTag != null) {
+                                                "Audio $serverTag"
+                                            } else {
+                                                "Track ${trackIndex + 1}"
+                                            }
+                                        }
+                                        else -> trackName
                                     }
-                            }
-                            .sortedBy { it.name }
-                    )
+
+                                    AudioTrackInformation(
+                                        name = finalName,
+                                        language = trackFormat.language,
+                                        trackGroup = trackGroup,
+                                        trackIndex = trackIndex,
+                                    )
+                                }
+                        }
+                        .sortedBy { it.name }
+
+                    val series = seriesId?.trim()?.takeIf { it.isNotEmpty() }
+                    val ctx = context
+                    if (series != null && ctx != null && tracks.isNotEmpty()) {
+                        val preferred = SeriesAudioPreference.get(ctx, series)
+                        val labelCode = SeriesAudioPreference.displayCode(
+                            preferred
+                                ?: tracks.firstOrNull { it.isSelected }?.language
+                                ?: tracks.firstOrNull()?.language,
+                        )
+                        list.add(
+                            AlwaysForSeries(
+                                preferredCode = preferred,
+                                labelCode = labelCode.ifBlank { "—" },
+                            ),
+                        )
+                    }
+                    list.addAll(tracks)
                 }
             }
 
             abstract val isSelected: Boolean
+
+            /**
+             * Sticky “always DE for this series” toggle shown above track rows
+             * when watching an episode.
+             */
+            class AlwaysForSeries(
+                val preferredCode: String?,
+                val labelCode: String,
+            ) : Audio() {
+                override val isSelected: Boolean
+                    get() = preferredCode != null
+            }
 
             class AudioTrackInformation(
                 val name: String,

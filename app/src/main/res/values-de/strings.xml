@@ -306,6 +306,11 @@
     <string name="player_settings_quality">%dp</string>
     <string name="player_settings_audio_title">Audio</string>
     <string name="player_settings_audio_label">Audio</string>
+    <string name="player_audio_remember_series">Für diese Serie merken</string>
+    <string name="player_audio_always_series">Immer %1$s für diese Serie</string>
+    <string name="player_audio_always_saved">Immer %1$s für diese Serie</string>
+    <string name="player_audio_always_cleared">Serien-Audio-Einstellung gelöscht</string>
+    <string name="exp_cd_audio">Audiosprache</string>
     <string name="player_settings_subtitles_title">Untertitel / Bildbeschreibung</string>
     <string name="player_settings_subtitles_label">Untertitel</string>
     <string name="player_settings_subtitles_off">Aus</string>

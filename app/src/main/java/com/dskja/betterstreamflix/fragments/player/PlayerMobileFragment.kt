@@ -1028,6 +1028,7 @@ class PlayerMobileFragment : Fragment() {
                     binding.pvPlayer.controller.binding.btnExoLock,
                     binding.pvPlayer.controller.binding.btnExoPictureInPicture,
                     binding.pvPlayer.controller.binding.btnExoAspectRatio,
+                    binding.pvPlayer.controller.binding.btnExoAudio,
                     binding.pvPlayer.controller.binding.exoSettings,
                     binding.pvPlayer.controller.binding.btnGoLive,
                     binding.btnNextEpisodeAction,
@@ -1043,6 +1044,7 @@ class PlayerMobileFragment : Fragment() {
                 binding.pvPlayer.controller.binding.btnExoLock,
                 binding.pvPlayer.controller.binding.btnExoPictureInPicture,
                 binding.pvPlayer.controller.binding.btnExoAspectRatio,
+                binding.pvPlayer.controller.binding.btnExoAudio,
                 binding.pvPlayer.controller.binding.exoSettings,
             ).forEach { btn ->
                 btn.setBackgroundResource(ExperimentalMobileDesign.iconChipBackground())
@@ -1150,7 +1152,14 @@ class PlayerMobileFragment : Fragment() {
         binding.pvPlayer.controller.binding.exoSettings.setOnClickListener {
             ExpMotion.hapticTap(it)
             keepControllerVisibleForSettings()
+            binding.settings.seriesId = seriesIdForAudioPref()
             binding.settings.show()
+        }
+        binding.pvPlayer.controller.binding.btnExoAudio.setOnClickListener {
+            ExpMotion.hapticTap(it)
+            keepControllerVisibleForSettings()
+            binding.settings.seriesId = seriesIdForAudioPref()
+            binding.settings.showAudio()
         }
         binding.settings.onHidden = {
             restoreControllerTimeoutAfterSettings()
@@ -3493,7 +3502,14 @@ class PlayerMobileFragment : Fragment() {
     private var pendingPlayWithAfterResolve = false
 
 
+    private fun seriesIdForAudioPref(): String? =
+        (args.videoType as? Video.Type.Episode)?.tvShow?.id?.trim()?.takeIf { it.isNotEmpty() }
+
     private fun buildPlayer(extraBuffering: Boolean): ExoPlayer {
+        val seriesId = seriesIdForAudioPref()
+        val preferredAudio = seriesId?.let {
+            com.dskja.betterstreamflix.player.SeriesAudioPreference.get(requireContext(), it)
+        }
         return PlayerBuilderFactory.build(
             context = requireContext(),
             dataSourceFactory = dataSourceFactory,
@@ -3505,6 +3521,7 @@ class PlayerMobileFragment : Fragment() {
                 seekIncrementsMs = if (isLiveTvPlayback()) null else 10_000L,
                 preferStereoAudio = false,
                 liveOptimized = isLiveTvPlayback(),
+                preferredAudioLanguage = preferredAudio,
             ),
         )
     }
@@ -3590,6 +3607,7 @@ class PlayerMobileFragment : Fragment() {
 
         SubtitleOffset.restore(requireContext(), subtitleOffsetKey())
 
+        binding.settings.seriesId = seriesIdForAudioPref()
         if (isCasting) {
             binding.pvPlayer.player = castPlayer
             // Settings stay bound to the local ExoPlayer (track selection APIs).

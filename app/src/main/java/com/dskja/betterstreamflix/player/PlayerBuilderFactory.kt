@@ -35,6 +35,11 @@ object PlayerBuilderFactory {
         val preferStereoAudio: Boolean = false,
         /** Shorter buffers + quicker start for IPTV / live HLS. */
         val liveOptimized: Boolean = false,
+        /**
+         * Per-series sticky audio (e.g. `de`). Wins over the provider catalog language
+         * when set so “always DE” applies before the first frame.
+         */
+        val preferredAudioLanguage: String? = null,
     )
 
     fun build(
@@ -127,13 +132,18 @@ object PlayerBuilderFactory {
         val selector = player.trackSelector as? DefaultTrackSelector
         if (selector != null) {
             val params = selector.buildUponParameters()
-            val lang = UserPreferences.currentProvider?.language?.substringBefore("-")
+            val seriesAudio = SeriesAudioPreference.canonical(options.preferredAudioLanguage)
+            val providerLang = UserPreferences.currentProvider?.language?.substringBefore("-")
             val subtitlesOff = UserPreferences.subtitleName?.trim().isNullOrEmpty()
-            ProviderAudioLanguage.preferredAudioLanguages(lang)?.let { codes ->
+            val audioCodes = seriesAudio?.let { SeriesAudioPreference.exoCodes(it) }
+                ?: ProviderAudioLanguage.preferredAudioLanguages(providerLang)
+            audioCodes?.takeIf { it.isNotEmpty() }?.let { codes ->
                 params.setPreferredAudioLanguages(*codes)
-                // Preferring provider text languages re-enables embedded captions after
-                // an Off selection (new Exo / software-decoder rebuild). Skip when Off.
-                if (!subtitlesOff) {
+            }
+            // Preferring provider text languages re-enables embedded captions after
+            // an Off selection (new Exo / software-decoder rebuild). Skip when Off.
+            if (!subtitlesOff) {
+                ProviderAudioLanguage.preferredAudioLanguages(providerLang)?.let { codes ->
                     params.setPreferredTextLanguages(*codes)
                 }
             }

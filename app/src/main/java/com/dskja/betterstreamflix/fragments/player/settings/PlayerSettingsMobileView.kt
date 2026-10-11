@@ -150,6 +150,12 @@ class PlayerSettingsMobileView @JvmOverloads constructor(
         displaySettings(Setting.SERVERS)
     }
 
+    /** Netflix-style quick open on the audio / language track picker. */
+    fun showAudio() {
+        show()
+        displaySettings(Setting.AUDIO)
+    }
+
     private fun displaySettings(setting: Setting) {
         currentSettings = setting
 
@@ -349,7 +355,11 @@ class PlayerSettingsMobileView @JvmOverloads constructor(
 
                         is Settings.Audio -> {
                             settingsView.onAudioSelected.invoke(item)
-                            settingsView.displaySettings(Setting.MAIN)
+                            when (item) {
+                                is Settings.Audio.AlwaysForSeries ->
+                                    settingsView.displaySettings(Setting.AUDIO)
+                                else -> settingsView.displaySettings(Setting.MAIN)
+                            }
                         }
 
                         is Settings.Subtitle -> {
@@ -609,6 +619,14 @@ class PlayerSettingsMobileView @JvmOverloads constructor(
                     }
 
                     is Settings.Audio -> when (item) {
+                        is Settings.Audio.AlwaysForSeries -> if (item.preferredCode != null) {
+                            context.getString(
+                                R.string.player_audio_always_series,
+                                item.labelCode,
+                            )
+                        } else {
+                            context.getString(R.string.player_audio_remember_series)
+                        }
                         is Settings.Audio.AudioTrackInformation -> item.name
                     }
 
@@ -718,7 +736,7 @@ class PlayerSettingsMobileView @JvmOverloads constructor(
                                 selected.height
                             )
                         }
-                        Settings.Audio -> Settings.Audio.selected?.name
+                        Settings.Audio -> settingsView.audioPreferenceSubLabel().orEmpty()
                         Settings.Subtitle -> when (val selected = Settings.Subtitle.selected) {
                             is Settings.Subtitle.TextTrackInformation -> selected.label
                             else -> context.getString(R.string.player_settings_subtitles_off)
