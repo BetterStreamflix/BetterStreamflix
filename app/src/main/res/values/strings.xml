@@ -1989,6 +1989,15 @@
     <string name="support_banner_subtitle">Optional tip via Support or Telegram — never required</string>
     <string name="support_banner_cta">Support</string>
     <string name="support_banner_dismiss_cd">Dismiss support card</string>
+
+    <string name="watchlist_digest_banner_title">Your weekly watchlist</string>
+    <string name="watchlist_digest_banner_subtitle">%1$d new episodes from My List — queue them in one tap</string>
+    <string name="watchlist_digest_banner_cta">Queue</string>
+    <string name="watchlist_digest_banner_dismiss_cd">Dismiss watchlist digest</string>
+    <string name="watchlist_digest_banner_never">Don\'t show again</string>
+    <string name="watchlist_digest_queued_toast">Queued %1$d episodes</string>
+    <string name="settings_watchlist_digest_title">Weekly watchlist digest</string>
+    <string name="settings_watchlist_digest_summary">Home card with up to 5 new episodes from My List and one-tap queue</string>
     <string name="support_thanks_title">Thank You for Supporting BetterStreamflix</string>
     <string name="support_thanks_body">Every bit of support helps keep the project moving forward.</string>
     <string name="support_thanks_body_with_supporters">Every bit of support helps keep the project moving forward.\n\nSpecial thanks to our supporters: %1$s.</string>

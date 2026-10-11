@@ -76,9 +76,12 @@ import com.dskja.betterstreamflix.models.Season
 import com.dskja.betterstreamflix.models.TvShow
 import com.dskja.betterstreamflix.fragments.favorites.FavoriteSectionHeader
 import com.dskja.betterstreamflix.support.SupportBannerItem
+import com.dskja.betterstreamflix.watchlist.WatchlistDigestBannerItem
 import com.dskja.betterstreamflix.R
 import com.dskja.betterstreamflix.databinding.ItemSupportBannerMobileBinding
 import com.dskja.betterstreamflix.databinding.ItemSupportBannerTvBinding
+import com.dskja.betterstreamflix.databinding.ItemWatchlistDigestMobileBinding
+import com.dskja.betterstreamflix.databinding.ItemWatchlistDigestTvBinding
 import com.dskja.betterstreamflix.utils.ExperimentalMobileDesign
 import com.dskja.betterstreamflix.utils.ExpMotion
 import com.dskja.betterstreamflix.utils.UserPreferences
@@ -115,6 +118,8 @@ class AppAdapter(
     var onProviderClickListener: ((Provider) -> Unit)? = null
     var onSupportBannerClickListener: (() -> Unit)? = null
     var onSupportBannerDismissListener: (() -> Unit)? = null
+    var onWatchlistDigestClickListener: ((WatchlistDigestBannerItem) -> Unit)? = null
+    var onWatchlistDigestDismissListener: ((WatchlistDigestBannerItem) -> Unit)? = null
     var onDetailTabSelectedListener: ((com.dskja.betterstreamflix.ui.DetailTab) -> Unit)? = null
     var selectedDetailTab: com.dskja.betterstreamflix.ui.DetailTab =
         com.dskja.betterstreamflix.ui.DetailTab.SIMILAR
@@ -145,6 +150,9 @@ class AppAdapter(
 
         SUPPORT_BANNER_MOBILE_ITEM,
         SUPPORT_BANNER_TV_ITEM,
+
+        WATCHLIST_DIGEST_MOBILE_ITEM,
+        WATCHLIST_DIGEST_TV_ITEM,
 
         GENRE_GRID_MOBILE_ITEM,
         GENRE_GRID_TV_ITEM,
@@ -317,6 +325,21 @@ class AppAdapter(
             )
             Type.SUPPORT_BANNER_TV_ITEM -> SupportBannerViewHolder(
                 ItemSupportBannerTvBinding.inflate(
+                    LayoutInflater.from(parent.context),
+                    parent,
+                    false,
+                )
+            )
+
+            Type.WATCHLIST_DIGEST_MOBILE_ITEM -> WatchlistDigestViewHolder(
+                ItemWatchlistDigestMobileBinding.inflate(
+                    LayoutInflater.from(parent.context),
+                    parent,
+                    false,
+                )
+            )
+            Type.WATCHLIST_DIGEST_TV_ITEM -> WatchlistDigestViewHolder(
+                ItemWatchlistDigestTvBinding.inflate(
                     LayoutInflater.from(parent.context),
                     parent,
                     false,
@@ -748,6 +771,14 @@ class AppAdapter(
                 onSupportBannerClickListener,
                 onSupportBannerDismissListener,
             )
+            is WatchlistDigestViewHolder -> {
+                val banner = item as? WatchlistDigestBannerItem ?: return
+                holder.bind(
+                    banner,
+                    onWatchlistDigestClickListener,
+                    onWatchlistDigestDismissListener,
+                )
+            }
             is GenreViewHolder -> {
                 val genre = item as? Genre ?: return
                 holder.bind(genre)
@@ -1191,6 +1222,93 @@ class AppAdapter(
         }
     }
 
+    private class WatchlistDigestViewHolder(
+        private val root: android.view.View,
+        private val cta: android.view.View,
+        private val dismiss: android.view.View,
+        private val titleView: android.widget.TextView?,
+        private val subtitleView: android.widget.TextView?,
+    ) : RecyclerView.ViewHolder(root) {
+        constructor(binding: ItemWatchlistDigestMobileBinding) : this(
+            binding.root,
+            binding.btnWatchlistDigestCta,
+            binding.btnWatchlistDigestDismiss,
+            binding.tvWatchlistDigestTitle,
+            binding.tvWatchlistDigestSubtitle,
+        )
+        constructor(binding: ItemWatchlistDigestTvBinding) : this(
+            binding.root,
+            binding.btnWatchlistDigestCta,
+            binding.btnWatchlistDigestDismiss,
+            binding.tvWatchlistDigestTitle,
+            binding.tvWatchlistDigestSubtitle,
+        )
+
+        fun bind(
+            item: WatchlistDigestBannerItem,
+            onClick: ((WatchlistDigestBannerItem) -> Unit)?,
+            onDismiss: ((WatchlistDigestBannerItem) -> Unit)?,
+        ) {
+            val count = item.episodeCount.coerceAtLeast(1)
+            val title = root.context.getString(R.string.watchlist_digest_banner_title)
+            val subtitle = root.context.getString(R.string.watchlist_digest_banner_subtitle, count)
+            titleView?.text = title
+            subtitleView?.text = subtitle
+            root.contentDescription = "$title. $subtitle"
+            cta.contentDescription = root.context.getString(R.string.watchlist_digest_banner_cta)
+            val open = android.view.View.OnClickListener {
+                ExpMotion.hapticTap(it)
+                onClick?.invoke(item)
+            }
+            root.setOnClickListener(open)
+            cta.setOnClickListener(open)
+            dismiss.setOnClickListener {
+                ExpMotion.hapticTap(it)
+                onDismiss?.invoke(item)
+            }
+            root.findViewById<View>(R.id.btn_watchlist_digest_never)?.let { never ->
+                root.isFocusable = false
+                root.isFocusableInTouchMode = false
+                (root as? android.view.ViewGroup)?.descendantFocusability =
+                    android.view.ViewGroup.FOCUS_AFTER_DESCENDANTS
+                never.setOnClickListener {
+                    ExpMotion.hapticTap(it)
+                    com.dskja.betterstreamflix.watchlist.WatchlistDigestPolicy.neverShow()
+                    onDismiss?.invoke(item)
+                }
+                SupportUiBinder.applyFocusScale(never)
+            }
+            SupportUiBinder.applyFocusScale(cta)
+            SupportUiBinder.applyFocusScale(dismiss)
+            SupportUiBinder.applyFocusScale(root)
+            if (ExperimentalMobileDesign.enabled()) {
+                root.setBackgroundResource(ExperimentalMobileDesign.glassCardBackground())
+                with(com.dskja.betterstreamflix.utils.ExpPressEffects) {
+                    root.applyExpPress()
+                    cta.applyExpPress()
+                    dismiss.applyExpPress()
+                }
+                cta.setBackgroundResource(ExperimentalMobileDesign.primaryButtonBackground())
+                dismiss.setBackgroundResource(ExperimentalMobileDesign.iconChipBackground())
+                root.findViewById<android.widget.ImageView>(R.id.iv_watchlist_digest_icon)?.let { icon ->
+                    val primary = com.google.android.material.color.MaterialColors.getColor(
+                        icon,
+                        androidx.appcompat.R.attr.colorPrimary,
+                        icon.context.getColor(R.color.m3_primary),
+                    )
+                    icon.imageTintList = android.content.res.ColorStateList.valueOf(primary)
+                }
+                if (root.getTag(R.id.exp_enter_animated_tag) != true) {
+                    root.setTag(R.id.exp_enter_animated_tag, true)
+                    ExpMotion.revealHeader(titleView, subtitleView)
+                    root.findViewById<View>(R.id.iv_watchlist_digest_icon)?.let { ExpMotion.popIn(it) }
+                    ExpMotion.popIn(cta)
+                    ExpMotion.popIn(dismiss)
+                }
+            }
+        }
+    }
+
     private data class Header<T : ViewBinding>(
         val binding: (parent: ViewGroup) -> T,
         val bind: ((binding: T) -> Unit)? = null,
@@ -1274,6 +1392,7 @@ class AppAdapter(
         is Episode -> "episode:${id}"
         is FavoriteSectionHeader -> "favorite-header:${section.key}"
         is SupportBannerItem -> "support-banner:${id}"
+        is WatchlistDigestBannerItem -> "watchlist-digest:${id}:${episodeCount}"
         is Genre -> "genre:${id}"
         is Movie -> "movie:${id}"
         is People -> "people:${id}"

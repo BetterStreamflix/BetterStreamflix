@@ -1,0 +1,118 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/watchlist_digest_banner_root"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_marginStart="24dp"
+    android:layout_marginEnd="24dp"
+    android:background="@drawable/bg_support_banner"
+    android:contentDescription="@string/watchlist_digest_banner_title"
+    android:descendantFocusability="afterDescendants"
+    android:focusable="false"
+    android:minHeight="@dimen/support_banner_height"
+    android:padding="18dp">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center_vertical"
+        android:layout_marginEnd="48dp"
+        android:orientation="vertical">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <ImageView
+                android:id="@+id/iv_watchlist_digest_icon"
+                android:layout_width="36dp"
+                android:layout_height="36dp"
+                android:contentDescription="@null"
+                android:importantForAccessibility="no"
+                android:src="@drawable/ic_list_add"
+                android:tint="@color/support_accent"
+                tools:ignore="ContentDescription,UseAppTint" />
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="16dp"
+                android:layout_weight="1"
+                android:orientation="vertical">
+
+                <TextView
+                    android:id="@+id/tv_watchlist_digest_title"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:fontFamily="@font/manrope"
+                    android:text="@string/watchlist_digest_banner_title"
+                    android:textColor="@color/support_text_primary"
+                    android:textSize="@dimen/support_text_card_title"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:id="@+id/tv_watchlist_digest_subtitle"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
+                    android:fontFamily="@font/manrope"
+                    android:text="@string/watchlist_digest_banner_subtitle"
+                    android:textColor="@color/support_text_secondary"
+                    android:textSize="@dimen/support_text_secondary" />
+            </LinearLayout>
+
+            <TextView
+                android:id="@+id/btn_watchlist_digest_cta"
+                android:layout_width="wrap_content"
+                android:layout_height="@dimen/support_button_height"
+                android:layout_marginStart="16dp"
+                android:background="@drawable/bg_support_btn_primary"
+                android:contentDescription="@string/watchlist_digest_banner_cta"
+                android:focusable="true"
+                android:focusableInTouchMode="true"
+                android:gravity="center"
+                android:minWidth="120dp"
+                android:nextFocusLeft="@id/nav_main"
+                android:paddingStart="20dp"
+                android:paddingEnd="20dp"
+                android:text="@string/watchlist_digest_banner_cta"
+                android:textColor="@color/support_on_accent"
+                android:textSize="@dimen/support_text_cta"
+                android:textStyle="bold" />
+        </LinearLayout>
+
+        <TextView
+            android:id="@+id/btn_watchlist_digest_never"
+            android:layout_width="wrap_content"
+            android:layout_height="@dimen/support_button_height"
+            android:layout_marginStart="52dp"
+            android:layout_marginTop="12dp"
+            android:background="@drawable/bg_support_btn_secondary"
+            android:focusable="false"
+            android:focusableInTouchMode="false"
+            android:fontFamily="@font/manrope"
+            android:gravity="center"
+            android:paddingStart="18dp"
+            android:paddingEnd="18dp"
+            android:text="@string/watchlist_digest_banner_never"
+            android:textColor="@color/support_text_primary"
+            android:textSize="@dimen/support_text_caption" />
+    </LinearLayout>
+
+    <ImageButton
+        android:id="@+id/btn_watchlist_digest_dismiss"
+        android:layout_width="@dimen/support_close_size"
+        android:layout_height="@dimen/support_close_size"
+        android:layout_gravity="top|end"
+        android:background="@android:color/transparent"
+        android:contentDescription="@string/watchlist_digest_banner_dismiss_cd"
+        android:focusable="false"
+        android:focusableInTouchMode="false"
+        android:padding="10dp"
+        android:src="@drawable/ic_support_close"
+        android:tint="@color/support_text_tertiary"
+        tools:ignore="UseAppTint" />
+</FrameLayout>

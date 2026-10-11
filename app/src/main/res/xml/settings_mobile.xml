@@ -211,6 +211,13 @@
                 app:iconSpaceReserved="false" />
 
             <SwitchPreferenceCompat
+                android:key="HOME_WATCHLIST_DIGEST_ENABLED"
+                android:title="@string/settings_watchlist_digest_title"
+                android:summary="@string/settings_watchlist_digest_summary"
+                android:defaultValue="true"
+                app:iconSpaceReserved="false" />
+
+            <SwitchPreferenceCompat
                 android:key="SHOW_SMART_COLLECTIONS"
                 android:title="@string/settings_show_smart_collections_title"
                 android:summary="@string/settings_show_smart_collections_summary"

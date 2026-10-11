@@ -1423,6 +1423,20 @@ class SettingsMobileFragment : PreferenceFragmentCompat() {
             }
         }
 
+        findPreference<SwitchPreferenceCompat>("HOME_WATCHLIST_DIGEST_ENABLED")?.apply {
+            isChecked = UserPreferences.homeWatchlistDigestEnabled
+            setOnPreferenceChangeListener { _, newValue ->
+                val enabled = newValue as Boolean
+                UserPreferences.homeWatchlistDigestEnabled = enabled
+                if (enabled) {
+                    // Re-enable clears a prior permanent dismiss so the weekly card can return.
+                    UserPreferences.homeWatchlistDigestDismissed = false
+                }
+                UserDataNotifier.notifyChanged()
+                true
+            }
+        }
+
         findPreference<SwitchPreferenceCompat>("SHOW_SMART_COLLECTIONS")?.apply {
             isChecked = UserPreferences.showSmartCollections
             setOnPreferenceChangeListener { _, newValue ->

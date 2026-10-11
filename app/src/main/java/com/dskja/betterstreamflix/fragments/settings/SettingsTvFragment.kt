@@ -757,6 +757,19 @@ class SettingsTvFragment : LeanbackPreferenceFragmentCompat() {
             }
         }
 
+        findPreference<SwitchPreferenceCompat>("HOME_WATCHLIST_DIGEST_ENABLED")?.apply {
+            isChecked = UserPreferences.homeWatchlistDigestEnabled
+            setOnPreferenceChangeListener { _, newValue ->
+                val enabled = newValue as Boolean
+                UserPreferences.homeWatchlistDigestEnabled = enabled
+                if (enabled) {
+                    UserPreferences.homeWatchlistDigestDismissed = false
+                }
+                UserDataNotifier.notifyChanged()
+                true
+            }
+        }
+
         findPreference<SwitchPreferenceCompat>("SHOW_SMART_COLLECTIONS")?.apply {
             isChecked = UserPreferences.showSmartCollections
             setOnPreferenceChangeListener { _, newValue ->
