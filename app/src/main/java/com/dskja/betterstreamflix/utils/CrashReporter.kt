@@ -3,6 +3,8 @@ package com.dskja.betterstreamflix.utils
 import android.content.Context
 import android.os.Build
 import android.util.Log
+import com.dskja.betterstreamflix.BetterStreamflixApp
+import com.dskja.betterstreamflix.R
 import java.io.File
 import java.io.PrintWriter
 import java.io.StringWriter
@@ -51,8 +53,13 @@ object CrashReporter {
             )
         }
         // Expected stream/CDN/hoster noise stays local — do not flood Sentry.
+        val localizedNoSource = runCatching {
+            BetterStreamflixApp.instance.getString(R.string.error_no_source_found)
+        }.getOrNull()
         if (com.dskja.betterstreamflix.extractors.ExtractorFailureClassifier.isExpectedStreamNoise(error) ||
             message.contains("No source found", ignoreCase = true) ||
+            (!localizedNoSource.isNullOrBlank() &&
+                message.contains(localizedNoSource, ignoreCase = true)) ||
             message.contains("getVideo failed", ignoreCase = true) ||
             isExpectedProviderTimeout(error, message) ||
             isExpectedTmdbShelfParseNoise(error, message)

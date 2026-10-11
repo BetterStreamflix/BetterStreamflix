@@ -62,7 +62,7 @@
         android:layout_width="36dp"
         android:layout_height="3dp"
         android:layout_marginTop="12dp"
-        android:background="@drawable/bg_exp_accent_rule"
+        android:background="@drawable/bg_cinema_accent_rule"
         android:visibility="gone"
         app:layout_constraintBottom_toTopOf="@id/btn_genre_empty_cta"
         app:layout_constraintEnd_toEndOf="@id/tv_genre_empty"

@@ -25,6 +25,7 @@ import com.dskja.betterstreamflix.providers.Provider
 import com.dskja.betterstreamflix.ui.HomeProfileChip
 import com.dskja.betterstreamflix.utils.CacheUtils
 import com.dskja.betterstreamflix.utils.ExpDialogChrome
+import com.dskja.betterstreamflix.utils.ExpEmptyChrome
 import com.dskja.betterstreamflix.utils.ExpMotion
 import com.dskja.betterstreamflix.utils.LoggingUtils
 import com.dskja.betterstreamflix.utils.TvLoadingOverlay
@@ -70,7 +71,7 @@ class LiveHubTvFragment : Fragment() {
             viewModel.state.flowWithLifecycle(lifecycle, Lifecycle.State.STARTED).collect { state ->
                 when (state) {
                     LiveHubViewModel.State.Loading -> {
-                        showEmpty(visible = false)
+                        bindEmptyChrome(visible = false)
                         TvLoadingOverlay.show(binding.isLoading.root)
                         binding.isLoading.gIsLoadingRetry.visibility = View.GONE
                         hideWarning()
@@ -91,6 +92,11 @@ class LiveHubTvFragment : Fragment() {
                         display(emptyList())
                         TvLoadingOverlay.hide(binding.isLoading.root)
                         hideWarning()
+                        binding.btnLiveHubEmptyCta.post {
+                            if (binding.btnLiveHubEmptyCta.isVisible) {
+                                binding.btnLiveHubEmptyCta.requestFocus()
+                            }
+                        }
                     }
                     is LiveHubViewModel.State.Failed -> {
                         Toast.makeText(
@@ -119,7 +125,7 @@ class LiveHubTvFragment : Fragment() {
                             binding.vgvLiveHub.visibility = View.GONE
                             btnIsLoadingRetry.requestFocus()
                         }
-                        showEmpty(visible = appAdapter.items.isEmpty())
+                        bindEmptyChrome(visible = appAdapter.items.isEmpty())
                     }
                 }
             }
@@ -151,19 +157,26 @@ class LiveHubTvFragment : Fragment() {
             category.itemSpacing = 16.dp(requireContext())
             category.itemType = AppAdapter.Type.CATEGORY_TV_ITEM
         }
-        showEmpty(visible = visible.isEmpty())
+        bindEmptyChrome(visible = visible.isEmpty())
         binding.vgvLiveHub.isVisible = visible.isNotEmpty()
         appAdapter.submitList(visible)
     }
 
-    private fun showEmpty(visible: Boolean) {
+    private fun bindEmptyChrome(visible: Boolean) {
         binding.tvLiveHubEmpty.text = getString(R.string.live_hub_empty)
-        binding.tvLiveHubEmpty.isVisible = visible
+        ExpEmptyChrome.bind(
+            emptyView = binding.tvLiveHubEmpty,
+            emptyRule = binding.vLiveHubEmptyRule,
+            emptyCta = binding.btnLiveHubEmptyCta,
+            visible = visible,
+            onCtaClick = { reload() },
+        )
     }
 
     private fun displayRestricted() {
         appAdapter.submitList(emptyList())
         binding.vgvLiveHub.isVisible = false
+        bindEmptyChrome(visible = false)
         binding.tvLiveHubEmpty.text = getString(R.string.live_hub_restricted)
         binding.tvLiveHubEmpty.isVisible = true
     }

@@ -2,7 +2,9 @@ package com.dskja.betterstreamflix.utils
 
 import android.app.Application
 import androidx.navigation.NavController
+import com.dskja.betterstreamflix.BetterStreamflixApp
 import com.dskja.betterstreamflix.BuildConfig
+import com.dskja.betterstreamflix.R
 import io.sentry.Breadcrumb
 import io.sentry.Hint
 import io.sentry.Sentry
@@ -102,6 +104,17 @@ object SentryBootstrap {
                                 value.contains("TMDb request failed: ClassCastException", ignoreCase = true) ||
                                 value.contains("No source found", ignoreCase = true) ||
                                 value.contains("No servers found", ignoreCase = true) ||
+                                runCatching {
+                                    val app = BetterStreamflixApp.instance
+                                    value.contains(
+                                        app.getString(R.string.error_no_source_found),
+                                        ignoreCase = true,
+                                    ) ||
+                                        value.contains(
+                                            app.getString(R.string.error_no_servers_found),
+                                            ignoreCase = true,
+                                        )
+                                }.getOrDefault(false) ||
                                 value.contains("status code: 503", ignoreCase = true) ||
                                 value.contains("status code: 502", ignoreCase = true) ||
                                 value.contains("status code: 504", ignoreCase = true) ||

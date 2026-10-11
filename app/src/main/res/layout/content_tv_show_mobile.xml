@@ -185,6 +185,7 @@
             android:contentDescription="@string/profile_integration_tmdb"
             android:src="@drawable/ic_tmdb_attr"
             android:visibility="gone"
+            app:tint="@color/cinema_tmdb"
             tools:visibility="visible" />
 
         <TextView

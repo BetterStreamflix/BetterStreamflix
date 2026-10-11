@@ -34,7 +34,7 @@
         android:layout_width="36dp"
         android:layout_height="3dp"
         android:layout_marginTop="12dp"
-        android:background="@drawable/bg_exp_accent_rule" />
+        android:background="@drawable/bg_cinema_accent_rule" />
 
     <TextView
         android:id="@+id/tv_support_hero_body"

@@ -9,15 +9,19 @@
     <color name="cinema_destructive">#FFFF6B6B</color>
     <color name="cinema_text">#FFF7F7F8</color>
     <color name="cinema_text_soft">#FFE8E8EC</color>
+    <!-- Warm cream for catalog-warning banners on dark cinema surfaces. -->
+    <color name="cinema_text_cream">#FFF5E6D3</color>
     <color name="cinema_text_muted">#FFA1A1AA</color>
-    <color name="cinema_text_faint">#FF71717A</color>
+    <!-- Lightened for AA contrast on cinema_ink (~5.2:1 for normal text). -->
+    <color name="cinema_text_faint">#FF8B8B96</color>
     <color name="cinema_cta_fill">#FFF7F7F8</color>
     <color name="cinema_cta_ink">#FF0A0A0C</color>
     <color name="cinema_glass">#33FFFFFF</color>
     <color name="cinema_glass_strong">#4DFFFFFF</color>
     <color name="cinema_glass_bright">#66FFFFFF</color>
     <color name="cinema_stroke">#40FFFFFF</color>
-    <color name="cinema_progress_track">#CC646464</color>
+    <!-- Lightened track so mid-progress remains distinguishable (AA-friendly). -->
+    <color name="cinema_progress_track">#CC8A8A92</color>
     <color name="cinema_accent">#FF5B8CFF</color>
     <color name="cinema_tmdb">#FF01B4E4</color>
     <color name="cinema_player_btn_focus">#80808080</color>

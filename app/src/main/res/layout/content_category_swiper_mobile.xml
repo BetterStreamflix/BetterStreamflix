@@ -64,7 +64,7 @@
         android:indeterminate="false"
         android:max="1000"
         android:progress="0"
-        android:progressBackgroundTint="@color/cinema_glass"
+        android:progressBackgroundTint="@color/cinema_progress_track"
         android:progressTint="@color/cinema_text"
         android:visibility="gone"
         app:layout_constraintBottom_toBottomOf="@id/fl_category_swiper_card"

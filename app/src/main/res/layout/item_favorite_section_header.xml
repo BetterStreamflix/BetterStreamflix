@@ -23,6 +23,6 @@
         android:layout_width="28dp"
         android:layout_height="2dp"
         android:layout_marginTop="6dp"
-        android:background="@drawable/bg_exp_accent_rule" />
+        android:background="@drawable/bg_cinema_accent_rule" />
 
 </LinearLayout>

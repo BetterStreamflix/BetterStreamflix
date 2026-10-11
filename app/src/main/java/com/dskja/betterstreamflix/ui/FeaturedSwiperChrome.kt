@@ -155,7 +155,7 @@ object FeaturedSwiperChrome {
     fun wireWatchButton(button: TextView) {
         val play = ContextCompat.getDrawable(button.context, R.drawable.ic_featured_play)
         TextViewCompat.setCompoundDrawablesRelativeWithIntrinsicBounds(button, play, null, null, null)
-        button.setTextColor(0xFF0A0A0C.toInt())
+        button.setTextColor(ContextCompat.getColor(button.context, R.color.cinema_cta_ink))
         button.compoundDrawableTintList = null
     }
 

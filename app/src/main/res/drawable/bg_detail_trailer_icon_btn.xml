@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <ripple xmlns:android="http://schemas.android.com/apk/res/android"
-    android:color="#55FFFFFF">
+    android:color="@color/cinema_glass_strong">
     <item>
         <shape android:shape="oval">
-            <solid android:color="#2EFFFFFF" />
+            <solid android:color="@color/cinema_glass" />
         </shape>
     </item>
 </ripple>

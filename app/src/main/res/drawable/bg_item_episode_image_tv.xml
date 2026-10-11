@@ -4,14 +4,14 @@
     <item android:state_focused="true">
         <shape android:shape="rectangle">
             <corners android:radius="8dp" />
-            <solid android:color="#808080" />
+            <solid android:color="@color/cinema_elevated" />
         </shape>
     </item>
 
     <item>
         <shape android:shape="rectangle">
             <corners android:radius="8dp" />
-            <solid android:color="#808080" />
+            <solid android:color="@color/cinema_elevated" />
         </shape>
     </item>
 
