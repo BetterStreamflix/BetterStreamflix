@@ -480,6 +480,10 @@ class SettingsMobileFragment : PreferenceFragmentCompat() {
                     }
             },
         )
+        com.dskja.betterstreamflix.sync.SessionHandoffSettingsController.bind(
+            fragment = this,
+            findPreference = { key -> findPreference(key) },
+        )
         PlatformSettingsController.bind(this, lifecycleScope) { key ->
             findPreference(key)
         }

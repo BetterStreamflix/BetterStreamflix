@@ -234,6 +234,13 @@
                 <action android:name="android.intent.action.VIEW"/>
                 <category android:name="android.intent.category.DEFAULT"/>
                 <category android:name="android.intent.category.BROWSABLE"/>
+                <data android:scheme="betterstreamflix" android:host="handoff"/>
+                <data android:scheme="streamflix" android:host="handoff"/>
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+                <category android:name="android.intent.category.BROWSABLE"/>
                 <data
                     android:scheme="https"
                     android:host="betterstreamflix.app"
@@ -256,6 +263,15 @@
                     android:scheme="https"
                     android:host="betterstreamflix.app"
                     android:pathPrefix="/cast" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+                <category android:name="android.intent.category.BROWSABLE"/>
+                <data
+                    android:scheme="https"
+                    android:host="betterstreamflix.app"
+                    android:pathPrefix="/handoff" />
             </intent-filter>
             <intent-filter>
                 <action android:name="android.intent.action.VIEW"/>
@@ -341,6 +357,22 @@
                     android:scheme="https"
                     android:host="betterstreamflix.app"
                     android:pathPrefix="/cast" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+                <category android:name="android.intent.category.BROWSABLE"/>
+                <data android:scheme="betterstreamflix" android:host="handoff"/>
+                <data android:scheme="streamflix" android:host="handoff"/>
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+                <category android:name="android.intent.category.BROWSABLE"/>
+                <data
+                    android:scheme="https"
+                    android:host="betterstreamflix.app"
+                    android:pathPrefix="/handoff" />
             </intent-filter>
             <intent-filter>
                 <action android:name="android.intent.action.VIEW"/>
