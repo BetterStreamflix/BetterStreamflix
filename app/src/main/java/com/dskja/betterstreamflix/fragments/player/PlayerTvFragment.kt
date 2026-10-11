@@ -206,6 +206,39 @@ class PlayerTvFragment : Fragment(),
             }
         }
 
+    private val castRoomBridge =
+        object : com.dskja.betterstreamflix.sync.CastRoomPlayerHooks.PlayerBridge {
+            override fun isLiveOrOffline(): Boolean =
+                isLiveTvPlayback() || isOfflinePlayback()
+
+            override fun videoType(): Video.Type = args.videoType
+
+            override fun positionMs(): Long =
+                runCatching { activePlayer().currentPosition }.getOrDefault(0L)
+
+            override fun isPlaying(): Boolean =
+                runCatching { activePlayer().isPlaying }.getOrDefault(false)
+
+            override fun setPlayWhenReady(playing: Boolean) {
+                runCatching {
+                    activePlayer().playWhenReady = playing
+                    if (playing) activePlayer().play() else activePlayer().pause()
+                }
+            }
+
+            override fun currentCastRoomIndex(): Int =
+                com.dskja.betterstreamflix.sync.CastRoomUi.latestPayload()?.nowPlayingIndex ?: 0
+        }
+
+    fun castRoomApplyRemotePlaying(playing: Boolean) {
+        if (!isAdded || _binding == null) return
+        com.dskja.betterstreamflix.sync.CastRoomPlayerHooks.applyRemotePlaying(
+            this,
+            castRoomBridge,
+            playing,
+        )
+    }
+
     private lateinit var player: ExoPlayer
     private var playerReleased = false
     private var mediaSessionReleased = true
@@ -833,6 +866,7 @@ class PlayerTvFragment : Fragment(),
         // Zurück from player (especially TV OEM paths).
         isTearingDown = true
         com.dskja.betterstreamflix.sync.WatchPartyPlayerHooks.onDestroyView(this)
+        com.dskja.betterstreamflix.sync.CastRoomPlayerHooks.onDestroyView(this)
         PlaybackLifecycleGuard.unregister(playbackStopHandle)
         val appContext = context?.applicationContext
         runCatching {
@@ -1392,6 +1426,10 @@ class PlayerTvFragment : Fragment(),
             controller.btnExoWatchParty,
             watchPartyBridge,
         )
+        com.dskja.betterstreamflix.sync.CastRoomPlayerHooks.wireChromeButton(
+            this,
+            controller.btnExoCastRoom,
+        )
         controller.btnExoExternalPlayer.setOnClickListener {
             openCurrentStreamExternally(forceChooser = false)
         }
@@ -1587,6 +1625,10 @@ class PlayerTvFragment : Fragment(),
                 this,
                 binding.pvPlayer.controller.binding.btnExoWatchParty,
                 watchPartyBridge,
+            )
+            com.dskja.betterstreamflix.sync.CastRoomPlayerHooks.wireChromeButton(
+                this,
+                binding.pvPlayer.controller.binding.btnExoCastRoom,
             )
 
             binding.pvPlayer.controller.binding.exoReplay.setOnClickListener {
@@ -1876,6 +1918,13 @@ class PlayerTvFragment : Fragment(),
                 binding.pvPlayer.controller.binding.btnExoWatchParty,
                 watchPartyBridge,
             )
+            com.dskja.betterstreamflix.sync.CastRoomPlayerHooks.ensureHostHeartbeat(
+                this,
+                castRoomBridge,
+            )
+            com.dskja.betterstreamflix.sync.CastRoomPlayerHooks.refreshChrome(
+                binding.pvPlayer.controller.binding.btnExoCastRoom,
+            )
             runCatching {
                 com.dskja.betterstreamflix.platform.plugins.PluginManager
                     .dispatchServerResolved(server)
@@ -2086,7 +2135,10 @@ class PlayerTvFragment : Fragment(),
                         if (reallyFinished &&
                             player.playbackState == androidx.media3.common.Player.STATE_ENDED
                         ) {
-                            if (UserPreferences.autoplay && !viewModel.isVideoResolveInFlight()) {
+                            if (com.dskja.betterstreamflix.sync.CastRoomSession.isHost()) {
+                                com.dskja.betterstreamflix.sync.CastRoomPlayerHooks
+                                    .onLocalPlaybackEnded(this@PlayerTvFragment)
+                            } else if (UserPreferences.autoplay && !viewModel.isVideoResolveInFlight()) {
                                 playNextEpisodeAcrossSeasons(autoplay = true)
                             }
                         }

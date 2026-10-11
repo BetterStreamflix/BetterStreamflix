@@ -465,19 +465,43 @@ internal fun MovieViewHolder.bindMovieTvDetail(binding: ContentMovieTvBinding) {
             )
         }
         val canShare = share.resolveActivity(context.packageManager) != null
-        shareBtn.visibility = if (canShare) View.VISIBLE else View.GONE
-        if (canShare) {
+        if (canShare || com.dskja.betterstreamflix.sync.CastRoomSession.isActive()) {
+            shareBtn.visibility = View.VISIBLE
             shareBtn.setOnClickListener {
                 ExpMotion.hapticTap(it)
-                // Prefer direct send — Leanback remotes struggle with chooser UIs.
-                runCatching { context.startActivity(share) }
-                    .onFailure {
-                        context.startActivity(
-                            Intent.createChooser(share, context.getString(R.string.detail_share)),
-                        )
+                val fragment = context.toActivity()?.getCurrentFragment() as? Fragment
+                val videoType = Video.Type.Movie(
+                    id = movie.id,
+                    title = movie.title,
+                    releaseDate = movie.released?.format("yyyy").orEmpty(),
+                    poster = movie.poster.orEmpty(),
+                    imdbId = movie.imdbId,
+                )
+                val doShare = {
+                    if (canShare) {
+                        runCatching { context.startActivity(share) }
+                            .onFailure {
+                                context.startActivity(
+                                    Intent.createChooser(
+                                        share,
+                                        context.getString(R.string.detail_share),
+                                    ),
+                                )
+                            }
                     }
+                }
+                if (fragment != null) {
+                    com.dskja.betterstreamflix.sync.CastRoomUi.maybeAugmentShareClick(
+                        fragment,
+                        videoType,
+                        doShare,
+                    )
+                } else {
+                    doShare()
+                }
             }
         } else {
+            shareBtn.visibility = View.GONE
             shareBtn.setOnClickListener(null)
         }
     }

@@ -141,8 +141,30 @@ class EpisodeViewHolder(
             }
             setOnLongClickListener {
                 ExpMotion.hapticTap(it)
-                ShowOptionsMobileDialog(context, episode)
-                    .show()
+                val fragment = context.toActivity()?.getCurrentFragment() as? Fragment
+                if (fragment != null &&
+                    com.dskja.betterstreamflix.sync.CastRoomSession.isActive()
+                ) {
+                    val options = arrayOf(
+                        context.getString(R.string.cast_room_add_action),
+                        context.getString(R.string.favorites_show_options),
+                    )
+                    androidx.appcompat.app.AlertDialog.Builder(context)
+                        .setTitle(episode.title ?: context.getString(R.string.episode_number, episode.number))
+                        .setItems(options) { _, which ->
+                            when (which) {
+                                0 -> com.dskja.betterstreamflix.sync.CastRoomUi.offerAddFromDetail(
+                                    fragment,
+                                    com.dskja.betterstreamflix.sync.CastRoomUi.videoTypeFromEpisode(episode),
+                                )
+                                1 -> ShowOptionsMobileDialog(context, episode).show()
+                            }
+                        }
+                        .setNegativeButton(android.R.string.cancel, null)
+                        .show()
+                } else {
+                    ShowOptionsMobileDialog(context, episode).show()
+                }
                 true
             }
         }

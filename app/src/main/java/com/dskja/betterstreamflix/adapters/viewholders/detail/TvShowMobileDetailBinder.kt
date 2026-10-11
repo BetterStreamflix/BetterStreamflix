@@ -502,15 +502,37 @@ internal fun TvShowViewHolder.bindTvShowMobileDetail(binding: ContentTvShowMobil
             )
         }
         val canShare = share.resolveActivity(context.packageManager) != null
-        shareBtn.visibility = if (canShare) View.VISIBLE else View.GONE
-        shareColumn?.visibility = if (canShare) View.VISIBLE else View.GONE
-        if (canShare) {
+        if (canShare || com.dskja.betterstreamflix.sync.CastRoomSession.isActive()) {
+            shareBtn.visibility = View.VISIBLE
+            shareColumn?.visibility = View.VISIBLE
             shareBtn.applyExpPress()
             shareBtn.setOnClickListener {
                 ExpMotion.hapticTap(it)
-                context.startActivity(Intent.createChooser(share, context.getString(R.string.detail_share)))
+                val fragment = context.toActivity()?.getCurrentFragment() as? Fragment
+                val episode = tvShow.episodeToWatch
+                val doShare = {
+                    if (canShare) {
+                        context.startActivity(
+                            Intent.createChooser(share, context.getString(R.string.detail_share)),
+                        )
+                    }
+                }
+                if (fragment != null &&
+                    com.dskja.betterstreamflix.sync.CastRoomSession.isActive() &&
+                    episode != null
+                ) {
+                    com.dskja.betterstreamflix.sync.CastRoomUi.maybeAugmentShareClick(
+                        fragment,
+                        com.dskja.betterstreamflix.sync.CastRoomUi.videoTypeFromEpisode(episode),
+                        doShare,
+                    )
+                } else {
+                    doShare()
+                }
             }
         } else {
+            shareBtn.visibility = View.GONE
+            shareColumn?.visibility = View.GONE
             shareBtn.setOnClickListener(null)
         }
     }
