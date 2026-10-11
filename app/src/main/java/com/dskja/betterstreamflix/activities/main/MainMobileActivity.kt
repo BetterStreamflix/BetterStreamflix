@@ -295,6 +295,18 @@ class MainMobileActivity : FragmentActivity() {
 
         navController.addOnDestinationChangedListener { _, destination, _ ->
             val leavingPlayer = lastNavDestinationId == R.id.player && destination.id != R.id.player
+            if (destination.id == R.id.player &&
+                com.dskja.betterstreamflix.kids.KidsBedtime.shouldBlockEnteringPlayer()
+            ) {
+                binding.root.post {
+                    runCatching {
+                        if (navController.currentDestination?.id == R.id.player) {
+                            navController.popBackStack()
+                        }
+                    }
+                    com.dskja.betterstreamflix.kids.KidsBedtimeUi.blockPlayerEntry(this@MainMobileActivity)
+                }
+            }
             if (destination.id != R.id.player) {
                 // Clean Exit: bottom nav / deep links can leave the player without Back — kill audio.
                 PlaybackLifecycleGuard.stopActivePlayback()
@@ -435,6 +447,9 @@ class MainMobileActivity : FragmentActivity() {
             supportFragmentManager.findFragmentById(R.id.nav_main_fragment) as? NavHostFragment
         if (navHost != null) {
             binding.root.post { showProfileUnlockGateIfNeeded(navHost) }
+        }
+        binding.root.post {
+            com.dskja.betterstreamflix.kids.KidsBedtimeUi.maybeShowLock(this@MainMobileActivity)
         }
         com.dskja.betterstreamflix.sync.SharedWatchlistUi.tryFlushPending(this)
         com.dskja.betterstreamflix.sync.WatchPartyUi.tryFlushPending(this)

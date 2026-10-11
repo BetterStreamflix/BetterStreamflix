@@ -163,6 +163,19 @@
                 android:defaultValue="12"
                 app:iconSpaceReserved="false" />
 
+            <SwitchPreferenceCompat
+                android:key="KIDS_BEDTIME_ENABLED"
+                android:title="@string/kids_bedtime_title"
+                android:summary="@string/kids_bedtime_summary_off"
+                android:defaultValue="false"
+                app:iconSpaceReserved="false" />
+
+            <Preference
+                android:key="KIDS_BEDTIME_TIME"
+                android:title="@string/kids_bedtime_time_title"
+                android:summary="@string/kids_bedtime_time_summary_default"
+                app:iconSpaceReserved="false" />
+
             <Preference
                 android:key="PROFILE_PIN"
                 android:title="@string/profile_pin_title"

@@ -1094,6 +1094,41 @@ object UserPreferences {
             setProfileScopedStringSet(Key.HOME_VISIT_FAVORITE_TV_IDS, value)
         }
 
+    /**
+     * Kids Bedtime master switch (profile-scoped). Only applies while the
+     * active profile is Kids — see [com.dskja.betterstreamflix.kids.KidsBedtime].
+     */
+    var kidsBedtimeEnabled: Boolean
+        get() = profileScopedBoolean(Key.KIDS_BEDTIME_ENABLED) ?: false
+        set(value) {
+            setProfileScopedBoolean(Key.KIDS_BEDTIME_ENABLED, value)
+        }
+
+    /** Local minute-of-day for bedtime (0–1439). Default 20:00. */
+    var kidsBedtimeMinuteOfDay: Int
+        get() = profileScopedInt(Key.KIDS_BEDTIME_MINUTE_OF_DAY)
+            ?: com.dskja.betterstreamflix.kids.KidsBedtime.DEFAULT_MINUTE_OF_DAY
+        set(value) {
+            setProfileScopedInt(
+                Key.KIDS_BEDTIME_MINUTE_OF_DAY,
+                com.dskja.betterstreamflix.kids.KidsBedtime.clampMinuteOfDay(value),
+            )
+        }
+
+    /** True after auto-stop until a parental/profile PIN clears it. */
+    var kidsBedtimeLocked: Boolean
+        get() = profileScopedBoolean(Key.KIDS_BEDTIME_LOCKED) ?: false
+        set(value) {
+            setProfileScopedBoolean(Key.KIDS_BEDTIME_LOCKED, value)
+        }
+
+    /** Wall-clock bypass after PIN unlock (until wake). */
+    var kidsBedtimeBypassUntilMs: Long
+        get() = profileScopedLong(Key.KIDS_BEDTIME_BYPASS_UNTIL_MS) ?: 0L
+        set(value) {
+            setProfileScopedLong(Key.KIDS_BEDTIME_BYPASS_UNTIL_MS, value.coerceAtLeast(0L))
+        }
+
     /** When true, chronically brittle providers appear in the provider picker. */
     var showQuarantinedProviders: Boolean
         get() = Key.SHOW_QUARANTINED_PROVIDERS.getBoolean() ?: false
@@ -1800,6 +1835,10 @@ object UserPreferences {
         HOME_LAST_VISIT_AT_MS,
         HOME_VISIT_NEXT_EPISODE_IDS,
         HOME_VISIT_FAVORITE_TV_IDS,
+        KIDS_BEDTIME_ENABLED,
+        KIDS_BEDTIME_MINUTE_OF_DAY,
+        KIDS_BEDTIME_LOCKED,
+        KIDS_BEDTIME_BYPASS_UNTIL_MS,
         SHOW_QUARANTINED_PROVIDERS,
         SHOW_VAVOO_VOD_PROVIDERS,
         LIBRARY_SCOPE,

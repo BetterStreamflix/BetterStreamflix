@@ -145,6 +145,18 @@ class MainTvActivity : FragmentActivity() {
 
         navController.addOnDestinationChangedListener { _, destination, _ ->
             val leavingPlayer = lastNavDestinationId == R.id.player && destination.id != R.id.player
+            if (destination.id == R.id.player &&
+                com.dskja.betterstreamflix.kids.KidsBedtime.shouldBlockEnteringPlayer()
+            ) {
+                binding.root.post {
+                    runCatching {
+                        if (navController.currentDestination?.id == R.id.player) {
+                            navController.popBackStack()
+                        }
+                    }
+                    com.dskja.betterstreamflix.kids.KidsBedtimeUi.blockPlayerEntry(this@MainTvActivity)
+                }
+            }
             if (destination.id != R.id.player) {
                 PlaybackLifecycleGuard.stopActivePlayback()
                 if (leavingPlayer) {
@@ -481,6 +493,9 @@ class MainTvActivity : FragmentActivity() {
             .findFragmentById(binding.navMainFragment.id) as? NavHostFragment
         if (navHostFragment != null) {
             binding.root.post { showProfileUnlockGateIfNeeded(navHostFragment) }
+        }
+        binding.root.post {
+            com.dskja.betterstreamflix.kids.KidsBedtimeUi.maybeShowLock(this@MainTvActivity)
         }
         com.dskja.betterstreamflix.sync.SharedWatchlistUi.tryFlushPending(this)
         com.dskja.betterstreamflix.sync.WatchPartyUi.tryFlushPending(this)

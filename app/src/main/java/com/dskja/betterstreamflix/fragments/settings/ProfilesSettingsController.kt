@@ -175,6 +175,54 @@ object ProfilesSettingsController {
             true
         }
 
+        findPreference("KIDS_BEDTIME_ENABLED")?.let { pref ->
+            val switch = pref as? SwitchPreferenceCompat ?: return@let
+            switch.setOnPreferenceChangeListener { _, newValue ->
+                val enable = newValue as Boolean
+                if (!ProfileManager.isKidsActive()) {
+                    notifyUser(
+                        context,
+                        context.getString(R.string.profile_kids_title),
+                        R.string.kids_bedtime_title,
+                    )
+                    return@setOnPreferenceChangeListener false
+                }
+                if (enable) {
+                    val hasPin = UserPreferences.parentalControlPin.isNotBlank() ||
+                        ProfileManager.activeProfile()?.pinHash != null
+                    if (!hasPin) {
+                        notifyUser(
+                            context,
+                            context.getString(R.string.kids_bedtime_needs_pin),
+                            R.string.kids_bedtime_title,
+                        )
+                        return@setOnPreferenceChangeListener false
+                    }
+                }
+                UserPreferences.kidsBedtimeEnabled = enable
+                if (!enable) {
+                    UserPreferences.kidsBedtimeLocked = false
+                    UserPreferences.kidsBedtimeBypassUntilMs = 0L
+                } else {
+                    notifyUser(
+                        context,
+                        context.getString(R.string.kids_bedtime_enabled_toast),
+                        R.string.kids_bedtime_title,
+                    )
+                }
+                refresh(findPreference, context, fragment)
+                true
+            }
+        }
+
+        findPreference("KIDS_BEDTIME_TIME")?.setOnPreferenceClickListener {
+            if (!ProfileManager.isKidsActive()) return@setOnPreferenceClickListener true
+            com.dskja.betterstreamflix.kids.KidsBedtimeUi.showTimePicker(context) {
+                refresh(findPreference, context, fragment)
+            }
+            true
+        }
+
         findPreference("PROFILE_PIN")?.setOnPreferenceClickListener {
             showPinEditor(fragment, findPreference)
             true
@@ -266,6 +314,19 @@ object ProfilesSettingsController {
                 value = age.toString()
                 summary = context.getString(R.string.profile_kids_max_age_summary) + " ($age+)"
             }
+        }
+
+        val kidsProfile = profile?.isKids == true
+        (findPreference("KIDS_BEDTIME_ENABLED") as? SwitchPreferenceCompat)?.apply {
+            isVisible = kidsProfile
+            isEnabled = kidsProfile
+            isChecked = UserPreferences.kidsBedtimeEnabled
+            summary = com.dskja.betterstreamflix.kids.KidsBedtimeUi.enabledSummary(context)
+        }
+        findPreference("KIDS_BEDTIME_TIME")?.apply {
+            isVisible = kidsProfile && UserPreferences.kidsBedtimeEnabled
+            isEnabled = kidsProfile && UserPreferences.kidsBedtimeEnabled
+            summary = com.dskja.betterstreamflix.kids.KidsBedtimeUi.timeSummary(context)
         }
 
         findPreference("PROFILE_PIN")?.summary = if (profile?.pinHash != null) {
