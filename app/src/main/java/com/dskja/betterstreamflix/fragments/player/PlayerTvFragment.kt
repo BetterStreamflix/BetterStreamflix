@@ -1539,8 +1539,16 @@ class PlayerTvFragment : Fragment() {
             binding.pvPlayer.controller.binding.exoSettings.setOnClickListener {
                 binding.pvPlayer.controllerShowTimeoutMs = defaultControllerShowTimeoutMs
                 binding.pvPlayer.showController()
+                binding.settings.seriesId = seriesIdForAudioPref()
                 binding.settings.player = activePlayer()
                 binding.settings.show()
+            }
+            binding.pvPlayer.controller.binding.btnExoAudio.setOnClickListener {
+                binding.pvPlayer.controllerShowTimeoutMs = defaultControllerShowTimeoutMs
+                binding.pvPlayer.showController()
+                binding.settings.seriesId = seriesIdForAudioPref()
+                binding.settings.player = activePlayer()
+                binding.settings.showAudio()
             }
 
             binding.pvPlayer.controller.binding.btnSkipIntro.setOnClickListener {
@@ -3051,7 +3059,14 @@ class PlayerTvFragment : Fragment() {
         private var currentExternalPlayerTried = false
         private var pendingPlayWithAfterResolve = false
 
+        private fun seriesIdForAudioPref(): String? =
+            (args.videoType as? Video.Type.Episode)?.tvShow?.id?.trim()?.takeIf { it.isNotEmpty() }
+
         private fun buildPlayer(extraBuffering: Boolean): ExoPlayer {
+            val seriesId = seriesIdForAudioPref()
+            val preferredAudio = seriesId?.let {
+                com.dskja.betterstreamflix.player.SeriesAudioPreference.get(requireContext(), it)
+            }
             return PlayerBuilderFactory.build(
                 context = requireContext(),
                 dataSourceFactory = dataSourceFactory,
@@ -3064,6 +3079,7 @@ class PlayerTvFragment : Fragment() {
                     preferStereoAudio =
                         DeviceCapabilities.shouldUseConstrainedPlayback(requireContext()),
                     liveOptimized = isLiveTvPlayback(),
+                    preferredAudioLanguage = preferredAudio,
                 ),
             )
         }
@@ -3170,6 +3186,7 @@ class PlayerTvFragment : Fragment() {
 
             SubtitleOffset.restore(requireContext(), subtitleOffsetKey())
 
+            binding.settings.seriesId = seriesIdForAudioPref()
             if (isCasting) {
                 binding.pvPlayer.player = castPlayer
                 // CC / settings must target CastPlayer while Cast owns the surface.

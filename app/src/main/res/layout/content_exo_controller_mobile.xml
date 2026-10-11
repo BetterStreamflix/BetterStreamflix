@@ -366,9 +366,23 @@
             android:src="@drawable/exo_styled_controls_aspect_ratio"
             android:tint="@color/cinema_text"
             app:layout_constraintBottom_toBottomOf="parent"
-            app:layout_constraintEnd_toStartOf="@id/exo_settings"
+            app:layout_constraintEnd_toStartOf="@id/btn_exo_audio"
             app:layout_constraintTop_toTopOf="parent"
             tools:ignore="PrivateResource,UseAppTint" />
+
+        <ImageView
+            android:id="@+id/btn_exo_audio"
+            android:contentDescription="@string/exp_cd_audio"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginEnd="16dp"
+            android:padding="12dp"
+            android:src="@drawable/ic_player_settings_audio"
+            android:tint="@color/cinema_text"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toStartOf="@id/exo_settings"
+            app:layout_constraintTop_toTopOf="parent"
+            tools:ignore="UseAppTint" />
 
         <ImageView
             android:id="@+id/exo_settings"
