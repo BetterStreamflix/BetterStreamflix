@@ -69,7 +69,9 @@ object CastQueueCoordinator {
                 videoType = nextType,
                 serverId = server.id,
             )
-            val mergedHeaders = headers.ifEmpty { video.headers.orEmpty() }
+            // Prefer the next episode's resolved headers; fall back to caller override
+            // only when the provider returned none (CAST-P1-2).
+            val mergedHeaders = video.headers.orEmpty().ifEmpty { headers }
             val item = CastMediaFactory.queueItemForCast(
                 source = video.source,
                 mimeType = video.type,

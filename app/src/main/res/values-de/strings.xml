@@ -213,6 +213,7 @@
     <string name="player_external_fragile_playlist">Dieser Stream nutzt relative Segmente — externe Player können scheitern. Besser den In-App-Player verwenden.</string>
     <string name="player_external_vlc_headers_unsupported">VLC kann Stream-Cookies/Header nicht senden. Versuch ohne — für geschützte Streams MX Player oder mpv nutzen.</string>
     <string name="external_download_hls_unsupported">ADM/1DM können HLS-Playlists (.m3u8) nicht laden. Nutze den In-App-Download für diesen Stream.</string>
+    <string name="external_download_adaptive_unsupported">ADM/1DM können HLS/DASH-Playlists (.m3u8/.mpd) nicht laden. Nutze den In-App-Download für diesen Stream.</string>
     <string name="external_download_remembered">Standard-Download-Manager gespeichert</string>
     <string name="external_player_clear_default">Standard-Player zurücksetzen</string>
     <string name="external_player_clear_default_summary">Immer nachfragen, welche App genutzt wird</string>
@@ -230,6 +231,7 @@
     <string name="downloads_action_play_with">Abspielen mit…</string>
     <string name="downloads_action_download_with">Herunterladen mit…</string>
     <string name="downloads_play_with_cache_only">Dieser Offline-Eintrag liegt im App-Cache. Spiele ihn offline in BetterStreamflix ab oder lade erneut mit ADM für eine teilbare Datei.</string>
+    <string name="downloads_play_with_dash_unsupported">DASH-Offline-Einträge können noch nicht in externen Playern geöffnet werden. Nutze Offline abspielen in BetterStreamflix.</string>
     <string name="downloads_service_start_failed">Downloads konnten im Hintergrund nicht starten. Öffne Downloads, um fortzusetzen.</string>
     <string name="settings_download_storage_removable">SD-Karte / Wechseldatenträger</string>
     <string name="settings_download_storage_custom">Eigener Ordner (gibt den Datenträger frei; Dateien bleiben im App-Ordner)</string>
@@ -246,6 +248,7 @@
     <string name="settings_download_storage_saf_label">Gewählter Ordner: %1$s</string>
     <string name="settings_download_storage_volume_label">Datenträger: %1$s</string>
     <string name="settings_download_storage_cache_path">Offline-Cache: %1$s</string>
+    <string name="settings_download_storage_public_fallback">App-Speicher wird genutzt (öffentliche Filme nicht verfügbar): %1$s</string>
     <string name="settings_external_player_title">Standard externer Player</string>
     <string name="settings_external_player_summary">VLC, MX, mpv für „Abspielen mit…“ (keine Download-Manager)</string>
     <string name="settings_external_downloader_title">Standard Download-Manager</string>
@@ -907,9 +910,12 @@
     <string name="settings_cast_enabled_summary">Cast mit Header-Proxy, Titel/Artwork-Metadaten, Mini-Controller und Session, die den Player-Exit überlebt</string>
     <string name="player_cast_content_description">Casten</string>
     <string name="settings_watchlist_import_title">Watchlist importieren (SerienStream / AniWorld)</string>
-    <string name="settings_watchlist_import_summary">Bei SerienStream oder AniWorld anmelden und die Watchlist in Favoriten übernehmen</string>
+    <string name="settings_watchlist_import_summary">Bei SerienStream oder AniWorld anmelden und Serien in Favoriten übernehmen (schreibt SerienStream-/AniWorld-Favoriten, auch bei TMDb Deutsch)</string>
     <string name="settings_watchlist_import_serienstream">Von SerienStream importieren</string>
     <string name="settings_watchlist_import_aniworld">Von AniWorld importieren</string>
+    <string name="settings_watchlist_import_tv_only_summary">Watchlist-Import ist nur in der Mobile-App verfügbar</string>
+    <string name="watchlist_export_note_title">Favoriten exportieren</string>
+    <string name="watchlist_export_note_summary">Es gibt keinen separaten Watchlist-Export. Nutze Backup, um Favoriten (und andere App-Daten) in eine Datei zu speichern.</string>
     <string name="watchlist_import_action">Importieren</string>
     <string name="watchlist_import_progress">Watchlist wird importiert…</string>
     <string name="watchlist_import_progress_page">Watchlist wird importiert… Seite %1$d</string>
@@ -917,14 +923,16 @@
     <string name="watchlist_import_progress_saving">Favoriten werden gespeichert…</string>
     <string name="watchlist_import_ready">Angemeldet — tippe auf Importieren</string>
     <string name="watchlist_import_ready_soft">Seite geladen — wenn du angemeldet bist, tippe auf Importieren</string>
-    <string name="watchlist_import_done">%1$d Titel in Favoriten importiert</string>
+    <string name="watchlist_import_done">%1$d Serien in Favoriten importiert (Filme werden übersprungen)</string>
+    <string name="watchlist_import_done_movies_skipped">%1$d Serien in Favoriten importiert (%2$d Filme übersprungen)</string>
     <string name="watchlist_import_failed">Watchlist-Import fehlgeschlagen: %1$s</string>
-    <string name="watchlist_import_login_hint">Melde dich auf der Seite an und tippe dann auf Importieren. Cookies bleiben auf diesem Gerät.</string>
+    <string name="watchlist_import_login_hint">Melde dich auf der Seite an und tippe dann auf Importieren. Cookies bleiben auf diesem Gerät. Filme auf der Watchlist werden übersprungen — Favoriten sind nur Serien.</string>
     <string name="watchlist_import_isp_block">Diese Seite wird von deinem Anbieter-DNS blockiert (Urheberrechts-Sinkhole). Die App wechselt zum serien.domains-Proxy (186.2.175.5). Alternativ: Privates DNS (one.one.one.one) oder VPN.</string>
     <string name="watchlist_import_isp_block_toast">ISP-DNS-Sperre — wechsle zum serien.domains-Proxy</string>
     <string name="watchlist_import_not_logged_in">Nicht angemeldet — bitte zuerst einloggen</string>
     <string name="watchlist_import_challenge">Bot-Check noch aktiv — warte bis die Seite fertig ist und versuche es erneut</string>
     <string name="watchlist_import_empty">Keine Watchlist-Titel auf dem Account gefunden</string>
+    <string name="watchlist_import_ssl_rejected">Sichere Verbindung für unbekannten Host abgelehnt. Nur SerienStream, AniWorld und bekannte Spiegel sind erlaubt.</string>
     <string name="player_brightness">Helligkeit</string>
     <string name="player_volume">Lautstärke</string>
     <string name="percentage_format">%d%%</string>
@@ -1092,6 +1100,15 @@
     <string name="player_live_no_more_channels">Keine weiteren Kanäle in der Liste</string>
     <string name="player_live_recent_channels">Zuletzt</string>
     <string name="player_live_recent_badge">Zuletzt</string>
+    <string name="player_live_season">Live</string>
+    <string name="player_live_now_next">%1$s  ·  als Nächstes: %2$s</string>
+    <string name="player_live_next_only">Als Nächstes: %1$s</string>
+    <string name="player_live_247">24/7 live</string>
+    <string name="player_live_event">Live-Event</string>
+    <string name="player_live_watching">%1$d Zuschauer</string>
+    <string name="player_live_watching_k">%1$dk Zuschauer</string>
+    <string name="player_live_watching_m">%1$dM Zuschauer</string>
+    <string name="player_live_current_mark">\u0020▶</string>
     <string name="settings_tmdb_api_key_missing">TMDb-API-Schlüssel fehlt. Trage ihn in den Einstellungen ein, um den TMDb-Provider zu nutzen.</string>
     <string name="player_retry_software_decoder">Erneuter Versuch mit Software-Decoder…</string>
     <string name="player_all_servers_failed">Alle Server konnten das Video nicht laden.</string>
@@ -1192,6 +1209,20 @@
     <string name="download_error_expired">Link abgelaufen — erneut versuchen</string>
     <string name="download_error_not_found">Inhalt nicht gefunden (404) — anderen Server versuchen oder Download entfernen</string>
     <string name="download_error_file_missing">Lokale Datei fehlt</string>
+    <string name="download_error_no_provider">Kein Provider gewählt</string>
+    <string name="download_error_missing_show">Serien-Metadaten fehlen</string>
+    <string name="download_error_no_server">Kein Server</string>
+    <string name="download_error_no_episodes">Keine Episoden</string>
+    <string name="download_error_missing_metadata">Video-Metadaten fehlen</string>
+    <string name="download_error_soft_limit">Download-Softlimit erreicht — Speicher freigeben oder Limit in den Einstellungen erhöhen</string>
+    <string name="download_error_all_servers_failed">Alle Server fehlgeschlagen</string>
+    <string name="download_quality_auto">Auto</string>
+    <string name="download_season_pack_subtitle">Staffel %1$d · %2$d/%3$d</string>
+    <string name="download_size_unknown">—</string>
+    <string name="download_size_gb">%.1f GB</string>
+    <string name="download_size_mb">%.0f MB</string>
+    <string name="download_size_kb">%.0f KB</string>
+    <string name="download_size_b">%d B</string>
     <string name="downloads_share_cache_only">Dieser Download liegt nur im App-Cache und kann nicht als Datei geteilt werden. Spiele ihn offline ab.</string>
     <string name="player_offline_missing">Offline-Download fehlt oder ist unvollständig</string>
     <string name="player_offline_external_unavailable">Cast und externe Player sind bei Offline-Wiedergabe nicht verfügbar</string>
@@ -1237,6 +1268,8 @@
     <string name="settings_download_storage_public_movies">Öffentliche Filme / BetterStreamflix</string>
     <string name="settings_download_storage_path">Aktueller Ordner</string>
     <string name="settings_download_storage_changed">Speicherort aktualisiert. Neue Downloads nutzen den neuen Ordner. Starte aktive Downloads neu.</string>
+    <string name="settings_download_storage_relocate_title">Download-Speicherort ändern?</string>
+    <string name="settings_download_storage_relocate_confirm">Vorhandene Offline-Downloads können nicht verschoben werden. Sie werden von diesem Gerät entfernt und müssen erneut heruntergeladen werden.</string>
     <string name="settings_cast_subtitles">Untertitel casten</string>
     <string name="settings_cast_subtitles_summary">Textspuren an Chromecast senden, wenn der Stream sie bereitstellt</string>
     <string name="settings_cast_keep_screen_awake">Bildschirm während Cast wach halten</string>
@@ -1406,7 +1439,7 @@
     <string name="platform_player_backend_mpv">MPV / externer Player</string>
     <string name="platform_trakt_category">Trakt</string>
     <string name="platform_trakt_enabled_title">Trakt-Scrobbling aktivieren</string>
-    <string name="platform_trakt_enabled_summary">Fortschritt und Favoriten zu Trakt.tv synchronisieren</string>
+    <string name="platform_trakt_enabled_summary">Fortschritt und Favoriten zu Trakt.tv senden (nur ausgehend — kein Import in lokale Favoriten)</string>
     <string name="platform_trakt_client_id_title">Trakt Client-ID</string>
     <string name="platform_trakt_client_id_summary">API-App-Client-ID von trakt.tv</string>
     <string name="platform_trakt_token_title">Trakt Access-Token</string>
@@ -1483,7 +1516,7 @@
     <string name="platform_selfhost_interval_summary">Wie oft Wiedergabe an Jellyfin/Plex gemeldet wird</string>
     <string name="platform_simkl_category">Simkl</string>
     <string name="platform_simkl_enabled_title">Simkl-Scrobbling aktivieren</string>
-    <string name="platform_simkl_enabled_summary">Fortschritt zusätzlich zu Simkl synchronisieren</string>
+    <string name="platform_simkl_enabled_summary">Fortschritt zu Simkl senden (nur ausgehend — kein Import in lokale Favoriten)</string>
     <string name="platform_simkl_client_id_title">Simkl Client-ID</string>
     <string name="platform_simkl_client_id_summary">Aus den Simkl-Entwicklereinstellungen</string>
     <string name="platform_simkl_token_title">Simkl Access-Token</string>
@@ -1546,4 +1579,26 @@
     <string name="home_featured_synthesized">Empfohlen aus dem Katalog wiederhergestellt</string>
     <string name="simkl_sync_failed">Liste nicht synchronisiert — lokal gespeichert</string>
     <string name="home_featured_page">Empfohlen: %1$s</string>
+
+    <!-- Cast/IPTV/Downloads/Watchlist/Support i18n fill -->
+<string name="download_quality_best">Best available</string>
+<string name="download_quality_data_saver">Data saver</string>
+<string name="settings_about_credits">Credits</string>
+<string name="settings_about_credits_summary">Based on Streamflix Reborn (upstream) and the original Streamflix by Lory-Stan TANASI</string>
+<string name="settings_about_maintainer">Maintained by dskja</string>
+<string name="settings_about_upstream">Upstream project</string>
+<string name="settings_download_clear_failed">Clear failed downloads</string>
+<string name="settings_download_cleared_all">All downloads cleared</string>
+<string name="settings_download_cleared_completed">Completed downloads cleared</string>
+<string name="settings_download_cleared_failed">Failed downloads cleared</string>
+<string name="settings_download_queue_empty">No downloads in queue</string>
+<string name="settings_download_queue_status">Download queue</string>
+<string name="settings_download_queue_summary">%1$d active · %2$d completed · %3$d failed</string>
+<string name="settings_download_retry_failed">Retry failed downloads</string>
+<string name="settings_download_retry_failed_summary">Re-resolve servers and restart failed items</string>
+<string name="settings_download_retry_failed_toast">Re-queued %1$d download(s)</string>
+<string name="settings_download_soft_limit_unlimited">No soft limit (0)</string>
+<string name="settings_download_soft_limit_value">%1$d GB soft limit</string>
+<string name="settings_download_storage_detail">%1$s used · %2$s free · limit %3$d GB</string>
+
 </resources>

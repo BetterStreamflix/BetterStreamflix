@@ -45,6 +45,8 @@ object DownloadErrorClassifier {
                 "failed to connect" in hay -> DownloadErrorCode.NETWORK
             "offline cache miss" in hay || "file missing" in hay ||
                 "no such file" in hay -> DownloadErrorCode.FILE_MISSING
+            "storage relocated" in hay || "storage location changed" in hay ->
+                DownloadErrorCode.STORAGE_RELOCATED
             else -> DownloadErrorCode.UNKNOWN
         }
     }

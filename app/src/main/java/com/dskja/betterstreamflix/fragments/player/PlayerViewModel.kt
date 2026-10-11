@@ -99,9 +99,9 @@ class PlayerViewModel(
         playEpisode(Direction.NEXT)
 
     fun playLiveChannel(channel: com.dskja.betterstreamflix.iptv.IptvLiveSession.Channel) {
+        // Emit-only: destination player VM owns getServers (avoids double-fetch on zap).
         val episode = com.dskja.betterstreamflix.iptv.IptvLiveSession.toEpisodeType(channel)
         com.dskja.betterstreamflix.iptv.IptvLiveSession.setCurrent(channel.id)
-        playEpisode(episode)
         viewModelScope.launch {
             _playPreviousOrNextEpisode.emit(episode)
         }
@@ -274,6 +274,12 @@ class PlayerViewModel(
                 throw e
             } catch (e: Exception) {
                 Log.e("PlayerViewModel", "Errore estrazione video: ", e)
+                // Stale zap warm cache — drop so the next attempt re-resolves servers.
+                lastId?.let { channelId ->
+                    if (UserPreferences.currentProvider is com.dskja.betterstreamflix.providers.IptvProvider) {
+                        com.dskja.betterstreamflix.iptv.IptvZapPreloader.invalidate(channelId)
+                    }
+                }
                 // Permanent hoster misses (404 / unpack / deleted) are expected failover noise —
                 // keep local logs but do not flood Sentry (BETTERSTREAMFLIX-10 / -12).
                 if (!com.dskja.betterstreamflix.extractors.ExtractorFailureClassifier.isPermanent(e)) {

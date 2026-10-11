@@ -22,8 +22,11 @@ class DownloadResumeWorker(
             // Soft-start: StreamflixDownloadService.start already catches
             // ForegroundServiceStartNotAllowedException / IllegalStateException
             // and warms the manager again if needed.
-            StreamflixDownloadService.start(applicationContext)
-            Result.success()
+            if (!StreamflixDownloadService.start(applicationContext)) {
+                Result.retry()
+            } else {
+                Result.success()
+            }
         } catch (e: Exception) {
             Log.w(TAG, "Resume worker failed: ${e.message}")
             Result.retry()

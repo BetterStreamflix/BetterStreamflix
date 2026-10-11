@@ -5,6 +5,7 @@ import androidx.core.net.toUri
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
 import androidx.media3.common.MimeTypes
+import com.dskja.betterstreamflix.iptv.IptvLivePlayback
 import com.dskja.betterstreamflix.models.Video
 import com.dskja.betterstreamflix.utils.UserPreferences
 import com.dskja.betterstreamflix.utils.setMediaServerId
@@ -91,7 +92,11 @@ object CastMediaFactory {
                         uri.startsWith("https://", ignoreCase = true) -> cfg
                     uri.startsWith("file://", ignoreCase = true) ||
                         uri.startsWith("content://", ignoreCase = true) -> {
-                        val proxied = CastPlaybackHub.wrapLocalForCast(uri)
+                        // content:// needs Context for temp copy — use app context from hub proxy.
+                        val proxied = CastPlaybackHub.wrapLocalForCast(
+                            uri,
+                            context = CastPlaybackHub.proxyContextOrNull(),
+                        )
                         if (proxied == null) null
                         else MediaItem.SubtitleConfiguration.Builder(proxied.toUri())
                             .setMimeType(cfg.mimeType)
@@ -112,10 +117,11 @@ object CastMediaFactory {
             .setMediaMetadata(metadata)
             .setSubtitleConfigurations(subs)
         if (live) {
+            // Match local IPTV live offsets (sports-tuned when the provider name fits).
             builder.setLiveConfiguration(
-                MediaItem.LiveConfiguration.Builder()
-                    .setMaxPlaybackSpeed(1.02f)
-                    .build()
+                IptvLivePlayback.liveConfigurationForProvider(
+                    UserPreferences.currentProvider?.name,
+                ),
             )
         }
         return builder.build()
@@ -138,14 +144,16 @@ object CastMediaFactory {
         live = false,
     )
 
-    private fun guessMime(url: String): String {
+    fun guessMime(url: String): String {
         val path = url.substringBefore('?').lowercase()
         return when {
             path.endsWith(".m3u8") -> MimeTypes.APPLICATION_M3U8
             path.endsWith(".mpd") -> MimeTypes.APPLICATION_MPD
             path.endsWith(".mp4") -> MimeTypes.VIDEO_MP4
             path.endsWith(".mkv") -> MimeTypes.VIDEO_MATROSKA
-            else -> MimeTypes.APPLICATION_M3U8
+            path.endsWith(".webm") -> MimeTypes.VIDEO_WEBM
+            // Unknown extension: do not force HLS (DASH/progressive receivers break).
+            else -> MimeTypes.VIDEO_MP4
         }
     }
 }

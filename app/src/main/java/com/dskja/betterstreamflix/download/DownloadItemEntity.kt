@@ -38,6 +38,8 @@ data class DownloadItemEntity(
     val localUri: String = "",
     val streamUrl: String = "",
     val headersJson: String = "",
+    /** JSON array of Media3 StreamKeys as {p,g,t} (period/group/track). */
+    val streamKeysJson: String = "[]",
     val subtitlePathsJson: String = "[]",
     val subtitleUrlsJson: String = "[]",
     val seasonPackId: String? = null,

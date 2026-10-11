@@ -7,6 +7,7 @@ import com.dskja.betterstreamflix.utils.ExperimentalMobileDesign
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.LifecycleCoroutineScope
+import androidx.lifecycle.lifecycleScope
 import androidx.preference.EditTextPreference
 import androidx.preference.ListPreference
 import androidx.preference.Preference
@@ -23,6 +24,7 @@ import com.dskja.betterstreamflix.download.DownloadTreeAccess
 import com.dskja.betterstreamflix.download.ExternalDownloadHandoff
 import com.dskja.betterstreamflix.download.StreamflixDownloadManager
 import com.dskja.betterstreamflix.platform.playerbackend.ExternalStreamHandoff
+import com.dskja.betterstreamflix.utils.DeviceCapabilities
 import com.dskja.betterstreamflix.utils.UserPreferences
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -40,6 +42,19 @@ object DownloadsSettingsController {
         onPickDownloadFolder: (() -> Unit)? = null,
     ) {
         val context = fragment.requireContext()
+        val leanback = DeviceCapabilities.isLeanbackDevice(context)
+
+        if (leanback) {
+            // SAF folder pick / ADM handoff are mobile-oriented; hide on TV.
+            findPreference("DOWNLOAD_STORAGE_PICK_FOLDER")?.isVisible = false
+            findPreference("DOWNLOAD_STORAGE_CLEAR_FOLDER")?.isVisible = false
+            findPreference("EXTERNAL_DOWNLOADER_DEFAULT")?.isVisible = false
+            findPreference("EXTERNAL_DOWNLOADER_CLEAR")?.isVisible = false
+            findPreference("DOWNLOAD_STORAGE_LOCATION")?.let { pref ->
+                val list = pref as? ListPreference ?: return@let
+                stripCustomFolderOption(list)
+            }
+        }
 
         findPreference("DOWNLOAD_STORAGE_LOCATION")?.let { pref ->
             val list = pref as? ListPreference ?: return@let
@@ -65,13 +80,33 @@ object DownloadsSettingsController {
                     }
                     else -> Unit
                 }
-                if (location != UserPreferences.downloadStorageLocation) {
-                    UserPreferences.downloadStorageLocation = location
-                    StreamflixDownloadManager.relocate(context)
-                    refreshSummaries(findPreference, context)
-                    ExpDialogChrome.notify(context, R.string.settings_download_storage_changed)
+                if (location == UserPreferences.downloadStorageLocation) {
+                    return@setOnPreferenceChangeListener true
                 }
-                true
+                scope.launch {
+                    val hasItems = withContext(Dispatchers.IO) {
+                        StreamflixDownloadManager.hasCachedOrQueuedDownloads(context)
+                    }
+                    fun applyChange(wipe: Boolean) {
+                        UserPreferences.downloadStorageLocation = location
+                        StreamflixDownloadManager.relocate(context, wipeAndRebuild = wipe)
+                        list.value = location.name
+                        refreshSummaries(findPreference, context)
+                        ExpDialogChrome.notify(context, R.string.settings_download_storage_changed)
+                    }
+                    if (hasItems) {
+                        confirmClear(
+                            context,
+                            R.string.settings_download_storage_relocate_title,
+                            R.string.settings_download_storage_relocate_confirm,
+                        ) {
+                            applyChange(wipe = true)
+                        }
+                    } else {
+                        applyChange(wipe = false)
+                    }
+                }
+                false
             }
         }
 
@@ -81,10 +116,28 @@ object DownloadsSettingsController {
         }
 
         findPreference("DOWNLOAD_STORAGE_CLEAR_FOLDER")?.setOnPreferenceClickListener {
-            DownloadTreeAccess.clearTree(context)
-            StreamflixDownloadManager.relocate(context)
-            refreshSummaries(findPreference, context)
-            ExpDialogChrome.notify(context, R.string.settings_download_storage_folder_cleared)
+            scope.launch {
+                val hasItems = withContext(Dispatchers.IO) {
+                    StreamflixDownloadManager.hasCachedOrQueuedDownloads(context)
+                }
+                fun clearFolder(wipe: Boolean) {
+                    DownloadTreeAccess.clearTree(context)
+                    StreamflixDownloadManager.relocate(context, wipeAndRebuild = wipe)
+                    refreshSummaries(findPreference, context)
+                    ExpDialogChrome.notify(context, R.string.settings_download_storage_folder_cleared)
+                }
+                if (hasItems) {
+                    confirmClear(
+                        context,
+                        R.string.settings_download_storage_relocate_title,
+                        R.string.settings_download_storage_relocate_confirm,
+                    ) {
+                        clearFolder(wipe = true)
+                    }
+                } else {
+                    clearFolder(wipe = false)
+                }
+            }
             true
         }
 
@@ -142,9 +195,11 @@ object DownloadsSettingsController {
             } else {
                 AlertDialog.Builder(context)
             }
+            val labels = installed.map { ExternalDownloadHandoff.packageLabel(context, it) }
+                .toTypedArray()
             builder
                 .setTitle(R.string.settings_external_downloader_title)
-                .setSingleChoiceItems(installed.toTypedArray(), checked) { dialog, which ->
+                .setSingleChoiceItems(labels, checked) { dialog, which ->
                     ExternalDownloadHandoff.rememberChosenPackage(installed.getOrNull(which))
                     dialog.dismiss()
                     refreshSummaries(findPreference, context)
@@ -330,13 +385,32 @@ object DownloadsSettingsController {
         val context = fragment.requireContext()
         if (uri == null) return
         val ok = DownloadTreeAccess.persistTree(context, uri)
-        if (ok) {
-            StreamflixDownloadManager.relocate(context)
-            ExpDialogChrome.notify(context, R.string.settings_download_storage_folder_set)
-        } else {
+        if (!ok) {
             ExpDialogChrome.notify(context, R.string.settings_download_storage_folder_failed)
+            refreshSummaries(findPreference, context)
+            return
         }
-        refreshSummaries(findPreference, context)
+        fragment.lifecycleScope.launch {
+            val hasItems = withContext(Dispatchers.IO) {
+                StreamflixDownloadManager.hasCachedOrQueuedDownloads(context)
+            }
+            fun finishRelocate(wipe: Boolean) {
+                StreamflixDownloadManager.relocate(context, wipeAndRebuild = wipe)
+                ExpDialogChrome.notify(context, R.string.settings_download_storage_folder_set)
+                refreshSummaries(findPreference, context)
+            }
+            if (hasItems) {
+                confirmClear(
+                    context,
+                    R.string.settings_download_storage_relocate_title,
+                    R.string.settings_download_storage_relocate_confirm,
+                ) {
+                    finishRelocate(wipe = true)
+                }
+            } else {
+                finishRelocate(wipe = false)
+            }
+        }
     }
 
     private fun confirmClear(
@@ -442,10 +516,25 @@ object DownloadsSettingsController {
         val dlPkg = UserPreferences.externalDownloaderPackage
         findPreference("EXTERNAL_DOWNLOADER_DEFAULT")?.summary =
             if (dlPkg.isNotBlank()) {
-                context.getString(R.string.settings_external_downloader_value, dlPkg)
+                val label = ExternalDownloadHandoff.packageLabel(context, dlPkg)
+                context.getString(R.string.settings_external_downloader_value, label)
             } else {
                 context.getString(R.string.settings_external_downloader_summary)
             }
         findPreference("EXTERNAL_DOWNLOADER_CLEAR")?.isEnabled = dlPkg.isNotBlank()
+    }
+
+    private fun stripCustomFolderOption(list: ListPreference) {
+        val entries = list.entries?.toMutableList() ?: return
+        val values = list.entryValues?.toMutableList() ?: return
+        val idx = values.indexOfFirst { it.toString() == DownloadStorageLocation.CUSTOM_FOLDER.name }
+        if (idx < 0) return
+        entries.removeAt(idx)
+        values.removeAt(idx)
+        list.entries = entries.toTypedArray()
+        list.entryValues = values.toTypedArray()
+        if (list.value == DownloadStorageLocation.CUSTOM_FOLDER.name) {
+            list.value = DownloadStorageLocation.INTERNAL.name
+        }
     }
 }

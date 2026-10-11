@@ -20,7 +20,7 @@ object SupabaseSettingsController {
     }
 
     private const val SETUP_INSTRUCTIONS_URL =
-        "https://github.com/dskja/BetterStreamflix/blob/main/supabase_installation.md"
+        "https://github.com/BetterStreamflix/BetterStreamflix/blob/main/supabase_installation.md"
 
     fun bind(
         fragment: Fragment,

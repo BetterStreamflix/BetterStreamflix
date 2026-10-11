@@ -21,6 +21,7 @@ import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import java.io.IOException
@@ -86,8 +87,30 @@ object StreamflixDownloadManager {
             DownloadEventBridge.attach(app)
             startConnectivityWatcher(app)
             pruneOrphanedSidecarDirs(app)
+            connectivityScope.launch {
+                runCatching {
+                    val items = DownloadRepository.get(app).getAllOnce()
+                    DownloadHeaderStore.rebuildFromRoom(app, items)
+                }
+            }
             return manager
         }
+    }
+
+    /**
+     * True when Room has any download row or the Media3 download index still
+     * holds entries (cache that would be orphaned by a storage relocate).
+     */
+    fun hasCachedOrQueuedDownloads(context: Context): Boolean {
+        val app = context.applicationContext
+        val roomNonEmpty = runBlocking(Dispatchers.IO) {
+            DownloadRepository.get(app).getAllOnce().isNotEmpty()
+        }
+        if (roomNonEmpty) return true
+        val dm = downloadManager ?: runCatching { get(app) }.getOrNull() ?: return false
+        return runCatching {
+            dm.downloadIndex.getDownloads().use { cursor -> cursor.moveToFirst() }
+        }.getOrDefault(false)
     }
 
     private fun startConnectivityWatcher(app: Context) {
@@ -102,7 +125,7 @@ object StreamflixDownloadManager {
                     delay(750)
                     connectivityActionMutex.withLock {
                         val repo = DownloadRepository.get(app)
-                        if (UserPreferences.downloadWifiOnly && type != DownloadNetworkType.WIFI) {
+                        if (DownloadConnectivityMonitor.shouldHoldForWifiOnly(app)) {
                             // Hold only in-flight work. A user pause keeps its own stop reason.
                             repo.pauseForConnectivity()
                         } else if (type != DownloadNetworkType.NONE) {
@@ -206,7 +229,8 @@ object StreamflixDownloadManager {
                 mime.contains("matroska", ignoreCase = true) -> "mkv"
             else -> "bin"
         }
-        val out = java.io.File(context.cacheDir, "share_${media3Id.hashCode()}.$ext")
+        val shareDir = java.io.File(context.cacheDir, "share").also { it.mkdirs() }
+        val out = java.io.File(shareDir, "share_${media3Id.hashCode()}.$ext")
         return runCatching {
             val dataSource = CacheDataSource.Factory()
                 .setCache(cache)
@@ -318,15 +342,51 @@ object StreamflixDownloadManager {
     /**
      * Pause work, tear down SimpleCache/DownloadManager, and rebuild against the
      * current [DownloadStorage.cacheDir]. Call after changing storage location.
+     *
+     * When downloads already exist, pass [wipeAndRebuild] = true only after the
+     * user confirms — otherwise this returns without relocating so Media3/Room
+     * state is not silently orphaned.
      */
-    fun relocate(context: Context) {
+    fun relocate(context: Context, wipeAndRebuild: Boolean = false) {
         val app = context.applicationContext
+        if (!wipeAndRebuild && hasCachedOrQueuedDownloads(app)) {
+            return
+        }
         synchronized(this) {
-            runCatching {
-                downloadManager?.pauseDownloads()
+            if (wipeAndRebuild) {
+                runCatching { downloadManager?.pauseDownloads() }
+                val dm = downloadManager
+                if (dm != null) {
+                    runCatching {
+                        dm.downloadIndex.getDownloads().use { cursor ->
+                            val ids = ArrayList<String>()
+                            while (cursor.moveToNext()) {
+                                ids.add(cursor.download.request.id)
+                            }
+                            ids.forEach { id -> runCatching { dm.removeDownload(id) } }
+                        }
+                    }
+                }
+                runBlocking(Dispatchers.IO) {
+                    val repo = DownloadRepository.get(app)
+                    repo.getAllOnce().forEach { item ->
+                        val state = DownloadItemState.fromKey(item.state)
+                        if (state == DownloadItemState.COMPLETED || state.isActive) {
+                            repo.markFailed(
+                                item.id,
+                                DownloadErrorCode.STORAGE_RELOCATED,
+                                "Storage location changed — re-download required",
+                            )
+                        }
+                    }
+                }
+                release()
+                get(app)
+            } else {
+                runCatching { downloadManager?.pauseDownloads() }
+                release()
+                get(app)
             }
-            release()
-            get(app)
         }
     }
 

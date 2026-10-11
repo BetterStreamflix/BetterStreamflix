@@ -1264,6 +1264,13 @@
                 android:widgetLayout="@layout/preference_widget_chevron" />
         </PreferenceCategory>
 
+        <Preference
+            android:key="watchlist_import_tv_note"
+            android:title="@string/settings_watchlist_import_title"
+            android:summary="@string/settings_watchlist_import_tv_only_summary"
+            android:enabled="false"
+            android:selectable="false" />
+
         <PreferenceCategory
             android:key="pc_moflix_settings"
             android:title="@string/settings_category_moflix">

@@ -50,9 +50,8 @@ class DownloadsViewModel(
     val wifiPaused: StateFlow<Boolean> = combine(
         DownloadConnectivityMonitor.status,
         wifiOnlyPreferenceTick,
-    ) { status, _ ->
-        UserPreferences.downloadWifiOnly &&
-            status.type == com.dskja.betterstreamflix.download.DownloadNetworkType.CELLULAR
+    ) { _, _ ->
+        DownloadConnectivityMonitor.shouldHoldForWifiOnly(appContext)
     }.stateIn(viewModelScope, SharingStarted.Eagerly, false)
 
     val rows: StateFlow<List<DownloadRowUiModel>> = combine(

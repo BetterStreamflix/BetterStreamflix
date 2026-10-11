@@ -311,14 +311,15 @@ class DownloadsTvFragment : Fragment() {
     }
 
     private fun showItemMenu(row: DownloadRowUiModel.Item, anchor: View) {
+        val isDash = ExternalDownloadHandoff.isDashStream(row.entity.streamUrl, row.entity.mimeType)
         val labels = mutableListOf<Pair<Int, Int>>()
         if (row.state == DownloadItemState.COMPLETED) {
             labels += 1 to R.string.downloads_action_share
-            labels += 4 to R.string.downloads_action_play_with
+            if (!isDash) {
+                labels += 4 to R.string.downloads_action_play_with
+            }
         }
-        if (row.entity.streamUrl.startsWith("http")) {
-            labels += 5 to R.string.downloads_action_download_with
-        }
+        // Leanback/TV: no ADM/1DM handoff (external downloader prefs are hidden too).
         if (row.state == DownloadItemState.FAILED) {
             labels += 2 to R.string.downloads_action_retry
         }
@@ -331,7 +332,6 @@ class DownloadsTvFragment : Fragment() {
                     2 -> retry(row)
                     3 -> viewModel.remove(row.id)
                     4 -> playWithExternal(row)
-                    5 -> downloadWithExternal(row)
                 }
             }
             .show()
@@ -376,6 +376,10 @@ class DownloadsTvFragment : Fragment() {
     }
 
     private fun playWithExternal(row: DownloadRowUiModel.Item) {
+        if (ExternalDownloadHandoff.isDashStream(row.entity.streamUrl, row.entity.mimeType)) {
+            showDownloadError(R.string.downloads_play_with_dash_unsupported)
+            return
+        }
         viewLifecycleOwner.lifecycleScope.launch {
             val localUri = withContext(Dispatchers.IO) {
                 OfflinePlayback.exportShareUri(requireContext(), row.entity)?.toString()
@@ -397,36 +401,6 @@ class DownloadsTvFragment : Fragment() {
                 ),
                 forceChooser = true,
             )
-        }
-    }
-
-    private fun downloadWithExternal(row: DownloadRowUiModel.Item) {
-        val url = row.entity.streamUrl
-        if (!url.startsWith("http")) {
-            ExpDialogChrome.notify(
-                requireContext(),
-                R.string.external_download_invalid_url,
-                R.string.external_download_with_title,
-            )
-            return
-        }
-        val headers = runCatching {
-            val o = org.json.JSONObject(row.entity.headersJson.ifBlank { "{}" })
-            o.keys().asSequence().associateWith { o.getString(it) }
-        }.getOrDefault(emptyMap())
-        val ok = ExternalDownloadHandoff.launch(
-            requireActivity(),
-            ExternalDownloadHandoff.Request(
-                url = url,
-                headers = headers,
-                fileName = row.entity.title,
-                mimeType = row.entity.mimeType,
-                title = row.entity.title,
-            ),
-            forceChooser = false,
-        )
-        if (ok) {
-            ExpDialogChrome.notify(requireContext(), R.string.external_download_started)
         }
     }
 

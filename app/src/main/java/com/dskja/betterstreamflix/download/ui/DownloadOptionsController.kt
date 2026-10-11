@@ -236,9 +236,7 @@ object DownloadOptionsController {
     ) {
         when (outcome) {
             is DownloadEnqueueOutcome.NeedsOptions -> {
-                if (UserPreferences.downloadWifiOnly &&
-                    DownloadConnectivityMonitor.isMetered(activity)
-                ) {
+                if (DownloadConnectivityMonitor.shouldHoldForWifiOnly(activity)) {
                     val proceed = confirmCellular(activity)
                     if (!proceed) {
                         notifyUser(
@@ -290,7 +288,7 @@ object DownloadOptionsController {
         subtitleView.text = prepared.subtitle
         storageView.text = activity.getString(
             R.string.download_options_storage,
-            DownloadStorage.formatBytes(DownloadStorage.freeBytes(activity)),
+            DownloadStorage.formatBytes(activity, DownloadStorage.freeBytes(activity)),
         )
         DownloadStorage.storageUnavailableReason(activity)?.let { reason ->
             storageView.append("\n")
@@ -322,7 +320,8 @@ object DownloadOptionsController {
         var qualityIndex = defaultQualityIndex(trackOptions)
         var tracksJob: Job? = null
 
-        val serverNames = prepared.servers.map { it.server.name }.ifEmpty { listOf("Auto") }
+        val autoLabel = activity.getString(R.string.download_quality_auto)
+        val serverNames = prepared.servers.map { it.server.name }.ifEmpty { listOf(autoLabel) }
         val itemLayout = android.R.layout.simple_spinner_item
         val dropdownLayout = android.R.layout.simple_spinner_dropdown_item
         serverSpinner.adapter = ArrayAdapter(activity, itemLayout, serverNames).also {
@@ -335,7 +334,7 @@ object DownloadOptionsController {
         }
 
         fun bindQualitySpinner(options: List<DownloadTrackOption>, preferredIndex: Int) {
-            val labels = options.map { it.label }.ifEmpty { listOf("Auto") }
+            val labels = options.map { it.label }.ifEmpty { listOf(autoLabel) }
             qualitySpinner.adapter = ArrayAdapter(activity, itemLayout, labels).also {
                 it.setDropDownViewResource(dropdownLayout)
             }
@@ -407,7 +406,7 @@ object DownloadOptionsController {
                             currentPrepared,
                             serverIndex,
                             qualityIndex,
-                            trackOptions.getOrNull(qualityIndex)?.label ?: "Auto",
+                            trackOptions.getOrNull(qualityIndex)?.label ?: autoLabel,
                         )
                     }
                     handleOutcomeActivity(activity, result) {}
@@ -424,7 +423,7 @@ object DownloadOptionsController {
                 val url = video?.source.orEmpty()
                 // External managers receive the resolved master/progressive URL.
                 // HLS quality keys only apply to in-app Media3 downloads.
-                val ok = ExternalDownloadHandoff.launch(
+                val result = ExternalDownloadHandoff.launch(
                     activity,
                     ExternalDownloadHandoff.Request(
                         url = url,
@@ -435,7 +434,7 @@ object DownloadOptionsController {
                     ),
                     forceChooser = false,
                 )
-                if (ok) {
+                if (result is ExternalDownloadHandoff.HandoffResult.Started) {
                     ExpDialogChrome.notify(activity, R.string.external_download_started)
                 }
             }
@@ -534,6 +533,7 @@ object DownloadOptionsController {
             DownloadErrorCode.EXPIRED -> R.string.download_error_expired
             DownloadErrorCode.NOT_FOUND -> R.string.download_error_not_found
             DownloadErrorCode.FILE_MISSING -> R.string.download_error_file_missing
+            DownloadErrorCode.STORAGE_RELOCATED -> R.string.settings_download_storage_relocate_confirm
             DownloadErrorCode.UNSUPPORTED -> R.string.download_error_unsupported
             DownloadErrorCode.EMPTY_RESPONSE -> R.string.download_error_empty_response
             DownloadErrorCode.UNKNOWN -> null

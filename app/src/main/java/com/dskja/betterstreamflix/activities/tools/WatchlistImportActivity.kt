@@ -160,17 +160,7 @@ class WatchlistImportActivity : AppCompatActivity() {
             getString(R.string.settings_watchlist_import_title)
         }
         title = screenTitle
-        findViewById<android.widget.TextView>(R.id.tv_watchlist_brand)?.text = screenTitle
         if (ExperimentalMobileDesign.enabled()) {
-            com.dskja.betterstreamflix.utils.ExpMotion.revealHeader(
-                findViewById(R.id.tv_watchlist_eyebrow),
-                findViewById(R.id.tv_watchlist_brand),
-                findViewById(R.id.v_watchlist_rule),
-                statusView,
-            )
-            com.dskja.betterstreamflix.utils.ExpMotion.pulseAccentRule(
-                findViewById(R.id.v_watchlist_rule),
-            )
             com.dskja.betterstreamflix.utils.ExpMotion.popIn(importButton)
             com.dskja.betterstreamflix.utils.ExpMotion.popIn(cancelButton)
         }
@@ -420,9 +410,19 @@ class WatchlistImportActivity : AppCompatActivity() {
                 handler: SslErrorHandler?,
                 error: SslError?,
             ) {
-                // Some SerienStream mirrors present odd intermediate certs on WebView.
-                Log.w(TAG, "SSL warning on ${error?.url}: ${error?.primaryError}")
-                handler?.proceed()
+                val url = error?.url.orEmpty()
+                // Only proceed for known SerienStream / AniWorld / mirror / challenge hosts.
+                if (url.isNotBlank() && isAllowedLoginNavigation(url)) {
+                    Log.w(TAG, "SSL warning on known host $url: ${error?.primaryError}")
+                    handler?.proceed()
+                    return
+                }
+                Log.w(TAG, "SSL rejected for untrusted host $url: ${error?.primaryError}")
+                handler?.cancel()
+                if (!importing) {
+                    statusView.setText(R.string.watchlist_import_ssl_rejected)
+                    notifyUser(R.string.watchlist_import_ssl_rejected)
+                }
             }
         }
     }
@@ -715,6 +715,7 @@ class WatchlistImportActivity : AppCompatActivity() {
             val collected = linkedMapOf<String, WatchlistImporter.ImportedItem>()
             val errors = mutableListOf<String>()
             var pagesScraped = 0
+            var moviesSkipped = 0
             val baseUrl = "$hostBase/"
 
             try {
@@ -747,6 +748,9 @@ class WatchlistImportActivity : AppCompatActivity() {
                             errors += getString(R.string.watchlist_import_challenge)
                             break
                         }
+                        moviesSkipped += withContext(Dispatchers.Default) {
+                            WatchlistImporter.countMovieLinks(retried.html, baseUrl)
+                        }
                         val parsedRetry = withContext(Dispatchers.Default) {
                             WatchlistImporter.parseItems(retried.html, baseUrl, source)
                         }
@@ -765,6 +769,9 @@ class WatchlistImportActivity : AppCompatActivity() {
                         break
                     }
 
+                    moviesSkipped += withContext(Dispatchers.Default) {
+                        WatchlistImporter.countMovieLinks(html, baseUrl)
+                    }
                     val parsed = withContext(Dispatchers.Default) {
                         WatchlistImporter.parseItems(html, baseUrl, source)
                     }
@@ -799,9 +806,10 @@ class WatchlistImportActivity : AppCompatActivity() {
                         this@WatchlistImportActivity,
                         source,
                         cookies,
+                        baseOverride = hostBase,
                     )
                     if (httpResult.importedCount > 0) {
-                        finishWithSuccess(httpResult.importedCount)
+                        finishWithSuccess(httpResult.importedCount, httpResult.skippedCount)
                         return@launch
                     }
                     errors += httpResult.errors
@@ -813,9 +821,10 @@ class WatchlistImportActivity : AppCompatActivity() {
                         items = collected.values,
                         pagesScraped = pagesScraped,
                         errors = errors,
+                        moviesSkipped = moviesSkipped,
                     )
                     if (result.importedCount > 0) {
-                        finishWithSuccess(result.importedCount)
+                        finishWithSuccess(result.importedCount, result.skippedCount)
                         return@launch
                     }
                     errors += result.errors
@@ -880,17 +889,22 @@ class WatchlistImportActivity : AppCompatActivity() {
         notifyUserAndFinish(getString(messageRes), titleRes)
     }
 
-    private fun finishWithSuccess(count: Int) {
-        statusView.text = getString(R.string.watchlist_import_done, count)
+    private fun finishWithSuccess(count: Int, moviesSkipped: Int = 0) {
+        val message = if (moviesSkipped > 0) {
+            getString(R.string.watchlist_import_done_movies_skipped, count, moviesSkipped)
+        } else {
+            getString(R.string.watchlist_import_done, count)
+        }
+        statusView.text = message
         if (ExperimentalMobileDesign.enabled()) {
             com.dskja.betterstreamflix.utils.ExpMotion.revealHeader(statusView)
             com.dskja.betterstreamflix.utils.ExpMotion.popIn(statusView)
             statusView.postDelayed({
-                notifyUserAndFinish(getString(R.string.watchlist_import_done, count))
+                notifyUserAndFinish(message)
             }, 280L)
             return
         }
-        notifyUserAndFinish(getString(R.string.watchlist_import_done, count))
+        notifyUserAndFinish(message)
     }
 
     private data class PageHtml(val url: String, val html: String)

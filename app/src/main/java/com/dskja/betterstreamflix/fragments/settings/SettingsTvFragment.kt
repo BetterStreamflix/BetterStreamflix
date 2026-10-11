@@ -1815,6 +1815,8 @@ class SettingsTvFragment : LeanbackPreferenceFragmentCompat() {
 
         findPreference<Preference>("screen_serienstream_auth")?.isVisible = isSerienStream
         findPreference<Preference>("screen_aniworld_auth")?.isVisible = isAniWorld
+        findPreference<Preference>("watchlist_import_tv_note")?.isVisible =
+            ProviderSettingsVisibility.showWatchlistImport(provider)
     }
 
     private fun bindAnimeOnlineNinjaPreferredServer() {

@@ -70,22 +70,6 @@ object DownloadNotifier {
         return builder.build()
     }
 
-    fun notifyActive(
-        context: Context,
-        title: String,
-        progressPct: Int,
-        indeterminate: Boolean,
-        contentText: String,
-    ) {
-        ensureChannel(context)
-        runCatching {
-            NotificationManagerCompat.from(context).notify(
-                NOTIFICATION_ID_ACTIVE,
-                buildForegroundNotification(context, title, progressPct, indeterminate, contentText),
-            )
-        }
-    }
-
     fun notifyCompleted(context: Context, title: String) {
         if (!UserPreferences.downloadNotifyComplete) return
         ensureChannel(context)

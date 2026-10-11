@@ -426,12 +426,19 @@ class DownloadsMobileFragment : Fragment() {
     }
 
     private fun showItemMenu(row: DownloadRowUiModel.Item, anchor: View) {
+        val isDash = ExternalDownloadHandoff.isDashStream(row.entity.streamUrl, row.entity.mimeType)
+        val isAdaptive = ExternalDownloadHandoff.isAdaptiveStream(
+            row.entity.streamUrl,
+            row.entity.mimeType,
+        )
         PopupMenu(requireContext(), anchor).apply {
             if (row.state == DownloadItemState.COMPLETED) {
                 menu.add(0, 1, 0, R.string.downloads_action_share)
-                menu.add(0, 4, 1, R.string.downloads_action_play_with)
+                if (!isDash) {
+                    menu.add(0, 4, 1, R.string.downloads_action_play_with)
+                }
             }
-            if (row.entity.streamUrl.startsWith("http")) {
+            if (row.entity.streamUrl.startsWith("http") && !isAdaptive) {
                 menu.add(0, 5, 2, R.string.downloads_action_download_with)
             }
             if (row.state == DownloadItemState.FAILED) {
@@ -491,6 +498,10 @@ class DownloadsMobileFragment : Fragment() {
     }
 
     private fun playWithExternal(row: DownloadRowUiModel.Item) {
+        if (ExternalDownloadHandoff.isDashStream(row.entity.streamUrl, row.entity.mimeType)) {
+            showDownloadError(R.string.downloads_play_with_dash_unsupported)
+            return
+        }
         viewLifecycleOwner.lifecycleScope.launch {
             val localUri = withContext(Dispatchers.IO) {
                 OfflinePlayback.exportShareUri(requireContext(), row.entity)?.toString()
@@ -531,7 +542,7 @@ class DownloadsMobileFragment : Fragment() {
             val o = org.json.JSONObject(row.entity.headersJson.ifBlank { "{}" })
             o.keys().asSequence().associateWith { o.getString(it) }
         }.getOrDefault(emptyMap())
-        val ok = ExternalDownloadHandoff.launch(
+        val result = ExternalDownloadHandoff.launch(
             requireActivity(),
             ExternalDownloadHandoff.Request(
                 url = url,
@@ -542,7 +553,7 @@ class DownloadsMobileFragment : Fragment() {
             ),
             forceChooser = false,
         )
-        if (ok) {
+        if (result is ExternalDownloadHandoff.HandoffResult.Started) {
             ExpDialogChrome.notify(requireContext(), R.string.external_download_started)
         }
     }

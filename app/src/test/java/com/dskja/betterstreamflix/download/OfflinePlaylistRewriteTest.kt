@@ -25,6 +25,25 @@ class OfflinePlaylistRewriteTest {
     }
 
     @Test
+    fun rewritesUriOnAllExtTagsIncludingSessionKeyAndSingleQuotes() {
+        val playlist = """
+            #EXTM3U
+            #EXT-X-SESSION-KEY:METHOD=AES-128,URI="session.key"
+            #EXT-X-PRELOAD-HINT:TYPE=PART,URI='part1.m4s'
+            #EXT-X-PART:DURATION=1.0,URI="part2.m4s"
+            #EXT-X-MEDIA:TYPE=AUDIO,GROUP-ID="a",NAME="en",URI="audio.m3u8"
+        """.trimIndent()
+        val rewritten = OfflinePlaylistRewrite.rewrite(
+            playlist,
+            "https://cdn.example/master.m3u8",
+        ) { absolute -> "local:$absolute" }
+        assertTrue(rewritten.contains("""URI="local:https://cdn.example/session.key""""))
+        assertTrue(rewritten.contains("""URI='local:https://cdn.example/part1.m4s'"""))
+        assertTrue(rewritten.contains("""URI="local:https://cdn.example/part2.m4s""""))
+        assertTrue(rewritten.contains("""URI="local:https://cdn.example/audio.m3u8""""))
+    }
+
+    @Test
     fun sameTreeMatchesEncodedVolumeIds() {
         assertTrue(
             DownloadTreeAccess.sameTree(

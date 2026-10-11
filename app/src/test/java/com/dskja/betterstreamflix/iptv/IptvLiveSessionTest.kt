@@ -99,8 +99,20 @@ class IptvLiveSessionTest {
     @Test
     fun singleChannelSessionNeedsACatalogWindow() {
         assertTrue(IptvLiveSession.needsWindowRefresh(1, 0, 250))
+        // Short lists alone are not treated as complete until replaceWindow(complete=true).
+        assertTrue(IptvLiveSession.needsWindowRefresh(36, 0, 250))
+        IptvLiveSession.replaceWindow(
+            (1..36).map { IptvLiveSession.Channel(it.toString(), "CH$it") },
+            complete = true,
+        )
+        assertTrue(IptvLiveSession.isWindowComplete())
         assertFalse(IptvLiveSession.needsWindowRefresh(36, 0, 250))
         assertFalse(IptvLiveSession.needsWindowRefresh(36, 35, 250))
+        IptvLiveSession.replaceWindow(
+            (1..250).map { IptvLiveSession.Channel(it.toString(), "CH$it") },
+            complete = false,
+        )
+        assertFalse(IptvLiveSession.isWindowComplete())
         assertFalse(IptvLiveSession.needsWindowRefresh(250, 120, 250))
         assertTrue(IptvLiveSession.needsWindowRefresh(250, 247, 250))
         IptvLiveSession.remember(listOf(IptvLiveSession.Channel("c", "C")))
@@ -110,8 +122,23 @@ class IptvLiveSessionTest {
                 IptvLiveSession.Channel("b", "B"),
                 IptvLiveSession.Channel("c", "C"),
             ),
+            complete = true,
         )
         assertEquals(listOf("a", "b", "c"), IptvLiveSession.snapshot().map { it.id })
+    }
+
+    @Test
+    fun ensureCurrentPresentInsertsStubWhenMissing() {
+        IptvLiveSession.remember(
+            listOf(
+                IptvLiveSession.Channel("1", "One"),
+                IptvLiveSession.Channel("2", "Two"),
+            ),
+        )
+        IptvLiveSession.ensureCurrentPresent("missing", fallbackName = "Stub")
+        assertEquals("missing", IptvLiveSession.current()?.id)
+        assertEquals("Stub", IptvLiveSession.current()?.name)
+        assertTrue(IptvLiveSession.snapshot().any { it.id == "missing" })
     }
 
     @Test
@@ -151,6 +178,21 @@ class IptvChannelWindowTest {
         val channels = (1..10).map { IptvLiveSession.Channel(it.toString(), "CH$it") }
         val window = IptvChannelWindow.fromChannels(channels, aroundId = "5", limit = 4)
         assertEquals(listOf("3", "4", "5", "6"), window.map { it.id })
+    }
+
+    @Test
+    fun forceIncludesMissingAroundId() {
+        val channels = (1..5).map { IptvLiveSession.Channel(it.toString(), "CH$it") }
+        val stub = IptvLiveSession.Channel("missing", "Stub")
+        val window = IptvChannelWindow.fromChannels(
+            channels,
+            aroundId = "missing",
+            limit = 3,
+            forceInclude = stub,
+        )
+        assertEquals("missing", window.first().id)
+        assertEquals(3, window.size)
+        assertTrue(window.any { it.id == "missing" })
     }
 }
 

@@ -289,7 +289,7 @@ class TvShowViewHolder(
             ),
             season = Video.Type.Episode.Season(
                 number = 1,
-                title = "Live",
+                title = itemView.context.getString(R.string.player_live_season),
             ),
         )
         

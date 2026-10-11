@@ -30,6 +30,9 @@ object CastPlaybackHub {
     private var proxy: CastStreamProxyServer? = null
 
     @Volatile
+    private var appContext: Context? = null
+
+    @Volatile
     var isCasting: Boolean = false
         private set
 
@@ -49,14 +52,20 @@ object CastPlaybackHub {
     private val mainHandler = Handler(Looper.getMainLooper())
     private val queue = CopyOnWriteArrayList<MediaItem>()
     private val sessionStateListeners = CopyOnWriteArrayList<(Boolean) -> Unit>()
+    private val queueExhaustedListeners = CopyOnWriteArrayList<() -> Unit>()
     private var sessionManagerListener: SessionManagerListener<CastSession>? = null
     private var playerListener: Player.Listener? = null
+
+    /** True while [playNextInQueue] has removed an item and is loading it on the player. */
+    @Volatile
+    private var advancingQueue: Boolean = false
 
     /** True while a player fragment is showing Cast controls. */
     @Volatile
     private var uiAttached: Boolean = false
 
     fun ensureCastContext(context: Context) {
+        appContext = context.applicationContext
         runCatching {
             val castContext = CastContext.getSharedInstance(context.applicationContext)
             attachSessionManager(castContext)
@@ -65,7 +74,10 @@ object CastPlaybackHub {
         }
     }
 
+    fun proxyContextOrNull(): Context? = appContext
+
     fun obtainPlayer(context: Context): CastPlayer? {
+        appContext = context.applicationContext
         castPlayer?.let { return it }
         return runCatching {
             val castContext = CastContext.getSharedInstance(context.applicationContext)
@@ -75,7 +87,11 @@ object CastPlaybackHub {
                 val listener = object : Player.Listener {
                     override fun onPlaybackStateChanged(playbackState: Int) {
                         if (playbackState == Player.STATE_ENDED) {
-                            playNextInQueue()
+                            // Hub owns Cast END → next-queue. Fragments must not also
+                            // fire local autoplay while a queue item is pending (CAST-P1-1).
+                            if (!playNextInQueue()) {
+                                notifyQueueExhausted()
+                            }
                         }
                     }
 
@@ -106,6 +122,17 @@ object CastPlaybackHub {
     fun removeSessionStateListener(listener: (Boolean) -> Unit) {
         sessionStateListeners.remove(listener)
     }
+
+    fun addQueueExhaustedListener(listener: () -> Unit) {
+        queueExhaustedListeners.add(listener)
+    }
+
+    fun removeQueueExhaustedListener(listener: () -> Unit) {
+        queueExhaustedListeners.remove(listener)
+    }
+
+    /** True when Cast END is advancing a queued item (fragments must skip local autoplay). */
+    fun isAdvancingQueue(): Boolean = advancingQueue || queue.isNotEmpty()
 
     fun markCasting(active: Boolean) {
         if (isCasting == active) return
@@ -150,16 +177,37 @@ object CastPlaybackHub {
         return server.wrap(originalUrl)
     }
 
-    /** Proxy a local file:// / content:// path for Chromecast subtitle sidecars. */
-    fun wrapLocalForCast(localUri: String): String? {
-        val path = when {
-            localUri.startsWith("file://", ignoreCase = true) ->
-                java.net.URI(localUri).path
-            else -> null
-        } ?: return null
-        val file = java.io.File(path)
+    /**
+     * Proxy a local file:// or content:// path for Chromecast subtitle sidecars.
+     * [context] is required to copy content:// URIs into a temp file served via /f.
+     */
+    fun wrapLocalForCast(localUri: String, context: Context? = null): String? {
         val server = ensureProxy(emptyMap()) ?: return null
+        val file = when {
+            localUri.startsWith("file://", ignoreCase = true) -> {
+                val path = runCatching { java.net.URI(localUri).path }.getOrNull() ?: return null
+                java.io.File(path)
+            }
+            localUri.startsWith("content://", ignoreCase = true) -> {
+                val app = context?.applicationContext ?: return null
+                copyContentUriToCache(app, localUri) ?: return null
+            }
+            else -> return null
+        }
         return server.wrapLocalFile(file)
+    }
+
+    private fun copyContentUriToCache(context: Context, contentUri: String): java.io.File? {
+        return runCatching {
+            val uri = android.net.Uri.parse(contentUri)
+            val dir = java.io.File(context.cacheDir, "cast_subs").also { it.mkdirs() }
+            val out = java.io.File(dir, "sub_${contentUri.hashCode().toUInt().toString(16)}.bin")
+            context.contentResolver.openInputStream(uri)?.use { input ->
+                out.outputStream().use { output -> input.copyTo(output) }
+            } ?: return null
+            if (!out.exists() || out.length() <= 0L) return null
+            out
+        }.getOrNull()
     }
 
     fun clearQueue() = queue.clear()
@@ -189,9 +237,14 @@ object CastPlaybackHub {
         markCasting(true)
     }
 
-    fun playNextInQueue() {
-        val player = castPlayer ?: return
-        if (queue.isEmpty()) return
+    /**
+     * Advance to the next queued Cast item. Returns true when a next item was claimed
+     * (including while the player load is still pending on the main thread).
+     */
+    fun playNextInQueue(): Boolean {
+        val player = castPlayer ?: return false
+        if (queue.isEmpty()) return false
+        advancingQueue = true
         val next = queue.removeAt(0)
         mainHandler.post {
             runCatching {
@@ -203,7 +256,13 @@ object CastPlaybackHub {
             }.onFailure {
                 Log.w(TAG, "Failed to play next Cast queue item: ${it.message}")
             }
+            advancingQueue = false
         }
+        return true
+    }
+
+    private fun notifyQueueExhausted() {
+        queueExhaustedListeners.forEach { runCatching { it.invoke() } }
     }
 
     fun setReceiverVolume(volume: Float) {

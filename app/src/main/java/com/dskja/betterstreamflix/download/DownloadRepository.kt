@@ -16,6 +16,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import org.json.JSONArray
 import org.json.JSONObject
 import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
@@ -181,6 +182,7 @@ class DownloadRepository private constructor(
             state = DownloadItemState.QUEUED.name,
             streamUrl = streamUrl,
             headersJson = headersJson,
+            streamKeysJson = serializeStreamKeys(streamKeys),
             seasonPackId = seasonPackId,
             sortIndex = sortIndex,
             subtitleUrlsJson = serializeSubtitleUrls(subtitleUrls),
@@ -225,7 +227,11 @@ class DownloadRepository private constructor(
                 item.copy(
                     state = DownloadItemState.PAUSED.name,
                     errorCode = if (connectivityHold) DownloadErrorCode.WIFI_REQUIRED.name else "",
-                    errorMessage = if (connectivityHold) "Wi-Fi required" else "",
+                    errorMessage = if (connectivityHold) {
+                        context.getString(com.dskja.betterstreamflix.R.string.download_error_wifi)
+                    } else {
+                        ""
+                    },
                     updatedAt = System.currentTimeMillis(),
                 ),
             )
@@ -234,13 +240,13 @@ class DownloadRepository private constructor(
 
     suspend fun resume(id: String, foreground: Boolean = false) {
         val item = dao.getById(id) ?: return
-        if (UserPreferences.downloadWifiOnly && DownloadConnectivityMonitor.isMetered(context)) {
+        if (DownloadConnectivityMonitor.shouldHoldForWifiOnly(context)) {
             // Soft-gate only: keep the item paused instead of marking a terminal failure.
             dao.upsert(
                 item.copy(
                     state = DownloadItemState.PAUSED.name,
                     errorCode = DownloadErrorCode.WIFI_REQUIRED.name,
-                    errorMessage = "Wi-Fi required",
+                    errorMessage = context.getString(com.dskja.betterstreamflix.R.string.download_error_wifi),
                     updatedAt = System.currentTimeMillis(),
                 ),
             )
@@ -293,11 +299,15 @@ class DownloadRepository private constructor(
                     item.streamUrl.contains(".mp4", ignoreCase = true) -> MimeTypes.VIDEO_MP4
                     else -> null
                 }
-            DownloadRequest.Builder(item.media3Id, Uri.parse(item.streamUrl))
+            val requestBuilder = DownloadRequest.Builder(item.media3Id, Uri.parse(item.streamUrl))
                 .setMimeType(mime)
                 .setCustomCacheKey(item.media3Id)
                 .setData(item.title.toByteArray(Charsets.UTF_8))
-                .build()
+            val streamKeys = deserializeStreamKeys(item.streamKeysJson)
+            if (streamKeys.isNotEmpty()) {
+                requestBuilder.setStreamKeys(streamKeys)
+            }
+            requestBuilder.build()
         }
         // Re-add (Media3 replaces an existing failed entry with the same id and
         // keeps already-cached bytes when the URI matches).
@@ -347,7 +357,7 @@ class DownloadRepository private constructor(
      * [DownloadService.sendResumeDownloads], which would also restart a user pause.
      */
     suspend fun resumeConnectivityHeld() {
-        if (UserPreferences.downloadWifiOnly && DownloadConnectivityMonitor.isMetered(context)) return
+        if (DownloadConnectivityMonitor.shouldHoldForWifiOnly(context)) return
         val held = getAllOnce().filter {
             val state = DownloadItemState.fromKey(it.state)
             DownloadQueuePolicy.shouldResumeAfterConnectivity(
@@ -366,7 +376,7 @@ class DownloadRepository private constructor(
     }
 
     suspend fun resumeAll() {
-        if (UserPreferences.downloadWifiOnly && DownloadConnectivityMonitor.isMetered(context)) return
+        if (DownloadConnectivityMonitor.shouldHoldForWifiOnly(context)) return
         // Connectivity watcher can fire while the app is backgrounded (Android 12+),
         // which throws BackgroundServiceStartNotAllowedException / IllegalStateException.
         // Prefer a foreground start; if that is still blocked, skip silently until next
@@ -403,7 +413,7 @@ class DownloadRepository private constructor(
      * their FAILED state until a full in-app re-resolve.
      */
     suspend fun resumeFailed() {
-        if (UserPreferences.downloadWifiOnly && DownloadConnectivityMonitor.isMetered(context)) return
+        if (DownloadConnectivityMonitor.shouldHoldForWifiOnly(context)) return
         getAllOnce()
             .filter { it.state == DownloadItemState.FAILED.name }
             .forEach { resume(it.id) }
@@ -438,11 +448,39 @@ class DownloadRepository private constructor(
     /** Subtitle entries are stored as JSON array of {"lang": "...", "url": "..."}. */
     private fun serializeSubtitleUrls(subtitles: List<Pair<String, String>>): String {
         if (subtitles.isEmpty()) return "[]"
-        val arr = org.json.JSONArray()
+        val arr = JSONArray()
         subtitles.forEach { (lang, url) ->
             arr.put(JSONObject().put("lang", lang).put("url", url))
         }
         return arr.toString()
+    }
+
+    /** Media3 [StreamKey] list as JSON array of {"p","g","t"}. */
+    private fun serializeStreamKeys(keys: List<StreamKey>): String {
+        if (keys.isEmpty()) return "[]"
+        val arr = JSONArray()
+        keys.forEach { key ->
+            arr.put(
+                JSONObject()
+                    .put("p", key.periodIndex)
+                    .put("g", key.groupIndex)
+                    .put("t", key.streamIndex),
+            )
+        }
+        return arr.toString()
+    }
+
+    private fun deserializeStreamKeys(raw: String): List<StreamKey> {
+        if (raw.isBlank() || raw == "[]") return emptyList()
+        return runCatching {
+            val arr = JSONArray(raw)
+            buildList {
+                for (i in 0 until arr.length()) {
+                    val o = arr.getJSONObject(i)
+                    add(StreamKey(o.getInt("p"), o.getInt("g"), o.getInt("t")))
+                }
+            }
+        }.getOrDefault(emptyList())
     }
 
     suspend fun clearAll() {

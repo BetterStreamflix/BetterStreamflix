@@ -65,8 +65,6 @@
     <item name="tv_tv_shows_eyebrow" type="id" />
     <item name="tv_tv_shows_sort_chip" type="id" />
     <item name="tv_tv_shows_tagline" type="id" />
-    <item name="tv_watchlist_brand" type="id" />
-    <item name="tv_watchlist_eyebrow" type="id" />
     <item name="v_bypass_rule" type="id" />
     <item name="v_crash_log_rule" type="id" />
     <item name="v_download_header_rule" type="id" />
@@ -95,5 +93,4 @@
     <item name="v_tv_show_title_rule" type="id" />
     <item name="v_tv_shows_rule" type="id" />
     <item name="v_update_title_rule" type="id" />
-    <item name="v_watchlist_rule" type="id" />
 </resources>

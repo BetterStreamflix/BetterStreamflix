@@ -2,7 +2,12 @@ package com.dskja.betterstreamflix.download
 
 /**
  * Where offline Media3 downloads and sidecar files are stored.
- * Changing location does not migrate existing files — restart downloads after switching.
+ *
+ * Changing location does not migrate existing cache bytes. When downloads already
+ * exist, [StreamflixDownloadManager.relocate] must be called with
+ * `wipeAndRebuild = true` after user confirmation — otherwise the manager refuses
+ * to switch and leave orphaned Media3/Room state. Wiping marks completed/active
+ * Room rows as [DownloadErrorCode.STORAGE_RELOCATED] so the user can re-download.
  */
 enum class DownloadStorageLocation {
     /** App-private internal storage (default, most secure). */

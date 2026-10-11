@@ -208,14 +208,17 @@ object DaddyLiveTvProvider : IptvProvider, ProviderConfigUrl {
             limitCountries = 18,
             perCountry = 12,
         )
-        // A–Z quick rails for densest letters
+        // A–Z quick rails for densest letters (label matches shelf size, not full letter count)
         all.groupBy { it.letter }.entries
             .sortedByDescending { it.value.size }
             .take(8)
             .forEach { (letter, channels) ->
+                val visible = channels.take(16)
+                val countLabel =
+                    if (channels.size > visible.size) "${visible.size}+" else "${visible.size}"
                 categories += Category(
-                    "🔤 $letter (${channels.size})",
-                    channels.take(16).map { toShow(it) },
+                    "🔤 $letter ($countLabel)",
+                    visible.map { toShow(it) },
                 )
             }
         return categories.filter { it.list.isNotEmpty() }

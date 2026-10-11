@@ -7,7 +7,6 @@ import android.content.BroadcastReceiver
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
-import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
 import android.util.Log
@@ -38,6 +37,16 @@ object ExternalDownloadHandoff {
         "com.dv.get.AEditor",
         "com.dv.adm.pay.AEditor",
     )
+
+    sealed class HandoffResult {
+        /** Direct start of a known download manager package. */
+        data object Started : HandoffResult()
+
+        /** Chooser / picker was shown; toast only after a package starts from its click. */
+        data object ChooserShown : HandoffResult()
+
+        data object Failed : HandoffResult()
+    }
 
     data class Request(
         val url: String,
@@ -76,6 +85,12 @@ object ExternalDownloadHandoff {
     fun installedCandidates(context: Context): List<String> =
         CANDIDATE_PACKAGES.filter { isPackageInstalled(context, it) }
 
+    fun packageLabel(context: Context, packageName: String): String =
+        runCatching {
+            val pm = context.packageManager
+            pm.getApplicationLabel(pm.getApplicationInfo(packageName, 0)).toString()
+        }.getOrDefault(packageName)
+
     fun sanitizeFileName(name: String?): String {
         val base = name?.trim().orEmpty().ifBlank { "stream" }
         return base.replace(Regex("[\\\\/:*?\"<>|]"), "_").take(120)
@@ -88,6 +103,26 @@ object ExternalDownloadHandoff {
 
     fun isOneDmPackage(packageName: String): Boolean =
         packageName.startsWith("idm.internet.download.manager")
+
+    /** HLS/DASH playlists cannot be handed to ADM/1DM as a single file URL. */
+    fun isAdaptiveStream(url: String?, mimeType: String?): Boolean {
+        val path = url.orEmpty().substringBefore('?').lowercase()
+        val mime = mimeType.orEmpty().lowercase()
+        return path.endsWith(".m3u8") ||
+            path.endsWith(".mpd") ||
+            mime.contains("mpegurl") ||
+            mime.contains("m3u8") ||
+            mime.contains("dash+xml") ||
+            mime.contains("mpd")
+    }
+
+    fun isDashStream(url: String?, mimeType: String?): Boolean {
+        val path = url.orEmpty().substringBefore('?').lowercase()
+        val mime = mimeType.orEmpty().lowercase()
+        return path.endsWith(".mpd") ||
+            mime.contains("dash+xml") ||
+            mime.contains("application/dash")
+    }
 
     /**
      * Build the best-known enqueue intent for [packageName].
@@ -297,7 +332,7 @@ object ExternalDownloadHandoff {
         activity: Activity,
         request: Request,
         forceChooser: Boolean = false,
-    ): Boolean {
+    ): HandoffResult {
         val url = request.url.trim()
         if (url.isBlank() || (!url.startsWith("http://") && !url.startsWith("https://"))) {
             ExpDialogChrome.notify(
@@ -305,28 +340,25 @@ object ExternalDownloadHandoff {
                 R.string.external_download_invalid_url,
                 R.string.external_download_with_title,
             )
-            return false
+            return HandoffResult.Failed
         }
-        val looksLikeHls = url.substringBefore('?').endsWith(".m3u8", ignoreCase = true) ||
-            request.mimeType?.contains("mpegurl", ignoreCase = true) == true ||
-            request.mimeType?.contains("m3u8", ignoreCase = true) == true
-        if (looksLikeHls) {
+        if (isAdaptiveStream(url, request.mimeType)) {
             ExpDialogChrome.notify(
                 activity,
-                R.string.external_download_hls_unsupported,
+                R.string.external_download_adaptive_unsupported,
                 R.string.external_download_with_title,
             )
-            return false
+            return HandoffResult.Failed
         }
         if (!forceChooser) {
             val preferred = preferredPackage(activity)
             if (!preferred.isNullOrBlank() && startForPackage(activity, request, preferred)) {
-                return true
+                return HandoffResult.Started
             }
             for (pkg in installedCandidates(activity)) {
                 if (startForPackage(activity, request, pkg)) {
                     rememberChosenPackage(pkg)
-                    return true
+                    return HandoffResult.Started
                 }
             }
             if (installedCandidates(activity).isEmpty()) {
@@ -335,18 +367,18 @@ object ExternalDownloadHandoff {
                     R.string.external_download_none_found,
                     R.string.external_download_with_title,
                 )
-                return false
+                return HandoffResult.Failed
             }
         }
         return launchChooser(activity, request)
     }
 
-    private fun launchChooser(activity: Activity, request: Request): Boolean {
+    private fun launchChooser(activity: Activity, request: Request): HandoffResult {
         // Prefer an explicit list of known managers over a blind VIEW chooser
         // (VIEW often lists browsers instead of download managers).
         val installed = installedCandidates(activity)
         if (installed.isNotEmpty()) {
-            val labels = installed.toTypedArray()
+            val labels = installed.map { packageLabel(activity, it) }.toTypedArray()
             return try {
                 val builder = androidx.appcompat.app.AlertDialog.Builder(activity)
                     .setTitle(R.string.external_download_with_title)
@@ -365,10 +397,10 @@ object ExternalDownloadHandoff {
                     }
                     .setNegativeButton(android.R.string.cancel, null)
                 builder.show()
-                true
+                HandoffResult.ChooserShown
             } catch (e: Exception) {
                 Log.e(TAG, "Package picker failed", e)
-                false
+                HandoffResult.Failed
             }
         }
         // No known managers — try SEND of the URL so the user can pick any app.
@@ -380,11 +412,19 @@ object ExternalDownloadHandoff {
                     val receiver = Intent(ACTION_DOWNLOADER_CHOSEN).apply {
                         setPackage(activity.packageName)
                     }
+                    // FLAG_MUTABLE is required so the system can fill EXTRA_CHOSEN_COMPONENT.
+                    // Do not use MUTABLE for unrelated download PendingIntents.
+                    val pendingFlags = PendingIntent.FLAG_UPDATE_CURRENT or
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                            PendingIntent.FLAG_MUTABLE
+                        } else {
+                            0
+                        }
                     val pending = PendingIntent.getBroadcast(
                         activity,
                         request.url.hashCode(),
                         receiver,
-                        PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_MUTABLE,
+                        pendingFlags,
                     )
                     activity.startActivity(
                         Intent.createChooser(send, title, pending.intentSender),
@@ -392,14 +432,14 @@ object ExternalDownloadHandoff {
                 } else {
                     activity.startActivity(Intent.createChooser(send, title))
                 }
-                true
+                HandoffResult.ChooserShown
             } else {
                 ExpDialogChrome.notify(
                     activity,
                     R.string.external_download_none_found,
                     R.string.external_download_with_title,
                 )
-                false
+                HandoffResult.Failed
             }
         } catch (e: Exception) {
             Log.e(TAG, "Download chooser failed", e)
@@ -408,7 +448,7 @@ object ExternalDownloadHandoff {
                 R.string.external_download_none_found,
                 R.string.external_download_with_title,
             )
-            false
+            HandoffResult.Failed
         }
     }
 

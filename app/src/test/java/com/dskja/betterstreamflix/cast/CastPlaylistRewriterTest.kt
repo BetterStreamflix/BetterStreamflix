@@ -59,6 +59,7 @@ class CastPlaylistRewriterTest {
         assertTrue(CastStreamProxyServer.isBlockedProxyTarget("http://localhost/x"))
         assertTrue(CastStreamProxyServer.isBlockedProxyTarget("http://192.168.1.1/admin"))
         assertTrue(CastStreamProxyServer.isBlockedProxyTarget("http://10.0.0.5/"))
+        assertTrue(CastStreamProxyServer.isBlockedProxyTarget("http://169.254.169.254/latest/meta-data/"))
         // Explicitly wrapped LAN IPTV hosts are allowlisted.
         assertTrue(
             !CastStreamProxyServer.isBlockedProxyTarget(
@@ -66,5 +67,49 @@ class CastPlaylistRewriterTest {
                 allowedHosts = setOf("192.168.1.50"),
             ),
         )
+    }
+
+    @Test
+    fun rewritesSingleQuotedAndUnquotedUriAttributes() {
+        val playlist = """
+            #EXTM3U
+            #EXT-X-KEY:METHOD=AES-128,URI='key.key'
+            #EXT-X-MAP:URI=init.mp4
+            #EXTINF:4.0,
+            seg.ts
+        """.trimIndent()
+        val hosts = mutableSetOf<String>()
+        val out = CastPlaylistRewriter.rewrite(
+            playlistText = playlist,
+            playlistUrl = "https://cdn.example.com/hls/master.m3u8",
+            proxyBase = "http://10.0.0.2:9",
+            sessionToken = "tok",
+            onAbsoluteUrl = { url ->
+                java.net.URI(url).host?.let { hosts.add(it.lowercase()) }
+            },
+        )
+        assertTrue(out.contains("URI=\"http://10.0.0.2:9/p?u="))
+        assertTrue(hosts.contains("cdn.example.com"))
+    }
+
+    @Test
+    fun rewritesMpdAbsoluteMediaUrls() {
+        val mpd = """
+            <MPD>
+              <SegmentTemplate media="https://cdn2.example.com/seg-1.m4s" initialization="https://cdn2.example.com/init.mp4"/>
+            </MPD>
+        """.trimIndent()
+        val hosts = mutableSetOf<String>()
+        val out = CastPlaylistRewriter.rewriteMpd(
+            mpdText = mpd,
+            playlistUrl = "https://cdn.example.com/dash.mpd",
+            proxyBase = "http://10.0.0.2:9",
+            sessionToken = "t",
+            onAbsoluteUrl = { url ->
+                java.net.URI(url).host?.let { hosts.add(it.lowercase()) }
+            },
+        )
+        assertTrue(out.contains("http://10.0.0.2:9/p?u="))
+        assertTrue(hosts.contains("cdn2.example.com"))
     }
 }

@@ -700,9 +700,8 @@ class SettingsMobileFragment : PreferenceFragmentCompat() {
         }
 
         findPreference<Preference>("p_settings_support_preview")?.apply {
-            // Same PreferenceScreen as EXPERIMENTAL_NEW_APP_DESIGN (Appearance) —
-            // never use android:dependency across nested screens (BETTERSTREAMFLIX-K).
-            isVisible = ExperimentalMobileDesign.enabled()
+            // DEBUG builds only — do not gate on retired ExperimentalMobileDesign.
+            isVisible = BuildConfig.DEBUG
             setOnPreferenceClickListener {
                 runCatching {
                     findNavController().navigate(R.id.support_preview)
@@ -1115,7 +1114,14 @@ class SettingsMobileFragment : PreferenceFragmentCompat() {
         findPreference<SwitchPreference>("CAST_ENABLED")?.apply {
             isChecked = UserPreferences.castEnabled
             setOnPreferenceChangeListener { _, newValue ->
-                UserPreferences.castEnabled = newValue as Boolean
+                val enabled = newValue as Boolean
+                UserPreferences.castEnabled = enabled
+                // Align with TV: warm CastContext when the user enables Cast (CAST-P3-2).
+                if (enabled) {
+                    runCatching {
+                        com.dskja.betterstreamflix.cast.CastPlaybackHub.ensureCastContext(requireContext())
+                    }
+                }
                 true
             }
         }
