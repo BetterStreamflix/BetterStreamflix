@@ -803,6 +803,11 @@ class SettingsTvFragment : LeanbackPreferenceFragmentCompat() {
             }
         }
 
+        findPreference<Preference>("PROFILE_YEAR_REVIEW")?.setOnPreferenceClickListener {
+            com.dskja.betterstreamflix.yearreview.YearReviewUi.show(this)
+            true
+        }
+
         findPreference<Preference>("CLEAR_RECENTLY_WATCHED")?.setOnPreferenceClickListener {
             val message = getString(R.string.settings_clear_recently_watched_confirm_message)
             expAlertBuilder()

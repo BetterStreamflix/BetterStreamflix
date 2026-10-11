@@ -1478,6 +1478,11 @@ class SettingsMobileFragment : PreferenceFragmentCompat() {
             }
         }
 
+        findPreference<Preference>("PROFILE_YEAR_REVIEW")?.setOnPreferenceClickListener {
+            com.dskja.betterstreamflix.yearreview.YearReviewUi.show(this)
+            true
+        }
+
         findPreference<Preference>("CLEAR_RECENTLY_WATCHED")?.setOnPreferenceClickListener {
             val glass = if (ExperimentalMobileDesign.enabled()) {
                 ExpDialogChrome.buildGlassMessage(
