@@ -21,6 +21,8 @@ internal object ProfileScopedPreferenceStore {
     val SCOPED_KEYS = setOf(
         "LIBRARY_SCOPE",
         "SHOW_CONTINUE_WATCHING",
+        "CINEMA_ROOM",
+        "CINEMA_AMBIENT_LIGHT",
         "TV_AMBIENT_MODE",
         "SHOW_RECENTLY_WATCHED",
         "SHOW_NEXT_EPISODES",
@@ -80,6 +82,8 @@ internal object ProfileScopedPreferenceStore {
         override fun putBoolean(key: String, value: Boolean) {
             when (key) {
                 "SHOW_CONTINUE_WATCHING" -> UserPreferences.showContinueWatching = value
+                "CINEMA_ROOM" -> UserPreferences.cinemaRoomEnabled = value
+                "CINEMA_AMBIENT_LIGHT" -> UserPreferences.cinemaAmbientLightHints = value
                 "TV_AMBIENT_MODE" -> UserPreferences.tvAmbientModeEnabled = value
                 "SHOW_RECENTLY_WATCHED" -> UserPreferences.showRecentlyWatched = value
                 "SHOW_NEXT_EPISODES" -> UserPreferences.showNextEpisodes = value
@@ -92,6 +96,8 @@ internal object ProfileScopedPreferenceStore {
 
         override fun getBoolean(key: String, defValue: Boolean): Boolean = when (key) {
             "SHOW_CONTINUE_WATCHING" -> UserPreferences.showContinueWatching
+            "CINEMA_ROOM" -> UserPreferences.cinemaRoomEnabled
+            "CINEMA_AMBIENT_LIGHT" -> UserPreferences.cinemaAmbientLightHints
             "TV_AMBIENT_MODE" -> UserPreferences.tvAmbientModeEnabled
             "SHOW_RECENTLY_WATCHED" -> UserPreferences.showRecentlyWatched
             "SHOW_NEXT_EPISODES" -> UserPreferences.showNextEpisodes

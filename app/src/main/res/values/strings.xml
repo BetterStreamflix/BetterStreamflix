@@ -1749,6 +1749,17 @@
     <string name="settings_tv_ambient_mode_title">Ambient Mode</string>
     <string name="settings_tv_ambient_mode_summary">After idle on Home, softly rotate posters with Continue Watching (high-end TVs; burn-in safe)</string>
     <string name="tv_ambient_continue_label">Continue</string>
+    <string name="settings_cinema_room_title">Cinema Room</string>
+    <string name="settings_cinema_room_summary">Living-room Markenkern — Looks, Ambient, Trailer→Play, Skip, End-Card, Clean Exit</string>
+    <string name="settings_cinema_room_master_title">Cinema Room</string>
+    <string name="settings_cinema_room_master_summary">Unify Ambient idle, Cinema-Ink Looks, Trailer→Play crossfade, Skip Intro, End-Card, and Clean Exit as one TV experience</string>
+    <string name="settings_cinema_ambient_light_title">Ambient light hints</string>
+    <string name="settings_cinema_ambient_light_summary">Soft palette glow from artwork while Ambient is active (off under High Contrast)</string>
+    <string name="settings_cinema_room_looks_summary">Cinema-Ink Looks stay locked — Dark, Light, or Kids. No mixed accents.</string>
+    <string name="settings_cinema_room_pillars_title">Player pillars</string>
+    <string name="settings_cinema_room_pillars_summary">Skip Intro, End-Card Chooser, and Clean Exit stay available. Trailer→Play uses a longer living-room dissolve.</string>
+    <string name="cinema_room_brand_label">Cinema Room</string>
+    <string name="cinema_room_wake_hint">Press any key</string>
     <string name="settings_oled_mode_title">OLED mode</string>
     <string name="settings_oled_mode_summary">Replace gray surfaces with true black across the app</string>
     <string name="settings_category_accessibility">Accessibility</string>

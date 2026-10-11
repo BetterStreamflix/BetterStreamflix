@@ -1050,8 +1050,28 @@ object UserPreferences {
         }
 
     /**
+     * Cinema Room — TV-first living-room Markenkern master switch.
+     * Profile-scoped; default on. Gates Ambient brand entry; player pillars stay on.
+     */
+    var cinemaRoomEnabled: Boolean
+        get() = profileScopedBoolean(Key.CINEMA_ROOM) ?: true
+        set(value) {
+            setProfileScopedBoolean(Key.CINEMA_ROOM, value)
+        }
+
+    /**
+     * Ambient-light hints (palette glow) under Cinema Room Ambient canvas.
+     * Profile-scoped; default on. Hard-off under High Contrast / Stick Energy.
+     */
+    var cinemaAmbientLightHints: Boolean
+        get() = profileScopedBoolean(Key.CINEMA_AMBIENT_LIGHT) ?: true
+        set(value) {
+            setProfileScopedBoolean(Key.CINEMA_AMBIENT_LIGHT, value)
+        }
+
+    /**
      * TV Ambient Mode — idle soft poster cinemagraphs + Continue strip on Home.
-     * Profile-scoped; default on. High-end gate is enforced at runtime.
+     * Profile-scoped; default on. Nested under Cinema Room; high-end gate at runtime.
      */
     var tvAmbientModeEnabled: Boolean
         get() = profileScopedBoolean(Key.TV_AMBIENT_MODE) ?: true
@@ -1909,6 +1929,8 @@ object UserPreferences {
         TMDB_LOGO_MISS_TTL_HOURS,
         TMDB_LOGO_HIT_TTL_HOURS,
         SHOW_CONTINUE_WATCHING,
+        CINEMA_ROOM,
+        CINEMA_AMBIENT_LIGHT,
         TV_AMBIENT_MODE,
         LIVE_COMMAND_MODE,
         SHOW_RECENTLY_WATCHED,

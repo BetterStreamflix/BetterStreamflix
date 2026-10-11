@@ -1056,11 +1056,48 @@
                 android:summary="@string/settings_stick_energy_mode_summary"
                 android:defaultValue="false" />
 
-            <SwitchPreferenceCompat
-                android:key="TV_AMBIENT_MODE"
-                android:title="@string/settings_tv_ambient_mode_title"
-                android:summary="@string/settings_tv_ambient_mode_summary"
-                android:defaultValue="true" />
+            <PreferenceScreen
+                android:key="screen_cinema_room"
+                android:title="@string/settings_cinema_room_title"
+                android:summary="@string/settings_cinema_room_summary"
+                android:widgetLayout="@layout/preference_widget_chevron">
+
+                <PreferenceCategory
+                    android:title="@string/settings_cinema_room_title">
+
+                    <SwitchPreferenceCompat
+                        android:key="CINEMA_ROOM"
+                        android:title="@string/settings_cinema_room_master_title"
+                        android:summary="@string/settings_cinema_room_master_summary"
+                        android:defaultValue="true" />
+
+                    <SwitchPreferenceCompat
+                        android:key="TV_AMBIENT_MODE"
+                        android:title="@string/settings_tv_ambient_mode_title"
+                        android:summary="@string/settings_tv_ambient_mode_summary"
+                        android:defaultValue="true"
+                        android:dependency="CINEMA_ROOM" />
+
+                    <SwitchPreferenceCompat
+                        android:key="CINEMA_AMBIENT_LIGHT"
+                        android:title="@string/settings_cinema_ambient_light_title"
+                        android:summary="@string/settings_cinema_ambient_light_summary"
+                        android:defaultValue="true"
+                        android:dependency="CINEMA_ROOM" />
+
+                    <Preference
+                        android:key="cinema_room_looks_info"
+                        android:title="@string/settings_theme_title"
+                        android:summary="@string/settings_cinema_room_looks_summary"
+                        android:selectable="false" />
+
+                    <Preference
+                        android:key="cinema_room_pillars_info"
+                        android:title="@string/settings_cinema_room_pillars_title"
+                        android:summary="@string/settings_cinema_room_pillars_summary"
+                        android:selectable="false" />
+                </PreferenceCategory>
+            </PreferenceScreen>
 
             <SwitchPreference
                 android:key="OLED_MODE"

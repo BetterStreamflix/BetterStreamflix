@@ -1355,12 +1355,37 @@ class SettingsTvFragment : LeanbackPreferenceFragmentCompat() {
             }
         }
 
+        findPreference<SwitchPreferenceCompat>("CINEMA_ROOM")?.apply {
+            isChecked = UserPreferences.cinemaRoomEnabled
+            setOnPreferenceChangeListener { _, newValue ->
+                UserPreferences.cinemaRoomEnabled = newValue as Boolean
+                // Looks stay locked via ThemeManager; Ambient / light hints depend on this master.
+                true
+            }
+        }
+
         findPreference<SwitchPreferenceCompat>("TV_AMBIENT_MODE")?.apply {
             isChecked = UserPreferences.tvAmbientModeEnabled
+            isEnabled = UserPreferences.cinemaRoomEnabled
             setOnPreferenceChangeListener { _, newValue ->
                 UserPreferences.tvAmbientModeEnabled = newValue as Boolean
                 true
             }
+        }
+
+        findPreference<SwitchPreferenceCompat>("CINEMA_AMBIENT_LIGHT")?.apply {
+            isChecked = UserPreferences.cinemaAmbientLightHints
+            isEnabled = UserPreferences.cinemaRoomEnabled
+            setOnPreferenceChangeListener { _, newValue ->
+                UserPreferences.cinemaAmbientLightHints = newValue as Boolean
+                true
+            }
+        }
+
+        findPreference<Preference>("cinema_room_looks_info")?.apply {
+            val look = ThemeManager.resolveLook(UserPreferences.selectedTheme)
+            summary = getString(R.string.settings_cinema_room_looks_summary) +
+                " · " + getString(ThemeManager.titleRes(look))
         }
 
         findPreference<SwitchPreference>("OLED_MODE")?.apply {
