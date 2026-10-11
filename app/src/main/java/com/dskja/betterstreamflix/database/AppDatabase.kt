@@ -110,10 +110,6 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
-        /** Soft open for UI paths that must not throw when the provider is missing. */
-        fun getInstanceOrNull(context: Context): AppDatabase? =
-            runCatching { getInstance(context) }.getOrNull()
-
         // Metodo per forzare il cambio di database quando cambia il provider
         fun resetInstance() {
             synchronized(this) {
