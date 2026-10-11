@@ -1460,6 +1460,16 @@ class SettingsMobileFragment : PreferenceFragmentCompat() {
             true
         }
 
+        findPreference<Preference>("HOME_SHELF_PINS")?.apply {
+            summary = com.dskja.betterstreamflix.home.HomeShelfPinUi.pinsSummary(requireContext())
+            setOnPreferenceClickListener {
+                com.dskja.betterstreamflix.home.HomeShelfPinUi.showPicker(requireContext()) {
+                    summary = com.dskja.betterstreamflix.home.HomeShelfPinUi.pinsSummary(requireContext())
+                }
+                true
+            }
+        }
+
         findPreference<Preference>("CLEAR_RECENTLY_WATCHED")?.setOnPreferenceClickListener {
             val glass = if (ExperimentalMobileDesign.enabled()) {
                 ExpDialogChrome.buildGlassMessage(

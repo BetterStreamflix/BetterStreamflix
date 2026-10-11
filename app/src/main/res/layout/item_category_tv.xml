@@ -69,12 +69,33 @@
         android:textStyle="bold"
         android:visibility="gone"
         app:layout_constraintBottom_toBottomOf="@id/chip_series_fast_forward"
-        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintEnd_toStartOf="@id/btn_shelf_pin"
         app:layout_constraintHorizontal_bias="0"
         app:layout_constraintStart_toEndOf="@id/chip_series_fast_forward"
         app:layout_constraintTop_toTopOf="@id/chip_series_fast_forward"
+        app:layout_goneMarginEnd="8dp"
         tools:text="unstable"
         tools:visibility="visible" />
+
+    <ImageButton
+        android:id="@+id/btn_shelf_pin"
+        android:layout_width="48dp"
+        android:layout_height="48dp"
+        android:layout_marginStart="8dp"
+        android:layout_marginEnd="70dp"
+        android:background="@drawable/bg_tv_focus_ring"
+        android:contentDescription="@string/home_shelf_pin_cd"
+        android:focusable="true"
+        android:focusableInTouchMode="true"
+        android:nextFocusLeft="@id/nav_main"
+        android:padding="10dp"
+        android:scaleType="centerInside"
+        android:src="@drawable/ic_shelf_pin"
+        app:layout_constraintBottom_toBottomOf="@id/chip_series_fast_forward"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toTopOf="@id/chip_series_fast_forward"
+        app:tint="@color/cinema_text_muted"
+        tools:ignore="SpeakableTextPresentCheck" />
 
     <View
         android:id="@+id/v_category_rule"
@@ -111,7 +132,7 @@
         android:clipChildren="false"
         android:clipToPadding="false"
         android:nextFocusLeft="@id/nav_main"
-        android:nextFocusUp="@id/chip_series_fast_forward"
+        android:nextFocusUp="@id/btn_shelf_pin"
         android:paddingStart="70dp"
         android:paddingEnd="70dp"
         android:paddingBottom="10dp"

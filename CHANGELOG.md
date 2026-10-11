@@ -15,6 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Profile themes + download folders: theme preference is per-profile; Kids defaults to **Cinema-Ink Kids**, adults to **Cinema-Ink Dark**; offline files land in visible `profiles/<Name>` folders (Settings path + Downloads chip show the folder)
 
 ### Added
+- Shelf Pinning: pin up to 3 Home shelves under Featured (Continue, Live, Downloads, Collections…) on Mobile + TV — header pin + Settings picker; applied after Remix Home block order
 - **Series Fast-Forward:** Home shelf filter “New since last visit” / „Nur neue seit letztem Besuch“ on Next Episodes and Favorite TV shows — visit watermark on Home pause, chip toggle on Mobile + TV
 - Remix Home: drag (or arrow) reorder of Continue / Live / Collections shelf blocks — profile-scoped, Mobile + TV Home button + Settings entry; Featured stays first
 - Shelf Weather: Home/search category shelves dim and show a source-health pill when ProviderHealth quarantine/parked or ProviderSmoke circuit/flaky marks the stamped provider bad (Mobile + TV)

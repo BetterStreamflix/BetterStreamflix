@@ -174,6 +174,15 @@
     <string name="home_smart_with_kids">With kids</string>
     <string name="home_smart_de_audio">German audio</string>
     <string name="home_live_shelf">Live</string>
+    <string name="home_downloads_shelf">Downloads</string>
+    <string name="home_shelf_pin_cd">Pin shelf to top</string>
+    <string name="home_shelf_unpin_cd">Unpin shelf</string>
+    <string name="home_shelf_pinned">Pinned %1$s to top</string>
+    <string name="home_shelf_unpinned">Unpinned %1$s</string>
+    <string name="home_shelf_pin_max">You can pin up to %1$d shelves</string>
+    <string name="settings_home_shelf_pins_title">Pinned home shelves</string>
+    <string name="settings_home_shelf_pins_summary_empty">Pin up to 3 shelves under Featured (Continue, Live, Downloads…)</string>
+    <string name="settings_home_shelf_pins_summary">Pinned: %1$s</string>
     <string name="home_remix_title">Remix Home</string>
     <string name="home_remix_summary">Drag to reorder Continue, Live, and Collections</string>
     <string name="home_remix_message">Drag rows or use the arrows. Featured stays on top.</string>

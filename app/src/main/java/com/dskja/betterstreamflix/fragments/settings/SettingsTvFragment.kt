@@ -793,6 +793,16 @@ class SettingsTvFragment : LeanbackPreferenceFragmentCompat() {
             true
         }
 
+        findPreference<Preference>("HOME_SHELF_PINS")?.apply {
+            summary = com.dskja.betterstreamflix.home.HomeShelfPinUi.pinsSummary(requireContext())
+            setOnPreferenceClickListener {
+                com.dskja.betterstreamflix.home.HomeShelfPinUi.showPicker(requireContext()) {
+                    summary = com.dskja.betterstreamflix.home.HomeShelfPinUi.pinsSummary(requireContext())
+                }
+                true
+            }
+        }
+
         findPreference<Preference>("CLEAR_RECENTLY_WATCHED")?.setOnPreferenceClickListener {
             val message = getString(R.string.settings_clear_recently_watched_confirm_message)
             expAlertBuilder()
