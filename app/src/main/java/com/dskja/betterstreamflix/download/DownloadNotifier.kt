@@ -12,6 +12,7 @@ import androidx.core.app.NotificationManagerCompat
 import com.dskja.betterstreamflix.R
 import com.dskja.betterstreamflix.activities.main.MainMobileActivity
 import com.dskja.betterstreamflix.activities.main.MainTvActivity
+import com.dskja.betterstreamflix.notifications.NotificationPermission
 import com.dskja.betterstreamflix.utils.UserPreferences
 
 object DownloadNotifier {
@@ -72,6 +73,7 @@ object DownloadNotifier {
 
     fun notifyCompleted(context: Context, title: String) {
         if (!UserPreferences.downloadNotifyComplete) return
+        if (!NotificationPermission.canPost(context)) return
         ensureChannel(context)
         val notification = NotificationCompat.Builder(context, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_menu_downloads)

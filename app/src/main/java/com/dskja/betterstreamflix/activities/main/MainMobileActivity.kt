@@ -830,6 +830,15 @@ class MainMobileActivity : FragmentActivity() {
             }
             return true
         }
+        if (intent.getBooleanExtra("open_favorites", false)) {
+            val navHost =
+                supportFragmentManager.findFragmentById(R.id.nav_main_fragment) as? NavHostFragment
+            val navController = navHost?.navController
+            if (navController != null && navController.currentDestination?.id != R.id.favorites) {
+                navController.navigate(R.id.favorites)
+            }
+            return true
+        }
 
         val data = intent.data ?: return false
 

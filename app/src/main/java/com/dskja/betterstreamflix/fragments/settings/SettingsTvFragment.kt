@@ -319,6 +319,7 @@ class SettingsTvFragment : LeanbackPreferenceFragmentCompat() {
                 "screen_serienstream_auth" -> getString(R.string.serienstream_auth_category_title)
                 "screen_aniworld_auth" -> getString(R.string.aniworld_auth_category_title)
                 "screen_provider_health" -> getString(R.string.settings_provider_health_title)
+                "screen_notifications" -> getString(R.string.settings_screen_notifications)
                 else -> getString(R.string.settings_screen_downloads)
             }
         findPreference<Preference>(key)?.isVisible = true
@@ -560,10 +561,18 @@ class SettingsTvFragment : LeanbackPreferenceFragmentCompat() {
         ProviderHealthSettingsController.bind(this, lifecycleScope) { key ->
             findPreference(key)
         }
+        NotificationsSettingsController.bind(this) { key -> findPreference(key) }
         findPreference<Preference>("PROVIDER_HEALTH_OPEN")?.setOnPreferenceClickListener {
             openNestedSettingsScreen(
                 "screen_provider_health",
                 getString(R.string.settings_provider_health_title),
+            )
+            true
+        }
+        findPreference<Preference>("NOTIFICATIONS_OPEN")?.setOnPreferenceClickListener {
+            openNestedSettingsScreen(
+                "screen_notifications",
+                getString(R.string.settings_screen_notifications),
             )
             true
         }

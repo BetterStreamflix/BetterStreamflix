@@ -353,8 +353,10 @@ object LiveHubCatalog {
         return Category(name, visible).also { it.identityKey = identity }
     }
 
-    private fun showKey(show: TvShow): String =
+    fun identityKey(show: TvShow): String =
         "${show.providerName.orEmpty()}|${show.id}"
+
+    private fun showKey(show: TvShow): String = identityKey(show)
 
     /** Cross-provider title dedupe so ESPN from Daddy + SS99 shares one tile. */
     private fun dedupeKey(show: TvShow): String {

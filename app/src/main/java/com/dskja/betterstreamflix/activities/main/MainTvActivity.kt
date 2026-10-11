@@ -269,6 +269,7 @@ class MainTvActivity : FragmentActivity() {
 
         handleOpenDownloadsIntent(intent)
         handleOpenLiveIntent(intent)
+        handleOpenFavoritesIntent(intent)
         handleSharedWatchlistIntent(intent)
         handleWatchPartyIntent(intent)
         handleWatchDeepLink(intent)
@@ -280,6 +281,7 @@ class MainTvActivity : FragmentActivity() {
         setIntent(intent)
         handleOpenDownloadsIntent(intent)
         handleOpenLiveIntent(intent)
+        handleOpenFavoritesIntent(intent)
         handleSharedWatchlistIntent(intent)
         handleWatchPartyIntent(intent)
         handleWatchDeepLink(intent)
@@ -315,6 +317,18 @@ class MainTvActivity : FragmentActivity() {
         val navController = navHost.navController
         if (navController.currentDestination?.id != R.id.live_hub) {
             runCatching { navController.navigate(R.id.live_hub) }
+        }
+    }
+
+    /** Notification tap → Favorites / My List (watchlist episode alerts). */
+    private fun handleOpenFavoritesIntent(intent: Intent?) {
+        if (intent?.getBooleanExtra("open_favorites", false) != true) return
+        val navHost =
+            supportFragmentManager.findFragmentById(R.id.nav_main_fragment) as? NavHostFragment
+                ?: return
+        val navController = navHost.navController
+        if (navController.currentDestination?.id != R.id.favorites) {
+            runCatching { navController.navigate(R.id.favorites) }
         }
     }
 

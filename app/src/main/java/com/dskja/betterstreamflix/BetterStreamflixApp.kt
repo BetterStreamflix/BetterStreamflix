@@ -115,6 +115,8 @@ class BetterStreamflixApp : Application() {
         runCatching {
             com.dskja.betterstreamflix.download.DownloadConnectivityMonitor.start(this)
             com.dskja.betterstreamflix.download.DownloadNotifier.ensureChannel(this)
+            com.dskja.betterstreamflix.notifications.ProductNotifier.ensureChannels(this)
+            com.dskja.betterstreamflix.notifications.NotificationCheckScheduler.sync(this)
         }
 
         val appContext = applicationContext

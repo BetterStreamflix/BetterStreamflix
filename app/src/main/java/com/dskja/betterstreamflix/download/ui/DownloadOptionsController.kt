@@ -2,8 +2,6 @@ package com.dskja.betterstreamflix.download.ui
 
 import android.app.Activity
 import android.content.Context
-import android.content.pm.PackageManager
-import android.os.Build
 import android.view.LayoutInflater
 import android.view.View
 import android.widget.AdapterView
@@ -14,8 +12,6 @@ import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
-import androidx.core.app.ActivityCompat
-import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
 import com.dskja.betterstreamflix.R
@@ -32,6 +28,7 @@ import com.dskja.betterstreamflix.models.Episode
 import com.dskja.betterstreamflix.models.Movie
 import com.dskja.betterstreamflix.models.TvShow
 import com.dskja.betterstreamflix.models.Video
+import com.dskja.betterstreamflix.notifications.NotificationPermission
 import com.dskja.betterstreamflix.utils.ExpDialogChrome
 import com.dskja.betterstreamflix.utils.ExpMotion
 import com.dskja.betterstreamflix.utils.ExperimentalMobileDesign
@@ -614,12 +611,7 @@ object DownloadOptionsController {
     }
 
     private fun maybeRequestNotifications(activity: Activity) {
-        if (Build.VERSION.SDK_INT < 33) return
-        val permission = android.Manifest.permission.POST_NOTIFICATIONS
-        if (ContextCompat.checkSelfPermission(activity, permission) == PackageManager.PERMISSION_GRANTED) {
-            return
-        }
-        ActivityCompat.requestPermissions(activity, arrayOf(permission), 4209)
+        NotificationPermission.maybeRequest(activity)
     }
 
     private fun showPreparing(activity: Activity): AlertDialog {
