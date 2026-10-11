@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- Cinema Ink consistency (Mobile + TV): Featured TV CTAs/text use shared Detail styles and `cinema_*` tokens; TV player chrome (root, exo controller, settings) maps to the same ink/scrim/elevated/text roles; Detail section rules use `bg_cinema_accent_rule`; secondary TV glass and progress tracks share tokens
+- TV season episode list: per-episode Download CTA (one OK on the Cinema Ink secondary control) wires into `DownloadOptionsController.enqueueEpisode` — long-press options remain as a secondary path
+
 ### Added
 - Profiles next-level: Settings Profiles hub restored (hero, switch/create/rename/delete, avatar, kids, PIN, integrations) on Mobile + TV; kids mode creatable/editable in Who's Watching + Settings; full 20-avatar catalog; cold-start Who's Watching gate for PIN/kids profiles; per-profile Supabase Auth session, cloud account metadata, mutation queue, worker tags, and Realtime channels; reject linking one cloud account to two local profiles
 - Trailer system overhaul: ranked `TrailerEntry` catalog (official → trailer → teaser), multi-trailer lists (up to 8), TV empty state + official badges, Featured TV long-press/Menu trailer path, trailer thumbnail quality + start-muted settings, YouTube TV alt package visibility

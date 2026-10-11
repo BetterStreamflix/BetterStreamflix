@@ -10,7 +10,7 @@
         android:id="@id/exo_controls_background"
         android:layout_width="0dp"
         android:layout_height="0dp"
-        android:background="#98000000"
+        android:background="@color/cinema_scrim"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
@@ -45,7 +45,7 @@
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             android:gravity="center_vertical"
-            android:textColor="#FFFFFF"
+            android:textColor="@color/cinema_text"
             android:textSize="34sp"
             tools:text="Title" />
     </FrameLayout>
@@ -99,7 +99,7 @@
         android:padding="12dp"
         android:contentDescription="@string/exp_cd_external_player"
         android:src="@drawable/exo_styled_controls_external_player"
-        android:tint="#FFFFFF"
+        android:tint="@color/cinema_text"
         app:layout_constraintBottom_toBottomOf="@id/tv_exo_subtitle"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintTop_toTopOf="@id/fl_exo_title_slot"
@@ -127,7 +127,7 @@
             android:nextFocusDown="@id/exo_bottom_bar"
             android:padding="10dp"
             android:src="@drawable/ic_previous"
-            app:tint="#FFFFFF" />
+            app:tint="@color/cinema_text" />
 
         <ImageView
             android:id="@+id/exo_replay"
@@ -143,7 +143,7 @@
             android:nextFocusDown="@id/exo_bottom_bar"
             android:padding="10dp"
             android:src="@drawable/ic_refresh"
-            app:tint="#FFFFFF" />
+            app:tint="@color/cinema_text" />
 
         <ImageView
             android:id="@id/exo_play_pause"
@@ -158,7 +158,7 @@
             android:nextFocusDown="@id/exo_settings"
             android:padding="2dp"
             android:src="@drawable/exo_styled_controls_play"
-            android:tint="#FFFFFF"
+            android:tint="@color/cinema_text"
             tools:ignore="PrivateResource,UseAppTint" />
 
         <ImageView
@@ -174,7 +174,7 @@
             android:nextFocusDown="@id/exo_bottom_bar"
             android:padding="10dp"
             android:src="@drawable/ic_next"
-            app:tint="#FFFFFF" />
+            app:tint="@color/cinema_text" />
 
     </LinearLayout>
 
@@ -213,7 +213,7 @@
             android:paddingBottom="6dp"
             android:text="@string/player_live_badge"
             android:textAllCaps="true"
-            android:textColor="#FFFFFFFF"
+            android:textColor="@color/cinema_text"
             android:textSize="14sp"
             android:textStyle="bold"
             android:visibility="gone"
@@ -236,7 +236,7 @@
             android:paddingBottom="6dp"
             android:text="@string/player_go_live"
             android:textAllCaps="true"
-            android:textColor="#FFFFFFFF"
+            android:textColor="@color/cinema_text"
             android:textSize="14sp"
             android:textStyle="bold"
             android:visibility="gone"
@@ -252,7 +252,7 @@
             android:layout_marginStart="14dp"
             android:ellipsize="end"
             android:maxLines="2"
-            android:textColor="#B3FFFFFF"
+            android:textColor="@color/cinema_text_muted"
             android:textSize="14sp"
             android:visibility="gone"
             app:layout_constraintBottom_toBottomOf="parent"
@@ -266,7 +266,7 @@
             android:id="@id/exo_position"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:textColor="#FFFFFFFF"
+            android:textColor="@color/cinema_text"
             android:textSize="16sp"
             android:textStyle="bold"
             app:layout_constraintBottom_toBottomOf="parent"
@@ -281,7 +281,7 @@
             android:paddingStart="8dp"
             android:paddingEnd="8dp"
             android:text="·"
-            android:textColor="#B3ffffff"
+            android:textColor="@color/cinema_text_muted"
             android:textSize="16sp"
             android:textStyle="bold"
             app:layout_constraintBottom_toBottomOf="parent"
@@ -293,7 +293,7 @@
             android:id="@id/exo_duration"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:textColor="#B3ffffff"
+            android:textColor="@color/cinema_text_muted"
             android:textSize="16sp"
             android:textStyle="bold"
             app:layout_constraintBottom_toBottomOf="parent"
@@ -316,7 +316,7 @@
             android:nextFocusRight="@id/exo_settings"
             android:padding="12dp"
             android:src="@drawable/exo_styled_controls_aspect_ratio"
-            android:tint="#FFFFFF"
+            android:tint="@color/cinema_text"
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintEnd_toStartOf="@id/exo_settings"
             app:layout_constraintTop_toTopOf="parent"
@@ -337,7 +337,7 @@
             android:nextFocusRight="@id/exo_settings"
             android:padding="12dp"
             android:src="@drawable/exo_styled_controls_settings"
-            android:tint="#FFFFFF"
+            android:tint="@color/cinema_text"
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintTop_toTopOf="parent"

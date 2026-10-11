@@ -39,6 +39,10 @@
         <item name="android:textStyle">bold</item>
     </style>
 
+    <!-- Featured TV CTAs share Detail Cinema Ink chrome. -->
+    <style name="AppTheme.Widget.Tv.Button.FeaturedPrimary" parent="AppTheme.Widget.Tv.Button.DetailPrimary" />
+    <style name="AppTheme.Widget.Tv.Button.FeaturedSecondary" parent="AppTheme.Widget.Tv.Button.DetailSecondary" />
+
     <style name="AppTheme.Widget.Mobile.Button" parent="AppTheme.Mobile">
         <item name="android:background">@drawable/bg_button_mobile</item>
         <item name="android:paddingTop">6dp</item>

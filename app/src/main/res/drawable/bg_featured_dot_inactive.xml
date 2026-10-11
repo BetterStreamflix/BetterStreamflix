@@ -2,5 +2,5 @@
 <!-- Inactive Featured page dot. -->
 <shape xmlns:android="http://schemas.android.com/apk/res/android"
     android:shape="oval">
-    <solid android:color="#66FFFFFF" />
+    <solid android:color="@color/cinema_glass_bright" />
 </shape>

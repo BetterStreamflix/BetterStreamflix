@@ -20,14 +20,14 @@
             android:id="@+id/iv_detail_trailer_thumb"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
-            android:background="#FF141418"
+            android:background="@color/cinema_elevated"
             android:scaleType="centerCrop"
             android:importantForAccessibility="no" />
 
         <View
             android:layout_width="match_parent"
             android:layout_height="match_parent"
-            android:background="#40000000" />
+            android:background="@color/cinema_scrim" />
 
         <ImageView
             android:id="@+id/iv_detail_trailer_play"
@@ -55,7 +55,7 @@
             android:paddingBottom="2dp"
             android:text="@string/detail_trailer_official_badge"
             android:textAllCaps="true"
-            android:textColor="#FF121218"
+            android:textColor="@color/cinema_cta_ink"
             android:textSize="9sp"
             android:textStyle="bold"
             android:visibility="gone"
@@ -76,7 +76,7 @@
             android:ellipsize="end"
             android:fontFamily="@font/outfit"
             android:maxLines="2"
-            android:textColor="#FFFFFFFF"
+            android:textColor="@color/cinema_text"
             android:textSize="14sp"
             android:textStyle="bold"
             tools:text="Official Trailer" />
@@ -89,7 +89,7 @@
             android:fontFamily="@font/outfit"
             android:letterSpacing="0.06"
             android:textAllCaps="true"
-            android:textColor="#99FFFFFF"
+            android:textColor="@color/cinema_text_muted"
             android:textSize="11sp"
             android:textStyle="bold"
             tools:text="Trailer" />
@@ -102,7 +102,7 @@
             android:ellipsize="end"
             android:fontFamily="@font/manrope"
             android:maxLines="2"
-            android:textColor="#8AFFFFFF"
+            android:textColor="@color/cinema_text_faint"
             android:textSize="12sp"
             android:visibility="gone"
             tools:text="Official Trailer" />
