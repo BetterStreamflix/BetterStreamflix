@@ -275,6 +275,8 @@ object IptvOrgProvider : IptvProvider, ProviderConfigUrl {
                 name = it.name,
                 logo = it.logo,
                 group = it.group,
+                // EPG-lite: IPTV-Org has no schedule — use group/category as now-playing context.
+                programNow = it.group?.takeIf { g -> g.isNotBlank() },
             )
         }
         if (aroundId == null) return all.take(limit)

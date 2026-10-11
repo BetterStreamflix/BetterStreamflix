@@ -767,6 +767,7 @@ class EpisodeViewHolder(
             }
         }
 
+        bindDownloadRibbon(binding.ivEpisodeDownloadRibbon)
         bindEpisodeProgress(binding.pbEpisodeProgress)
         bindEpisodeRemainingPill(binding.root)
 
@@ -1081,9 +1082,9 @@ class EpisodeViewHolder(
         val watchHistory = episode.watchHistory
         when {
             watchHistory != null && watchHistory.durationMillis > 0 -> {
-                val pct = (watchHistory.lastPlaybackPositionMillis * 100 /
-                    watchHistory.durationMillis.toDouble()).toInt().coerceIn(0, 99)
-                remaining.text = context.getString(R.string.continue_watching_percent, pct)
+                remaining.text = com.dskja.betterstreamflix.ui.DetailWatchLabels
+                    .remainingMinutesLabel(context, watchHistory)
+                    ?: context.getString(R.string.continue_watching_percent, 0)
                 if (ExperimentalMobileDesign.enabled()) {
                     remaining.setBackgroundResource(ExperimentalMobileDesign.metaPillBackground())
                     val density = context.resources.displayMetrics.density

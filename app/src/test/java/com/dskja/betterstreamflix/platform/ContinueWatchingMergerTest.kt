@@ -28,12 +28,24 @@ class ContinueWatchingMergerTest {
     }
 
     @Test
-    fun episodeKeyUsesShow() {
+    fun episodeKeyUsesShowAndProvider() {
         val ep = Episode(
             id = "e1",
             number = 2,
-            tvShow = TvShow(id = "s1", title = "Show", imdbId = "tt99"),
+            tvShow = TvShow(id = "s1", title = "Show", imdbId = "tt99").apply {
+                providerName = "Sflix"
+            },
         )
-        assertEquals("ep:tt99", ContinueWatchingMerger.identityKey(ep))
+        assertEquals("ep:Sflix:tt99", ContinueWatchingMerger.identityKey(ep))
+    }
+
+    @Test
+    fun movieKeyIncludesProvider() {
+        val a = Movie(id = "1", title = "A", imdbId = "tt1").apply { providerName = "Sflix" }
+        val b = Movie(id = "jf-1", title = "A", imdbId = "tt1").apply { providerName = "Jellyfin" }
+        assertEquals("movie:Sflix:tt1", ContinueWatchingMerger.identityKey(a))
+        assertEquals("movie:Jellyfin:tt1", ContinueWatchingMerger.identityKey(b))
+        val merged = ContinueWatchingMerger.merge(listOf(a), listOf(b))
+        assertEquals(2, merged.size)
     }
 }

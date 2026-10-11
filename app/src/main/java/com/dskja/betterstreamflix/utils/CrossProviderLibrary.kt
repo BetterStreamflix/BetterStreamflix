@@ -6,6 +6,7 @@ import com.dskja.betterstreamflix.database.AppDatabase
 import com.dskja.betterstreamflix.models.Episode
 import com.dskja.betterstreamflix.models.Movie
 import com.dskja.betterstreamflix.models.TvShow
+import com.dskja.betterstreamflix.models.WatchItem
 import com.dskja.betterstreamflix.providers.Provider
 import kotlinx.coroutines.flow.first
 
@@ -78,7 +79,18 @@ object CrossProviderLibrary {
                 nextEpisodes += nextEpisodesRaw.map(::hydrate)
 
                 recentlyWatched += db.movieDao().getRecentlyWatched().first()
-                    .map { it.withProvider(provider.name) }
+                    .map { movie ->
+                        movie.withProvider(provider.name).also { stamped ->
+                            // Finished titles clear watchHistory; keep progress context for RW.
+                            if (stamped.isWatched && stamped.watchHistory == null) {
+                                stamped.watchHistory = WatchItem.WatchHistory(
+                                    lastEngagementTimeUtcMillis = stamped.lastPlayedAtMillis ?: 0L,
+                                    lastPlaybackPositionMillis = 1L,
+                                    durationMillis = 1L,
+                                )
+                            }
+                        }
+                    }
 
                 val recentTvShows = db.tvShowDao().getRecentlyWatched().first()
                 val episodeIds = recentTvShows.mapNotNull { it.lastPlayedEpisodeId }.distinct()
@@ -89,7 +101,17 @@ object CrossProviderLibrary {
                 }
                 recentlyWatched += recentTvShows.map { tvShow ->
                     tvShow.withProvider(provider.name).apply {
-                        lastPlayedEpisode = lastPlayedEpisodeId?.let(episodesById::get)
+                        lastPlayedEpisode = lastPlayedEpisodeId?.let(episodesById::get)?.also { ep ->
+                            // Finished episodes clear watchHistory; keep a full-progress
+                            // context so Recently Watched can still show a progress bar.
+                            if (ep.isWatched && ep.watchHistory == null) {
+                                ep.watchHistory = WatchItem.WatchHistory(
+                                    lastEngagementTimeUtcMillis = lastPlayedAtMillis ?: 0L,
+                                    lastPlaybackPositionMillis = 1L,
+                                    durationMillis = 1L,
+                                )
+                            }
+                        }
                     }
                 }
             } catch (e: kotlinx.coroutines.CancellationException) {
@@ -150,7 +172,11 @@ object CrossProviderLibrary {
     }
 
     private fun continueWatchingKey(item: AppAdapter.Item): String? = when (item) {
-        is Episode -> "${item.tvShow?.providerName}:${item.tvShow?.id}"
+        is Episode -> {
+            val showId = item.tvShow?.id
+            if (showId.isNullOrBlank()) "episode:${item.id}"
+            else "${item.tvShow?.providerName}:$showId"
+        }
         is Movie -> "${item.providerName}:${item.id}"
         else -> null
     }

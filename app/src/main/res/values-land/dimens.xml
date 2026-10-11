@@ -1,5 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <dimen name="home_featured_card_height">260dp</dimen>
-    <dimen name="detail_episode_list_height">280dp</dimen>
+    <!-- Phone landscape browse: keep Featured / CW shelves usable without full layout-land forks. -->
+    <dimen name="home_featured_card_height">220dp</dimen>
+    <dimen name="detail_episode_list_height">240dp</dimen>
+    <dimen name="continue_watching_poster_height">120dp</dimen>
 </resources>

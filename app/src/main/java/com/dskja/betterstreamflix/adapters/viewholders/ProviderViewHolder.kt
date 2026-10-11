@@ -410,21 +410,21 @@ class ProviderViewHolder(
             // session login WebView directly as a fallback.
             val source = when (provider.provider) {
                 is SerienStreamProvider ->
-                    com.dskja.betterstreamflix.activities.tools.WatchlistImportActivity.SOURCE_SERIENSTREAM
+                    com.dskja.betterstreamflix.activities.tools.ProviderWatchlistScrapeActivity.SOURCE_SERIENSTREAM
                 is AniWorldProvider ->
-                    com.dskja.betterstreamflix.activities.tools.WatchlistImportActivity.SOURCE_ANIWORLD
+                    com.dskja.betterstreamflix.activities.tools.ProviderWatchlistScrapeActivity.SOURCE_ANIWORLD
                 else -> return
             }
             val intent = Intent(
                 context,
-                com.dskja.betterstreamflix.activities.tools.WatchlistImportActivity::class.java,
+                com.dskja.betterstreamflix.activities.tools.ProviderWatchlistScrapeActivity::class.java,
             )
                 .putExtra(
-                    com.dskja.betterstreamflix.activities.tools.WatchlistImportActivity.EXTRA_SOURCE,
+                    com.dskja.betterstreamflix.activities.tools.ProviderWatchlistScrapeActivity.EXTRA_SOURCE,
                     source,
                 )
                 .putExtra(
-                    com.dskja.betterstreamflix.activities.tools.WatchlistImportActivity.EXTRA_SAVE_SESSION_ONLY,
+                    com.dskja.betterstreamflix.activities.tools.ProviderWatchlistScrapeActivity.EXTRA_SAVE_SESSION_ONLY,
                     true,
                 )
             // Soft-fail on TV / Fire builds where the activity may be unavailable

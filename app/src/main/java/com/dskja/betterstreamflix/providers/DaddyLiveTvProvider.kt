@@ -435,11 +435,14 @@ object DaddyLiveTvProvider : IptvProvider, ProviderConfigUrl {
 
     override suspend fun listLiveChannels(aroundId: String?, limit: Int) =
         getAllChannels().map {
+            val group = LiveCatalogMeta.countryName(it.country)
             com.dskja.betterstreamflix.iptv.IptvLiveSession.Channel(
                 id = createId(it),
                 name = it.name,
                 logo = it.logo,
-                group = LiveCatalogMeta.countryName(it.country),
+                group = group,
+                // EPG-lite: no schedule feed — surface catalog group as now-playing context.
+                programNow = group?.takeIf { g -> g.isNotBlank() },
             )
         }.let { all ->
             if (aroundId == null) all.take(limit)

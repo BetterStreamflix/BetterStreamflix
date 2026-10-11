@@ -88,7 +88,9 @@ object DownloadSeriesFolders {
 
     fun formatEta(context: Context?, etaSeconds: Long): String {
         if (etaSeconds <= 0L) {
-            return context?.getString(R.string.download_size_unknown) ?: "—"
+            return context?.getString(R.string.downloads_eta_unknown)
+                ?: context?.getString(R.string.download_size_unknown)
+                ?: "…"
         }
         val total = etaSeconds.toInt().coerceAtLeast(0)
         val hours = total / 3600

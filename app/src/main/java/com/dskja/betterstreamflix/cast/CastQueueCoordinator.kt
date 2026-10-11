@@ -1,5 +1,6 @@
 package com.dskja.betterstreamflix.cast
 
+import android.content.Context
 import android.util.Log
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
@@ -7,6 +8,7 @@ import com.dskja.betterstreamflix.models.Video
 import com.dskja.betterstreamflix.providers.Provider
 import com.dskja.betterstreamflix.utils.EpisodeManager
 import com.dskja.betterstreamflix.utils.UserPreferences
+import com.dskja.betterstreamflix.utils.subtitleConfigurationsForPlayback
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -35,31 +37,24 @@ object CastQueueCoordinator {
     var lastClaimedEpisode: Video.Type.Episode? = null
         private set
 
-    /** Episode id last enqueued for Cast — skip re-enqueue of the same id. */
-    @Volatile
-    private var lastEnqueuedEpisodeId: String? = null
-
     /**
      * Prefetch next episode for Cast. Safe to call repeatedly — clears stale queue first.
      * Tries up to [MAX_SERVER_ATTEMPTS] hosters so a dead first server does not empty the queue.
+     *
+     * When [subtitleConfigurations] is null, builds configs via
+     * [subtitleConfigurationsForPlayback] for the resolved next episode.
      */
     suspend fun prepareNextEpisodeQueue(
+        context: Context,
         provider: Provider?,
         currentVideoType: Video.Type,
-        subtitleConfigurations: List<MediaItem.SubtitleConfiguration> = emptyList(),
+        subtitleConfigurations: List<MediaItem.SubtitleConfiguration>? = null,
         headers: Map<String, String> = emptyMap(),
-        appContext: android.content.Context? = null,
     ): NextCastItem? = withContext(Dispatchers.IO) {
         lastFailureMessage = null
         if (currentVideoType !is Video.Type.Episode) return@withContext null
         if (!UserPreferences.autoplay && !UserPreferences.castQueueNextEpisode) return@withContext null
         val next = EpisodeManager.peekNextEpisode() ?: return@withContext null
-        // Skip re-enqueue of the episode Cast is already playing / just queued.
-        if (next.id == lastEnqueuedEpisodeId ||
-            next.id == EpisodeManager.getCurrentEpisode()?.id
-        ) {
-            return@withContext null
-        }
         val activeProvider = provider ?: UserPreferences.currentProvider ?: return@withContext null
         runCatching {
             val nextType = Video.Type.Episode(
@@ -117,27 +112,18 @@ object CastQueueCoordinator {
             // Prefer the next episode's resolved headers; fall back to caller override
             // only when the provider returned none (CAST-P1-2).
             val mergedHeaders = video.headers.orEmpty().ifEmpty { headers }
-            val ctx = appContext
-                ?: runCatching {
-                    com.dskja.betterstreamflix.BetterStreamflixApp.instance.applicationContext
-                }.getOrNull()
-            val subs = if (subtitleConfigurations.isNotEmpty()) {
-                subtitleConfigurations
-            } else if (ctx != null) {
-                com.dskja.betterstreamflix.utils.subtitleConfigurationsForPlayback(
-                    context = ctx,
+            val configs = subtitleConfigurations
+                ?: subtitleConfigurationsForPlayback(
+                    context = context.applicationContext,
                     videoType = nextType,
                     serverSubtitles = video.subtitles,
                 )
-            } else {
-                emptyList()
-            }
             val item = CastMediaFactory.queueItemForCast(
                 source = video.source,
                 mimeType = video.type,
                 headers = mergedHeaders,
                 metadata = metadata,
-                subtitleConfigurations = subs,
+                subtitleConfigurations = configs,
             )
             NextCastItem(mediaItem = item, episode = nextType, video = video, server = server)
         }.onFailure {
@@ -154,15 +140,9 @@ object CastQueueCoordinator {
         private set
 
     fun enqueueExclusive(item: MediaItem, episode: Video.Type.Episode? = null) {
-        val episodeId = episode?.id
-        if (episodeId != null && episodeId == lastEnqueuedEpisodeId) {
-            Log.i(TAG, "Skip re-enqueue of episode $episodeId")
-            return
-        }
         CastPlaybackHub.clearQueue()
         CastPlaybackHub.enqueue(item)
         pendingQueuedEpisode = episode
-        if (episodeId != null) lastEnqueuedEpisodeId = episodeId
         Log.i(TAG, "Cast queue size=${CastPlaybackHub.queuedCount()}")
     }
 
@@ -181,10 +161,5 @@ object CastQueueCoordinator {
             EpisodeManager.setCurrentEpisode(episode)
         }
         return episode
-    }
-
-    fun clearLastEnqueued() {
-        lastEnqueuedEpisodeId = null
-        pendingQueuedEpisode = null
     }
 }

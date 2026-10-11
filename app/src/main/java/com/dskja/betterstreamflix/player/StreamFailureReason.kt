@@ -26,6 +26,7 @@ object StreamFailureReason {
     enum class Action {
         SOLVE_CAPTCHA,
         UPDATE_DOMAIN,
+        OPEN_SETTINGS,
         NONE,
     }
 
@@ -47,20 +48,24 @@ object StreamFailureReason {
         if (isCaptcha(hay, provider, error) ||
             (serversExhausted && isGermanStreamGateProvider(provider))
         ) {
+            val captchaAction = captchaAction(provider)
             return Presentation(
                 kind = Kind.CAPTCHA,
                 titleRes = R.string.player_stream_fail_captcha_title,
                 messageRes = R.string.player_stream_fail_captcha_message,
-                action = Action.SOLVE_CAPTCHA,
-                actionLabelRes = R.string.player_stream_fail_action_solve_captcha,
+                action = captchaAction,
+                actionLabelRes = captchaAction.labelRes(),
             )
         }
         if (isGeo(hay)) {
+            val geoAction = domainAction(provider).takeIf { it != Action.NONE }
+                ?: Action.OPEN_SETTINGS
             return Presentation(
                 kind = Kind.GEO,
                 titleRes = R.string.player_stream_fail_geo_title,
                 messageRes = R.string.player_stream_fail_geo_message,
-                action = Action.NONE,
+                action = geoAction,
+                actionLabelRes = geoAction.labelRes(),
             )
         }
         if (isTimeout(hay)) {
@@ -133,9 +138,24 @@ object StreamFailureReason {
         return if (ProviderHealth.supportsDomainUpdate(target)) Action.UPDATE_DOMAIN else Action.NONE
     }
 
+    /** Solve-captcha WebView only works for SerienStream / AniWorld / TMDb DE gate hosts. */
+    private fun captchaAction(provider: Provider?): Action {
+        return if (supportsCaptchaSolve(provider)) Action.SOLVE_CAPTCHA
+        else domainAction(provider)
+    }
+
+    fun supportsCaptchaSolve(provider: Provider?): Boolean {
+        val p = provider ?: return false
+        return p is SerienStreamProvider ||
+            p is com.dskja.betterstreamflix.providers.AniWorldProvider ||
+            (p is com.dskja.betterstreamflix.providers.TmdbProvider &&
+                p.language.lowercase().startsWith("de"))
+    }
+
     private fun Action.labelRes(): Int? = when (this) {
         Action.SOLVE_CAPTCHA -> R.string.player_stream_fail_action_solve_captcha
         Action.UPDATE_DOMAIN -> R.string.provider_update_domain
+        Action.OPEN_SETTINGS -> R.string.player_stream_fail_action_open_vpn_settings
         Action.NONE -> null
     }
 

@@ -75,6 +75,8 @@ class Category(
         /** Unwatched next episode for shows already in progress (no mid-episode resume). */
         const val NEXT_EPISODES = "Next Episodes"
         const val RECENTLY_WATCHED = "Recently Watched"
+        /** Favorites sorted by favoritedAt — Home shelf companion to Favorites “Recently added”. */
+        const val RECENTLY_ADDED = "Recently Added"
         const val FAVORITE_MOVIES = "Favorite movies"
         const val FAVORITE_TV_SHOWS = "Favorite TV shows"
 

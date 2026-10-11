@@ -51,6 +51,7 @@
     <string name="live_hub_empty">No live channels right now — pull to retry</string>
     <string name="live_hub_restricted">Live TV isn\'t available with Kids or parental controls.</string>
     <string name="live_hub_empty_tv">No live channels right now — press OK to retry</string>
+    <string name="live_hub_source_unavailable">%1$s unavailable</string>
     <string name="main_menu_theme_change">Change Theme</string>
     <string name="theme_default">Default</string>
     <string name="profile_default">Default</string>
@@ -84,6 +85,7 @@
     <string name="search_recent_clear">Clear</string>
     <string name="search_recent_clear_cd">Clear recent searches</string>
     <string name="continue_watching_percent">%1$d%%</string>
+    <string name="continue_watching_minutes_left">%1$d min left</string>
     <string name="provider_health_quarantined">quarantined</string>
     <string name="provider_confirm_title">Switch provider?</string>
     <string name="provider_confirm_quarantined">%1$s is quarantined and may fail often. Switch anyway?</string>
@@ -118,6 +120,7 @@
     <string name="home_continue_watching">Continue Watching</string>
     <string name="home_next_episodes">Next Episodes</string>
     <string name="home_recently_watched">Recently Watched</string>
+    <string name="home_recently_added">Recently Added</string>
     <string name="home_favorite_movies">Favorite movies</string>
     <string name="home_favorite_tv_shows">Favorite TV shows</string>
     <string name="home_catalog_warning_tap_retry">Tap to retry catalog</string>
@@ -334,6 +337,7 @@
     <string name="player_not_available_it_message">Not available on Italian servers, search for it on TMDB in other languages</string>
     <string name="player_not_available_lang_message">Not available in %s, search for it on TMDB in other languages</string>
     <string name="player_retry_software_decoder">Retrying with software decoder…</string>
+    <string name="player_retry_external_player">Opening external player…</string>
     <string name="player_trying_next_server">Trying next server: %1$s</string>
     <string name="player_failover_server_n_of_m">Server %1$d/%2$d</string>
     <string name="player_all_servers_failed">All servers failed to load the video.</string>
@@ -348,6 +352,7 @@
     <string name="player_stream_fail_all_servers_title">No stream</string>
     <string name="player_stream_fail_generic_message">Playback failed. Check your connection or try another server.</string>
     <string name="player_stream_fail_action_solve_captcha">Solve captcha</string>
+    <string name="player_stream_fail_action_open_vpn_settings">Open VPN settings</string>
     <string name="player_cast_queue_badge">Cast queue · %1$d</string>
     <string name="player_cast_queue_next">Up next · %1$s</string>
     <string name="player_cast_queue_badge_cd">Cast queue options</string>
@@ -358,6 +363,7 @@
     <string name="player_cast_seek_unavailable">Seek is not available while casting</string>
     <string name="player_cast_status_stop">Stop</string>
     <string name="player_cast_status_casting">Casting</string>
+    <string name="player_cast_queue_clear_cd">Clear Cast queue</string>
     <string name="player_play_with_chrome">Play with</string>
     <string name="player_download_with_long_press">Long-press for Download with… (ADM)</string>
     <string name="settings_show_quarantined_providers_title">Show quarantined providers</string>
@@ -869,6 +875,8 @@
     <string name="settings_player_gestures_off">Off</string>
     <string name="settings_keep_screen_on_when_paused">Keep screen on when paused</string>
     <string name="settings_keep_screen_on_when_paused_summary">Prevents the screen from turning off when a video is paused</string>
+    <string name="settings_allow_phone_portrait_playback">Allow portrait playback on phones</string>
+    <string name="settings_allow_phone_portrait_playback_summary">When on, the player follows device rotation on phones; default stays landscape</string>
     <string name="miscelaneous_title">Miscellaneous</string>
     <string name="settings_screen_misc_summary">Version info, help links and community shortcuts</string>
     <string name="clear_cache_done">Cache cleared</string>
@@ -1404,7 +1412,17 @@
     <string name="downloads_storage_chip">%1$s used · %2$s free</string>
     <string name="downloads_low_space">Low storage. Free space or delete older downloads.</string>
     <string name="downloads_wifi_paused">Paused · Wi‑Fi required</string>
+    <string name="downloads_progress_wifi_held">%1$d%% · %2$s / %3$s · Wi‑Fi required</string>
     <string name="downloads_wifi_only_toggle">Wi‑Fi only</string>
+    <string name="downloads_eta_unknown">ETA unknown</string>
+    <string name="downloads_menu">Downloads menu</string>
+    <string name="downloads_item_more">More download actions</string>
+    <string name="downloads_delete_confirm">Remove this offline download?</string>
+    <string name="downloads_pack_delete_confirm">Remove this season download?</string>
+    <string name="downloads_filter_selected_a11y">%1$s, selected</string>
+    <string name="downloads_action_storage">Change storage location</string>
+    <string name="downloads_series_expand">Expand series</string>
+    <string name="downloads_series_collapse">Collapse series</string>
     <string name="downloads_redownload_needed">Re-download needed</string>
     <string name="downloads_action_redownload">Re-download</string>
     <string name="downloads_completed_size">%1$s · Ready offline</string>

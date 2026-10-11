@@ -50,6 +50,7 @@
     <string name="live_hub_empty">Keine Live-Kanäle gerade — erneut versuchen</string>
     <string name="live_hub_restricted">Live-TV ist bei Kinderprofil oder Jugendschutz nicht verfügbar.</string>
     <string name="live_hub_empty_tv">Keine Live-Kanäle gerade — OK drücken zum erneuten Versuch</string>
+    <string name="live_hub_source_unavailable">%1$s nicht verfügbar</string>
     <string name="favorites_empty">Deine Listen sind leer — füge einen Titel hinzu</string>
     <string name="detail_add_to_list">Zur Liste hinzufügen</string>
     <string name="detail_tab_episodes">Episoden</string>
@@ -116,6 +117,7 @@
     <string name="search_recent_clear">Löschen</string>
     <string name="search_recent_clear_cd">Letzte Suchen löschen</string>
     <string name="continue_watching_percent">%1$d%%</string>
+    <string name="continue_watching_minutes_left">Noch %1$d Min.</string>
     <string name="provider_health_quarantined">quarantäne</string>
     <string name="provider_confirm_title">Anbieter wechseln?</string>
     <string name="provider_confirm_quarantined">%1$s ist in Quarantäne und kann oft fehlschlagen. Trotzdem wechseln?</string>
@@ -147,6 +149,7 @@
     <string name="home_continue_watching">Weiterschauen</string>
     <string name="home_next_episodes">Nächste Folgen</string>
     <string name="home_recently_watched">Kürzlich angesehen</string>
+    <string name="home_recently_added">Kürzlich hinzugefügt</string>
     <string name="home_favorite_movies">Favoriten - Filme</string>
     <string name="home_favorite_tv_shows">Favoriten - Serien</string>
     <string name="home_catalog_warning_tap_retry">Tippen zum erneuten Laden</string>
@@ -647,6 +650,8 @@
     <string name="settings_player_gestures_off">Aus</string>
     <string name="settings_keep_screen_on_when_paused">Bildschirm bei Pause anlassen</string>
     <string name="settings_keep_screen_on_when_paused_summary">Verhindert das Ausschalten des Bildschirms bei Wiedergabestopp</string>
+    <string name="settings_allow_phone_portrait_playback">Hochkant-Wiedergabe auf Handys erlauben</string>
+    <string name="settings_allow_phone_portrait_playback_summary">Wenn aktiv, folgt der Player der Geräterotation auf Handys; Standard bleibt Querformat</string>
     <string name="miscelaneous_title">Sonstiges</string>
     <string name="clear_cache_done">Cache geleert</string>
     <string name="clear_cache_done_409">Cache wegen HTTP 409 automatisch geleert</string>

@@ -57,7 +57,7 @@ class DownloadSeriesFoldersTest {
         assertEquals("2h 5m", DownloadSeriesFolders.formatEta(null, 2 * 3600 + 5 * 60L))
         assertEquals("3m 10s", DownloadSeriesFolders.formatEta(null, 3 * 60 + 10L))
         assertEquals("45s", DownloadSeriesFolders.formatEta(null, 45L))
-        assertEquals("—", DownloadSeriesFolders.formatEta(null, -1L))
+        assertEquals("…", DownloadSeriesFolders.formatEta(null, -1L))
     }
 
     @Test

@@ -774,6 +774,13 @@
                 android:defaultValue="false"
                 app:iconSpaceReserved="false" />
 
+            <SwitchPreference
+                android:key="ALLOW_PHONE_PORTRAIT_PLAYBACK"
+                android:title="@string/settings_allow_phone_portrait_playback"
+                android:summary="@string/settings_allow_phone_portrait_playback_summary"
+                android:defaultValue="false"
+                app:iconSpaceReserved="false" />
+
             <ListPreference
                 android:key="preferred_player"
                 android:title="@string/settings_trailer_player_title"

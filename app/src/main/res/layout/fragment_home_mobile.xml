@@ -65,7 +65,7 @@
         android:id="@+id/tv_home_profile_chip"
         layout="@layout/view_profile_home_chip"
         android:layout_width="wrap_content"
-        android:layout_height="36dp"
+        android:layout_height="48dp"
         android:layout_marginEnd="12dp"
         android:elevation="10dp"
         app:layout_constraintBottom_toBottomOf="@id/iv_provider_logo"

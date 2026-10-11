@@ -23,7 +23,7 @@ import com.dskja.betterstreamflix.utils.ExperimentalMobileDesign
 
 /**
  * The profile switcher chip that floats in the top-right corner of browse tabs.
- * Mobile keeps an avatar-only chrome; TV can show the profile name beside it.
+ * Pass [showName]=true on mobile Home (and TV) so household profiles are readable.
  */
 object HomeProfileChip {
 

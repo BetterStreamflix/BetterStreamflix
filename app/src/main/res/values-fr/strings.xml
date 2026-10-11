@@ -41,6 +41,7 @@
     <string name="live_hub_empty">Aucune chaîne live pour le moment — réessayez</string>
     <string name="live_hub_empty_tv">Aucune chaîne live pour le moment — appuyez sur OK pour réessayer</string>
     <string name="live_hub_restricted">La TV en direct n’est pas disponible avec un profil Enfants ou le contrôle parental.</string>
+    <string name="live_hub_source_unavailable">%1$s indisponible</string>
     <string name="main_menu_theme_change">Changer de thème</string>
     <string name="theme_default">Par défaut</string>
     <string name="theme_nero_amoled_oled">Noir Amoled/Oled</string>

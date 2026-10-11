@@ -81,6 +81,19 @@ object DetailWatchLabels {
             history.durationMillis.toDouble()).toInt().coerceIn(0, 100)
     }
 
+    /** Whole minutes still left (at least 1 when any time remains). */
+    fun remainingMinutes(history: WatchItem.WatchHistory?): Int? {
+        if (history == null || history.durationMillis <= 0L) return null
+        val leftMs = (history.durationMillis - history.lastPlaybackPositionMillis).coerceAtLeast(0L)
+        if (leftMs <= 0L) return null
+        return ((leftMs + 59_999L) / 60_000L).toInt().coerceAtLeast(1)
+    }
+
+    fun remainingMinutesLabel(context: Context, history: WatchItem.WatchHistory?): String? {
+        val minutes = remainingMinutes(history) ?: return null
+        return context.getString(R.string.continue_watching_minutes_left, minutes)
+    }
+
     fun formatPosition(millis: Long): String {
         val totalSec = TimeUnit.MILLISECONDS.toSeconds(millis.coerceAtLeast(0L))
         val hours = totalSec / 3600

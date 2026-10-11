@@ -322,6 +322,20 @@ object UserPreferences {
             Key.PLAYER_GESTURES.setBoolean(value)
         }
 
+    /** Phones: when true, player uses SENSOR (portrait allowed); default landscape. */
+    var allowPhonePortraitPlayback: Boolean
+        get() = Key.ALLOW_PHONE_PORTRAIT_PLAYBACK.getBoolean() ?: false
+        set(value) {
+            Key.ALLOW_PHONE_PORTRAIT_PLAYBACK.setBoolean(value)
+        }
+
+    /** One-shot discoverability toast for Play-with long-press → Download with… */
+    var downloadWithLongPressHintShown: Boolean
+        get() = Key.DOWNLOAD_WITH_LONG_PRESS_HINT_SHOWN.getBoolean() ?: false
+        set(value) {
+            Key.DOWNLOAD_WITH_LONG_PRESS_HINT_SHOWN.setBoolean(value)
+        }
+
     var immersiveMode: Boolean
         get() = Key.IMMERSIVE_MODE.getBoolean() ?: false // Default changed to false
         set(value) {
@@ -1409,6 +1423,8 @@ object UserPreferences {
         PROVIDER_CACHE,
         KEEP_SCREEN_ON_WHEN_PAUSED,
         PLAYER_GESTURES,
+        ALLOW_PHONE_PORTRAIT_PLAYBACK,
+        DOWNLOAD_WITH_LONG_PRESS_HINT_SHOWN,
         IMMERSIVE_MODE,
         TMDB_API_KEY,
         SUBDL_API_KEY,

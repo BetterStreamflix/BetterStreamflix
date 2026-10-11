@@ -8,14 +8,18 @@ import com.dskja.betterstreamflix.download.DownloadController
 import com.dskja.betterstreamflix.download.DownloadEventBridge
 import com.dskja.betterstreamflix.download.DownloadItemEntity
 import com.dskja.betterstreamflix.download.DownloadItemState
-import com.dskja.betterstreamflix.download.DownloadParentalFilter
-import com.dskja.betterstreamflix.download.DownloadProfileScope
+import com.dskja.betterstreamflix.download.DownloadKind
 import com.dskja.betterstreamflix.download.DownloadRepository
-import com.dskja.betterstreamflix.download.DownloadResumeScheduler
 import com.dskja.betterstreamflix.download.DownloadSeriesFolders
 import com.dskja.betterstreamflix.download.DownloadStats
 import com.dskja.betterstreamflix.download.DownloadStorage
 import com.dskja.betterstreamflix.download.StreamflixDownloadManager
+import com.dskja.betterstreamflix.models.Episode
+import com.dskja.betterstreamflix.models.Movie
+import com.dskja.betterstreamflix.models.Season
+import com.dskja.betterstreamflix.models.TvShow
+import com.dskja.betterstreamflix.profiles.ProfileManager
+import com.dskja.betterstreamflix.utils.ParentalControlUtils
 import com.dskja.betterstreamflix.utils.UserPreferences
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Job
@@ -26,19 +30,23 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
-import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.mapLatest
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import org.json.JSONObject
 
 class DownloadsViewModel(
     private val appContext: Context,
 ) : ViewModel() {
-    private val repo = DownloadRepository.get(appContext)
+    /** Resolve per call so profile switches reopen the scoped Room DB. */
+    private fun repo() = DownloadRepository.get(appContext)
     private val filter = MutableStateFlow(DownloadsFilter.ALL)
     private val sort = MutableStateFlow(DownloadsSort.NEWEST)
     private val collapsedSeries = MutableStateFlow<Set<String>>(emptySet())
+    private val profileTick = MutableStateFlow(0)
+    private var boundProfileId: String = ProfileManager.activeProfileId
     private var progressJob: Job? = null
     private var reconcileJob: Job? = null
 
@@ -58,6 +66,16 @@ class DownloadsViewModel(
         wifiOnlyPreferenceTick.value = wifiOnlyPreferenceTick.value + 1
     }
 
+    /** Rebind collectors when the active profile changed since last bind. */
+    fun ensureProfileScope() {
+        val active = ProfileManager.activeProfileId
+        if (active == boundProfileId) return
+        boundProfileId = active
+        collapsedSeries.value = emptySet()
+        profileTick.value = profileTick.value + 1
+        refreshStorage()
+    }
+
     val wifiOnlyEnabled: StateFlow<Boolean> = wifiOnlyPreferenceTick.map {
         UserPreferences.downloadWifiOnly
     }.stateIn(viewModelScope, SharingStarted.Eagerly, UserPreferences.downloadWifiOnly)
@@ -70,28 +88,24 @@ class DownloadsViewModel(
     }.stateIn(viewModelScope, SharingStarted.Eagerly, false)
 
     @OptIn(ExperimentalCoroutinesApi::class)
-    val rows: StateFlow<List<DownloadRowUiModel>> = combine(
-        repo.observeAll().map { items ->
-            items.filter { DownloadProfileScope.matchesActive(it.profileId) }
-        },
-        repo.observeSeasonPacks(),
-        combine(filter, sort, collapsedSeries) { f, s, c -> Triple(f, s, c) },
-    ) { items, packs, selected ->
-        Triple(items, packs, selected)
-    }.flatMapLatest { (items, packs, selected) ->
-        flow {
-            val ageFiltered = DownloadParentalFilter.filter(items)
-            emit(
-                buildRows(
-                    ageFiltered,
-                    packs,
-                    selected.first,
-                    selected.second,
-                    selected.third,
-                ),
-            )
+    val rows: StateFlow<List<DownloadRowUiModel>> = profileTick
+        .flatMapLatest {
+            combine(
+                repo().observeAll(),
+                repo().observeSeasonPacks(),
+                combine(filter, sort, collapsedSeries) { f, s, collapsed ->
+                    Triple(f, s, collapsed)
+                },
+            ) { items, packs, filters ->
+                val (selectedFilter, selectedSort, collapsed) = filters
+                Quad(items, packs, selectedFilter, selectedSort, collapsed)
+            }
         }
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+        .mapLatest { q ->
+            val filteredItems = applyParentalFilter(q.items)
+            buildRows(filteredItems, q.packs, q.filter, q.sort, q.collapsed)
+        }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     fun setFilter(value: DownloadsFilter) {
         filter.value = value
@@ -101,12 +115,9 @@ class DownloadsViewModel(
         sort.value = value
     }
 
-    fun toggleSeriesCollapsed(seriesKey: String) {
-        val current = collapsedSeries.value
-        collapsedSeries.value = if (current.contains(seriesKey)) {
-            current - seriesKey
-        } else {
-            current + seriesKey
+    fun toggleSeriesFolder(seriesKey: String) {
+        collapsedSeries.value = collapsedSeries.value.toMutableSet().also { set ->
+            if (!set.add(seriesKey)) set.remove(seriesKey)
         }
     }
 
@@ -120,13 +131,11 @@ class DownloadsViewModel(
         }
         UserPreferences.downloadWifiOnly = enabled
         refreshWifiPreference()
-        StreamflixDownloadManager.applyWifiOnlyRequirements(appContext)
-        DownloadResumeScheduler.enqueue(appContext, replace = true)
         viewModelScope.launch {
             if (enabled && DownloadConnectivityMonitor.shouldHoldForWifiOnly(appContext)) {
-                repo.pauseForConnectivity()
+                repo().pauseForConnectivity()
             } else if (!enabled) {
-                repo.resumeConnectivityHeld()
+                repo().resumeConnectivityHeld()
             }
         }
     }
@@ -154,7 +163,7 @@ class DownloadsViewModel(
     fun reconcileOrphanedCompleted() {
         if (reconcileJob?.isActive == true) return
         reconcileJob = viewModelScope.launch {
-            runCatching { repo.reconcileOrphanedCompleted() }
+            runCatching { repo().reconcileOrphanedCompleted() }
         }
     }
 
@@ -163,41 +172,99 @@ class DownloadsViewModel(
         (lowSpace as MutableStateFlow).value = DownloadStorage.isLowSpace(appContext)
     }
 
-    fun pause(id: String) = viewModelScope.launch { repo.pause(id) }
-    fun resume(id: String) = viewModelScope.launch { repo.resume(id) }
+    fun pause(id: String) = viewModelScope.launch { repo().pause(id) }
+    fun resume(id: String) = viewModelScope.launch { repo().resume(id) }
     fun remove(id: String) = viewModelScope.launch {
-        repo.remove(id)
+        repo().remove(id)
         refreshStorage()
     }
-    fun pauseAll() = viewModelScope.launch { repo.pauseAll() }
-    fun resumeAll() = viewModelScope.launch { repo.resumeAll() }
+    fun pauseAll() = viewModelScope.launch { repo().pauseAll() }
+    fun resumeAll() = viewModelScope.launch { repo().resumeAll() }
     fun clearCompleted() = viewModelScope.launch {
-        repo.clearCompleted()
+        repo().clearCompleted()
         refreshStorage()
     }
     fun clearFailed() = viewModelScope.launch {
-        repo.clearFailed()
+        repo().clearFailed()
         refreshStorage()
     }
     fun clearWatched() = viewModelScope.launch {
-        repo.clearWatched()
+        repo().clearWatched()
         refreshStorage()
     }
     fun retryAllFailed() = viewModelScope.launch {
         DownloadController.retryAllFailed(appContext)
         refreshStorage()
     }
-    fun pausePack(packId: String) = viewModelScope.launch { repo.pausePack(packId) }
-    fun resumePack(packId: String) = viewModelScope.launch { repo.resumePack(packId) }
+    fun pausePack(packId: String) = viewModelScope.launch { repo().pausePack(packId) }
+    fun resumePack(packId: String) = viewModelScope.launch { repo().resumePack(packId) }
     fun removePack(packId: String) = viewModelScope.launch {
-        repo.removePack(packId)
+        repo().removePack(packId)
         refreshStorage()
+    }
+
+    suspend fun isPlayAllowed(entity: DownloadItemEntity): Boolean {
+        if (!ProfileManager.isKidsActive() && !UserPreferences.isParentalControlActive) return true
+        val item = toFilterable(entity) ?: return !ProfileManager.isKidsActive()
+        return ParentalControlUtils.filterItems(listOf(item)).isNotEmpty()
     }
 
     override fun onCleared() {
         stopLiveProgress()
         reconcileJob?.cancel()
         super.onCleared()
+    }
+
+    private suspend fun applyParentalFilter(items: List<DownloadItemEntity>): List<DownloadItemEntity> {
+        if (!ProfileManager.isKidsActive() && !UserPreferences.isParentalControlActive) return items
+        return items.filter { entity ->
+            val item = toFilterable(entity) ?: return@filter !ProfileManager.isKidsActive()
+            ParentalControlUtils.filterItems(listOf(item)).isNotEmpty()
+        }
+    }
+
+    private fun toFilterable(entity: DownloadItemEntity): com.dskja.betterstreamflix.adapters.AppAdapter.Item? {
+        return when (entity.kind) {
+            DownloadKind.MOVIE.name -> {
+                val id = entity.contentKey.split('|').getOrNull(2) ?: entity.id
+                Movie(
+                    id = id,
+                    title = entity.title,
+                    poster = entity.posterUrl.takeIf { it.isNotBlank() },
+                    providerName = entity.providerName,
+                )
+            }
+            DownloadKind.EPISODE.name -> {
+                val o = runCatching {
+                    JSONObject(entity.videoTypeJson.ifBlank { "{}" })
+                }.getOrNull()
+                val showId = o?.optString("showId")?.takeIf { it.isNotBlank() }
+                    ?: entity.contentKey.split('|').getOrNull(2)
+                    ?: return null
+                val showTitle = o?.optString("showTitle")?.takeIf { it.isNotBlank() }
+                    ?: entity.title
+                val showPoster = o?.optString("showPoster")?.takeIf { it.isNotBlank() }
+                    ?: entity.posterUrl.takeIf { it.isNotBlank() }
+                Episode(
+                    id = entity.contentKey.split('|').lastOrNull() ?: entity.id,
+                    number = o?.optInt("number", 1) ?: 1,
+                    title = entity.title,
+                    poster = entity.posterUrl.takeIf { it.isNotBlank() },
+                    tvShow = TvShow(
+                        id = showId,
+                        title = showTitle,
+                        poster = showPoster,
+                        providerName = entity.providerName,
+                    ),
+                    season = Season(
+                        id = "",
+                        number = o?.optInt("seasonNumber", 1) ?: 1,
+                        title = "",
+                    ),
+                )
+            }
+            else -> null
+        }
     }
 
     private fun buildRows(
@@ -309,7 +376,7 @@ class DownloadsViewModel(
                 val episodes = pairs.map { it.second }
                 val (count, bytes) = seriesTotals[ref.key]
                     ?: (episodes.size to episodes.sumOf { maxOf(it.contentLength, it.bytesDownloaded) })
-                val isCollapsed = collapsed.contains(ref.key)
+                val expanded = ref.key !in collapsed
                 add(
                     DownloadRowUiModel.SeriesFolder(
                         seriesKey = ref.key,
@@ -317,15 +384,23 @@ class DownloadsViewModel(
                         episodeCount = count,
                         totalBytes = bytes,
                         posterUrl = ref.posterUrl,
-                        collapsed = isCollapsed,
+                        expanded = expanded,
                     ),
                 )
-                if (!isCollapsed) {
+                if (expanded) {
                     episodes.forEach { add(DownloadRowUiModel.Item(it)) }
                 }
             }
         movies.forEach { add(DownloadRowUiModel.Item(it)) }
     }
+
+    private data class Quad(
+        val items: List<DownloadItemEntity>,
+        val packs: List<com.dskja.betterstreamflix.download.DownloadSeasonPackEntity>,
+        val filter: DownloadsFilter,
+        val sort: DownloadsSort,
+        val collapsed: Set<String>,
+    )
 
     companion object {
         private const val PROGRESS_POLL_MS = 500L

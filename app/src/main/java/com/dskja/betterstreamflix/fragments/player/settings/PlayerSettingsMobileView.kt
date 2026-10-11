@@ -144,6 +144,12 @@ class PlayerSettingsMobileView @JvmOverloads constructor(
         displaySettings(Setting.MAIN)
     }
 
+    /** Open settings directly on the server list (e.g. after a typed stream error). */
+    fun showServers() {
+        show()
+        displaySettings(Setting.SERVERS)
+    }
+
     private fun displaySettings(setting: Setting) {
         currentSettings = setting
 

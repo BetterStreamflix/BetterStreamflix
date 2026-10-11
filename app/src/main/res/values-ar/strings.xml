@@ -40,6 +40,7 @@
 	<string name="live_hub_empty">لا توجد قنوات مباشرة الآن — أعد المحاولة</string>
     <string name="live_hub_empty_tv">لا توجد قنوات مباشرة الآن — اضغط OK لإعادة المحاولة</string>
     <string name="live_hub_restricted">البث المباشر غير متاح مع ملف الأطفال أو الرقابة الأبوية.</string>
+	<string name="live_hub_source_unavailable">%1$s غير متاح</string>
 
 	<string name="search_input_hint">ابحث عن الأفلام أو المسلسلات</string>
 	<string name="search_input_hint_iptv">البحث عن القنوات</string>

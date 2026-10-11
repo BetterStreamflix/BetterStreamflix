@@ -200,9 +200,11 @@ object StreamflixDownloadManager {
         connectivityWatcherStarted = true
         connectivityScope.launch {
             DownloadConnectivityMonitor.status
-                .map { it.type }
+                // Hold rule is meteredness, not transport alone — include isMetered so
+                // Wi‑Fi → metered hotspot flips re-evaluate even when type stays WIFI.
+                .map { it.type to it.isMetered }
                 .distinctUntilChanged()
-                .collectLatest { type ->
+                .collectLatest { (type, _) ->
                     // Short debounce: long delays let metered transfers start
                     // before wifi-only pause lands (DL-P3-D).
                     delay(150)

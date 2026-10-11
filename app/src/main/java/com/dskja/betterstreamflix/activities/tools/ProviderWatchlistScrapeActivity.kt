@@ -53,14 +53,14 @@ import kotlin.coroutines.resume
  * Cloudflare challenges stay solved), scrolls to load lazy cards, extracts HTML,
  * then persists Favorites. OkHttp is only used as a fallback.
  */
-class WatchlistImportActivity : AppCompatActivity() {
+class ProviderWatchlistScrapeActivity : AppCompatActivity() {
 
     companion object {
         const val EXTRA_SOURCE = "extra_source"
         const val EXTRA_SAVE_SESSION_ONLY = "extra_save_session_only"
         const val SOURCE_SERIENSTREAM = "serienstream"
         const val SOURCE_ANIWORLD = "aniworld"
-        private const val TAG = "WatchlistImport"
+        private const val TAG = "ProviderWatchlistScrape"
         private const val PAGE_SETTLE_MS = 1_200L
         private const val SCROLL_ROUNDS = 8
     }
@@ -803,7 +803,7 @@ class WatchlistImportActivity : AppCompatActivity() {
                 if (collected.isEmpty()) {
                     statusView.setText(R.string.watchlist_import_progress_fallback)
                     val httpResult = WatchlistImporter.importViaHttp(
-                        this@WatchlistImportActivity,
+                        this@ProviderWatchlistScrapeActivity,
                         source,
                         cookies,
                         baseOverride = hostBase,
@@ -816,7 +816,7 @@ class WatchlistImportActivity : AppCompatActivity() {
                 } else {
                     statusView.setText(R.string.watchlist_import_progress_saving)
                     val result = WatchlistImporter.importParsed(
-                        context = this@WatchlistImportActivity,
+                        context = this@ProviderWatchlistScrapeActivity,
                         source = source,
                         items = collected.values,
                         pagesScraped = pagesScraped,

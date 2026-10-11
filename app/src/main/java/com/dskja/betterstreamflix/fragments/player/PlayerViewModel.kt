@@ -267,12 +267,12 @@ class PlayerViewModel(
                         // null/blank subtitleName means explicit Off — never match via startsWith("").
                         val preferred = UserPreferences.subtitleName?.trim().orEmpty()
                         if (preferred.isNotEmpty()) {
-                            video.subtitles
-                                .firstOrNull { subtitle ->
-                                    subtitle.label.equals(preferred, ignoreCase = true) ||
-                                        subtitle.label.startsWith(preferred, ignoreCase = true)
-                                }
-                                ?.default = true
+                            val match = video.subtitles.firstOrNull { subtitle ->
+                                subtitle.label.equals(preferred, ignoreCase = true)
+                            } ?: video.subtitles.firstOrNull { subtitle ->
+                                subtitle.label.startsWith(preferred, ignoreCase = true)
+                            }
+                            match?.default = true
                         }
                     }
                 }

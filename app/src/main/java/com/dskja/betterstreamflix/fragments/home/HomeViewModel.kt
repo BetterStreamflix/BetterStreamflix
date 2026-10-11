@@ -21,6 +21,7 @@ import com.dskja.betterstreamflix.utils.HomeCacheStore
 import com.dskja.betterstreamflix.utils.HomeCatalogPipeline
 import com.dskja.betterstreamflix.utils.ParentalControlUtils
 import com.dskja.betterstreamflix.utils.ProviderChangeNotifier
+import com.dskja.betterstreamflix.utils.ShowLookup
 import com.dskja.betterstreamflix.utils.UserDataCache
 import com.dskja.betterstreamflix.utils.UserDataCache.toCached
 import com.dskja.betterstreamflix.utils.UserDataCache.toEpisode
@@ -47,6 +48,8 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeout
 import java.util.concurrent.ConcurrentHashMap
+
+private const val RECENTLY_ADDED_SHELF_LIMIT = 20
 
 class HomeViewModel(
     @Suppress("UNUSED_PARAMETER")
@@ -314,6 +317,21 @@ class HomeViewModel(
                     continueWatching = mergedCw,
                     nextEpisodes = nextDeduped,
                 )
+                // Recently Added — favorites by favoritedAt (limited Home companion shelf)
+                val recentlyAdded = run {
+                    val recent = (history.favoritesMovies + history.favoriteTvShows)
+                        .sortedByDescending { item ->
+                            when (item) {
+                                is Movie -> item.favoritedAtMillis ?: 0L
+                                is TvShow -> item.favoritedAtMillis ?: 0L
+                                else -> 0L
+                            }
+                        }
+                        .take(RECENTLY_ADDED_SHELF_LIMIT)
+                    Category(name = Category.RECENTLY_ADDED, list = recent)
+                        .takeIf { recent.isNotEmpty() }
+                }
+
                 val libraryShelves = listOfNotNull(
                     Category(
                         name = Category.CONTINUE_WATCHING,
@@ -333,6 +351,7 @@ class HomeViewModel(
                     ).takeIf {
                         UserPreferences.showRecentlyWatched && rwDeduped.isNotEmpty()
                     },
+                    recentlyAdded,
                 )
 
                 val categories = ParentalControlUtils.filterCategories(
@@ -412,7 +431,11 @@ class HomeViewModel(
     }
 
     private fun continueWatchingKey(item: AppAdapter.Item): String? = when (item) {
-        is Episode -> "${item.tvShow?.providerName}:${item.tvShow?.id}"
+        is Episode -> {
+            val showId = item.tvShow?.id
+            if (showId.isNullOrBlank()) "episode:${item.id}"
+            else "${item.tvShow?.providerName}:$showId"
+        }
         is Movie -> "${item.providerName}:${item.id}"
         else -> null
     }
@@ -439,9 +462,26 @@ class HomeViewModel(
                 is TvShow -> "${item.providerName}:${item.id}"
                 else -> null
             }
-            (identity == null || identity !in activeKeys) &&
-                (localKey == null || localKey !in activeKeys)
+            val overlap = (identity != null && identity in activeKeys) ||
+                (localKey != null && localKey in activeKeys)
+            if (!overlap) return@filter true
+            // Keep finished titles that still carry watched / progress context on RW.
+            when (item) {
+                is Movie -> item.isWatched || (item.watchHistory?.durationMillis ?: 0L) > 0L
+                is TvShow -> {
+                    val ep = item.lastPlayedEpisode
+                    ep?.isWatched == true || (ep?.watchHistory?.durationMillis ?: 0L) > 0L
+                }
+                else -> false
+            }
         }
+    }
+
+    /** Soft-refresh library/history shelves (same path as [UserDataNotifier]). */
+    fun softRefreshUserData() {
+        libraryRefresh.value += 1
+        val provider = UserPreferences.currentProvider ?: return
+        loadUserDataCache(provider)
     }
 
     /**
@@ -548,6 +588,74 @@ class HomeViewModel(
         }
     }
 
+    /**
+     * Replace Trakt placeholder ids (`trakt:…` / imdb-only) with current-provider
+     * catalog ids so CW taps do not navigate with synthetic `${imdb}-S#E#` keys.
+     */
+    private suspend fun resolveTraktCatalogIds(
+        items: List<AppAdapter.Item>,
+        provider: Provider,
+    ): List<AppAdapter.Item> = coroutineScope {
+        items.map { item ->
+            async {
+                when (item) {
+                    is Movie -> resolveTraktMovie(item, provider)
+                    is Episode -> resolveTraktEpisode(item, provider)
+                    else -> item
+                }
+            }
+        }.awaitAll()
+    }
+
+    private suspend fun resolveTraktMovie(movie: Movie, provider: Provider): Movie {
+        // Numeric TMDb / provider ids may already work; still prefer a catalog search hit.
+        val hit = runCatching { provider.search(movie.title, 1) }.getOrNull()
+            ?.filterIsInstance<Movie>()
+            ?.firstOrNull { ShowLookup.titlesMatch(it.title, movie.title) }
+            ?: return movie
+        val resolved = runCatching { provider.getMovie(hit.id) }.getOrNull() ?: hit
+        return movie.copy(
+            id = resolved.id,
+            poster = movie.poster ?: resolved.poster,
+            banner = movie.banner ?: resolved.banner,
+            overview = movie.overview ?: resolved.overview,
+            imdbId = movie.imdbId ?: resolved.imdbId,
+        ).apply {
+            providerName = provider.name
+            watchHistory = movie.watchHistory
+            isWatched = movie.isWatched
+            watchedDate = movie.watchedDate
+        }
+    }
+
+    private suspend fun resolveTraktEpisode(episode: Episode, provider: Provider): Episode {
+        val show = episode.tvShow ?: return episode
+        val seasonNumber = episode.season?.number ?: return episode
+        // Already a non-placeholder provider episode id — leave alone.
+        if (!episode.id.startsWith("trakt:")) return episode
+        val hit = runCatching { provider.search(show.title, 1) }.getOrNull()
+            ?.filterIsInstance<TvShow>()
+            ?.firstOrNull { ShowLookup.titlesMatch(it.title, show.title) }
+            ?: return episode
+        val resolvedShow = runCatching { provider.getTvShow(hit.id) }.getOrNull() ?: hit
+        resolvedShow.providerName = provider.name
+        val season = resolvedShow.seasons.firstOrNull { it.number == seasonNumber }
+            ?: return episode.copy(tvShow = resolvedShow).apply { merge(episode) }
+        val seasonEpisodes = runCatching { provider.getEpisodesBySeason(season.id) }
+            .getOrDefault(emptyList())
+        val matched = seasonEpisodes.firstOrNull { it.number == episode.number }
+            ?: return episode.copy(tvShow = resolvedShow, season = season).apply { merge(episode) }
+        return matched.copy(
+            title = episode.title ?: matched.title,
+            poster = episode.poster ?: matched.poster ?: resolvedShow.poster,
+            overview = episode.overview ?: matched.overview,
+            tvShow = resolvedShow,
+            season = season,
+        ).apply {
+            merge(episode)
+        }
+    }
+
     private suspend fun enrichContinueWatchingEpisodes(episodes: List<Episode>): List<Episode> = coroutineScope {
         episodes.map { episode ->
             async {
@@ -646,8 +754,8 @@ class HomeViewModel(
             loadUserDataCache(provider)
             libraryRefresh.value += 1
             viewModelScope.launch(Dispatchers.IO) {
-                traktContinueWatching.value =
-                    com.dskja.betterstreamflix.platform.trakt.TraktContinueWatching.load()
+                val raw = com.dskja.betterstreamflix.platform.trakt.TraktContinueWatching.load()
+                traktContinueWatching.value = resolveTraktCatalogIds(raw, provider)
             }
 
             // Circuit breaker: prefer cache over hammering a dead origin.

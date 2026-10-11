@@ -4,6 +4,8 @@ import android.view.View
 import androidx.appcompat.app.AlertDialog
 import androidx.lifecycle.findViewTreeLifecycleOwner
 import androidx.lifecycle.lifecycleScope
+import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.recyclerview.widget.RecyclerView
 import com.dskja.betterstreamflix.R
 import com.dskja.betterstreamflix.adapters.AppAdapter
 import com.dskja.betterstreamflix.adapters.viewholders.TvShowViewHolder
@@ -151,9 +153,16 @@ private fun TvShowViewHolder.bindSeasonEpisodes(
             if (binding.rvTvShowEpisodes.getTag(R.id.detail_episodes_scroll_key) != scrollKey) {
                 binding.rvTvShowEpisodes.setTag(R.id.detail_episodes_scroll_key, scrollKey)
                 binding.rvTvShowEpisodes.post {
-                    if (upNextIndex >= 0) {
-                        binding.rvTvShowEpisodes.scrollToPosition(upNextIndex)
-                    }
+                    if (upNextIndex < 0) return@post
+                    val episodeLm =
+                        binding.rvTvShowEpisodes.layoutManager as? LinearLayoutManager
+                    // Constrained height (@dimen/detail_episode_list_height) lets the
+                    // inner list scroll; also nudge the outer detail RV into view.
+                    episodeLm?.scrollToPositionWithOffset(
+                        upNextIndex,
+                        binding.rvTvShowEpisodes.height / 3,
+                    )
+                    scrollOuterDetailToSeasons(binding)
                 }
             }
         }
@@ -265,4 +274,16 @@ private fun TvShowViewHolder.requestSeasonEpisodes(
             }
         }
     }
+}
+
+/** Bring the seasons block into the outer detail RecyclerView viewport. */
+private fun scrollOuterDetailToSeasons(binding: ContentTvShowSeasonsMobileBinding) {
+    var parent = binding.root.parent
+    while (parent != null && parent !is RecyclerView) {
+        parent = parent.parent
+    }
+    val outer = parent as? RecyclerView ?: return
+    val holder = outer.findContainingViewHolder(binding.root) ?: return
+    val outerLm = outer.layoutManager as? LinearLayoutManager ?: return
+    outerLm.scrollToPositionWithOffset(holder.bindingAdapterPosition, 0)
 }

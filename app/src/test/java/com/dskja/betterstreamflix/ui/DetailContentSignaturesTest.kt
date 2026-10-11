@@ -59,4 +59,13 @@ class DetailContentSignaturesTest {
         )
         assertEquals(DetailContentSignatures.tvShow(empty), DetailContentSignatures.tvShow(filled))
     }
+
+    @Test
+    fun tvShow_lastPlayedEpisodeIdAloneDoesNotChangeSignature() {
+        val base = TvShow(id = "t1", title = "Beta")
+        base.lastPlayedEpisodeId = null
+        val played = TvShow(id = "t1", title = "Beta")
+        played.lastPlayedEpisodeId = "e99"
+        assertEquals(DetailContentSignatures.tvShow(base), DetailContentSignatures.tvShow(played))
+    }
 }
