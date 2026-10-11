@@ -27,8 +27,8 @@ class MoviesViewModel(
     @Suppress("UNUSED_PARAMETER") database: AppDatabase? = null,
 ) : ViewModel() {
 
-    private fun liveDb(): AppDatabase =
-        AppDatabase.getInstance(com.dskja.betterstreamflix.BetterStreamflixApp.instance.applicationContext)
+    private fun liveDb(): AppDatabase? =
+        AppDatabase.getInstanceOrNull(com.dskja.betterstreamflix.BetterStreamflixApp.instance.applicationContext)
 
     private val _state = MutableStateFlow<State>(State.Loading)
     private var moviesJob: Job? = null
@@ -51,7 +51,7 @@ class MoviesViewModel(
                     if (state.movies.isEmpty()) {
                         emit(emptyList())
                     } else {
-                        val db = runCatching { liveDb() }.getOrNull()
+                        val db = liveDb()
                         if (db == null || !db.isOpen) {
                             emit(emptyList())
                         } else {

@@ -39,8 +39,8 @@ class ShowOptionsTvDialog(
 
     private val binding = DialogShowOptionsTvBinding.inflate(LayoutInflater.from(context))
 
-    private val database: AppDatabase
-        get() = AppDatabase.getInstance(context)
+    private val database: AppDatabase?
+        get() = AppDatabase.getInstanceOrNull(context)
 
     private fun checkProviderAndRun(show: AppAdapter.Item, action: () -> Unit) {
         val providerName = when(show){
@@ -187,18 +187,18 @@ class ShowOptionsTvDialog(
                             watchedDate = null
                         }
                     }
-                    AppDatabase.getInstance(context).episodeDao().save(updatedEpisode)
+                    database?.episodeDao()?.save(updatedEpisode)
                     UserDataCache.syncEpisodeToCache(context, currentProvider, updatedEpisode)
 
                     // NUOVA LOGICA: Aggiorna lo stato isWatching della serie TV madre
                     episode.tvShow?.let { tvShow ->
-                        val episodeDao = AppDatabase.getInstance(context).episodeDao()
+                        val episodeDao = database?.episodeDao() ?: return@checkProviderAndRun
                         val isStillWatching = episodeDao.hasAnyWatchHistoryForTvShow(tvShow.id)
 
                         // Se l'episodio è stato marcato come VISTO E non ci sono altri
                         // episodi con cronologia, impostiamo isWatching a false.
                         if (updatedEpisode.isWatched && !isStillWatching) {
-                            AppDatabase.getInstance(context).tvShowDao().save(tvShow.copy().apply {
+                            database?.tvShowDao()?.save(tvShow.copy().apply {
                                 merge(tvShow)
                                 isWatching = false
                             })
@@ -242,7 +242,7 @@ class ShowOptionsTvDialog(
         binding.btnOptionEpisodeMarkAllPreviousWatched.apply {
             setOnClickListener {
                 checkProviderAndRun(episode) {
-                    val episodeDao = AppDatabase.getInstance(context).episodeDao()
+                    val episodeDao = database?.episodeDao() ?: return@checkProviderAndRun
                     val episodeNumber = episode.number
                     val tvShowId = episode.tvShow?.id ?: return@checkProviderAndRun
                     val allEpisodes = episodeDao.getEpisodesByTvShowIdAndSeason(tvShowId, episode.season?.id).filter { it.number <= episodeNumber }
@@ -268,7 +268,7 @@ class ShowOptionsTvDialog(
                     if (targetState) {
                         episode.tvShow?.let { tvShow ->
                             if (!episodeDao.hasAnyWatchHistoryForTvShow(tvShow.id)) {
-                                AppDatabase.getInstance(context).tvShowDao().save(tvShow.copy().apply {
+                                database?.tvShowDao()?.save(tvShow.copy().apply {
                                     merge(tvShow)
                                     isWatching = false
                                 })
@@ -280,7 +280,7 @@ class ShowOptionsTvDialog(
                     // Se l'obiettivo era marcare come NON VISTO, impostiamo isWatching a true per farlo riapparire.
                     if (!targetState) {
                         episode.tvShow?.let { tvShow ->
-                            AppDatabase.getInstance(context).tvShowDao().save(tvShow.copy().apply {
+                            database?.tvShowDao()?.save(tvShow.copy().apply {
                                 merge(tvShow)
                                 isWatching = true
                             })
@@ -306,14 +306,14 @@ class ShowOptionsTvDialog(
                         merge(episode)
                         watchHistory = null
                     }
-                    AppDatabase.getInstance(context).episodeDao().save(updatedEpisode)
+                    database?.episodeDao()?.save(updatedEpisode)
                     UserDataCache.syncEpisodeToCache(context, provider, updatedEpisode)
                     
                     episode.tvShow?.let { tvShow ->
                         // Rimuoviamo isWatching solo se NON ci sono altri episodi in corso
-                        val episodeDao = AppDatabase.getInstance(context).episodeDao()
+                        val episodeDao = database?.episodeDao() ?: return@checkProviderAndRun
                         if (!episodeDao.hasAnyWatchHistoryForTvShow(tvShow.id)) {
-                            AppDatabase.getInstance(context).tvShowDao().save(tvShow.copy().apply {
+                            database?.tvShowDao()?.save(tvShow.copy().apply {
                                 merge(tvShow)
                                 isWatching = false
                             })
@@ -349,7 +349,7 @@ class ShowOptionsTvDialog(
 
         binding.btnOptionEpisodeOpenTvShow.visibility = View.GONE
 
-        val freshMovie = database.movieDao().getById(movie.id) ?: movie
+        val freshMovie = database?.movieDao()?.getById(movie.id) ?: movie
         val recentlyWatchedAt = freshMovie.lastPlayedAtMillis ?: movie.lastPlayedAtMillis
 
         binding.btnOptionShowFavorite.apply {
@@ -357,7 +357,7 @@ class ShowOptionsTvDialog(
                 checkProviderAndRun(freshMovie) {
                     val provider = UserPreferences.currentProvider ?: return@checkProviderAndRun
                     context.toActivity()?.lifecycleScope?.launch(Dispatchers.IO) {
-                        val dao = database.movieDao()
+                        val dao = database?.movieDao() ?: return@launch
                         val current = dao.getById(movie.id)?.isFavorite ?: false
                         val newValue = !current
                         val resolvedMovie = ArtworkRepair.resolveMovieForFavorite(context, movie, newValue)
@@ -397,7 +397,7 @@ class ShowOptionsTvDialog(
                             watchedDate = null
                         }
                     }
-                    AppDatabase.getInstance(context).movieDao().save(updatedMovie)
+                    database?.movieDao()?.save(updatedMovie)
                     UserDataCache.syncMovieToCache(context, provider, updatedMovie)
                     
                     if (updatedMovie.isWatched) {
@@ -444,7 +444,7 @@ class ShowOptionsTvDialog(
                         merge(freshMovie)
                         watchHistory = null
                     }
-                    AppDatabase.getInstance(context).movieDao().save(updatedMovie)
+                    database?.movieDao()?.save(updatedMovie)
                     UserDataCache.syncMovieToCache(context, provider, updatedMovie)
                     UserDataCache.removeMovieFromContinueWatching(context, provider, freshMovie.id)
                 }
@@ -461,7 +461,7 @@ class ShowOptionsTvDialog(
         binding.btnOptionRecentlyWatchedClear.apply {
             setOnClickListener {
                 checkProviderAndRun(freshMovie) {
-                    AppDatabase.getInstance(context).movieDao().clearRecentlyWatched(freshMovie.id)
+                    database?.movieDao()?.clearRecentlyWatched(freshMovie.id)
                     freshMovie.lastPlayedAtMillis = null
                     movie.lastPlayedAtMillis = null
                     UserDataNotifier.notifyChanged()
@@ -485,7 +485,7 @@ class ShowOptionsTvDialog(
 
         binding.btnOptionEpisodeOpenTvShow.visibility = View.GONE
 
-        val freshTvShow = database.tvShowDao().getById(tvShow.id) ?: tvShow
+        val freshTvShow = database?.tvShowDao()?.getById(tvShow.id) ?: tvShow
         val recentlyWatchedAt = freshTvShow.lastPlayedAtMillis ?: tvShow.lastPlayedAtMillis
 
         binding.btnOptionShowFavorite.apply {
@@ -493,7 +493,7 @@ class ShowOptionsTvDialog(
                 checkProviderAndRun(freshTvShow) {
                     val provider = UserPreferences.currentProvider ?: return@checkProviderAndRun
                     context.toActivity()?.lifecycleScope?.launch(Dispatchers.IO) {
-                        val dao = database.tvShowDao()
+                        val dao = database?.tvShowDao() ?: return@launch
                         val current = dao.getById(tvShow.id)?.isFavorite ?: false
                         val newValue = !current
                         val resolvedTvShow = ArtworkRepair.resolveTvShowForFavorite(context, tvShow, newValue)
@@ -532,7 +532,7 @@ class ShowOptionsTvDialog(
         binding.btnOptionRecentlyWatchedClear.apply {
             setOnClickListener {
                 checkProviderAndRun(freshTvShow) {
-                    AppDatabase.getInstance(context).tvShowDao().clearRecentlyWatched(freshTvShow.id)
+                    database?.tvShowDao()?.clearRecentlyWatched(freshTvShow.id)
                     freshTvShow.lastPlayedAtMillis = null
                     freshTvShow.lastPlayedEpisodeId = null
                     tvShow.lastPlayedAtMillis = null

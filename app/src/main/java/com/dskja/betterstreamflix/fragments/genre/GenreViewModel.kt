@@ -27,7 +27,7 @@ import kotlinx.coroutines.launch
 
 class GenreViewModel(
     private val id: String,
-    private val database: AppDatabase,
+    private val database: AppDatabase?,
     private val name: String? = null,
 ) : ViewModel() {
 
@@ -51,7 +51,7 @@ class GenreViewModel(
                         .filterIsInstance<Movie>()
                     if (movies.isEmpty()) {
                         emit(emptyList())
-                    } else if (!database.isOpen) {
+                    } else if (database == null || !database.isOpen) {
                         emit(emptyList())
                     } else {
                         emitAll(
@@ -73,7 +73,7 @@ class GenreViewModel(
                         .filterIsInstance<TvShow>()
                     if (tvShows.isEmpty()) {
                         emit(emptyList())
-                    } else if (!database.isOpen) {
+                    } else if (database == null || !database.isOpen) {
                         emit(emptyList())
                     } else {
                         emitAll(

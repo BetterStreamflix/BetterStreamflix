@@ -48,12 +48,10 @@ class SeasonTvFragment : Fragment() {
     private val args by navArgs<SeasonTvFragmentArgs>()
     private val database get() = AppDatabase.getInstanceOrNull(requireContext())
     private val viewModel by viewModelsFactory {
-        val db = AppDatabase.getInstanceOrNull(requireContext())
-            ?: error("Provider database unavailable")
         SeasonViewModel(
             args.seasonId,
             args.tvShowId,
-            db,
+            database,
             args.seasonNumber,
         )
     }

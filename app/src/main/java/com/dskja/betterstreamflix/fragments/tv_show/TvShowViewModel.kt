@@ -22,13 +22,14 @@ import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.emitAll
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.transformLatest
 import kotlinx.coroutines.launch
 
 class TvShowViewModel(
     id: String,
-    private val database: AppDatabase,
+    private val database: AppDatabase?,
     private val fallbackPoster: String? = null,
     private val fallbackBanner: String? = null,
 ) : ViewModel() {
@@ -59,11 +60,15 @@ class TvShowViewModel(
 
     private val _state = MutableStateFlow<State>(State.Loading)
     @OptIn(ExperimentalCoroutinesApi::class)
-    val state: Flow<State> = combine(
+    val state: Flow<State> = run {
+        val db = database
+        if (db == null) {
+            flowOf(State.FailedLoading(Exception("No provider selected")))
+        } else combine(
         _state.transformLatest { state ->
             when (state) {
                 is State.SuccessLoading -> {
-                    val episodes = database.episodeDao().getByTvShowIdAsFlow(id).first()
+                    val episodes = db.episodeDao().getByTvShowIdAsFlow(id).first()
                     state.tvShow.seasons.onEach { season ->
                         season.episodes = episodesForSeason(episodes, season)
                     }
@@ -111,12 +116,12 @@ class TvShowViewModel(
             }
             emit(state)
         },
-        database.tvShowDao().getByIdAsFlow(id).catch { e ->
+        db.tvShowDao().getByIdAsFlow(id).catch { e ->
             if (e is CancellationException) throw e
             Log.w("TvShowViewModel", "tvShowDb flow failed after provider switch", e)
             emit(null)
         },
-        database.episodeDao().getByTvShowIdAsFlow(id).catch { e ->
+        db.episodeDao().getByTvShowIdAsFlow(id).catch { e ->
             if (e is CancellationException) throw e
             Log.w("TvShowViewModel", "episodesDb flow failed after provider switch", e)
             emit(emptyList())
@@ -128,7 +133,7 @@ class TvShowViewModel(
                         .filterIsInstance<Movie>()
                     if (movies.isEmpty()) {
                         emit(emptyList())
-                    } else if (!database.isOpen) {
+                    } else if (database == null || !database.isOpen) {
                         emit(emptyList())
                     } else {
                         emitAll(
@@ -149,7 +154,7 @@ class TvShowViewModel(
                         .filterIsInstance<TvShow>()
                     if (tvShows.isEmpty()) {
                         emit(emptyList())
-                    } else if (!database.isOpen) {
+                    } else if (database == null || !database.isOpen) {
                         emit(emptyList())
                     } else {
                         emitAll(
@@ -199,6 +204,7 @@ class TvShowViewModel(
             else -> state
         }
     }.flowOn(Dispatchers.IO)
+    }
 
     sealed class State {
         data object Loading : State()
@@ -295,6 +301,11 @@ class TvShowViewModel(
 
 
     fun getTvShow(id: String) = viewModelScope.launch(Dispatchers.IO) {
+        val db = database
+        if (db == null) {
+            _state.emit(State.FailedLoading(Exception("No provider selected")))
+            return@launch
+        }
         _state.emit(State.Loading)
 
         try {
@@ -329,19 +340,19 @@ class TvShowViewModel(
                 enriched.banner = enriched.poster
             }
 
-            database.tvShowDao().getById(enriched.id)?.let { tvShowDb ->
+            db.tvShowDao().getById(enriched.id)?.let { tvShowDb ->
                 enriched.merge(tvShowDb)
             }
             val orderedSeasons = enriched.seasons.sortedWith(::compareSeasonsForDisplay)
             val orderedTvShow = enriched.copy(seasons = orderedSeasons)
 
-            database.tvShowDao().insert(orderedTvShow)
+            db.tvShowDao().insert(orderedTvShow)
 
             val tvShowCopy = orderedTvShow.copy()
             orderedTvShow.seasons.forEach { season ->
                 season.tvShow = tvShowCopy
             }
-            database.seasonDao().insertAll(orderedTvShow.seasons)
+            db.seasonDao().insertAll(orderedTvShow.seasons)
 
             _state.emit(State.SuccessLoading(orderedTvShow))
         } catch (e: Exception) {
@@ -362,7 +373,7 @@ class TvShowViewModel(
      */
     private suspend fun metadataOnlyFallback(id: String): TvShow? {
         val language = UserPreferences.currentProvider?.language
-        val cached = runCatching { database.tvShowDao().getById(id) }.getOrNull()
+        val cached = database?.tvShowDao()?.getById(id)
         val base = cached
             ?: id.toIntOrNull()?.let {
                 runCatching {
@@ -394,6 +405,7 @@ class TvShowViewModel(
         if (ribbonsPrefetchStarted) return
         ribbonsPrefetchStarted = true
         viewModelScope.launch(Dispatchers.IO) {
+            val db = database ?: return@launch
             val provider = UserPreferences.currentProvider ?: return@launch
             val targets = tvShow.seasons
                 .filter { it.number != 0 && it.episodes.isEmpty() }
@@ -405,15 +417,15 @@ class TvShowViewModel(
                     val episodes = provider.getEpisodesBySeason(season.id)
                     val episodeMap = episodes.associateBy { it.id }
                     episodes.map { it.id }.chunked(400).forEach { chunk ->
-                        database.episodeDao().getByIds(chunk).forEach { db ->
-                            episodeMap[db.id]?.merge(db)
+                        db.episodeDao().getByIds(chunk).forEach { episodeDb ->
+                            episodeMap[episodeDb.id]?.merge(episodeDb)
                         }
                     }
                     episodes.forEach {
                         it.tvShow = tvShow
                         it.season = season
                     }
-                    database.episodeDao().insertAll(episodes)
+                    db.episodeDao().insertAll(episodes)
                     season.episodes = episodes
                     tvShow.seasons.firstOrNull { it.id == season.id }?.episodes = episodes
                     loadedAny = true
@@ -430,6 +442,11 @@ class TvShowViewModel(
     fun loadSeasonEpisodes(tvShow: TvShow, season: Season) = getSeason(tvShow, season)
 
     private fun getSeason(tvShow: TvShow, season: Season) = viewModelScope.launch(Dispatchers.IO) {
+        val db = database
+        if (db == null) {
+            _seasonState.emit(SeasonState.FailedLoading(season, Exception("No provider selected")))
+            return@launch
+        }
         _seasonState.emit(SeasonState.Loading)
 
         try {
@@ -439,7 +456,7 @@ class TvShowViewModel(
             val episodeMap = episodes.associateBy { it.id }
 
             ids.chunked(400).forEach { chunk ->
-                database.episodeDao()
+                db.episodeDao()
                     .getByIds(chunk)
                     .forEach { episodeDb ->
                         episodeMap[episodeDb.id]?.merge(episodeDb)
@@ -451,7 +468,7 @@ class TvShowViewModel(
                 episode.season = season
             }
 
-            database.episodeDao().insertAll(episodes)
+            db.episodeDao().insertAll(episodes)
             markSeasonEpisodesSettled(season.id)
 
             _seasonState.emit(SeasonState.SuccessLoading(tvShow, season, episodes))

@@ -107,11 +107,11 @@ class SettingsTvFragment : LeanbackPreferenceFragmentCompat() {
     private val screenBackStack = ArrayDeque<SettingsScreenState>()
     private lateinit var settingsBackCallback: OnBackPressedCallback
 
-    private lateinit var db: AppDatabase
-    private lateinit var movieDao: MovieDao
-    private lateinit var tvShowDao: TvShowDao
-    private lateinit var episodeDao: EpisodeDao
-    private lateinit var seasonDao: SeasonDao
+    private var db: AppDatabase? = null
+    private var movieDao: MovieDao? = null
+    private var tvShowDao: TvShowDao? = null
+    private var episodeDao: EpisodeDao? = null
+    private var seasonDao: SeasonDao? = null
     private lateinit var backupRestoreManager: BackupRestoreManager
     private var backupLoadingDialog: androidx.appcompat.app.AlertDialog? = null
     private var settingsHubController: SettingsHubController? = null
@@ -166,11 +166,11 @@ class SettingsTvFragment : LeanbackPreferenceFragmentCompat() {
         currentScreenState = SettingsScreenState(rootKey = rootKey, title = null)
         renderCurrentScreen()
 
-        db = AppDatabase.getInstance(requireContext())
-        movieDao = db.movieDao()
-        tvShowDao = db.tvShowDao()
-        episodeDao = db.episodeDao()
-        seasonDao = db.seasonDao()
+        db = AppDatabase.getInstanceOrNull(requireContext())
+        movieDao = db?.movieDao()
+        tvShowDao = db?.tvShowDao()
+        episodeDao = db?.episodeDao()
+        seasonDao = db?.seasonDao()
         
         val allProvidersToBackup = Provider.providers.keys.toMutableList().apply {
             listOf("it", "en", "es", "de", "fr").forEach { lang ->
@@ -728,7 +728,7 @@ class SettingsTvFragment : LeanbackPreferenceFragmentCompat() {
                 .setPositiveButton(android.R.string.ok) { _, _ ->
                     viewLifecycleOwner.lifecycleScope.launch {
                         withContext(Dispatchers.IO) {
-                            val database = AppDatabase.getInstance(requireContext())
+                            val database = AppDatabase.getInstanceOrNull(requireContext()) ?: return@withContext
                             database.movieDao().clearAllRecentlyWatched()
                             database.tvShowDao().clearAllRecentlyWatched()
                         }

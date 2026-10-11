@@ -46,9 +46,9 @@ class SearchTvFragment : Fragment() {
     private var _binding: FragmentSearchTvBinding? = null
     private val binding get() = _binding!!
 
-    private val database get() = AppDatabase.getInstance(requireContext())
+    private val database get() = AppDatabase.getInstanceOrNull(requireContext())
     private val viewModel by viewModelsFactory {
-        SearchViewModel(runCatching { database }.getOrNull())
+        SearchViewModel(database)
     }
     private var currentGridColumns: Int = 1
     private var gridConfiguredForColumns: Int = -1

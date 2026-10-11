@@ -1330,7 +1330,7 @@ class SettingsMobileFragment : PreferenceFragmentCompat() {
                 .setPositiveButton(android.R.string.ok) { _, _ ->
                     viewLifecycleOwner.lifecycleScope.launch {
                         withContext(Dispatchers.IO) {
-                            val database = AppDatabase.getInstance(requireContext())
+                            val database = AppDatabase.getInstanceOrNull(requireContext()) ?: return@withContext
                             database.movieDao().clearAllRecentlyWatched()
                             database.tvShowDao().clearAllRecentlyWatched()
                         }

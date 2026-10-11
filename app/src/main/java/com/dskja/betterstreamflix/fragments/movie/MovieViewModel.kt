@@ -28,15 +28,15 @@ class MovieViewModel(
     @Suppress("UNUSED_PARAMETER") database: AppDatabase? = null,
 ) : ViewModel() {
 
-    private fun liveDb(): AppDatabase =
-        AppDatabase.getInstance(BetterStreamflixApp.instance.applicationContext)
+    private fun liveDb(): AppDatabase? =
+        AppDatabase.getInstanceOrNull(BetterStreamflixApp.instance.applicationContext)
 
     private val _state = MutableStateFlow<State>(State.Loading)
     @OptIn(ExperimentalCoroutinesApi::class)
     val state: Flow<State> = combine(
         _state,
         _state.transformLatest {
-            val db = runCatching { liveDb() }.getOrNull()
+            val db = liveDb()
             if (db == null || !db.isOpen) emit(null)
             else emitAll(
                 db.movieDao().getByIdAsFlow(id).catch { e ->
@@ -54,7 +54,7 @@ class MovieViewModel(
                     if (movies.isEmpty()) {
                         emit(emptyList())
                     } else {
-                        val db = runCatching { liveDb() }.getOrNull()
+                        val db = liveDb()
                         if (db == null || !db.isOpen) emit(emptyList())
                         else emitAll(
                             db.movieDao().getByIds(movies.map { it.id }).catch { e ->
@@ -75,7 +75,7 @@ class MovieViewModel(
                     if (tvShows.isEmpty()) {
                         emit(emptyList())
                     } else {
-                        val db = runCatching { liveDb() }.getOrNull()
+                        val db = liveDb()
                         if (db == null || !db.isOpen) emit(emptyList())
                         else emitAll(
                             db.tvShowDao().getByIds(tvShows.map { it.id }).catch { e ->
@@ -152,7 +152,7 @@ class MovieViewModel(
                 }
             }.getOrDefault(pluginEnriched)
 
-            val db = runCatching { liveDb() }.getOrNull()
+            val db = liveDb()
             db?.movieDao()?.getById(id)?.let { movieDb ->
                 enriched.merge(movieDb)
             }
@@ -177,7 +177,7 @@ class MovieViewModel(
      */
     private suspend fun metadataOnlyFallback(id: String): Movie? {
         val language = UserPreferences.currentProvider?.language
-        val cached = runCatching { liveDb().movieDao().getById(id) }.getOrNull()
+        val cached = liveDb()?.movieDao()?.getById(id)
         val base = cached
             ?: id.toIntOrNull()?.let {
                 runCatching {
