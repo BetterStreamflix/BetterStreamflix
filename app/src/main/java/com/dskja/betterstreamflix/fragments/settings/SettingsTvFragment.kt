@@ -45,7 +45,9 @@ import androidx.preference.SwitchPreference
 import androidx.preference.SwitchPreferenceCompat
 import com.dskja.betterstreamflix.BuildConfig
 import com.dskja.betterstreamflix.R
+import android.app.Activity
 import com.dskja.betterstreamflix.activities.main.MainTvActivity
+import com.dskja.betterstreamflix.activities.tools.QrScannerActivity
 import com.dskja.betterstreamflix.sync.CastRoomSettingsController
 import com.dskja.betterstreamflix.backup.BackupRestoreManager
 import com.dskja.betterstreamflix.backup.ProviderBackupContext
@@ -155,6 +157,43 @@ class SettingsTvFragment : LeanbackPreferenceFragmentCompat() {
             viewLifecycleOwner.lifecycleScope.launch {
                 performBackupImport(it)
             }
+        }
+    }
+
+    private var pendingProfileExportJson: String? = null
+
+    private val exportProfileLauncher = registerForActivityResult(
+        ActivityResultContracts.CreateDocument("application/json")
+    ) { uri: Uri? ->
+        val json = pendingProfileExportJson
+        pendingProfileExportJson = null
+        if (uri == null || json == null) return@registerForActivityResult
+        val ok = com.dskja.betterstreamflix.profiletransfer.ProfileTransferUi
+            .writeJsonToUri(requireContext(), uri, json)
+        showSettingsInfo(
+            getString(
+                if (ok) R.string.profile_transfer_export_saved
+                else R.string.profile_transfer_export_failed_generic,
+            ),
+        )
+    }
+
+    private val importProfileLauncher = registerForActivityResult(
+        ActivityResultContracts.OpenDocument()
+    ) { uri: Uri? ->
+        uri ?: return@registerForActivityResult
+        activity?.let {
+            com.dskja.betterstreamflix.profiletransfer.ProfileTransferUi.importFromFileUri(it, uri)
+        }
+    }
+
+    private val scanProfileQrLauncher = registerForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        if (result.resultCode != Activity.RESULT_OK) return@registerForActivityResult
+        val rawValue = result.data?.getStringExtra(QrScannerActivity.EXTRA_QR_VALUE)
+        activity?.let {
+            com.dskja.betterstreamflix.profiletransfer.ProfileTransferUi.handleIncomingRaw(it, rawValue)
         }
     }
 
@@ -358,6 +397,35 @@ class SettingsTvFragment : LeanbackPreferenceFragmentCompat() {
                     finish()
                     startActivity(Intent(this, MainTvActivity::class.java))
                 }
+            },
+            onExportProfile = {
+                com.dskja.betterstreamflix.profiletransfer.ProfileTransferUi.exportFromSettings(this) { fileName, json ->
+                    pendingProfileExportJson = json
+                    runCatching { exportProfileLauncher.launch(fileName) }
+                        .onFailure {
+                            pendingProfileExportJson = null
+                            showSettingsInfo(getString(R.string.profile_transfer_export_failed_generic))
+                        }
+                }
+            },
+            onImportProfile = {
+                com.dskja.betterstreamflix.profiletransfer.ProfileTransferUi.importMenu(
+                    fragment = this,
+                    openFile = {
+                        runCatching {
+                            importProfileLauncher.launch(arrayOf("application/json", "text/plain", "*/*"))
+                        }
+                    },
+                    scanQr = {
+                        runCatching {
+                            scanProfileQrLauncher.launch(
+                                Intent(requireContext(), QrScannerActivity::class.java),
+                            )
+                        }.onFailure {
+                            showSettingsInfo(getString(R.string.profile_transfer_scan_failed))
+                        }
+                    },
+                )
             },
         )
         gateKidsProfileSettingsPrefs()

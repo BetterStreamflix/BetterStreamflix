@@ -78,6 +78,30 @@ object EpisodeNotesStore {
         }
     }
 
+    /**
+     * All notes for the active profile (episodeId → text).
+     * Used by profile export — never leaks other profiles' notes.
+     */
+    fun listForActiveProfile(context: Context): List<Pair<String, String>> {
+        val profileId = ProfileManager.activeProfileId
+        val isDefault = profileId == ProfileManager.DEFAULT_PROFILE_ID
+        val suffix = "_p_$profileId"
+        return prefs(context).all.mapNotNull { (key, value) ->
+            val text = (value as? String)?.takeIf { it.isNotBlank() } ?: return@mapNotNull null
+            if (!key.startsWith(KEY_PREFIX)) return@mapNotNull null
+            val rest = key.removePrefix(KEY_PREFIX)
+            val episodeId = if (isDefault) {
+                if (rest.contains("_p_")) return@mapNotNull null
+                rest
+            } else {
+                if (!rest.endsWith(suffix)) return@mapNotNull null
+                rest.removeSuffix(suffix)
+            }
+            if (episodeId.isBlank()) return@mapNotNull null
+            episodeId to text
+        }.sortedBy { it.first }
+    }
+
     private fun prefKey(episodeId: String): String =
         ProfileManager.scopedPrefKey("$KEY_PREFIX$episodeId")
 

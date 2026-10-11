@@ -133,6 +133,18 @@
                 android:title="@string/profile_delete_title"
                 android:summary="@string/profile_delete_summary"
                 app:iconSpaceReserved="false" />
+
+            <Preference
+                android:key="PROFILE_EXPORT"
+                android:title="@string/profile_transfer_export_title"
+                android:summary="@string/profile_transfer_export_summary"
+                app:iconSpaceReserved="false" />
+
+            <Preference
+                android:key="PROFILE_IMPORT"
+                android:title="@string/profile_transfer_import_title"
+                android:summary="@string/profile_transfer_import_summary"
+                app:iconSpaceReserved="false" />
         </PreferenceCategory>
 
         <PreferenceCategory

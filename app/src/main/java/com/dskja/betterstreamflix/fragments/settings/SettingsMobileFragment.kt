@@ -187,6 +187,44 @@ class SettingsMobileFragment : PreferenceFragmentCompat() {
         activity?.let { CastRoomSettingsController.onScanResult(it, rawValue) }
     }
 
+    private var pendingProfileExportJson: String? = null
+
+    private val exportProfileLauncher = registerForActivityResult(
+        ActivityResultContracts.CreateDocument("application/json")
+    ) { uri: Uri? ->
+        val json = pendingProfileExportJson
+        pendingProfileExportJson = null
+        if (uri == null || json == null) return@registerForActivityResult
+        val ok = com.dskja.betterstreamflix.profiletransfer.ProfileTransferUi
+            .writeJsonToUri(requireContext(), uri, json)
+        showSettingsInfo(
+            getString(
+                if (ok) R.string.profile_transfer_export_saved
+                else R.string.profile_transfer_export_failed_generic,
+            ),
+            R.string.profile_transfer_export_title,
+        )
+    }
+
+    private val importProfileLauncher = registerForActivityResult(
+        ActivityResultContracts.OpenDocument()
+    ) { uri: Uri? ->
+        uri ?: return@registerForActivityResult
+        activity?.let {
+            com.dskja.betterstreamflix.profiletransfer.ProfileTransferUi.importFromFileUri(it, uri)
+        }
+    }
+
+    private val scanProfileQrLauncher = registerForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        if (result.resultCode != Activity.RESULT_OK) return@registerForActivityResult
+        val rawValue = result.data?.getStringExtra(QrScannerActivity.EXTRA_QR_VALUE)
+        activity?.let {
+            com.dskja.betterstreamflix.profiletransfer.ProfileTransferUi.handleIncomingRaw(it, rawValue)
+        }
+    }
+
     override fun onCreatePreferences(savedInstanceState: Bundle?, rootKey: String?) {
         currentScreenState = SettingsScreenState(rootKey = rootKey, title = null)
         renderCurrentScreen()
@@ -454,6 +492,41 @@ class SettingsMobileFragment : PreferenceFragmentCompat() {
                     finish()
                     startActivity(Intent(this, MainMobileActivity::class.java))
                 }
+            },
+            onExportProfile = {
+                com.dskja.betterstreamflix.profiletransfer.ProfileTransferUi.exportFromSettings(this) { fileName, json ->
+                    pendingProfileExportJson = json
+                    runCatching { exportProfileLauncher.launch(fileName) }
+                        .onFailure {
+                            pendingProfileExportJson = null
+                            showSettingsInfo(
+                                getString(R.string.profile_transfer_export_failed_generic),
+                                R.string.profile_transfer_export_title,
+                            )
+                        }
+                }
+            },
+            onImportProfile = {
+                com.dskja.betterstreamflix.profiletransfer.ProfileTransferUi.importMenu(
+                    fragment = this,
+                    openFile = {
+                        runCatching {
+                            importProfileLauncher.launch(arrayOf("application/json", "text/plain", "*/*"))
+                        }
+                    },
+                    scanQr = {
+                        runCatching {
+                            scanProfileQrLauncher.launch(
+                                Intent(requireContext(), QrScannerActivity::class.java),
+                            )
+                        }.onFailure {
+                            showSettingsInfo(
+                                getString(R.string.profile_transfer_scan_failed),
+                                R.string.profile_transfer_import_title,
+                            )
+                        }
+                    },
+                )
             },
         )
         ConnectionServicesController.bind(

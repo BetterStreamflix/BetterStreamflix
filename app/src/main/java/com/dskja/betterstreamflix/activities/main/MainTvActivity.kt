@@ -316,6 +316,7 @@ class MainTvActivity : FragmentActivity() {
         handleSharedWatchlistIntent(intent)
         handleWatchPartyIntent(intent)
         handleDownloadPackIntent(intent)
+        handleProfileTransferIntent(intent)
         handleCastRoomIntent(intent)
         handleWatchDeepLink(intent)
         com.dskja.betterstreamflix.tvlauncher.TvLauncherSync.start(this)
@@ -332,6 +333,7 @@ class MainTvActivity : FragmentActivity() {
         handleSharedWatchlistIntent(intent)
         handleWatchPartyIntent(intent)
         handleDownloadPackIntent(intent)
+        handleProfileTransferIntent(intent)
         handleCastRoomIntent(intent)
         handleWatchDeepLink(intent)
     }
@@ -406,6 +408,12 @@ class MainTvActivity : FragmentActivity() {
         com.dskja.betterstreamflix.download.DownloadPackUi.handleIncoming(this, payload)
     }
 
+    private fun handleProfileTransferIntent(intent: Intent?) {
+        val payload = com.dskja.betterstreamflix.profiletransfer.ProfileTransferLinks.parse(intent?.data)
+            ?: return
+        com.dskja.betterstreamflix.profiletransfer.ProfileTransferUi.handleIncoming(this, payload)
+    }
+
     private fun handleCastRoomIntent(intent: Intent?) {
         val token = com.dskja.betterstreamflix.sync.CastRoomLinks.parseToken(intent?.data)
             ?: return
@@ -449,6 +457,7 @@ class MainTvActivity : FragmentActivity() {
         // Watch-Party / pack / Cast Room links share the activity; skip Watch Next routing.
         if (com.dskja.betterstreamflix.sync.WatchPartyLinks.parseToken(data) != null) return
         if (com.dskja.betterstreamflix.download.DownloadPackLinks.parse(data) != null) return
+        if (com.dskja.betterstreamflix.profiletransfer.ProfileTransferLinks.parse(data) != null) return
         if (com.dskja.betterstreamflix.sync.CastRoomLinks.parseToken(data) != null) return
         com.dskja.betterstreamflix.tvlauncher.TvWatchDeepLinkRouter.handle(this, data)
     }
@@ -479,6 +488,7 @@ class MainTvActivity : FragmentActivity() {
         com.dskja.betterstreamflix.sync.SharedWatchlistUi.tryFlushPending(this)
         com.dskja.betterstreamflix.sync.WatchPartyUi.tryFlushPending(this)
         com.dskja.betterstreamflix.download.DownloadPackUi.tryFlushPending(this)
+        com.dskja.betterstreamflix.profiletransfer.ProfileTransferUi.tryFlushPending(this)
         com.dskja.betterstreamflix.sync.CastRoomUi.tryFlushPending(this)
         com.dskja.betterstreamflix.tvlauncher.TvLauncherSync.requestPublish(this)
         val destId = (supportFragmentManager.findFragmentById(binding.navMainFragment.id)
@@ -503,6 +513,7 @@ class MainTvActivity : FragmentActivity() {
         com.dskja.betterstreamflix.sync.SharedWatchlistUi.tryFlushPending(this)
         com.dskja.betterstreamflix.sync.WatchPartyUi.tryFlushPending(this)
         com.dskja.betterstreamflix.download.DownloadPackUi.tryFlushPending(this)
+        com.dskja.betterstreamflix.profiletransfer.ProfileTransferUi.tryFlushPending(this)
         com.dskja.betterstreamflix.sync.CastRoomUi.tryFlushPending(this)
     }
 
@@ -523,6 +534,7 @@ class MainTvActivity : FragmentActivity() {
         if (!com.dskja.betterstreamflix.profiles.ProfileUnlockGate.requiresGateForActive()) {
             com.dskja.betterstreamflix.sync.WatchPartyUi.tryFlushPending(this)
             com.dskja.betterstreamflix.download.DownloadPackUi.tryFlushPending(this)
+            com.dskja.betterstreamflix.profiletransfer.ProfileTransferUi.tryFlushPending(this)
             com.dskja.betterstreamflix.sync.CastRoomUi.tryFlushPending(this)
             return
         }
@@ -534,6 +546,7 @@ class MainTvActivity : FragmentActivity() {
             onUnlocked = {
                 com.dskja.betterstreamflix.sync.WatchPartyUi.tryFlushPending(this)
                 com.dskja.betterstreamflix.download.DownloadPackUi.tryFlushPending(this)
+                com.dskja.betterstreamflix.profiletransfer.ProfileTransferUi.tryFlushPending(this)
                 com.dskja.betterstreamflix.sync.CastRoomUi.tryFlushPending(this)
             },
         )
