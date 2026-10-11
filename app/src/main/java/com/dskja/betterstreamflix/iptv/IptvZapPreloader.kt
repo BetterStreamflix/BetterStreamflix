@@ -17,18 +17,20 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 
 /**
- * Warms getServers (+ optional getVideo for the first server) for ±1 neighbors
+ * Warms getServers (+ optional getVideo for the first server) for ±N neighbors
  * so channel zapping skips a full cold resolve on the critical path.
  */
 object IptvZapPreloader {
 
     private const val TAG = "IptvZapPreloader"
-    private const val MAX_ENTRIES = 12
-    private const val MAX_VIDEO_ENTRIES = 6
+    private const val MAX_ENTRIES = 16
+    private const val MAX_VIDEO_ENTRIES = 8
+    /** Default zap warm radius (±2) for stabler Live Hub / IPTV hopping. */
+    const val DEFAULT_WARM_RADIUS = 2
     /** Warm server lists go stale quickly on rotating IPTV CDNs. */
     private const val TTL_MS = 90_000L
     /** Keep last-good m3u8 briefly so zap does not re-scrape immediately. */
-    private const val VIDEO_TTL_MS = 90_000L
+    private const val VIDEO_TTL_MS = 120_000L
 
     private data class CacheEntry(
         val servers: List<Video.Server>,
@@ -97,10 +99,21 @@ object IptvZapPreloader {
             videoByServerId.remove(serverId, hit)
             return null
         }
+        videoByServerId.remove(serverId, hit)
         return hit.video
     }
 
-    fun warmNeighbors(provider: Provider, radius: Int = 1) {
+    /** Non-destructive warm hit — preferred on the zap critical path. */
+    fun peekCachedVideo(serverId: String): Video? {
+        val hit = videoByServerId[serverId] ?: return null
+        if (!hit.isFresh()) {
+            videoByServerId.remove(serverId, hit)
+            return null
+        }
+        return hit.video
+    }
+
+    fun warmNeighbors(provider: Provider, radius: Int = DEFAULT_WARM_RADIUS) {
         if (provider !is IptvProvider) return
         val neighbors = IptvLiveSession.neighbors(radius)
         if (neighbors.isEmpty()) return

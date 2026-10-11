@@ -28,9 +28,16 @@
 	<string name="main_menu_change_provider">تغيير المزود</string>
 	<string name="main_menu_search">بحث</string>
 	<string name="main_menu_home">الرئيسية</string>
+	<string name="main_menu_live">مباشر</string>
 	<string name="main_menu_movies">أفلام</string>
 	<string name="main_menu_tv_shows">مسلسلات</string>
 	<string name="main_menu_settings">الإعدادات</string>
+	<string name="live_hub_title">مباشر</string>
+	<string name="live_hub_tagline">رياضة وأخبار وقنوات من DaddyLive وStreamSports99 وIPTV</string>
+	<string name="live_hub_section_sport">رياضة</string>
+	<string name="live_hub_section_news">أخبار</string>
+	<string name="live_hub_section_channels">قنوات</string>
+	<string name="live_hub_empty">لا توجد قنوات مباشرة الآن — أعد المحاولة</string>
 
 	<string name="search_input_hint">ابحث عن الأفلام أو المسلسلات</string>
 	<string name="search_input_hint_iptv">البحث عن القنوات</string>

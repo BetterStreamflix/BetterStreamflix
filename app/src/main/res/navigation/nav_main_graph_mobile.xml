@@ -42,6 +42,18 @@
             app:destination="@id/tv_show" />
     </fragment>
     <fragment
+        android:id="@+id/live_hub"
+        android:name="com.dskja.betterstreamflix.fragments.live.LiveHubMobileFragment"
+        android:label="fragment_live_hub_mobile"
+        tools:layout="@layout/fragment_live_hub_mobile">
+        <action
+            android:id="@+id/action_live_hub_to_tv_show"
+            app:destination="@id/tv_show" />
+        <action
+            android:id="@+id/action_live_hub_to_player"
+            app:destination="@id/player" />
+    </fragment>
+    <fragment
         android:id="@+id/favorites"
         android:name="com.dskja.betterstreamflix.fragments.favorites.FavoritesMobileFragment"
         android:label="fragment_favorites_mobile"

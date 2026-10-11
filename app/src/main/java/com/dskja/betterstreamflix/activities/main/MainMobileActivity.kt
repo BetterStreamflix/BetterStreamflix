@@ -583,6 +583,7 @@ class MainMobileActivity : FragmentActivity() {
         return destinationId in setOf(
             R.id.search,
             R.id.home,
+            R.id.live_hub,
             R.id.movies,
             R.id.tv_shows,
             R.id.favorites,
