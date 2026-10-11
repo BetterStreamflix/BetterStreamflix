@@ -15,6 +15,8 @@ import kotlinx.coroutines.withContext
  */
 object CastQueueCoordinator {
     private const val TAG = "CastQueue"
+    /** Cap hoster hops when prefetching the next Cast item. */
+    private const val MAX_SERVER_ATTEMPTS = 4
 
     data class NextCastItem(
         val mediaItem: MediaItem,
@@ -23,8 +25,19 @@ object CastQueueCoordinator {
         val server: Video.Server,
     )
 
+    /** Episode currently sitting in the Cast hub queue (not yet claimed). */
+    @Volatile
+    var pendingQueuedEpisode: Video.Type.Episode? = null
+        private set
+
+    /** Last episode claimed from the Cast queue (hub-only advance). */
+    @Volatile
+    var lastClaimedEpisode: Video.Type.Episode? = null
+        private set
+
     /**
      * Prefetch next episode for Cast. Safe to call repeatedly — clears stale queue first.
+     * Tries up to [MAX_SERVER_ATTEMPTS] hosters so a dead first server does not empty the queue.
      */
     suspend fun prepareNextEpisodeQueue(
         provider: Provider?,
@@ -58,8 +71,29 @@ object CastQueueCoordinator {
                 ),
             )
             val servers = activeProvider.getServers(next.id, nextType)
-            val server = servers.firstOrNull() ?: return@runCatching null
-            val video = activeProvider.getVideo(server)
+            if (servers.isEmpty()) {
+                lastFailureMessage = "no servers"
+                return@runCatching null
+            }
+            var resolved: Pair<Video.Server, Video>? = null
+            var lastError: String? = null
+            for (server in servers.take(MAX_SERVER_ATTEMPTS)) {
+                try {
+                    val video = activeProvider.getVideo(server)
+                    if (video.source.isNotBlank()) {
+                        resolved = server to video
+                        break
+                    }
+                    lastError = "empty source (${server.name})"
+                } catch (e: Exception) {
+                    lastError = e.message ?: e.javaClass.simpleName
+                    Log.w(TAG, "Cast next server ${server.name} failed: ${e.message}")
+                }
+            }
+            val (server, video) = resolved ?: run {
+                lastFailureMessage = lastError ?: "all servers failed"
+                return@runCatching null
+            }
             val title = next.tvShow.title
             val subtitle = "S${next.season.number} E${next.number}" +
                 (next.title?.takeIf { it.isNotBlank() }?.let { "  •  $it" } ?: "")
@@ -93,9 +127,27 @@ object CastQueueCoordinator {
     var lastFailureMessage: String? = null
         private set
 
-    fun enqueueExclusive(item: MediaItem) {
+    fun enqueueExclusive(item: MediaItem, episode: Video.Type.Episode? = null) {
         CastPlaybackHub.clearQueue()
         CastPlaybackHub.enqueue(item)
+        pendingQueuedEpisode = episode
         Log.i(TAG, "Cast queue size=${CastPlaybackHub.queuedCount()}")
+    }
+
+    /**
+     * Called when the Cast hub claims the next queued item. Advances [EpisodeManager]
+     * so local autoplay / UI stay aligned with the episode Cast is already playing.
+     */
+    fun onQueueItemClaimed(): Video.Type.Episode? {
+        val episode = pendingQueuedEpisode ?: return null
+        pendingQueuedEpisode = null
+        lastClaimedEpisode = episode
+        val peeked = EpisodeManager.peekNextEpisode()
+        if (peeked != null && peeked.id == episode.id) {
+            EpisodeManager.getNextEpisode()
+        } else {
+            EpisodeManager.setCurrentEpisode(episode)
+        }
+        return episode
     }
 }
