@@ -594,7 +594,20 @@ class PlayerTvFragment : Fragment(),
                             viewModel.getVideo(selected)
                         }
                         val preferredServer = state.servers.firstOrNull {
+                            !args.preferredServerId.isNullOrBlank() && it.id == args.preferredServerId
+                        } ?: state.servers.firstOrNull {
                             it.name.equals(args.preferredServerName, ignoreCase = true)
+                        } ?: state.servers.firstOrNull {
+                            !com.dskja.betterstreamflix.sync.CastHandoffSession
+                                .preferredServerIdOrNull().isNullOrBlank() &&
+                                it.id == com.dskja.betterstreamflix.sync.CastHandoffSession
+                                .preferredServerIdOrNull()
+                        } ?: state.servers.firstOrNull {
+                            it.name.equals(
+                                com.dskja.betterstreamflix.sync.CastHandoffSession
+                                    .preferredServerNameOrNull(),
+                                ignoreCase = true,
+                            )
                         }
                         // Prefer a non-bypass hoster when interactive bypass failed.
                         val playServer = when {
@@ -1007,6 +1020,7 @@ class PlayerTvFragment : Fragment(),
         isTearingDown = true
         com.dskja.betterstreamflix.sync.WatchPartyPlayerHooks.onDestroyView(this)
         com.dskja.betterstreamflix.sync.CastHandoffPlayerHooks.onDestroyView(this)
+        com.dskja.betterstreamflix.sync.SessionHandoffPlayerHooks.onDestroyView(this)
         com.dskja.betterstreamflix.sync.CastRoomPlayerHooks.onDestroyView(this)
         livePipZapController?.release()
         livePipZapController = null
@@ -2742,7 +2756,12 @@ class PlayerTvFragment : Fragment(),
                         ) {
                             return@withContext
                         }
-                        val target = PlaybackProgress.resumeTargetMs(savedPosition, player.duration)
+                        // Session / Cast handoff: seek exactly — no Continue Watching rewind.
+                        val target = if (handoffPosition != null) {
+                            handoffPosition
+                        } else {
+                            PlaybackProgress.resumeTargetMs(savedPosition, player.duration)
+                        }
                         runCatching { player.seekTo(target) }
                     }
                 }

@@ -50,19 +50,32 @@ object SessionHandoffRepository {
         endOwnedActiveOffers(appContext, profileId, userId)
 
         val token = newShareToken()
-        val shortCode = newUniqueShortCode()
-        val row = buildRow(
-            shareToken = token,
-            shortCode = shortCode,
-            hostUserId = userId,
-            provider = provider,
-            videoType = videoType,
-            server = server,
-            positionMs = positionMs.coerceAtLeast(0L),
-        )
-        val inserted = client.from(TABLE)
-            .insert(row) { select(Columns.ALL) }
-            .decodeSingle<RemoteSessionHandoff>()
+        val inserted = CompanionShortCodes.mintUnique { shortCode ->
+            val row = buildRow(
+                shareToken = token,
+                shortCode = shortCode,
+                hostUserId = userId,
+                provider = provider,
+                videoType = videoType,
+                server = server,
+                positionMs = positionMs.coerceAtLeast(0L),
+            )
+            runCatching {
+                client.from(TABLE)
+                    .insert(row) { select(Columns.ALL) }
+                    .decodeSingle<RemoteSessionHandoff>()
+            }.getOrElse { error ->
+                val msg = error.message.orEmpty()
+                if (msg.contains("short_code", ignoreCase = true) ||
+                    msg.contains("unique", ignoreCase = true) ||
+                    msg.contains("23505")
+                ) {
+                    null
+                } else {
+                    throw error
+                }
+            }
+        }
 
         return OfferResult(
             token = inserted.shareToken,
@@ -152,6 +165,9 @@ object SessionHandoffRepository {
         val client = SupabaseProvider.initializeForProfile(appContext, profileId)
             ?: error("Configure Supabase before using Session Handoff")
         client.auth.awaitInitialization()
+        if (client.auth.currentSessionOrNull()?.user?.id == null) {
+            error("Sign in to peek a session handoff")
+        }
 
         val payload = runCatching {
             client.postgrest.rpc(
@@ -159,7 +175,8 @@ object SessionHandoffRepository {
                 SessionHandoffCodeParam(cleaned),
             ).decodeAs<SessionHandoffPayload>()
         }.getOrNull()
-        if (payload == null || payload.shareToken.isNullOrBlank()) {
+        // Peek JSON intentionally omits share_token — validate via media identity.
+        if (payload == null || payload.mediaId.isBlank()) {
             error("Handoff not found or already claimed")
         }
         if (payload.ended || payload.claimed) error("Handoff already claimed")
@@ -298,8 +315,6 @@ object SessionHandoffRepository {
 
     private fun newShareToken(): String =
         UUID.randomUUID().toString().replace("-", "")
-
-    private fun newUniqueShortCode(): String = SessionHandoffCodes.newShortCode()
 
     private fun requireConfigured() {
         if (!SupabaseProvider.isConfigured) {

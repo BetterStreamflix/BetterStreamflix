@@ -54,22 +54,35 @@ object CastRoomRepository {
         endOwnedActiveRooms(appContext, profileId, userId)
 
         val token = newShareToken()
-        val shortCode = newUniqueShortCode()
-        val row = RemoteCastRoom(
-            shareToken = token,
-            shortCode = shortCode,
-            hostUserId = userId,
-            provider = provider,
-            nowPlayingIndex = 0,
-            playing = false,
-            positionMs = 0L,
-            revision = 1L,
-            ended = false,
-            expiresAt = Instant.now().plus(TOKEN_TTL_HOURS, ChronoUnit.HOURS).toString(),
-        )
-        val inserted = client.from(TABLE)
-            .insert(row) { select(Columns.ALL) }
-            .decodeSingle<RemoteCastRoom>()
+        val inserted = CompanionShortCodes.mintUnique { shortCode ->
+            val row = RemoteCastRoom(
+                shareToken = token,
+                shortCode = shortCode,
+                hostUserId = userId,
+                provider = provider,
+                nowPlayingIndex = 0,
+                playing = false,
+                positionMs = 0L,
+                revision = 1L,
+                ended = false,
+                expiresAt = Instant.now().plus(TOKEN_TTL_HOURS, ChronoUnit.HOURS).toString(),
+            )
+            runCatching {
+                client.from(TABLE)
+                    .insert(row) { select(Columns.ALL) }
+                    .decodeSingle<RemoteCastRoom>()
+            }.getOrElse { error ->
+                val msg = error.message.orEmpty()
+                if (msg.contains("short_code", ignoreCase = true) ||
+                    msg.contains("unique", ignoreCase = true) ||
+                    msg.contains("23505")
+                ) {
+                    null
+                } else {
+                    throw error
+                }
+            }
+        }
 
         return HostCreateResult(
             token = inserted.shareToken,
@@ -116,13 +129,37 @@ object CastRoomRepository {
         client.auth.awaitInitialization()
         if (client.auth.currentSessionOrNull()?.user?.id == null) return
 
+        val updatedAt = Instant.now().toString()
+        val index = nowPlayingIndex.coerceAtLeast(0)
+        // CC-010: do not clobber position_ms while a Sidekick seek is still unacked.
+        val pendingSeek = run {
+            val payload = CastRoomUi.latestPayload()
+            payload != null && payload.sidekickSeekSeq > CastRoomSession.lastAppliedSeekSeq
+        }
+        if (pendingSeek) {
+            client.from(TABLE)
+                .update(
+                    RemoteCastRoomHostHeartbeatMeta(
+                        playing = playing,
+                        nowPlayingIndex = index,
+                        updatedAt = updatedAt,
+                    ),
+                ) {
+                    filter {
+                        eq("id", roomId)
+                        eq("ended", false)
+                    }
+                }
+            return
+        }
+
         client.from(TABLE)
             .update(
                 RemoteCastRoomHostHeartbeat(
                     positionMs = positionMs.coerceAtLeast(0L),
                     playing = playing,
-                    nowPlayingIndex = nowPlayingIndex.coerceAtLeast(0),
-                    updatedAt = Instant.now().toString(),
+                    nowPlayingIndex = index,
+                    updatedAt = updatedAt,
                 ),
             ) {
                 filter {
@@ -194,6 +231,17 @@ object CastRoomRepository {
         val client = SupabaseProvider.initializeForProfile(appContext, profileId)
             ?: error("Configure Supabase before using Cast Room")
         client.auth.awaitInitialization()
+
+        // CC-038: room provider is pinned at create — reject foreign catalog adds.
+        val roomProvider = CastRoomUi.latestPayload()?.provider
+            ?: runCatching { fetchByToken(appContext, token).provider }.getOrNull()
+        val currentProvider = UserPreferences.currentProvider?.name
+        if (!roomProvider.isNullOrBlank() &&
+            !currentProvider.isNullOrBlank() &&
+            !roomProvider.equals(currentProvider, ignoreCase = true)
+        ) {
+            error("This Cast Room uses provider $roomProvider")
+        }
 
         val param = when (videoType) {
             is Video.Type.Movie -> CastRoomAddItemParam(
@@ -392,7 +440,7 @@ object CastRoomRepository {
         return payload
     }
 
-    suspend fun ackSidekickText(context: Context, token: String) {
+    suspend fun ackSidekickText(context: Context, token: String, seq: Long) {
         requireConfigured()
         if (!CastRoomLinks.isValidToken(token)) return
         val appContext = context.applicationContext
@@ -400,7 +448,10 @@ object CastRoomRepository {
         val client = SupabaseProvider.clientFor(appContext, profileId)
         client.auth.awaitInitialization()
         runCatching {
-            client.postgrest.rpc(RPC_ACK_TEXT, CastRoomTokenParam(token.trim()))
+            client.postgrest.rpc(
+                RPC_ACK_TEXT,
+                CastRoomAckSidekickTextParam(token.trim(), seq),
+            )
         }.onFailure { Log.w(TAG, "Ack Sidekick text failed", it) }
     }
 
@@ -433,7 +484,9 @@ object CastRoomRepository {
                 CastRoomPostMessageParam(
                     token = token.trim(),
                     memberKey = WatchPartyMemberIdentity.memberKey(appContext),
-                    displayName = WatchPartyMemberIdentity.displayName(),
+                    displayName = TvSidekick.sanitizeDisplayName(
+                        WatchPartyMemberIdentity.displayName(),
+                    ),
                     kind = kind,
                     body = cleanedBody,
                 ),
@@ -551,8 +604,6 @@ object CastRoomRepository {
 
     private fun newShareToken(): String =
         UUID.randomUUID().toString().replace("-", "")
-
-    private fun newUniqueShortCode(): String = CastRoomQueue.newShortCode()
 
     private fun requireConfigured() {
         if (!SupabaseProvider.isConfigured) {

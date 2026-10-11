@@ -28,6 +28,24 @@ class WatchPartyChatTest {
     }
 
     @Test
+    fun stripsUrlsAndControlChars() {
+        assertEquals(
+            "check this out",
+            WatchPartyChat.sanitizeChatBody("check this out https://evil.example/stream.m3u8"),
+        )
+        assertEquals(
+            "hi",
+            WatchPartyChat.sanitizeChatBody("hi www.example.com/watch"),
+        )
+        assertEquals(
+            "join me",
+            WatchPartyChat.sanitizeChatBody("join me betterstreamflix://party/abc"),
+        )
+        assertEquals("clean", WatchPartyChat.sanitizeChatBody("cle\u0001an"))
+        assertNull(WatchPartyChat.sanitizeChatBody("https://only.url"))
+    }
+
+    @Test
     fun sanitizesDisplayName() {
         assertEquals("Guest", WatchPartyChat.sanitizeDisplayName(null))
         assertEquals("Guest", WatchPartyChat.sanitizeDisplayName("   "))

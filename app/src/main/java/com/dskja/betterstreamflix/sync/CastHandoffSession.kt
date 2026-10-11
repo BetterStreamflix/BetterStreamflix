@@ -26,6 +26,10 @@ object CastHandoffSession {
         private set
 
     @Volatile
+    var pendingServerId: String? = null
+        private set
+
+    @Volatile
     var pendingServerName: String? = null
         private set
 
@@ -34,16 +38,29 @@ object CastHandoffSession {
         this.shortCode = shortCode
         this.handoffId = handoffId
         pendingPositionMs = null
+        pendingServerId = null
         pendingServerName = null
     }
 
-    fun beginClaim(shortCode: String, handoffId: String?, positionMs: Long, serverName: String?) {
+    fun beginClaim(
+        shortCode: String,
+        handoffId: String?,
+        positionMs: Long,
+        serverName: String?,
+        serverId: String? = null,
+    ) {
         role = Role.CLAIM
         this.shortCode = shortCode
         this.handoffId = handoffId
         pendingPositionMs = positionMs.coerceAtLeast(0L)
+        pendingServerId = serverId
         pendingServerName = serverName
     }
+
+    /** Prefer id, then name — used when nav args omit server fields. */
+    fun preferredServerIdOrNull(): String? = pendingServerId
+
+    fun preferredServerNameOrNull(): String? = pendingServerName
 
     /** Returns and clears the one-shot seek target. */
     fun consumePendingPositionMs(): Long? {
@@ -59,6 +76,7 @@ object CastHandoffSession {
         shortCode = null
         handoffId = null
         pendingPositionMs = null
+        pendingServerId = null
         pendingServerName = null
     }
 

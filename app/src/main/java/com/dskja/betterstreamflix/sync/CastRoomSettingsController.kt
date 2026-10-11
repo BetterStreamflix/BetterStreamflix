@@ -38,15 +38,18 @@ object CastRoomSettingsController {
         fun refresh() {
             val hosting = CastRoomSession.isHost()
             val controlling = CastRoomSession.isController()
-            host?.isVisible = !controlling
+            val kids = com.dskja.betterstreamflix.profiles.ProfileManager.isKidsActive()
+            host?.isVisible = !controlling && !kids
             host?.summary = when {
                 hosting -> fragment.getString(
                     R.string.cast_room_host_active_summary,
                     CastRoomSession.shortCode ?: "------",
                 )
+                kids -> fragment.getString(R.string.cast_room_kids_blocked_host)
                 else -> fragment.getString(R.string.cast_room_host_summary)
             }
-            joinScan?.isVisible = !hosting
+            // CC-075: hide QR scan on TV / surfaces without a scanner.
+            joinScan?.isVisible = !hosting && scanLauncher != null
             joinCode?.isVisible = !hosting
             openQueue?.isVisible = controlling
             showQr?.isVisible = hosting

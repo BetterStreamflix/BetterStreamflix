@@ -79,9 +79,12 @@ object WatchPartyLobbyUi {
                     dialog.dismiss()
                 }
             }
-            dialog.getButton(AlertDialog.BUTTON_POSITIVE)?.setOnClickListener {
+            val startBtn = dialog.getButton(AlertDialog.BUTTON_POSITIVE)
+            startBtn?.setOnClickListener {
                 startHostPlayback(fragment, dialog, token, serverSource)
             }
+            // CC-055: request focus on primary action for TV D-pad.
+            startBtn?.requestFocus()
             view.server.setOnClickListener {
                 if (serverSource != null) {
                     pickServer(fragment, serverSource, view.server)
@@ -101,7 +104,7 @@ object WatchPartyLobbyUi {
             listener = { lobby, messages ->
                 fragment.viewLifecycleOwner.lifecycleScope.launch(Dispatchers.Main) {
                     if (!fragment.isAdded || !dialog.isShowing) return@launch
-                    applyLobbySnapshot(view, lobby, isHost = true)
+                    applyLobbySnapshot(view, lobby, isHost = true, token = token, owner = fragment)
                     appendMessages(context, chatLines, messages, view.chat)
                     if (!lobby.party.inLobby) {
                         WatchPartySession.markPlaybackStarted()
@@ -130,7 +133,7 @@ object WatchPartyLobbyUi {
         val chatLines = ArrayDeque<String>()
         val view = inflateLobby(activity)
         val dialog = AlertDialog.Builder(activity)
-            .setTitle(R.string.watch_party_lobby_title)
+            .setTitle(R.string.watch_together_pro_lobby_title)
             .setView(view.root)
             .setCancelable(true)
             .setNegativeButton(R.string.watch_party_leave_action, null)
@@ -142,18 +145,26 @@ object WatchPartyLobbyUi {
         bindReactions(activity, view.reactions, token)
 
         dialog.setOnShowListener {
-            dialog.getButton(AlertDialog.BUTTON_NEGATIVE)?.setOnClickListener {
+            val leaveBtn = dialog.getButton(AlertDialog.BUTTON_NEGATIVE)
+            leaveBtn?.setOnClickListener {
                 activity.lifecycleScope.launch {
-                    WatchPartySync.stop()
+                    withContext(Dispatchers.IO) {
+                        runCatching { WatchPartyRepository.leaveMember(activity, token) }
+                        WatchPartySync.stop()
+                    }
                     WatchPartySession.clear()
                     dialog.dismiss()
                     ExpDialogChrome.notify(activity, R.string.watch_party_left)
                 }
             }
+            leaveBtn?.requestFocus()
         }
         dialog.setOnCancelListener {
             activity.lifecycleScope.launch {
-                WatchPartySync.stop()
+                withContext(Dispatchers.IO) {
+                    runCatching { WatchPartyRepository.leaveMember(activity, token) }
+                    WatchPartySync.stop()
+                }
                 WatchPartySession.clear()
             }
         }
@@ -170,7 +181,7 @@ object WatchPartyLobbyUi {
             listener = { lobby, messages ->
                 activity.lifecycleScope.launch(Dispatchers.Main) {
                     if (activity.isFinishing || activity.isDestroyed || !dialog.isShowing) return@launch
-                    applyLobbySnapshot(view, lobby, isHost = false)
+                    applyLobbySnapshot(view, lobby, isHost = false, token = token, owner = activity)
                     appendMessages(activity, chatLines, messages, view.chat)
                     if (!lobby.party.inLobby) {
                         WatchPartySession.markPlaybackStarted()
@@ -199,6 +210,7 @@ object WatchPartyLobbyUi {
         view.status.setText(R.string.watch_party_chat_title)
         view.server.visibility = View.GONE
         view.members.visibility = View.GONE
+        view.kickRow.visibility = View.GONE
         val dialog = AlertDialog.Builder(context)
             .setTitle(R.string.watch_party_chat_title)
             .setView(view.root)
@@ -208,13 +220,17 @@ object WatchPartyLobbyUi {
             refreshChat(view.chat, chatLines)
         }
         bindReactions(fragment, view.reactions, token)
+        dialog.setOnShowListener {
+            dialog.getButton(AlertDialog.BUTTON_NEGATIVE)?.requestFocus()
+        }
         dialog.setOnDismissListener {
+            // CC-028: only stop chat job — leave lobby polling alone if still open.
             fragment.viewLifecycleOwner.lifecycleScope.launch {
-                WatchPartySync.stopLobbyOnly()
+                WatchPartySync.stopChatOnly()
             }
         }
         dialog.show()
-        WatchPartySync.startLobby(
+        WatchPartySync.startChat(
             context = context,
             token = token,
             listener = { _, messages ->
@@ -321,6 +337,7 @@ object WatchPartyLobbyUi {
         val syncHealth: TextView,
         val server: TextView,
         val members: TextView,
+        val kickRow: LinearLayout,
         val chat: TextView,
         val reactions: LinearLayout,
         val input: EditText,
@@ -336,6 +353,7 @@ object WatchPartyLobbyUi {
             syncHealth = root.findViewById(R.id.tv_watch_party_lobby_sync),
             server = root.findViewById(R.id.tv_watch_party_lobby_server),
             members = root.findViewById(R.id.tv_watch_party_lobby_members),
+            kickRow = root.findViewById(R.id.ll_watch_party_kick_row),
             chat = root.findViewById(R.id.tv_watch_party_lobby_chat),
             reactions = root.findViewById(R.id.ll_watch_party_reactions),
             input = root.findViewById(R.id.et_watch_party_chat),
@@ -343,7 +361,13 @@ object WatchPartyLobbyUi {
         )
     }
 
-    private fun applyLobbySnapshot(view: LobbyViews, lobby: WatchPartyLobbyPayload, isHost: Boolean) {
+    private fun applyLobbySnapshot(
+        view: LobbyViews,
+        lobby: WatchPartyLobbyPayload,
+        isHost: Boolean,
+        token: String,
+        owner: Any,
+    ) {
         val ctx = view.root.context
         WatchPartySession.updateFromPayload(lobby.party)
         view.status.text = if (lobby.party.inLobby) {
@@ -383,6 +407,59 @@ object WatchPartyLobbyUi {
             }
         }.ifBlank { ctx.getString(R.string.watch_party_lobby_members_empty) }
         view.members.text = ctx.getString(R.string.watch_party_lobby_members_label, memberNames)
+        bindKickControls(view, lobby, isHost, token, owner)
+    }
+
+    private fun bindKickControls(
+        view: LobbyViews,
+        lobby: WatchPartyLobbyPayload,
+        isHost: Boolean,
+        token: String,
+        owner: Any,
+    ) {
+        view.kickRow.removeAllViews()
+        if (!isHost) {
+            view.kickRow.visibility = View.GONE
+            return
+        }
+        val guests = lobby.members.filter { !it.isHost && !it.memberKey.isNullOrBlank() }
+        if (guests.isEmpty()) {
+            view.kickRow.visibility = View.GONE
+            return
+        }
+        view.kickRow.visibility = View.VISIBLE
+        val scopeOwner = when (owner) {
+            is Fragment -> owner.viewLifecycleOwner.lifecycleScope
+            is FragmentActivity -> owner.lifecycleScope
+            else -> return
+        }
+        val context = view.root.context
+        for (member in guests) {
+            val key = member.memberKey ?: continue
+            val btn = Button(context).apply {
+                text = context.getString(R.string.watch_party_kick_action, member.displayName)
+                setOnClickListener {
+                    scopeOwner.launch {
+                        val result = withContext(Dispatchers.IO) {
+                            runCatching { WatchPartyRepository.kickMember(context, token, key) }
+                        }
+                        result.onSuccess { updated ->
+                            applyLobbySnapshot(view, updated, isHost = true, token = token, owner = owner)
+                            ExpDialogChrome.notify(context, R.string.watch_party_kick_done)
+                        }.onFailure { error ->
+                            ExpDialogChrome.notify(
+                                context,
+                                context.getString(
+                                    R.string.watch_party_kick_failed,
+                                    error.message ?: error.javaClass.simpleName,
+                                ),
+                            )
+                        }
+                    }
+                }
+            }
+            view.kickRow.addView(btn)
+        }
     }
 
     private fun bindChatControls(

@@ -16,6 +16,7 @@ import androidx.lifecycle.lifecycleScope
 import com.dskja.betterstreamflix.R
 import com.dskja.betterstreamflix.utils.ExpDialogChrome
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
@@ -28,15 +29,37 @@ object WatchPartyRemoteUi {
     @Volatile
     private var latestPayload: WatchPartyPayload? = null
 
+    private var openDialog: AlertDialog? = null
+    private var nowPlayingView: TextView? = null
+    private var healthView: TextView? = null
+    private var playButton: Button? = null
+    private var panelToken: String? = null
+    private var panelOwner: Any? = null
+
     fun showRemotePanel(owner: Any) {
         val fragment = owner as? Fragment
         val activity = owner as? FragmentActivity
         val context: Context = fragment?.context ?: activity ?: return
         val token = WatchPartySession.token ?: return
+        ensureRemotePolling(context, token)
         val payload = latestPayload
         if (payload == null) {
+            // CC-068: await first poll before rendering (do not force reopen).
             ExpDialogChrome.notify(context, R.string.watch_party_remote_loading)
-            ensureRemotePolling(context, token)
+            launchIo(owner) {
+                var waited = 0
+                while (latestPayload == null && waited < 8_000) {
+                    delay(250)
+                    waited += 250
+                }
+                val ready = latestPayload
+                if (ready == null) {
+                    ExpDialogChrome.notify(context, R.string.watch_party_remote_loading)
+                    return@launchIo
+                }
+                if (!isOwnerAlive(owner)) return@launchIo
+                renderPanel(owner, context, token, ready)
+            }
             return
         }
         renderPanel(owner, context, token, payload)
@@ -49,10 +72,12 @@ object WatchPartyRemoteUi {
             listener = { payload ->
                 latestPayload = payload
                 WatchPartySession.updateFromPayload(payload)
+                refreshOpenPanel(payload)
             },
             onEnded = {
                 WatchPartySession.clear()
                 latestPayload = null
+                clearPanelRefs()
                 kotlinx.coroutines.CoroutineScope(Dispatchers.IO).launch {
                     WatchPartySync.stop()
                 }
@@ -62,6 +87,43 @@ object WatchPartyRemoteUi {
 
     fun clear() {
         latestPayload = null
+        clearPanelRefs()
+    }
+
+    private fun clearPanelRefs() {
+        openDialog = null
+        nowPlayingView = null
+        healthView = null
+        playButton = null
+        panelToken = null
+        panelOwner = null
+    }
+
+    private fun refreshOpenPanel(payload: WatchPartyPayload) {
+        val dialog = openDialog ?: return
+        if (!dialog.isShowing) return
+        val context = nowPlayingView?.context ?: return
+        val owner = panelOwner
+        launchIo(owner ?: return) {
+            nowPlayingView?.text = context.getString(
+                R.string.watch_party_remote_now_playing,
+                payload.title.ifBlank { context.getString(R.string.watch_party_menu_title) },
+                WatchTogetherPro.formatPosition(payload.positionMs),
+            )
+            val health = WatchPartySyncHealth.fromPayload(
+                localPositionMs = payload.positionMs,
+                payload = payload,
+            )
+            healthView?.text = context.getString(
+                R.string.watch_party_sync_health_label,
+                healthLabel(context, health.level),
+                health.driftMs,
+            )
+            playButton?.text = context.getString(
+                if (payload.playing) R.string.watch_party_remote_pause
+                else R.string.watch_party_remote_play,
+            )
+        }
     }
 
     private fun renderPanel(
@@ -81,33 +143,33 @@ object WatchPartyRemoteUi {
             localPositionMs = payload.positionMs,
             payload = payload,
         )
-        list.addView(
-            TextView(context).apply {
-                text = context.getString(
-                    R.string.watch_party_remote_now_playing,
-                    payload.title.ifBlank { context.getString(R.string.watch_party_menu_title) },
-                    WatchTogetherPro.formatPosition(payload.positionMs),
-                )
-                textSize = 16f
-                setPadding(0, 0, 0, 8)
-            },
-        )
-        list.addView(
-            TextView(context).apply {
-                text = context.getString(
-                    R.string.watch_party_sync_health_label,
-                    healthLabel(context, health.level),
-                    health.driftMs,
-                )
-                textSize = 13f
-                setPadding(0, 0, 0, 12)
-            },
-        )
+        val nowPlaying = TextView(context).apply {
+            text = context.getString(
+                R.string.watch_party_remote_now_playing,
+                payload.title.ifBlank { context.getString(R.string.watch_party_menu_title) },
+                WatchTogetherPro.formatPosition(payload.positionMs),
+            )
+            textSize = 16f
+            setPadding(0, 0, 0, 8)
+        }
+        list.addView(nowPlaying)
+        val healthTv = TextView(context).apply {
+            text = context.getString(
+                R.string.watch_party_sync_health_label,
+                healthLabel(context, health.level),
+                health.driftMs,
+            )
+            textSize = 13f
+            setPadding(0, 0, 0, 12)
+        }
+        list.addView(healthTv)
 
         list.addView(sectionLabel(context, R.string.watch_party_remote_scrubber_title))
         list.addView(
             scrubberRow(context) { deltaMs ->
-                val target = WatchTogetherPro.relativeSeek(payload.positionMs, deltaMs)
+                val base = latestPayload?.positionMs ?: payload.positionMs
+                val duration = null // remote has no local duration; server clamps floor
+                val target = WatchTogetherPro.relativeSeek(base, deltaMs, duration)
                 mutate(owner, context, token) {
                     WatchPartyRepository.sidekickSeek(context, it, target)
                 }
@@ -116,23 +178,26 @@ object WatchPartyRemoteUi {
         list.addView(
             Button(context).apply {
                 text = context.getString(R.string.watch_party_remote_scrub_to_action)
-                setOnClickListener { promptAbsoluteSeek(owner, context, token, payload.positionMs) }
-            },
-        )
-
-        list.addView(
-            Button(context).apply {
-                text = context.getString(
-                    if (payload.playing) R.string.watch_party_remote_pause
-                    else R.string.watch_party_remote_play,
-                )
                 setOnClickListener {
-                    mutate(owner, context, token) {
-                        WatchPartyRepository.sidekickPlay(context, it, !payload.playing)
-                    }
+                    val current = latestPayload?.positionMs ?: payload.positionMs
+                    promptAbsoluteSeek(owner, context, token, current)
                 }
             },
         )
+
+        val playBtn = Button(context).apply {
+            text = context.getString(
+                if (payload.playing) R.string.watch_party_remote_pause
+                else R.string.watch_party_remote_play,
+            )
+            setOnClickListener {
+                val playing = latestPayload?.playing ?: payload.playing
+                mutate(owner, context, token) {
+                    WatchPartyRepository.sidekickPlay(context, it, !playing)
+                }
+            }
+        }
+        list.addView(playBtn)
 
         list.addView(sectionLabel(context, R.string.watch_party_chat_title))
         val chatView = TextView(context).apply {
@@ -183,23 +248,45 @@ object WatchPartyRemoteUi {
         )
         list.addView(reactionRow(owner, context, token, chatView))
 
-        AlertDialog.Builder(context)
+        val dialog = AlertDialog.Builder(context)
             .setTitle(R.string.watch_party_remote_title)
             .setView(scroll)
             .setNegativeButton(R.string.watch_party_leave_action) { _, _ ->
                 leaveRemote(owner)
             }
             .setPositiveButton(android.R.string.ok, null)
-            .show()
+            .create()
+        dialog.setOnShowListener {
+            dialog.getButton(AlertDialog.BUTTON_POSITIVE)?.requestFocus()
+        }
+        dialog.setOnDismissListener {
+            if (openDialog === dialog) {
+                clearPanelRefs()
+            }
+        }
+        openDialog = dialog
+        nowPlayingView = nowPlaying
+        healthView = healthTv
+        playButton = playBtn
+        panelToken = token
+        panelOwner = owner
+        dialog.show()
     }
 
     private fun leaveRemote(owner: Any) {
         launchIo(owner) {
-            withContext(Dispatchers.IO) { WatchPartySync.stop() }
+            val token = WatchPartySession.token
+            val ctx = contextOf(owner)?.applicationContext
+            withContext(Dispatchers.IO) {
+                if (ctx != null && token != null) {
+                    runCatching { WatchPartyRepository.leaveMember(ctx, token) }
+                }
+                WatchPartySync.stop()
+            }
             WatchPartySession.clear()
             clear()
-            val ctx = contextOf(owner) ?: return@launchIo
-            ExpDialogChrome.notify(ctx, R.string.watch_party_left)
+            val notifyCtx = contextOf(owner) ?: return@launchIo
+            ExpDialogChrome.notify(notifyCtx, R.string.watch_party_left)
         }
     }
 
@@ -245,6 +332,7 @@ object WatchPartyRemoteUi {
             result.onSuccess { payload ->
                 latestPayload = payload
                 WatchPartySession.updateFromPayload(payload)
+                refreshOpenPanel(payload)
             }.onFailure { error ->
                 ExpDialogChrome.notify(
                     context,
@@ -356,6 +444,12 @@ object WatchPartyRemoteUi {
         is Fragment -> owner.context
         is FragmentActivity -> owner
         else -> null
+    }
+
+    private fun isOwnerAlive(owner: Any): Boolean = when (owner) {
+        is Fragment -> owner.isAdded
+        is FragmentActivity -> !owner.isFinishing && !owner.isDestroyed
+        else -> false
     }
 
     private fun launchIo(owner: Any, block: suspend () -> Unit) {

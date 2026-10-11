@@ -286,6 +286,11 @@
             app:argType="string"
             app:nullable="true" />
         <argument
+            android:name="preferredServerId"
+            android:defaultValue="@null"
+            app:argType="string"
+            app:nullable="true" />
+        <argument
             android:name="startPositionMs"
             android:defaultValue="-1L"
             app:argType="long" />

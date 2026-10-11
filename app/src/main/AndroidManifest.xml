@@ -278,7 +278,11 @@
                 <data
                     android:scheme="https"
                     android:host="betterstreamflix.app"
-                    android:pathPrefix="/cast" />
+                    android:path="/cast" />
+                <data
+                    android:scheme="https"
+                    android:host="betterstreamflix.app"
+                    android:pathPrefix="/cast/" />
             </intent-filter>
             <intent-filter>
                 <action android:name="android.intent.action.VIEW"/>
@@ -318,6 +322,7 @@
         <activity
             android:name=".remotefind.RemoteFindPhoneActivity"
             android:exported="false"
+            android:launchMode="singleTop"
             android:theme="@style/AppTheme.Mobile"
             android:windowSoftInputMode="adjustResize" />
 
@@ -394,7 +399,11 @@
                 <data
                     android:scheme="https"
                     android:host="betterstreamflix.app"
-                    android:pathPrefix="/cast" />
+                    android:path="/cast" />
+                <data
+                    android:scheme="https"
+                    android:host="betterstreamflix.app"
+                    android:pathPrefix="/cast/" />
             </intent-filter>
             <intent-filter>
                 <action android:name="android.intent.action.VIEW"/>

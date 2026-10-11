@@ -12,6 +12,9 @@ import androidx.fragment.app.Fragment
 import androidx.fragment.app.FragmentActivity
 import androidx.lifecycle.lifecycleScope
 import com.dskja.betterstreamflix.R
+import com.dskja.betterstreamflix.profiles.ProfileManager
+import com.dskja.betterstreamflix.profiles.ProfileUnlockGate
+import com.dskja.betterstreamflix.utils.BypassWebSocketEndpointHelper
 import com.dskja.betterstreamflix.utils.ExpDialogChrome
 import com.dskja.betterstreamflix.utils.QrUtils
 import kotlinx.coroutines.Dispatchers
@@ -22,6 +25,10 @@ object RemoteFindUi {
 
     fun hostAndShowCode(fragment: Fragment) {
         val context = fragment.context ?: return
+        if (ProfileManager.isKidsActive() || ProfileUnlockGate.requiresGateForActive()) {
+            ExpDialogChrome.notify(context, R.string.remote_find_kids_blocked)
+            return
+        }
         if (RemoteFindSession.isPhone()) {
             ExpDialogChrome.notify(context, R.string.remote_find_already_phone)
             return
@@ -48,7 +55,7 @@ object RemoteFindUi {
                 token = token,
                 shortCode = code,
                 wsUrl = ws,
-                deepLink = RemoteFindLinks.buildDeepLink(ws, token, code),
+                deepLink = RemoteFindLinks.buildDeepLink(ws, code),
             )
         }
         val qr = runCatching { QrUtils.generate(session.deepLink, 640) }.getOrNull()
@@ -69,22 +76,24 @@ object RemoteFindUi {
                 },
             )
         }
-        container.addView(
-            TextView(context).apply {
-                text = context.getString(R.string.remote_find_code_label, session.shortCode)
-                textSize = 28f
-                gravity = Gravity.CENTER
-                setPadding(0, 24, 0, 8)
-            },
-        )
-        container.addView(
-            TextView(context).apply {
-                text = context.getString(R.string.remote_find_host_qr_message)
-                textSize = 14f
-                gravity = Gravity.CENTER
-            },
-        )
-        AlertDialog.Builder(context)
+        val codeView = TextView(context).apply {
+            text = context.getString(R.string.remote_find_code_label, session.shortCode)
+            textSize = 28f
+            gravity = Gravity.CENTER
+            setPadding(0, 24, 0, 8)
+        }
+        container.addView(codeView)
+        val statusView = TextView(context).apply {
+            text = if (RemoteFindSession.phoneConnected) {
+                context.getString(R.string.remote_find_host_phone_connected)
+            } else {
+                context.getString(R.string.remote_find_host_qr_message)
+            }
+            textSize = 14f
+            gravity = Gravity.CENTER
+        }
+        container.addView(statusView)
+        val dialog = AlertDialog.Builder(context)
             .setTitle(R.string.remote_find_host_qr_title)
             .setView(container)
             .setPositiveButton(android.R.string.ok, null)
@@ -92,6 +101,20 @@ object RemoteFindUi {
                 endHost(fragment)
             }
             .show()
+        // Live-update when a phone pairs while the dialog is open.
+        val poll = object : Runnable {
+            override fun run() {
+                if (!dialog.isShowing || !fragment.isAdded) return
+                statusView.text = if (RemoteFindSession.phoneConnected) {
+                    context.getString(R.string.remote_find_host_phone_connected)
+                } else {
+                    context.getString(R.string.remote_find_host_qr_message)
+                }
+                statusView.postDelayed(this, 500)
+            }
+        }
+        statusView.postDelayed(poll, 500)
+        dialog.setOnDismissListener { statusView.removeCallbacks(poll) }
     }
 
     fun endHost(fragment: Fragment) {
@@ -111,11 +134,43 @@ object RemoteFindUi {
             ExpDialogChrome.notify(activity, R.string.remote_find_invalid_link)
             return
         }
-        openPhoneRemote(activity, target.wsUrl, target.token, target.code)
+        handleIncomingTarget(activity, target)
     }
 
     fun handleIncomingTarget(activity: Activity, target: RemoteFindLinks.Target) {
-        openPhoneRemote(activity, target.wsUrl, target.token, target.code)
+        val code = target.code
+        val ws = target.wsUrl
+        when {
+            !ws.isNullOrBlank() -> openPhoneRemote(activity, ws, code, target.token)
+            !code.isNullOrBlank() -> {
+                // HTTPS code-only link: discover WS on LAN.
+                if (activity is FragmentActivity) {
+                    activity.lifecycleScope.launch {
+                        val offer = withContext(Dispatchers.IO) {
+                            RemoteFindDiscovery.discover(code)
+                        }
+                        if (activity.isFinishing || activity.isDestroyed) return@launch
+                        if (offer == null) {
+                            ExpDialogChrome.notify(activity, R.string.remote_find_code_not_found)
+                        } else {
+                            openPhoneRemote(activity, offer.wsUrl, offer.code, null)
+                        }
+                    }
+                } else {
+                    Thread {
+                        val offer = RemoteFindDiscovery.discover(code)
+                        activity.runOnUiThread {
+                            if (offer == null) {
+                                ExpDialogChrome.notify(activity, R.string.remote_find_code_not_found)
+                            } else {
+                                openPhoneRemote(activity, offer.wsUrl, offer.code, null)
+                            }
+                        }
+                    }.start()
+                }
+            }
+            else -> ExpDialogChrome.notify(activity, R.string.remote_find_invalid_link)
+        }
     }
 
     fun joinByCode(fragment: Fragment, rawCode: String) {
@@ -135,25 +190,37 @@ object RemoteFindUi {
                 ExpDialogChrome.notify(activity, R.string.remote_find_code_not_found)
                 return@launch
             }
-            openPhoneRemote(activity, offer.wsUrl, offer.token, offer.code)
+            openPhoneRemote(activity, offer.wsUrl, offer.code, null)
         }
     }
 
     fun openPhoneRemote(
         activity: Activity,
         wsUrl: String,
-        token: String,
         code: String?,
+        legacyToken: String? = null,
     ) {
         if (RemoteFindSession.isHost()) {
             ExpDialogChrome.notify(activity, R.string.remote_find_already_host)
             return
         }
-        RemoteFindSession.beginPhone(token, code, wsUrl)
+        if (!BypassWebSocketEndpointHelper.isAllowedPeerWs(wsUrl)) {
+            ExpDialogChrome.notify(activity, R.string.remote_find_invalid_link)
+            return
+        }
+        val pairingCode = RemoteFindCode.normalize(code)
+        if (pairingCode == null && legacyToken.isNullOrBlank()) {
+            ExpDialogChrome.notify(activity, R.string.remote_find_invalid_code)
+            return
+        }
+        RemoteFindSession.beginPhone(legacyToken, pairingCode, wsUrl)
         val intent = Intent(activity, RemoteFindPhoneActivity::class.java).apply {
             putExtra(RemoteFindPhoneActivity.EXTRA_WS, wsUrl)
-            putExtra(RemoteFindPhoneActivity.EXTRA_TOKEN, token)
-            putExtra(RemoteFindPhoneActivity.EXTRA_CODE, code)
+            putExtra(RemoteFindPhoneActivity.EXTRA_CODE, pairingCode)
+            if (!legacyToken.isNullOrBlank()) {
+                putExtra(RemoteFindPhoneActivity.EXTRA_TOKEN, legacyToken)
+            }
+            flags = Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP
         }
         activity.startActivity(intent)
     }

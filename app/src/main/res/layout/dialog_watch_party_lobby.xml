@@ -48,6 +48,14 @@
             android:layout_marginTop="10dp"
             android:textAppearance="?attr/textAppearanceBody2" />
 
+        <LinearLayout
+            android:id="@+id/ll_watch_party_kick_row"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="6dp"
+            android:orientation="vertical"
+            android:visibility="gone" />
+
         <TextView
             android:id="@+id/tv_watch_party_lobby_chat"
             android:layout_width="match_parent"

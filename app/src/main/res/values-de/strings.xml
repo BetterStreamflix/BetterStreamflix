@@ -1146,6 +1146,10 @@
     <string name="cast_room_joined">Cast-Raum beigetreten — Titel öffnen und zur TV-Warteschlange hinzufügen</string>
     <string name="cast_room_not_joined">Zuerst einem Cast-Raum beitreten</string>
     <string name="cast_room_already_controller">Aktuellen Cast-Raum verlassen, bevor du hostest</string>
+    <string name="cast_room_end_host_first">Beende zuerst den Cast-Raum, den du hostest, bevor du als Remote beitrittst</string>
+    <string name="cast_room_kids_blocked_host">Cast-Raum hosten ist auf Kinderprofilen nicht verfügbar</string>
+    <string name="cast_room_kids_blocked_item">Dieser Titel ist auf diesem Kinderprofil gesperrt — übersprungen</string>
+    <string name="cast_room_rate_limited">Nicht so schnell — Cast-Raum-Aktion gleich nochmal versuchen</string>
     <string name="cast_room_companion_title">TV-Warteschlange (Remote)</string>
     <string name="tv_sidekick_title">TV-Sidekick</string>
     <string name="tv_sidekick_now_playing">Jetzt auf dem TV: %1$s · %2$s</string>
@@ -1181,7 +1185,11 @@
     <string name="cast_room_pause_action">TV pausieren</string>
     <string name="cast_room_resume_action">TV fortsetzen</string>
     <string name="cast_room_scan_unavailable">QR-Scan ist auf diesem Gerät nicht verfügbar</string>
-    <string name="remote_find_category_title">Remote Find Phone</string>
+    <string name="cast_companion_hub_title">Cast Companion</string>
+    <string name="cast_companion_hub_summary">Raum-Warteschlange, Watch Together, Übergaben und TV-Touchpad</string>
+    <string name="companion_busy_watch_together">Beende Watch Together, bevor du Cast Room startest</string>
+    <string name="companion_busy_cast_room">Beende Cast Room, bevor du Watch Together startest</string>
+    <string name="remote_find_category_title">Companion · Remote Find Phone</string>
     <string name="remote_find_host_summary">Code anzeigen — das Telefon wird zum Touchpad und zur Such-Tastatur</string>
     <string name="remote_find_host_active_summary">Aktiv · Code %1$s — Telefon kann suchen</string>
     <string name="remote_find_host_failed_lan">Remote Find konnte nicht starten — WLAN / LAN-Adresse prüfen</string>
@@ -1223,8 +1231,8 @@
     <string name="remote_find_touchpad_cd">Touchpad für TV-Fokus</string>
     <string name="remote_find_touchpad_hint">Wischen zum Bewegen · Tippen zum Auswählen</string>
     <string name="remote_find_search_button_cd">Telefon-Remote-Kopplungscode zeigen</string>
-    <string name="cast_room_category_title">Cast-Raum</string>
-    <string name="session_handoff_category_title">Session-Übergabe</string>
+    <string name="cast_room_category_title">Companion · Cast-Raum (TV-Warteschlange)</string>
+    <string name="session_handoff_category_title">Companion · Session-Übergabe (Phone→TV)</string>
     <string name="session_handoff_cd">An TV senden</string>
     <string name="session_handoff_cd_offering">An TV senden — Code %1$s</string>
     <string name="session_handoff_offer_title">Auf dem TV weiterschauen</string>
@@ -1267,7 +1275,7 @@
     <string name="cast_handoff_needs_sign_in">Unter Konto &amp; Sync anmelden, um eine Cast-Übergabe anzubieten</string>
     <string name="cast_handoff_offline">Mit dem Internet verbinden, um eine Cast-Übergabe anzubieten oder zu beanspruchen</string>
     <string name="cast_handoff_unavailable_live_offline">Cast-Übergabe ist für Live-TV oder Offline-Wiedergabe nicht verfügbar</string>
-    <string name="cast_handoff_category_title">Cast-Übergabe</string>
+    <string name="cast_handoff_category_title">Companion · Cast-Übergabe (TV→Phone)</string>
     <string name="cast_handoff_claim_title">Cast-Übergabe-Code eingeben</string>
     <string name="cast_handoff_claim_summary">Tippe den 6-stelligen Code vom TV ein, um hier weiterzuschauen</string>
     <string name="cast_handoff_claim_message">Gib den Code vom TV ein, um denselben Titel an derselben Position zu öffnen.</string>
@@ -2568,7 +2576,13 @@
 
     <string name="watch_together_pro_menu_title">Watch Together Pro</string>
     <string name="watch_together_pro_lobby_title">Watch-Together-Lobby</string>
-    <string name="watch_together_pro_category_title">Watch Together Pro</string>
+    <string name="watch_party_kick_action">%1$s entfernen</string>
+    <string name="watch_party_kick_done">Gast entfernt</string>
+    <string name="watch_party_kick_failed">Gast konnte nicht entfernt werden: %1$s</string>
+    <string name="watch_party_kids_blocked">Watch Together ist in Kinderprofilen nicht verfügbar. Wechsle zuerst zu einem Erwachsenenprofil.</string>
+    <string name="watch_together_pro_category_title">Companion · Watch Together Pro</string>
+    <string name="watch_party_pause_all_action">Alle pausieren</string>
+    <string name="watch_party_pause_all_done">Für die ganze Party pausiert</string>
     <string name="watch_party_show_code_action">QR &amp; Code zeigen</string>
     <string name="watch_party_show_code_summary">6-stelligen Lobby-Code oder QR fürs Handy teilen</string>
     <string name="watch_party_code_label">Code %1$s</string>

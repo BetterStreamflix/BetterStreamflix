@@ -58,6 +58,19 @@ object WatchPartySession {
     @Volatile
     var lastLocalDriftMs: Long = 0L
 
+    /** Latest sidekick_seek_seq observed on host poll (for heartbeat skip). */
+    @Volatile
+    var lastSeenSidekickSeekSeq: Long = 0L
+
+    @Volatile
+    var lastDriftReportAtMs: Long = 0L
+
+    @Volatile
+    var lastReportedDriftMs: Long = -1L
+
+    @Volatile
+    var lastGuestSeekAtMs: Long = 0L
+
     fun beginHost(
         token: String,
         partyId: String?,
@@ -156,6 +169,10 @@ object WatchPartySession {
         lastAppliedPlaySeq = 0L
         lastAppliedSyncRevision = 0L
         lastLocalDriftMs = 0L
+        lastSeenSidekickSeekSeq = 0L
+        lastDriftReportAtMs = 0L
+        lastReportedDriftMs = -1L
+        lastGuestSeekAtMs = 0L
         hostControlsLocked = false
     }
 }
