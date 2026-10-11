@@ -38,6 +38,12 @@
     <string name="main_menu_search">Search</string>
     <string name="main_menu_home">Home</string>
     <string name="main_menu_live">Live</string>
+    <string name="meine_sender_leiste_title">My channels</string>
+    <string name="meine_sender_leiste_add">Add</string>
+    <string name="meine_sender_leiste_pin">Pin to My channels</string>
+    <string name="meine_sender_leiste_unpin">Unpin from My channels</string>
+    <string name="meine_sender_leiste_pinned">Pinned to My channels</string>
+    <string name="meine_sender_leiste_unpinned">Removed %1$s from My channels</string>
     <string name="main_menu_movies">Movies</string>
     <string name="main_menu_tv_shows">TV Shows</string>
     <string name="main_menu_all_channels">All Channels</string>
