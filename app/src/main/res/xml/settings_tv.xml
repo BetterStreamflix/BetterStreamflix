@@ -30,6 +30,12 @@
                 android:summary="@string/settings_provider_health_summary"
                 android:widgetLayout="@layout/preference_widget_chevron" />
 
+            <Preference
+                android:key="PROVIDER_PASSPORT_OPEN"
+                android:title="@string/settings_provider_passport_title"
+                android:summary="@string/settings_provider_passport_summary"
+                android:widgetLayout="@layout/preference_widget_chevron" />
+
             <SwitchPreferenceCompat
                 android:key="SHOW_VAVOO_VOD_PROVIDERS"
                 android:title="@string/settings_show_vavoo_vod_title"
@@ -1313,6 +1319,38 @@
         <PreferenceCategory
             android:key="pc_provider_health_ok"
             android:title="@string/settings_provider_health_ok_title" />
+    </PreferenceScreen>
+
+    <PreferenceScreen
+        android:key="screen_provider_passport"
+        android:title="@string/settings_provider_passport_title"
+        android:summary="@string/settings_provider_passport_summary"
+        android:widgetLayout="@layout/preference_widget_chevron">
+
+        <PreferenceCategory
+            android:key="pc_provider_passport_summary"
+            android:title="@string/settings_provider_passport_title">
+
+            <Preference
+                android:key="PROVIDER_PASSPORT_SUMMARY"
+                android:title="@string/settings_provider_passport_title"
+                android:summary="@string/settings_provider_passport_summary"
+                android:selectable="false" />
+
+            <Preference
+                android:icon="@drawable/ic_refresh"
+                android:key="PROVIDER_PASSPORT_REFRESH"
+                android:title="@string/settings_provider_passport_refresh"
+                android:summary="@string/settings_provider_passport_summary" />
+        </PreferenceCategory>
+
+        <PreferenceCategory
+            android:key="pc_provider_passport_attention"
+            android:title="@string/settings_provider_passport_attention_title" />
+
+        <PreferenceCategory
+            android:key="pc_provider_passport_fresh"
+            android:title="@string/settings_provider_passport_fresh_title" />
     </PreferenceScreen>
 
     <PreferenceScreen

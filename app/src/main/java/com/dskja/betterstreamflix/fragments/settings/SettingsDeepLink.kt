@@ -24,6 +24,10 @@ object SettingsDeepLink {
         pendingScreenKey = "screen_provider_health"
     }
 
+    fun openProviderPassport() {
+        pendingScreenKey = "screen_provider_passport"
+    }
+
     fun consumePendingScreenKey(): String? {
         val key = pendingScreenKey
         pendingScreenKey = null
