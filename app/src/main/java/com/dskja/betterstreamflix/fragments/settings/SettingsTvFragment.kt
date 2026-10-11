@@ -385,6 +385,10 @@ class SettingsTvFragment : LeanbackPreferenceFragmentCompat() {
             scope = lifecycleScope,
             findPreference = { key -> findPreference(key) },
         )
+        com.dskja.betterstreamflix.sync.SessionHandoffSettingsController.bind(
+            fragment = this,
+            findPreference = { key -> findPreference(key) },
+        )
         PlatformSettingsController.bind(this, lifecycleScope) { key ->
             findPreference(key)
         }

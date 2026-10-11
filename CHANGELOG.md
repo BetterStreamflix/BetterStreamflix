@@ -20,6 +20,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Export/Import Profil:** Settings → Profiles — QR or JSON file transfer of settings, watchlist, and episode notes (no offline downloads / PINs); Mobile + TV
 - Subtitle Studio light: per-profile caption size / color / background, Studio presets, Settings preview strip, and live player sample cue while editing Caption style (Mobile + TV)
 - **Search Memories:** “Searched back then” / „Damals gesucht“ chip strip on Search (Mobile + TV) — keeps successful, empty, and failed queries for one-tap retry
+- Session Handoff: Phone→TV “continue here” with a 6-character code — progress + preferred server stay (Supabase, Mobile + TV)
 - Kids Bedtime: clock time on Kids profiles finishes the current episode (live stops immediately), then PIN-locks until morning — Mobile + TV Settings + player chip
 - Shelf Pinning: pin up to 3 Home shelves under Featured (Continue, Live, Downloads, Collections…) on Mobile + TV — header pin + Settings picker; applied after Remix Home block order
 - **Series Fast-Forward:** Home shelf filter “New since last visit” / „Nur neue seit letztem Besuch“ on Next Episodes and Favorite TV shows — visit watermark on Home pause, chip toggle on Mobile + TV

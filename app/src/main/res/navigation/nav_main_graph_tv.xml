@@ -280,6 +280,10 @@
             android:defaultValue="@null"
             app:argType="string"
             app:nullable="true" />
+        <argument
+            android:name="startPositionMs"
+            android:defaultValue="-1L"
+            app:argType="long" />
         <action
             android:id="@+id/action_playerTvFragment_self"
             app:destination="@id/player"

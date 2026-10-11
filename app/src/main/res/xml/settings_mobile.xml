@@ -2009,6 +2009,17 @@
         </PreferenceCategory>
 
         <PreferenceCategory
+            android:key="pc_session_handoff"
+            android:title="@string/session_handoff_category_title"
+            app:iconSpaceReserved="false">
+            <Preference
+                android:key="session_handoff_claim"
+                android:title="@string/session_handoff_claim_title"
+                android:summary="@string/session_handoff_claim_summary"
+                app:iconSpaceReserved="false" />
+        </PreferenceCategory>
+
+        <PreferenceCategory
             android:key="pc_cast_room"
             android:title="@string/cast_room_category_title"
             app:iconSpaceReserved="false">

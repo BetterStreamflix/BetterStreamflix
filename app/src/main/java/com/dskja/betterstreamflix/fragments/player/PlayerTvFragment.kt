@@ -154,7 +154,8 @@ import java.util.UUID
 import com.dskja.betterstreamflix.extractors.TokenManager
 
 class PlayerTvFragment : Fragment(),
-    com.dskja.betterstreamflix.sync.WatchPartyUi.WatchPartyHostAware {
+    com.dskja.betterstreamflix.sync.WatchPartyUi.WatchPartyHostAware,
+    com.dskja.betterstreamflix.sync.SessionHandoffUi.OfferAware {
     companion object {
         private const val NEXT_EPISODE_PREFETCH_THRESHOLD_MS = 60_000L
         private const val NEXT_EPISODE_OVERLAY_MIN_THRESHOLD_MS = 30_000L
@@ -892,6 +893,45 @@ class PlayerTvFragment : Fragment(),
             watchPartyBridge,
         )
     }
+
+    override fun onSessionHandoffOffered() {
+        if (!isAdded || _binding == null) return
+        com.dskja.betterstreamflix.sync.SessionHandoffPlayerHooks.refreshChrome(
+            binding.pvPlayer.controller.binding.btnExoSessionHandoff,
+            sessionHandoffBridge,
+        )
+    }
+
+    override fun pauseLocalForSessionHandoff() {
+        runCatching {
+            if (::player.isInitialized && !playerReleased) {
+                player.playWhenReady = false
+                player.pause()
+            }
+        }
+    }
+
+    override fun handoffPositionMs(): Long =
+        runCatching { activePlayer().currentPosition }.getOrDefault(0L)
+
+    override fun handoffServer(): Video.Server? = currentServer
+
+    private val sessionHandoffBridge =
+        object : com.dskja.betterstreamflix.sync.SessionHandoffPlayerHooks.PlayerBridge {
+            override fun isLiveOrOffline(): Boolean =
+                isLiveTvPlayback() || isOfflinePlayback()
+
+            override fun videoType(): Video.Type = args.videoType
+
+            override fun currentServer(): Video.Server? =
+                this@PlayerTvFragment.currentServer
+
+            override fun positionMs(): Long =
+                runCatching { activePlayer().currentPosition }.getOrDefault(0L)
+
+            override fun isPlaying(): Boolean =
+                runCatching { activePlayer().isPlaying }.getOrDefault(false)
+        }
 
     override fun watchPartyServerSource():
         com.dskja.betterstreamflix.sync.WatchPartyLobbyUi.ServerSource =
@@ -1672,6 +1712,11 @@ class PlayerTvFragment : Fragment(),
             this,
             controller.btnExoCastRoom,
         )
+        com.dskja.betterstreamflix.sync.SessionHandoffPlayerHooks.wireChromeButton(
+            this,
+            controller.btnExoSessionHandoff,
+            sessionHandoffBridge,
+        )
         controller.btnExoExternalPlayer.setOnClickListener {
             openCurrentStreamExternally(forceChooser = false)
         }
@@ -1873,6 +1918,11 @@ class PlayerTvFragment : Fragment(),
             com.dskja.betterstreamflix.sync.CastRoomPlayerHooks.wireChromeButton(
                 this,
                 binding.pvPlayer.controller.binding.btnExoCastRoom,
+            )
+            com.dskja.betterstreamflix.sync.SessionHandoffPlayerHooks.wireChromeButton(
+                this,
+                binding.pvPlayer.controller.binding.btnExoSessionHandoff,
+                sessionHandoffBridge,
             )
 
             binding.pvPlayer.controller.binding.exoReplay.setOnClickListener {
@@ -2571,13 +2621,19 @@ class PlayerTvFragment : Fragment(),
                             episode ?: database?.episodeDao()?.getById(videoType.id)
                         }
                     }
-                    val savedPosition = watchItem?.watchHistory?.lastPlaybackPositionMillis
+                    val handoffPosition = args.startPositionMs.takeIf { it >= 0L }
+                    val savedPosition = handoffPosition
+                        ?: watchItem?.watchHistory?.lastPlaybackPositionMillis
                     withContext(Dispatchers.Main) {
                         if (!isAdded || playerReleased || isTearingDown || playbackSoftStopped || !::player.isInitialized) {
                             return@withContext
                         }
                         if (savedPosition == null) return@withContext
-                        if (!PlaybackProgress.shouldApplyResume(player.currentPosition)) return@withContext
+                        if (handoffPosition == null &&
+                            !PlaybackProgress.shouldApplyResume(player.currentPosition)
+                        ) {
+                            return@withContext
+                        }
                         val target = PlaybackProgress.resumeTargetMs(savedPosition, player.duration)
                         runCatching { player.seekTo(target) }
                     }

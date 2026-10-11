@@ -318,6 +318,7 @@ class MainTvActivity : FragmentActivity() {
         handleDownloadPackIntent(intent)
         handleProfileTransferIntent(intent)
         handleCastRoomIntent(intent)
+        handleSessionHandoffIntent(intent)
         handleWatchDeepLink(intent)
         com.dskja.betterstreamflix.tvlauncher.TvLauncherSync.start(this)
         registerCastRoomHostConsumer()
@@ -335,6 +336,7 @@ class MainTvActivity : FragmentActivity() {
         handleDownloadPackIntent(intent)
         handleProfileTransferIntent(intent)
         handleCastRoomIntent(intent)
+        handleSessionHandoffIntent(intent)
         handleWatchDeepLink(intent)
     }
 
@@ -420,6 +422,16 @@ class MainTvActivity : FragmentActivity() {
         com.dskja.betterstreamflix.sync.CastRoomUi.handleIncomingToken(this, token)
     }
 
+    private fun handleSessionHandoffIntent(intent: Intent?) {
+        val raw = intent?.data?.toString() ?: return
+        if (com.dskja.betterstreamflix.sync.SessionHandoffLinks.parseCode(raw) == null &&
+            com.dskja.betterstreamflix.sync.SessionHandoffLinks.parseToken(raw) == null
+        ) {
+            return
+        }
+        com.dskja.betterstreamflix.sync.SessionHandoffUi.handleIncoming(this, raw)
+    }
+
     private fun registerCastRoomHostConsumer() {
         com.dskja.betterstreamflix.sync.CastRoomUi.registerHostConsumer(
             object : com.dskja.betterstreamflix.sync.CastRoomUi.HostConsumer {
@@ -459,6 +471,8 @@ class MainTvActivity : FragmentActivity() {
         if (com.dskja.betterstreamflix.download.DownloadPackLinks.parse(data) != null) return
         if (com.dskja.betterstreamflix.profiletransfer.ProfileTransferLinks.parse(data) != null) return
         if (com.dskja.betterstreamflix.sync.CastRoomLinks.parseToken(data) != null) return
+        if (com.dskja.betterstreamflix.sync.SessionHandoffLinks.parseCode(data.toString()) != null) return
+        if (com.dskja.betterstreamflix.sync.SessionHandoffLinks.parseToken(data.toString()) != null) return
         com.dskja.betterstreamflix.tvlauncher.TvWatchDeepLinkRouter.handle(this, data)
     }
 
