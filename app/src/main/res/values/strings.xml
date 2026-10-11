@@ -166,6 +166,12 @@
     <string name="home_favorite_movies">Favorite movies</string>
     <string name="home_favorite_tv_shows">Favorite TV shows</string>
     <string name="home_catalog_warning_tap_retry">Tap to retry catalog</string>
+    <string name="shelf_weather_quarantined">source weak</string>
+    <string name="shelf_weather_parked">source offline</string>
+    <string name="shelf_weather_circuit">unstable</string>
+    <string name="shelf_weather_flaky">flaky</string>
+    <string name="shelf_weather_cd_storm">Shelf dimmed — %1$s source is unreliable</string>
+    <string name="shelf_weather_cd_haze">Shelf dimmed — %1$s source is unstable</string>
     <string name="home_catalog_unavailable">Catalog unavailable — library still shown</string>
     <string name="home_catalog_empty_from_provider">Empty catalog from %1$s</string>
     <string name="home_catalog_no_usable_rows">No usable rows from %1$s</string>

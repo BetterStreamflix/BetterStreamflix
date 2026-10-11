@@ -196,6 +196,12 @@
     <string name="home_favorite_movies">Favoriten - Filme</string>
     <string name="home_favorite_tv_shows">Favoriten - Serien</string>
     <string name="home_catalog_warning_tap_retry">Tippen zum erneuten Laden</string>
+    <string name="shelf_weather_quarantined">Quelle schwach</string>
+    <string name="shelf_weather_parked">Quelle offline</string>
+    <string name="shelf_weather_circuit">instabil</string>
+    <string name="shelf_weather_flaky">unzuverlässig</string>
+    <string name="shelf_weather_cd_storm">Regal abgedunkelt — Quelle %1$s ist unzuverlässig</string>
+    <string name="shelf_weather_cd_haze">Regal abgedunkelt — Quelle %1$s ist instabil</string>
     <string name="home_catalog_unavailable">Katalog nicht verfügbar — Bibliothek wird weiter angezeigt</string>
     <string name="home_catalog_empty_from_provider">Leerer Katalog von %1$s</string>
     <string name="home_catalog_no_usable_rows">Keine nutzbaren Zeilen von %1$s</string>
