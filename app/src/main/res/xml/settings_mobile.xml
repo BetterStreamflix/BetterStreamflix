@@ -28,6 +28,13 @@
                 android:defaultValue="false"
                 app:iconSpaceReserved="false" />
 
+            <Preference
+                android:key="PROVIDER_HEALTH_OPEN"
+                android:title="@string/settings_provider_health_title"
+                android:summary="@string/settings_provider_health_summary"
+                android:widgetLayout="@layout/preference_widget_chevron"
+                app:iconSpaceReserved="false" />
+
             <SwitchPreferenceCompat
                 android:key="SHOW_VAVOO_VOD_PROVIDERS"
                 android:title="@string/settings_show_vavoo_vod_title"
@@ -1437,6 +1444,44 @@
                 android:summary="@string/connection_test_subdl_summary"
                 app:iconSpaceReserved="false" />
         </PreferenceCategory>
+    </PreferenceScreen>
+
+    <PreferenceScreen
+        android:key="screen_provider_health"
+        android:title="@string/settings_provider_health_title"
+        android:summary="@string/settings_provider_health_summary"
+        android:widgetLayout="@layout/preference_widget_chevron"
+        app:iconSpaceReserved="false">
+
+        <PreferenceCategory
+            android:key="pc_provider_health_summary"
+            android:title="@string/settings_provider_health_title"
+            app:iconSpaceReserved="false">
+
+            <Preference
+                android:key="PROVIDER_HEALTH_SUMMARY"
+                android:title="@string/settings_provider_health_title"
+                android:summary="@string/settings_provider_health_summary"
+                android:selectable="false"
+                app:iconSpaceReserved="false" />
+
+            <Preference
+                android:icon="@drawable/ic_refresh"
+                android:key="PROVIDER_HEALTH_REFRESH"
+                android:title="@string/settings_provider_health_refresh"
+                android:summary="@string/settings_provider_health_summary"
+                app:iconSpaceReserved="false" />
+        </PreferenceCategory>
+
+        <PreferenceCategory
+            android:key="pc_provider_health_issues"
+            android:title="@string/settings_provider_health_issues_title"
+            app:iconSpaceReserved="false" />
+
+        <PreferenceCategory
+            android:key="pc_provider_health_ok"
+            android:title="@string/settings_provider_health_ok_title"
+            app:iconSpaceReserved="false" />
     </PreferenceScreen>
 
     <PreferenceScreen

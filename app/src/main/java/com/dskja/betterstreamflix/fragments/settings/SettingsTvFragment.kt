@@ -318,6 +318,7 @@ class SettingsTvFragment : LeanbackPreferenceFragmentCompat() {
             ?: when (key) {
                 "screen_serienstream_auth" -> getString(R.string.serienstream_auth_category_title)
                 "screen_aniworld_auth" -> getString(R.string.aniworld_auth_category_title)
+                "screen_provider_health" -> getString(R.string.settings_provider_health_title)
                 else -> getString(R.string.settings_screen_downloads)
             }
         findPreference<Preference>(key)?.isVisible = true
@@ -555,6 +556,16 @@ class SettingsTvFragment : LeanbackPreferenceFragmentCompat() {
         }
         TmdbSettingsController.bind(this, lifecycleScope) { key ->
             findPreference(key)
+        }
+        ProviderHealthSettingsController.bind(this, lifecycleScope) { key ->
+            findPreference(key)
+        }
+        findPreference<Preference>("PROVIDER_HEALTH_OPEN")?.setOnPreferenceClickListener {
+            openNestedSettingsScreen(
+                "screen_provider_health",
+                getString(R.string.settings_provider_health_title),
+            )
+            true
         }
         findPreference<Preference>("p_serienstream_account_open")?.setOnPreferenceClickListener {
             openNestedSettingsScreen(

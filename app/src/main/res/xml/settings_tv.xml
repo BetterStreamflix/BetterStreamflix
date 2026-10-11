@@ -24,6 +24,12 @@
                 android:summary="@string/settings_show_quarantined_providers_summary"
                 android:defaultValue="false" />
 
+            <Preference
+                android:key="PROVIDER_HEALTH_OPEN"
+                android:title="@string/settings_provider_health_title"
+                android:summary="@string/settings_provider_health_summary"
+                android:widgetLayout="@layout/preference_widget_chevron" />
+
             <SwitchPreferenceCompat
                 android:key="SHOW_VAVOO_VOD_PROVIDERS"
                 android:title="@string/settings_show_vavoo_vod_title"
@@ -1196,6 +1202,38 @@
                 android:title="@string/connection_test_subdl_title"
                 android:summary="@string/connection_test_subdl_summary" />
         </PreferenceCategory>
+    </PreferenceScreen>
+
+    <PreferenceScreen
+        android:key="screen_provider_health"
+        android:title="@string/settings_provider_health_title"
+        android:summary="@string/settings_provider_health_summary"
+        android:widgetLayout="@layout/preference_widget_chevron">
+
+        <PreferenceCategory
+            android:key="pc_provider_health_summary"
+            android:title="@string/settings_provider_health_title">
+
+            <Preference
+                android:key="PROVIDER_HEALTH_SUMMARY"
+                android:title="@string/settings_provider_health_title"
+                android:summary="@string/settings_provider_health_summary"
+                android:selectable="false" />
+
+            <Preference
+                android:icon="@drawable/ic_refresh"
+                android:key="PROVIDER_HEALTH_REFRESH"
+                android:title="@string/settings_provider_health_refresh"
+                android:summary="@string/settings_provider_health_summary" />
+        </PreferenceCategory>
+
+        <PreferenceCategory
+            android:key="pc_provider_health_issues"
+            android:title="@string/settings_provider_health_issues_title" />
+
+        <PreferenceCategory
+            android:key="pc_provider_health_ok"
+            android:title="@string/settings_provider_health_ok_title" />
     </PreferenceScreen>
 
     <PreferenceScreen
