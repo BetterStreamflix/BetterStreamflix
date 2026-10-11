@@ -49,6 +49,16 @@ object SmartDownloadsPolicy {
         return want.coerceAtMost(slotsRemaining(occupancy, quota))
     }
 
+    /**
+     * Explicit one-tap season enqueue: fill remaining series-quota slots only
+     * (no lookahead cap — user asked for the whole season).
+     */
+    fun seasonEnqueueBudget(
+        missingInSeason: Int,
+        occupancy: Int,
+        quota: Int,
+    ): Int = missingInSeason.coerceAtLeast(0).coerceAtMost(slotsRemaining(occupancy, quota))
+
     fun seriesKeyOf(item: DownloadItemEntity): String? =
         DownloadSeriesFolders.seriesRef(item)?.key
 

@@ -7,7 +7,6 @@ import android.view.View
 import android.view.ViewGroup
 import android.view.ViewTreeObserver
 import android.widget.Toast
-import androidx.appcompat.app.AlertDialog
 import androidx.fragment.app.Fragment
 import androidx.navigation.fragment.findNavController
 import androidx.lifecycle.Lifecycle
@@ -22,7 +21,6 @@ import com.dskja.betterstreamflix.databinding.FragmentSeasonTvBinding
 import com.dskja.betterstreamflix.download.ui.DownloadOptionsController
 import com.dskja.betterstreamflix.models.Episode
 import com.dskja.betterstreamflix.models.TvShow
-import com.dskja.betterstreamflix.utils.ExpDialogChrome
 import com.dskja.betterstreamflix.utils.ExpEmptyChrome
 import com.dskja.betterstreamflix.utils.Http409CacheGuard
 import com.dskja.betterstreamflix.utils.TmdbUtils
@@ -168,36 +166,23 @@ class SeasonTvFragment : Fragment() {
                 Toast.makeText(requireContext(), R.string.season_download_empty, Toast.LENGTH_SHORT).show()
                 return@setOnClickListener
             }
-            val confirm = AlertDialog.Builder(requireContext())
-            val confirmMessage = getString(R.string.season_download_confirm, episodes.size)
-            confirm
-                .setMessage(confirmMessage)
-                .setPositiveButton(android.R.string.ok) { _, _ ->
-                    viewLifecycleOwner.lifecycleScope.launch {
-                        val tvShow = withContext(Dispatchers.IO) {
-                            database?.tvShowDao()?.getById(args.tvShowId)
-                        } ?: TvShow(
-                            id = args.tvShowId,
-                            title = viewModel.tvShowTitle.ifBlank {
-                                episodes.firstOrNull()?.tvShow?.title.orEmpty()
-                            },
-                        )
-                        DownloadOptionsController.enqueueSeason(
-                            this@SeasonTvFragment,
-                            tvShow,
-                            viewModel.seasonNumber,
-                            episodes,
-                        )
-                    }
-                }
-                .setNegativeButton(android.R.string.cancel, null)
-                .create()
-                .also { dialog ->
-                    dialog.setOnShowListener {
-                        ExpDialogChrome.polishButtons(dialog)
-                    }
-                    dialog.show()
-                }
+            // One-tap season → Smart-Download queue (quota checked inside enqueueSeason).
+            viewLifecycleOwner.lifecycleScope.launch {
+                val tvShow = withContext(Dispatchers.IO) {
+                    database?.tvShowDao()?.getById(args.tvShowId)
+                } ?: TvShow(
+                    id = args.tvShowId,
+                    title = viewModel.tvShowTitle.ifBlank {
+                        episodes.firstOrNull()?.tvShow?.title.orEmpty()
+                    },
+                )
+                DownloadOptionsController.enqueueSeason(
+                    this@SeasonTvFragment,
+                    tvShow,
+                    viewModel.seasonNumber,
+                    episodes,
+                )
+            }
         }
 
         binding.hgvEpisodes.apply {

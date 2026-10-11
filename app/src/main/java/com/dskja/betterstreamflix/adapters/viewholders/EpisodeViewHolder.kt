@@ -1008,7 +1008,7 @@ class EpisodeViewHolder(
                         button.setText(R.string.detail_download)
                         button.alpha = 1f
                     }
-                    button.contentDescription = context.getString(R.string.season_download)
+                    button.contentDescription = context.getString(R.string.detail_download)
                 }
             }
         }

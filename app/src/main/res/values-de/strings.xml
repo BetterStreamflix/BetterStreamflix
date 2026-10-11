@@ -1638,6 +1638,10 @@
     <string name="download_error_empty_response">Der Provider hat eine leere Antwort geliefert. Anderen Server versuchen oder Verbindung prüfen.</string>
     <string name="download_error_no_episodes_queued">Es konnten keine Folgen zum Download eingereiht werden.</string>
     <string name="download_season_partial">%1$d von %2$d Folgen eingereiht</string>
+    <string name="download_season_partial_quota">%1$d von %2$d Folgen eingereiht (Serien-Quota)</string>
+    <string name="download_season_partial_storage">%1$d von %2$d Folgen eingereiht (Speicherlimit)</string>
+    <string name="download_season_complete_queued">%1$d Folgen eingereiht</string>
+    <string name="season_download_quota_exhausted">Serien-Download-Quota ist voll (%1$d ungesehen). Slots unter Downloads freigeben oder Quota unter Einstellungen → Downloads erhöhen.</string>
     <string name="download_preparing">Download wird vorbereitet…</string>
     <string name="about_links_heading">Links &amp; Community</string>
     <string name="crash_log_clear">Logs löschen</string>

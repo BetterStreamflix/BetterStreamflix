@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Profile themes + download folders: theme preference is per-profile; Kids defaults to **Cinema-Ink Kids**, adults to **Cinema-Ink Dark**; offline files land in visible `profiles/<Name>` folders (Settings path + Downloads chip show the folder)
 
 ### Added
+- One-tap season download (Mobile + TV): queues the whole season into the Smart-Download pipeline with per-series quota + storage checks and clear partial/quota toasts
 - **Cinema-Ink Light** locked Look (Mobile + TV) plus Dark / Kids shells for adult vs kids profiles
 - Smart Downloads (opt-in, Settings → Downloads, Mobile + TV): auto-queue the next **3** episodes by default, Wi‑Fi only, per-series unwatched quota, and pause in-flight downloads when free space / soft-limit is low — builds on the existing download stack and offline library
 - Watch-Party light: host/join via shareable `party/<token>` link (Mobile + TV); syncs play position + chosen server only through Supabase (no video relay); graceful host end / guest leave; Kids/PIN and offline join queue
