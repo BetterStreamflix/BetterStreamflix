@@ -270,6 +270,7 @@ class MainTvActivity : FragmentActivity() {
         handleOpenDownloadsIntent(intent)
         handleOpenLiveIntent(intent)
         handleOpenFavoritesIntent(intent)
+        handleWidgetDeepLink(intent)
         handleSharedWatchlistIntent(intent)
         handleWatchPartyIntent(intent)
         handleWatchDeepLink(intent)
@@ -282,6 +283,7 @@ class MainTvActivity : FragmentActivity() {
         handleOpenDownloadsIntent(intent)
         handleOpenLiveIntent(intent)
         handleOpenFavoritesIntent(intent)
+        handleWidgetDeepLink(intent)
         handleSharedWatchlistIntent(intent)
         handleWatchPartyIntent(intent)
         handleWatchDeepLink(intent)
@@ -330,6 +332,13 @@ class MainTvActivity : FragmentActivity() {
         if (navController.currentDestination?.id != R.id.favorites) {
             runCatching { navController.navigate(R.id.favorites) }
         }
+    }
+
+    /** Widget / `betterstreamflix://live` deep links (parity with Mobile). */
+    private fun handleWidgetDeepLink(intent: Intent?) {
+        val target = com.dskja.betterstreamflix.widgets.WidgetDeepLinks.parse(intent?.data)
+            ?: return
+        com.dskja.betterstreamflix.widgets.WidgetDeepLinkRouter.handle(this, target)
     }
 
     private fun handleSharedWatchlistIntent(intent: Intent?) {

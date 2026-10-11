@@ -369,13 +369,15 @@ class MainMobileActivity : FragmentActivity() {
             }
         })
 
-        // Share list / Watch Party deep links must run even after process-death restore
+        // Share list / Watch Party / widget deep links must run even after process-death restore
         // (savedInstanceState != null) so the URI is not dropped.
-        val shareListRestore = intent.data?.let {
-            com.dskja.betterstreamflix.sync.SharedWatchlistLinks.parseToken(it) != null ||
-                com.dskja.betterstreamflix.sync.WatchPartyLinks.parseToken(it) != null
+        val deepLinkRestore = intent.data?.let { data ->
+            com.dskja.betterstreamflix.sync.SharedWatchlistLinks.parseToken(data) != null ||
+                com.dskja.betterstreamflix.sync.WatchPartyLinks.parseToken(data) != null ||
+                com.dskja.betterstreamflix.widgets.WidgetDeepLinks.parse(data) != null ||
+                com.dskja.betterstreamflix.tvlauncher.TvWatchDeepLink.parse(data.toString()) != null
         } == true
-        if (savedInstanceState == null || shareListRestore) {
+        if (savedInstanceState == null || deepLinkRestore) {
             handleIntent(intent)
         }
 
@@ -841,6 +843,15 @@ class MainMobileActivity : FragmentActivity() {
         }
 
         val data = intent.data ?: return false
+
+        if (com.dskja.betterstreamflix.tvlauncher.TvWatchDeepLinkRouter.handle(this, data)) {
+            return true
+        }
+
+        val widgetTarget = com.dskja.betterstreamflix.widgets.WidgetDeepLinks.parse(data)
+        if (widgetTarget != null) {
+            return com.dskja.betterstreamflix.widgets.WidgetDeepLinkRouter.handle(this, widgetTarget)
+        }
 
         if ((data.scheme == "streamflix" || data.scheme == "betterstreamflix") &&
             data.host.equals("resolve", ignoreCase = true)

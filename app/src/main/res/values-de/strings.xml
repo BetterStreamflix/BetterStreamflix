@@ -1877,4 +1877,11 @@
     <string name="onboarding_skip_confirm_title">Setup überspringen?</string>
     <string name="onboarding_skip_confirm_body">Sprache, Favoriten und Kids kannst du später in den Einstellungen setzen. Nur überspringen, wenn du selbst erkunden willst.</string>
     <string name="onboarding_finish">Zur Startseite</string>
+
+    <string name="widget_continue_watching_title">Weiterschauen</string>
+    <string name="widget_continue_watching_description">Titel aus deiner Weiterschauen-Liste fortsetzen</string>
+    <string name="widget_continue_watching_empty">Nichts gestartet — öffne die App, um weiterzuschauen</string>
+    <string name="widget_live_favorites_title">Live-Favoriten</string>
+    <string name="widget_live_favorites_description">Schnellkacheln für deine Live-Favoritenkanäle</string>
+    <string name="widget_live_favorites_empty">Markiere einen Live-Kanal als Favorit, um ihn hier zu pinnen</string>
 </resources>
