@@ -145,6 +145,13 @@
                 android:title="@string/profile_transfer_import_title"
                 android:summary="@string/profile_transfer_import_summary"
                 app:iconSpaceReserved="false" />
+
+            <Preference
+                android:key="PARENT_DASHBOARD_OPEN"
+                android:title="@string/parent_dashboard_title"
+                android:summary="@string/parent_dashboard_summary"
+                android:widgetLayout="@layout/preference_widget_chevron"
+                app:iconSpaceReserved="false" />
         </PreferenceCategory>
 
         <PreferenceCategory
@@ -397,6 +404,39 @@
                 android:defaultValue="true"
                 app:iconSpaceReserved="false" />
         </PreferenceCategory>
+    </PreferenceScreen>
+
+    <!-- Kids Fortress — Parent Dashboard (phone / adult sessions only). -->
+    <PreferenceScreen
+        android:key="screen_parent_dashboard"
+        android:title="@string/parent_dashboard_title"
+        android:summary="@string/parent_dashboard_summary"
+        android:widgetLayout="@layout/preference_widget_chevron"
+        app:iconSpaceReserved="false">
+
+        <PreferenceCategory
+            android:key="pc_parent_dashboard_overview"
+            android:title="@string/parent_dashboard_overview_title"
+            app:iconSpaceReserved="false">
+
+            <Preference
+                android:key="PARENT_DASHBOARD_HOUSEHOLD"
+                android:title="@string/parent_dashboard_household_title"
+                android:selectable="false"
+                app:iconSpaceReserved="false" />
+
+            <Preference
+                android:key="PARENT_DASHBOARD_EMPTY"
+                android:title="@string/parent_dashboard_empty_title"
+                android:summary="@string/parent_dashboard_empty_summary"
+                android:selectable="false"
+                app:iconSpaceReserved="false" />
+        </PreferenceCategory>
+
+        <PreferenceCategory
+            android:key="pc_parent_dashboard_kids"
+            android:title="@string/parent_dashboard_kids_title"
+            app:iconSpaceReserved="false" />
     </PreferenceScreen>
 
     <PreferenceScreen

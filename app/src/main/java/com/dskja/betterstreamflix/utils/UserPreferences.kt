@@ -1214,6 +1214,21 @@ object UserPreferences {
             setProfileScopedLong(Key.KIDS_BEDTIME_BYPASS_UNTIL_MS, value.coerceAtLeast(0L))
         }
 
+    /** Peek Kids Bedtime enabled for any profile (Parent Dashboard). */
+    fun kidsBedtimeEnabledFor(profileId: String): Boolean =
+        readBoolean(ProfileManager.scopedPrefKeyFor(Key.KIDS_BEDTIME_ENABLED.name, profileId))
+            ?: false
+
+    /** Peek Kids Bedtime lock for any profile (Parent Dashboard). */
+    fun kidsBedtimeLockedFor(profileId: String): Boolean =
+        readBoolean(ProfileManager.scopedPrefKeyFor(Key.KIDS_BEDTIME_LOCKED.name, profileId))
+            ?: false
+
+    /** Peek Kids Bedtime minute-of-day for any profile (Parent Dashboard). */
+    fun kidsBedtimeMinuteOfDayFor(profileId: String): Int =
+        readInt(ProfileManager.scopedPrefKeyFor(Key.KIDS_BEDTIME_MINUTE_OF_DAY.name, profileId))
+            ?: com.dskja.betterstreamflix.kids.KidsBedtime.DEFAULT_MINUTE_OF_DAY
+
     /** When true, chronically brittle providers appear in the provider picker. */
     var showQuarantinedProviders: Boolean
         get() = Key.SHOW_QUARANTINED_PROVIDERS.getBoolean() ?: false

@@ -86,7 +86,7 @@ object KidsBedtime {
     fun applies(
         enabled: Boolean = UserPreferences.kidsBedtimeEnabled,
         isKids: Boolean = ProfileManager.isKidsActive(),
-    ): Boolean = enabled && isKids
+    ): Boolean = KidsFortressPolicy.bedtimeApplies(enabled = enabled, isKids = isKids)
 
     fun isBypassActive(
         nowMs: Long = System.currentTimeMillis(),

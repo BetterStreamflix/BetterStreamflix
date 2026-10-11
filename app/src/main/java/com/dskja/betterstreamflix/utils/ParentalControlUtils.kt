@@ -40,10 +40,8 @@ object ParentalControlUtils {
     )
 
     /** Kids profile or parental-control PIN mode — catalog and Live Hub must gate. */
-    fun isFilteringActive(): Boolean {
-        if (ProfileManager.isKidsActive()) return true
-        return UserPreferences.isParentalControlActive
-    }
+    fun isFilteringActive(): Boolean =
+        com.dskja.betterstreamflix.kids.KidsFortress.ageFilteringActive()
 
     private fun effectiveMaxAge(): Int? {
         ProfileManager.effectiveMaxAgeRating()?.let { return it }
