@@ -321,6 +321,7 @@
     <string name="clear_cache_done">Caché vaciada</string>
     <string name="clear_cache_done_409">Caché vaciada automáticamente por error HTTP 409</string>
     <string name="player_skip_intro">Omitir intro</string>
+    <string name="player_skip_recap">Omitir resumen</string>
     <string name="voice_search">Búsqueda por voz</string>
     <string name="voice_error_no_match">No se reconoció nada</string>
     <string name="voice_error_timeout">Tiempo de espera agotado</string>

@@ -502,6 +502,7 @@
     <string name="settings_scan_resolver_failed">Impossibile avviare lo scanner QR su questo dispositivo.</string>
     <string name="settings_category_provider_url_manual">Inserisci manualmente</string>
     <string name="player_skip_intro">Salta intro</string>
+    <string name="player_skip_recap">Salta riassunto</string>
     <string name="voice_error_clear">Cancella cronologia ricerche</string>
     <string name="player_settings_manual_zoom_label">Zoom manuale</string>
     <string name="player_manual_zoom_hint">Usa SU/GIÙ per lo zoom verticale, SINISTRA/DESTRA per quello orizzontale, INDIETRO per uscire</string>

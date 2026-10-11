@@ -131,6 +131,7 @@
     <string name="player_settings_servers_title">Serwery</string>
     <string name="player_settings_servers_label">Serwery</string>
     <string name="player_skip_intro">Pomin intro</string>
+    <string name="player_skip_recap">Pomin podsumowanie</string>
 
     <string name="settings_about">O aplikacji</string>
     <string name="settings_about_version">Wersja</string>

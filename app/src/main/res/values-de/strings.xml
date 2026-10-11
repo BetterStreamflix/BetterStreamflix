@@ -866,6 +866,7 @@
     <string name="settings_scan_resolver_failed">QR-Scanner konnte auf diesem Gerät nicht gestartet werden.</string>
     <string name="settings_category_provider_url_manual">Manuell eingeben</string>
     <string name="player_skip_intro">Intro überspringen</string>
+    <string name="player_skip_recap">Zusammenfassung überspringen</string>
     <string name="voice_error_clear">Suchverlauf löschen</string>
     <string name="watch_trailer_with">Trailer ansehen mit...</string>
     <string name="youtube">YouTube</string>
