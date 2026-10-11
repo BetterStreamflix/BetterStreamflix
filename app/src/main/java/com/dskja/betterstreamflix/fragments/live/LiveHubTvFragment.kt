@@ -16,6 +16,10 @@ import androidx.recyclerview.widget.RecyclerView
 import com.dskja.betterstreamflix.R
 import com.dskja.betterstreamflix.adapters.AppAdapter
 import com.dskja.betterstreamflix.databinding.FragmentLiveHubTvBinding
+import com.dskja.betterstreamflix.live.ChannelPinStore
+import com.dskja.betterstreamflix.live.LiveCommandController
+import com.dskja.betterstreamflix.live.LiveCommandMode
+import com.dskja.betterstreamflix.live.LiveCommandPolicy
 import com.dskja.betterstreamflix.models.Category
 import com.dskja.betterstreamflix.models.TvShow
 import com.dskja.betterstreamflix.ui.HomeProfileChip
@@ -23,6 +27,7 @@ import com.dskja.betterstreamflix.utils.CacheUtils
 import com.dskja.betterstreamflix.utils.ExpDialogChrome
 import com.dskja.betterstreamflix.utils.ExpEmptyChrome
 import com.dskja.betterstreamflix.utils.ExpMotion
+import com.dskja.betterstreamflix.utils.LiveHubCatalog
 import com.dskja.betterstreamflix.utils.LoggingUtils
 import com.dskja.betterstreamflix.utils.TvLoadingOverlay
 import com.dskja.betterstreamflix.utils.dp
@@ -38,6 +43,8 @@ class LiveHubTvFragment : Fragment() {
     }
 
     private val appAdapter = AppAdapter()
+    private var command: LiveCommandController? = null
+    private var lastHubCategories: List<Category> = emptyList()
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -53,6 +60,24 @@ class LiveHubTvFragment : Fragment() {
         ExpMotion.enterScreen(binding.root)
         com.dskja.betterstreamflix.utils.ExpPressEffects.wireLoadingRetry(binding.isLoading.root)
         refreshProfileChip()
+
+        command = LiveCommandController(
+            fragment = this,
+            root = binding.root,
+            isTv = true,
+            onVisibleChanged = { cats ->
+                display(cats)
+                binding.vgvLiveHub.post { focusFirstChannel() }
+            },
+            onModeChanged = { mode ->
+                if (mode == LiveCommandMode.SPORT) {
+                    warmSportZapRing(lastHubCategories)
+                }
+            },
+            focusPins = {
+                LiveCommandController.refreshPinStrip(activity)
+            },
+        ).also { it.attach() }
 
         binding.vgvLiveHub.apply {
             setNumColumns(1)
@@ -75,17 +100,29 @@ class LiveHubTvFragment : Fragment() {
                     LiveHubViewModel.State.Restricted -> {
                         TvLoadingOverlay.hide(binding.isLoading.root)
                         hideWarning()
+                        command?.setRestricted(true)
                         displayRestricted()
                     }
                     is LiveHubViewModel.State.Success -> {
-                        display(state.categories)
+                        command?.setRestricted(false)
+                        lastHubCategories = state.categories
+                        command?.bindHub(
+                            categories = state.categories,
+                            pinCount = ChannelPinStore.pinCount(requireContext()),
+                            pipCandidates = pipCandidateCount(state.categories),
+                        )
                         TvLoadingOverlay.hide(binding.isLoading.root)
                         showWarning(state.warning)
-                        warmSportZapRing(state.categories)
-                        binding.vgvLiveHub.post { focusFirstChannel() }
+                        if (command?.currentMode() == LiveCommandMode.SPORT ||
+                            command?.currentMode() == LiveCommandMode.ALL
+                        ) {
+                            warmSportZapRing(state.categories)
+                        }
                     }
                     LiveHubViewModel.State.Empty -> {
-                        display(emptyList())
+                        command?.setRestricted(false)
+                        lastHubCategories = emptyList()
+                        command?.bindHub(emptyList(), pinCount = 0, pipCandidates = 0)
                         TvLoadingOverlay.hide(binding.isLoading.root)
                         hideWarning()
                         binding.btnLiveHubEmptyCta.post {
@@ -133,7 +170,7 @@ class LiveHubTvFragment : Fragment() {
     override fun onResume() {
         super.onResume()
         refreshProfileChip()
-        if (appAdapter.items.isNotEmpty()) {
+        if (lastHubCategories.isNotEmpty()) {
             viewModel.refreshFavoritesShelf()
         }
     }
@@ -148,20 +185,59 @@ class LiveHubTvFragment : Fragment() {
     }
 
     private fun display(categories: List<Category>) {
-        // Omit empty sections after load (parity with Home isolateFeatured style).
         val visible = categories.filter { it.list.isNotEmpty() }
+        val now = System.currentTimeMillis()
         visible.forEach { category ->
             category.list.filterIsInstance<TvShow>().forEach { show ->
                 show.itemType = AppAdapter.Type.TV_SHOW_TV_ITEM
+                enrichCatchUp(show, now)
             }
             category.itemSpacing = 16.dp(requireContext())
             category.itemType = AppAdapter.Type.CATEGORY_TV_ITEM
         }
-        // Section-scoped zap (Favorites / Sport / News / Channels) — Sport uses dedicated ring.
-        LiveHubSectionZap.bindCategories(visible)
+        val zapCats = run {
+            val preferred = command?.currentMode()?.let {
+                LiveCommandPolicy.preferredZapSection(it)
+            }
+            if (command?.currentQuery().isNullOrBlank() && preferred != null) {
+                visible.filter { it.identityKey == preferred }.ifEmpty { visible }
+            } else {
+                visible
+            }
+        }
+        LiveHubSectionZap.bindCategories(zapCats)
+        val emptyForMode = visible.isEmpty() && lastHubCategories.isNotEmpty()
         bindEmptyChrome(visible = visible.isEmpty())
+        if (emptyForMode) {
+            binding.tvLiveHubEmpty.text = emptyMessageForCommand()
+        }
         binding.vgvLiveHub.isVisible = visible.isNotEmpty()
         appAdapter.submitList(visible)
+    }
+
+    private fun enrichCatchUp(show: TvShow, nowMs: Long) {
+        val hint = LiveCommandPolicy.catchUpHint(show, nowMs) ?: return
+        when (hint.messageKey) {
+            LiveCommandPolicy.CatchUpKind.STARTED_RECENTLY -> {
+                if (show.programNext.isNullOrBlank()) {
+                    show.programNext = getString(
+                        R.string.live_command_catchup_started,
+                        hint.detail.orEmpty(),
+                    )
+                }
+            }
+            LiveCommandPolicy.CatchUpKind.UP_NEXT -> Unit
+            LiveCommandPolicy.CatchUpKind.LIVE_NOW -> Unit
+        }
+    }
+
+    private fun emptyMessageForCommand(): String {
+        val q = command?.currentQuery().orEmpty()
+        if (q.isNotBlank()) return getString(R.string.live_command_empty_search)
+        return when (command?.currentMode()) {
+            LiveCommandMode.REMINDERS -> getString(R.string.live_command_empty_reminders)
+            else -> getString(R.string.live_hub_empty_tv)
+        }
     }
 
     private fun bindEmptyChrome(visible: Boolean) {
@@ -217,15 +293,21 @@ class LiveHubTvFragment : Fragment() {
         }
     }
 
-    /**
-     * Pre-warm the dedicated Sport zap ring (same-provider sport siblings).
-     * Other shelves warm on tap via [LiveHubSectionZap.preparePlayback].
-     */
     private fun warmSportZapRing(categories: List<Category>) {
         val sport = categories.firstOrNull {
-            it.identityKey == com.dskja.betterstreamflix.utils.LiveHubCatalog.SECTION_SPORT
+            it.identityKey == LiveHubCatalog.SECTION_SPORT
         }
         LiveHubSectionZap.warmSportRing(sport)
+    }
+
+    private fun pipCandidateCount(categories: List<Category>): Int {
+        val pins = ChannelPinStore.pinCount(requireContext())
+        val favs = categories
+            .firstOrNull { it.identityKey == LiveHubCatalog.SECTION_FAVORITES }
+            ?.list
+            ?.size
+            ?: 0
+        return (pins + favs).coerceAtLeast(pins)
     }
 
     private fun refreshProfileChip() {
@@ -236,7 +318,7 @@ class LiveHubTvFragment : Fragment() {
         )
         _binding?.root?.findViewById<View>(R.id.tv_home_profile_chip)?.let { chip ->
             chip.isFocusableInTouchMode = true
-            chip.nextFocusDownId = R.id.vgv_live_hub
+            chip.nextFocusDownId = R.id.live_command_chrome
             chip.setOnKeyListener { _, keyCode, event ->
                 if (event.action != KeyEvent.ACTION_DOWN || keyCode != KeyEvent.KEYCODE_DPAD_DOWN) {
                     return@setOnKeyListener false
@@ -262,6 +344,7 @@ class LiveHubTvFragment : Fragment() {
 
     override fun onDestroyView() {
         LiveHubSectionZap.clear()
+        command = null
         super.onDestroyView()
         _binding = null
     }

@@ -54,6 +54,16 @@
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintTop_toTopOf="parent" />
 
+    <include
+        android:id="@+id/live_command_chrome"
+        layout="@layout/view_live_command_chrome"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="4dp"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/tv_live_hub_tagline" />
+
     <TextView
         android:id="@+id/tv_live_hub_warning"
         android:layout_width="0dp"
@@ -71,7 +81,7 @@
         android:visibility="gone"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/tv_live_hub_tagline"
+        app:layout_constraintTop_toBottomOf="@id/live_command_chrome"
         tools:text="StreamSports99 unavailable"
         tools:visibility="visible" />
 

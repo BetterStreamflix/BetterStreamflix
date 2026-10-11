@@ -1059,6 +1059,14 @@ object UserPreferences {
             setProfileScopedBoolean(Key.TV_AMBIENT_MODE, value)
         }
 
+    /**
+     * Last Live Command mode on Live Hub (ALL / FAVORITES / SPORT / NEWS /
+     * CHANNELS / REMINDERS). Profile-scoped.
+     */
+    var liveCommandMode: String
+        get() = profileScopedString(Key.LIVE_COMMAND_MODE).orEmpty()
+        set(value) = setProfileScopedString(Key.LIVE_COMMAND_MODE, value.trim())
+
     /** When false, Home hides the Recently Watched row. */
     var showRecentlyWatched: Boolean
         get() = profileScopedBoolean(Key.SHOW_RECENTLY_WATCHED) ?: true
@@ -1902,6 +1910,7 @@ object UserPreferences {
         TMDB_LOGO_HIT_TTL_HOURS,
         SHOW_CONTINUE_WATCHING,
         TV_AMBIENT_MODE,
+        LIVE_COMMAND_MODE,
         SHOW_RECENTLY_WATCHED,
         SHOW_NEXT_EPISODES,
         SHOW_SMART_COLLECTIONS,

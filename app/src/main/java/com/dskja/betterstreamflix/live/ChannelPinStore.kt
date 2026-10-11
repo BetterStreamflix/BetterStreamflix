@@ -42,6 +42,8 @@ object ChannelPinStore {
         return runCatching { parse(raw) }.getOrDefault(emptyList())
     }
 
+    fun pinCount(context: Context): Int = list(context).size
+
     fun isPinned(context: Context, show: TvShow): Boolean {
         val key = LiveHubCatalog.identityKey(show)
         return list(context).any { it.key == key }
