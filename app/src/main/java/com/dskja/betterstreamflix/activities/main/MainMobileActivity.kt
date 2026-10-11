@@ -468,11 +468,11 @@ class MainMobileActivity : FragmentActivity() {
                 ExpMotion.popIn(pill)
             }
         }
+        // Keep Search FAB on Downloads (and Settings) so Search stays reachable —
+        // Downloads has no in-page Search entry otherwise.
         val showSearch = UserPreferences.currentProvider != null &&
             isTopLevelProviderDestination(destinationId) &&
-            destinationId != R.id.search &&
-            destinationId != R.id.downloads &&
-            destinationId != R.id.settings
+            destinationId != R.id.search
         val searchWasVisible = binding.btnMainSearch.visibility == View.VISIBLE
         if (showSearch) {
             binding.btnMainSearch.visibility = View.VISIBLE
@@ -791,6 +791,15 @@ class MainMobileActivity : FragmentActivity() {
             val navController = navHost?.navController
             if (navController != null && navController.currentDestination?.id != R.id.downloads) {
                 navController.navigate(R.id.downloads)
+            }
+            return true
+        }
+        if (intent.getBooleanExtra("open_live", false)) {
+            val navHost =
+                supportFragmentManager.findFragmentById(R.id.nav_main_fragment) as? NavHostFragment
+            val navController = navHost?.navController
+            if (navController != null && navController.currentDestination?.id != R.id.live_hub) {
+                navController.navigate(R.id.live_hub)
             }
             return true
         }

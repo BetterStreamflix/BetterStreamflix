@@ -134,7 +134,7 @@ class GenreViewModel(
 
         try {
             val provider = UserPreferences.currentProvider
-                ?: throw Exception("No provider selected")
+                ?: throw Exception(com.dskja.betterstreamflix.BetterStreamflixApp.instance.getString(com.dskja.betterstreamflix.R.string.error_no_provider_selected))
 
             var genre = ProviderSmoke.withProviderTimeout(
                 timeoutMs = ProviderSmoke.CATALOG_TIMEOUT_MS,
@@ -187,7 +187,7 @@ class GenreViewModel(
 
             try {
                 val provider = UserPreferences.currentProvider
-                    ?: throw Exception("No provider selected")
+                    ?: throw Exception(com.dskja.betterstreamflix.BetterStreamflixApp.instance.getString(com.dskja.betterstreamflix.R.string.error_no_provider_selected))
                 val genre = ProviderSmoke.withProviderTimeout(
                     timeoutMs = ProviderSmoke.CATALOG_TIMEOUT_MS,
                     label = "getGenre(${provider.name}, page=${page + 1})",

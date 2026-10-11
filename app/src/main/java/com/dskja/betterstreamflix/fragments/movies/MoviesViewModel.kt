@@ -108,7 +108,7 @@ class MoviesViewModel(
 
             try {
                 val provider = UserPreferences.currentProvider
-                    ?: throw Exception("No provider selected")
+                    ?: throw Exception(com.dskja.betterstreamflix.BetterStreamflixApp.instance.getString(com.dskja.betterstreamflix.R.string.error_no_provider_selected))
                 val providerName = provider.name
                 val movies = ParentalControlUtils.filterItems(
                     ProviderSmoke.withProviderTimeout(
@@ -141,7 +141,7 @@ class MoviesViewModel(
 
             try {
                 val provider = UserPreferences.currentProvider
-                    ?: throw Exception("No provider selected")
+                    ?: throw Exception(com.dskja.betterstreamflix.BetterStreamflixApp.instance.getString(com.dskja.betterstreamflix.R.string.error_no_provider_selected))
                 val providerName = provider.name
                 val movies = ParentalControlUtils.filterItems(
                     ProviderSmoke.withProviderTimeout(

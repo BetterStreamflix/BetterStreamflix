@@ -160,7 +160,7 @@ class PlayerViewModel(
                 }
 
                 val provider = UserPreferences.currentProvider
-                    ?: throw Exception("No provider selected")
+                    ?: throw Exception(com.dskja.betterstreamflix.BetterStreamflixApp.instance.getString(com.dskja.betterstreamflix.R.string.error_no_provider_selected))
                 // Live zap: peek warm ±N neighbor servers (keep cache if getVideo fails).
                 val warmed = if (provider is com.dskja.betterstreamflix.providers.IptvProvider) {
                     com.dskja.betterstreamflix.iptv.IptvZapPreloader.peekCachedServers(id)
@@ -187,7 +187,7 @@ class PlayerViewModel(
                         provider.getServers(id, videoType)
                     }
                 }
-                if (servers.isEmpty()) throw Exception("No servers found")
+                if (servers.isEmpty()) throw Exception(com.dskja.betterstreamflix.BetterStreamflixApp.instance.getString(com.dskja.betterstreamflix.R.string.error_no_servers_found))
 
                 Log.i("BetterStreamflix", "[SERVERS LIST] -> Provider: ${provider.name}")
                 Log.i("BetterStreamflix", "[SERVERS LIST] -> Found ${servers.size} servers: ${servers.joinToString { it.name }}")
@@ -235,7 +235,7 @@ class PlayerViewModel(
                     return@launch
                 }
                 val provider = UserPreferences.currentProvider
-                    ?: throw Exception("No provider selected")
+                    ?: throw Exception(com.dskja.betterstreamflix.BetterStreamflixApp.instance.getString(com.dskja.betterstreamflix.R.string.error_no_provider_selected))
                 val warmedVideo = if (provider is com.dskja.betterstreamflix.providers.IptvProvider) {
                     // Peek so a mid-resolve failure can retry the same warm m3u8 once.
                     com.dskja.betterstreamflix.iptv.IptvZapPreloader.peekCachedVideo(server.id)
@@ -253,7 +253,7 @@ class PlayerViewModel(
                         provider.getVideo(server)
                     }
                 }
-                if (video.source.isBlank()) throw Exception("No source found")
+                if (video.source.isBlank()) throw Exception(com.dskja.betterstreamflix.BetterStreamflixApp.instance.getString(com.dskja.betterstreamflix.R.string.error_no_source_found))
 
                 // LOGICA SOTTOTITOLI GLOBALE:
                 // Se il provider non ha già impostato un default (es. i "forced" in spagnolo),

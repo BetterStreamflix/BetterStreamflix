@@ -1727,20 +1727,6 @@
     <string name="player_settings_subtitle_offset_seconds">%+.1f s</string>
     <string name="player_settings_subtitle_offset_title">Untertitel-Timing</string>
     <string name="player_trying_next_server">Nächster Server wird versucht: %1$s</string>
-    <string name="shared_watchlist_import_confirm_action">Importieren</string>
-    <string name="shared_watchlist_import_confirm_message">%2$d Titel von „%1$s“ zu deinen Favoriten hinzufügen?</string>
-    <string name="shared_watchlist_import_confirm_title">Geteilte Liste importieren</string>
-    <string name="shared_watchlist_import_failed">Geteilte Liste konnte nicht importiert werden: %1$s</string>
-    <string name="shared_watchlist_import_invalid_link">Dieser Watchlist-Link ist ungültig</string>
-    <string name="shared_watchlist_import_needs_supabase">Richte Supabase unter Konto und Sync ein, um geteilte Listen zu importieren. Der Link wurde für später gespeichert.</string>
-    <string name="shared_watchlist_import_queued_offline">Du bist offline — die geteilte Liste wird importiert, sobald du wieder online bist</string>
-    <string name="shared_watchlist_import_success">Importiert %1$d · bereits auf der Liste %2$d · übersprungen %3$d</string>
-    <string name="shared_watchlist_share_action">Liste teilen</string>
-    <string name="shared_watchlist_share_failed">Watchlist konnte nicht geteilt werden: %1$s</string>
-    <string name="shared_watchlist_share_needs_sign_in">Melde dich unter Konto und Sync an, um deine Watchlist zu teilen</string>
-    <string name="shared_watchlist_share_needs_supabase">Richte Supabase unter Konto und Sync ein, bevor du eine Liste teilst</string>
-    <string name="shared_watchlist_share_offline">Stelle eine Internetverbindung her, um einen teilbaren Listenlink zu veröffentlichen</string>
-    <string name="shared_watchlist_share_subject">BetterStreamflix-Watchlist</string>
     <string name="trailer_player_in_app">Trailer in der App</string>
     <string name="trailer_player_unavailable">Keine App zum Abspielen dieses Trailers gefunden</string>
 </resources>
