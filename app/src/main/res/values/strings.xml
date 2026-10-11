@@ -1402,6 +1402,18 @@
 
     <string name="main_menu_downloads">Downloads</string>
     <string name="downloads_title">Downloads</string>
+    <string name="offline_library_title">Offline library</string>
+    <string name="offline_library_badge">Downloaded only</string>
+    <string name="offline_library_tagline">Airplane mode ready · plays without network</string>
+    <string name="offline_library_mode">Library</string>
+    <string name="offline_library_manage_mode">Manage</string>
+    <string name="offline_library_search_hint">Search downloads</string>
+    <string name="offline_library_empty">No offline titles yet. Download a movie or episode, then it shows up here.</string>
+    <string name="offline_library_empty_search">No downloads match that search.</string>
+    <string name="offline_library_series_episodes_title">%1$s · offline episodes</string>
+    <string name="offline_library_series_count">%1$d offline</string>
+    <string name="offline_library_cd_search">Search offline library</string>
+    <string name="offline_library_cd_clear_search">Clear offline search</string>
     <string name="downloads_empty">No downloads yet. Save movies or episodes from the options menu or detail screen.</string>
     <string name="downloads_filter_empty">Nothing in this filter.</string>
     <string name="downloads_filter_all">All</string>

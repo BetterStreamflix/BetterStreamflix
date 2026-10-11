@@ -1,9 +1,12 @@
 package com.dskja.betterstreamflix.fragments.downloads
 
 import android.os.Bundle
+import android.text.Editable
+import android.text.TextWatcher
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.view.inputmethod.EditorInfo
 import android.widget.PopupMenu
 import android.widget.Toast
 import androidx.core.os.bundleOf
@@ -16,25 +19,34 @@ import androidx.navigation.fragment.findNavController
 import androidx.core.view.ViewCompat
 import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.recyclerview.widget.RecyclerView
 import com.dskja.betterstreamflix.R
+import com.dskja.betterstreamflix.adapters.AppAdapter
 import com.dskja.betterstreamflix.databinding.FragmentDownloadsMobileBinding
 import com.dskja.betterstreamflix.download.DownloadController
+import com.dskja.betterstreamflix.download.DownloadItemEntity
 import com.dskja.betterstreamflix.download.DownloadItemState
 import com.dskja.betterstreamflix.download.ExternalDownloadHandoff
+import com.dskja.betterstreamflix.download.OfflineLibrary
 import com.dskja.betterstreamflix.download.OfflinePlayback
 import com.dskja.betterstreamflix.download.ui.DownloadOptionsController
 import com.dskja.betterstreamflix.download.ui.DownloadRowUiModel
 import com.dskja.betterstreamflix.download.ui.DownloadsAdapter
 import com.dskja.betterstreamflix.download.ui.DownloadsFilter
 import com.dskja.betterstreamflix.download.ui.DownloadsSort
+import com.dskja.betterstreamflix.download.ui.DownloadsViewMode
 import com.dskja.betterstreamflix.download.ui.DownloadsViewModel
+import com.dskja.betterstreamflix.download.ui.OfflineLibraryActions
 import com.dskja.betterstreamflix.fragments.settings.SettingsDeepLink
 import com.dskja.betterstreamflix.models.Video
 import com.dskja.betterstreamflix.platform.playerbackend.ExternalStreamHandoff
 import com.dskja.betterstreamflix.providers.Provider
+import com.dskja.betterstreamflix.ui.SpacingItemDecoration
 import com.dskja.betterstreamflix.utils.ExpDialogChrome
 import com.dskja.betterstreamflix.utils.ExperimentalMobileDesign
 import com.dskja.betterstreamflix.utils.UserPreferences
+import com.dskja.betterstreamflix.utils.dp
+import com.dskja.betterstreamflix.utils.hideKeyboard
 import com.dskja.betterstreamflix.utils.viewModelsFactory
 import com.dskja.betterstreamflix.utils.ExpMotion
 import com.dskja.betterstreamflix.utils.ExpNavAutoHide
@@ -51,6 +63,23 @@ class DownloadsMobileFragment : Fragment() {
 
     private val viewModel by viewModelsFactory {
         DownloadsViewModel(requireContext().applicationContext)
+    }
+
+    private var libraryEntries: List<OfflineLibrary.Entry> = emptyList()
+    private var librarySpacing: RecyclerView.ItemDecoration? = null
+    private val libraryAdapter = AppAdapter().apply {
+        onMovieClickListener = { movie ->
+            val entity = OfflineLibrary.findMovieEntity(libraryEntries, movie.id)
+            if (entity != null) playOfflineEntity(entity)
+        }
+        onTvShowClickListener = { show ->
+            val series = OfflineLibrary.findSeries(libraryEntries, show.id)
+            if (series != null) {
+                OfflineLibraryActions.showSeriesEpisodePicker(requireContext(), series) {
+                    playOfflineEntity(it)
+                }
+            }
+        }
     }
 
     private val adapter = DownloadsAdapter(
@@ -118,19 +147,7 @@ class DownloadsMobileFragment : Fragment() {
                 chip.postDelayed({ ExpMotion.popIn(chip) }, 32L * index)
             }
         }
-        val tablet = resources.configuration.smallestScreenWidthDp >= 600
-        binding.rvDownloads.layoutManager = if (tablet) {
-            GridLayoutManager(requireContext(), 2).also { grid ->
-                grid.spanSizeLookup = object : GridLayoutManager.SpanSizeLookup() {
-                    override fun getSpanSize(position: Int): Int =
-                        adapter.spanForPosition(position, fullSpan = 2)
-                }
-            }
-        } else {
-            LinearLayoutManager(requireContext())
-        }
         binding.rvDownloads.itemAnimator = null
-        binding.rvDownloads.adapter = adapter
         binding.btnDownloadsMenu.apply {
             if (ExperimentalMobileDesign.enabled()) {
                 with(com.dskja.betterstreamflix.utils.ExpPressEffects) { applyExpPress() }
@@ -140,6 +157,20 @@ class DownloadsMobileFragment : Fragment() {
                 showMenu(it)
             }
         }
+        binding.chipModeLibrary.setOnClickListener {
+            ExpMotion.hapticTap(it)
+            viewModel.setViewMode(DownloadsViewMode.LIBRARY)
+        }
+        binding.chipModeManage.setOnClickListener {
+            ExpMotion.hapticTap(it)
+            viewModel.setViewMode(DownloadsViewMode.MANAGE)
+        }
+        if (ExperimentalMobileDesign.enabled()) {
+            listOf(binding.chipModeLibrary, binding.chipModeManage).forEach {
+                with(com.dskja.betterstreamflix.utils.ExpPressEffects) { it.applyExpPress() }
+            }
+        }
+        wireOfflineLibrarySearch()
         listOf(
             binding.chipFilterAll to DownloadsFilter.ALL,
             binding.chipFilterDownloading to DownloadsFilter.DOWNLOADING,
@@ -156,76 +187,40 @@ class DownloadsMobileFragment : Fragment() {
         }
 
         viewLifecycleOwner.lifecycleScope.launch {
+            viewModel.selectedViewMode
+                .flowWithLifecycle(lifecycle, Lifecycle.State.STARTED)
+                .collect { applyViewMode(it) }
+        }
+        viewLifecycleOwner.lifecycleScope.launch {
+            combine(viewModel.libraryEntries, viewModel.librarySearchQuery) { entries, query ->
+                entries to query
+            }
+                .flowWithLifecycle(lifecycle, Lifecycle.State.STARTED)
+                .collect { (entries, query) ->
+                    libraryEntries = entries
+                    if (viewModel.currentViewMode() != DownloadsViewMode.LIBRARY) return@collect
+                    libraryAdapter.submitList(OfflineLibrary.toAppItems(entries, mobile = true))
+                    renderEmptyState(
+                        empty = entries.isEmpty(),
+                        libraryMode = true,
+                        searchActive = query.isNotBlank(),
+                        manageFilter = viewModel.currentFilter(),
+                    )
+                }
+        }
+        viewLifecycleOwner.lifecycleScope.launch {
             // Combine filter so empty→empty filter switches still refresh CTA copy
             // (StateFlow skips equal emptyList emissions).
             combine(viewModel.rows, viewModel.selectedFilter) { rows, filter -> rows to filter }
                 .flowWithLifecycle(lifecycle, Lifecycle.State.STARTED)
                 .collect { (rows, filter) ->
+                if (viewModel.currentViewMode() != DownloadsViewMode.MANAGE) return@collect
                 adapter.submitList(rows.toList())
-                if (rows.isEmpty()) {
-                    val cta = binding.root.findViewById<View>(R.id.btn_downloads_empty_cta)
-                    val emptyRule = binding.root.findViewById<View>(R.id.v_downloads_empty_rule)
-                    if (ExperimentalMobileDesign.enabled()) {
-                        binding.tvDownloadsEmpty.setBackgroundResource(
-                            ExperimentalMobileDesign.glassCardBackground(),
-                        )
-                    }
-                    if (binding.tvDownloadsEmpty.visibility != View.VISIBLE) {
-                        binding.tvDownloadsEmpty.isVisible = true
-                        emptyRule?.isVisible = true
-                        if (ExperimentalMobileDesign.enabled()) {
-                            ExpMotion.revealHeader(binding.tvDownloadsEmpty, emptyRule, cta)
-                            ExpMotion.pulseAccentRule(emptyRule)
-                        } else {
-                            ExpMotion.fadeInAndShow(binding.tvDownloadsEmpty)
-                            emptyRule?.let { ExpMotion.fadeInAndShow(it) }
-                            cta?.let { ExpMotion.fadeInAndShow(it) }
-                        }
-                    } else {
-                        binding.tvDownloadsEmpty.isVisible = true
-                        emptyRule?.isVisible = true
-                    }
-                    val filterAll = filter == DownloadsFilter.ALL
-                    binding.root.findViewById<android.widget.TextView>(R.id.btn_downloads_empty_cta)?.let { chip ->
-                        val wasVisible = chip.isVisible
-                        chip.isVisible = true
-                        chip.setText(
-                            if (filterAll) R.string.exp_empty_browse_catalog
-                            else R.string.exp_empty_clear_filter,
-                        )
-                        if (ExperimentalMobileDesign.enabled()) {
-                            chip.setBackgroundResource(ExperimentalMobileDesign.primaryButtonBackground())
-                            with(com.dskja.betterstreamflix.utils.ExpPressEffects) { chip.applyExpPress() }
-                            if (!wasVisible) ExpMotion.popIn(chip)
-                        }
-                        chip.setOnClickListener {
-                            ExpMotion.hapticTap(it)
-                            if (filterAll) {
-                                findNavController().navigate(R.id.home)
-                            } else {
-                                viewModel.setFilter(DownloadsFilter.ALL)
-                            }
-                        }
-                    }
-                } else {
-                    if (ExperimentalMobileDesign.enabled() && binding.tvDownloadsEmpty.isVisible) {
-                        ExpMotion.fadeOutAndHide(binding.tvDownloadsEmpty)
-                        binding.root.findViewById<View>(R.id.v_downloads_empty_rule)
-                            ?.let { ExpMotion.fadeOutAndHide(it) }
-                        binding.root.findViewById<View>(R.id.btn_downloads_empty_cta)
-                            ?.let { ExpMotion.fadeOutAndHide(it) }
-                    } else {
-                        binding.tvDownloadsEmpty.isVisible = false
-                        binding.root.findViewById<View>(R.id.v_downloads_empty_rule)?.isVisible = false
-                        binding.root.findViewById<View>(R.id.btn_downloads_empty_cta)?.isVisible = false
-                    }
-                }
-                binding.tvDownloadsEmpty.setText(
-                    if (filter == DownloadsFilter.ALL) {
-                        R.string.downloads_empty
-                    } else {
-                        R.string.downloads_filter_empty
-                    },
+                renderEmptyState(
+                    empty = rows.isEmpty(),
+                    libraryMode = false,
+                    searchActive = false,
+                    manageFilter = filter,
                 )
             }
         }
@@ -234,6 +229,7 @@ class DownloadsMobileFragment : Fragment() {
                 styleFilters(it)
             }
         }
+        applyViewMode(viewModel.currentViewMode())
         viewLifecycleOwner.lifecycleScope.launch {
             viewModel.storageLabel.flowWithLifecycle(lifecycle, Lifecycle.State.STARTED).collect {
                 val storage = binding.tvDownloadsStorage
@@ -283,6 +279,162 @@ class DownloadsMobileFragment : Fragment() {
     override fun onPause() {
         viewModel.stopLiveProgress()
         super.onPause()
+    }
+
+    private fun applyViewMode(mode: DownloadsViewMode) {
+        val library = mode == DownloadsViewMode.LIBRARY
+        binding.tvDownloadsTitle.setText(
+            if (library) R.string.offline_library_title else R.string.downloads_title,
+        )
+        binding.llOfflineLibraryBadge.isVisible = library
+        binding.clOfflineLibrarySearch.isVisible = library
+        binding.hsvDownloadsFilters.isVisible = !library
+        styleChip(binding.chipModeLibrary, library)
+        styleChip(binding.chipModeManage, !library)
+        librarySpacing?.let { binding.rvDownloads.removeItemDecoration(it) }
+        librarySpacing = null
+        if (library) {
+            val span = when {
+                resources.configuration.smallestScreenWidthDp >= 600 -> 4
+                else -> 3
+            }
+            binding.rvDownloads.layoutManager = GridLayoutManager(requireContext(), span)
+            binding.rvDownloads.adapter = libraryAdapter
+            librarySpacing = SpacingItemDecoration(10.dp(requireContext())).also {
+                binding.rvDownloads.addItemDecoration(it)
+            }
+            libraryAdapter.submitList(OfflineLibrary.toAppItems(libraryEntries, mobile = true))
+            renderEmptyState(
+                empty = libraryEntries.isEmpty(),
+                libraryMode = true,
+                searchActive = viewModel.librarySearchQuery.value.isNotBlank(),
+                manageFilter = viewModel.currentFilter(),
+            )
+        } else {
+            val tablet = resources.configuration.smallestScreenWidthDp >= 600
+            binding.rvDownloads.layoutManager = if (tablet) {
+                GridLayoutManager(requireContext(), 2).also { grid ->
+                    grid.spanSizeLookup = object : GridLayoutManager.SpanSizeLookup() {
+                        override fun getSpanSize(position: Int): Int =
+                            adapter.spanForPosition(position, fullSpan = 2)
+                    }
+                }
+            } else {
+                LinearLayoutManager(requireContext())
+            }
+            binding.rvDownloads.adapter = adapter
+            renderEmptyState(
+                empty = adapter.itemCount == 0,
+                libraryMode = false,
+                searchActive = false,
+                manageFilter = viewModel.currentFilter(),
+            )
+        }
+    }
+
+    private fun wireOfflineLibrarySearch() {
+        val search = binding.etOfflineLibrarySearch
+        val clear = binding.btnOfflineLibrarySearchClear
+        search.addTextChangedListener(object : TextWatcher {
+            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) = Unit
+            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) = Unit
+            override fun afterTextChanged(s: Editable?) {
+                val q = s?.toString().orEmpty()
+                clear.isVisible = q.isNotBlank()
+                viewModel.setLibraryQuery(q)
+            }
+        })
+        search.setOnEditorActionListener { _, actionId, _ ->
+            if (actionId == EditorInfo.IME_ACTION_SEARCH) {
+                hideKeyboard()
+                true
+            } else {
+                false
+            }
+        }
+        clear.setOnClickListener {
+            search.setText("")
+            hideKeyboard()
+        }
+    }
+
+    private fun renderEmptyState(
+        empty: Boolean,
+        libraryMode: Boolean,
+        searchActive: Boolean,
+        manageFilter: DownloadsFilter,
+    ) {
+        val cta = binding.root.findViewById<View>(R.id.btn_downloads_empty_cta)
+        val emptyRule = binding.root.findViewById<View>(R.id.v_downloads_empty_rule)
+        if (!empty) {
+            if (ExperimentalMobileDesign.enabled() && binding.tvDownloadsEmpty.isVisible) {
+                ExpMotion.fadeOutAndHide(binding.tvDownloadsEmpty)
+                emptyRule?.let { ExpMotion.fadeOutAndHide(it) }
+                cta?.let { ExpMotion.fadeOutAndHide(it) }
+            } else {
+                binding.tvDownloadsEmpty.isVisible = false
+                emptyRule?.isVisible = false
+                cta?.isVisible = false
+            }
+            return
+        }
+        if (ExperimentalMobileDesign.enabled()) {
+            binding.tvDownloadsEmpty.setBackgroundResource(
+                ExperimentalMobileDesign.glassCardBackground(),
+            )
+        }
+        binding.tvDownloadsEmpty.setText(
+            when {
+                libraryMode && searchActive -> R.string.offline_library_empty_search
+                libraryMode -> R.string.offline_library_empty
+                manageFilter == DownloadsFilter.ALL -> R.string.downloads_empty
+                else -> R.string.downloads_filter_empty
+            },
+        )
+        if (binding.tvDownloadsEmpty.visibility != View.VISIBLE) {
+            binding.tvDownloadsEmpty.isVisible = true
+            emptyRule?.isVisible = true
+            if (ExperimentalMobileDesign.enabled()) {
+                ExpMotion.revealHeader(binding.tvDownloadsEmpty, emptyRule, cta)
+                ExpMotion.pulseAccentRule(emptyRule)
+            } else {
+                ExpMotion.fadeInAndShow(binding.tvDownloadsEmpty)
+                emptyRule?.let { ExpMotion.fadeInAndShow(it) }
+                cta?.let { ExpMotion.fadeInAndShow(it) }
+            }
+        } else {
+            binding.tvDownloadsEmpty.isVisible = true
+            emptyRule?.isVisible = true
+        }
+        binding.root.findViewById<android.widget.TextView>(R.id.btn_downloads_empty_cta)?.let { chip ->
+            val wasVisible = chip.isVisible
+            chip.isVisible = true
+            val resetLibrarySearch = libraryMode && searchActive
+            val filterAll = !libraryMode && manageFilter == DownloadsFilter.ALL
+            chip.setText(
+                when {
+                    resetLibrarySearch -> R.string.exp_empty_clear_filter
+                    filterAll || libraryMode -> R.string.exp_empty_browse_catalog
+                    else -> R.string.exp_empty_clear_filter
+                },
+            )
+            if (ExperimentalMobileDesign.enabled()) {
+                chip.setBackgroundResource(ExperimentalMobileDesign.primaryButtonBackground())
+                with(com.dskja.betterstreamflix.utils.ExpPressEffects) { chip.applyExpPress() }
+                if (!wasVisible) ExpMotion.popIn(chip)
+            }
+            chip.setOnClickListener {
+                ExpMotion.hapticTap(it)
+                when {
+                    resetLibrarySearch -> {
+                        binding.etOfflineLibrarySearch.setText("")
+                        viewModel.setLibraryQuery("")
+                    }
+                    filterAll || libraryMode -> findNavController().navigate(R.id.home)
+                    else -> viewModel.setFilter(DownloadsFilter.ALL)
+                }
+            }
+        }
     }
 
     private fun styleFilters(selected: DownloadsFilter) {
@@ -611,26 +763,28 @@ class DownloadsMobileFragment : Fragment() {
         }
     }
 
-    private fun playOffline(row: DownloadRowUiModel.Item) {
+    private fun playOffline(row: DownloadRowUiModel.Item) = playOfflineEntity(row.entity)
+
+    private fun playOfflineEntity(entity: DownloadItemEntity) {
         viewLifecycleOwner.lifecycleScope.launch {
-            if (!viewModel.isPlayAllowed(row.entity)) {
+            if (!viewModel.isPlayAllowed(entity)) {
                 showDownloadError(R.string.downloads_failed_generic)
                 return@launch
             }
-            val videoType = DownloadController.deserializeVideoType(row.entity.videoTypeJson)
+            val videoType = DownloadController.deserializeVideoType(entity.videoTypeJson)
             if (videoType == null) {
                 showDownloadError(R.string.downloads_failed_generic)
                 return@launch
             }
-            activateDownloadProvider(row.entity.providerName)
+            activateDownloadProvider(entity.providerName)
             val local = withContext(Dispatchers.IO) {
-                OfflinePlayback.buildLocalVideo(requireContext(), row.entity)
+                OfflinePlayback.buildLocalVideo(requireContext(), entity)
             }
             if (local == null) {
                 showDownloadError(R.string.download_error_file_missing)
                 return@launch
             }
-            OfflineVideoCache.put(row.entity.contentKey, local)
+            OfflineVideoCache.put(entity.contentKey, local)
             findNavController().navigate(
                 R.id.action_global_player,
                 bundleOf(
@@ -638,8 +792,8 @@ class DownloadsMobileFragment : Fragment() {
                         is Video.Type.Movie -> videoType.id
                         is Video.Type.Episode -> videoType.id
                     },
-                    "title" to row.entity.title,
-                    "subtitle" to row.entity.subtitle,
+                    "title" to entity.title,
+                    "subtitle" to entity.subtitle,
                     "videoType" to videoType,
                     "preferredServerName" to OFFLINE_SERVER,
                 ),

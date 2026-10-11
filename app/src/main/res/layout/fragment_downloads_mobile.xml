@@ -30,7 +30,7 @@
         android:fontFamily="@font/manrope"
         android:paddingStart="16dp"
         android:paddingEnd="8dp"
-        android:text="@string/downloads_title"
+        android:text="@string/offline_library_title"
         android:textColor="#FFFFFFFF"
         android:textSize="26sp"
         android:textStyle="bold"
@@ -102,6 +102,150 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@id/tv_downloads_storage" />
 
+    <LinearLayout
+        android:id="@+id/ll_offline_library_badge"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="16dp"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:paddingTop="2dp"
+        android:paddingBottom="4dp"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/tv_downloads_banner">
+
+        <ImageView
+            android:layout_width="16dp"
+            android:layout_height="16dp"
+            android:contentDescription="@null"
+            android:importantForAccessibility="no"
+            android:src="@drawable/ic_offline_library"
+            app:tint="#B3FFFFFF" />
+
+        <TextView
+            android:id="@+id/tv_offline_library_badge"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="6dp"
+            android:fontFamily="@font/manrope"
+            android:text="@string/offline_library_badge"
+            android:textAllCaps="true"
+            android:textColor="#B3FFFFFF"
+            android:textSize="11sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/tv_offline_library_tagline"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="8dp"
+            android:ellipsize="end"
+            android:maxLines="1"
+            android:text="@string/offline_library_tagline"
+            android:textColor="#80FFFFFF"
+            android:textSize="12sp" />
+    </LinearLayout>
+
+    <LinearLayout
+        android:id="@+id/ll_downloads_modes"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:paddingStart="12dp"
+        android:paddingTop="4dp"
+        android:paddingEnd="12dp"
+        android:paddingBottom="2dp"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/ll_offline_library_badge">
+
+        <TextView
+            android:id="@+id/chip_mode_library"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_margin="4dp"
+            android:background="@drawable/bg_download_filter_chip_selected"
+            android:paddingStart="14dp"
+            android:paddingTop="8dp"
+            android:paddingEnd="14dp"
+            android:paddingBottom="8dp"
+            android:text="@string/offline_library_mode"
+            android:textColor="#FF111111"
+            android:textSize="13sp" />
+
+        <TextView
+            android:id="@+id/chip_mode_manage"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_margin="4dp"
+            android:background="@drawable/bg_download_filter_chip"
+            android:paddingStart="14dp"
+            android:paddingTop="8dp"
+            android:paddingEnd="14dp"
+            android:paddingBottom="8dp"
+            android:text="@string/offline_library_manage_mode"
+            android:textColor="#FFFFFFFF"
+            android:textSize="13sp" />
+    </LinearLayout>
+
+    <androidx.constraintlayout.widget.ConstraintLayout
+        android:id="@+id/cl_offline_library_search"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="12dp"
+        android:layout_marginTop="4dp"
+        android:layout_marginEnd="12dp"
+        android:background="@drawable/bg_search_edittext"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/ll_downloads_modes">
+
+        <ImageView
+            android:id="@+id/iv_offline_library_search"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:contentDescription="@string/offline_library_cd_search"
+            android:padding="10dp"
+            android:src="@drawable/ic_search"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent"
+            app:tint="#FFFFFF" />
+
+        <EditText
+            android:id="@+id/et_offline_library_search"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:background="@android:color/transparent"
+            android:hint="@string/offline_library_search_hint"
+            android:imeOptions="actionSearch"
+            android:importantForAutofill="no"
+            android:inputType="text"
+            android:maxLines="1"
+            android:paddingTop="12dp"
+            android:paddingBottom="12dp"
+            android:textColor="#FFFFFFFF"
+            android:textColorHint="#80FFFFFF"
+            android:textSize="15sp"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toStartOf="@id/btn_offline_library_search_clear"
+            app:layout_constraintStart_toEndOf="@id/iv_offline_library_search"
+            app:layout_constraintTop_toTopOf="parent" />
+
+        <ImageView
+            android:id="@+id/btn_offline_library_search_clear"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:contentDescription="@string/offline_library_cd_clear_search"
+            android:padding="10dp"
+            android:src="@drawable/ic_search_clear"
+            android:visibility="gone"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintTop_toTopOf="parent"
+            app:tint="#FFFFFFFF" />
+    </androidx.constraintlayout.widget.ConstraintLayout>
+
     <HorizontalScrollView
         android:id="@+id/hsv_downloads_filters"
         android:layout_width="0dp"
@@ -109,9 +253,10 @@
         android:paddingStart="12dp"
         android:paddingEnd="12dp"
         android:scrollbars="none"
+        android:visibility="gone"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/tv_downloads_banner">
+        app:layout_constraintTop_toBottomOf="@id/cl_offline_library_search">
 
         <LinearLayout
             android:id="@+id/ll_downloads_filters"

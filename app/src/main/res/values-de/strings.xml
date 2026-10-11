@@ -1206,6 +1206,18 @@
 
     <string name="main_menu_downloads">Downloads</string>
     <string name="downloads_title">Downloads</string>
+    <string name="offline_library_title">Offline-Bibliothek</string>
+    <string name="offline_library_badge">Nur heruntergeladen</string>
+    <string name="offline_library_tagline">Flugzeugmodus · spielt ohne Netz</string>
+    <string name="offline_library_mode">Bibliothek</string>
+    <string name="offline_library_manage_mode">Verwalten</string>
+    <string name="offline_library_search_hint">Downloads durchsuchen</string>
+    <string name="offline_library_empty">Noch keine Offline-Titel. Lade einen Film oder eine Episode herunter — dann erscheint er hier.</string>
+    <string name="offline_library_empty_search">Keine Downloads passen zu dieser Suche.</string>
+    <string name="offline_library_series_episodes_title">%1$s · Offline-Episoden</string>
+    <string name="offline_library_series_count">%1$d offline</string>
+    <string name="offline_library_cd_search">Offline-Bibliothek durchsuchen</string>
+    <string name="offline_library_cd_clear_search">Offline-Suche löschen</string>
     <string name="downloads_empty">Noch keine Downloads. Speichere Filme oder Episoden über das Menü oder die Detailseite.</string>
     <string name="downloads_filter_empty">Nichts in diesem Filter.</string>
     <string name="downloads_filter_all">Alle</string>
