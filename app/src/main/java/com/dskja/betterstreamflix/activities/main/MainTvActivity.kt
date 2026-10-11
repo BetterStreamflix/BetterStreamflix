@@ -324,6 +324,7 @@ class MainTvActivity : FragmentActivity() {
         handleProfileTransferIntent(intent)
         handleCastRoomIntent(intent)
         handleSessionHandoffIntent(intent)
+        handleCastHandoffIntent(intent)
         handleWatchDeepLink(intent)
         com.dskja.betterstreamflix.tvlauncher.TvLauncherSync.start(this)
         registerCastRoomHostConsumer()
@@ -344,6 +345,7 @@ class MainTvActivity : FragmentActivity() {
         handleProfileTransferIntent(intent)
         handleCastRoomIntent(intent)
         handleSessionHandoffIntent(intent)
+        handleCastHandoffIntent(intent)
         handleWatchDeepLink(intent)
     }
 
@@ -439,6 +441,12 @@ class MainTvActivity : FragmentActivity() {
         com.dskja.betterstreamflix.sync.SessionHandoffUi.handleIncoming(this, raw)
     }
 
+    private fun handleCastHandoffIntent(intent: Intent?) {
+        val code = com.dskja.betterstreamflix.sync.CastHandoffLinks.parseShortCode(intent?.data)
+            ?: return
+        com.dskja.betterstreamflix.sync.CastHandoffUi.handleIncomingCode(this, code)
+    }
+
     private fun registerCastRoomHostConsumer() {
         com.dskja.betterstreamflix.sync.CastRoomUi.registerHostConsumer(
             object : com.dskja.betterstreamflix.sync.CastRoomUi.HostConsumer {
@@ -521,6 +529,7 @@ class MainTvActivity : FragmentActivity() {
         if (com.dskja.betterstreamflix.sync.CastRoomLinks.parseToken(data) != null) return
         if (com.dskja.betterstreamflix.sync.SessionHandoffLinks.parseCode(data.toString()) != null) return
         if (com.dskja.betterstreamflix.sync.SessionHandoffLinks.parseToken(data.toString()) != null) return
+        if (com.dskja.betterstreamflix.sync.CastHandoffLinks.parseShortCode(data) != null) return
         com.dskja.betterstreamflix.tvlauncher.TvWatchDeepLinkRouter.handle(this, data)
     }
 
@@ -552,6 +561,7 @@ class MainTvActivity : FragmentActivity() {
         com.dskja.betterstreamflix.download.DownloadPackUi.tryFlushPending(this)
         com.dskja.betterstreamflix.profiletransfer.ProfileTransferUi.tryFlushPending(this)
         com.dskja.betterstreamflix.sync.CastRoomUi.tryFlushPending(this)
+        com.dskja.betterstreamflix.sync.CastHandoffUi.tryFlushPending(this)
         com.dskja.betterstreamflix.tvlauncher.TvLauncherSync.requestPublish(this)
         val destId = (supportFragmentManager.findFragmentById(binding.navMainFragment.id)
             as? NavHostFragment)?.navController?.currentDestination?.id
@@ -577,6 +587,7 @@ class MainTvActivity : FragmentActivity() {
         com.dskja.betterstreamflix.download.DownloadPackUi.tryFlushPending(this)
         com.dskja.betterstreamflix.profiletransfer.ProfileTransferUi.tryFlushPending(this)
         com.dskja.betterstreamflix.sync.CastRoomUi.tryFlushPending(this)
+        com.dskja.betterstreamflix.sync.CastHandoffUi.tryFlushPending(this)
     }
 
     override fun onStop() {
@@ -617,6 +628,7 @@ class MainTvActivity : FragmentActivity() {
             com.dskja.betterstreamflix.download.DownloadPackUi.tryFlushPending(this)
             com.dskja.betterstreamflix.profiletransfer.ProfileTransferUi.tryFlushPending(this)
             com.dskja.betterstreamflix.sync.CastRoomUi.tryFlushPending(this)
+            com.dskja.betterstreamflix.sync.CastHandoffUi.tryFlushPending(this)
             return
         }
         val host = navHostFragment.childFragmentManager.primaryNavigationFragment
@@ -628,6 +640,7 @@ class MainTvActivity : FragmentActivity() {
                 com.dskja.betterstreamflix.sync.WatchPartyUi.tryFlushPending(this)
                 com.dskja.betterstreamflix.download.DownloadPackUi.tryFlushPending(this)
                 com.dskja.betterstreamflix.profiletransfer.ProfileTransferUi.tryFlushPending(this)
+                com.dskja.betterstreamflix.sync.CastHandoffUi.tryFlushPending(this)
                 com.dskja.betterstreamflix.sync.CastRoomUi.tryFlushPending(this)
             },
         )

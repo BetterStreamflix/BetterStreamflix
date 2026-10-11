@@ -34,6 +34,7 @@ import com.dskja.betterstreamflix.R
 import com.dskja.betterstreamflix.activities.main.MainMobileActivity
 import com.dskja.betterstreamflix.activities.tools.QrScannerActivity
 import com.dskja.betterstreamflix.activities.tools.ProviderWatchlistScrapeActivity
+import com.dskja.betterstreamflix.sync.CastHandoffSettingsController
 import com.dskja.betterstreamflix.sync.CastRoomSettingsController
 import com.dskja.betterstreamflix.backup.BackupRestoreManager
 import com.dskja.betterstreamflix.backup.ProviderBackupContext
@@ -506,6 +507,10 @@ class SettingsMobileFragment : PreferenceFragmentCompat() {
                         )
                     }
             },
+        )
+        CastHandoffSettingsController.bind(
+            fragment = this,
+            findPreference = { key -> findPreference(key) },
         )
         PlatformSettingsController.bind(this, lifecycleScope) { key ->
             findPreference(key)

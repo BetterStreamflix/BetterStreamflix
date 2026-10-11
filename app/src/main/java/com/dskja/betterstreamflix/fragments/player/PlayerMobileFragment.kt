@@ -207,6 +207,24 @@ class PlayerMobileFragment : Fragment(),
             }
         }
 
+    private val castHandoffBridge =
+        object : com.dskja.betterstreamflix.sync.CastHandoffPlayerHooks.PlayerBridge {
+            override fun isLiveOrOffline(): Boolean =
+                isLiveTvPlayback() || isOfflinePlayback()
+
+            override fun videoType(): Video.Type = args.videoType
+
+            override fun currentServer(): Video.Server? =
+                this@PlayerMobileFragment.currentServer
+
+            override fun positionMs(): Long =
+                runCatching { activePlayer().currentPosition }.getOrDefault(0L)
+
+            override fun seekTo(positionMs: Long) {
+                runCatching { activePlayer().seekTo(positionMs) }
+            }
+        }
+
     private lateinit var player: ExoPlayer
     private var playbackListener: Player.Listener? = null
     private var bufferEtaController: com.dskja.betterstreamflix.player.BufferEtaController? = null
@@ -1018,6 +1036,7 @@ class PlayerMobileFragment : Fragment(),
         // super.onDestroyView() races with OEM back stacks (crash on Zurück).
         isTearingDown = true
         com.dskja.betterstreamflix.sync.WatchPartyPlayerHooks.onDestroyView(this)
+        com.dskja.betterstreamflix.sync.CastHandoffPlayerHooks.onDestroyView(this)
         com.dskja.betterstreamflix.sync.CastRoomPlayerHooks.onDestroyView(this)
         PlaybackLifecycleGuard.unregister(playbackStopHandle)
         val appContext = context?.applicationContext
@@ -1312,6 +1331,11 @@ class PlayerMobileFragment : Fragment(),
             this,
             binding.pvPlayer.controller.binding.btnExoWatchParty,
             watchPartyBridge,
+        )
+        com.dskja.betterstreamflix.sync.CastHandoffPlayerHooks.wireChromeButton(
+            this,
+            binding.pvPlayer.controller.binding.btnExoCastHandoff,
+            castHandoffBridge,
         )
         com.dskja.betterstreamflix.sync.CastRoomPlayerHooks.wireChromeButton(
             this,
@@ -1886,6 +1910,10 @@ class PlayerMobileFragment : Fragment(),
             binding.pvPlayer.controller.binding.btnExoWatchParty,
             watchPartyBridge,
         )
+        com.dskja.betterstreamflix.sync.CastHandoffPlayerHooks.refreshChrome(
+            binding.pvPlayer.controller.binding.btnExoCastHandoff,
+            castHandoffBridge,
+        )
         com.dskja.betterstreamflix.sync.CastRoomPlayerHooks.ensureHostHeartbeat(
             this,
             object : com.dskja.betterstreamflix.sync.CastRoomPlayerHooks.PlayerBridge {
@@ -2279,11 +2307,13 @@ class PlayerMobileFragment : Fragment(),
         playbackListener = playbackListenerLocal
         player.addListener(playbackListenerLocal)
 
+        val handoffSeekPending = com.dskja.betterstreamflix.sync.CastHandoffPlayerHooks
+            .applyPendingSeek(this, castHandoffBridge)
         if (currentPosition == 0L) {
             if (isLiveTvPlayback()) {
                 // Live streams should start at the live edge, not a saved VOD position.
                 player.seekToDefaultPosition()
-            } else {
+            } else if (!handoffSeekPending) {
             val videoType = args.videoType
             val provider = UserPreferences.currentProvider
             val appContext = requireContext().applicationContext
@@ -4233,6 +4263,11 @@ class PlayerMobileFragment : Fragment(),
             this,
             controller.btnExoWatchParty,
             watchPartyBridge,
+        )
+        com.dskja.betterstreamflix.sync.CastHandoffPlayerHooks.wireChromeButton(
+            this,
+            controller.btnExoCastHandoff,
+            castHandoffBridge,
         )
         com.dskja.betterstreamflix.sync.CastRoomPlayerHooks.wireChromeButton(
             this,
