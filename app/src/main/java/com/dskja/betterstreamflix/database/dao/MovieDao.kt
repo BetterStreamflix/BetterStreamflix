@@ -55,6 +55,19 @@ interface MovieDao {
     @Query("UPDATE movies SET lastPlayedAtMillis = NULL WHERE lastPlayedAtMillis IS NOT NULL")
     fun clearAllRecentlyWatched(): Int
 
+    @Query(
+        """
+        UPDATE movies SET
+            lastEngagementTimeUtcMillis = NULL,
+            lastPlaybackPositionMillis = NULL,
+            durationMillis = NULL
+        WHERE lastEngagementTimeUtcMillis IS NOT NULL
+           OR lastPlaybackPositionMillis IS NOT NULL
+           OR durationMillis IS NOT NULL
+        """,
+    )
+    fun clearAllContinueWatching(): Int
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     fun insert(movie: Movie)
 

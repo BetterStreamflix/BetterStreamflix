@@ -155,6 +155,46 @@ object CrossProviderLibrary {
         }
     }
 
+    /**
+     * Wipe Continue Watching engagement + Recently Watched timestamps for the
+     * active profile's scoped provider DBs. Favorites and watched flags stay.
+     * Used by Guest expiry before the temp profile is removed.
+     */
+    suspend fun clearContinueAndRecentlyWatched(context: Context) {
+        forEachScopedProviderDb(context) { provider, db ->
+            runCatching {
+                db.movieDao().clearAllContinueWatching()
+                db.movieDao().clearAllRecentlyWatched()
+                db.episodeDao().clearAllContinueWatching()
+                db.tvShowDao().clearAllRecentlyWatched()
+                db.tvShowDao().clearAllWatchingFlags()
+            }
+            runCatching {
+                val cached = UserDataCache.read(context, provider) ?: return@runCatching
+                if (cached.continueWatchingMovies.isEmpty() &&
+                    cached.continueWatchingEpisodes.isEmpty() &&
+                    cached.recentlyWatchedMovies.isEmpty() &&
+                    cached.recentlyWatchedTvShows.isEmpty() &&
+                    cached.nextEpisodes.isEmpty()
+                ) {
+                    return@runCatching
+                }
+                UserDataCache.write(
+                    context,
+                    provider,
+                    cached.copy(
+                        continueWatchingMovies = emptyList(),
+                        continueWatchingEpisodes = emptyList(),
+                        recentlyWatchedMovies = emptyList(),
+                        recentlyWatchedTvShows = emptyList(),
+                        nextEpisodes = emptyList(),
+                    ),
+                )
+            }
+        }
+        UserDataCache.clearMemory()
+    }
+
     private fun engagementMillis(item: AppAdapter.Item): Long = when (item) {
         is Movie -> item.watchHistory?.lastEngagementTimeUtcMillis
             ?: item.watchedDate?.timeInMillis

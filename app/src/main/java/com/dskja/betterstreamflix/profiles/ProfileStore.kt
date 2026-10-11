@@ -105,6 +105,12 @@ object ProfileStore {
                     if (value.isNotBlank()) integrations.add(value)
                 }
             }
+            val isGuest = obj.optBoolean("isGuest", false)
+            val expiresAt = if (obj.has("expiresAtMillis") && !obj.isNull("expiresAtMillis")) {
+                obj.optLong("expiresAtMillis")
+            } else {
+                null
+            }
             out.add(
                 UserProfile(
                     id = id,
@@ -122,6 +128,8 @@ object ProfileStore {
                         null
                     },
                     pinHash = obj.optString("pinHash").takeIf { it.isNotBlank() },
+                    isGuest = isGuest,
+                    expiresAtMillis = expiresAt,
                     createdAtMillis = created,
                     updatedAtMillis = updated,
                     enabledIntegrations = integrations,
