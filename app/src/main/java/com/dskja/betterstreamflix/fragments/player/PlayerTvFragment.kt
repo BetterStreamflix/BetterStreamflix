@@ -295,6 +295,7 @@ class PlayerTvFragment : Fragment(),
     private var castQueueChangedListener: ((Int) -> Unit)? = null
     private var castQueueAdvancedListener: (() -> Unit)? = null
     private var isCasting = false
+    private var livePipZapController: com.dskja.betterstreamflix.live.LivePipZapController? = null
     /** True when CastContext/GMS is available on this device (Fire OS often false). */
     private var castGmsAvailable = false
     /** Skip one onResume auto-play after handing off to an external player. */
@@ -454,6 +455,7 @@ class PlayerTvFragment : Fragment(),
         binding.pvPlayer.onSubtitleToggleClicked = ::handleSubtitleToggle
         requestPlayerFocus()
         startKidsBedtimeWatch()
+        attachLivePipZap()
         // Touch brightness/volume gestures are for handsets; skip on Leanback / Fire TV.
         gestureHelper = if (
             DeviceCapabilities.isLeanbackDevice(requireContext()) ||
@@ -903,6 +905,8 @@ class PlayerTvFragment : Fragment(),
         isTearingDown = true
         clearBypassSession(dismissDialog = true)
         com.dskja.betterstreamflix.player.PlayerCleanExit.noteLeavingPlayer()
+        livePipZapController?.release()
+        livePipZapController = null
         val live = if (::player.isInitialized && !playerReleased) player else null
         com.dskja.betterstreamflix.player.PlayerCleanExit.silenceExo(live)
         releasePlayer(ReleaseMode.SOFT_LEAVE)
@@ -987,6 +991,8 @@ class PlayerTvFragment : Fragment(),
         com.dskja.betterstreamflix.sync.WatchPartyPlayerHooks.onDestroyView(this)
         com.dskja.betterstreamflix.sync.CastHandoffPlayerHooks.onDestroyView(this)
         com.dskja.betterstreamflix.sync.CastRoomPlayerHooks.onDestroyView(this)
+        livePipZapController?.release()
+        livePipZapController = null
         PlaybackLifecycleGuard.unregister(playbackStopHandle)
         val appContext = context?.applicationContext
         runCatching {
@@ -2404,6 +2410,7 @@ class PlayerTvFragment : Fragment(),
                         ensureSkipIntroProbe()
                         revealTrailerStreamBridge()
                         hideStuckOverlay()
+                        livePipZapController?.onPrimaryPlaybackReady()
                     }
                     val playWhenReady = ::player.isInitialized && !playerReleased && player.playWhenReady
                     stuckDetector.onPlaybackStateChanged(playbackState, playWhenReady)
@@ -4365,6 +4372,7 @@ class PlayerTvFragment : Fragment(),
             }
             isCasting = true
             CastPlaybackHub.markCasting(true)
+            livePipZapController?.onCastingChanged()
             if (UserPreferences.castKeepScreenAwake) {
                 activity?.window?.addFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
             }
@@ -4376,6 +4384,7 @@ class PlayerTvFragment : Fragment(),
             if (!::player.isInitialized || playerReleased) {
                 CastPlaybackHub.markCasting(false)
                 isCasting = false
+                livePipZapController?.onCastingChanged()
                 return
             }
             val position = cp?.currentPosition ?: player.currentPosition
@@ -4392,9 +4401,43 @@ class PlayerTvFragment : Fragment(),
             }
             isCasting = false
             CastPlaybackHub.markCasting(false)
+            livePipZapController?.onCastingChanged()
             activity?.window?.clearFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
             updateCastQueueChrome()
         }
+
+    private fun attachLivePipZap() {
+        val root = _binding?.root?.findViewById<View>(R.id.layout_live_pip_zap) ?: return
+        val controller = com.dskja.betterstreamflix.live.LivePipZapController(
+            fragment = this,
+            overlayRoot = root,
+            host = object : com.dskja.betterstreamflix.live.LivePipZapController.Host {
+                override fun isLivePlayback(): Boolean = isLiveTvPlayback()
+                override fun isOfflinePlayback(): Boolean = this@PlayerTvFragment.isOfflinePlayback()
+                override fun isCasting(): Boolean =
+                    isCasting || CastPlaybackHub.isCasting
+                override fun isSystemPip(): Boolean = false
+                override fun videoType(): Video.Type = args.videoType
+                override fun contentId(): String = args.id
+                override fun title(): String = args.title
+                override fun subtitle(): String = args.subtitle
+                override fun preferredServerName(): String? = args.preferredServerName
+                override fun positionMs(): Long =
+                    runCatching { player.currentPosition }.getOrDefault(0L)
+                override fun playLiveChannel(channel: com.dskja.betterstreamflix.iptv.IptvLiveSession.Channel) {
+                    viewModel.playLiveChannel(channel)
+                }
+                override fun isTvSurface(): Boolean = true
+            },
+        )
+        controller.attach()
+        livePipZapController = controller
+        binding.pvPlayer.setControllerVisibilityListener(
+            androidx.media3.ui.PlayerView.ControllerVisibilityListener { visibility ->
+                livePipZapController?.onChromeVisibilityChanged(visibility == View.VISIBLE)
+            },
+        )
+    }
 
     private enum class ReleaseMode {
         SOFT_LEAVE,

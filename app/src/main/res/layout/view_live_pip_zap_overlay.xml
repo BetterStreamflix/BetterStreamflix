@@ -1,0 +1,109 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- In-player Mini-Live preview (not Android system PiP). -->
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/layout_live_pip_zap_root"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    android:elevation="14dp"
+    android:visibility="gone"
+    tools:visibility="visible">
+
+    <androidx.constraintlayout.widget.ConstraintLayout
+        android:id="@+id/live_pip_preview_panel"
+        android:layout_width="168dp"
+        android:layout_height="wrap_content"
+        android:background="@drawable/bg_next_episode_overlay"
+        android:clickable="true"
+        android:contentDescription="@string/live_pip_zap_cd"
+        android:focusable="false"
+        android:padding="6dp"
+        android:visibility="gone"
+        tools:visibility="visible">
+
+        <androidx.media3.ui.PlayerView
+            android:id="@+id/pv_live_pip"
+            android:layout_width="0dp"
+            android:layout_height="0dp"
+            android:importantForAccessibility="noHideDescendants"
+            app:layout_constraintDimensionRatio="16:9"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent"
+            app:resize_mode="zoom"
+            app:surface_type="texture_view"
+            app:use_controller="false" />
+
+        <TextView
+            android:id="@+id/tv_live_pip_badge"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_margin="6dp"
+            android:background="@drawable/bg_next_episode_action"
+            android:fontFamily="@font/manrope"
+            android:paddingStart="6dp"
+            android:paddingTop="2dp"
+            android:paddingEnd="6dp"
+            android:paddingBottom="2dp"
+            android:text="@string/player_live_badge"
+            android:textAllCaps="true"
+            android:textColor="@color/cinema_text"
+            android:textSize="9sp"
+            android:textStyle="bold"
+            app:layout_constraintStart_toStartOf="@id/pv_live_pip"
+            app:layout_constraintTop_toTopOf="@id/pv_live_pip" />
+
+        <TextView
+            android:id="@+id/tv_live_pip_title"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="6dp"
+            android:ellipsize="end"
+            android:fontFamily="@font/manrope"
+            android:maxLines="1"
+            android:textColor="@color/cinema_text"
+            android:textSize="12sp"
+            android:textStyle="bold"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@id/pv_live_pip"
+            tools:text="ESPN HD" />
+
+        <TextView
+            android:id="@+id/tv_live_pip_hint"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="2dp"
+            android:ellipsize="end"
+            android:fontFamily="@font/manrope"
+            android:maxLines="1"
+            android:text="@string/live_pip_zap_tap_hint"
+            android:textColor="@color/cinema_text_muted"
+            android:textSize="10sp"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@id/tv_live_pip_title" />
+    </androidx.constraintlayout.widget.ConstraintLayout>
+
+    <TextView
+        android:id="@+id/btn_live_pip_return_vod"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:background="@drawable/bg_next_episode_overlay"
+        android:clickable="true"
+        android:contentDescription="@string/live_pip_zap_return_cd"
+        android:focusable="false"
+        android:fontFamily="@font/manrope"
+        android:paddingStart="14dp"
+        android:paddingTop="10dp"
+        android:paddingEnd="14dp"
+        android:paddingBottom="10dp"
+        android:textColor="@color/cinema_text"
+        android:textSize="13sp"
+        android:textStyle="bold"
+        android:visibility="gone"
+        tools:text="Back to Movie Title"
+        tools:visibility="gone" />
+
+</FrameLayout>

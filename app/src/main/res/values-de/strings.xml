@@ -1632,6 +1632,10 @@
     <string name="supabase_instructions_title">Anleitung</string>
     <string name="supabase_instructions_summary">Die ausführliche Anleitung zur Einrichtung von Supabase-Konto und Synchronisierung im Browser öffnen</string>
     <string name="player_live_badge">LIVE</string>
+    <string name="live_pip_zap_cd">Mini-Live-Vorschau — tippen für Live</string>
+    <string name="live_pip_zap_tap_hint">Tippen für Live</string>
+    <string name="live_pip_zap_return_vod">Zurück zu %1$s</string>
+    <string name="live_pip_zap_return_cd">Zurück zum vorherigen Video</string>
     <string name="player_live_channel">Live-Kanal</string>
     <string name="player_go_live">Live</string>
     <string name="player_live_channel_meta">CH %1$d · %2$s</string>

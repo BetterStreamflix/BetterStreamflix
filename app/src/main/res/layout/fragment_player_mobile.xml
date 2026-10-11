@@ -133,6 +133,17 @@
         app:layout_constraintWidth_max="@dimen/player_settings_mobile_max_width"
         tools:visibility="visible" />
 
+    <!-- Mini-Live PiP Zap (in-player preview; not OS PiP). -->
+    <include
+        android:id="@+id/layout_live_pip_zap"
+        layout="@layout/view_live_pip_zap_overlay"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="16dp"
+        android:layout_marginBottom="96dp"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toStartOf="parent" />
+
     <LinearLayout
         android:id="@+id/layout_next_episode_overlay"
         android:layout_width="252dp"
