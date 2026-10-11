@@ -321,6 +321,10 @@
     <string name="player_end_card_back_to_series">Zurück zur Serie</string>
     <string name="player_end_card_back_to_title">Zurück zum Titel</string>
     <string name="player_end_card_autoplay_in">Nächste Folge in %ds</string>
+    <string name="thanks_after_binge_title">Staffel geschafft — danke</string>
+    <string name="thanks_after_binge_body">Wenn BetterStreamflix dir beim Bingen geholfen hat: ein optionaler Tipp hält das Projekt am Laufen. Nie Pflicht.</string>
+    <string name="thanks_after_binge_cta">Unterstützen</string>
+    <string name="thanks_after_binge_dismiss">Nicht jetzt</string>
     <string name="player_picture_in_picture_not_supported">PiP wird auf diesem Gerät nicht unterstützt</string>
     <string name="player_external_player_title">Abspielen mit</string>
     <string name="player_external_player_error_video">Stream noch nicht bereit</string>

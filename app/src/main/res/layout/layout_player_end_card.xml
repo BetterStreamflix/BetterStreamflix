@@ -103,9 +103,92 @@
             android:gravity="center"
             android:maxWidth="420dp"
             android:nextFocusUp="@id/btn_end_card_similar"
+            android:nextFocusDown="@id/btn_end_card_thanks_cta"
             android:text="@string/player_end_card_back_to_series"
             android:textColor="@color/cinema_text"
             android:textSize="17sp"
             android:textStyle="bold" />
+
+        <!-- Thanks After Binge — soft Support nudge after a season finale only. -->
+        <LinearLayout
+            android:id="@+id/end_card_thanks_panel"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="20dp"
+            android:background="@drawable/bg_player_end_card_secondary"
+            android:maxWidth="420dp"
+            android:orientation="vertical"
+            android:paddingStart="16dp"
+            android:paddingTop="14dp"
+            android:paddingEnd="16dp"
+            android:paddingBottom="14dp"
+            android:visibility="gone"
+            tools:visibility="visible">
+
+            <TextView
+                android:id="@+id/tv_end_card_thanks_title"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:fontFamily="@font/manrope"
+                android:text="@string/thanks_after_binge_title"
+                android:textColor="@color/cinema_text"
+                android:textSize="15sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/tv_end_card_thanks_body"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:fontFamily="@font/manrope"
+                android:lineSpacingExtra="2dp"
+                android:text="@string/thanks_after_binge_body"
+                android:textColor="@color/cinema_text_soft"
+                android:textSize="13sp" />
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+
+                <TextView
+                    android:id="@+id/btn_end_card_thanks_cta"
+                    android:layout_width="0dp"
+                    android:layout_height="44dp"
+                    android:layout_weight="1"
+                    android:background="@drawable/bg_player_end_card_primary"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:fontFamily="@font/manrope"
+                    android:gravity="center"
+                    android:nextFocusUp="@id/btn_end_card_back"
+                    android:nextFocusRight="@id/btn_end_card_thanks_dismiss"
+                    android:text="@string/thanks_after_binge_cta"
+                    android:textColor="@color/cinema_text"
+                    android:textSize="14sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:id="@+id/btn_end_card_thanks_dismiss"
+                    android:layout_width="wrap_content"
+                    android:layout_height="44dp"
+                    android:layout_marginStart="10dp"
+                    android:background="@android:color/transparent"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:fontFamily="@font/manrope"
+                    android:gravity="center"
+                    android:minWidth="72dp"
+                    android:nextFocusLeft="@id/btn_end_card_thanks_cta"
+                    android:nextFocusUp="@id/btn_end_card_back"
+                    android:paddingStart="10dp"
+                    android:paddingEnd="10dp"
+                    android:text="@string/thanks_after_binge_dismiss"
+                    android:textColor="@color/cinema_text_muted"
+                    android:textSize="13sp" />
+            </LinearLayout>
+        </LinearLayout>
     </LinearLayout>
 </FrameLayout>
