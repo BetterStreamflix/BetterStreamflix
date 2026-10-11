@@ -2052,6 +2052,16 @@
                 android:title="@string/cloud_sync_now"
                 android:summary="@string/cloud_sync_now_summary"
                 app:iconSpaceReserved="false" />
+            <Preference
+                android:key="device_link_show_code"
+                android:title="@string/device_link_show_title"
+                android:summary="@string/device_link_show_summary"
+                app:iconSpaceReserved="false" />
+            <Preference
+                android:key="device_link_enter_code"
+                android:title="@string/device_link_enter_title"
+                android:summary="@string/device_link_enter_summary"
+                app:iconSpaceReserved="false" />
         </PreferenceCategory>
 
         <PreferenceCategory

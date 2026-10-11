@@ -697,10 +697,36 @@ object UserPreferences {
             profileScopedString(Key.SELECTED_THEME)
                 ?: Key.SELECTED_THEME.getString(),
         )
-        set(value) = setProfileScopedString(
-            Key.SELECTED_THEME,
-            ThemeManager.resolveLook(value),
-        )
+        set(value) {
+            val resolved = ThemeManager.resolveLook(value)
+            val previous = ThemeManager.resolveLook(
+                profileScopedString(Key.SELECTED_THEME)
+                    ?: Key.SELECTED_THEME.getString(),
+            )
+            setProfileScopedString(Key.SELECTED_THEME, resolved)
+            if (resolved != previous || selectedThemeUpdatedAtMillis <= 0L) {
+                val now = System.currentTimeMillis()
+                selectedThemeUpdatedAtMillis = now
+                runCatching {
+                    val app = com.dskja.betterstreamflix.BetterStreamflixApp.instance
+                    com.dskja.betterstreamflix.sync.CloudSyncHooks.look(app, resolved, now)
+                }
+            }
+        }
+
+    /**
+     * Profile-scoped LWW clock for [selectedTheme] cloud sync.
+     * Missing / zero means “never stamped” — first sync will stamp local.
+     */
+    var selectedThemeUpdatedAtMillis: Long
+        get() = profileScopedLong(Key.SELECTED_THEME_UPDATED_AT_MILLIS) ?: 0L
+        set(value) = setProfileScopedLong(Key.SELECTED_THEME_UPDATED_AT_MILLIS, value)
+
+    /** Apply a remote look without enqueueing a cloud mutation. */
+    fun applyRemoteSelectedTheme(look: String, updatedAtMillis: Long) {
+        setProfileScopedString(Key.SELECTED_THEME, ThemeManager.resolveLook(look))
+        setProfileScopedLong(Key.SELECTED_THEME_UPDATED_AT_MILLIS, updatedAtMillis.coerceAtLeast(0L))
+    }
 
     /**
      * Retired with Looks Locked — OLED half-mix is ignored. Setter clears the flag.
@@ -1978,6 +2004,7 @@ object UserPreferences {
         PARENTAL_CONTROL_LOCKED_UNTIL,
         PARENTAL_CONTROL_HARD_LOCKED,
         SELECTED_THEME,
+        SELECTED_THEME_UPDATED_AT_MILLIS,
         OLED_MODE,
         LARGE_TEXT,
         HIGH_CONTRAST,
