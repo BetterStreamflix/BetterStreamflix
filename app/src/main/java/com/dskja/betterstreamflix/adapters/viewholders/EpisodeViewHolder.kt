@@ -38,6 +38,7 @@ import com.dskja.betterstreamflix.providers.Provider
 import com.dskja.betterstreamflix.ui.ShowOptionsMobileDialog
 import com.dskja.betterstreamflix.ui.ShowOptionsTvDialog
 import com.dskja.betterstreamflix.utils.ArtworkUrls
+import com.dskja.betterstreamflix.utils.EpisodeDisplayLabels
 import com.dskja.betterstreamflix.utils.EpisodeManager
 import com.dskja.betterstreamflix.utils.UserPreferences
 import com.dskja.betterstreamflix.utils.format
@@ -507,19 +508,17 @@ class EpisodeViewHolder(
         bindEpisodeProgress(binding.pbEpisodeProgress)
 
         binding.root.findViewById<android.widget.TextView>(R.id.tv_episode_number_badge)?.apply {
-            text = "E${episode.number}"
+            text = EpisodeDisplayLabels.badge(episode.number)
             visibility = View.VISIBLE
         }
 
-        binding.tvEpisodeInfo.text = context.getString(
-            R.string.episode_number,
-            episode.number
-        )
+        binding.tvEpisodeInfo.text = EpisodeDisplayLabels.badge(episode.number)
         binding.tvEpisodeInfo.visibility = View.VISIBLE
 
         binding.tvEpisodeTitle.apply {
-            text = episode.title?.takeIf { it.isNotBlank() }
-                ?: context.getString(R.string.episode_number, episode.number)
+            text = EpisodeDisplayLabels.readableTitle(episode.title, episode.number) {
+                context.getString(R.string.episode_number, it)
+            }
             maxLines = 2
             ellipsize = android.text.TextUtils.TruncateAt.END
             visibility = View.VISIBLE
@@ -536,6 +535,7 @@ class EpisodeViewHolder(
         binding.tvEpisodeOverview.apply {
             val overview = episode.overview?.trim().orEmpty()
             text = overview
+            // Show overview whenever we have text; layout already caps lines for space.
             maxLines = 4
             ellipsize = android.text.TextUtils.TruncateAt.END
             visibility = if (overview.isBlank()) View.GONE else View.VISIBLE

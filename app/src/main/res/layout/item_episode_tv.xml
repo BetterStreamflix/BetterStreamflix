@@ -64,7 +64,7 @@
         android:textStyle="bold"
         app:layout_constraintBottom_toBottomOf="@id/iv_episode_poster"
         app:layout_constraintStart_toStartOf="@id/iv_episode_poster"
-        tools:text="E5" />
+        tools:text="E01" />
 
     <ProgressBar
         android:id="@+id/pb_episode_progress"
