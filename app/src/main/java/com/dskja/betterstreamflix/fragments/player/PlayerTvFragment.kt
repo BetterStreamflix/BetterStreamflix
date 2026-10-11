@@ -59,6 +59,8 @@ import com.dskja.betterstreamflix.R
 import com.dskja.betterstreamflix.cast.CastMediaFactory
 import com.dskja.betterstreamflix.cast.CastPlaybackHub
 import com.dskja.betterstreamflix.cast.CastQueueCoordinator
+import com.dskja.betterstreamflix.player.FailoverTimelineSession
+import com.dskja.betterstreamflix.player.FailoverTimelineUi
 import com.dskja.betterstreamflix.player.PlaybackFailover
 import com.dskja.betterstreamflix.player.PlaybackProgress
 import com.dskja.betterstreamflix.player.PlaybackLifecycleGuard
@@ -272,6 +274,7 @@ class PlayerTvFragment : Fragment(),
     }
 
     private var servers = listOf<Video.Server>()
+    private val failoverTimeline = FailoverTimelineSession()
     private var zoomToast: Toast? = null
     private var defaultControllerShowTimeoutMs = 5_000
 
@@ -443,6 +446,8 @@ class PlayerTvFragment : Fragment(),
                     }
                     is PlayerViewModel.State.SuccessLoadingServers -> {
                         servers = state.servers
+                        failoverTimeline.clear()
+                        FailoverTimelineUi.clearErrorTimeline(_binding?.root)
                         com.dskja.betterstreamflix.providers.ProviderServerAb.clearSession()
 
                         val sToServer = servers.firstOrNull {
@@ -567,11 +572,14 @@ class PlayerTvFragment : Fragment(),
                                     DeviceCapabilities.shouldPreferSoftwareDecoder(requireContext()),
                                 )
                             }
+                            failoverTimeline.recordOk(state.server, servers)
+                            maybeShowFailoverTimeline()
                             displayVideo(state.video, state.server)
                         }
 
                         is PlayerViewModel.State.FailedLoadingVideo -> {
                             stuckDetector.setResolveInFlight(false)
+                            failoverTimeline.recordServerFailure(state.server, servers, state.error)
                             when (
                                 val action = PlaybackFailover.decide(
                                     currentServerIndex = PlaybackFailover.indexOfServer(servers, state.server),
@@ -602,6 +610,7 @@ class PlayerTvFragment : Fragment(),
                                     }
                                 }
                                 PlaybackFailover.Action.RetrySoftwareDecoder -> {
+                                    failoverTimeline.recordSoftwareDecoder()
                                     // Do not mutate currentSoftwareDecoder here — displayVideo
                                     // must see a flag mismatch so initializePlayer rebuilds.
                                     PlayerSettingsView.Settings.SoftwareDecoder.init(true)
@@ -611,6 +620,7 @@ class PlayerTvFragment : Fragment(),
                                 }
                                 PlaybackFailover.Action.TryExternalPlayer -> {
                                     currentExternalPlayerTried = true
+                                    failoverTimeline.recordExternalPlayer()
                                     val video = currentVideo
                                     if (video != null) {
                                         val pos = runCatching { player.currentPosition }.getOrDefault(0L)
@@ -1333,6 +1343,7 @@ class PlayerTvFragment : Fragment(),
             ?.setText(R.string.player_stuck_buffering_title)
         root.findViewById<TextView>(R.id.tv_player_error_message)
             ?.setText(R.string.player_stuck_buffering_message)
+        FailoverTimelineUi.clearErrorTimeline(root)
         overlay.isFocusable = false
         overlay.isFocusableInTouchMode = false
         val actionBtn = root.findViewById<TextView>(R.id.btn_player_error_action)
@@ -1390,6 +1401,13 @@ class PlayerTvFragment : Fragment(),
         binding.settings.showServers()
     }
 
+    private fun maybeShowFailoverTimeline() {
+        if (!failoverTimeline.consumeSuccessShow()) return
+        val line = FailoverTimelineUi.formatLine(requireContext(), failoverTimeline.snapshot())
+            ?: return
+        showPlayerCue(line, holdMs = FailoverTimelineUi.SUCCESS_CUE_MS)
+    }
+
     private fun showStreamFailure(
         error: Throwable?,
         serversExhausted: Boolean = false,
@@ -1423,6 +1441,7 @@ class PlayerTvFragment : Fragment(),
         }
         if (isOfflinePlayback()) suppressBuiltInErrorOverlay()
         root.findViewById<android.widget.TextView>(R.id.tv_player_error_title)?.setText(titleRes)
+        FailoverTimelineUi.bindErrorTimeline(root, failoverTimeline.snapshot())
         root.findViewById<android.widget.TextView>(R.id.tv_player_error_message)?.text = message
         overlay.isFocusable = false
         overlay.isFocusableInTouchMode = false
@@ -2263,6 +2282,8 @@ class PlayerTvFragment : Fragment(),
                         if (player.hasStarted()) {
                             com.dskja.betterstreamflix.providers.ProviderServerAb
                                 .notePlaybackStable(currentServer)
+                            failoverTimeline.recordOk(currentServer, servers)
+                            maybeShowFailoverTimeline()
                         }
                         hideStuckOverlay()
                         recordRecentlyWatchedStart()
@@ -2339,6 +2360,7 @@ class PlayerTvFragment : Fragment(),
                     }
                     if (!isAdded || _binding == null) return
 
+                    failoverTimeline.recordServerFailure(currentServer, servers, error)
                     when (
                         val action = PlaybackFailover.decide(
                             currentServerIndex = PlaybackFailover.indexOfServer(servers, currentServer),
@@ -2371,6 +2393,7 @@ class PlayerTvFragment : Fragment(),
                             }
                         }
                         PlaybackFailover.Action.RetrySoftwareDecoder -> {
+                            failoverTimeline.recordSoftwareDecoder()
                             PlayerSettingsView.Settings.SoftwareDecoder.init(true)
                             PlayerSettingsView.Settings.SoftwareDecoder.selectedValue = true
                             val video = currentVideo
@@ -2382,6 +2405,7 @@ class PlayerTvFragment : Fragment(),
                         }
                         PlaybackFailover.Action.TryExternalPlayer -> {
                             currentExternalPlayerTried = true
+                            failoverTimeline.recordExternalPlayer()
                             val video = currentVideo
                             if (video != null) {
                                 val pos = runCatching { player.currentPosition }.getOrDefault(0L)
@@ -3022,19 +3046,22 @@ class PlayerTvFragment : Fragment(),
             showPlayerCue(getString(messageRes))
         }
 
-        private fun showPlayerCue(message: CharSequence) {
+        private fun showPlayerCue(message: CharSequence, holdMs: Long = 2_800L) {
             val cue = _binding?.root?.findViewById<TextView>(R.id.tv_player_cue)
             if (cue == null) {
-                Toast.makeText(requireContext(), message, Toast.LENGTH_SHORT).show()
+                Toast.makeText(requireContext(), message, Toast.LENGTH_LONG).show()
                 return
             }
             cue.text = message
+            cue.contentDescription = message
+            cue.maxLines = 3
+            cue.ellipsize = android.text.TextUtils.TruncateAt.END
             cue.isFocusable = false
             cue.isFocusableInTouchMode = false
             cue.isVisible = true
             playerCueHideJob?.cancel()
             playerCueHideJob = viewLifecycleOwner.lifecycleScope.launch {
-                delay(2_800)
+                delay(holdMs)
                 if (!isAdded || _binding == null) return@launch
                 cue.isGone = true
             }
