@@ -45,4 +45,25 @@ class ProfileStoreParseTest {
         val raw = """[{"id":"","displayName":"x","avatarKey":"crimson","createdAtMillis":1,"updatedAtMillis":1}]"""
         assertTrue(ProfileStore.parseProfilesJson(raw).isEmpty())
     }
+
+    @Test
+    fun parseProfilesJson_readsGuestFields() {
+        val raw = """
+            [{
+              "id": "guest_1a2b",
+              "displayName": "Guest",
+              "avatarKey": "slate",
+              "isKids": false,
+              "isGuest": true,
+              "expiresAtMillis": 7200000,
+              "createdAtMillis": 1,
+              "updatedAtMillis": 2,
+              "enabledIntegrations": []
+            }]
+        """.trimIndent()
+        val profiles = ProfileStore.parseProfilesJson(raw)
+        assertEquals(1, profiles.size)
+        assertTrue(profiles[0].isGuest)
+        assertEquals(7_200_000L, profiles[0].expiresAtMillis)
+    }
 }

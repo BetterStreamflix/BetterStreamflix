@@ -489,6 +489,9 @@ class MainTvActivity : FragmentActivity() {
     override fun onStart() {
         super.onStart()
         com.dskja.betterstreamflix.profiles.ProfileUnlockGate.markForeground()
+        runCatching {
+            com.dskja.betterstreamflix.profiles.ProfileManager.sweepExpiredGuests(this)
+        }
         val navHostFragment = supportFragmentManager
             .findFragmentById(binding.navMainFragment.id) as? NavHostFragment
         if (navHostFragment != null) {

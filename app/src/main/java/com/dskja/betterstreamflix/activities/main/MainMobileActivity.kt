@@ -439,6 +439,9 @@ class MainMobileActivity : FragmentActivity() {
     override fun onStart() {
         super.onStart()
         com.dskja.betterstreamflix.profiles.ProfileUnlockGate.markForeground()
+        runCatching {
+            com.dskja.betterstreamflix.profiles.ProfileManager.sweepExpiredGuests(this)
+        }
         com.dskja.betterstreamflix.telegram.TelegramJoinGateController.onActivityStarted(
             this,
             telegramGateLauncher,

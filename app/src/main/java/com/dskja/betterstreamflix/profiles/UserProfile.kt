@@ -8,6 +8,10 @@ data class UserProfile(
     val isKids: Boolean = false,
     val maxAgeRating: Int? = null,
     val pinHash: String? = null,
+    /** Temporary guest shell — Continue/History wiped when [expiresAtMillis] elapses. */
+    val isGuest: Boolean = false,
+    /** Absolute wall-clock expiry; null when not a guest. */
+    val expiresAtMillis: Long? = null,
     val createdAtMillis: Long,
     val updatedAtMillis: Long,
     val enabledIntegrations: Set<String> = emptySet(),

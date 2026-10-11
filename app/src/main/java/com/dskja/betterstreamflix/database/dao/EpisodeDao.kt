@@ -153,6 +153,19 @@ interface EpisodeDao {
     @Query("DELETE FROM episodes")
     fun deleteAll()
 
+    @Query(
+        """
+        UPDATE episodes SET
+            lastEngagementTimeUtcMillis = NULL,
+            lastPlaybackPositionMillis = NULL,
+            durationMillis = NULL
+        WHERE lastEngagementTimeUtcMillis IS NOT NULL
+           OR lastPlaybackPositionMillis IS NOT NULL
+           OR durationMillis IS NOT NULL
+        """,
+    )
+    fun clearAllContinueWatching(): Int
+
     @Query("""
         UPDATE episodes SET
             isWatched = 0,

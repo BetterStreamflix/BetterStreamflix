@@ -200,9 +200,11 @@ class ProfilePickerDialog : DialogFragment() {
         val column = root.findViewById<LinearLayout>(R.id.ll_profile_picker_row)
         column.removeAllViews()
         val inflater = pickerInflater()
+        runCatching { ProfileManager.sweepExpiredGuests(requireContext()) }
         val profiles = ProfileManager.profiles()
         val activeId = ProfileManager.activeProfileId
         val density = resources.displayMetrics.density
+        val hasGuest = profiles.any { it.isGuest }
 
         val row = LinearLayout(requireContext()).apply {
             orientation = LinearLayout.HORIZONTAL
@@ -235,6 +237,9 @@ class ProfilePickerDialog : DialogFragment() {
                 .setDuration(320L)
                 .start()
             row.addView(item)
+        }
+        if (!hasGuest && !requireUnlock && !manageMode) {
+            row.addView(buildGuestStartOrb(density, profiles.size))
         }
         val add = LinearLayout(requireContext()).apply {
             orientation = LinearLayout.VERTICAL
@@ -319,12 +324,35 @@ class ProfilePickerDialog : DialogFragment() {
             if (visibility == View.VISIBLE && !wasVisible) ExpMotion.popIn(this)
         }
         item.findViewById<TextView>(R.id.tv_profile_kids_badge).apply {
-            visibility = if (profile.isKids) View.VISIBLE else View.GONE
-            if (profile.isKids) {
-                text = context.getString(R.string.profile_kids_badge_short)
+            when {
+                profile.isGuest -> {
+                    visibility = View.VISIBLE
+                    text = context.getString(R.string.profile_guest_badge_short)
+                }
+                profile.isKids -> {
+                    visibility = View.VISIBLE
+                    text = context.getString(R.string.profile_kids_badge_short)
+                }
+                else -> visibility = View.GONE
             }
         }
-        item.findViewById<TextView>(R.id.tv_profile_meta).visibility = View.GONE
+        item.findViewById<TextView>(R.id.tv_profile_meta).apply {
+            if (profile.isGuest && !manageMode) {
+                val remaining = GuestProfilePolicy.remainingMillis(profile)
+                text = getString(
+                    R.string.profile_guest_remaining_fmt,
+                    GuestProfilePolicy.formatRemaining(
+                        remaining,
+                        hoursSuffix = getString(R.string.profile_guest_hours_suffix),
+                        minutesSuffix = getString(R.string.profile_guest_minutes_suffix),
+                        endingLabel = getString(R.string.profile_guest_ending),
+                    ),
+                )
+                visibility = View.VISIBLE
+            } else {
+                visibility = View.GONE
+            }
+        }
         item.findViewById<TextView>(R.id.tv_profile_lock).apply {
             // PIN and Kids both require the unlock gate on cold start / session switch.
             val locked = profile.pinHash != null || profile.isKids
@@ -361,6 +389,83 @@ class ProfilePickerDialog : DialogFragment() {
             }
         }
         with(com.dskja.betterstreamflix.utils.ExpPressEffects) { item.applyExpPress() }
+    }
+
+    private fun buildGuestStartOrb(density: Float, animIndex: Int): View {
+        return LinearLayout(requireContext()).apply {
+            orientation = LinearLayout.VERTICAL
+            gravity = android.view.Gravity.CENTER_HORIZONTAL
+            layoutParams = LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT,
+            )
+            setPadding(
+                (10 * density).toInt(),
+                (8 * density).toInt(),
+                (10 * density).toInt(),
+                (12 * density).toInt(),
+            )
+            addView(TextView(context).apply {
+                layoutParams = LinearLayout.LayoutParams(
+                    (104 * density).toInt(),
+                    (104 * density).toInt(),
+                )
+                gravity = android.view.Gravity.CENTER
+                text = getString(R.string.profile_guest_orb_glyph)
+                textSize = 28f
+                setTextColor(0xFFFFFFFF.toInt())
+                setBackgroundResource(R.drawable.bg_profile_add_orb)
+            })
+            addView(TextView(context).apply {
+                layoutParams = LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.WRAP_CONTENT,
+                    ViewGroup.LayoutParams.WRAP_CONTENT,
+                ).also { it.topMargin = (12 * density).toInt() }
+                text = getString(R.string.profile_guest_start)
+                setTextColor(0xFFFFFFFF.toInt())
+                textSize = 15f
+                setTypeface(typeface, android.graphics.Typeface.BOLD)
+            })
+            addView(TextView(context).apply {
+                layoutParams = LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.WRAP_CONTENT,
+                    ViewGroup.LayoutParams.WRAP_CONTENT,
+                ).also { it.topMargin = (3 * density).toInt() }
+                text = getString(R.string.profile_guest_start_subtitle)
+                setTextColor(0xB3FFFFFF.toInt())
+                textSize = 11f
+            })
+            isFocusable = true
+            isClickable = true
+            contentDescription = getString(R.string.profile_guest_start)
+            alpha = 0f
+            translationY = 18f * density
+            animate()
+                .alpha(1f)
+                .translationY(0f)
+                .setStartDelay(40L * animIndex)
+                .setDuration(320L)
+                .start()
+            setOnClickListener {
+                ExpMotion.hapticTap(it)
+                startGuestSession()
+            }
+            with(com.dskja.betterstreamflix.utils.ExpPressEffects) { applyExpPress() }
+        }
+    }
+
+    private fun startGuestSession() {
+        val guest = ProfileManager.createGuest(
+            displayName = getString(R.string.profile_guest_default_name),
+        )
+        ProfilesSettingsController.guardParentalExit(this, guest) {
+            completeSwitch(guest)
+            ExpDialogChrome.notify(
+                requireContext(),
+                R.string.profile_guest_started_toast,
+                R.string.profile_guest_start,
+            )
+        }
     }
 
     /** In-screen create form inside Who's Watching (not a floating AlertDialog). */
@@ -475,12 +580,22 @@ class ProfilePickerDialog : DialogFragment() {
             setSelection(text?.length ?: 0)
         }
         val kidsCheck = form.findViewById<CheckBox>(R.id.cb_profile_create_kids)?.apply {
-            visibility = View.VISIBLE
-            isChecked = profile.isKids
+            if (profile.isGuest) {
+                visibility = View.GONE
+                isChecked = false
+            } else {
+                visibility = View.VISIBLE
+                isChecked = profile.isKids
+            }
         }
         val pinInput = form.findViewById<EditText>(R.id.et_profile_create_pin)
         val clearPin = form.findViewById<CheckBox>(R.id.cb_profile_clear_pin)
-        if (profile.pinHash != null) {
+        if (profile.isGuest) {
+            pinInput?.visibility = View.GONE
+            clearPin?.visibility = View.GONE
+            form.findViewById<TextView>(R.id.tv_profile_create_title)
+                ?.setText(R.string.profile_guest_edit_title)
+        } else if (profile.pinHash != null) {
             pinInput?.hint = getString(R.string.profile_pin_change_hint)
             clearPin?.visibility = View.VISIBLE
         }
@@ -527,10 +642,12 @@ class ProfilePickerDialog : DialogFragment() {
                 ExpDialogChrome.notify(requireContext(), R.string.profile_name_empty, R.string.profile_rename_title)
                 return@setOnClickListener
             }
-            if (!applyPinFromForm(requireContext(), form, profile.id, hadExistingPin = profile.pinHash != null)) {
+            if (!profile.isGuest &&
+                !applyPinFromForm(requireContext(), form, profile.id, hadExistingPin = profile.pinHash != null)
+            ) {
                 return@setOnClickListener
             }
-            val becomingKids = kidsCheck?.isChecked == true
+            val becomingKids = !profile.isGuest && kidsCheck?.isChecked == true
             val refreshed = ProfileManager.profiles().find { it.id == profile.id } ?: profile
             if (becomingKids &&
                 refreshed.pinHash == null &&
@@ -547,7 +664,9 @@ class ProfilePickerDialog : DialogFragment() {
             val commitEdit: () -> Unit = {
                 ProfileManager.rename(profile.id, name)
                 ProfileManager.updateAvatar(profile.id, selected)
-                ProfileManager.updateKids(profile.id, becomingKids)
+                if (!profile.isGuest) {
+                    ProfileManager.updateKids(profile.id, becomingKids)
+                }
                 ProfileManager.setEnabledIntegrations(profile.id, readEnabledIntegrations(form))
                 restorePickerView()
                 view?.let(::bindProfiles)
@@ -563,13 +682,51 @@ class ProfilePickerDialog : DialogFragment() {
         val deleteBtn = form.findViewById<TextView>(R.id.btn_profile_create_delete)
         if (ProfileManager.profiles().size > 1) {
             deleteBtn?.visibility = View.VISIBLE
+            if (profile.isGuest) {
+                deleteBtn?.setText(R.string.profile_guest_end)
+            }
             deleteBtn?.setOnClickListener {
                 ExpMotion.hapticTap(it)
-                confirmDeleteProfile(profile)
+                if (profile.isGuest) {
+                    confirmEndGuest(profile)
+                } else {
+                    confirmDeleteProfile(profile)
+                }
             }
         }
         showEditorPanel(editor, form)
         nameInput.requestFocus()
+    }
+
+    private fun confirmEndGuest(profile: UserProfile) {
+        val context = requireContext()
+        val builder = if (ExperimentalMobileDesign.enabled()) {
+            MaterialAlertDialogBuilder(context)
+        } else {
+            AlertDialog.Builder(context)
+        }
+        builder
+            .setMessage(getString(R.string.profile_guest_end_confirm))
+            .setPositiveButton(R.string.profile_guest_end) { _, _ ->
+                val wasActive = profile.id == ProfileManager.activeProfileId
+                if (!ProfileManager.endGuest(context)) return@setPositiveButton
+                ExpDialogChrome.notify(
+                    context,
+                    R.string.profile_guest_ended_toast,
+                    R.string.profile_guest_end,
+                )
+                if (wasActive && ProfileUnlockGate.requiresGateForActive()) {
+                    restorePickerView()
+                    return@setPositiveButton
+                }
+                if (wasActive) {
+                    onProfileSwitched?.invoke()
+                }
+                restorePickerView()
+                view?.let(::bindProfiles)
+            }
+            .setNegativeButton(android.R.string.cancel, null)
+            .show()
     }
 
     private fun confirmDeleteProfile(profile: UserProfile) {

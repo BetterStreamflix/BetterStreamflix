@@ -89,12 +89,79 @@ object ProfileManager {
     fun init(context: Context) {
         appContext = context.applicationContext
         // Never throw out of init — corrupted prefs / Gson failures must not brick startup.
-        val ensured = runCatching { ProfileStore.ensureDefaultExists(appContext) }
+        val ensured =         runCatching { ProfileStore.ensureDefaultExists(appContext) }
         initFailed = ensured.isFailure
         if (initFailed) {
             android.util.Log.e("ProfileManager", "ProfileStore.ensureDefaultExists failed", ensured.exceptionOrNull())
         }
         runCatching { applyKidsParentalDefaults(activeProfile(), previous = null) }
+        // Drop expired guest shells early so Home never mounts their CW/history.
+        runCatching { sweepExpiredGuests(appContext) }
+    }
+
+    fun isGuestActive(): Boolean = activeProfile()?.isGuest == true
+
+    fun findGuest(): UserProfile? = profiles().firstOrNull { it.isGuest }
+
+    /**
+     * Creates or reuses the temporary Guest profile (one at a time).
+     * Fresh shell when none exists or the previous guest already expired.
+     */
+    fun createGuest(displayName: String = GuestProfilePolicy.DEFAULT_DISPLAY_NAME): UserProfile {
+        require(::appContext.isInitialized) { "ProfileManager.init() must be called first" }
+        sweepExpiredGuests(appContext)
+        findGuest()?.let { return it }
+
+        val now = System.currentTimeMillis()
+        val name = displayName.trim().ifEmpty { GuestProfilePolicy.DEFAULT_DISPLAY_NAME }
+        val avatar = if (GuestProfilePolicy.AVATAR_KEY in avatarKeys) {
+            GuestProfilePolicy.AVATAR_KEY
+        } else {
+            avatarKeys.first()
+        }
+        val profile = UserProfile(
+            id = "guest_" + UUID.randomUUID().toString().replace("-", "").take(8),
+            displayName = name,
+            avatarKey = avatar,
+            isKids = false,
+            isGuest = true,
+            expiresAtMillis = GuestProfilePolicy.expiresAtMillis(now),
+            createdAtMillis = now,
+            updatedAtMillis = now,
+            enabledIntegrations = emptySet(),
+        )
+        ProfileStore.saveAll(appContext, profiles() + profile)
+        applyDefaultThemeForProfile(profile)
+        return profile
+    }
+
+    /**
+     * Ends the guest early. Profile-local wipe inside [delete] removes Continue/History
+     * and switches back to Default when Guest was active.
+     */
+    fun endGuest(@Suppress("UNUSED_PARAMETER") context: Context): Boolean {
+        require(::appContext.isInitialized) { "ProfileManager.init() must be called first" }
+        val guest = findGuest() ?: return false
+        return delete(guest.id)
+    }
+
+    /**
+     * Removes every expired guest. Profile-local Room/cache wipe inside [delete]
+     * auto-deletes Continue/History; an active guest switches back to Default.
+     * @return number of guests removed
+     */
+    fun sweepExpiredGuests(
+        context: Context,
+        nowMillis: Long = System.currentTimeMillis(),
+    ): Int {
+        if (!::appContext.isInitialized) return 0
+        val expired = profiles().filter { GuestProfilePolicy.isExpired(it, nowMillis) }
+        if (expired.isEmpty()) return 0
+        var removed = 0
+        expired.forEach { guest ->
+            if (guest.isGuest && delete(guest.id)) removed++
+        }
+        return removed
     }
 
     fun activeProfile(): UserProfile? =
@@ -242,7 +309,10 @@ object ProfileManager {
     }
 
     fun updateKids(profileId: String, isKids: Boolean): Boolean {
-        val previous = profiles().find { it.id == profileId }
+        val target = profiles().find { it.id == profileId }
+        // Guest shells stay adult-temporary — no kids ceiling.
+        if (target?.isGuest == true && isKids) return false
+        val previous = target
         val ok = updateProfile(profileId) {
             it.copy(
                 isKids = isKids,
