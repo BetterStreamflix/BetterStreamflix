@@ -1607,6 +1607,15 @@
     <string name="downloads_section_failed">Fehler</string>
     <string name="downloads_storage_chip">%1$s belegt · %2$s frei</string>
     <string name="downloads_low_space">Wenig Speicher. Lösche ältere Downloads.</string>
+    <string name="offline_expiry_nudge_title">Ungenutzte Downloads</string>
+    <plurals name="offline_expiry_nudge_body">
+        <item quantity="one">%d Download wurde 30 Tage nicht geöffnet. Behalten oder Speicher freigeben?</item>
+        <item quantity="other">%d Downloads wurden 30 Tage nicht geöffnet. Behalten oder Speicher freigeben?</item>
+    </plurals>
+    <string name="offline_expiry_nudge_more">…und %d weitere</string>
+    <string name="offline_expiry_nudge_keep">Behalten</string>
+    <string name="offline_expiry_nudge_delete">Löschen</string>
+    <string name="offline_expiry_nudge_later">Später</string>
     <string name="downloads_wifi_paused">Pausiert · WLAN erforderlich</string>
     <string name="downloads_wifi_only_toggle">Nur WLAN</string>
     <string name="downloads_redownload_needed">Erneuter Download nötig</string>

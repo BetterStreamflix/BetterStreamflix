@@ -1809,6 +1809,15 @@
     <string name="downloads_storage_chip">%1$s used · %2$s free</string>
     <string name="downloads_low_space">Low storage. Free space or delete older downloads.</string>
     <string name="downloads_wifi_paused">Paused · Wi‑Fi required</string>
+    <string name="offline_expiry_nudge_title">Unused downloads</string>
+    <plurals name="offline_expiry_nudge_body">
+        <item quantity="one">%d download hasn\'t been opened in 30 days. Keep it or free the space?</item>
+        <item quantity="other">%d downloads haven\'t been opened in 30 days. Keep them or free the space?</item>
+    </plurals>
+    <string name="offline_expiry_nudge_more">…and %d more</string>
+    <string name="offline_expiry_nudge_keep">Keep</string>
+    <string name="offline_expiry_nudge_delete">Delete</string>
+    <string name="offline_expiry_nudge_later">Later</string>
     <string name="downloads_progress_wifi_held">%1$d%% · %2$s / %3$s · Wi‑Fi required</string>
     <string name="downloads_progress_lane_held">%1$d%% · %2$s / %3$s · Waiting for higher priority</string>
     <string name="downloads_wifi_only_toggle">Wi‑Fi only</string>

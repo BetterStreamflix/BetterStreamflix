@@ -15,6 +15,7 @@ import com.dskja.betterstreamflix.download.DownloadRepository
 import com.dskja.betterstreamflix.download.DownloadSeriesFolders
 import com.dskja.betterstreamflix.download.DownloadStats
 import com.dskja.betterstreamflix.download.DownloadStorage
+import com.dskja.betterstreamflix.download.OfflineExpiryPolicy
 import com.dskja.betterstreamflix.download.OfflineLibrary
 import com.dskja.betterstreamflix.download.OfflinePlayback
 import com.dskja.betterstreamflix.download.StreamflixDownloadManager
@@ -221,6 +222,30 @@ class DownloadsViewModel(
     fun remove(id: String) = viewModelScope.launch {
         repo().remove(id)
         refreshStorage()
+    }
+
+    /** Keep = bump updatedAt so the 30-day untouched clock resets. */
+    fun touchDownloads(ids: Collection<String>) = viewModelScope.launch {
+        val now = System.currentTimeMillis()
+        ids.forEach { id ->
+            val item = repo().getById(id) ?: return@forEach
+            repo().upsert(item.copy(updatedAt = now))
+        }
+        refreshStorage()
+    }
+
+    fun removeDownloads(ids: Collection<String>) = viewModelScope.launch {
+        ids.forEach { id -> repo().remove(id) }
+        refreshStorage()
+    }
+
+    /**
+     * Stale COMPLETED downloads for the Offline Expiry Nudge (empty when cool-down / kids).
+     */
+    suspend fun loadOfflineExpiryCandidates(): List<DownloadItemEntity> {
+        if (!OfflineExpiryPolicy.shouldPrompt()) return emptyList()
+        val all = applyParentalFilter(repo().getAllOnce())
+        return OfflineExpiryPolicy.selectStale(all)
     }
     fun pauseAll() = viewModelScope.launch { repo().pauseAll() }
     fun resumeAll() = viewModelScope.launch { repo().resumeAll() }
