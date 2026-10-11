@@ -4,6 +4,9 @@ import android.content.Context
 import android.util.Log
 import androidx.media3.exoplayer.offline.Download
 import androidx.media3.exoplayer.offline.DownloadManager
+import com.dskja.betterstreamflix.net.HonestEta
+import com.dskja.betterstreamflix.net.NetworkThroughputHistory
+import com.dskja.betterstreamflix.net.ThroughputTransferListener
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -89,11 +92,16 @@ object DownloadEventBridge : DownloadManager.Listener {
         val now = System.currentTimeMillis()
         val media3Id = download.request.id
         val prev = lastBytes[media3Id]
-        val speed = if (prev != null && now > prev.second) {
+        val instantaneous = if (prev != null && now > prev.second) {
             val deltaBytes = (download.bytesDownloaded - prev.first).coerceAtLeast(0L)
             val deltaMs = (now - prev.second).coerceAtLeast(1L)
             if (deltaBytes > 0L) {
                 zeroDeltaSamples.remove(media3Id)
+                ThroughputTransferListener.recordProgressDelta(
+                    deltaBytes = deltaBytes,
+                    deltaMs = deltaMs,
+                    source = NetworkThroughputHistory.Source.DOWNLOAD,
+                )
                 (deltaBytes * 1000L) / deltaMs
             } else {
                 val zeros = (zeroDeltaSamples[media3Id] ?: 0) + 1
@@ -112,8 +120,21 @@ object DownloadEventBridge : DownloadManager.Listener {
                 ((download.bytesDownloaded * 100L) / download.contentLength).toInt().coerceIn(0, 100)
             else -> entity.progressPct
         }
-        val remaining = (download.contentLength - download.bytesDownloaded).coerceAtLeast(0L)
-        val eta = if (speed > 0L && remaining > 0L) remaining / speed else -1L
+        val remaining = if (download.contentLength > 0L) {
+            (download.contentLength - download.bytesDownloaded).coerceAtLeast(0L)
+        } else {
+            0L
+        }
+        val historyBps = NetworkThroughputHistory.estimateBytesPerSec()
+        val honest = HonestEta.download(
+            remainingBytes = remaining,
+            instantaneousBps = instantaneous,
+            historyBps = historyBps,
+            historySampleCount = NetworkThroughputHistory.sampleCount(),
+        )
+        val speed = honest.speedBytesPerSec
+        // Honest: ETA only from measured throughput + known remaining (never length-% alone).
+        val eta = if (speed > 0L && remaining > 0L) honest.etaSeconds else -1L
 
         // Terminal states no longer need speed sampling — otherwise lastBytes grows forever.
         if (state != DownloadItemState.DOWNLOADING && state != DownloadItemState.QUEUED) {

@@ -251,6 +251,7 @@ class PlayerTvFragment : Fragment(),
     private var playbackSoftStopped = false
     private var playerViewDetached = false
     private var playbackListener: Player.Listener? = null
+    private var bufferEtaController: com.dskja.betterstreamflix.player.BufferEtaController? = null
     private var castPlayer: CastPlayer? = null
     private var castEndedListener: Player.Listener? = null
     private var castQueueExhaustedListener: (() -> Unit)? = null
@@ -2213,6 +2214,7 @@ class PlayerTvFragment : Fragment(),
                 override fun onPlaybackStateChanged(playbackState: Int) {
                     super.onPlaybackStateChanged(playbackState)
                     if (!mayRunPlayerListenerWork()) return
+                    bufferEtaController?.onPlaybackStateChanged(playbackState)
 
                     if (playbackState == Player.STATE_READY) {
                         updatePlayerScale()
@@ -2246,6 +2248,11 @@ class PlayerTvFragment : Fragment(),
                 override fun onRenderedFirstFrame() {
                     super.onRenderedFirstFrame()
                     revealTrailerStreamBridge()
+                }
+
+                override fun onIsLoadingChanged(isLoading: Boolean) {
+                    super.onIsLoadingChanged(isLoading)
+                    bufferEtaController?.onIsLoadingChanged(isLoading)
                 }
 
                 override fun onTracksChanged(tracks: androidx.media3.common.Tracks) {
@@ -3663,6 +3670,9 @@ class PlayerTvFragment : Fragment(),
                 }
                 .build()
             httpDataSource = OkHttpDataSource.Factory(okHttpClient)
+                .setTransferListener(
+                    com.dskja.betterstreamflix.net.ThroughputTransferListener.asPlayback(),
+                )
 
             dataSourceFactory = if (playingOffline) {
                 val offlineFactory = runCatching {
@@ -3692,6 +3702,12 @@ class PlayerTvFragment : Fragment(),
             PlaybackLifecycleGuard.register(playbackStopHandle)
 
             SubtitleOffset.restore(requireContext(), subtitleOffsetKey())
+
+            bufferEtaController?.release()
+            bufferEtaController = com.dskja.betterstreamflix.player.BufferEtaController(
+                label = binding.tvPlayerBufferEta,
+                playerProvider = { if (::player.isInitialized && !playerReleased) player else null },
+            )
 
             binding.settings.seriesId = seriesIdForAudioPref()
             if (isCasting) {
@@ -4001,6 +4017,8 @@ class PlayerTvFragment : Fragment(),
         stuckDetector.reset()
         stopLiveEdgeWatcher()
         PlaybackLifecycleGuard.unregister(playbackStopHandle)
+        bufferEtaController?.release()
+        bufferEtaController = null
 
         if (_binding != null) {
             detachPlayerViews()

@@ -3,6 +3,7 @@ package com.dskja.betterstreamflix.download
 import android.content.Context
 import androidx.media3.datasource.DataSource
 import androidx.media3.datasource.okhttp.OkHttpDataSource
+import com.dskja.betterstreamflix.net.ThroughputTransferListener
 import com.dskja.betterstreamflix.utils.DnsResolver
 import okhttp3.OkHttpClient
 import java.util.concurrent.TimeUnit
@@ -45,6 +46,7 @@ class DownloadDataSourceFactory(
                 headers["User-Agent"]
                     ?: "Mozilla/5.0 (Linux; Android 13) AppleWebKit/537.36 Chrome/120.0.0.0 Mobile Safari/537.36",
             )
+            .setTransferListener(ThroughputTransferListener.asDownload())
         if (headers.isNotEmpty()) {
             factory.setDefaultRequestProperties(headers)
         }

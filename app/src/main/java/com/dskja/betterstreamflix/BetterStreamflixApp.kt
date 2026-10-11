@@ -117,6 +117,7 @@ class BetterStreamflixApp : Application() {
             com.dskja.betterstreamflix.download.DownloadNotifier.ensureChannel(this)
             com.dskja.betterstreamflix.notifications.ProductNotifier.ensureChannels(this)
             com.dskja.betterstreamflix.notifications.NotificationCheckScheduler.sync(this)
+            com.dskja.betterstreamflix.net.NetworkThroughputHistory.attach(this)
         }
 
         val appContext = applicationContext

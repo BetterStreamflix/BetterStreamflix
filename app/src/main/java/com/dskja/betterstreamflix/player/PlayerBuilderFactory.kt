@@ -25,6 +25,17 @@ import com.dskja.betterstreamflix.utils.UserPreferences
 @OptIn(UnstableApi::class)
 object PlayerBuilderFactory {
 
+    /** Last LoadControl playback buffer target — used by [BufferEtaController]. */
+    @Volatile
+    var lastPlaybackBufferMs: Int = DefaultLoadControl.DEFAULT_BUFFER_FOR_PLAYBACK_MS
+        private set
+
+    /** Last LoadControl rebuffer target — used by [BufferEtaController]. */
+    @Volatile
+    var lastRebufferMs: Int =
+        DefaultLoadControl.DEFAULT_BUFFER_FOR_PLAYBACK_AFTER_REBUFFER_MS
+        private set
+
     data class Options(
         val extraBuffering: Boolean = false,
         /** Effective SW/extension prefer (Settings On or Auto-on). */
@@ -89,6 +100,8 @@ object PlayerBuilderFactory {
         val loadControl = DefaultLoadControl.Builder()
             .setBufferDurationsMs(minBufferMs, maxBufferMs, playbackMs, rebufferMs)
             .build()
+        lastPlaybackBufferMs = playbackMs
+        lastRebufferMs = rebufferMs
 
         val renderersFactory = SubtitleOffsetRenderersFactory(context).apply {
             // [Options.softwareDecoder] already encodes Settings Auto (device default) /

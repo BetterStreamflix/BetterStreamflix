@@ -46,6 +46,28 @@
         tools:visibility="visible" />
 
     <TextView
+        android:id="@+id/tv_player_buffer_eta"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="120dp"
+        android:background="@drawable/selector_skip_intro_button"
+        android:focusable="false"
+        android:fontFamily="@font/manrope"
+        android:gravity="center"
+        android:paddingStart="18dp"
+        android:paddingTop="10dp"
+        android:paddingEnd="18dp"
+        android:paddingBottom="10dp"
+        android:textColor="@color/cinema_text"
+        android:textSize="16sp"
+        android:visibility="gone"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        tools:text="Buffering · ~8s left"
+        tools:visibility="visible" />
+
+    <TextView
         android:id="@+id/tv_episode_note_chip"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"

@@ -77,9 +77,28 @@ class StreamflixDownloadService : DownloadService(
             active.size > 1 -> getString(R.string.download_notification_active_many, active.size)
             else -> getString(R.string.download_notification_active_one)
         }
+        val etaSeconds = downloading?.let { d ->
+            if (d.contentLength <= 0L || d.state != Download.STATE_DOWNLOADING) return@let -1L
+            val remaining = (d.contentLength - d.bytesDownloaded).coerceAtLeast(0L)
+            val history = com.dskja.betterstreamflix.net.NetworkThroughputHistory
+                .estimateBytesPerSec()
+            val honest = com.dskja.betterstreamflix.net.HonestEta.download(
+                remainingBytes = remaining,
+                instantaneousBps = 0L,
+                historyBps = history,
+                historySampleCount = com.dskja.betterstreamflix.net.NetworkThroughputHistory
+                    .sampleCount(),
+            )
+            if (honest.speedBytesPerSec > 0L && remaining > 0L) honest.etaSeconds else -1L
+        } ?: -1L
         val text = when {
             notMetRequirements != 0 -> getString(R.string.downloads_wifi_paused)
             indeterminate -> getString(R.string.download_notification_indeterminate)
+            etaSeconds > 0L -> getString(
+                R.string.download_notification_progress_eta,
+                pct,
+                DownloadSeriesFolders.formatEta(this, etaSeconds),
+            )
             else -> getString(R.string.download_notification_progress, pct)
         }
         return DownloadNotifier.buildForegroundNotification(
