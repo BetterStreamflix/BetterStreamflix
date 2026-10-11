@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- TV Stream-now / Featured primary CTA with explicit DPAD focus ring. -->
+<selector xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:state_focused="true">
+        <layer-list>
+            <item>
+                <shape android:shape="rectangle">
+                    <corners android:radius="@dimen/cinema_radius_lg" />
+                    <stroke
+                        android:width="@dimen/tv_focus_stroke_width"
+                        android:color="?attr/tvFocusStrokeColor" />
+                    <solid android:color="@android:color/transparent" />
+                </shape>
+            </item>
+            <item
+                android:bottom="4dp"
+                android:left="4dp"
+                android:right="4dp"
+                android:top="4dp">
+                <shape android:shape="rectangle">
+                    <corners android:radius="22dp" />
+                    <solid android:color="@color/cinema_cta_fill" />
+                </shape>
+            </item>
+        </layer-list>
+    </item>
+    <item>
+        <shape android:shape="rectangle">
+            <corners android:radius="@dimen/cinema_radius_lg" />
+            <solid android:color="@color/cinema_cta_fill" />
+        </shape>
+    </item>
+</selector>

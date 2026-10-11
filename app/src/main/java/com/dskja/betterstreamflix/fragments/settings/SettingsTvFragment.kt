@@ -1185,6 +1185,24 @@ class SettingsTvFragment : LeanbackPreferenceFragmentCompat() {
             setOnPreferenceChangeListener { _, _ -> false }
         }
 
+        findPreference<SwitchPreference>("LARGE_TEXT")?.apply {
+            isChecked = UserPreferences.largeText
+            setOnPreferenceChangeListener { _, newValue ->
+                UserPreferences.largeText = newValue as Boolean
+                restartMainTvWithoutAnimation()
+                true
+            }
+        }
+
+        findPreference<SwitchPreference>("HIGH_CONTRAST")?.apply {
+            isChecked = UserPreferences.highContrast
+            setOnPreferenceChangeListener { _, newValue ->
+                UserPreferences.highContrast = newValue as Boolean
+                restartMainTvWithoutAnimation()
+                true
+            }
+        }
+
         findPreference<ListPreference>("APP_LANGUAGE")?.apply {
             entries = AppLanguageManager.buildLanguageEntries(requireContext())
             entryValues = AppLanguageManager.buildLanguageValues(requireContext())

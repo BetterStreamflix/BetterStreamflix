@@ -28,7 +28,7 @@ import com.dskja.betterstreamflix.R
 import com.dskja.betterstreamflix.player.SerienStreamBypassHelper
 import com.dskja.betterstreamflix.providers.KinoGerProvider
 import com.dskja.betterstreamflix.providers.SerienStreamProvider
-import com.dskja.betterstreamflix.utils.AppLanguageManager
+import com.dskja.betterstreamflix.utils.AccessibilityPreferences
 import com.dskja.betterstreamflix.utils.ExpDialogChrome
 import com.dskja.betterstreamflix.utils.ExperimentalMobileDesign
 import com.dskja.betterstreamflix.utils.ThemeManager
@@ -71,7 +71,7 @@ class BypassWebViewActivity : AppCompatActivity() {
     }
 
     override fun attachBaseContext(newBase: Context) {
-        super.attachBaseContext(AppLanguageManager.wrap(newBase))
+        super.attachBaseContext(AccessibilityPreferences.wrapAfterLanguage(newBase))
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -82,6 +82,7 @@ class BypassWebViewActivity : AppCompatActivity() {
                 ThemeManager.mobileThemeRes(UserPreferences.selectedTheme)
             }
         )
+        AccessibilityPreferences.applyHighContrastOverlay(this, mobile = true)
         if (ExperimentalMobileDesign.enabled()) {
             DynamicColors.applyToActivityIfAvailable(this)
         }

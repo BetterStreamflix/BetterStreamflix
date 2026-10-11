@@ -1,0 +1,107 @@
+package com.dskja.betterstreamflix.utils
+
+import android.app.Activity
+import android.content.Context
+import android.content.res.Configuration
+import android.view.View
+import androidx.annotation.StyleRes
+import androidx.core.view.ViewCompat
+import com.dskja.betterstreamflix.BuildConfig
+import com.dskja.betterstreamflix.R
+import kotlin.math.max
+
+/**
+ * Device-wide accessibility overlays: large text (fontScale) and high contrast theme.
+ * Reads SharedPreferences directly so [wrap] works in attachBaseContext before
+ * [UserPreferences.setup].
+ */
+object AccessibilityPreferences {
+    const val LARGE_TEXT_SCALE = 1.3f
+
+    private const val KEY_LARGE_TEXT = "LARGE_TEXT"
+    private const val KEY_HIGH_CONTRAST = "HIGH_CONTRAST"
+
+    fun wrap(context: Context): Context {
+        if (!isLargeTextEnabled(context)) return context
+        val configuration = Configuration(context.resources.configuration)
+        val target = max(configuration.fontScale, LARGE_TEXT_SCALE)
+        if (configuration.fontScale >= target) return context
+        configuration.fontScale = target
+        return context.createConfigurationContext(configuration)
+    }
+
+    /** Language first, then large-text fontScale. */
+    fun wrapAfterLanguage(context: Context): Context =
+        wrap(AppLanguageManager.wrap(context))
+
+    fun isLargeTextEnabled(context: Context): Boolean =
+        prefs(context).getBoolean(KEY_LARGE_TEXT, false)
+
+    fun isHighContrastEnabled(context: Context): Boolean =
+        prefs(context).getBoolean(KEY_HIGH_CONTRAST, false)
+
+    fun isHighContrastActive(): Boolean =
+        runCatching { UserPreferences.highContrast }.getOrDefault(false)
+
+    @StyleRes
+    fun highContrastOverlay(mobile: Boolean): Int =
+        if (mobile) R.style.AppTheme_Mobile_HighContrastOverlay
+        else R.style.AppTheme_Tv_HighContrastOverlay
+
+    /** Apply after [Activity.setTheme] and before [Activity.onCreate] super call. */
+    fun applyHighContrastOverlay(activity: Activity, mobile: Boolean) {
+        if (!isHighContrastActive() && !isHighContrastEnabled(activity)) return
+        activity.theme.applyStyle(highContrastOverlay(mobile), true)
+    }
+
+    fun posterLabel(
+        context: Context,
+        title: String?,
+        favorite: Boolean = false,
+        watched: Boolean = false,
+        downloaded: Boolean = false,
+    ): String {
+        val base = title?.takeIf { it.isNotBlank() }
+            ?: context.getString(R.string.a11y_untitled)
+        val parts = buildList {
+            add(base)
+            if (favorite) add(context.getString(R.string.a11y_state_in_my_list))
+            if (watched) add(context.getString(R.string.a11y_state_watched))
+            if (downloaded) add(context.getString(R.string.a11y_state_downloaded))
+        }
+        return parts.joinToString(", ")
+    }
+
+    fun episodeLabel(
+        context: Context,
+        number: Int,
+        title: String?,
+        watched: Boolean = false,
+        downloaded: Boolean = false,
+    ): String {
+        val episodeTitle = title?.takeIf { it.isNotBlank() }
+            ?: context.getString(R.string.episode_number, number)
+        val base = context.getString(R.string.a11y_episode_label, number, episodeTitle)
+        val parts = buildList {
+            add(base)
+            if (watched) add(context.getString(R.string.a11y_state_watched))
+            if (downloaded) add(context.getString(R.string.a11y_state_downloaded))
+        }
+        return parts.joinToString(", ")
+    }
+
+    fun announceSelected(view: View, selected: Boolean) {
+        // Prefer state description over View.isSelected so TV focus drawables
+        // that key off state_selected are not visually altered.
+        ViewCompat.setStateDescription(
+            view,
+            if (selected) view.context.getString(R.string.a11y_state_selected) else null,
+        )
+    }
+
+    private fun prefs(context: Context) =
+        context.getSharedPreferences(
+            "${BuildConfig.APPLICATION_ID}.preferences",
+            Context.MODE_PRIVATE,
+        )
+}

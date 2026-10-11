@@ -34,7 +34,7 @@ import com.dskja.betterstreamflix.providers.RidomoviesProvider
 import com.dskja.betterstreamflix.providers.SoloLatinoProvider
 import com.dskja.betterstreamflix.providers.ZaluknijProvider
 import com.dskja.betterstreamflix.cast.CastPlaybackHub
-import com.dskja.betterstreamflix.utils.AppLanguageManager
+import com.dskja.betterstreamflix.utils.AccessibilityPreferences
 import com.dskja.betterstreamflix.utils.ThemeManager
 import com.dskja.betterstreamflix.utils.UserPreferences
 import com.dskja.betterstreamflix.utils.getCurrentFragment
@@ -53,13 +53,14 @@ class MainTvActivity : FragmentActivity() {
     private var castSessionStateListener: ((Boolean) -> Unit)? = null
 
     override fun attachBaseContext(newBase: android.content.Context) {
-        super.attachBaseContext(AppLanguageManager.wrap(newBase))
+        super.attachBaseContext(AccessibilityPreferences.wrapAfterLanguage(newBase))
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         // Il setup delle preferenze è già avvenuto in BetterStreamflixApp
         setTheme(ThemeManager.tvThemeRes(UserPreferences.selectedTheme))
-        
+        AccessibilityPreferences.applyHighContrastOverlay(this, mobile = false)
+
         super.onCreate(savedInstanceState)
 
         // Finish a provider switch after CLEAR_TASK restart (Room reset deferred).

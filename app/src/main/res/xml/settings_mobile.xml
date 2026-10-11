@@ -1156,6 +1156,26 @@
                 android:defaultValue="false"
                 app:iconSpaceReserved="false" />
         </PreferenceCategory>
+
+        <PreferenceCategory
+            android:key="pc_accessibility_settings"
+            android:title="@string/settings_category_accessibility"
+            app:iconSpaceReserved="false">
+
+            <SwitchPreference
+                android:key="LARGE_TEXT"
+                android:title="@string/settings_large_text_title"
+                android:summary="@string/settings_large_text_summary"
+                android:defaultValue="false"
+                app:iconSpaceReserved="false" />
+
+            <SwitchPreference
+                android:key="HIGH_CONTRAST"
+                android:title="@string/settings_high_contrast_title"
+                android:summary="@string/settings_high_contrast_summary"
+                android:defaultValue="false"
+                app:iconSpaceReserved="false" />
+        </PreferenceCategory>
     </PreferenceScreen>
 
     <PreferenceScreen

@@ -55,7 +55,8 @@
             android:layout_marginTop="4dp"
             android:layout_marginEnd="8dp"
             android:layout_marginBottom="4dp"
-            android:background="@drawable/bg_btn_exoplayer_tv"
+            android:background="@drawable/bg_tv_focus_ring"
+            android:contentDescription="@string/exp_cd_search_clear"
             android:focusable="true"
             android:focusableInTouchMode="true"
             android:nextFocusRight="@+id/btn_search_voice"
@@ -66,7 +67,7 @@
             app:layout_constraintDimensionRatio="1:1"
             app:layout_constraintEnd_toStartOf="@+id/btn_search_voice"
             app:layout_constraintTop_toTopOf="parent"
-            tools:ignore="ContentDescription,PrivateResource,UseAppTint" />
+            tools:ignore="PrivateResource,UseAppTint" />
 
         <ImageView
             android:id="@+id/btn_search_voice"
@@ -75,7 +76,8 @@
             android:layout_marginTop="4dp"
             android:layout_marginEnd="8dp"
             android:layout_marginBottom="4dp"
-            android:background="@drawable/bg_btn_exoplayer_tv"
+            android:background="@drawable/bg_tv_focus_ring"
+            android:contentDescription="@string/exp_cd_voice_search"
             android:focusable="true"
             android:focusableInTouchMode="true"
             android:padding="10dp"

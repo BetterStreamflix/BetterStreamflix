@@ -11,6 +11,7 @@ import androidx.viewbinding.ViewBinding
 import com.bumptech.glide.Glide
 import com.bumptech.glide.load.resource.drawable.DrawableTransitionOptions
 import com.dskja.betterstreamflix.R
+import com.dskja.betterstreamflix.utils.AccessibilityPreferences
 import com.dskja.betterstreamflix.utils.TvFocusZoom
 import com.dskja.betterstreamflix.utils.ExpPressEffects.applyExpPress
 import com.dskja.betterstreamflix.utils.ExpMotion
@@ -271,8 +272,10 @@ class EpisodeViewHolder(
             }
         }
 
-        binding.ivEpisodeWatchedRibbon.visibility =
-            if (episode.isWatched) View.VISIBLE else View.GONE
+        binding.ivEpisodeWatchedRibbon.apply {
+            importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
+            visibility = if (episode.isWatched) View.VISIBLE else View.GONE
+        }
         bindDownloadRibbon(binding.ivEpisodeDownloadRibbon)
         bindEpisodeProgress(binding.pbEpisodeProgress)
 
@@ -543,12 +546,16 @@ class EpisodeViewHolder(
             request.into(this)
         }
         binding.ivEpisodeWatchedRibbon.let { ribbon ->
+            ribbon.importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
             ribbon.visibility = if (episode.isWatched) View.VISIBLE else View.GONE
             if (!episode.isWatched) {
                 ribbon.background = null
             }
         }
+        binding.ivEpisodeDownloadRibbon.importantForAccessibility =
+            View.IMPORTANT_FOR_ACCESSIBILITY_NO
         bindDownloadRibbon(binding.ivEpisodeDownloadRibbon)
+        applyEpisodeA11y()
 
         bindEpisodeProgress(binding.pbEpisodeProgress)
 
@@ -556,6 +563,7 @@ class EpisodeViewHolder(
         badgeView?.apply {
             text = EpisodeDisplayLabels.badge(episode.number)
             visibility = View.VISIBLE
+            importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
         }
         // Badge already shows E01 — hide duplicate info line (TV-SEAS-05).
         binding.tvEpisodeInfo.visibility = View.GONE
@@ -977,7 +985,21 @@ class EpisodeViewHolder(
         }
     }
 
+    private fun applyEpisodeA11y(downloaded: Boolean? = null) {
+        val contentKey = episodeDownloadContentKey()
+        val isDownloaded = downloaded
+            ?: (contentKey != null && OfflineBadgeStore.isCompleted(context, contentKey))
+        itemView.contentDescription = AccessibilityPreferences.episodeLabel(
+            context,
+            episode.number,
+            episode.title,
+            watched = episode.isWatched,
+            downloaded = isDownloaded,
+        )
+    }
+
     private fun bindDownloadRibbon(downloadRibbon: View) {
+        downloadRibbon.importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
         val boundEpisodeId = episode.id
         val contentKey = episodeDownloadContentKey()
         val show = contentKey != null && OfflineBadgeStore.isCompleted(context, contentKey)
@@ -991,6 +1013,7 @@ class EpisodeViewHolder(
         } else if (!show) {
             downloadRibbon.background = null
         }
+        applyEpisodeA11y(show)
 
         downloadRibbonJob?.cancel()
         val lifecycleOwner = itemView.findViewTreeLifecycleOwner()
@@ -1011,6 +1034,7 @@ class EpisodeViewHolder(
                 } else if (!visible) {
                     downloadRibbon.background = null
                 }
+                applyEpisodeA11y(visible)
             }
         }
     }

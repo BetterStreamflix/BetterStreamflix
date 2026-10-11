@@ -95,6 +95,7 @@ class PeopleViewHolder(
         }
 
         binding.tvPeopleName.text = people.name
+        binding.root.contentDescription = buildPeopleDescription()
         binding.tvPeopleCharacter.apply {
             val role = people.character?.takeIf { it.isNotBlank() }
             text = role
@@ -165,10 +166,16 @@ class PeopleViewHolder(
         }
 
         binding.tvPeopleName.text = people.name
+        binding.root.contentDescription = buildPeopleDescription()
         binding.tvPeopleCharacter.apply {
             val role = people.character?.takeIf { it.isNotBlank() }
             text = role
             visibility = if (role == null) View.GONE else View.VISIBLE
         }
+    }
+
+    private fun buildPeopleDescription(): String {
+        val role = people.character?.takeIf { it.isNotBlank() }
+        return if (role != null) "${people.name}, $role" else people.name
     }
 }

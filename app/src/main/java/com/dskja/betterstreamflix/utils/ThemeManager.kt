@@ -98,34 +98,50 @@ object ThemeManager {
         else -> R.string.theme_cinema_ink
     }
 
-    fun palette(theme: String): Palette = when (resolveLook(theme)) {
-        CINEMA_INK_LIGHT -> Palette(
-            mobileNavBackground = color("#EEF0F4"),
-            mobileNavActive = color("#1A4DFF"),
-            mobileNavInactive = color("#5C6478"),
-            systemBar = color("#EEF0F4"),
-            tvNavBackground = color("#EEF0F4"),
-            tvHeaderPrimary = color("#121218"),
-            tvHeaderSecondary = color("#5C6478"),
-        )
-        KIDS_BRIGHT -> Palette(
-            mobileNavBackground = color("#243B63"),
-            mobileNavActive = color("#FFB347"),
-            mobileNavInactive = color("#C9D6F0"),
-            systemBar = color("#243B63"),
-            tvNavBackground = color("#243B63"),
-            tvHeaderPrimary = color("#FFF8E7"),
-            tvHeaderSecondary = color("#FFE08A"),
-        )
-        else -> Palette(
-            mobileNavBackground = color("#0A0A0C"),
-            mobileNavActive = color("#F7F7F8"),
-            mobileNavInactive = color("#A1A1AA"),
-            systemBar = color("#0A0A0C"),
-            tvNavBackground = color("#0A0A0C"),
-            tvHeaderPrimary = color("#F7F7F8"),
-            tvHeaderSecondary = color("#A1A1AA"),
-        )
+    fun palette(theme: String): Palette {
+        val base = when (resolveLook(theme)) {
+            CINEMA_INK_LIGHT -> Palette(
+                mobileNavBackground = color("#EEF0F4"),
+                mobileNavActive = color("#1A4DFF"),
+                mobileNavInactive = color("#5C6478"),
+                systemBar = color("#EEF0F4"),
+                tvNavBackground = color("#EEF0F4"),
+                tvHeaderPrimary = color("#121218"),
+                tvHeaderSecondary = color("#5C6478"),
+            )
+            KIDS_BRIGHT -> Palette(
+                mobileNavBackground = color("#243B63"),
+                mobileNavActive = color("#FFB347"),
+                mobileNavInactive = color("#C9D6F0"),
+                systemBar = color("#243B63"),
+                tvNavBackground = color("#243B63"),
+                tvHeaderPrimary = color("#FFF8E7"),
+                tvHeaderSecondary = color("#FFE08A"),
+            )
+            else -> Palette(
+                mobileNavBackground = color("#0A0A0C"),
+                mobileNavActive = color("#F7F7F8"),
+                mobileNavInactive = color("#A1A1AA"),
+                systemBar = color("#0A0A0C"),
+                tvNavBackground = color("#0A0A0C"),
+                tvHeaderPrimary = color("#F7F7F8"),
+                tvHeaderSecondary = color("#A1A1AA"),
+            )
+        }
+        // High contrast a11y overlay sits on top of the locked look (text/chrome only).
+        return if (UserPreferences.highContrast) {
+            base.copy(
+                mobileNavBackground = color("#000000"),
+                mobileNavActive = color("#FFFFFF"),
+                mobileNavInactive = color("#F0F0F0"),
+                systemBar = color("#000000"),
+                tvNavBackground = color("#000000"),
+                tvHeaderPrimary = color("#FFFFFF"),
+                tvHeaderSecondary = color("#F0F0F0"),
+            )
+        } else {
+            base
+        }
     }
 
     @ColorInt

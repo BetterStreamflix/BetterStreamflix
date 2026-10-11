@@ -28,6 +28,7 @@
         android:layout_height="32dp"
         android:layout_margin="12dp"
         android:elevation="2dp"
+        android:importantForAccessibility="no"
         android:src="@drawable/ic_offline_badge"
         android:visibility="gone"
         app:layout_constraintStart_toStartOf="@id/iv_episode_poster"
