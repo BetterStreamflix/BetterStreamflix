@@ -43,6 +43,7 @@ import com.dskja.betterstreamflix.providers.SoloLatinoProvider
 import com.dskja.betterstreamflix.providers.ZaluknijProvider
 import com.dskja.betterstreamflix.ui.UpdateAppMobileDialog
 import com.dskja.betterstreamflix.utils.AppLanguageManager
+import com.dskja.betterstreamflix.utils.BypassWebSocketEndpointHelper
 import com.dskja.betterstreamflix.utils.ExpMotion
 import com.dskja.betterstreamflix.utils.ExpPressEffects
 import com.dskja.betterstreamflix.utils.ExperimentalMobileDesign
@@ -50,6 +51,8 @@ import com.dskja.betterstreamflix.utils.ProviderChangeNotifier
 import com.dskja.betterstreamflix.utils.ThemeManager
 import com.dskja.betterstreamflix.utils.UserPreferences
 import com.dskja.betterstreamflix.utils.getCurrentFragment
+import com.dskja.betterstreamflix.providers.KinoGerProvider
+import com.dskja.betterstreamflix.providers.SerienStreamProvider
 import com.google.android.gms.cast.framework.CastContext
 import com.google.android.material.color.MaterialColors
 import kotlinx.coroutines.Dispatchers
@@ -91,6 +94,12 @@ class MainMobileActivity : FragmentActivity() {
             clearResolverState()
 
             if (result.resultCode != Activity.RESULT_OK || wsUrl.isNullOrBlank() || token.isNullOrBlank()) {
+                return@registerForActivityResult
+            }
+
+            // Never echo cookies to a non-LAN / unbound WebSocket (SEC-DL-01).
+            if (!BypassWebSocketEndpointHelper.isAllowedPeerWs(wsUrl)) {
+                Log.w("ResolverWS", "Refusing cookie send to disallowed ws peer")
                 return@registerForActivityResult
             }
 
@@ -752,6 +761,17 @@ class MainMobileActivity : FragmentActivity() {
 
     private fun handleIntent(intent: Intent): Boolean {
         if (intent.getBooleanExtra("open_downloads", false)) {
+            // Only honor when the Intent targets this app (notification PendingIntent).
+            // External apps cannot set component on our exported Activity via implicit
+            // extras alone — still require our package (SEC-DL-05).
+            val targetedUs = intent.component?.packageName == packageName ||
+                intent.`package` == packageName ||
+                callingPackage == null ||
+                callingPackage == packageName
+            if (!targetedUs) {
+                Log.w("MainMobile", "Ignoring open_downloads from foreign caller=$callingPackage")
+                return true
+            }
             val navHost =
                 supportFragmentManager.findFragmentById(R.id.nav_main_fragment) as? NavHostFragment
             val navController = navHost?.navController
@@ -766,8 +786,14 @@ class MainMobileActivity : FragmentActivity() {
         if ((data.scheme == "streamflix" || data.scheme == "betterstreamflix") &&
             data.host.equals("resolve", ignoreCase = true)
         ) {
-            val target = com.dskja.betterstreamflix.providers.SerienStreamResolveLink.parse(data.toString())
-                ?: return false
+            val target = com.dskja.betterstreamflix.providers.SerienStreamResolveLink.parse(
+                data.toString(),
+                UserPreferences.bypassWsAdvertisedHost,
+            ) ?: return false
+            if (!BypassWebSocketEndpointHelper.isAllowedPeerWs(target.ws)) {
+                Log.w("ResolverWS", "Rejected resolve deep link with disallowed ws=${target.ws}")
+                return true
+            }
             Log.d("ResolverWS", "WS: ${target.ws}")
             resolve(target.ws, target.token)
             return true
@@ -783,6 +809,10 @@ class MainMobileActivity : FragmentActivity() {
     }
 
     private fun resolve(ws: String, token: String) {
+        if (!BypassWebSocketEndpointHelper.isAllowedPeerWs(ws)) {
+            Log.w("ResolverWS", "Refusing resolve() for disallowed ws peer")
+            return
+        }
         pendingWs = ws
         pendingToken = token
 
@@ -792,12 +822,30 @@ class MainMobileActivity : FragmentActivity() {
                 showResolverConnectionErrorDialog(ws, token)
                 return@launch
             }
+            // Never load attacker payload URLs in Bypass WebView (SEC-DL-01 / WV-01).
+            if (!isAllowedResolverPayloadUrl(payload.url)) {
+                Log.w("ResolverWS", "Rejected resolver payload URL: ${payload.url}")
+                showResolverConnectionErrorDialog(ws, token)
+                return@launch
+            }
 
             bypassWebViewLauncher.launch(
                 Intent(this@MainMobileActivity, BypassWebViewActivity::class.java)
                     .putExtra(BypassWebViewActivity.EXTRA_URL, payload.url)
             )
         }
+    }
+
+    private fun isAllowedResolverPayloadUrl(url: String): Boolean {
+        if (url.isBlank()) return false
+        if (SerienStreamProvider.isSerienStreamHost(url)) return true
+        if (KinoGerProvider.isKinoGerHost(url)) return true
+        val host = runCatching { android.net.Uri.parse(url).host.orEmpty().lowercase() }
+            .getOrDefault("")
+        return host == "challenges.cloudflare.com" ||
+            host.endsWith(".challenge-platform.com") ||
+            host == "check.ddos-guard.net" ||
+            host.endsWith(".ddos-guard.net")
     }
 
     private fun showResolverConnectionErrorDialog(ws: String, token: String) {

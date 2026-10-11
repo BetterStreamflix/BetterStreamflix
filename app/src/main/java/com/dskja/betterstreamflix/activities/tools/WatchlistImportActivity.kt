@@ -285,8 +285,13 @@ class WatchlistImportActivity : AppCompatActivity() {
             ?.removePrefix("www.")
             .orEmpty()
         if (host.isBlank()) return false
-        if (host == "challenges.cloudflare.com" || host.endsWith(".cloudflare.com")) return true
-        if (host.contains("ddos-guard")) return true
+        // Narrow challenge allowlist (SEC-WV-07).
+        if (host == "challenges.cloudflare.com" ||
+            host.endsWith(".challenge-platform.com")
+        ) {
+            return true
+        }
+        if (host == "check.ddos-guard.net" || host.endsWith(".ddos-guard.net")) return true
         return when (source) {
             WatchlistImporter.Source.SERIENSTREAM ->
                 SerienStreamProvider.isSerienStreamHost(url)
@@ -411,13 +416,8 @@ class WatchlistImportActivity : AppCompatActivity() {
                 error: SslError?,
             ) {
                 val url = error?.url.orEmpty()
-                // Only proceed for known SerienStream / AniWorld / mirror / challenge hosts.
-                if (url.isNotBlank() && isAllowedLoginNavigation(url)) {
-                    Log.w(TAG, "SSL warning on known host $url: ${error?.primaryError}")
-                    handler?.proceed()
-                    return
-                }
-                Log.w(TAG, "SSL rejected for untrusted host $url: ${error?.primaryError}")
+                // Never proceed() on SSL errors — system trust only (SEC-WV-02).
+                Log.w(TAG, "SSL rejected for $url: ${error?.primaryError}")
                 handler?.cancel()
                 if (!importing) {
                     statusView.setText(R.string.watchlist_import_ssl_rejected)

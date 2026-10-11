@@ -151,7 +151,7 @@ class WebViewResolver(private val context: Context) {
                 domStorageEnabled = true
                 databaseEnabled = true
                 userAgentString = NetworkClient.USER_AGENT
-                mixedContentMode = WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
+                mixedContentMode = WebSettings.MIXED_CONTENT_COMPATIBILITY_MODE
                 loadWithOverviewMode = true
                 useWideViewPort = true
                 setSupportZoom(true)
@@ -159,6 +159,8 @@ class WebViewResolver(private val context: Context) {
                 displayZoomControls = false
                 javaScriptCanOpenWindowsAutomatically = false
                 setSupportMultipleWindows(false)
+                allowFileAccess = false
+                allowContentAccess = false
             }
             setInitialScale(INITIAL_SCALE)
 

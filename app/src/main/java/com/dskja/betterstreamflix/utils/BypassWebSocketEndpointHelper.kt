@@ -17,6 +17,17 @@ object BypassWebSocketEndpointHelper {
         return getLocalIpv4Address()?.let { "ws://$it:$port" }
     }
 
+    /**
+     * Validate inbound resolve-link `ws` targets (SEC-DL-01).
+     * Only LAN / private peers (or the advertised-host override) are accepted.
+     */
+    fun isAllowedPeerWs(wsUrl: String): Boolean {
+        return com.dskja.betterstreamflix.providers.SerienStreamResolveLink.isAllowedResolverWs(
+            ws = wsUrl,
+            advertisedHostOverride = UserPreferences.bypassWsAdvertisedHost,
+        )
+    }
+
     fun getLocalIpv4Address(): String? {
         return runCatching {
             val addresses = NetworkInterface.getNetworkInterfaces()

@@ -8,6 +8,7 @@ import android.net.Uri
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
+import android.util.Log
 import android.view.View
 import android.webkit.CookieManager
 import android.webkit.WebChromeClient
@@ -40,6 +41,7 @@ class BypassWebViewActivity : AppCompatActivity() {
         const val EXTRA_URL = "extra_url"
         const val EXTRA_COOKIE_HEADER = "extra_cookie_header"
         const val EXTRA_RESOLVED_STREAM_URL = "extra_resolved_stream_url"
+        private const val TAG = "BypassWebView"
         private const val COOKIE_POLL_INTERVAL_MS = 1000L
         private const val MODERN_UA =
             "Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 " +
@@ -154,6 +156,14 @@ class BypassWebViewActivity : AppCompatActivity() {
             finish()
             return
         }
+        // Reject attacker-controlled EXTRA_URL (SEC-WV-01 / SEC-DL-01).
+        if (!isAllowedBypassHost(targetUrl)) {
+            Log.w(TAG, "Refusing Bypass WebView load for untrusted host: $targetUrl")
+            notifyBypass(R.string.bypass_status_missing_url)
+            setResult(Activity.RESULT_CANCELED)
+            finish()
+            return
+        }
 
         CookieManager.getInstance().setAcceptCookie(true)
         CookieManager.getInstance().setAcceptThirdPartyCookies(webView, true)
@@ -206,12 +216,12 @@ class BypassWebViewActivity : AppCompatActivity() {
             databaseEnabled = true
             loadWithOverviewMode = true
             useWideViewPort = true
-            mixedContentMode = WebSettings.MIXED_CONTENT_COMPATIBILITY_MODE
+            mixedContentMode = WebSettings.MIXED_CONTENT_NEVER_ALLOW
             userAgentString = MODERN_UA
             webViewUserAgent = MODERN_UA
             allowFileAccess = false
             allowContentAccess = false
-            javaScriptCanOpenWindowsAutomatically = true
+            javaScriptCanOpenWindowsAutomatically = false
             setSupportMultipleWindows(false)
             mediaPlaybackRequiresUserGesture = true
         }
@@ -376,9 +386,11 @@ class BypassWebViewActivity : AppCompatActivity() {
         if (SerienStreamProvider.isSerienStreamHost(url)) return true
         if (KinoGerProvider.isKinoGerHost(url)) return true
         val host = runCatching { Uri.parse(url).host.orEmpty().lowercase() }.getOrDefault("")
+        // Narrow challenge allowlist (SEC-WV-07): specific CF challenge hosts only.
         return host == "challenges.cloudflare.com" ||
-            host.endsWith(".cloudflare.com") ||
-            host.contains("ddos-guard") ||
-            host.endsWith("ddostest.com")
+            host == "cdn-cgi.challenge-platform.com" ||
+            host.endsWith(".challenge-platform.com") ||
+            host == "check.ddos-guard.net" ||
+            host.endsWith(".ddos-guard.net")
     }
 }

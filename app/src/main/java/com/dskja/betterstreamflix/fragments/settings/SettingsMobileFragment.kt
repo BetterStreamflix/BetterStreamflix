@@ -155,7 +155,10 @@ class SettingsMobileFragment : PreferenceFragmentCompat() {
         }
 
         val rawValue = result.data?.getStringExtra(QrScannerActivity.EXTRA_QR_VALUE).orEmpty()
-        val target = com.dskja.betterstreamflix.providers.SerienStreamResolveLink.parse(rawValue)
+        val target = com.dskja.betterstreamflix.providers.SerienStreamResolveLink.parse(
+            rawValue,
+            UserPreferences.bypassWsAdvertisedHost,
+        )
         val uri = target?.toDeepLink()?.let(Uri::parse)
 
         if (uri == null) {

@@ -34,13 +34,33 @@ class VidLinkExtractor : Extractor() {
         )
     }
 
+    private fun isSafePlaylistUrl(playlist: String): Boolean {
+        if (playlist.isBlank()) return false
+        val uri = runCatching { java.net.URI(playlist) }.getOrNull() ?: return false
+        val scheme = uri.scheme?.lowercase().orEmpty()
+        if (scheme != "http" && scheme != "https") return false
+        val host = uri.host?.lowercase().orEmpty()
+        if (host.isBlank()) return false
+        // Reject obvious local / metadata pivots from the JS bridge.
+        if (host == "localhost" || host.endsWith(".localhost") || host == "127.0.0.1") return false
+        if (host == "169.254.169.254" || host == "metadata.google.internal") return false
+        if (host.startsWith("10.") || host.startsWith("192.168.") || host.startsWith("127.")) return false
+        return true
+    }
+
     override suspend fun extract(link: String): Video {
         return withContext(Dispatchers.Main) {
             suspendCancellableCoroutine { continuation ->
                 val webView = WebView(BetterStreamflixApp.instance.applicationContext)
                 
-                // Configure WebView settings
-                webView.settings.javaScriptEnabled = true
+                // Configure WebView settings (SEC-WV-04)
+                webView.settings.apply {
+                    javaScriptEnabled = true
+                    allowFileAccess = false
+                    allowContentAccess = false
+                    javaScriptCanOpenWindowsAutomatically = false
+                    mixedContentMode = android.webkit.WebSettings.MIXED_CONTENT_NEVER_ALLOW
+                }
 
                 // Timeout handler
                 val timeoutHandler = Handler(Looper.getMainLooper())
@@ -85,7 +105,7 @@ class VidLinkExtractor : Extractor() {
                     }
                 }
 
-                // Add JavaScript Interface
+                // Add JavaScript Interface — validate playlist URL scheme/host (SEC-WV-04).
                 webView.addJavascriptInterface(object : Any() {
                     @android.webkit.JavascriptInterface
                     fun onStreamFound(jsonData: String) {
@@ -96,6 +116,12 @@ class VidLinkExtractor : Extractor() {
                                 if (json.has("stream")) {
                                     val stream = json.getJSONObject("stream")
                                     val playlist = stream.optString("playlist")
+                                    if (!isSafePlaylistUrl(playlist)) {
+                                        continuation.resumeWithException(
+                                            Exception("Rejected playlist URL from WebView bridge"),
+                                        )
+                                        return
+                                    }
                                     
                                     val captionsList = mutableListOf<Video.Subtitle>()
                                     val captions = stream.optJSONArray("captions")

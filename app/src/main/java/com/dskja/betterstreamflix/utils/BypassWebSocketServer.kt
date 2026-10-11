@@ -62,9 +62,15 @@ class BypassWebSocketServer(
                             String(Base64.getDecoder().decode(encoded), Charsets.UTF_8)
                         }.getOrNull()
                     }
+                // One-shot: token must be registered; remove before applying cookies
+                // so replay cannot inject cookies after completion (SEC-DL-03).
                 if (sessions.remove(token) != null) {
+                    // Bound cookie apply to SerienStream / AniWorld style cookie jars —
+                    // reject obviously hostile blobs (null bytes / extreme size).
+                    val safeCookies = cookies
+                        ?.takeIf { it.length <= MAX_COOKIE_CHARS && '\u0000' !in it }
                     conn.send("ack:$token")
-                    onDone(token, cookies)
+                    onDone(token, safeCookies)
                 } else {
                     conn.send("error:unknown_session")
                 }
@@ -87,5 +93,9 @@ class BypassWebSocketServer(
     override fun onStart() {
         Log.d("BypassWS", "Server started")
         startedLatch.countDown()
+    }
+
+    companion object {
+        private const val MAX_COOKIE_CHARS = 16_384
     }
 }

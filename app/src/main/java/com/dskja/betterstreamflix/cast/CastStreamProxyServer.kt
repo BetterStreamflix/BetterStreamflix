@@ -10,6 +10,8 @@ import java.io.File
 import java.io.FileInputStream
 import java.io.PipedInputStream
 import java.io.PipedOutputStream
+import java.net.Inet4Address
+import java.net.Inet6Address
 import java.net.InetAddress
 import java.net.URLDecoder
 import java.nio.charset.StandardCharsets
@@ -27,8 +29,9 @@ import java.util.concurrent.TimeUnit
  * also flow through this proxy.
  *
  * Auth: every `/p` request must carry the per-instance session token issued by [wrap]
- * (H-CAST-1). Private/loopback targets are rejected to limit open-relay SSRF.
- * Redirects are followed manually with per-hop allowlist checks (CAST-P1-3).
+ * (H-CAST-1). Only hosts registered via [wrap] / playlist rewrite are proxied
+ * (SEC-CAST-02). Private targets require explicit LAN registration (SEC-CAST-01).
+ * DNS is re-resolved on every hop to resist rebinding (SEC-CAST-03).
  */
 class CastStreamProxyServer(
     private val httpClient: OkHttpClient = defaultClient(),
@@ -42,6 +45,8 @@ class CastStreamProxyServer(
 
     private val pumpExecutor = Executors.newCachedThreadPool()
     private val allowedHosts = ConcurrentHashMap.newKeySet<String>()
+    /** Hosts intentionally wrapped for LAN IPTV (may resolve to private IPs). */
+    private val lanAllowedHosts = ConcurrentHashMap.newKeySet<String>()
     private val localFiles = ConcurrentHashMap<String, File>()
 
     fun updateDefaultHeaders(headers: Map<String, String>) {
@@ -59,17 +64,31 @@ class CastStreamProxyServer(
 
     /** Build a Cast-reachable URL that proxies [originalUrl] with the current headers. */
     fun wrap(originalUrl: String): String {
-        registerAllowedHost(originalUrl)
+        registerAllowedHost(originalUrl, allowPrivate = true)
         val base = publicBaseUrl() ?: return originalUrl
         return CastPlaylistRewriter.proxyUrl(base, originalUrl, sessionToken)
     }
 
-    /** Register a host discovered while rewriting playlists (CAST-P2-1). */
+    /**
+     * Register a host discovered while rewriting playlists.
+     * Private / loopback / CGNAT hosts are rejected here (SEC-CAST-01).
+     */
     fun registerAllowedHost(url: String) {
-        runCatching { java.net.URI(url).host?.lowercase() }
+        registerAllowedHost(url, allowPrivate = false)
+    }
+
+    private fun registerAllowedHost(url: String, allowPrivate: Boolean) {
+        val host = runCatching { java.net.URI(url).host?.lowercase() }
             .getOrNull()
-            ?.takeIf { it.isNotBlank() && !isAlwaysBlockedHost(it) }
-            ?.let { allowedHosts.add(it) }
+            ?.takeIf { it.isNotBlank() }
+            ?: return
+        if (isAlwaysBlockedHost(host)) return
+        val inet = runCatching { InetAddress.getByName(host) }.getOrNull()
+        if (inet != null && isBlockedAddress(inet)) {
+            if (!allowPrivate) return
+            lanAllowedHosts.add(host)
+        }
+        allowedHosts.add(host)
     }
 
     /** Serve a local subtitle/media file to Chromecast over LAN HTTP. */
@@ -91,7 +110,7 @@ class CastStreamProxyServer(
                         it.addHeader("Access-Control-Allow-Headers", "Range, Content-Type")
                     }
                 }
-                session.uri == "/health" || session.uri.startsWith("/health") -> {
+                session.uri == "/health" -> {
                     // Require session token — unauthenticated health was an open probe (CAST-P3-1).
                     val presented = session.parms["t"].orEmpty()
                     if (presented.isBlank() || presented != sessionToken) {
@@ -100,8 +119,8 @@ class CastStreamProxyServer(
                         newFixedLengthResponse(Response.Status.OK, MIME_PLAINTEXT, "ok")
                     }
                 }
-                session.uri == "/f" || session.uri.startsWith("/f") -> serveLocal(session)
-                session.uri == "/p" || session.uri.startsWith("/p") -> proxy(session)
+                session.uri == "/f" -> serveLocal(session)
+                session.uri == "/p" -> proxy(session)
                 else -> newFixedLengthResponse(Response.Status.NOT_FOUND, MIME_PLAINTEXT, "not found")
             }
         } catch (e: Exception) {
@@ -155,13 +174,18 @@ class CastStreamProxyServer(
         if (!target.startsWith("http://") && !target.startsWith("https://")) {
             return newFixedLengthResponse(Response.Status.BAD_REQUEST, MIME_PLAINTEXT, "unsupported scheme")
         }
-        if (isBlockedProxyTarget(target, allowedHosts)) {
+        if (isBlockedProxyTarget(target, allowedHosts, lanAllowedHosts)) {
             return newFixedLengthResponse(Response.Status.FORBIDDEN, MIME_PLAINTEXT, "blocked target")
         }
 
         val requestBuilder = Request.Builder().url(target).get()
         val mergedHeaders = linkedMapOf("User-Agent" to NetworkClient.USER_AGENT)
-        mergedHeaders.putAll(defaultHeaders)
+        // Only forward session headers to hosts that were explicitly wrapped /
+        // playlist-registered (credentialed open-relay mitigation, SEC-CAST-02).
+        val targetHost = runCatching { java.net.URI(target).host?.lowercase() }.getOrNull()
+        if (targetHost != null && allowedHosts.contains(targetHost)) {
+            mergedHeaders.putAll(defaultHeaders)
+        }
         val uaKey = mergedHeaders.keys.firstOrNull { it.equals("User-Agent", ignoreCase = true) }
         val ua = uaKey?.let { mergedHeaders[it] }
         if (ua.isNullOrBlank() || ua.startsWith("okhttp", ignoreCase = true)) {
@@ -279,11 +303,12 @@ class CastStreamProxyServer(
                 java.net.URI(request.url.toString()).resolve(location).toString()
             }.getOrDefault(location)
             if (!nextUrl.startsWith("http://") && !nextUrl.startsWith("https://")) return null
-            if (isBlockedProxyTarget(nextUrl, allowedHosts)) {
+            if (isBlockedProxyTarget(nextUrl, allowedHosts, lanAllowedHosts)) {
                 Log.w(TAG, "Blocked cast proxy redirect hop=$hop")
                 return null
             }
-            registerAllowedHost(nextUrl)
+            // Redirect hops never expand the LAN allowlist (SEC-CAST-01/03).
+            registerAllowedHost(nextUrl, allowPrivate = false)
             request = request.newBuilder().url(nextUrl).build()
         }
         return null
@@ -305,11 +330,11 @@ class CastStreamProxyServer(
         if (!looksM3u && !looksMpd) return bytes
         val rewritten = if (looksMpd && !looksM3u) {
             CastPlaylistRewriter.rewriteMpd(text, playlistUrl, base, sessionToken) { url ->
-                registerAllowedHost(url)
+                registerAllowedHost(url, allowPrivate = false)
             }
         } else {
             CastPlaylistRewriter.rewrite(text, playlistUrl, base, sessionToken) { url ->
-                registerAllowedHost(url)
+                registerAllowedHost(url, allowPrivate = false)
             }
         }
         return rewritten.toByteArray(StandardCharsets.UTF_8)
@@ -318,6 +343,7 @@ class CastStreamProxyServer(
     override fun stop() {
         clearDefaultHeaders()
         allowedHosts.clear()
+        lanAllowedHosts.clear()
         localFiles.clear()
         runCatching { super.stop() }
         runCatching { pumpExecutor.shutdownNow() }
@@ -341,26 +367,66 @@ class CastStreamProxyServer(
             if (h == "localhost" || h.endsWith(".localhost") || h == "0.0.0.0") return true
             if (h == "::1" || h == "[::1]") return true
             if (h == "169.254.169.254" || h == "metadata.google.internal") return true
+            // Literal loopback / metadata always blocked even if somehow registered.
+            if (h == "127.0.0.1" || h.startsWith("127.")) return true
             return false
         }
 
-        /**
-         * Reject loopback / link-local / metadata targets. Site-local (RFC1918) is
-         * allowed only when the host was explicitly registered via [wrap] (LAN IPTV).
-         */
-        fun isBlockedProxyTarget(
-            url: String,
-            allowedHosts: Set<String> = emptySet(),
-        ): Boolean {
-            val host = runCatching { java.net.URI(url).host }.getOrNull()?.lowercase() ?: return true
-            if (isAlwaysBlockedHost(host)) return true
-            if (allowedHosts.contains(host)) return false
-            val inet = runCatching { InetAddress.getByName(host) }.getOrNull() ?: return false
-            return inet.isAnyLocalAddress ||
+        private fun isBlockedAddress(inet: InetAddress): Boolean {
+            if (inet.isAnyLocalAddress ||
                 inet.isLoopbackAddress ||
                 inet.isLinkLocalAddress ||
                 inet.isSiteLocalAddress ||
                 inet.isMulticastAddress
+            ) {
+                return true
+            }
+            // CGNAT 100.64.0.0/10 (SEC-CAST-04)
+            if (inet is Inet4Address) {
+                val b = inet.address
+                if (b.size == 4) {
+                    val first = b[0].toInt() and 0xff
+                    val second = b[1].toInt() and 0xff
+                    if (first == 100 && second in 64..127) return true
+                }
+            }
+            // IPv6 ULA fc00::/7
+            if (inet is Inet6Address) {
+                val b = inet.address
+                if (b.isNotEmpty() && (b[0].toInt() and 0xfe) == 0xfc) return true
+            }
+            return false
+        }
+
+        /**
+         * Reject unregistered hosts and private/metadata targets.
+         * Allowlist membership alone is not enough — DNS is re-resolved so a
+         * registered public name cannot rebind to RFC1918 / CGNAT / ULA
+         * unless it was explicitly LAN-registered via [wrap] (SEC-CAST-01/03).
+         */
+        @JvmStatic
+        @JvmOverloads
+        fun isBlockedProxyTarget(
+            url: String,
+            allowedHosts: Set<String> = emptySet(),
+            lanAllowedHosts: Set<String> = emptySet(),
+        ): Boolean {
+            val host = runCatching { java.net.URI(url).host }.getOrNull()?.lowercase() ?: return true
+            if (isAlwaysBlockedHost(host)) return true
+            // Open-relay close: only previously registered hosts (SEC-CAST-02).
+            if (allowedHosts.isNotEmpty() && !allowedHosts.contains(host)) return true
+            // When no allowlist is supplied (unit tests of address policy), fall
+            // through to address checks only.
+            if (allowedHosts.isEmpty()) {
+                val inet = runCatching { InetAddress.getByName(host) }.getOrNull() ?: return false
+                return isBlockedAddress(inet)
+            }
+            val inet = runCatching { InetAddress.getByName(host) }.getOrNull() ?: return true
+            if (isBlockedAddress(inet)) {
+                // Private resolution allowed only for intentionally wrapped LAN hosts.
+                return !lanAllowedHosts.contains(host)
+            }
+            return false
         }
     }
 }
