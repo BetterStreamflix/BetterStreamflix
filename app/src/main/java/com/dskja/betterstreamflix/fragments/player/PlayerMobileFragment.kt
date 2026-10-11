@@ -671,6 +671,10 @@ class PlayerMobileFragment : Fragment(),
                             }
                             PlaybackFailover.Action.RetrySoftwareDecoder -> {
                                 pendingPlayWithAfterResolve = false
+                                if (PlaybackFailover.isDecoderCapabilityFailure(state.error)) {
+                                    com.dskja.betterstreamflix.player.CodecComfort
+                                        .recordDecoderTrouble(requireContext())
+                                }
                                 failoverTimeline.recordSoftwareDecoder()
                                 // Leave currentSoftwareDecoder stale so needsReinit rebuilds Exo.
                                 PlayerSettingsView.Settings.SoftwareDecoder.init(true)
@@ -2176,6 +2180,10 @@ class PlayerMobileFragment : Fragment(),
                     PlaybackFailover.Action.RetrySoftwareDecoder -> {
                         suppressBuiltInErrorOverlay()
                         pendingPlayWithAfterResolve = false
+                        if (PlaybackFailover.isDecoderCapabilityFailure(error)) {
+                            com.dskja.betterstreamflix.player.CodecComfort
+                                .recordDecoderTrouble(requireContext())
+                        }
                         failoverTimeline.recordSoftwareDecoder()
                         // Leave currentSoftwareDecoder stale so needsReinit rebuilds Exo.
                         PlayerSettingsView.Settings.SoftwareDecoder.init(true)

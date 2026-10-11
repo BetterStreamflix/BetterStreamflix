@@ -43,6 +43,10 @@ object DeviceCapabilities {
 
     /** Fire Stick / low-RAM / fragile leanback boxes struggle with huge buffers and HW-only decode. */
     fun shouldUseConstrainedPlayback(context: Context): Boolean {
+        // Codec Comfort: once this stick learned HW decode pain, keep buffers conservative.
+        if (com.dskja.betterstreamflix.player.CodecComfort.preferStablePlaybackProfile()) {
+            return true
+        }
         // Newer Fire Stick 4K Max / Cube have enough RAM — only constrain legacy/low-RAM/fragile.
         return isLegacyFireOs(context) ||
             isLowRamDevice(context) ||
@@ -53,8 +57,12 @@ object DeviceCapabilities {
      * Prefer software/extension renderers from the first player build.
      * Limited to devices that actually crash on HW decode — not every Leanback/Fire box —
      * so Settings → Software Decoder Off can force hardware on Shield / CCwGTV.
+     * Also true after [com.dskja.betterstreamflix.player.CodecComfort] latches.
      */
     fun shouldPreferSoftwareDecoder(context: Context): Boolean {
+        if (com.dskja.betterstreamflix.player.CodecComfort.preferSoftwareDecoder()) {
+            return true
+        }
         return isLegacyFireOs(context) ||
             isLowRamDevice(context) ||
             isFragileTvOem()
