@@ -888,7 +888,7 @@ class PlayerTvFragment : Fragment() {
                 return@launch
             }
             val hasNextEpisode = withContext(Dispatchers.IO) {
-                database?.let { EpisodeManager.ensureNextEpisodeAvailable(type, it) }
+                database?.let { EpisodeManager.ensureNextEpisodeAvailable(type, it) } ?: false
             }
 
             setupEpisodeNavigationButtons()

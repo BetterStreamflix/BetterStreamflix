@@ -389,7 +389,8 @@ internal fun MovieViewHolder.bindMovieTvDetail(binding: ContentMovieTvBinding) {
             ExpMotion.hapticTap(it)
             checkProviderAndRun {
                 itemView.findViewTreeLifecycleOwner()?.lifecycleScope?.launch(Dispatchers.IO) {
-                    val dao = database.movieDao()
+                    val db = database ?: return@launch
+                    val dao = db.movieDao()
                     val current = dao.getById(movie.id)
                     val target = !(current?.isWatched ?: movie.isWatched)
                     val updated = (current ?: movie).copy().apply {
@@ -459,13 +460,14 @@ internal fun MovieViewHolder.bindMovieTvDetail(binding: ContentMovieTvBinding) {
             checkProviderAndRun {
                 itemView.findViewTreeLifecycleOwner()?.lifecycleScope?.launch(Dispatchers.IO) {
                     val provider = UserPreferences.currentProvider ?: return@launch
-                    val newValue = !(database.movieDao().getById(movie.id)?.isFavorite ?: false)
+                    val db = database ?: return@launch
+                    val newValue = !(db.movieDao().getById(movie.id)?.isFavorite ?: false)
                     val resolvedMovie = com.dskja.betterstreamflix.sync.FavoriteMutations.setMovieFavorite(
                         context = context,
                         provider = provider,
                         movie = movie,
                         favorite = newValue,
-                        database = database,
+                        database = db,
                     )
 
                     withContext(Dispatchers.Main) {

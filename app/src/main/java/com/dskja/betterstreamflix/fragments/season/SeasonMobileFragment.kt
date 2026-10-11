@@ -11,6 +11,7 @@ import androidx.fragment.app.Fragment
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.flowWithLifecycle
 import androidx.lifecycle.lifecycleScope
+import androidx.navigation.fragment.findNavController
 import androidx.navigation.fragment.navArgs
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
@@ -151,7 +152,7 @@ class SeasonMobileFragment : Fragment() {
         val db = database
         if (db == null) {
             runCatching {
-                androidx.navigation.fragment.findNavController().navigate(R.id.providers)
+                findNavController().navigate(R.id.providers)
             }
             return
         }

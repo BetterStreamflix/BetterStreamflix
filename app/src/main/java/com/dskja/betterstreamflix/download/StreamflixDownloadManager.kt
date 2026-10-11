@@ -2,6 +2,7 @@ package com.dskja.betterstreamflix.download
 
 import android.content.Context
 import android.net.Uri
+import android.util.Log
 import androidx.media3.database.StandaloneDatabaseProvider
 import androidx.media3.datasource.BaseDataSource
 import androidx.media3.datasource.DataSource
@@ -29,6 +30,8 @@ import java.util.concurrent.Executor
 import java.util.concurrent.Executors
 
 object StreamflixDownloadManager {
+    private const val TAG = "StreamflixDownloadMgr"
+
     @Volatile
     private var downloadManager: DownloadManager? = null
 
@@ -59,12 +62,11 @@ object StreamflixDownloadManager {
             DownloadConnectivityMonitor.start(app)
             DownloadNotifier.ensureChannel(app)
 
-            val dbProvider = StandaloneDatabaseProvider(app).also { databaseProvider = it }
-            val cache = SimpleCache(
-                DownloadStorage.cacheDir(app),
-                NoOpCacheEvictor(),
-                dbProvider,
-            ).also { simpleCache = it }
+            val opened = openCacheWithRecovery(app)
+            val dbProvider = opened.first
+            val cache = opened.second
+            databaseProvider = dbProvider
+            simpleCache = cache
 
             val upstreamFactory = DownloadDataSourceFactory(app).also { dataSourceFactory = it }
             val cacheFactory = CacheDataSource.Factory()
@@ -94,6 +96,29 @@ object StreamflixDownloadManager {
                 }
             }
             return manager
+        }
+    }
+
+    /**
+     * Open SimpleCache; on poison DB / IO failure wipe the cache dir once and retry (SS-10).
+     */
+    private fun openCacheWithRecovery(
+        app: Context,
+    ): Pair<StandaloneDatabaseProvider, SimpleCache> {
+        val dir = DownloadStorage.cacheDir(app)
+        return try {
+            val dbProvider = StandaloneDatabaseProvider(app)
+            val cache = SimpleCache(dir, NoOpCacheEvictor(), dbProvider)
+            dbProvider to cache
+        } catch (first: Exception) {
+            Log.w(TAG, "SimpleCache open failed; wiping once and retrying: ${first.message}")
+            runCatching {
+                if (dir.exists()) dir.deleteRecursively()
+                dir.mkdirs()
+            }
+            val dbProvider = StandaloneDatabaseProvider(app)
+            val cache = SimpleCache(dir, NoOpCacheEvictor(), dbProvider)
+            dbProvider to cache
         }
     }
 

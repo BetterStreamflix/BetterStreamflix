@@ -120,11 +120,20 @@ class StreamflixDownloadService : DownloadService(
                 return true
             } catch (foregroundBlocked: Throwable) {
                 // Includes ForegroundServiceStartNotAllowedException on API 31+
-                // (BOOT_COMPLETED / background — BETTERSTREAMFLIX-2P).
+                // (BOOT_COMPLETED / background — BETTERSTREAMFLIX-2P / SS-02 / 2G).
                 android.util.Log.w(
                     "StreamflixDownloadService",
                     "Foreground start blocked (${foregroundBlocked.javaClass.simpleName}: ${foregroundBlocked.message}); trying background start",
                 )
+                runCatching {
+                    io.sentry.Sentry.addBreadcrumb(
+                        io.sentry.Breadcrumb().apply {
+                            category = "download.fgs"
+                            message = "FGS start blocked: ${foregroundBlocked.javaClass.simpleName}"
+                            level = io.sentry.SentryLevel.WARNING
+                        },
+                    )
+                }
                 return try {
                     start(app, StreamflixDownloadService::class.java)
                     true
@@ -133,6 +142,15 @@ class StreamflixDownloadService : DownloadService(
                         "StreamflixDownloadService",
                         "Background start also blocked: ${backgroundBlocked.message}",
                     )
+                    runCatching {
+                        io.sentry.Sentry.addBreadcrumb(
+                            io.sentry.Breadcrumb().apply {
+                                category = "download.fgs"
+                                message = "FGS+bg start blocked: ${backgroundBlocked.javaClass.simpleName}"
+                                level = io.sentry.SentryLevel.ERROR
+                            },
+                        )
+                    }
                     runCatching { DownloadNotifier.notifyServiceStartFailed(app) }
                     false
                 }

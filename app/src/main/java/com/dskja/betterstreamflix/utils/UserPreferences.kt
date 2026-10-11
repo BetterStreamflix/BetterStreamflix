@@ -97,13 +97,16 @@ object UserPreferences {
                 ?: providerName?.let { Provider.findByName(it) }
         }
         set(value) {
-            // Live in-process switch (Search TV handoff, plugin disable). Prefer
-            // [prepareProviderSwitch] + CLEAR_TASK + [consumePendingProviderSwitch]
-            // for picker restarts so Room is not closed mid-teardown (crash-loop).
-            // Flip the preferred name first so any concurrent getInstance() rebuilds
-            // the *new* provider DB, then close the old singleton. Notifying last
-            // lets ViewModels cancel in-flight Room collectors against a closed DB.
-            Key.CURRENT_PROVIDER.setString(value?.name)
+            // Prefer [prepareProviderSwitch] + CLEAR_TASK + [consumePendingProviderSwitch]
+            // for picker restarts. Live setter remains for rare in-process paths but
+            // now stages the same pending flag so Room reset happens on next Main*
+            // recreate when possible (SS-05). Still resets + notifies for sticky
+            // in-process callers that do not recreate.
+            if (value != null) {
+                prepareProviderSwitch(value)
+            } else {
+                Key.CURRENT_PROVIDER.setString(null)
+            }
             AppDatabase.resetInstance()
             // Provider language drives TMDb logo ranking — drop details so logos refetch.
             runCatching { TmdbCache.clear() }

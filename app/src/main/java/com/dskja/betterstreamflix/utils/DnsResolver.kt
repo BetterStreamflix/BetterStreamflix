@@ -7,10 +7,6 @@ import java.util.concurrent.TimeUnit
 import okhttp3.OkHttpClient
 import okhttp3.dnsoverhttps.DnsOverHttps
 import okhttp3.logging.HttpLoggingInterceptor
-import java.security.SecureRandom
-import javax.net.ssl.SSLContext
-import javax.net.ssl.TrustManager
-import javax.net.ssl.X509TrustManager
 import java.net.Inet4Address
 import java.net.InetAddress
 
@@ -36,29 +32,10 @@ object DnsResolver : Dns {
         client?.let { return it }
         synchronized(this) {
             client?.let { return it }
-            val trustAllCerts = arrayOf<TrustManager>(
-                object : X509TrustManager {
-                    override fun checkClientTrusted(
-                        chain: Array<java.security.cert.X509Certificate>,
-                        authType: String,
-                    ) {}
-                    override fun checkServerTrusted(
-                        chain: Array<java.security.cert.X509Certificate>,
-                        authType: String,
-                    ) {}
-                    override fun getAcceptedIssuers(): Array<java.security.cert.X509Certificate> =
-                        arrayOf()
-                }
-            )
-            val sslContext = SSLContext.getInstance("TLS").apply {
-                init(null, trustAllCerts, SecureRandom())
-            }
-            val trustManager = trustAllCerts[0] as X509TrustManager
+            // System trust store only — never trust-all (SS-04 / DoH MITM).
             return OkHttpClient.Builder()
                 .readTimeout(30, TimeUnit.SECONDS)
                 .connectTimeout(30, TimeUnit.SECONDS)
-                .sslSocketFactory(sslContext.socketFactory, trustManager)
-                .hostnameVerifier { _, _ -> true }
                 .apply {
                     if (com.dskja.betterstreamflix.BuildConfig.DEBUG) addInterceptor(logging)
                 }
