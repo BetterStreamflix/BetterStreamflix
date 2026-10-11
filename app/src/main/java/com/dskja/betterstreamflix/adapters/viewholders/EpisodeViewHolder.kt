@@ -540,6 +540,30 @@ class EpisodeViewHolder(
             ellipsize = android.text.TextUtils.TruncateAt.END
             visibility = if (overview.isBlank()) View.GONE else View.VISIBLE
         }
+
+        binding.btnEpisodeDownload.apply {
+            val iptv = UserPreferences.currentProvider is com.dskja.betterstreamflix.providers.IptvProvider ||
+                (episode.tvShow?.providerName?.let { Provider.findByName(it) }
+                    is com.dskja.betterstreamflix.providers.IptvProvider)
+            if (iptv) {
+                visibility = View.GONE
+                setOnClickListener(null)
+                binding.root.nextFocusDownId = View.NO_ID
+            } else {
+                visibility = View.VISIBLE
+                binding.root.nextFocusDownId = id
+                nextFocusUpId = binding.root.id
+                setOnClickListener {
+                    ExpMotion.hapticTap(it)
+                    val fragment = context.toActivity()?.getCurrentFragment() as? Fragment
+                        ?: return@setOnClickListener
+                    DownloadOptionsController.enqueueEpisode(fragment, episode)
+                }
+                setOnFocusChangeListener { _, hasFocus ->
+                    TvFocusZoom.apply(this, hasFocus)
+                }
+            }
+        }
     }
 
     private fun checkProviderAndRun(action: () -> Unit) {
