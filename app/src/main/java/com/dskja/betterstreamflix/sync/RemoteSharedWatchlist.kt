@@ -12,8 +12,18 @@ data class RemoteSharedWatchlist(
     @SerialName("owner_id") val ownerId: String? = null,
     @EncodeDefault val title: String = "Watchlist",
     @SerialName("share_token") val shareToken: String,
+    @SerialName("expires_at") val expiresAt: String? = null,
     @SerialName("created_at") val createdAt: String? = null,
     @SerialName("updated_at") val updatedAt: String? = null,
+)
+
+/** Partial update used when rotating token / TTL without touching id/owner. */
+@Serializable
+data class RemoteSharedWatchlistTokenUpdate(
+    val title: String,
+    @SerialName("share_token") val shareToken: String,
+    @SerialName("expires_at") val expiresAt: String,
+    @SerialName("updated_at") val updatedAt: String,
 )
 
 @OptIn(ExperimentalSerializationApi::class)
@@ -35,6 +45,7 @@ data class SharedWatchlistPayload(
     val title: String = "Watchlist",
     @SerialName("share_token") val shareToken: String? = null,
     @SerialName("updated_at") val updatedAt: String? = null,
+    @SerialName("expires_at") val expiresAt: String? = null,
     val items: List<RemoteSharedWatchlistItem> = emptyList(),
 )
 

@@ -95,6 +95,7 @@ create table if not exists public.shared_watchlists (
     owner_id uuid not null references auth.users(id) on delete cascade,
     title text not null default 'Watchlist',
     share_token text not null unique,
+    expires_at timestamptz,
     created_at timestamptz not null default now(),
     updated_at timestamptz not null default now()
 );
@@ -214,8 +215,14 @@ set search_path = public
 as $$
 declare
     result json;
+    cleaned text;
 begin
-    if p_token is null or length(trim(p_token)) < 8 then
+    -- Align with client SharedWatchlistLinks TOKEN_PATTERN: [A-Za-z0-9_-]{8,128}
+    if p_token is null then
+        return null;
+    end if;
+    cleaned := trim(p_token);
+    if cleaned !~ '^[A-Za-z0-9_-]{8,128}$' then
         return null;
     end if;
 
@@ -224,6 +231,7 @@ begin
         'title', w.title,
         'share_token', w.share_token,
         'updated_at', w.updated_at,
+        'expires_at', w.expires_at,
         'items', coalesce((
             select json_agg(
                 json_build_object(
@@ -243,7 +251,8 @@ begin
     )
     into result
     from public.shared_watchlists w
-    where w.share_token = trim(p_token);
+    where w.share_token = cleaned
+      and (w.expires_at is null or w.expires_at >= now());
 
     return result;
 end;
