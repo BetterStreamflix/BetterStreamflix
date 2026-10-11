@@ -122,6 +122,8 @@ Opening that link on Mobile or TV fetches the session through `get_watch_party` 
 
 After the cast-rooms + Sidekick migrations are applied (included in **Copy database setup SQL**, plus `supabase/migrations/20261011230000_create_cast_rooms.sql` and `20261011250000_cast_room_sidekick.sql`), a signed-in host opens a **Cast Room** from Account & sync (or the player Cast Room button). The TV shows a QR and a 6-character code for `https://betterstreamflix.app/cast/<share_token>`. The phone scans or enters the code and becomes **TV Sidekick**: scrubber seek, keyboard search for the TV, party chat, plus the ordered queue (add / reorder / play now / skip / pause) via token RPCs. The TV stays the screen and resolves each title locally (**no stream relay**). Rooms expire after ~12 hours or when the host ends them. Kids/PIN gates join tokens per profile until unlock.
 
+After the cast-handoffs migration is applied (included in **Copy database setup SQL**, plus `supabase/migrations/20261011260000_create_cast_handoffs.sql`), a signed-in TV host can offer a **Cast Hand-off** from the player (Continue on phone). The TV shows a QR and a 6-character code for `https://betterstreamflix.app/casthand/<code>` (separate from Session Handoff `/handoff`). The phone enters the code under Account & sync → Cast Hand-off (or opens the link), claims once, and opens the same title at the same **position + preferred server** (**no stream relay**). Codes expire after ~30 minutes or when claimed/revoked. Position refreshes while the offer code is active.
+
 ## Troubleshooting
 
 ### “Configure Supabase before using account sync”

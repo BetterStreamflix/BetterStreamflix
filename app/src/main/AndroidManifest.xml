@@ -293,6 +293,22 @@
                 <action android:name="android.intent.action.VIEW"/>
                 <category android:name="android.intent.category.DEFAULT"/>
                 <category android:name="android.intent.category.BROWSABLE"/>
+                <data android:scheme="betterstreamflix" android:host="casthand"/>
+                <data android:scheme="streamflix" android:host="casthand"/>
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+                <category android:name="android.intent.category.BROWSABLE"/>
+                <data
+                    android:scheme="https"
+                    android:host="betterstreamflix.app"
+                    android:pathPrefix="/casthand" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+                <category android:name="android.intent.category.BROWSABLE"/>
                 <data android:scheme="betterstreamflix" android:host="watch"/>
                 <data android:scheme="streamflix" android:host="watch"/>
                 <data android:scheme="betterstreamflix" android:host="live"/>
@@ -395,6 +411,22 @@
                     android:scheme="https"
                     android:host="betterstreamflix.app"
                     android:pathPrefix="/handoff" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+                <category android:name="android.intent.category.BROWSABLE"/>
+                <data android:scheme="betterstreamflix" android:host="casthand"/>
+                <data android:scheme="streamflix" android:host="casthand"/>
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+                <category android:name="android.intent.category.BROWSABLE"/>
+                <data
+                    android:scheme="https"
+                    android:host="betterstreamflix.app"
+                    android:pathPrefix="/casthand" />
             </intent-filter>
             <intent-filter>
                 <action android:name="android.intent.action.VIEW"/>

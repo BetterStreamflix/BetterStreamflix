@@ -413,6 +413,7 @@ class MainMobileActivity : FragmentActivity() {
                 com.dskja.betterstreamflix.sync.SessionHandoffLinks.parseCode(data.toString()) != null ||
                 com.dskja.betterstreamflix.sync.SessionHandoffLinks.parseToken(data.toString()) != null ||
                 com.dskja.betterstreamflix.remotefind.RemoteFindLinks.parse(data) != null ||
+                com.dskja.betterstreamflix.sync.CastHandoffLinks.parseShortCode(data) != null ||
                 com.dskja.betterstreamflix.widgets.WidgetDeepLinks.parse(data) != null ||
                 com.dskja.betterstreamflix.tvlauncher.TvWatchDeepLink.parse(data.toString()) != null
         } == true
@@ -438,6 +439,7 @@ class MainMobileActivity : FragmentActivity() {
         com.dskja.betterstreamflix.sync.WatchPartyUi.tryFlushPending(this)
         com.dskja.betterstreamflix.download.DownloadPackUi.tryFlushPending(this)
         com.dskja.betterstreamflix.sync.CastRoomUi.tryFlushPending(this)
+        com.dskja.betterstreamflix.sync.CastHandoffUi.tryFlushPending(this)
     }
 
     override fun onStart() {
@@ -463,6 +465,7 @@ class MainMobileActivity : FragmentActivity() {
         com.dskja.betterstreamflix.download.DownloadPackUi.tryFlushPending(this)
         com.dskja.betterstreamflix.profiletransfer.ProfileTransferUi.tryFlushPending(this)
         com.dskja.betterstreamflix.sync.CastRoomUi.tryFlushPending(this)
+        com.dskja.betterstreamflix.sync.CastHandoffUi.tryFlushPending(this)
     }
 
     override fun onStop() {
@@ -478,6 +481,7 @@ class MainMobileActivity : FragmentActivity() {
             com.dskja.betterstreamflix.download.DownloadPackUi.tryFlushPending(this)
             com.dskja.betterstreamflix.profiletransfer.ProfileTransferUi.tryFlushPending(this)
             com.dskja.betterstreamflix.sync.CastRoomUi.tryFlushPending(this)
+            com.dskja.betterstreamflix.sync.CastHandoffUi.tryFlushPending(this)
             return
         }
         val host = navHost.childFragmentManager.primaryNavigationFragment ?: navHost
@@ -490,6 +494,7 @@ class MainMobileActivity : FragmentActivity() {
                 com.dskja.betterstreamflix.download.DownloadPackUi.tryFlushPending(this)
                 com.dskja.betterstreamflix.profiletransfer.ProfileTransferUi.tryFlushPending(this)
                 com.dskja.betterstreamflix.sync.CastRoomUi.tryFlushPending(this)
+                com.dskja.betterstreamflix.sync.CastHandoffUi.tryFlushPending(this)
             },
         )
     }
@@ -966,6 +971,12 @@ class MainMobileActivity : FragmentActivity() {
         val remoteFind = com.dskja.betterstreamflix.remotefind.RemoteFindLinks.parse(data)
         if (remoteFind != null) {
             com.dskja.betterstreamflix.remotefind.RemoteFindUi.handleIncomingTarget(this, remoteFind)
+            return true
+        }
+
+        val castHandoffCode = com.dskja.betterstreamflix.sync.CastHandoffLinks.parseShortCode(data)
+        if (castHandoffCode != null) {
+            com.dskja.betterstreamflix.sync.CastHandoffUi.handleIncomingCode(this, castHandoffCode)
             return true
         }
 

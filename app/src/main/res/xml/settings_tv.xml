@@ -1731,6 +1731,14 @@
                 android:key="cast_room_end"
                 android:title="@string/cast_room_end_action" />
         </PreferenceCategory>
+        <PreferenceCategory
+            android:key="pc_cast_handoff"
+            android:title="@string/cast_handoff_category_title">
+            <Preference
+                android:key="cast_handoff_claim_code"
+                android:title="@string/cast_handoff_claim_title"
+                android:summary="@string/cast_handoff_claim_summary" />
+        </PreferenceCategory>
     </PreferenceScreen>
 
     <PreferenceScreen
