@@ -164,8 +164,17 @@ class PlayerViewModel(
                     Log.d("PlayerViewModel", "IPTV zap cache hit for $id (${warmed.size} servers)")
                     warmed
                 } else {
+                    val serversTimeoutMs = when (provider) {
+                        is com.dskja.betterstreamflix.providers.TmdbProvider ->
+                            if (provider.language.lowercase(java.util.Locale.US).startsWith("de")) {
+                                ProviderSmoke.SERVERS_TIMEOUT_DE_MS
+                            } else {
+                                ProviderSmoke.SERVERS_TIMEOUT_MS
+                            }
+                        else -> ProviderSmoke.SERVERS_TIMEOUT_MS
+                    }
                     ProviderSmoke.withProviderTimeout(
-                        timeoutMs = ProviderSmoke.SERVERS_TIMEOUT_MS,
+                        timeoutMs = serversTimeoutMs,
                         label = "getServers(${provider.name})",
                     ) {
                         provider.getServers(id, videoType)
@@ -217,11 +226,21 @@ class PlayerViewModel(
                 }
                 val provider = UserPreferences.currentProvider
                     ?: throw Exception("No provider selected")
-                val video = ProviderSmoke.withProviderTimeout(
-                    timeoutMs = VIDEO_RESOLVE_TIMEOUT_MS,
-                    label = "getVideo(${server.name})",
-                ) {
-                    provider.getVideo(server)
+                val warmedVideo = if (provider is com.dskja.betterstreamflix.providers.IptvProvider) {
+                    com.dskja.betterstreamflix.iptv.IptvZapPreloader.takeCachedVideo(server.id)
+                } else {
+                    null
+                }
+                val video = if (warmedVideo != null && warmedVideo.source.isNotBlank()) {
+                    Log.d("PlayerViewModel", "IPTV zap video cache hit for ${server.name}")
+                    warmedVideo
+                } else {
+                    ProviderSmoke.withProviderTimeout(
+                        timeoutMs = VIDEO_RESOLVE_TIMEOUT_MS,
+                        label = "getVideo(${server.name})",
+                    ) {
+                        provider.getVideo(server)
+                    }
                 }
                 if (video.source.isBlank()) throw Exception("No source found")
 

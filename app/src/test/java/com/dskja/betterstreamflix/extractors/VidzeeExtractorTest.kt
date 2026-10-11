@@ -28,6 +28,23 @@ class VidzeeExtractorTest {
         assertEquals("1", params.season)
         assertEquals("2", params.episode)
         assertEquals(true, params.isEpisode)
+        assertEquals(3, params.sr)
+    }
+
+    @Test
+    fun preferredDirectServers_mapsSrToBackend() {
+        assertEquals(
+            listOf("ipcloud", "dcloud", "tik"),
+            VidzeeDirectStream.preferredDirectServers(sr = 9, isEpisode = true),
+        )
+        assertEquals(
+            listOf("dcloud", "tik", "ipcloud"),
+            VidzeeDirectStream.preferredDirectServers(sr = 1, isEpisode = false),
+        )
+        assertEquals(
+            listOf("dcloud", "tik", "ipcloud"),
+            VidzeeDirectStream.preferredDirectServers(sr = 0, isEpisode = false),
+        )
     }
 
     @Test
@@ -46,6 +63,7 @@ class VidzeeExtractorTest {
             tmdbId = "550",
             season = null,
             episode = null,
+            sr = 0,
         )
         assertEquals(
             listOf("dcloud", "tik", "ipcloud"),

@@ -13,6 +13,7 @@ import com.dskja.betterstreamflix.utils.ChannelCoverResolver
 import com.dskja.betterstreamflix.utils.LiveCatalogMeta
 import com.dskja.betterstreamflix.utils.LiveStreamHtmlExtractor
 import com.dskja.betterstreamflix.utils.M3uChannelIdCodec
+import com.dskja.betterstreamflix.utils.NetworkClient
 import com.dskja.betterstreamflix.utils.UserPreferences
 import java.util.Locale
 import java.util.concurrent.TimeUnit
@@ -45,7 +46,7 @@ object SportsBiteProvider : IptvProvider, ProviderConfigUrl {
         "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"
     private const val CACHE_MS = 5 * 60 * 1000L
 
-    private val client = OkHttpClient.Builder()
+    private val client = NetworkClient.default.newBuilder()
         .connectTimeout(10, TimeUnit.SECONDS)
         .readTimeout(12, TimeUnit.SECONDS)
         .callTimeout(15, TimeUnit.SECONDS)
@@ -145,9 +146,17 @@ object SportsBiteProvider : IptvProvider, ProviderConfigUrl {
             .header("Referer", "$baseUrl/")
             .header("Accept", "application/json")
             .build()
-        val body = client.newCall(req).execute().use { it.body?.string().orEmpty() }
-        val root = runCatching { JSONObject(body) }.getOrNull() ?: return@withContext emptyList()
-        val categories = root.optJSONArray("streams") ?: return@withContext emptyList()
+        val body = client.newCall(req).execute().use { resp ->
+            if (!resp.isSuccessful) {
+                Log.w(TAG, "Streams API HTTP ${resp.code}")
+                throw Exception("SportsBite: streams API HTTP ${resp.code}")
+            }
+            resp.body?.string().orEmpty()
+        }
+        val root = runCatching { JSONObject(body) }.getOrNull()
+            ?: throw Exception("SportsBite: streams API returned non-JSON")
+        val categories = root.optJSONArray("streams")
+            ?: throw Exception("SportsBite: streams API missing streams array")
         val out = ArrayList<StreamItem>()
         for (c in 0 until categories.length()) {
             val cat = categories.optJSONObject(c) ?: continue

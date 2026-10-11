@@ -14,6 +14,7 @@ import java.util.Locale
 object SerienStreamBypassHelper {
 
     private const val TMDB_DE_SERIENSTREAM = "tmdbde:serienstream:"
+    private const val TMDB_DE_ANIWORLD = "tmdbde:aniworld:"
 
     /** Cookie names that are only browser noise (DuckDuckGo etc.), never a SerienStream login. */
     private val NOISE_COOKIE_NAMES = setOf(
@@ -76,40 +77,91 @@ object SerienStreamBypassHelper {
         return SerienStreamProvider.isSerienStreamHost(url)
     }
 
+    fun isAniWorldHost(url: String): Boolean {
+        if (url.startsWith(TMDB_DE_ANIWORLD, ignoreCase = true)) return true
+        if (url.contains("tmdbde:aniworld:", ignoreCase = true)) return true
+        val lower = url.lowercase(Locale.US)
+        return lower.contains("aniworld.to") || lower.contains("aniworld.")
+    }
+
+    fun isGermanStreamGateHost(url: String): Boolean =
+        isSerienStreamHost(url) || isAniWorldHost(url)
+
     /**
-     * Build a SerienStream episode page URL for CF bypass.
-     * Works when the current provider is SerienStream OR when TMDb DE routed a
-     * `tmdbde:serienstream:…` server (title search bridge).
+     * Build a SerienStream / AniWorld episode page URL for CF bypass.
+     * Works when the current provider is SerienStream/AniWorld OR when TMDb DE
+     * routed a `tmdbde:serienstream:…` / `tmdbde:aniworld:…` server.
+     *
+     * Wrapped ids embed the episode path (not `/r?` play URLs) so Turnstile can
+     * open the episode page under TMDb DE aggregation.
      */
     fun buildEpisodeBypassUrl(
         videoType: Video.Type,
         servers: List<Video.Server> = emptyList(),
     ): String? {
-        val base = SerienStreamProvider.baseUrl.trimEnd('/') + "/"
+        val ssBase = SerienStreamProvider.baseUrl.trimEnd('/') + "/"
+        val awBase = com.dskja.betterstreamflix.providers.AniWorldProvider.baseUrl.trimEnd('/') + "/"
 
-        val routed = servers.firstOrNull {
+        val routedSs = servers.firstOrNull {
             it.id.startsWith(TMDB_DE_SERIENSTREAM, ignoreCase = true) ||
                 it.src.contains("serienstream", ignoreCase = true) ||
                 SerienStreamProvider.isSerienStreamHost(it.src) ||
                 SerienStreamProvider.isSerienStreamHost(it.id)
         }
-        if (routed != null) {
-            val episodePath = when {
-                routed.id.startsWith(TMDB_DE_SERIENSTREAM, ignoreCase = true) ->
-                    routed.id.removePrefix(TMDB_DE_SERIENSTREAM).removePrefix("tmdbde:serienstream:")
+        if (routedSs != null) {
+            val remainder = when {
+                routedSs.id.startsWith(TMDB_DE_SERIENSTREAM, ignoreCase = true) ->
+                    routedSs.id.removePrefix(TMDB_DE_SERIENSTREAM)
+                        .removePrefix("tmdbde:serienstream:")
                 else -> null
             }
-            if (!episodePath.isNullOrBlank() && !episodePath.startsWith("http", ignoreCase = true)) {
-                return "${base}serie/${episodePath.trimStart('/')}"
+            // Prefer embedded episode path (show/staffel-N/episode-M).
+            if (!remainder.isNullOrBlank() && !remainder.startsWith("http", ignoreCase = true) &&
+                !remainder.contains("/r?", ignoreCase = true)
+            ) {
+                return "${ssBase}serie/${remainder.trimStart('/')}"
             }
-            val src = routed.src
+            // Legacy wraps stored play URLs in id — recover episode page from src or /serie/.
+            val src = routedSs.src.ifBlank { remainder.orEmpty() }
             if (SerienStreamProvider.isSerienStreamHost(src) && src.contains("/serie/")) {
+                return src.substringBefore('?')
+            }
+            episodePathFromPlayUrl(src)?.let { path ->
+                return "${ssBase}serie/$path"
+            }
+            // Last resort: open the play URL origin so CF WebView can still solve Turnstile.
+            if (src.contains("/r?", ignoreCase = true) && SerienStreamProvider.isSerienStreamHost(src)) {
+                return src.substringBefore('?').ifBlank { ssBase }
+                    .let { if (it.endsWith("/r")) ssBase else it }
+                    .takeIf { it.isNotBlank() }
+                    ?: ssBase
+            }
+        }
+
+        val routedAw = servers.firstOrNull {
+            it.id.startsWith(TMDB_DE_ANIWORLD, ignoreCase = true) ||
+                isAniWorldHost(it.src) ||
+                isAniWorldHost(it.id)
+        }
+        if (routedAw != null) {
+            val remainder = when {
+                routedAw.id.startsWith(TMDB_DE_ANIWORLD, ignoreCase = true) ->
+                    routedAw.id.removePrefix(TMDB_DE_ANIWORLD)
+                        .removePrefix("tmdbde:aniworld:")
+                else -> null
+            }
+            if (!remainder.isNullOrBlank() && !remainder.startsWith("http", ignoreCase = true)) {
+                return "${awBase}anime/stream/${remainder.trimStart('/')}"
+            }
+            val src = routedAw.src
+            if (isAniWorldHost(src) && src.contains("/anime/stream/")) {
                 return src.substringBefore('?')
             }
         }
 
         val provider = UserPreferences.currentProvider
         val allowed = provider == SerienStreamProvider ||
+            provider == com.dskja.betterstreamflix.providers.AniWorldProvider ||
             (provider is TmdbProvider && provider.language.lowercase().startsWith("de"))
         if (!allowed) return null
 
@@ -117,8 +169,29 @@ object SerienStreamBypassHelper {
             is Video.Type.Episode -> videoType.id
             is Video.Type.Movie -> return null
         }
-        if (provider != SerienStreamProvider) return null
-        return "${base}serie/$episodeId"
+        return when (provider) {
+            SerienStreamProvider -> "${ssBase}serie/$episodeId"
+            com.dskja.betterstreamflix.providers.AniWorldProvider ->
+                "${awBase}anime/stream/$episodeId"
+            else -> null
+        }
+    }
+
+    /**
+     * Some play URLs still carry an episode path fragment; recover when present.
+     * Typical `/r?t=` bridges do not — callers should embed the episode path in id.
+     */
+    private fun episodePathFromPlayUrl(playUrl: String): String? {
+        if (playUrl.isBlank()) return null
+        val serie = Regex("""/serie/([^?#]+)""", RegexOption.IGNORE_CASE)
+            .find(playUrl)
+            ?.groupValues
+            ?.getOrNull(1)
+            ?.trim('/')
+        if (!serie.isNullOrBlank() && !serie.startsWith("r", ignoreCase = true)) {
+            return serie
+        }
+        return null
     }
 
     fun applyCookies(url: String, cookieHeader: String) {

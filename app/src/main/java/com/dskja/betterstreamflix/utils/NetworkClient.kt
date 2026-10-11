@@ -283,7 +283,8 @@ object NetworkClient {
                 
                 builder.sslSocketFactory(sslContext.socketFactory, combinedTrustManager)
             } catch (e: Exception) {
-                Log.e(TAG, "Error setting up SSL compatibility: ${e.message}")
+                // Unit tests (no Robolectric) throw on android.util.Log — never fail client build.
+                runCatching { Log.e(TAG, "Error setting up SSL compatibility: ${e.message}") }
             }
         }
 

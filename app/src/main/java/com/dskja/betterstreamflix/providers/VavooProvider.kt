@@ -3,6 +3,7 @@ package com.dskja.betterstreamflix.providers
 import android.util.Log
 import com.dskja.betterstreamflix.adapters.AppAdapter
 import com.dskja.betterstreamflix.models.*
+import com.dskja.betterstreamflix.utils.NetworkClient
 import com.dskja.betterstreamflix.utils.VavooTls
 import okhttp3.*
 import okhttp3.MediaType.Companion.toMediaType
@@ -67,9 +68,10 @@ class VavooProvider(override val language: String) : IptvProvider {
             "dfb pokal", "dfb-pokal", "uefa", "handball", "basketball", "eishockey", "hockey"
         )
 
-        private val client = OkHttpClient.Builder()
+        private val client = NetworkClient.default.newBuilder()
             .connectTimeout(20, TimeUnit.SECONDS)
             .readTimeout(20, TimeUnit.SECONDS)
+            .callTimeout(30, TimeUnit.SECONDS)
             .build()
     }
 

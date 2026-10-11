@@ -45,7 +45,8 @@ class PrimeSrcExtractor : Extractor() {
     }
 
     suspend fun server(videoType: Video.Type): Video.Server {
-        return servers(videoType).first()
+        return servers(videoType).firstOrNull()
+            ?: throw Exception("PrimeSrc returned no servers")
     }
 
     override suspend fun extract(link: String): Video {
@@ -97,6 +98,6 @@ class PrimeSrcExtractor : Extractor() {
     )
 
     data class LinkResponse(
-        val link: String
+        val link: String? = null,
     )
 }

@@ -13,6 +13,7 @@ import com.dskja.betterstreamflix.utils.ChannelCoverResolver
 import com.dskja.betterstreamflix.utils.LiveCatalogMeta
 import com.dskja.betterstreamflix.utils.LiveStreamHtmlExtractor
 import com.dskja.betterstreamflix.utils.M3uChannelIdCodec
+import com.dskja.betterstreamflix.utils.NetworkClient
 import com.dskja.betterstreamflix.utils.UserPreferences
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
@@ -48,10 +49,10 @@ object NtvProvider : IptvProvider, ProviderConfigUrl {
     private const val CACHE_MS = 10 * 60 * 1000L
     private val SERVERS = listOf("kobra", "falcon", "raptor", "phoenix", "titan")
 
-    private val client = OkHttpClient.Builder()
-        .connectTimeout(8, TimeUnit.SECONDS)
-        .readTimeout(8, TimeUnit.SECONDS)
-        .callTimeout(10, TimeUnit.SECONDS)
+    private val client = NetworkClient.default.newBuilder()
+        .connectTimeout(12, TimeUnit.SECONDS)
+        .readTimeout(15, TimeUnit.SECONDS)
+        .callTimeout(20, TimeUnit.SECONDS)
         .build()
 
     private data class Item(

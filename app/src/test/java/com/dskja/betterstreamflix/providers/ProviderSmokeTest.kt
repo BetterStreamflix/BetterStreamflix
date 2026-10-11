@@ -80,6 +80,8 @@ class ProviderSmokeTest {
     fun timeoutConstantsArePositive() {
         assertTrue(ProviderSmoke.HOME_TIMEOUT_MS > 0)
         assertTrue(ProviderSmoke.SERVERS_TIMEOUT_MS > 0)
+        assertTrue(ProviderSmoke.SERVERS_TIMEOUT_DE_MS > ProviderSmoke.SERVERS_TIMEOUT_MS)
+        assertTrue(ProviderSmoke.SERVERS_TIMEOUT_DE_MS >= 30_000L)
         assertTrue(ProviderSmoke.CATALOG_TIMEOUT_MS > 0)
         assertTrue(ProviderSmoke.SEARCH_TIMEOUT_MS > 0)
         assertTrue(ProviderSmoke.DETAIL_TIMEOUT_MS > 0)

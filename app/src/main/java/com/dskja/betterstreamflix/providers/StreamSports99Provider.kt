@@ -95,9 +95,17 @@ object StreamSports99Provider : IptvProvider, ProviderConfigUrl {
             .header("Referer", "$baseUrl/")
             .header("Origin", baseUrl)
             .build()
-        val body = client.newCall(req).execute().use { it.body?.string().orEmpty() }
-        val root = runCatching { JSONObject(body) }.getOrNull() ?: return@withContext emptyList()
-        val arr = root.optJSONArray("channels") ?: return@withContext emptyList()
+        val body = client.newCall(req).execute().use { resp ->
+            if (!resp.isSuccessful) {
+                Log.w(TAG, "Channels API HTTP ${resp.code}")
+                throw Exception("StreamSports99: channels API HTTP ${resp.code}")
+            }
+            resp.body?.string().orEmpty()
+        }
+        val root = runCatching { JSONObject(body) }.getOrNull()
+            ?: throw Exception("StreamSports99: channels API returned non-JSON")
+        val arr = root.optJSONArray("channels")
+            ?: throw Exception("StreamSports99: channels API missing channels array")
         val list = ArrayList<Channel>(arr.length())
         for (i in 0 until arr.length()) {
             val o = arr.optJSONObject(i) ?: continue
@@ -248,13 +256,49 @@ object StreamSports99Provider : IptvProvider, ProviderConfigUrl {
 
     override suspend fun getPeople(id: String, page: Int) = ProviderDefaults.emptyPeople(id)
 
-    override suspend fun getServers(id: String, videoType: Video.Type) =
-        listOf(Video.Server(id = id, name = "CDN Live TV"))
+    override suspend fun getServers(id: String, videoType: Video.Type): List<Video.Server> {
+        val payload = M3uChannelIdCodec.decode(id)
+        val playerUrl = payload.url
+        val match = cached?.firstOrNull { createId(it) == id }
+        if (match?.status?.equals("offline", ignoreCase = true) == true) {
+            // Surface offline before play so PlaybackFailover can skip quickly.
+            return listOf(
+                Video.Server(id = id, name = "CDN Live TV (offline)", src = playerUrl),
+            )
+        }
+        // Expose .is / .tv CDN hosts as separate servers for PlaybackFailover.
+        val variants = linkedSetOf(
+            playerUrl,
+            playerUrl.replace("cdnlivetv.tv", "cdnlivetv.is"),
+            playerUrl.replace("cdnlivetv.is", "cdnlivetv.tv"),
+        ).filter { it.isNotBlank() }.distinct()
+        return variants.mapIndexed { index, url ->
+            val hostLabel = when {
+                url.contains("cdnlivetv.is") -> "CDN .is"
+                url.contains("cdnlivetv.tv") -> "CDN .tv"
+                else -> "CDN Live TV"
+            }
+            Video.Server(
+                id = if (index == 0) id else M3uChannelIdCodec.encode(
+                    url = url,
+                    name = match?.name ?: payload.name,
+                    logo = match?.image ?: payload.logo,
+                    userAgent = USER_AGENT,
+                    referrer = baseUrl,
+                    origin = baseUrl,
+                ),
+                name = if (variants.size == 1) "CDN Live TV" else hostLabel,
+                src = url,
+            )
+        }
+    }
 
     override suspend fun getVideo(server: Video.Server): Video = withContext(Dispatchers.IO) {
         val payload = M3uChannelIdCodec.decode(server.id)
-        val playerUrl = payload.url.ifBlank { server.src.ifBlank { server.id } }
-        val match = cached?.firstOrNull { createId(it) == server.id }
+        val playerUrl = server.src.ifBlank { payload.url.ifBlank { server.id } }
+        val match = cached?.firstOrNull {
+            createId(it) == server.id || it.playerUrl == playerUrl
+        }
         if (match?.status?.equals("offline", ignoreCase = true) == true) {
             throw Exception("StreamSports99: ${server.name} is marked offline")
         }
@@ -271,16 +315,19 @@ object StreamSports99Provider : IptvProvider, ProviderConfigUrl {
                 continue
             }
             val m3u8 = LiveStreamHtmlExtractor.extractM3u8(html)
+                ?: extractM3u8Hardened(html)
             if (m3u8.isNullOrBlank()) {
                 lastError = Exception("no m3u8 stream found")
                 continue
             }
+            val origin = Regex("""^(https?://[^/]+)""").find(url)?.groupValues?.getOrNull(1)
+                ?: "https://cdnlivetv.is"
             return@withContext Video(
                 source = m3u8,
                 headers = mapOf(
                     "User-Agent" to USER_AGENT,
-                    "Referer" to "https://cdnlivetv.is/",
-                    "Origin" to "https://cdnlivetv.is",
+                    "Referer" to "$origin/",
+                    "Origin" to origin,
                 ),
             )
         }
@@ -289,6 +336,21 @@ object StreamSports99Provider : IptvProvider, ProviderConfigUrl {
             "StreamSports99: playback failed for ${server.name}" +
                 (lastError?.message?.let { " ($it)" } ?: ""),
         )
+    }
+
+    /** Extra m3u8 patterns when plaintext `const SRC` scrape misses. */
+    private fun extractM3u8Hardened(html: String): String? {
+        val patterns = listOf(
+            Regex("""["'](https?://[^"']+\.m3u8[^"']*)["']""", RegexOption.IGNORE_CASE),
+            Regex("""file\s*[:=]\s*["'](https?://[^"']+\.m3u8[^"']*)["']""", RegexOption.IGNORE_CASE),
+            Regex("""source\s*[:=]\s*["'](https?://[^"']+\.m3u8[^"']*)["']""", RegexOption.IGNORE_CASE),
+            Regex("""(https?://[^\s"'<>]+\.m3u8[^\s"'<>]*)""", RegexOption.IGNORE_CASE),
+        )
+        for (re in patterns) {
+            val hit = re.find(html)?.groupValues?.getOrNull(1)?.trim()
+            if (!hit.isNullOrBlank()) return hit
+        }
+        return null
     }
 
     override suspend fun listLiveChannels(aroundId: String?, limit: Int) =

@@ -52,7 +52,7 @@ object CableVisionHDProvider : IptvProvider, ProviderConfigUrl {
     private var cachedChannels: List<TvShow>? = null
     private var cachedHome: List<Category>? = null
 
-    private val client = OkHttpClient.Builder()
+    private val client = com.dskja.betterstreamflix.utils.NetworkClient.default.newBuilder()
         .cookieJar(object : CookieJar {
             private val cookieStore = ConcurrentHashMap<String, MutableList<Cookie>>()
 

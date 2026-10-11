@@ -484,15 +484,38 @@ object AniWorldProvider : Provider, ProviderConfigUrl {
 
     override suspend fun getVideo(server: Video.Server): Video {
         val response = service.getRedirectLink(server.src)
-            .let { response -> response.raw() as okhttp3.Response }
-        val videoUrl = response.request.url
+        val raw = response.raw() as okhttp3.Response
+        val videoUrl = raw.request.url
+        val body = runCatching { response.body()?.string().orEmpty() }.getOrDefault("")
+        val finalUrl = videoUrl.toString()
+
+        // Mirror SerienStream gate detection — CF/Turnstile HTML must not reach extractors.
+        val looksLikeGate =
+            com.dskja.betterstreamflix.player.SerienStreamBypassHelper.looksLikeStreamTokenGate(body) ||
+                body.contains("cf-challenge", ignoreCase = true) ||
+                body.contains("turnstile", ignoreCase = true) ||
+                body.contains("cf-browser-verification", ignoreCase = true) ||
+                (
+                    body.contains("Just a moment", ignoreCase = true) &&
+                        body.contains("cloudflare", ignoreCase = true)
+                    )
+        if (looksLikeGate) {
+            throw Exception(
+                "AniWorld stream gate is still active. Complete verification, then Continue.",
+            )
+        }
 
         val link = canonicalHosterUrl(
             serverName = server.name,
-            resolvedUrl = videoUrl.toString(),
+            resolvedUrl = finalUrl,
             encodedPath = videoUrl.encodedPath,
         )
         if (link.isBlank()) throw Exception("AniWorld source not found")
+        if (link.contains("aniworld.to", ignoreCase = true)) {
+            throw Exception(
+                "AniWorld stream gate is still active. Complete verification, then Continue.",
+            )
+        }
 
         return Extractor.extract(link, server)
     }

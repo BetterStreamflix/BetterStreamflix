@@ -182,6 +182,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Sentry drops JobCancellationException noise; `isSendDefaultPii` disabled
 - Cast stream proxy closes upstream OkHttp responses on playlist/error paths
 
+## [1.1.4] — 2026-10-11
+
+### Fixed
+- Providers/playback audit (P1–P3): DE servers timeout (35s) so SerienStream/Moflix finish; TMDb-DE SerienStream/AniWorld episode-path wraps for CF bypass; DaddyLive empty scrape fails loud + parallel roots; VavooTls probe/player hostname policy unified; TMDb Home returns partial shelves on outer cancel; empty catalogs no longer `noteHomeSuccess`; EN optimistic embeds deprioritized; Vidzee `sr` mirror mapping + legacy-first for labeled mirrors; Fastream extract timeouts; DomainRedirectChecker NetworkClient + parking guards; AniWorld stream-gate detection + player bypass host match; StreamSports99 multi-CDN servers + HTTP status checks; SportsBite/Ntv/Vavoo/live providers on NetworkClient; IPTV zap warms getVideo; Vavoo VOD schema logging; Moflix empty cooldown; Firestream mirror budget 6; country shelf labels `N of M`; NetPrime adds Vidzee/PrimeSrc; PrimeSrc null-safe link/servers
+
 ## [1.1.3] - 2026-10-11
 
 ### Added

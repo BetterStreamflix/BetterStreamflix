@@ -7,15 +7,11 @@ import com.dskja.betterstreamflix.extractors.Extractor
 import com.dskja.betterstreamflix.extractors.MoflixExtractor
 import com.dskja.betterstreamflix.extractors.MoviesapiExtractor
 import com.dskja.betterstreamflix.extractors.TwoEmbedExtractor
-import com.dskja.betterstreamflix.extractors.VidsrcNetExtractor
-import com.dskja.betterstreamflix.extractors.VidsrcToExtractor
 import com.dskja.betterstreamflix.extractors.VidzeeExtractor
 import com.dskja.betterstreamflix.extractors.VixSrcExtractor
 import com.dskja.betterstreamflix.extractors.VidLinkExtractor
-import com.dskja.betterstreamflix.extractors.VidsrcRuExtractor
 import com.dskja.betterstreamflix.extractors.EinschaltenExtractor
 import com.dskja.betterstreamflix.extractors.FrembedExtractor
-import com.dskja.betterstreamflix.extractors.VidflixExtractor
 import com.dskja.betterstreamflix.extractors.VidrockExtractor
 import com.dskja.betterstreamflix.extractors.VideasyExtractor
 import com.dskja.betterstreamflix.extractors.PrimeSrcExtractor
@@ -54,6 +50,10 @@ class TmdbProvider private constructor(override val language: String) : Provider
         private val instances =
             java.util.concurrent.ConcurrentHashMap<String, TmdbProvider>()
 
+        /** Soft cooldown after Moflix returns empty / times out (anti-bot / premium). */
+        @Volatile
+        private var moflixSkipUntilMs: Long = 0L
+
         /**
          * Stable per-language instance. [UserPreferences.currentProvider] used to
          * allocate a fresh [TmdbProvider] on every read, so Home's
@@ -87,14 +87,21 @@ class TmdbProvider private constructor(override val language: String) : Provider
             requireTmdbApiKey()
             return buildHomeCategories()
         } catch (e: ClassCastException) {
-            // Production still reported BETTERSTREAMFLIX-Q — never hard-fail Home.
+            // Soft-empty used to clear the home circuit — fail loud so HomeViewModel
+            // notes a failure instead of noteHomeSuccess on an empty catalog.
             Log.e("TmdbProvider", "TMDB home ClassCast soft-fail: ${e.message}", e)
-            return emptyList()
+            throw Exception(
+                "TMDb catalog parsing failed (ClassCast). Retry shortly or check API key.",
+                e,
+            )
         } catch (e: Exception) {
             if (e is kotlinx.coroutines.CancellationException) throw e
             if (e.cause is ClassCastException) {
                 Log.e("TmdbProvider", "TMDB home ClassCast (cause) soft-fail: ${e.message}", e)
-                return emptyList()
+                throw Exception(
+                    "TMDb catalog parsing failed (ClassCast). Retry shortly or check API key.",
+                    e,
+                )
             }
             Log.e("TmdbProvider", "TMDB home failed: ${e.message}", e)
             throw Exception(classifyTmdbFailure(e), e)
@@ -178,8 +185,30 @@ class TmdbProvider private constructor(override val language: String) : Provider
         }
     }
 
-    private suspend fun buildHomeCategories(): List<Category> = coroutineScope {
+    private suspend fun buildHomeCategories(): List<Category> {
         val categories = mutableListOf<Category>()
+        try {
+            fillHomeCategories(categories)
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            // Outer Home timeout cancels in-flight shelves — keep whatever already landed.
+            if (categories.isNotEmpty()) {
+                Log.w(
+                    "TmdbProvider",
+                    "TMDb home cancelled — returning ${categories.size} partial shelves",
+                )
+                return categories
+            }
+            throw e
+        }
+        if (categories.isEmpty()) {
+            throw Exception(
+                "TMDb returned no catalog shelves. Check your API key and connection, then retry.",
+            )
+        }
+        return categories
+    }
+
+    private suspend fun fillHomeCategories(categories: MutableList<Category>) = coroutineScope {
         val watchRegion = if (language == "en") "US" else language.uppercase()
 
         val mapMulti: (TMDb3.MultiItem) -> AppAdapter.Item? = { multi ->
@@ -440,13 +469,6 @@ class TmdbProvider private constructor(override val language: String) : Provider
             appleDeferred.await().sortedByDescending(::popularityOf).mapNotNull(mapMulti),
         )
         addShelf(getTranslation("Popular on HBO"), hboDeferred.await().mapNotNull(mapMulti))
-
-        if (categories.isEmpty()) {
-            throw Exception(
-                "TMDb returned no catalog shelves. Check your API key and connection, then retry.",
-            )
-        }
-        categories
     }
 
     override suspend fun search(query: String, page: Int): List<AppAdapter.Item> {
@@ -889,11 +911,18 @@ class TmdbProvider private constructor(override val language: String) : Provider
                  */
                 val discoveredGermanServers = coroutineScope {
                     val moflixTask = async(Dispatchers.IO) {
+                        // Skip Moflix when MStream domain recently looked unhealthy —
+                        // empty/premium-locked discovery only burns the soft-timeout.
+                        if (moflixSkipUntilMs > System.currentTimeMillis()) {
+                            Log.d("TmdbProvider", "Moflix skipped (domain cooldown)")
+                            return@async emptyList()
+                        }
                         withTimeoutOrNull(20_000L) {
                             MoflixExtractor().servers(videoType)
                         }.orEmpty().also {
                             if (it.isEmpty()) {
                                 Log.w("TmdbProvider", "Moflix discovery empty or timed out")
+                                moflixSkipUntilMs = System.currentTimeMillis() + 10 * 60_000L
                             }
                         }
                     }
@@ -1003,26 +1032,20 @@ class TmdbProvider private constructor(override val language: String) : Provider
                 }
             }
             else -> {
-                // Per inglese (en) o altre lingue non specifiche, usiamo i server globali
-                servers.addAll(listOf(
-                    VixSrcExtractor().server(videoType),
-                    TwoEmbedExtractor().server(videoType),
-                    VidsrcNetExtractor().server(videoType),
-                    VidLinkExtractor().server(videoType),
-                    VidsrcRuExtractor().server(videoType),
-                    VidflixExtractor().server(videoType),
-                ))
-
-                if (videoType is Video.Type.Movie) {
-                    servers.add(2, MoviesapiExtractor().server(videoType))
-                }
-
-                servers.addAll(VidrockExtractor().servers(videoType))
+                // Discovering / probing extractors first. Optimistic embed stubs used to
+                // lead the list and burn VIDEO_RESOLVE_TIMEOUT on dead hosts before live ones.
                 servers.addAll(VidzeeExtractor().servers(videoType))
                 servers.addAll(PrimeSrcExtractor().servers(videoType))
-
+                servers.addAll(VidrockExtractor().servers(videoType))
                 if (language == "en") {
-                    servers.addAll(1, VideasyExtractor().servers(videoType, language))
+                    servers.addAll(VideasyExtractor().servers(videoType, language))
+                }
+                // Smaller optimistic embed set, after live discovery.
+                servers.add(VixSrcExtractor().server(videoType))
+                servers.add(VidLinkExtractor().server(videoType))
+                servers.add(TwoEmbedExtractor().server(videoType))
+                if (videoType is Video.Type.Movie) {
+                    servers.add(MoviesapiExtractor().server(videoType))
                 }
             }
         }
@@ -1156,7 +1179,7 @@ class TmdbProvider private constructor(override val language: String) : Provider
                                 is Video.Type.Movie -> {
                                     val movie = bestItem as Movie
                                     provider.getServers(movie.id, videoType).map { server ->
-                                        wrapGermanNativeServer(provider, server)
+                                        wrapGermanNativeServer(provider, server, contentPath = movie.id)
                                     }
                                 }
                                 is Video.Type.Episode -> {
@@ -1189,7 +1212,11 @@ class TmdbProvider private constructor(override val language: String) : Provider
                                         ),
                                     )
                                     provider.getServers(episode.id, episodeType).map { server ->
-                                        wrapGermanNativeServer(provider, server)
+                                        wrapGermanNativeServer(
+                                            provider,
+                                            server,
+                                            contentPath = episode.id,
+                                        )
                                     }
                                 }
                             }
@@ -1202,12 +1229,26 @@ class TmdbProvider private constructor(override val language: String) : Provider
         }.awaitAll().flatten()
     }
 
-    private fun wrapGermanNativeServer(provider: Provider, server: Video.Server): Video.Server {
+    private fun wrapGermanNativeServer(
+        provider: Provider,
+        server: Video.Server,
+        contentPath: String? = null,
+    ): Video.Server {
         val key = germanProviderKey(provider)
-        // Keep original SerienStream play URL in src when present so CF host detection works;
-        // also embed episode path in id for bypass page construction under TMDb.
+        // SerienStream/AniWorld servers use /r? play URLs as id — embed the episode
+        // path instead so CF bypass can open /serie/… or /anime/stream/… under TMDb DE.
+        // Keep the play URL in src for getVideo / host detection.
+        val idSuffix = when (provider) {
+            SerienStreamProvider, AniWorldProvider ->
+                contentPath?.takeIf {
+                    it.isNotBlank() &&
+                        !it.startsWith("http", ignoreCase = true) &&
+                        !it.contains("/r?", ignoreCase = true)
+                } ?: server.id
+            else -> server.id
+        }
         return Video.Server(
-            id = "$TMDB_DE_PREFIX$key:${server.id}",
+            id = "$TMDB_DE_PREFIX$key:$idSuffix",
             name = "${provider.name} • ${server.name}",
             src = server.src.ifBlank { server.id },
         )
@@ -1235,6 +1276,7 @@ class TmdbProvider private constructor(override val language: String) : Provider
         FilmoProvider -> "filmo"
         SerienStreamProvider -> "serienstream"
         AniWorldProvider -> "aniworld"
+        // KellerKino intentionally omitted from DE aggregation; legacy cached ids still route.
         KellerKinoProvider -> "kellerkino"
         VavooVodProvider.DE -> "vavoo"
         else -> provider.name.lowercase().replace(Regex("[^a-z0-9]+"), "")
@@ -1248,6 +1290,7 @@ class TmdbProvider private constructor(override val language: String) : Provider
         "filmo" -> FilmoProvider
         "serienstream" -> SerienStreamProvider
         "aniworld" -> AniWorldProvider
+        // Legacy-only: TMDb DE no longer emits kellerkino wraps (CF via TMDb is a dead end).
         "kellerkino" -> KellerKinoProvider
         "vavoo" -> VavooVodProvider.DE
         else -> null
