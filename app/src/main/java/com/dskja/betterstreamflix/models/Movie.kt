@@ -51,6 +51,10 @@ class Movie(
     @Ignore
     var contentRating: String? = null
 
+    /** ISO-639-1 original language from TMDb (e.g. "de"). Not persisted. */
+    @Ignore
+    var originalLanguage: String? = null
+
     /** TMDb / provider title logo artwork (persisted for faster cold start). */
     var logo: String? = null
 
@@ -163,6 +167,7 @@ class Movie(
     ).apply {
         lastPlayedAtMillis = this@Movie.lastPlayedAtMillis
         contentRating = this@Movie.contentRating
+        originalLanguage = this@Movie.originalLanguage
         logo = this@Movie.logo
         logoLanguage = this@Movie.logoLanguage
         logoSource = this@Movie.logoSource

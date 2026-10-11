@@ -79,6 +79,10 @@ class Category(
         const val RECENTLY_ADDED = "Recently Added"
         const val FAVORITE_MOVIES = "Favorite movies"
         const val FAVORITE_TV_SHOWS = "Favorite TV shows"
+        /** Smart Collections — dynamic shelves from Watchlist + Continue Watching. */
+        const val SMART_CHILL_EVENING = "Chill Evening"
+        const val SMART_WITH_KIDS = "With Kids"
+        const val SMART_DE_AUDIO = "German Audio"
 
         /** True for the Featured constant or a blank legacy name. */
         fun isFeaturedName(name: String?): Boolean {

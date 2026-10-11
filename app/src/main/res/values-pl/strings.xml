@@ -60,6 +60,9 @@
     <string name="cd_next_episode_poster">Plakat następnego odcinka</string>
     <string name="home_next_episodes">Następne odcinki</string>
     <string name="home_recently_watched">Ostatnio oglądane</string>
+    <string name="home_smart_chill_evening">Chillowy wieczór</string>
+    <string name="home_smart_with_kids">Z dziećmi</string>
+    <string name="home_smart_de_audio">Tylko DE audio</string>
     <string name="home_favorite_movies">Ulubione filmy</string>
     <string name="home_favorite_tv_shows">Ulubione seriale</string>
 
@@ -619,6 +622,8 @@
     <string name="settings_show_recently_watched_summary">Wyświetlaj wiersz Ostatnio oglądane na ekranie głównym</string>
     <string name="settings_show_next_episodes_title">Pokaż Następne odcinki</string>
     <string name="settings_show_next_episodes_summary">Wyświetlaj wiersz Następne odcinki na ekranie głównym dla seriali w trakcie oglądania</string>
+    <string name="settings_show_smart_collections_title">Pokaż Smart Collections</string>
+    <string name="settings_show_smart_collections_summary">Dynamiczne półki z watchlisty i Kontynuuj oglądanie — chillowy wieczór, z dziećmi, tylko DE audio</string>
     <string name="detail_up_next">Następne</string>
     <string name="detail_action_list">Moja lista</string>
     <string name="detail_action_trailer">Zwiastun</string>

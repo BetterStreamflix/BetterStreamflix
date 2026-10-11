@@ -23,6 +23,7 @@ internal object ProfileScopedPreferenceStore {
         "SHOW_CONTINUE_WATCHING",
         "SHOW_RECENTLY_WATCHED",
         "SHOW_NEXT_EPISODES",
+        "SHOW_SMART_COLLECTIONS",
         "PARENTAL_CONTROL_MAX_AGE",
         "SELECTED_THEME",
     )
@@ -78,6 +79,7 @@ internal object ProfileScopedPreferenceStore {
                 "SHOW_CONTINUE_WATCHING" -> UserPreferences.showContinueWatching = value
                 "SHOW_RECENTLY_WATCHED" -> UserPreferences.showRecentlyWatched = value
                 "SHOW_NEXT_EPISODES" -> UserPreferences.showNextEpisodes = value
+                "SHOW_SMART_COLLECTIONS" -> UserPreferences.showSmartCollections = value
             }
         }
 
@@ -85,6 +87,7 @@ internal object ProfileScopedPreferenceStore {
             "SHOW_CONTINUE_WATCHING" -> UserPreferences.showContinueWatching
             "SHOW_RECENTLY_WATCHED" -> UserPreferences.showRecentlyWatched
             "SHOW_NEXT_EPISODES" -> UserPreferences.showNextEpisodes
+            "SHOW_SMART_COLLECTIONS" -> UserPreferences.showSmartCollections
             else -> defValue
         }
     }

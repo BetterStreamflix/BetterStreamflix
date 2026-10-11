@@ -64,6 +64,9 @@
     <string name="cd_next_episode_poster">ملصق الحلقة التالية</string>
 	<string name="home_next_episodes">الحلقات التالية</string>
 	<string name="home_recently_watched">شوهد مؤخرًا</string>
+	<string name="home_smart_chill_evening">أمسية هادئة</string>
+	<string name="home_smart_with_kids">مع الأطفال</string>
+	<string name="home_smart_de_audio">صوت ألماني فقط</string>
 	<string name="home_favorite_movies">الأفلام المفضلة</string>
 	<string name="home_favorite_tv_shows">المسلسلات المفضلة</string>
 
@@ -576,6 +579,8 @@
     <string name="settings_show_recently_watched_summary">عرض صف شوهد مؤخرًا على الشاشة الرئيسية</string>
     <string name="settings_show_next_episodes_title">إظهار الحلقات التالية</string>
     <string name="settings_show_next_episodes_summary">عرض صف الحلقات التالية على الشاشة الرئيسية للمسلسلات الجارية</string>
+    <string name="settings_show_smart_collections_title">إظهار المجموعات الذكية</string>
+    <string name="settings_show_smart_collections_summary">أرفف ديناميكية من قائمة المشاهدة ومتابعة المشاهدة — أمسية هادئة، مع الأطفال، صوت ألماني</string>
     <string name="detail_up_next">التالي</string>
     <string name="detail_action_list">قائمتي</string>
     <string name="detail_action_trailer">إعلان</string>

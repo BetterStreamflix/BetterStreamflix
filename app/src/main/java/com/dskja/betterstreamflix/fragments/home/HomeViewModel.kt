@@ -27,6 +27,7 @@ import com.dskja.betterstreamflix.utils.UserDataCache.toCached
 import com.dskja.betterstreamflix.utils.UserDataCache.toEpisode
 import com.dskja.betterstreamflix.utils.UserDataCache.toMovie
 import com.dskja.betterstreamflix.utils.UserDataCache.toTvShow
+import com.dskja.betterstreamflix.smartcollections.SmartCollectionsBuilder
 import com.dskja.betterstreamflix.utils.UserPreferences
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
@@ -332,6 +333,12 @@ class HomeViewModel(
                         .takeIf { recent.isNotEmpty() }
                 }
 
+                val smartShelves = SmartCollectionsBuilder.build(
+                    context = BetterStreamflixApp.instance.applicationContext,
+                    favorites = history.favoritesMovies + history.favoriteTvShows,
+                    continueWatching = mergedCw,
+                )
+
                 val libraryShelves = listOfNotNull(
                     Category(
                         name = Category.CONTINUE_WATCHING,
@@ -352,7 +359,7 @@ class HomeViewModel(
                         UserPreferences.showRecentlyWatched && rwDeduped.isNotEmpty()
                     },
                     recentlyAdded,
-                )
+                ) + smartShelves
 
                 val categories = ParentalControlUtils.filterCategories(
                     listOfNotNull(featuredCategory) +

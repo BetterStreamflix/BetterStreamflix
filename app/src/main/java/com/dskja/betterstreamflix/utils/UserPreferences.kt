@@ -920,6 +920,13 @@ object UserPreferences {
             setProfileScopedBoolean(Key.SHOW_NEXT_EPISODES, value)
         }
 
+    /** When false, Home hides Smart Collections (Chill / Kids / DE audio). */
+    var showSmartCollections: Boolean
+        get() = profileScopedBoolean(Key.SHOW_SMART_COLLECTIONS) ?: true
+        set(value) {
+            setProfileScopedBoolean(Key.SHOW_SMART_COLLECTIONS, value)
+        }
+
     /** When true, chronically brittle providers appear in the provider picker. */
     var showQuarantinedProviders: Boolean
         get() = Key.SHOW_QUARANTINED_PROVIDERS.getBoolean() ?: false
@@ -1602,6 +1609,7 @@ object UserPreferences {
         SHOW_CONTINUE_WATCHING,
         SHOW_RECENTLY_WATCHED,
         SHOW_NEXT_EPISODES,
+        SHOW_SMART_COLLECTIONS,
         SHOW_QUARANTINED_PROVIDERS,
         SHOW_VAVOO_VOD_PROVIDERS,
         LIBRARY_SCOPE,

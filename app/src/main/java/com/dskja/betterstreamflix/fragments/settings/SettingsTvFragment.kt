@@ -737,6 +737,15 @@ class SettingsTvFragment : LeanbackPreferenceFragmentCompat() {
             }
         }
 
+        findPreference<SwitchPreferenceCompat>("SHOW_SMART_COLLECTIONS")?.apply {
+            isChecked = UserPreferences.showSmartCollections
+            setOnPreferenceChangeListener { _, newValue ->
+                UserPreferences.showSmartCollections = newValue as Boolean
+                UserDataNotifier.notifyChanged()
+                true
+            }
+        }
+
         findPreference<Preference>("CLEAR_RECENTLY_WATCHED")?.setOnPreferenceClickListener {
             val message = getString(R.string.settings_clear_recently_watched_confirm_message)
             expAlertBuilder()
