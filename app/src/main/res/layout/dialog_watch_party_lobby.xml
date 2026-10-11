@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:fillViewport="true">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="20dp">
+
+        <TextView
+            android:id="@+id/tv_watch_party_lobby_status"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textAppearance="?attr/textAppearanceBody1"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/tv_watch_party_lobby_server"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="6dp"
+            android:textAppearance="?attr/textAppearanceBody2" />
+
+        <TextView
+            android:id="@+id/tv_watch_party_lobby_members"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:textAppearance="?attr/textAppearanceBody2" />
+
+        <TextView
+            android:id="@+id/tv_watch_party_lobby_chat"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:minHeight="72dp"
+            android:textAppearance="?attr/textAppearanceCaption"
+            android:textIsSelectable="true" />
+
+        <LinearLayout
+            android:id="@+id/ll_watch_party_reactions"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:gravity="center_vertical"
+            android:orientation="horizontal" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <EditText
+                android:id="@+id/et_watch_party_chat"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:hint="@string/watch_party_chat_hint"
+                android:imeOptions="actionSend"
+                android:inputType="textCapSentences"
+                android:maxLength="280"
+                android:maxLines="2" />
+
+            <Button
+                android:id="@+id/btn_watch_party_chat_send"
+                style="?attr/borderlessButtonStyle"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/watch_party_chat_send" />
+        </LinearLayout>
+    </LinearLayout>
+</ScrollView>

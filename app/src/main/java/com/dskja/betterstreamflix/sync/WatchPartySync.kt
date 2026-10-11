@@ -16,13 +16,15 @@ import kotlinx.coroutines.sync.withLock
 import kotlin.math.abs
 
 /**
- * Host heartbeat + guest poll for Watch-Party light.
+ * Host heartbeat + guest poll for Watch-Party 2.0.
  * Syncs position + server name/id only (no stream relay).
+ * Lobby / chat use a separate poll loop while the party is open.
  */
 object WatchPartySync {
     private const val TAG = "WatchPartySync"
     private const val HOST_INTERVAL_MS = 1_500L
     private const val GUEST_POLL_MS = 1_500L
+    private const val LOBBY_POLL_MS = 1_500L
     /** Ignore tiny drifts so seek loops do not fight local buffering. */
     const val SEEK_THRESHOLD_MS = 2_000L
 
@@ -31,6 +33,7 @@ object WatchPartySync {
 
     private var hostJob: Job? = null
     private var guestJob: Job? = null
+    private var lobbyJob: Job? = null
     private var lastHostPublishAt = 0L
     private var lastHostPosition = -1L
     private var lastHostPlaying: Boolean? = null
@@ -44,16 +47,29 @@ object WatchPartySync {
         fun onEnded()
     }
 
+    fun interface LobbyListener {
+        fun onLobby(lobby: WatchPartyLobbyPayload, messages: List<WatchPartyMessagePayload>)
+    }
+
     suspend fun stop() {
         lifecycleMutex.withLock {
             hostJob?.cancelAndJoin()
             hostJob = null
             guestJob?.cancelAndJoin()
             guestJob = null
+            lobbyJob?.cancelAndJoin()
+            lobbyJob = null
             lastHostPublishAt = 0L
             lastHostPosition = -1L
             lastHostPlaying = null
             lastHostServerKey = null
+        }
+    }
+
+    suspend fun stopLobbyOnly() {
+        lifecycleMutex.withLock {
+            lobbyJob?.cancelAndJoin()
+            lobbyJob = null
         }
     }
 
@@ -134,6 +150,53 @@ object WatchPartySync {
                             Log.w(TAG, "Guest poll failed", error)
                         }
                         delay(GUEST_POLL_MS)
+                    }
+                }
+            }
+        }
+    }
+
+    fun startLobby(
+        context: Context,
+        token: String,
+        listener: LobbyListener,
+        onEnded: EndedListener,
+    ) {
+        val appContext = context.applicationContext
+        scope.launch {
+            lifecycleMutex.withLock {
+                lobbyJob?.cancelAndJoin()
+                lobbyJob = scope.launch {
+                    while (isActive) {
+                        runCatching {
+                            WatchPartyRepository.heartbeatMember(appContext, token)
+                            val lobby = WatchPartyRepository.fetchLobby(appContext, token)
+                            if (lobby.party.ended) {
+                                onEnded.onEnded()
+                                return@launch
+                            }
+                            val after = WatchPartySession.lastMessageAt
+                            val messages = WatchPartyRepository.listMessages(
+                                appContext,
+                                token,
+                                after,
+                            )
+                            if (messages.isNotEmpty()) {
+                                WatchPartySession.lastMessageAt =
+                                    messages.last().createdAt ?: WatchPartySession.lastMessageAt
+                            }
+                            listener.onLobby(lobby, messages)
+                        }.onFailure { error ->
+                            val msg = error.message.orEmpty()
+                            if (msg.contains("not found", ignoreCase = true) ||
+                                msg.contains("ended", ignoreCase = true)
+                            ) {
+                                onEnded.onEnded()
+                                return@launch
+                            }
+                            Log.w(TAG, "Lobby poll failed", error)
+                        }
+                        delay(LOBBY_POLL_MS)
                     }
                 }
             }

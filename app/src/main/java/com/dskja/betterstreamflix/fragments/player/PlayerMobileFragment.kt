@@ -903,6 +903,22 @@ class PlayerMobileFragment : Fragment(),
         )
     }
 
+    override fun watchPartyServerSource():
+        com.dskja.betterstreamflix.sync.WatchPartyLobbyUi.ServerSource =
+        object : com.dskja.betterstreamflix.sync.WatchPartyLobbyUi.ServerSource {
+            override fun servers(): List<Video.Server> = watchPartyBridge.servers()
+            override fun currentServer(): Video.Server? = watchPartyBridge.currentServer()
+            override fun onServerPicked(server: Video.Server) {
+                watchPartyBridge.requestServer(server)
+            }
+            override fun pauseLocalPlayback() {
+                watchPartyBridge.setPlayWhenReady(false)
+            }
+            override fun resumeLocalPlayback() {
+                watchPartyBridge.setPlayWhenReady(true)
+            }
+        }
+
     override fun onDestroyView() {
         // Tear down player/UI while the fragment is still attached. Doing this after
         // super.onDestroyView() races with OEM back stacks (crash on Zurück).
