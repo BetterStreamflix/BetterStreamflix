@@ -164,7 +164,13 @@
     <string name="home_swiper_watch_now">Watch Now</string>
     <string name="home_continue_watching">Continue Watching</string>
     <string name="home_next_episodes">Next Episodes</string>
+<<<<<<< HEAD
     <string name="home_new_this_week">New this week</string>
+=======
+    <string name="home_series_fast_forward_chip">New since last visit</string>
+    <string name="home_series_fast_forward_empty">Nothing new since your last visit</string>
+    <string name="home_series_fast_forward_cd">Filter shelf to titles new since last visit</string>
+>>>>>>> 4b4a827e (Add Series Fast-Forward shelf filter on Mobile and TV)
     <string name="home_recently_watched">Recently Watched</string>
     <string name="home_recently_added">Recently Added</string>
     <string name="home_smart_chill_evening">Chill evening</string>

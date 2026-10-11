@@ -1020,6 +1020,37 @@ object UserPreferences {
             setProfileScopedString(Key.HOME_SHELF_BLOCK_ORDER, value.trim())
         }
 
+    /**
+     * Series Fast-Forward: when true, Next Episodes / Favorite TV shelves keep
+     * only titles new since the last Home visit watermark.
+     */
+    var seriesFastForwardEnabled: Boolean
+        get() = profileScopedBoolean(Key.SERIES_FAST_FORWARD_ENABLED) ?: false
+        set(value) {
+            setProfileScopedBoolean(Key.SERIES_FAST_FORWARD_ENABLED, value)
+        }
+
+    /** Epoch ms of the last Home [onPause] visit commit (per profile). */
+    var homeLastVisitAtMs: Long
+        get() = profileScopedLong(Key.HOME_LAST_VISIT_AT_MS) ?: 0L
+        set(value) {
+            setProfileScopedLong(Key.HOME_LAST_VISIT_AT_MS, value.coerceAtLeast(0L))
+        }
+
+    /** Unfiltered Next Episode ids snapshotted on the last Home pause. */
+    var homeVisitNextEpisodeIds: Set<String>
+        get() = profileScopedStringSet(Key.HOME_VISIT_NEXT_EPISODE_IDS)
+        set(value) {
+            setProfileScopedStringSet(Key.HOME_VISIT_NEXT_EPISODE_IDS, value)
+        }
+
+    /** Unfiltered Favorite TV show ids snapshotted on the last Home pause. */
+    var homeVisitFavoriteTvIds: Set<String>
+        get() = profileScopedStringSet(Key.HOME_VISIT_FAVORITE_TV_IDS)
+        set(value) {
+            setProfileScopedStringSet(Key.HOME_VISIT_FAVORITE_TV_IDS, value)
+        }
+
     /** When true, chronically brittle providers appear in the provider picker. */
     var showQuarantinedProviders: Boolean
         get() = Key.SHOW_QUARANTINED_PROVIDERS.getBoolean() ?: false
@@ -1657,6 +1688,21 @@ object UserPreferences {
         prefs.edit { putLong(ProfileManager.scopedPrefKey(key.name), value) }
     }
 
+    private fun profileScopedStringSet(key: Key): Set<String> {
+        if (!::prefs.isInitialized) return emptySet()
+        val scoped = ProfileManager.scopedPrefKey(key.name)
+        return prefs.getStringSet(scoped, null)?.toSet().orEmpty()
+    }
+
+    private fun setProfileScopedStringSet(key: Key, value: Set<String>) {
+        if (!::prefs.isInitialized) return
+        val scoped = ProfileManager.scopedPrefKey(key.name)
+        prefs.edit {
+            if (value.isEmpty()) remove(scoped)
+            else putStringSet(scoped, value.toSet())
+        }
+    }
+
     private enum class Key {
         APP_LAYOUT,
         CURRENT_LANGUAGE,
@@ -1706,6 +1752,10 @@ object UserPreferences {
         SHOW_SMART_COLLECTIONS,
         SHOW_WATCHLIST_WEEK,
         HOME_SHELF_BLOCK_ORDER,
+        SERIES_FAST_FORWARD_ENABLED,
+        HOME_LAST_VISIT_AT_MS,
+        HOME_VISIT_NEXT_EPISODE_IDS,
+        HOME_VISIT_FAVORITE_TV_IDS,
         SHOW_QUARANTINED_PROVIDERS,
         SHOW_VAVOO_VOD_PROVIDERS,
         LIBRARY_SCOPE,

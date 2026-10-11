@@ -29,6 +29,7 @@ import com.dskja.betterstreamflix.utils.UserDataCache.toMovie
 import com.dskja.betterstreamflix.utils.UserDataCache.toTvShow
 import com.dskja.betterstreamflix.familyfriday.FamilyFridayShelf
 import com.dskja.betterstreamflix.home.HomeRemix
+import com.dskja.betterstreamflix.home.SeriesFastForward
 import com.dskja.betterstreamflix.smartcollections.SmartCollectionsBuilder
 import com.dskja.betterstreamflix.utils.LiveHubCatalog
 import com.dskja.betterstreamflix.watchlist.WatchlistDigestPlanner
@@ -97,6 +98,14 @@ class HomeViewModel(
     private val libraryRefresh = MutableStateFlow(0)
     private val traktContinueWatching = MutableStateFlow<List<AppAdapter.Item>>(emptyList())
     private var currentProvider: Provider? = null
+
+    /** Unfiltered Next Episode ids from the latest Home combine (for visit snapshots). */
+    @Volatile
+    private var lastUnfilteredNextEpisodeIds: Set<String> = emptySet()
+
+    /** Unfiltered Favorite TV ids from the latest Home combine (for visit snapshots). */
+    @Volatile
+    private var lastUnfilteredFavoriteTvIds: Set<String> = emptySet()
 
     @OptIn(ExperimentalCoroutinesApi::class)
     private val homeHistory: Flow<HomeHistory> = libraryRefresh.transformLatest {
@@ -333,6 +342,11 @@ class HomeViewModel(
                         .identityKey(ep)
                     key == null || key !in cwKeys
                 }
+                lastUnfilteredNextEpisodeIds = nextDeduped.map { it.id }.filter { it.isNotBlank() }.toSet()
+                lastUnfilteredFavoriteTvIds =
+                    history.favoriteTvShows.map { it.id }.filter { it.isNotBlank() }.toSet()
+                val nextFiltered = SeriesFastForward.filterEpisodes(nextDeduped)
+                val favoriteTvFiltered = SeriesFastForward.filterTvShows(history.favoriteTvShows)
                 val rwDeduped = filterRecentlyWatchedAgainstActive(
                     recentlyWatched = history.recentlyWatched,
                     continueWatching = mergedCw,
@@ -379,9 +393,14 @@ class HomeViewModel(
                     familyFriday,
                     Category(
                         name = Category.NEXT_EPISODES,
-                        list = nextDeduped,
+                        list = nextFiltered,
                     ).takeIf {
-                        UserPreferences.showNextEpisodes && nextDeduped.isNotEmpty()
+                        UserPreferences.showNextEpisodes &&
+                            SeriesFastForward.keepShelfWhenEmpty(
+                                categoryName = Category.NEXT_EPISODES,
+                                unfilteredCount = nextDeduped.size,
+                                filteredCount = nextFiltered.size,
+                            )
                     },
                     watchlistWeek,
                     Category(
@@ -409,7 +428,7 @@ class HomeViewModel(
                             ),
                             Category(
                                 name = Category.FAVORITE_TV_SHOWS,
-                                list = history.favoriteTvShows,
+                                list = favoriteTvFiltered,
                             ),
                         ) +
                         com.dskja.betterstreamflix.platform.ContinueWatchingMerger
@@ -543,6 +562,23 @@ class HomeViewModel(
         libraryRefresh.value += 1
         val provider = UserPreferences.currentProvider ?: return
         loadUserDataCache(provider)
+    }
+
+    /** Toggle Series Fast-Forward and rebuild shelves immediately. */
+    fun setSeriesFastForwardEnabled(enabled: Boolean) {
+        SeriesFastForward.setEnabled(enabled)
+        libraryRefresh.value += 1
+    }
+
+    /**
+     * End-of-visit watermark: snapshot unfiltered Next / Favorite-TV ids and
+     * stamp [UserPreferences.homeLastVisitAtMs]. Call from Home onPause.
+     */
+    fun commitHomeVisit() {
+        SeriesFastForward.commitVisit(
+            nextEpisodeIds = lastUnfilteredNextEpisodeIds,
+            favoriteTvIds = lastUnfilteredFavoriteTvIds,
+        )
     }
 
     /**

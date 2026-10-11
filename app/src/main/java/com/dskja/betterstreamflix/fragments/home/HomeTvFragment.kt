@@ -218,6 +218,17 @@ class HomeTvFragment : Fragment() {
             }
     }
 
+    override fun onPause() {
+        // Series Fast-Forward: commit visit watermark + unfiltered shelf snapshot.
+        viewModel.commitHomeVisit()
+        super.onPause()
+    }
+
+    /** Shelf chip toggle for “new since last visit”. */
+    fun setSeriesFastForwardEnabled(enabled: Boolean) {
+        viewModel.setSeriesFastForwardEnabled(enabled)
+    }
+
     override fun onStop() {
         super.onStop()
         swiperHandler.removeCallbacksAndMessages(null)
