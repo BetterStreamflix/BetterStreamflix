@@ -44,6 +44,7 @@ import com.dskja.betterstreamflix.download.ui.DownloadsSort
 import com.dskja.betterstreamflix.download.ui.DownloadsViewMode
 import com.dskja.betterstreamflix.download.ui.DownloadsViewModel
 import com.dskja.betterstreamflix.download.ui.OfflineLibraryActions
+import com.dskja.betterstreamflix.download.ui.OfflineStudioController
 import com.dskja.betterstreamflix.fragments.settings.SettingsDeepLink
 import com.dskja.betterstreamflix.models.Video
 import com.dskja.betterstreamflix.platform.playerbackend.ExternalStreamHandoff
@@ -84,6 +85,7 @@ class DownloadsMobileFragment : Fragment() {
 
     private var libraryEntries: List<OfflineLibrary.Entry> = emptyList()
     private var librarySpacing: RecyclerView.ItemDecoration? = null
+    private var studioController: OfflineStudioController? = null
     private val libraryAdapter = AppAdapter().apply {
         onMovieClickListener = { movie ->
             val entity = OfflineLibrary.findMovieEntity(libraryEntries, movie.id)
@@ -174,16 +176,21 @@ class DownloadsMobileFragment : Fragment() {
                 showMenu(it)
             }
         }
-        binding.chipModeLibrary.setOnClickListener {
-            ExpMotion.hapticTap(it)
-            viewModel.setViewMode(DownloadsViewMode.LIBRARY)
-        }
-        binding.chipModeManage.setOnClickListener {
-            ExpMotion.hapticTap(it)
-            viewModel.setViewMode(DownloadsViewMode.MANAGE)
-        }
+        studioController = OfflineStudioController(
+            fragment = this,
+            root = binding.root,
+            viewModel = viewModel,
+            isTv = false,
+            onScanPackQr = { scanDownloadPackQr() },
+            styleModeChip = { chip, selected -> styleChip(chip, selected) },
+        ).also { it.attach() }
         if (ExperimentalMobileDesign.enabled()) {
-            listOf(binding.chipModeLibrary, binding.chipModeManage).forEach {
+            listOf(
+                binding.chipModeLibrary,
+                binding.chipModeQueue,
+                binding.chipModeCare,
+                binding.chipModeControls,
+            ).forEach {
                 with(com.dskja.betterstreamflix.utils.ExpPressEffects) { it.applyExpPress() }
             }
         }
@@ -231,7 +238,7 @@ class DownloadsMobileFragment : Fragment() {
             combine(viewModel.rows, viewModel.selectedFilter) { rows, filter -> rows to filter }
                 .flowWithLifecycle(lifecycle, Lifecycle.State.STARTED)
                 .collect { (rows, filter) ->
-                if (viewModel.currentViewMode() != DownloadsViewMode.MANAGE) return@collect
+                if (viewModel.currentViewMode() != DownloadsViewMode.QUEUE) return@collect
                 adapter.submitList(rows.toList())
                 renderEmptyState(
                     empty = rows.isEmpty(),
@@ -326,14 +333,22 @@ class DownloadsMobileFragment : Fragment() {
 
     private fun applyViewMode(mode: DownloadsViewMode) {
         val library = mode == DownloadsViewMode.LIBRARY
+        val queue = mode == DownloadsViewMode.QUEUE
+        val studioPanel = mode == DownloadsViewMode.CARE || mode == DownloadsViewMode.CONTROLS
         binding.tvDownloadsTitle.setText(
-            if (library) R.string.offline_library_title else R.string.downloads_title,
+            studioController?.modeTitleRes(mode) ?: R.string.offline_studio_title,
         )
         binding.llOfflineLibraryBadge.isVisible = library
         binding.clOfflineLibrarySearch.isVisible = library
-        binding.hsvDownloadsFilters.isVisible = !library
-        styleChip(binding.chipModeLibrary, library)
-        styleChip(binding.chipModeManage, !library)
+        binding.hsvDownloadsFilters.isVisible = queue
+        binding.rvDownloads.isVisible = library || queue
+        studioController?.applyMode(mode)
+        if (studioPanel) {
+            binding.tvDownloadsEmpty.isVisible = false
+            binding.root.findViewById<View>(R.id.v_downloads_empty_rule)?.isVisible = false
+            binding.root.findViewById<View>(R.id.btn_downloads_empty_cta)?.isVisible = false
+            return
+        }
         librarySpacing?.let { binding.rvDownloads.removeItemDecoration(it) }
         librarySpacing = null
         if (library) {
@@ -946,6 +961,7 @@ class DownloadsMobileFragment : Fragment() {
     }
 
     override fun onDestroyView() {
+        studioController = null
         super.onDestroyView()
         _binding = null
     }
