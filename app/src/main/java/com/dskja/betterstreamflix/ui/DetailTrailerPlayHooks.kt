@@ -14,7 +14,8 @@ import com.dskja.betterstreamflix.utils.format
 
 /**
  * Shared Trailer → Play session builders for Movie / TV detail (Mobile + Leanback).
- * Keeps warm target + “Jetzt streamen” navigation aligned with Watch Now.
+ * Keeps warm target + “Jetzt streamen” navigation aligned with Watch Now, and
+ * arms [TrailerStreamCrossfade] so the player never opens on a black frame.
  */
 object DetailTrailerPlayHooks {
 
@@ -35,27 +36,31 @@ object DetailTrailerPlayHooks {
             target = TrailerPlayPipeline.Target(contentId = movie.id, videoType = videoType),
             onStreamNow = {
                 onBeforePlay?.invoke()
-                val nav = runCatching { host.findNavController() }.getOrNull() ?: return@Session
-                if (leanback) {
-                    nav.navigate(
-                        MovieTvFragmentDirections.actionMovieToPlayer(
-                            id = movie.id,
-                            title = movie.title,
-                            subtitle = movie.released?.format("yyyy") ?: "",
-                            videoType = videoType,
-                            preferredServerName = null,
-                        ),
-                    )
-                } else {
-                    nav.navigate(
-                        MovieMobileFragmentDirections.actionMovieToPlayer(
-                            id = movie.id,
-                            title = movie.title,
-                            subtitle = movie.released?.format("yyyy") ?: "",
-                            videoType = videoType,
-                            preferredServerName = null,
-                        ),
-                    )
+                TrailerStreamCrossfade.arm(movie.id, videoType)
+                TrailerStreamCrossfade.runWhenHot(host, movie.id) {
+                    val nav = runCatching { host.findNavController() }.getOrNull()
+                        ?: return@runWhenHot
+                    if (leanback) {
+                        nav.navigate(
+                            MovieTvFragmentDirections.actionMovieToPlayer(
+                                id = movie.id,
+                                title = movie.title,
+                                subtitle = movie.released?.format("yyyy") ?: "",
+                                videoType = videoType,
+                                preferredServerName = null,
+                            ),
+                        )
+                    } else {
+                        nav.navigate(
+                            MovieMobileFragmentDirections.actionMovieToPlayer(
+                                id = movie.id,
+                                title = movie.title,
+                                subtitle = movie.released?.format("yyyy") ?: "",
+                                videoType = videoType,
+                                preferredServerName = null,
+                            ),
+                        )
+                    }
                 }
             },
         )
@@ -88,17 +93,21 @@ object DetailTrailerPlayHooks {
                 }
                 val episodeToPlay = tvShow.episodeToWatch ?: return@Session
                 val videoType = episodeVideoType(tvShow, episodeToPlay, seasonNumber)
-                val nav = runCatching { host.findNavController() }.getOrNull() ?: return@Session
-                val args = Bundle().apply {
-                    putString("id", episodeToPlay.id)
-                    putString("title", tvShow.title)
-                    putString(
-                        "subtitle",
-                        "S${videoType.season.number} E${videoType.number}  •  ${videoType.title}",
-                    )
-                    putSerializable("videoType", videoType)
+                TrailerStreamCrossfade.arm(episodeToPlay.id, videoType)
+                TrailerStreamCrossfade.runWhenHot(host, episodeToPlay.id) {
+                    val nav = runCatching { host.findNavController() }.getOrNull()
+                        ?: return@runWhenHot
+                    val args = Bundle().apply {
+                        putString("id", episodeToPlay.id)
+                        putString("title", tvShow.title)
+                        putString(
+                            "subtitle",
+                            "S${videoType.season.number} E${videoType.number}  •  ${videoType.title}",
+                        )
+                        putSerializable("videoType", videoType)
+                    }
+                    nav.navigate(R.id.player, args)
                 }
-                nav.navigate(R.id.player, args)
             },
         )
     }

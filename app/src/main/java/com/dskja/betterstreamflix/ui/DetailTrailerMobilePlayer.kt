@@ -281,6 +281,9 @@ class DetailTrailerMobilePlayer(
         val action = pipelineSession?.onStreamNow
         streamNowBtn.setOnClickListener {
             ExpMotion.hapticTap(it)
+            // Cover arms before pause so Stream Now never flashes black.
+            TrailerStreamCrossfade.arm(pipelineSession?.target)
+            TrailerPlaybackController.pauseTrailerMedia(web)
             action?.invoke()
         }
         streamNowBtn.isEnabled = action != null

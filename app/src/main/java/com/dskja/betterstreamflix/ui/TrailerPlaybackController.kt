@@ -700,8 +700,11 @@ object TrailerPlaybackController {
             }
             streamNowBtn?.setOnClickListener {
                 ExpMotion.hapticTap(it)
-                val action = TrailerPlayPipeline.activeSession?.onStreamNow
+                val session = TrailerPlayPipeline.activeSession
+                // Arm cover before dialog teardown so the player never opens black.
+                TrailerStreamCrossfade.arm(session?.target)
                 pauseTrailerMedia(web)
+                val action = session?.onStreamNow
                 dismissAllowingStateLoss()
                 action?.invoke()
             }

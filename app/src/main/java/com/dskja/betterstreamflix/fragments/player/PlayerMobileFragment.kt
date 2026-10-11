@@ -137,6 +137,7 @@ import com.dskja.betterstreamflix.player.PlaybackMediaItems
 import com.dskja.betterstreamflix.player.PlaybackMime
 import com.dskja.betterstreamflix.player.PlaybackRequestHeaders
 import com.dskja.betterstreamflix.ui.TrailerPlaybackController
+import com.dskja.betterstreamflix.ui.TrailerStreamCrossfade
 import java.util.Locale
 import com.dskja.betterstreamflix.extractors.TokenManager
 
@@ -408,8 +409,15 @@ class PlayerMobileFragment : Fragment(),
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+        val trailerBridge = TrailerStreamCrossfade.attachBridge(
+            bridge = binding.ivTrailerStreamBridge,
+            contentId = args.id,
+        )
         if (ExperimentalMobileDesign.enabled()) {
-            ExpMotion.enterScreen(binding.root)
+            // Skip fade-from-black when a Trailer→Stream cover is already up.
+            if (!trailerBridge) {
+                ExpMotion.enterScreen(binding.root)
+            }
             ExperimentalMobileDesign.applyReducedGlass(binding.root)
             binding.root.findViewById<View>(R.id.layout_next_episode_overlay)
                 ?.setBackgroundResource(ExperimentalMobileDesign.glassCardBackground())
@@ -572,6 +580,7 @@ class PlayerMobileFragment : Fragment(),
                     }
 
                     is PlayerViewModel.State.FailedLoadingServers -> {
+                        revealTrailerStreamBridge()
                         showStreamFailure(
                             error = state.error,
                             serversExhausted = true,
@@ -1875,7 +1884,14 @@ class PlayerMobileFragment : Fragment(),
                 if (!mayRunPlayerListenerWork()) return
                 if (playbackState == Player.STATE_READY) {
                     ensureSkipIntroProbe()
+                    revealTrailerStreamBridge()
                 }
+            }
+
+            override fun onRenderedFirstFrame() {
+                super.onRenderedFirstFrame()
+                if (!mayRunPlayerListenerWork()) return
+                revealTrailerStreamBridge()
             }
 
             override fun onIsPlayingChanged(isPlaying: Boolean) {
@@ -1884,6 +1900,7 @@ class PlayerMobileFragment : Fragment(),
                 binding.pvPlayer.keepScreenOn = isPlaying || UserPreferences.keepScreenOnWhenPaused
 
                 if (isPlaying) {
+                    revealTrailerStreamBridge()
                     if (::player.isInitialized && player.hasStarted()) {
                         com.dskja.betterstreamflix.providers.ProviderServerAb
                             .notePlaybackStable(currentServer)
@@ -3012,6 +3029,11 @@ class PlayerMobileFragment : Fragment(),
             ExpMotion.fadeOutAndHide(cue)
             cue.postDelayed({ runCatching { host.removeView(cue) } }, 280L)
         }, 1200L)
+    }
+
+    private fun revealTrailerStreamBridge() {
+        val bridge = _binding?.ivTrailerStreamBridge ?: return
+        TrailerStreamCrossfade.revealStream(bridge)
     }
 
     private fun resolvePlayerTitle(videoType: Video.Type = currentVideoTypeForUi()): String {
@@ -4169,6 +4191,7 @@ class PlayerMobileFragment : Fragment(),
         runCatching {
             com.bumptech.glide.Glide.with(b.root).clear(b.ivNextEpisodePoster)
         }
+        runCatching { TrailerStreamCrossfade.revealStream(b.ivTrailerStreamBridge, durationMs = 0L) }
         playerViewDetached = true
     }
 

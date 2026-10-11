@@ -15,8 +15,10 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeout
 
 /**
  * Trailer → Play pipeline: warm VOD [Provider.getServers] (+ first [getVideo]) while a
@@ -169,6 +171,30 @@ object TrailerPlayPipeline {
                 return null
             }
             return entry.servers.takeIf { it.isNotEmpty() }
+        }
+    }
+
+    /** True when a non-empty server list is already warm for this content. */
+    fun isServersHot(contentId: String): Boolean =
+        !peekCachedServers(contentId.trim()).isNullOrEmpty()
+
+    /**
+     * Short wait for an in-flight warm job so Stream Now can open on a hot
+     * server. Returns true when servers are available (already hot or finished
+     * within [timeoutMs]). Never throws on timeout.
+     */
+    suspend fun awaitServersHot(contentId: String, timeoutMs: Long): Boolean {
+        val id = contentId.trim()
+        if (id.isEmpty()) return false
+        if (isServersHot(id)) return true
+        val job = inflight[id] ?: return false
+        return try {
+            withTimeout(timeoutMs.coerceAtLeast(0L)) {
+                job.join()
+                isServersHot(id)
+            }
+        } catch (_: TimeoutCancellationException) {
+            isServersHot(id)
         }
     }
 
