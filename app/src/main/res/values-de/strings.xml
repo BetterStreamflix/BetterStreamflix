@@ -1018,6 +1018,7 @@
     <string name="settings_category_provider_url_manual">Manuell eingeben</string>
     <string name="player_skip_intro">Intro überspringen</string>
     <string name="player_skip_recap">Zusammenfassung überspringen</string>
+    <string name="player_smart_mute_ads_skipped">Hängende Werbung übersprungen</string>
     <string name="voice_error_clear">Suchverlauf löschen</string>
     <string name="watch_trailer_with">Trailer ansehen mit...</string>
     <string name="youtube">YouTube</string>
