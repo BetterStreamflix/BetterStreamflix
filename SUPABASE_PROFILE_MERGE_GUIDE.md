@@ -17,10 +17,15 @@ Authentication and synchronized data become profile-specific:
 
 - every local profile has its own persisted Supabase Auth session;
 - every local profile can use a different email/password account;
+- **Kids profiles cannot sign in to Supabase Auth** (app blocks sign-in/sign-up
+  while a kids profile is active) so an adult cloud library cannot merge into
+  the kids Room DB;
 - pending mutations, workers, Realtime events, account metadata, databases, and
   caches are associated with a stable local `profileId`;
 - switching profiles never applies one profile's cloud rows to another
-  profile's local database.
+  profile's local database;
+- inactive-profile cloud workers intentionally no-op until that profile is
+  active again (avoids cross-profile writes).
 
 No additional Supabase project is required for each profile. The existing RLS
 policies isolate rows by `auth.uid() = user_id`, so separate Supabase Auth

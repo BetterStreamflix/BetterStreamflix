@@ -60,7 +60,30 @@ class CloudSyncFavoriteMergeTest {
     }
 
     @Test
-    fun pendingStateWins_usesFavoritedTimestamp() {
+    fun pendingStateWins_favoriteIntentIgnoresNewerWatchTimestamp() {
+        // Pending unfavorite must not lose to a remote favorite just because a
+        // newer watch engagement maxed userStateTimestamp on the other side.
+        val pending = RemoteMediaState(
+            userId = "u1",
+            provider = "TMDb",
+            mediaType = "movie",
+            mediaId = "m1",
+            isFavorite = false,
+            favoritedAtMillis = null,
+            clientUpdatedAtMillis = 250L,
+            watchedAtMillis = 10L,
+        )
+        val remote = pending.copy(
+            isFavorite = true,
+            favoritedAtMillis = 200L,
+            clientUpdatedAtMillis = 200L,
+            watchedAtMillis = 300L,
+        )
+        assertTrue(CloudSyncManager.pendingStateWins(pending, remote))
+    }
+
+    @Test
+    fun pendingStateWins_remoteFavoriteWinsWhenFavoriteClockNewer() {
         val pending = RemoteMediaState(
             userId = "u1",
             provider = "TMDb",
@@ -74,9 +97,9 @@ class CloudSyncFavoriteMergeTest {
         val remote = pending.copy(
             isFavorite = true,
             favoritedAtMillis = 200L,
-            clientUpdatedAtMillis = 999L,
+            clientUpdatedAtMillis = 200L,
             watchedAtMillis = 100L,
         )
-        assertTrue(CloudSyncManager.pendingStateWins(pending, remote))
+        assertFalse(CloudSyncManager.pendingStateWins(pending, remote))
     }
 }

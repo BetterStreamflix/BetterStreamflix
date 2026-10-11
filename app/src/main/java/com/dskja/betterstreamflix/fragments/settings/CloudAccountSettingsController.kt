@@ -46,21 +46,31 @@ object CloudAccountSettingsController {
 
         fun refresh() {
             val email = CloudSyncManager.currentUserEmail()
-            status.summary = email?.let {
-                fragment.getString(R.string.cloud_sync_signed_in_as, it)
-            } ?: fragment.getString(R.string.cloud_sync_signed_out)
-            signIn?.isVisible = email == null
-            signUp?.isVisible = email == null
+            val kids = com.dskja.betterstreamflix.profiles.ProfileManager.isKidsActive()
+            status.summary = when {
+                kids && email == null ->
+                    fragment.getString(R.string.cloud_sync_kids_sign_in_blocked)
+                email != null ->
+                    fragment.getString(R.string.cloud_sync_signed_in_as, email)
+                else ->
+                    fragment.getString(R.string.cloud_sync_signed_out)
+            }
+            signIn?.isVisible = email == null && !kids
+            signUp?.isVisible = email == null && !kids
             signOut?.isVisible = email != null
             syncNow?.isVisible = email != null
             status.isEnabled = SupabaseProvider.isConfigured
-            signIn?.isEnabled = SupabaseProvider.isConfigured && email == null
-            signUp?.isEnabled = SupabaseProvider.isConfigured && email == null
+            signIn?.isEnabled = SupabaseProvider.isConfigured && email == null && !kids
+            signUp?.isEnabled = SupabaseProvider.isConfigured && email == null && !kids
             signOut?.isEnabled = SupabaseProvider.isConfigured && email != null
             syncNow?.isEnabled = SupabaseProvider.isConfigured && email != null
         }
 
         signIn?.setOnPreferenceClickListener {
+            if (com.dskja.betterstreamflix.profiles.ProfileManager.isKidsActive()) {
+                ExpDialogChrome.notify(fragment.requireContext(), R.string.cloud_sync_kids_sign_in_blocked)
+                return@setOnPreferenceClickListener true
+            }
             showCredentialsDialog(fragment, R.string.cloud_sync_sign_in) { email, password ->
                 runProgressAction(fragment, scope, ::refresh) { onProgress ->
                     CloudSyncManager.signIn(
@@ -76,6 +86,10 @@ object CloudAccountSettingsController {
         }
 
         signUp?.setOnPreferenceClickListener {
+            if (com.dskja.betterstreamflix.profiles.ProfileManager.isKidsActive()) {
+                ExpDialogChrome.notify(fragment.requireContext(), R.string.cloud_sync_kids_sign_in_blocked)
+                return@setOnPreferenceClickListener true
+            }
             showCredentialsDialog(fragment, R.string.cloud_sync_sign_up) { email, password ->
                 runProgressAction(fragment, scope, ::refresh) { onProgress ->
                     val signedIn = CloudSyncManager.signUp(
@@ -407,6 +421,8 @@ object CloudAccountSettingsController {
         val message = when (error) {
             is com.dskja.betterstreamflix.sync.CloudAccountAlreadyLinkedException ->
                 fragment.getString(R.string.cloud_sync_account_already_linked)
+            is com.dskja.betterstreamflix.sync.KidsCloudAuthException ->
+                fragment.getString(R.string.cloud_sync_kids_sign_in_blocked)
             else -> fragment.getString(
                 R.string.cloud_sync_error,
                 error.message ?: error.javaClass.simpleName,

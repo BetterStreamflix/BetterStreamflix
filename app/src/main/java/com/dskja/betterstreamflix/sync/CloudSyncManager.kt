@@ -110,6 +110,7 @@ object CloudSyncManager {
         onProgress: (CloudSyncProgress) -> Unit = {},
     ) {
         requireConfigured()
+        rejectKidsCloudAuth()
         val appContext = context.applicationContext
         val profileId = ProfileManager.activeProfileId
         val client = SupabaseProvider.clientFor(appContext, profileId)
@@ -140,6 +141,7 @@ object CloudSyncManager {
         onProgress: (CloudSyncProgress) -> Unit = {},
     ): Boolean {
         requireConfigured()
+        rejectKidsCloudAuth()
         val appContext = context.applicationContext
         val profileId = ProfileManager.activeProfileId
         val client = SupabaseProvider.clientFor(appContext, profileId)
@@ -179,6 +181,12 @@ object CloudSyncManager {
         }
         CloudAccountStore.setActiveAccount(appContext, profileId, null, null)
         com.dskja.betterstreamflix.utils.SentryBootstrap.clearUser()
+    }
+
+    private fun rejectKidsCloudAuth() {
+        if (ProfileManager.isKidsActive()) {
+            throw KidsCloudAuthException()
+        }
     }
 
     private suspend fun rejectIfLinkedElsewhere(
@@ -382,14 +390,24 @@ object CloudSyncManager {
     }
 
     /**
-     * client_updated_at is the enqueue time, not necessarily when playback
-     * happened. Compare actual user-state timestamps before using it as a
-     * tie-breaker.
+     * Offline-flush LWW must not let watch timestamps dominate favorite intent
+     * (or vice versa). When favorite flags diverge, compare favorite clocks only
+     * ([favoritedAtMillis] with [clientUpdatedAtMillis] fallback) — same spirit as
+     * [mergeState]. Watch/engagement clocks are used only when favorite intent matches.
      */
     internal fun pendingStateWins(
         pending: RemoteMediaState,
         remote: RemoteMediaState,
     ): Boolean {
+        if (pending.isFavorite != remote.isFavorite) {
+            val pendingFavoriteTime = pending.favoriteStateTimestamp()
+            val remoteFavoriteTime = remote.favoriteStateTimestamp()
+            return if (pendingFavoriteTime != remoteFavoriteTime) {
+                pendingFavoriteTime > remoteFavoriteTime
+            } else {
+                pending.clientUpdatedAtMillis >= remote.clientUpdatedAtMillis
+            }
+        }
         val pendingStateTime = pending.userStateTimestamp()
         val remoteStateTime = remote.userStateTimestamp()
         return if (pendingStateTime != remoteStateTime) {
@@ -398,6 +416,10 @@ object CloudSyncManager {
             pending.clientUpdatedAtMillis >= remote.clientUpdatedAtMillis
         }
     }
+
+    /** Favorite-only clock; unfavorite clears favoritedAt so clientUpdatedAt wins. */
+    private fun RemoteMediaState.favoriteStateTimestamp(): Long =
+        favoritedAtMillis ?: clientUpdatedAtMillis
 
     private fun RemoteMediaState.userStateTimestamp(): Long = listOfNotNull(
         watchedAtMillis,
@@ -720,6 +742,10 @@ object CloudSyncManager {
      * Realtime can deliver the same row more than once. Replacing an identical
      * Room entity still invalidates every observing Flow, so only apply newer,
      * materially different state.
+     *
+     * When favorite flags differ, compare [RemoteMediaState.clientUpdatedAtMillis]
+     * to the local favorite clock only — never let watch/engagement timestamps
+     * block a newer remote favorite/unfavorite (aligned with [mergeState] LWW).
      */
     private fun shouldApplyRemoteState(
         database: AppDatabase,
@@ -727,18 +753,26 @@ object CloudSyncManager {
     ): Boolean {
         return when (state.mediaType) {
             "movie" -> database.movieDao().getById(state.mediaId)?.let { movie ->
-                if (movie.cloudStateTimestamp() > state.clientUpdatedAtMillis) return false
-                !movie.matchesRemoteState(state)
+                if (movie.matchesRemoteState(state)) return false
+                if (movie.isFavorite != state.isFavorite) {
+                    val localFavoriteClock = movie.favoritedAtMillis ?: 0L
+                    return state.clientUpdatedAtMillis >= localFavoriteClock
+                }
+                movie.cloudStateTimestamp() <= state.clientUpdatedAtMillis
             } ?: true
 
             "tv_show" -> database.tvShowDao().getById(state.mediaId)?.let { show ->
-                if (show.cloudStateTimestamp() > state.clientUpdatedAtMillis) return false
-                !show.matchesRemoteState(state)
+                if (show.matchesRemoteState(state)) return false
+                if (show.isFavorite != state.isFavorite) {
+                    val localFavoriteClock = show.favoritedAtMillis ?: 0L
+                    return state.clientUpdatedAtMillis >= localFavoriteClock
+                }
+                show.cloudStateTimestamp() <= state.clientUpdatedAtMillis
             } ?: true
 
             "episode" -> database.episodeDao().getById(state.mediaId)?.let { episode ->
-                if (episode.cloudStateTimestamp() > state.clientUpdatedAtMillis) return false
-                !episode.matchesRemoteState(state)
+                if (episode.matchesRemoteState(state)) return false
+                episode.cloudStateTimestamp() <= state.clientUpdatedAtMillis
             } ?: true
 
             else -> false

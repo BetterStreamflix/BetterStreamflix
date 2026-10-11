@@ -8,8 +8,8 @@ import com.dskja.betterstreamflix.models.TvShow
 import com.dskja.betterstreamflix.providers.AniWorldProvider
 import com.dskja.betterstreamflix.providers.Provider
 import com.dskja.betterstreamflix.providers.SerienStreamProvider
+import com.dskja.betterstreamflix.sync.FavoriteMutations
 import com.dskja.betterstreamflix.utils.NetworkClient
-import com.dskja.betterstreamflix.utils.UserDataCache
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.Request
@@ -265,8 +265,13 @@ object WatchlistImporter {
                         isFavorite = true
                         favoritedAtMillis = now
                     }
-                    database.tvShowDao().upsertFavorite(show, favorite = true)
-                    UserDataCache.addTvShowToFavorites(context, provider, show)
+                    FavoriteMutations.setTvShowFavorite(
+                        context,
+                        provider,
+                        show,
+                        favorite = true,
+                        database = database,
+                    )
                     count++
                 }.onFailure { e ->
                     Log.w(TAG, "Failed persisting ${item.id}: ${e.message}")

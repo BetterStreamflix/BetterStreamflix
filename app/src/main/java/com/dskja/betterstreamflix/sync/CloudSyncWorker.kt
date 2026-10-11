@@ -18,7 +18,9 @@ class CloudSyncWorker(
                 val profileId = inputData.getString(CloudSyncScheduler.KEY_PROFILE_ID)
                     ?: ProfileManager.activeProfileId
                 val expectedUserId = inputData.getString(CloudSyncScheduler.KEY_USER_ID)
-                // Safest initial policy: only sync while this profile is active.
+                // Intentional isolation: inactive-profile workers no-op so pending
+                // mutations wait until that profile is active again (avoids writing
+                // another profile's cloud state into the wrong Room DB).
                 if (profileId != ProfileManager.activeProfileId) {
                     Result.success()
                 } else {
