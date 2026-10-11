@@ -54,6 +54,7 @@ object CastPlaybackHub {
     private val sessionStateListeners = CopyOnWriteArrayList<(Boolean) -> Unit>()
     private val queueExhaustedListeners = CopyOnWriteArrayList<() -> Unit>()
     private val queueChangedListeners = CopyOnWriteArrayList<(Int) -> Unit>()
+    private val queueAdvancedListeners = CopyOnWriteArrayList<() -> Unit>()
     private var sessionManagerListener: SessionManagerListener<CastSession>? = null
     private var playerListener: Player.Listener? = null
 
@@ -138,6 +139,14 @@ object CastPlaybackHub {
 
     fun removeQueueChangedListener(listener: (Int) -> Unit) {
         queueChangedListeners.remove(listener)
+    }
+
+    fun addQueueAdvancedListener(listener: () -> Unit) {
+        queueAdvancedListeners.add(listener)
+    }
+
+    fun removeQueueAdvancedListener(listener: () -> Unit) {
+        queueAdvancedListeners.remove(listener)
     }
 
     /** Next Cast queue item, if any (does not dequeue). */
@@ -271,6 +280,9 @@ object CastPlaybackHub {
         advancingQueue = true
         val next = queue.removeAt(0)
         notifyQueueChanged()
+        // Sync EpisodeManager before UI listeners run so autoplay cannot re-enter E₂.
+        CastQueueCoordinator.onQueueItemClaimed()
+        queueAdvancedListeners.forEach { runCatching { it.invoke() } }
         mainHandler.post {
             runCatching {
                 player.setMediaItem(next)
