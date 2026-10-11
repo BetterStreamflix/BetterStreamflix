@@ -190,6 +190,7 @@
     <string name="home_remix_button_cd">Remix Home shelf order</string>
     <string name="settings_home_remix_title">Remix Home</string>
     <string name="settings_home_remix_summary">Reorder Continue, Live, and Collections by drag</string>
+    <string name="home_family_friday">Family Friday</string>
     <string name="home_favorite_movies">Favorite movies</string>
     <string name="home_favorite_tv_shows">Favorite TV shows</string>
     <string name="home_catalog_warning_tap_retry">Tap to retry catalog</string>

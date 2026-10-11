@@ -220,6 +220,7 @@
     <string name="home_remix_button_cd">Home-Regalreihenfolge remixen</string>
     <string name="settings_home_remix_title">Home remixen</string>
     <string name="settings_home_remix_summary">Continue, Live und Collections per Drag neu ordnen</string>
+    <string name="home_family_friday">Familien-Freitag</string>
     <string name="home_favorite_movies">Favoriten - Filme</string>
     <string name="home_favorite_tv_shows">Favoriten - Serien</string>
     <string name="home_catalog_warning_tap_retry">Tippen zum erneuten Laden</string>

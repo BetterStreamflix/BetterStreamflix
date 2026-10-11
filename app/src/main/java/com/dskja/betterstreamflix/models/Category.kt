@@ -86,6 +86,8 @@ class Category(
         /** Home Live strip (favorites / pinned channels) — Remix Home block. */
         const val HOME_LIVE = "Live"
         const val HOME_LIVE_ID = "home_live"
+        /** Kids profile Friday ritual — exactly three age-appropriate catalog suggestions. */
+        const val FAMILY_FRIDAY = "Family Friday"
 
         /** True for the Featured constant or a blank legacy name. */
         fun isFeaturedName(name: String?): Boolean {

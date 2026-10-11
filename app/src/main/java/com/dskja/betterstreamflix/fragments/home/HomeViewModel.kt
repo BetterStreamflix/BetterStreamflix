@@ -27,6 +27,7 @@ import com.dskja.betterstreamflix.utils.UserDataCache.toCached
 import com.dskja.betterstreamflix.utils.UserDataCache.toEpisode
 import com.dskja.betterstreamflix.utils.UserDataCache.toMovie
 import com.dskja.betterstreamflix.utils.UserDataCache.toTvShow
+import com.dskja.betterstreamflix.familyfriday.FamilyFridayShelf
 import com.dskja.betterstreamflix.home.HomeRemix
 import com.dskja.betterstreamflix.smartcollections.SmartCollectionsBuilder
 import com.dskja.betterstreamflix.utils.LiveHubCatalog
@@ -341,6 +342,11 @@ class HomeViewModel(
                     continueWatching = mergedCw,
                 )
 
+                // Kids Friday ritual — catalog suggestions, independent of Smart Collections.
+                val familyFriday = FamilyFridayShelf.build(
+                    catalogCategories = state.categories,
+                )
+
                 val continueShelves = listOfNotNull(
                     Category(
                         name = Category.CONTINUE_WATCHING,
@@ -348,6 +354,7 @@ class HomeViewModel(
                     ).takeIf {
                         UserPreferences.showContinueWatching && mergedCw.isNotEmpty()
                     },
+                    familyFriday,
                     Category(
                         name = Category.NEXT_EPISODES,
                         list = nextDeduped,
