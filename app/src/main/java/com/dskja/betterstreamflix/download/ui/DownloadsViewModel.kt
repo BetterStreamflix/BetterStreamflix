@@ -9,6 +9,8 @@ import com.dskja.betterstreamflix.download.DownloadEventBridge
 import com.dskja.betterstreamflix.download.DownloadItemEntity
 import com.dskja.betterstreamflix.download.DownloadItemState
 import com.dskja.betterstreamflix.download.DownloadKind
+import com.dskja.betterstreamflix.download.DownloadLaneFocus
+import com.dskja.betterstreamflix.download.DownloadLanePolicy
 import com.dskja.betterstreamflix.download.DownloadRepository
 import com.dskja.betterstreamflix.download.DownloadSeriesFolders
 import com.dskja.betterstreamflix.download.DownloadStats
@@ -336,10 +338,13 @@ class DownloadsViewModel(
                 it.state == DownloadItemState.FAILED.name
             }
         }
+        val watchingFocus = DownloadLaneFocus.current()
         val sorter: Comparator<DownloadItemEntity> =
             when (selectedSort) {
-                DownloadsSort.NEWEST -> compareByDescending<DownloadItemEntity> { it.createdAt }
-                    .thenBy { it.sortIndex }
+                // Download Lane: watching > queue > smart-auto, then newest.
+                DownloadsSort.NEWEST -> compareBy<DownloadItemEntity> {
+                    DownloadLanePolicy.laneOf(it, watchingFocus).rank
+                }.thenByDescending { it.createdAt }.thenBy { it.sortIndex }
                 DownloadsSort.TITLE -> compareBy(
                     { it.title.lowercase() },
                     { it.sortIndex },

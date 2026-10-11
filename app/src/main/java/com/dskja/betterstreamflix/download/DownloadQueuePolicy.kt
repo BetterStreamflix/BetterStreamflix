@@ -14,6 +14,12 @@ object DownloadQueuePolicy {
     /** Low free space / soft-limit hold. Cleared when storage recovers. */
     const val STOP_STORAGE = 3
 
+    /**
+     * Held so a higher Download Lane can use a parallel slot
+     * (watching > queue > smart-auto). Cleared by [DownloadLaneScheduler].
+     */
+    const val STOP_LANE = 4
+
     fun shouldPauseForConnectivity(state: DownloadItemState): Boolean =
         state == DownloadItemState.QUEUED ||
             state == DownloadItemState.PREPARING ||
@@ -29,6 +35,10 @@ object DownloadQueuePolicy {
     fun shouldResumeAfterStorage(stopReason: Int, errorCode: String): Boolean =
         stopReason == STOP_STORAGE ||
             errorCode == DownloadErrorCode.LOW_STORAGE.name
+
+    fun shouldResumeAfterLane(stopReason: Int, errorCode: String = ""): Boolean =
+        stopReason == STOP_LANE ||
+            errorCode == DownloadErrorCode.LANE_HOLD.name
 
     /**
      * A late Media3 callback must not rewind a newer Room row

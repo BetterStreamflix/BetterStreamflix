@@ -1701,6 +1701,7 @@
     <string name="download_error_network">Netzwerkfehler</string>
     <string name="download_error_nospace">Zu wenig Speicher</string>
     <string name="download_error_wifi">Nur WLAN</string>
+    <string name="download_error_lane_hold">Wartet auf Download mit höherer Priorität</string>
     <string name="download_error_expired">Link abgelaufen — erneut versuchen</string>
     <string name="download_error_not_found">Inhalt nicht gefunden (404) — anderen Server versuchen oder Download entfernen</string>
     <string name="download_error_file_missing">Lokale Datei fehlt</string>
@@ -1787,6 +1788,7 @@
     <string name="settings_download_auto_delete_watched">Gesehene Folgen löschen</string>
     <string name="settings_download_auto_delete_watched_summary">Download einer Folge entfernen, sobald sie gesehen wurde</string>
     <string name="downloads_progress_storage_held">%1$d%% · %2$s / %3$s · Wenig Speicher</string>
+    <string name="downloads_progress_lane_held">%1$d%% · %2$s / %3$s · Wartet auf höhere Priorität</string>
     <string name="settings_download_storage_used">Belegter Speicher</string>
     <string name="settings_download_clear_completed">Fertige Downloads löschen</string>
     <string name="settings_download_clear_all">Alle Downloads löschen</string>

@@ -222,6 +222,7 @@ class DownloadRepository private constructor(
                     activeHeaders = emptyMap()
                 }
             }
+            DownloadLaneScheduler.applyAsync(context)
             entity
         }
     }
@@ -268,6 +269,7 @@ class DownloadRepository private constructor(
         }
         val connectivityHold = stopReason == DownloadQueuePolicy.STOP_CONNECTIVITY
         val storageHold = stopReason == DownloadQueuePolicy.STOP_STORAGE
+        val laneHold = stopReason == DownloadQueuePolicy.STOP_LANE
         runCatching {
             dao.upsert(
                 item.copy(
@@ -275,6 +277,7 @@ class DownloadRepository private constructor(
                     errorCode = when {
                         connectivityHold -> DownloadErrorCode.WIFI_REQUIRED.name
                         storageHold -> DownloadErrorCode.LOW_STORAGE.name
+                        laneHold -> DownloadErrorCode.LANE_HOLD.name
                         else -> ""
                     },
                     errorMessage = when {
@@ -282,6 +285,8 @@ class DownloadRepository private constructor(
                             context.getString(com.dskja.betterstreamflix.R.string.download_error_wifi)
                         storageHold ->
                             context.getString(com.dskja.betterstreamflix.R.string.download_error_nospace)
+                        laneHold ->
+                            context.getString(com.dskja.betterstreamflix.R.string.download_error_lane_hold)
                         else -> ""
                     },
                     updatedAt = System.currentTimeMillis(),
@@ -358,6 +363,7 @@ class DownloadRepository private constructor(
             ),
         )
         DownloadNotifier.cancelFailed(context, item.id)
+        DownloadLaneScheduler.applyAsync(context)
     }
 
     private fun shouldRetryViaReResolve(item: DownloadItemEntity): Boolean {
@@ -504,6 +510,7 @@ class DownloadRepository private constructor(
             runCatching { resume(item.id, foreground = true) }
                 .onFailure { Log.w(TAG, "Connectivity resume skipped: ${it.message}") }
         }
+        DownloadLaneScheduler.apply(context)
     }
 
     /** Resume only low-storage holds once free space / soft-limit recovers. */
@@ -526,6 +533,7 @@ class DownloadRepository private constructor(
         }
         // Space recovered — also unblock Wi‑Fi holds deferred while storage was full.
         resumeConnectivityHeld()
+        DownloadLaneScheduler.apply(context)
     }
 
     suspend fun resumeAll() {
@@ -549,6 +557,7 @@ class DownloadRepository private constructor(
                         )
             }
             .forEach { resume(it.id) }
+        DownloadLaneScheduler.apply(context)
     }
 
     suspend fun clearCompleted() {
