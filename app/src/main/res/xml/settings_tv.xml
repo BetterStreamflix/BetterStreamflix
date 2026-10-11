@@ -25,6 +25,12 @@
                 android:defaultValue="false" />
 
             <Preference
+                android:key="PROVIDER_TRUST_OPEN"
+                android:title="@string/settings_provider_trust_title"
+                android:summary="@string/settings_provider_trust_summary"
+                android:widgetLayout="@layout/preference_widget_chevron" />
+
+            <Preference
                 android:key="PROVIDER_HEALTH_OPEN"
                 android:title="@string/settings_provider_health_title"
                 android:summary="@string/settings_provider_health_summary"
@@ -1438,6 +1444,59 @@
                 android:key="NETWORK_TEST_SUBDL"
                 android:title="@string/connection_test_subdl_title"
                 android:summary="@string/connection_test_subdl_summary" />
+        </PreferenceCategory>
+    </PreferenceScreen>
+
+    <PreferenceScreen
+        android:key="screen_provider_trust"
+        android:title="@string/settings_provider_trust_title"
+        android:summary="@string/settings_provider_trust_summary"
+        android:widgetLayout="@layout/preference_widget_chevron">
+
+        <PreferenceCategory
+            android:key="pc_provider_trust_summary"
+            android:title="@string/settings_provider_trust_title">
+
+            <Preference
+                android:key="PROVIDER_TRUST_SUMMARY"
+                android:title="@string/settings_provider_trust_title"
+                android:summary="@string/settings_provider_trust_summary"
+                android:selectable="false" />
+
+            <Preference
+                android:icon="@drawable/ic_refresh"
+                android:key="PROVIDER_TRUST_REFRESH"
+                android:title="@string/settings_provider_trust_refresh"
+                android:summary="@string/settings_provider_trust_summary" />
+        </PreferenceCategory>
+
+        <PreferenceCategory
+            android:key="pc_provider_trust_outage"
+            android:title="@string/settings_provider_trust_outage_title" />
+
+        <PreferenceCategory
+            android:key="pc_provider_trust_learned"
+            android:title="@string/settings_provider_trust_learned_title" />
+
+        <PreferenceCategory
+            android:key="pc_provider_trust_pins"
+            android:title="@string/settings_provider_trust_pins_title" />
+
+        <PreferenceCategory
+            android:key="pc_provider_trust_stack"
+            android:title="@string/settings_provider_trust_stack_title">
+
+            <Preference
+                android:key="PROVIDER_TRUST_OPEN_HEALTH"
+                android:title="@string/settings_provider_trust_open_health"
+                android:summary="@string/settings_provider_health_summary"
+                android:widgetLayout="@layout/preference_widget_chevron" />
+
+            <Preference
+                android:key="PROVIDER_TRUST_OPEN_PASSPORT"
+                android:title="@string/settings_provider_trust_open_passport"
+                android:summary="@string/settings_provider_passport_summary"
+                android:widgetLayout="@layout/preference_widget_chevron" />
         </PreferenceCategory>
     </PreferenceScreen>
 

@@ -285,6 +285,7 @@ class SettingsMobileFragment : PreferenceFragmentCompat() {
             ?: when (key) {
                 "screen_serienstream_auth" -> getString(R.string.serienstream_auth_category_title)
                 "screen_aniworld_auth" -> getString(R.string.aniworld_auth_category_title)
+                "screen_provider_trust" -> getString(R.string.settings_provider_trust_title)
                 "screen_provider_health" -> getString(R.string.settings_provider_health_title)
                 "screen_provider_passport" -> getString(R.string.settings_provider_passport_title)
                 "screen_notifications" -> getString(R.string.settings_screen_notifications)
@@ -790,6 +791,12 @@ class SettingsMobileFragment : PreferenceFragmentCompat() {
         TmdbSettingsController.bind(this, lifecycleScope) { key ->
             findPreference(key)
         }
+        ProviderTrustSettingsController.bind(
+            this,
+            lifecycleScope,
+            findPreference = { key -> findPreference(key) },
+            openScreen = { key, title -> openNestedSettingsScreen(key, title) },
+        )
         ProviderHealthSettingsController.bind(this, lifecycleScope) { key ->
             findPreference(key)
         }
@@ -800,6 +807,13 @@ class SettingsMobileFragment : PreferenceFragmentCompat() {
             openScreen = { key, title -> openNestedSettingsScreen(key, title) },
         )
         NotificationsSettingsController.bind(this) { key -> findPreference(key) }
+        findPreference<Preference>("PROVIDER_TRUST_OPEN")?.setOnPreferenceClickListener {
+            openNestedSettingsScreen(
+                "screen_provider_trust",
+                getString(R.string.settings_provider_trust_title),
+            )
+            true
+        }
         findPreference<Preference>("PROVIDER_HEALTH_OPEN")?.setOnPreferenceClickListener {
             openNestedSettingsScreen(
                 "screen_provider_health",

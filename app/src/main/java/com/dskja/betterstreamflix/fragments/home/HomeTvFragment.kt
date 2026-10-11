@@ -438,6 +438,7 @@ class HomeTvFragment : Fragment() {
         watchlistDigestEpisodes: List<Episode> = emptyList(),
     ): Boolean {
         val digestIds = watchlistDigestEpisodes.joinToString(",") { it.id }
+        val trustSnap = com.dskja.betterstreamflix.providers.ProviderTrustLayer.snapshot()
         val signature = HomeCatalogPipeline.homeBindSignature(categories) +
             "\n" + (UserPreferences.currentProvider?.name ?: "") +
             "\n" + com.dskja.betterstreamflix.support.SupportPromptPolicy.shouldShowHomeCard() +
@@ -446,7 +447,13 @@ class HomeTvFragment : Fragment() {
             "\n" + com.dskja.betterstreamflix.watchlist.WatchlistDigestPolicy.shouldShow(
                 watchlistDigestEpisodes,
             ) +
-            "\n" + digestIds
+            "\n" + digestIds +
+            "\n" + com.dskja.betterstreamflix.providers.ProviderOutagePolicy.shouldShow(
+                trustSnap,
+                requireContext(),
+            ) +
+            "\n" + trustSnap.outageProviderNames.joinToString() +
+            "\n" + trustSnap.outageLevel
         if (signature == homeBindSignature && appAdapter.items.isNotEmpty()) return true
         homeBindSignature = signature
         return false
@@ -617,6 +624,17 @@ class HomeTvFragment : Fragment() {
             }
             appAdapter.submitList(without)
         }
+        appAdapter.onProviderOutageBannerClickListener = {
+            com.dskja.betterstreamflix.fragments.settings.SettingsDeepLink.openProviderTrust()
+            runCatching { findNavController().navigate(R.id.settings) }
+        }
+        appAdapter.onProviderOutageBannerDismissListener = {
+            com.dskja.betterstreamflix.providers.ProviderOutagePolicy.dismiss(requireContext())
+            val without = appAdapter.items.filterNot {
+                it is com.dskja.betterstreamflix.providers.ProviderOutageBannerItem
+            }
+            appAdapter.submitList(without)
+        }
 
         val homeItems = mutableListOf<AppAdapter.Item>()
         val hasContinueWatching = categories.any {
@@ -652,6 +670,11 @@ class HomeTvFragment : Fragment() {
         val showDigest = com.dskja.betterstreamflix.watchlist.WatchlistDigestPolicy.shouldShow(
             watchlistDigestEpisodes,
         )
+        val trustSnapshot = com.dskja.betterstreamflix.providers.ProviderTrustLayer.snapshot()
+        val showOutage = com.dskja.betterstreamflix.providers.ProviderOutagePolicy.shouldShow(
+            trustSnapshot,
+            requireContext(),
+        )
         visibleCategories
             .forEach { category ->
                 homeItems.add(category)
@@ -659,6 +682,20 @@ class HomeTvFragment : Fragment() {
                 val insertAfter = category.name == getString(R.string.home_continue_watching) ||
                     (Category.isFeaturedName(category.name) && !hasContinueWatching)
                 if (insertAfter) {
+                    if (showOutage &&
+                        homeItems.none {
+                            it is com.dskja.betterstreamflix.providers.ProviderOutageBannerItem
+                        }
+                    ) {
+                        homeItems.add(
+                            com.dskja.betterstreamflix.providers.ProviderOutageBannerItem(
+                                providerNames = trustSnapshot.outageProviderNames,
+                                level = trustSnapshot.outageLevel,
+                            ).apply {
+                                itemType = AppAdapter.Type.PROVIDER_OUTAGE_BANNER_TV_ITEM
+                            }
+                        )
+                    }
                     if (showDigest &&
                         homeItems.none {
                             it is com.dskja.betterstreamflix.watchlist.WatchlistDigestBannerItem
@@ -684,12 +721,37 @@ class HomeTvFragment : Fragment() {
                 }
             }
 
-        if (showDigest &&
-            homeItems.none { it is com.dskja.betterstreamflix.watchlist.WatchlistDigestBannerItem } &&
+        if (showOutage &&
+            homeItems.none {
+                it is com.dskja.betterstreamflix.providers.ProviderOutageBannerItem
+            } &&
             homeItems.isNotEmpty()
         ) {
             homeItems.add(
                 1.coerceAtMost(homeItems.size),
+                com.dskja.betterstreamflix.providers.ProviderOutageBannerItem(
+                    providerNames = trustSnapshot.outageProviderNames,
+                    level = trustSnapshot.outageLevel,
+                ).apply {
+                    itemType = AppAdapter.Type.PROVIDER_OUTAGE_BANNER_TV_ITEM
+                }
+            )
+        }
+        if (showDigest &&
+            homeItems.none { it is com.dskja.betterstreamflix.watchlist.WatchlistDigestBannerItem } &&
+            homeItems.isNotEmpty()
+        ) {
+            val insertAt = when {
+                homeItems.any {
+                    it is com.dskja.betterstreamflix.providers.ProviderOutageBannerItem
+                } ->
+                    homeItems.indexOfFirst {
+                        it is com.dskja.betterstreamflix.providers.ProviderOutageBannerItem
+                    } + 1
+                else -> 1.coerceAtMost(homeItems.size)
+            }
+            homeItems.add(
+                insertAt.coerceAtMost(homeItems.size),
                 com.dskja.betterstreamflix.watchlist.WatchlistDigestBannerItem(
                     episodes = watchlistDigestEpisodes,
                 ).apply {
@@ -705,6 +767,12 @@ class HomeTvFragment : Fragment() {
                 homeItems.any { it is com.dskja.betterstreamflix.watchlist.WatchlistDigestBannerItem } ->
                     homeItems.indexOfFirst {
                         it is com.dskja.betterstreamflix.watchlist.WatchlistDigestBannerItem
+                    } + 1
+                homeItems.any {
+                    it is com.dskja.betterstreamflix.providers.ProviderOutageBannerItem
+                } ->
+                    homeItems.indexOfFirst {
+                        it is com.dskja.betterstreamflix.providers.ProviderOutageBannerItem
                     } + 1
                 else -> 1.coerceAtMost(homeItems.size)
             }
