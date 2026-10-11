@@ -248,6 +248,51 @@ object UserPreferences {
             Key.DOWNLOAD_NOTIFY_COMPLETE.setBoolean(value)
         }
 
+    /** Opt-in: alert when a My List series gets a new latest episode. */
+    var notifyWatchlistNewEpisode: Boolean
+        get() = Key.NOTIFY_WATCHLIST_NEW_EPISODE.getBoolean() ?: false
+        set(value) {
+            Key.NOTIFY_WATCHLIST_NEW_EPISODE.setBoolean(value)
+        }
+
+    /** Opt-in: alert when a Live Hub favorite newly appears as live / starting. */
+    var notifyLiveFavoriteStarting: Boolean
+        get() = Key.NOTIFY_LIVE_FAVORITE_STARTING.getBoolean() ?: false
+        set(value) {
+            Key.NOTIFY_LIVE_FAVORITE_STARTING.setBoolean(value)
+        }
+
+    /** Silent baseline taken after Live notify opt-in (avoid spam on enable). */
+    var notifyLiveBaselineReady: Boolean
+        get() = Key.NOTIFY_LIVE_BASELINE_READY.getBoolean() ?: false
+        set(value) {
+            Key.NOTIFY_LIVE_BASELINE_READY.setBoolean(value)
+        }
+
+    var notifyLiveActiveKeys: Set<String>
+        get() = Key.NOTIFY_LIVE_ACTIVE_KEYS.getStringSet() ?: emptySet()
+        set(value) {
+            Key.NOTIFY_LIVE_ACTIVE_KEYS.setStringSet(value.ifEmpty { null })
+        }
+
+    var notifyLiveCooldownJson: String
+        get() = Key.NOTIFY_LIVE_COOLDOWN_JSON.getString().orEmpty()
+        set(value) {
+            Key.NOTIFY_LIVE_COOLDOWN_JSON.setString(value.trim().ifEmpty { null })
+        }
+
+    var notifyEpisodeFingerprintsJson: String
+        get() = Key.NOTIFY_EPISODE_FINGERPRINTS_JSON.getString().orEmpty()
+        set(value) {
+            Key.NOTIFY_EPISODE_FINGERPRINTS_JSON.setString(value.trim().ifEmpty { null })
+        }
+
+    var notifyEpisodeLastCheckAtMillis: Long
+        get() = Key.NOTIFY_EPISODE_LAST_CHECK_AT.getLong() ?: 0L
+        set(value) {
+            Key.NOTIFY_EPISODE_LAST_CHECK_AT.setLong(value)
+        }
+
     var downloadFilterCurrentProvider: Boolean
         get() = Key.DOWNLOAD_FILTER_CURRENT_PROVIDER.getBoolean() ?: false
         set(value) {
@@ -1581,6 +1626,13 @@ object UserPreferences {
         DOWNLOAD_MAX_CONCURRENT,
         DOWNLOAD_QUALITY_PRESET,
         DOWNLOAD_NOTIFY_COMPLETE,
+        NOTIFY_WATCHLIST_NEW_EPISODE,
+        NOTIFY_LIVE_FAVORITE_STARTING,
+        NOTIFY_LIVE_BASELINE_READY,
+        NOTIFY_LIVE_ACTIVE_KEYS,
+        NOTIFY_LIVE_COOLDOWN_JSON,
+        NOTIFY_EPISODE_FINGERPRINTS_JSON,
+        NOTIFY_EPISODE_LAST_CHECK_AT,
         DOWNLOAD_FILTER_CURRENT_PROVIDER,
         DOWNLOAD_SOFT_LIMIT_GB,
         DOWNLOAD_STORAGE_LOCATION,

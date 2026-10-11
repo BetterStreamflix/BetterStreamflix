@@ -851,6 +851,12 @@
                 android:title="@string/settings_download_notify_complete"
                 android:defaultValue="true" />
 
+            <Preference
+                android:key="NOTIFICATIONS_OPEN"
+                android:title="@string/settings_screen_notifications"
+                android:summary="@string/settings_screen_notifications_summary"
+                android:widgetLayout="@layout/preference_widget_chevron" />
+
             <SwitchPreference
                 android:key="DOWNLOAD_FILTER_CURRENT_PROVIDER"
                 android:title="@string/settings_download_filter_provider"
@@ -914,6 +920,34 @@
             <Preference
                 android:key="DOWNLOAD_CLEAR_ALL"
                 android:title="@string/settings_download_clear_all" />
+        </PreferenceCategory>
+    </PreferenceScreen>
+
+    <PreferenceScreen
+        android:key="screen_notifications"
+        android:title="@string/settings_screen_notifications"
+        android:summary="@string/settings_screen_notifications_summary"
+        android:widgetLayout="@layout/preference_widget_chevron">
+
+        <PreferenceCategory android:title="@string/settings_screen_notifications">
+
+            <SwitchPreference
+                android:key="NOTIFY_WATCHLIST_NEW_EPISODE"
+                android:title="@string/settings_notify_watchlist_episode"
+                android:summary="@string/settings_notify_watchlist_episode_summary"
+                android:defaultValue="false" />
+
+            <SwitchPreference
+                android:key="NOTIFY_LIVE_FAVORITE_STARTING"
+                android:title="@string/settings_notify_live_starting"
+                android:summary="@string/settings_notify_live_starting_summary"
+                android:defaultValue="false" />
+
+            <SwitchPreference
+                android:key="DOWNLOAD_NOTIFY_COMPLETE"
+                android:title="@string/settings_download_notify_complete"
+                android:summary="@string/settings_download_notify_complete_summary"
+                android:defaultValue="true" />
         </PreferenceCategory>
     </PreferenceScreen>
 

@@ -48,6 +48,13 @@ internal object SettingsHubCategories {
             target = SettingsHubTarget.PreferenceScreen("screen_downloads"),
         ),
         SettingsHubCard(
+            id = "notifications",
+            titleRes = R.string.settings_screen_notifications,
+            summaryRes = R.string.settings_screen_notifications_summary,
+            iconRes = R.drawable.ic_favorite_enable,
+            target = SettingsHubTarget.PreferenceScreen("screen_notifications"),
+        ),
+        SettingsHubCard(
             id = "appearance",
             titleRes = R.string.settings_category_appearance,
             summaryRes = R.string.settings_screen_appearance_summary,
