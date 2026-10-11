@@ -116,7 +116,7 @@ object SmartCollectionEnricher {
         context: Context,
         pool: List<AppAdapter.Item>,
     ): List<AppAdapter.Item> = coroutineScope {
-        val permits = if (
+        val baseline = if (
             DeviceCapabilities.shouldUseConstrainedPlayback(context) ||
             DeviceCapabilities.isLowRamDevice(context) ||
             DeviceCapabilities.isLeanbackDevice(context)
@@ -125,6 +125,10 @@ object SmartCollectionEnricher {
         } else {
             DEFAULT_CONCURRENCY
         }
+        val permits = com.dskja.betterstreamflix.ui.StickEnergyMode.providerParallelism(
+            default = baseline,
+            context = context,
+        )
         val gate = Semaphore(permits)
         pool.map { item ->
             async {

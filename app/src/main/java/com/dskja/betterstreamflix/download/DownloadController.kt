@@ -548,8 +548,13 @@ object DownloadController {
         val errorMutex = Mutex()
         val resolvedMutex = Mutex()
         // Resolve several servers in parallel so the options dialog can switch hosters.
+        // Stick Energy Mode serializes resolve to spare Fire Stick RAM/CPU.
         coroutineScope {
-            val semaphore = Semaphore(RESOLVE_PARALLELISM)
+            val semaphore = Semaphore(
+                com.dskja.betterstreamflix.ui.StickEnergyMode.providerParallelism(
+                    default = RESOLVE_PARALLELISM,
+                ),
+            )
             val jobs = servers.take(MAX_OPTION_SERVERS).map { server ->
                 async {
                     semaphore.withPermit {

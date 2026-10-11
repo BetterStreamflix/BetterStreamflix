@@ -1483,6 +1483,8 @@
     <string name="settings_leanback_density_summary">Compact shows more tiles; Comfort uses larger posters (restarts the app)</string>
     <string name="settings_leanback_density_comfort">Comfort — larger posters</string>
     <string name="settings_leanback_density_compact">Compact — more tiles</string>
+    <string name="settings_stick_energy_mode_title">Stick energy mode</string>
+    <string name="settings_stick_energy_mode_summary">Fire Stick: fewer parallel providers, software-decoder bias, less UI motion (auto-on for Amazon Fire TV)</string>
     <string name="settings_oled_mode_title">OLED mode</string>
     <string name="settings_oled_mode_summary">Replace gray surfaces with true black across the app</string>
     <string name="settings_category_accessibility">Accessibility</string>

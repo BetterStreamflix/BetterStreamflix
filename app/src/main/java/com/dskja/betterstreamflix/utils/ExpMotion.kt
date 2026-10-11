@@ -22,12 +22,14 @@ import com.dskja.betterstreamflix.R
  */
 object ExpMotion {
 
-    fun reduceMotion(context: Context): Boolean =
-        Settings.Global.getFloat(
+    fun reduceMotion(context: Context): Boolean {
+        if (com.dskja.betterstreamflix.ui.StickEnergyMode.isEnabled(context)) return true
+        return Settings.Global.getFloat(
             context.contentResolver,
             Settings.Global.ANIMATOR_DURATION_SCALE,
             1f,
         ) == 0f
+    }
 
     private fun View.motionAllowed(): Boolean =
         ExperimentalMobileDesign.enabled() && !reduceMotion(context)

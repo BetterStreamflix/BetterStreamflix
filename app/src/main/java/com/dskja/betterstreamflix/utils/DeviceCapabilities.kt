@@ -66,6 +66,7 @@ object DeviceCapabilities {
 
     /** Soften home motion (ken-burns, swiper progress) on constrained devices. */
     fun shouldReduceHomeEffects(context: Context): Boolean {
+        if (com.dskja.betterstreamflix.ui.StickEnergyMode.isEnabled(context)) return true
         return isLowRamDevice(context) ||
             shouldUseConstrainedPlayback(context) ||
             (Build.VERSION.SDK_INT >= 17 &&
