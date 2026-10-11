@@ -758,6 +758,7 @@ class TvShowViewHolder(
 
         binding.btnSwiperWatchNow.apply {
             FeaturedSwiperChrome.wireWatchButton(this)
+            com.dskja.betterstreamflix.player.PlayerCleanExit.tagFeaturedWatch(this)
             text = FeaturedHeroController.watchCtaLabel(context, tvShow)
             applyExpPress()
             setOnClickListener(openTvShow)

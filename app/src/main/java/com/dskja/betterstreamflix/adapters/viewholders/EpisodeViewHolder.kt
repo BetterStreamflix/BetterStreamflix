@@ -693,6 +693,11 @@ class EpisodeViewHolder(
                     episode.number,
                 ),
             )
+            com.dskja.betterstreamflix.player.PlayerCleanExit.tagHomeFocusView(itemView, episode.id)
+            com.dskja.betterstreamflix.player.PlayerCleanExit.rememberHomeFocus(
+                episode.id,
+                rowHint = "continue_watching",
+            )
             itemView.findNavController().navigate(
                 R.id.action_global_player,
                 android.os.Bundle().apply {

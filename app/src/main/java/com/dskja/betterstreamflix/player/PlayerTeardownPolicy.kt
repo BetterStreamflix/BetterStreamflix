@@ -24,10 +24,13 @@ object PlayerTeardownPolicy {
         "mark_tearing_down",
         "cancel_handlers",
         "unregister_lifecycle_guard",
+        // Mute before pause so a failed pause cannot leave an audio zombie.
+        "mute_volume",
         "pause_playback",
         "detach_player_view",
         "release_media_session",
         "remove_player_listeners",
+        "silence_trailers",
     )
 
     /** Full teardown including deferred ExoPlayer.release(). */

@@ -241,6 +241,12 @@ class MovieViewHolder(
     private fun openContinueWatchingMovie(movie: Movie) {
         val preferredServer = preferredOfflineServerName()
         val play = {
+            // Clean Exit: remember this tile so Back restores exact Home focus.
+            com.dskja.betterstreamflix.player.PlayerCleanExit.tagHomeFocusView(itemView, movie.id)
+            com.dskja.betterstreamflix.player.PlayerCleanExit.rememberHomeFocus(
+                movie.id,
+                rowHint = "continue_watching",
+            )
             itemView.findNavController().navigate(
                 R.id.action_global_player,
                 Bundle().apply {
@@ -313,6 +319,11 @@ class MovieViewHolder(
                     when (context.toActivity()?.getCurrentFragment()) {
                         is HomeMobileFragment -> {
                             if (movie.itemType == AppAdapter.Type.MOVIE_CONTINUE_WATCHING_MOBILE_ITEM) {
+                                com.dskja.betterstreamflix.player.PlayerCleanExit.tagHomeFocusView(itemView, movie.id)
+                                com.dskja.betterstreamflix.player.PlayerCleanExit.rememberHomeFocus(
+                                    movie.id,
+                                    rowHint = "continue_watching",
+                                )
                                 findNavController().navigate(
                                     R.id.action_global_player,
                                     Bundle().apply {
@@ -889,6 +900,7 @@ class MovieViewHolder(
 
         binding.btnSwiperWatchNow.apply {
             FeaturedSwiperChrome.wireWatchButton(this)
+            com.dskja.betterstreamflix.player.PlayerCleanExit.tagFeaturedWatch(this)
             text = FeaturedHeroController.watchCtaLabel(context, movie)
             applyExpPress()
             setOnClickListener(openMovie)
