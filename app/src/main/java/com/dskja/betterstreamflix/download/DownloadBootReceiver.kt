@@ -4,12 +4,6 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.util.Log
-import androidx.work.Constraints
-import androidx.work.ExistingWorkPolicy
-import androidx.work.NetworkType
-import androidx.work.OneTimeWorkRequestBuilder
-import androidx.work.WorkManager
-import com.dskja.betterstreamflix.utils.UserPreferences
 
 /**
  * After reboot, schedule a deferred resume via WorkManager.
@@ -22,27 +16,22 @@ import com.dskja.betterstreamflix.utils.UserPreferences
 class DownloadBootReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent?) {
         if (intent?.action != Intent.ACTION_BOOT_COMPLETED) return
-        val app = context.applicationContext
-        runCatching {
-            val networkType = if (UserPreferences.downloadWifiOnly) {
-                NetworkType.UNMETERED
-            } else {
-                NetworkType.CONNECTED
-            }
-            val constraints = Constraints.Builder()
-                .setRequiredNetworkType(networkType)
-                .build()
-            val request = OneTimeWorkRequestBuilder<DownloadResumeWorker>()
-                .setConstraints(constraints)
-                .build()
-            WorkManager.getInstance(app).enqueueUniqueWork(
-                DownloadResumeWorker.UNIQUE_WORK,
-                ExistingWorkPolicy.REPLACE,
-                request,
-            )
-        }.onFailure {
-            Log.w(TAG, "Could not schedule download resume: ${it.message}")
+        // BOOT_COMPLETED is not ordered; treat ordered deliveries as spoof.
+        if (isOrderedBroadcast) {
+            Log.w(TAG, "Ignoring ordered BOOT_COMPLETED spoof")
+            return
         }
+        // Explicit intents from other apps often carry extras; system boot usually does not.
+        if (intent.extras != null && !intent.extras!!.isEmpty) {
+            Log.w(TAG, "Ignoring BOOT_COMPLETED with extras (likely spoof)")
+            return
+        }
+        // No Room probe here — worker idle-checks on its executor.
+        DownloadResumeScheduler.enqueue(
+            context.applicationContext,
+            replace = true,
+            probeRoom = false,
+        )
     }
 
     private companion object {

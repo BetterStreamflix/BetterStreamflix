@@ -53,7 +53,7 @@ object SmartDownloadsManager {
         if (autoDelete && item?.state == DownloadItemState.COMPLETED.name) {
             repo.remove(item.id)
         }
-        if (smart) enqueueNextEpisode(context, videoType)
+        if (smart) enqueueNextEpisode(context, videoType, item?.providerName)
     }
 
     suspend fun onMovieFinished(
@@ -85,14 +85,31 @@ object SmartDownloadsManager {
         }
     }
 
-    private suspend fun enqueueNextEpisode(context: Context, current: Video.Type.Episode) {
-        val provider = UserPreferences.currentProvider ?: return
+    private suspend fun enqueueNextEpisode(
+        context: Context,
+        current: Video.Type.Episode,
+        finishedProviderName: String?,
+    ) {
+        // Prefer the finished item's provider, not whatever is currently selected (DL-P2-L).
+        val provider = finishedProviderName
+            ?.takeIf { it.isNotBlank() }
+            ?.let { com.dskja.betterstreamflix.providers.Provider.findByName(it) }
+            ?: UserPreferences.currentProvider
+            ?: return
         if (provider is com.dskja.betterstreamflix.providers.IptvProvider) return
         if (DownloadConnectivityMonitor.shouldHoldForWifiOnly(context)) return
         if (!DownloadStorage.hasEnoughSpace(context)) return
         if (DownloadConnectivityMonitor.current(context).type == DownloadNetworkType.NONE) return
 
-        val next = runCatching { findNextEpisode(context, current) }.getOrNull() ?: return
+        val previousProvider = UserPreferences.currentProvider
+        if (previousProvider?.name != provider.name) {
+            UserPreferences.setCurrentProviderForPlayback(provider)
+        }
+        val next = runCatching { findNextEpisode(context, current, provider) }.getOrNull()
+        if (previousProvider != null && previousProvider.name != provider.name) {
+            UserPreferences.setCurrentProviderForPlayback(previousProvider)
+        }
+        if (next == null) return
 
         // Skip if the next episode is already downloaded or in flight.
         val existing = DownloadRepository.get(context).getAllOnce().firstOrNull { entity ->
@@ -122,35 +139,44 @@ object SmartDownloadsManager {
             ),
         )
 
-        val prepared = DownloadController.prepareEpisode(context, episode)
-        when (prepared) {
-            is DownloadEnqueueOutcome.NeedsOptions -> {
-                val trackIdx = when (UserPreferences.downloadQualityPreset) {
-                    DownloadQualityPreset.DATA_SAVER ->
-                        prepared.prepared.trackOptions.lastIndex.coerceAtLeast(0)
-                    else -> 0
-                }.coerceIn(0, prepared.prepared.trackOptions.lastIndex.coerceAtLeast(0))
-                val label = prepared.prepared.trackOptions.getOrNull(trackIdx)?.label
-                    ?: context.getString(R.string.download_quality_auto)
-                val confirmed = DownloadController.confirmEnqueue(
-                    context = context,
-                    prepared = prepared.prepared,
-                    serverIndex = prepared.prepared.selectedServerIndex,
-                    trackIndex = trackIdx,
-                    qualityLabel = label,
-                    smartEnqueued = true,
-                )
-                if (confirmed is DownloadEnqueueOutcome.Started) {
+        if (previousProvider?.name != provider.name) {
+            UserPreferences.setCurrentProviderForPlayback(provider)
+        }
+        try {
+            val prepared = DownloadController.prepareEpisode(context, episode)
+            when (prepared) {
+                is DownloadEnqueueOutcome.NeedsOptions -> {
+                    val trackIdx = when (UserPreferences.downloadQualityPreset) {
+                        DownloadQualityPreset.DATA_SAVER ->
+                            prepared.prepared.trackOptions.lastIndex.coerceAtLeast(0)
+                        else -> 0
+                    }.coerceIn(0, prepared.prepared.trackOptions.lastIndex.coerceAtLeast(0))
+                    val label = prepared.prepared.trackOptions.getOrNull(trackIdx)?.label
+                        ?: context.getString(R.string.download_quality_auto)
+                    val confirmed = DownloadController.confirmEnqueue(
+                        context = context,
+                        prepared = prepared.prepared,
+                        serverIndex = prepared.prepared.selectedServerIndex,
+                        trackIndex = trackIdx,
+                        qualityLabel = label,
+                        smartEnqueued = true,
+                    )
+                    if (confirmed is DownloadEnqueueOutcome.Started) {
+                        Log.i(TAG, "smart-downloaded next episode S${next.seasonNumber}E${next.number}")
+                    }
+                }
+                is DownloadEnqueueOutcome.Started -> {
+                    DownloadRepository.get(context).upsert(
+                        prepared.item.copy(smartEnqueued = true),
+                    )
                     Log.i(TAG, "smart-downloaded next episode S${next.seasonNumber}E${next.number}")
                 }
+                else -> Unit
             }
-            is DownloadEnqueueOutcome.Started -> {
-                DownloadRepository.get(context).upsert(
-                    prepared.item.copy(smartEnqueued = true),
-                )
-                Log.i(TAG, "smart-downloaded next episode S${next.seasonNumber}E${next.number}")
+        } finally {
+            if (previousProvider != null && previousProvider.name != provider.name) {
+                UserPreferences.setCurrentProviderForPlayback(previousProvider)
             }
-            else -> Unit
         }
     }
 
@@ -171,8 +197,8 @@ object SmartDownloadsManager {
     private suspend fun findNextEpisode(
         context: Context,
         current: Video.Type.Episode,
+        provider: com.dskja.betterstreamflix.providers.Provider,
     ): NextEpisode? {
-        val provider = UserPreferences.currentProvider ?: return null
         val show = provider.getTvShow(current.tvShow.id)
         val seasons = show.seasons.orEmpty().sortedBy { it.number }
         if (seasons.isEmpty()) return null

@@ -298,6 +298,9 @@
     <string name="downloads_service_start_failed">Downloads could not start in the background. Open Downloads to resume.</string>
     <string name="settings_download_storage_removable">SD card / removable storage</string>
     <string name="settings_download_storage_custom">Custom folder (grants the volume; files stay in the app folder)</string>
+    <string name="settings_download_storage_custom_readonly">Custom folder (current — pick a new location on phone)</string>
+    <string name="download_location_readme_body">BetterStreamflix offline downloads\n\nAdaptive (HLS/DASH) offline cache is stored in the app folder on this storage volume so playback works reliably:\n%1$s\n\nThis folder was selected so BetterStreamflix can keep write access to the volume across reboots.\n</string>
+    <string name="downloads_delete_confirm">Delete this download?</string>
     <string name="settings_download_storage_pick_folder">Choose download folder</string>
     <string name="settings_download_storage_pick_folder_summary">Pick a folder on SD card or shared storage. Offline cache uses the app folder on that volume.</string>
     <string name="settings_download_storage_pick_folder_set">Folder: %1$s</string>

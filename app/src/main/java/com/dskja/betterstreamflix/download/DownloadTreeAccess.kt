@@ -9,6 +9,7 @@ import android.os.storage.StorageManager
 import android.util.Log
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.documentfile.provider.DocumentFile
+import com.dskja.betterstreamflix.R
 import com.dskja.betterstreamflix.utils.UserPreferences
 import java.io.File
 
@@ -60,25 +61,57 @@ object DownloadTreeAccess {
         }
     }
 
-    fun persistTree(context: Context, uri: Uri): Boolean {
+    /**
+     * Take a persistable read/write grant for [uri] without flipping download
+     * storage preferences. Used so a wipe-confirm Cancel cannot leave prefs on
+     * a new CUSTOM_FOLDER root while Media3 still points at the old cache.
+     */
+    fun takePersistablePermission(context: Context, uri: Uri): Boolean {
         return try {
             val flags = Intent.FLAG_GRANT_READ_URI_PERMISSION or
                 Intent.FLAG_GRANT_WRITE_URI_PERMISSION
             context.contentResolver.takePersistableUriPermission(uri, flags)
-            UserPreferences.downloadTreeUri = uri.toString()
-            UserPreferences.downloadStorageLocation = DownloadStorageLocation.CUSTOM_FOLDER
-            UserPreferences.downloadResolvedCacheDir = ""
-            // Best-effort marker in the user-visible folder explaining where offline
-            // Media3 cache actually lives (app-specific dir on the same volume).
-            writeLocationReadme(context)
             true
         } catch (e: SecurityException) {
             Log.w(TAG, "Failed to persist tree permission: ${e.message}")
             false
         } catch (e: Exception) {
+            Log.w(TAG, "Failed to take tree permission: ${e.message}")
+            false
+        }
+    }
+
+    /** Drop a persistable grant for [uri] without touching download preferences. */
+    fun releasePersistablePermission(context: Context, uri: Uri) {
+        runCatching {
+            context.contentResolver.releasePersistableUriPermission(
+                uri,
+                Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION,
+            )
+        }
+    }
+
+    /**
+     * Commit CUSTOM_FOLDER prefs for an already-granted [uri] and write the
+     * location readme. Call only after the user confirms a wipe/relocate when
+     * downloads already exist.
+     */
+    fun commitTreePrefs(context: Context, uri: Uri): Boolean {
+        return try {
+            UserPreferences.downloadTreeUri = uri.toString()
+            UserPreferences.downloadStorageLocation = DownloadStorageLocation.CUSTOM_FOLDER
+            UserPreferences.downloadResolvedCacheDir = ""
+            writeLocationReadme(context)
+            true
+        } catch (e: Exception) {
             Log.w(TAG, "Failed to set tree URI: ${e.message}")
             false
         }
+    }
+
+    fun persistTree(context: Context, uri: Uri): Boolean {
+        if (!takePersistablePermission(context, uri)) return false
+        return commitTreePrefs(context, uri)
     }
 
     fun clearTree(context: Context) {
@@ -203,16 +236,7 @@ object DownloadTreeAccess {
             val existing = docRoot.findFile(README_NAME)
             val target = existing ?: docRoot.createFile("text/plain", README_NAME) ?: return
             val cachePath = media3CacheDir(context).absolutePath
-            val body = buildString {
-                appendLine("BetterStreamflix offline downloads")
-                appendLine()
-                appendLine("Adaptive (HLS/DASH) offline cache is stored in the app folder on this")
-                appendLine("storage volume so playback works reliably:")
-                appendLine(cachePath)
-                appendLine()
-                appendLine("This folder was selected so BetterStreamflix can keep write access")
-                appendLine("to the volume across reboots.")
-            }
+            val body = context.getString(R.string.download_location_readme_body, cachePath)
             context.contentResolver.openOutputStream(target.uri, "wt")?.use { out ->
                 out.write(body.toByteArray(Charsets.UTF_8))
             }

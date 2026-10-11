@@ -58,9 +58,21 @@ class DownloadsMobileFragment : Fragment() {
             else viewModel.pause(row.id)
         },
         onRetry = { retry(it) },
-        onDelete = { viewModel.remove(it.id) },
+        onDelete = { row ->
+            confirmDestructive(R.string.downloads_delete_confirm) {
+                viewModel.remove(row.id)
+            }
+        },
         onItemMore = { row, anchor -> showItemMenu(row, anchor) },
         onPackMore = { pack, anchor -> showPackMenu(pack, anchor) },
+        onPackPause = { viewModel.pausePack(it.pack.id) },
+        onPackResume = { viewModel.resumePack(it.pack.id) },
+        onPackDelete = { pack ->
+            confirmDestructive(R.string.downloads_delete_confirm) {
+                viewModel.removePack(pack.pack.id)
+            }
+        },
+        onSeriesToggle = { viewModel.toggleSeriesCollapsed(it.seriesKey) },
     )
 
     override fun onCreateView(
@@ -460,7 +472,9 @@ class DownloadsMobileFragment : Fragment() {
                 when (it.itemId) {
                     1 -> share(row)
                     2 -> retry(row)
-                    3 -> viewModel.remove(row.id)
+                    3 -> confirmDestructive(R.string.downloads_delete_confirm) {
+                        viewModel.remove(row.id)
+                    }
                     4 -> playWithExternal(row)
                     5 -> downloadWithExternal(row)
                 }
@@ -479,7 +493,9 @@ class DownloadsMobileFragment : Fragment() {
                 when (it.itemId) {
                     1 -> viewModel.pausePack(pack.pack.id)
                     2 -> viewModel.resumePack(pack.pack.id)
-                    3 -> viewModel.removePack(pack.pack.id)
+                    3 -> confirmDestructive(R.string.downloads_delete_confirm) {
+                        viewModel.removePack(pack.pack.id)
+                    }
                 }
                 true
             }

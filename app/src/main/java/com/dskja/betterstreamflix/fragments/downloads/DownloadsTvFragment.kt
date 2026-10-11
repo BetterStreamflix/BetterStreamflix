@@ -4,7 +4,6 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.widget.Toast
 import androidx.core.os.bundleOf
 import androidx.core.view.isVisible
 import androidx.fragment.app.Fragment
@@ -59,9 +58,21 @@ class DownloadsTvFragment : Fragment() {
             else viewModel.pause(row.id)
         },
         onRetry = { retry(it) },
-        onDelete = { viewModel.remove(it.id) },
+        onDelete = { row ->
+            confirmDestructive(R.string.downloads_delete_confirm) {
+                viewModel.remove(row.id)
+            }
+        },
         onItemMore = { row, anchor -> showItemMenu(row, anchor) },
         onPackMore = { pack, anchor -> showPackMenu(pack, anchor) },
+        onPackPause = { viewModel.pausePack(it.pack.id) },
+        onPackResume = { viewModel.resumePack(it.pack.id) },
+        onPackDelete = { pack ->
+            confirmDestructive(R.string.downloads_delete_confirm) {
+                viewModel.removePack(pack.pack.id)
+            }
+        },
+        onSeriesToggle = { viewModel.toggleSeriesCollapsed(it.seriesKey) },
     )
 
     override fun onCreateView(
@@ -283,14 +294,19 @@ class DownloadsTvFragment : Fragment() {
         labels += 3 to R.string.downloads_action_clear_completed
         labels += 7 to R.string.downloads_action_clear_watched
         labels += 4 to R.string.downloads_action_clear_failed
-        labels += 10 to R.string.downloads_sort_newest
-        labels += 11 to R.string.downloads_sort_title
-        labels += 12 to R.string.downloads_sort_size
         labels += 5 to R.string.downloads_action_settings
-        val titles = labels.map { getString(it.second) }.toTypedArray()
+        val actionTitles = labels.map { getString(it.second) }.toTypedArray()
+        val sortOptions = listOf(
+            DownloadsSort.NEWEST to R.string.downloads_sort_newest,
+            DownloadsSort.TITLE to R.string.downloads_sort_title,
+            DownloadsSort.SIZE to R.string.downloads_sort_size,
+        )
+        val sortChecked = sortOptions.indexOfFirst { it.first == viewModel.currentSort() }
+            .coerceAtLeast(0)
+        val sortTitles = sortOptions.map { getString(it.second) }.toTypedArray()
         androidx.appcompat.app.AlertDialog.Builder(requireContext())
             .setTitle(R.string.downloads_title)
-            .setItems(titles) { _, which ->
+            .setItems(actionTitles) { _, which ->
                 when (labels[which].first) {
                     1 -> viewModel.pauseAll()
                     2 -> viewModel.resumeAll()
@@ -308,10 +324,17 @@ class DownloadsTvFragment : Fragment() {
                     7 -> confirmDestructive(R.string.downloads_action_clear_watched_confirm) {
                         viewModel.clearWatched()
                     }
-                    10 -> viewModel.setSort(DownloadsSort.NEWEST)
-                    11 -> viewModel.setSort(DownloadsSort.TITLE)
-                    12 -> viewModel.setSort(DownloadsSort.SIZE)
                 }
+            }
+            .setNeutralButton(R.string.downloads_sort) { _, _ ->
+                androidx.appcompat.app.AlertDialog.Builder(requireContext())
+                    .setTitle(R.string.downloads_sort)
+                    .setSingleChoiceItems(sortTitles, sortChecked) { dialog, which ->
+                        sortOptions.getOrNull(which)?.let { viewModel.setSort(it.first) }
+                        dialog.dismiss()
+                    }
+                    .setNegativeButton(android.R.string.cancel, null)
+                    .show()
             }
             .show()
     }
@@ -344,7 +367,9 @@ class DownloadsTvFragment : Fragment() {
                 when (labels[which].first) {
                     1 -> share(row)
                     2 -> retry(row)
-                    3 -> viewModel.remove(row.id)
+                    3 -> confirmDestructive(R.string.downloads_delete_confirm) {
+                        viewModel.remove(row.id)
+                    }
                     4 -> playWithExternal(row)
                 }
             }
@@ -363,7 +388,9 @@ class DownloadsTvFragment : Fragment() {
                 when (labels[which].first) {
                     1 -> viewModel.pausePack(pack.pack.id)
                     2 -> viewModel.resumePack(pack.pack.id)
-                    3 -> viewModel.removePack(pack.pack.id)
+                    3 -> confirmDestructive(R.string.downloads_delete_confirm) {
+                        viewModel.removePack(pack.pack.id)
+                    }
                 }
             }
             .show()
@@ -498,7 +525,11 @@ class DownloadsTvFragment : Fragment() {
 
     private fun showDownloadError(messageRes: Int) {
         val message = getString(messageRes)
-        Toast.makeText(requireContext(), message, Toast.LENGTH_SHORT).show()
+        androidx.appcompat.app.AlertDialog.Builder(requireContext())
+            .setTitle(R.string.downloads_title)
+            .setMessage(message)
+            .setPositiveButton(android.R.string.ok, null)
+            .show()
     }
 
     override fun onDestroyView() {

@@ -130,6 +130,9 @@ class BetterStreamflixApp : Application() {
             runCatching { TMDb3.rebuildService() }
             runCatching {
                 com.dskja.betterstreamflix.download.StreamflixDownloadManager.get(appContext)
+                // Force-stop / cold start does not get BOOT_COMPLETED — schedule
+                // resume work when Room still has an active/queued download.
+                com.dskja.betterstreamflix.download.DownloadResumeScheduler.enqueue(appContext)
             }
             runCatching { AppDatabase.setup(appContext) }
             runCatching { SupabaseProvider.initialize(appContext) }

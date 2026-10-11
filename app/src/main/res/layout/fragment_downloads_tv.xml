@@ -192,7 +192,7 @@
         app:layout_constraintBottom_toTopOf="@id/v_downloads_empty_rule"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintTop_toTopOf="@id/rv_downloads"
         app:layout_constraintVertical_chainStyle="packed"
         app:layout_constraintWidth_max="520dp"
         tools:visibility="visible" />

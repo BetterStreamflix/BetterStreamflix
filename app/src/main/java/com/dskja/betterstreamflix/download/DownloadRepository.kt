@@ -211,6 +211,13 @@ class DownloadRepository private constructor(
                 request,
                 /* foreground= */ true,
             )
+            // Clear enqueue-time hint so it does not linger process-wide (DL-P3-N).
+            StreamflixDownloadManager.dataSourceFactory(context).apply {
+                if (activeMedia3Id == media3Id) {
+                    activeMedia3Id = null
+                    activeHeaders = emptyMap()
+                }
+            }
             entity
         }
     }
@@ -288,7 +295,14 @@ class DownloadRepository private constructor(
         }
         // Media3 STATE_FAILED ignores stop-reason clears — re-add the request so
         // transient failures (network blips) can continue without a full re-resolve.
+        // Adaptive / empty streamKeys / storage-relocated rows need a fresh resolve
+        // via retryItem (notification Retry path) — do not requeue a stale HLS URL.
         if (item.state == DownloadItemState.FAILED.name) {
+            if (shouldRetryViaReResolve(item)) {
+                DownloadController.retryItem(context, item)
+                DownloadNotifier.cancelFailed(context, item.id)
+                return
+            }
             requeueFailedMedia3(item)
         } else {
             DownloadService.sendSetStopReason(
@@ -310,6 +324,30 @@ class DownloadRepository private constructor(
         DownloadNotifier.cancelFailed(context, item.id)
     }
 
+    private fun shouldRetryViaReResolve(item: DownloadItemEntity): Boolean {
+        if (item.errorCode == DownloadErrorCode.STORAGE_RELOCATED.name) return true
+        if (item.errorCode == DownloadErrorCode.EXPIRED.name) return true
+        val adaptive = isAdaptiveMimeOrUrl(item.mimeType, item.streamUrl)
+        val keys = item.streamKeysJson.trim()
+        if (adaptive && (keys.isEmpty() || keys == "[]")) return true
+        return adaptive && item.errorCode in setOf(
+            DownloadErrorCode.NETWORK.name,
+            DownloadErrorCode.UNKNOWN.name,
+            DownloadErrorCode.NOT_FOUND.name,
+            "",
+        )
+    }
+
+    private fun isAdaptiveMimeOrUrl(mime: String, url: String): Boolean {
+        val m = mime.lowercase()
+        val u = url.lowercase()
+        return m.contains("mpegurl") ||
+            m.contains("dash+xml") ||
+            m.contains("x-mpegurl") ||
+            u.contains(".m3u8") ||
+            u.contains(".mpd")
+    }
+
     /**
      * Re-enqueue a Media3 download that is in STATE_FAILED (or missing from the index).
      * Uses the stored request URI/mime/headers — callers that need fresh signed URLs
@@ -318,14 +356,25 @@ class DownloadRepository private constructor(
     private fun requeueFailedMedia3(item: DownloadItemEntity) {
         val dm = StreamflixDownloadManager.get(context)
         val existing = runCatching { dm.downloadIndex.getDownload(item.media3Id) }.getOrNull()
+        val headers = runCatching {
+            val o = org.json.JSONObject(item.headersJson.ifBlank { "{}" })
+            o.keys().asSequence().associateWith { o.getString(it) }
+        }.getOrDefault(emptyMap())
+        // Always rehydrate HeaderStore before sendAddDownload — even when the
+        // Media3 index still has the request (segment host maps are in-memory).
+        if (headers.isNotEmpty()) {
+            DownloadHeaderStore.put(context, item.media3Id, headers)
+            if (item.streamUrl.isNotBlank()) {
+                DownloadHeaderStore.putForUrl(
+                    context,
+                    item.streamUrl,
+                    headers,
+                    media3Id = item.media3Id,
+                )
+            }
+        }
         val request = existing?.request ?: run {
             if (item.streamUrl.isBlank()) return
-            val headers = runCatching {
-                val o = org.json.JSONObject(item.headersJson.ifBlank { "{}" })
-                o.keys().asSequence().associateWith { o.getString(it) }
-            }.getOrDefault(emptyMap())
-            DownloadHeaderStore.put(context, item.media3Id, headers)
-            DownloadHeaderStore.putForUrl(context, item.streamUrl, headers, media3Id = item.media3Id)
             val mime = item.mimeType.takeIf { it.isNotBlank() }
                 ?: when {
                     item.streamUrl.contains(".m3u8", ignoreCase = true) -> MimeTypes.APPLICATION_M3U8

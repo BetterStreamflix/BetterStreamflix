@@ -1666,4 +1666,7 @@
 <string name="settings_download_soft_limit_value">%1$d GB soft limit</string>
 <string name="settings_download_storage_detail">%1$s used · %2$s free · limit %3$d GB</string>
 
+    <string name="settings_download_storage_custom_readonly">Eigener Ordner (aktuell — neuen Ort am Telefon wählen)</string>
+    <string name="download_location_readme_body">BetterStreamflix Offline-Downloads\n\nAdaptiver (HLS/DASH) Offline-Cache liegt im App-Ordner auf diesem Datenträger, damit die Wiedergabe zuverlässig funktioniert:\n%1$s\n\nDieser Ordner wurde gewählt, damit BetterStreamflix Schreibzugriff über Neustarts behält.\n</string>
+    <string name="downloads_delete_confirm">Diesen Download löschen?</string>
 </resources>

@@ -1,8 +1,12 @@
 package com.dskja.betterstreamflix.download
 
 /**
- * Rewrites an HLS/DASH-ish playlist so every media reference points at a
- * local proxy. Relative segment URIs are resolved against [baseUrl] first.
+ * Rewrites an HLS playlist so every media reference points at a local proxy.
+ * Relative segment URIs are resolved against [baseUrl] first.
+ *
+ * DASH/MPD offline share / Play-with is intentionally unsupported: there is no
+ * MPD rewrite path. [looksLikePlaylist] may accept MPD markers in the future,
+ * but [OfflineCacheProxy] still fails closed until a real rewrite exists (DL-P2-G).
  */
 object OfflinePlaylistRewrite {
     private val uriAttrDouble = Regex("""URI="([^"]+)"""")
@@ -48,6 +52,10 @@ object OfflinePlaylistRewrite {
             .getOrDefault(trimmed)
     }
 
+    /**
+     * True for HLS playlists only. DASH/MPD is intentionally not accepted here
+     * until a real MPD rewrite exists (Play-with / share stay fail-closed).
+     */
     fun looksLikePlaylist(body: String): Boolean =
         body.trimStart().startsWith("#EXTM3U") || body.trimStart().startsWith("#EXT-X-")
 
