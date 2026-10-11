@@ -13,6 +13,8 @@ import com.dskja.betterstreamflix.download.DownloadRepository
 import com.dskja.betterstreamflix.download.DownloadSeriesFolders
 import com.dskja.betterstreamflix.download.DownloadStats
 import com.dskja.betterstreamflix.download.DownloadStorage
+import com.dskja.betterstreamflix.download.OfflineLibrary
+import com.dskja.betterstreamflix.download.OfflinePlayback
 import com.dskja.betterstreamflix.download.StreamflixDownloadManager
 import com.dskja.betterstreamflix.models.Episode
 import com.dskja.betterstreamflix.models.Movie
@@ -21,6 +23,7 @@ import com.dskja.betterstreamflix.models.TvShow
 import com.dskja.betterstreamflix.profiles.ProfileManager
 import com.dskja.betterstreamflix.utils.ParentalControlUtils
 import com.dskja.betterstreamflix.utils.UserPreferences
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -30,6 +33,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.mapLatest
 import kotlinx.coroutines.flow.stateIn
@@ -46,12 +50,16 @@ class DownloadsViewModel(
     private val sort = MutableStateFlow(DownloadsSort.NEWEST)
     private val collapsedSeries = MutableStateFlow<Set<String>>(emptySet())
     private val profileTick = MutableStateFlow(0)
+    private val viewMode = MutableStateFlow(DownloadsViewMode.LIBRARY)
+    private val libraryQuery = MutableStateFlow("")
     private var boundProfileId: String = ProfileManager.activeProfileId
     private var progressJob: Job? = null
     private var reconcileJob: Job? = null
 
     val selectedFilter: StateFlow<DownloadsFilter> = filter.asStateFlow()
     val selectedSort: StateFlow<DownloadsSort> = sort.asStateFlow()
+    val selectedViewMode: StateFlow<DownloadsViewMode> = viewMode.asStateFlow()
+    val librarySearchQuery: StateFlow<String> = libraryQuery.asStateFlow()
 
     val storageLabel: StateFlow<String> = MutableStateFlow(
         DownloadStats.storageSummary(appContext),
@@ -106,6 +114,40 @@ class DownloadsViewModel(
             buildRows(filteredItems, q.packs, q.filter, q.sort, q.collapsed)
         }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    /**
+     * Completed, playable titles for the Offline-Bibliothek poster grid.
+     * Local title filter only — never hits providers or TMDb.
+     */
+    @OptIn(ExperimentalCoroutinesApi::class)
+    val libraryEntries: StateFlow<List<OfflineLibrary.Entry>> = profileTick
+        .flatMapLatest {
+            combine(repo().observeAll(), libraryQuery) { items, query -> items to query }
+        }
+        .mapLatest { (items, query) ->
+            val parental = applyParentalFilter(items)
+            val providerFilter = UserPreferences.downloadFilterCurrentProvider
+            val providerName = UserPreferences.currentProvider?.name
+            val completed = parental
+                .groupBy { it.contentKey }
+                .map { (_, rows) -> rows.maxBy { it.updatedAt } }
+                .filter { it.state == DownloadItemState.COMPLETED.name }
+                .filter { !providerFilter || providerName.isNullOrBlank() || it.providerName == providerName }
+                .filter { OfflinePlayback.canPlayOffline(appContext, it) }
+            OfflineLibrary.filter(OfflineLibrary.build(completed), query)
+        }
+        .flowOn(Dispatchers.Default)
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    fun setViewMode(value: DownloadsViewMode) {
+        viewMode.value = value
+    }
+
+    fun setLibraryQuery(value: String) {
+        libraryQuery.value = value
+    }
+
+    fun currentViewMode(): DownloadsViewMode = viewMode.value
 
     fun setFilter(value: DownloadsFilter) {
         filter.value = value

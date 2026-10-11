@@ -1,9 +1,12 @@
 package com.dskja.betterstreamflix.fragments.downloads
 
 import android.os.Bundle
+import android.text.Editable
+import android.text.TextWatcher
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.view.inputmethod.EditorInfo
 import androidx.core.os.bundleOf
 import androidx.core.view.isVisible
 import androidx.fragment.app.Fragment
@@ -11,20 +14,26 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.flowWithLifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.navigation.fragment.findNavController
+import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.dskja.betterstreamflix.R
+import com.dskja.betterstreamflix.adapters.AppAdapter
 import com.dskja.betterstreamflix.databinding.FragmentDownloadsTvBinding
 import com.dskja.betterstreamflix.download.DownloadController
+import com.dskja.betterstreamflix.download.DownloadItemEntity
 import com.dskja.betterstreamflix.download.DownloadItemState
 import com.dskja.betterstreamflix.download.ExternalDownloadHandoff
+import com.dskja.betterstreamflix.download.OfflineLibrary
 import com.dskja.betterstreamflix.download.OfflinePlayback
 import com.dskja.betterstreamflix.download.ui.DownloadOptionsController
 import com.dskja.betterstreamflix.download.ui.DownloadRowUiModel
 import com.dskja.betterstreamflix.download.ui.DownloadsAdapter
 import com.dskja.betterstreamflix.download.ui.DownloadsFilter
 import com.dskja.betterstreamflix.download.ui.DownloadsSort
+import com.dskja.betterstreamflix.download.ui.DownloadsViewMode
 import com.dskja.betterstreamflix.download.ui.DownloadsViewModel
+import com.dskja.betterstreamflix.download.ui.OfflineLibraryActions
 import com.dskja.betterstreamflix.fragments.settings.SettingsDeepLink
 import com.dskja.betterstreamflix.models.Episode
 import com.dskja.betterstreamflix.models.Movie
@@ -34,9 +43,12 @@ import com.dskja.betterstreamflix.utils.ExpDialogChrome
 import com.dskja.betterstreamflix.models.TvShow
 import com.dskja.betterstreamflix.models.Video
 import com.dskja.betterstreamflix.providers.Provider
+import com.dskja.betterstreamflix.ui.SpacingItemDecoration
 import com.dskja.betterstreamflix.utils.ExpEmptyChrome
 import com.dskja.betterstreamflix.utils.TvFocusChain
 import com.dskja.betterstreamflix.utils.UserPreferences
+import com.dskja.betterstreamflix.utils.dp
+import com.dskja.betterstreamflix.utils.hideKeyboard
 import com.dskja.betterstreamflix.utils.viewModelsFactory
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.combine
@@ -49,6 +61,23 @@ class DownloadsTvFragment : Fragment() {
 
     private val viewModel by viewModelsFactory {
         DownloadsViewModel(requireContext().applicationContext)
+    }
+
+    private var libraryEntries: List<OfflineLibrary.Entry> = emptyList()
+    private var librarySpacing: RecyclerView.ItemDecoration? = null
+    private val libraryAdapter = AppAdapter().apply {
+        onMovieClickListener = { movie ->
+            val entity = OfflineLibrary.findMovieEntity(libraryEntries, movie.id)
+            if (entity != null) playOfflineEntity(entity)
+        }
+        onTvShowClickListener = { show ->
+            val series = OfflineLibrary.findSeries(libraryEntries, show.id)
+            if (series != null) {
+                OfflineLibraryActions.showSeriesEpisodePicker(requireContext(), series) {
+                    playOfflineEntity(it)
+                }
+            }
+        }
     }
 
     private val adapter = DownloadsAdapter(
@@ -85,30 +114,12 @@ class DownloadsTvFragment : Fragment() {
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
-        binding.rvDownloads.layoutManager = object : LinearLayoutManager(requireContext()) {
-            override fun onInterceptFocusSearch(focused: View, direction: Int): View? {
-                if (direction == View.FOCUS_LEFT) {
-                    val row = binding.rvDownloads.findContainingItemView(focused)
-                    val primary = row?.findViewById<View>(R.id.btn_download_primary)
-                    val delete = row?.findViewById<View>(R.id.btn_download_delete)
-                    val atLeftEdge = primary == null || focused == primary || focused == row
-                    if (atLeftEdge && focused != delete) {
-                        return activity?.findViewById(R.id.nav_main)
-                    }
-                }
-                if (direction == View.FOCUS_UP) {
-                    val row = binding.rvDownloads.findContainingItemView(focused)
-                    val position = row?.let(binding.rvDownloads::getChildAdapterPosition)
-                        ?: RecyclerView.NO_POSITION
-                    if (position == 0) return binding.chipFilterAll
-                }
-                return super.onInterceptFocusSearch(focused, direction)
-            }
-        }
         binding.rvDownloads.itemAnimator = null
-        binding.rvDownloads.adapter = adapter
         wireDownloadFocus()
         binding.btnDownloadsMenu.setOnClickListener { showMenu(it) }
+        binding.chipModeLibrary.setOnClickListener { viewModel.setViewMode(DownloadsViewMode.LIBRARY) }
+        binding.chipModeManage.setOnClickListener { viewModel.setViewMode(DownloadsViewMode.MANAGE) }
+        wireOfflineLibrarySearch()
         binding.chipFilterAll.setOnClickListener { viewModel.setFilter(DownloadsFilter.ALL) }
         binding.chipFilterDownloading.setOnClickListener { viewModel.setFilter(DownloadsFilter.DOWNLOADING) }
         binding.chipFilterCompleted.setOnClickListener { viewModel.setFilter(DownloadsFilter.COMPLETED) }
@@ -118,56 +129,41 @@ class DownloadsTvFragment : Fragment() {
         binding.root.findViewById<View>(R.id.v_downloads_filters_edge_fade_end)?.isVisible = false
 
         viewLifecycleOwner.lifecycleScope.launch {
+            viewModel.selectedViewMode
+                .flowWithLifecycle(lifecycle, Lifecycle.State.STARTED)
+                .collect { applyViewMode(it) }
+        }
+        viewLifecycleOwner.lifecycleScope.launch {
+            combine(viewModel.libraryEntries, viewModel.librarySearchQuery) { entries, query ->
+                entries to query
+            }
+                .flowWithLifecycle(lifecycle, Lifecycle.State.STARTED)
+                .collect { (entries, query) ->
+                    libraryEntries = entries
+                    if (viewModel.currentViewMode() != DownloadsViewMode.LIBRARY) return@collect
+                    libraryAdapter.submitList(OfflineLibrary.toAppItems(entries, mobile = false))
+                    renderTvEmpty(
+                        empty = entries.isEmpty(),
+                        libraryMode = true,
+                        searchActive = query.isNotBlank(),
+                        manageFilter = viewModel.currentFilter(),
+                    )
+                }
+        }
+        viewLifecycleOwner.lifecycleScope.launch {
             // Combine filter so empty→empty filter switches still refresh CTA copy
             // (StateFlow skips equal emptyList emissions).
             combine(viewModel.rows, viewModel.selectedFilter) { rows, filter -> rows to filter }
                 .flowWithLifecycle(lifecycle, Lifecycle.State.STARTED)
                 .collect { (rows, filter) ->
+                if (viewModel.currentViewMode() != DownloadsViewMode.MANAGE) return@collect
                 adapter.submitList(rows.toList())
-                val empty = rows.isEmpty()
-                binding.tvDownloadsEmpty.isVisible = empty
-                binding.tvDownloadsEmpty.setText(
-                    if (filter == DownloadsFilter.ALL) {
-                        R.string.downloads_empty
-                    } else {
-                        R.string.downloads_filter_empty
-                    },
+                renderTvEmpty(
+                    empty = rows.isEmpty(),
+                    libraryMode = false,
+                    searchActive = false,
+                    manageFilter = filter,
                 )
-                val emptyCta = binding.root.findViewById<android.widget.TextView>(
-                    R.id.btn_downloads_empty_cta,
-                )
-                val filterAll = filter == DownloadsFilter.ALL
-                ExpEmptyChrome.bind(
-                    emptyView = binding.tvDownloadsEmpty,
-                    emptyRule = binding.root.findViewById(R.id.v_downloads_empty_rule),
-                    emptyCta = emptyCta,
-                    visible = empty,
-                    tintOnSurfaceVariant = false,
-                    onCtaClick = {
-                        if (filterAll) {
-                            runCatching { findNavController().navigate(R.id.home) }
-                        } else {
-                            viewModel.setFilter(DownloadsFilter.ALL)
-                        }
-                    },
-                )
-                if (!empty) {
-                    binding.tvDownloadsEmpty.setTag(R.id.exp_enter_animated_tag, null)
-                }
-                val downId = if (empty) {
-                    emptyCta?.id ?: binding.chipFilterAll.id
-                } else {
-                    binding.rvDownloads.id
-                }
-                listOf(
-                    binding.chipFilterAll,
-                    binding.chipFilterDownloading,
-                    binding.chipFilterCompleted,
-                    binding.chipFilterFailed,
-                ).forEach { chip -> chip.nextFocusDownId = downId }
-                if (empty && binding.rvDownloads.hasFocus()) {
-                    emptyCta?.requestFocus() ?: binding.chipFilterAll.requestFocus()
-                }
             }
         }
         viewLifecycleOwner.lifecycleScope.launch {
@@ -203,30 +199,201 @@ class DownloadsTvFragment : Fragment() {
         }
         viewModel.refreshStorage()
         styleFilters(viewModel.currentFilter())
+        applyViewMode(viewModel.currentViewMode())
+    }
+
+    private fun applyViewMode(mode: DownloadsViewMode) {
+        val library = mode == DownloadsViewMode.LIBRARY
+        binding.tvDownloadsTitle.setText(
+            if (library) R.string.offline_library_title else R.string.downloads_title,
+        )
+        binding.llOfflineLibraryBadge.isVisible = library
+        binding.clOfflineLibrarySearch.isVisible = library
+        binding.hsvDownloadsFilters.isVisible = !library
+        styleChip(binding.chipModeLibrary, library)
+        styleChip(binding.chipModeManage, !library)
+        librarySpacing?.let { binding.rvDownloads.removeItemDecoration(it) }
+        librarySpacing = null
+        if (library) {
+            binding.rvDownloads.layoutManager = object : GridLayoutManager(requireContext(), 5) {
+                override fun onInterceptFocusSearch(focused: View, direction: Int): View? {
+                    if (direction == View.FOCUS_LEFT) {
+                        val pos = binding.rvDownloads.getChildAdapterPosition(
+                            binding.rvDownloads.findContainingItemView(focused) ?: return@onInterceptFocusSearch null,
+                        )
+                        if (pos >= 0 && pos % spanCount == 0) {
+                            return activity?.findViewById(R.id.nav_main)
+                        }
+                    }
+                    if (direction == View.FOCUS_UP) {
+                        val pos = binding.rvDownloads.getChildAdapterPosition(
+                            binding.rvDownloads.findContainingItemView(focused) ?: return@onInterceptFocusSearch null,
+                        )
+                        if (pos in 0 until spanCount) return binding.etOfflineLibrarySearch
+                    }
+                    return super.onInterceptFocusSearch(focused, direction)
+                }
+            }
+            binding.rvDownloads.adapter = libraryAdapter
+            librarySpacing = SpacingItemDecoration(12.dp(requireContext())).also {
+                binding.rvDownloads.addItemDecoration(it)
+            }
+            libraryAdapter.submitList(OfflineLibrary.toAppItems(libraryEntries, mobile = false))
+            renderTvEmpty(
+                empty = libraryEntries.isEmpty(),
+                libraryMode = true,
+                searchActive = viewModel.librarySearchQuery.value.isNotBlank(),
+                manageFilter = viewModel.currentFilter(),
+            )
+        } else {
+            binding.rvDownloads.layoutManager = object : LinearLayoutManager(requireContext()) {
+                override fun onInterceptFocusSearch(focused: View, direction: Int): View? {
+                    if (direction == View.FOCUS_LEFT) {
+                        val row = binding.rvDownloads.findContainingItemView(focused)
+                        val primary = row?.findViewById<View>(R.id.btn_download_primary)
+                        val delete = row?.findViewById<View>(R.id.btn_download_delete)
+                        val atLeftEdge = primary == null || focused == primary || focused == row
+                        if (atLeftEdge && focused != delete) {
+                            return activity?.findViewById(R.id.nav_main)
+                        }
+                    }
+                    if (direction == View.FOCUS_UP) {
+                        val row = binding.rvDownloads.findContainingItemView(focused)
+                        val position = row?.let(binding.rvDownloads::getChildAdapterPosition)
+                            ?: RecyclerView.NO_POSITION
+                        if (position == 0) return binding.chipFilterAll
+                    }
+                    return super.onInterceptFocusSearch(focused, direction)
+                }
+            }
+            binding.rvDownloads.adapter = adapter
+            renderTvEmpty(
+                empty = adapter.itemCount == 0,
+                libraryMode = false,
+                searchActive = false,
+                manageFilter = viewModel.currentFilter(),
+            )
+        }
+        wireDownloadFocus()
+    }
+
+    private fun wireOfflineLibrarySearch() {
+        val search = binding.etOfflineLibrarySearch
+        val clear = binding.btnOfflineLibrarySearchClear
+        search.addTextChangedListener(object : TextWatcher {
+            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) = Unit
+            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) = Unit
+            override fun afterTextChanged(s: Editable?) {
+                val q = s?.toString().orEmpty()
+                clear.isVisible = q.isNotBlank()
+                viewModel.setLibraryQuery(q)
+            }
+        })
+        search.setOnEditorActionListener { _, actionId, _ ->
+            if (actionId == EditorInfo.IME_ACTION_SEARCH) {
+                hideKeyboard()
+                true
+            } else {
+                false
+            }
+        }
+        clear.setOnClickListener {
+            search.setText("")
+            hideKeyboard()
+        }
+    }
+
+    private fun renderTvEmpty(
+        empty: Boolean,
+        libraryMode: Boolean,
+        searchActive: Boolean,
+        manageFilter: DownloadsFilter,
+    ) {
+        binding.tvDownloadsEmpty.setText(
+            when {
+                libraryMode && searchActive -> R.string.offline_library_empty_search
+                libraryMode -> R.string.offline_library_empty
+                manageFilter == DownloadsFilter.ALL -> R.string.downloads_empty
+                else -> R.string.downloads_filter_empty
+            },
+        )
+        val emptyCta = binding.root.findViewById<android.widget.TextView>(
+            R.id.btn_downloads_empty_cta,
+        )
+        ExpEmptyChrome.bind(
+            emptyView = binding.tvDownloadsEmpty,
+            emptyRule = binding.root.findViewById(R.id.v_downloads_empty_rule),
+            emptyCta = emptyCta,
+            visible = empty,
+            tintOnSurfaceVariant = false,
+            onCtaClick = {
+                when {
+                    libraryMode && searchActive -> {
+                        binding.etOfflineLibrarySearch.setText("")
+                        viewModel.setLibraryQuery("")
+                    }
+                    libraryMode || manageFilter == DownloadsFilter.ALL ->
+                        runCatching { findNavController().navigate(R.id.home) }
+                    else -> viewModel.setFilter(DownloadsFilter.ALL)
+                }
+            },
+        )
+        if (!empty) {
+            binding.tvDownloadsEmpty.setTag(R.id.exp_enter_animated_tag, null)
+        }
+        val downId = if (empty) {
+            emptyCta?.id ?: binding.chipModeLibrary.id
+        } else {
+            binding.rvDownloads.id
+        }
+        listOf(
+            binding.chipModeLibrary,
+            binding.chipModeManage,
+            binding.chipFilterAll,
+            binding.chipFilterDownloading,
+            binding.chipFilterCompleted,
+            binding.chipFilterFailed,
+        ).forEach { chip -> chip.nextFocusDownId = downId }
+        binding.etOfflineLibrarySearch.nextFocusDownId = downId
+        if (empty && binding.rvDownloads.hasFocus()) {
+            emptyCta?.requestFocus() ?: binding.chipModeLibrary.requestFocus()
+        }
     }
 
     private fun wireDownloadFocus() {
         binding.hsvDownloadsFilters.isFocusable = false
+        TvFocusChain.linkHorizontal(binding.chipModeLibrary, binding.chipModeManage)
         TvFocusChain.linkHorizontal(
             binding.chipFilterAll,
             binding.chipFilterDownloading,
             binding.chipFilterCompleted,
             binding.chipFilterFailed,
         )
+        binding.chipModeLibrary.nextFocusLeftId = R.id.nav_main
         binding.chipFilterAll.nextFocusLeftId = R.id.nav_main
+        listOf(binding.chipModeLibrary, binding.chipModeManage).forEach { chip ->
+            chip.nextFocusUpId = binding.switchDownloadsWifiOnly.id
+            chip.nextFocusDownId = if (viewModel.currentViewMode() == DownloadsViewMode.LIBRARY) {
+                binding.etOfflineLibrarySearch.id
+            } else {
+                binding.chipFilterAll.id
+            }
+        }
         listOf(
             binding.chipFilterAll,
             binding.chipFilterDownloading,
             binding.chipFilterCompleted,
             binding.chipFilterFailed,
         ).forEach { chip ->
-            chip.nextFocusUpId = binding.switchDownloadsWifiOnly.id
+            chip.nextFocusUpId = binding.chipModeLibrary.id
             chip.nextFocusDownId = binding.rvDownloads.id
         }
+        binding.etOfflineLibrarySearch.nextFocusUpId = binding.chipModeLibrary.id
+        binding.etOfflineLibrarySearch.nextFocusLeftId = R.id.nav_main
         binding.btnDownloadsMenu.nextFocusDownId = binding.switchDownloadsWifiOnly.id
-        binding.btnDownloadsMenu.nextFocusLeftId = binding.chipFilterFailed.id
+        binding.btnDownloadsMenu.nextFocusLeftId = binding.chipModeManage.id
         binding.switchDownloadsWifiOnly.nextFocusUpId = binding.btnDownloadsMenu.id
-        binding.switchDownloadsWifiOnly.nextFocusDownId = binding.chipFilterAll.id
+        binding.switchDownloadsWifiOnly.nextFocusDownId = binding.chipModeLibrary.id
         binding.switchDownloadsWifiOnly.nextFocusLeftId = R.id.nav_main
     }
 
@@ -446,21 +613,27 @@ class DownloadsTvFragment : Fragment() {
         }
     }
 
-    private fun playOffline(row: DownloadRowUiModel.Item) {
+    private fun playOffline(row: DownloadRowUiModel.Item) = playOfflineEntity(row.entity)
+
+    private fun playOfflineEntity(entity: DownloadItemEntity) {
         viewLifecycleOwner.lifecycleScope.launch {
-            val videoType = DownloadController.deserializeVideoType(row.entity.videoTypeJson)
+            if (!viewModel.isPlayAllowed(entity)) {
+                showDownloadError(R.string.downloads_failed_generic)
+                return@launch
+            }
+            val videoType = DownloadController.deserializeVideoType(entity.videoTypeJson)
             if (videoType == null) {
                 showDownloadError(R.string.download_error_file_missing)
                 return@launch
             }
-            activateDownloadProvider(row.entity.providerName)
+            activateDownloadProvider(entity.providerName)
             val local = withContext(Dispatchers.IO) {
-                OfflinePlayback.buildLocalVideo(requireContext(), row.entity)
+                OfflinePlayback.buildLocalVideo(requireContext(), entity)
             } ?: run {
                 showDownloadError(R.string.download_error_file_missing)
                 return@launch
             }
-            OfflineVideoCache.put(row.entity.contentKey, local)
+            OfflineVideoCache.put(entity.contentKey, local)
             findNavController().navigate(
                 R.id.action_global_player,
                 bundleOf(
@@ -470,8 +643,8 @@ class DownloadsTvFragment : Fragment() {
                             is Video.Type.Episode -> it.id
                         }
                     },
-                    "title" to row.entity.title,
-                    "subtitle" to row.entity.subtitle,
+                    "title" to entity.title,
+                    "subtitle" to entity.subtitle,
                     "videoType" to videoType,
                     "preferredServerName" to DownloadsMobileFragment.OFFLINE_SERVER,
                 ),
