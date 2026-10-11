@@ -76,11 +76,7 @@ object SubtitleStudio {
         UserPreferences.captionStyle = CaptionStyleCompat(
             preset.fontColor,
             preset.backgroundColor,
-<<<<<<< HEAD
-            0x00000000,
-=======
             0x00000000, // transparent window (no android.graphics.Color — JVM tests)
->>>>>>> ca60be14 (Add QR/file profile export and import)
             preset.edgeType,
             preset.edgeColor,
             null,
