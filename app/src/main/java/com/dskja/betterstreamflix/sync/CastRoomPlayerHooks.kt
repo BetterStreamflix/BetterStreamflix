@@ -20,6 +20,7 @@ object CastRoomPlayerHooks {
         fun positionMs(): Long
         fun isPlaying(): Boolean
         fun setPlayWhenReady(playing: Boolean)
+        fun seekTo(positionMs: Long)
         fun currentCastRoomIndex(): Int
     }
 
@@ -70,6 +71,14 @@ object CastRoomPlayerHooks {
             if (bridge.isPlaying() != playing) {
                 bridge.setPlayWhenReady(playing)
             }
+        }
+    }
+
+    fun applyRemoteSeek(fragment: Fragment, bridge: PlayerBridge, positionMs: Long) {
+        fragment.viewLifecycleOwner.lifecycleScope.launch(Dispatchers.Main) {
+            if (!fragment.isAdded || !CastRoomSession.isHost()) return@launch
+            if (bridge.isLiveOrOffline()) return@launch
+            bridge.seekTo(TvSidekick.clampSeek(positionMs))
         }
     }
 

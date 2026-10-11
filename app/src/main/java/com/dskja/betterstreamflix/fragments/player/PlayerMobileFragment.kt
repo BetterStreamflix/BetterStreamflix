@@ -1907,6 +1907,10 @@ class PlayerMobileFragment : Fragment(),
                     }
                 }
 
+                override fun seekTo(positionMs: Long) {
+                    runCatching { activePlayer().seekTo(positionMs.coerceAtLeast(0L)) }
+                }
+
                 override fun currentCastRoomIndex(): Int =
                     com.dskja.betterstreamflix.sync.CastRoomUi.latestPayload()?.nowPlayingIndex ?: 0
             },

@@ -204,6 +204,16 @@ class SearchTvFragment : Fragment() {
         _binding = null
     }
 
+    /** TV Sidekick Phone keyboard — fill Search and run. */
+    fun applySidekickQuery(query: String) {
+        if (!isAdded || _binding == null) return
+        val cleaned = query.trim()
+        if (cleaned.isEmpty()) return
+        binding.etSearch.setText(cleaned)
+        binding.etSearch.setSelection(cleaned.length)
+        submitSearch()
+    }
+
     private fun retryLastSearch() {
         val query = viewModel.query
         if (binding.llGlobalSearch.isChecked) {

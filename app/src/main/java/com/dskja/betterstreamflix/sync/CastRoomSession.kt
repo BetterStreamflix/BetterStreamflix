@@ -32,6 +32,14 @@ object CastRoomSession {
     @Volatile
     var lastAppliedPlaying: Boolean? = null
 
+    /** Last Sidekick scrubber sequence applied on the TV host. */
+    @Volatile
+    var lastAppliedSeekSeq: Long = 0L
+
+    /** Last Sidekick keyboard sequence applied on the TV host. */
+    @Volatile
+    var lastAppliedTextSeq: Long = 0L
+
     fun beginHost(token: String, roomId: String?, shortCode: String?) {
         role = Role.HOST
         this.token = token
@@ -40,6 +48,8 @@ object CastRoomSession {
         lastAppliedRevision = -1L
         lastAppliedPlayingKey = null
         lastAppliedPlaying = null
+        lastAppliedSeekSeq = 0L
+        lastAppliedTextSeq = 0L
     }
 
     fun beginController(token: String, roomId: String?, shortCode: String?) {
@@ -50,6 +60,8 @@ object CastRoomSession {
         lastAppliedRevision = -1L
         lastAppliedPlayingKey = null
         lastAppliedPlaying = null
+        lastAppliedSeekSeq = 0L
+        lastAppliedTextSeq = 0L
     }
 
     fun clear() {
@@ -60,6 +72,8 @@ object CastRoomSession {
         lastAppliedRevision = -1L
         lastAppliedPlayingKey = null
         lastAppliedPlaying = null
+        lastAppliedSeekSeq = 0L
+        lastAppliedTextSeq = 0L
     }
 
     fun isActive(): Boolean = role != null && !token.isNullOrBlank()
