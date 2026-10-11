@@ -128,6 +128,10 @@ object StreamSports99Provider : IptvProvider, ProviderConfigUrl {
                 .thenBy { it.country }
                 .thenBy { it.name.lowercase(Locale.US) },
         )
+        // Never cache an empty scrape — retry next call instead of serving 20 min of nothing.
+        if (sorted.isEmpty()) {
+            throw Exception("StreamSports99: channels API returned zero usable channels")
+        }
         cached = sorted
         lastFetch = now
         Log.d(TAG, "channels=${sorted.size} countries=${sorted.map { it.country }.distinct().size}")
@@ -147,7 +151,7 @@ object StreamSports99Provider : IptvProvider, ProviderConfigUrl {
             all.groupBy { it.country }.mapValues { (_, v) -> v.map { toShow(it) } },
             limitCountries = 20,
             // Show a fuller shelf; genre/country browse still has the complete catalog.
-            perCountry = 36,
+            perCountry = 48,
         )
         // Popular countries as dedicated rails
         listOf("us", "gb", "de", "fr", "es", "it", "tr", "br", "pl", "au").forEach { code ->

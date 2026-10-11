@@ -3,6 +3,7 @@ package com.dskja.betterstreamflix.providers
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
+import com.dskja.betterstreamflix.utils.LiveCatalogMeta
 import com.dskja.betterstreamflix.utils.UserPreferences
 import com.dskja.betterstreamflix.utils.M3uChannelIdCodec
 import com.dskja.betterstreamflix.utils.M3uPlaylistParser
@@ -91,6 +92,9 @@ object IptvOrgProvider : IptvProvider, ProviderConfigUrl {
         return Triple(payload.url, payload.name, payload.logo)
     }
 
+    @Volatile
+    private var lastM3uFailed: Boolean = false
+
     private fun getAllChannels(): List<M3UChannel> {
         val now = System.currentTimeMillis()
         val cached = cachedChannels
@@ -98,15 +102,36 @@ object IptvOrgProvider : IptvProvider, ProviderConfigUrl {
 
         return try {
             val request = Request.Builder().url("$baseUrl/index.m3u").build()
-            val body = client.newCall(request).execute().use { it.body?.string() }
-            if (body.isNullOrBlank()) return emptyList()
-            val channels = parseM3U(body)
-            cachedChannels = channels
-            lastFetchTime = now
-            channels
+            client.newCall(request).execute().use { response ->
+                if (!response.isSuccessful) {
+                    lastM3uFailed = true
+                    Log.e(TAG, "M3U HTTP ${response.code}")
+                    throw Exception("IPTV-All World: HTTP ${response.code} fetching playlist")
+                }
+                val body = response.body?.string()
+                if (body.isNullOrBlank()) {
+                    lastM3uFailed = true
+                    throw Exception("IPTV-All World: empty playlist body")
+                }
+                val channels = parseM3U(body)
+                if (channels.isEmpty()) {
+                    lastM3uFailed = true
+                    throw Exception("IPTV-All World: playlist parsed to zero channels")
+                }
+                lastM3uFailed = false
+                cachedChannels = channels
+                lastFetchTime = now
+                channels
+            }
         } catch (e: Exception) {
             Log.e(TAG, "❌ Error M3U: ${e.message}")
-            cachedChannels ?: emptyList()
+            val stale = cachedChannels
+            if (!stale.isNullOrEmpty()) {
+                lastM3uFailed = false
+                return stale
+            }
+            lastM3uFailed = true
+            throw e
         }
     }
 
@@ -132,7 +157,11 @@ object IptvOrgProvider : IptvProvider, ProviderConfigUrl {
                             id = createId(channel),
                             title = channel.name,
                             poster = channel.logo ?: "",
-                            banner = channel.logo ?: ""
+                            banner = channel.logo ?: "",
+                            overview = LiveCatalogMeta.overview(
+                                title = channel.name,
+                                group = groupName,
+                            ),
                         )
                     }
                 )
@@ -140,16 +169,18 @@ object IptvOrgProvider : IptvProvider, ProviderConfigUrl {
 
         categories.addAll(channelCategories)
 
-        // 2. AÑADIMOS SOPORTE ÚNICAMENTE AL FINAL (PARTE ULTIMA)
-        categories.add(
-            Category(
-                name = "Soporte y Ayuda",
-                list = listOf(
-                    getInfoItem("creador-info"),
-                    getInfoItem("apoyo-nando")
+        // Soporte only when M3U actually loaded — never mask a failed fetch as healthy home.
+        if (!lastM3uFailed && channels.isNotEmpty()) {
+            categories.add(
+                Category(
+                    name = "Soporte y Ayuda",
+                    list = listOf(
+                        getInfoItem("creador-info"),
+                        getInfoItem("apoyo-nando")
+                    )
                 )
             )
-        )
+        }
 
         return categories
     }
@@ -291,7 +322,15 @@ object IptvOrgProvider : IptvProvider, ProviderConfigUrl {
         val start = (page - 1) * pageSize
         if (start >= channels.size) return emptyList()
         return channels.drop(start).take(pageSize).map { channel ->
-            TvShow(id = createId(channel), title = channel.name, poster = channel.logo ?: "")
+            TvShow(
+                id = createId(channel),
+                title = channel.name,
+                poster = channel.logo ?: "",
+                overview = LiveCatalogMeta.overview(
+                    title = channel.name,
+                    group = channel.group,
+                ),
+            )
         }
     }
 }

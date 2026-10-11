@@ -5,11 +5,8 @@ import com.dskja.betterstreamflix.adapters.AppAdapter
 import com.dskja.betterstreamflix.extractors.AfterDarkExtractor
 import com.dskja.betterstreamflix.extractors.Extractor
 import com.dskja.betterstreamflix.extractors.MoflixExtractor
-import com.dskja.betterstreamflix.extractors.MoviesapiExtractor
-import com.dskja.betterstreamflix.extractors.TwoEmbedExtractor
 import com.dskja.betterstreamflix.extractors.VidzeeExtractor
 import com.dskja.betterstreamflix.extractors.VixSrcExtractor
-import com.dskja.betterstreamflix.extractors.VidLinkExtractor
 import com.dskja.betterstreamflix.extractors.EinschaltenExtractor
 import com.dskja.betterstreamflix.extractors.FrembedExtractor
 import com.dskja.betterstreamflix.extractors.VidrockExtractor
@@ -872,7 +869,27 @@ class TmdbProvider private constructor(override val language: String) : Provider
 
         when (lang) {
             "it" -> {
-                // Se la lingua è italiano, includiamo solo i server noti per l'italiano.
+                // Italian TMDb: discovery extractors + StreamingCommunity (Vixcloud) + VixSrc.
+                servers.addAll(VidzeeExtractor().servers(videoType))
+                servers.addAll(PrimeSrcExtractor().servers(videoType))
+                runCatching {
+                    val title = when (videoType) {
+                        is Video.Type.Movie -> videoType.title
+                        is Video.Type.Episode -> videoType.tvShow.title
+                    }
+                    val sc = StreamingCommunityProvider("it")
+                    val match = sc.search(title, 1).firstOrNull()
+                    val scId = when (match) {
+                        is Movie -> match.id
+                        is TvShow -> match.id
+                        else -> null
+                    }
+                    if (scId != null) {
+                        servers.addAll(sc.getServers(scId, videoType))
+                    }
+                }.onFailure {
+                    Log.w("TmdbProvider", "StreamingCommunity IT fan-out failed: ${it.message}")
+                }
                 servers.add(VixSrcExtractor().server(videoType))
             }
             "de" -> {
@@ -917,13 +934,21 @@ class TmdbProvider private constructor(override val language: String) : Provider
                             Log.d("TmdbProvider", "Moflix skipped (domain cooldown)")
                             return@async emptyList()
                         }
-                        withTimeoutOrNull(20_000L) {
+                        val discovered = withTimeoutOrNull(20_000L) {
                             MoflixExtractor().servers(videoType)
-                        }.orEmpty().also {
-                            if (it.isEmpty()) {
-                                Log.w("TmdbProvider", "Moflix discovery empty or timed out")
-                                moflixSkipUntilMs = System.currentTimeMillis() + 10 * 60_000L
+                        }
+                        when {
+                            discovered == null -> {
+                                // Soft-timeout: do not start the 10-min domain cooldown.
+                                Log.w("TmdbProvider", "Moflix discovery timed out")
+                                emptyList()
                             }
+                            discovered.isEmpty() -> {
+                                Log.w("TmdbProvider", "Moflix discovery empty")
+                                moflixSkipUntilMs = System.currentTimeMillis() + 10 * 60_000L
+                                emptyList()
+                            }
+                            else -> discovered
                         }
                     }
                     val nativeTask = async(Dispatchers.IO) {
@@ -959,7 +984,12 @@ class TmdbProvider private constructor(override val language: String) : Provider
                 
                 Log.i("BetterStreamflix", "[SEARCH START] -> Target: $targetTitle (${if (videoType is Video.Type.Movie) "Movie" else "TV Show"})")
 
-                // Funzione di matching rigorosa per i titoli e tipo
+                val targetYear = when (videoType) {
+                    is Video.Type.Movie -> videoType.releaseDate.take(4).takeIf { it.length == 4 }
+                    is Video.Type.Episode -> videoType.tvShow.releaseDate?.take(4)?.takeIf { it.length == 4 }
+                }
+
+                // Tight title match: prefer equals/startsWith; contains only when both sides > 5.
                 fun isMatch(item: AppAdapter.Item, target: String): Boolean {
                     val isCorrectType = if (videoType is Video.Type.Movie) item is Movie else item is TvShow
                     if (!isCorrectType) return false
@@ -967,34 +997,28 @@ class TmdbProvider private constructor(override val language: String) : Provider
                     val itemTitle = if (item is Movie) item.title else (item as TvShow).title
                     val nItem = itemTitle.lowercase().replace(Regex("[^a-z0-9]"), "")
                     val nTarget = target.lowercase().replace(Regex("[^a-z0-9]"), "")
-                    
-                    // Match esatto (normalizzato) ha la priorità
-                    if (nItem == nTarget) return true
-                    
-                    // Match parziale se contenuto e differenza lunghezza minima
-                    if (nItem.contains(nTarget) || nTarget.contains(nItem)) {
-                        val diff = Math.abs(nItem.length - nTarget.length)
-                        if (diff <= 5) return true
+                    if (nItem.isEmpty() || nTarget.isEmpty()) return false
+
+                    if (nItem == nTarget || nItem.startsWith(nTarget) || nTarget.startsWith(nItem)) {
+                        // ok so far
+                    } else if (nItem.length > 5 && nTarget.length > 5 &&
+                        (nItem.contains(nTarget) || nTarget.contains(nItem))
+                    ) {
+                        val diff = kotlin.math.abs(nItem.length - nTarget.length)
+                        if (diff > 5) return false
+                    } else {
+                        return false
                     }
-                    
-                    // Match per parole (almeno una deve corrispondere esattamente se il target è corto, o tutte se lungo)
-                    val cleanWords: (String) -> Set<String> = { s ->
-                        s.lowercase()
-                            .replace(Regex("[^a-z0-9 ]"), " ")
-                            .split(Regex("\\s+"))
-                            .filter { it.length > 2 }
-                            .toSet()
+
+                    if (targetYear != null) {
+                        val itemYear = when (item) {
+                            is Movie -> item.released?.get(java.util.Calendar.YEAR)?.toString()
+                            is TvShow -> item.released?.get(java.util.Calendar.YEAR)?.toString()
+                            else -> null
+                        }
+                        if (itemYear != null && itemYear != targetYear) return false
                     }
-                    val nItemWords = cleanWords(itemTitle)
-                    val nTargetWords = cleanWords(target)
-                    
-                    if (nItemWords.isEmpty() || nTargetWords.isEmpty()) return false
-                    
-                    // Se il target ha solo una parola importante, deve esserci
-                    if (nTargetWords.size == 1) return nItemWords.contains(nTargetWords.first())
-                    
-                    // Altrimenti tutte le parole del target devono essere presenti nell'item
-                    return nItemWords.containsAll(nTargetWords) || nTargetWords.containsAll(nItemWords)
+                    return true
                 }
 
                 coroutineScope {
@@ -1022,9 +1046,18 @@ class TmdbProvider private constructor(override val language: String) : Provider
                                     Log.d("BetterStreamflix", "[NO MATCH] -> ${provider.name} did not find a valid match for '$targetTitle'")
                                     emptyList()
                                 }
-                            } catch (e: Exception) { 
+                            } catch (e: kotlinx.coroutines.CancellationException) {
+                                throw e
+                            } catch (e: Exception) {
+                                // Soft-empty per provider, but surface timeouts clearly in logs.
                                 Log.e("BetterStreamflix", "[PROVIDER ERROR] -> ${provider.name}: ${e.message}")
-                                emptyList() 
+                                if (e is java.net.SocketTimeoutException ||
+                                    e is java.util.concurrent.TimeoutException ||
+                                    e.message?.contains("timeout", ignoreCase = true) == true
+                                ) {
+                                    Log.w("BetterStreamflix", "[PROVIDER TIMEOUT] -> ${provider.name}")
+                                }
+                                emptyList()
                             }
                         }
                     }
@@ -1032,21 +1065,16 @@ class TmdbProvider private constructor(override val language: String) : Provider
                 }
             }
             else -> {
-                // Discovering / probing extractors first. Optimistic embed stubs used to
-                // lead the list and burn VIDEO_RESOLVE_TIMEOUT on dead hosts before live ones.
+                // Discovery extractors only — no optimistic VidLink/TwoEmbed/Moviesapi stubs
+                // (those burned VIDEO_RESOLVE_TIMEOUT on dead hosts before live ones).
                 servers.addAll(VidzeeExtractor().servers(videoType))
                 servers.addAll(PrimeSrcExtractor().servers(videoType))
                 servers.addAll(VidrockExtractor().servers(videoType))
                 if (language == "en") {
                     servers.addAll(VideasyExtractor().servers(videoType, language))
                 }
-                // Smaller optimistic embed set, after live discovery.
+                // Optional last-resort embed that resolves without WebView.
                 servers.add(VixSrcExtractor().server(videoType))
-                servers.add(VidLinkExtractor().server(videoType))
-                servers.add(TwoEmbedExtractor().server(videoType))
-                if (videoType is Video.Type.Movie) {
-                    servers.add(MoviesapiExtractor().server(videoType))
-                }
             }
         }
 

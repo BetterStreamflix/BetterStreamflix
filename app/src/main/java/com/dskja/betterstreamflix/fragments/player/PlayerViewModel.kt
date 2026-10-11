@@ -282,11 +282,12 @@ class PlayerViewModel(
                 throw e
             } catch (e: Exception) {
                 Log.e("PlayerViewModel", "Errore estrazione video: ", e)
-                // Stale zap warm cache — drop so the next attempt re-resolves servers.
-                lastId?.let { channelId ->
-                    if (UserPreferences.currentProvider is com.dskja.betterstreamflix.providers.IptvProvider) {
+                // Stale zap warm cache — drop servers + warmed m3u8 so next attempt re-resolves.
+                if (UserPreferences.currentProvider is com.dskja.betterstreamflix.providers.IptvProvider) {
+                    lastId?.let { channelId ->
                         com.dskja.betterstreamflix.iptv.IptvZapPreloader.invalidate(channelId)
                     }
+                    com.dskja.betterstreamflix.iptv.IptvZapPreloader.invalidateVideo(server.id)
                 }
                 // Permanent hoster misses (404 / unpack / deleted) are expected failover noise —
                 // keep local logs but do not flood Sentry (BETTERSTREAMFLIX-10 / -12).

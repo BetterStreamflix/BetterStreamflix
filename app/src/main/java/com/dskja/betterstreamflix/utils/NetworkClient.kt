@@ -214,7 +214,9 @@ object NetworkClient {
             .connectTimeout(30, TimeUnit.SECONDS)
             .readTimeout(30, TimeUnit.SECONDS)
             .writeTimeout(30, TimeUnit.SECONDS)
-            .callTimeout(60, TimeUnit.SECONDS)
+            // Keep callTimeout near HOME_TIMEOUT_MS (25s) so cancelled coroutines
+            // are not stuck behind a long OkHttp hang.
+            .callTimeout(35, TimeUnit.SECONDS)
             .addInterceptor(retryAfterInterceptor)
             .dns(dns)
 

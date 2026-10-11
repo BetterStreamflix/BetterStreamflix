@@ -79,6 +79,7 @@ abstract class Extractor {
             NinjaStreamExtractor(),
             UchExtractor(),
             VixSrcExtractor(),
+            VixcloudExtractor(),
             GoodstreamExtractor(),
             LamovieExtractor(),
             UqloadExtractor(),
@@ -228,7 +229,13 @@ abstract class Extractor {
                         finalLink = redirectUrl
                     }
                 } catch (e: Exception) {
-                    Log.e("Extractor", "Universal Bridge error: ${e.message}")
+                    Log.e("Extractor", "Universal Bridge (mysync) error: ${e.message}")
+                    // Don't swallow timeouts / hard failures — let failover see them.
+                    if (com.dskja.betterstreamflix.utils.ExtractorTimeouts.isTimeout(e)) {
+                        throw Exception("mysync.mov bridge timed out: ${e.message}", e)
+                    }
+                    // Non-timeout parse/network errors: continue with unresolved link
+                    // so a hoster extractor may still match the original URL.
                 }
             }
 

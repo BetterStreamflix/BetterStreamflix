@@ -197,8 +197,12 @@ class FrembedExtractor (var newUrl: String = "") : Extractor() {
         throw Exception("None")
     }
 
-    suspend fun servers(videoType: Video.Type): List<Video.Server> {
-        Log.d("FrembedExtractor", "Fetching servers for videoType: $videoType using mainUrl: $mainUrl")
+    suspend fun servers(
+        videoType: Video.Type,
+        hop: Int = 0,
+        seenHosts: Set<String> = emptySet(),
+    ): List<Video.Server> {
+        Log.d("FrembedExtractor", "Fetching servers for videoType: $videoType using mainUrl: $mainUrl hop=$hop")
         return try {
             val ret = when (videoType) {
                 is Video.Type.Movie -> {
@@ -271,13 +275,21 @@ class FrembedExtractor (var newUrl: String = "") : Extractor() {
                     if (fullRedirect.startsWith("http")) {
                         try {
                             val uri = java.net.URI(fullRedirect)
-                            val newBaseUrl = "${uri.scheme}://${uri.host}/"
-                            if (uri.host?.contains("frembed", ignoreCase = true) == true) {
-                                Log.i("FrembedExtractor", "API redirected to a new domain. Updating cache to: $newBaseUrl")
-                                UserPreferences.setProviderCache(FrembedProvider, UserPreferences.PROVIDER_URL, newBaseUrl)
-                                UserPreferences.setProviderCache(FrembedProvider, UserPreferences.PROVIDER_LOGO, newBaseUrl + "favicon-32x32.png")
-                                FrembedProvider.rebuildService()
-                                return FrembedExtractor(newBaseUrl).servers(videoType)
+                            val host = uri.host?.lowercase().orEmpty()
+                            val newBaseUrl = "${uri.scheme}://$host/"
+                            if (host.contains("frembed")) {
+                                if (hop >= 3) {
+                                    Log.w("FrembedExtractor", "Max redirect hops (3) reached at $host")
+                                } else if (host in seenHosts.map { it.lowercase() }.toSet()) {
+                                    Log.w("FrembedExtractor", "Refusing repeat redirect host: $host")
+                                } else {
+                                    Log.i("FrembedExtractor", "API redirected to a new domain. Updating cache to: $newBaseUrl")
+                                    UserPreferences.setProviderCache(FrembedProvider, UserPreferences.PROVIDER_URL, newBaseUrl)
+                                    UserPreferences.setProviderCache(FrembedProvider, UserPreferences.PROVIDER_LOGO, newBaseUrl + "favicon-32x32.png")
+                                    FrembedProvider.rebuildService()
+                                    val nextSeen = seenHosts + host
+                                    return FrembedExtractor(newBaseUrl).servers(videoType, hop + 1, nextSeen)
+                                }
                             } else {
                                 Log.w("FrembedExtractor", "Ignoring non-Frembed redirect host: ${uri.host}")
                             }

@@ -24,8 +24,15 @@ abstract class GenericPackedSourceExtractor : Extractor() {
         var currentUrl = link
         var referer = "$refererUrl/"
         var source: String? = null
+        val visitedUrls = linkedSetOf<String>()
+        val visitedHosts = linkedSetOf<String>()
 
         for (attempt in 0 until MAX_REDIRECT_HOPS) {
+            val normalizedUrl = currentUrl.substringBefore('#').trimEnd('/')
+            val host = runCatching { URL(currentUrl).host.lowercase() }.getOrNull().orEmpty()
+            if (!visitedUrls.add(normalizedUrl)) break
+            if (host.isNotBlank()) visitedHosts.add(host)
+
             val document = service.get(
                 url = currentUrl,
                 referer = referer,
@@ -56,6 +63,11 @@ abstract class GenericPackedSourceExtractor : Extractor() {
             }
 
             val resolvedUrl = URL(URL(currentUrl), redirectUrl).toString()
+            val nextNorm = resolvedUrl.substringBefore('#').trimEnd('/')
+            val nextHost = runCatching { URL(resolvedUrl).host.lowercase() }.getOrNull().orEmpty()
+            // Refuse URL loops and hop-backs onto an already-visited host.
+            if (nextNorm in visitedUrls) break
+            if (nextHost.isNotBlank() && nextHost in visitedHosts && nextHost != host) break
             referer = currentUrl
             currentUrl = resolvedUrl
         }

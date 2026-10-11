@@ -156,6 +156,37 @@ object DaddyLiveTvProvider : IptvProvider, ProviderConfigUrl {
         ).findAll(html).forEach { m ->
             map.putIfAbsent(m.groupValues[1], "Channel ${m.groupValues[1]}")
         }
+        // Secondary card markup (grid tiles / data-channel / stream-N.php links).
+        if (map.isEmpty()) {
+            Regex(
+                """(?:data-channel|data-id)=["'](\d+)["'][^>]{0,200}?(?:data-name|data-title|title|aria-label)=["']([^"']+)["']""",
+                setOf(RegexOption.IGNORE_CASE, RegexOption.DOT_MATCHES_ALL),
+            ).findAll(html).forEach { m ->
+                val title = decodeHtml(m.groupValues[2].trim())
+                if (title.isNotBlank()) map.putIfAbsent(m.groupValues[1], title)
+            }
+            Regex(
+                """(?:data-name|data-title|title|aria-label)=["']([^"']+)["'][^>]{0,200}?(?:data-channel|data-id)=["'](\d+)["']""",
+                setOf(RegexOption.IGNORE_CASE, RegexOption.DOT_MATCHES_ALL),
+            ).findAll(html).forEach { m ->
+                val title = decodeHtml(m.groupValues[1].trim())
+                if (title.isNotBlank()) map.putIfAbsent(m.groupValues[2], title)
+            }
+            Regex(
+                """href=["'][^"']*stream-(\d+)\.php[^"']*["'][^>]*>\s*([^<]{2,80})\s*<""",
+                setOf(RegexOption.IGNORE_CASE, RegexOption.DOT_MATCHES_ALL),
+            ).findAll(html).forEach { m ->
+                val title = decodeHtml(m.groupValues[2].trim())
+                if (title.isNotBlank()) map.putIfAbsent(m.groupValues[1], title)
+            }
+            Regex(
+                """class=["'][^"']*channel[^"']*["'][^>]*>[\s\S]{0,300}?(\d{2,6})[\s\S]{0,120}?([A-Za-z][^<]{2,60})""",
+                setOf(RegexOption.IGNORE_CASE, RegexOption.DOT_MATCHES_ALL),
+            ).findAll(html).forEach { m ->
+                val title = decodeHtml(m.groupValues[2].trim())
+                if (title.isNotBlank()) map.putIfAbsent(m.groupValues[1], title)
+            }
+        }
         val imgById = HashMap<String, String>()
         Regex(
             """href="/watch\.php\?id=(\d+)"[\s\S]{0,400}?src="(https?://[^"]+\.(?:png|jpe?g|webp|svg)[^"]*)"""",
@@ -206,7 +237,7 @@ object DaddyLiveTvProvider : IptvProvider, ProviderConfigUrl {
                 .groupBy { it.country }
                 .mapValues { (_, v) -> v.map { toShow(it) } },
             limitCountries = 18,
-            perCountry = 12,
+            perCountry = 18,
         )
         // A–Z quick rails for densest letters (label matches shelf size, not full letter count)
         all.groupBy { it.letter }.entries
@@ -352,45 +383,49 @@ object DaddyLiveTvProvider : IptvProvider, ProviderConfigUrl {
             ?: throw Exception("DaddyLive TV: stream unavailable for ${server.name} (try another server)")
     }
 
-    private fun resolveDaddyEmbed(embedUrl: String, referer: String): Video? {
+    private suspend fun resolveDaddyEmbed(embedUrl: String, referer: String): Video? {
         val candidates = LiveStreamHtmlExtractor.normalizeDaddyLiveEmbed(embedUrl)
         if (candidates.isEmpty()) return null
-        // Probe candidates in parallel — ad-sized HTML burns serial resolve budget.
-        val results = candidates.map { candidate ->
-            try {
-                val embedHtml = fetchHtml(candidate, referer = referer)
-                if (embedHtml.isNullOrBlank()) {
-                    return@map null to "embed HTTP miss for $candidate"
+        // Real parallel probe — serial map burned ~3×15s against the 40s player budget.
+        val results = coroutineScope {
+            candidates.map { candidate ->
+                async(Dispatchers.IO) {
+                    try {
+                        val embedHtml = fetchHtml(candidate, referer = referer)
+                        if (embedHtml.isNullOrBlank()) {
+                            return@async null to "embed HTTP miss for $candidate"
+                        }
+                        // Fail fast on heavy ad shells (~600KB+) that rarely carry plaintext m3u8.
+                        if (embedHtml.length > 350_000 &&
+                            !embedHtml.contains(".m3u8", ignoreCase = true) &&
+                            !embedHtml.contains("const SRC", ignoreCase = true)
+                        ) {
+                            return@async null to "ad-sized HTML without stream for $candidate"
+                        }
+                        if (embedHtml.contains("<title>404 Not Found</title>", ignoreCase = true) ||
+                            (embedHtml.length < 800 && embedHtml.contains("404 Not Found", ignoreCase = true))
+                        ) {
+                            return@async null to "embed 404 for $candidate"
+                        }
+                        val m3u8 = LiveStreamHtmlExtractor.extractM3u8(embedHtml)
+                        if (m3u8.isNullOrBlank()) {
+                            return@async null to "no m3u8 in $candidate"
+                        }
+                        val embedOrigin = Regex("""^(https?://[^/]+)""").find(candidate)?.groupValues?.getOrNull(1)
+                            ?: baseUrl
+                        Video(
+                            source = m3u8,
+                            headers = mapOf(
+                                "User-Agent" to USER_AGENT,
+                                "Referer" to candidate,
+                                "Origin" to embedOrigin,
+                            ),
+                        ) to null
+                    } catch (e: Exception) {
+                        null to (e.message ?: "error")
+                    }
                 }
-                // Fail fast on heavy ad shells (~600KB+) that rarely carry plaintext m3u8.
-                if (embedHtml.length > 350_000 &&
-                    !embedHtml.contains(".m3u8", ignoreCase = true) &&
-                    !embedHtml.contains("const SRC", ignoreCase = true)
-                ) {
-                    return@map null to "ad-sized HTML without stream for $candidate"
-                }
-                if (embedHtml.contains("<title>404 Not Found</title>", ignoreCase = true) ||
-                    (embedHtml.length < 800 && embedHtml.contains("404 Not Found", ignoreCase = true))
-                ) {
-                    return@map null to "embed 404 for $candidate"
-                }
-                val m3u8 = LiveStreamHtmlExtractor.extractM3u8(embedHtml)
-                if (m3u8.isNullOrBlank()) {
-                    return@map null to "no m3u8 in $candidate"
-                }
-                val embedOrigin = Regex("""^(https?://[^/]+)""").find(candidate)?.groupValues?.getOrNull(1)
-                    ?: baseUrl
-                Video(
-                    source = m3u8,
-                    headers = mapOf(
-                        "User-Agent" to USER_AGENT,
-                        "Referer" to candidate,
-                        "Origin" to embedOrigin,
-                    ),
-                ) to null
-            } catch (e: Exception) {
-                null to (e.message ?: "error")
-            }
+            }.awaitAll()
         }
         results.firstOrNull { it.first != null }?.first?.let { return it }
         val lastError = results.mapNotNull { it.second }.lastOrNull()

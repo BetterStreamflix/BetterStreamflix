@@ -56,7 +56,7 @@ class VidsrcNetExtractor : Extractor() {
             .find(script)?.groupValues?.get(1)
             ?: "";
 
-        val decryptedData =
+        val decryptedData = try {
             if (playerId.isNotBlank()) {
                 val encryptedSource =
                     Regex("""<div id="$playerId" style="display:none;">\s*(.*?)\s*</div>""")
@@ -68,9 +68,13 @@ class VidsrcNetExtractor : Extractor() {
                 Regex("""Playerjs.*file: "([^"]*?)" ,""")
                     .find(script)?.groupValues?.get(1)
             }
+        } catch (e: Exception) {
+            // Vidsrc.net uses in-page player keys (not keys.json); surface clearly.
+            throw Exception("Vidsrc.net decrypt failed (player key/cipher): ${e.message}", e)
+        }
 
         if (decryptedData.isNullOrBlank())
-            throw Exception("Can't retrieve file")
+            throw Exception("Vidsrc.net: can't retrieve file after decrypt")
 
         val streamUrl = decryptedData.split(" or ")
             .firstOrNull()

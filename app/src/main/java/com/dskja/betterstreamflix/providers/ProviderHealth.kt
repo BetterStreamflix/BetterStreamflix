@@ -41,16 +41,23 @@ object ProviderHealth {
         "HDFilme",
         "MEGAKino",
         "Filmpalast",
-        "StreamingIta",
-        "AnyMovie",
-        "SFlix",
+        // StreamingIta / AnyMovie / SFlix defaults are parked/dead — hide auto CTA;
+        // users can still set PROVIDER_URL manually.
         "CineHax",
         "Wiflix",
         "Frembed",
     )
 
+    /** Known-dead defaults that must not get an auto "Update domain" CTA. */
+    val parkedDefaultNames: Set<String> = setOf(
+        "StreamingIta",
+        "AnyMovie",
+        "SFlix",
+    )
+
     fun supportsDomainUpdate(provider: Provider): Boolean =
         provider is ProviderConfigUrl &&
+            !parkedDefaultNames.contains(provider.name) &&
             (domainUpdateAllowlist.contains(provider.name) || isQuarantined(provider))
 
     /** High-traffic providers that smoke harnesses should prioritize. */
@@ -65,13 +72,12 @@ object ProviderHealth {
         "HDFilme",
         "Frembed",
         "AniWorld",
-        "SFlix",
+        // SFlix / AnyMovie quarantined parked defaults — omit from smoke priority.
         "Cine24h",
         "SoloLatino",
         "MEGAKino",
         "Filmpalast",
         "KinoGer",
-        "AnyMovie",
         "HiAnime",
         "DaddyLive TV",
         "MAGISTV",

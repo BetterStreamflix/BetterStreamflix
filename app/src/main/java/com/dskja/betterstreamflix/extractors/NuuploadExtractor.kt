@@ -33,7 +33,7 @@ class NuuploadExtractor : Extractor() {
 
     override suspend fun extract(link: String): Video {
         decodeUrlParameter(link)?.let { nested ->
-            return Extractor.extract(nested)
+            return Extractor.extract(nested, maxAttempts = 1)
         }
 
         val page = fetchPage(link)
@@ -50,7 +50,7 @@ class NuuploadExtractor : Extractor() {
         }.distinct()
 
         findDelegatedLink(document, page.finalUrl, htmlCandidates)?.let { delegated ->
-            return Extractor.extract(delegated)
+            return Extractor.extract(delegated, maxAttempts = 1)
         }
 
         val rawSourceUrl = findDirectSource(document, page.finalUrl, htmlCandidates)

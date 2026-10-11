@@ -6,6 +6,7 @@ import com.dskja.betterstreamflix.utils.DecryptHelper
 import com.dskja.betterstreamflix.utils.DnsResolver
 import com.dskja.betterstreamflix.utils.UserPreferences
 import com.dskja.betterstreamflix.utils.withExtractorTimeouts
+import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import okhttp3.OkHttpClient
 import org.jsoup.nodes.Document
 import retrofit2.Retrofit
@@ -59,14 +60,23 @@ class VoeExtractor : Extractor() {
             val origin = "${parsedUrl.protocol}://${parsedUrl.host}"
             parsePlayer(first, link, origin)?.let { return it }
 
-            val redirectBase = VoeRedirect.baseUrl(first.html(), parsedUrl.host)
+            val visited = mutableSetOf(parsedUrl.host.lowercase())
+            val redirectBase = VoeRedirect.baseUrl(first.html(), parsedUrl.host, visited)
                 ?: throw Exception("VOE source not found")
             if (redirectBase.trimEnd('/').equals(origin, ignoreCase = true)) {
                 throw Exception("VOE source not found")
             }
+            visited += redirectBase.toHttpUrlOrNull()?.host?.lowercase().orEmpty()
             val second = VoeExtractorService.create(redirectBase, client).getSource(originalPath)
-            return parsePlayer(second, redirectBase, redirectBase.trimEnd('/'))
-                ?: throw Exception("VOE source not found")
+            parsePlayer(second, redirectBase, redirectBase.trimEnd('/'))?.let { return it }
+            // One more hop if the redirect page itself re-points.
+            val thirdBase = VoeRedirect.baseUrl(second.html(), visited.last(), visited)
+            if (thirdBase != null) {
+                visited += thirdBase.toHttpUrlOrNull()?.host?.lowercase().orEmpty()
+                val third = VoeExtractorService.create(thirdBase, client).getSource(originalPath)
+                parsePlayer(third, thirdBase, thirdBase.trimEnd('/'))?.let { return it }
+            }
+            throw Exception("VOE source not found")
         } catch (e: Exception) {
             // Dead VOE embeds (HTTP 404 / megakino stale links) — soft-fail so failover
             // can hop to the next hoster without burning a second extract retry.

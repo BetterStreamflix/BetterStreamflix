@@ -141,7 +141,8 @@ class BypassWebViewActivity : AppCompatActivity() {
             com.dskja.betterstreamflix.utils.ExpMotion.hapticTap(it)
             val cookies = collectCookieHeader()
             val hasHoster = !resolvedStreamUrl.isNullOrBlank()
-            if (!hasHoster && !SerienStreamBypassHelper.looksLikeBypassSolved(cookies)) {
+            // Require real clearance (or a captured hoster URL) — bare PHPSESSID is not "solved".
+            if (!hasHoster && !SerienStreamBypassHelper.looksLikeClearanceSolved(cookies)) {
                 notifyBypass(R.string.bypass_status_challenge_pending)
                 return@setOnClickListener
             }
@@ -330,7 +331,7 @@ class BypassWebViewActivity : AppCompatActivity() {
     private fun updateBypassState(currentUrl: String?) {
         if (isCleaningUp) return
         val cookies = collectCookieHeader()
-        val solved = SerienStreamBypassHelper.looksLikeBypassSolved(cookies)
+        val solved = SerienStreamBypassHelper.looksLikeClearanceSolved(cookies)
         val hasHoster = !resolvedStreamUrl.isNullOrBlank()
         val wasEnabled = continueButton.isEnabled
         continueButton.isEnabled = solved || hasHoster

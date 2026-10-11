@@ -96,9 +96,15 @@ object HDFilmeProvider : Provider, ProviderConfigUrl {
                     .create(HDFilmeService::class.java)
             }
 
+            /**
+             * Follow redirects and persist the final host into [UserPreferences.PROVIDER_URL]
+             * when it still looks like an HDFilme mirror (same pattern as KinoGer
+             * DomainTrackingInterceptor).
+             */
             private class RedirectInterceptor : Interceptor {
                 override fun intercept(chain: Interceptor.Chain): Response {
                     var request = chain.request()
+                    val originalHost = request.url.host.removePrefix("www.")
                     var response = chain.proceed(request)
                     var hops = 0
 
@@ -114,6 +120,42 @@ object HDFilmeProvider : Provider, ProviderConfigUrl {
 
                         response.close()
                         response = chain.proceed(request)
+                    }
+
+                    val finalUrl = response.request.url
+                    val finalHost = finalUrl.host.removePrefix("www.")
+                    if (finalHost.isNotBlank() &&
+                        !finalHost.equals(originalHost, ignoreCase = true) &&
+                        finalHost.contains("hdfilme", ignoreCase = true)
+                    ) {
+                        val defaultPort =
+                            (finalUrl.scheme == "https" && finalUrl.port == 443) ||
+                                (finalUrl.scheme == "http" && finalUrl.port == 80)
+                        val origin = buildString {
+                            append(finalUrl.scheme)
+                            append("://")
+                            append(finalUrl.host)
+                            if (!defaultPort) {
+                                append(':')
+                                append(finalUrl.port)
+                            }
+                            append('/')
+                        }
+                        val cached = UserPreferences.getProviderCache(
+                            HDFilmeProvider,
+                            UserPreferences.PROVIDER_URL,
+                        )
+                        if (!cached.equals(origin, ignoreCase = true)) {
+                            UserPreferences.setProviderCache(
+                                HDFilmeProvider,
+                                UserPreferences.PROVIDER_URL,
+                                origin,
+                            )
+                            android.util.Log.i(
+                                "HDFilmeProvider",
+                                "Persisted redirected HDFilme domain: $origin",
+                            )
+                        }
                     }
                     return response
                 }

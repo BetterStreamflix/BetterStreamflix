@@ -26,7 +26,6 @@ import com.dskja.betterstreamflix.utils.ExpDialogChrome
 import com.dskja.betterstreamflix.utils.ExpMotion
 import com.dskja.betterstreamflix.utils.LoggingUtils
 import com.dskja.betterstreamflix.utils.TvLoadingOverlay
-import com.dskja.betterstreamflix.utils.UserPreferences
 import com.dskja.betterstreamflix.utils.dp
 import kotlinx.coroutines.launch
 
@@ -168,15 +167,17 @@ class LiveHubTvFragment : Fragment() {
                 IptvLiveSession.Channel(id = it.id, name = it.title, logo = it.poster)
             }
             IptvLiveSession.remember(channels, provider = provider)
-            providerShows.take(3).forEach { show ->
+            val anchors = providerShows.take(3)
+            anchors.firstOrNull()?.let { first ->
+                IptvLiveSession.setCurrent(first.id)
+            }
+            anchors.forEach { show ->
                 IptvZapPreloader.warmChannel(
                     provider,
                     IptvLiveSession.Channel(id = show.id, name = show.title, logo = show.poster),
                 )
             }
-            if (UserPreferences.currentProvider?.name == provider.name) {
-                IptvZapPreloader.warmNeighbors(provider, radius = 2)
-            }
+            IptvZapPreloader.warmNeighbors(provider, radius = 2)
         }
     }
 

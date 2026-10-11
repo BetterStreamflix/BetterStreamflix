@@ -286,20 +286,35 @@ object SerienStreamBypassHelper {
     fun playerGateAssistJs(): String = """
         (function(){
           try {
-            var btn = document.querySelector('button.link-box[data-play-url], a.link-box[data-play-url]');
+            var buttons = Array.prototype.slice.call(
+              document.querySelectorAll('button.link-box[data-play-url], a.link-box[data-play-url]')
+            ).filter(function(el) {
+              return (el.getAttribute('data-play-url') || '').length > 0;
+            });
+            var hasClearance = (document.cookie || '').indexOf('cf_clearance=') !== -1;
             var token = '';
+            var btn = null;
+            // Only auto-click when exactly one clear candidate exists, or when
+            // Turnstile already produced cf_clearance and we need the token path.
+            if (buttons.length === 1) {
+              btn = buttons[0];
+            } else if (hasClearance && buttons.length > 0) {
+              btn = buttons[0];
+            }
             if (btn) {
               var play = btn.getAttribute('data-play-url') || '';
               var match = play.match(/[?&]t=([^&]+)/);
               if (match) {
                 try { token = decodeURIComponent(match[1]); } catch (e) { token = match[1]; }
               }
-              try { btn.click(); } catch (e) {}
+              if (buttons.length === 1 || (hasClearance && token)) {
+                try { btn.click(); } catch (e) {}
+              }
             }
             var input = document.getElementById('player-prepare-token');
             if (input && token && !input.value) input.value = token;
             var modal = document.querySelector('#playerPrepareModal');
-            if (modal) {
+            if (modal && (token || hasClearance)) {
               modal.classList.add('show');
               modal.style.display = 'block';
               modal.removeAttribute('aria-hidden');
