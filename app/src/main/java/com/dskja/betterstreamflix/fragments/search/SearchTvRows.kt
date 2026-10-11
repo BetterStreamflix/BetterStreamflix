@@ -16,8 +16,11 @@ object SearchTvRows {
 
     val MAX_LOCAL: Int get() = SearchResultGuard.maxLocalResults()
     val MAX_GLOBAL_PER_PROVIDER: Int get() = SearchResultGuard.maxGlobalPerProvider()
-    const val GENRE_COLUMNS = 5
-    const val RESULT_COLUMNS = 6
+    /** Comfort defaults; runtime uses [com.dskja.betterstreamflix.ui.LeanbackDensityPolicy]. */
+    val GENRE_COLUMNS: Int
+        get() = com.dskja.betterstreamflix.ui.LeanbackDensityPolicy.searchGenreColumns()
+    val RESULT_COLUMNS: Int
+        get() = com.dskja.betterstreamflix.ui.LeanbackDensityPolicy.searchResultColumns()
     const val GLOBAL_COLUMNS = 1
 
     data class Grid(
@@ -46,7 +49,11 @@ object SearchTvRows {
                 is Category -> item.itemType = AppAdapter.Type.CATEGORY_TV_ITEM
             }
         }
-        val columns = if (query.isBlank()) GENRE_COLUMNS else RESULT_COLUMNS
+        val columns = if (query.isBlank()) {
+            com.dskja.betterstreamflix.ui.LeanbackDensityPolicy.searchGenreColumns()
+        } else {
+            com.dskja.betterstreamflix.ui.LeanbackDensityPolicy.searchResultColumns()
+        }
         return Grid(columns = columns, items = safe)
     }
 

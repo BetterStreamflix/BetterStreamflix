@@ -129,6 +129,7 @@ class GenreTvFragment : Fragment() {
             adapter = appAdapter.apply {
                 stateRestorationPolicy = RecyclerView.Adapter.StateRestorationPolicy.PREVENT_WHEN_EMPTY
             }
+            setNumColumns(com.dskja.betterstreamflix.ui.LeanbackDensityPolicy.posterGridColumns())
             setItemSpacing(requireContext().resources.getDimension(R.dimen.genre_spacing).toInt())
         }
     }

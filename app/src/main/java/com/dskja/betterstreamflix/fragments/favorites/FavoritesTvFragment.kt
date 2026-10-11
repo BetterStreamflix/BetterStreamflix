@@ -73,7 +73,9 @@ class FavoritesTvFragment : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         HomeProfileChip.refresh(this, binding.root, showName = true)
-        gridColumnCount = maxOf(4, resources.configuration.screenWidthDp / 180)
+        gridColumnCount = com.dskja.betterstreamflix.ui.LeanbackDensityPolicy.favoritesColumnCount(
+            resources.configuration.screenWidthDp,
+        )
         binding.rvFavorites.apply {
             layoutManager = object : GridLayoutManager(requireContext(), gridColumnCount) {
                 init {

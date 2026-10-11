@@ -1198,6 +1198,28 @@ class SettingsTvFragment : LeanbackPreferenceFragmentCompat() {
             }
         }
 
+        findPreference<ListPreference>("LEANBACK_DENSITY")?.apply {
+            val density = com.dskja.betterstreamflix.ui.LeanbackDensityPolicy.valueOf(
+                com.dskja.betterstreamflix.ui.LeanbackDensityPolicy.resolve(
+                    UserPreferences.leanbackDensity,
+                ),
+            )
+            if (UserPreferences.leanbackDensity != density) {
+                UserPreferences.leanbackDensity = density
+            }
+            value = density
+            summaryProvider = Preference.SummaryProvider<ListPreference> { pref ->
+                val idx = pref.findIndexOfValue(pref.value)
+                pref.entries.getOrNull(idx)?.toString()
+                    ?: getString(R.string.settings_leanback_density_summary)
+            }
+            setOnPreferenceChangeListener { _, newValue ->
+                UserPreferences.leanbackDensity = newValue as String
+                restartMainTvWithoutAnimation()
+                true
+            }
+        }
+
         findPreference<SwitchPreference>("OLED_MODE")?.apply {
             isVisible = false
             isChecked = false

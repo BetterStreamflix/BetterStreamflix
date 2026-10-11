@@ -722,6 +722,20 @@ object UserPreferences {
         get() = Key.HIGH_CONTRAST.getBoolean() ?: false
         set(value) = Key.HIGH_CONTRAST.setBoolean(value)
 
+    /**
+     * TV Leanback poster density: [com.dskja.betterstreamflix.ui.LeanbackDensityPolicy.COMPACT]
+     * (more tiles) or [com.dskja.betterstreamflix.ui.LeanbackDensityPolicy.COMFORT]
+     * (larger posters). Device-wide; requires activity restart like Looks.
+     */
+    var leanbackDensity: String
+        get() = Key.LEANBACK_DENSITY.getString()
+            ?: com.dskja.betterstreamflix.ui.LeanbackDensityPolicy.DEFAULT
+        set(value) = Key.LEANBACK_DENSITY.setString(
+            com.dskja.betterstreamflix.ui.LeanbackDensityPolicy.valueOf(
+                com.dskja.betterstreamflix.ui.LeanbackDensityPolicy.resolve(value),
+            ),
+        )
+
     /** Off-by-default complete mobile shell redesign. Requires activity restart. */
     var experimentalNewAppDesign: Boolean
         get() = Key.EXPERIMENTAL_NEW_APP_DESIGN.getBoolean() ?: false
@@ -1658,6 +1672,7 @@ object UserPreferences {
         OLED_MODE,
         LARGE_TEXT,
         HIGH_CONTRAST,
+        LEANBACK_DENSITY,
         EXPERIMENTAL_NEW_APP_DESIGN,
         EXPERIMENTAL_REACT_HOME,
         EXPERIMENTAL_LUMINA_ACCENT,

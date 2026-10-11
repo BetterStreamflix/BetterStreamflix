@@ -118,6 +118,7 @@ class TvShowsTvFragment : Fragment() {
         com.dskja.betterstreamflix.utils.ExpPressEffects.wireLoadingRetry(binding.isLoading.root)
         binding.vgvTvShows.apply {
             val spacing = requireContext().resources.getDimension(R.dimen.tv_shows_spacing).toInt()
+            setNumColumns(com.dskja.betterstreamflix.ui.LeanbackDensityPolicy.posterGridColumns())
             setItemSpacing(spacing)
             adapter = appAdapter.apply {
                 stateRestorationPolicy = RecyclerView.Adapter.StateRestorationPolicy.PREVENT_WHEN_EMPTY

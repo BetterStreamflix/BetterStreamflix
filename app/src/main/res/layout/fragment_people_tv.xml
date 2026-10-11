@@ -271,7 +271,7 @@
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@id/barrier1"
-        app:numberOfColumns="6"
+        app:numberOfColumns="5"
         tools:listitem="@layout/item_movie_grid_tv" />
 
     <TextView

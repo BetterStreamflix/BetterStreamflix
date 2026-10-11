@@ -393,12 +393,16 @@ class TvShowViewHolder(
         }
     }
 
-    private fun setPoster(imageView: ImageView) {
+    private fun setPoster(imageView: ImageView, shelfDensity: Boolean = false) {
         imageView.scaleType = if (isIptvProvider()) ImageView.ScaleType.FIT_CENTER else ImageView.ScaleType.CENTER_CROP
         imageView.loadTvShowPoster(tvShow) {
             val dens = imageView.resources.displayMetrics.density
-            val h = (200f * dens).toInt().coerceAtLeast(400)
-            val w = (h * 2 / 3f).toInt().coerceAtLeast(280)
+            val (w, h) = if (shelfDensity) {
+                com.dskja.betterstreamflix.ui.LeanbackDensityPolicy.shelfPosterOverridePx(dens)
+            } else {
+                val height = (200f * dens).toInt().coerceAtLeast(400)
+                (height * 2 / 3f).toInt().coerceAtLeast(280) to height
+            }
             val reduce = DeviceCapabilities.shouldReduceHomeEffects(imageView.context)
             fallback(R.drawable.glide_fallback_cover)
                 .error(R.drawable.glide_fallback_cover)
@@ -504,7 +508,8 @@ class TvShowViewHolder(
                 }
             }
         }
-        setPoster(binding.ivTvShowPoster)
+        com.dskja.betterstreamflix.ui.LeanbackDensityPolicy.applyShelfPosterHeight(binding.ivTvShowPoster)
+        setPoster(binding.ivTvShowPoster, shelfDensity = true)
         bindRibbons(binding.ivTvShowFavoriteRibbon, binding.ivTvShowWatchedRibbon, binding.root.findViewById(R.id.iv_tv_show_download_ribbon))
         binding.tvTvShowQuality.apply {
             text = tvShow.quality ?: ""

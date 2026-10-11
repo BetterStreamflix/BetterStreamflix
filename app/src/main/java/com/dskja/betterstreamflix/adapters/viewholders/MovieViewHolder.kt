@@ -489,10 +489,10 @@ class MovieViewHolder(
             }
         }
 
+        com.dskja.betterstreamflix.ui.LeanbackDensityPolicy.applyShelfPosterHeight(binding.ivMoviePoster)
         binding.ivMoviePoster.loadMoviePoster(movie) {
             val dens = binding.ivMoviePoster.resources.displayMetrics.density
-            val h = (200f * dens).toInt().coerceAtLeast(400)
-            val w = (h * 2 / 3f).toInt().coerceAtLeast(280)
+            val (w, h) = com.dskja.betterstreamflix.ui.LeanbackDensityPolicy.shelfPosterOverridePx(dens)
             val reduce = DeviceCapabilities.shouldReduceHomeEffects(binding.ivMoviePoster.context)
             fallback(R.drawable.glide_fallback_cover)
                 .error(R.drawable.glide_fallback_cover)

@@ -986,6 +986,14 @@
                 android:entryValues="@array/theme_values"
                 android:defaultValue="cinema_ink" />
 
+            <ListPreference
+                android:key="LEANBACK_DENSITY"
+                android:title="@string/settings_leanback_density_title"
+                android:summary="@string/settings_leanback_density_summary"
+                android:entries="@array/leanback_density_names"
+                android:entryValues="@array/leanback_density_values"
+                android:defaultValue="comfort" />
+
             <SwitchPreference
                 android:key="OLED_MODE"
                 android:title="@string/settings_oled_mode_title"
