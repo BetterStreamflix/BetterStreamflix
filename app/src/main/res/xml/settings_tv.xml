@@ -1535,6 +1535,32 @@
             <Preference android:key="cloud_sign_out" android:title="@string/cloud_sync_sign_out" />
             <Preference android:key="cloud_sync_now" android:title="@string/cloud_sync_now" android:summary="@string/cloud_sync_now_summary" />
         </PreferenceCategory>
+        <PreferenceCategory
+            android:key="pc_cast_room"
+            android:title="@string/cast_room_category_title">
+            <Preference
+                android:key="cast_room_host"
+                android:title="@string/cast_room_menu_title"
+                android:summary="@string/cast_room_host_summary" />
+            <Preference
+                android:key="cast_room_show_qr"
+                android:title="@string/cast_room_show_qr_action" />
+            <Preference
+                android:key="cast_room_join_scan"
+                android:title="@string/cast_room_join_scan_title"
+                android:summary="@string/cast_room_join_scan_summary" />
+            <Preference
+                android:key="cast_room_join_code"
+                android:title="@string/cast_room_join_code_title"
+                android:summary="@string/cast_room_join_code_summary" />
+            <Preference
+                android:key="cast_room_open_queue"
+                android:title="@string/cast_room_open_queue_title"
+                android:summary="@string/cast_room_open_queue_summary" />
+            <Preference
+                android:key="cast_room_end"
+                android:title="@string/cast_room_end_action" />
+        </PreferenceCategory>
     </PreferenceScreen>
 
     <PreferenceScreen

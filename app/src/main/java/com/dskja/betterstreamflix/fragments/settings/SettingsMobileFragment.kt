@@ -34,6 +34,7 @@ import com.dskja.betterstreamflix.R
 import com.dskja.betterstreamflix.activities.main.MainMobileActivity
 import com.dskja.betterstreamflix.activities.tools.QrScannerActivity
 import com.dskja.betterstreamflix.activities.tools.ProviderWatchlistScrapeActivity
+import com.dskja.betterstreamflix.sync.CastRoomSettingsController
 import com.dskja.betterstreamflix.backup.BackupRestoreManager
 import com.dskja.betterstreamflix.backup.ProviderBackupContext
 import com.dskja.betterstreamflix.database.AppDatabase
@@ -176,6 +177,14 @@ class SettingsMobileFragment : PreferenceFragmentCompat() {
             addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
         }
         startActivity(intent)
+    }
+
+    private val scanCastRoomQrLauncher = registerForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        if (result.resultCode != Activity.RESULT_OK) return@registerForActivityResult
+        val rawValue = result.data?.getStringExtra(QrScannerActivity.EXTRA_QR_VALUE)
+        activity?.let { CastRoomSettingsController.onScanResult(it, rawValue) }
     }
 
     override fun onCreatePreferences(savedInstanceState: Bundle?, rootKey: String?) {
@@ -418,6 +427,20 @@ class SettingsMobileFragment : PreferenceFragmentCompat() {
         SupabaseSettingsController.bind(this, lifecycleScope) { key ->
             findPreference(key)
         }
+        CastRoomSettingsController.bind(
+            fragment = this,
+            scope = lifecycleScope,
+            findPreference = { key -> findPreference(key) },
+            scanLauncher = { intent ->
+                runCatching { scanCastRoomQrLauncher.launch(intent) }
+                    .onFailure {
+                        showSettingsInfo(
+                            getString(R.string.cast_room_scan_unavailable),
+                            R.string.cast_room_join_scan_title,
+                        )
+                    }
+            },
+        )
         PlatformSettingsController.bind(this, lifecycleScope) { key ->
             findPreference(key)
         }

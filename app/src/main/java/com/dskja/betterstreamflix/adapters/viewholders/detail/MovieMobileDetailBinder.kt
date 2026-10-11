@@ -422,11 +422,36 @@ internal fun MovieViewHolder.bindMovieMobileDetail(binding: ContentMovieMobileBi
         val canShare = share.resolveActivity(context.packageManager) != null
         shareBtn.visibility = if (canShare) View.VISIBLE else View.GONE
         shareColumn?.visibility = if (canShare) View.VISIBLE else View.GONE
-        if (canShare) {
+        if (canShare || com.dskja.betterstreamflix.sync.CastRoomSession.isActive()) {
+            shareBtn.visibility = View.VISIBLE
+            shareColumn?.visibility = View.VISIBLE
             shareBtn.applyExpPress()
             shareBtn.setOnClickListener {
                 ExpMotion.hapticTap(it)
-                context.startActivity(Intent.createChooser(share, context.getString(R.string.detail_share)))
+                val fragment = context.toActivity()?.getCurrentFragment() as? Fragment
+                val videoType = Video.Type.Movie(
+                    id = movie.id,
+                    title = movie.title,
+                    releaseDate = movie.released?.format("yyyy").orEmpty(),
+                    poster = movie.poster.orEmpty(),
+                    imdbId = movie.imdbId,
+                )
+                val doShare = {
+                    if (canShare) {
+                        context.startActivity(
+                            Intent.createChooser(share, context.getString(R.string.detail_share)),
+                        )
+                    }
+                }
+                if (fragment != null) {
+                    com.dskja.betterstreamflix.sync.CastRoomUi.maybeAugmentShareClick(
+                        fragment,
+                        videoType,
+                        doShare,
+                    )
+                } else {
+                    doShare()
+                }
             }
         } else {
             shareBtn.setOnClickListener(null)

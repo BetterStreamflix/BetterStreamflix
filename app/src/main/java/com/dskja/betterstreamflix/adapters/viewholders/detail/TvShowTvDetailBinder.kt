@@ -515,19 +515,40 @@ internal fun TvShowViewHolder.bindTvShowTvDetail(binding: ContentTvShowTvBinding
             )
         }
         val canShare = share.resolveActivity(context.packageManager) != null
-        shareBtn.isVisible = canShare
-        if (canShare) {
+        if (canShare || com.dskja.betterstreamflix.sync.CastRoomSession.isActive()) {
+            shareBtn.isVisible = true
             shareBtn.setOnClickListener {
                 ExpMotion.hapticTap(it)
-                // Prefer direct send — Leanback remotes struggle with chooser UIs.
-                runCatching { context.startActivity(share) }
-                    .onFailure {
-                        context.startActivity(
-                            Intent.createChooser(share, context.getString(R.string.detail_share)),
-                        )
+                val fragment = context.toActivity()?.getCurrentFragment() as? Fragment
+                val episode = tvShow.episodeToWatch
+                val doShare = {
+                    if (canShare) {
+                        runCatching { context.startActivity(share) }
+                            .onFailure {
+                                context.startActivity(
+                                    Intent.createChooser(
+                                        share,
+                                        context.getString(R.string.detail_share),
+                                    ),
+                                )
+                            }
                     }
+                }
+                if (fragment != null &&
+                    com.dskja.betterstreamflix.sync.CastRoomSession.isActive() &&
+                    episode != null
+                ) {
+                    com.dskja.betterstreamflix.sync.CastRoomUi.maybeAugmentShareClick(
+                        fragment,
+                        com.dskja.betterstreamflix.sync.CastRoomUi.videoTypeFromEpisode(episode),
+                        doShare,
+                    )
+                } else {
+                    doShare()
+                }
             }
         } else {
+            shareBtn.isVisible = false
             shareBtn.setOnClickListener(null)
         }
     }

@@ -46,6 +46,7 @@ import androidx.preference.SwitchPreferenceCompat
 import com.dskja.betterstreamflix.BuildConfig
 import com.dskja.betterstreamflix.R
 import com.dskja.betterstreamflix.activities.main.MainTvActivity
+import com.dskja.betterstreamflix.sync.CastRoomSettingsController
 import com.dskja.betterstreamflix.backup.BackupRestoreManager
 import com.dskja.betterstreamflix.backup.ProviderBackupContext
 import com.dskja.betterstreamflix.database.AppDatabase
@@ -339,6 +340,11 @@ class SettingsTvFragment : LeanbackPreferenceFragmentCompat() {
         SupabaseSettingsController.bind(this, lifecycleScope) { key ->
             findPreference(key)
         }
+        CastRoomSettingsController.bind(
+            fragment = this,
+            scope = lifecycleScope,
+            findPreference = { key -> findPreference(key) },
+        )
         PlatformSettingsController.bind(this, lifecycleScope) { key ->
             findPreference(key)
         }

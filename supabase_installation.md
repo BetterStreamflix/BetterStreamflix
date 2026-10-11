@@ -118,6 +118,10 @@ After the watch-parties migrations are applied (included in **Copy database setu
 
 Opening that link on Mobile or TV fetches the session through `get_watch_party` / `join_watch_party_lobby` (publishable/anon key) and asks before joining. Guests wait in the lobby (chat + emoji reacts) until the host taps **Start watching** (`start_watch_party`). After start, devices sync **position_ms + chosen server + playing** only — each device still loads its own stream from the provider (**no video relay**). Host server picks apply to everyone. When the host leaves the player or taps **End party**, `ended` is set and guests disconnect gracefully. Live TV and offline playback cannot host a party. Kids/PIN gates queue the join token per profile until unlock.
 
+## Cast Room (phone → TV queue)
+
+After the cast-rooms migration is applied (included in **Copy database setup SQL**, plus `supabase/migrations/20261011230000_create_cast_rooms.sql`), a signed-in host opens a **Cast Room** from Account & sync (or the player Cast Room button). The TV shows a QR and a 6-character code for `https://betterstreamflix.app/cast/<share_token>`. The phone scans or enters the code, then controls an ordered queue (add from detail Share → Add to Cast Room, reorder, play now, skip, pause) via token RPCs. The TV resolves each title locally (**no stream relay**). Rooms expire after ~12 hours or when the host ends them. Kids/PIN gates queue join tokens per profile until unlock.
+
 ## Troubleshooting
 
 ### “Configure Supabase before using account sync”

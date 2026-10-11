@@ -927,6 +927,7 @@ class PlayerMobileFragment : Fragment(),
         // super.onDestroyView() races with OEM back stacks (crash on Zurück).
         isTearingDown = true
         com.dskja.betterstreamflix.sync.WatchPartyPlayerHooks.onDestroyView(this)
+        com.dskja.betterstreamflix.sync.CastRoomPlayerHooks.onDestroyView(this)
         PlaybackLifecycleGuard.unregister(playbackStopHandle)
         val appContext = context?.applicationContext
         val hostActivity = activity
@@ -1150,6 +1151,10 @@ class PlayerMobileFragment : Fragment(),
             this,
             binding.pvPlayer.controller.binding.btnExoWatchParty,
             watchPartyBridge,
+        )
+        com.dskja.betterstreamflix.sync.CastRoomPlayerHooks.wireChromeButton(
+            this,
+            binding.pvPlayer.controller.binding.btnExoCastRoom,
         )
 
         binding.pvPlayer.controller.binding.exoReplay.setOnClickListener {
@@ -1707,6 +1712,34 @@ class PlayerMobileFragment : Fragment(),
             binding.pvPlayer.controller.binding.btnExoWatchParty,
             watchPartyBridge,
         )
+        com.dskja.betterstreamflix.sync.CastRoomPlayerHooks.ensureHostHeartbeat(
+            this,
+            object : com.dskja.betterstreamflix.sync.CastRoomPlayerHooks.PlayerBridge {
+                override fun isLiveOrOffline(): Boolean =
+                    isLiveTvPlayback() || isOfflinePlayback()
+
+                override fun videoType(): Video.Type = args.videoType
+
+                override fun positionMs(): Long =
+                    runCatching { activePlayer().currentPosition }.getOrDefault(0L)
+
+                override fun isPlaying(): Boolean =
+                    runCatching { activePlayer().isPlaying }.getOrDefault(false)
+
+                override fun setPlayWhenReady(playing: Boolean) {
+                    runCatching {
+                        activePlayer().playWhenReady = playing
+                        if (playing) activePlayer().play() else activePlayer().pause()
+                    }
+                }
+
+                override fun currentCastRoomIndex(): Int =
+                    com.dskja.betterstreamflix.sync.CastRoomUi.latestPayload()?.nowPlayingIndex ?: 0
+            },
+        )
+        com.dskja.betterstreamflix.sync.CastRoomPlayerHooks.refreshChrome(
+            binding.pvPlayer.controller.binding.btnExoCastRoom,
+        )
         runCatching {
             com.dskja.betterstreamflix.platform.plugins.PluginManager
                 .dispatchServerResolved(server)
@@ -1902,7 +1935,10 @@ class PlayerMobileFragment : Fragment(),
                     if (player.hasReallyFinished() &&
                         player.playbackState == androidx.media3.common.Player.STATE_ENDED
                     ) {
-                        if (UserPreferences.autoplay && !viewModel.isVideoResolveInFlight()) {
+                        if (com.dskja.betterstreamflix.sync.CastRoomSession.isHost()) {
+                            com.dskja.betterstreamflix.sync.CastRoomPlayerHooks
+                                .onLocalPlaybackEnded(this@PlayerMobileFragment)
+                        } else if (UserPreferences.autoplay && !viewModel.isVideoResolveInFlight()) {
                             playNextEpisodeAcrossSeasons(autoplay = true)
                         }
                     }
@@ -3571,6 +3607,10 @@ class PlayerMobileFragment : Fragment(),
             this,
             controller.btnExoWatchParty,
             watchPartyBridge,
+        )
+        com.dskja.betterstreamflix.sync.CastRoomPlayerHooks.wireChromeButton(
+            this,
+            controller.btnExoCastRoom,
         )
         controller.btnExoExternalPlayer.setOnClickListener {
             ExpMotion.hapticTap(it)
