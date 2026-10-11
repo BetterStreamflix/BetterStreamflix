@@ -6,8 +6,10 @@ import com.dskja.betterstreamflix.R
 import com.google.android.material.color.DynamicColors
 
 /**
- * Retired. The app always uses the original layouts.
+ * Retired. The app always uses the original Cinema Ink layouts.
  * [enabled] stays false so leftover call sites cannot swap in another shell.
+ * Settings hub / Lumina assets remain in-tree (fork-only surface) but never attach
+ * while [enabled] is false — do not delete those paths.
  */
 object ExperimentalMobileDesign {
 

@@ -4,7 +4,7 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#000000"
+    android:background="@color/cinema_ink"
     tools:context=".fragments.player.PlayerMobileFragment">
 
     <com.dskja.betterstreamflix.ui.PlayerMobileView
@@ -13,25 +13,28 @@
         android:layout_height="0dp"
         app:controller_layout_id="@layout/content_exo_controller_mobile"
         app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintEnd_toStartOf="@id/settings"
+        app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent"
         app:resize_mode="fit"
         app:show_buffering="always"
         app:show_next_button="false"
         app:show_previous_button="false"
-        app:show_subtitle_button="true"
         app:show_timeout="2000"
         app:surface_type="texture_view" />
 
     <com.dskja.betterstreamflix.fragments.player.settings.PlayerSettingsMobileView
         android:id="@+id/settings"
-        android:layout_width="300dp"
+        android:layout_width="0dp"
         android:layout_height="0dp"
+        android:elevation="8dp"
         android:visibility="gone"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="1"
+        app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintWidth_max="@dimen/player_settings_mobile_max_width"
         tools:visibility="visible" />
 
     <LinearLayout
@@ -49,7 +52,7 @@
         android:padding="10dp"
         android:visibility="gone"
         app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintEnd_toStartOf="@id/settings"
+        app:layout_constraintEnd_toEndOf="parent"
         tools:visibility="visible">
 
         <ImageView
@@ -153,7 +156,7 @@
         android:padding="24dp"
         android:visibility="gone"
         app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintEnd_toStartOf="@id/settings"
+        app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent"
         tools:visibility="visible">
@@ -214,7 +217,7 @@
             android:id="@+id/tv_brightness_percentage"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:textColor="#FFFFFF"
+            android:textColor="@color/cinema_text"
             android:textSize="12sp"
             android:textStyle="bold"
             android:shadowColor="#000000"
@@ -237,7 +240,7 @@
             android:layout_width="24dp"
             android:layout_height="24dp"
             android:src="@drawable/ic_brightness"
-            app:tint="#FFFFFF" />
+            app:tint="@color/cinema_text" />
     </LinearLayout>
 
     <LinearLayout
@@ -257,7 +260,7 @@
             android:id="@+id/tv_volume_percentage"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:textColor="#FFFFFF"
+            android:textColor="@color/cinema_text"
             android:textSize="12sp"
             android:textStyle="bold"
             android:shadowColor="#000000"
@@ -280,7 +283,7 @@
             android:layout_width="24dp"
             android:layout_height="24dp"
             android:src="@drawable/ic_player_settings_audio"
-            app:tint="#FFFFFF" />
+            app:tint="@color/cinema_text" />
     </LinearLayout>
 
 </androidx.constraintlayout.widget.ConstraintLayout>

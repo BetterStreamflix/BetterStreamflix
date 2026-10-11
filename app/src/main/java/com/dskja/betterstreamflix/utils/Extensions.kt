@@ -331,12 +331,19 @@ fun subtitleConfigurationsForPlayback(
     val cachedFile = cached?.let { SubtitleFileCache.resolveFile(context, contentKey, it) }
         ?.takeIf { it.exists() && it.length() > 0L }
 
+    // Explicit Off (null/blank subtitleName) must not revive a cached DEFAULT track.
+    val subtitlesEnabled = !UserPreferences.subtitleName.isNullOrBlank()
+
     val serverConfigs = serverSubtitles.map { subtitle ->
         MediaItem.SubtitleConfiguration.Builder(subtitle.file.toUri())
             .setMimeType(subtitle.file.toSubtitleMimeType())
             .setLabel(subtitle.label)
             .setSelectionFlags(
-                if (cachedFile != null) 0 else if (subtitle.default) C.SELECTION_FLAG_DEFAULT else 0
+                when {
+                    !subtitlesEnabled || cachedFile != null -> 0
+                    subtitle.default -> C.SELECTION_FLAG_DEFAULT
+                    else -> 0
+                }
             )
             .build()
     }
@@ -349,7 +356,7 @@ fun subtitleConfigurationsForPlayback(
         .setMimeType(cached.fileName.toSubtitleMimeType())
         .setLabel(cached.label)
         .setLanguage(cached.language)
-        .setSelectionFlags(C.SELECTION_FLAG_DEFAULT)
+        .setSelectionFlags(if (subtitlesEnabled) C.SELECTION_FLAG_DEFAULT else 0)
         .build()
 }
 

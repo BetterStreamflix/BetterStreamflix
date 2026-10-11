@@ -4,6 +4,8 @@
     <color name="cinema_ink">#FF0A0A0C</color>
     <color name="cinema_surface">#FF121218</color>
     <color name="cinema_elevated">#FF1A1A22</color>
+    <color name="cinema_scrim">#980A0A0C</color>
+    <color name="cinema_destructive">#FFFF6B6B</color>
     <color name="cinema_text">#FFF7F7F8</color>
     <color name="cinema_text_soft">#FFE8E8EC</color>
     <color name="cinema_text_muted">#FFA1A1AA</color>

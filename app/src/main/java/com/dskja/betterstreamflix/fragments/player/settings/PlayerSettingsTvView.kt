@@ -428,6 +428,11 @@ class PlayerSettingsTvView @JvmOverloads constructor(
                             settingsView.displaySettings(Setting.CAPTION_STYLE)
                         }
 
+                        is Settings.Subtitle.OpenSubtitles.Loading,
+                        is Settings.Subtitle.OpenSubtitles.Empty,
+                        is Settings.Subtitle.SubDLSubtitles.Loading,
+                        is Settings.Subtitle.SubDLSubtitles.Empty -> Unit
+
                         is Settings.Subtitle.OpenSubtitles.Subtitle -> {
                             settingsView.onOpenSubtitleSelected?.invoke(item)
                             settingsView.hide()
@@ -659,8 +664,16 @@ class PlayerSettingsTvView @JvmOverloads constructor(
 
                     is Settings.Subtitle.Style.WindowOpacity -> context.getString(item.stringId)
 
+                    is Settings.Subtitle.OpenSubtitles.Loading ->
+                        context.getString(R.string.player_settings_subtitles_loading)
+                    is Settings.Subtitle.OpenSubtitles.Empty ->
+                        context.getString(R.string.player_settings_subtitles_empty)
                     is Settings.Subtitle.OpenSubtitles.Subtitle -> item.openSubtitle.subFileName
 
+                    is Settings.Subtitle.SubDLSubtitles.Loading ->
+                        context.getString(R.string.player_settings_subtitles_loading)
+                    is Settings.Subtitle.SubDLSubtitles.Empty ->
+                        context.getString(R.string.player_settings_subtitles_empty)
                     is Settings.Subtitle.SubDLSubtitles.Subtitle -> item.subDLSubtitle.releaseName ?: item.subDLSubtitle.name
 
                     is Settings.Speed -> context.getString(item.stringId)

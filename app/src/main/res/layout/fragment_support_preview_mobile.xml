@@ -29,7 +29,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="12dp"
-            android:textAppearance="@style/TextAppearance.Lumina.Body"
+            android:textAppearance="@style/TextAppearance.AppCompat.Body1"
             android:text="@string/support_preview_title"
             android:textColor="@color/support_text_primary"
             android:textSize="@dimen/support_text_screen_title"
@@ -40,7 +40,7 @@
             android:layout_width="36dp"
             android:layout_height="3dp"
             android:layout_marginTop="10dp"
-            android:background="@drawable/bg_exp_accent_rule" />
+            android:background="@color/cinema_stroke" />
 
         <include
             android:id="@+id/preview_hero"
@@ -67,7 +67,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="24dp"
-            android:textAppearance="@style/TextAppearance.Lumina.Body"
+            android:textAppearance="@style/TextAppearance.AppCompat.Body1"
             android:text="@string/support_impact_title"
             android:textColor="@color/support_text_primary"
             android:textSize="@dimen/support_text_section"
@@ -85,7 +85,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="24dp"
-            android:textAppearance="@style/TextAppearance.Lumina.Body"
+            android:textAppearance="@style/TextAppearance.AppCompat.Body1"
             android:text="@string/support_supporters_title"
             android:textColor="@color/support_text_primary"
             android:textSize="@dimen/support_text_section"
@@ -96,7 +96,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="6dp"
-            android:textAppearance="@style/TextAppearance.Lumina.Body"
+            android:textAppearance="@style/TextAppearance.AppCompat.Body1"
             android:text="@string/support_supporters_subtitle"
             android:textColor="@color/support_text_secondary"
             android:textSize="@dimen/support_text_secondary" />
@@ -112,7 +112,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="24dp"
-            android:textAppearance="@style/TextAppearance.Lumina.Body"
+            android:textAppearance="@style/TextAppearance.AppCompat.Body1"
             android:text="@string/support_faq_title"
             android:textColor="@color/support_text_primary"
             android:textSize="@dimen/support_text_section"

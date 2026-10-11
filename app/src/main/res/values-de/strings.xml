@@ -699,6 +699,11 @@
     <string name="error_dialog_no_cause">Keine Ursache</string>
     <string name="player_settings_gestures_title">Gesten</string>
     <string name="player_settings_keep_screen_on_title">Bildschirm bei Pause anlassen</string>
+    <string name="player_settings_keep_screen_on_on">An</string>
+    <string name="player_settings_keep_screen_on_off">Aus</string>
+    <string name="player_settings_subtitles_loading">Untertitel werden gesucht…</string>
+    <string name="player_settings_subtitles_empty">Keine Untertitel gefunden</string>
+    <string name="player_back_content_description">Zurück</string>
 
     <string name="settings_category_home_library">Startbildschirm-Bibliothek</string>
     <string name="settings_show_continue_watching_title">Weiterschauen anzeigen</string>

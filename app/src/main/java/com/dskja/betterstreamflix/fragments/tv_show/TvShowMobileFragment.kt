@@ -196,7 +196,12 @@ class TvShowMobileFragment : Fragment() {
             return
         }
         lastContentSignature = signature
+        // Preserve the user's tab across signature-driven rebuilds (e.g. episode fills).
         selectedTab = when {
+            selectedTab == DetailTab.EPISODES && tvShow.seasons.isNotEmpty() -> DetailTab.EPISODES
+            selectedTab == DetailTab.SIMILAR && tvShow.recommendations.isNotEmpty() -> DetailTab.SIMILAR
+            selectedTab == DetailTab.TRAILER -> DetailTab.TRAILER
+            selectedTab == DetailTab.ABOUT -> DetailTab.ABOUT
             tvShow.seasons.isNotEmpty() -> DetailTab.EPISODES
             tvShow.recommendations.isNotEmpty() -> DetailTab.SIMILAR
             else -> DetailTab.ABOUT

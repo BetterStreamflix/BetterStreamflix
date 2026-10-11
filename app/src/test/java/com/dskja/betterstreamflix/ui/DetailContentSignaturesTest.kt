@@ -5,7 +5,6 @@ import com.dskja.betterstreamflix.models.Season
 import com.dskja.betterstreamflix.models.TvShow
 import com.dskja.betterstreamflix.models.Episode
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertNotEquals
 import org.junit.Test
 
 class DetailContentSignaturesTest {
@@ -20,12 +19,12 @@ class DetailContentSignaturesTest {
     }
 
     @Test
-    fun movie_watchedChangesSignature() {
+    fun movie_watchedAloneDoesNotChangeSignature() {
         val base = Movie(id = "m1", title = "Alpha")
         base.isWatched = false
         val watched = Movie(id = "m1", title = "Alpha")
         watched.isWatched = true
-        assertNotEquals(DetailContentSignatures.movie(base), DetailContentSignatures.movie(watched))
+        assertEquals(DetailContentSignatures.movie(base), DetailContentSignatures.movie(watched))
     }
 
     @Test
@@ -40,7 +39,7 @@ class DetailContentSignaturesTest {
     }
 
     @Test
-    fun tvShow_seasonEpisodeFillChangesSignature() {
+    fun tvShow_seasonEpisodeFillDoesNotChangeSignature() {
         val empty = TvShow(
             id = "t1",
             title = "Beta",
@@ -58,6 +57,6 @@ class DetailContentSignaturesTest {
                 ),
             ),
         )
-        assertNotEquals(DetailContentSignatures.tvShow(empty), DetailContentSignatures.tvShow(filled))
+        assertEquals(DetailContentSignatures.tvShow(empty), DetailContentSignatures.tvShow(filled))
     }
 }
