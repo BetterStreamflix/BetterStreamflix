@@ -241,6 +241,22 @@
                 <action android:name="android.intent.action.VIEW"/>
                 <category android:name="android.intent.category.DEFAULT"/>
                 <category android:name="android.intent.category.BROWSABLE"/>
+                <data android:scheme="betterstreamflix" android:host="remotefind"/>
+                <data android:scheme="streamflix" android:host="remotefind"/>
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+                <category android:name="android.intent.category.BROWSABLE"/>
+                <data
+                    android:scheme="https"
+                    android:host="betterstreamflix.app"
+                    android:pathPrefix="/remotefind" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+                <category android:name="android.intent.category.BROWSABLE"/>
                 <data
                     android:scheme="https"
                     android:host="betterstreamflix.app"
@@ -282,6 +298,12 @@
                 <data android:scheme="betterstreamflix" android:host="live"/>
             </intent-filter>
         </activity>
+
+        <activity
+            android:name=".remotefind.RemoteFindPhoneActivity"
+            android:exported="false"
+            android:theme="@style/AppTheme.Mobile"
+            android:windowSoftInputMode="adjustResize" />
 
         <activity
             android:name=".activities.tools.QrScannerActivity"

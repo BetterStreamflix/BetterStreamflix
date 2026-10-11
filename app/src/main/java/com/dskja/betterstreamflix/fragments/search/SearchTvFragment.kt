@@ -39,8 +39,10 @@ import kotlinx.coroutines.launch
 import androidx.navigation.fragment.findNavController
 import com.dskja.betterstreamflix.providers.Provider
 import com.dskja.betterstreamflix.providers.IptvProvider
+import com.dskja.betterstreamflix.remotefind.RemoteFindUi
+import com.dskja.betterstreamflix.remotefind.SearchInputBridge
 
-class SearchTvFragment : Fragment() {
+class SearchTvFragment : Fragment(), SearchInputBridge.Target {
 
     private val http409Guard = Http409CacheGuard()
 
@@ -102,6 +104,10 @@ class SearchTvFragment : Fragment() {
         super.onViewCreated(view, savedInstanceState)
 
         initializeSearch()
+        SearchInputBridge.attach(this)
+        binding.btnSearchRemoteFind.setOnClickListener {
+            RemoteFindUi.hostAndShowCode(this)
+        }
 
         viewLifecycleOwner.lifecycleScope.launch {
             viewModel.state
@@ -197,6 +203,7 @@ class SearchTvFragment : Fragment() {
     }
 
     override fun onDestroyView() {
+        SearchInputBridge.detach(this)
         if (::voiceHelper.isInitialized) {
             runCatching { voiceHelper.stopRecognition() }
         }
@@ -212,6 +219,37 @@ class SearchTvFragment : Fragment() {
         binding.etSearch.setText(cleaned)
         binding.etSearch.setSelection(cleaned.length)
         submitSearch()
+    }
+
+    override fun remoteSetQuery(text: String) {
+        val ui = _binding ?: return
+        ui.etSearch.setText(text)
+        ui.etSearch.setSelection(text.length)
+    }
+
+    override fun remoteAppendQuery(text: String) {
+        val ui = _binding ?: return
+        val next = (ui.etSearch.text?.toString().orEmpty() + text).take(200)
+        ui.etSearch.setText(next)
+        ui.etSearch.setSelection(next.length)
+    }
+
+    override fun remoteBackspace() {
+        val ui = _binding ?: return
+        val current = ui.etSearch.text?.toString().orEmpty()
+        if (current.isEmpty()) return
+        val next = current.dropLast(1)
+        ui.etSearch.setText(next)
+        ui.etSearch.setSelection(next.length)
+    }
+
+    override fun remoteSubmit() {
+        submitSearch()
+    }
+
+    override fun remoteEnsureSearchVisible() {
+        // Already on Search when attached; keep focus on the field for typed keys.
+        _binding?.etSearch?.requestFocus()
     }
 
     private fun retryLastSearch() {

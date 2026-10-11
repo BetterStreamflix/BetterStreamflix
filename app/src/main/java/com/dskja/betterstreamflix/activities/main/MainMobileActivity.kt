@@ -412,6 +412,7 @@ class MainMobileActivity : FragmentActivity() {
                 com.dskja.betterstreamflix.sync.CastRoomLinks.parseToken(data) != null ||
                 com.dskja.betterstreamflix.sync.SessionHandoffLinks.parseCode(data.toString()) != null ||
                 com.dskja.betterstreamflix.sync.SessionHandoffLinks.parseToken(data.toString()) != null ||
+                com.dskja.betterstreamflix.remotefind.RemoteFindLinks.parse(data) != null ||
                 com.dskja.betterstreamflix.widgets.WidgetDeepLinks.parse(data) != null ||
                 com.dskja.betterstreamflix.tvlauncher.TvWatchDeepLink.parse(data.toString()) != null
         } == true
@@ -959,6 +960,12 @@ class MainMobileActivity : FragmentActivity() {
             com.dskja.betterstreamflix.sync.SessionHandoffLinks.parseToken(handoffRaw) != null
         ) {
             com.dskja.betterstreamflix.sync.SessionHandoffUi.handleIncoming(this, handoffRaw)
+            return true
+        }
+
+        val remoteFind = com.dskja.betterstreamflix.remotefind.RemoteFindLinks.parse(data)
+        if (remoteFind != null) {
+            com.dskja.betterstreamflix.remotefind.RemoteFindUi.handleIncomingTarget(this, remoteFind)
             return true
         }
 

@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <!-- Phone outline with a small TV pulse — Remote Find Phone. -->
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M15.5,1h-8C6.12,1 5,2.12 5,3.5v17C5,21.88 6.12,23 7.5,23h8c1.38,0 2.5,-1.12 2.5,-2.5v-17C18,2.12 16.88,1 15.5,1zM15.5,19.5h-8v-14h8v14z" />
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M9.5,9.25h4v1.5h-4zM9.5,12h4v1.5h-4z" />
+</vector>
