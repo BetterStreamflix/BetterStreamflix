@@ -49,4 +49,35 @@ class SerienStreamResolveLinkTest {
         assertNull(SerienStreamResolveLink.parse("betterstreamflix://trakt/oauth"))
         assertFalse(SerienStreamResolveLink.isResolveLink("not-a-link"))
     }
+
+    @Test
+    fun rejectsPublicAttackerWebSocket() {
+        assertNull(
+            SerienStreamResolveLink.parse(
+                "betterstreamflix://resolve?ws=ws://evil.example.com:9999&token=abc",
+            ),
+        )
+        assertFalse(
+            SerienStreamResolveLink.isAllowedResolverWs("ws://evil.example.com:9999"),
+        )
+    }
+
+    @Test
+    fun allowsOverrideHost() {
+        val target = SerienStreamResolveLink.parse(
+            "betterstreamflix://resolve?ws=ws://emulator.host:8765&token=abc",
+            advertisedHostOverride = "emulator.host",
+        )
+        assertNotNull(target)
+        assertEquals("ws://emulator.host:8765", target!!.ws)
+    }
+
+    @Test
+    fun rejectsPublicHttpLandingHost() {
+        assertNull(
+            SerienStreamResolveLink.parse(
+                "https://evil.example/resolve?ws=ws://192.168.1.1:8765&token=abc",
+            ),
+        )
+    }
 }

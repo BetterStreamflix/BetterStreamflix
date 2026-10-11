@@ -60,11 +60,27 @@ class CastPlaylistRewriterTest {
         assertTrue(CastStreamProxyServer.isBlockedProxyTarget("http://192.168.1.1/admin"))
         assertTrue(CastStreamProxyServer.isBlockedProxyTarget("http://10.0.0.5/"))
         assertTrue(CastStreamProxyServer.isBlockedProxyTarget("http://169.254.169.254/latest/meta-data/"))
-        // Explicitly wrapped LAN IPTV hosts are allowlisted.
+        // Unregistered public host is blocked (open-relay close).
+        assertTrue(
+            CastStreamProxyServer.isBlockedProxyTarget(
+                "https://cdn.example.com/a.ts",
+                allowedHosts = setOf("other.example.com"),
+            ),
+        )
+        // Explicitly wrapped LAN IPTV hosts require lanAllowedHosts.
         assertTrue(
             !CastStreamProxyServer.isBlockedProxyTarget(
                 "http://192.168.1.50/live.m3u8",
                 allowedHosts = setOf("192.168.1.50"),
+                lanAllowedHosts = setOf("192.168.1.50"),
+            ),
+        )
+        // Registered hostname that resolves private without LAN flag stays blocked.
+        assertTrue(
+            CastStreamProxyServer.isBlockedProxyTarget(
+                "http://192.168.1.50/live.m3u8",
+                allowedHosts = setOf("192.168.1.50"),
+                lanAllowedHosts = emptySet(),
             ),
         )
     }

@@ -261,7 +261,7 @@ object TrailerPlaybackController {
             loadWithOverviewMode = true
             useWideViewPort = true
             cacheMode = WebSettings.LOAD_DEFAULT
-            allowContentAccess = true
+            allowContentAccess = false
             allowFileAccess = false
         }
     }

@@ -272,6 +272,15 @@ class MainTvActivity : FragmentActivity() {
     /** Notification / deep-link tap → Downloads tab (parity with [MainMobileActivity]). */
     private fun handleOpenDownloadsIntent(intent: Intent?) {
         if (intent?.getBooleanExtra("open_downloads", false) != true) return
+        // Only honor when targeted at this app (SEC-DL-05).
+        val targetedUs = intent.component?.packageName == packageName ||
+            intent.`package` == packageName ||
+            callingPackage == null ||
+            callingPackage == packageName
+        if (!targetedUs) {
+            android.util.Log.w("MainTv", "Ignoring open_downloads from foreign caller=$callingPackage")
+            return
+        }
         val navHost =
             supportFragmentManager.findFragmentById(R.id.nav_main_fragment) as? NavHostFragment
                 ?: return
