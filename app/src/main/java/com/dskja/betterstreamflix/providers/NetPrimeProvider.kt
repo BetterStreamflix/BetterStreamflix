@@ -2,10 +2,12 @@ package com.dskja.betterstreamflix.providers
 
 import com.dskja.betterstreamflix.adapters.AppAdapter
 import com.dskja.betterstreamflix.extractors.Extractor
+import com.dskja.betterstreamflix.extractors.PrimeSrcExtractor
 import com.dskja.betterstreamflix.extractors.TwoEmbedExtractor
 import com.dskja.betterstreamflix.extractors.VidLinkExtractor
 import com.dskja.betterstreamflix.extractors.VideasyExtractor
 import com.dskja.betterstreamflix.extractors.VidrockExtractor
+import com.dskja.betterstreamflix.extractors.VidzeeExtractor
 import com.dskja.betterstreamflix.models.Category
 import com.dskja.betterstreamflix.models.Episode
 import com.dskja.betterstreamflix.models.Genre
@@ -130,13 +132,33 @@ object NetPrimeProvider : Provider {
             }.getOrDefault(emptyList())
         }
 
+        val vidzeeDeferred = async(Dispatchers.IO) {
+            runCatching {
+                VidzeeExtractor()
+                    .servers(videoType)
+                    .map { it.asNetPrime(it.name) }
+            }.getOrDefault(emptyList())
+        }
+
+        val primeSrcDeferred = async(Dispatchers.IO) {
+            runCatching {
+                PrimeSrcExtractor()
+                    .servers(videoType)
+                    .map { it.asNetPrime(it.name) }
+            }.getOrDefault(emptyList())
+        }
+
         val servers = mutableListOf<Video.Server>()
 
         /*
-         * Vidnest is the one source where NetPrime's current iframe
-         * domain differs from BetterStreamflix's older extractor mainUrl.
-         * The .fun domain is registered as an extractor alias below.
+         * Align closer to TMDb EN: discovering extractors (Vidzee/PrimeSrc/Vidrock)
+         * before optimistic embeds. Vidnest stays as NetPrime's native iframe alias.
          */
+        servers += vidzeeDeferred.await()
+        servers += primeSrcDeferred.await()
+        servers += vidrockDeferred.await()
+        servers += videasyDeferred.await()
+
         servers += Video.Server(
             id = "netprime-vidnest",
             name = "NetPrime • Vidnest",
@@ -159,9 +181,6 @@ object NetPrimeProvider : Provider {
         servers += TwoEmbedExtractor()
             .server(videoType)
             .asNetPrime("2Embed")
-
-        servers += vidrockDeferred.await()
-        servers += videasyDeferred.await()
 
         servers.distinctBy { it.id }
     }

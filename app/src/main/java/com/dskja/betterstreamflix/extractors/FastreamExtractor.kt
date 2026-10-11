@@ -3,6 +3,7 @@ package com.dskja.betterstreamflix.extractors
 import com.dskja.betterstreamflix.models.Video
 import com.dskja.betterstreamflix.utils.DnsResolver
 import com.dskja.betterstreamflix.utils.JsUnpacker
+import com.dskja.betterstreamflix.utils.withExtractorTimeouts
 import okhttp3.OkHttpClient
 import retrofit2.Retrofit
 import retrofit2.converter.scalars.ScalarsConverterFactory
@@ -21,6 +22,7 @@ class FastreamExtractor : Extractor() {
 
     private val client = OkHttpClient.Builder()
         .dns(DnsResolver.doh)
+        .withExtractorTimeouts()
         .build()
 
     private val service = Retrofit.Builder()

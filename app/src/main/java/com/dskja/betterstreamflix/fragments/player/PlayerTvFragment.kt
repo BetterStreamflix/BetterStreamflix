@@ -3176,7 +3176,7 @@ class PlayerTvFragment : Fragment() {
     }
 
     private fun isSerienStreamBypassUrl(url: String): Boolean {
-        return SerienStreamBypassHelper.isSerienStreamHost(url)
+        return SerienStreamBypassHelper.isGermanStreamGateHost(url)
     }
 
     private fun buildSerienStreamBypassUrl(serverList: List<Video.Server> = servers): String? {

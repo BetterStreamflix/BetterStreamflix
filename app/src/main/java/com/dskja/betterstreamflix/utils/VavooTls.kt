@@ -29,6 +29,13 @@ object VavooTls {
         }.socketFactory
     }
 
+    /**
+     * Host-scoped TLS relaxation shared by probe and Exo player clients.
+     *
+     * Accept when the peer hostname equals the allowlisted Vavoo CDN host
+     * **or** the platform default verifier accepts the session (odd-SAN CDNs
+     * that still present a valid cert for the requested name).
+     */
     fun applyTo(builder: OkHttpClient.Builder, targetHost: String) {
         val host = targetHost.trim().lowercase()
         if (host.isBlank()) return
@@ -43,29 +50,13 @@ object VavooTls {
             }
     }
 
+    /** Alias for [applyTo] — keep one policy for probe + player. */
     fun relaxForHost(
         builder: OkHttpClient.Builder,
         allowedHost: String
     ): OkHttpClient.Builder {
-
-        val normalHostnameVerifier =
-            HttpsURLConnection.getDefaultHostnameVerifier()
-
+        applyTo(builder, allowedHost)
         return builder
-            .sslSocketFactory(
-                sslSocketFactory,
-                trustManager
-            )
-            .hostnameVerifier { hostname, session ->
-                hostname.equals(
-                    allowedHost,
-                    ignoreCase = true
-                ) &&
-                    normalHostnameVerifier.verify(
-                        hostname,
-                        session
-                    )
-            }
     }
 
 }

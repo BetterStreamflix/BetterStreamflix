@@ -487,6 +487,22 @@ class HomeViewModel(
                         .collectHomeCategories(provider)
                 }.getOrDefault(emptyList())
                 val processed = HomeCatalogPipeline.process(provider, categories, addonRows)
+                // Empty live / soft-fail catalogs must not clear the home circuit —
+                // otherwise DaddyLive scrape misses and TMDb ClassCast empties never trip it.
+                if (processed.categories.isEmpty()) {
+                    ProviderSmoke.noteHomeFailure(provider.name)
+                    HomeCacheStore.write(appContext, provider, processed.categories)
+                    if (!isActive || providerName != UserPreferences.currentProvider?.name) return@launch
+                    val emptyWarning = processed.warningText
+                        ?: "Catalog empty for ${provider.name}"
+                    _state.emit(
+                        State.SuccessLoading(
+                            emptyList(),
+                            providerWarning = emptyWarning,
+                        )
+                    )
+                    return@launch
+                }
                 HomeCacheStore.write(appContext, provider, processed.categories)
                 ProviderSmoke.noteHomeSuccess(provider.name)
                 if (!isActive || providerName != UserPreferences.currentProvider?.name) return@launch

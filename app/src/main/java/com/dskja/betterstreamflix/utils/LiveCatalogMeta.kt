@@ -156,10 +156,13 @@ object LiveCatalogMeta {
                     }
                     append(countryName(code))
                     append(" (")
-                    // Show the shelf size users actually see; note remainder when capped.
-                    append(visible.size)
+                    // Honest shelf math: "12 of 48" when capped, else just the count.
                     if (shows.size > visible.size) {
-                        append('+')
+                        append(visible.size)
+                        append(" of ")
+                        append(shows.size)
+                    } else {
+                        append(visible.size)
                     }
                     append(')')
                 }

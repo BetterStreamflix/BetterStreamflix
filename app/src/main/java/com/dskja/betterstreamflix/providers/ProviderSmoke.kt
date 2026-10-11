@@ -17,6 +17,11 @@ object ProviderSmoke {
     private const val TAG = "ProviderSmoke"
     const val HOME_TIMEOUT_MS = 25_000L
     const val SERVERS_TIMEOUT_MS = 20_000L
+    /**
+     * TMDb (de) fans out SerienStream (≤25s) + Moflix (≤20s) in parallel.
+     * The default servers budget must not cancel them mid-flight.
+     */
+    const val SERVERS_TIMEOUT_DE_MS = 35_000L
     /** Catalog tabs (movies / TV shows / genre / people pages). */
     const val CATALOG_TIMEOUT_MS = 25_000L
     /** Search + global search per-provider. */
@@ -31,8 +36,9 @@ object ProviderSmoke {
     /**
      * TMDb home fires many parallel API shelves — keep the outer Home timeout
      * shorter so a hung api.themoviedb.org cannot strand the spinner near 25s+.
+     * Shelves already soft-timeout individually; partial results are returned on cancel.
      */
-    const val TMDB_HOME_TIMEOUT_MS = 18_000L
+    const val TMDB_HOME_TIMEOUT_MS = 22_000L
     /** Per-shelf soft timeout inside [com.dskja.betterstreamflix.providers.TmdbProvider]. */
     const val TMDB_SHELF_TIMEOUT_MS = 10_000L
     /** Detail-page TMDb metadata enrich (outside provider getMovie/getTvShow). */

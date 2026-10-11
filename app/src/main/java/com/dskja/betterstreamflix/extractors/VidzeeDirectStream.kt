@@ -11,6 +11,8 @@ object VidzeeDirectStream {
         val tmdbId: String,
         val season: String?,
         val episode: String?,
+        /** Optional labeled-mirror index from `sr=` (Nflix=0, Duke=1, …). */
+        val sr: Int? = null,
     ) {
         val isEpisode: Boolean
             get() = season != null && episode != null
@@ -50,12 +52,36 @@ object VidzeeDirectStream {
         val tmdbId = params["id"]?.takeIf { it.isNotBlank() } ?: return null
         val season = params["ss"]?.takeIf { it.isNotBlank() }
         val episode = params["ep"]?.takeIf { it.isNotBlank() }
+        val sr = params["sr"]?.toIntOrNull()
 
         return ServerLinkParams(
             tmdbId = tmdbId,
             season = season,
             episode = episode,
+            sr = sr,
         )
+    }
+
+    /**
+     * Map labeled `sr` mirrors onto preferred direct backends when possible.
+     * Unknown / default (`sr=0`) keeps the historical cascade order.
+     */
+    fun preferredDirectServers(sr: Int?, isEpisode: Boolean): List<String> {
+        val default = if (isEpisode) {
+            listOf("ipcloud", "dcloud", "tik")
+        } else {
+            listOf("dcloud", "tik", "ipcloud")
+        }
+        val preferred = when (sr) {
+            null, 0 -> null // Nflix / default — full cascade
+            1 -> "dcloud" // Duke
+            2, 3, 4, 5, 6 -> "tik"
+            7, 8 -> "ipcloud"
+            // Language mirrors (Hindi…): prefer ipcloud then cascade
+            in 9..13 -> "ipcloud"
+            else -> null
+        } ?: return default
+        return listOf(preferred) + default.filter { it != preferred }
     }
 
     fun directStreamEndpoints(
@@ -63,13 +89,10 @@ object VidzeeDirectStream {
         tmdbId: String,
         season: String?,
         episode: String?,
+        sr: Int? = null,
     ): List<Pair<String, String>> {
         val isEpisode = season != null && episode != null
-        val directServers = if (isEpisode) {
-            listOf("ipcloud", "dcloud", "tik")
-        } else {
-            listOf("dcloud", "tik", "ipcloud")
-        }
+        val directServers = preferredDirectServers(sr, isEpisode)
 
         return directServers.map { directServer ->
             val endpoint = if (isEpisode) {

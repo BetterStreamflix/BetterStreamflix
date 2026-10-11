@@ -51,7 +51,7 @@ object FamelackProvider : IptvProvider, ProviderConfigUrl {
     )
     private val HOME_COUNTRIES = LiveCatalogMeta.PRIORITY_COUNTRIES
 
-    private val client = OkHttpClient.Builder()
+    private val client = com.dskja.betterstreamflix.utils.NetworkClient.default.newBuilder()
         .connectTimeout(10, TimeUnit.SECONDS)
         .readTimeout(15, TimeUnit.SECONDS)
         .callTimeout(20, TimeUnit.SECONDS)

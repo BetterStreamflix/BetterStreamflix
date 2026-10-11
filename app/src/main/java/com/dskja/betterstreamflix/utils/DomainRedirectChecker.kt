@@ -2,10 +2,10 @@ package com.dskja.betterstreamflix.utils
 
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import okhttp3.OkHttpClient
-import okhttp3.Request
 import okhttp3.HttpUrl.Companion.toHttpUrl
+import okhttp3.Request
 import java.util.concurrent.TimeUnit
+import java.util.Locale
 
 object DomainRedirectChecker {
 
@@ -15,13 +15,39 @@ object DomainRedirectChecker {
         val changed: Boolean,
     )
 
-    private val client = OkHttpClient.Builder()
-        .followRedirects(true)
-        .followSslRedirects(true)
-        .connectTimeout(15, TimeUnit.SECONDS)
-        .readTimeout(15, TimeUnit.SECONDS)
-        .callTimeout(25, TimeUnit.SECONDS)
-        .build()
+    private val client by lazy {
+        NetworkClient.default.newBuilder()
+            .followRedirects(true)
+            .followSslRedirects(true)
+            .connectTimeout(15, TimeUnit.SECONDS)
+            .readTimeout(15, TimeUnit.SECONDS)
+            .callTimeout(25, TimeUnit.SECONDS)
+            .build()
+    }
+
+    /** Host suffixes that are never valid provider homes (parking / interstitial). */
+    private val BLOCKED_HOST_MARKERS = listOf(
+        "parking",
+        "sedo.com",
+        "godaddy.com",
+        "domainmarket.com",
+        "afternic.com",
+        "hugedomains.com",
+        "dan.com",
+        "cloudflare.com",
+        "challenge.cloudflare",
+    )
+
+    private val PARKING_HTML_MARKERS = listOf(
+        "domain is for sale",
+        "buy this domain",
+        "this domain is parked",
+        "parked domain",
+        "sedo parking",
+        "related searches",
+        "godaddy",
+        "hugedomains",
+    )
 
     suspend fun check(url: String): Result = withContext(Dispatchers.IO) {
         val normalized = normalizeInput(url)
@@ -45,7 +71,22 @@ object DomainRedirectChecker {
                 )
             }
 
-            val finalUrl = response.request.url
+            val body = runCatching { response.body?.string().orEmpty() }.getOrDefault("")
+            val finalHttpUrl = response.request.url
+            val finalHost = finalHttpUrl.host.removePrefix("www.").lowercase(Locale.US)
+
+            if (isBlockedHost(finalHost)) {
+                throw IllegalStateException(
+                    "Redirect landed on blocked host: $finalHost",
+                )
+            }
+            if (looksLikeParkingPage(body)) {
+                throw IllegalStateException(
+                    "Redirect landed on a parking / interstitial page ($finalHost)",
+                )
+            }
+
+            val finalUrl = finalHttpUrl
                 .newBuilder()
                 .encodedPath("/")
                 .query(null)
@@ -76,6 +117,21 @@ object DomainRedirectChecker {
         return normalized.toHttpUrl()
             .host
             .removePrefix("www.")
+    }
+
+    private fun isBlockedHost(host: String): Boolean {
+        if (host.isBlank()) return true
+        return BLOCKED_HOST_MARKERS.any { marker ->
+            host == marker || host.endsWith(".$marker") || host.contains(marker)
+        }
+    }
+
+    private fun looksLikeParkingPage(html: String): Boolean {
+        if (html.isBlank()) return false
+        val lower = html.lowercase(Locale.US)
+        // Tiny challenge shells are not provider homes.
+        if (html.length < 400 && lower.contains("just a moment")) return true
+        return PARKING_HTML_MARKERS.any { lower.contains(it) }
     }
 
     private fun normalizeInput(value: String): String {

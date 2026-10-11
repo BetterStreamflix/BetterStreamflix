@@ -53,7 +53,7 @@ class FirestreamExtractor : Extractor() {
             .filterNot { MeinecloudEmbedHelper.isFirestreamUrl(it) }
 
         var lastError: Exception? = null
-        for (mirror in mirrors.take(3)) {
+        for (mirror in mirrors.take(6)) {
             try {
                 return Extractor.extract(mirror, maxAttempts = 1)
             } catch (e: Exception) {

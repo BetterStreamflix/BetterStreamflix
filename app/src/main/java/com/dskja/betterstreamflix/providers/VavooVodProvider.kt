@@ -10,6 +10,7 @@ import com.dskja.betterstreamflix.models.Movie
 import com.dskja.betterstreamflix.models.People
 import com.dskja.betterstreamflix.models.TvShow
 import com.dskja.betterstreamflix.models.Video
+import com.dskja.betterstreamflix.utils.NetworkClient
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.MediaType.Companion.toMediaType
@@ -47,11 +48,11 @@ class VavooVodProvider private constructor(
     private val TAG = "VavooVodProvider-$language"
     private val tmdb = TmdbProvider(language)
 
-    private val client = OkHttpClient.Builder()
-        .connectTimeout(8, TimeUnit.SECONDS)
-        .readTimeout(12, TimeUnit.SECONDS)
-        .writeTimeout(8, TimeUnit.SECONDS)
-        .callTimeout(15, TimeUnit.SECONDS)
+    private val client = NetworkClient.default.newBuilder()
+        .connectTimeout(10, TimeUnit.SECONDS)
+        .readTimeout(15, TimeUnit.SECONDS)
+        .writeTimeout(10, TimeUnit.SECONDS)
+        .callTimeout(20, TimeUnit.SECONDS)
         .build()
 
     override val baseUrl: String get() = VavooConfig.baseUrl()
@@ -226,11 +227,18 @@ class VavooVodProvider private constructor(
                     Log.w(TAG, "Vavoo VOD source -> HTTP ${response.code}: ${raw.take(500)}")
                     emptyList()
                 } else {
-                    extractUrls(raw)
+                    val urls = extractUrls(raw)
+                    if (urls.isEmpty()) {
+                        Log.w(
+                            TAG,
+                            "Vavoo VOD source parse empty (schema drift?). bytes=${raw.length} preview=${raw.take(300)}",
+                        )
+                    }
+                    urls
                 }
             }
         }.getOrElse { error ->
-            Log.w(TAG, "Vavoo VOD source failed", error)
+            Log.w(TAG, "Vavoo VOD source failed: ${error.message}", error)
             emptyList()
         }
     }

@@ -70,14 +70,33 @@ class VidzeeExtractor : Extractor() {
     }
 
     override suspend fun extract(link: String): Video = coroutineScope {
+        val sr = Regex("""[?&]sr=(\d+)""").find(link)?.groupValues?.getOrNull(1)?.toIntOrNull() ?: 0
         // Current Vidzee exposes direct, unencrypted playback URLs through
         // core.vidzee.wtf. Keep the previous encrypted API below as fallback.
+        // Labeled mirrors (sr≠0): try legacy per-sr first so Hindi/… stay language-correct.
+        if (sr != 0) {
+            runCatching { extractLegacy(link) }.getOrNull()?.let {
+                return@coroutineScope it
+            }
+        }
         tryDirectStream(link)?.let {
             return@coroutineScope it
         }
+        if (sr == 0) {
+            runCatching { extractLegacy(link) }.getOrNull()?.let {
+                return@coroutineScope it
+            }
+        }
+        throw Exception(
+            "Vidzee extract failed (direct + legacy). Mirror sr=$sr may need a rotated key.",
+        )
+    }
 
+    private suspend fun extractLegacy(link: String): Video {
         val masterKey = getMasterKey()
-            ?: throw Exception("Failed to get Vidzee master key")
+            ?: throw Exception(
+                "Failed to get Vidzee master key (static passphrase may have rotated)",
+            )
 
         try {
             val request = Request.Builder()
@@ -120,7 +139,7 @@ class VidzeeExtractor : Extractor() {
             val isDukeServer = link.contains("sr=1")
             val mimeType = if (isDukeServer) MimeTypes.VIDEO_MP4 else MimeTypes.APPLICATION_M3U8
 
-            return@coroutineScope Video(
+            return Video(
                 source = decryptedUrl,
                 subtitles = subtitles,
                 headers = mapOf(
@@ -144,6 +163,7 @@ class VidzeeExtractor : Extractor() {
             tmdbId = params.tmdbId,
             season = params.season,
             episode = params.episode,
+            sr = params.sr,
         )
 
         for ((directServer, endpoint) in endpoints) {

@@ -37,7 +37,7 @@ object IptvOrgProvider : IptvProvider, ProviderConfigUrl {
         "Travel", "Weather", "Undefined"
     )
 
-    private val client = OkHttpClient.Builder()
+    private val client = com.dskja.betterstreamflix.utils.NetworkClient.default.newBuilder()
         .connectTimeout(30, TimeUnit.SECONDS)
         .readTimeout(30, TimeUnit.SECONDS)
         .callTimeout(30, TimeUnit.SECONDS)
