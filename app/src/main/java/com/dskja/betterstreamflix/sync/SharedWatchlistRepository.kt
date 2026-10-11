@@ -2,7 +2,6 @@ package com.dskja.betterstreamflix.sync
 
 import android.content.Context
 import android.util.Log
-import com.dskja.betterstreamflix.R
 import com.dskja.betterstreamflix.models.Movie
 import com.dskja.betterstreamflix.models.TvShow
 import com.dskja.betterstreamflix.profiles.ProfileManager
