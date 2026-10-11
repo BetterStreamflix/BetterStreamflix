@@ -4,6 +4,7 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
+import android.view.KeyEvent
 import android.view.View
 import androidx.activity.OnBackPressedCallback
 import androidx.activity.viewModels
@@ -262,11 +263,15 @@ class MainTvActivity : FragmentActivity() {
             override fun handleOnBackPressed() {
                 when (navController.currentDestination?.id) {
                     R.id.home -> {
+                        val host = navHostFragment.childFragmentManager.primaryNavigationFragment
+                            as? com.dskja.betterstreamflix.fragments.home.HomeTvFragment
+                        if (host?.isAmbientActive() == true) {
+                            host.onAmbientUserActivity()
+                            return
+                        }
                         if (binding.navMain.hasFocus()) {
                             finish()
                         } else {
-                            val host = navHostFragment.childFragmentManager.primaryNavigationFragment
-                                as? com.dskja.betterstreamflix.fragments.home.HomeTvFragment
                             val onFeatured = host?.isFeaturedChromeFocused() == true
                             if (!onFeatured && host?.requestContentFocus() == true) {
                                 // first Back → Featured Watch
@@ -541,6 +546,22 @@ class MainTvActivity : FragmentActivity() {
         castSessionStateListener?.let { CastPlaybackHub.removeSessionStateListener(it) }
         castSessionStateListener = null
         super.onDestroy()
+    }
+
+    override fun dispatchKeyEvent(event: KeyEvent): Boolean {
+        val host = (supportFragmentManager.findFragmentById(R.id.nav_main_fragment)
+            as? NavHostFragment)
+            ?.childFragmentManager
+            ?.primaryNavigationFragment
+            as? com.dskja.betterstreamflix.fragments.home.HomeTvFragment
+        if (host != null) {
+            if (host.onAmbientKeyEvent(event)) return true
+            // Any key while Home is visible resets Ambient idle (when inactive).
+            if (event.action == KeyEvent.ACTION_DOWN && !host.isAmbientActive()) {
+                host.onAmbientUserActivity()
+            }
+        }
+        return super.dispatchKeyEvent(event)
     }
 
     private fun showProfileUnlockGateIfNeeded(navHostFragment: NavHostFragment) {

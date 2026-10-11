@@ -1049,6 +1049,16 @@ object UserPreferences {
             setProfileScopedBoolean(Key.SHOW_CONTINUE_WATCHING, value)
         }
 
+    /**
+     * TV Ambient Mode — idle soft poster cinemagraphs + Continue strip on Home.
+     * Profile-scoped; default on. High-end gate is enforced at runtime.
+     */
+    var tvAmbientModeEnabled: Boolean
+        get() = profileScopedBoolean(Key.TV_AMBIENT_MODE) ?: true
+        set(value) {
+            setProfileScopedBoolean(Key.TV_AMBIENT_MODE, value)
+        }
+
     /** When false, Home hides the Recently Watched row. */
     var showRecentlyWatched: Boolean
         get() = profileScopedBoolean(Key.SHOW_RECENTLY_WATCHED) ?: true
@@ -1891,6 +1901,7 @@ object UserPreferences {
         TMDB_LOGO_MISS_TTL_HOURS,
         TMDB_LOGO_HIT_TTL_HOURS,
         SHOW_CONTINUE_WATCHING,
+        TV_AMBIENT_MODE,
         SHOW_RECENTLY_WATCHED,
         SHOW_NEXT_EPISODES,
         SHOW_SMART_COLLECTIONS,

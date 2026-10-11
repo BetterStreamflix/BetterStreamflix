@@ -38,6 +38,7 @@ import com.dskja.betterstreamflix.utils.LoggingUtils
 import com.dskja.betterstreamflix.utils.UserPreferences
 import com.dskja.betterstreamflix.utils.ProviderChangeNotifier
 import com.dskja.betterstreamflix.utils.HomeCatalogPipeline
+import com.dskja.betterstreamflix.ui.AmbientModeController
 import com.dskja.betterstreamflix.ui.FeaturedAdvancePolicy
 import com.dskja.betterstreamflix.ui.FeaturedHeroController
 import com.dskja.betterstreamflix.ui.FeaturedSwiperChrome
@@ -58,6 +59,21 @@ class HomeTvFragment : Fragment() {
 
     private val appAdapter = AppAdapter()
     private var homeBindSignature: String? = null
+    private var ambientController: AmbientModeController? = null
+
+    /** True while Ambient Mode owns the Home canvas (pauses Featured rotate). */
+    fun isAmbientActive(): Boolean = ambientController?.isActive() == true
+
+    /** Reset idle / exit ambient — called from [MainTvActivity] key path. */
+    fun onAmbientUserActivity() {
+        ambientController?.onUserActivity()
+    }
+
+    /**
+     * @return true if Ambient fully handled the key (e.g. BACK while active).
+     */
+    fun onAmbientKeyEvent(event: KeyEvent): Boolean =
+        ambientController?.onKeyEvent(event) == true
 
     /** Shared pool for nested shelf HorizontalGridViews (parity with mobile shelfPool). */
     val shelfPool: RecyclerView.RecycledViewPool = RecyclerView.RecycledViewPool().apply {
@@ -122,6 +138,16 @@ class HomeTvFragment : Fragment() {
 
         initializeHome()
         refreshProfileChip()
+        ambientController = AmbientModeController(
+            fragment = this,
+            root = binding.root,
+            homeContent = binding.vgvHome,
+            homeChrome = listOfNotNull(
+                binding.root.findViewById(R.id.tv_home_profile_chip),
+                binding.root.findViewById(R.id.btn_home_remix),
+                binding.root.findViewById(R.id.tv_home_catalog_warning),
+            ),
+        )
 
         // Single HomeViewModel (no provider key). ViewModel owns getHome on provider change;
         // this collector only binds UI and resets Featured timers when the active provider flips.
@@ -216,6 +242,7 @@ class HomeTvFragment : Fragment() {
             ?.let {
                 resetSwiperSchedule()
             }
+        ambientController?.onStart()
     }
 
     override fun onPause() {
@@ -230,11 +257,14 @@ class HomeTvFragment : Fragment() {
     }
 
     override fun onStop() {
+        ambientController?.onStop()
         super.onStop()
         swiperHandler.removeCallbacksAndMessages(null)
     }
 
     override fun onDestroyView() {
+        ambientController?.destroy()
+        ambientController = null
         swiperHandler.removeCallbacksAndMessages(null)
         _binding?.let { appAdapter.onSaveInstanceState(it.vgvHome) }
         _binding = null
@@ -617,6 +647,7 @@ class HomeTvFragment : Fragment() {
                     else -> AppAdapter.Type.CATEGORY_TV_ITEM
                 }
             }
+        ambientController?.onCategoriesBound(visibleCategories)
         if (homeUnchanged(visibleCategories, watchlistDigestEpisodes)) return
         val showDigest = com.dskja.betterstreamflix.watchlist.WatchlistDigestPolicy.shouldShow(
             watchlistDigestEpisodes,
@@ -709,11 +740,16 @@ class HomeTvFragment : Fragment() {
         if (!isAdded) return
         val ctx = context ?: return
         if (!FeaturedAdvancePolicy.shouldAutoAdvance(ctx)) return
+        if (isAmbientActive()) return
         swiperHandler.postDelayed(object : Runnable {
             override fun run() {
                 if (!isAdded) return
                 val ctx2 = context ?: return
                 if (!FeaturedAdvancePolicy.shouldAutoAdvance(ctx2)) {
+                    swiperHandler.removeCallbacksAndMessages(null)
+                    return
+                }
+                if (isAmbientActive()) {
                     swiperHandler.removeCallbacksAndMessages(null)
                     return
                 }
