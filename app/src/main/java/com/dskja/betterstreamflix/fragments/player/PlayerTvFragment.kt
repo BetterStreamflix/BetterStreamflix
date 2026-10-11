@@ -60,6 +60,7 @@ import com.dskja.betterstreamflix.cast.CastMediaFactory
 import com.dskja.betterstreamflix.cast.CastPlaybackHub
 import com.dskja.betterstreamflix.cast.CastQueueCoordinator
 import com.dskja.betterstreamflix.player.EndCardPolicy
+import com.dskja.betterstreamflix.support.ThanksAfterBingeBinder
 import com.dskja.betterstreamflix.player.FailoverTimelineSession
 import com.dskja.betterstreamflix.player.FailoverTimelineUi
 import com.dskja.betterstreamflix.player.PlaybackFailover
@@ -3542,6 +3543,7 @@ class PlayerTvFragment : Fragment(),
             } else {
                 card.tvEndCardCountdown.isVisible = false
             }
+            bindThanksAfterBingePanel(card, episode)
             if (root.isGone) {
                 val fadeIn = android.view.animation.AnimationUtils.loadAnimation(
                     requireContext(),
@@ -3556,12 +3558,54 @@ class PlayerTvFragment : Fragment(),
             focusTarget.post { focusTarget.requestFocus() }
         }
 
+        private fun bindThanksAfterBingePanel(
+            card: com.dskja.betterstreamflix.databinding.LayoutPlayerEndCardBinding,
+            episode: Video.Type.Episode?,
+        ) {
+            ThanksAfterBingeBinder.bind(
+                panel = ThanksAfterBingeBinder.Panel(
+                    root = card.endCardThanksPanel,
+                    title = card.tvEndCardThanksTitle,
+                    body = card.tvEndCardThanksBody,
+                    cta = card.btnEndCardThanksCta,
+                    dismiss = card.btnEndCardThanksDismiss,
+                ),
+                videoType = episode,
+                onOpenSupport = {
+                    endCardCountdownCancelled = true
+                    endCardCountdownJob?.cancel()
+                    hideEndCardChooser()
+                    if (!isAdded) return@bind
+                    forceStopPlayback()
+                    runCatching {
+                        findNavController().navigate(
+                            R.id.support,
+                            null,
+                            NavOptions.Builder().setPopUpTo(R.id.player, true).build(),
+                        )
+                    }
+                },
+            )
+        }
+
         private fun hideEndCardChooser() {
             endCardCountdownJob?.cancel()
             endCardCountdownJob = null
             endCardCountdownCancelled = true
             endCardVisible = false
-            val root = _binding?.layoutEndCardChooser?.root ?: return
+            val card = _binding?.layoutEndCardChooser
+            ThanksAfterBingeBinder.hide(
+                card?.let {
+                    ThanksAfterBingeBinder.Panel(
+                        root = it.endCardThanksPanel,
+                        title = it.tvEndCardThanksTitle,
+                        body = it.tvEndCardThanksBody,
+                        cta = it.btnEndCardThanksCta,
+                        dismiss = it.btnEndCardThanksDismiss,
+                    )
+                },
+            )
+            val root = card?.root ?: return
             if (root.isVisible) {
                 root.isGone = true
             }

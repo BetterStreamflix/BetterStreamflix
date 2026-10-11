@@ -500,6 +500,10 @@
     <string name="player_end_card_back_to_series">Back to series</string>
     <string name="player_end_card_back_to_title">Back to title</string>
     <string name="player_end_card_autoplay_in">Next episode in %ds</string>
+    <string name="thanks_after_binge_title">Season finished — thank you</string>
+    <string name="thanks_after_binge_body">If BetterStreamflix helped you binge, an optional tip keeps it going. Never required.</string>
+    <string name="thanks_after_binge_cta">Support</string>
+    <string name="thanks_after_binge_dismiss">Not now</string>
     <string name="player_aspect_ratio_fit">Fit to screen</string>
     <string name="player_aspect_ratio_fill">Stretch</string>
     <string name="player_aspect_ratio_zoom">Zoom</string>

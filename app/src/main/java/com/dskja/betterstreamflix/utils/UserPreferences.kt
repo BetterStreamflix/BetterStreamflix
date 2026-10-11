@@ -832,6 +832,26 @@ object UserPreferences {
         get() = Key.HOME_WATCHLIST_DIGEST_LAST_QUEUED_AT_MS.getLong() ?: 0L
         set(value) = Key.HOME_WATCHLIST_DIGEST_LAST_QUEUED_AT_MS.setLong(value)
 
+    /**
+     * Thanks After Binge — soft Support nudge after a season finale.
+     * Permanent opt-out; soft shows use a long cool-down (see ThanksAfterBingePolicy).
+     */
+    var neverShowThanksAfterBinge: Boolean
+        get() = Key.NEVER_SHOW_THANKS_AFTER_BINGE.getBoolean() ?: false
+        set(value) = Key.NEVER_SHOW_THANKS_AFTER_BINGE.setBoolean(value)
+
+    var thanksAfterBingeLastShownAtMs: Long
+        get() = Key.THANKS_AFTER_BINGE_LAST_SHOWN_AT_MS.getLong() ?: 0L
+        set(value) = Key.THANKS_AFTER_BINGE_LAST_SHOWN_AT_MS.setLong(value)
+
+    var thanksAfterBingeLastDismissedAtMs: Long
+        get() = Key.THANKS_AFTER_BINGE_LAST_DISMISSED_AT_MS.getLong() ?: 0L
+        set(value) = Key.THANKS_AFTER_BINGE_LAST_DISMISSED_AT_MS.setLong(value)
+
+    var thanksAfterBingeShowCount: Int
+        get() = Key.THANKS_AFTER_BINGE_SHOW_COUNT.getInt() ?: 0
+        set(value) = Key.THANKS_AFTER_BINGE_SHOW_COUNT.setInt(value)
+
     /** Unique finished episodes counted toward the Support tip threshold. */
     var supportEpisodesWatchedCount: Int
         get() = Key.SUPPORT_EPISODES_WATCHED_COUNT.getInt() ?: 0
@@ -1798,6 +1818,10 @@ object UserPreferences {
         HOME_WATCHLIST_DIGEST_LAST_SHOWN_AT_MS,
         HOME_WATCHLIST_DIGEST_SHOW_COUNT,
         HOME_WATCHLIST_DIGEST_LAST_QUEUED_AT_MS,
+        NEVER_SHOW_THANKS_AFTER_BINGE,
+        THANKS_AFTER_BINGE_LAST_SHOWN_AT_MS,
+        THANKS_AFTER_BINGE_LAST_DISMISSED_AT_MS,
+        THANKS_AFTER_BINGE_SHOW_COUNT,
         SUPPORT_EPISODES_WATCHED_COUNT,
         SUPPORT_EPISODE_IDS_COUNTED,
         SUPPORT_STARTUP_LAST_SHOWN_AT_MS,
