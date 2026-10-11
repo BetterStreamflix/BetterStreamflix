@@ -1,7 +1,6 @@
 package com.dskja.betterstreamflix.player
 
 import android.content.Context
-import android.os.Build
 import androidx.media3.common.AudioAttributes
 import androidx.media3.common.C
 import androidx.media3.common.util.UnstableApi
@@ -28,7 +27,10 @@ object PlayerBuilderFactory {
 
     data class Options(
         val extraBuffering: Boolean = false,
+        /** Effective SW/extension prefer (Settings On or Auto-on). */
         val softwareDecoder: Boolean = false,
+        /** True when the user forced Software Decoder On (not Auto). */
+        val softwareDecoderForced: Boolean = false,
         val seekIncrementsMs: Long? = 10_000L,
         val preferStereoAudio: Boolean = false,
         /** Shorter buffers + quicker start for IPTV / live HLS. */
@@ -83,24 +85,18 @@ object PlayerBuilderFactory {
             .build()
 
         val renderersFactory = SubtitleOffsetRenderersFactory(context).apply {
-            val preferSoftware =
-                options.softwareDecoder || DeviceCapabilities.shouldPreferSoftwareDecoder(context)
-            // Always enable decoder fallback on modern devices and constrained TVs.
-            // Silent hardware decoder failures on Xiaomi/Fire OS often crash to launcher.
-            if (
-                Build.VERSION.SDK_INT > Build.VERSION_CODES.N_MR1 ||
-                preferSoftware ||
-                constrained
-            ) {
-                setEnableDecoderFallback(true)
-            }
+            // [Options.softwareDecoder] already encodes Settings Auto (device default) /
+            // On / Off — do not OR DeviceCapabilities again or Off becomes a no-op.
+            val preferSoftware = options.softwareDecoder
+            // Always enable MediaCodec software fallback; OEM HW-only paths crash to launcher.
+            setEnableDecoderFallback(true)
             if (preferSoftware) {
-                // ON (not only PREFER) so TV boxes that hard-crash in HW codecs get FFmpeg first.
+                // Forced On → MODE_ON (try extension/SW first). Auto-prefer → PREFER.
                 setExtensionRendererMode(
-                    if (DeviceCapabilities.isLeanbackDevice(context) || options.softwareDecoder) {
-                        DefaultRenderersFactory.EXTENSION_RENDERER_MODE_PREFER
-                    } else {
+                    if (options.softwareDecoderForced) {
                         DefaultRenderersFactory.EXTENSION_RENDERER_MODE_ON
+                    } else {
+                        DefaultRenderersFactory.EXTENSION_RENDERER_MODE_PREFER
                     },
                 )
             }

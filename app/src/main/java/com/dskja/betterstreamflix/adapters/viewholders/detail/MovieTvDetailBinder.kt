@@ -161,7 +161,7 @@ internal fun MovieViewHolder.bindMovieTvDetail(binding: ContentMovieTvBinding) {
                     openGenre(genres.first())
                 } else {
                     val labels = genres.map { it.name }.toTypedArray()
-                    AlertDialog.Builder(context)
+                    AlertDialog.Builder(com.dskja.betterstreamflix.utils.ExpDialogChrome.themedContext(context))
                         .setTitle(R.string.genre_section_label)
                         .setItems(labels) { _, which ->
                             genres.getOrNull(which)?.let(::openGenre)
@@ -169,8 +169,6 @@ internal fun MovieViewHolder.bindMovieTvDetail(binding: ContentMovieTvBinding) {
                         .show()
                 }
             }
-            nextFocusDownId = binding.btnMovieWatchNow.id
-            binding.btnMovieWatchNow.nextFocusUpId = id
         }
     }
 
@@ -204,17 +202,23 @@ internal fun MovieViewHolder.bindMovieTvDetail(binding: ContentMovieTvBinding) {
                     ellipsize = null
                 }
             }
-            nextFocusDownId = binding.btnMovieWatchNow.id
-            binding.btnMovieWatchNow.nextFocusUpId = id
         } else {
             text = ""
             visibility = View.GONE
             isFocusable = false
             setOnClickListener(null)
-            val genres = binding.tvMovieGenres
-            binding.btnMovieWatchNow.nextFocusUpId =
-                if (genres.isVisible && genres.isFocusable) genres.id else View.NO_ID
         }
+        fun rewireOverviewWatch() {
+            com.dskja.betterstreamflix.utils.TvFocusChain.linkVertical(
+                *listOfNotNull(
+                    binding.tvMovieOverview.takeIf { it.isFocusable && it.isVisible },
+                    binding.tvMovieGenres.takeIf { it.isFocusable && it.isVisible },
+                    binding.btnMovieWatchNow,
+                ).toTypedArray(),
+            )
+        }
+        rewireOverviewWatch()
+        post { rewireOverviewWatch() }
     }
 
     binding.btnMovieWatchNow.apply {
@@ -294,9 +298,12 @@ internal fun MovieViewHolder.bindMovieTvDetail(binding: ContentMovieTvBinding) {
             }
             // Hide until a playable URL is ready — avoids dead clicks while lookup runs.
             visibility = if (!trailerUrl.isNullOrBlank()) View.VISIBLE else View.GONE
+            isFocusable = !trailerUrl.isNullOrBlank()
+            isFocusableInTouchMode = isFocusable
             rewireTvCtaFocus()
         }
         bindTrailer(movie.trailer)
+        rewireTvCtaFocus()
         if (movie.trailer.isNullOrBlank() && canLookup) {
             itemView.findViewTreeLifecycleOwner()?.lifecycleScope?.launch {
                 val remote = withContext(Dispatchers.IO) {

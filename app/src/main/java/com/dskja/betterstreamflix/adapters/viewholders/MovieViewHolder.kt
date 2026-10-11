@@ -1025,7 +1025,10 @@ class MovieViewHolder(
             }
         }
         binding.hgvMovieCast.apply {
-            setRowHeight(ViewGroup.LayoutParams.WRAP_CONTENT)
+            if (getTag(R.id.tv_shelf_row_height_tag) != true) {
+                setTag(R.id.tv_shelf_row_height_tag, true)
+                setRowHeight((210 * resources.displayMetrics.density).toInt())
+            }
             submitAppList(movie.cast.onEach {
                 it.itemType = AppAdapter.Type.PEOPLE_TV_ITEM
             })
@@ -1073,7 +1076,10 @@ class MovieViewHolder(
             }
         }
         binding.hgvMovieDirectors.apply {
-            setRowHeight(ViewGroup.LayoutParams.WRAP_CONTENT)
+            if (getTag(R.id.tv_shelf_row_height_tag) != true) {
+                setTag(R.id.tv_shelf_row_height_tag, true)
+                setRowHeight((210 * resources.displayMetrics.density).toInt())
+            }
             submitAppList(movie.directors.onEach {
                 it.itemType = AppAdapter.Type.PEOPLE_TV_ITEM
             })
@@ -1140,7 +1146,10 @@ class MovieViewHolder(
             }
         }
         binding.hgvMovieRecommendations.apply {
-            setRowHeight(ViewGroup.LayoutParams.WRAP_CONTENT)
+            if (getTag(R.id.tv_shelf_row_height_tag) != true) {
+                setTag(R.id.tv_shelf_row_height_tag, true)
+                setRowHeight((210 * resources.displayMetrics.density).toInt())
+            }
             submitAppList(movie.recommendations.onEach {
                 when (it) {
                     is Movie -> it.itemType = AppAdapter.Type.MOVIE_TV_ITEM

@@ -65,4 +65,13 @@ class TvFocusChainTest {
         assertNotNull(method)
         assertEquals(2, method!!.parameterTypes.size)
     }
+
+    @Test
+    fun linkHelpersDocumentGoneTrailerAndIptvDownloadContracts() {
+        // Full View linking needs instrumentation/Robolectric. Lock the public surface
+        // used by detail CTA rewires when Trailer is GONE and IPTV hides Download.
+        assertNotNull(TvFocusChain::class.java.methods.firstOrNull { it.name == "linkHorizontal" })
+        assertNotNull(TvFocusChain::class.java.methods.firstOrNull { it.name == "linkVertical" })
+        assertNotNull(TvFocusChain::class.java.methods.firstOrNull { it.name == "linkDown" })
+    }
 }

@@ -11,6 +11,7 @@ import com.dskja.betterstreamflix.providers.IptvProvider
 import com.dskja.betterstreamflix.providers.Provider
 import com.dskja.betterstreamflix.providers.ProviderSmoke
 import com.dskja.betterstreamflix.utils.ParentalControlUtils
+import com.dskja.betterstreamflix.utils.ProviderChangeNotifier
 import com.dskja.betterstreamflix.utils.SearchSort
 import com.dskja.betterstreamflix.utils.SearchSortMode
 import com.dskja.betterstreamflix.utils.UserPreferences
@@ -191,6 +192,13 @@ class SearchViewModel(
 
     init {
         search(query)
+        viewModelScope.launch {
+            ProviderChangeNotifier.providerChangeFlow.collect {
+                // Cancel mid-search Room merges against a closing DB after provider switch.
+                searchJob?.cancel()
+                globalSearchJob?.cancel()
+            }
+        }
     }
 
     fun currentSortMode(): SearchSortMode = UserPreferences.searchSortMode

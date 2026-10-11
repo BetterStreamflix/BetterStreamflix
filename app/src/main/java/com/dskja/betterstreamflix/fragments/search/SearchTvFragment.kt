@@ -87,7 +87,8 @@ class SearchTvFragment : Fragment() {
         if (targetName == UserPreferences.currentProvider?.name) return
 
         val targetProvider = Provider.providers.keys.find { it.name == targetName } ?: return
-        UserPreferences.currentProvider = targetProvider
+        // Sticky playback handoff — never the full setter (Room reset mid-nav crashes TV).
+        UserPreferences.setCurrentProviderForPlayback(targetProvider)
         Toast.makeText(
             requireContext(),
             getString(R.string.switching_to_provider, targetName),
@@ -533,12 +534,11 @@ class SearchTvFragment : Fragment() {
     }
 
     private fun disarmSearchLoading(ui: FragmentSearchTvBinding) {
-        ui.isLoading.root.apply {
-            if (hasFocus()) ui.etSearch.requestFocus()
-            isFocusable = false
-            isFocusableInTouchMode = false
-            isClickable = false
+        val root = ui.isLoading.root
+        if (root.hasFocus() || root.findFocus() != null) {
+            ui.etSearch.requestFocus()
         }
+        com.dskja.betterstreamflix.utils.TvLoadingOverlay.disarm(root)
     }
 
     private fun showSearchLoading(ui: FragmentSearchTvBinding) {

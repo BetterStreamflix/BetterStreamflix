@@ -69,6 +69,16 @@ class HomeTvFragment : Fragment() {
         if (!focused) resetSwiperSchedule()
     }
 
+    fun isFeaturedChromeFocused(): Boolean = featuredChromeFocused
+
+    /** Public handoff for splash / side-nav / Back → Featured Watch. */
+    fun requestContentFocus(): Boolean {
+        val grid = _binding?.vgvHome ?: return false
+        if (!grid.isAttachedToWindow || (grid.adapter?.itemCount ?: 0) == 0) return false
+        focusHomeContent()
+        return true
+    }
+
     override fun onCreateView(
         inflater: LayoutInflater,
         container: ViewGroup?,
@@ -96,12 +106,9 @@ class HomeTvFragment : Fragment() {
                     swiperHandler.removeCallbacksAndMessages(null)
                     viewModel.state.collect { state ->
                         when (state) {
-                            HomeViewModel.State.Loading -> binding.isLoading.apply {
-                                root.visibility = View.VISIBLE
-                                root.isFocusable = true
-                                root.isClickable = true
-                                com.dskja.betterstreamflix.utils.ExpPressEffects.showLoadingSkeleton(root, true)
-                                gIsLoadingRetry.visibility = View.GONE
+                            HomeViewModel.State.Loading -> {
+                                com.dskja.betterstreamflix.utils.TvLoadingOverlay.show(binding.isLoading.root)
+                                binding.isLoading.gIsLoadingRetry.visibility = View.GONE
                                 hideCatalogWarning()
                             }
                             is HomeViewModel.State.SuccessLoading -> {
@@ -110,17 +117,7 @@ class HomeTvFragment : Fragment() {
                                     binding.vgvHome.findFocus() != null
                                 displayHome(state.categories)
                                 binding.vgvHome.visibility = View.VISIBLE
-                                binding.isLoading.root.apply {
-                                    visibility = View.GONE
-                                    // GONE alone is not enough on some Fire OS builds — a
-                                    // lingering focusable full-screen loader blocks Home DPAD.
-                                    isFocusable = false
-                                    isFocusableInTouchMode = false
-                                    isClickable = false
-                                }
-                                com.dskja.betterstreamflix.utils.ExpPressEffects.showLoadingSkeleton(
-                                    binding.isLoading.root, false,
-                                )
+                                com.dskja.betterstreamflix.utils.TvLoadingOverlay.hide(binding.isLoading.root)
                                 showCatalogWarning(state.providerWarning)
                                 // Logo-only Room merges rematerialize SuccessLoading — don't
                                 // yank DPAD mid-scroll when focus is already on Home content.

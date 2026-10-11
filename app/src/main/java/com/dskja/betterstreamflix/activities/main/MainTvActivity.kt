@@ -82,8 +82,16 @@ class MainTvActivity : FragmentActivity() {
                 val splash = _binding?.ivSplashOverlay ?: return@withEndAction
                 val focused = window?.currentFocus
                 splash.visibility = View.GONE
-                if (focused == null || focused == splash) {
-                    _binding?.navMainFragment?.requestFocus()
+                if (focused == null || focused == splash || focused == _binding?.navMainFragment) {
+                    val host = supportFragmentManager
+                        .findFragmentById(binding.navMainFragment.id) as? androidx.navigation.fragment.NavHostFragment
+                    val home = host?.childFragmentManager?.primaryNavigationFragment
+                        as? com.dskja.betterstreamflix.fragments.home.HomeTvFragment
+                    if (home != null) {
+                        home.requestContentFocus()
+                    } else {
+                        _binding?.navMain?.requestFocus()
+                    }
                 }
             }
 
@@ -203,7 +211,20 @@ class MainTvActivity : FragmentActivity() {
         onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
             override fun handleOnBackPressed() {
                 when (navController.currentDestination?.id) {
-                    R.id.home -> if (binding.navMain.hasFocus()) finish() else binding.navMain.requestFocus()
+                    R.id.home -> {
+                        if (binding.navMain.hasFocus()) {
+                            finish()
+                        } else {
+                            val host = navHostFragment.childFragmentManager.primaryNavigationFragment
+                                as? com.dskja.betterstreamflix.fragments.home.HomeTvFragment
+                            val onFeatured = host?.isFeaturedChromeFocused() == true
+                            if (!onFeatured && host?.requestContentFocus() == true) {
+                                // first Back → Featured Watch
+                            } else {
+                                binding.navMain.requestFocus()
+                            }
+                        }
+                    }
                     R.id.settings -> {
                         if (!navController.navigateUp()) {
                             navigateToProviderHome(navController)
