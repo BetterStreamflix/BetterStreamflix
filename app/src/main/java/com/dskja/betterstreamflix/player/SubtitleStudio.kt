@@ -76,7 +76,7 @@ object SubtitleStudio {
         UserPreferences.captionStyle = CaptionStyleCompat(
             preset.fontColor,
             preset.backgroundColor,
-            Color.TRANSPARENT,
+            0x00000000,
             preset.edgeType,
             preset.edgeColor,
             null,
