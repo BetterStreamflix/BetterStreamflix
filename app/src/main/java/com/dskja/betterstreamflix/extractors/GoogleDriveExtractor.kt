@@ -28,9 +28,13 @@ class GoogleDriveExtractor : Extractor() {
 
         val service = Service.build(mainUrl)
         
+        val apiKey = com.dskja.betterstreamflix.BuildConfig.GOOGLE_DRIVE_API_KEY.trim()
+        if (apiKey.isBlank()) {
+            throw Exception("Google Drive API key not configured")
+        }
         val responseBody = service.getPlayback(
             fileId = fileId,
-            key = "AIzaSyDVQw45DwoYh632gvsP5vPDqEKvb-Ywnb8",
+            key = apiKey,
             unique = "gc999"
         )
 

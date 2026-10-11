@@ -70,11 +70,12 @@ jobs:
           if [ -n "$TRAKT_CLIENT_ID" ]; then
             echo "TRAKT_CLIENT_ID=$TRAKT_CLIENT_ID" >> local.properties
           fi
-          if [ -n "$TRAKT_CLIENT_SECRET" ]; then
-            echo "TRAKT_CLIENT_SECRET=$TRAKT_CLIENT_SECRET" >> local.properties
-          fi
+          # Never bake TRAKT_CLIENT_SECRET into uploaded APKs (CI-H3 / SEC-M1).
           if [ -n "$SIMKL_CLIENT_ID" ]; then
             echo "SIMKL_CLIENT_ID=$SIMKL_CLIENT_ID" >> local.properties
+          fi
+          if [ -n "${{ secrets.GOOGLE_DRIVE_API_KEY }}" ]; then
+            echo "GOOGLE_DRIVE_API_KEY=${{ secrets.GOOGLE_DRIVE_API_KEY }}" >> local.properties
           fi
 
       - name: Generate native-lib.cpp from template

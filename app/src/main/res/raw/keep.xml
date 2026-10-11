@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  shrinkResources keep list (R8-L2).
+  Add tools:keep entries here if code looks up resources by name/reflection.
+  Currently no reflection-looked-up resources are known; file documents the hook.
+-->
+<resources xmlns:tools="http://schemas.android.com/tools"
+    tools:shrinkMode="safe" />
