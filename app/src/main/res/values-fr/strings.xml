@@ -89,6 +89,16 @@
     <string name="option_clear_recently_watched">Retirer de Vu récemment</string>
     <string name="option_clear_all_recently_watched">Vider Vu récemment</string>
     <string name="option_cancel">Annuler</string>
+    <string name="option_episode_note_add">Où j\'en étais — ajouter une note</string>
+    <string name="option_episode_note_edit">Où j\'en étais — modifier la note</string>
+    <string name="episode_note_title">Où j\'en étais ?</string>
+    <string name="episode_note_hint">Court rappel sans spoiler — lieu ou moment, pas le twist.</string>
+    <string name="episode_note_placeholder">ex. dispute dans la cuisine, avant le bateau</string>
+    <string name="episode_note_save">Enregistrer</string>
+    <string name="episode_note_clear">Effacer</string>
+    <string name="episode_note_counter">%1$d / %2$d</string>
+    <string name="episode_note_cd">Note d\'épisode</string>
+    <string name="player_episode_note_label">Où j\'en étais · %1$s</string>
 
     <string name="episode_item_info">S%d E%d • %s</string>
     <string name="episode_item_info_episode_only">E%d • %s</string>

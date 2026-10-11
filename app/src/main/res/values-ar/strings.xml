@@ -76,6 +76,16 @@
     <string name="option_show_unwatched">إلغاء الوسم كمشاهد</string>
 	<string name="option_clear_program">إزالة من متابعة المشاهدة</string>
 	<string name="option_cancel">إلغاء</string>
+	<string name="option_episode_note_add">أين توقفت؟ — أضف ملاحظة</string>
+	<string name="option_episode_note_edit">أين توقفت؟ — عدّل الملاحظة</string>
+	<string name="episode_note_title">أين توقفت؟</string>
+	<string name="episode_note_hint">تذكير قصير بلا حرق أحداث — مكان أو لحظة، وليس المفاجأة.</string>
+	<string name="episode_note_placeholder">مثلاً: جدال في المطبخ، قبل القارب</string>
+	<string name="episode_note_save">حفظ</string>
+	<string name="episode_note_clear">مسح</string>
+	<string name="episode_note_counter">%1$d / %2$d</string>
+	<string name="episode_note_cd">ملاحظة الحلقة</string>
+	<string name="player_episode_note_label">أين توقفت؟ · %1$s</string>
 
 	<string name="episode_item_info">الموسم %d الحلقة %d • %s</string>
 	<string name="episode_item_info_episode_only">الحلقة %d • %s</string>

@@ -130,6 +130,26 @@
         tools:text="1h  Mar 30, 2025" />
 
     <TextView
+        android:id="@+id/tv_episode_note"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="12dp"
+        android:layout_marginTop="4dp"
+        android:layout_marginEnd="10dp"
+        android:ellipsize="end"
+        android:fontFamily="@font/manrope"
+        android:gravity="center"
+        android:maxLines="1"
+        android:textColor="@color/cinema_text"
+        android:textSize="13sp"
+        android:visibility="gone"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/tv_episode_released"
+        tools:text="Where was I? · kitchen argument"
+        tools:visibility="visible" />
+
+    <TextView
         android:id="@+id/tv_episode_overview"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
@@ -145,7 +165,7 @@
         android:textSize="12sp"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/tv_episode_released"
+        app:layout_constraintTop_toBottomOf="@id/tv_episode_note"
         tools:text="Overview" />
 
     <!-- Download affordance — non-focusable on TV (long-press / options); click kept for touch. -->

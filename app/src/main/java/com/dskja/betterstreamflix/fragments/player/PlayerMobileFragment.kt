@@ -82,7 +82,9 @@ import com.dskja.betterstreamflix.models.Video
 import com.dskja.betterstreamflix.models.WatchItem
 import com.dskja.betterstreamflix.providers.SerienStreamProvider
 import com.dskja.betterstreamflix.sync.CloudSyncHooks
+import com.dskja.betterstreamflix.ui.EpisodeNotesUi
 import com.dskja.betterstreamflix.ui.PlayerMobileView
+import com.dskja.betterstreamflix.utils.EpisodeNotesStore
 import com.dskja.betterstreamflix.utils.MediaServer
 import com.dskja.betterstreamflix.utils.SubtitleOffset
 import com.dskja.betterstreamflix.utils.SubtitleOffsetRenderersFactory
@@ -3009,6 +3011,7 @@ class PlayerMobileFragment : Fragment(),
         controller.tvExoTitle.text = title
         controller.tvExoSubtitle.text = subtitle
         bindPlayerTitleLogo(controller.root, controller.ivExoLogo, controller.tvExoTitle, videoType)
+        refreshEpisodeNoteChip(videoType)
         // Offline status lives in the subtitle (not the LIVE red pill on the time row).
         if (ExperimentalMobileDesign.enabled() && (titleChanged || subtitleChanged)) {
             // Soft crossfade on episode/channel swaps; full reveal only first time.
@@ -3026,6 +3029,48 @@ class PlayerMobileFragment : Fragment(),
             }
         }
     }
+
+    private fun refreshEpisodeNoteChip(videoType: Video.Type = currentVideoTypeForUi()) {
+        val chip = _binding?.tvEpisodeNoteChip ?: return
+        val episodeType = videoType as? Video.Type.Episode
+        if (episodeType == null || isLiveTvPlayback()) {
+            chip.isGone = true
+            chip.setOnClickListener(null)
+            return
+        }
+        val note = EpisodeNotesStore.get(requireContext(), episodeType.id)
+        chip.isVisible = true
+        chip.text = if (note.isNullOrBlank()) {
+            getString(R.string.episode_note_title)
+        } else {
+            getString(R.string.player_episode_note_label, EpisodeNotesStore.preview(note))
+        }
+        chip.setOnClickListener {
+            ExpMotion.hapticTap(it)
+            EpisodeNotesUi.showEditor(requireContext(), episodeFromVideoType(episodeType)) {
+                refreshEpisodeNoteChip(episodeType)
+            }
+        }
+    }
+
+    private fun episodeFromVideoType(type: Video.Type.Episode): Episode =
+        Episode(
+            id = type.id,
+            number = type.number,
+            title = type.title,
+            poster = type.poster,
+            overview = type.overview,
+            tvShow = TvShow(
+                id = type.tvShow.id,
+                title = type.tvShow.title,
+                poster = type.tvShow.poster,
+                banner = type.tvShow.banner,
+            ),
+            season = Season(
+                number = type.season.number,
+                title = type.season.title,
+            ),
+        )
 
     private fun bindPlayerTitleLogo(
         anchor: android.view.View,

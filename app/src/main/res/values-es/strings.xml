@@ -99,6 +99,16 @@
     <string name="option_clear_recently_watched">Quitar de Vistos recientemente</string>
     <string name="option_clear_all_recently_watched">Vaciar Vistos recientemente</string>
     <string name="option_cancel">Cancelar</string>
+    <string name="option_episode_note_add">¿Dónde iba? — añadir nota</string>
+    <string name="option_episode_note_edit">¿Dónde iba? — editar nota</string>
+    <string name="episode_note_title">¿Dónde iba?</string>
+    <string name="episode_note_hint">Recordatorio corto sin spoilers — lugar o momento, no el giro.</string>
+    <string name="episode_note_placeholder">p. ej. discusión en la cocina, antes del barco</string>
+    <string name="episode_note_save">Guardar</string>
+    <string name="episode_note_clear">Borrar</string>
+    <string name="episode_note_counter">%1$d / %2$d</string>
+    <string name="episode_note_cd">Nota del episodio</string>
+    <string name="player_episode_note_label">¿Dónde iba? · %1$s</string>
 
     <string name="episode_item_info">T%d E%d • %s</string>
     <string name="episode_item_info_episode_only">E%d • %s</string>

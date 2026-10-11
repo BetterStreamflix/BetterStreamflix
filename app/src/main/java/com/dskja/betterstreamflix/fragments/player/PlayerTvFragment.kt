@@ -86,7 +86,9 @@ import com.dskja.betterstreamflix.models.TvShow
 import com.dskja.betterstreamflix.models.Video
 import com.dskja.betterstreamflix.models.WatchItem
 import com.dskja.betterstreamflix.sync.CloudSyncHooks
+import com.dskja.betterstreamflix.ui.EpisodeNotesUi
 import com.dskja.betterstreamflix.ui.PlayerTvView
+import com.dskja.betterstreamflix.utils.EpisodeNotesStore
 import com.dskja.betterstreamflix.utils.ExpDialogChrome
 import com.dskja.betterstreamflix.utils.ExpMotion
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
@@ -2832,6 +2834,7 @@ class PlayerTvFragment : Fragment(),
             val title = resolvePlayerTitle(videoType)
             controller.tvExoTitle.text = title
             controller.tvExoSubtitle.text = resolvePlayerSubtitle(videoType)
+            refreshEpisodeNoteChip(videoType)
             val anchor = controller.root
             if (isLiveTvPlayback()) {
                 com.dskja.betterstreamflix.logo.TitleLogoSurface.bindCachedOnly(
@@ -2877,6 +2880,47 @@ class PlayerTvFragment : Fragment(),
                 )
             }
         }
+
+        private fun refreshEpisodeNoteChip(videoType: Video.Type = currentVideoTypeForUi()) {
+            val chip = _binding?.tvEpisodeNoteChip ?: return
+            val episodeType = videoType as? Video.Type.Episode
+            if (episodeType == null || isLiveTvPlayback()) {
+                chip.isGone = true
+                chip.setOnClickListener(null)
+                return
+            }
+            val note = EpisodeNotesStore.get(requireContext(), episodeType.id)
+            chip.isVisible = true
+            chip.text = if (note.isNullOrBlank()) {
+                getString(R.string.episode_note_title)
+            } else {
+                getString(R.string.player_episode_note_label, EpisodeNotesStore.preview(note))
+            }
+            chip.setOnClickListener {
+                EpisodeNotesUi.showEditor(requireContext(), episodeFromVideoType(episodeType)) {
+                    refreshEpisodeNoteChip(episodeType)
+                }
+            }
+        }
+
+        private fun episodeFromVideoType(type: Video.Type.Episode): Episode =
+            Episode(
+                id = type.id,
+                number = type.number,
+                title = type.title,
+                poster = type.poster,
+                overview = type.overview,
+                tvShow = TvShow(
+                    id = type.tvShow.id,
+                    title = type.tvShow.title,
+                    poster = type.tvShow.poster,
+                    banner = type.tvShow.banner,
+                ),
+                season = Season(
+                    number = type.season.number,
+                    title = type.season.title,
+                ),
+            )
 
         /**
          * Persist the next episode for the Next Episodes shelf without engagement.

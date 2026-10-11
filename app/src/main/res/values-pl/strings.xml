@@ -72,6 +72,16 @@
     <string name="option_show_unwatched">Oznacz jako nieobejrzane</string>
     <string name="option_clear_program">Usun z kontynuuj ogladanie</string>
     <string name="option_cancel">Anuluj</string>
+    <string name="option_episode_note_add">Gdzie skończyłem? — dodaj notatkę</string>
+    <string name="option_episode_note_edit">Gdzie skończyłem? — edytuj notatkę</string>
+    <string name="episode_note_title">Gdzie skończyłem?</string>
+    <string name="episode_note_hint">Krótkie przypomnienie bez spoilerów — miejsce lub moment, nie zwrot akcji.</string>
+    <string name="episode_note_placeholder">np. kłótnia w kuchni, przed łodzią</string>
+    <string name="episode_note_save">Zapisz</string>
+    <string name="episode_note_clear">Wyczyść</string>
+    <string name="episode_note_counter">%1$d / %2$d</string>
+    <string name="episode_note_cd">Notatka odcinka</string>
+    <string name="player_episode_note_label">Gdzie skończyłem? · %1$s</string>
 
     <string name="episode_item_info">S%d E%d • %s</string>
     <string name="episode_item_info_episode_only">E%d • %s</string>
