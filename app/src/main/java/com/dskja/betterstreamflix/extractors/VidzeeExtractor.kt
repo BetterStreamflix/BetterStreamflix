@@ -1,9 +1,10 @@
 package com.dskja.betterstreamflix.extractors
 
-import com.dskja.betterstreamflix.utils.withExtractorTimeouts
 import android.util.Base64
+import android.util.Log
 import androidx.media3.common.MimeTypes
 import com.dskja.betterstreamflix.models.Video
+import com.dskja.betterstreamflix.utils.withExtractorTimeouts
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import org.json.JSONObject
@@ -12,11 +13,14 @@ import javax.crypto.Cipher
 import javax.crypto.spec.GCMParameterSpec
 import javax.crypto.spec.IvParameterSpec
 import javax.crypto.spec.SecretKeySpec
-import kotlinx.coroutines.async
-import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
 
 class VidzeeExtractor : Extractor() {
+
+    private companion object {
+        const val TAG = "VidzeeExtractor"
+    }
+
     override val name = "Vidzee"
     override val mainUrl = "https://player.vidzee.wtf"
     private val coreApi = "https://core.vidzee.wtf"
@@ -66,8 +70,15 @@ class VidzeeExtractor : Extractor() {
     }
 
     override suspend fun extract(link: String): Video = coroutineScope {
-        val masterKey = getMasterKey() ?: throw Exception("Failed to get Vidzee master key")
-        
+        // Current Vidzee exposes direct, unencrypted playback URLs through
+        // core.vidzee.wtf. Keep the previous encrypted API below as fallback.
+        tryDirectStream(link)?.let {
+            return@coroutineScope it
+        }
+
+        val masterKey = getMasterKey()
+            ?: throw Exception("Failed to get Vidzee master key")
+
         try {
             val request = Request.Builder()
                 .url(link)
@@ -124,6 +135,79 @@ class VidzeeExtractor : Extractor() {
         }
     }
 
+    private fun tryDirectStream(
+        link: String,
+    ): Video? {
+        val params = VidzeeDirectStream.parseServerLink(link) ?: return null
+        val endpoints = VidzeeDirectStream.directStreamEndpoints(
+            coreApi = coreApi,
+            tmdbId = params.tmdbId,
+            season = params.season,
+            episode = params.episode,
+        )
+
+        for ((directServer, endpoint) in endpoints) {
+            val request = Request.Builder()
+                .url(endpoint)
+                .header(
+                    "User-Agent",
+                    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) " +
+                        "AppleWebKit/537.36 (KHTML, like Gecko) " +
+                        "Chrome/140.0.0.0 Safari/537.36"
+                )
+                .header(
+                    "Accept",
+                    "application/json,text/plain,*/*",
+                )
+                .header(
+                    "Origin",
+                    mainUrl,
+                )
+                .header(
+                    "Referer",
+                    "$mainUrl/",
+                )
+                .build()
+
+            val video = runCatching {
+                client.newCall(request).execute().use { response ->
+                    Log.d(
+                        TAG,
+                        "Direct $directServer HTTP ${response.code} " +
+                            "type=${if (params.isEpisode) "tv" else "movie"} " +
+                            "id=${params.tmdbId}",
+                    )
+
+                    if (!response.isSuccessful) {
+                        return@use null
+                    }
+
+                    val raw = response.body
+                        ?.string()
+                        .orEmpty()
+
+                    VidzeeDirectStream.parseDirectStreamResponse(raw, mainUrl)
+                }
+            }.getOrNull()
+
+            if (video != null) {
+                Log.d(
+                    TAG,
+                    "Direct $directServer selected " +
+                        "source=${video.source.take(160)}",
+                )
+                return video
+            }
+        }
+
+        Log.d(
+            TAG,
+            "Direct API exhausted; using legacy Vidzee extractor",
+        )
+
+        return null
+    }
+
     private fun getMasterKey(): String? {
         return try {
             val request = Request.Builder()
@@ -149,13 +233,13 @@ class VidzeeExtractor : Extractor() {
             val cipher = Cipher.getInstance("AES/GCM/NoPadding")
             val spec = GCMParameterSpec(128, iv)
             val secretKey = SecretKeySpec(key, "AES")
-            
+
             cipher.init(Cipher.DECRYPT_MODE, secretKey, spec)
-            
+
             // In Java/Android, the tag is expected to be at the end of the ciphertext
             val combined = ciphertext + tag
             val decrypted = cipher.doFinal(combined)
-            
+
             String(decrypted, Charsets.UTF_8)
         } catch (e: Exception) {
             null
@@ -184,4 +268,5 @@ class VidzeeExtractor : Extractor() {
             null
         }
     }
+
 }

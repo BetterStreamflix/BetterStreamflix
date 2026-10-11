@@ -14,7 +14,7 @@ import kotlin.math.max
 
 object InAppUpdater {
 
-    private const val GITHUB_OWNER = "dskja"
+    private const val GITHUB_OWNER = "BetterStreamflix"
     private const val GITHUB_REPO = "BetterStreamflix"
 
     private data class Version(val name: String) : Comparable<Version> {

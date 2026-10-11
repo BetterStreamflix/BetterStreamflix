@@ -182,6 +182,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Sentry drops JobCancellationException noise; `isSendDefaultPii` disabled
 - Cast stream proxy closes upstream OkHttp responses on playlist/error paths
 
+## [1.1.2] - 2026-10-11
+
+### Fixed
+- In-app updater now checks `BetterStreamflix/BetterStreamflix` (was dead `dskja/BetterStreamflix` 404)
+- DoodStream / Playmogo playback: cookie jar + browser/pass_md5 headers + iOS-style playback headers/token expiry (upstream `2825486c`; fork extractor timeouts kept)
+- Vidzee: try direct stream API (`core.vidzee.wtf`) first with multi-backend failover, fall back to legacy encrypted `/api/server` path (upstream `8a7119ce`; fork timeouts kept)
+
+### Changed
+- App version set to **1.1.2** (`versionCode` 10102)
+
 ## [1.1.1] - 2026-09-19
 
 ### Added
@@ -329,6 +339,7 @@ covers everything done on top of that upstream baseline.
 - Actor profile images and biography info not yet displaying
 - Episode and season images still showing generic series covers in some cases
 
-[1.1.1]: https://github.com/dskja/BetterStreamflix/releases/tag/v1.1.1
-[1.1.0]: https://github.com/dskja/BetterStreamflix/releases/tag/v1.1.0
-[1.0.0]: https://github.com/dskja/BetterStreamflix/releases/tag/v1.0.0
+[1.1.2]: https://github.com/BetterStreamflix/BetterStreamflix/releases/tag/v1.1.2
+[1.1.1]: https://github.com/BetterStreamflix/BetterStreamflix/releases/tag/v1.1.1
+[1.1.0]: https://github.com/BetterStreamflix/BetterStreamflix/releases/tag/v1.1.0
+[1.0.0]: https://github.com/BetterStreamflix/BetterStreamflix/releases/tag/v1.0.0
