@@ -11,7 +11,10 @@ import com.dskja.betterstreamflix.utils.UserDataCache
 
 /**
  * Single path for favorite (My List / watchlist) toggles so Room, cache, cloud
- * enqueue, and Simkl stay aligned. Call from an IO dispatcher.
+ * enqueue (via [UserDataCache] → [CloudSyncHooks]), and Simkl stay aligned.
+ *
+ * Callers must use these helpers instead of DAO [upsertFavorite] + cache writes
+ * so artwork repair and enqueue stay consistent. Call from an IO dispatcher.
  */
 object FavoriteMutations {
 

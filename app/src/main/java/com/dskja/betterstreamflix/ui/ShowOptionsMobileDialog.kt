@@ -20,6 +20,7 @@ import com.dskja.betterstreamflix.models.Episode
 import com.dskja.betterstreamflix.models.Movie
 import com.dskja.betterstreamflix.models.TvShow
 import com.dskja.betterstreamflix.providers.Provider
+import com.dskja.betterstreamflix.sync.FavoriteMutations
 import com.dskja.betterstreamflix.utils.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -381,16 +382,15 @@ class ShowOptionsMobileDialog(
                 checkProviderAndRun(freshMovie) {
                     val provider = UserPreferences.currentProvider ?: return@checkProviderAndRun
                     context.toActivity()?.lifecycleScope?.launch(Dispatchers.IO) {
-                        val dao = database?.movieDao() ?: return@launch
-                        val current = dao.getById(movie.id)?.isFavorite ?: false
-                        val newValue = !current
-                        val resolvedMovie = ArtworkRepair.resolveMovieForFavorite(context, movie, newValue)
-                        dao.upsertFavorite(resolvedMovie, newValue)
-                        if (newValue) {
-                            UserDataCache.addMovieToFavorites(context, provider, resolvedMovie.copy().apply { isFavorite = true })
-                        } else {
-                            UserDataCache.removeMovieFromFavorites(context, provider, freshMovie.id)
-                        }
+                        val db = database ?: return@launch
+                        val current = db.movieDao().getById(movie.id)?.isFavorite ?: false
+                        FavoriteMutations.setMovieFavorite(
+                            context,
+                            provider,
+                            movie,
+                            favorite = !current,
+                            database = db,
+                        )
                     }
                 }
 
@@ -553,20 +553,15 @@ class ShowOptionsMobileDialog(
                 checkProviderAndRun(freshTvShow) {
                     val provider = UserPreferences.currentProvider ?: return@checkProviderAndRun
                     context.toActivity()?.lifecycleScope?.launch(Dispatchers.IO) {
-                        val dao = database?.tvShowDao() ?: return@launch
-                        val current = dao.getById(tvShow.id)?.isFavorite ?: false
-                        val newValue = !current
-                        val resolvedTvShow = ArtworkRepair.resolveTvShowForFavorite(context, tvShow, newValue)
-
-                        dao.upsertFavorite(resolvedTvShow, newValue)
-                        if (newValue) {
-                            UserDataCache.syncTvShowToCache(
-                                context,
-                                provider,
-                                resolvedTvShow.copy().apply { isFavorite = true })
-                        } else {
-                            UserDataCache.removeTvShowFromFavorites(context, provider, freshTvShow.id)
-                        }
+                        val db = database ?: return@launch
+                        val current = db.tvShowDao().getById(tvShow.id)?.isFavorite ?: false
+                        FavoriteMutations.setTvShowFavorite(
+                            context,
+                            provider,
+                            tvShow,
+                            favorite = !current,
+                            database = db,
+                        )
                     }
                 }
 
