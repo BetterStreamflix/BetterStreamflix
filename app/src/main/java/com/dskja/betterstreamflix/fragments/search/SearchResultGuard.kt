@@ -4,8 +4,10 @@ import android.content.Context
 import android.util.Log
 import com.dskja.betterstreamflix.BetterStreamflixApp
 import com.dskja.betterstreamflix.adapters.AppAdapter
+import com.dskja.betterstreamflix.models.Category
 import com.dskja.betterstreamflix.models.Genre
 import com.dskja.betterstreamflix.models.Movie
+import com.dskja.betterstreamflix.models.People
 import com.dskja.betterstreamflix.models.TvShow
 import com.dskja.betterstreamflix.utils.DeviceCapabilities
 import kotlinx.coroutines.CancellationException
@@ -60,6 +62,8 @@ object SearchResultGuard {
                 is Movie -> item.takeIf { it.id.isNotBlank() && it.title.isNotBlank() }
                 is TvShow -> item.takeIf { it.id.isNotBlank() && it.title.isNotBlank() }
                 is Genre -> item.takeIf { it.id.isNotBlank() && it.name.isNotBlank() }
+                is People -> item.takeIf { it.id.isNotBlank() && it.name.isNotBlank() }
+                is Category -> item.takeIf { it.name.isNotBlank() }
                 else -> item
             }
         }

@@ -185,12 +185,18 @@ class SearchMobileFragment : Fragment() {
     private fun retryLastSearch() {
         val query = viewModel.query
         if (binding.swGlobalSearch.isChecked) {
-            val currentLanguage = UserPreferences.currentProvider?.language ?: "es"
-            viewModel.searchGlobal(query, currentLanguage)
+            viewModel.searchGlobal(query, resolveSearchLanguage())
         } else {
             viewModel.search(query)
         }
     }
+
+    private fun resolveSearchLanguage(): String =
+        UserPreferences.currentProvider?.language?.takeIf { it.isNotBlank() }
+            ?: UserPreferences.providerLanguage?.takeIf { it.isNotBlank() }
+            ?: UserPreferences.currentLanguage?.takeIf { it.isNotBlank() }
+            ?: java.util.Locale.getDefault().language.takeIf { it.isNotBlank() }
+            ?: "en"
 
     private fun initializeSearch() {
         val isIptv = UserPreferences.currentProvider is IptvProvider
@@ -220,7 +226,7 @@ class SearchMobileFragment : Fragment() {
                     }
 
                     if (binding.swGlobalSearch.isChecked) {
-                        val currentLanguage = UserPreferences.currentProvider?.language ?: "es"
+                        val currentLanguage = resolveSearchLanguage()
                         SearchRecentStore.remember(requireContext(), query)
                         viewModel.searchGlobal(query, currentLanguage)
                     } else {
@@ -257,43 +263,51 @@ class SearchMobileFragment : Fragment() {
             fragment = this,
             permissionLauncher = voicePermissionLauncher,
             onResult = { query ->
-                binding.btnSearchVoice.clearAnimation()
-                binding.etSearch.setText(query)
+                val ui = _binding ?: return@VoiceRecognitionHelper
+                ui.btnSearchVoice.clearAnimation()
+                ui.etSearch.setText(query)
                 SearchRecentStore.remember(requireContext(), query)
-                if (binding.swGlobalSearch.isChecked) {
-                    val currentLanguage = UserPreferences.currentProvider?.language ?: "es"
-                    viewModel.searchGlobal(query, currentLanguage)
+                if (ui.swGlobalSearch.isChecked) {
+                    viewModel.searchGlobal(query, resolveSearchLanguage())
                 } else {
                     viewModel.search(query)
                 }
                 refreshRecentSearches()
             },
             onError = { msg ->
+                val ui = _binding ?: return@VoiceRecognitionHelper
                 com.dskja.betterstreamflix.utils.ExpDialogChrome.notify(
                     requireContext(),
                     msg,
                     R.string.voice_search,
                 )
-                binding.btnSearchVoice.clearAnimation()
-                        val isIptv = UserPreferences.currentProvider is IptvProvider
-        val hintStringRes = if (isIptv) R.string.search_input_hint_iptv else R.string.search_input_hint
-        binding.etSearch.hint = getString(hintStringRes)
+                ui.btnSearchVoice.clearAnimation()
+                val isIptv = UserPreferences.currentProvider is IptvProvider
+                val hintStringRes =
+                    if (isIptv) R.string.search_input_hint_iptv else R.string.search_input_hint
+                ui.etSearch.hint = getString(hintStringRes)
             },
             onListeningStateChanged = { isListening ->
+                val ui = _binding ?: return@VoiceRecognitionHelper
                 if (isListening) {
-                    binding.btnSearchVoice.startAnimation(blink)
-                    binding.etSearch.hint = getString(R.string.voice_prompt)
+                    ui.btnSearchVoice.startAnimation(blink)
+                    ui.etSearch.hint = getString(R.string.voice_prompt)
                     if (ExperimentalMobileDesign.enabled()) {
-                        ExpMotion.popIn(binding.btnSearchVoice)
+                        ExpMotion.popIn(ui.btnSearchVoice)
                     }
                 } else {
-                    binding.btnSearchVoice.clearAnimation()
+                    ui.btnSearchVoice.clearAnimation()
                     val isIptv = UserPreferences.currentProvider is IptvProvider
                     val hintStringRes =
                         if (isIptv) R.string.search_input_hint_iptv else R.string.search_input_hint
-                    binding.etSearch.hint = getString(hintStringRes)
+                    ui.etSearch.hint = getString(hintStringRes)
                 }
-            }
+            },
+            onPartial = { partial ->
+                val ui = _binding ?: return@VoiceRecognitionHelper
+                ui.etSearch.setText(partial)
+                ui.etSearch.setSelection(partial.length)
+            },
         )
 
         binding.btnSearchVoice.apply {
@@ -307,9 +321,7 @@ class SearchMobileFragment : Fragment() {
 
             setOnClickListener {
                 ExpMotion.hapticTap(it)
-                if (!voiceHelper.isListening) {
-                    voiceHelper.startWithPermissionCheck()
-                }
+                voiceHelper.startWithPermissionCheck()
             }
         }
 
@@ -490,8 +502,7 @@ class SearchMobileFragment : Fragment() {
                     binding.etSearch.setText(query)
                     SearchRecentStore.remember(requireContext(), query)
                     if (binding.swGlobalSearch.isChecked) {
-                        val lang = UserPreferences.currentProvider?.language ?: "es"
-                        viewModel.searchGlobal(query, lang)
+                        viewModel.searchGlobal(query, resolveSearchLanguage())
                     } else {
                         viewModel.search(query)
                     }

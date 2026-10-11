@@ -66,8 +66,10 @@
     <string name="theme_emerald_luxe">Emerald Luxe</string>
     <string name="theme_retro_neon">Retro Neon</string>
 
-    <string name="search_input_hint">Search movies, TV shows</string>
+    <string name="search_input_hint">Titles, people, or similar to…</string>
     <string name="search_input_hint_iptv">Search channels</string>
+    <string name="search_similar_header">Similar to %1$s</string>
+    <string name="search_people_section">People</string>
     <string name="global_search">Global search</string>
     <string name="global_search_cd_on">Global search, on, switch</string>
     <string name="global_search_cd_off">Global search, off, switch</string>

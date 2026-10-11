@@ -4,6 +4,7 @@ import com.dskja.betterstreamflix.adapters.AppAdapter
 import com.dskja.betterstreamflix.models.Category
 import com.dskja.betterstreamflix.models.Genre
 import com.dskja.betterstreamflix.models.Movie
+import com.dskja.betterstreamflix.models.People
 import com.dskja.betterstreamflix.models.TvShow
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -37,6 +38,21 @@ class SearchTvRowsTest {
         )
         assertEquals(SearchTvRows.RESULT_COLUMNS, plan.columns)
         assertEquals(AppAdapter.Type.TV_SHOW_GRID_TV_ITEM, (plan.items.single() as TvShow).itemType)
+    }
+
+    @Test
+    fun localTypedQuery_stampsPeopleAndDropsEmptyCategoryHeader() {
+        val plan = SearchTvRows.local(
+            query = "nolan",
+            items = listOf(
+                Category(name = "Similar to Dark", list = emptyList()),
+                People(id = "9", name = "Nolan", knownForDepartment = "Directing"),
+                Movie(id = "1", title = "Inception"),
+            ),
+        )
+        assertEquals(2, plan.items.size)
+        assertEquals(AppAdapter.Type.PEOPLE_TV_ITEM, (plan.items[0] as People).itemType)
+        assertEquals(AppAdapter.Type.MOVIE_GRID_TV_ITEM, (plan.items[1] as Movie).itemType)
     }
 
     @Test

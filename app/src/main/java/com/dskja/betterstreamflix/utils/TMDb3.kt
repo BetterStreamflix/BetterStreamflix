@@ -1457,6 +1457,7 @@ object TMDb3 {
             @SerializedName("videos") val videos: Result<Video>? = null,
             @SerializedName("images") val images: Images? = null,
             @SerializedName("recommendations") val recommendations: PageResult<MultiItem>? = null,
+            @SerializedName("similar") val similar: PageResult<MultiItem>? = null,
         )
 
         data class Country(
@@ -1581,6 +1582,7 @@ object TMDb3 {
             @SerializedName("images") val images: Images? = null,
             @SerializedName("created_by") val createdBy: List<CreatedBy>? = null,
             @SerializedName("recommendations") val recommendations: PageResult<MultiItem>? = null,
+            @SerializedName("similar") val similar: PageResult<MultiItem>? = null,
         )
 
         data class ContentRating(

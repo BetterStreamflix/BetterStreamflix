@@ -100,8 +100,10 @@
     <string name="theme_default">Standard</string>
     <string name="theme_nero_amoled_oled">Nero Amoled/Oled</string>
 
-    <string name="search_input_hint">Filme / Serien suchen</string>
+    <string name="search_input_hint">Titel, Personen oder ähnlich wie…</string>
     <string name="search_input_hint_iptv">Kanäle suchen</string>
+    <string name="search_similar_header">Ähnlich wie %1$s</string>
+    <string name="search_people_section">Personen</string>
     <string name="global_search">Globale Suche</string>
     <string name="global_search_cd_on">Globale Suche, an, Schalter</string>
     <string name="global_search_cd_off">Globale Suche, aus, Schalter</string>

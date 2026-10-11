@@ -5,7 +5,9 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.dskja.betterstreamflix.adapters.AppAdapter
 import com.dskja.betterstreamflix.database.AppDatabase
+import com.dskja.betterstreamflix.models.Category
 import com.dskja.betterstreamflix.models.Movie
+import com.dskja.betterstreamflix.models.People
 import com.dskja.betterstreamflix.models.TvShow
 import com.dskja.betterstreamflix.providers.IptvProvider
 import com.dskja.betterstreamflix.providers.Provider
@@ -15,6 +17,8 @@ import com.dskja.betterstreamflix.utils.ProviderChangeNotifier
 import com.dskja.betterstreamflix.utils.SearchSort
 import com.dskja.betterstreamflix.utils.SearchSortMode
 import com.dskja.betterstreamflix.utils.UserPreferences
+import com.dskja.betterstreamflix.R
+import com.dskja.betterstreamflix.BetterStreamflixApp
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -288,37 +292,30 @@ class SearchViewModel(
             try {
                 val provider = UserPreferences.currentProvider
                     ?: run {
-                        _state.emit(State.FailedSearching(Exception(com.dskja.betterstreamflix.BetterStreamflixApp.instance.getString(com.dskja.betterstreamflix.R.string.error_no_provider_selected))))
+                        _state.emit(
+                            State.FailedSearching(
+                                Exception(
+                                    BetterStreamflixApp.instance.getString(
+                                        R.string.error_no_provider_selected,
+                                    ),
+                                ),
+                            ),
+                        )
                         return@launch
                     }
-                val results = SearchResultGuard.sanitize(
-                    ParentalControlUtils.filterItems(
-                        ProviderSmoke.withProviderTimeout(
-                            timeoutMs = ProviderSmoke.SEARCH_TIMEOUT_MS,
-                            label = "search(${provider.name})",
-                        ) {
-                            SearchResultGuard.sanitize(provider.search(query))
-                        }
-                    )
-                )
-                val addonHits = ParentalControlUtils.filterItems(
-                    runCatching {
-                        SearchResultGuard.sanitize(
-                            com.dskja.betterstreamflix.platform.plugins.PluginManager
-                                .collectSearchResults(provider, query, page = 1),
-                        )
-                    }.getOrDefault(emptyList()),
-                )
-                val merged = (results + addonHits)
-                    .distinctBy { it.searchIdentityKey() }
-                    .take(SearchResultGuard.maxLocalResults())
                 this@SearchViewModel.query = query
                 page = 1
-                rawLocalResults = merged
-                rawLocalHasMore = results.isNotEmpty() &&
-                    merged.size < SearchResultGuard.maxLocalResults()
                 rawGlobalResults = emptyList()
-                emitLocalSuccess()
+
+                val intent = SearchQueryParser.parse(query)
+                when (intent) {
+                    is SearchQueryParser.Intent.SimilarTo -> {
+                        searchSimilarTo(provider, intent)
+                    }
+                    is SearchQueryParser.Intent.Normal -> {
+                        searchNormal(provider, intent.query)
+                    }
+                }
             } catch (e: CancellationException) {
                 throw e
             } catch (t: Throwable) {
@@ -332,6 +329,129 @@ class SearchViewModel(
             }
         }
     }
+
+    private suspend fun searchSimilarTo(
+        provider: Provider,
+        intent: SearchQueryParser.Intent.SimilarTo,
+    ) {
+        val language = resolveSearchLanguage(provider)
+        val similar = ParentalControlUtils.filterItems(
+            SearchResultGuard.sanitize(
+                SearchTmdbAssist.similarTo(intent.seedTitle, language),
+            ),
+        )
+        // Also try the current catalog for the seed title itself.
+        val seedHits = if (provider !is IptvProvider) {
+            SearchResultGuard.sanitize(
+                ParentalControlUtils.filterItems(
+                    runCatching {
+                        ProviderSmoke.withProviderTimeout(
+                            timeoutMs = ProviderSmoke.SEARCH_TIMEOUT_MS,
+                            label = "searchSimilarSeed(${provider.name})",
+                        ) {
+                            SearchResultGuard.sanitize(provider.search(intent.seedTitle))
+                        }
+                    }.getOrDefault(emptyList()),
+                ),
+            )
+        } else {
+            emptyList()
+        }
+        val headerLabel = BetterStreamflixApp.instance.getString(
+            R.string.search_similar_header,
+            intent.seedTitle,
+        )
+        // Header Category uses an empty list (Mobile full-width label). TV rows drop
+        // empty CATEGORY_TV_ITEM shelves to avoid Leanback focus traps.
+        val merged = buildList {
+            if (similar.isNotEmpty() || seedHits.isNotEmpty()) {
+                add(
+                    Category(name = headerLabel, list = emptyList()).apply {
+                        identityKey = "search-similar:${intent.seedTitle}"
+                    },
+                )
+            }
+            addAll(similar)
+            addAll(seedHits)
+        }.distinctBy { it.searchIdentityKey() }
+            .take(SearchResultGuard.maxLocalResults())
+        rawLocalResults = merged
+        rawLocalHasMore = false
+        emitLocalSuccess()
+    }
+
+    private suspend fun searchNormal(provider: Provider, query: String) {
+        val language = resolveSearchLanguage(provider)
+        val results = SearchResultGuard.sanitize(
+            ParentalControlUtils.filterItems(
+                ProviderSmoke.withProviderTimeout(
+                    timeoutMs = ProviderSmoke.SEARCH_TIMEOUT_MS,
+                    label = "search(${provider.name})",
+                ) {
+                    SearchResultGuard.sanitize(provider.search(query))
+                },
+            ),
+        )
+        val addonHits = ParentalControlUtils.filterItems(
+            runCatching {
+                SearchResultGuard.sanitize(
+                    com.dskja.betterstreamflix.platform.plugins.PluginManager
+                        .collectSearchResults(provider, query, page = 1),
+                )
+            }.getOrDefault(emptyList()),
+        )
+        var merged = (results + addonHits)
+            .distinctBy { it.searchIdentityKey() }
+
+        val isIptv = provider is IptvProvider
+        val showHits = merged.count { it is Movie || it is TvShow }
+        val hasPeople = merged.any { it is People }
+
+        // Typo rescue + people/directors when the catalog misspells or ignores names.
+        if (!isIptv && query.isNotBlank()) {
+            if (showHits == 0) {
+                val rescue = SearchTmdbAssist.typoRescue(query, language)
+                val corrected = rescue.correctedQuery
+                val retry = if (!corrected.isNullOrBlank()) {
+                    SearchResultGuard.sanitize(
+                        ParentalControlUtils.filterItems(
+                            runCatching {
+                                ProviderSmoke.withProviderTimeout(
+                                    timeoutMs = ProviderSmoke.SEARCH_TIMEOUT_MS,
+                                    label = "searchTypo(${provider.name})",
+                                ) {
+                                    SearchResultGuard.sanitize(provider.search(corrected))
+                                }
+                            }.getOrDefault(emptyList()),
+                        ),
+                    )
+                } else {
+                    emptyList()
+                }
+                merged = (rescue.people + retry + rescue.shows + merged)
+                    .distinctBy { it.searchIdentityKey() }
+            } else if (!hasPeople) {
+                val people = ParentalControlUtils.filterItems(
+                    SearchTmdbAssist.peopleForQuery(query, language),
+                )
+                if (people.isNotEmpty()) {
+                    merged = (people + merged).distinctBy { it.searchIdentityKey() }
+                }
+            }
+        }
+
+        merged = merged.take(SearchResultGuard.maxLocalResults())
+        rawLocalResults = merged
+        rawLocalHasMore = results.isNotEmpty() &&
+            merged.size < SearchResultGuard.maxLocalResults() &&
+            showHits > 0
+        emitLocalSuccess()
+    }
+
+    private fun resolveSearchLanguage(provider: Provider): String? =
+        provider.language.takeIf { it.isNotBlank() }
+            ?: UserPreferences.providerLanguage?.takeIf { it.isNotBlank() }
+            ?: UserPreferences.currentLanguage?.takeIf { it.isNotBlank() }
 
     fun loadMore() {
         if (loadMoreJob?.isActive == true) return
@@ -487,10 +607,4 @@ class SearchViewModel(
          */
         const val GLOBAL_SEARCH_CONCURRENCY = 1
     }
-}
-
-private fun AppAdapter.Item.searchIdentityKey(): String = when (this) {
-    is Movie -> "movie:$id"
-    is TvShow -> "tvshow:$id"
-    else -> "${this::class.java.name}:${hashCode()}"
 }

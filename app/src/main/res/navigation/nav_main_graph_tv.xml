@@ -94,6 +94,9 @@
         <action
             android:id="@+id/action_search_to_genre"
             app:destination="@id/genre" />
+        <action
+            android:id="@+id/action_search_to_people"
+            app:destination="@id/people" />
     </fragment>
     <fragment
         android:id="@+id/movies"
