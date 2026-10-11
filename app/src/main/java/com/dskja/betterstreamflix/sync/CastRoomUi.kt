@@ -3,7 +3,11 @@ package com.dskja.betterstreamflix.sync
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
+import android.text.InputType
 import android.view.Gravity
+import android.widget.Button
+import android.widget.EditText
+import android.widget.HorizontalScrollView
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.ScrollView
@@ -43,6 +47,8 @@ object CastRoomUi {
     interface HostConsumer {
         fun onCastRoomPlayItem(item: CastRoomItemPayload, preferredServerName: String?)
         fun onCastRoomSetPlaying(playing: Boolean)
+        fun onCastRoomSeek(positionMs: Long)
+        fun onCastRoomSidekickText(text: String)
         fun onCastRoomEnded()
     }
 
@@ -390,9 +396,12 @@ object CastRoomUi {
             .show()
     }
 
-    fun applyHostUpdate(payload: CastRoomPayload) {
+    fun applyHostUpdate(context: Context, payload: CastRoomPayload) {
         latestPayload = payload
         if (!CastRoomSession.isHost()) return
+        val consumer = hostConsumerRef?.get()
+        applySidekickCommands(context.applicationContext, payload, consumer)
+
         if (payload.revision == CastRoomSession.lastAppliedRevision &&
             CastRoomSession.lastAppliedPlaying == payload.playing
         ) {
@@ -400,7 +409,6 @@ object CastRoomUi {
         }
         val item = CastRoomQueue.nowPlaying(payload)
         val key = CastRoomQueue.playingKey(item, payload.nowPlayingIndex)
-        val consumer = hostConsumerRef?.get()
         if (key != null && key != CastRoomSession.lastAppliedPlayingKey && payload.playing) {
             CastRoomSession.lastAppliedPlayingKey = key
             CastRoomSession.lastAppliedRevision = payload.revision
@@ -415,6 +423,36 @@ object CastRoomUi {
             consumer?.onCastRoomSetPlaying(payload.playing)
         }
         CastRoomSession.lastAppliedRevision = payload.revision
+    }
+
+    private fun applySidekickCommands(
+        appContext: Context,
+        payload: CastRoomPayload,
+        consumer: HostConsumer?,
+    ) {
+        if (TvSidekick.shouldApplySeek(
+                payload.sidekickSeekSeq,
+                CastRoomSession.lastAppliedSeekSeq,
+                payload.sidekickSeekMs,
+            )
+        ) {
+            CastRoomSession.lastAppliedSeekSeq = payload.sidekickSeekSeq
+            consumer?.onCastRoomSeek(payload.sidekickSeekMs!!.coerceAtLeast(0L))
+        }
+        if (TvSidekick.shouldApplyKeyboard(
+                payload.sidekickTextSeq,
+                CastRoomSession.lastAppliedTextSeq,
+                payload.sidekickText,
+            )
+        ) {
+            CastRoomSession.lastAppliedTextSeq = payload.sidekickTextSeq
+            val text = TvSidekick.sanitizeKeyboard(payload.sidekickText) ?: return
+            consumer?.onCastRoomSidekickText(text)
+            val token = CastRoomSession.token ?: return
+            CoroutineScopeIo.launch {
+                runCatching { CastRoomRepository.ackSidekickText(appContext, token) }
+            }
+        }
     }
 
     fun onPlaybackEndedAdvance(context: Context) {
@@ -507,10 +545,11 @@ object CastRoomUi {
     }
 
     fun startHostPolling(context: Context, token: String) {
+        val appContext = context.applicationContext
         CastRoomSync.startPolling(
-            context = context,
+            context = appContext,
             token = token,
-            listener = { payload -> applyHostUpdate(payload) },
+            listener = { payload -> applyHostUpdate(appContext, payload) },
             onEnded = {
                 CastRoomSession.clear()
                 latestPayload = null
@@ -550,15 +589,99 @@ object CastRoomUi {
                     context.getString(R.string.cast_room_queue_empty)
                 } else {
                     context.getString(
-                        R.string.cast_room_now_playing,
+                        R.string.tv_sidekick_now_playing,
                         CastRoomQueue.displayLabel(now),
+                        TvSidekick.formatPosition(payload.positionMs),
                     )
                 }
                 textSize = 16f
-                setPadding(0, 0, 0, 16)
+                setPadding(0, 0, 0, 12)
             },
         )
 
+        list.addView(sectionLabel(context, R.string.tv_sidekick_scrubber_title))
+        list.addView(
+            scrubberRow(context) { deltaMs ->
+                val target = TvSidekick.relativeSeek(payload.positionMs, deltaMs)
+                mutate(fragment, token) { CastRoomRepository.seek(context, it, target) }
+            },
+        )
+        list.addView(
+            Button(context).apply {
+                text = context.getString(R.string.tv_sidekick_scrub_to_action)
+                setOnClickListener { promptAbsoluteSeek(fragment, token, payload.positionMs) }
+            },
+        )
+
+        list.addView(sectionLabel(context, R.string.tv_sidekick_keyboard_title))
+        val keyboardInput = EditText(context).apply {
+            hint = context.getString(R.string.tv_sidekick_keyboard_hint)
+            inputType = InputType.TYPE_CLASS_TEXT
+            maxLines = 1
+        }
+        list.addView(keyboardInput)
+        list.addView(
+            Button(context).apply {
+                text = context.getString(R.string.tv_sidekick_keyboard_send)
+                setOnClickListener {
+                    val text = keyboardInput.text?.toString().orEmpty()
+                    mutate(fragment, token) {
+                        CastRoomRepository.sendSidekickText(context, it, text)
+                    }
+                }
+            },
+        )
+
+        list.addView(sectionLabel(context, R.string.tv_sidekick_chat_title))
+        val chatView = TextView(context).apply {
+            text = context.getString(R.string.tv_sidekick_chat_loading)
+            textSize = 13f
+            setPadding(0, 8, 0, 8)
+        }
+        list.addView(chatView)
+        refreshSidekickChat(fragment, token, chatView)
+        val chatInput = EditText(context).apply {
+            hint = context.getString(R.string.tv_sidekick_chat_hint)
+            inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_MULTI_LINE
+            maxLines = 3
+        }
+        list.addView(chatInput)
+        list.addView(
+            Button(context).apply {
+                text = context.getString(R.string.tv_sidekick_chat_send)
+                setOnClickListener {
+                    val body = chatInput.text?.toString().orEmpty()
+                    fragment.viewLifecycleOwner.lifecycleScope.launch {
+                        val result = withContext(Dispatchers.IO) {
+                            runCatching {
+                                CastRoomRepository.postMessage(
+                                    context,
+                                    token,
+                                    TvSidekick.KIND_CHAT,
+                                    body,
+                                )
+                            }
+                        }
+                        if (!fragment.isAdded) return@launch
+                        result.onSuccess {
+                            chatInput.setText("")
+                            refreshSidekickChat(fragment, token, chatView)
+                        }.onFailure { error ->
+                            ExpDialogChrome.notify(
+                                context,
+                                context.getString(
+                                    R.string.cast_room_control_failed,
+                                    error.message ?: error.javaClass.simpleName,
+                                ),
+                            )
+                        }
+                    }
+                }
+            },
+        )
+        list.addView(reactionRow(context, fragment, token, chatView))
+
+        list.addView(sectionLabel(context, R.string.cast_room_companion_title))
         payload.items.forEachIndexed { index, item ->
             val row = TextView(context).apply {
                 val marker = if (index == payload.nowPlayingIndex) "▶ " else "${index + 1}. "
@@ -574,7 +697,7 @@ object CastRoomUi {
         }
 
         androidx.appcompat.app.AlertDialog.Builder(context)
-            .setTitle(R.string.cast_room_companion_title)
+            .setTitle(R.string.tv_sidekick_title)
             .setView(scroll)
             .setNeutralButton(R.string.cast_room_skip_action) { _, _ ->
                 mutate(fragment, token) { CastRoomRepository.skip(context, it) }
@@ -590,6 +713,107 @@ object CastRoomUi {
                 leaveController(fragment)
             }
             .show()
+    }
+
+    private fun sectionLabel(context: Context, titleRes: Int): TextView =
+        TextView(context).apply {
+            text = context.getString(titleRes)
+            textSize = 14f
+            setPadding(0, 18, 0, 8)
+            setTypeface(typeface, android.graphics.Typeface.BOLD)
+        }
+
+    private fun scrubberRow(context: Context, onDelta: (Long) -> Unit): HorizontalScrollView {
+        val scroll = HorizontalScrollView(context)
+        val row = LinearLayout(context).apply { orientation = LinearLayout.HORIZONTAL }
+        fun add(labelRes: Int, delta: Long) {
+            row.addView(
+                Button(context).apply {
+                    text = context.getString(labelRes)
+                    setOnClickListener { onDelta(delta) }
+                },
+            )
+        }
+        add(R.string.tv_sidekick_seek_back_30, -TvSidekick.SEEK_STEP_LONG_MS)
+        add(R.string.tv_sidekick_seek_back_10, -TvSidekick.SEEK_STEP_SHORT_MS)
+        add(R.string.tv_sidekick_seek_fwd_10, TvSidekick.SEEK_STEP_SHORT_MS)
+        add(R.string.tv_sidekick_seek_fwd_30, TvSidekick.SEEK_STEP_LONG_MS)
+        scroll.addView(row)
+        return scroll
+    }
+
+    private fun reactionRow(
+        context: Context,
+        fragment: Fragment,
+        token: String,
+        chatView: TextView,
+    ): HorizontalScrollView {
+        val scroll = HorizontalScrollView(context)
+        val row = LinearLayout(context).apply { orientation = LinearLayout.HORIZONTAL }
+        TvSidekick.REACTIONS.forEach { emoji ->
+            row.addView(
+                Button(context).apply {
+                    text = emoji
+                    setOnClickListener {
+                        fragment.viewLifecycleOwner.lifecycleScope.launch {
+                            withContext(Dispatchers.IO) {
+                                runCatching {
+                                    CastRoomRepository.postMessage(
+                                        context,
+                                        token,
+                                        TvSidekick.KIND_REACT,
+                                        emoji,
+                                    )
+                                }
+                            }
+                            if (fragment.isAdded) refreshSidekickChat(fragment, token, chatView)
+                        }
+                    }
+                },
+            )
+        }
+        scroll.addView(row)
+        return scroll
+    }
+
+    private fun promptAbsoluteSeek(fragment: Fragment, token: String, currentMs: Long) {
+        val context = fragment.context ?: return
+        val input = EditText(context).apply {
+            hint = context.getString(R.string.tv_sidekick_scrub_hint)
+            setText(TvSidekick.formatPosition(currentMs))
+            inputType = InputType.TYPE_CLASS_TEXT
+        }
+        androidx.appcompat.app.AlertDialog.Builder(context)
+            .setTitle(R.string.tv_sidekick_scrub_to_action)
+            .setView(input)
+            .setNegativeButton(android.R.string.cancel, null)
+            .setPositiveButton(R.string.tv_sidekick_scrub_go) { _, _ ->
+                val target = TvSidekick.parsePositionInput(input.text?.toString())
+                if (target == null) {
+                    ExpDialogChrome.notify(context, R.string.tv_sidekick_scrub_invalid)
+                    return@setPositiveButton
+                }
+                mutate(fragment, token) { CastRoomRepository.seek(context, it, target) }
+            }
+            .show()
+    }
+
+    private fun refreshSidekickChat(fragment: Fragment, token: String, chatView: TextView) {
+        val context = fragment.context ?: return
+        fragment.viewLifecycleOwner.lifecycleScope.launch {
+            val messages = withContext(Dispatchers.IO) {
+                runCatching { CastRoomRepository.listMessages(context, token) }
+                    .getOrDefault(emptyList())
+            }
+            if (!fragment.isAdded) return@launch
+            chatView.text = if (messages.isEmpty()) {
+                context.getString(R.string.tv_sidekick_chat_empty)
+            } else {
+                messages.takeLast(12).joinToString("\n") {
+                    TvSidekick.formatMessageLine(it.displayName, it.kind, it.body)
+                }
+            }
+        }
     }
 
     private fun showItemActions(

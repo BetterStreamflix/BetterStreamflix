@@ -15,6 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Profile themes + download folders: theme preference is per-profile; Kids defaults to **Cinema-Ink Kids**, adults to **Cinema-Ink Dark**; offline files land in visible `profiles/<Name>` folders (Settings path + Downloads chip show the folder)
 
 ### Added
+- TV Sidekick Phone: phone scrubber / TV keyboard / party chat over Cast Room — TV stays the screen (Mobile companion + TV host)
 - TV Ambient Mode: after idle on Home, soft poster cinemagraphs + Continue Watching strip (high-end TVs; burn-in safe via rotate + pixel shift); Settings Appearance toggle
 - Codec Comfort: remember sticks that hit HW decoder crashes — after two failures Auto prefers software decode and stable (constrained) buffers; coordinates with Stick Energy Mode without forcing it on
 - Spoiler Shield: blur episode titles and thumbs until unlock — always on for Kids (PIN gate), opt-in for adult profiles — Mobile + TV season/Continue rows

@@ -25,6 +25,11 @@ object CastRoomRepository {
     private const val RPC_PLAY_AT = "cast_room_play_at"
     private const val RPC_SKIP = "cast_room_skip"
     private const val RPC_SET_PLAYING = "cast_room_set_playing"
+    private const val RPC_SEEK = "cast_room_seek"
+    private const val RPC_SIDEKICK_TEXT = "cast_room_sidekick_text"
+    private const val RPC_ACK_TEXT = "cast_room_ack_sidekick_text"
+    private const val RPC_POST_MSG = "post_cast_room_message"
+    private const val RPC_LIST_MSG = "list_cast_room_messages"
     private const val TOKEN_TTL_HOURS = 12L
 
     data class HostCreateResult(
@@ -340,6 +345,126 @@ object CastRoomRepository {
             error("Could not update Cast Room playback")
         }
         return payload
+    }
+
+    /** Phone scrubber → TV seek target. */
+    suspend fun seek(context: Context, token: String, positionMs: Long): CastRoomPayload {
+        requireConfigured()
+        if (!CastRoomLinks.isValidToken(token)) error("Invalid share token")
+        val appContext = context.applicationContext
+        val profileId = ProfileManager.activeProfileId
+        val client = SupabaseProvider.initializeForProfile(appContext, profileId)
+            ?: error("Configure Supabase before using Cast Room")
+        client.auth.awaitInitialization()
+
+        val payload = runCatching {
+            client.postgrest.rpc(
+                RPC_SEEK,
+                CastRoomSeekParam(token.trim(), TvSidekick.clampSeek(positionMs)),
+            ).decodeAs<CastRoomPayload>()
+        }.getOrNull()
+        if (payload == null || payload.shareToken.isNullOrBlank()) {
+            error("Could not seek Cast Room playback")
+        }
+        return payload
+    }
+
+    /** Phone keyboard → TV search query. */
+    suspend fun sendSidekickText(context: Context, token: String, text: String): CastRoomPayload {
+        requireConfigured()
+        val cleaned = TvSidekick.sanitizeKeyboard(text) ?: error("Empty Sidekick text")
+        if (!CastRoomLinks.isValidToken(token)) error("Invalid share token")
+        val appContext = context.applicationContext
+        val profileId = ProfileManager.activeProfileId
+        val client = SupabaseProvider.initializeForProfile(appContext, profileId)
+            ?: error("Configure Supabase before using Cast Room")
+        client.auth.awaitInitialization()
+
+        val payload = runCatching {
+            client.postgrest.rpc(
+                RPC_SIDEKICK_TEXT,
+                CastRoomSidekickTextParam(token.trim(), cleaned),
+            ).decodeAs<CastRoomPayload>()
+        }.getOrNull()
+        if (payload == null || payload.shareToken.isNullOrBlank()) {
+            error("Could not send Sidekick keyboard text")
+        }
+        return payload
+    }
+
+    suspend fun ackSidekickText(context: Context, token: String) {
+        requireConfigured()
+        if (!CastRoomLinks.isValidToken(token)) return
+        val appContext = context.applicationContext
+        val profileId = ProfileManager.activeProfileId
+        val client = SupabaseProvider.clientFor(appContext, profileId)
+        client.auth.awaitInitialization()
+        runCatching {
+            client.postgrest.rpc(RPC_ACK_TEXT, CastRoomTokenParam(token.trim()))
+        }.onFailure { Log.w(TAG, "Ack Sidekick text failed", it) }
+    }
+
+    suspend fun postMessage(
+        context: Context,
+        token: String,
+        kind: String,
+        body: String,
+    ) {
+        requireConfigured()
+        if (!CastRoomLinks.isValidToken(token)) error("Invalid share token")
+        val cleanedBody = when (kind) {
+            TvSidekick.KIND_REACT -> {
+                if (!TvSidekick.isAllowedReaction(body)) error("Unsupported reaction")
+                body.trim()
+            }
+            TvSidekick.KIND_CHAT ->
+                TvSidekick.sanitizeChatBody(body) ?: error("Empty message")
+            else -> error("Unsupported message kind")
+        }
+        val appContext = context.applicationContext
+        val profileId = ProfileManager.activeProfileId
+        val client = SupabaseProvider.initializeForProfile(appContext, profileId)
+            ?: error("Configure Supabase before chatting in a Cast Room")
+        client.auth.awaitInitialization()
+
+        val ok = runCatching {
+            client.postgrest.rpc(
+                RPC_POST_MSG,
+                CastRoomPostMessageParam(
+                    token = token.trim(),
+                    memberKey = WatchPartyMemberIdentity.memberKey(appContext),
+                    displayName = WatchPartyMemberIdentity.displayName(),
+                    kind = kind,
+                    body = cleanedBody,
+                ),
+            )
+            true
+        }.getOrDefault(false)
+        if (!ok) error("Could not send Sidekick chat message")
+    }
+
+    suspend fun listMessages(
+        context: Context,
+        token: String,
+        limit: Int = 40,
+    ): List<CastRoomMessagePayload> {
+        requireConfigured()
+        if (!CastRoomLinks.isValidToken(token)) return emptyList()
+        val appContext = context.applicationContext
+        val profileId = ProfileManager.activeProfileId
+        val client = SupabaseProvider.initializeForProfile(appContext, profileId)
+            ?: return emptyList()
+        client.auth.awaitInitialization()
+        return runCatching {
+            client.postgrest.rpc(
+                RPC_LIST_MSG,
+                CastRoomListMessagesParam(token.trim(), limit.coerceIn(1, 80)),
+            ).decodeAs<List<CastRoomMessagePayload>>()
+                .sortedBy { it.createdAt.orEmpty() }
+        }.getOrElse {
+            Log.w(TAG, "List Sidekick messages failed", it)
+            emptyList()
+        }
     }
 
     suspend fun flushStalePending(context: Context): Int {

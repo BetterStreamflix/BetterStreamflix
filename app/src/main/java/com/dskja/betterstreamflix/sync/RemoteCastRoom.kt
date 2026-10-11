@@ -18,6 +18,10 @@ data class RemoteCastRoom(
     @SerialName("position_ms") val positionMs: Long = 0L,
     @EncodeDefault val revision: Long = 1L,
     @EncodeDefault val ended: Boolean = false,
+    @SerialName("sidekick_seek_ms") val sidekickSeekMs: Long? = null,
+    @SerialName("sidekick_seek_seq") val sidekickSeekSeq: Long = 0L,
+    @SerialName("sidekick_text") val sidekickText: String? = null,
+    @SerialName("sidekick_text_seq") val sidekickTextSeq: Long = 0L,
     @SerialName("expires_at") val expiresAt: String? = null,
     @SerialName("created_at") val createdAt: String? = null,
     @SerialName("updated_at") val updatedAt: String? = null,
@@ -70,6 +74,43 @@ data class CastRoomPlayAtParam(
 data class CastRoomSetPlayingParam(
     @SerialName("p_token") val token: String,
     @SerialName("p_playing") val playing: Boolean,
+)
+
+@Serializable
+data class CastRoomSeekParam(
+    @SerialName("p_token") val token: String,
+    @SerialName("p_position_ms") val positionMs: Long,
+)
+
+@Serializable
+data class CastRoomSidekickTextParam(
+    @SerialName("p_token") val token: String,
+    @SerialName("p_text") val text: String,
+)
+
+@Serializable
+data class CastRoomPostMessageParam(
+    @SerialName("p_token") val token: String,
+    @SerialName("p_member_key") val memberKey: String,
+    @SerialName("p_display_name") val displayName: String,
+    @SerialName("p_kind") val kind: String,
+    @SerialName("p_body") val body: String,
+)
+
+@Serializable
+data class CastRoomListMessagesParam(
+    @SerialName("p_token") val token: String,
+    @SerialName("p_limit") val limit: Int = 40,
+)
+
+@Serializable
+data class CastRoomMessagePayload(
+    val id: String? = null,
+    @SerialName("member_key") val memberKey: String = "",
+    @SerialName("display_name") val displayName: String = "Guest",
+    val kind: String = TvSidekick.KIND_CHAT,
+    val body: String = "",
+    @SerialName("created_at") val createdAt: String? = null,
 )
 
 @Serializable
@@ -127,6 +168,10 @@ data class CastRoomPayload(
     @SerialName("position_ms") val positionMs: Long = 0L,
     val revision: Long = 1L,
     val ended: Boolean = false,
+    @SerialName("sidekick_seek_ms") val sidekickSeekMs: Long? = null,
+    @SerialName("sidekick_seek_seq") val sidekickSeekSeq: Long = 0L,
+    @SerialName("sidekick_text") val sidekickText: String? = null,
+    @SerialName("sidekick_text_seq") val sidekickTextSeq: Long = 0L,
     @SerialName("expires_at") val expiresAt: String? = null,
     @SerialName("updated_at") val updatedAt: String? = null,
     val items: List<CastRoomItemPayload> = emptyList(),

@@ -237,6 +237,10 @@ class PlayerTvFragment : Fragment(),
                 }
             }
 
+            override fun seekTo(positionMs: Long) {
+                runCatching { activePlayer().seekTo(positionMs.coerceAtLeast(0L)) }
+            }
+
             override fun currentCastRoomIndex(): Int =
                 com.dskja.betterstreamflix.sync.CastRoomUi.latestPayload()?.nowPlayingIndex ?: 0
         }
@@ -247,6 +251,15 @@ class PlayerTvFragment : Fragment(),
             this,
             castRoomBridge,
             playing,
+        )
+    }
+
+    fun castRoomApplyRemoteSeek(positionMs: Long) {
+        if (!isAdded || _binding == null) return
+        com.dskja.betterstreamflix.sync.CastRoomPlayerHooks.applyRemoteSeek(
+            this,
+            castRoomBridge,
+            positionMs,
         )
     }
 

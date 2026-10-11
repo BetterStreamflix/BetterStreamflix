@@ -455,6 +455,22 @@ class MainTvActivity : FragmentActivity() {
                     player?.castRoomApplyRemotePlaying(playing)
                 }
 
+                override fun onCastRoomSeek(positionMs: Long) {
+                    runOnUiThread {
+                        val navHost =
+                            supportFragmentManager.findFragmentById(R.id.nav_main_fragment) as? NavHostFragment
+                        val player = navHost?.childFragmentManager?.primaryNavigationFragment
+                            as? com.dskja.betterstreamflix.fragments.player.PlayerTvFragment
+                        player?.castRoomApplyRemoteSeek(positionMs)
+                    }
+                }
+
+                override fun onCastRoomSidekickText(text: String) {
+                    runOnUiThread {
+                        applySidekickKeyboardQuery(text)
+                    }
+                }
+
                 override fun onCastRoomEnded() {
                     runOnUiThread {
                         com.dskja.betterstreamflix.utils.ExpDialogChrome.notify(
@@ -465,6 +481,31 @@ class MainTvActivity : FragmentActivity() {
                 }
             },
         )
+    }
+
+    /** Phone keyboard → open Search on the TV and run the query. */
+    private fun applySidekickKeyboardQuery(text: String) {
+        val query = com.dskja.betterstreamflix.sync.TvSidekick.sanitizeKeyboard(text) ?: return
+        val navController =
+            (supportFragmentManager.findFragmentById(R.id.nav_main_fragment) as? NavHostFragment)
+                ?.navController
+        runCatching { navController?.navigate(R.id.search) }
+        binding.root.post {
+            val frag = getCurrentFragment()
+                as? com.dskja.betterstreamflix.fragments.search.SearchTvFragment
+            if (frag != null) {
+                frag.applySidekickQuery(query)
+            } else {
+                binding.root.postDelayed({
+                    (getCurrentFragment() as? com.dskja.betterstreamflix.fragments.search.SearchTvFragment)
+                        ?.applySidekickQuery(query)
+                }, 350L)
+            }
+            com.dskja.betterstreamflix.utils.ExpDialogChrome.notify(
+                this,
+                getString(R.string.tv_sidekick_keyboard_applied, query),
+            )
+        }
     }
 
     /** Watch Next / Preview Channel card → resume or open details. */
