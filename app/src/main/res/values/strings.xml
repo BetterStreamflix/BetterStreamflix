@@ -963,6 +963,37 @@
     <string name="shared_watchlist_import_confirm_action">Import</string>
     <string name="shared_watchlist_import_success">Imported %1$d · already on list %2$d · skipped %3$d · age-restricted %4$d</string>
     <string name="shared_watchlist_import_failed">Could not import shared list: %1$s</string>
+
+    <!-- Watch-Party light: position + server sync via shareable link (no video relay) -->
+    <string name="watch_party_cd">Watch Party</string>
+    <string name="watch_party_cd_hosting">Watch Party — hosting</string>
+    <string name="watch_party_cd_joined">Watch Party — joined</string>
+    <string name="watch_party_menu_title">Watch Party</string>
+    <string name="watch_party_host_action">Host &amp; share link</string>
+    <string name="watch_party_host_confirm_message">Share a link so a friend can sync play position and the chosen server. Video stays on each device — nothing is streamed through BetterStreamflix.</string>
+    <string name="watch_party_host_started">Watch Party started — share the link with a friend</string>
+    <string name="watch_party_host_failed">Could not start Watch Party: %1$s</string>
+    <string name="watch_party_reshare_action">Share link again</string>
+    <string name="watch_party_end_action">End party</string>
+    <string name="watch_party_leave_action">Leave party</string>
+    <string name="watch_party_guest_leave_message">Leave this Watch Party? Playback continues locally.</string>
+    <string name="watch_party_share_action">Share Watch Party</string>
+    <string name="watch_party_share_subject">BetterStreamflix Watch Party</string>
+    <string name="watch_party_needs_supabase">Configure Supabase under Account &amp; sync before hosting a Watch Party</string>
+    <string name="watch_party_needs_sign_in">Sign in under Account &amp; sync to host a Watch Party</string>
+    <string name="watch_party_offline">Connect to the internet to host or join a Watch Party</string>
+    <string name="watch_party_unavailable_live_offline">Watch Party is not available for live TV or offline playback</string>
+    <string name="watch_party_invalid_link">This Watch Party link is invalid</string>
+    <string name="watch_party_join_needs_supabase">Configure Supabase under Account &amp; sync to join. The link was saved for later.</string>
+    <string name="watch_party_join_queued_offline">You\'re offline — you\'ll be asked to join the Watch Party when you\'re back online</string>
+    <string name="watch_party_join_confirm_title">Join Watch Party?</string>
+    <string name="watch_party_join_action">Join</string>
+    <string name="watch_party_join_privacy_note">Only play position and the chosen server are shared. Stream URLs stay on each device.</string>
+    <string name="watch_party_join_failed">Could not join Watch Party: %1$s</string>
+    <string name="watch_party_join_failed_nav">Could not open the player for this Watch Party</string>
+    <string name="watch_party_unknown_provider">This Watch Party uses a provider that is not available on this device</string>
+    <string name="watch_party_ended">Watch Party ended</string>
+    <string name="watch_party_left">Left Watch Party</string>
     <string name="cloud_sync_account_category">Supabase account</string>
     <string name="cloud_sync_account_status">Account status</string>
     <string name="cloud_sync_signed_out">Not signed in</string>

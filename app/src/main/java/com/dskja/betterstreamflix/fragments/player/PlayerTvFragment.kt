@@ -141,7 +141,8 @@ import java.util.Locale
 import java.util.UUID
 import com.dskja.betterstreamflix.extractors.TokenManager
 
-class PlayerTvFragment : Fragment() {
+class PlayerTvFragment : Fragment(),
+    com.dskja.betterstreamflix.sync.WatchPartyUi.WatchPartyHostAware {
     companion object {
         private const val NEXT_EPISODE_PREFETCH_THRESHOLD_MS = 60_000L
         private const val NEXT_EPISODE_OVERLAY_MIN_THRESHOLD_MS = 30_000L
@@ -167,6 +168,41 @@ class PlayerTvFragment : Fragment() {
     private val viewModel by viewModelsFactory {
         PlayerViewModel(args.videoType, args.id, args.preferredServerName)
     }
+
+    private val watchPartyBridge =
+        object : com.dskja.betterstreamflix.sync.WatchPartyPlayerHooks.PlayerBridge {
+            override fun isLiveOrOffline(): Boolean =
+                isLiveTvPlayback() || isOfflinePlayback()
+
+            override fun videoType(): Video.Type = args.videoType
+
+            override fun currentServer(): Video.Server? =
+                this@PlayerTvFragment.currentServer
+
+            override fun servers(): List<Video.Server> =
+                this@PlayerTvFragment.servers
+
+            override fun positionMs(): Long =
+                runCatching { activePlayer().currentPosition }.getOrDefault(0L)
+
+            override fun isPlaying(): Boolean =
+                runCatching { activePlayer().isPlaying }.getOrDefault(false)
+
+            override fun seekTo(positionMs: Long) {
+                runCatching { activePlayer().seekTo(positionMs) }
+            }
+
+            override fun setPlayWhenReady(playing: Boolean) {
+                runCatching {
+                    activePlayer().playWhenReady = playing
+                    if (playing) activePlayer().play() else activePlayer().pause()
+                }
+            }
+
+            override fun requestServer(server: Video.Server) {
+                viewModel.getVideo(server)
+            }
+        }
 
     private lateinit var player: ExoPlayer
     private var playerReleased = false
@@ -764,10 +800,20 @@ class PlayerTvFragment : Fragment() {
             hasBinding = _binding != null,
         )
 
+    override fun onWatchPartyHostStarted() {
+        if (!isAdded || _binding == null) return
+        com.dskja.betterstreamflix.sync.WatchPartyPlayerHooks.ensureSyncRunning(this, watchPartyBridge)
+        com.dskja.betterstreamflix.sync.WatchPartyPlayerHooks.refreshChrome(
+            binding.pvPlayer.controller.binding.btnExoWatchParty,
+            watchPartyBridge,
+        )
+    }
+
     override fun onDestroyView() {
         // Tear down while still attached — requireContext()/binding after super crash on
         // Zurück from player (especially TV OEM paths).
         isTearingDown = true
+        com.dskja.betterstreamflix.sync.WatchPartyPlayerHooks.onDestroyView(this)
         PlaybackLifecycleGuard.unregister(playbackStopHandle)
         val appContext = context?.applicationContext
         runCatching {
@@ -1322,6 +1368,11 @@ class PlayerTvFragment : Fragment() {
     }
 
     private fun wirePlayWithChromeButton(controller: ContentExoControllerTvBinding) {
+        com.dskja.betterstreamflix.sync.WatchPartyPlayerHooks.wireChromeButton(
+            this,
+            controller.btnExoWatchParty,
+            watchPartyBridge,
+        )
         controller.btnExoExternalPlayer.setOnClickListener {
             openCurrentStreamExternally(forceChooser = false)
         }
@@ -1513,6 +1564,11 @@ class PlayerTvFragment : Fragment() {
             updatePlayerHeader()
 
             wirePlayWithChromeButton(binding.pvPlayer.controller.binding)
+            com.dskja.betterstreamflix.sync.WatchPartyPlayerHooks.wireChromeButton(
+                this,
+                binding.pvPlayer.controller.binding.btnExoWatchParty,
+                watchPartyBridge,
+            )
 
             binding.pvPlayer.controller.binding.exoReplay.setOnClickListener {
                 activePlayer().seekTo(0)
@@ -1734,6 +1790,7 @@ class PlayerTvFragment : Fragment() {
             TvFocusChain.linkHorizontal(
                 c.tvCastQueue,
                 c.mediaRouteButton,
+                c.btnExoWatchParty,
                 c.btnExoExternalPlayer,
             )
         }
@@ -1794,6 +1851,12 @@ class PlayerTvFragment : Fragment() {
             val offline = server.id.equals(PlayerViewModel.OFFLINE_SERVER_ID, ignoreCase = true) ||
                 server.name.equals(PlayerViewModel.OFFLINE_SERVER_NAME, ignoreCase = true)
             updatePlayerHeader()
+            com.dskja.betterstreamflix.sync.WatchPartyPlayerHooks.ensureSyncRunning(this, watchPartyBridge)
+            com.dskja.betterstreamflix.sync.WatchPartyPlayerHooks.onLocalControlChanged(this, watchPartyBridge)
+            com.dskja.betterstreamflix.sync.WatchPartyPlayerHooks.refreshChrome(
+                binding.pvPlayer.controller.binding.btnExoWatchParty,
+                watchPartyBridge,
+            )
             runCatching {
                 com.dskja.betterstreamflix.platform.plugins.PluginManager
                     .dispatchServerResolved(server)

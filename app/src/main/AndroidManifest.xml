@@ -193,6 +193,22 @@
                     android:host="betterstreamflix.app"
                     android:pathPrefix="/list" />
             </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+                <category android:name="android.intent.category.BROWSABLE"/>
+                <data android:scheme="betterstreamflix" android:host="party"/>
+                <data android:scheme="streamflix" android:host="party"/>
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+                <category android:name="android.intent.category.BROWSABLE"/>
+                <data
+                    android:scheme="https"
+                    android:host="betterstreamflix.app"
+                    android:pathPrefix="/party" />
+            </intent-filter>
         </activity>
 
         <activity
@@ -236,6 +252,22 @@
                 <data android:scheme="betterstreamflix" android:host="watch"/>
                 <data android:scheme="streamflix" android:host="watch"/>
                 <data android:scheme="betterstreamflix" android:host="home"/>
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+                <category android:name="android.intent.category.BROWSABLE"/>
+                <data android:scheme="betterstreamflix" android:host="party"/>
+                <data android:scheme="streamflix" android:host="party"/>
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+                <category android:name="android.intent.category.BROWSABLE"/>
+                <data
+                    android:scheme="https"
+                    android:host="betterstreamflix.app"
+                    android:pathPrefix="/party" />
             </intent-filter>
         </activity>
 

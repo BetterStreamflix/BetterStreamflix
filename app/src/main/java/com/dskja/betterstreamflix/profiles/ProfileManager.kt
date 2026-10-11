@@ -403,6 +403,11 @@ object ProfileManager {
                     scopedPrefKeyFor("shared_watchlist_pending", profileId),
                 )
             }
+            runCatching {
+                appContext.deleteSharedPreferences(
+                    scopedPrefKeyFor("watch_party_pending", profileId),
+                )
+            }
         }
     }
 

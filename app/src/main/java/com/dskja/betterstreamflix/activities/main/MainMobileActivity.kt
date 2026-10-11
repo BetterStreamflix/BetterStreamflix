@@ -365,10 +365,11 @@ class MainMobileActivity : FragmentActivity() {
             }
         })
 
-        // Share list deep links must run even after process-death restore
+        // Share list / Watch Party deep links must run even after process-death restore
         // (savedInstanceState != null) so the URI is not dropped.
         val shareListRestore = intent.data?.let {
-            com.dskja.betterstreamflix.sync.SharedWatchlistLinks.parseToken(it) != null
+            com.dskja.betterstreamflix.sync.SharedWatchlistLinks.parseToken(it) != null ||
+                com.dskja.betterstreamflix.sync.WatchPartyLinks.parseToken(it) != null
         } == true
         if (savedInstanceState == null || shareListRestore) {
             handleIntent(intent)
@@ -389,6 +390,7 @@ class MainMobileActivity : FragmentActivity() {
             telegramGateLauncher,
         )
         com.dskja.betterstreamflix.sync.SharedWatchlistUi.tryFlushPending(this)
+        com.dskja.betterstreamflix.sync.WatchPartyUi.tryFlushPending(this)
     }
 
     override fun onStart() {
@@ -404,6 +406,7 @@ class MainMobileActivity : FragmentActivity() {
             binding.root.post { showProfileUnlockGateIfNeeded(navHost) }
         }
         com.dskja.betterstreamflix.sync.SharedWatchlistUi.tryFlushPending(this)
+        com.dskja.betterstreamflix.sync.WatchPartyUi.tryFlushPending(this)
     }
 
     override fun onStop() {
@@ -415,6 +418,7 @@ class MainMobileActivity : FragmentActivity() {
         if (isFinishing || isDestroyed) return
         if (!com.dskja.betterstreamflix.profiles.ProfileUnlockGate.requiresGateForActive()) {
             com.dskja.betterstreamflix.sync.SharedWatchlistUi.tryFlushPending(this)
+            com.dskja.betterstreamflix.sync.WatchPartyUi.tryFlushPending(this)
             return
         }
         val host = navHost.childFragmentManager.primaryNavigationFragment ?: navHost
@@ -423,6 +427,7 @@ class MainMobileActivity : FragmentActivity() {
             hostFragmentProvider = { host },
             onUnlocked = {
                 com.dskja.betterstreamflix.sync.SharedWatchlistUi.tryFlushPending(this)
+                com.dskja.betterstreamflix.sync.WatchPartyUi.tryFlushPending(this)
             },
         )
     }
@@ -843,6 +848,12 @@ class MainMobileActivity : FragmentActivity() {
         val shareToken = com.dskja.betterstreamflix.sync.SharedWatchlistLinks.parseToken(data)
         if (shareToken != null) {
             com.dskja.betterstreamflix.sync.SharedWatchlistUi.handleIncomingToken(this, shareToken)
+            return true
+        }
+
+        val partyToken = com.dskja.betterstreamflix.sync.WatchPartyLinks.parseToken(data)
+        if (partyToken != null) {
+            com.dskja.betterstreamflix.sync.WatchPartyUi.handleIncomingToken(this, partyToken)
             return true
         }
 
