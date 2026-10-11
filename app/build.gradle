@@ -42,8 +42,12 @@ android {
         buildConfigField "String", "RABBITSTREAM_SOURCE_API", "\"${properties.getProperty("RABBITSTREAM_SOURCE_API", "")}\""
         // App-owned Trakt OAuth app — end users only tap Sign in (no per-user client id/secret).
         buildConfigField "String", "TRAKT_CLIENT_ID", "\"${properties.getProperty("TRAKT_CLIENT_ID", "")}\""
+        // Prefer UserPreferences override; CI must not bake TRAKT_CLIENT_SECRET into
+        // uploaded APKs (CI-H3 / SEC-M1). Local/dev may still set it in local.properties.
         buildConfigField "String", "TRAKT_CLIENT_SECRET", "\"${properties.getProperty("TRAKT_CLIENT_SECRET", "")}\""
         buildConfigField "String", "SIMKL_CLIENT_ID", "\"${properties.getProperty("SIMKL_CLIENT_ID", "")}\""
+        // Google Drive API key — inject via local.properties / CI secret; never hardcode (SEC-H1).
+        buildConfigField "String", "GOOGLE_DRIVE_API_KEY", "\"${properties.getProperty("GOOGLE_DRIVE_API_KEY", "")}\""
 
         if (file("src/main/cpp/native-lib.cpp").exists()) {
             externalNativeBuild {

@@ -34,7 +34,7 @@ jobs:
     name: Release APK (${{ matrix.name }})
     runs-on: ubuntu-latest
     permissions:
-      contents: write
+      contents: read
     strategy:
       fail-fast: false
       matrix:
@@ -82,11 +82,12 @@ jobs:
           if [ -n "$TRAKT_CLIENT_ID" ]; then
             echo "TRAKT_CLIENT_ID=$TRAKT_CLIENT_ID" >> local.properties
           fi
-          if [ -n "$TRAKT_CLIENT_SECRET" ]; then
-            echo "TRAKT_CLIENT_SECRET=$TRAKT_CLIENT_SECRET" >> local.properties
-          fi
+          # Never bake TRAKT_CLIENT_SECRET into uploaded APKs (CI-H3 / SEC-M1).
           if [ -n "$SIMKL_CLIENT_ID" ]; then
             echo "SIMKL_CLIENT_ID=$SIMKL_CLIENT_ID" >> local.properties
+          fi
+          if [ -n "${{ secrets.GOOGLE_DRIVE_API_KEY }}" ]; then
+            echo "GOOGLE_DRIVE_API_KEY=${{ secrets.GOOGLE_DRIVE_API_KEY }}" >> local.properties
           fi
 
       - name: Generate native-lib.cpp from template
@@ -117,6 +118,9 @@ jobs:
           else
             sed -i '/^APP_LAYOUT=/d' local.properties || true
           fi
+
+      - name: Unit tests before release assemble
+        run: ./gradlew :app:testDebugUnitTest --stacktrace
 
       - name: Build release APK
         env:
@@ -184,22 +188,29 @@ jobs:
           BUILD_TOOLS_VERSION: "34.0.0"
 
       - name: Rename APK
+        id: rename_apk
         run: |
           if [ "${{ steps.signing_secrets.outputs.available }}" = "true" ]; then
             src="${{ steps.sign_apk.outputs.signedReleaseFile }}"
+            out="${{ matrix.apk_name }}"
           else
             src=$(ls app/build/outputs/apk/release/*-unsigned.apk | head -n 1)
-            echo "::warning::Uploading unsigned release APK (signing secrets not configured)."
+            # Keep -unsigned in the artifact filename (CI-H1) — never publish
+            # unsigned builds under release product names.
+            base="${{ matrix.apk_name }}"
+            out="${base%.apk}-unsigned.apk"
+            echo "::warning::Uploading unsigned release APK as $out (signing secrets not configured)."
           fi
           test -n "$src" && test -f "$src"
-          cp "$src" "${{ matrix.apk_name }}"
-          ls -lh "${{ matrix.apk_name }}"
+          cp "$src" "$out"
+          echo "apk_name=$out" >> "$GITHUB_OUTPUT"
+          ls -lh "$out"
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
           name: release-${{ matrix.name }}-${{ github.sha }}
-          path: ${{ matrix.apk_name }}
+          path: ${{ steps.rename_apk.outputs.apk_name }}
           if-no-files-found: error
           retention-days: 14
 
@@ -277,8 +288,6 @@ jobs:
         with:
           name: BetterStreamflix-apks-${{ github.sha }}
           path: |
-            dist/BetterStreamflix.apk
-            dist/BetterStreamflix-only-Mobile.apk
-            dist/BetterStreamflix-only-TV.apk
+            dist/*.apk
           if-no-files-found: error
           retention-days: 14

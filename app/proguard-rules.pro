@@ -67,9 +67,37 @@
 -keep class com.dskja.betterstreamflix.sync.** { *; }
 -keep class com.dskja.betterstreamflix.profiles.** { *; }
 
+# Gson DTOs in utils without @SerializedName (R8-H1)
+-keep class com.dskja.betterstreamflix.utils.AesHelper$AesData { *; }
+-keep class com.dskja.betterstreamflix.utils.UserDataCache$* { *; }
+-keep class com.dskja.betterstreamflix.utils.HomeCacheStore$* { *; }
+-keep class com.dskja.betterstreamflix.utils.SubtitleFileCache$* { *; }
+
+# Plugin reflection API (R8-H2)
+-keep class com.dskja.betterstreamflix.platform.plugins.** { *; }
+
+# Cast OptionsProvider FQCN in manifests (R8-M2)
+-keep class com.dskja.betterstreamflix.cast.CastOptionsProvider { *; }
+
+# WorkManager workers outside kept packages (R8-M3)
+-keep class * extends androidx.work.ListenableWorker {
+    public <init>(android.content.Context,androidx.work.WorkerParameters);
+}
+
+# Room DAOs (R8-M5 belt-and-suspenders)
+-keep @androidx.room.Dao interface * { *; }
+
+# Kotlinx serialization app types (R8-H4 official-style keep)
+-keep,includedescriptorclasses class com.dskja.betterstreamflix.**$$serializer { *; }
+-if @kotlinx.serialization.Serializable class com.dskja.betterstreamflix.**
+-keepclassmembers class <1> {
+    static <1>$Companion Companion;
+}
+
 # Gson TypeToken anonymous subclasses (HomeCacheStore / providers / workers)
--keep,allowobfuscation,allowshrinking class com.google.gson.reflect.TypeToken
--keep,allowobfuscation,allowshrinking class * extends com.google.gson.reflect.TypeToken
+# Keep without allowshrinking so Signature + R8 full mode stay safe (R8-M1).
+-keep class com.google.gson.reflect.TypeToken { *; }
+-keep class * extends com.google.gson.reflect.TypeToken { *; }
 
 # JNI
 -keepclasseswithmembernames class * {
