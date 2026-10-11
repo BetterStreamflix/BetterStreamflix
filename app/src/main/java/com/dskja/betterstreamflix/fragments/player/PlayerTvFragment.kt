@@ -65,6 +65,9 @@ import com.dskja.betterstreamflix.player.PlaybackLifecycleGuard
 import com.dskja.betterstreamflix.player.PlayerTeardownPolicy
 import com.dskja.betterstreamflix.player.PlayerBuilderFactory
 import com.dskja.betterstreamflix.player.SerienStreamBypassHelper
+import com.dskja.betterstreamflix.player.SkipIntroChapters
+import com.dskja.betterstreamflix.player.SkipIntroSilenceProbe
+import com.dskja.betterstreamflix.player.SmartSkipIntro
 import com.dskja.betterstreamflix.player.StreamFailureReason
 import com.dskja.betterstreamflix.providers.ProviderDomainUpdater
 import com.dskja.betterstreamflix.providers.SerienStreamAuthManager
@@ -216,6 +219,12 @@ class PlayerTvFragment : Fragment() {
     private var nextEpisodePrefetchTargetId: String? = null
     private var nextEpisodePrefetchJob: Job? = null
     private var nextEpisodeOverlayDismissed = false
+
+    private var skipIntroContentId: String? = null
+    private var skipIntroConsumed = false
+    private var skipIntroChapters: List<SmartSkipIntro.ChapterMark> = emptyList()
+    private var skipIntroProbe: SkipIntroSilenceProbe? = null
+    private var activeSkipOpportunity: SmartSkipIntro.Opportunity? = null
 
     private fun activePlayer(): Player =
         if (isCasting || CastPlaybackHub.isCasting) castPlayer ?: CastPlaybackHub.playerOrNull() ?: player
@@ -769,6 +778,7 @@ class PlayerTvFragment : Fragment() {
         stopProgressHandler()
         stopLiveEdgeWatcher()
         hideNextEpisodeOverlay()
+        releaseSkipIntroProbe()
         clearBypassSession(dismissDialog = true)
         if (gestureHelper != null) {
             runCatching { gestureHelper?.release() }
@@ -1552,8 +1562,12 @@ class PlayerTvFragment : Fragment() {
             }
 
             binding.pvPlayer.controller.binding.btnSkipIntro.setOnClickListener {
-                player.seekTo(player.currentPosition + 85000)
-                it.visibility = View.GONE
+                val target = activeSkipOpportunity?.endMs
+                    ?: (player.currentPosition + 85_000L)
+                runCatching { player.seekTo(target.coerceAtLeast(0L)) }
+                skipIntroConsumed = true
+                activeSkipOpportunity = null
+                showSkipIntroButton(false)
             }
 
             binding.btnNextEpisodeAction.setOnClickListener {
@@ -1776,6 +1790,7 @@ class PlayerTvFragment : Fragment() {
             if (isTearingDown || !isAdded || _binding == null) return
             currentVideo = video
             currentServer = server
+            resetSmartSkipForContent()
             val offline = server.id.equals(PlayerViewModel.OFFLINE_SERVER_ID, ignoreCase = true) ||
                 server.name.equals(PlayerViewModel.OFFLINE_SERVER_NAME, ignoreCase = true)
             updatePlayerHeader()
@@ -1901,11 +1916,16 @@ class PlayerTvFragment : Fragment() {
 
                     if (playbackState == Player.STATE_READY) {
                         updatePlayerScale()
+                        ensureSkipIntroProbe()
                     }
                 }
 
                 override fun onTracksChanged(tracks: androidx.media3.common.Tracks) {
                     super.onTracksChanged(tracks)
+                    val marks = SkipIntroChapters.fromTracks(tracks)
+                    if (marks.isNotEmpty()) {
+                        skipIntroChapters = marks
+                    }
                     val videoGroups = tracks.groups.filter { it.type == C.TRACK_TYPE_VIDEO }
                     val videoTracks = videoGroups.sumOf { it.length }
                     val selectedHeights = buildList {
@@ -1930,6 +1950,7 @@ class PlayerTvFragment : Fragment() {
 
                     if (isPlaying) {
                         recordRecentlyWatchedStart()
+                        ensureSkipIntroProbe()
                         startProgressHandler()
                     } else {
                         stopProgressHandler()
@@ -2838,13 +2859,15 @@ class PlayerTvFragment : Fragment() {
                 }
                 if (player.isPlaying) {
                     if (!isLiveTvPlayback()) {
-                        val show = player.currentPosition in 3000..120000
-                        showSkipIntroButton(show)
+                        val pos = player.currentPosition
+                        val dur = player.duration
+                        skipIntroProbe?.onPlaybackPosition(pos)
+                        updateSmartSkipChrome(pos, dur)
                         updateNextEpisodeOverlay()
                         com.dskja.betterstreamflix.platform.player.PlayerPlaybackReporter.report(
                             videoType = args.videoType,
-                            positionMs = player.currentPosition,
-                            durationMs = player.duration,
+                            positionMs = pos,
+                            durationMs = dur,
                             isPlaying = true,
                             provider = UserPreferences.currentProvider,
                             itemId = when (val t = args.videoType) {
@@ -2853,6 +2876,7 @@ class PlayerTvFragment : Fragment() {
                             },
                         )
                     } else {
+                        activeSkipOpportunity = null
                         showSkipIntroButton(false)
                         hideNextEpisodeOverlay()
                     }
@@ -3019,6 +3043,62 @@ class PlayerTvFragment : Fragment() {
             b.btnNextEpisodeDismiss.nextFocusDownId =
                 if (controllerBinding.btnSkipIntro.isVisible) controllerBinding.btnSkipIntro.id
                 else controllerBinding.exoSettings.id
+        }
+
+        private fun contentIdForSmartSkip(): String = when (val t = args.videoType) {
+            is Video.Type.Movie -> "movie:${t.id}"
+            is Video.Type.Episode -> "episode:${t.id}"
+        }
+
+        private fun resetSmartSkipForContent() {
+            val id = contentIdForSmartSkip()
+            if (id == skipIntroContentId) return
+            skipIntroContentId = id
+            skipIntroConsumed = false
+            skipIntroChapters = emptyList()
+            activeSkipOpportunity = null
+            skipIntroProbe?.release()
+            skipIntroProbe = null
+            showSkipIntroButton(false)
+        }
+
+        private fun ensureSkipIntroProbe() {
+            if (skipIntroProbe != null || skipIntroConsumed || isLiveTvPlayback()) return
+            if (!::player.isInitialized || playerReleased) return
+            val sessionId = runCatching { player.audioSessionId }.getOrDefault(C.AUDIO_SESSION_ID_UNSET)
+            if (sessionId == C.AUDIO_SESSION_ID_UNSET || sessionId == 0) return
+            skipIntroProbe = SkipIntroSilenceProbe.tryCreate(sessionId)
+        }
+
+        private fun releaseSkipIntroProbe() {
+            skipIntroProbe?.release()
+            skipIntroProbe = null
+            activeSkipOpportunity = null
+        }
+
+        private fun updateSmartSkipChrome(positionMs: Long, durationMs: Long) {
+            val episode = args.videoType as? Video.Type.Episode
+            val opportunity = SmartSkipIntro.evaluate(
+                positionMs = positionMs,
+                durationMs = durationMs,
+                isEpisode = episode != null,
+                episodeNumber = episode?.number,
+                chapters = skipIntroChapters,
+                silenceGaps = skipIntroProbe?.gaps().orEmpty(),
+                alreadyConsumed = skipIntroConsumed,
+            )
+            activeSkipOpportunity = opportunity
+            val btn = _binding?.pvPlayer?.controller?.binding?.btnSkipIntro
+            if (opportunity != null && btn != null) {
+                val label = when (opportunity.kind) {
+                    SmartSkipIntro.Kind.INTRO -> getString(R.string.player_skip_intro)
+                    SmartSkipIntro.Kind.RECAP -> getString(R.string.player_skip_recap)
+                }
+                if (btn.text?.toString() != label) {
+                    btn.text = label
+                }
+            }
+            showSkipIntroButton(opportunity != null)
         }
 
         private fun showSkipIntroButton(show: Boolean) {

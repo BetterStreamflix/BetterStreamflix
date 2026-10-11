@@ -411,6 +411,7 @@
     <string name="settings_player_gestures_on">تشغيل</string>
     <string name="settings_player_gestures_off">إيقاف</string>
     <string name="player_skip_intro">تخطي المقدمة</string>
+    <string name="player_skip_recap">تخطي الملخص</string>
     <string name="voice_error_clear">مسح سجل البحث</string>
     <string name="settings_category_frenchstream">إعدادات FrenchStream</string>
     <string name="settings_category_interface_title">إعدادات الواجهة</string>
