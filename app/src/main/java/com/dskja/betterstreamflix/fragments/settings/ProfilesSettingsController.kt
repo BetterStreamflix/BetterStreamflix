@@ -155,7 +155,29 @@ object ProfilesSettingsController {
         findPreference("PROFILE_PIN_CLEAR")?.setOnPreferenceClickListener {
             val profile = ProfileManager.activeProfile()
             if (profile?.pinHash == null) return@setOnPreferenceClickListener true
-            // Require the current profile PIN before clearing it.
+            // Kids: clearing the profile PIN requires a parental PIN set + verified
+            // in this flow so an exit PIN always remains.
+            if (profile.isKids) {
+                if (UserPreferences.parentalControlPin.isBlank()) {
+                    notifyUser(
+                        context,
+                        context.getString(R.string.profile_kids_pin_clear_blocked),
+                        R.string.profile_pin_title,
+                    )
+                    return@setOnPreferenceClickListener true
+                }
+                promptParentalPin(context) {
+                    ProfileManager.clearPin(profile.id)
+                    notifyUser(
+                        context,
+                        context.getString(R.string.profile_pin_cleared),
+                        R.string.profile_pin_title,
+                    )
+                    refresh(findPreference, context, fragment)
+                }
+                return@setOnPreferenceClickListener true
+            }
+            // Adult: require the current profile PIN before clearing it.
             promptPin(context, profile) {
                 ProfileManager.clearPin(profile.id)
                 notifyUser(context, context.getString(R.string.profile_pin_cleared), R.string.profile_pin_title)
@@ -614,8 +636,7 @@ object ProfilesSettingsController {
     }
 
     private fun promptParentalPin(context: Context, onVerified: () -> Unit) {
-        val expected = UserPreferences.parentalControlPin
-        if (expected.isBlank()) {
+        if (UserPreferences.parentalControlPin.isBlank()) {
             onVerified()
             return
         }
@@ -627,7 +648,7 @@ object ProfilesSettingsController {
                 avatarKey = ProfileManager.activeProfile()?.avatarKey,
                 displayName = ProfileManager.activeProfile()?.displayName,
             ) { entered ->
-                if (entered == expected) {
+                if (UserPreferences.verifyParentalControlPin(entered)) {
                     UserPreferences.registerParentalPinSuccess()
                     onVerified()
                     true
@@ -656,7 +677,7 @@ object ProfilesSettingsController {
             input = input,
         ) {
             val entered = input.text?.toString()?.trim().orEmpty()
-            if (entered == expected) {
+            if (UserPreferences.verifyParentalControlPin(entered)) {
                 UserPreferences.registerParentalPinSuccess()
                 onVerified()
             } else {

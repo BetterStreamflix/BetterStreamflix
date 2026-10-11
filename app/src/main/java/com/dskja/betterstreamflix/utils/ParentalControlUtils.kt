@@ -15,7 +15,8 @@ import kotlinx.coroutines.coroutineScope
 
 object ParentalControlUtils {
 
-    private fun isFilteringActive(): Boolean {
+    /** Kids profile or parental-control PIN mode — catalog and Live Hub must gate. */
+    fun isFilteringActive(): Boolean {
         if (ProfileManager.isKidsActive()) return true
         return UserPreferences.isParentalControlActive
     }
@@ -65,6 +66,18 @@ object ParentalControlUtils {
             is Episode -> item.takeIf { isAllowedEpisode(it) }
             else -> item
         }
+    }
+
+    /** Public helper for import paths — respects kids / parental filtering when active. */
+    suspend fun isAllowed(movie: Movie): Boolean {
+        if (!isFilteringActive()) return true
+        return isAllowedMovie(movie)
+    }
+
+    /** Public helper for import paths — respects kids / parental filtering when active. */
+    suspend fun isAllowed(tvShow: TvShow): Boolean {
+        if (!isFilteringActive()) return true
+        return isAllowedTvShow(tvShow)
     }
 
     private suspend fun isAllowedMovie(movie: Movie): Boolean {

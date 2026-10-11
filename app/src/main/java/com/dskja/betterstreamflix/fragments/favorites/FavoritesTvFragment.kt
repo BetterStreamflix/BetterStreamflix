@@ -22,6 +22,7 @@ import com.dskja.betterstreamflix.adapters.AppAdapter
 import com.dskja.betterstreamflix.databinding.FragmentFavoritesTvBinding
 import com.dskja.betterstreamflix.models.Movie
 import com.dskja.betterstreamflix.models.TvShow
+import com.dskja.betterstreamflix.ui.HomeProfileChip
 import com.dskja.betterstreamflix.ui.ShowOptionsTvDialog
 import com.dskja.betterstreamflix.ui.SpacingItemDecoration
 import com.dskja.betterstreamflix.utils.ExpDialogChrome
@@ -71,6 +72,7 @@ class FavoritesTvFragment : Fragment() {
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+        HomeProfileChip.refresh(this, binding.root, showName = true)
         gridColumnCount = maxOf(4, resources.configuration.screenWidthDp / 180)
         binding.rvFavorites.apply {
             layoutManager = object : GridLayoutManager(requireContext(), gridColumnCount) {
@@ -91,7 +93,8 @@ class FavoritesTvFragment : Fragment() {
                         val position = itemView?.let(binding.rvFavorites::getChildAdapterPosition)
                             ?: RecyclerView.NO_POSITION
                         if (isInFirstGridRow(position)) {
-                            return binding.btnFavoritesShare
+                            return binding.root.findViewById(R.id.tv_home_profile_chip)
+                                ?: binding.btnFavoritesShare
                         }
                     }
                     if (direction == View.FOCUS_LEFT) {
@@ -126,15 +129,18 @@ class FavoritesTvFragment : Fragment() {
     }
 
     private fun wireFavoriteActionFocus() {
+        val profileChip = binding.root.findViewById<View>(R.id.tv_home_profile_chip)
         TvFocusChain.linkHorizontal(
             binding.btnFavoritesShare,
             binding.btnFavoritesReorderMode,
             binding.btnFavoritesReorder,
+            *listOfNotNull(profileChip).toTypedArray(),
         )
         binding.btnFavoritesShare.nextFocusLeftId = R.id.nav_main
         binding.btnFavoritesShare.nextFocusDownId = binding.rvFavorites.id
         binding.btnFavoritesReorderMode.nextFocusDownId = binding.rvFavorites.id
         binding.btnFavoritesReorder.nextFocusDownId = binding.rvFavorites.id
+        profileChip?.nextFocusDownId = binding.rvFavorites.id
     }
 
     private fun setRearrangeMode(enabled: Boolean) {
@@ -406,6 +412,11 @@ class FavoritesTvFragment : Fragment() {
                 }
                 dialog.show()
             }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        HomeProfileChip.refresh(this, _binding?.root, showName = true)
     }
 
     override fun onDestroyView() {

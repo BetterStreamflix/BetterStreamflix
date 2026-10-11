@@ -7,23 +7,34 @@
     android:background="?attr/app_background_color"
     tools:context=".fragments.live.LiveHubTvFragment">
 
+    <include
+        android:id="@+id/tv_home_profile_chip"
+        layout="@layout/view_profile_home_chip"
+        android:layout_width="wrap_content"
+        android:layout_height="40dp"
+        android:layout_marginTop="12dp"
+        android:layout_marginEnd="48dp"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
+
     <TextView
         android:id="@+id/tv_live_hub_brand"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_marginStart="48dp"
         android:layout_marginTop="24dp"
-        android:layout_marginEnd="48dp"
+        android:layout_marginEnd="16dp"
         android:ellipsize="end"
         android:fontFamily="@font/manrope"
         android:maxLines="1"
         android:nextFocusLeft="@id/nav_main"
         android:nextFocusDown="@id/vgv_live_hub"
+        android:nextFocusRight="@id/tv_home_profile_chip"
         android:text="@string/live_hub_title"
         android:textColor="#FFFFFF"
         android:textSize="28sp"
         android:textStyle="bold"
-        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintEnd_toStartOf="@id/tv_home_profile_chip"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent" />
 
@@ -33,15 +44,16 @@
         android:layout_height="wrap_content"
         android:layout_marginStart="48dp"
         android:layout_marginTop="4dp"
-        android:layout_marginEnd="48dp"
+        android:layout_marginEnd="16dp"
         android:ellipsize="end"
         android:fontFamily="@font/manrope"
         android:maxLines="2"
         android:nextFocusLeft="@id/nav_main"
+        android:nextFocusRight="@id/tv_home_profile_chip"
         android:text="@string/live_hub_tagline"
         android:textColor="#B3FFFFFF"
         android:textSize="16sp"
-        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintEnd_toStartOf="@id/tv_home_profile_chip"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@id/tv_live_hub_brand" />
 
@@ -75,6 +87,7 @@
         android:descendantFocusability="afterDescendants"
         android:focusable="true"
         android:nextFocusLeft="@id/nav_main"
+        android:nextFocusUp="@id/tv_home_profile_chip"
         android:paddingTop="12dp"
         android:paddingBottom="16dp"
         app:focusOutEnd="true"

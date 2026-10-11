@@ -319,14 +319,23 @@ class MainTvActivity : FragmentActivity() {
     override fun onResume() {
         super.onResume()
         viewModel.checkUpdate()
+        com.dskja.betterstreamflix.sync.SharedWatchlistUi.tryFlushPending(this)
     }
 
     override fun onStart() {
         super.onStart()
+        com.dskja.betterstreamflix.profiles.ProfileUnlockGate.markForeground()
         val navHostFragment = supportFragmentManager
             .findFragmentById(binding.navMainFragment.id) as? NavHostFragment
-            ?: return
-        binding.root.post { showProfileUnlockGateIfNeeded(navHostFragment) }
+        if (navHostFragment != null) {
+            binding.root.post { showProfileUnlockGateIfNeeded(navHostFragment) }
+        }
+        com.dskja.betterstreamflix.sync.SharedWatchlistUi.tryFlushPending(this)
+    }
+
+    override fun onStop() {
+        com.dskja.betterstreamflix.profiles.ProfileUnlockGate.markBackgrounded()
+        super.onStop()
     }
 
     private fun showProfileUnlockGateIfNeeded(navHostFragment: NavHostFragment) {
@@ -363,6 +372,7 @@ class MainTvActivity : FragmentActivity() {
         val provider = UserPreferences.currentProvider ?: return
         val supportsMovies = Provider.supportsMovies(provider)
         val supportsTvShows = Provider.supportsTvShows(provider)
+        val liveHubVisible = !com.dskja.betterstreamflix.profiles.ProfileManager.isKidsActive()
         binding.navMain.menu.findItem(R.id.movies)?.isVisible = supportsMovies
         val tvShowsItem = binding.navMain.menu.findItem(R.id.tv_shows)
         tvShowsItem?.isVisible = supportsTvShows
@@ -371,12 +381,14 @@ class MainTvActivity : FragmentActivity() {
         } else {
             getString(R.string.main_menu_tv_shows)
         }
+        binding.navMain.menu.findItem(R.id.live_hub)?.isVisible = liveHubVisible
 
         val navController = (supportFragmentManager.findFragmentById(R.id.nav_main_fragment) as? NavHostFragment)
             ?.navController ?: return
         when (navController.currentDestination?.id) {
             R.id.movies -> if (!supportsMovies) navController.navigate(R.id.tv_shows)
             R.id.tv_shows -> if (!supportsTvShows) navController.navigate(R.id.home)
+            R.id.live_hub -> if (!liveHubVisible) navController.navigate(R.id.home)
         }
     }
 

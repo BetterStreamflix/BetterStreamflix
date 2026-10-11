@@ -12,7 +12,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         DownloadItemEntity::class,
         DownloadSeasonPackEntity::class,
     ],
-    version = 3,
+    version = 4,
     exportSchema = false,
 )
 abstract class DownloadDatabase : RoomDatabase() {
@@ -47,13 +47,34 @@ abstract class DownloadDatabase : RoomDatabase() {
             }
         }
 
+        /**
+         * 3→4 scopes download rows to a profile. Legacy rows keep `profileId = ''`
+         * and remain visible only on the default profile.
+         */
+        val MIGRATION_3_4 = object : Migration(3, 4) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    "ALTER TABLE download_items ADD COLUMN profileId TEXT NOT NULL DEFAULT ''",
+                )
+                db.execSQL("DROP INDEX IF EXISTS `index_download_items_contentKey`")
+                db.execSQL(
+                    "CREATE UNIQUE INDEX IF NOT EXISTS `index_download_items_contentKey_profileId` " +
+                        "ON `download_items` (`contentKey`, `profileId`)",
+                )
+                db.execSQL(
+                    "CREATE INDEX IF NOT EXISTS `index_download_items_profileId` " +
+                        "ON `download_items` (`profileId`)",
+                )
+            }
+        }
+
         fun get(context: Context): DownloadDatabase {
             return instance ?: synchronized(this) {
                 instance ?: Room.databaseBuilder(
                     context.applicationContext,
                     DownloadDatabase::class.java,
                     "downloads.db",
-                ).addMigrations(MIGRATION_1_2, MIGRATION_2_3)
+                ).addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
                     .build()
                     .also { instance = it }
             }

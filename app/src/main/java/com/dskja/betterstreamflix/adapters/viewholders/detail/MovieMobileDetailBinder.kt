@@ -49,6 +49,12 @@ import com.dskja.betterstreamflix.ui.DetailRating
 import com.dskja.betterstreamflix.ui.DetailWatchLabels
 
 internal fun MovieViewHolder.bindMovieMobileDetail(binding: ContentMovieMobileBinding) {
+    DetailParentalGate.guardMovie(
+        itemView,
+        movie,
+        binding.btnMovieWatchNow,
+        binding.btnMovieDownload,
+    )
     // Poster stub stays gone; cover lives inside this hero block.
     binding.ivMoviePoster.visibility = View.GONE
     Glide.with(binding.ivMoviePoster).clear(binding.ivMoviePoster)

@@ -28,13 +28,18 @@ class DownloadRepository private constructor(
     private val enqueueLocks = ConcurrentHashMap<String, Mutex>()
     fun observeAll(): Flow<List<DownloadItemEntity>> = dao.observeAll()
 
+    /** Downloads list for the active profile (legacy rows only on default). */
+    fun observeForActiveProfile(): Flow<List<DownloadItemEntity>> =
+        dao.observeForProfile(DownloadProfileScope.activeId())
+
     /**
      * Completed download item contentKeys plus completed season-pack ids
-     * ([DownloadSeasonPackEntity.id] / [DownloadContentKey.seasonPack]).
+     * ([DownloadSeasonPackEntity.id] / [DownloadContentKey.seasonPack]),
+     * scoped to the active profile.
      */
     fun observeCompletedKeys(): Flow<Set<String>> =
         combine(
-            dao.observeCompletedKeys().map { it.toSet() },
+            dao.observeCompletedKeysForProfile(DownloadProfileScope.activeId()).map { it.toSet() },
             dao.observeSeasonPacks().map { packs ->
                 packs.filter { it.state == DownloadItemState.COMPLETED.name }
                     .map { it.id }
@@ -48,12 +53,14 @@ class DownloadRepository private constructor(
 
     suspend fun getById(id: String) = dao.getById(id)
 
-    suspend fun getByContentKey(contentKey: String) = dao.getByContentKey(contentKey)
+    /** Lookup for the active profile (includes legacy empty profileId on default). */
+    suspend fun getByContentKey(contentKey: String) =
+        dao.getByContentKeyForProfile(contentKey, DownloadProfileScope.activeId())
 
     suspend fun getByMedia3Id(media3Id: String) = dao.getByMedia3Id(media3Id)
 
     suspend fun completedKeys(): Set<String> {
-        val itemKeys = dao.completedKeys().toSet()
+        val itemKeys = dao.completedKeysForProfile(DownloadProfileScope.activeId()).toSet()
         val packKeys = dao.observeSeasonPacks().first()
             .filter { it.state == DownloadItemState.COMPLETED.name }
             .map { it.id }
@@ -128,80 +135,84 @@ class DownloadRepository private constructor(
         streamKeys: List<StreamKey> = emptyList(),
         subtitleUrls: List<Pair<String, String>> = emptyList(),
         smartEnqueued: Boolean = false,
-    ): DownloadItemEntity = enqueueLocks.computeIfAbsent(contentKey) { Mutex() }.withLock {
-        val existing = dao.getByContentKey(contentKey)
-        if (existing != null && existing.state == DownloadItemState.COMPLETED.name) {
-            return existing
-        }
-        if (existing != null && DownloadItemState.fromKey(existing.state).isActive) {
-            return existing
-        }
-
-        val id = existing?.id ?: UUID.randomUUID().toString()
-        val media3Id = existing?.media3Id?.takeIf { it.isNotBlank() } ?: id
-        val headersJson = JSONObject(headers as Map<*, *>).toString()
-
-        DownloadHeaderStore.put(context, media3Id, headers)
-        DownloadHeaderStore.putForUrl(context, streamUrl, headers, media3Id = media3Id)
-        StreamflixDownloadManager.dataSourceFactory(context).apply {
-            activeMedia3Id = media3Id
-            activeHeaders = headers
-        }
-
-        val mime = mimeType?.takeIf { it.isNotBlank() }
-            ?: when {
-                streamUrl.contains(".m3u8", ignoreCase = true) -> MimeTypes.APPLICATION_M3U8
-                streamUrl.contains(".mpd", ignoreCase = true) -> MimeTypes.APPLICATION_MPD
-                streamUrl.contains(".mp4", ignoreCase = true) -> MimeTypes.VIDEO_MP4
-                else -> null
+    ): DownloadItemEntity {
+        val profileId = DownloadProfileScope.activeId()
+        return enqueueLocks.computeIfAbsent("$contentKey|$profileId") { Mutex() }.withLock {
+            val existing = dao.getByContentKeyForProfile(contentKey, profileId)
+            if (existing != null && existing.state == DownloadItemState.COMPLETED.name) {
+                return@withLock existing
+            }
+            if (existing != null && DownloadItemState.fromKey(existing.state).isActive) {
+                return@withLock existing
             }
 
-        val requestBuilder = DownloadRequest.Builder(media3Id, Uri.parse(streamUrl))
-            .setMimeType(mime)
-            .setCustomCacheKey(media3Id)
-            .setData(title.toByteArray(Charsets.UTF_8))
-        if (streamKeys.isNotEmpty()) {
-            requestBuilder.setStreamKeys(streamKeys)
+            val id = existing?.id ?: UUID.randomUUID().toString()
+            val media3Id = existing?.media3Id?.takeIf { it.isNotBlank() } ?: id
+            val headersJson = JSONObject(headers as Map<*, *>).toString()
+
+            DownloadHeaderStore.put(context, media3Id, headers)
+            DownloadHeaderStore.putForUrl(context, streamUrl, headers, media3Id = media3Id)
+            StreamflixDownloadManager.dataSourceFactory(context).apply {
+                activeMedia3Id = media3Id
+                activeHeaders = headers
+            }
+
+            val mime = mimeType?.takeIf { it.isNotBlank() }
+                ?: when {
+                    streamUrl.contains(".m3u8", ignoreCase = true) -> MimeTypes.APPLICATION_M3U8
+                    streamUrl.contains(".mpd", ignoreCase = true) -> MimeTypes.APPLICATION_MPD
+                    streamUrl.contains(".mp4", ignoreCase = true) -> MimeTypes.VIDEO_MP4
+                    else -> null
+                }
+
+            val requestBuilder = DownloadRequest.Builder(media3Id, Uri.parse(streamUrl))
+                .setMimeType(mime)
+                .setCustomCacheKey(media3Id)
+                .setData(title.toByteArray(Charsets.UTF_8))
+            if (streamKeys.isNotEmpty()) {
+                requestBuilder.setStreamKeys(streamKeys)
+            }
+            val request = requestBuilder.build()
+
+            val entity = DownloadItemEntity(
+                id = id,
+                contentKey = contentKey,
+                media3Id = media3Id,
+                providerName = providerName,
+                kind = kind.name,
+                title = title,
+                subtitle = subtitle,
+                posterUrl = posterUrl,
+                videoTypeJson = videoTypeJson,
+                serverName = serverName,
+                serverId = serverId,
+                qualityLabel = qualityLabel,
+                mimeType = mime.orEmpty(),
+                state = DownloadItemState.QUEUED.name,
+                streamUrl = streamUrl,
+                headersJson = headersJson,
+                streamKeysJson = serializeStreamKeys(streamKeys),
+                seasonPackId = seasonPackId,
+                sortIndex = sortIndex,
+                subtitleUrlsJson = serializeSubtitleUrls(subtitleUrls),
+                smartEnqueued = smartEnqueued,
+                createdAt = existing?.createdAt ?: System.currentTimeMillis(),
+                updatedAt = System.currentTimeMillis(),
+                profileId = existing?.profileId?.takeIf { it.isNotBlank() } ?: profileId,
+            )
+            dao.upsert(entity)
+            runCatching { DownloadSeriesFolders.ensureForItem(context, entity) }
+
+            val dm = StreamflixDownloadManager.get(context)
+            dm.maxParallelDownloads = UserPreferences.downloadMaxConcurrent.coerceIn(1, 4)
+            DownloadService.sendAddDownload(
+                context,
+                StreamflixDownloadService::class.java,
+                request,
+                /* foreground= */ true,
+            )
+            entity
         }
-        val request = requestBuilder.build()
-
-        val entity = DownloadItemEntity(
-            id = id,
-            contentKey = contentKey,
-            media3Id = media3Id,
-            providerName = providerName,
-            kind = kind.name,
-            title = title,
-            subtitle = subtitle,
-            posterUrl = posterUrl,
-            videoTypeJson = videoTypeJson,
-            serverName = serverName,
-            serverId = serverId,
-            qualityLabel = qualityLabel,
-            mimeType = mime.orEmpty(),
-            state = DownloadItemState.QUEUED.name,
-            streamUrl = streamUrl,
-            headersJson = headersJson,
-            streamKeysJson = serializeStreamKeys(streamKeys),
-            seasonPackId = seasonPackId,
-            sortIndex = sortIndex,
-            subtitleUrlsJson = serializeSubtitleUrls(subtitleUrls),
-            smartEnqueued = smartEnqueued,
-            createdAt = existing?.createdAt ?: System.currentTimeMillis(),
-            updatedAt = System.currentTimeMillis(),
-        )
-        dao.upsert(entity)
-        runCatching { DownloadSeriesFolders.ensureForItem(context, entity) }
-
-        val dm = StreamflixDownloadManager.get(context)
-        dm.maxParallelDownloads = UserPreferences.downloadMaxConcurrent.coerceIn(1, 4)
-        DownloadService.sendAddDownload(
-            context,
-            StreamflixDownloadService::class.java,
-            request,
-            /* foreground= */ true,
-        )
-        entity
     }
 
     /**

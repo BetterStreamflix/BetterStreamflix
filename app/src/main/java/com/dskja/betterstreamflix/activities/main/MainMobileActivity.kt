@@ -382,10 +382,12 @@ class MainMobileActivity : FragmentActivity() {
             this,
             telegramGateLauncher,
         )
+        com.dskja.betterstreamflix.sync.SharedWatchlistUi.tryFlushPending(this)
     }
 
     override fun onStart() {
         super.onStart()
+        com.dskja.betterstreamflix.profiles.ProfileUnlockGate.markForeground()
         com.dskja.betterstreamflix.telegram.TelegramJoinGateController.onActivityStarted(
             this,
             telegramGateLauncher,
@@ -395,6 +397,12 @@ class MainMobileActivity : FragmentActivity() {
         if (navHost != null) {
             binding.root.post { showProfileUnlockGateIfNeeded(navHost) }
         }
+        com.dskja.betterstreamflix.sync.SharedWatchlistUi.tryFlushPending(this)
+    }
+
+    override fun onStop() {
+        com.dskja.betterstreamflix.profiles.ProfileUnlockGate.markBackgrounded()
+        super.onStop()
     }
 
     private fun showProfileUnlockGateIfNeeded(navHost: NavHostFragment) {
@@ -563,6 +571,7 @@ class MainMobileActivity : FragmentActivity() {
         val provider = UserPreferences.currentProvider ?: return
         val supportsMovies = Provider.supportsMovies(provider)
         val supportsTvShows = Provider.supportsTvShows(provider)
+        val liveHubVisible = !com.dskja.betterstreamflix.profiles.ProfileManager.isKidsActive()
 
         binding.bnvMain.menu.findItem(R.id.movies)?.isVisible = supportsMovies
         binding.bnvMain.menu.findItem(R.id.tv_shows)?.apply {
@@ -573,6 +582,7 @@ class MainMobileActivity : FragmentActivity() {
                 getString(R.string.main_menu_tv_shows)
             }
         }
+        binding.bnvMain.menu.findItem(R.id.live_hub)?.isVisible = liveHubVisible
 
         val navHost =
             supportFragmentManager.findFragmentById(R.id.nav_main_fragment) as? NavHostFragment
@@ -583,6 +593,10 @@ class MainMobileActivity : FragmentActivity() {
             }
 
             currentDestinationId == R.id.tv_shows && !supportsTvShows -> {
+                navController.navigate(R.id.home)
+            }
+
+            currentDestinationId == R.id.live_hub && !liveHubVisible -> {
                 navController.navigate(R.id.home)
             }
         }

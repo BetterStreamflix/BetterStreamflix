@@ -83,11 +83,11 @@
         android:fontFamily="@font/manrope"
         android:gravity="center"
         android:paddingStart="8dp"
-        android:paddingEnd="16dp"
+        android:paddingEnd="8dp"
         android:text="@string/favorites_edit"
         android:textColor="?android:attr/textColorPrimary"
         android:textSize="15sp"
-        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintEnd_toStartOf="@id/tv_home_profile_chip"
         app:layout_constraintTop_toTopOf="parent" />
 
     <TextView
@@ -99,14 +99,25 @@
         android:fontFamily="@font/manrope"
         android:gravity="center"
         android:paddingStart="12dp"
-        android:paddingEnd="16dp"
+        android:paddingEnd="8dp"
         android:text="@string/favorites_remove"
         android:textColor="@color/cinema_destructive"
         android:textSize="15sp"
         android:visibility="gone"
-        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintEnd_toStartOf="@id/tv_home_profile_chip"
         app:layout_constraintTop_toTopOf="parent"
         tools:visibility="visible" />
+
+    <include
+        android:id="@+id/tv_home_profile_chip"
+        layout="@layout/view_profile_home_chip"
+        android:layout_width="wrap_content"
+        android:layout_height="36dp"
+        android:layout_marginTop="6dp"
+        android:layout_marginEnd="8dp"
+        android:elevation="10dp"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
 
     <!-- Legacy IDs kept so FavoritesMobileFragment still compiles until wired. -->
     <TextView

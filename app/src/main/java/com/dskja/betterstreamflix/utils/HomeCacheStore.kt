@@ -10,6 +10,7 @@ import com.dskja.betterstreamflix.models.Movie
 import com.dskja.betterstreamflix.models.Season
 import com.dskja.betterstreamflix.models.TvShow
 import com.dskja.betterstreamflix.models.WatchItem
+import com.dskja.betterstreamflix.profiles.ProfileManager
 import com.dskja.betterstreamflix.providers.Provider
 import java.io.File
 import java.util.concurrent.ConcurrentHashMap
@@ -100,11 +101,15 @@ object HomeCacheStore {
 
     private fun cacheKey(provider: Provider): String {
         val baseUrlKey = provider.baseUrl.trim().trimEnd('/')
+        val profileId = runCatching { ProfileManager.activeProfileId }
+            .getOrDefault(ProfileManager.DEFAULT_PROFILE_ID)
+            .ifBlank { ProfileManager.DEFAULT_PROFILE_ID }
         return buildList {
             add(provider.name)
             if (baseUrlKey.isNotEmpty()) {
                 add(baseUrlKey)
             }
+            add(profileId)
         }.joinToString("__")
     }
 

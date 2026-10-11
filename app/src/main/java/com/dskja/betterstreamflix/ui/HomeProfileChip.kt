@@ -48,6 +48,8 @@ object HomeProfileChip {
         val grid = root.findViewById<View>(R.id.vgv_home)
             ?: root.findViewById<View>(R.id.vgv_movies)
             ?: root.findViewById<View>(R.id.vgv_tv_shows)
+            ?: root.findViewById<View>(R.id.vgv_live_hub)
+            ?: root.findViewById<View>(R.id.rv_favorites)
         if (grid != null) {
             chip.isFocusableInTouchMode = true
             chip.nextFocusDownId = grid.id

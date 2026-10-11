@@ -9,7 +9,6 @@ import com.dskja.betterstreamflix.ui.UserDataNotifier
 import com.dskja.betterstreamflix.utils.ProviderChangeNotifier
 import com.dskja.betterstreamflix.utils.UserDataCache
 import com.dskja.betterstreamflix.utils.UserPreferences
-import java.security.MessageDigest
 import java.util.UUID
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -299,7 +298,8 @@ object ProfileManager {
     fun verifyPin(profileId: String, pin: String): Boolean {
         val profile = profiles().find { it.id == profileId } ?: return false
         val stored = profile.pinHash ?: return false
-        return stored == hashPin(pin, profileId)
+        // Prefer v2 PBKDF2; fall back to legacy SHA-256 for existing hashes.
+        return PinHasher.verify(pin, stored, profileId)
     }
 
     fun scopedPrefKey(base: String): String = scopedPrefKeyFor(base, activeProfileId)
@@ -307,10 +307,16 @@ object ProfileManager {
     internal fun scopedPrefKeyFor(base: String, profileId: String): String =
         if (profileId == DEFAULT_PROFILE_ID) base else "${base}_p_$profileId"
 
+    /** Always writes a v2 PBKDF2 hash. Salt scope is [profileId] bytes. */
     internal fun hashPin(pin: String, profileId: String): String =
-        MessageDigest.getInstance("SHA-256")
-            .digest("$pin$profileId".toByteArray(Charsets.UTF_8))
-            .joinToString("") { "%02x".format(it) }
+        PinHasher.hash(pin, profileId)
+
+    /** Salt scopes for parental / admin PIN storage (profile-scoped prefs). */
+    internal fun parentalPinSalt(profileId: String = activeProfileId): String =
+        "parental_$profileId"
+
+    internal fun adminPinSalt(profileId: String = activeProfileId): String =
+        "admin_$profileId"
 
     private fun touchLastUsed(profileId: String) {
         updateProfile(profileId) { it.copy(updatedAtMillis = System.currentTimeMillis()) }
@@ -357,9 +363,12 @@ object ProfileManager {
         return currentMaxAge
     }
 
-    /** Delete Room DB files, scoped prefs, and cached userdata for a removed profile. */
+    /**
+     * Delete Room DB files, scoped prefs, and cached userdata for a removed profile.
+     * The default profile is also wiped (provider `*.db` files + userdata cache);
+     * only identity prefs for default stay (no scoped `_p_` suffix to clear).
+     */
     private fun wipeProfileLocalData(profileId: String) {
-        if (profileId == DEFAULT_PROFILE_ID) return
         runCatching {
             // Only drop the live connection when this profile is the one on screen.
             // Wiping a background profile must not close the active database.
@@ -369,13 +378,25 @@ object ProfileManager {
             }
             val dir = appContext.getDatabasePath("placeholder").parentFile ?: return@runCatching
             dir.listFiles()
-                ?.filter { it.name.startsWith("${profileId}__") || it.name.contains("${profileId}__") }
+                ?.filter { file ->
+                    when {
+                        profileId == DEFAULT_PROFILE_ID ->
+                            file.name.endsWith(".db") &&
+                                !file.name.contains("__") &&
+                                !file.name.startsWith("downloads")
+                        else ->
+                            file.name.startsWith("${profileId}__") ||
+                                file.name.contains("${profileId}__")
+                    }
+                }
                 ?.forEach { file ->
                     runCatching { file.delete() }
                     runCatching { appContext.deleteDatabase(file.name) }
                 }
             UserDataCache.clearForProfile(appContext, profileId)
-            wipeScopedPreferences(profileId)
+            if (profileId != DEFAULT_PROFILE_ID) {
+                wipeScopedPreferences(profileId)
+            }
         }
     }
 

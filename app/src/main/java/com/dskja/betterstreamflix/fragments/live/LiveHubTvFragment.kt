@@ -21,6 +21,7 @@ import com.dskja.betterstreamflix.models.Category
 import com.dskja.betterstreamflix.models.TvShow
 import com.dskja.betterstreamflix.providers.IptvProvider
 import com.dskja.betterstreamflix.providers.Provider
+import com.dskja.betterstreamflix.ui.HomeProfileChip
 import com.dskja.betterstreamflix.utils.CacheUtils
 import com.dskja.betterstreamflix.utils.ExpDialogChrome
 import com.dskja.betterstreamflix.utils.ExpMotion
@@ -53,6 +54,7 @@ class LiveHubTvFragment : Fragment() {
         super.onViewCreated(view, savedInstanceState)
         ExpMotion.enterScreen(binding.root)
         com.dskja.betterstreamflix.utils.ExpPressEffects.wireLoadingRetry(binding.isLoading.root)
+        HomeProfileChip.refresh(this, binding.root, showName = true)
 
         binding.vgvLiveHub.apply {
             setNumColumns(1)
@@ -71,6 +73,11 @@ class LiveHubTvFragment : Fragment() {
                         TvLoadingOverlay.show(binding.isLoading.root)
                         binding.isLoading.gIsLoadingRetry.visibility = View.GONE
                         hideWarning()
+                    }
+                    LiveHubViewModel.State.Restricted -> {
+                        TvLoadingOverlay.hide(binding.isLoading.root)
+                        hideWarning()
+                        displayRestricted()
                     }
                     is LiveHubViewModel.State.Success -> {
                         display(state.categories)
@@ -110,6 +117,7 @@ class LiveHubTvFragment : Fragment() {
                             binding.vgvLiveHub.visibility = View.GONE
                             btnIsLoadingRetry.requestFocus()
                         }
+                        binding.tvLiveHubEmpty.text = getString(R.string.live_hub_empty)
                         binding.tvLiveHubEmpty.isVisible = appAdapter.items.isEmpty()
                     }
                 }
@@ -117,6 +125,11 @@ class LiveHubTvFragment : Fragment() {
         }
 
         reload()
+    }
+
+    override fun onResume() {
+        super.onResume()
+        HomeProfileChip.refresh(this, _binding?.root, showName = true)
     }
 
     private fun reload() {
@@ -135,9 +148,17 @@ class LiveHubTvFragment : Fragment() {
             category.itemSpacing = 16.dp(requireContext())
             category.itemType = AppAdapter.Type.CATEGORY_TV_ITEM
         }
+        binding.tvLiveHubEmpty.text = getString(R.string.live_hub_empty)
         binding.tvLiveHubEmpty.isVisible = categories.isEmpty()
         binding.vgvLiveHub.isVisible = categories.isNotEmpty()
         appAdapter.submitList(categories)
+    }
+
+    private fun displayRestricted() {
+        appAdapter.submitList(emptyList())
+        binding.vgvLiveHub.isVisible = false
+        binding.tvLiveHubEmpty.text = getString(R.string.live_hub_restricted)
+        binding.tvLiveHubEmpty.isVisible = true
     }
 
     private fun showWarning(warning: String?) {
