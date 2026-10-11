@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.dskja.betterstreamflix.BetterStreamflixApp
 import com.dskja.betterstreamflix.models.Category
 import com.dskja.betterstreamflix.models.TvShow
+import com.dskja.betterstreamflix.notifications.LiveReminderScheduler
 import com.dskja.betterstreamflix.utils.LiveHubCatalog
 import com.dskja.betterstreamflix.utils.ParentalControlUtils
 import com.dskja.betterstreamflix.utils.UserPreferences
@@ -86,6 +87,7 @@ class LiveHubViewModel : ViewModel() {
                     return@launch
                 }
                 _state.emit(State.Success(categories, lastWarning))
+                scheduleLiveReminders(categories)
             } catch (e: Exception) {
                 if (!silent) {
                     _state.emit(State.Failed(e))
@@ -122,7 +124,20 @@ class LiveHubViewModel : ViewModel() {
                 _state.emit(State.Empty)
             } else {
                 _state.emit(State.Success(categories, lastWarning))
+                scheduleLiveReminders(categories)
             }
         }
+    }
+
+    /** Pre-kickoff OneTime schedules for Favorites shelf rows (opt-in). */
+    private fun scheduleLiveReminders(categories: List<Category>) {
+        if (!UserPreferences.notifyLiveFavoriteStarting) return
+        val ctx = runCatching { BetterStreamflixApp.instance }.getOrNull() ?: return
+        val favorites = categories
+            .firstOrNull { it.identityKey == LiveHubCatalog.SECTION_FAVORITES }
+            ?.list
+            ?.filterIsInstance<TvShow>()
+            .orEmpty()
+        LiveReminderScheduler.syncFromFavorites(ctx, favorites)
     }
 }

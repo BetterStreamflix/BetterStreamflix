@@ -26,6 +26,8 @@ class NotificationCheckWorker(
         }
         ProductNotifier.ensureChannels(applicationContext)
 
+        // Live reminders are capped harder inside LiveFavoriteStartingChecker
+        // (1/run, 2/hour, snooze) so they never flood beside watchlist alerts.
         var budget = MAX_NOTIFICATIONS_PER_RUN
         runCatching {
             if (UserPreferences.notifyLiveFavoriteStarting && budget > 0) {

@@ -238,6 +238,10 @@
         </receiver>
 
         <receiver
+            android:name=".notifications.LiveReminderSnoozeReceiver"
+            android:exported="false" />
+
+        <receiver
             android:name=".platform.playerbackend.ExternalPlayerChosenReceiver"
             android:exported="false">
             <intent-filter>

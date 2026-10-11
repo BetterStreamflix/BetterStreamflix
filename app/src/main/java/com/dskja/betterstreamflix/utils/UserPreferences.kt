@@ -281,6 +281,34 @@ object UserPreferences {
             Key.NOTIFY_LIVE_COOLDOWN_JSON.setString(value.trim().ifEmpty { null })
         }
 
+    /** Per-favorite snooze-until timestamps (JSON object). */
+    var notifyLiveSnoozeJson: String
+        get() = Key.NOTIFY_LIVE_SNOOZE_JSON.getString().orEmpty()
+        set(value) {
+            Key.NOTIFY_LIVE_SNOOZE_JSON.setString(value.trim().ifEmpty { null })
+        }
+
+    /** Recent Live reminder fire times (JSON array) for hourly flood cap. */
+    var notifyLiveRecentFiresJson: String
+        get() = Key.NOTIFY_LIVE_RECENT_FIRES_JSON.getString().orEmpty()
+        set(value) {
+            Key.NOTIFY_LIVE_RECENT_FIRES_JSON.setString(value.trim().ifEmpty { null })
+        }
+
+    /** Last kickoff fingerprint notified per favorite (JSON object). */
+    var notifyLiveKickoffFpJson: String
+        get() = Key.NOTIFY_LIVE_KICKOFF_FP_JSON.getString().orEmpty()
+        set(value) {
+            Key.NOTIFY_LIVE_KICKOFF_FP_JSON.setString(value.trim().ifEmpty { null })
+        }
+
+    /** Identity keys with an active pre-kickoff OneTime WorkManager schedule. */
+    var notifyLiveScheduledKeys: Set<String>
+        get() = Key.NOTIFY_LIVE_SCHEDULED_KEYS.getStringSet() ?: emptySet()
+        set(value) {
+            Key.NOTIFY_LIVE_SCHEDULED_KEYS.setStringSet(value.ifEmpty { null })
+        }
+
     var notifyEpisodeFingerprintsJson: String
         get() = Key.NOTIFY_EPISODE_FINGERPRINTS_JSON.getString().orEmpty()
         set(value) {
@@ -1642,6 +1670,10 @@ object UserPreferences {
         NOTIFY_LIVE_BASELINE_READY,
         NOTIFY_LIVE_ACTIVE_KEYS,
         NOTIFY_LIVE_COOLDOWN_JSON,
+        NOTIFY_LIVE_SNOOZE_JSON,
+        NOTIFY_LIVE_RECENT_FIRES_JSON,
+        NOTIFY_LIVE_KICKOFF_FP_JSON,
+        NOTIFY_LIVE_SCHEDULED_KEYS,
         NOTIFY_EPISODE_FINGERPRINTS_JSON,
         NOTIFY_EPISODE_LAST_CHECK_AT,
         DOWNLOAD_FILTER_CURRENT_PROVIDER,
