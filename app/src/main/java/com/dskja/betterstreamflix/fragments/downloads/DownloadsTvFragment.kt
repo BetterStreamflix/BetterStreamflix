@@ -25,6 +25,7 @@ import com.dskja.betterstreamflix.download.DownloadItemEntity
 import com.dskja.betterstreamflix.download.DownloadItemState
 import com.dskja.betterstreamflix.download.DownloadKind
 import com.dskja.betterstreamflix.download.ExternalDownloadHandoff
+import com.dskja.betterstreamflix.download.OfflineExpiryNudge
 import com.dskja.betterstreamflix.download.OfflineLibrary
 import com.dskja.betterstreamflix.download.OfflinePlayback
 import com.dskja.betterstreamflix.download.ui.DownloadOptionsController
@@ -52,6 +53,7 @@ import com.dskja.betterstreamflix.utils.dp
 import com.dskja.betterstreamflix.utils.hideKeyboard
 import com.dskja.betterstreamflix.utils.viewModelsFactory
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -419,6 +421,23 @@ class DownloadsTvFragment : Fragment() {
         viewModel.ensureProfileScope()
         viewModel.refreshWifiPreference()
         viewModel.startLiveProgress()
+        maybePromptOfflineExpiry()
+    }
+
+    private fun maybePromptOfflineExpiry() {
+        viewLifecycleOwner.lifecycleScope.launch {
+            delay(450L)
+            if (!isAdded || view == null) return@launch
+            if (viewModel.wifiPaused.value || viewModel.lowSpace.value) return@launch
+            val stale = viewModel.loadOfflineExpiryCandidates()
+            if (stale.isEmpty() || !isAdded) return@launch
+            OfflineExpiryNudge.maybeShow(
+                fragment = this@DownloadsTvFragment,
+                stale = stale,
+                onKeep = { items -> viewModel.touchDownloads(items.map { it.id }) },
+                onDelete = { items -> viewModel.removeDownloads(items.map { it.id }) },
+            )
+        }
     }
 
     override fun onPause() {
@@ -649,6 +668,7 @@ class DownloadsTvFragment : Fragment() {
                 showDownloadError(R.string.download_error_file_missing)
                 return@launch
             }
+            viewModel.touchDownloads(listOf(entity.id))
             OfflineVideoCache.put(entity.contentKey, local)
             findNavController().navigate(
                 R.id.action_global_player,

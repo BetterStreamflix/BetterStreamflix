@@ -33,6 +33,7 @@ import com.dskja.betterstreamflix.download.DownloadItemState
 import com.dskja.betterstreamflix.download.DownloadKind
 import com.dskja.betterstreamflix.download.DownloadPackUi
 import com.dskja.betterstreamflix.download.ExternalDownloadHandoff
+import com.dskja.betterstreamflix.download.OfflineExpiryNudge
 import com.dskja.betterstreamflix.download.OfflineLibrary
 import com.dskja.betterstreamflix.download.OfflinePlayback
 import com.dskja.betterstreamflix.download.ui.DownloadOptionsController
@@ -59,6 +60,7 @@ import com.dskja.betterstreamflix.utils.ExpNavAutoHide
 import com.google.android.material.color.MaterialColors
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -289,6 +291,24 @@ class DownloadsMobileFragment : Fragment() {
         viewModel.ensureProfileScope()
         viewModel.refreshWifiPreference()
         viewModel.startLiveProgress()
+        maybePromptOfflineExpiry()
+    }
+
+    private fun maybePromptOfflineExpiry() {
+        viewLifecycleOwner.lifecycleScope.launch {
+            delay(450L)
+            if (!isAdded || view == null) return@launch
+            // Don't stack on top of wifi / low-space urgency.
+            if (viewModel.wifiPaused.value || viewModel.lowSpace.value) return@launch
+            val stale = viewModel.loadOfflineExpiryCandidates()
+            if (stale.isEmpty() || !isAdded) return@launch
+            OfflineExpiryNudge.maybeShow(
+                fragment = this@DownloadsMobileFragment,
+                stale = stale,
+                onKeep = { items -> viewModel.touchDownloads(items.map { it.id }) },
+                onDelete = { items -> viewModel.removeDownloads(items.map { it.id }) },
+            )
+        }
     }
 
     override fun onPause() {
@@ -815,6 +835,8 @@ class DownloadsMobileFragment : Fragment() {
                 showDownloadError(R.string.download_error_file_missing)
                 return@launch
             }
+            // Opening offline counts as a touch for the 30-day expiry clock.
+            viewModel.touchDownloads(listOf(entity.id))
             OfflineVideoCache.put(entity.contentKey, local)
             findNavController().navigate(
                 R.id.action_global_player,

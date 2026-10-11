@@ -872,6 +872,15 @@ object UserPreferences {
         get() = Key.THANKS_AFTER_BINGE_SHOW_COUNT.getInt() ?: 0
         set(value) = Key.THANKS_AFTER_BINGE_SHOW_COUNT.setInt(value)
 
+    /** Offline Expiry Nudge — last soft prompt timestamps (see OfflineExpiryPolicy). */
+    var offlineExpiryNudgeLastShownAtMs: Long
+        get() = Key.OFFLINE_EXPIRY_NUDGE_LAST_SHOWN_AT_MS.getLong() ?: 0L
+        set(value) = Key.OFFLINE_EXPIRY_NUDGE_LAST_SHOWN_AT_MS.setLong(value)
+
+    var offlineExpiryNudgeLastDismissedAtMs: Long
+        get() = Key.OFFLINE_EXPIRY_NUDGE_LAST_DISMISSED_AT_MS.getLong() ?: 0L
+        set(value) = Key.OFFLINE_EXPIRY_NUDGE_LAST_DISMISSED_AT_MS.setLong(value)
+
     /** Unique finished episodes counted toward the Support tip threshold. */
     var supportEpisodesWatchedCount: Int
         get() = Key.SUPPORT_EPISODES_WATCHED_COUNT.getInt() ?: 0
@@ -1917,6 +1926,8 @@ object UserPreferences {
         THANKS_AFTER_BINGE_LAST_SHOWN_AT_MS,
         THANKS_AFTER_BINGE_LAST_DISMISSED_AT_MS,
         THANKS_AFTER_BINGE_SHOW_COUNT,
+        OFFLINE_EXPIRY_NUDGE_LAST_SHOWN_AT_MS,
+        OFFLINE_EXPIRY_NUDGE_LAST_DISMISSED_AT_MS,
         SUPPORT_EPISODES_WATCHED_COUNT,
         SUPPORT_EPISODE_IDS_COUNTED,
         SUPPORT_STARTUP_LAST_SHOWN_AT_MS,
