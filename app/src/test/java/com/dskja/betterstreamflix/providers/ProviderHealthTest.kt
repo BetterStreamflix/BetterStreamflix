@@ -28,7 +28,9 @@ class ProviderHealthTest {
     @Test
     fun smokeListCoversCoreMarkets() {
         val names = ProviderHealth.topSmokeNames
-        assertTrue(names.contains("SFlix"))
+        // SFlix is quarantined / parked — omitted from smoke priority.
+        assertFalse(names.contains("SFlix"))
+        assertTrue(ProviderHealth.isQuarantinedName("SFlix"))
         assertTrue(names.contains("SerienStream"))
         assertTrue(names.contains("GuardaFlix"))
         assertTrue(names.contains("Eurostreaming"))
@@ -36,7 +38,6 @@ class ProviderHealthTest {
         assertTrue(names.contains("HDFilme"))
         assertTrue(names.contains("Frembed"))
         assertTrue(names.contains("Filmpalast"))
-        assertFalse(names.contains("Sflix"))
     }
 
     @Test
