@@ -57,6 +57,17 @@ class TvShow(
     @Ignore
     var contentRating: String? = null
 
+    /**
+     * Live Hub / IPTV EPG-lite “now playing” label (runtime only).
+     * Populated from catalog group / provider schedule when available.
+     */
+    @Ignore
+    var programNow: String? = null
+
+    /** Optional upcoming program label for EPG-lite (runtime only). */
+    @Ignore
+    var programNext: String? = null
+
     /** TMDb / provider title logo artwork (persisted for faster cold start). */
     var logo: String? = null
 
@@ -198,6 +209,8 @@ class TvShow(
         lastPlayedEpisodeId = this@TvShow.lastPlayedEpisodeId
         lastPlayedEpisode = this@TvShow.lastPlayedEpisode
         contentRating = this@TvShow.contentRating
+        programNow = this@TvShow.programNow
+        programNext = this@TvShow.programNext
         logo = this@TvShow.logo
         logoLanguage = this@TvShow.logoLanguage
         logoSource = this@TvShow.logoSource

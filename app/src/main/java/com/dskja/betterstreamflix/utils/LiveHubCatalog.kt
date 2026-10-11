@@ -1,5 +1,6 @@
 package com.dskja.betterstreamflix.utils
 
+import android.content.Context
 import android.util.Log
 import com.dskja.betterstreamflix.BetterStreamflixApp
 import com.dskja.betterstreamflix.R
@@ -26,8 +27,8 @@ import kotlinx.coroutines.withTimeout
 
 /**
  * Aggregates DaddyLive / StreamSports99 / IPTV-Org (and optional NTV / SportsBite)
- * into a dedicated Live Hub with Sport, News, and Channels shelves — without
- * requiring the user to dig through the provider picker first.
+ * into a dedicated Live Hub with Favorites, Sport, News, and Channels shelves —
+ * without requiring the user to dig through the provider picker first.
  */
 object LiveHubCatalog {
 
@@ -38,6 +39,7 @@ object LiveHubCatalog {
     private const val PER_SOURCE_TIMEOUT_MS = 18_000L
     private const val OVERALL_TIMEOUT_MS = 28_000L
 
+    const val SECTION_FAVORITES = "live_hub_favorites"
     const val SECTION_SPORT = "live_hub_sport"
     const val SECTION_NEWS = "live_hub_news"
     const val SECTION_CHANNELS = "live_hub_channels"
@@ -45,7 +47,7 @@ object LiveHubCatalog {
     /** Live IPTV has no reliable age ratings — block the whole hub under kids/parental. */
     fun isAgeGated(): Boolean = ParentalControlUtils.isFilteringActive()
 
-    enum class Section { SPORT, NEWS, CHANNELS }
+    enum class Section { FAVORITES, SPORT, NEWS, CHANNELS }
 
     private val SPORTS_KEYS = listOf(
         "sport", "espn", "sky sport", "bein", "nba", "nfl", "nhl", "mlb", "mls",
@@ -93,6 +95,7 @@ object LiveHubCatalog {
                 Section.SPORT -> sport.putIfAbsent(key, show)
                 Section.NEWS -> news.putIfAbsent(key, show)
                 Section.CHANNELS -> channels.putIfAbsent(key, show)
+                Section.FAVORITES -> Unit
             }
         }
         return mapOf(
@@ -107,21 +110,27 @@ object LiveHubCatalog {
         sportLabel: String,
         newsLabel: String,
         channelsLabel: String,
+        favorites: List<TvShow> = emptyList(),
+        favoritesLabel: String = "Favorites",
         perSection: Int = PER_SECTION,
     ): List<Category> {
         val parts = partition(shows)
-        return listOf(
-            category(sportLabel, SECTION_SPORT, parts[Section.SPORT].orEmpty(), perSection),
-            category(newsLabel, SECTION_NEWS, parts[Section.NEWS].orEmpty(), perSection),
-            category(channelsLabel, SECTION_CHANNELS, parts[Section.CHANNELS].orEmpty(), perSection),
-        ).filter { it.list.isNotEmpty() }
+        val out = ArrayList<Category>(4)
+        val fav = category(favoritesLabel, SECTION_FAVORITES, favorites, perSection)
+        if (fav.list.isNotEmpty()) out += fav
+        out += category(sportLabel, SECTION_SPORT, parts[Section.SPORT].orEmpty(), perSection)
+        out += category(newsLabel, SECTION_NEWS, parts[Section.NEWS].orEmpty(), perSection)
+        out += category(channelsLabel, SECTION_CHANNELS, parts[Section.CHANNELS].orEmpty(), perSection)
+        return out.filter { it.list.isNotEmpty() }
     }
 
     suspend fun load(
         sportLabel: String,
         newsLabel: String,
         channelsLabel: String,
+        favoritesLabel: String = "Favorites",
         includeQuarantined: Boolean = false,
+        context: Context? = null,
     ): HubResult = withContext(Dispatchers.IO) {
         // Kids profiles: Live Hub is gated in the bottom nav; keep catalog empty if reached.
         if (ProfileManager.isKidsActive()) {
@@ -167,11 +176,95 @@ object LiveHubCatalog {
                 }.getOrElse { "Live Hub: ${e.message ?: "timed out"}" },
             )
         }
-        val shows = ParentalControlUtils.filterItems(collected.toList())
+        val shows = ParentalControlUtils.filterItems(collected.toList()).onEach { enrichEpgLite(it) }
+        val favorites = resolveFavoriteChannels(
+            context = context ?: runCatching { BetterStreamflixApp.instance }.getOrNull(),
+            hubShows = shows,
+        )
         HubResult(
-            categories = buildCategories(shows, sportLabel, newsLabel, channelsLabel),
+            categories = buildCategories(
+                shows = shows,
+                sportLabel = sportLabel,
+                newsLabel = newsLabel,
+                channelsLabel = channelsLabel,
+                favorites = favorites,
+                favoritesLabel = favoritesLabel,
+            ),
             warnings = warnings.toList(),
         )
+    }
+
+    /**
+     * Favorite live channels for the hub shelf: IPTV favorites from the library,
+     * preferring fresher hub catalog rows (EPG + poster) when ids match.
+     */
+    suspend fun resolveFavoriteChannels(
+        context: Context?,
+        hubShows: List<TvShow>,
+    ): List<TvShow> {
+        if (context == null) return emptyList()
+        val hubByKey = LinkedHashMap<String, TvShow>()
+        hubShows.forEach { hubByKey[showKey(it)] = it }
+        val hubByTitle = hubShows.associateBy { dedupeKey(it) }
+        val favorites = runCatching {
+            CrossProviderLibrary.loadFavoriteTvShows(context)
+        }.getOrElse { emptyList() }
+        val out = LinkedHashMap<String, TvShow>()
+        for (fav in favorites) {
+            if (!isLiveFavorite(fav)) continue
+            val key = showKey(fav)
+            val fromHub = hubByKey[key] ?: hubByTitle[dedupeKey(fav)]
+            val merged = if (fromHub != null) {
+                fromHub.apply {
+                    isFavorite = true
+                    favoritedAtMillis = fav.favoritedAtMillis ?: favoritedAtMillis
+                    if (programNow.isNullOrBlank()) {
+                        programNow = fav.programNow ?: programNowOf(fav)
+                    }
+                    if (programNext.isNullOrBlank()) {
+                        programNext = fav.programNext
+                    }
+                }
+            } else {
+                fav.apply {
+                    isFavorite = true
+                    enrichEpgLite(this)
+                }
+            }
+            out.putIfAbsent(showKey(merged), merged)
+        }
+        // Also surface hub rows already marked favorite in-memory / Room stamp.
+        hubShows.filter { it.isFavorite }.forEach { show ->
+            out.putIfAbsent(showKey(show), show)
+        }
+        return out.values
+            .sortedByDescending { it.favoritedAtMillis ?: 0L }
+            .take(PER_SECTION)
+    }
+
+    fun isLiveFavorite(show: TvShow): Boolean {
+        val provider = Provider.findByName(show.providerName.orEmpty())
+        if (provider is IptvProvider) return true
+        val name = show.providerName.orEmpty()
+        return hubSources(includeQuarantined = true).any { it.name.equals(name, ignoreCase = true) }
+    }
+
+    /** EPG-lite “now playing” from overview / group when providers omit schedule. */
+    fun programNowOf(show: TvShow): String? {
+        show.programNow?.trim()?.takeIf { it.isNotBlank() }?.let { return it }
+        return groupFromOverview(show.overview)?.takeIf { it.isNotBlank() && it.length <= 80 }
+    }
+
+    fun programNextOf(show: TvShow): String? =
+        show.programNext?.trim()?.takeIf { it.isNotBlank() }
+
+    fun groupOf(show: TvShow): String? = groupFromOverview(show.overview)
+
+    fun enrichEpgLite(show: TvShow): TvShow {
+        if (show.programNow.isNullOrBlank()) {
+            show.programNow = programNowOf(show)
+        }
+        return show
     }
 
     private fun localizedSourceUnavailable(providerName: String): String =
@@ -204,6 +297,7 @@ object LiveHubCatalog {
             if (show.providerName.isNullOrBlank()) {
                 show.providerName = provider.name
             }
+            enrichEpgLite(show)
             return show
         }
 
@@ -224,6 +318,9 @@ object LiveHubCatalog {
                         title = show.title,
                         group = groupHint,
                     )
+                }
+                if (show.programNow.isNullOrBlank() && groupHint.isNotBlank()) {
+                    show.programNow = groupHint
                 }
                 out.putIfAbsent(showKey(show), stamp(show))
             }
@@ -266,11 +363,14 @@ object LiveHubCatalog {
         return if (title.isNotBlank()) title else showKey(show)
     }
 
-    private fun groupFromOverview(overview: String?): String? {
+    fun groupFromOverview(overview: String?): String? {
         if (overview.isNullOrBlank()) return null
         // LiveCatalogMeta.overview puts "Title\nCountry · Group · …"
         val second = overview.lineSequence().drop(1).firstOrNull() ?: return null
-        return second.substringAfter('·', missingDelimiterValue = second).trim()
-            .ifBlank { second.trim() }
+        val afterDot = second.substringAfter('·', missingDelimiterValue = "")
+            .trim()
+            .substringBefore('·')
+            .trim()
+        return afterDot.ifBlank { second.trim() }.takeIf { it.isNotBlank() }
     }
 }

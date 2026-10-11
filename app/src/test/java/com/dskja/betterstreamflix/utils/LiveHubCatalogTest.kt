@@ -2,6 +2,7 @@ package com.dskja.betterstreamflix.utils
 
 import com.dskja.betterstreamflix.models.TvShow
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -60,6 +61,59 @@ class LiveHubCatalogTest {
         assertEquals(2, cats[0].list.size)
         assertEquals(1, cats[1].list.size)
         assertEquals(1, cats[2].list.size)
+    }
+
+    @Test
+    fun buildCategoriesPrependsFavoritesShelf() {
+        val shows = listOf(
+            TvShow(id = "1", title = "ESPN", providerName = "DaddyLive TV"),
+            TvShow(id = "2", title = "BBC News", providerName = "IPTV-All World"),
+        )
+        val favorites = listOf(
+            TvShow(id = "1", title = "ESPN", providerName = "DaddyLive TV").apply {
+                isFavorite = true
+                programNow = "USA"
+            },
+        )
+        val cats = LiveHubCatalog.buildCategories(
+            shows = shows,
+            sportLabel = "Sport",
+            newsLabel = "News",
+            channelsLabel = "Channels",
+            favorites = favorites,
+            favoritesLabel = "Favorites",
+        )
+        assertEquals(LiveHubCatalog.SECTION_FAVORITES, cats[0].identityKey)
+        assertEquals(1, cats[0].list.size)
+        assertEquals("ESPN", (cats[0].list[0] as TvShow).title)
+    }
+
+    @Test
+    fun programNowOfUsesGroupFromOverview() {
+        val show = TvShow(
+            id = "x",
+            title = "ESPN",
+            overview = "ESPN\nUnited States · Sports",
+            providerName = "DaddyLive TV",
+        )
+        assertEquals("Sports", LiveHubCatalog.programNowOf(show))
+        LiveHubCatalog.enrichEpgLite(show)
+        assertEquals("Sports", show.programNow)
+    }
+
+    @Test
+    fun programNowOfPrefersExplicitField() {
+        val show = TvShow(id = "x", title = "ESPN", providerName = "DaddyLive TV").apply {
+            programNow = "NBA Finals"
+            overview = "ESPN\nUnited States · Sports"
+        }
+        assertEquals("NBA Finals", LiveHubCatalog.programNowOf(show))
+    }
+
+    @Test
+    fun groupFromOverviewBlank() {
+        assertNull(LiveHubCatalog.groupFromOverview(null))
+        assertNull(LiveHubCatalog.groupFromOverview("Title only"))
     }
 
     @Test

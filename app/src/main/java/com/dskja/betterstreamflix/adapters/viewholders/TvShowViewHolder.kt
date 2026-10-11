@@ -204,7 +204,16 @@ class TvShowViewHolder(
     }
 
     private fun episodeBadgeText(): String {
-        if (isIptvProvider()) return context.getString(R.string.player_live_badge)
+        if (isIptvProvider()) {
+            // EPG-lite: prefer “now playing” on Live Hub / IPTV tiles.
+            val now = com.dskja.betterstreamflix.utils.LiveHubCatalog.programNowOf(tvShow)
+                ?.trim()
+                .orEmpty()
+            if (now.isNotBlank()) {
+                return if (now.length > 28) now.take(27).trimEnd() + "…" else now
+            }
+            return context.getString(R.string.player_live_badge)
+        }
         return tvShow.lastPlayedEpisode?.let {
             context.getString(R.string.episode_badge_format, it.number)
         }

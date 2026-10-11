@@ -17,7 +17,6 @@ import com.dskja.betterstreamflix.adapters.AppAdapter
 import com.dskja.betterstreamflix.databinding.FragmentLiveHubMobileBinding
 import com.dskja.betterstreamflix.models.Category
 import com.dskja.betterstreamflix.models.TvShow
-import com.dskja.betterstreamflix.providers.Provider
 import com.dskja.betterstreamflix.ui.HomeProfileChip
 import com.dskja.betterstreamflix.utils.CacheUtils
 import com.dskja.betterstreamflix.utils.ExpDialogChrome
@@ -133,6 +132,10 @@ class LiveHubMobileFragment : Fragment() {
     override fun onResume() {
         super.onResume()
         HomeProfileChip.refresh(this, _binding?.root)
+        // Cheap Favorites-shelf refresh (no live-source re-fetch).
+        if (appAdapter.items.isNotEmpty()) {
+            viewModel.refreshFavoritesShelf()
+        }
     }
 
     private fun reload() {
@@ -140,6 +143,7 @@ class LiveHubMobileFragment : Fragment() {
             sportLabel = getString(R.string.live_hub_section_sport),
             newsLabel = getString(R.string.live_hub_section_news),
             channelsLabel = getString(R.string.live_hub_section_channels),
+            favoritesLabel = getString(R.string.live_hub_section_favorites),
         )
     }
 
