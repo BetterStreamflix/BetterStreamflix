@@ -249,6 +249,9 @@ object DownloadEventBridge : DownloadManager.Listener {
             download.stopReason == DownloadQueuePolicy.STOP_STORAGE ->
             DownloadErrorCode.LOW_STORAGE.name
         state == DownloadItemState.PAUSED &&
+            download.stopReason == DownloadQueuePolicy.STOP_LANE ->
+            DownloadErrorCode.LANE_HOLD.name
+        state == DownloadItemState.PAUSED &&
             download.stopReason == DownloadQueuePolicy.STOP_USER -> ""
         state == DownloadItemState.PAUSED &&
             entity.errorCode == DownloadErrorCode.WIFI_REQUIRED.name ->
@@ -256,6 +259,9 @@ object DownloadEventBridge : DownloadManager.Listener {
         state == DownloadItemState.PAUSED &&
             entity.errorCode == DownloadErrorCode.LOW_STORAGE.name ->
             DownloadErrorCode.LOW_STORAGE.name
+        state == DownloadItemState.PAUSED &&
+            entity.errorCode == DownloadErrorCode.LANE_HOLD.name ->
+            DownloadErrorCode.LANE_HOLD.name
         else -> ""
     }
 

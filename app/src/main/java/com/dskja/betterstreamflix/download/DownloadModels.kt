@@ -46,6 +46,8 @@ enum class DownloadErrorCode {
     WIFI_REQUIRED,
     /** Soft hold while free space / soft-limit is exhausted. */
     LOW_STORAGE,
+    /** Soft hold while a higher Download Lane uses the parallel slots. */
+    LANE_HOLD,
     /** Smart Downloads per-series unwatched quota has no free slots. */
     SERIES_QUOTA,
     EXPIRED,

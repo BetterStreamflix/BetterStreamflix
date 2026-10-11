@@ -347,7 +347,8 @@ class DownloadsAdapter(
             val softHeld = item.state == DownloadItemState.PAUSED &&
                 (
                     item.entity.errorCode == DownloadErrorCode.WIFI_REQUIRED.name ||
-                        item.entity.errorCode == DownloadErrorCode.LOW_STORAGE.name
+                        item.entity.errorCode == DownloadErrorCode.LOW_STORAGE.name ||
+                        item.entity.errorCode == DownloadErrorCode.LANE_HOLD.name
                     )
             progress.isIndeterminate = !item.needsRedownload && !softHeld && (
                 item.state == DownloadItemState.PREPARING ||

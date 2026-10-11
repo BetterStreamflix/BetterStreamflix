@@ -161,6 +161,7 @@ object SmartDownloadsManager {
             }
             if (enqueued > 0) {
                 Log.i(TAG, "smart-downloaded $enqueued episode(s) for $seriesKey")
+                DownloadLaneScheduler.apply(context)
             }
         } finally {
             if (previousProvider != null && previousProvider.name != provider.name) {

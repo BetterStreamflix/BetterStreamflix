@@ -2175,6 +2175,13 @@ class PlayerTvFragment : Fragment(),
                 com.dskja.betterstreamflix.platform.plugins.PluginManager
                     .dispatchPlaybackStarted(args.videoType, server.name)
             }
+            runCatching {
+                com.dskja.betterstreamflix.download.DownloadLaneFocus.setFromPlayback(
+                    args.videoType,
+                    UserPreferences.currentProvider?.name,
+                )
+                com.dskja.betterstreamflix.download.DownloadLaneScheduler.applyAsync(requireContext())
+            }
             // Offline must stay on in-app Exo + CacheDataSource — external apps cannot read Media3 cache.
             if (!offline &&
                 com.dskja.betterstreamflix.platform.playerbackend.PlayerBackendSelector.shouldHandoffToExternal()

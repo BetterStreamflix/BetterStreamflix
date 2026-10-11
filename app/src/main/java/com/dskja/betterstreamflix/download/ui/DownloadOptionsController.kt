@@ -619,6 +619,7 @@ object DownloadOptionsController {
             // Prefer Failed.message (includes quota size) via fallback below.
             DownloadErrorCode.SERIES_QUOTA -> null
             DownloadErrorCode.WIFI_REQUIRED -> R.string.download_error_wifi
+            DownloadErrorCode.LANE_HOLD -> R.string.download_error_lane_hold
             DownloadErrorCode.EXPIRED -> R.string.download_error_expired
             DownloadErrorCode.NOT_FOUND -> R.string.download_error_not_found
             DownloadErrorCode.FILE_MISSING -> R.string.download_error_file_missing
