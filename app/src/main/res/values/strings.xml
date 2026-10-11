@@ -1320,10 +1320,21 @@
     <string name="watchlist_import_empty">No watchlist titles found on your account</string>
     <string name="watchlist_import_ssl_rejected">Secure connection rejected for an unknown host. Only SerienStream, AniWorld, and known mirrors are allowed.</string>
 
-    <string name="settings_screen_appearance_summary">Theme, immersive mode and screen layout adjustments</string>
+    <string name="settings_screen_appearance_summary">Theme, accessibility, immersive mode and screen layout adjustments</string>
     <string name="settings_theme_title">App Theme</string>
     <string name="settings_oled_mode_title">OLED mode</string>
     <string name="settings_oled_mode_summary">Replace gray surfaces with true black across the app</string>
+    <string name="settings_category_accessibility">Accessibility</string>
+    <string name="settings_large_text_title">Large text</string>
+    <string name="settings_large_text_summary">Enlarge app text for easier reading (restarts the app)</string>
+    <string name="settings_high_contrast_title">High contrast</string>
+    <string name="settings_high_contrast_summary">Maximize text and focus-ring contrast across the app (restarts the app)</string>
+    <string name="a11y_untitled">Untitled</string>
+    <string name="a11y_state_in_my_list">in My List</string>
+    <string name="a11y_state_watched">watched</string>
+    <string name="a11y_state_downloaded">downloaded</string>
+    <string name="a11y_state_selected">selected</string>
+    <string name="a11y_episode_label">Episode %1$d, %2$s</string>
     <string name="settings_app_language_title">App language</string>
     <string name="settings_app_language_summary">Choose which bundled translation the app should use</string>
     <string name="settings_app_language_system">System default</string>

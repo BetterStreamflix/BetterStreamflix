@@ -688,6 +688,22 @@ object UserPreferences {
             Key.OLED_MODE.setBoolean(false)
         }
 
+    /**
+     * Accessibility: bump Configuration.fontScale (see [AccessibilityPreferences.wrap]).
+     * Device-wide; requires activity restart like changing Looks.
+     */
+    var largeText: Boolean
+        get() = Key.LARGE_TEXT.getBoolean() ?: false
+        set(value) = Key.LARGE_TEXT.setBoolean(value)
+
+    /**
+     * Accessibility: high-contrast theme overlay on top of the active locked look.
+     * Device-wide; requires activity restart like changing Looks.
+     */
+    var highContrast: Boolean
+        get() = Key.HIGH_CONTRAST.getBoolean() ?: false
+        set(value) = Key.HIGH_CONTRAST.setBoolean(value)
+
     /** Off-by-default complete mobile shell redesign. Requires activity restart. */
     var experimentalNewAppDesign: Boolean
         get() = Key.EXPERIMENTAL_NEW_APP_DESIGN.getBoolean() ?: false
@@ -1621,6 +1637,8 @@ object UserPreferences {
         PARENTAL_CONTROL_HARD_LOCKED,
         SELECTED_THEME,
         OLED_MODE,
+        LARGE_TEXT,
+        HIGH_CONTRAST,
         EXPERIMENTAL_NEW_APP_DESIGN,
         EXPERIMENTAL_REACT_HOME,
         EXPERIMENTAL_LUMINA_ACCENT,

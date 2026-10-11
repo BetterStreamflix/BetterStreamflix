@@ -15,6 +15,8 @@
         android:layout_marginTop="4dp"
         android:background="@drawable/bg_people_circle"
         android:duplicateParentState="true"
+        android:foreground="@drawable/fg_tv_focus_ring_circle"
+        android:importantForAccessibility="no"
         android:padding="1dp"
         android:scaleType="centerCrop"
         app:layout_constraintEnd_toEndOf="parent"
@@ -23,7 +25,6 @@
         app:shapeAppearanceOverlay="@style/ShapeAppearance.Lumina.Circle"
         app:strokeColor="@color/cinema_stroke"
         app:strokeWidth="1dp"
-        tools:ignore="ContentDescription"
         tools:src="@drawable/ic_person_placeholder" />
 
     <TextView

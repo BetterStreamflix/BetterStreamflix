@@ -1093,6 +1093,30 @@ class SettingsMobileFragment : PreferenceFragmentCompat() {
             setOnPreferenceChangeListener { _, _ -> false }
         }
 
+        findPreference<SwitchPreference>("LARGE_TEXT")?.apply {
+            isChecked = UserPreferences.largeText
+            setOnPreferenceChangeListener { _, newValue ->
+                UserPreferences.largeText = newValue as Boolean
+                requireActivity().apply {
+                    finish()
+                    startActivity(Intent(this, MainMobileActivity::class.java))
+                }
+                true
+            }
+        }
+
+        findPreference<SwitchPreference>("HIGH_CONTRAST")?.apply {
+            isChecked = UserPreferences.highContrast
+            setOnPreferenceChangeListener { _, newValue ->
+                UserPreferences.highContrast = newValue as Boolean
+                requireActivity().apply {
+                    finish()
+                    startActivity(Intent(this, MainMobileActivity::class.java))
+                }
+                true
+            }
+        }
+
         findPreference<ListPreference>("APP_LANGUAGE")?.apply {
             entries = AppLanguageManager.buildLanguageEntries(requireContext())
             entryValues = AppLanguageManager.buildLanguageValues(requireContext())

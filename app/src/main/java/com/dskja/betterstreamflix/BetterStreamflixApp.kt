@@ -16,7 +16,7 @@ import com.dskja.betterstreamflix.providers.SerienStreamProvider
 import com.dskja.betterstreamflix.providers.SoloLatinoProvider
 import com.dskja.betterstreamflix.sync.CloudSyncManager
 import com.dskja.betterstreamflix.sync.SupabaseProvider
-import com.dskja.betterstreamflix.utils.AppLanguageManager
+import com.dskja.betterstreamflix.utils.AccessibilityPreferences
 import com.dskja.betterstreamflix.utils.ArtworkRepairScheduler
 import com.dskja.betterstreamflix.utils.CacheUtils
 import com.dskja.betterstreamflix.utils.CrashReporter
@@ -46,7 +46,7 @@ class BetterStreamflixApp : Application() {
     private val applicationScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
     override fun attachBaseContext(base: Context) {
-        super.attachBaseContext(AppLanguageManager.wrap(base))
+        super.attachBaseContext(AccessibilityPreferences.wrapAfterLanguage(base))
     }
 
     override fun onCreate() {

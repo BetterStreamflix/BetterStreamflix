@@ -40,6 +40,7 @@
         <item name="movie_banner_gradient_drawable">@drawable/bg_movie_banner_gradient_default</item>
         <item name="tv_show_banner_gradient_drawable">@drawable/bg_tv_show_banner_gradient_default</item>
         <item name="category_swiper_gradient_drawable">@drawable/fg_category_swiper_default</item>
+        <item name="tvFocusStrokeColor">@color/tv_focus_stroke</item>
     </style>
 
     <style name="BottomNavLabelStyle" parent="TextAppearance.AppCompat.Caption">
@@ -447,6 +448,7 @@
         <item name="movie_banner_gradient_drawable">@drawable/bg_movie_banner_gradient_default</item>
         <item name="tv_show_banner_gradient_drawable">@drawable/bg_tv_show_banner_gradient_default</item>
         <item name="category_swiper_gradient_drawable">@drawable/fg_category_swiper_default</item>
+        <item name="tvFocusStrokeColor">@color/tv_focus_stroke</item>
     </style>
 
     <!-- Tema Nero Amoled/Oled per TV (Nero Puro #000000) -->
@@ -710,6 +712,45 @@
         <item name="colorOnSurface">@color/m3_on_surface</item>
         <item name="colorOnSurfaceVariant">@color/m3_on_surface_variant</item>
         <item name="colorSurface">@color/m3_surface</item>
+    </style>
+
+    <!--
+      Accessibility high-contrast overlays — applied via theme.applyStyle on top of
+      the active locked look (Cinema Ink Dark / Light / Kids). Pure black surfaces,
+      near-white text, and a yellow TV focus stroke for DPAD visibility.
+      Named under AppTheme.Mobile / AppTheme.Tv so the dotted parent chain resolves.
+    -->
+    <style name="AppTheme.Mobile.HighContrastOverlay">
+        <item name="app_background_color">@color/a11y_hc_background</item>
+        <item name="android:windowBackground">@color/a11y_hc_background</item>
+        <item name="android:colorBackground">@color/a11y_hc_background</item>
+        <item name="colorSurface">@color/a11y_hc_surface</item>
+        <item name="colorSurfaceVariant">@color/a11y_hc_surface</item>
+        <item name="colorOnSurface">@color/a11y_hc_text</item>
+        <item name="colorOnSurfaceVariant">@color/a11y_hc_text_secondary</item>
+        <item name="colorAccent">@color/a11y_hc_accent</item>
+        <item name="colorControlActivated">@color/a11y_hc_accent</item>
+        <item name="colorControlNormal">@color/a11y_hc_text_secondary</item>
+        <item name="android:textColorPrimary">@color/a11y_hc_text</item>
+        <item name="android:textColorSecondary">@color/a11y_hc_text_secondary</item>
+        <item name="tvFocusStrokeColor">@color/tv_focus_stroke_high_contrast</item>
+    </style>
+
+    <style name="AppTheme.Tv.HighContrastOverlay">
+        <item name="app_background_color">@color/a11y_hc_background</item>
+        <item name="android:windowBackground">@color/a11y_hc_background</item>
+        <item name="android:colorBackground">@color/a11y_hc_background</item>
+        <item name="colorSurface">@color/a11y_hc_surface</item>
+        <item name="colorSurfaceVariant">@color/a11y_hc_surface</item>
+        <item name="colorOnSurface">@color/a11y_hc_text</item>
+        <item name="colorOnSurfaceVariant">@color/a11y_hc_text_secondary</item>
+        <item name="colorAccent">@color/a11y_hc_accent</item>
+        <item name="colorControlActivated">@color/a11y_hc_accent</item>
+        <item name="colorControlNormal">@color/a11y_hc_text_secondary</item>
+        <item name="android:textColorPrimary">@color/a11y_hc_text</item>
+        <item name="android:textColorSecondary">@color/a11y_hc_text_secondary</item>
+        <item name="defaultBrandColor">@color/a11y_hc_background</item>
+        <item name="tvFocusStrokeColor">@color/tv_focus_stroke_high_contrast</item>
     </style>
 
 </resources>

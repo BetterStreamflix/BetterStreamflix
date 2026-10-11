@@ -4,7 +4,9 @@
     <item android:state_focused="true">
         <shape android:shape="rectangle">
             <corners android:radius="8dp" />
-            <stroke android:width="4dp" android:color="#FFFFFF" />
+            <stroke
+                android:width="@dimen/tv_focus_stroke_width"
+                android:color="?attr/tvFocusStrokeColor" />
         </shape>
     </item>
 

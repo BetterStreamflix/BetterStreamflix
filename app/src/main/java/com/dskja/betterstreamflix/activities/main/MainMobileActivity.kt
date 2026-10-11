@@ -43,7 +43,7 @@ import com.dskja.betterstreamflix.providers.RidomoviesProvider
 import com.dskja.betterstreamflix.providers.SoloLatinoProvider
 import com.dskja.betterstreamflix.providers.ZaluknijProvider
 import com.dskja.betterstreamflix.ui.UpdateAppMobileDialog
-import com.dskja.betterstreamflix.utils.AppLanguageManager
+import com.dskja.betterstreamflix.utils.AccessibilityPreferences
 import com.dskja.betterstreamflix.utils.BypassWebSocketEndpointHelper
 import com.dskja.betterstreamflix.utils.ExpMotion
 import com.dskja.betterstreamflix.utils.ExpPressEffects
@@ -121,7 +121,7 @@ class MainMobileActivity : FragmentActivity() {
     private var updateAppDialog: UpdateAppMobileDialog? = null
 
     override fun attachBaseContext(newBase: android.content.Context) {
-        super.attachBaseContext(AppLanguageManager.wrap(newBase))
+        super.attachBaseContext(AccessibilityPreferences.wrapAfterLanguage(newBase))
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -132,6 +132,7 @@ class MainMobileActivity : FragmentActivity() {
                 ThemeManager.mobileThemeRes(UserPreferences.selectedTheme)
             }
         )
+        AccessibilityPreferences.applyHighContrastOverlay(this, mobile = true)
         super.onCreate(savedInstanceState)
         // Finish a provider switch after CLEAR_TASK restart (Room reset deferred).
         UserPreferences.consumePendingProviderSwitch()

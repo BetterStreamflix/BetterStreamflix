@@ -34,4 +34,13 @@
     <color name="cinema_ink_light_text_muted">#FF5C6478</color>
     <color name="cinema_ink_light_accent">#FF1A4DFF</color>
     <color name="cinema_ink_light_scrim">#99EEF0F4</color>
+
+    <!-- Shared TV DPAD focus stroke (HC overlay swaps via theme attr where used). -->
+    <color name="tv_focus_stroke">#FFFFFFFF</color>
+    <color name="tv_focus_stroke_high_contrast">#FFFFFF00</color>
+    <color name="a11y_hc_background">#FF000000</color>
+    <color name="a11y_hc_surface">#FF000000</color>
+    <color name="a11y_hc_text">#FFFFFFFF</color>
+    <color name="a11y_hc_text_secondary">#FFF0F0F0</color>
+    <color name="a11y_hc_accent">#FFFFFF00</color>
 </resources>

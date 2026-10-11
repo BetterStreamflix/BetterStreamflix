@@ -32,6 +32,7 @@ import com.bumptech.glide.Glide
 import com.bumptech.glide.load.resource.drawable.DrawableTransitionOptions
 import androidx.fragment.app.Fragment
 import com.dskja.betterstreamflix.R
+import com.dskja.betterstreamflix.utils.AccessibilityPreferences
 import com.dskja.betterstreamflix.utils.TvFocusZoom
 import com.dskja.betterstreamflix.adapters.AppAdapter
 import com.dskja.betterstreamflix.adapters.submitAppList
@@ -776,15 +777,15 @@ class MovieViewHolder(
     }
 
     private fun bindRibbons(favoriteRibbon: View, watchedRibbon: View, downloadRibbon: View? = null) {
+        favoriteRibbon.importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
+        watchedRibbon.importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
+        downloadRibbon?.importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
         setRibbonVisible(favoriteRibbon, movie.isFavorite)
         setRibbonVisible(watchedRibbon, movie.isWatched)
         val contentKey = movieDownloadContentKey()
-        downloadRibbon?.let {
-            setRibbonVisible(
-                it,
-                contentKey != null && OfflineBadgeStore.isCompleted(context, contentKey),
-            )
-        }
+        val downloaded = contentKey != null && OfflineBadgeStore.isCompleted(context, contentKey)
+        downloadRibbon?.let { setRibbonVisible(it, downloaded) }
+        applyPosterA11y(movie.isFavorite, movie.isWatched, downloaded)
 
         ribbonStateJob?.cancel()
         val boundMovieId = movie.id
@@ -797,8 +798,16 @@ class MovieViewHolder(
                 val db = database ?: return@launch
                 db.movieDao().getByIdAsFlow(boundMovieId).collect { persistedMovie ->
                     if (movie.id != boundMovieId || persistedMovie == null) return@collect
+                    movie.isFavorite = persistedMovie.isFavorite
+                    movie.isWatched = persistedMovie.isWatched
                     setRibbonVisible(favoriteRibbon, persistedMovie.isFavorite)
                     setRibbonVisible(watchedRibbon, persistedMovie.isWatched)
+                    val key = movieDownloadContentKey()
+                    applyPosterA11y(
+                        persistedMovie.isFavorite,
+                        persistedMovie.isWatched,
+                        key != null && OfflineBadgeStore.isCompleted(context, key),
+                    )
                 }
             }
             if (downloadRibbon != null) {
@@ -806,14 +815,28 @@ class MovieViewHolder(
                     OfflineBadgeStore.completedKeys(context).collect { keys ->
                         if (movie.id != boundMovieId) return@collect
                         val key = movieDownloadContentKey()
-                        setRibbonVisible(
-                            downloadRibbon,
-                            key != null && keys.contains(key),
-                        )
+                        val isDownloaded = key != null && keys.contains(key)
+                        setRibbonVisible(downloadRibbon, isDownloaded)
+                        applyPosterA11y(movie.isFavorite, movie.isWatched, isDownloaded)
                     }
                 }
             }
         }
+    }
+
+    private fun applyPosterA11y(
+        favorite: Boolean = movie.isFavorite,
+        watched: Boolean = movie.isWatched,
+        downloaded: Boolean = false,
+    ) {
+        itemView.contentDescription = AccessibilityPreferences.posterLabel(
+            context,
+            movie.title,
+            favorite = favorite,
+            watched = watched,
+            downloaded = downloaded,
+        )
+        AccessibilityPreferences.announceSelected(itemView, itemSelected || favorite)
     }
 
     private fun displaySwiperMobileItem(binding: ItemCategorySwiperMobileBinding) {
@@ -829,7 +852,7 @@ class MovieViewHolder(
                 }
         }
 
-        itemView.contentDescription = movie.title
+        applyPosterA11y()
         FeaturedSwiperChrome.resolveAndBindLogo(binding, movie)
         binding.tvSwiperTitle.setTextColor(0xFFF7F7F8.toInt())
         binding.tvSwiperGenres.setTextColor(0xFFE8E8EC.toInt())
@@ -957,7 +980,12 @@ class MovieViewHolder(
         binding.root.setOnClickListener(null)
         binding.ivSwiperBackground.apply {
             isClickable = true
-            contentDescription = movie.title
+            contentDescription = AccessibilityPreferences.posterLabel(
+                context,
+                movie.title,
+                favorite = movie.isFavorite,
+                watched = movie.isWatched,
+            )
             setOnClickListener(openMovie)
         }
     }

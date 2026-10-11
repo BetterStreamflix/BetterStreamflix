@@ -40,7 +40,7 @@ import com.google.zxing.Result
 import com.google.zxing.common.HybridBinarizer
 import com.dskja.betterstreamflix.R
 import com.dskja.betterstreamflix.databinding.ActivityQrScannerBinding
-import com.dskja.betterstreamflix.utils.AppLanguageManager
+import com.dskja.betterstreamflix.utils.AccessibilityPreferences
 import com.dskja.betterstreamflix.utils.ExpDialogChrome
 import com.dskja.betterstreamflix.utils.ExperimentalMobileDesign
 import com.dskja.betterstreamflix.utils.ThemeManager
@@ -119,7 +119,7 @@ class QrScannerActivity : AppCompatActivity() {
     }
 
     override fun attachBaseContext(newBase: Context) {
-        super.attachBaseContext(AppLanguageManager.wrap(newBase))
+        super.attachBaseContext(AccessibilityPreferences.wrapAfterLanguage(newBase))
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -130,6 +130,7 @@ class QrScannerActivity : AppCompatActivity() {
                 ThemeManager.mobileThemeRes(UserPreferences.selectedTheme)
             }
         )
+        AccessibilityPreferences.applyHighContrastOverlay(this, mobile = true)
         if (ExperimentalMobileDesign.enabled()) {
             DynamicColors.applyToActivityIfAvailable(this)
         }

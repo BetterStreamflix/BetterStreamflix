@@ -32,6 +32,7 @@ import android.widget.TextView
 import com.bumptech.glide.Glide
 import com.bumptech.glide.load.resource.drawable.DrawableTransitionOptions
 import com.dskja.betterstreamflix.R
+import com.dskja.betterstreamflix.utils.AccessibilityPreferences
 import com.dskja.betterstreamflix.utils.TvFocusZoom
 import com.dskja.betterstreamflix.adapters.AppAdapter
 import com.dskja.betterstreamflix.adapters.submitAppList
@@ -719,7 +720,7 @@ class TvShowViewHolder(
                 }
         }
 
-        itemView.contentDescription = tvShow.title
+        applyPosterA11y()
         FeaturedSwiperChrome.resolveAndBindLogo(binding, tvShow)
         binding.tvSwiperTitle.setTextColor(0xFFF7F7F8.toInt())
         binding.tvSwiperGenres.setTextColor(0xFFE8E8EC.toInt())
@@ -848,7 +849,11 @@ class TvShowViewHolder(
         binding.root.setOnClickListener(null)
         binding.ivSwiperBackground.apply {
             isClickable = true
-            contentDescription = tvShow.title
+            contentDescription = AccessibilityPreferences.posterLabel(
+                context,
+                tvShow.title,
+                favorite = tvShow.isFavorite,
+            )
             setOnClickListener(openTvShow)
         }
     }
@@ -882,10 +887,16 @@ class TvShowViewHolder(
     private fun bindRibbons(favoriteRibbon: View, watchedRibbon: View, downloadRibbon: View? = null) {
         ribbonStateJob?.cancel()
 
+        favoriteRibbon.importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
+        watchedRibbon.importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
+        downloadRibbon?.importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
+
         val boundTvShowId = tvShow.id
+        val downloaded = tvShowHasOffline()
         setRibbonVisible(favoriteRibbon, tvShow.isFavorite)
         setRibbonVisible(watchedRibbon, false)
-        downloadRibbon?.let { setRibbonVisible(it, tvShowHasOffline()) }
+        downloadRibbon?.let { setRibbonVisible(it, downloaded) }
+        applyPosterA11y(tvShow.isFavorite, watched = false, downloaded = downloaded)
         val lifecycleOwner = itemView.findViewTreeLifecycleOwner()
             ?: context.toActivity()
             ?: return
@@ -900,8 +911,10 @@ class TvShowViewHolder(
                     (persistedTvShow?.isFavorite ?: tvShow.isFavorite) to isFullyWatched
                 }.collect { (isFavorite, isFullyWatched) ->
                     if (tvShow.id == boundTvShowId) {
+                        tvShow.isFavorite = isFavorite
                         setRibbonVisible(favoriteRibbon, isFavorite)
                         setRibbonVisible(watchedRibbon, isFullyWatched)
+                        applyPosterA11y(isFavorite, isFullyWatched, tvShowHasOffline())
                     }
                 }
             }
@@ -909,11 +922,28 @@ class TvShowViewHolder(
                 launch {
                     OfflineBadgeStore.completedKeys(context).collect { keys ->
                         if (tvShow.id != boundTvShowId) return@collect
-                        setRibbonVisible(downloadRibbon, tvShowHasOffline(keys))
+                        val isDownloaded = tvShowHasOffline(keys)
+                        setRibbonVisible(downloadRibbon, isDownloaded)
+                        applyPosterA11y(tvShow.isFavorite, downloaded = isDownloaded)
                     }
                 }
             }
         }
+    }
+
+    private fun applyPosterA11y(
+        favorite: Boolean = tvShow.isFavorite,
+        watched: Boolean = false,
+        downloaded: Boolean = false,
+    ) {
+        itemView.contentDescription = AccessibilityPreferences.posterLabel(
+            context,
+            tvShow.title,
+            favorite = favorite,
+            watched = watched,
+            downloaded = downloaded,
+        )
+        AccessibilityPreferences.announceSelected(itemView, itemSelected || favorite)
     }
 
     private fun displayTvShowMobile(binding: ContentTvShowMobileBinding) =

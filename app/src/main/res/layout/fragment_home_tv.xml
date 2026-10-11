@@ -55,6 +55,7 @@
         android:ellipsize="end"
         android:focusable="true"
         android:focusableInTouchMode="true"
+        android:foreground="@drawable/fg_tv_focus_ring"
         android:fontFamily="@font/manrope"
         android:maxLines="2"
         android:nextFocusDown="@id/vgv_home"

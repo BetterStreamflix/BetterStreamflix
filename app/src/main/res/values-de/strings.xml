@@ -1080,6 +1080,17 @@
     <string name="settings_theme_title">App-Design</string>
     <string name="settings_oled_mode_title">OLED-Modus</string>
     <string name="settings_oled_mode_summary">Graue Flächen app-weit durch echtes Schwarz ersetzen</string>
+    <string name="settings_category_accessibility">Barrierefreiheit</string>
+    <string name="settings_large_text_title">Große Schrift</string>
+    <string name="settings_large_text_summary">App-Text vergrößern für bessere Lesbarkeit (startet die App neu)</string>
+    <string name="settings_high_contrast_title">Hoher Kontrast</string>
+    <string name="settings_high_contrast_summary">Maximaler Kontrast für Text und Fokus-Ringe (startet die App neu)</string>
+    <string name="a11y_untitled">Ohne Titel</string>
+    <string name="a11y_state_in_my_list">in Meiner Liste</string>
+    <string name="a11y_state_watched">gesehen</string>
+    <string name="a11y_state_downloaded">heruntergeladen</string>
+    <string name="a11y_state_selected">ausgewählt</string>
+    <string name="a11y_episode_label">Folge %1$d, %2$s</string>
     <string name="settings_category_library">Mediathek</string>
     <string name="settings_library_scope_title">Favoriten &amp; Weiterschauen</string>
     <string name="settings_library_scope_summary">Listen nur vom aktuellen Anbieter oder von allen Anbietern anzeigen</string>
@@ -1190,7 +1201,7 @@
     <string name="settings_playback_video_quality_1080">1080p</string>
     <string name="settings_screen_misc_summary">Versionsinfo, Hilfe-Links und Community-Verknüpfungen</string>
     <string name="settings_screen_backup_summary">Favoriten, Verlauf und gespeicherte App-Daten exportieren oder wiederherstellen</string>
-    <string name="settings_screen_appearance_summary">Theme, immersiver Modus und Anpassungen des Bildschirm-Layouts</string>
+    <string name="settings_screen_appearance_summary">Theme, Barrierefreiheit, immersiver Modus und Anpassungen des Bildschirm-Layouts</string>
     <string name="settings_parental_remove_pin_title">Eltern-PIN entfernen</string>
     <string name="settings_parental_remove_pin_summary">PIN-Schutz deaktivieren und die Altersgrenze löschen</string>
     <string name="settings_parental_remove_admin_pin_title">Admin-PIN entfernen</string>

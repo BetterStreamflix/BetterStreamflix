@@ -159,7 +159,7 @@
 
     <Button
         android:id="@+id/btn_update_cancel"
-        style="?android:attr/buttonBarButtonStyle"
+        style="@style/AppTheme.Widget.Tv.Button"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginTop="16dp"
@@ -174,7 +174,7 @@
 
     <Button
         android:id="@+id/btn_update"
-        style="?android:attr/buttonBarButtonStyle"
+        style="@style/AppTheme.Widget.Tv.Button"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginTop="16dp"
