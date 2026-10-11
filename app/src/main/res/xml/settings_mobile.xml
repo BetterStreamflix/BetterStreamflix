@@ -258,6 +258,13 @@
                 app:iconSpaceReserved="false" />
 
             <Preference
+                android:key="PROFILE_YEAR_REVIEW"
+                android:title="@string/settings_year_review_title"
+                android:summary="@string/settings_year_review_summary"
+                android:widgetLayout="@layout/preference_widget_chevron"
+                app:iconSpaceReserved="false" />
+
+            <Preference
                 android:key="CLEAR_RECENTLY_WATCHED"
                 android:title="@string/settings_clear_recently_watched_title"
                 android:summary="@string/settings_clear_recently_watched_summary"
