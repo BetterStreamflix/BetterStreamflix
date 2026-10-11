@@ -2,11 +2,9 @@ package com.dskja.betterstreamflix.extractors
 
 import android.os.Handler
 import android.os.Looper
-import android.webkit.ConsoleMessage
-import android.webkit.WebChromeClient
+import android.webkit.JavascriptInterface
 import android.webkit.WebResourceRequest
 import android.webkit.WebResourceResponse
-import android.webkit.WebSettings
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import com.dskja.betterstreamflix.BetterStreamflixApp
@@ -52,6 +50,7 @@ class VidLinkExtractor : Extractor() {
         return withContext(Dispatchers.Main) {
             suspendCancellableCoroutine { continuation ->
                 val webView = WebView(BetterStreamflixApp.instance.applicationContext)
+<<<<<<< HEAD
                 
                 // Configure WebView settings (SEC-WV-04)
                 webView.settings.apply {
@@ -61,8 +60,11 @@ class VidLinkExtractor : Extractor() {
                     javaScriptCanOpenWindowsAutomatically = false
                     mixedContentMode = android.webkit.WebSettings.MIXED_CONTENT_NEVER_ALLOW
                 }
+=======
 
-                // Timeout handler
+                webView.settings.javaScriptEnabled = true
+>>>>>>> 6ba88265 (Harden Live Hub, zap cache, and provider playback failover)
+
                 val timeoutHandler = Handler(Looper.getMainLooper())
                 val timeoutRunnable = Runnable {
                     if (continuation.isActive) {
@@ -70,41 +72,50 @@ class VidLinkExtractor : Extractor() {
                         webView.destroy()
                     }
                 }
-                timeoutHandler.postDelayed(timeoutRunnable, 30000) // 30 seconds timeout
+                timeoutHandler.postDelayed(timeoutRunnable, 18_000L)
 
                 continuation.invokeOnCancellation {
+                    timeoutHandler.removeCallbacks(timeoutRunnable)
                     webView.stopLoading()
                     webView.destroy()
                 }
 
-                webView.webViewClient = object : WebViewClient() {
-                    
-                    override fun onPageFinished(view: WebView?, url: String?) {
-                        super.onPageFinished(view, url)
-                        
-                        // Inject JavaScript to intercept the network response
-                        val jsInterceptor = """
-                            (function() {
-                                const originalFetch = window.fetch;
-                                window.fetch = async function(...args) {
-                                    const response = await originalFetch(...args);
-                                    const clone = response.clone();
-                                    const url = response.url;
-                                    
-                                    if (url.includes('/api/b/')) {
-                                        clone.json().then(data => {
-                                             window.Android.onStreamFound(JSON.stringify(data));
-                                        }).catch(err => {});
-                                    }
-                                    return response;
-                                };
-                            })();
-                        """.trimIndent()
-                        
-                        view?.evaluateJavascript(jsInterceptor, null)
+                fun finishWithJson(jsonData: String) {
+                    timeoutHandler.removeCallbacks(timeoutRunnable)
+                    if (!continuation.isActive) return
+                    try {
+                        val json = JSONObject(jsonData)
+                        if (!json.has("stream")) {
+                            continuation.resumeWithException(Exception("Stream data missing in response"))
+                            return
+                        }
+                        val stream = json.getJSONObject("stream")
+                        val playlist = stream.optString("playlist")
+                        val captionsList = mutableListOf<Video.Subtitle>()
+                        val captions = stream.optJSONArray("captions")
+                        if (captions != null) {
+                            for (i in 0 until captions.length()) {
+                                val cap = captions.getJSONObject(i)
+                                captionsList.add(
+                                    Video.Subtitle(cap.optString("language"), cap.optString("id")),
+                                )
+                            }
+                        }
+                        continuation.resume(
+                            Video(
+                                source = playlist,
+                                subtitles = captionsList,
+                                headers = mapOf("Referer" to mainUrl),
+                            ),
+                        )
+                    } catch (e: Exception) {
+                        continuation.resumeWithException(e)
+                    } finally {
+                        Handler(Looper.getMainLooper()).post { webView.destroy() }
                     }
                 }
 
+<<<<<<< HEAD
                 // Add JavaScript Interface — validate playlist URL scheme/host (SEC-WV-04).
                 webView.addJavascriptInterface(object : Any() {
                     @android.webkit.JavascriptInterface
@@ -147,12 +158,63 @@ class VidLinkExtractor : Extractor() {
                                 continuation.resumeWithException(e)
                             } finally {
                                 Handler(Looper.getMainLooper()).post { webView.destroy() }
+=======
+                val jsInterceptor = """
+                    (function() {
+                        if (window.__vidlinkFetchHooked) return;
+                        window.__vidlinkFetchHooked = true;
+                        const originalFetch = window.fetch;
+                        window.fetch = async function(...args) {
+                            const response = await originalFetch(...args);
+                            const clone = response.clone();
+                            const url = response.url;
+                            if (url.includes('/api/b/')) {
+                                clone.json().then(data => {
+                                     window.Android.onStreamFound(JSON.stringify(data));
+                                }).catch(err => {});
+                            }
+                            return response;
+                        };
+                    })();
+                """.trimIndent()
+
+                webView.webViewClient = object : WebViewClient() {
+                    override fun onPageStarted(view: WebView?, url: String?, favicon: android.graphics.Bitmap?) {
+                        super.onPageStarted(view, url, favicon)
+                        // Hook fetch before page scripts run — onPageFinished is too late.
+                        view?.evaluateJavascript(jsInterceptor, null)
+                    }
+
+                    override fun onPageFinished(view: WebView?, url: String?) {
+                        super.onPageFinished(view, url)
+                        // Re-inject in case the page replaced window.fetch after start.
+                        view?.evaluateJavascript(jsInterceptor, null)
+                    }
+
+                    override fun shouldInterceptRequest(
+                        view: WebView?,
+                        request: WebResourceRequest?,
+                    ): WebResourceResponse? {
+                        val reqUrl = request?.url?.toString().orEmpty()
+                        if (reqUrl.contains("/api/b/") && continuation.isActive) {
+                            // Best-effort: cannot read body from intercept without proxying;
+                            // rely on JS hook for JSON. Still re-inject early if navigations hop.
+                            Handler(Looper.getMainLooper()).post {
+                                view?.evaluateJavascript(jsInterceptor, null)
+>>>>>>> 6ba88265 (Harden Live Hub, zap cache, and provider playback failover)
                             }
                         }
+                        return super.shouldInterceptRequest(view, request)
+                    }
+                }
+
+                webView.addJavascriptInterface(object : Any() {
+                    @JavascriptInterface
+                    fun onStreamFound(jsonData: String) {
+                        finishWithJson(jsonData)
                     }
                 }, "Android")
 
-                // Start loading the page
                 webView.loadUrl(link)
             }
         }

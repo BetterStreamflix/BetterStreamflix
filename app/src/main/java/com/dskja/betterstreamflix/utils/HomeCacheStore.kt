@@ -65,8 +65,18 @@ object HomeCacheStore {
 
     fun write(context: Context, provider: Provider, categories: List<Category>) {
         runCatching {
-            val payload = categories.map { CachedCategory.from(it) }
             val cacheKey = cacheKey(provider)
+            // Refuse empty overwrite of a non-empty cache (transient scrape / CF miss).
+            if (categories.isEmpty()) {
+                val existing = memoryCache[cacheKey]
+                    ?: cacheFile(context, cacheKey).takeIf { it.exists() }?.let { file ->
+                        runCatching {
+                            gson.fromJson(file.readText(), Array<CachedCategory>::class.java)?.toList()
+                        }.getOrNull()
+                    }
+                if (!existing.isNullOrEmpty()) return@runCatching
+            }
+            val payload = categories.map { CachedCategory.from(it) }
             memoryCache[cacheKey] = payload
             writtenAtMs[cacheKey] = System.currentTimeMillis()
             cacheFile(context, cacheKey).apply {

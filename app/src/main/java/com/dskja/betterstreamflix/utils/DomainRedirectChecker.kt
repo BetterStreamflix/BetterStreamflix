@@ -25,17 +25,14 @@ object DomainRedirectChecker {
             .build()
     }
 
-    /** Host suffixes that are never valid provider homes (parking / interstitial). */
-    private val BLOCKED_HOST_MARKERS = listOf(
-        "parking",
+    /** Full parking / marketplace hosts — matched with exact or endsWith(".$marker"). */
+    private val PARKING_HOST_MARKERS = listOf(
         "sedo.com",
         "godaddy.com",
         "domainmarket.com",
         "afternic.com",
         "hugedomains.com",
         "dan.com",
-        "cloudflare.com",
-        "challenge.cloudflare",
     )
 
     private val PARKING_HTML_MARKERS = listOf(
@@ -119,11 +116,32 @@ object DomainRedirectChecker {
             .removePrefix("www.")
     }
 
-    private fun isBlockedHost(host: String): Boolean {
+    /**
+     * Parking: exact host or subdomain suffix (never mid-label substring).
+     * Cloudflare: only challenge.cloudflare* / exact cloudflare.com — not hosts
+     * that merely contain the substring (e.g. foo.cloudflarecdn.example).
+     */
+    internal fun isBlockedHost(host: String): Boolean {
         if (host.isBlank()) return true
-        return BLOCKED_HOST_MARKERS.any { marker ->
-            host == marker || host.endsWith(".$marker") || host.contains(marker)
+        val h = host.lowercase(Locale.US).removePrefix("www.")
+
+        if (h == "cloudflare.com" || h.endsWith(".cloudflare.com")) return true
+        if (h == "challenge.cloudflare.com" ||
+            h.startsWith("challenge.cloudflare.") ||
+            h.endsWith(".challenge.cloudflare.com")
+        ) {
+            return true
         }
+
+        if (PARKING_HOST_MARKERS.any { marker -> h == marker || h.endsWith(".$marker") }) {
+            return true
+        }
+
+        // "parking" as a DNS label only — not "sparking.com" / "notparkingcdn.com".
+        val labels = h.split('.')
+        if (labels.any { it == "parking" }) return true
+
+        return false
     }
 
     private fun looksLikeParkingPage(html: String): Boolean {

@@ -116,22 +116,35 @@ object ProviderSmoke {
     /**
      * When true, [com.dskja.betterstreamflix.fragments.home.HomeViewModel] should
      * skip the live [Provider.getHome] call and keep serving cache (if any).
+     * Half-open transition is synchronized so concurrent peeks cannot clear the flag twice.
      */
     fun isHomeCircuitOpen(providerName: String): Boolean {
         val window = homeFailures[providerName] ?: return false
+        synchronized(window) {
+            val opened = window.circuitOpenedAtMs
+            if (opened <= 0L) return false
+            val age = System.currentTimeMillis() - opened
+            if (age > CIRCUIT_OPEN_MS) {
+                // Half-open: allow one probe; leave failure count so another fail re-opens.
+                if (window.circuitOpenedAtMs == opened) {
+                    window.circuitOpenedAtMs = 0L
+                }
+                return false
+            }
+            return true
+        }
+    }
+
+    /** Non-mutating peek for UI hints (does not advance half-open). */
+    fun peekHomeCircuitOpen(providerName: String): Boolean {
+        val window = homeFailures[providerName] ?: return false
         val opened = window.circuitOpenedAtMs
         if (opened <= 0L) return false
-        val age = System.currentTimeMillis() - opened
-        if (age > CIRCUIT_OPEN_MS) {
-            // Half-open: allow one probe; leave failure count so another fail re-opens.
-            window.circuitOpenedAtMs = 0L
-            return false
-        }
-        return true
+        return System.currentTimeMillis() - opened <= CIRCUIT_OPEN_MS
     }
 
     fun circuitHint(providerName: String): String? {
-        if (!isHomeCircuitOpen(providerName)) return null
+        if (!peekHomeCircuitOpen(providerName)) return null
         return "Catalog paused for $providerName (recent failures) — showing cache"
     }
 

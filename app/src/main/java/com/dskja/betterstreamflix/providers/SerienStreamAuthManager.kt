@@ -57,7 +57,8 @@ object SerienStreamAuthManager {
         val cookies = SerienStreamBypassHelper.sanitizeSessionCookies(
             UserPreferences.serienStreamSessionCookies,
         )
-        return SerienStreamBypassHelper.looksLikeBypassSolved(cookies) ||
+        // Anonymous PHPSESSID / laravel_session alone must not count as CF solved.
+        return SerienStreamBypassHelper.looksLikeClearanceSolved(cookies) ||
             SerienStreamBypassHelper.looksLikeAccountSession(cookies)
     }
 

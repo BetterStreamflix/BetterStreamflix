@@ -1,6 +1,7 @@
 package com.dskja.betterstreamflix.extractors
 
 import com.dskja.betterstreamflix.models.Video
+import com.dskja.betterstreamflix.utils.ExtractorTimeouts
 import com.dskja.betterstreamflix.utils.withExtractorTimeouts
 import okhttp3.OkHttpClient
 import retrofit2.Retrofit
@@ -40,6 +41,7 @@ class PrimeSrcExtractor : Extractor() {
                 )
             }
         } catch (e: Exception) {
+            if (ExtractorTimeouts.isTimeout(e)) throw e
             emptyList()
         }
     }

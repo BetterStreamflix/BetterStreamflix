@@ -6,6 +6,8 @@ import kotlinx.coroutines.sync.withLock
 import com.dskja.betterstreamflix.utils.UserPreferences
 import com.dskja.betterstreamflix.utils.M3uChannelIdCodec
 import com.dskja.betterstreamflix.utils.M3uPlaylistParser
+import com.dskja.betterstreamflix.utils.LiveCatalogMeta
+import com.dskja.betterstreamflix.utils.NetworkClient
 
 import android.util.Log
 import com.dskja.betterstreamflix.adapters.AppAdapter
@@ -37,19 +39,10 @@ object IptvSpainProvider : IptvProvider, ProviderConfigUrl {
         "Travel", "Weather", "Undefined"
     )
 
-    private val client = OkHttpClient.Builder()
+    private val client = NetworkClient.default.newBuilder()
         .connectTimeout(30, TimeUnit.SECONDS)
         .readTimeout(30, TimeUnit.SECONDS)
         .callTimeout(30, TimeUnit.SECONDS)
-        .cookieJar(object : CookieJar {
-            private val cookieStore = mutableMapOf<String, List<Cookie>>()
-            override fun saveFromResponse(url: HttpUrl, cookies: List<Cookie>) {
-                cookieStore[url.host] = cookies
-            }
-            override fun loadForRequest(url: HttpUrl): List<Cookie> {
-                return cookieStore[url.host] ?: listOf()
-            }
-        })
         .addInterceptor { chain ->
             val request = chain.request().newBuilder()
                 .header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/118.0.0.0 Safari/537.36")
@@ -61,6 +54,9 @@ object IptvSpainProvider : IptvProvider, ProviderConfigUrl {
     private var cachedChannels: List<M3UChannel>? = null
     private var lastFetchTime: Long = 0
     private const val CACHE_DURATION = 30 * 60 * 1000
+
+    @Volatile
+    private var lastM3uFailed: Boolean = false
 
     data class M3UChannel(
         val name: String,
@@ -99,15 +95,36 @@ object IptvSpainProvider : IptvProvider, ProviderConfigUrl {
 
         return try {
             val request = Request.Builder().url(baseUrl).build()
-            val body = client.newCall(request).execute().use { it.body?.string() }
-            if (body.isNullOrBlank()) return emptyList()
-            val channels = parseM3U(body)
-            cachedChannels = channels
-            lastFetchTime = now
-            channels
+            client.newCall(request).execute().use { response ->
+                if (!response.isSuccessful) {
+                    lastM3uFailed = true
+                    Log.e(TAG, "M3U HTTP ${response.code}")
+                    throw Exception("IPTV Spain: HTTP ${response.code} fetching playlist")
+                }
+                val body = response.body?.string()
+                if (body.isNullOrBlank()) {
+                    lastM3uFailed = true
+                    throw Exception("IPTV Spain: empty playlist body")
+                }
+                val channels = parseM3U(body)
+                if (channels.isEmpty()) {
+                    lastM3uFailed = true
+                    throw Exception("IPTV Spain: playlist parsed to zero channels")
+                }
+                lastM3uFailed = false
+                cachedChannels = channels
+                lastFetchTime = now
+                channels
+            }
         } catch (e: Exception) {
             Log.e(TAG, "❌ Error M3U: ${e.message}")
-            cachedChannels ?: emptyList()
+            val stale = cachedChannels
+            if (!stale.isNullOrEmpty()) {
+                lastM3uFailed = false
+                return stale
+            }
+            lastM3uFailed = true
+            throw e
         }
     }
 
@@ -117,7 +134,6 @@ object IptvSpainProvider : IptvProvider, ProviderConfigUrl {
 
         val categories = mutableListOf<Category>()
 
-        // 1. Procesamos categorías de canales primero
         val channelCategories = channels
             .mapNotNull { channel ->
                 val group = channel.group ?: return@mapNotNull null
@@ -134,7 +150,11 @@ object IptvSpainProvider : IptvProvider, ProviderConfigUrl {
                             id = createId(channel),
                             title = channel.name,
                             poster = channel.logo ?: "",
-                            banner = channel.logo ?: ""
+                            banner = channel.logo ?: "",
+                            overview = LiveCatalogMeta.overview(
+                                title = channel.name,
+                                group = groupName,
+                            ),
                         )
                     }
                 )
@@ -142,16 +162,18 @@ object IptvSpainProvider : IptvProvider, ProviderConfigUrl {
 
         categories.addAll(channelCategories)
 
-        // 2. AÑADIMOS SOPORTE AL FINAL (PARTE ULTIMA)
-        categories.add(
-            Category(
-                name = "Soporte y Ayuda",
-                list = listOf(
-                    getInfoItem("creador-info"),
-                    getInfoItem("apoyo-nando")
+        // Soporte only when M3U actually loaded — never mask a failed fetch as healthy home.
+        if (!lastM3uFailed && channels.isNotEmpty()) {
+            categories.add(
+                Category(
+                    name = "Soporte y Ayuda",
+                    list = listOf(
+                        getInfoItem("creador-info"),
+                        getInfoItem("apoyo-nando")
+                    )
                 )
             )
-        )
+        }
 
         return categories
     }
@@ -295,7 +317,15 @@ object IptvSpainProvider : IptvProvider, ProviderConfigUrl {
         val start = (page - 1) * pageSize
         if (start >= channels.size) return emptyList()
         return channels.drop(start).take(pageSize).map { channel ->
-            TvShow(id = createId(channel), title = channel.name, poster = channel.logo ?: "")
+            TvShow(
+                id = createId(channel),
+                title = channel.name,
+                poster = channel.logo ?: "",
+                overview = LiveCatalogMeta.overview(
+                    title = channel.name,
+                    group = channel.group,
+                ),
+            )
         }
     }
     override suspend fun getMovie(id: String): Movie = Movie(id = id, title = "Live", poster = "")

@@ -21,7 +21,8 @@ class MoviesapiExtractor : Extractor() {
             name = name,
             src = when (videoType) {
                 is Video.Type.Movie -> "$mainUrl/movie/${videoType.id}"
-                is Video.Type.Episode -> ""
+                is Video.Type.Episode ->
+                    "$mainUrl/tv/${videoType.tvShow.id}-${videoType.season.number}-${videoType.number}"
             },
         )
     }

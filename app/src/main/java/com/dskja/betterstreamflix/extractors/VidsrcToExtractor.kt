@@ -43,7 +43,14 @@ class VidsrcToExtractor : Extractor() {
             ?.attr("data-id")
             ?: throw Exception("Can't retrieve media ID")
 
-        val keys = service.getKeys(key)
+        val keys = try {
+            service.getKeys(key)
+        } catch (e: Exception) {
+            throw Exception(
+                "Vidsrc.to: failed to fetch keys.json ($key): ${e.message}",
+                e,
+            )
+        }
 
         val sources = service.getSources(
             mediaId,
@@ -70,7 +77,7 @@ class VidsrcToExtractor : Extractor() {
                 "Filemoon" -> FilemoonExtractor.Any(finalUrl.substringBefore("/e/"))
                     .extract(finalUrl)
 
-                else -> Extractor.extract(finalUrl)
+                else -> Extractor.extract(finalUrl, maxAttempts = 1)
             }
         }
 

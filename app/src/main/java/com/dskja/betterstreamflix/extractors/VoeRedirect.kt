@@ -22,7 +22,11 @@ internal object VoeRedirect {
         "ssl.google-analytics.com",
     )
 
-    fun baseUrl(html: String, currentHost: String): String? {
+    fun baseUrl(html: String, currentHost: String, visitedHosts: Set<String> = emptySet()): String? {
+        val current = currentHost.lowercase().removePrefix("www.")
+        val seen = visitedHosts.map { it.lowercase().removePrefix("www.") }.toMutableSet()
+        seen += current
+
         val explicit = listOf(
             Regex("""(?i)(?:window\.)?location(?:\.href)?\s*(?:=|\.replace\s*\()\s*['"](https?://[^'"]+)"""),
             Regex("""(?i)http-equiv\s*=\s*['"]refresh['"][^>]*url\s*=\s*(https?://[^'">\s]+)"""),
@@ -30,27 +34,34 @@ internal object VoeRedirect {
         ).firstNotNullOfOrNull { pattern ->
             pattern.find(html)?.groupValues?.getOrNull(1)
         }
-        if (explicit != null) return hostBase(explicit)
+        if (explicit != null) {
+            val host = hostOnly(explicit) ?: return hostBase(explicit)
+            if (host in seen) return null
+            return hostBase(explicit)
+        }
 
-        val current = currentHost.lowercase().removePrefix("www.")
         val picked = Regex("""https://([a-zA-Z0-9.-]+)""")
             .findAll(html)
             .map { it.groupValues[1] }
             .firstOrNull { host ->
                 val normalized = host.lowercase().removePrefix("www.")
-                normalized != current && ignoredHosts.none { ignored ->
+                normalized !in seen && ignoredHosts.none { ignored ->
                     normalized == ignored || normalized.endsWith(".$ignored")
                 }
             }
         return picked?.let { "https://$it/" }
     }
 
-    private fun hostBase(url: String): String? {
-        val host = Regex("""https?://([a-zA-Z0-9.-]+)""")
+    private fun hostOnly(url: String): String? =
+        Regex("""https?://([a-zA-Z0-9.-]+)""")
             .find(url)
             ?.groupValues
             ?.getOrNull(1)
-            ?: return null
+            ?.lowercase()
+            ?.removePrefix("www.")
+
+    private fun hostBase(url: String): String? {
+        val host = hostOnly(url) ?: return null
         return "https://$host/"
     }
 }

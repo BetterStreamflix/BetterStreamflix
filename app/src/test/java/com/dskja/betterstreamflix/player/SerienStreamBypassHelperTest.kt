@@ -76,7 +76,10 @@ class SerienStreamBypassHelperTest {
             "abc+defgh",
             SerienStreamBypassHelper.extractStreamToken("https://serienstream.to/r?t=abc%2Bdefgh"),
         )
-        assertTrue(SerienStreamBypassHelper.playerGateAssistJs().contains("player-prepare-token"))
+        val gateJs = SerienStreamBypassHelper.playerGateAssistJs()
+        assertTrue(gateJs.contains("player-prepare-token"))
+        assertTrue(gateJs.contains("cf_clearance"))
+        assertTrue(gateJs.contains("buttons.length === 1"))
     }
 
     @Test

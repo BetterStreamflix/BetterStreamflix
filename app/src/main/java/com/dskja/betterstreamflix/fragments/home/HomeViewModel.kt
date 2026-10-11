@@ -551,12 +551,15 @@ class HomeViewModel(
             }
 
             // Circuit breaker: prefer cache over hammering a dead origin.
-            if (ProviderSmoke.isHomeCircuitOpen(provider.name) &&
-                !cachedCategories.isNullOrEmpty() &&
-                !deferCachedHomeForClearance
-            ) {
+            // Still protect when cache is empty (after a prior wipe) — skip live probe.
+            if (ProviderSmoke.isHomeCircuitOpen(provider.name) && !deferCachedHomeForClearance) {
                 val hint = ProviderSmoke.circuitHint(provider.name)
-                _state.emit(State.SuccessLoading(cachedCategories, providerWarning = hint))
+                    ?: "Catalog paused for ${provider.name} (recent failures)"
+                if (!cachedCategories.isNullOrEmpty()) {
+                    _state.emit(State.SuccessLoading(cachedCategories, providerWarning = hint))
+                } else {
+                    _state.emit(State.SuccessLoading(emptyList(), providerWarning = hint))
+                }
                 return@launch
             }
 
@@ -584,6 +587,20 @@ class HomeViewModel(
                 // otherwise DaddyLive scrape misses and TMDb ClassCast empties never trip it.
                 if (processed.categories.isEmpty()) {
                     ProviderSmoke.noteHomeFailure(provider.name)
+                    // Never wipe a good Home cache with an empty scrape — keep serving
+                    // prior shelves (same as the exception path) so SWR / circuit resume.
+                    if (!cachedCategories.isNullOrEmpty()) {
+                        if (!isActive || providerName != UserPreferences.currentProvider?.name) return@launch
+                        val emptyWarning = processed.warningText
+                            ?: "Catalog empty for ${provider.name} · showing cached shelves"
+                        _state.emit(
+                            State.SuccessLoading(
+                                cachedCategories,
+                                providerWarning = emptyWarning,
+                            )
+                        )
+                        return@launch
+                    }
                     HomeCacheStore.write(appContext, provider, processed.categories)
                     if (!isActive || providerName != UserPreferences.currentProvider?.name) return@launch
                     val emptyWarning = processed.warningText

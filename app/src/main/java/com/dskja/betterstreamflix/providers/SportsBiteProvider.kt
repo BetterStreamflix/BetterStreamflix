@@ -27,6 +27,9 @@ import org.json.JSONObject
 
 /**
  * SportsBite — PPV.st schedule/streams with locale → language/country catalog rails.
+ *
+ * Quarantined in [ProviderHealth]: catalog/API still loads, but embedindia/ppv
+ * playback remains JS/ad-gated with no reliable plaintext m3u8 path.
  */
 object SportsBiteProvider : IptvProvider, ProviderConfigUrl {
 

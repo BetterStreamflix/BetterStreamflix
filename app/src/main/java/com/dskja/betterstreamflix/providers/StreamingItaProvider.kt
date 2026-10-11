@@ -57,6 +57,8 @@ object StreamingItaProvider : Provider, ProviderConfigUrl {
     override val changeUrlMutex = Mutex()
 
     override suspend fun onChangeUrl(forceRefresh: Boolean): String = changeUrlMutex.withLock {
+        val root = baseUrl.let { if (it.endsWith("/")) it else "$it/" }
+        service = buildService(root)
         baseUrl
     }
     override val language = "it"
@@ -73,12 +75,18 @@ object StreamingItaProvider : Provider, ProviderConfigUrl {
         return clientBuilder.dns(DnsResolver.doh).build()
     }
 
-    private val retrofit = Retrofit.Builder()
-        .baseUrl(baseUrl)
-        .addConverterFactory(JsoupConverterFactory.create())
-        .client(getOkHttpClient())
-        .build()
-    private val service = retrofit.create(Service::class.java)
+    private fun buildService(root: String): Service {
+        return Retrofit.Builder()
+            .baseUrl(root)
+            .addConverterFactory(JsoupConverterFactory.create())
+            .client(getOkHttpClient())
+            .build()
+            .create(Service::class.java)
+    }
+
+    private var service = buildService(
+        defaultBaseUrl.let { if (it.endsWith("/")) it else "$it/" },
+    )
 
     private interface Service {
         @GET

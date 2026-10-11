@@ -1,5 +1,6 @@
 package com.dskja.betterstreamflix.extractors
 
+import com.dskja.betterstreamflix.utils.ExtractorTimeouts
 import com.dskja.betterstreamflix.utils.withExtractorTimeouts
 import com.dskja.betterstreamflix.models.Video
 import okhttp3.OkHttpClient
@@ -31,6 +32,7 @@ class OnRegardeOuExtractor : Extractor() {
         val json = try {
             JSONObject(jsonRaw)
         } catch (e: Exception) {
+            if (ExtractorTimeouts.isTimeout(e)) throw e
             return emptyList()
         }
         val servers = json.getJSONArray("servers")

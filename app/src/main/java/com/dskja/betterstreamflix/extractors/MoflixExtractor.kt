@@ -4,6 +4,7 @@ import android.util.Base64
 import androidx.media3.common.MimeTypes
 import com.dskja.betterstreamflix.models.Video
 import com.dskja.betterstreamflix.providers.MStreamProvider
+import com.dskja.betterstreamflix.utils.ExtractorTimeouts
 import com.dskja.betterstreamflix.utils.NetworkClient
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
@@ -61,6 +62,7 @@ class MoflixExtractor : Extractor() {
                 )
             }
         } catch (e: Exception) {
+            if (ExtractorTimeouts.isTimeout(e)) throw e
             emptyList()
         }
     }

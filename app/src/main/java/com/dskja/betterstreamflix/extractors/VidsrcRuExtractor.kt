@@ -52,9 +52,12 @@ class VidsrcRuExtractor : Extractor() {
                 }
                 timeoutHandler.postDelayed(timeoutRunnable, 30000)
 
+                val visitedHosts = mutableSetOf<String>()
                 webView.webViewClient = object : WebViewClient() {
                     override fun shouldInterceptRequest(view: WebView?, request: WebResourceRequest?): android.webkit.WebResourceResponse? {
                         val url = request?.url?.toString() ?: ""
+                        val host = request?.url?.host?.lowercase().orEmpty()
+                        if (host.isNotBlank()) visitedHosts.add(host)
                         if (url.contains("/file2/") && url.endsWith(".m3u8")) {
                             timeoutHandler.removeCallbacks(timeoutRunnable)
                             if (continuation.isActive) {
@@ -70,6 +73,16 @@ class VidsrcRuExtractor : Extractor() {
                             }
                         }
                         return super.shouldInterceptRequest(view, request)
+                    }
+
+                    override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {
+                        val host = request?.url?.host?.lowercase().orEmpty()
+                        // Refuse redirect loops onto already-visited hosts with no stream yet.
+                        if (host.isNotBlank() && host in visitedHosts && visitedHosts.size > 2) {
+                            return true
+                        }
+                        if (host.isNotBlank()) visitedHosts.add(host)
+                        return false
                     }
                 }
 

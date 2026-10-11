@@ -9,6 +9,7 @@ import com.dskja.betterstreamflix.providers.IptvProvider
 import com.dskja.betterstreamflix.providers.NtvProvider
 import com.dskja.betterstreamflix.providers.Provider
 import com.dskja.betterstreamflix.providers.ProviderHealth
+import com.dskja.betterstreamflix.providers.ProviderSmoke
 import com.dskja.betterstreamflix.providers.SportsBiteProvider
 import com.dskja.betterstreamflix.providers.StreamSports99Provider
 import java.util.Locale
@@ -18,6 +19,7 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeout
 
 /**
  * Aggregates DaddyLive / StreamSports99 / IPTV-Org (and optional NTV / SportsBite)
@@ -29,6 +31,9 @@ object LiveHubCatalog {
     private const val TAG = "LiveHubCatalog"
     private const val PER_SECTION = 48
     private const val PER_PROVIDER_PAGES = 2
+    /** Per-source budget so IPTV-Org's 30s callTimeout cannot dominate the hub. */
+    private const val PER_SOURCE_TIMEOUT_MS = 18_000L
+    private const val OVERALL_TIMEOUT_MS = 28_000L
 
     const val SECTION_SPORT = "live_hub_sport"
     const val SECTION_NEWS = "live_hub_news"
@@ -77,7 +82,7 @@ object LiveHubCatalog {
         val news = LinkedHashMap<String, TvShow>()
         val channels = LinkedHashMap<String, TvShow>()
         for (show in shows) {
-            val key = showKey(show)
+            val key = dedupeKey(show)
             when (classify(show.title, groupFromOverview(show.overview), show.overview)) {
                 Section.SPORT -> sport.putIfAbsent(key, show)
                 Section.NEWS -> news.putIfAbsent(key, show)
@@ -115,18 +120,38 @@ object LiveHubCatalog {
         val collected = ConcurrentLinkedQueue<TvShow>()
         val warnings = ConcurrentLinkedQueue<String>()
         val sources = hubSources(includeQuarantined)
-        coroutineScope {
-            sources.map { provider ->
-                async {
-                    val batch = runCatching { collectFrom(provider) }
-                        .onFailure { e ->
-                            Log.w(TAG, "Live Hub source ${provider.name} failed: ${e.message}")
-                            warnings.add("${provider.name}: ${e.message ?: "unavailable"}")
+        try {
+            withTimeout(OVERALL_TIMEOUT_MS) {
+                coroutineScope {
+                    sources.map { provider ->
+                        async {
+                            val batch = runCatching {
+                                withTimeout(PER_SOURCE_TIMEOUT_MS) {
+                                    collectFrom(provider)
+                                }
+                            }.onFailure { e ->
+                                Log.w(TAG, "Live Hub source ${provider.name} failed: ${e.message}")
+                                warnings.add("${provider.name}: ${e.message ?: "unavailable"}")
+                                ProviderSmoke.noteHomeFailure(provider.name)
+                            }.getOrNull()
+                            when {
+                                batch == null -> Unit
+                                batch.isEmpty() -> {
+                                    warnings.add("${provider.name}: empty catalog")
+                                    ProviderSmoke.noteHomeFailure(provider.name)
+                                }
+                                else -> {
+                                    ProviderSmoke.noteHomeSuccess(provider.name)
+                                    collected.addAll(batch)
+                                }
+                            }
                         }
-                        .getOrDefault(emptyList())
-                    collected.addAll(batch)
+                    }.awaitAll()
                 }
-            }.awaitAll()
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "Live Hub overall timeout/fail: ${e.message}")
+            warnings.add("Live Hub: ${e.message ?: "timed out"}")
         }
         val shows = collected.toList()
         HubResult(
@@ -160,10 +185,17 @@ object LiveHubCatalog {
             return show
         }
 
-        runCatching { provider.getHome() }.getOrDefault(emptyList()).forEach { category ->
+        // Do not soft-catch hard throws from getHome — propagate so load() records failure.
+        val home = provider.getHome()
+        home.forEach { category ->
             val groupHint = category.name
+            // Skip Soporte meta shelves entirely (IPTV-Org/Spain).
+            if (groupHint.contains("soporte", ignoreCase = true) ||
+                groupHint.contains("ayuda", ignoreCase = true)
+            ) {
+                return@forEach
+            }
             category.list.filterIsInstance<TvShow>().forEach { show ->
-                // Skip IPTV-Org meta/support cards.
                 if (show.id == "creador-info" || show.id == "apoyo-nando") return@forEach
                 if (show.overview.isNullOrBlank() && groupHint.isNotBlank()) {
                     show.overview = LiveCatalogMeta.overview(
@@ -176,10 +208,11 @@ object LiveHubCatalog {
         }
 
         for (page in 1..PER_PROVIDER_PAGES) {
-            val batch = runCatching { provider.getTvShows(page) }.getOrDefault(emptyList())
+            val batch = provider.getTvShows(page)
             if (batch.isEmpty()) break
             batch.forEach { show ->
                 if (show.id == "creador-info" || show.id == "apoyo-nando") return@forEach
+                // Prefer group stamped on overview when provider supplies it (paginated IPTV).
                 out.putIfAbsent(showKey(show), stamp(show))
             }
         }
@@ -203,6 +236,13 @@ object LiveHubCatalog {
 
     private fun showKey(show: TvShow): String =
         "${show.providerName.orEmpty()}|${show.id}"
+
+    /** Cross-provider title dedupe so ESPN from Daddy + SS99 shares one tile. */
+    private fun dedupeKey(show: TvShow): String {
+        val title = show.title.trim().lowercase(Locale.US)
+            .replace(Regex("""\s+"""), " ")
+        return if (title.isNotBlank()) title else showKey(show)
+    }
 
     private fun groupFromOverview(overview: String?): String? {
         if (overview.isNullOrBlank()) return null

@@ -3,6 +3,7 @@ package com.dskja.betterstreamflix.extractors
 import android.util.Base64
 import androidx.media3.common.MimeTypes
 import com.dskja.betterstreamflix.models.Video
+import com.dskja.betterstreamflix.utils.ExtractorTimeouts
 import com.dskja.betterstreamflix.utils.withExtractorTimeouts
 import okhttp3.OkHttpClient
 import retrofit2.Retrofit
@@ -47,6 +48,7 @@ class VidrockExtractor : Extractor() {
                 )
             }
         } catch (e: Exception) {
+            if (ExtractorTimeouts.isTimeout(e)) throw e
             emptyList()
         }
     }

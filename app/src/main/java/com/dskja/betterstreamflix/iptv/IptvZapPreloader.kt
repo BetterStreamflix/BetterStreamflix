@@ -32,16 +32,21 @@ object IptvZapPreloader {
     /** Keep last-good m3u8 briefly so zap does not re-scrape immediately. */
     private const val VIDEO_TTL_MS = 120_000L
 
+    /** Overridable for JVM unit tests (SystemClock is not mocked there). */
+    @Volatile
+    internal var elapsedRealtimeMs: () -> Long = { SystemClock.elapsedRealtime() }
+
     private data class CacheEntry(
         val servers: List<Video.Server>,
-        val storedAtMs: Long = SystemClock.elapsedRealtime(),
+        val storedAtMs: Long,
     )
 
     private data class CachedVideo(
         val video: Video,
-        val cachedAtMs: Long = System.currentTimeMillis(),
+        // Use elapsedRealtime to match servers TTL clock (avoid wall-clock skew).
+        val cachedAtMs: Long,
     ) {
-        fun isFresh(now: Long = System.currentTimeMillis()): Boolean =
+        fun isFresh(now: Long = elapsedRealtimeMs()): Boolean =
             now - cachedAtMs < VIDEO_TTL_MS
     }
 
@@ -53,7 +58,12 @@ object IptvZapPreloader {
             override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, CacheEntry>?): Boolean =
                 size > MAX_ENTRIES
         }
-    private val videoByServerId = ConcurrentHashMap<String, CachedVideo>()
+    /** Access-order LRU for warmed videos; guarded by itself. */
+    private val videoByServerId =
+        object : LinkedHashMap<String, CachedVideo>(16, 0.75f, /* accessOrder = */ true) {
+            override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, CachedVideo>?): Boolean =
+                size > MAX_VIDEO_ENTRIES
+        }
     private val inflight = ConcurrentHashMap<String, Job>()
 
     fun clear() {
@@ -63,14 +73,16 @@ object IptvZapPreloader {
         synchronized(serversByChannelId) {
             serversByChannelId.clear()
         }
-        videoByServerId.clear()
+        synchronized(videoByServerId) {
+            videoByServerId.clear()
+        }
     }
 
     /** Consume a warm entry (remove-on-take). Expired entries are dropped. */
     fun takeCachedServers(channelId: String): List<Video.Server>? {
         synchronized(serversByChannelId) {
             val entry = serversByChannelId.remove(channelId) ?: return null
-            if (SystemClock.elapsedRealtime() - entry.storedAtMs > TTL_MS) return null
+            if (elapsedRealtimeMs() - entry.storedAtMs > TTL_MS) return null
             return entry.servers.takeIf { it.isNotEmpty() }
         }
     }
@@ -78,7 +90,7 @@ object IptvZapPreloader {
     fun peekCachedServers(channelId: String): List<Video.Server>? {
         synchronized(serversByChannelId) {
             val entry = serversByChannelId[channelId] ?: return null
-            if (SystemClock.elapsedRealtime() - entry.storedAtMs > TTL_MS) {
+            if (elapsedRealtimeMs() - entry.storedAtMs > TTL_MS) {
                 serversByChannelId.remove(channelId)
                 return null
             }
@@ -87,30 +99,57 @@ object IptvZapPreloader {
     }
 
     fun invalidate(channelId: String) {
-        synchronized(serversByChannelId) {
-            serversByChannelId.remove(channelId)
+        val servers = synchronized(serversByChannelId) {
+            serversByChannelId.remove(channelId)?.servers
+        }
+        // Also drop warmed m3u8 for this channel — otherwise peek re-serves dead CDN URLs ≤ VIDEO_TTL.
+        if (servers != null) {
+            synchronized(videoByServerId) {
+                servers.forEach { server -> videoByServerId.remove(server.id) }
+            }
         }
         inflight.remove(channelId)?.cancel()
     }
 
-    fun takeCachedVideo(serverId: String): Video? {
-        val hit = videoByServerId[serverId] ?: return null
-        if (!hit.isFresh()) {
-            videoByServerId.remove(serverId, hit)
-            return null
+    /** Test harness: seed warm caches without launching network work. */
+    internal fun seedForTest(channelId: String, servers: List<Video.Server>, video: Video? = null) {
+        val now = elapsedRealtimeMs()
+        synchronized(serversByChannelId) {
+            serversByChannelId[channelId] = CacheEntry(servers, storedAtMs = now)
         }
-        videoByServerId.remove(serverId, hit)
-        return hit.video
+        val firstId = servers.firstOrNull()?.id
+        if (video != null && firstId != null) {
+            synchronized(videoByServerId) {
+                videoByServerId[firstId] = CachedVideo(video, cachedAtMs = now)
+            }
+        }
+    }
+
+    /** Drop a single warmed video (e.g. after getVideo failure when servers entry already gone). */
+    fun invalidateVideo(serverId: String) {
+        synchronized(videoByServerId) {
+            videoByServerId.remove(serverId)
+        }
+    }
+
+    fun takeCachedVideo(serverId: String): Video? {
+        synchronized(videoByServerId) {
+            val hit = videoByServerId.remove(serverId) ?: return null
+            if (!hit.isFresh()) return null
+            return hit.video
+        }
     }
 
     /** Non-destructive warm hit — preferred on the zap critical path. */
     fun peekCachedVideo(serverId: String): Video? {
-        val hit = videoByServerId[serverId] ?: return null
-        if (!hit.isFresh()) {
-            videoByServerId.remove(serverId, hit)
-            return null
+        synchronized(videoByServerId) {
+            val hit = videoByServerId[serverId] ?: return null
+            if (!hit.isFresh()) {
+                videoByServerId.remove(serverId)
+                return null
+            }
+            return hit.video
         }
-        return hit.video
     }
 
     fun warmNeighbors(provider: Provider, radius: Int = DEFAULT_WARM_RADIUS) {
@@ -125,9 +164,9 @@ object IptvZapPreloader {
     fun warmChannel(provider: Provider, channel: IptvLiveSession.Channel) {
         if (provider !is IptvProvider) return
         val serversHit = peekCachedServers(channel.id)
-        if (serversHit != null &&
-            serversHit.firstOrNull()?.let { videoByServerId.containsKey(it.id) } == true
-        ) {
+        val firstServerId = serversHit?.firstOrNull()?.id
+        val freshVideo = firstServerId?.let { peekCachedVideo(it) }
+        if (serversHit != null && freshVideo != null) {
             return
         }
         if (inflight.containsKey(channel.id)) return
@@ -141,20 +180,20 @@ object IptvZapPreloader {
                 if (!isActive || gen != generation.get() || servers.isEmpty()) return@launch
                 synchronized(serversByChannelId) {
                     if (gen != generation.get()) return@synchronized
-                    serversByChannelId[channel.id] = CacheEntry(servers)
+                    serversByChannelId[channel.id] = CacheEntry(servers, storedAtMs = elapsedRealtimeMs())
                 }
                 Log.d(TAG, "warmed ${channel.name} (${servers.size} servers)")
 
-                // Also warm getVideo for the first server (±1) so zap skips HTML scrape.
+                // Also warm getVideo for the first server so zap skips HTML scrape.
                 val first = servers.firstOrNull() ?: return@launch
-                if (videoByServerId.containsKey(first.id)) return@launch
+                if (peekCachedVideo(first.id) != null) return@launch
                 val video = runCatching { provider.getVideo(first) }.getOrNull() ?: return@launch
                 if (!isActive || gen != generation.get()) return@launch
                 if (video.source.isBlank()) return@launch
                 synchronized(videoByServerId) {
                     if (gen != generation.get()) return@synchronized
-                    trimVideosIfNeeded()
-                    videoByServerId[first.id] = CachedVideo(video)
+                    purgeStaleVideosLocked()
+                    videoByServerId[first.id] = CachedVideo(video, cachedAtMs = elapsedRealtimeMs())
                 }
                 Log.d(TAG, "warmed video ${channel.name} → ${video.source.take(80)}")
             } catch (e: CancellationException) {
@@ -173,13 +212,9 @@ object IptvZapPreloader {
         job.start()
     }
 
-    private fun trimVideosIfNeeded() {
-        // Drop stale first.
-        val now = System.currentTimeMillis()
-        val stale = videoByServerId.filterValues { !it.isFresh(now) }.keys
+    private fun purgeStaleVideosLocked() {
+        val now = elapsedRealtimeMs()
+        val stale = videoByServerId.filterValues { !it.isFresh(now) }.keys.toList()
         stale.forEach { videoByServerId.remove(it) }
-        if (videoByServerId.size < MAX_VIDEO_ENTRIES) return
-        val drop = videoByServerId.keys.take(videoByServerId.size - MAX_VIDEO_ENTRIES + 2)
-        drop.forEach { videoByServerId.remove(it) }
     }
 }

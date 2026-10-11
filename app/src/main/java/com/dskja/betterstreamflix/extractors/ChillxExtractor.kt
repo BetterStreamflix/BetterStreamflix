@@ -63,11 +63,7 @@ open class ChillxExtractor : Extractor() {
         override val mainUrl = "https://player.jeansaispasplus.homes/"
     }
 
-    class MoviesapiExtractor : ChillxExtractor() {
-        override val name = "Moviesapi"
-        override val mainUrl = "https://moviesapi.club/"
-    }
-
+    // Nested MoviesapiExtractor removed — top-level MoviesapiExtractor is registered.
 
     private interface Service {
 

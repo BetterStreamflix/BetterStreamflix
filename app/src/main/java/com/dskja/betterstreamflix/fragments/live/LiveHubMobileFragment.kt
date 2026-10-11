@@ -28,7 +28,6 @@ import com.dskja.betterstreamflix.utils.ExpMotion
 import com.dskja.betterstreamflix.utils.ExpNavAutoHide
 import com.dskja.betterstreamflix.utils.ExperimentalMobileDesign
 import com.dskja.betterstreamflix.utils.LoggingUtils
-import com.dskja.betterstreamflix.utils.UserPreferences
 import com.dskja.betterstreamflix.utils.dp
 import kotlinx.coroutines.launch
 
@@ -180,16 +179,18 @@ class LiveHubMobileFragment : Fragment() {
                 IptvLiveSession.Channel(id = it.id, name = it.title, logo = it.poster)
             }
             IptvLiveSession.remember(channels, provider = provider)
-            providerShows.take(3).forEach { show ->
+            val anchors = providerShows.take(3)
+            anchors.firstOrNull()?.let { first ->
+                // Seed playhead so warmNeighbors(±2) is not a no-op on hub browse.
+                IptvLiveSession.setCurrent(first.id)
+            }
+            anchors.forEach { show ->
                 IptvZapPreloader.warmChannel(
                     provider,
                     IptvLiveSession.Channel(id = show.id, name = show.title, logo = show.poster),
                 )
             }
-            // Keep neighbor warm for whatever the user is currently on if same provider.
-            if (UserPreferences.currentProvider?.name == provider.name) {
-                IptvZapPreloader.warmNeighbors(provider, radius = 2)
-            }
+            IptvZapPreloader.warmNeighbors(provider, radius = 2)
         }
     }
 

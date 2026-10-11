@@ -192,6 +192,9 @@ interface Provider {
             StreamingItaProvider to ProviderSupport(movies = true, tvShows = true),
             AnyMovieProvider to ProviderSupport(movies = true, tvShows = true),
             HiAnimeProvider to ProviderSupport(movies = true, tvShows = true),
+            AnimeBumProvider to ProviderSupport(movies = true, tvShows = true),
+            OtakufrProvider to ProviderSupport(movies = true, tvShows = true),
+            SuperStreamProvider to ProviderSupport(movies = true, tvShows = true),
             UnJourUnFilmProvider to ProviderSupport(movies = true, tvShows = true),
             AfterDarkProvider to ProviderSupport(movies = true, tvShows = true),
             com.dskja.betterstreamflix.platform.jellyfin.JellyfinProvider to ProviderSupport(

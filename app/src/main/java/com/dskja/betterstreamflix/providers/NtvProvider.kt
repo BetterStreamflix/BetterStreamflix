@@ -95,6 +95,10 @@ object NtvProvider : IptvProvider, ProviderConfigUrl {
         ChannelCoverResolver.warm()
         val channels = loadChannels()
         val matches = loadMatches()
+        // Soft-empty JSON must not poison the 10-min catalog cache.
+        if (channels.isEmpty() && matches.isEmpty()) {
+            throw Exception("NTV: empty channels and matches catalog")
+        }
         cachedChannels = channels
         cachedMatches = matches
         lastFetch = now
@@ -102,8 +106,10 @@ object NtvProvider : IptvProvider, ProviderConfigUrl {
     }
 
     private fun loadChannels(): List<Item> {
-        val json = fetchJson("$baseUrl/api/get-channels") ?: return emptyList()
-        val arr = json.optJSONArray("channels") ?: return emptyList()
+        val json = fetchJson("$baseUrl/api/get-channels")
+            ?: throw Exception("NTV: channels JSON unavailable")
+        val arr = json.optJSONArray("channels")
+            ?: throw Exception("NTV: channels array missing")
         val out = ArrayList<Item>(arr.length())
         for (i in 0 until arr.length()) {
             val o = arr.optJSONObject(i) ?: continue

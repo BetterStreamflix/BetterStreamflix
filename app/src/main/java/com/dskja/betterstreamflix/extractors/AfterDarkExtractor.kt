@@ -5,6 +5,12 @@ import android.net.Uri
 import androidx.media3.common.MimeTypes
 import com.dskja.betterstreamflix.models.Video
 import com.dskja.betterstreamflix.utils.DnsResolver
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.withPermit
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import java.util.concurrent.TimeUnit
@@ -17,7 +23,8 @@ class AfterDarkExtractor( var newUrl: String = "" ) : Extractor() {
 
     companion object {
         const val USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
-        
+        private const val MAX_CONCURRENCY = 4
+
         private val PROVIDER_HASHES = listOf(
             Pair("Premium", "aa86800c3ec95e610210f8378c316734ee92a09ee00f8c708c1a06c616651e8f"),
             Pair("Raven (fdla)", "63e997074c73a7b57239e53ac7618f3e1ef81bda3f0ab47ee0ecc82bf0493904"),
@@ -26,7 +33,7 @@ class AfterDarkExtractor( var newUrl: String = "" ) : Extractor() {
             Pair("Yuna (msfu)", "24758778992d2473ae2618adf856f8902a675718eef18169c854d07d1fcad298"),
             Pair("Ive (iodv)", "70b726570a3111d2c6d51ae57139e4af4b69392ebbf32293c5d7f7ec53922cd5"),
             Pair("Lumi (redu)", "e818c6028fbd6b8c58ce3cdb1d8be2972ffa0a486361fc07b7e9d2bd0c2d95f2"),
-            Pair("Beta (zele)", "e89c6cdf5d5296dd5f0e864a030efdfcaa1896773fb9f0d7e6926acaed7f4a86"),
+            Pair("Beta (zele)", "e89c6cdf5d5296dd5f0e864a030efdfcaa1896773fb9f0d7e8066acaed7f4a86"),
             Pair("Bunny (ofsa)", "dc4cc6245be6fec3d7ea391bfac09cb5d4090e5135629b0e6e81bacd3d10e8dc"),
             Pair("Gamma (offi)", "c3ce337885c3aae80534c9fa298aae6a4b37fa0188c09238610beeacd553caf1")
         )
@@ -47,115 +54,123 @@ class AfterDarkExtractor( var newUrl: String = "" ) : Extractor() {
     }
 
     suspend fun servers(videoType: Video.Type): List<Video.Server> {
-        val allServers = mutableListOf<Video.Server>()
-
         val encodedPayload = Uri.encode(when (videoType) {
             is Video.Type.Movie -> buildPayload(videoType.title, "movie", videoType.id, videoType.imdbId ?: "0", videoType.releaseDate.split("-").firstOrNull() ?: "")
             is Video.Type.Episode -> buildPayload(videoType.tvShow.title, "tv", videoType.tvShow.id, videoType.tvShow.imdbId ?: "0", videoType.tvShow.releaseDate?.split("-")?.firstOrNull() ?: "", videoType.season.number, videoType.number)
         })
 
-        for ((pName, pHash) in PROVIDER_HASHES) {
-            val apiUrl = "$mainUrl/_serverFn/$pHash?payload=$encodedPayload"
-            
-            try {
-                val request = Request.Builder()
-                    .url(apiUrl)
-                    .header("User-Agent", USER_AGENT)
-                    .header("Referer", "$mainUrl/")
-                    .header("X-Requested-With", "XMLHttpRequest")
-                    .header("x-tsr-serverfn", "true")
-                    .build()
-
-                val response = client.newCall(request).execute()
-                val body = response.use { resp ->
-                    if (resp.code == 404 || resp.code == 410 || !resp.isSuccessful) return@use null
-                    resp.body?.string()
-                } ?: continue
-                
-                if (body.contains("\"error\":") && body.contains("\"details\":")) continue
-
-                val blockPattern = Pattern.compile("\"k\":\\[([^\\]]+)\\],\"v\":\\[([^\\]]+)\\]")
-                val matcher = blockPattern.matcher(body)
-                
-                while (matcher.find()) {
-                    val keysStr = matcher.group(1) ?: ""
-                    val valsStr = matcher.group(2) ?: ""
-                    
-                    val keys = keysStr.split(",").map { it.trim().trim('\"') }
-                    val vals = mutableListOf<String>()
-                    val valMatcher = Pattern.compile("\"s\":\"([^\"]*)\"").matcher(valsStr)
-                    while (valMatcher.find()) {
-                        vals.add(valMatcher.group(1) ?: "")
-                    }
-                    
-                    if (keys.size != vals.size) continue
-                    
-                    val data = keys.zip(vals).toMap()
-                    val service = data["service"]?.lowercase() ?: ""
-                    
-                    // UI Sources Logic:
-                    // 1. 'Sources' = Premium provider OR proxied entries OR 'unknown' services.
-                    val prefixes = mapOf(
-                        "voe" to "https://proxy.afterdark.baby/boom-clap?url=",
-                        "vidmoly" to "https://proxy.afterdark.baby/elizabeth-taylor?url=",
-                        "uqload" to "https://proxy.afterdark.baby/alejandro?url=",
-                        "vidzy" to "https://proxy.afterdark.baby/rolly?url="
-                    )
-                    
-                    val rawUrl = data["url"] ?: data["embedUrl"] ?: continue
-                    var url = rawUrl
-                    val proxyPrefix = prefixes[service]
-                    
-                    val isSource = when {
-                        pName == "Premium" -> {
-                            url = rawUrl
-                            true
-                        }
-                        proxyPrefix != null -> {
-                            // Official UI only shows the PROXIED version if a proxy exists.
-                            url = "${proxyPrefix}${Uri.encode(rawUrl)}"
-                            true
-                        }
-                        else -> {
-                            // Official UI only shows the NON-PROXIED version if the service is 'unknown'.
-                            service == "unknown" || service.isBlank()
-                        }
-                    }
-
-                    if (!isSource) continue
-
-                    val resolvedProv = data["provider"] ?: pName.split(" ")[0]
-                    val quality = data["quality"] ?: "hd"
-                    val language = data["language"] ?: "vf"
-
-                    if (url.startsWith("http")) {
-                        val serverName = "$resolvedProv • $quality • $language"
-                        
-                        // Avoid duplicates if both url and embedUrl were parsed as separate blocks
-                        if (allServers.none { it.video?.source == url }) {
-                            allServers.add(
-                                Video.Server(
-                                    id = "afd_${allServers.size}",
-                                    name = serverName,
-                                ).apply {
-                                    video = Video(
-                                        source = url,
-                                        type = if (url.contains(".m3u8")) MimeTypes.APPLICATION_M3U8 else MimeTypes.APPLICATION_MP4,
-                                        headers = mapOf(
-                                            "Referer" to "$mainUrl/",
-                                            "User-Agent" to USER_AGENT
-                                        )
-                                    )
-                                }
-                            )
-                        }
+        val gate = Semaphore(MAX_CONCURRENCY)
+        return coroutineScope {
+            PROVIDER_HASHES.map { (pName, pHash) ->
+                async(Dispatchers.IO) {
+                    gate.withPermit {
+                        fetchProviderServers(pName, pHash, encodedPayload)
                     }
                 }
-            } catch (e: Exception) {
-                android.util.Log.w("AfterDarkExtractor", "provider $pName skipped: ${e.message}")
-            }
+            }.awaitAll().flatten()
         }
-        
-        return allServers
+    }
+
+    private fun fetchProviderServers(
+        pName: String,
+        pHash: String,
+        encodedPayload: String,
+    ): List<Video.Server> {
+        val apiUrl = "$mainUrl/_serverFn/$pHash?payload=$encodedPayload"
+        val collected = mutableListOf<Video.Server>()
+
+        try {
+            val request = Request.Builder()
+                .url(apiUrl)
+                .header("User-Agent", USER_AGENT)
+                .header("Referer", "$mainUrl/")
+                .header("X-Requested-With", "XMLHttpRequest")
+                .header("x-tsr-serverfn", "true")
+                .build()
+
+            val response = client.newCall(request).execute()
+            val body = response.use { resp ->
+                if (resp.code == 404 || resp.code == 410 || !resp.isSuccessful) return@use null
+                resp.body?.string()
+            } ?: return emptyList()
+
+            if (body.contains("\"error\":") && body.contains("\"details\":")) return emptyList()
+
+            val blockPattern = Pattern.compile("\"k\":\\[([^\\]]+)\\],\"v\":\\[([^\\]]+)\\]")
+            val matcher = blockPattern.matcher(body)
+
+            while (matcher.find()) {
+                val keysStr = matcher.group(1) ?: ""
+                val valsStr = matcher.group(2) ?: ""
+
+                val keys = keysStr.split(",").map { it.trim().trim('\"') }
+                val vals = mutableListOf<String>()
+                val valMatcher = Pattern.compile("\"s\":\"([^\"]*)\"").matcher(valsStr)
+                while (valMatcher.find()) {
+                    vals.add(valMatcher.group(1) ?: "")
+                }
+
+                if (keys.size != vals.size) continue
+
+                val data = keys.zip(vals).toMap()
+                val service = data["service"]?.lowercase() ?: ""
+
+                val prefixes = mapOf(
+                    "voe" to "https://proxy.afterdark.baby/boom-clap?url=",
+                    "vidmoly" to "https://proxy.afterdark.baby/elizabeth-taylor?url=",
+                    "uqload" to "https://proxy.afterdark.baby/alejandro?url=",
+                    "vidzy" to "https://proxy.afterdark.baby/rolly?url="
+                )
+
+                val rawUrl = data["url"] ?: data["embedUrl"] ?: continue
+                var url = rawUrl
+                val proxyPrefix = prefixes[service]
+
+                val isSource = when {
+                    pName == "Premium" -> {
+                        url = rawUrl
+                        true
+                    }
+                    proxyPrefix != null -> {
+                        url = "${proxyPrefix}${Uri.encode(rawUrl)}"
+                        true
+                    }
+                    else -> {
+                        service == "unknown" || service.isBlank()
+                    }
+                }
+
+                if (!isSource) continue
+
+                val resolvedProv = data["provider"] ?: pName.split(" ")[0]
+                val quality = data["quality"] ?: "hd"
+                val language = data["language"] ?: "vf"
+
+                if (url.startsWith("http")) {
+                    val serverName = "$resolvedProv • $quality • $language"
+                    if (collected.none { it.video?.source == url }) {
+                        collected.add(
+                            Video.Server(
+                                id = "afd_${pHash.take(8)}_${collected.size}",
+                                name = serverName,
+                            ).apply {
+                                video = Video(
+                                    source = url,
+                                    type = if (url.contains(".m3u8")) MimeTypes.APPLICATION_M3U8 else MimeTypes.APPLICATION_MP4,
+                                    headers = mapOf(
+                                        "Referer" to "$mainUrl/",
+                                        "User-Agent" to USER_AGENT
+                                    )
+                                )
+                            }
+                        )
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            android.util.Log.w("AfterDarkExtractor", "provider $pName skipped: ${e.message}")
+        }
+        // Skip empty provider results (already emptyList on early exits).
+        return collected
     }
 }

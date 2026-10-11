@@ -114,16 +114,28 @@ open class FilemoonExtractor : Extractor() {
             "attributes" to mapOf("entropy" to "high")
         )
 
-        val attestResponse = service.attest(attestUrl, attestPayload, mapOf(
-            "Referer" to embedFrameUrl,
-            "Origin" to playbackDomain,
-            "User-Agent" to Service.DEFAULT_USER_AGENT
-        ))
-        
-        val token = attestResponse.token ?: throw Exception("No attest token")
+        val attestResponse = try {
+            service.attest(attestUrl, attestPayload, mapOf(
+                "Referer" to embedFrameUrl,
+                "Origin" to playbackDomain,
+                "User-Agent" to Service.DEFAULT_USER_AGENT
+            ))
+        } catch (e: Exception) {
+            throw Exception(
+                "Filemoon attestation failed (anti-bot / network): ${e.message}",
+                e,
+            )
+        }
+
+        val token = attestResponse.token
+            ?: throw Exception("Filemoon attestation failed: no token (anti-bot rejected)")
         viewerId = attestResponse.viewer_id ?: viewerId
         deviceId = attestResponse.device_id ?: deviceId
-        val confidence = attestResponse.confidence ?: throw Exception("No confidence in response")
+        val confidence = attestResponse.confidence
+            ?: throw Exception("Filemoon attestation failed: no confidence in response")
+        if (confidence <= 0) {
+            throw Exception("Filemoon attestation failed: confidence=$confidence")
+        }
 
         Log.i("BetterStreamflix", "[Filemoon] Attest Token obtained (Confidence: $confidence)")
 
