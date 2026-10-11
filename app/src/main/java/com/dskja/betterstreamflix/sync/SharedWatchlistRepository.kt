@@ -45,17 +45,17 @@ object SharedWatchlistRepository {
         val items = buildItems(history.favoriteMovies, history.favoriteTvShows, fallbackProvider)
         if (items.isEmpty()) error("Your watchlist is empty")
 
-        val existing = client.from(LISTS)
+        // Schema has no profile_id column — key lists client-side via title marker.
+        val listTitle = listTitleForProfile(profileId)
+        val owned = client.from(LISTS)
             .select(Columns.ALL) {
                 filter {
                     eq("owner_id", userId)
                 }
-                limit(1)
             }
             .decodeList<RemoteSharedWatchlist>()
-            .firstOrNull()
+        val existing = owned.firstOrNull { matchesProfileList(it, profileId) }
 
-        val title = appContext.getString(R.string.shared_watchlist_default_title)
         val token = newShareToken()
         val expiresAt = defaultExpiryIso()
         val nowIso = Instant.now().toString()
@@ -64,7 +64,7 @@ object SharedWatchlistRepository {
             client.from(LISTS)
                 .update(
                     RemoteSharedWatchlistTokenUpdate(
-                        title = title,
+                        title = listTitle,
                         shareToken = token,
                         expiresAt = expiresAt,
                         updatedAt = nowIso,
@@ -79,7 +79,7 @@ object SharedWatchlistRepository {
                 .insert(
                     RemoteSharedWatchlist(
                         ownerId = userId,
-                        title = title,
+                        title = listTitle,
                         shareToken = token,
                         expiresAt = expiresAt,
                     ),
@@ -116,19 +116,16 @@ object SharedWatchlistRepository {
         val userId = client.auth.currentSessionOrNull()?.user?.id
             ?: error("Sign in to rotate your watchlist link")
 
-        val existing = client.from(LISTS)
+        val owned = client.from(LISTS)
             .select(Columns.ALL) {
                 filter { eq("owner_id", userId) }
-                limit(1)
             }
             .decodeList<RemoteSharedWatchlist>()
-            .firstOrNull()
+        val existing = owned.firstOrNull { matchesProfileList(it, profileId) }
             ?: error("No shared list to rotate")
 
         val listId = existing.id ?: error("Shared list missing id")
-        val title = existing.title.ifBlank {
-            appContext.getString(R.string.shared_watchlist_default_title)
-        }
+        val title = listTitleForProfile(profileId)
         val updated = client.from(LISTS)
             .update(
                 RemoteSharedWatchlistTokenUpdate(
@@ -146,7 +143,7 @@ object SharedWatchlistRepository {
         return SharedWatchlistLinks.buildUri(updated.shareToken)
     }
 
-    /** Deletes the signed-in owner's shared_watchlists row (items cascade). */
+    /** Deletes the signed-in owner's shared list for the active profile (items cascade). */
     suspend fun revokeCurrentSharedList(context: Context) {
         requireConfigured()
         val appContext = context.applicationContext
@@ -156,8 +153,15 @@ object SharedWatchlistRepository {
         val userId = client.auth.currentSessionOrNull()?.user?.id
             ?: error("Sign in to revoke your watchlist link")
 
+        val owned = client.from(LISTS)
+            .select(Columns.ALL) {
+                filter { eq("owner_id", userId) }
+            }
+            .decodeList<RemoteSharedWatchlist>()
+        val existing = owned.firstOrNull { matchesProfileList(it, profileId) } ?: return
+        val listId = existing.id ?: return
         client.from(LISTS).delete {
-            filter { eq("owner_id", userId) }
+            filter { eq("id", listId) }
         }
     }
 
@@ -215,6 +219,19 @@ object SharedWatchlistRepository {
             }
         }
         return dropped
+    }
+
+    /** Title marker used because `shared_watchlists` has no `profile_id` column. */
+    internal fun listTitleForProfile(profileId: String): String = "Watchlist [p:$profileId]"
+
+    internal fun matchesProfileList(list: RemoteSharedWatchlist, profileId: String): Boolean {
+        val marker = "[p:$profileId]"
+        return if (list.title.contains("[p:")) {
+            list.title.contains(marker)
+        } else {
+            // Legacy unscoped "Watchlist" rows belong to the default profile only.
+            profileId == ProfileManager.DEFAULT_PROFILE_ID
+        }
     }
 
     private fun newShareToken(): String =

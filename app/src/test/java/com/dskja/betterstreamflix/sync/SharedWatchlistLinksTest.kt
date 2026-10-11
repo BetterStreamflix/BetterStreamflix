@@ -11,14 +11,20 @@ class SharedWatchlistLinksTest {
     @Test
     fun buildAndParseRoundTrip() {
         val token = "abcdef12abcdef12abcdef12abcdef12"
-        assertEquals(token, SharedWatchlistLinks.parseToken(SharedWatchlistLinks.buildUri(token)))
+        val uri = SharedWatchlistLinks.buildUri(token)
+        assertTrue(uri.startsWith("https://betterstreamflix.app/list/"))
+        assertEquals(token, SharedWatchlistLinks.parseToken(uri))
     }
 
     @Test
-    fun parseQueryToken() {
+    fun parseCustomSchemeAndHttps() {
+        val token = "abcdef12abcdef12"
+        assertEquals(token, SharedWatchlistLinks.parseToken("betterstreamflix://list?token=$token"))
+        assertEquals(token, SharedWatchlistLinks.parseToken(SharedWatchlistLinks.buildCustomSchemeUri(token)))
+        assertEquals(token, SharedWatchlistLinks.parseToken("https://betterstreamflix.app/list/$token"))
         assertEquals(
-            "abcdef12abcdef12",
-            SharedWatchlistLinks.parseToken("betterstreamflix://list?token=abcdef12abcdef12"),
+            token,
+            SharedWatchlistLinks.parseToken("https://www.betterstreamflix.app/list?token=$token"),
         )
     }
 

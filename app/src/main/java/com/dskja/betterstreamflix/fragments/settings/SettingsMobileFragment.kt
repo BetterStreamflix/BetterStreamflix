@@ -33,7 +33,7 @@ import com.dskja.betterstreamflix.BuildConfig
 import com.dskja.betterstreamflix.R
 import com.dskja.betterstreamflix.activities.main.MainMobileActivity
 import com.dskja.betterstreamflix.activities.tools.QrScannerActivity
-import com.dskja.betterstreamflix.activities.tools.WatchlistImportActivity
+import com.dskja.betterstreamflix.activities.tools.ProviderWatchlistScrapeActivity
 import com.dskja.betterstreamflix.backup.BackupRestoreManager
 import com.dskja.betterstreamflix.backup.ProviderBackupContext
 import com.dskja.betterstreamflix.database.AppDatabase
@@ -836,6 +836,13 @@ class SettingsMobileFragment : PreferenceFragmentCompat() {
             true
         }
 
+        findPreference<SwitchPreference>("ALLOW_PHONE_PORTRAIT_PLAYBACK")?.isChecked =
+            UserPreferences.allowPhonePortraitPlayback
+        findPreference<SwitchPreference>("ALLOW_PHONE_PORTRAIT_PLAYBACK")?.setOnPreferenceChangeListener { _, newValue ->
+            UserPreferences.allowPhonePortraitPlayback = newValue as Boolean
+            true
+        }
+
         findPreference<SwitchPreference>("UPDATE_CHECK_ENABLED")?.isChecked = UserPreferences.updateCheckEnabled
         findPreference<SwitchPreference>("UPDATE_CHECK_ENABLED")?.setOnPreferenceChangeListener { _, newValue ->
             UserPreferences.updateCheckEnabled = newValue as Boolean
@@ -1146,9 +1153,9 @@ class SettingsMobileFragment : PreferenceFragmentCompat() {
 
         findPreference<Preference>("WATCHLIST_IMPORT_SERIENSTREAM")?.setOnPreferenceClickListener {
             startActivity(
-                Intent(requireContext(), WatchlistImportActivity::class.java).putExtra(
-                    WatchlistImportActivity.EXTRA_SOURCE,
-                    WatchlistImportActivity.SOURCE_SERIENSTREAM,
+                Intent(requireContext(), ProviderWatchlistScrapeActivity::class.java).putExtra(
+                    ProviderWatchlistScrapeActivity.EXTRA_SOURCE,
+                    ProviderWatchlistScrapeActivity.SOURCE_SERIENSTREAM,
                 )
             )
             true
@@ -1156,9 +1163,9 @@ class SettingsMobileFragment : PreferenceFragmentCompat() {
 
         findPreference<Preference>("WATCHLIST_IMPORT_ANIWORLD")?.setOnPreferenceClickListener {
             startActivity(
-                Intent(requireContext(), WatchlistImportActivity::class.java).putExtra(
-                    WatchlistImportActivity.EXTRA_SOURCE,
-                    WatchlistImportActivity.SOURCE_ANIWORLD,
+                Intent(requireContext(), ProviderWatchlistScrapeActivity::class.java).putExtra(
+                    ProviderWatchlistScrapeActivity.EXTRA_SOURCE,
+                    ProviderWatchlistScrapeActivity.SOURCE_ANIWORLD,
                 )
             )
             true
@@ -2217,6 +2224,8 @@ class SettingsMobileFragment : PreferenceFragmentCompat() {
         findPreference<SwitchPreference>("FORCE_EXTRA_BUFFERING")?.isChecked = UserPreferences.forceExtraBuffering
         findPreference<SwitchPreference>("PLAYER_GESTURES")?.isChecked = UserPreferences.playerGestures
         findPreference<SwitchPreference>("KEEP_SCREEN_ON_WHEN_PAUSED")?.isChecked = UserPreferences.keepScreenOnWhenPaused
+        findPreference<SwitchPreference>("ALLOW_PHONE_PORTRAIT_PLAYBACK")?.isChecked =
+            UserPreferences.allowPhonePortraitPlayback
         findPreference<SwitchPreferenceCompat>("ENABLE_TMDB")?.isChecked = UserPreferences.enableTmdb
         DownloadsSettingsController.refresh(
             findPreference = { key -> findPreference(key) },

@@ -76,6 +76,31 @@ class HomeCatalogPipelineTest {
     }
 
     @Test
+    fun homeBindSignatureIncludesDurationMillis() {
+        val withPos = Movie(id = "1", title = "A", poster = "p", banner = "b").apply {
+            watchHistory = com.dskja.betterstreamflix.models.WatchItem.WatchHistory(
+                lastEngagementTimeUtcMillis = 1L,
+                lastPlaybackPositionMillis = 30_000L,
+                durationMillis = 0L,
+            )
+        }
+        val withDuration = Movie(id = "1", title = "A", poster = "p", banner = "b").apply {
+            watchHistory = com.dskja.betterstreamflix.models.WatchItem.WatchHistory(
+                lastEngagementTimeUtcMillis = 1L,
+                lastPlaybackPositionMillis = 30_000L,
+                durationMillis = 100_000L,
+            )
+        }
+        val sigA = HomeCatalogPipeline.homeBindSignature(
+            listOf(Category(name = Category.CONTINUE_WATCHING, list = listOf(withPos))),
+        )
+        val sigB = HomeCatalogPipeline.homeBindSignature(
+            listOf(Category(name = Category.CONTINUE_WATCHING, list = listOf(withDuration))),
+        )
+        assertTrue(sigA != sigB)
+    }
+
+    @Test
     fun dropsEmptyShelvesAndDedupes() {
         val a = Movie(id = "a", title = "A")
         val dup = Movie(id = "a", title = "A again")

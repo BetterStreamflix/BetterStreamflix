@@ -8,13 +8,19 @@ import androidx.fragment.app.FragmentActivity
 import androidx.lifecycle.lifecycleScope
 import com.dskja.betterstreamflix.R
 import com.dskja.betterstreamflix.download.DownloadConnectivityMonitor
+import com.dskja.betterstreamflix.profiles.ProfileUnlockGate
 import com.dskja.betterstreamflix.utils.ExpDialogChrome
+import com.dskja.betterstreamflix.utils.ExperimentalMobileDesign
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 object SharedWatchlistUi {
     private val promptedPendingTokens = mutableSetOf<String>()
+
+    @Volatile
+    private var confirmInFlight = false
 
     fun shareCurrentList(fragment: Fragment) {
         val context = fragment.context ?: return
@@ -129,6 +135,11 @@ object SharedWatchlistUi {
             ExpDialogChrome.notify(activity, R.string.shared_watchlist_import_invalid_link)
             return
         }
+        // Defer confirm until Kids/PIN unlock completes so imports cannot race the gate.
+        if (ProfileUnlockGate.requiresGateForActive()) {
+            SharedWatchlistPendingImport.enqueue(appContext, token)
+            return
+        }
         if (!SupabaseProvider.isConfigured) {
             SharedWatchlistPendingImport.enqueue(appContext, token)
             ExpDialogChrome.notify(activity, R.string.shared_watchlist_import_needs_supabase)
@@ -139,10 +150,16 @@ object SharedWatchlistUi {
             ExpDialogChrome.notify(activity, R.string.shared_watchlist_import_queued_offline)
             return
         }
+        if (confirmInFlight) {
+            SharedWatchlistPendingImport.enqueue(appContext, token)
+            return
+        }
+        confirmInFlight = true
         activity.lifecycleScope.launch {
             val payload = withContext(Dispatchers.IO) {
                 runCatching { SharedWatchlistRepository.fetchByToken(appContext, token) }
             }.getOrElse { error ->
+                confirmInFlight = false
                 SharedWatchlistPendingImport.enqueue(appContext, token)
                 ExpDialogChrome.notify(
                     activity,
@@ -159,17 +176,31 @@ object SharedWatchlistUi {
                 payload.title.ifBlank { activity.getString(R.string.main_menu_favorites) },
                 count,
             )
-            val builder = androidx.appcompat.app.AlertDialog.Builder(activity)
+            var importing = false
+            val useGlass = ExperimentalMobileDesign.enabled()
+            val builder = if (useGlass) {
+                MaterialAlertDialogBuilder(ExpDialogChrome.themedContext(activity))
+            } else {
+                androidx.appcompat.app.AlertDialog.Builder(activity)
+            }
+            val glass = if (useGlass) {
+                ExpDialogChrome.buildGlassMessage(activity, message)
+            } else {
+                null
+            }
+            if (glass != null) builder.setView(glass.root) else builder.setMessage(message)
+            val dialog = builder
                 .setTitle(R.string.shared_watchlist_import_confirm_title)
-                .setMessage(message)
                 .setNegativeButton(android.R.string.cancel, null)
                 .setPositiveButton(R.string.shared_watchlist_import_confirm_action) { _, _ ->
+                    importing = true
                     activity.lifecycleScope.launch {
                         val importResult = withContext(Dispatchers.IO) {
                             runCatching {
                                 SharedWatchlistImporter.importPayload(appContext, payload)
                             }
                         }
+                        confirmInFlight = false
                         importResult.onSuccess { result ->
                             SharedWatchlistPendingImport.acknowledge(appContext, token)
                             promptedPendingTokens.remove(token.trim())
@@ -183,6 +214,8 @@ object SharedWatchlistUi {
                                     result.skippedAgeRestricted,
                                 ),
                             )
+                            // Continue with any remaining queued tokens.
+                            tryFlushPending(activity)
                         }.onFailure { error ->
                             ExpDialogChrome.notify(
                                 activity,
@@ -194,19 +227,33 @@ object SharedWatchlistUi {
                         }
                     }
                 }
-            builder.show()
+                .create()
+            dialog.setOnDismissListener {
+                if (!importing) confirmInFlight = false
+            }
+            dialog.setOnShowListener {
+                if (glass != null) {
+                    ExpDialogChrome.polishGlassMessageShown(dialog, glass)
+                } else {
+                    ExpDialogChrome.polishButtons(dialog)
+                }
+            }
+            dialog.show()
         }
     }
 
     /**
      * Peeks the per-profile pending queue and, when an [FragmentActivity] is available,
      * shows the same confirm dialog as [handleIncomingToken]. Never silent-imports.
+     * No-ops while the Kids/PIN unlock gate is still required.
      */
     fun tryFlushPending(context: Context) {
         if (!SupabaseProvider.isConfigured) return
         if (!DownloadConnectivityMonitor.isOnline(context)) return
         val activity = context as? FragmentActivity ?: return
         if (activity.isFinishing) return
+        if (ProfileUnlockGate.requiresGateForActive()) return
+        if (confirmInFlight) return
         val appContext = activity.applicationContext
         val token = SharedWatchlistPendingImport.peek(appContext)
             .firstOrNull { it !in promptedPendingTokens }

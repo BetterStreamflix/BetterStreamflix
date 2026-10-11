@@ -1163,9 +1163,9 @@ class MovieViewHolder(
         val remaining = root.findViewById<android.widget.TextView>(R.id.tv_movie_remaining) ?: return
         val watchHistory = movie.watchHistory
         if (continueWatching && watchHistory != null && watchHistory.durationMillis > 0) {
-            val pct = (watchHistory.lastPlaybackPositionMillis * 100 /
-                watchHistory.durationMillis.toDouble()).toInt().coerceIn(0, 99)
-            remaining.text = context.getString(R.string.continue_watching_percent, pct)
+            remaining.text = com.dskja.betterstreamflix.ui.DetailWatchLabels
+                .remainingMinutesLabel(context, watchHistory)
+                ?: context.getString(R.string.continue_watching_percent, 0)
             if (ExperimentalMobileDesign.enabled()) {
                 remaining.setBackgroundResource(ExperimentalMobileDesign.metaPillBackground())
             }
@@ -1265,19 +1265,24 @@ class MovieViewHolder(
             movie.providerName?.takeIf { it.isNotBlank() },
         )
 
-        val ids = buildList {
-            movie.tmdbId?.takeIf { it.isNotBlank() }?.let {
-                add(context.getString(R.string.detail_about_id_tmdb, it))
-            }
-            movie.imdbId?.takeIf { it.isNotBlank() }?.let {
-                add(context.getString(R.string.detail_about_id_imdb, it))
-            }
-        }.joinToString(" · ")
+        val tmdbPart = movie.tmdbId?.takeIf { it.isNotBlank() }?.let {
+            context.getString(R.string.detail_about_id_tmdb, it)
+        }
+        val imdbPart = movie.imdbId?.takeIf { it.isNotBlank() }?.let {
+            context.getString(R.string.detail_about_id_imdb, it)
+        }
+        val ids = listOfNotNull(tmdbPart, imdbPart).joinToString(" · ")
         bindFact(binding.tvDetailAboutIdsLabel, binding.tvDetailAboutIds, ids.ifBlank { null })
-        if (!movie.tmdbId.isNullOrBlank()) {
-            binding.tvDetailAboutIds.setTextColor(
-                ContextCompat.getColor(context, R.color.cinema_tmdb),
+        if (!tmdbPart.isNullOrBlank() && binding.tvDetailAboutIds.visibility == View.VISIBLE) {
+            val spanned = android.text.SpannableString(ids)
+            val tmdbColor = ContextCompat.getColor(context, R.color.cinema_tmdb)
+            spanned.setSpan(
+                android.text.style.ForegroundColorSpan(tmdbColor),
+                0,
+                tmdbPart.length,
+                android.text.Spanned.SPAN_EXCLUSIVE_EXCLUSIVE,
             )
+            binding.tvDetailAboutIds.text = spanned
         }
 
         val anyFact = listOf(

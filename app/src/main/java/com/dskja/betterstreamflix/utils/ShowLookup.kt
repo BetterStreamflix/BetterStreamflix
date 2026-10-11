@@ -78,7 +78,7 @@ object ShowLookup {
         throw primary.exceptionOrNull() ?: IllegalStateException("TV show not found: $id")
     }
 
-    internal fun titlesMatch(left: String, right: String): Boolean {
+    fun titlesMatch(left: String, right: String): Boolean {
         val a = normalize(left)
         val b = normalize(right)
         if (a.isEmpty() || b.isEmpty()) return false

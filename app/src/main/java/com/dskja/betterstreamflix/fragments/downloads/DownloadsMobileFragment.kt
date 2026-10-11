@@ -13,6 +13,8 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.flowWithLifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.navigation.fragment.findNavController
+import androidx.core.view.ViewCompat
+import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.dskja.betterstreamflix.R
 import com.dskja.betterstreamflix.databinding.FragmentDownloadsMobileBinding
@@ -68,11 +70,11 @@ class DownloadsMobileFragment : Fragment() {
         onPackPause = { viewModel.pausePack(it.pack.id) },
         onPackResume = { viewModel.resumePack(it.pack.id) },
         onPackDelete = { pack ->
-            confirmDestructive(R.string.downloads_delete_confirm) {
+            confirmDestructive(R.string.downloads_pack_delete_confirm) {
                 viewModel.removePack(pack.pack.id)
             }
         },
-        onSeriesToggle = { viewModel.toggleSeriesCollapsed(it.seriesKey) },
+        onSeriesToggle = { viewModel.toggleSeriesFolder(it.seriesKey) },
     )
 
     override fun onCreateView(
@@ -116,7 +118,17 @@ class DownloadsMobileFragment : Fragment() {
                 chip.postDelayed({ ExpMotion.popIn(chip) }, 32L * index)
             }
         }
-        binding.rvDownloads.layoutManager = LinearLayoutManager(requireContext())
+        val tablet = resources.configuration.smallestScreenWidthDp >= 600
+        binding.rvDownloads.layoutManager = if (tablet) {
+            GridLayoutManager(requireContext(), 2).also { grid ->
+                grid.spanSizeLookup = object : GridLayoutManager.SpanSizeLookup() {
+                    override fun getSpanSize(position: Int): Int =
+                        adapter.spanForPosition(position, fullSpan = 2)
+                }
+            }
+        } else {
+            LinearLayoutManager(requireContext())
+        }
         binding.rvDownloads.itemAnimator = null
         binding.rvDownloads.adapter = adapter
         binding.btnDownloadsMenu.apply {
@@ -263,6 +275,7 @@ class DownloadsMobileFragment : Fragment() {
 
     override fun onResume() {
         super.onResume()
+        viewModel.ensureProfileScope()
         viewModel.refreshWifiPreference()
         viewModel.startLiveProgress()
     }
@@ -282,6 +295,18 @@ class DownloadsMobileFragment : Fragment() {
     private fun styleChip(chip: android.widget.TextView, selected: Boolean) {
         val wasSelected = chip.isSelected
         chip.isSelected = selected
+        chip.isClickable = true
+        chip.isFocusable = true
+        ViewCompat.setAccessibilityHeading(chip, false)
+        ViewCompat.setStateDescription(
+            chip,
+            if (selected) getString(R.string.downloads_filter_selected_a11y, chip.text) else null,
+        )
+        chip.contentDescription = if (selected) {
+            getString(R.string.downloads_filter_selected_a11y, chip.text)
+        } else {
+            chip.text
+        }
         val exp = ExperimentalMobileDesign.enabled()
         chip.setBackgroundResource(
             when {
@@ -387,7 +412,8 @@ class DownloadsMobileFragment : Fragment() {
                 .setCheckable(true)
                 .setChecked(viewModel.currentSort() == DownloadsSort.SIZE)
             sortMenu.setGroupCheckable(0, true, true)
-            menu.add(0, 5, 7, R.string.downloads_action_settings)
+            menu.add(0, 13, 7, R.string.downloads_action_storage)
+            menu.add(0, 5, 8, R.string.downloads_action_settings)
             setOnMenuItemClickListener {
                 when (it.itemId) {
                     1 -> viewModel.pauseAll()
@@ -398,7 +424,7 @@ class DownloadsMobileFragment : Fragment() {
                     4 -> confirmDestructive(R.string.settings_download_clear_failed_confirm) {
                         viewModel.clearFailed()
                     }
-                    5 -> {
+                    5, 13 -> {
                         SettingsDeepLink.openDownloadsScreen()
                         findNavController().navigate(R.id.settings)
                     }
@@ -493,7 +519,7 @@ class DownloadsMobileFragment : Fragment() {
                 when (it.itemId) {
                     1 -> viewModel.pausePack(pack.pack.id)
                     2 -> viewModel.resumePack(pack.pack.id)
-                    3 -> confirmDestructive(R.string.downloads_delete_confirm) {
+                    3 -> confirmDestructive(R.string.downloads_pack_delete_confirm) {
                         viewModel.removePack(pack.pack.id)
                     }
                 }
@@ -587,6 +613,10 @@ class DownloadsMobileFragment : Fragment() {
 
     private fun playOffline(row: DownloadRowUiModel.Item) {
         viewLifecycleOwner.lifecycleScope.launch {
+            if (!viewModel.isPlayAllowed(row.entity)) {
+                showDownloadError(R.string.downloads_failed_generic)
+                return@launch
+            }
             val videoType = DownloadController.deserializeVideoType(row.entity.videoTypeJson)
             if (videoType == null) {
                 showDownloadError(R.string.downloads_failed_generic)

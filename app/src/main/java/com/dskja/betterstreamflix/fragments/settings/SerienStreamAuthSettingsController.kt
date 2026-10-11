@@ -15,7 +15,7 @@ import androidx.fragment.app.Fragment
 import androidx.lifecycle.LifecycleCoroutineScope
 import androidx.preference.Preference
 import com.dskja.betterstreamflix.R
-import com.dskja.betterstreamflix.activities.tools.WatchlistImportActivity
+import com.dskja.betterstreamflix.activities.tools.ProviderWatchlistScrapeActivity
 import com.dskja.betterstreamflix.providers.SerienStreamAuthManager
 import java.text.DateFormat
 import java.util.Date
@@ -218,12 +218,12 @@ object SerienStreamAuthSettingsController {
 
     private fun openBrowserLogin(fragment: Fragment) {
         fragment.startActivity(
-            Intent(fragment.requireContext(), WatchlistImportActivity::class.java)
+            Intent(fragment.requireContext(), ProviderWatchlistScrapeActivity::class.java)
                 .putExtra(
-                    WatchlistImportActivity.EXTRA_SOURCE,
-                    WatchlistImportActivity.SOURCE_SERIENSTREAM,
+                    ProviderWatchlistScrapeActivity.EXTRA_SOURCE,
+                    ProviderWatchlistScrapeActivity.SOURCE_SERIENSTREAM,
                 )
-                .putExtra(WatchlistImportActivity.EXTRA_SAVE_SESSION_ONLY, true),
+                .putExtra(ProviderWatchlistScrapeActivity.EXTRA_SAVE_SESSION_ONLY, true),
         )
     }
 

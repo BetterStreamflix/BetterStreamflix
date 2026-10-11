@@ -291,6 +291,7 @@ class PlayerMobileFragment : Fragment() {
         }
 
         val currentPosition = player.currentPosition
+        UserPreferences.subtitleName = fileName
         installExtraSubtitle(
             MediaItem.SubtitleConfiguration.Builder(uri)
                 .setMimeType(fileName.toSubtitleMimeType())
@@ -565,6 +566,7 @@ class PlayerMobileFragment : Fragment() {
                             )
                         ) {
                             is PlaybackFailover.Action.TryNextServer -> {
+                                pendingPlayWithAfterResolve = false
                                 val next = servers.getOrNull(action.nextIndex)
                                 if (next != null) {
                                     showFailoverServerCue(action.nextIndex, servers.size)
@@ -579,6 +581,7 @@ class PlayerMobileFragment : Fragment() {
                                 }
                             }
                             PlaybackFailover.Action.RetrySoftwareDecoder -> {
+                                pendingPlayWithAfterResolve = false
                                 // Leave currentSoftwareDecoder stale so needsReinit rebuilds Exo.
                                 PlayerSettingsView.Settings.SoftwareDecoder.init(true)
                                 PlayerSettingsView.Settings.SoftwareDecoder.selectedValue = true
@@ -586,9 +589,11 @@ class PlayerMobileFragment : Fragment() {
                                 viewModel.getVideo(state.server)
                             }
                             PlaybackFailover.Action.TryExternalPlayer -> {
+                                pendingPlayWithAfterResolve = false
                                 currentExternalPlayerTried = true
                                 val video = currentVideo
                                 if (video != null) {
+                                    showPlayerCue(R.string.player_retry_external_player)
                                     val pos = runCatching { player.currentPosition }.getOrDefault(0L)
                                     com.dskja.betterstreamflix.platform.playerbackend.ExternalMpvBackend.open(
                                         requireContext(),
@@ -602,6 +607,7 @@ class PlayerMobileFragment : Fragment() {
                                 }
                             }
                             PlaybackFailover.Action.GiveUp -> {
+                                pendingPlayWithAfterResolve = false
                                 if (isOfflinePlayback()) {
                                     showPlayerError(getString(R.string.player_offline_missing))
                                 } else {
@@ -632,6 +638,7 @@ class PlayerMobileFragment : Fragment() {
                         binding.settings.openSubtitles = state.subtitles
                     }
                     is PlayerViewModel.SubtitleState.FailedOpenSubtitles -> {
+                        binding.settings.openSubtitles = emptyList()
                         notifyPlayer(
                             getString(
                                 R.string.player_subtitle_search_failed,
@@ -670,6 +677,7 @@ class PlayerMobileFragment : Fragment() {
                         binding.settings.subDLSubtitles = state.subtitles
                     }
                     is PlayerViewModel.SubtitleState.FailedSubDLSubtitles -> {
+                        binding.settings.subDLSubtitles = emptyList()
                         notifyPlayer(
                             getString(
                                 R.string.player_subtitle_search_failed,
@@ -1811,6 +1819,8 @@ class PlayerMobileFragment : Fragment() {
                     )
                 ) {
                     is PlaybackFailover.Action.TryNextServer -> {
+                        suppressBuiltInErrorOverlay()
+                        pendingPlayWithAfterResolve = false
                         val next = servers.getOrNull(action.nextIndex)
                         if (next != null) {
                             Log.i(
@@ -1824,6 +1834,8 @@ class PlayerMobileFragment : Fragment() {
                         }
                     }
                     PlaybackFailover.Action.RetrySoftwareDecoder -> {
+                        suppressBuiltInErrorOverlay()
+                        pendingPlayWithAfterResolve = false
                         // Leave currentSoftwareDecoder stale so needsReinit rebuilds Exo.
                         PlayerSettingsView.Settings.SoftwareDecoder.init(true)
                         PlayerSettingsView.Settings.SoftwareDecoder.selectedValue = true
@@ -1835,9 +1847,11 @@ class PlayerMobileFragment : Fragment() {
                         }
                     }
                     PlaybackFailover.Action.TryExternalPlayer -> {
+                        pendingPlayWithAfterResolve = false
                         currentExternalPlayerTried = true
                         val video = currentVideo
                         if (video != null) {
+                            showPlayerCue(R.string.player_retry_external_player)
                             val pos = runCatching { player.currentPosition }.getOrDefault(0L)
                             com.dskja.betterstreamflix.platform.playerbackend.ExternalMpvBackend.open(
                                 requireContext(),
@@ -1849,6 +1863,7 @@ class PlayerMobileFragment : Fragment() {
                         }
                     }
                     PlaybackFailover.Action.GiveUp -> {
+                        pendingPlayWithAfterResolve = false
                         if (isOfflinePlayback()) {
                             showPlayerError(getString(R.string.player_offline_missing))
                         } else {
@@ -2000,8 +2015,10 @@ class PlayerMobileFragment : Fragment() {
     }
 
     private fun playerPlaybackOrientation(): Int {
-        // Allow portrait on tablets; phones stay sensor-landscape for transport density.
+        // Tablets: full sensor. Phones: landscape by default; optional portrait via Settings.
         return if (resources.configuration.smallestScreenWidthDp >= 600) {
+            ActivityInfo.SCREEN_ORIENTATION_SENSOR
+        } else if (UserPreferences.allowPhonePortraitPlayback) {
             ActivityInfo.SCREEN_ORIENTATION_SENSOR
         } else {
             ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
@@ -2009,8 +2026,9 @@ class PlayerMobileFragment : Fragment() {
     }
 
     private fun playerExitOrientation(): Int {
+        // Tablets: sensor-portrait so browse is not left unspecified after landscape playback.
         return if (resources.configuration.smallestScreenWidthDp >= 600) {
-            ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
+            ActivityInfo.SCREEN_ORIENTATION_SENSOR_PORTRAIT
         } else {
             ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
         }
@@ -2952,15 +2970,25 @@ class PlayerMobileFragment : Fragment() {
     private fun queueNextEpisodeForContinueWatching(provider: com.dskja.betterstreamflix.providers.Provider) {
         val nextEpisode = EpisodeManager.peekNextEpisode() ?: return
         val episodeDao = database?.episodeDao() ?: return
-        val persistedNextEpisode = episodeDao.getById(nextEpisode.id)?.apply {
-            isWatched = false
-            watchedDate = null
-            watchHistory = WatchItem.WatchHistory(
-                lastEngagementTimeUtcMillis = System.currentTimeMillis(),
-                lastPlaybackPositionMillis = 0L,
-                durationMillis = 0L,
-            )
-        } ?: Episode(
+        // Do not stamp WatchHistory/engagement on the unwatched successor — that forces it
+        // into Continue Watching and blocks EpisodeDao.getNextEpisodesToWatch (NOT EXISTS
+        // lastEngagementTimeUtcMillis). Keep metadata only so Next Episodes can own binge.
+        val existing = episodeDao.getById(nextEpisode.id)
+        if (existing != null) {
+            val hist = existing.watchHistory
+            val fakeQueueEngagement = hist != null &&
+                hist.lastPlaybackPositionMillis == 0L &&
+                hist.durationMillis == 0L
+            if (fakeQueueEngagement || existing.isWatched) {
+                existing.isWatched = false
+                existing.watchedDate = null
+                if (fakeQueueEngagement) existing.watchHistory = null
+                episodeDao.save(existing)
+                UserDataCache.syncEpisodeToCache(requireContext(), provider, existing)
+            }
+            return
+        }
+        val persistedNextEpisode = Episode(
             id = nextEpisode.id,
             number = nextEpisode.number,
             title = nextEpisode.title,
@@ -2979,13 +3007,7 @@ class PlayerMobileFragment : Fragment() {
         ).apply {
             isWatched = false
             watchedDate = null
-            watchHistory = WatchItem.WatchHistory(
-                lastEngagementTimeUtcMillis = System.currentTimeMillis(),
-                lastPlaybackPositionMillis = 0L,
-                durationMillis = 0L,
-            )
         }
-
         episodeDao.save(persistedNextEpisode)
         UserDataCache.syncEpisodeToCache(requireContext(), provider, persistedNextEpisode)
     }
@@ -3258,6 +3280,7 @@ class PlayerMobileFragment : Fragment() {
                 when (action) {
                     StreamFailureReason.Action.SOLVE_CAPTCHA -> launchSolveCaptcha()
                     StreamFailureReason.Action.UPDATE_DOMAIN -> launchUpdateDomain()
+                    StreamFailureReason.Action.OPEN_SETTINGS -> launchVpnSettings()
                     StreamFailureReason.Action.NONE -> Unit
                 }
             }
@@ -3271,14 +3294,18 @@ class PlayerMobileFragment : Fragment() {
             }
             close.setOnClickListener {
                 ExpMotion.hapticTap(it)
+                val openServers = {
+                    if (!isTearingDown && isAdded && _binding != null && servers.isNotEmpty()) {
+                        keepControllerVisibleForSettings()
+                        binding.settings.showServers()
+                    }
+                }
                 if (ExperimentalMobileDesign.enabled()) {
                     ExpMotion.fadeOutAndHide(overlay)
-                    overlay.postDelayed({
-                        if (!isTearingDown && isAdded) safeNavigateUp()
-                    }, 220L)
+                    overlay.postDelayed({ openServers() }, 220L)
                 } else {
                     overlay.isGone = true
-                    safeNavigateUp()
+                    openServers()
                 }
             }
         }
@@ -3303,6 +3330,16 @@ class PlayerMobileFragment : Fragment() {
     }
 
     private fun launchSolveCaptcha() {
+        if (!StreamFailureReason.supportsCaptchaSolve(UserPreferences.currentProvider) &&
+            buildSerienStreamBypassUrl(servers).isNullOrBlank()
+        ) {
+            Toast.makeText(
+                requireContext(),
+                R.string.player_bypass_retry_needed_mobile,
+                Toast.LENGTH_LONG,
+            ).show()
+            return
+        }
         val bypassUrl = buildSerienStreamBypassUrl(servers)
         if (!bypassUrl.isNullOrBlank()) {
             waitingForBypass = true
@@ -3321,6 +3358,26 @@ class PlayerMobileFragment : Fragment() {
             Toast.LENGTH_LONG,
         ).show()
         viewModel.reloadServersAfterBypass()
+    }
+
+    private fun launchVpnSettings() {
+        val intents = listOf(
+            Intent("android.net.vpn.SETTINGS"),
+            Intent(android.provider.Settings.ACTION_VPN_SETTINGS),
+            Intent(android.provider.Settings.ACTION_WIRELESS_SETTINGS),
+        )
+        for (intent in intents) {
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            if (intent.resolveActivity(requireContext().packageManager) != null) {
+                runCatching { startActivity(intent) }
+                return
+            }
+        }
+        Toast.makeText(
+            requireContext(),
+            R.string.player_stream_fail_geo_message,
+            Toast.LENGTH_LONG,
+        ).show()
     }
 
     private fun launchUpdateDomain() {
@@ -3353,9 +3410,18 @@ class PlayerMobileFragment : Fragment() {
             openCurrentStreamWithDownloader()
             true
         }
+        val downloadHint = getString(R.string.player_download_with_long_press)
         controller.btnExoExternalPlayer.contentDescription =
-            getString(R.string.exp_cd_external_player) + ". " +
-                getString(R.string.player_download_with_long_press)
+            getString(R.string.exp_cd_external_player) + ". " + downloadHint
+        androidx.appcompat.widget.TooltipCompat.setTooltipText(
+            controller.btnExoExternalPlayer,
+            downloadHint,
+        )
+        // One-shot toast so ADM/1DM long-press is discoverable without Settings.
+        if (!UserPreferences.downloadWithLongPressHintShown) {
+            UserPreferences.downloadWithLongPressHintShown = true
+            Toast.makeText(requireContext(), downloadHint, Toast.LENGTH_LONG).show()
+        }
     }
 
     private fun updateCastQueueChrome() {
@@ -3365,6 +3431,8 @@ class PlayerMobileFragment : Fragment() {
         val count = CastPlaybackHub.queuedCount()
         if (!casting || count <= 0) {
             badge.isGone = true
+            badge.setOnClickListener(null)
+            badge.isClickable = false
             return
         }
         val nextTitle = CastPlaybackHub.peekNextQueued()
@@ -3373,6 +3441,14 @@ class PlayerMobileFragment : Fragment() {
             getString(R.string.player_cast_queue_next, nextTitle)
         } else {
             getString(R.string.player_cast_queue_badge, count)
+        }
+        badge.contentDescription = getString(R.string.player_cast_queue_clear_cd)
+        badge.isClickable = true
+        badge.isFocusable = true
+        badge.setOnClickListener {
+            ExpMotion.hapticTap(it)
+            CastPlaybackHub.clearQueue()
+            updateCastQueueChrome()
         }
         badge.isVisible = true
     }
@@ -3675,11 +3751,14 @@ class PlayerMobileFragment : Fragment() {
         if (CastPlaybackHub.queuedCount() > 0) return
         if (castNextQueueJob?.isActive == true) return
         castNextQueueJob = lifecycleScope.launch {
+            val appContext = requireContext().applicationContext
             val prepared = withContext(Dispatchers.IO) {
                 CastQueueCoordinator.prepareNextEpisodeQueue(
+                    context = appContext,
                     provider = UserPreferences.currentProvider,
                     currentVideoType = args.videoType,
-                    subtitleConfigurations = emptyList(),
+                    // null → subtitleConfigurationsForPlayback(next episode + server subs)
+                    subtitleConfigurations = null,
                     // Do not override next-episode CDN headers with the previous item's.
                     headers = emptyMap(),
                 )

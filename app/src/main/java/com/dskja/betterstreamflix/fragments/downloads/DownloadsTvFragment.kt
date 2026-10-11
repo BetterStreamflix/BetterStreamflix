@@ -246,6 +246,7 @@ class DownloadsTvFragment : Fragment() {
 
     override fun onResume() {
         super.onResume()
+        viewModel.ensureProfileScope()
         viewModel.refreshWifiPreference()
         viewModel.startLiveProgress()
     }

@@ -8,13 +8,26 @@
     <ImageView
         android:id="@+id/iv_episode_tv_show_poster"
         android:layout_width="0dp"
-        android:layout_height="200dp"
+        android:layout_height="@dimen/continue_watching_poster_height"
         android:scaleType="centerCrop"
         app:layout_constraintDimensionRatio="2:3"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent"
         tools:ignore="ContentDescription" />
+
+    <ImageView
+        android:id="@+id/iv_episode_download_ribbon"
+        android:layout_width="22dp"
+        android:layout_height="22dp"
+        android:layout_margin="6dp"
+        android:elevation="4dp"
+        android:src="@drawable/ic_offline_badge"
+        android:visibility="gone"
+        app:layout_constraintStart_toStartOf="@id/iv_episode_tv_show_poster"
+        app:layout_constraintTop_toTopOf="@id/iv_episode_tv_show_poster"
+        tools:ignore="ContentDescription"
+        tools:visibility="visible" />
 
     <TextView
         android:id="@+id/tv_episode_remaining"

@@ -128,9 +128,18 @@ object PlayerBuilderFactory {
         if (selector != null) {
             val params = selector.buildUponParameters()
             val lang = UserPreferences.currentProvider?.language?.substringBefore("-")
+            val subtitlesOff = UserPreferences.subtitleName?.trim().isNullOrEmpty()
             ProviderAudioLanguage.preferredAudioLanguages(lang)?.let { codes ->
                 params.setPreferredAudioLanguages(*codes)
-                params.setPreferredTextLanguages(*codes)
+                // Preferring provider text languages re-enables embedded captions after
+                // an Off selection (new Exo / software-decoder rebuild). Skip when Off.
+                if (!subtitlesOff) {
+                    params.setPreferredTextLanguages(*codes)
+                }
+            }
+            if (subtitlesOff) {
+                params.setTrackTypeDisabled(C.TRACK_TYPE_TEXT, true)
+                params.setIgnoredTextSelectionFlags(C.SELECTION_FLAG_FORCED.inv())
             }
             if (options.preferStereoAudio || constrained) {
                 params.setMaxAudioChannelCount(2)

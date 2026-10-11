@@ -35,6 +35,7 @@
     <string name="live_hub_empty">Brak kanałów live — spróbuj ponownie</string>
     <string name="live_hub_empty_tv">Brak kanałów live — naciśnij OK, aby spróbować ponownie</string>
     <string name="live_hub_restricted">Telewizja na żywo jest niedostępna w profilu dziecięcym lub z kontrolą rodzicielską.</string>
+    <string name="live_hub_source_unavailable">%1$s niedostępne</string>
     <string name="main_menu_theme_change">Zmien motyw</string>
 
     <string name="search_input_hint">Szukaj filmow i seriali</string>

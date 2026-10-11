@@ -119,6 +119,8 @@ abstract class AppDatabase : RoomDatabase() {
                 currentProfileId = null
             }
             runCatching {
+                com.dskja.betterstreamflix.download.DownloadDatabase.resetInstance()
+                com.dskja.betterstreamflix.download.DownloadRepository.resetInstance()
                 com.dskja.betterstreamflix.download.OfflineBadgeStore.reset()
             }
         }

@@ -1,46 +1,72 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:background="@drawable/bg_download_item"
     android:focusable="true"
     android:nextFocusLeft="@id/nav_main"
-    android:orientation="vertical"
     android:padding="14dp"
     android:layout_marginBottom="8dp">
 
+    <ImageButton
+        android:id="@+id/btn_download_season_more"
+        android:layout_width="48dp"
+        android:layout_height="48dp"
+        android:background="?attr/selectableItemBackgroundBorderless"
+        android:contentDescription="@string/downloads_item_more"
+        android:padding="12dp"
+        android:src="@drawable/ic_more_vert"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        app:tint="#FFFFFFFF" />
+
     <TextView
         android:id="@+id/tv_download_season_title"
-        android:layout_width="match_parent"
+        android:layout_width="0dp"
         android:layout_height="wrap_content"
+        android:paddingEnd="8dp"
         android:textColor="#FFFFFFFF"
         android:textSize="15sp"
-        android:textStyle="bold" />
+        android:textStyle="bold"
+        app:layout_constraintEnd_toStartOf="@id/btn_download_season_more"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
 
     <TextView
         android:id="@+id/tv_download_season_subtitle"
-        android:layout_width="match_parent"
+        android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_marginTop="2dp"
+        android:paddingEnd="8dp"
         android:textColor="#B3FFFFFF"
-        android:textSize="13sp" />
+        android:textSize="13sp"
+        app:layout_constraintEnd_toStartOf="@id/btn_download_season_more"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/tv_download_season_title" />
 
     <ProgressBar
         android:id="@+id/pb_download_season"
         style="?android:attr/progressBarStyleHorizontal"
-        android:layout_width="match_parent"
+        android:layout_width="0dp"
         android:layout_height="8dp"
         android:layout_marginTop="8dp"
         android:progressTint="#7DB3E8"
-        android:progressBackgroundTint="#33FFFFFF" />
+        android:progressBackgroundTint="#33FFFFFF"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/tv_download_season_subtitle" />
 
     <LinearLayout
         android:id="@+id/ll_download_season_actions"
-        android:layout_width="match_parent"
+        android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:gravity="end"
         android:orientation="horizontal"
-        android:paddingTop="8dp">
+        android:paddingTop="10dp"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/pb_download_season">
 
         <TextView
             android:id="@+id/btn_download_season_pause"
@@ -48,9 +74,11 @@
             android:layout_height="wrap_content"
             android:background="@drawable/bg_download_action"
             android:focusable="true"
-            android:paddingStart="14dp"
+            android:minHeight="48dp"
+            android:gravity="center"
+            android:paddingStart="12dp"
             android:paddingTop="8dp"
-            android:paddingEnd="14dp"
+            android:paddingEnd="12dp"
             android:paddingBottom="8dp"
             android:text="@string/downloads_pack_pause"
             android:textAllCaps="false"
@@ -65,9 +93,11 @@
             android:layout_marginStart="8dp"
             android:background="@drawable/bg_download_action"
             android:focusable="true"
-            android:paddingStart="14dp"
+            android:minHeight="48dp"
+            android:gravity="center"
+            android:paddingStart="12dp"
             android:paddingTop="8dp"
-            android:paddingEnd="14dp"
+            android:paddingEnd="12dp"
             android:paddingBottom="8dp"
             android:text="@string/downloads_pack_resume"
             android:textAllCaps="false"
@@ -82,9 +112,11 @@
             android:layout_marginStart="8dp"
             android:background="@drawable/bg_download_action"
             android:focusable="true"
-            android:paddingStart="14dp"
+            android:minHeight="48dp"
+            android:gravity="center"
+            android:paddingStart="12dp"
             android:paddingTop="8dp"
-            android:paddingEnd="14dp"
+            android:paddingEnd="12dp"
             android:paddingBottom="8dp"
             android:text="@string/downloads_pack_delete"
             android:textAllCaps="false"
@@ -92,4 +124,4 @@
             android:textSize="13sp"
             android:textStyle="bold" />
     </LinearLayout>
-</LinearLayout>
+</androidx.constraintlayout.widget.ConstraintLayout>

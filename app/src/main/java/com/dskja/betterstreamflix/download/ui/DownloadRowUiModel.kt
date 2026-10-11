@@ -49,6 +49,26 @@ sealed class DownloadRowUiModel {
                 }
                 return context?.getString(R.string.downloads_completed_size, size) ?: size
             }
+            val wifiHeld = state == DownloadItemState.PAUSED &&
+                entity.errorCode == DownloadErrorCode.WIFI_REQUIRED.name
+            if (wifiHeld) {
+                val used = DownloadStorage.formatBytes(context, entity.bytesDownloaded)
+                val total = if (entity.contentLength > 0) {
+                    DownloadStorage.formatBytes(context, entity.contentLength)
+                } else {
+                    context?.getString(R.string.download_size_unknown) ?: "?"
+                }
+                return if (context != null) {
+                    context.getString(
+                        R.string.downloads_progress_wifi_held,
+                        entity.progressPct,
+                        used,
+                        total,
+                    )
+                } else {
+                    "${entity.progressPct}% · $used / $total · Wi‑Fi required"
+                }
+            }
             val used = DownloadStorage.formatBytes(context, entity.bytesDownloaded)
             val knownTotal = entity.contentLength > 0
             val total = if (knownTotal) {
@@ -112,14 +132,14 @@ sealed class DownloadRowUiModel {
         val state: DownloadItemState get() = DownloadItemState.fromKey(pack.state)
     }
 
-    /** Series folder header grouping episode rows underneath; [collapsed] hides children. */
+    /** Collapsible series folder header grouping episode rows underneath. */
     data class SeriesFolder(
         val seriesKey: String,
         val title: String,
         val episodeCount: Int,
         val totalBytes: Long,
         val posterUrl: String = "",
-        val collapsed: Boolean = false,
+        val expanded: Boolean = true,
     ) : DownloadRowUiModel() {
         override val id: String get() = "series_$seriesKey"
         fun subtitle(context: android.content.Context): String {

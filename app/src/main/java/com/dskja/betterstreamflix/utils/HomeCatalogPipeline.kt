@@ -291,6 +291,7 @@ object HomeCatalogPipeline {
             item.isFavorite,
             item.isWatched,
             item.watchHistory?.lastPlaybackPositionMillis,
+            item.watchHistory?.durationMillis,
             item.overview?.length,
         ).joinToString(",")
         is TvShow -> listOf(
@@ -302,6 +303,7 @@ object HomeCatalogPipeline {
             item.isFavorite,
             item.episodeToWatch?.id,
             item.episodeToWatch?.watchHistory?.lastPlaybackPositionMillis,
+            item.episodeToWatch?.watchHistory?.durationMillis,
             item.overview?.length,
         ).joinToString(",")
         is Episode -> listOf(
@@ -313,6 +315,7 @@ object HomeCatalogPipeline {
             item.tvShow?.id,
             item.isWatched,
             item.watchHistory?.lastPlaybackPositionMillis,
+            item.watchHistory?.durationMillis,
         ).joinToString(",")
         else -> item.javaClass.simpleName
     }

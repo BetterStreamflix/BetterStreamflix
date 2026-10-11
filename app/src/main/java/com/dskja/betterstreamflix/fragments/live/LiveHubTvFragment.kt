@@ -144,6 +144,7 @@ class LiveHubTvFragment : Fragment() {
             sportLabel = getString(R.string.live_hub_section_sport),
             newsLabel = getString(R.string.live_hub_section_news),
             channelsLabel = getString(R.string.live_hub_section_channels),
+            emptyMessage = getString(R.string.live_hub_empty),
         )
     }
 

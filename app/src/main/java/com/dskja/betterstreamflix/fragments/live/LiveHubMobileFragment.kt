@@ -15,11 +15,8 @@ import androidx.recyclerview.widget.RecyclerView
 import com.dskja.betterstreamflix.R
 import com.dskja.betterstreamflix.adapters.AppAdapter
 import com.dskja.betterstreamflix.databinding.FragmentLiveHubMobileBinding
-import com.dskja.betterstreamflix.iptv.IptvLiveSession
-import com.dskja.betterstreamflix.iptv.IptvZapPreloader
 import com.dskja.betterstreamflix.models.Category
 import com.dskja.betterstreamflix.models.TvShow
-import com.dskja.betterstreamflix.providers.IptvProvider
 import com.dskja.betterstreamflix.providers.Provider
 import com.dskja.betterstreamflix.ui.HomeProfileChip
 import com.dskja.betterstreamflix.utils.CacheUtils
@@ -91,7 +88,6 @@ class LiveHubMobileFragment : Fragment() {
                         display(state.categories)
                         ExpMotion.fadeOutAndHide(binding.isLoading.root)
                         showWarning(state.warning)
-                        warmZapForSections(state.categories)
                     }
                     LiveHubViewModel.State.Empty -> {
                         display(emptyList())
@@ -157,6 +153,8 @@ class LiveHubMobileFragment : Fragment() {
             category.itemSpacing = 10.dp(requireContext())
             category.itemType = AppAdapter.Type.CATEGORY_MOBILE_ITEM
         }
+        // Zap window is built on tap for the tapped shelf only (replaceWindow).
+        LiveHubSectionZap.bindCategories(visible)
         bindEmptyChrome(visible = visible.isEmpty())
         binding.rvLiveHub.isVisible = visible.isNotEmpty()
         appAdapter.submitList(visible)
@@ -202,36 +200,9 @@ class LiveHubMobileFragment : Fragment() {
         }
     }
 
-    /**
-     * Seed zap session + warm ±2 for the first channel of each shelf so the
-     * first Live Hub play hops faster.
-     */
-    private fun warmZapForSections(categories: List<Category>) {
-        val shows = categories.flatMap { it.list.filterIsInstance<TvShow>() }
-        if (shows.isEmpty()) return
-        val byProvider = shows.groupBy { it.providerName.orEmpty() }
-        byProvider.forEach { (providerName, providerShows) ->
-            val provider = Provider.findByName(providerName) as? IptvProvider ?: return@forEach
-            val channels = providerShows.map {
-                IptvLiveSession.Channel(id = it.id, name = it.title, logo = it.poster)
-            }
-            IptvLiveSession.remember(channels, provider = provider)
-            val anchors = providerShows.take(3)
-            anchors.firstOrNull()?.let { first ->
-                // Seed playhead so warmNeighbors(±2) is not a no-op on hub browse.
-                IptvLiveSession.setCurrent(first.id)
-            }
-            anchors.forEach { show ->
-                IptvZapPreloader.warmChannel(
-                    provider,
-                    IptvLiveSession.Channel(id = show.id, name = show.title, logo = show.poster),
-                )
-            }
-            IptvZapPreloader.warmNeighbors(provider, radius = 2)
-        }
-    }
 
     override fun onDestroyView() {
+        LiveHubSectionZap.clear()
         super.onDestroyView()
         _binding = null
     }

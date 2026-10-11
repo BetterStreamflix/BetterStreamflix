@@ -3,19 +3,23 @@ package com.dskja.betterstreamflix.download
 import android.content.Context
 import android.net.Uri
 import android.util.Log
+import android.widget.Toast
 import androidx.media3.common.MimeTypes
 import androidx.media3.common.StreamKey
 import androidx.media3.exoplayer.offline.Download
 import androidx.media3.exoplayer.offline.DownloadRequest
 import androidx.media3.exoplayer.offline.DownloadService
 import com.dskja.betterstreamflix.fragments.downloads.OfflineVideoCache
+import com.dskja.betterstreamflix.profiles.ProfileManager
 import com.dskja.betterstreamflix.utils.UserPreferences
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withContext
 import org.json.JSONArray
 import org.json.JSONObject
 import java.util.UUID
@@ -291,6 +295,13 @@ class DownloadRepository private constructor(
                     updatedAt = System.currentTimeMillis(),
                 ),
             )
+            withContext(Dispatchers.Main.immediate) {
+                Toast.makeText(
+                    context,
+                    com.dskja.betterstreamflix.R.string.download_error_wifi,
+                    Toast.LENGTH_SHORT,
+                ).show()
+            }
             return
         }
         // Media3 STATE_FAILED ignores stop-reason clears — re-add the request so
@@ -638,13 +649,26 @@ class DownloadRepository private constructor(
 
         @Volatile
         private var instance: DownloadRepository? = null
+        @Volatile
+        private var currentProfileId: String? = null
 
         fun get(context: Context): DownloadRepository {
-            return instance ?: synchronized(this) {
-                instance ?: DownloadRepository(
+            val profileId = ProfileManager.activeProfileId
+            return instance?.takeIf { currentProfileId == profileId } ?: synchronized(this) {
+                instance?.takeIf { currentProfileId == profileId } ?: DownloadRepository(
                     context.applicationContext,
                     DownloadDatabase.get(context).downloadDao(),
-                ).also { instance = it }
+                ).also {
+                    instance = it
+                    currentProfileId = profileId
+                }
+            }
+        }
+
+        fun resetInstance() {
+            synchronized(this) {
+                instance = null
+                currentProfileId = null
             }
         }
     }

@@ -2,5 +2,6 @@
 <resources>
     <dimen name="home_featured_card_height">640dp</dimen>
     <dimen name="detail_episode_list_height">560dp</dimen>
+    <dimen name="continue_watching_poster_height">260dp</dimen>
     <dimen name="player_settings_mobile_max_width">360dp</dimen>
 </resources>

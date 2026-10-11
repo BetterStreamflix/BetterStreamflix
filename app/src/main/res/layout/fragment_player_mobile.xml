@@ -167,7 +167,7 @@
             android:layout_height="wrap_content"
             android:fontFamily="@font/manrope"
             android:text="@string/exp_player_error_title"
-            android:textColor="?android:attr/textColorPrimary"
+            android:textColor="@color/cinema_text"
             android:textSize="16sp"
             android:textStyle="bold" />
 
@@ -178,7 +178,7 @@
             android:layout_marginTop="8dp"
             android:fontFamily="@font/manrope"
             android:gravity="center"
-            android:textColor="?android:attr/textColorSecondary"
+            android:textColor="@color/cinema_text_muted"
             android:textSize="13sp"
             tools:text="Error message" />
 
@@ -194,7 +194,7 @@
             android:paddingTop="8dp"
             android:paddingEnd="14dp"
             android:paddingBottom="8dp"
-            android:textColor="?android:attr/textColorPrimary"
+            android:textColor="@color/cinema_text"
             android:textSize="12sp"
             android:textStyle="bold"
             android:visibility="gone"

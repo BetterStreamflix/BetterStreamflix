@@ -22,9 +22,10 @@ object DownloadConnectivityMonitor {
     data class Status(
         val type: DownloadNetworkType,
         val validated: Boolean,
+        val isMetered: Boolean = false,
     )
 
-    private val _status = MutableStateFlow(Status(DownloadNetworkType.NONE, false))
+    private val _status = MutableStateFlow(Status(DownloadNetworkType.NONE, false, false))
     val status: StateFlow<Status> = _status.asStateFlow()
 
     @Volatile
@@ -85,7 +86,12 @@ object DownloadConnectivityMonitor {
             caps.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR) -> DownloadNetworkType.CELLULAR
             else -> DownloadNetworkType.OTHER
         }
-        _status.value = Status(type = type, validated = validated)
+        val metered = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            cm.isActiveNetworkMetered
+        } else {
+            type == DownloadNetworkType.CELLULAR
+        }
+        _status.value = Status(type = type, validated = validated, isMetered = metered)
     }
 
     /** True when any network is up — lets UI distinguish offline vs provider errors. */

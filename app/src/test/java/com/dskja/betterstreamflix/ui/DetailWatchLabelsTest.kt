@@ -45,4 +45,26 @@ class DetailWatchLabelsTest {
         assertEquals("1:05", DetailWatchLabels.formatPosition(65_000L))
         assertEquals("1:02:03", DetailWatchLabels.formatPosition(3_723_000L))
     }
+
+    @Test
+    fun remainingMinutes_roundsUpLeftTime() {
+        val history = WatchItem.WatchHistory(
+            lastEngagementTimeUtcMillis = 0L,
+            lastPlaybackPositionMillis = 30_000L,
+            durationMillis = 100_000L,
+        )
+        // 70s left → 2 minutes
+        assertEquals(2, DetailWatchLabels.remainingMinutes(history))
+        assertEquals(null, DetailWatchLabels.remainingMinutes(null))
+        assertEquals(
+            null,
+            DetailWatchLabels.remainingMinutes(
+                WatchItem.WatchHistory(
+                    lastEngagementTimeUtcMillis = 0L,
+                    lastPlaybackPositionMillis = 100_000L,
+                    durationMillis = 100_000L,
+                ),
+            ),
+        )
+    }
 }

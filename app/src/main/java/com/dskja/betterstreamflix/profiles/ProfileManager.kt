@@ -386,7 +386,8 @@ object ProfileManager {
                                 !file.name.startsWith("downloads")
                         else ->
                             file.name.startsWith("${profileId}__") ||
-                                file.name.contains("${profileId}__")
+                                file.name.contains("${profileId}__") ||
+                                file.name.startsWith("downloads__${profileId}")
                     }
                 }
                 ?.forEach { file ->
@@ -396,6 +397,11 @@ object ProfileManager {
             UserDataCache.clearForProfile(appContext, profileId)
             if (profileId != DEFAULT_PROFILE_ID) {
                 wipeScopedPreferences(profileId)
+            }
+            runCatching {
+                appContext.deleteSharedPreferences(
+                    scopedPrefKeyFor("shared_watchlist_pending", profileId),
+                )
             }
         }
     }

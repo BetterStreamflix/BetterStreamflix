@@ -38,8 +38,8 @@
             android:layout_gravity="center"
             android:background="@drawable/bg_trailer_play_overlay"
             android:padding="8dp"
-            android:src="@drawable/ic_trailer_play"
-            tools:ignore="ContentDescription" />
+            android:importantForAccessibility="no"
+            android:src="@drawable/ic_trailer_play" />
 
         <TextView
             android:id="@+id/tv_episode_age_rating"
@@ -64,9 +64,9 @@
             android:layout_gravity="bottom|start"
             android:layout_margin="6dp"
             android:elevation="2dp"
+            android:importantForAccessibility="no"
             android:src="@drawable/ic_offline_badge"
-            android:visibility="gone"
-            tools:ignore="ContentDescription" />
+            android:visibility="gone" />
 
         <ImageView
             android:id="@+id/iv_episode_watched_ribbon"
@@ -75,9 +75,9 @@
             android:layout_gravity="top|end"
             android:layout_margin="6dp"
             android:elevation="2dp"
+            android:importantForAccessibility="no"
             android:src="@drawable/ic_watched"
-            android:visibility="gone"
-            tools:ignore="ContentDescription" />
+            android:visibility="gone" />
 
         <ProgressBar
             android:id="@+id/pb_episode_progress"

@@ -136,6 +136,8 @@ class HomeMobileFragment : Fragment() {
         _binding?.rvHome?.let { appAdapter.resumeCategorySwipers(it) }
         // Belt-and-suspenders: any leaked detail/dialog trailer must die on Home.
         com.dskja.betterstreamflix.ui.TrailerPlaybackController.silenceAllActive()
+        // Soft-refresh library/history (same path as UserDataNotifier).
+        viewModel.softRefreshUserData()
     }
 
     override fun onPause() {
@@ -226,7 +228,7 @@ class HomeMobileFragment : Fragment() {
     }
 
     private fun refreshProfileChip() {
-        HomeProfileChip.refresh(this, _binding?.root)
+        HomeProfileChip.refresh(this, _binding?.root, showName = true)
     }
 
     private var heroScrollOffset = 0
@@ -348,6 +350,12 @@ class HomeMobileFragment : Fragment() {
             .find { it.name == Category.RECENTLY_WATCHED }
             ?.also {
                 it.name = getString(R.string.home_recently_watched)
+            }
+
+        categories
+            .find { it.name == Category.RECENTLY_ADDED }
+            ?.also {
+                it.name = getString(R.string.home_recently_added)
             }
 
         categories

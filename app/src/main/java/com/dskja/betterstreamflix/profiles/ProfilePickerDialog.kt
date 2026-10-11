@@ -169,8 +169,13 @@ class ProfilePickerDialog : DialogFragment() {
     }
 
     private fun applyManageChrome(root: View) {
-        root.findViewById<TextView>(R.id.btn_profile_picker_manage)?.text =
+        val manageBtn = root.findViewById<TextView>(R.id.btn_profile_picker_manage)
+        manageBtn?.text =
             getString(if (manageMode) R.string.profile_done else R.string.profile_edit_profiles)
+        // Hide Manage during unlock so Kids/PIN cannot be cleared before unlock.
+        manageBtn?.visibility = if (requireUnlock) View.GONE else View.VISIBLE
+        root.findViewById<TextView>(R.id.btn_profile_picker_create)?.visibility =
+            if (requireUnlock) View.GONE else View.VISIBLE
         root.findViewById<TextView>(R.id.tv_profile_picker_title)?.text =
             getString(
                 if (manageMode) R.string.profile_manage_title else R.string.profile_picker_title,
@@ -538,20 +543,22 @@ class ProfilePickerDialog : DialogFragment() {
                 )
                 return@setOnClickListener
             }
-            val leavingKids = profile.isKids && !becomingKids
-            fun commitEdit() {
+            val leavingKids = refreshed.isKids && !becomingKids
+            val commitEdit: () -> Unit = {
                 ProfileManager.rename(profile.id, name)
                 ProfileManager.updateAvatar(profile.id, selected)
                 ProfileManager.updateKids(profile.id, becomingKids)
                 ProfileManager.setEnabledIntegrations(profile.id, readEnabledIntegrations(form))
                 restorePickerView()
                 view?.let(::bindProfiles)
+                Unit
             }
             if (leavingKids) {
-                ProfilesSettingsController.challengeKidsUnlock(requireContext()) { commitEdit() }
-            } else {
-                commitEdit()
+                val adultTarget = refreshed.copy(isKids = false, maxAgeRating = null)
+                ProfilesSettingsController.guardParentalExit(this, adultTarget, commitEdit)
+                return@setOnClickListener
             }
+            commitEdit()
         }
         val deleteBtn = form.findViewById<TextView>(R.id.btn_profile_create_delete)
         if (ProfileManager.profiles().size > 1) {
@@ -773,8 +780,17 @@ class ProfilePickerDialog : DialogFragment() {
             val existing = fragment.childFragmentManager.findFragmentByTag(TAG)
             if (existing is ProfilePickerDialog) {
                 if (existing.dialog?.isShowing == true) {
-                    if (startInManageMode) existing.enterManageMode(true)
-                    if (requireUnlock) existing.requireUnlock = true
+                    if (requireUnlock) {
+                        existing.requireUnlock = true
+                        existing.isCancelable = false
+                        existing.dialog?.setCanceledOnTouchOutside(false)
+                        existing.view?.let { root ->
+                            existing.applyManageChrome(root)
+                            root.findViewById<View>(R.id.btn_profile_picker_close)?.visibility =
+                                View.GONE
+                        }
+                    }
+                    if (startInManageMode && !requireUnlock) existing.enterManageMode(true)
                     return
                 }
                 existing.dismissAllowingStateLoss()

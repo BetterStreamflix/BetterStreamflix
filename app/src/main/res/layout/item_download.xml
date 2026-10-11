@@ -19,6 +19,18 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent" />
 
+    <ImageButton
+        android:id="@+id/btn_download_more"
+        android:layout_width="48dp"
+        android:layout_height="48dp"
+        android:background="?attr/selectableItemBackgroundBorderless"
+        android:contentDescription="@string/downloads_item_more"
+        android:padding="12dp"
+        android:src="@drawable/ic_more_vert"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        app:tint="#FFFFFFFF" />
+
     <TextView
         android:id="@+id/tv_download_title"
         android:layout_width="0dp"
@@ -26,10 +38,11 @@
         android:ellipsize="end"
         android:maxLines="2"
         android:paddingStart="12dp"
+        android:paddingEnd="4dp"
         android:textColor="#FFFFFFFF"
         android:textSize="16sp"
         android:textStyle="bold"
-        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintEnd_toStartOf="@id/btn_download_more"
         app:layout_constraintStart_toEndOf="@id/iv_download_poster"
         app:layout_constraintTop_toTopOf="@id/iv_download_poster" />
 
@@ -41,9 +54,10 @@
         android:maxLines="1"
         android:paddingStart="12dp"
         android:paddingTop="2dp"
+        android:paddingEnd="4dp"
         android:textColor="#B3FFFFFF"
         android:textSize="13sp"
-        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintEnd_toStartOf="@id/btn_download_more"
         app:layout_constraintStart_toEndOf="@id/iv_download_poster"
         app:layout_constraintTop_toBottomOf="@id/tv_download_title" />
 
@@ -90,6 +104,8 @@
             android:layout_height="wrap_content"
             android:background="@drawable/bg_download_action"
             android:focusable="true"
+            android:minHeight="48dp"
+            android:gravity="center"
             android:paddingStart="14dp"
             android:paddingTop="8dp"
             android:paddingEnd="14dp"
@@ -107,6 +123,8 @@
             android:layout_marginStart="8dp"
             android:background="@drawable/bg_download_action"
             android:focusable="true"
+            android:minHeight="48dp"
+            android:gravity="center"
             android:paddingStart="14dp"
             android:paddingTop="8dp"
             android:paddingEnd="14dp"

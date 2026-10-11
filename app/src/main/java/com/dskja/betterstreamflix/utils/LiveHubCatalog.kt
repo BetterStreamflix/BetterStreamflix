@@ -1,8 +1,11 @@
 package com.dskja.betterstreamflix.utils
 
 import android.util.Log
+import com.dskja.betterstreamflix.BetterStreamflixApp
+import com.dskja.betterstreamflix.R
 import com.dskja.betterstreamflix.models.Category
 import com.dskja.betterstreamflix.models.TvShow
+import com.dskja.betterstreamflix.profiles.ProfileManager
 import com.dskja.betterstreamflix.providers.DaddyLiveTvProvider
 import com.dskja.betterstreamflix.providers.IptvOrgProvider
 import com.dskja.betterstreamflix.providers.IptvProvider
@@ -120,6 +123,10 @@ object LiveHubCatalog {
         channelsLabel: String,
         includeQuarantined: Boolean = false,
     ): HubResult = withContext(Dispatchers.IO) {
+        // Kids profiles: Live Hub is gated in the bottom nav; keep catalog empty if reached.
+        if (ProfileManager.isKidsActive()) {
+            return@withContext HubResult(categories = emptyList())
+        }
         val collected = ConcurrentLinkedQueue<TvShow>()
         val warnings = ConcurrentLinkedQueue<String>()
         val sources = hubSources(includeQuarantined)
@@ -134,13 +141,13 @@ object LiveHubCatalog {
                                 }
                             }.onFailure { e ->
                                 Log.w(TAG, "Live Hub source ${provider.name} failed: ${e.message}")
-                                warnings.add("${provider.name}: ${e.message ?: "unavailable"}")
+                                warnings.add(localizedSourceUnavailable(provider.name))
                                 ProviderSmoke.noteHomeFailure(provider.name)
                             }.getOrNull()
                             when {
                                 batch == null -> Unit
                                 batch.isEmpty() -> {
-                                    warnings.add("${provider.name}: empty catalog")
+                                    warnings.add(localizedSourceUnavailable(provider.name))
                                     ProviderSmoke.noteHomeFailure(provider.name)
                                 }
                                 else -> {
@@ -154,14 +161,26 @@ object LiveHubCatalog {
             }
         } catch (e: Exception) {
             Log.w(TAG, "Live Hub overall timeout/fail: ${e.message}")
-            warnings.add("Live Hub: ${e.message ?: "timed out"}")
+            warnings.add(
+                runCatching {
+                    BetterStreamflixApp.instance.getString(R.string.live_hub_empty)
+                }.getOrElse { "Live Hub: ${e.message ?: "timed out"}" },
+            )
         }
-        val shows = collected.toList()
+        val shows = ParentalControlUtils.filterItems(collected.toList())
         HubResult(
             categories = buildCategories(shows, sportLabel, newsLabel, channelsLabel),
             warnings = warnings.toList(),
         )
     }
+
+    private fun localizedSourceUnavailable(providerName: String): String =
+        runCatching {
+            BetterStreamflixApp.instance.getString(
+                R.string.live_hub_source_unavailable,
+                providerName,
+            )
+        }.getOrElse { "$providerName unavailable" }
 
     /** Providers feeding the hub — order is soft priority for duplicate titles. */
     fun hubSources(includeQuarantined: Boolean = false): List<Provider> {

@@ -425,6 +425,12 @@ class HomeTvFragment : Fragment() {
             }
 
         categories
+            .find { it.name == Category.RECENTLY_ADDED }
+            ?.also {
+                it.name = getString(R.string.home_recently_added)
+            }
+
+        categories
             .find { it.name == Category.FAVORITE_MOVIES }
             ?.also { it.name = getString(R.string.home_favorite_movies) }
 

@@ -42,7 +42,7 @@ object DetailContentSignatures {
         tvShow.quality,
         tvShow.rating,
         tvShow.runtime,
-        tvShow.lastPlayedEpisodeId,
+        // lastPlayedEpisodeId omitted — RW/CW updates must not rebuild detail body
         tvShow.seasons.size,
         // Episode-fill churn omitted — season rows refresh in place; keep selectedTab stable
         tvShow.seasons.map { it.id },

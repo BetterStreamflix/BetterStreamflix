@@ -1183,6 +1183,11 @@ class PlayerTvFragment : Fragment() {
                 when (action) {
                     StreamFailureReason.Action.SOLVE_CAPTCHA -> launchSolveCaptcha()
                     StreamFailureReason.Action.UPDATE_DOMAIN -> launchUpdateDomain()
+                    StreamFailureReason.Action.OPEN_SETTINGS -> {
+                        val intent = Intent(android.provider.Settings.ACTION_VPN_SETTINGS)
+                            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                        runCatching { startActivity(intent) }
+                    }
                     StreamFailureReason.Action.NONE -> Unit
                 }
             }
@@ -3337,11 +3342,11 @@ class PlayerTvFragment : Fragment() {
             castNextQueueJob = lifecycleScope.launch {
                 val prepared = withContext(Dispatchers.IO) {
                     CastQueueCoordinator.prepareNextEpisodeQueue(
+                        context = requireContext().applicationContext,
                         provider = UserPreferences.currentProvider,
                         currentVideoType = args.videoType,
-                        subtitleConfigurations = emptyList(),
+                        subtitleConfigurations = null,
                         headers = emptyMap(),
-                        appContext = requireContext().applicationContext,
                     )
                 }
                 if (prepared != null && isAdded) {

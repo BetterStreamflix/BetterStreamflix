@@ -8,7 +8,10 @@ class StreamFailureReasonTest {
 
     @Test
     fun classifiesCaptcha() {
-        val p = StreamFailureReason.classify(Exception("Cloudflare captcha challenge"))
+        val p = StreamFailureReason.classify(
+            error = Exception("Cloudflare captcha challenge"),
+            provider = com.dskja.betterstreamflix.providers.SerienStreamProvider,
+        )
         assertEquals(StreamFailureReason.Kind.CAPTCHA, p.kind)
         assertEquals(StreamFailureReason.Action.SOLVE_CAPTCHA, p.action)
     }
@@ -34,7 +37,20 @@ class StreamFailureReasonTest {
     fun classifiesGeo451() {
         val p = StreamFailureReason.classify(Exception("Response code: 451"))
         assertEquals(StreamFailureReason.Kind.GEO, p.kind)
-        assertEquals(StreamFailureReason.Action.NONE, p.action)
+        assertEquals(StreamFailureReason.Action.OPEN_SETTINGS, p.action)
+    }
+
+    @Test
+    fun captchaActionOnlyForSerienStreamFamily() {
+        val generic = StreamFailureReason.classify(Exception("Cloudflare captcha challenge"))
+        assertEquals(StreamFailureReason.Kind.CAPTCHA, generic.kind)
+        assertEquals(StreamFailureReason.Action.NONE, generic.action)
+
+        val ss = StreamFailureReason.classify(
+            error = Exception("Cloudflare captcha challenge"),
+            provider = com.dskja.betterstreamflix.providers.SerienStreamProvider,
+        )
+        assertEquals(StreamFailureReason.Action.SOLVE_CAPTCHA, ss.action)
     }
 
     @Test

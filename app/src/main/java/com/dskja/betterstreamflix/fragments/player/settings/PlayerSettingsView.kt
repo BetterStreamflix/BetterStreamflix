@@ -124,9 +124,11 @@ abstract class PlayerSettingsView @JvmOverloads constructor(
                 }
                 val track = if (key.isNotEmpty()) {
                     tracks.firstOrNull { subtitle ->
-                        subtitle.label.equals(key, ignoreCase = true) ||
-                            subtitle.language.equals(key, ignoreCase = true) ||
-                            subtitle.label.startsWith(key, ignoreCase = true)
+                        subtitle.label.equals(key, ignoreCase = true)
+                    } ?: tracks.firstOrNull { subtitle ->
+                        subtitle.language.equals(key, ignoreCase = true)
+                    } ?: tracks.firstOrNull { subtitle ->
+                        subtitle.label.startsWith(key, ignoreCase = true)
                     }
                 } else {
                     null

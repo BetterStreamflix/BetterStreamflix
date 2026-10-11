@@ -36,6 +36,7 @@ import com.dskja.betterstreamflix.providers.Cine24hProvider
 import com.dskja.betterstreamflix.providers.FilmyOnlineCcProvider
 import com.dskja.betterstreamflix.providers.FrenchAnimeProvider
 import com.dskja.betterstreamflix.providers.GuardaSerieProvider
+import com.dskja.betterstreamflix.profiles.ProfileManager
 import com.dskja.betterstreamflix.providers.IptvProvider
 import com.dskja.betterstreamflix.providers.Provider
 import com.dskja.betterstreamflix.providers.RidomoviesProvider
@@ -364,7 +365,12 @@ class MainMobileActivity : FragmentActivity() {
             }
         })
 
-        if (savedInstanceState == null) {
+        // Share list deep links must run even after process-death restore
+        // (savedInstanceState != null) so the URI is not dropped.
+        val shareListRestore = intent.data?.let {
+            com.dskja.betterstreamflix.sync.SharedWatchlistLinks.parseToken(it) != null
+        } == true
+        if (savedInstanceState == null || shareListRestore) {
             handleIntent(intent)
         }
 
@@ -407,11 +413,17 @@ class MainMobileActivity : FragmentActivity() {
 
     private fun showProfileUnlockGateIfNeeded(navHost: NavHostFragment) {
         if (isFinishing || isDestroyed) return
-        if (!com.dskja.betterstreamflix.profiles.ProfileUnlockGate.requiresGateForActive()) return
+        if (!com.dskja.betterstreamflix.profiles.ProfileUnlockGate.requiresGateForActive()) {
+            com.dskja.betterstreamflix.sync.SharedWatchlistUi.tryFlushPending(this)
+            return
+        }
         val host = navHost.childFragmentManager.primaryNavigationFragment ?: navHost
         com.dskja.betterstreamflix.profiles.ProfileUnlockGate.maybeShow(
             activity = this,
             hostFragmentProvider = { host },
+            onUnlocked = {
+                com.dskja.betterstreamflix.sync.SharedWatchlistUi.tryFlushPending(this)
+            },
         )
     }
 
@@ -582,7 +594,9 @@ class MainMobileActivity : FragmentActivity() {
                 getString(R.string.main_menu_tv_shows)
             }
         }
-        binding.bnvMain.menu.findItem(R.id.live_hub)?.isVisible = liveHubVisible
+        val kidsProfile = ProfileManager.isKidsActive()
+        binding.bnvMain.menu.findItem(R.id.downloads)?.isVisible = !kidsProfile
+        binding.bnvMain.menu.findItem(R.id.live_hub)?.isVisible = liveHubVisible && !kidsProfile
 
         val navHost =
             supportFragmentManager.findFragmentById(R.id.nav_main_fragment) as? NavHostFragment
@@ -596,7 +610,11 @@ class MainMobileActivity : FragmentActivity() {
                 navController.navigate(R.id.home)
             }
 
-            currentDestinationId == R.id.live_hub && !liveHubVisible -> {
+            currentDestinationId == R.id.downloads && kidsProfile -> {
+                navController.navigate(R.id.home)
+            }
+
+            currentDestinationId == R.id.live_hub && (!liveHubVisible || kidsProfile) -> {
                 navController.navigate(R.id.home)
             }
         }

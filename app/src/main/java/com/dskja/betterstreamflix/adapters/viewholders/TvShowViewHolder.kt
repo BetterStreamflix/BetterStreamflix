@@ -308,18 +308,23 @@ class TvShowViewHolder(
             putString("subtitle", tvShow.title)
             putSerializable("videoType", videoType)
         }
-        if (isIptvProvider()) {
-            val showProvider = com.dskja.betterstreamflix.providers.Provider
-                .findByName(tvShow.providerName.orEmpty())
-                ?: com.dskja.betterstreamflix.utils.UserPreferences.currentProvider
-            // Hub warm already seeded the section — do not collapse zap to one channel.
+        val provider = com.dskja.betterstreamflix.providers.Provider
+            .findByName(tvShow.providerName.orEmpty())
+            ?: com.dskja.betterstreamflix.utils.UserPreferences.currentProvider
+        // Live Hub: replaceWindow with the tapped shelf only (never merge all categories).
+        val fromLiveHub = com.dskja.betterstreamflix.fragments.live.LiveHubSectionZap
+            .preparePlayback(tvShow, provider)
+        if (!fromLiveHub && isIptvProvider()) {
+            // Do not collapse an existing zap window to one channel.
             if (!com.dskja.betterstreamflix.iptv.IptvLiveSession.contains(tvShow.id)) {
                 com.dskja.betterstreamflix.iptv.IptvLiveSession.rememberShows(
                     listOf(tvShow),
-                    showProvider,
+                    provider,
                     clearOnProviderChange = false,
                 )
             }
+            com.dskja.betterstreamflix.iptv.IptvLiveSession.setCurrent(tvShow.id)
+        } else if (fromLiveHub) {
             com.dskja.betterstreamflix.iptv.IptvLiveSession.setCurrent(tvShow.id)
         }
         val liveAction = R.id.action_live_hub_to_player
@@ -1197,19 +1202,24 @@ class TvShowViewHolder(
             tvShow.providerName?.takeIf { it.isNotBlank() },
         )
 
-        val ids = buildList {
-            tvShow.tmdbId?.takeIf { it.isNotBlank() }?.let {
-                add(context.getString(R.string.detail_about_id_tmdb, it))
-            }
-            tvShow.imdbId?.takeIf { it.isNotBlank() }?.let {
-                add(context.getString(R.string.detail_about_id_imdb, it))
-            }
-        }.joinToString(" · ")
+        val tmdbPart = tvShow.tmdbId?.takeIf { it.isNotBlank() }?.let {
+            context.getString(R.string.detail_about_id_tmdb, it)
+        }
+        val imdbPart = tvShow.imdbId?.takeIf { it.isNotBlank() }?.let {
+            context.getString(R.string.detail_about_id_imdb, it)
+        }
+        val ids = listOfNotNull(tmdbPart, imdbPart).joinToString(" · ")
         bindFact(binding.tvDetailAboutIdsLabel, binding.tvDetailAboutIds, ids.ifBlank { null })
-        if (!tvShow.tmdbId.isNullOrBlank()) {
-            binding.tvDetailAboutIds.setTextColor(
-                ContextCompat.getColor(context, R.color.cinema_tmdb),
+        if (!tmdbPart.isNullOrBlank() && binding.tvDetailAboutIds.visibility == View.VISIBLE) {
+            val spanned = android.text.SpannableString(ids)
+            val tmdbColor = ContextCompat.getColor(context, R.color.cinema_tmdb)
+            spanned.setSpan(
+                android.text.style.ForegroundColorSpan(tmdbColor),
+                0,
+                tmdbPart.length,
+                android.text.Spanned.SPAN_EXCLUSIVE_EXCLUSIVE,
             )
+            binding.tvDetailAboutIds.text = spanned
         }
 
         val anyFact = listOf(

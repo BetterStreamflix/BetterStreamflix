@@ -6,6 +6,7 @@ import androidx.room.Room
 import androidx.room.RoomDatabase
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
+import com.dskja.betterstreamflix.profiles.ProfileManager
 
 @Database(
     entities = [
@@ -21,6 +22,8 @@ abstract class DownloadDatabase : RoomDatabase() {
     companion object {
         @Volatile
         private var instance: DownloadDatabase? = null
+        @Volatile
+        private var currentProfileId: String? = null
 
         /**
          * 1→2 adds `subtitleUrlsJson` (pending subtitle downloads) and
@@ -68,15 +71,38 @@ abstract class DownloadDatabase : RoomDatabase() {
             }
         }
 
+        fun databaseNameFor(profileId: String = ProfileManager.activeProfileId): String {
+            return if (profileId == ProfileManager.DEFAULT_PROFILE_ID) {
+                "downloads.db"
+            } else {
+                "downloads__${profileId}.db"
+            }
+        }
+
         fun get(context: Context): DownloadDatabase {
-            return instance ?: synchronized(this) {
-                instance ?: Room.databaseBuilder(
-                    context.applicationContext,
-                    DownloadDatabase::class.java,
-                    "downloads.db",
-                ).addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
-                    .build()
-                    .also { instance = it }
+            val profileId = ProfileManager.activeProfileId
+            return instance?.takeIf { currentProfileId == profileId } ?: synchronized(this) {
+                instance?.takeIf { currentProfileId == profileId } ?: run {
+                    instance?.close()
+                    Room.databaseBuilder(
+                        context.applicationContext,
+                        DownloadDatabase::class.java,
+                        databaseNameFor(profileId),
+                    ).addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
+                        .build()
+                        .also {
+                            instance = it
+                            currentProfileId = profileId
+                        }
+                }
+            }
+        }
+
+        fun resetInstance() {
+            synchronized(this) {
+                instance?.close()
+                instance = null
+                currentProfileId = null
             }
         }
     }

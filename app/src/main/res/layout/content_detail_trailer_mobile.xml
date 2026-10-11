@@ -72,7 +72,8 @@
                 <TextView
                     android:id="@+id/btn_detail_trailer_retry"
                     android:layout_width="wrap_content"
-                    android:layout_height="40dp"
+                    android:layout_height="48dp"
+                    android:minHeight="48dp"
                     android:background="@drawable/bg_detail_trailer_chrome_btn"
                     android:fontFamily="@font/manrope"
                     android:gravity="center"
@@ -86,7 +87,8 @@
                 <TextView
                     android:id="@+id/btn_detail_trailer_open_external"
                     android:layout_width="wrap_content"
-                    android:layout_height="40dp"
+                    android:layout_height="48dp"
+                    android:minHeight="48dp"
                     android:layout_marginStart="10dp"
                     android:background="@drawable/bg_featured_cta_primary"
                     android:fontFamily="@font/manrope"
