@@ -97,6 +97,9 @@ object UserPreferences {
                 ?: providerName?.let { Provider.findByName(it) }
         }
         set(value) {
+            // Live in-process switch (Search TV handoff, plugin disable). Prefer
+            // [prepareProviderSwitch] + CLEAR_TASK + [consumePendingProviderSwitch]
+            // for picker restarts so Room is not closed mid-teardown (crash-loop).
             // Flip the preferred name first so any concurrent getInstance() rebuilds
             // the *new* provider DB, then close the old singleton. Notifying last
             // lets ViewModels cancel in-flight Room collectors against a closed DB.
@@ -158,6 +161,16 @@ object UserPreferences {
         val name = Key.CURRENT_PROVIDER.getString() ?: return
         if (currentProvider != null) return
         debugLog { "Clearing unresolved CURRENT_PROVIDER=$name" }
+        Key.CURRENT_PROVIDER.setString(null)
+        prefs.edit { putBoolean(PROVIDER_SWITCH_PENDING, false) }
+    }
+
+    /**
+     * Drop the preferred provider entirely (corrupt Room file, unrecoverable open).
+     * Does not close Room — callers should [AppDatabase.resetInstance] as needed.
+     */
+    fun clearCurrentProvider() {
+        if (!::prefs.isInitialized) return
         Key.CURRENT_PROVIDER.setString(null)
         prefs.edit { putBoolean(PROVIDER_SWITCH_PENDING, false) }
     }
@@ -1407,26 +1420,38 @@ object UserPreferences {
         CAST_QUEUE_NEXT_EPISODE,
         SELF_HOST_PROGRESS_INTERVAL_MS;
 
-        fun getStringSet(): Set<String>? = when {
-            prefs.contains(name) -> prefs.getStringSet(name, null)
-            else -> null
-        }
-
-        fun setStringSet(value: Set<String>?) = value?.let {
-            with(prefs.edit()) {
-                putStringSet(name, value)
-                apply()
+        fun getStringSet(): Set<String>? {
+            if (!::prefs.isInitialized) return null
+            return when {
+                prefs.contains(name) -> prefs.getStringSet(name, null)
+                else -> null
             }
-        } ?: remove()
-
-        fun getBoolean(): Boolean? = when {
-            prefs.contains(name) -> prefs.getBoolean(name, false)
-            else -> null
         }
 
-        fun getFloat(): Float? = when {
-            prefs.contains(name) -> prefs.getFloat(name, 0F)
-            else -> null
+        fun setStringSet(value: Set<String>?) {
+            if (!::prefs.isInitialized) return
+            value?.let {
+                with(prefs.edit()) {
+                    putStringSet(name, value)
+                    apply()
+                }
+            } ?: remove()
+        }
+
+        fun getBoolean(): Boolean? {
+            if (!::prefs.isInitialized) return null
+            return when {
+                prefs.contains(name) -> prefs.getBoolean(name, false)
+                else -> null
+            }
+        }
+
+        fun getFloat(): Float? {
+            if (!::prefs.isInitialized) return null
+            return when {
+                prefs.contains(name) -> prefs.getFloat(name, 0F)
+                else -> null
+            }
         }
 
         fun getInt(): Int? {
@@ -1454,44 +1479,62 @@ object UserPreferences {
             }
         }
 
-        fun setBoolean(value: Boolean?) = value?.let {
+        fun setBoolean(value: Boolean?) {
+            if (!::prefs.isInitialized) return
+            value?.let {
+                with(prefs.edit()) {
+                    putBoolean(name, value)
+                    apply()
+                }
+            } ?: remove()
+        }
+
+        fun setFloat(value: Float?) {
+            if (!::prefs.isInitialized) return
+            value?.let {
+                with(prefs.edit()) {
+                    putFloat(name, value)
+                    apply()
+                }
+            } ?: remove()
+        }
+
+        fun setInt(value: Int?) {
+            if (!::prefs.isInitialized) return
+            value?.let {
+                with(prefs.edit()) {
+                    putInt(name, value)
+                    apply()
+                }
+            } ?: remove()
+        }
+
+        fun setLong(value: Long?) {
+            if (!::prefs.isInitialized) return
+            value?.let {
+                with(prefs.edit()) {
+                    putLong(name, value)
+                    apply()
+                }
+            } ?: remove()
+        }
+
+        fun setString(value: String?) {
+            if (!::prefs.isInitialized) return
+            value?.let {
+                with(prefs.edit()) {
+                    putString(name, value)
+                    apply()
+                }
+            } ?: remove()
+        }
+
+        fun remove() {
+            if (!::prefs.isInitialized) return
             with(prefs.edit()) {
-                putBoolean(name, value)
+                remove(name)
                 apply()
             }
-        } ?: remove()
-
-        fun setFloat(value: Float?) = value?.let {
-            with(prefs.edit()) {
-                putFloat(name, value)
-                apply()
-            }
-        } ?: remove()
-
-        fun setInt(value: Int?) = value?.let {
-            with(prefs.edit()) {
-                putInt(name, value)
-                apply()
-            }
-        } ?: remove()
-
-        fun setLong(value: Long?) = value?.let {
-            with(prefs.edit()) {
-                putLong(name, value)
-                apply()
-            }
-        } ?: remove()
-
-        fun setString(value: String?) = value?.let {
-            with(prefs.edit()) {
-                putString(name, value)
-                apply()
-            }
-        } ?: remove()
-
-        fun remove() = with(prefs.edit()) {
-            remove(name)
-            apply()
         }
     }
 }

@@ -219,12 +219,17 @@ object TelegramJoinGateController {
                     return
                 }
                 if (retryAttempt >= MAX_RETRY_ATTEMPTS) {
-                    Log.e(TAG, "gate retry exhausted after $MAX_RETRY_ATTEMPTS — forcing one more overlay show")
-                    showGateNow(host)
-                    // Keep trying slowly while still locked — never soft-fail forever.
-                    retryAttempt = 0
-                    retryRunnable = this
-                    mainHandler.postDelayed(this, 2_000L)
+                    Log.e(
+                        TAG,
+                        "gate retry exhausted after $MAX_RETRY_ATTEMPTS — soft-dismissing for session",
+                    )
+                    // Cap retries: inflate failures (historical BETTERSTREAMFLIX-3J) must
+                    // not spam forever. Session dismiss keeps CHANNEL_VERSION re-prompt.
+                    runCatching { TelegramJoinGatePolicy.markDismissed() }
+                    launching = false
+                    gateUiAlive = false
+                    cancelRetryLoop()
+                    SupportStartupController.schedule(host, isTv = false)
                     return
                 }
                 retryAttempt++

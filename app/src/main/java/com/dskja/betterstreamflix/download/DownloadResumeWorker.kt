@@ -16,9 +16,12 @@ class DownloadResumeWorker(
 
     override suspend fun doWork(): Result {
         return try {
+            // Warm SimpleCache / DownloadManager on the worker executor before FGS
+            // so StreamflixDownloadService.onCreate is not racing the FGS timer.
             StreamflixDownloadManager.get(applicationContext)
             // Soft-start: StreamflixDownloadService.start already catches
-            // ForegroundServiceStartNotAllowedException / IllegalStateException.
+            // ForegroundServiceStartNotAllowedException / IllegalStateException
+            // and warms the manager again if needed.
             StreamflixDownloadService.start(applicationContext)
             Result.success()
         } catch (e: Exception) {

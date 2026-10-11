@@ -1,6 +1,7 @@
 package com.dskja.betterstreamflix.database
 
 import android.content.Context
+import android.util.Log
 import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
@@ -17,6 +18,10 @@ import com.dskja.betterstreamflix.models.Season
 import com.dskja.betterstreamflix.models.TvShow
 import com.dskja.betterstreamflix.profiles.ProfileManager
 import com.dskja.betterstreamflix.utils.UserPreferences
+
+/** Thrown when [AppDatabase.getInstance] is called with no resolved provider. */
+class ProviderNotSetException :
+    IllegalStateException("Current provider is not set")
 
 @Database(
     entities = [
@@ -40,6 +45,7 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun episodeDao(): EpisodeDao
 
     companion object {
+        private const val TAG = "AppDatabase"
 
         @Volatile
         private var INSTANCE: AppDatabase? = null
@@ -72,13 +78,20 @@ abstract class AppDatabase : RoomDatabase() {
         fun setup(context: Context) {
             if (UserPreferences.currentProvider == null) return
 
-            getInstance(context)
+            getInstanceOrNull(context)
         }
+
+        /**
+         * Soft open for UI / ViewModels. Returns null when no provider is set or
+         * the provider DB cannot be opened after one wipe-and-retry.
+         */
+        fun getInstanceOrNull(context: Context): AppDatabase? =
+            runCatching { getInstance(context) }.getOrNull()
 
         fun getInstance(context: Context): AppDatabase {
             val providerName = UserPreferences.currentProvider?.name
                 ?: currentProviderName
-                ?: throw IllegalStateException("Current provider is not set")
+                ?: throw ProviderNotSetException()
             val profileId = ProfileManager.activeProfileId
 
             return INSTANCE?.takeIf {
@@ -88,11 +101,11 @@ abstract class AppDatabase : RoomDatabase() {
                     currentProviderName == providerName && currentProfileId == profileId
                 } ?: run {
                     INSTANCE?.close()
-                    buildDatabase(providerName, profileId, context).also { instance ->
-                        INSTANCE = instance
-                        currentProviderName = providerName
-                        currentProfileId = profileId
-                    }
+                    val opened = openWithRecovery(providerName, profileId, context)
+                    INSTANCE = opened
+                    currentProviderName = providerName
+                    currentProfileId = profileId
+                    opened
                 }
             }
         }
@@ -115,7 +128,7 @@ abstract class AppDatabase : RoomDatabase() {
             context: Context,
             profileId: String = ProfileManager.activeProfileId,
         ): AppDatabase {
-            return buildDatabase(providerName, profileId, context)
+            return openWithRecovery(providerName, profileId, context)
         }
 
         /**
@@ -134,7 +147,7 @@ abstract class AppDatabase : RoomDatabase() {
             }
             if (live != null) return OpenedDatabase(live, ownsConnection = false)
             return OpenedDatabase(
-                buildDatabase(providerName, profileId, context),
+                openWithRecovery(providerName, profileId, context),
                 ownsConnection = true,
             )
         }
@@ -143,6 +156,38 @@ abstract class AppDatabase : RoomDatabase() {
             val database: AppDatabase,
             val ownsConnection: Boolean,
         )
+
+        /**
+         * Open Room and force a writable touch. On corruption, delete that provider
+         * DB file once and retry; on second failure clear the preferred provider so
+         * the next cold start lands on Providers instead of looping.
+         */
+        private fun openWithRecovery(
+            providerName: String,
+            profileId: String,
+            context: Context,
+        ): AppDatabase {
+            val app = context.applicationContext
+            val dbName = databaseNameFor(providerName, profileId)
+            return try {
+                buildDatabase(providerName, profileId, app).also { forceOpen(it) }
+            } catch (first: Throwable) {
+                Log.e(TAG, "Room open failed for $dbName — wiping once and retrying", first)
+                runCatching { app.deleteDatabase(dbName) }
+                try {
+                    buildDatabase(providerName, profileId, app).also { forceOpen(it) }
+                } catch (second: Throwable) {
+                    Log.e(TAG, "Room open failed again for $dbName — clearing provider", second)
+                    runCatching { UserPreferences.clearCurrentProvider() }
+                    throw second
+                }
+            }
+        }
+
+        private fun forceOpen(db: AppDatabase) {
+            // Room.build() is lazy; touching the open helper surfaces corruption now.
+            db.openHelper.writableDatabase
+        }
 
         private fun buildDatabase(
             providerName: String,

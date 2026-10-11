@@ -11,19 +11,15 @@ import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
 
 /**
- * After reboot, warm the download manager and schedule a deferred resume.
+ * After reboot, schedule a deferred resume via WorkManager.
  * Never start a dataSync foreground service from BOOT_COMPLETED — Android 12+
  * throws ForegroundServiceStartNotAllowedException (BETTERSTREAMFLIX-2P).
+ * Never warm [StreamflixDownloadManager] on the boot main thread (SimpleCache I/O).
  */
 class DownloadBootReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent?) {
         if (intent?.action != Intent.ACTION_BOOT_COMPLETED) return
         val app = context.applicationContext
-        runCatching {
-            StreamflixDownloadManager.get(app)
-        }.onFailure {
-            Log.w(TAG, "Download manager warm failed: ${it.message}")
-        }
         runCatching {
             val constraints = Constraints.Builder()
                 .setRequiredNetworkType(NetworkType.CONNECTED)

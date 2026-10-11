@@ -89,7 +89,11 @@ class MainTvActivity : FragmentActivity() {
 
         val navHostFragment = this.supportFragmentManager
             .findFragmentById(binding.navMainFragment.id) as? NavHostFragment
-            ?: return
+        if (navHostFragment == null) {
+            android.util.Log.e("MainTvActivity", "NavHostFragment missing — finishing")
+            finish()
+            return
+        }
         val navController = navHostFragment.navController
         com.dskja.betterstreamflix.utils.SentryBootstrap.trackNavigation(navController)
 
@@ -105,15 +109,8 @@ class MainTvActivity : FragmentActivity() {
             UserPreferences.currentProvider?.let {
                 navController.navigate(R.id.home)
             }
-            binding.root.post {
-                val host = navHostFragment.childFragmentManager.primaryNavigationFragment
-                    ?: navHostFragment
-                com.dskja.betterstreamflix.profiles.ProfileUnlockGate.maybeShow(
-                    activity = this,
-                    hostFragmentProvider = { host },
-                )
-            }
         }
+        binding.root.post { showProfileUnlockGateIfNeeded(navHostFragment) }
 
         binding.navMain.setupWithNavController(navController)
         updateNavigationVisibility()
@@ -284,6 +281,25 @@ class MainTvActivity : FragmentActivity() {
     override fun onResume() {
         super.onResume()
         viewModel.checkUpdate()
+    }
+
+    override fun onStart() {
+        super.onStart()
+        val navHostFragment = supportFragmentManager
+            .findFragmentById(binding.navMainFragment.id) as? NavHostFragment
+            ?: return
+        binding.root.post { showProfileUnlockGateIfNeeded(navHostFragment) }
+    }
+
+    private fun showProfileUnlockGateIfNeeded(navHostFragment: NavHostFragment) {
+        if (isFinishing || isDestroyed) return
+        if (!com.dskja.betterstreamflix.profiles.ProfileUnlockGate.requiresGateForActive()) return
+        val host = navHostFragment.childFragmentManager.primaryNavigationFragment
+            ?: navHostFragment
+        com.dskja.betterstreamflix.profiles.ProfileUnlockGate.maybeShow(
+            activity = this,
+            hostFragmentProvider = { host },
+        )
     }
 
     private fun applyThemeNavigationChrome() {

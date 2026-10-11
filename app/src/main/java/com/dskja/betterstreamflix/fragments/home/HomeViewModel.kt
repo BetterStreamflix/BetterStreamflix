@@ -50,8 +50,8 @@ class HomeViewModel(
     database: AppDatabase? = null,
 ) : ViewModel() {
 
-    private fun liveDatabase(): AppDatabase =
-        AppDatabase.getInstance(BetterStreamflixApp.instance.applicationContext)
+    private fun liveDatabase(): AppDatabase? =
+        AppDatabase.getInstanceOrNull(BetterStreamflixApp.instance.applicationContext)
 
     private var getHomeJob: Job? = null
     private var userDataCacheJob: Job? = null
@@ -154,7 +154,7 @@ class HomeViewModel(
                     if (movies.isEmpty()) {
                         emit(emptyList())
                     } else {
-                        val db = runCatching { liveDatabase() }.getOrNull()
+                        val db = liveDatabase()
                         if (db == null || !db.isOpen) {
                             emit(emptyList())
                         } else {
@@ -183,7 +183,7 @@ class HomeViewModel(
                     if (tvShows.isEmpty()) {
                         emit(emptyList())
                     } else {
-                        val db = runCatching { liveDatabase() }.getOrNull()
+                        val db = liveDatabase()
                         if (db == null || !db.isOpen) {
                             emit(emptyList())
                         } else {
@@ -371,17 +371,18 @@ class HomeViewModel(
                     continueWatchingTvShowCache[cacheKey] = fetchedTvShow
                 }
 
+                val db = liveDatabase()
                 val mergedTvShow = resolvedTvShow?.copy().apply {
                     this?.let { show ->
                         episode.tvShow?.let { existingTvShow -> show.merge(existingTvShow) }
                         // Room converter only stores tvShow id — overlay full row logo when present.
-                        liveDatabase().tvShowDao().getById(tvShowId)?.let { dbShow ->
+                        db?.tvShowDao()?.getById(tvShowId)?.let { dbShow ->
                             show.merge(dbShow)
                         }
                         show.providerName = provider.name
                     }
                 } ?: episode.tvShow?.also { fallback ->
-                    liveDatabase().tvShowDao().getById(tvShowId)?.let { dbShow ->
+                    db?.tvShowDao()?.getById(tvShowId)?.let { dbShow ->
                         fallback.merge(dbShow)
                     }
                 }

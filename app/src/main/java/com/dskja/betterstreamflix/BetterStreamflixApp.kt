@@ -93,7 +93,8 @@ class BetterStreamflixApp : Application() {
         runCatching { IsrgRootTrustProvider.install() }
 
         // 2. Inizializzazione preferenze (con applicationContext)
-        UserPreferences.setup(this)
+        runCatching { UserPreferences.setup(this) }
+            .onFailure { Log.e("BetterStreamflixApp", "UserPreferences.setup failed", it) }
         // Recover from a persisted provider name that no longer resolves —
         // otherwise Home opens into a crash loop until clear-data.
         runCatching { UserPreferences.clearInvalidCurrentProvider() }
@@ -105,20 +106,10 @@ class BetterStreamflixApp : Application() {
         // TypeToken crash inside ProfileStore during init on older builds).
         runCatching { ProfileManager.init(this) }
             .onFailure { Log.e("BetterStreamflixApp", "ProfileManager.init failed", it) }
-        ExperimentalMobileDesign.enforceAvailabilityGate()
-        CrashReporter.install(this)
+        runCatching { ExperimentalMobileDesign.enforceAvailabilityGate() }
+        runCatching { CrashReporter.install(this) }
         runCatching {
             com.dskja.betterstreamflix.platform.PlatformBootstrap.start(this)
-        }
-        DnsResolver.setDnsUrl(UserPreferences.dohProviderUrl)
-        // Rebuild after DoH is applied so the first TMDB call never uses system DNS.
-        runCatching { TMDb3.rebuildService() }
-
-        if (DeviceCapabilities.shouldReduceHomeEffects(this)) {
-            runCatching {
-                com.bumptech.glide.Glide.get(this)
-                    .setMemoryCategory(com.bumptech.glide.MemoryCategory.LOW)
-            }
         }
 
         runCatching {
@@ -129,8 +120,14 @@ class BetterStreamflixApp : Application() {
         val appContext = applicationContext
         val isTv = packageManager.hasSystemFeature(PackageManager.FEATURE_LEANBACK)
         val threshold = if (isTv) 10L else 50L
+        val dohUrl = runCatching { UserPreferences.dohProviderUrl }.getOrDefault("")
 
+        // Keep SYSTEM DNS until DoH is applied off-main (BETTERSTREAMFLIX-2J).
         applicationScope.launch(Dispatchers.IO) {
+            runCatching { DnsResolver.setDnsUrl(dohUrl) }
+                .onFailure { Log.e("BetterStreamflixApp", "DnsResolver.setDnsUrl failed", it) }
+            // Rebuild after DoH is applied so TMDB prefers the configured resolver.
+            runCatching { TMDb3.rebuildService() }
             runCatching {
                 com.dskja.betterstreamflix.download.StreamflixDownloadManager.get(appContext)
             }
@@ -167,6 +164,13 @@ class BetterStreamflixApp : Application() {
             // during cold start can kill the process right after the splash screen.
             if (!DeviceCapabilities.shouldUseConstrainedPlayback(appContext)) {
                 runCatching { CacheUtils.autoClearIfNeeded(appContext, thresholdMb = threshold) }
+            }
+        }
+
+        if (DeviceCapabilities.shouldReduceHomeEffects(this)) {
+            runCatching {
+                com.bumptech.glide.Glide.get(this)
+                    .setMemoryCategory(com.bumptech.glide.MemoryCategory.LOW)
             }
         }
     }

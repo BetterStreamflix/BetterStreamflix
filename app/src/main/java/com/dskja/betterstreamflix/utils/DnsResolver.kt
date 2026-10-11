@@ -9,7 +9,6 @@ import okhttp3.dnsoverhttps.DnsOverHttps
 import okhttp3.logging.HttpLoggingInterceptor
 import java.security.SecureRandom
 import javax.net.ssl.SSLContext
-import javax.net.ssl.SSLSocketFactory
 import javax.net.ssl.TrustManager
 import javax.net.ssl.X509TrustManager
 import java.net.Inet4Address
@@ -23,30 +22,50 @@ object DnsResolver : Dns {
     }
     private val logging = HttpLoggingInterceptor().setLevel(HttpLoggingInterceptor.Level.BASIC)
 
-    private val trustAllCerts = arrayOf<TrustManager>(
-        object : X509TrustManager {
-            override fun checkClientTrusted(chain: Array<java.security.cert.X509Certificate>, authType: String) {}
-            override fun checkServerTrusted(chain: Array<java.security.cert.X509Certificate>, authType: String) {}
-            override fun getAcceptedIssuers(): Array<java.security.cert.X509Certificate> = arrayOf()
-        }
-    )
-    private val sslContext = SSLContext.getInstance("TLS").apply { init(null, trustAllCerts, SecureRandom()) }
-    private val trustManager = trustAllCerts[0] as X509TrustManager
-
-    private var client: OkHttpClient = OkHttpClient.Builder()
-        .readTimeout(30, TimeUnit.SECONDS)
-        .connectTimeout(30, TimeUnit.SECONDS)
-        .sslSocketFactory(sslContext.socketFactory, trustManager)
-        .hostnameVerifier { _, _ -> true }
-        .apply {
-            if (com.dskja.betterstreamflix.BuildConfig.DEBUG) addInterceptor(logging)
-        }
-        .build()
-
     // Never read UserPreferences during object clinit — prefs may not be
     // set up yet (BETTERSTREAMFLIX-1Z). App.onCreate calls setDnsUrl().
+    // SSL / OkHttp are lazy so class load stays cheap on the main thread
+    // (BETTERSTREAMFLIX-2J App.onCreate ANR watch).
     private var _url: String = ""
     private var _internalDoh: Dns = Dns.SYSTEM
+
+    @Volatile
+    private var client: OkHttpClient? = null
+
+    private fun httpClient(): OkHttpClient {
+        client?.let { return it }
+        synchronized(this) {
+            client?.let { return it }
+            val trustAllCerts = arrayOf<TrustManager>(
+                object : X509TrustManager {
+                    override fun checkClientTrusted(
+                        chain: Array<java.security.cert.X509Certificate>,
+                        authType: String,
+                    ) {}
+                    override fun checkServerTrusted(
+                        chain: Array<java.security.cert.X509Certificate>,
+                        authType: String,
+                    ) {}
+                    override fun getAcceptedIssuers(): Array<java.security.cert.X509Certificate> =
+                        arrayOf()
+                }
+            )
+            val sslContext = SSLContext.getInstance("TLS").apply {
+                init(null, trustAllCerts, SecureRandom())
+            }
+            val trustManager = trustAllCerts[0] as X509TrustManager
+            return OkHttpClient.Builder()
+                .readTimeout(30, TimeUnit.SECONDS)
+                .connectTimeout(30, TimeUnit.SECONDS)
+                .sslSocketFactory(sslContext.socketFactory, trustManager)
+                .hostnameVerifier { _, _ -> true }
+                .apply {
+                    if (com.dskja.betterstreamflix.BuildConfig.DEBUG) addInterceptor(logging)
+                }
+                .build()
+                .also { client = it }
+        }
+    }
 
     override fun lookup(hostname: String): List<InetAddress> {
         val host = hostname.trim()
@@ -118,7 +137,7 @@ object DnsResolver : Dns {
         if (sanitized != _url) {
             _url = sanitized
             _internalDoh = buildDoh(_url)
-            Log.i(TAG, "DNS Engine updated successfully to: ${if (newUrl.isEmpty()) "SYSTEM" else newUrl}")
+            Log.i(TAG, "DNS Engine updated successfully to: ${if (sanitized.isEmpty()) "SYSTEM" else sanitized}")
         } else {
             Log.d(TAG, "DNS URL is the same as current, skipping update.")
         }
@@ -129,7 +148,7 @@ object DnsResolver : Dns {
         return if (url.isNotEmpty()) {
             try {
                 DnsOverHttps.Builder()
-                    .client(client)
+                    .client(httpClient())
                     .url(url.toHttpUrl())
                     .build()
             } catch (e: Exception) {
