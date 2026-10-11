@@ -164,6 +164,7 @@
     <string name="home_swiper_watch_now">Watch Now</string>
     <string name="home_continue_watching">Continue Watching</string>
     <string name="home_next_episodes">Next Episodes</string>
+    <string name="home_new_this_week">New this week</string>
     <string name="home_recently_watched">Recently Watched</string>
     <string name="home_recently_added">Recently Added</string>
     <string name="home_smart_chill_evening">Chill evening</string>
@@ -1506,6 +1507,8 @@
     <string name="settings_show_next_episodes_summary">Display the Next Episodes row on the home screen for series in progress</string>
     <string name="settings_show_smart_collections_title">Show Smart Collections</string>
     <string name="settings_show_smart_collections_summary">Dynamic shelves from your watchlist and continue watching — chill evening, with kids, German audio</string>
+    <string name="settings_show_watchlist_week_title">Show New this week</string>
+    <string name="settings_show_watchlist_week_summary">Display a week strip of watchlist episodes airing this week on the home screen</string>
     <string name="settings_clear_recently_watched_title">Clear Recently Watched</string>
     <string name="settings_clear_recently_watched_summary">Remove all entries from Recently Watched</string>
     <string name="settings_clear_recently_watched_confirm_message">Clear all Recently Watched entries? This cannot be undone.</string>

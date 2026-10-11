@@ -33,6 +33,7 @@ import com.dskja.betterstreamflix.smartcollections.SmartCollectionsBuilder
 import com.dskja.betterstreamflix.utils.LiveHubCatalog
 import com.dskja.betterstreamflix.watchlist.WatchlistDigestPlanner
 import com.dskja.betterstreamflix.utils.UserPreferences
+import com.dskja.betterstreamflix.watchlistweek.WatchlistWeekBuilder
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -363,6 +364,11 @@ class HomeViewModel(
                     catalogCategories = state.categories,
                 )
 
+                val watchlistWeek = WatchlistWeekBuilder.build(
+                    context = BetterStreamflixApp.instance.applicationContext,
+                    favoriteTvShows = history.favoriteTvShows,
+                )
+
                 val continueShelves = listOfNotNull(
                     Category(
                         name = Category.CONTINUE_WATCHING,
@@ -377,6 +383,7 @@ class HomeViewModel(
                     ).takeIf {
                         UserPreferences.showNextEpisodes && nextDeduped.isNotEmpty()
                     },
+                    watchlistWeek,
                     Category(
                         name = Category.RECENTLY_WATCHED,
                         list = rwDeduped,

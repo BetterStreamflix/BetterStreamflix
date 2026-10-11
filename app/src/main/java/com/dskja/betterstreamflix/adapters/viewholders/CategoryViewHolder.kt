@@ -149,6 +149,7 @@ class CategoryViewHolder(
             Category.isFeaturedName(name) -> res.getString(R.string.home_featured_title)
             name == Category.CONTINUE_WATCHING -> res.getString(R.string.home_continue_watching)
             name == Category.NEXT_EPISODES -> res.getString(R.string.home_next_episodes)
+            name == Category.NEW_THIS_WEEK -> res.getString(R.string.home_new_this_week)
             name == Category.RECENTLY_WATCHED -> res.getString(R.string.home_recently_watched)
             name == Category.FAVORITE_MOVIES -> res.getString(R.string.home_favorite_movies)
             name == Category.FAVORITE_TV_SHOWS -> res.getString(R.string.home_favorite_tv_shows)

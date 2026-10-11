@@ -194,6 +194,7 @@
     <string name="home_swiper_watch_now">Ansehen</string>
     <string name="home_continue_watching">Weiterschauen</string>
     <string name="home_next_episodes">Nächste Folgen</string>
+    <string name="home_new_this_week">Neu diese Woche</string>
     <string name="home_recently_watched">Kürzlich angesehen</string>
     <string name="home_recently_added">Kürzlich hinzugefügt</string>
     <string name="home_smart_chill_evening">Abends chillig</string>
@@ -973,6 +974,8 @@
     <string name="settings_show_next_episodes_summary">Die Zeile Nächste Folgen für Serien in Arbeit auf dem Startbildschirm anzeigen</string>
     <string name="settings_show_smart_collections_title">Smart Collections anzeigen</string>
     <string name="settings_show_smart_collections_summary">Dynamische Regale aus Watchlist und Weiterschauen — Abends chillig, Mit Kids, Nur DE Audio</string>
+    <string name="settings_show_watchlist_week_title">Neu diese Woche anzeigen</string>
+    <string name="settings_show_watchlist_week_summary">Wochenstreifen mit Watchlist-Folgen, die diese Woche erscheinen, auf dem Startbildschirm anzeigen</string>
     <string name="settings_clear_recently_watched_title">Zuletzt angesehen leeren</string>
     <string name="settings_clear_recently_watched_summary">Alle Einträge aus Zuletzt angesehen entfernen</string>
     <string name="settings_clear_recently_watched_confirm_message">Alle Einträge aus Zuletzt angesehen löschen? Das kann nicht rückgängig gemacht werden.</string>

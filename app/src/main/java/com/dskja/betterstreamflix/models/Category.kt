@@ -88,6 +88,8 @@ class Category(
         const val HOME_LIVE_ID = "home_live"
         /** Kids profile Friday ritual — exactly three age-appropriate catalog suggestions. */
         const val FAMILY_FRIDAY = "Family Friday"
+        /** Watchlist calendar — episodes airing this locale week (day-major strip). */
+        const val NEW_THIS_WEEK = "New This Week"
 
         /** True for the Featured constant or a blank legacy name. */
         fun isFeaturedName(name: String?): Boolean {

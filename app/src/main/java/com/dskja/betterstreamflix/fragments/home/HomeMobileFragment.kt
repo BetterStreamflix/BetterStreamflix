@@ -359,6 +359,17 @@ class HomeMobileFragment : Fragment() {
             }
 
         categories
+            .find { it.name == Category.NEW_THIS_WEEK }
+            ?.also {
+                it.name = getString(R.string.home_new_this_week)
+                it.list.forEach { show ->
+                    if (show is Episode) {
+                        show.itemType = AppAdapter.Type.EPISODE_CONTINUE_WATCHING_MOBILE_ITEM
+                    }
+                }
+            }
+
+        categories
             .find { it.name == Category.RECENTLY_WATCHED }
             ?.also {
                 it.name = getString(R.string.home_recently_watched)
@@ -449,6 +460,7 @@ class HomeMobileFragment : Fragment() {
         val resumeShelfTitles = setOf(
             getString(R.string.home_continue_watching),
             getString(R.string.home_next_episodes),
+            getString(R.string.home_new_this_week),
         )
         visibleCategories.onEach { category ->
             if (!Category.isFeaturedName(category.name) && category.name !in resumeShelfTitles) {
