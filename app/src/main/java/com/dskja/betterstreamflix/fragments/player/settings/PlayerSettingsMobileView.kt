@@ -52,6 +52,7 @@ class PlayerSettingsMobileView @JvmOverloads constructor(
     private val extraBufferingAdapter = SettingsAdapter(this, Settings.ExtraBuffering.list)
     private val softwareDecoderAdapter = SettingsAdapter(this, Settings.SoftwareDecoder.list)
     private val gesturesAdapter = SettingsAdapter(this, Settings.Gestures.list)
+    private val nightAudioAdapter = SettingsAdapter(this, Settings.NightAudio.list)
     private val keepScreenOnAdapter = SettingsAdapter(this, Settings.KeepScreenOn.list)
     private val serversAdapter = SettingsAdapter(this, Settings.Server.list)
     private val marginAdapter = SettingsAdapter(this, Settings.Subtitle.Style.Margin.list)
@@ -100,6 +101,7 @@ class PlayerSettingsMobileView @JvmOverloads constructor(
             Setting.SERVERS,
             Setting.GESTURES,
             Setting.KEEP_SCREEN_ON,
+            Setting.NIGHT_AUDIO,
             Setting.EXTRA_BUFFERING,
             Setting.SOFTWARE_DECODER,
             Setting.MANUAL_ZOOM -> displaySettings(Setting.MAIN)
@@ -188,6 +190,7 @@ class PlayerSettingsMobileView @JvmOverloads constructor(
                 Setting.CAPTION_STYLE_MARGIN -> context.getString(R.string.player_settings_caption_style_margin_title)
                 Setting.GESTURES -> context.getString(R.string.player_settings_gestures_title)
                 Setting.KEEP_SCREEN_ON -> context.getString(R.string.player_settings_keep_screen_on_title)
+                Setting.NIGHT_AUDIO -> context.getString(R.string.player_settings_night_audio_title)
                 Setting.MANUAL_ZOOM -> context.getString(R.string.player_settings_manual_zoom_label)
             }
         }
@@ -226,6 +229,7 @@ class PlayerSettingsMobileView @JvmOverloads constructor(
             Setting.CAPTION_STYLE_MARGIN -> marginAdapter
             Setting.GESTURES -> gesturesAdapter
             Setting.KEEP_SCREEN_ON -> keepScreenOnAdapter
+            Setting.NIGHT_AUDIO -> nightAudioAdapter
             Setting.MANUAL_ZOOM -> settingsAdapter
         }
         if (ExperimentalMobileDesign.enabled()) {
@@ -322,6 +326,7 @@ class PlayerSettingsMobileView @JvmOverloads constructor(
                             when (item) {
                                 Settings.Quality -> settingsView.displaySettings(Setting.QUALITY)
                                 Settings.Audio -> settingsView.displaySettings(Setting.AUDIO)
+                                Settings.NightAudio -> settingsView.displaySettings(Setting.NIGHT_AUDIO)
                                 Settings.Subtitle -> settingsView.displaySettings(Setting.SUBTITLES)
                                 Settings.Speed -> settingsView.displaySettings(Setting.SPEED)
                                 Settings.ExtraBuffering -> settingsView.displaySettings(Setting.EXTRA_BUFFERING)
@@ -524,6 +529,16 @@ class PlayerSettingsMobileView @JvmOverloads constructor(
                             settingsView.displaySettings(Setting.MAIN)
                         }
 
+                        is Settings.NightAudio -> {
+                            when (item) {
+                                is Settings.NightAudio.On ->
+                                    com.dskja.betterstreamflix.player.NightModeAudio.setPersisted(true)
+                                is Settings.NightAudio.Off ->
+                                    com.dskja.betterstreamflix.player.NightModeAudio.setPersisted(false)
+                            }
+                            settingsView.displaySettings(Setting.MAIN)
+                        }
+
                         is Settings.KeepScreenOn -> {
                             when (item) {
                                 is Settings.KeepScreenOn.On -> com.dskja.betterstreamflix.utils.UserPreferences.keepScreenOnWhenPaused = true
@@ -574,6 +589,7 @@ class PlayerSettingsMobileView @JvmOverloads constructor(
                     ContextCompat.getDrawable(binding.root.context, when (item) {
                         Settings.Quality -> R.drawable.ic_player_settings_quality
                         Settings.Audio -> R.drawable.ic_player_settings_audio
+                        Settings.NightAudio -> R.drawable.ic_player_settings_night
                         Settings.Subtitle -> if (Settings.Subtitle.selected is Settings.Subtitle.TextTrackInformation) R.drawable.ic_player_settings_subtitle_on else R.drawable.ic_player_settings_subtitle_off
                         Settings.Speed -> R.drawable.ic_player_settings_playback_speed
                         Settings.ExtraBuffering -> R.drawable.ic_player_settings_extra_buffer
@@ -605,6 +621,7 @@ class PlayerSettingsMobileView @JvmOverloads constructor(
                     is Settings -> when (item) {
                         Settings.Quality -> context.getString(R.string.player_settings_quality_label)
                         Settings.Audio -> context.getString(R.string.player_settings_audio_label)
+                        Settings.NightAudio -> context.getString(R.string.player_settings_night_audio_label)
                         Settings.Subtitle -> context.getString(R.string.player_settings_subtitles_label)
                         Settings.Speed -> context.getString(R.string.player_settings_speed_label)
                         Settings.ExtraBuffering -> context.getString(R.string.player_settings_extra_buffer_server_label)
@@ -713,6 +730,8 @@ class PlayerSettingsMobileView @JvmOverloads constructor(
 
                     is Settings.Gestures -> context.getString(item.stringId)
 
+                    is Settings.NightAudio -> context.getString(item.stringId)
+
                     is Settings.KeepScreenOn -> context.getString(item.stringId)
 
                     is Settings.Server -> item.name
@@ -737,6 +756,7 @@ class PlayerSettingsMobileView @JvmOverloads constructor(
                             )
                         }
                         Settings.Audio -> settingsView.audioPreferenceSubLabel().orEmpty()
+                        Settings.NightAudio -> context.getString(Settings.NightAudio.selected.stringId)
                         Settings.Subtitle -> when (val selected = Settings.Subtitle.selected) {
                             is Settings.Subtitle.TextTrackInformation -> selected.label
                             else -> context.getString(R.string.player_settings_subtitles_off)
@@ -884,6 +904,11 @@ class PlayerSettingsMobileView @JvmOverloads constructor(
                         else -> View.GONE
                     }
 
+                    is Settings.NightAudio -> when {
+                        item.isSelected -> View.VISIBLE
+                        else -> View.GONE
+                    }
+
                     is Settings.KeepScreenOn -> when {
                         item.isSelected -> View.VISIBLE
                         else -> View.GONE
@@ -915,6 +940,7 @@ class PlayerSettingsMobileView @JvmOverloads constructor(
                         when(item) {
                             Settings.Quality,
                             Settings.Audio,
+                            Settings.NightAudio,
                             Settings.Subtitle,
                             Settings.Speed,
                             Settings.ExtraBuffering,

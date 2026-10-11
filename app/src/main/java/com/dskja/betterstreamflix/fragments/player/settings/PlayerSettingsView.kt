@@ -186,6 +186,7 @@ abstract class PlayerSettingsView @JvmOverloads constructor(
         SERVERS,
         GESTURES,
         KEEP_SCREEN_ON,
+        NIGHT_AUDIO,
         MANUAL_ZOOM,
     }
 
@@ -594,6 +595,7 @@ abstract class PlayerSettingsView @JvmOverloads constructor(
                 DownloadWith,
                 Quality,
                 Audio,
+                NightAudio,
                 Subtitle,
                 Speed,
                 Server,
@@ -610,6 +612,7 @@ abstract class PlayerSettingsView @JvmOverloads constructor(
                 PlayWith,
                 Quality,
                 Audio,
+                NightAudio,
                 Subtitle,
                 Speed,
                 Server,
@@ -643,6 +646,25 @@ abstract class PlayerSettingsView @JvmOverloads constructor(
             data object Off : Gestures() {
                 override val isSelected: Boolean get() = !UserPreferences.playerGestures
                 override val stringId: Int get() = R.string.settings_player_gestures_off
+            }
+        }
+
+        /** Stereo → Night: dialog boost / quieter action peaks. */
+        sealed class NightAudio : Item {
+            companion object : Settings() {
+                val list = listOf(On, Off)
+                val selected: NightAudio get() = if (UserPreferences.nightAudioMode) On else Off
+            }
+            abstract val isSelected: Boolean
+            abstract val stringId: Int
+
+            data object On : NightAudio() {
+                override val isSelected: Boolean get() = UserPreferences.nightAudioMode
+                override val stringId: Int get() = R.string.player_settings_night_audio_on
+            }
+            data object Off : NightAudio() {
+                override val isSelected: Boolean get() = !UserPreferences.nightAudioMode
+                override val stringId: Int get() = R.string.player_settings_night_audio_off
             }
         }
 

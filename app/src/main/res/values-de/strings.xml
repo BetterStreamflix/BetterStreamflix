@@ -336,6 +336,11 @@
     <string name="player_settings_quality">%dp</string>
     <string name="player_settings_audio_title">Audio</string>
     <string name="player_settings_audio_label">Audio</string>
+    <string name="player_settings_night_audio_title">Nacht-Audio</string>
+    <string name="player_settings_night_audio_label">Nacht-Audio</string>
+    <string name="player_settings_night_audio_on">Nacht — Dialog-Boost</string>
+    <string name="player_settings_night_audio_off">Stereo (normal)</string>
+    <string name="player_settings_night_audio_summary">Dialog anheben und laute Action dämpfen fürs leise Hören</string>
     <string name="player_audio_remember_series">Für diese Serie merken</string>
     <string name="player_audio_always_series">Immer %1$s für diese Serie</string>
     <string name="player_audio_always_saved">Immer %1$s für diese Serie</string>
