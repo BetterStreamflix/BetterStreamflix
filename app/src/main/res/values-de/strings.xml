@@ -575,6 +575,8 @@
     <string name="profile_delete_confirm">Profil \"%1$s\" löschen? Der Wiedergabeverlauf dieses Profils wird entfernt.</string>
     <string name="profile_kids_title">Kinderprofil</string>
     <string name="profile_kids_summary">Jüngere Altersfreigabe und sicherere Standardwerte</string>
+    <string name="profile_kids_max_age_title">Kids-Altersfreigabe</string>
+    <string name="profile_kids_max_age_summary">Nur Titel bis zu diesem Alter in diesem Kids-Profil anzeigen</string>
     <string name="profile_kids_exit_requires_pin">Lege eine Eltern-PIN oder Profil-PIN fest, bevor du Kids verlässt</string>
     <string name="profile_kids_requires_exit_pin">Kids-Profile brauchen eine Eltern-PIN (oder eine PIN auf diesem Profil), damit Erwachsene sicher wechseln können</string>
     <string name="profile_avatar_title">Avatar-Stil</string>

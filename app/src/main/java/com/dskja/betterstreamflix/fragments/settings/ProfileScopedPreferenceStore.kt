@@ -3,6 +3,7 @@ package com.dskja.betterstreamflix.fragments.settings
 import androidx.preference.PreferenceDataStore
 import androidx.preference.PreferenceFragmentCompat
 import androidx.preference.PreferenceGroup
+import com.dskja.betterstreamflix.profiles.ProfileManager
 import com.dskja.betterstreamflix.utils.UserPreferences
 
 /**
@@ -49,7 +50,11 @@ internal object ProfileScopedPreferenceStore {
                     UserPreferences.libraryScope = UserPreferences.LibraryScope.fromKey(value)
                 }
                 "PARENTAL_CONTROL_MAX_AGE" -> {
-                    UserPreferences.parentalControlMaxAge = value?.trim()?.toIntOrNull()
+                    val age = value?.trim()?.toIntOrNull()
+                    UserPreferences.parentalControlMaxAge = age
+                    if (ProfileManager.isKidsActive() && age != null) {
+                        ProfileManager.updateMaxAgeRating(ProfileManager.activeProfileId, age)
+                    }
                 }
             }
         }

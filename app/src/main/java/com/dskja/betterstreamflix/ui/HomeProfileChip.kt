@@ -44,8 +44,11 @@ object HomeProfileChip {
         chip.visibility = View.VISIBLE
         chip.isFocusable = true
         chip.isClickable = true
-        // TV home: DPAD down from the chip lands in the catalog grid.
-        root.findViewById<View>(R.id.vgv_home)?.let { grid ->
+        // TV browse: DPAD down from the chip lands in the catalog grid.
+        val grid = root.findViewById<View>(R.id.vgv_home)
+            ?: root.findViewById<View>(R.id.vgv_movies)
+            ?: root.findViewById<View>(R.id.vgv_tv_shows)
+        if (grid != null) {
             chip.isFocusableInTouchMode = true
             chip.nextFocusDownId = grid.id
         }

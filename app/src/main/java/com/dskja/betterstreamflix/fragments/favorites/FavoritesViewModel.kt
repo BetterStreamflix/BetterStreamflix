@@ -9,6 +9,7 @@ import com.dskja.betterstreamflix.models.Movie
 import com.dskja.betterstreamflix.models.TvShow
 import com.dskja.betterstreamflix.ui.UserDataNotifier
 import com.dskja.betterstreamflix.utils.CrossProviderLibrary
+import com.dskja.betterstreamflix.utils.ParentalControlUtils
 import com.dskja.betterstreamflix.utils.ProviderChangeNotifier
 import com.dskja.betterstreamflix.utils.UserPreferences
 import kotlinx.coroutines.Dispatchers
@@ -68,6 +69,7 @@ class FavoritesViewModel(
         }
         .flowOn(Dispatchers.IO)
 
+    @OptIn(ExperimentalCoroutinesApi::class)
     val sections: Flow<List<FavoriteSection>> = combine(
         favorites,
         order,
@@ -78,6 +80,11 @@ class FavoritesViewModel(
                 Section.MOVIES -> FavoriteSection(section, sortItems(section, history.favoriteMovies, mode))
                 Section.TV_SHOWS -> FavoriteSection(section, sortItems(section, history.favoriteTvShows, mode))
             }
+        }
+    }.mapLatest { sections ->
+        // Kids / parental age filter — same gate as Home shelves and Movies/TV catalogs.
+        sections.map { section ->
+            section.copy(items = ParentalControlUtils.filterItems(section.items))
         }.also { currentSections = it }
     }.flowOn(Dispatchers.IO)
 

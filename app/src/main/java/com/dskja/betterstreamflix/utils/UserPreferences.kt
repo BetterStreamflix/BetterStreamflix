@@ -1197,7 +1197,7 @@ object UserPreferences {
         }
 
     fun getFavoriteCategoryOrder(providerName: String): List<String> {
-        val key = "FAVORITE_CATEGORY_ORDER_$providerName"
+        val key = ProfileManager.scopedPrefKey("FAVORITE_CATEGORY_ORDER_$providerName")
         val saved = prefs.getString(key, null)
             ?.split(',')
             ?.filter { it == "movies" || it == "tv_shows" }
@@ -1208,11 +1208,19 @@ object UserPreferences {
     fun setFavoriteCategoryOrder(providerName: String, order: List<String>) {
         val normalized = (order.filter { it == "movies" || it == "tv_shows" } +
             listOf("movies", "tv_shows")).distinct()
-        prefs.edit { putString("FAVORITE_CATEGORY_ORDER_$providerName", normalized.joinToString(",")) }
+        prefs.edit {
+            putString(
+                ProfileManager.scopedPrefKey("FAVORITE_CATEGORY_ORDER_$providerName"),
+                normalized.joinToString(","),
+            )
+        }
     }
 
     fun getFavoriteItemOrder(providerName: String, section: String): List<String> {
-        val raw = prefs.getString("FAVORITE_ITEM_ORDER_${providerName}_$section", null) ?: return emptyList()
+        val raw = prefs.getString(
+            ProfileManager.scopedPrefKey("FAVORITE_ITEM_ORDER_${providerName}_$section"),
+            null,
+        ) ?: return emptyList()
         return runCatching {
             val json = JSONArray(raw)
             List(json.length()) { index -> json.getString(index) }
@@ -1221,15 +1229,23 @@ object UserPreferences {
 
     fun setFavoriteItemOrder(providerName: String, section: String, order: List<String>) {
         prefs.edit {
-            putString("FAVORITE_ITEM_ORDER_${providerName}_$section", JSONArray(order).toString())
+            putString(
+                ProfileManager.scopedPrefKey("FAVORITE_ITEM_ORDER_${providerName}_$section"),
+                JSONArray(order).toString(),
+            )
         }
     }
 
     fun getFavoriteSortMode(providerName: String): String =
-        prefs.getString("FAVORITE_SORT_MODE_$providerName", "manual") ?: "manual"
+        prefs.getString(
+            ProfileManager.scopedPrefKey("FAVORITE_SORT_MODE_$providerName"),
+            "manual",
+        ) ?: "manual"
 
     fun setFavoriteSortMode(providerName: String, mode: String) {
-        prefs.edit { putString("FAVORITE_SORT_MODE_$providerName", mode) }
+        prefs.edit {
+            putString(ProfileManager.scopedPrefKey("FAVORITE_SORT_MODE_$providerName"), mode)
+        }
     }
 
     private fun profileScopedBoolean(key: Key): Boolean? =

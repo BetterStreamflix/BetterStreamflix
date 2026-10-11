@@ -16,6 +16,7 @@ import com.dskja.betterstreamflix.database.AppDatabase
 import com.dskja.betterstreamflix.databinding.FragmentTvShowsTvBinding
 import com.dskja.betterstreamflix.models.TvShow
 import com.dskja.betterstreamflix.providers.Provider
+import com.dskja.betterstreamflix.ui.HomeProfileChip
 import com.dskja.betterstreamflix.utils.UserPreferences
 import com.dskja.betterstreamflix.utils.CacheUtils
 import com.dskja.betterstreamflix.utils.ExpEmptyChrome
@@ -49,6 +50,7 @@ class TvShowsTvFragment : Fragment() {
         super.onViewCreated(view, savedInstanceState)
 
         initializeTvShows()
+        HomeProfileChip.refresh(this, binding.root, showName = true)
 
         viewLifecycleOwner.lifecycleScope.launch {
             viewModel.state.flowWithLifecycle(lifecycle, Lifecycle.State.STARTED).collect { state ->
@@ -100,6 +102,11 @@ class TvShowsTvFragment : Fragment() {
                 }
             }
         }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        HomeProfileChip.refresh(this, _binding?.root, showName = true)
     }
 
     override fun onDestroyView() {

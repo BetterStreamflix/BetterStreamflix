@@ -140,6 +140,15 @@
                 android:defaultValue="false"
                 app:iconSpaceReserved="false" />
 
+            <ListPreference
+                android:key="PROFILE_MAX_AGE"
+                android:title="@string/profile_kids_max_age_title"
+                android:summary="@string/profile_kids_max_age_summary"
+                android:entries="@array/kids_profile_age_entries"
+                android:entryValues="@array/kids_profile_age_values"
+                android:defaultValue="12"
+                app:iconSpaceReserved="false" />
+
             <Preference
                 android:key="PROFILE_PIN"
                 android:title="@string/profile_pin_title"

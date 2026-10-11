@@ -861,9 +861,19 @@ class ProfilePickerDialog : DialogFragment() {
                     )
                     return@setOnClickListener
                 }
+                val kids = kidsCheck?.isChecked == true
+                // Parity with in-picker create: kids need an exit PIN path.
+                if (kids && pin.isEmpty() && UserPreferences.parentalControlPin.isBlank()) {
+                    ExpDialogChrome.notify(
+                        context,
+                        R.string.profile_kids_requires_exit_pin,
+                        R.string.profile_kids_title,
+                    )
+                    return@setOnClickListener
+                }
                 val created = ProfileManager.create(
                     name = name,
-                    isKids = kidsCheck?.isChecked == true,
+                    isKids = kids,
                     avatarKey = selected,
                 )
                 if (pin.isNotEmpty()) {
