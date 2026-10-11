@@ -1,7 +1,10 @@
 package com.dskja.betterstreamflix.extractors
 
+import android.webkit.CookieManager
 import com.tanasi.retrofit_jsoup.converter.JsoupConverterFactory
 import com.dskja.betterstreamflix.models.Video
+import com.dskja.betterstreamflix.utils.DnsResolver
+import com.dskja.betterstreamflix.utils.NetworkClient
 import com.dskja.betterstreamflix.utils.StringConverterFactory
 import com.dskja.betterstreamflix.utils.withExtractorTimeouts
 import okhttp3.OkHttpClient
@@ -9,7 +12,7 @@ import org.jsoup.nodes.Document
 import retrofit2.Response
 import retrofit2.Retrofit
 import retrofit2.http.GET
-import retrofit2.http.Header
+import retrofit2.http.HeaderMap
 import retrofit2.http.Url
 import java.net.URI
 
@@ -28,32 +31,63 @@ open class DoodLaExtractor : Extractor() {
 
     private val alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"
 
+    private val browserHeaders = mapOf(
+        "User-Agent" to "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+        "Accept" to "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+        "Accept-Language" to "en-US,en;q=0.9"
+    )
+
+    // Match the working iOS flow more closely: keep cookies between the
+    // embed and /pass_md5 requests and send full browser playback headers.
+    private val playbackUserAgent =
+        "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) " +
+            "AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 " +
+            "Mobile/15E148 Safari/604.1"
+
     override suspend fun extract(link: String): Video {
         val service = Service.build(mainUrl)
-
         val embedUrl = link.replace("/d/", "/e/")
-        val response = service.get(embedUrl, link)
+        val response = service.get(embedUrl, browserHeaders + mapOf("Referer" to link))
         val document = response.body() ?: throw Exception("Failed to load embed page")
-        
-        // Get the final URL after redirects to use the correct domain for pass_md5
+
         val finalUrl = response.raw().request.url.toString()
         val finalBaseUrl = getBaseUrl(finalUrl)
+        val html = document.toString()
 
-        val md5Path = Regex("/pass_md5/[^']*").find(document.toString())?.value
+        val md5Path = DoodLaPlayback.findMd5Path(html)
             ?: throw Exception("Could not find md5 path")
-        
+        val pageToken = DoodLaPlayback.findPageToken(html)
         val md5Url = finalBaseUrl + md5Path
 
-        val videoPrefix = service.getString(md5Url, finalUrl)
-        
-        val url = videoPrefix +
-                createHashTable() +
-                "?token=${md5Url.substringAfterLast("/")}"
+        val passHeaders = mapOf(
+            "User-Agent" to browserHeaders.getValue("User-Agent"),
+            "Accept" to "*/*",
+            "Range" to "bytes=0-",
+            "Referer" to finalUrl
+        )
+        val videoPrefix = service.getString(md5Url, passHeaders).trim()
+        if (videoPrefix.isBlank()) throw Exception("Empty Dood pass_md5 response")
+
+        val token = pageToken ?: md5Url.substringAfterLast("/")
+        val url = DoodLaPlayback.buildPlaybackUrl(
+            videoPrefix = videoPrefix,
+            hash = createHashTable(),
+            token = token,
+            expiryMs = System.currentTimeMillis(),
+        )
+
+        val cookieHeader = CookieManager.getInstance()
+            .getCookie(finalUrl)
+            .orEmpty()
+            .trim()
 
         return Video(
             source = url,
-            headers = mapOf(
-                "Referer" to finalBaseUrl
+            headers = DoodLaPlayback.buildPlaybackHeaders(
+                finalUrl = finalUrl,
+                finalBaseUrl = finalBaseUrl,
+                playbackUserAgent = playbackUserAgent,
+                cookieHeader = cookieHeader,
             )
         )
     }
@@ -83,6 +117,10 @@ open class DoodLaExtractor : Extractor() {
         companion object {
             fun build(baseUrl: String): Service {
                 val client = OkHttpClient.Builder()
+                    .cookieJar(NetworkClient.cookieJar)
+                    .dns(DnsResolver.doh)
+                    .followRedirects(true)
+                    .followSslRedirects(true)
                     .withExtractorTimeouts()
                     .build()
 
@@ -101,13 +139,13 @@ open class DoodLaExtractor : Extractor() {
         @GET
         suspend fun get(
             @Url url: String,
-            @Header("Referer") referer: String,
+            @HeaderMap headers: Map<String, String>,
         ): Response<Document>
 
         @GET
         suspend fun getString(
             @Url url: String,
-            @Header("Referer") referer: String,
+            @HeaderMap headers: Map<String, String>,
         ): String
     }
 }
