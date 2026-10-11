@@ -40,17 +40,24 @@ object WatchPartyLobbyUi {
         fragment: Fragment,
         token: String,
         link: String,
+        shortCode: String? = null,
         serverSource: ServerSource?,
     ) {
         val context = fragment.context ?: return
         serverSource?.pauseLocalPlayback()
         val chatLines = ArrayDeque<String>()
         val view = inflateLobby(context)
+        val code = shortCode?.takeIf { it.isNotBlank() } ?: WatchPartySession.shortCode
+        view.code.text = context.getString(
+            R.string.watch_party_code_label,
+            code ?: "------",
+        )
+        view.code.visibility = View.VISIBLE
         val dialog = AlertDialog.Builder(context)
-            .setTitle(R.string.watch_party_lobby_title)
+            .setTitle(R.string.watch_together_pro_lobby_title)
             .setView(view.root)
             .setCancelable(false)
-            .setNeutralButton(R.string.watch_party_reshare_action, null)
+            .setNeutralButton(R.string.watch_party_show_code_action, null)
             .setNegativeButton(R.string.watch_party_end_action, null)
             .setPositiveButton(R.string.watch_party_start_action, null)
             .create()
@@ -63,6 +70,7 @@ object WatchPartyLobbyUi {
         dialog.setOnShowListener {
             dialog.getButton(AlertDialog.BUTTON_NEUTRAL)?.setOnClickListener {
                 WatchPartyUi.shareLink(context, link)
+                WatchPartyUi.showHostQr(fragment)
             }
             dialog.getButton(AlertDialog.BUTTON_NEGATIVE)?.setOnClickListener {
                 fragment.viewLifecycleOwner.lifecycleScope.launch {
@@ -309,6 +317,8 @@ object WatchPartyLobbyUi {
     private data class LobbyViews(
         val root: View,
         val status: TextView,
+        val code: TextView,
+        val syncHealth: TextView,
         val server: TextView,
         val members: TextView,
         val chat: TextView,
@@ -322,6 +332,8 @@ object WatchPartyLobbyUi {
         return LobbyViews(
             root = root,
             status = root.findViewById(R.id.tv_watch_party_lobby_status),
+            code = root.findViewById(R.id.tv_watch_party_lobby_code),
+            syncHealth = root.findViewById(R.id.tv_watch_party_lobby_sync),
             server = root.findViewById(R.id.tv_watch_party_lobby_server),
             members = root.findViewById(R.id.tv_watch_party_lobby_members),
             chat = root.findViewById(R.id.tv_watch_party_lobby_chat),
@@ -333,12 +345,31 @@ object WatchPartyLobbyUi {
 
     private fun applyLobbySnapshot(view: LobbyViews, lobby: WatchPartyLobbyPayload, isHost: Boolean) {
         val ctx = view.root.context
+        WatchPartySession.updateFromPayload(lobby.party)
         view.status.text = if (lobby.party.inLobby) {
             if (isHost) ctx.getString(R.string.watch_party_lobby_host_waiting)
             else ctx.getString(R.string.watch_party_lobby_guest_waiting)
         } else {
             ctx.getString(R.string.watch_party_lobby_starting)
         }
+        val code = lobby.party.shortCode?.takeIf { it.isNotBlank() }
+            ?: WatchPartySession.shortCode
+        if (!code.isNullOrBlank()) {
+            view.code.visibility = View.VISIBLE
+            view.code.text = ctx.getString(R.string.watch_party_code_label, code)
+        }
+        val mode = if (WatchTogetherPro.isTvScreenMode(lobby.party.displayMode)) {
+            ctx.getString(R.string.watch_party_mode_tv_screen)
+        } else {
+            ctx.getString(R.string.watch_party_mode_sync_all)
+        }
+        view.syncHealth.visibility = View.VISIBLE
+        view.syncHealth.text = ctx.getString(
+            R.string.watch_party_lobby_sync_line,
+            mode,
+            lobby.members.size,
+            lobby.party.syncRevision,
+        )
         val serverName = lobby.party.serverName?.takeIf { it.isNotBlank() }
             ?: ctx.getString(R.string.watch_party_lobby_server_unset)
         view.server.text = ctx.getString(R.string.watch_party_lobby_server_label, serverName)

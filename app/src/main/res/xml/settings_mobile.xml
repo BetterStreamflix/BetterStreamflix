@@ -2045,6 +2045,27 @@
         </PreferenceCategory>
 
         <PreferenceCategory
+            android:key="pc_watch_together"
+            android:title="@string/watch_together_pro_category_title"
+            app:iconSpaceReserved="false">
+            <Preference
+                android:key="watch_party_join_code"
+                android:title="@string/watch_party_join_code_title"
+                android:summary="@string/watch_party_join_code_summary"
+                app:iconSpaceReserved="false" />
+            <Preference
+                android:key="watch_party_show_code"
+                android:title="@string/watch_party_show_code_action"
+                android:summary="@string/watch_party_show_code_summary"
+                app:iconSpaceReserved="false" />
+            <Preference
+                android:key="watch_party_open_remote"
+                android:title="@string/watch_party_remote_open_action"
+                android:summary="@string/watch_party_remote_open_summary"
+                app:iconSpaceReserved="false" />
+        </PreferenceCategory>
+
+        <PreferenceCategory
             android:key="pc_cast_room"
             android:title="@string/cast_room_category_title"
             app:iconSpaceReserved="false">

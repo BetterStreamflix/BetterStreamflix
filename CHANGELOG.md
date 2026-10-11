@@ -15,6 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Profile themes + download folders: theme preference is per-profile; Kids defaults to **Cinema-Ink Kids**, adults to **Cinema-Ink Dark**; offline files land in visible `profiles/<Name>` folders (Settings path + Downloads chip show the folder)
 
 ### Added
+- Watch Together Pro: lobby QR/code, host force-resync / TV-screen mode / control lock, Sync-Health drift, phone remote scrubber over Watch Party (Mobile + TV; no stream relay)
 - Live Picture-in-Picture Zap: muted Mini-Live preview over VOD (in-player, not OS PiP); tap/OK switches to full live with optional Back to VOD — Mobile + TV
 - Remote Find Phone: TV shows a 6-char code + QR; phone pairs on the same Wi‑Fi as a touchpad and Search keyboard (LAN WebSocket + UDP discovery) — Mobile + TV
 - TV Sidekick Phone: phone scrubber / TV keyboard / party chat over Cast Room — TV stays the screen (Mobile companion + TV host)

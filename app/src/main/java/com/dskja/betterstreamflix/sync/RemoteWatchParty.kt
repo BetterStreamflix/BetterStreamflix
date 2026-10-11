@@ -10,6 +10,7 @@ import kotlinx.serialization.Serializable
 data class RemoteWatchParty(
     val id: String? = null,
     @SerialName("share_token") val shareToken: String,
+    @SerialName("short_code") val shortCode: String? = null,
     @SerialName("host_user_id") val hostUserId: String? = null,
     val provider: String,
     @SerialName("media_type") val mediaType: String,
@@ -35,6 +36,13 @@ data class RemoteWatchParty(
     @SerialName("expires_at") val expiresAt: String? = null,
     @SerialName("created_at") val createdAt: String? = null,
     @SerialName("updated_at") val updatedAt: String? = null,
+    @EncodeDefault @SerialName("display_mode") val displayMode: String = WatchTogetherPro.MODE_SYNC_ALL,
+    @SerialName("sidekick_seek_ms") val sidekickSeekMs: Long? = null,
+    @EncodeDefault @SerialName("sidekick_seek_seq") val sidekickSeekSeq: Long = 0L,
+    @SerialName("sidekick_playing") val sidekickPlaying: Boolean? = null,
+    @EncodeDefault @SerialName("sidekick_play_seq") val sidekickPlaySeq: Long = 0L,
+    @EncodeDefault @SerialName("sync_revision") val syncRevision: Long = 0L,
+    @EncodeDefault @SerialName("host_controls_locked") val hostControlsLocked: Boolean = false,
 )
 
 @Serializable
@@ -101,11 +109,60 @@ data class WatchPartyStartParam(
     @SerialName("p_server_name") val serverName: String? = null,
 )
 
+@Serializable
+data class WatchPartyCodeParam(
+    @SerialName("p_code") val code: String,
+)
+
+@Serializable
+data class WatchPartySidekickSeekParam(
+    @SerialName("p_token") val token: String,
+    @SerialName("p_position_ms") val positionMs: Long,
+)
+
+@Serializable
+data class WatchPartySidekickPlayParam(
+    @SerialName("p_token") val token: String,
+    @SerialName("p_playing") val playing: Boolean,
+)
+
+@Serializable
+data class WatchPartyForceResyncParam(
+    @SerialName("p_token") val token: String,
+    @SerialName("p_position_ms") val positionMs: Long,
+)
+
+@Serializable
+data class WatchPartyDisplayModeParam(
+    @SerialName("p_token") val token: String,
+    @SerialName("p_mode") val mode: String,
+)
+
+@Serializable
+data class WatchPartyControlsLockedParam(
+    @SerialName("p_token") val token: String,
+    @SerialName("p_locked") val locked: Boolean,
+)
+
+@Serializable
+data class WatchPartyKickParam(
+    @SerialName("p_token") val token: String,
+    @SerialName("p_member_key") val memberKey: String,
+)
+
+@Serializable
+data class WatchPartyDriftReportParam(
+    @SerialName("p_token") val token: String,
+    @SerialName("p_member_key") val memberKey: String,
+    @SerialName("p_drift_ms") val driftMs: Long,
+)
+
 /** Guest-facing snapshot returned by get_watch_party (no host_user_id). */
 @Serializable
 data class WatchPartyPayload(
     val id: String? = null,
     @SerialName("share_token") val shareToken: String? = null,
+    @SerialName("short_code") val shortCode: String? = null,
     val provider: String,
     @SerialName("media_type") val mediaType: String,
     @SerialName("media_id") val mediaId: String,
@@ -129,6 +186,13 @@ data class WatchPartyPayload(
     val ended: Boolean = false,
     @SerialName("expires_at") val expiresAt: String? = null,
     @SerialName("updated_at") val updatedAt: String? = null,
+    @SerialName("display_mode") val displayMode: String = WatchTogetherPro.MODE_SYNC_ALL,
+    @SerialName("sidekick_seek_ms") val sidekickSeekMs: Long? = null,
+    @SerialName("sidekick_seek_seq") val sidekickSeekSeq: Long = 0L,
+    @SerialName("sidekick_playing") val sidekickPlaying: Boolean? = null,
+    @SerialName("sidekick_play_seq") val sidekickPlaySeq: Long = 0L,
+    @SerialName("sync_revision") val syncRevision: Long = 0L,
+    @SerialName("host_controls_locked") val hostControlsLocked: Boolean = false,
 )
 
 @Serializable
@@ -153,4 +217,23 @@ data class WatchPartyMessagePayload(
     val kind: String = "chat",
     val body: String = "",
     @SerialName("created_at") val createdAt: String? = null,
+)
+
+@Serializable
+data class WatchPartySyncReportPayload(
+    @SerialName("member_key") val memberKey: String? = null,
+    @SerialName("drift_ms") val driftMs: Long = 0L,
+    @SerialName("reported_at") val reportedAt: String? = null,
+)
+
+@Serializable
+data class WatchPartySyncHealthPayload(
+    @SerialName("sync_revision") val syncRevision: Long = 0L,
+    @SerialName("updated_at") val updatedAt: String? = null,
+    @SerialName("display_mode") val displayMode: String = WatchTogetherPro.MODE_SYNC_ALL,
+    @SerialName("host_controls_locked") val hostControlsLocked: Boolean = false,
+    @SerialName("max_drift_ms") val maxDriftMs: Long = 0L,
+    @SerialName("stale_reports") val staleReports: Int = 0,
+    @SerialName("member_count") val memberCount: Int = 0,
+    val reports: List<WatchPartySyncReportPayload> = emptyList(),
 )

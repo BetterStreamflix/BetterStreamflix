@@ -18,12 +18,21 @@ object WatchPartyRepository {
     private const val TAG = "WatchParty"
     private const val TABLE = "watch_parties"
     private const val RPC_GET = "get_watch_party"
+    private const val RPC_GET_CODE = "get_watch_party_by_code"
     private const val RPC_LOBBY = "get_watch_party_lobby"
     private const val RPC_JOIN_LOBBY = "join_watch_party_lobby"
     private const val RPC_MEMBER_HB = "heartbeat_watch_party_member"
     private const val RPC_POST_MSG = "post_watch_party_message"
     private const val RPC_LIST_MSG = "list_watch_party_messages"
     private const val RPC_START = "start_watch_party"
+    private const val RPC_SIDEKICK_SEEK = "watch_party_sidekick_seek"
+    private const val RPC_SIDEKICK_PLAY = "watch_party_sidekick_play"
+    private const val RPC_FORCE_RESYNC = "watch_party_force_resync"
+    private const val RPC_DISPLAY_MODE = "set_watch_party_display_mode"
+    private const val RPC_CONTROLS_LOCKED = "set_watch_party_controls_locked"
+    private const val RPC_KICK = "kick_watch_party_member"
+    private const val RPC_REPORT_DRIFT = "report_watch_party_drift"
+    private const val RPC_SYNC_HEALTH = "list_watch_party_sync_health"
     /** Short TTL — parties are ephemeral social sessions, not long-lived shares. */
     private const val TOKEN_TTL_HOURS = 12L
 
@@ -32,6 +41,8 @@ object WatchPartyRepository {
         val link: String,
         val partyId: String?,
         val inLobby: Boolean,
+        val shortCode: String?,
+        val displayMode: String,
     )
 
     suspend fun createParty(
@@ -55,8 +66,10 @@ object WatchPartyRepository {
         endOwnedActiveParties(appContext, profileId, userId)
 
         val token = newShareToken()
+        val shortCode = newUniqueShortCode()
         val row = buildRow(
             shareToken = token,
+            shortCode = shortCode,
             hostUserId = userId,
             provider = provider,
             videoType = videoType,
@@ -81,6 +94,8 @@ object WatchPartyRepository {
             link = WatchPartyLinks.buildUri(inserted.shareToken),
             partyId = inserted.id,
             inLobby = inserted.inLobby,
+            shortCode = inserted.shortCode ?: shortCode,
+            displayMode = WatchTogetherPro.normalizeDisplayMode(inserted.displayMode),
         )
     }
 
@@ -195,6 +210,27 @@ object WatchPartyRepository {
                     filter { eq("id", partyId) }
                 }
         }.onFailure { Log.w(TAG, "Could not end watch party", it) }
+    }
+
+    suspend fun fetchByCode(context: Context, code: String): WatchPartyPayload {
+        requireConfigured()
+        val cleaned = WatchPartyLinks.normalizeShortCode(code)
+            ?: error("Invalid party code")
+        val appContext = context.applicationContext
+        val profileId = ProfileManager.activeProfileId
+        val client = SupabaseProvider.initializeForProfile(appContext, profileId)
+            ?: error("Configure Supabase before joining a Watch Party")
+        client.auth.awaitInitialization()
+        val payload = runCatching {
+            client.postgrest.rpc(
+                RPC_GET_CODE,
+                WatchPartyCodeParam(cleaned),
+            ).decodeAs<WatchPartyPayload>()
+        }.getOrNull()
+        if (payload == null || payload.shareToken.isNullOrBlank()) {
+            error("Watch Party not found or ended")
+        }
+        return payload
     }
 
     suspend fun fetchByToken(context: Context, token: String): WatchPartyPayload {
@@ -360,6 +396,173 @@ object WatchPartyRepository {
         }
     }
 
+    suspend fun sidekickSeek(context: Context, token: String, positionMs: Long): WatchPartyPayload {
+        requireConfigured()
+        if (!WatchPartyLinks.isValidToken(token)) error("Invalid share token")
+        val appContext = context.applicationContext
+        val profileId = ProfileManager.activeProfileId
+        val client = SupabaseProvider.initializeForProfile(appContext, profileId)
+            ?: error("Configure Supabase before using Watch Together remote")
+        client.auth.awaitInitialization()
+        val payload = runCatching {
+            client.postgrest.rpc(
+                RPC_SIDEKICK_SEEK,
+                WatchPartySidekickSeekParam(
+                    token = token.trim(),
+                    positionMs = WatchTogetherPro.clampSeek(positionMs),
+                ),
+            ).decodeAs<WatchPartyPayload>()
+        }.getOrNull()
+        if (payload == null || payload.shareToken.isNullOrBlank()) {
+            error("Could not scrub Watch Party")
+        }
+        return payload
+    }
+
+    suspend fun sidekickPlay(context: Context, token: String, playing: Boolean): WatchPartyPayload {
+        requireConfigured()
+        if (!WatchPartyLinks.isValidToken(token)) error("Invalid share token")
+        val appContext = context.applicationContext
+        val profileId = ProfileManager.activeProfileId
+        val client = SupabaseProvider.initializeForProfile(appContext, profileId)
+            ?: error("Configure Supabase before using Watch Together remote")
+        client.auth.awaitInitialization()
+        val payload = runCatching {
+            client.postgrest.rpc(
+                RPC_SIDEKICK_PLAY,
+                WatchPartySidekickPlayParam(token = token.trim(), playing = playing),
+            ).decodeAs<WatchPartyPayload>()
+        }.getOrNull()
+        if (payload == null || payload.shareToken.isNullOrBlank()) {
+            error("Could not update play state")
+        }
+        return payload
+    }
+
+    suspend fun forceResync(context: Context, token: String, positionMs: Long): WatchPartyPayload {
+        requireConfigured()
+        if (!WatchPartyLinks.isValidToken(token)) error("Invalid share token")
+        val appContext = context.applicationContext
+        val profileId = ProfileManager.activeProfileId
+        val client = SupabaseProvider.clientFor(appContext, profileId)
+        client.auth.awaitInitialization()
+        if (client.auth.currentSessionOrNull()?.user?.id == null) {
+            error("Sign in to force resync")
+        }
+        val payload = runCatching {
+            client.postgrest.rpc(
+                RPC_FORCE_RESYNC,
+                WatchPartyForceResyncParam(
+                    token = token.trim(),
+                    positionMs = WatchTogetherPro.clampSeek(positionMs),
+                ),
+            ).decodeAs<WatchPartyPayload>()
+        }.getOrNull()
+        if (payload == null || payload.shareToken.isNullOrBlank()) {
+            error("Could not force resync")
+        }
+        return payload
+    }
+
+    suspend fun setDisplayMode(context: Context, token: String, mode: String): WatchPartyPayload {
+        requireConfigured()
+        if (!WatchPartyLinks.isValidToken(token)) error("Invalid share token")
+        if (!WatchTogetherPro.isValidDisplayMode(mode)) error("Invalid display mode")
+        val appContext = context.applicationContext
+        val profileId = ProfileManager.activeProfileId
+        val client = SupabaseProvider.clientFor(appContext, profileId)
+        client.auth.awaitInitialization()
+        if (client.auth.currentSessionOrNull()?.user?.id == null) {
+            error("Sign in to change display mode")
+        }
+        val payload = runCatching {
+            client.postgrest.rpc(
+                RPC_DISPLAY_MODE,
+                WatchPartyDisplayModeParam(token = token.trim(), mode = mode),
+            ).decodeAs<WatchPartyPayload>()
+        }.getOrNull()
+        if (payload == null || payload.shareToken.isNullOrBlank()) {
+            error("Could not set display mode")
+        }
+        return payload
+    }
+
+    suspend fun setControlsLocked(context: Context, token: String, locked: Boolean): WatchPartyPayload {
+        requireConfigured()
+        if (!WatchPartyLinks.isValidToken(token)) error("Invalid share token")
+        val appContext = context.applicationContext
+        val profileId = ProfileManager.activeProfileId
+        val client = SupabaseProvider.clientFor(appContext, profileId)
+        client.auth.awaitInitialization()
+        if (client.auth.currentSessionOrNull()?.user?.id == null) {
+            error("Sign in to lock controls")
+        }
+        val payload = runCatching {
+            client.postgrest.rpc(
+                RPC_CONTROLS_LOCKED,
+                WatchPartyControlsLockedParam(token = token.trim(), locked = locked),
+            ).decodeAs<WatchPartyPayload>()
+        }.getOrNull()
+        if (payload == null || payload.shareToken.isNullOrBlank()) {
+            error("Could not update control lock")
+        }
+        return payload
+    }
+
+    suspend fun kickMember(context: Context, token: String, memberKey: String): WatchPartyLobbyPayload {
+        requireConfigured()
+        if (!WatchPartyLinks.isValidToken(token)) error("Invalid share token")
+        val appContext = context.applicationContext
+        val profileId = ProfileManager.activeProfileId
+        val client = SupabaseProvider.clientFor(appContext, profileId)
+        client.auth.awaitInitialization()
+        if (client.auth.currentSessionOrNull()?.user?.id == null) {
+            error("Sign in to kick a member")
+        }
+        val lobby = runCatching {
+            client.postgrest.rpc(
+                RPC_KICK,
+                WatchPartyKickParam(token = token.trim(), memberKey = memberKey.trim()),
+            ).decodeAs<WatchPartyLobbyPayload>()
+        }.getOrNull()
+        if (lobby == null) error("Could not kick member")
+        return lobby
+    }
+
+    suspend fun reportDrift(context: Context, token: String, driftMs: Long) {
+        requireConfigured()
+        if (!WatchPartyLinks.isValidToken(token)) return
+        val appContext = context.applicationContext
+        val profileId = ProfileManager.activeProfileId
+        val client = SupabaseProvider.initializeForProfile(appContext, profileId) ?: return
+        client.auth.awaitInitialization()
+        runCatching {
+            client.postgrest.rpc(
+                RPC_REPORT_DRIFT,
+                WatchPartyDriftReportParam(
+                    token = token.trim(),
+                    memberKey = WatchPartyMemberIdentity.memberKey(appContext),
+                    driftMs = driftMs.coerceAtLeast(0L),
+                ),
+            )
+        }.onFailure { Log.w(TAG, "Drift report failed", it) }
+    }
+
+    suspend fun fetchSyncHealth(context: Context, token: String): WatchPartySyncHealthPayload? {
+        requireConfigured()
+        if (!WatchPartyLinks.isValidToken(token)) return null
+        val appContext = context.applicationContext
+        val profileId = ProfileManager.activeProfileId
+        val client = SupabaseProvider.initializeForProfile(appContext, profileId) ?: return null
+        client.auth.awaitInitialization()
+        return runCatching {
+            client.postgrest.rpc(
+                RPC_SYNC_HEALTH,
+                WatchPartyTokenParam(token.trim()),
+            ).decodeAs<WatchPartySyncHealthPayload>()
+        }.onFailure { Log.w(TAG, "Sync health fetch failed", it) }.getOrNull()
+    }
+
     suspend fun flushStalePending(context: Context): Int {
         val appContext = context.applicationContext
         if (!SupabaseProvider.isConfigured) return 0
@@ -444,6 +647,7 @@ object WatchPartyRepository {
 
     private fun buildRow(
         shareToken: String,
+        shortCode: String,
         hostUserId: String,
         provider: String,
         videoType: Video.Type,
@@ -454,6 +658,7 @@ object WatchPartyRepository {
         return when (videoType) {
             is Video.Type.Movie -> RemoteWatchParty(
                 shareToken = shareToken,
+                shortCode = shortCode,
                 hostUserId = hostUserId,
                 provider = provider,
                 mediaType = "movie",
@@ -470,9 +675,11 @@ object WatchPartyRepository {
                 inLobby = true,
                 ended = false,
                 expiresAt = expiresAt,
+                displayMode = WatchTogetherPro.MODE_SYNC_ALL,
             )
             is Video.Type.Episode -> RemoteWatchParty(
                 shareToken = shareToken,
+                shortCode = shortCode,
                 hostUserId = hostUserId,
                 provider = provider,
                 mediaType = "episode",
@@ -496,12 +703,15 @@ object WatchPartyRepository {
                 inLobby = true,
                 ended = false,
                 expiresAt = expiresAt,
+                displayMode = WatchTogetherPro.MODE_SYNC_ALL,
             )
         }
     }
 
     private fun newShareToken(): String =
         UUID.randomUUID().toString().replace("-", "")
+
+    private fun newUniqueShortCode(): String = WatchPartyLinks.newShortCode()
 
     private fun requireConfigured() {
         if (!SupabaseProvider.isConfigured) {

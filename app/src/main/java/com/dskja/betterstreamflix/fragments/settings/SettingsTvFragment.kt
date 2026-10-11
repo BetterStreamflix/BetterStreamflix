@@ -380,6 +380,10 @@ class SettingsTvFragment : LeanbackPreferenceFragmentCompat() {
         SupabaseSettingsController.bind(this, lifecycleScope) { key ->
             findPreference(key)
         }
+        com.dskja.betterstreamflix.sync.WatchPartySettingsController.bind(
+            fragment = this,
+            findPreference = { key -> findPreference(key) },
+        )
         CastRoomSettingsController.bind(
             fragment = this,
             scope = lifecycleScope,

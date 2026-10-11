@@ -110,13 +110,13 @@ Opening that link on Mobile or TV fetches the list through the `get_shared_watch
 
 Personal cross-device sync continues to use `user_media_state`. Shared lists are a separate snapshot for link sharing; they do not replace Account & sync.
 
-## Watch-Party 2.0
+## Watch Together Pro (Watch-Party session)
 
-After the watch-parties migrations are applied (included in **Copy database setup SQL**, plus `supabase/migrations/20261011210000_create_watch_parties.sql` and `20261011220000_watch_party_v2_lobby_chat.sql`), a signed-in host can open a Watch Party lobby from the player (Mobile or TV). The app inserts a `watch_parties` row with an opaque `share_token`, ~12-hour `expires_at`, `in_lobby=true`, media identity, and the host-picked **server_id/server_name**. The share link looks like:
+After the watch-parties + Pro migrations are applied (included in **Copy database setup SQL**, plus `supabase/migrations/20261011210000_create_watch_parties.sql`, `20261011220000_watch_party_v2_lobby_chat.sql`, and `20261011270000_watch_together_pro.sql`), a signed-in host can open a **Watch Together** lobby from the player (Mobile or TV). The app inserts a `watch_parties` row with an opaque `share_token`, a **6-character `short_code`**, ~12-hour `expires_at`, `in_lobby=true`, media identity, and the host-picked **server_id/server_name**. The share link looks like:
 
 `https://betterstreamflix.app/party/<share_token>`
 
-Opening that link on Mobile or TV fetches the session through `get_watch_party` / `join_watch_party_lobby` (publishable/anon key) and asks before joining. Guests wait in the lobby (chat + emoji reacts) until the host taps **Start watching** (`start_watch_party`). After start, devices sync **position_ms + chosen server + playing** only — each device still loads its own stream from the provider (**no video relay**). Host server picks apply to everyone. When the host leaves the player or taps **End party**, `ended` is set and guests disconnect gracefully. Live TV and offline playback cannot host a party. Kids/PIN gates queue the join token per profile until unlock.
+Opening that link (or entering the lobby code via Settings → Watch Together Pro / `get_watch_party_by_code`) fetches the session through `get_watch_party` / `join_watch_party_lobby` and asks before joining. Guests wait in the lobby (QR/code, chat + emoji reacts, Sync-Health line) until the host taps **Start watching** (`start_watch_party`). After start, **sync_all** devices sync **position_ms + chosen server + playing**; **tv_screen** mode lets a phone join as **remote** (`watch_party_sidekick_seek` / `watch_party_sidekick_play`) while the TV stays the picture. Host controls include force resync, control lock, and Sync-Health (`list_watch_party_sync_health` / drift reports). Each device still loads its own stream (**no video relay**). When the host leaves the player or taps **End party**, `ended` is set and guests disconnect gracefully. Live TV and offline playback cannot host a party. Kids/PIN gates queue the join token per profile until unlock.
 
 ## Cast Room (phone → TV queue)
 
