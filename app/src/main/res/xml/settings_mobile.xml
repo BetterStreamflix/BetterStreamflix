@@ -2009,6 +2009,31 @@
         </PreferenceCategory>
 
         <PreferenceCategory
+            android:key="pc_remote_find"
+            android:title="@string/remote_find_category_title"
+            app:iconSpaceReserved="false">
+            <Preference
+                android:key="remote_find_join_scan"
+                android:title="@string/remote_find_join_scan_title"
+                android:summary="@string/remote_find_join_scan_summary"
+                app:iconSpaceReserved="false" />
+            <Preference
+                android:key="remote_find_join_code"
+                android:title="@string/remote_find_join_code_title"
+                android:summary="@string/remote_find_join_code_summary"
+                app:iconSpaceReserved="false" />
+            <Preference
+                android:key="remote_find_open_pad"
+                android:title="@string/remote_find_open_pad_title"
+                android:summary="@string/remote_find_open_pad_summary"
+                app:iconSpaceReserved="false" />
+            <Preference
+                android:key="remote_find_end"
+                android:title="@string/remote_find_leave_action"
+                app:iconSpaceReserved="false" />
+        </PreferenceCategory>
+
+        <PreferenceCategory
             android:key="pc_session_handoff"
             android:title="@string/session_handoff_category_title"
             app:iconSpaceReserved="false">

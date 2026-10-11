@@ -327,6 +327,8 @@ class MainTvActivity : FragmentActivity() {
         handleWatchDeepLink(intent)
         com.dskja.betterstreamflix.tvlauncher.TvLauncherSync.start(this)
         registerCastRoomHostConsumer()
+        com.dskja.betterstreamflix.remotefind.RemoteFindPadBridge.attach(this)
+        com.dskja.betterstreamflix.remotefind.RemoteFindNavBridge.attach(this)
     }
 
     override fun onNewIntent(intent: Intent) {
@@ -583,6 +585,9 @@ class MainTvActivity : FragmentActivity() {
     }
 
     override fun onDestroy() {
+        com.dskja.betterstreamflix.remotefind.RemoteFindPadBridge.detach(this)
+        com.dskja.betterstreamflix.remotefind.RemoteFindNavBridge.detach(this)
+        com.dskja.betterstreamflix.remotefind.RemoteFindHost.stop()
         com.dskja.betterstreamflix.sync.CastRoomUi.registerHostConsumer(null)
         castSessionStateListener?.let { CastPlaybackHub.removeSessionStateListener(it) }
         castSessionStateListener = null

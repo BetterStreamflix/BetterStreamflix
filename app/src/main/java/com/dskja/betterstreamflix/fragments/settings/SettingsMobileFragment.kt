@@ -187,6 +187,16 @@ class SettingsMobileFragment : PreferenceFragmentCompat() {
         activity?.let { CastRoomSettingsController.onScanResult(it, rawValue) }
     }
 
+    private val scanRemoteFindQrLauncher = registerForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        if (result.resultCode != Activity.RESULT_OK) return@registerForActivityResult
+        val rawValue = result.data?.getStringExtra(QrScannerActivity.EXTRA_QR_VALUE)
+        activity?.let {
+            com.dskja.betterstreamflix.remotefind.RemoteFindSettingsController.onScanResult(it, rawValue)
+        }
+    }
+
     private var pendingProfileExportJson: String? = null
 
     private val exportProfileLauncher = registerForActivityResult(
@@ -483,6 +493,19 @@ class SettingsMobileFragment : PreferenceFragmentCompat() {
         com.dskja.betterstreamflix.sync.SessionHandoffSettingsController.bind(
             fragment = this,
             findPreference = { key -> findPreference(key) },
+        )
+        com.dskja.betterstreamflix.remotefind.RemoteFindSettingsController.bind(
+            fragment = this,
+            findPreference = { key -> findPreference(key) },
+            scanLauncher = { intent ->
+                runCatching { scanRemoteFindQrLauncher.launch(intent) }
+                    .onFailure {
+                        showSettingsInfo(
+                            getString(R.string.remote_find_scan_unavailable),
+                            R.string.remote_find_join_scan_title,
+                        )
+                    }
+            },
         )
         PlatformSettingsController.bind(this, lifecycleScope) { key ->
             findPreference(key)

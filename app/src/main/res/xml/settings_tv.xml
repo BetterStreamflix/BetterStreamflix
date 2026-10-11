@@ -1684,6 +1684,20 @@
             <Preference android:key="cloud_sync_now" android:title="@string/cloud_sync_now" android:summary="@string/cloud_sync_now_summary" />
         </PreferenceCategory>
         <PreferenceCategory
+            android:key="pc_remote_find"
+            android:title="@string/remote_find_category_title">
+            <Preference
+                android:key="remote_find_host"
+                android:title="@string/remote_find_category_title"
+                android:summary="@string/remote_find_host_summary" />
+            <Preference
+                android:key="remote_find_show_code"
+                android:title="@string/remote_find_show_code_action" />
+            <Preference
+                android:key="remote_find_end"
+                android:title="@string/remote_find_end_action" />
+        </PreferenceCategory>
+        <PreferenceCategory
             android:key="pc_session_handoff"
             android:title="@string/session_handoff_category_title">
             <Preference
