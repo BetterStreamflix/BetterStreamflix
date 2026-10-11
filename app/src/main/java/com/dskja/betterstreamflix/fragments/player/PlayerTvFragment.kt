@@ -443,6 +443,15 @@ class PlayerTvFragment : Fragment(),
         TrailerStreamCrossfade.attachBridge(
             bridge = binding.ivTrailerStreamBridge,
             contentId = args.id,
+            onTimeout = {
+                val bridge = _binding?.ivTrailerStreamBridge ?: return@attachBridge
+                TrailerStreamCrossfade.revealStream(
+                    bridge,
+                    durationMs = TrailerStreamCrossfade.revealDurationMs(
+                        UserPreferences.cinemaRoomEnabled,
+                    ),
+                )
+            },
         )
         runCatching { TrailerPlaybackController.silenceAllActive() }
         initializePlayer(false)
@@ -3280,7 +3289,10 @@ class PlayerTvFragment : Fragment(),
 
         private fun revealTrailerStreamBridge() {
             val bridge = _binding?.ivTrailerStreamBridge ?: return
-            TrailerStreamCrossfade.revealStream(bridge)
+            val duration = TrailerStreamCrossfade.revealDurationMs(
+                UserPreferences.cinemaRoomEnabled,
+            )
+            TrailerStreamCrossfade.revealStream(bridge, durationMs = duration)
         }
 
         private fun resolvePlayerTitle(videoType: Video.Type = currentVideoTypeForUi()): String {

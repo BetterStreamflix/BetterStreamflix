@@ -33,6 +33,13 @@ object TrailerStreamCrossfade {
     /** Safety: never leave the bridge up forever if playback never starts. */
     const val BRIDGE_MAX_MS = 12_000L
 
+    /**
+     * Living-room Trailer→Play dissolve when Cinema Room is on (TV player).
+     * Mobile keeps [CROSSFADE_MS] unless callers pass an explicit duration.
+     */
+    fun revealDurationMs(cinemaRoomEnabled: Boolean): Long =
+        CinemaRoomPolicy.trailerCrossfadeMs(cinemaRoomEnabled)
+
     data class Handoff(
         val contentId: String,
         val coverUrl: String?,

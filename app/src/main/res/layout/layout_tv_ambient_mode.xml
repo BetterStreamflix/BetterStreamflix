@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Full-bleed TV Ambient overlay: soft poster cinemagraphs + Continue strip. -->
+<!-- Full-bleed Cinema Room Ambient overlay: soft poster cinemagraphs + Continue strip. -->
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
@@ -30,6 +30,17 @@
         android:scaleType="centerCrop"
         tools:ignore="ContentDescription" />
 
+    <!-- Ambient-light hint target — palette radial glow when Cinema Room allows. -->
+    <View
+        android:id="@+id/v_ambient_glow"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:alpha="0"
+        android:clickable="false"
+        android:focusable="false"
+        android:importantForAccessibility="no"
+        android:visibility="gone" />
+
     <View
         android:id="@+id/v_ambient_scrim"
         android:layout_width="match_parent"
@@ -37,6 +48,40 @@
         android:background="@drawable/bg_player_end_card_scrim"
         android:clickable="false"
         android:focusable="false" />
+
+    <LinearLayout
+        android:id="@+id/ll_cinema_room_brand"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="top|start"
+        android:layout_marginStart="48dp"
+        android:layout_marginTop="36dp"
+        android:orientation="vertical"
+        android:visibility="gone"
+        tools:visibility="visible">
+
+        <TextView
+            android:id="@+id/tv_cinema_room_brand"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:fontFamily="@font/syne"
+            android:letterSpacing="0.06"
+            android:text="@string/cinema_room_brand_label"
+            android:textAllCaps="true"
+            android:textColor="@color/cinema_text"
+            android:textSize="18sp" />
+
+        <TextView
+            android:id="@+id/tv_cinema_room_wake"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:fontFamily="@font/manrope"
+            android:letterSpacing="0.04"
+            android:text="@string/cinema_room_wake_hint"
+            android:textColor="@color/cinema_text_muted"
+            android:textSize="13sp" />
+    </LinearLayout>
 
     <LinearLayout
         android:id="@+id/ll_ambient_chrome"

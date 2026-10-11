@@ -1486,6 +1486,17 @@
     <string name="settings_tv_ambient_mode_title">Ambient-Modus</string>
     <string name="settings_tv_ambient_mode_summary">Nach Leerlauf auf Home: sanfte Poster-Cinemagraphs mit Weiterschauen (High-End-TVs; burn-in sicher)</string>
     <string name="tv_ambient_continue_label">Weiterschauen</string>
+    <string name="settings_cinema_room_title">Cinema Room</string>
+    <string name="settings_cinema_room_summary">Wohnzimmer-Markenkern — Looks, Ambient, Trailer→Play, Skip, End-Card, Clean Exit</string>
+    <string name="settings_cinema_room_master_title">Cinema Room</string>
+    <string name="settings_cinema_room_master_summary">Ambient-Leerlauf, Cinema-Ink Looks, Trailer→Play-Crossfade, Skip Intro, End-Card und Clean Exit als ein TV-Erlebnis</string>
+    <string name="settings_cinema_ambient_light_title">Ambient-Licht-Hints</string>
+    <string name="settings_cinema_ambient_light_summary">Sanftes Palette-Glow aus dem Artwork im Ambient-Modus (aus bei hohem Kontrast)</string>
+    <string name="settings_cinema_room_looks_summary">Cinema-Ink Looks bleiben gesperrt — Dark, Light oder Kids. Keine gemischten Akzente.</string>
+    <string name="settings_cinema_room_pillars_title">Player-Säulen</string>
+    <string name="settings_cinema_room_pillars_summary">Skip Intro, End-Card-Chooser und Clean Exit bleiben verfügbar. Trailer→Play nutzt eine längere Wohnzimmer-Überblendung.</string>
+    <string name="cinema_room_brand_label">Cinema Room</string>
+    <string name="cinema_room_wake_hint">Beliebige Taste</string>
     <string name="settings_stick_energy_mode_summary_with_codec_comfort">Energie-Modus Stick · Codec Comfort aktiv — SW-Decoder und stabile Puffer nach Decode-Abstürzen auf diesem Gerät</string>
     <string name="settings_oled_mode_title">OLED-Modus</string>
     <string name="settings_oled_mode_summary">Graue Flächen app-weit durch echtes Schwarz ersetzen</string>

@@ -38,7 +38,7 @@ import com.dskja.betterstreamflix.utils.LoggingUtils
 import com.dskja.betterstreamflix.utils.UserPreferences
 import com.dskja.betterstreamflix.utils.ProviderChangeNotifier
 import com.dskja.betterstreamflix.utils.HomeCatalogPipeline
-import com.dskja.betterstreamflix.ui.AmbientModeController
+import com.dskja.betterstreamflix.ui.CinemaRoomController
 import com.dskja.betterstreamflix.ui.FeaturedAdvancePolicy
 import com.dskja.betterstreamflix.ui.FeaturedHeroController
 import com.dskja.betterstreamflix.ui.FeaturedSwiperChrome
@@ -59,21 +59,21 @@ class HomeTvFragment : Fragment() {
 
     private val appAdapter = AppAdapter()
     private var homeBindSignature: String? = null
-    private var ambientController: AmbientModeController? = null
+    private var cinemaRoomController: CinemaRoomController? = null
 
-    /** True while Ambient Mode owns the Home canvas (pauses Featured rotate). */
-    fun isAmbientActive(): Boolean = ambientController?.isActive() == true
+    /** True while Cinema Room Ambient owns the Home canvas (pauses Featured rotate). */
+    fun isAmbientActive(): Boolean = cinemaRoomController?.isAmbientActive() == true
 
     /** Reset idle / exit ambient — called from [MainTvActivity] key path. */
     fun onAmbientUserActivity() {
-        ambientController?.onUserActivity()
+        cinemaRoomController?.onUserActivity()
     }
 
     /**
      * @return true if Ambient fully handled the key (e.g. BACK while active).
      */
     fun onAmbientKeyEvent(event: KeyEvent): Boolean =
-        ambientController?.onKeyEvent(event) == true
+        cinemaRoomController?.onKeyEvent(event) == true
 
     /** Shared pool for nested shelf HorizontalGridViews (parity with mobile shelfPool). */
     val shelfPool: RecyclerView.RecycledViewPool = RecyclerView.RecycledViewPool().apply {
@@ -138,7 +138,7 @@ class HomeTvFragment : Fragment() {
 
         initializeHome()
         refreshProfileChip()
-        ambientController = AmbientModeController(
+        cinemaRoomController = CinemaRoomController(
             fragment = this,
             root = binding.root,
             homeContent = binding.vgvHome,
@@ -242,7 +242,7 @@ class HomeTvFragment : Fragment() {
             ?.let {
                 resetSwiperSchedule()
             }
-        ambientController?.onStart()
+        cinemaRoomController?.onStart()
     }
 
     override fun onPause() {
@@ -257,14 +257,14 @@ class HomeTvFragment : Fragment() {
     }
 
     override fun onStop() {
-        ambientController?.onStop()
+        cinemaRoomController?.onStop()
         super.onStop()
         swiperHandler.removeCallbacksAndMessages(null)
     }
 
     override fun onDestroyView() {
-        ambientController?.destroy()
-        ambientController = null
+        cinemaRoomController?.destroy()
+        cinemaRoomController = null
         swiperHandler.removeCallbacksAndMessages(null)
         _binding?.let { appAdapter.onSaveInstanceState(it.vgvHome) }
         _binding = null
@@ -647,7 +647,7 @@ class HomeTvFragment : Fragment() {
                     else -> AppAdapter.Type.CATEGORY_TV_ITEM
                 }
             }
-        ambientController?.onCategoriesBound(visibleCategories)
+        cinemaRoomController?.onCategoriesBound(visibleCategories)
         if (homeUnchanged(visibleCategories, watchlistDigestEpisodes)) return
         val showDigest = com.dskja.betterstreamflix.watchlist.WatchlistDigestPolicy.shouldShow(
             watchlistDigestEpisodes,

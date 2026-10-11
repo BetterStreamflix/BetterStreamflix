@@ -2,6 +2,8 @@ package com.dskja.betterstreamflix.ui
 
 import android.animation.AnimatorSet
 import android.animation.ObjectAnimator
+import android.graphics.Bitmap
+import android.graphics.drawable.Drawable
 import android.os.Handler
 import android.os.Looper
 import android.view.KeyEvent
@@ -13,19 +15,23 @@ import androidx.fragment.app.Fragment
 import androidx.leanback.widget.HorizontalGridView
 import com.bumptech.glide.Glide
 import com.bumptech.glide.load.resource.drawable.DrawableTransitionOptions
+import com.bumptech.glide.request.target.CustomTarget
+import com.bumptech.glide.request.transition.Transition
 import com.dskja.betterstreamflix.R
 import com.dskja.betterstreamflix.adapters.AppAdapter
 import com.dskja.betterstreamflix.logo.FeaturedLogoEnrich
 import com.dskja.betterstreamflix.models.Category
 import com.dskja.betterstreamflix.models.Episode
 import com.dskja.betterstreamflix.models.Movie
+import com.dskja.betterstreamflix.player.PlayerCleanExit
 import com.dskja.betterstreamflix.utils.ArtworkUrls
 import com.dskja.betterstreamflix.utils.DeviceCapabilities
+import com.dskja.betterstreamflix.utils.ExpAmbientGlow
 import com.dskja.betterstreamflix.utils.UserPreferences
 
 /**
  * TV Ambient Mode — idle soft poster cinemagraphs + Continue Watching strip.
- * Owned by [HomeTvFragment]; burn-in safe via image rotation + pixel shift.
+ * Nested under Cinema Room ([CinemaRoomPolicy]); burn-in safe via rotation + pixel shift.
  */
 class AmbientModeController(
     private val fragment: Fragment,
@@ -41,8 +47,11 @@ class AmbientModeController(
         ?: root.findViewById(R.id.ambient_root)
     private val imageA: ImageView = ambientRoot.findViewById(R.id.iv_ambient_a)
     private val imageB: ImageView = ambientRoot.findViewById(R.id.iv_ambient_b)
+    private val glowView: View? = ambientRoot.findViewById(R.id.v_ambient_glow)
+    private val brandChrome: View? = ambientRoot.findViewById(R.id.ll_cinema_room_brand)
     private val titleView: TextView = ambientRoot.findViewById(R.id.tv_ambient_title)
     private val strip: HorizontalGridView = ambientRoot.findViewById(R.id.hgv_ambient_continue)
+    private var glowTarget: CustomTarget<Bitmap>? = null
 
     private var pool: List<AmbientModePolicy.AmbientImage> = emptyList()
     private var imageIndex = 0
@@ -181,6 +190,8 @@ class AmbientModeController(
         handler.removeCallbacksAndMessages(null)
         kenBurns?.cancel()
         kenBurns = null
+        clearGlow()
+        brandChrome?.visibility = View.GONE
         active = false
     }
 
@@ -201,6 +212,7 @@ class AmbientModeController(
             if (active) homeContent.visibility = View.INVISIBLE
         }.start()
         homeChrome.forEach { it.animate().alpha(0f).setDuration(320L).start() }
+        updateBrandChrome()
         showImage(pool[0], crossfade = false)
         scheduleImageLoop()
         handler.postDelayed(burnInShift, AmbientModePolicy.BURN_IN_SHIFT_MS)
@@ -220,6 +232,8 @@ class AmbientModeController(
         handler.removeCallbacks(burnInShift)
         kenBurns?.cancel()
         kenBurns = null
+        clearGlow()
+        brandChrome?.visibility = View.GONE
         homeContent.visibility = View.VISIBLE
         homeContent.animate().alpha(1f).setDuration(280L).start()
         homeChrome.forEach { it.animate().alpha(1f).setDuration(280L).start() }
@@ -236,8 +250,16 @@ class AmbientModeController(
         scheduleIdleCheck()
         val home = fragment as? com.dskja.betterstreamflix.fragments.home.HomeTvFragment
         home?.resetSwiperSchedule()
-        if (restoreFocus && fragment.isAdded) {
-            home?.requestContentFocus()
+        if (!fragment.isAdded) return
+        when (
+            CinemaRoomPolicy.focusRestorePriority(
+                restoreFocus = restoreFocus,
+                cleanExitPending = PlayerCleanExit.shouldRestoreHomeFocus(),
+            )
+        ) {
+            CinemaRoomPolicy.FocusRestore.CLEAN_EXIT -> home?.restoreCleanExitFocus()
+            CinemaRoomPolicy.FocusRestore.CONTENT -> home?.requestContentFocus()
+            CinemaRoomPolicy.FocusRestore.NONE -> Unit
         }
     }
 
@@ -259,6 +281,7 @@ class AmbientModeController(
         val ctx = fragment.context ?: return
         val (w, h) = FeaturedSwiperChrome.tvBackdropOverride(ctx)
         val url = ArtworkUrls.preferFeatured(image.url) ?: image.url
+        val crossfadeMs = CinemaRoomPolicy.ambientCrossfadeMs(UserPreferences.cinemaRoomEnabled)
         var req = Glide.with(incoming)
             .load(url)
             .override(w, h)
@@ -266,7 +289,7 @@ class AmbientModeController(
             .error(R.drawable.glide_fallback_cover)
         if (crossfade) {
             req = req.transition(
-                DrawableTransitionOptions.withCrossFade(AmbientModePolicy.CROSSFADE_MS),
+                DrawableTransitionOptions.withCrossFade(crossfadeMs),
             )
         } else {
             req = req.dontAnimate()
@@ -274,8 +297,8 @@ class AmbientModeController(
         req.into(incoming)
         if (crossfade) {
             incoming.alpha = 0f
-            incoming.animate().alpha(1f).setDuration(AmbientModePolicy.CROSSFADE_MS.toLong()).start()
-            outgoing.animate().alpha(0f).setDuration(AmbientModePolicy.CROSSFADE_MS.toLong()).start()
+            incoming.animate().alpha(1f).setDuration(crossfadeMs.toLong()).start()
+            outgoing.animate().alpha(0f).setDuration(crossfadeMs.toLong()).start()
             showingA = !showingA
         } else {
             incoming.alpha = 1f
@@ -283,6 +306,7 @@ class AmbientModeController(
             showingA = incoming === imageA
         }
         startKenBurns(incoming)
+        applyAmbientLightHint(url, w, h)
     }
 
     private fun startKenBurns(view: ImageView) {
@@ -334,7 +358,10 @@ class AmbientModeController(
         handler.postDelayed(imageAdvance, AmbientModePolicy.IMAGE_HOLD_MS)
     }
 
-    private fun enabled(): Boolean = UserPreferences.tvAmbientModeEnabled
+    private fun enabled(): Boolean = CinemaRoomPolicy.ambientAllowed(
+        cinemaRoomEnabled = UserPreferences.cinemaRoomEnabled,
+        ambientPrefEnabled = UserPreferences.tvAmbientModeEnabled,
+    )
 
     private fun highEndOk(): Boolean {
         val ctx = fragment.context ?: return false
@@ -343,5 +370,62 @@ class AmbientModeController(
             touchExploration = FeaturedAdvancePolicy.isTouchExplorationEnabled(ctx),
             reduceMotion = FeaturedAdvancePolicy.shouldReduceMotion(ctx),
         )
+    }
+
+    private fun updateBrandChrome() {
+        val show = CinemaRoomPolicy.brandChromeVisible(
+            cinemaRoomEnabled = UserPreferences.cinemaRoomEnabled,
+            ambientActive = active,
+        )
+        brandChrome?.visibility = if (show) View.VISIBLE else View.GONE
+        if (show) {
+            brandChrome?.alpha = 0f
+            brandChrome?.animate()?.alpha(1f)?.setDuration(420L)?.start()
+        }
+    }
+
+    private fun applyAmbientLightHint(url: String, width: Int, height: Int) {
+        val glow = glowView ?: return
+        val allowed = CinemaRoomPolicy.ambientLightHintsAllowed(
+            cinemaRoomEnabled = UserPreferences.cinemaRoomEnabled,
+            lightHintsPref = UserPreferences.cinemaAmbientLightHints,
+            highEndOk = highEndOk(),
+            highContrast = UserPreferences.highContrast,
+        )
+        if (!allowed) {
+            clearGlow()
+            return
+        }
+        val ctx = fragment.context ?: return
+        clearGlowTargetOnly()
+        val target = object : CustomTarget<Bitmap>(width, height) {
+            override fun onResourceReady(resource: Bitmap, transition: Transition<in Bitmap>?) {
+                if (!active || !fragment.isAdded) return
+                ExpAmbientGlow.apply(resource, glow)
+            }
+
+            override fun onLoadCleared(placeholder: Drawable?) {
+                // no-op — exit clears visibility
+            }
+        }
+        glowTarget = target
+        Glide.with(ctx).asBitmap().load(url).centerCrop().into(target)
+    }
+
+    private fun clearGlow() {
+        clearGlowTargetOnly()
+        glowView?.animate()?.cancel()
+        glowView?.visibility = View.GONE
+        glowView?.alpha = 0f
+        glowView?.background = null
+    }
+
+    private fun clearGlowTargetOnly() {
+        val ctx = fragment.context
+        val target = glowTarget
+        glowTarget = null
+        if (ctx != null && target != null) {
+            runCatching { Glide.with(ctx).clear(target) }
+        }
     }
 }
