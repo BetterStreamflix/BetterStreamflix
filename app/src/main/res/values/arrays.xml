@@ -148,6 +148,29 @@
         <item>18</item>
     </string-array>
 
+    <!-- Kids profiles always enforce a ceiling; no "disabled" / 18+ option. -->
+    <string-array name="kids_profile_age_entries">
+        <item>0+</item>
+        <item>6+</item>
+        <item>7+</item>
+        <item>10+</item>
+        <item>12+</item>
+        <item>13+</item>
+        <item>14+</item>
+        <item>16+</item>
+    </string-array>
+
+    <string-array name="kids_profile_age_values">
+        <item>0</item>
+        <item>6</item>
+        <item>7</item>
+        <item>10</item>
+        <item>12</item>
+        <item>13</item>
+        <item>14</item>
+        <item>16</item>
+    </string-array>
+
     <string-array name="animeonlineninja_preferred_server_entries">
         <item>@string/settings_provider_animeonlineninja_preferred_server_default</item>
         <item>@string/settings_provider_animeonlineninja_preferred_server_es</item>

@@ -245,8 +245,22 @@ object ProfileManager {
     }
 
     fun updateMaxAgeRating(profileId: String, maxAge: Int?): Boolean {
+        val previous = profiles().find { it.id == profileId }
         val clamped = maxAge?.coerceIn(0, 18)
-        return updateProfile(profileId) { it.copy(maxAgeRating = clamped) }
+        val ok = updateProfile(profileId) { it.copy(maxAgeRating = clamped) }
+        if (ok && profileId == activeProfileId) {
+            val updated = profiles().find { it.id == profileId }
+            if (updated?.isKids == true) {
+                // Keep the scoped parental pref aligned so Settings lists match the filter.
+                UserPreferences.parentalControlMaxAge =
+                    updated.maxAgeRating ?: KIDS_DEFAULT_MAX_AGE
+            } else {
+                applyKidsParentalDefaults(updated, previous)
+            }
+            UserDataNotifier.notifyChanged()
+            ProviderChangeNotifier.notifyProviderChanged()
+        }
+        return ok
     }
 
     /**

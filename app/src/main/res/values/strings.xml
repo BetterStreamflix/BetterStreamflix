@@ -697,6 +697,8 @@
     <string name="profile_delete_confirm">Delete profile \"%1$s\"? Watch history for this profile will be removed.</string>
     <string name="profile_kids_title">Kids profile</string>
     <string name="profile_kids_summary">Applies a younger max age and safer defaults</string>
+    <string name="profile_kids_max_age_title">Kids age rating</string>
+    <string name="profile_kids_max_age_summary">Only show titles up to this age on this Kids profile</string>
     <string name="profile_kids_exit_requires_pin">Set a parental PIN or a profile PIN before leaving Kids</string>
     <string name="profile_kids_requires_exit_pin">Kids profiles need a parental PIN (or a PIN on this profile) so adults can leave safely</string>
     <string name="profile_avatar_title">Avatar style</string>

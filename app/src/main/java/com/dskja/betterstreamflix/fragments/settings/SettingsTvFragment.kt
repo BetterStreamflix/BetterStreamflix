@@ -1915,6 +1915,13 @@ class SettingsTvFragment : LeanbackPreferenceFragmentCompat() {
 
             changeParentalSettingWithPinCheck {
                 UserPreferences.parentalControlMaxAge = newMaxAge
+                // Kids filter reads profile.maxAgeRating first — keep it in sync on TV.
+                if (com.dskja.betterstreamflix.profiles.ProfileManager.isKidsActive() && newMaxAge != null) {
+                    com.dskja.betterstreamflix.profiles.ProfileManager.updateMaxAgeRating(
+                        com.dskja.betterstreamflix.profiles.ProfileManager.activeProfileId,
+                        newMaxAge,
+                    )
+                }
                 maxAgePreference.value = newMaxAgeValue
                 showSettingsInfo(getString(R.string.settings_parental_max_age_saved))
                 ProviderChangeNotifier.notifyProviderChanged()

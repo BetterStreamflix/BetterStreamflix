@@ -20,6 +20,7 @@ import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import androidx.core.graphics.drawable.DrawableCompat
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.LifecycleCoroutineScope
+import androidx.preference.ListPreference
 import androidx.preference.Preference
 import androidx.preference.SwitchPreferenceCompat
 import com.dskja.betterstreamflix.R
@@ -28,6 +29,7 @@ import com.dskja.betterstreamflix.profiles.ProfileAvatarView
 import com.dskja.betterstreamflix.profiles.ProfileManager
 import com.dskja.betterstreamflix.profiles.ProfilePickerDialog
 import com.dskja.betterstreamflix.profiles.UserProfile
+import com.dskja.betterstreamflix.utils.DeviceCapabilities
 import com.dskja.betterstreamflix.utils.UserPreferences
 
 /** Shared Profiles binder for Mobile + TV settings. */
@@ -132,6 +134,19 @@ object ProfilesSettingsController {
             }
         }
 
+        (findPreference("PROFILE_MAX_AGE") as? ListPreference)?.setOnPreferenceChangeListener { _, newValue ->
+            val age = (newValue as? String)?.toIntOrNull() ?: return@setOnPreferenceChangeListener false
+            if (!ProfileManager.isKidsActive()) return@setOnPreferenceChangeListener false
+            ProfileManager.updateMaxAgeRating(ProfileManager.activeProfileId, age)
+            notifyUser(
+                context,
+                context.getString(R.string.settings_parental_max_age_saved),
+                R.string.profile_kids_max_age_title,
+            )
+            refresh(findPreference, context, fragment)
+            true
+        }
+
         findPreference("PROFILE_PIN")?.setOnPreferenceClickListener {
             showPinEditor(fragment, findPreference)
             true
@@ -191,6 +206,17 @@ object ProfilesSettingsController {
         }
 
         (findPreference("PROFILE_KIDS") as? SwitchPreferenceCompat)?.isChecked = profile?.isKids == true
+
+        (findPreference("PROFILE_MAX_AGE") as? ListPreference)?.apply {
+            val kids = profile?.isKids == true
+            isVisible = kids
+            isEnabled = kids
+            if (kids) {
+                val age = profile?.maxAgeRating ?: ProfileManager.KIDS_DEFAULT_MAX_AGE
+                value = age.toString()
+                summary = context.getString(R.string.profile_kids_max_age_summary) + " ($age+)"
+            }
+        }
 
         findPreference("PROFILE_PIN")?.summary = if (profile?.pinHash != null) {
             context.getString(R.string.profile_pin_set)
@@ -593,6 +619,30 @@ object ProfilesSettingsController {
             onVerified()
             return
         }
+        // Leanback: reuse the profile PIN dialog (focusable OK/Cancel) instead of a bare EditText.
+        if (DeviceCapabilities.isLeanbackDevice(context) || DeviceCapabilities.isAmazonFireTv(context)) {
+            showLeanbackPinDialog(
+                context = context,
+                title = context.getString(R.string.settings_parental_enter_current_pin_title),
+                avatarKey = ProfileManager.activeProfile()?.avatarKey,
+                displayName = ProfileManager.activeProfile()?.displayName,
+            ) { entered ->
+                if (entered == expected) {
+                    UserPreferences.registerParentalPinSuccess()
+                    onVerified()
+                    true
+                } else {
+                    UserPreferences.registerParentalPinFailure()
+                    notifyUser(
+                        context,
+                        context.getString(R.string.settings_parental_invalid_pin),
+                        R.string.settings_parental_pin_title,
+                    )
+                    false
+                }
+            }
+            return
+        }
         val input = EditText(context).apply {
             inputType = InputType.TYPE_CLASS_NUMBER or InputType.TYPE_NUMBER_VARIATION_PASSWORD
             imeOptions = EditorInfo.IME_ACTION_DONE
@@ -621,6 +671,23 @@ object ProfilesSettingsController {
     }
 
     private fun promptPin(context: Context, profile: UserProfile, onVerified: () -> Unit) {
+        if (DeviceCapabilities.isLeanbackDevice(context) || DeviceCapabilities.isAmazonFireTv(context)) {
+            showLeanbackPinDialog(
+                context = context,
+                title = context.getString(R.string.profile_pin_enter, profile.displayName),
+                avatarKey = profile.avatarKey,
+                displayName = profile.displayName,
+            ) { pin ->
+                if (ProfileManager.verifyPin(profile.id, pin)) {
+                    onVerified()
+                    true
+                } else {
+                    notifyUser(context, context.getString(R.string.profile_pin_invalid), R.string.profile_pin_title)
+                    false
+                }
+            }
+            return
+        }
         val input = EditText(context).apply {
             inputType = InputType.TYPE_CLASS_NUMBER or InputType.TYPE_NUMBER_VARIATION_PASSWORD
             imeOptions = EditorInfo.IME_ACTION_DONE
@@ -640,6 +707,41 @@ object ProfilesSettingsController {
                 notifyUser(context, context.getString(R.string.profile_pin_invalid), R.string.profile_pin_title)
             }
         }
+    }
+
+    /**
+     * DPAD-friendly PIN challenge using [R.layout.dialog_profile_pin] (same chrome as Who's Watching).
+     * [onSubmit] returns true to dismiss, false to keep the dialog open after a wrong PIN.
+     */
+    private fun showLeanbackPinDialog(
+        context: Context,
+        title: String,
+        avatarKey: String?,
+        displayName: String?,
+        onSubmit: (String) -> Boolean,
+    ) {
+        val view = LayoutInflater.from(context).inflate(R.layout.dialog_profile_pin, null, false)
+        view.findViewById<ProfileAvatarView>(R.id.pav_profile_pin_avatar)?.bind(
+            avatarKey = avatarKey ?: ProfileManager.avatarKeys.first(),
+            displayName = displayName.orEmpty(),
+            textSizeSp = 22f,
+        )
+        view.findViewById<TextView>(R.id.tv_profile_pin_title)?.text = title
+        val input = view.findViewById<EditText>(R.id.et_profile_pin)
+        val dialog = alertBuilder(context).setView(view).create()
+        dialog.window?.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
+        view.findViewById<TextView>(R.id.btn_profile_pin_cancel)?.setOnClickListener {
+            ExpMotion.hapticTap(it)
+            dialog.dismiss()
+        }
+        view.findViewById<TextView>(R.id.btn_profile_pin_ok)?.setOnClickListener {
+            ExpMotion.hapticTap(it)
+            val pin = input?.text?.toString()?.trim().orEmpty()
+            if (onSubmit(pin)) dialog.dismiss()
+        }
+        dialog.setOnShowListener { ExpDialogChrome.polishButtons(dialog) }
+        dialog.show()
+        input?.requestFocus()
     }
 
     private fun performSwitch(

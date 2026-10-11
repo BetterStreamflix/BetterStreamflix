@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - TV season episode list: per-episode Download CTA (one OK on the Cinema Ink secondary control) wires into `DownloadOptionsController.enqueueEpisode` — long-press options remain as a secondary path
 
 ### Added
+- Familien-Profile TV parity: editable Kids age ceiling in Settings (Mobile + TV), profile chip on TV Movies/TV Shows with visible name, Leanback PIN dialog for kids exit, Favorites age-filtered, favorite sort prefs scoped per profile; Settings create path requires kids exit PIN
 - Smart provider failover toast shows **Server N/M** on Mobile + TV; stream death keeps the user in the player while hopping hosters
 - “Warum kein Stream?” typed failures (captcha / domain dead / geo / timeout) with one-tap **Solve captcha** or **Update domain** on the player error overlay
 - Play with (VLC…) labeled chrome control + long-press Download with (ADM); Cast queue badge in player chrome; Play with / Download with pinned to the top of player settings
