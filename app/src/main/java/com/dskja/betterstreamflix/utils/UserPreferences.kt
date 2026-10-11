@@ -616,10 +616,37 @@ object UserPreferences {
         get() = Key.NEVER_SHOW_SUPPORT_ON_START.getBoolean() ?: false
         set(value) = Key.NEVER_SHOW_SUPPORT_ON_START.setBoolean(value)
 
-    /** Independent from startup opt-out — hides the home support card only. */
+    /**
+     * Permanent hide for the home support card (legacy “dismiss forever” / never-again).
+     * Soft dismiss uses [homeSupportCardLastDismissedAtMs] + cool-down instead.
+     */
     var homeSupportCardDismissed: Boolean
         get() = Key.HOME_SUPPORT_CARD_DISMISSED.getBoolean() ?: false
         set(value) = Key.HOME_SUPPORT_CARD_DISMISSED.setBoolean(value)
+
+    /** Epoch ms of last soft dismiss of the home Support card (0 = never). */
+    var homeSupportCardLastDismissedAtMs: Long
+        get() = Key.HOME_SUPPORT_CARD_LAST_DISMISSED_AT_MS.getLong() ?: 0L
+        set(value) = Key.HOME_SUPPORT_CARD_LAST_DISMISSED_AT_MS.setLong(value)
+
+    /** Epoch ms when the home Support card was last presented (0 = never). */
+    var homeSupportCardLastShownAtMs: Long
+        get() = Key.HOME_SUPPORT_CARD_LAST_SHOWN_AT_MS.getLong() ?: 0L
+        set(value) = Key.HOME_SUPPORT_CARD_LAST_SHOWN_AT_MS.setLong(value)
+
+    var homeSupportCardShowCount: Int
+        get() = Key.HOME_SUPPORT_CARD_SHOW_COUNT.getInt() ?: 0
+        set(value) = Key.HOME_SUPPORT_CARD_SHOW_COUNT.setInt(value)
+
+    /** Unique finished episodes counted toward the Support tip threshold. */
+    var supportEpisodesWatchedCount: Int
+        get() = Key.SUPPORT_EPISODES_WATCHED_COUNT.getInt() ?: 0
+        set(value) = Key.SUPPORT_EPISODES_WATCHED_COUNT.setInt(value)
+
+    /** Episode ids already counted (bounded set; see SupportPromptPolicy). */
+    var supportEpisodeIdsCounted: Set<String>
+        get() = Key.SUPPORT_EPISODE_IDS_COUNTED.getStringSet() ?: emptySet()
+        set(value) = Key.SUPPORT_EPISODE_IDS_COUNTED.setStringSet(value.ifEmpty { null })
 
     /** Epoch ms of last Support startup soft-prompt (0 = never). */
     var supportStartupLastShownAtMs: Long
@@ -1469,6 +1496,11 @@ object UserPreferences {
         EXPERIMENTAL_LUMINA_REDUCED_GLASS,
         NEVER_SHOW_SUPPORT_ON_START,
         HOME_SUPPORT_CARD_DISMISSED,
+        HOME_SUPPORT_CARD_LAST_DISMISSED_AT_MS,
+        HOME_SUPPORT_CARD_LAST_SHOWN_AT_MS,
+        HOME_SUPPORT_CARD_SHOW_COUNT,
+        SUPPORT_EPISODES_WATCHED_COUNT,
+        SUPPORT_EPISODE_IDS_COUNTED,
         SUPPORT_STARTUP_LAST_SHOWN_AT_MS,
         SUPPORT_STARTUP_SHOW_COUNT,
         SUPPORT_HUB_LAST_VISITED_AT_MS,

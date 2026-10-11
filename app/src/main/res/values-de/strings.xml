@@ -1472,8 +1472,8 @@
     <string name="tg_gate_discord_members_online">%1$s Mitglieder · %2$s online</string>
     <string name="tg_gate_debug_skip">Einladung überspringen (Debug)</string>
 
-    <string name="support_banner_title">BetterStreamflix am Leben halten</string>
-    <string name="support_banner_subtitle">Entwicklung unterstützen • Neue Features • Community-getrieben</string>
+    <string name="support_banner_title">Gefällt dir BetterStreamflix?</string>
+    <string name="support_banner_subtitle">Optionaler Tipp über Support oder Telegram — nie Pflicht</string>
     <string name="support_banner_cta">Unterstützen</string>
     <string name="support_banner_dismiss_cd">Support-Karte ausblenden</string>
     <string name="support_thanks_title">Danke für deine Unterstützung</string>

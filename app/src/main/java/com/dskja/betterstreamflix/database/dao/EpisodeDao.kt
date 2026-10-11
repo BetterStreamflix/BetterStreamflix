@@ -68,6 +68,10 @@ interface EpisodeDao {
     @Query("SELECT COUNT(id) > 0 FROM episodes WHERE tvShow = :tvShowId AND lastEngagementTimeUtcMillis IS NOT NULL")
     fun hasAnyWatchHistoryForTvShow(tvShowId: String): Boolean
 
+    /** Watched-episode count for Support tip threshold seeding. */
+    @Query("SELECT COUNT(id) FROM episodes WHERE isWatched = 1")
+    fun countWatchedEpisodes(): Int
+
     @Query("SELECT * FROM episodes WHERE tvShow = :tvShowId ORDER BY season, number")
     fun getByTvShowId(tvShowId: String): List<Episode>
 

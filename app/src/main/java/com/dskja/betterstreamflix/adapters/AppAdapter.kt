@@ -1152,7 +1152,7 @@ class AppAdapter(
                     android.view.ViewGroup.FOCUS_AFTER_DESCENDANTS
                 never.setOnClickListener {
                     ExpMotion.hapticTap(it)
-                    UserPreferences.neverShowSupportOnStart = true
+                    com.dskja.betterstreamflix.support.SupportPromptPolicy.neverShowHomeCard()
                     onDismiss?.invoke()
                 }
                 SupportUiBinder.applyFocusScale(never)

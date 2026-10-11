@@ -2164,6 +2164,8 @@ class PlayerMobileFragment : Fragment() {
             is Video.Type.Episode -> {
                 (watchItem as? Episode)?.let { episode ->
                         if (finished) {
+                            com.dskja.betterstreamflix.support.SupportPromptPolicy
+                                .recordEpisodeWatched(videoType.id)
                             com.dskja.betterstreamflix.download.SmartDownloadsManager.onEpisodeFinished(
                                 appContext,
                                 videoType,

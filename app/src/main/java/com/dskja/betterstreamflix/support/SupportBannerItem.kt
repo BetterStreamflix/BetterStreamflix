@@ -3,7 +3,8 @@ package com.dskja.betterstreamflix.support
 import com.dskja.betterstreamflix.adapters.AppAdapter
 
 /**
- * Compact home-row support card. Independent from startup “never show again”.
+ * Compact home-row support / tip card (Trinkgeld flow).
+ * Visibility is gated by [SupportPromptPolicy] (episode threshold + cool-down).
  */
 data class SupportBannerItem(
     val id: String = "support_banner",

@@ -737,6 +737,13 @@ class HomeViewModel(
             currentProvider = provider
             val providerName = provider.name
             val appContext = BetterStreamflixApp.instance.applicationContext
+            runCatching {
+                val watched = liveDatabase()?.takeIf { it.isOpen }?.episodeDao()?.countWatchedEpisodes()
+                if (watched != null) {
+                    com.dskja.betterstreamflix.support.SupportPromptPolicy
+                        .seedWatchedCountFromDatabase(watched)
+                }
+            }
             val rawCached = HomeCacheStore.read(appContext, provider)
             val cachedCategories = rawCached?.let {
                 HomeCatalogPipeline.process(provider, it).categories

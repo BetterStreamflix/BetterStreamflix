@@ -1694,8 +1694,8 @@
     <string name="tg_gate_discord_members_online">%1$s members · %2$s online</string>
     <string name="tg_gate_debug_skip">Skip invite (debug)</string>
 
-    <string name="support_banner_title">Help Keep BetterStreamflix Alive</string>
-    <string name="support_banner_subtitle">Support development • Get new features • Keep it community driven</string>
+    <string name="support_banner_title">Enjoying BetterStreamflix?</string>
+    <string name="support_banner_subtitle">Optional tip via Support or Telegram — never required</string>
     <string name="support_banner_cta">Support</string>
     <string name="support_banner_dismiss_cd">Dismiss support card</string>
     <string name="support_thanks_title">Thank You for Supporting BetterStreamflix</string>
