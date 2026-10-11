@@ -143,16 +143,22 @@ object OpenSubtitlesV1Client {
     ): Result<List<SubtitleHit>> = withContext(Dispatchers.IO) {
         val key = UserPreferences.openSubtitlesApiKey.trim()
         if (key.isBlank()) return@withContext Result.Err("OpenSubtitles API key missing")
+        val cleanImdb = imdbId?.trim()?.removePrefix("tt")?.filter { it.isDigit() }
+            ?.takeIf { it.isNotEmpty() }
+        val cleanQuery = query?.trim()?.takeIf { it.isNotBlank() && it != "_" }
+        if (tmdbId == null && cleanImdb == null && cleanQuery == null) {
+            return@withContext Result.Ok(emptyList())
+        }
         runCatching {
+            val safeLanguages = languages.trim().ifBlank { "en" }.takeIf { it != "_" } ?: "en"
             val params = buildString {
-                append("languages=").append(java.net.URLEncoder.encode(languages, "UTF-8"))
+                append("languages=").append(java.net.URLEncoder.encode(safeLanguages, "UTF-8"))
                 if (tmdbId != null) append("&tmdb_id=").append(tmdbId)
-                if (!imdbId.isNullOrBlank()) {
-                    val clean = imdbId.removePrefix("tt")
-                    append("&imdb_id=").append(clean)
+                if (cleanImdb != null) {
+                    append("&imdb_id=").append(cleanImdb)
                 }
-                if (!query.isNullOrBlank()) {
-                    append("&query=").append(java.net.URLEncoder.encode(query, "UTF-8"))
+                if (cleanQuery != null) {
+                    append("&query=").append(java.net.URLEncoder.encode(cleanQuery, "UTF-8"))
                 }
                 if (season != null) append("&season_number=").append(season)
                 if (episode != null) append("&episode_number=").append(episode)
@@ -220,9 +226,16 @@ object OpenSubtitlesV1Client {
                 if (!response.isSuccessful) {
                     return@use Result.Err("download HTTP ${response.code}: ${raw.take(120)}")
                 }
-                val link = JSONObject(raw).optString("link")
-                if (link.isBlank()) Result.Err("No download link")
-                else Result.Ok(link)
+                val link = JSONObject(raw).optString("link").trim()
+                val host = runCatching { java.net.URI(link).host }.getOrNull()
+                when {
+                    link.isBlank() -> Result.Err("No download link")
+                    host.isNullOrBlank() || host == "_" ->
+                        Result.Err("Download link has an invalid host")
+                    !link.startsWith("http", ignoreCase = true) ->
+                        Result.Err("Download link is not http(s)")
+                    else -> Result.Ok(link)
+                }
             }
         }.getOrElse {
             Result.Err(it.message ?: "download failed")

@@ -248,7 +248,13 @@ abstract class Extractor {
                     break
                 } else {
                     for (aliasUrl in extractor.aliasUrls) {
-                        if (compareUrl.startsWith(aliasUrl.lowercase().replace(urlRegex, ""))) {
+                        val aliasHost = aliasUrl.lowercase().replace(urlRegex, "")
+                            .substringBefore('/')
+                        // Skip broken aliases with no real host (e.g. "mivalyo" / "_").
+                        if (aliasHost.isBlank() || aliasHost == "_" || !aliasHost.contains('.')) {
+                            continue
+                        }
+                        if (compareUrl.startsWith(aliasHost)) {
                             foundExtractor = extractor
                             break
                         }
@@ -270,13 +276,14 @@ abstract class Extractor {
                         break
                     } else {
                         for (aliasUrl in extractor.aliasUrls) {
-                            if (compareUrl.startsWith(
-                                    aliasUrl.replace(
-                                        Regex("^(https?://)?(www\\.)?(.*?)(\\.[a-z]+)"),
-                                        "$3"
-                                    )
-                                )
-                            ) {
+                            val stripped = aliasUrl.replace(
+                                Regex("^(https?://)?(www\\.)?(.*?)(\\.[a-z]+)"),
+                                "$3"
+                            )
+                            if (stripped.isBlank() || stripped == "_" || stripped.contains("://")) {
+                                continue
+                            }
+                            if (compareUrl.startsWith(stripped)) {
                                 foundExtractor = extractor
                                 break
                             }
