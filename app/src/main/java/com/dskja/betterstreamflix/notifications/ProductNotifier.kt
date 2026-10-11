@@ -83,14 +83,28 @@ object ProductNotifier {
         showTitle: String,
         programHint: String?,
         identityKey: String,
+        preKickoff: Boolean = false,
     ) {
         if (!NotificationPermission.canPost(context)) return
         ensureChannels(context)
-        val title = context.getString(R.string.notify_live_starting_title)
-        val body = if (!programHint.isNullOrBlank()) {
-            context.getString(R.string.notify_live_starting_body_program, showTitle, programHint)
+        val title = if (preKickoff) {
+            context.getString(R.string.notify_live_kickoff_title)
         } else {
-            context.getString(R.string.notify_live_starting_body, showTitle)
+            context.getString(R.string.notify_live_starting_title)
+        }
+        val body = when {
+            preKickoff && !programHint.isNullOrBlank() ->
+                context.getString(
+                    R.string.notify_live_kickoff_body_program,
+                    showTitle,
+                    programHint,
+                )
+            preKickoff ->
+                context.getString(R.string.notify_live_kickoff_body, showTitle)
+            !programHint.isNullOrBlank() ->
+                context.getString(R.string.notify_live_starting_body_program, showTitle, programHint)
+            else ->
+                context.getString(R.string.notify_live_starting_body, showTitle)
         }
         val notification = NotificationCompat.Builder(context, CHANNEL_LIVE)
             .setSmallIcon(R.drawable.ic_menu_live)
@@ -100,7 +114,9 @@ object ProductNotifier {
             .setAutoCancel(true)
             .setOnlyAlertOnce(true)
             .setContentIntent(openLiveIntent(context))
+            .addAction(snoozeAction(context, identityKey))
             .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+            .setCategory(NotificationCompat.CATEGORY_REMINDER)
             .build()
         runCatching {
             NotificationManagerCompat.from(context)
@@ -108,11 +124,29 @@ object ProductNotifier {
         }
     }
 
+    fun liveNotificationId(identityKey: String): Int =
+        NOTIFICATION_ID_LIVE_BASE + Math.floorMod(identityKey.hashCode(), 90)
+
     private fun episodeNotificationId(identityKey: String): Int =
         NOTIFICATION_ID_EPISODE_BASE + Math.floorMod(identityKey.hashCode(), 90)
 
-    private fun liveNotificationId(identityKey: String): Int =
-        NOTIFICATION_ID_LIVE_BASE + Math.floorMod(identityKey.hashCode(), 90)
+    private fun snoozeAction(context: Context, identityKey: String): NotificationCompat.Action {
+        val intent = Intent(context, LiveReminderSnoozeReceiver::class.java).apply {
+            action = LiveReminderSnoozeReceiver.ACTION_SNOOZE
+            putExtra(LiveReminderSnoozeReceiver.EXTRA_IDENTITY, identityKey)
+        }
+        val pending = PendingIntent.getBroadcast(
+            context,
+            liveNotificationId(identityKey),
+            intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+        )
+        return NotificationCompat.Action.Builder(
+            R.drawable.ic_menu_live,
+            context.getString(R.string.notify_live_snooze),
+            pending,
+        ).build()
+    }
 
     private fun openFavoritesIntent(context: Context): PendingIntent {
         val isTv = context.packageManager.hasSystemFeature("android.software.leanback")

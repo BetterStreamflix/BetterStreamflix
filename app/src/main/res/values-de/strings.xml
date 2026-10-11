@@ -1431,8 +1431,8 @@
     <string name="settings_screen_notifications_summary">Watchlist-Folgen, Live-Favoriten, Downloads — nur mit Opt-in</string>
     <string name="settings_notify_watchlist_episode">Neue Watchlist-Folge</string>
     <string name="settings_notify_watchlist_episode_summary">Wenn eine Serie auf Meine Liste eine neue Folge bekommt</string>
-    <string name="settings_notify_live_starting">Live-Favorit startet</string>
-    <string name="settings_notify_live_starting_summary">Wenn ein favorisiertes Spiel oder eine Show live geht</string>
+    <string name="settings_notify_live_starting">Live-Erinnerungen (Favoriten)</string>
+    <string name="settings_notify_live_starting_summary">5 Min vor Anpfiff nur für Live-Hub-Favoriten — mit Snooze, ohne Flut</string>
     <string name="notify_channel_watchlist">Watchlist</string>
     <string name="notify_channel_watchlist_desc">Neue Folgen für Serien auf Meine Liste</string>
     <string name="notify_channel_live">Live-Hinweise</string>
@@ -1442,6 +1442,10 @@
     <string name="notify_live_starting_title">Startet jetzt</string>
     <string name="notify_live_starting_body">%1$s ist live</string>
     <string name="notify_live_starting_body_program">%1$s · %2$s</string>
+    <string name="notify_live_kickoff_title">Anpfiff in 5 Minuten</string>
+    <string name="notify_live_kickoff_body">%1$s beginnt gleich</string>
+    <string name="notify_live_kickoff_body_program">%1$s · %2$s — in ca. 5 Min</string>
+    <string name="notify_live_snooze">15 Min snoozen</string>
     <string name="settings_download_filter_provider">Tab nach aktuellem Provider filtern</string>
     <string name="settings_download_soft_limit">Soft-Speicherlimit (GB)</string>
     <string name="settings_download_smart">Smart Downloads</string>

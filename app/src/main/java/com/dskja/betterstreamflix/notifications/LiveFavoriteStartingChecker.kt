@@ -6,17 +6,17 @@ import com.dskja.betterstreamflix.R
 import com.dskja.betterstreamflix.models.TvShow
 import com.dskja.betterstreamflix.utils.LiveHubCatalog
 import com.dskja.betterstreamflix.utils.UserPreferences
-import org.json.JSONObject
 
 /**
- * Detects Live Hub favorites that newly appear in the live catalog
- * (best-effort “game/show starting” without timestamped EPG).
+ * Live Hub favorite reminders (favorites only):
+ * - Prefer “5 minutes before kickoff” when a clock time is parseable.
+ * - Otherwise one ping when a favorite newly appears live.
+ * - Snooze + hourly/run caps prevent floods.
  *
- * First successful snapshot after opt-in is a silent baseline — no spam.
+ * First successful snapshot after opt-in is a silent baseline.
  */
 object LiveFavoriteStartingChecker {
     private const val TAG = "LiveFavNotify"
-    private const val COOLDOWN_MS = 6L * 60L * 60L * 1000L
 
     suspend fun check(context: Context, budget: Int): Int {
         if (budget <= 0) return 0
@@ -33,8 +33,10 @@ object LiveFavoriteStartingChecker {
             .flatMap { it.list }
             .filterIsInstance<TvShow>()
         val liveFavorites = LiveHubCatalog.resolveFavoriteChannels(context, hubShows)
+        // Tie schedules to the Live Hub favorites shelf even when empty.
+        LiveReminderScheduler.syncFromFavorites(context, liveFavorites)
+
         if (liveFavorites.isEmpty()) {
-            // Still advance baseline so we don't flood when favorites appear later.
             if (!UserPreferences.notifyLiveBaselineReady) {
                 UserPreferences.notifyLiveActiveKeys = emptySet()
                 UserPreferences.notifyLiveBaselineReady = true
@@ -61,49 +63,73 @@ object LiveFavoriteStartingChecker {
         val newlyLive = currentKeys - previous
         UserPreferences.notifyLiveActiveKeys = currentKeys
 
-        if (newlyLive.isEmpty()) return 0
-
         var sent = 0
         val now = System.currentTimeMillis()
-        val cooldowns = readCooldowns()
-        for (key in newlyLive) {
-            if (sent >= budget) break
-            val last = cooldowns.optLong(key, 0L)
-            if (last > 0L && now - last < COOLDOWN_MS) continue
+        val liveBudget = minOf(budget, LiveReminderPolicy.MAX_LIVE_PER_RUN)
+        var recentFires = LiveReminderStore.recentFires().toMutableList()
+
+        for (key in currentKeys) {
+            if (sent >= liveBudget) break
             val show = current[key] ?: continue
-            val program = show.programNow?.trim()?.takeIf { it.isNotBlank() }
-                ?: LiveHubCatalog.programNowOf(show)
-            ProductNotifier.notifyLiveStarting(
-                context = context,
-                showTitle = show.title,
-                programHint = program,
-                identityKey = key,
+            val kickoff = LiveReminderPolicy.parseKickoffEpochMs(
+                title = show.title,
+                overview = show.overview,
+                nowMs = now,
             )
-            cooldowns.put(key, now)
-            sent++
-            Log.i(TAG, "live starting: ${show.title}")
+            val kickoffFp = kickoff?.toString()
+            val alreadyThisKickoff = kickoffFp != null &&
+                LiveReminderStore.kickoffFingerprint(key) == kickoffFp
+
+            val decision = LiveReminderPolicy.decide(
+                nowMs = now,
+                kickoffEpochMs = kickoff,
+                newlyLive = key in newlyLive,
+                gate = LiveReminderPolicy.Gate(
+                    snoozedUntilMs = LiveReminderStore.snoozedUntil(key),
+                    lastNotifiedMs = LiveReminderStore.lastNotifiedMs(key),
+                    recentFireTimesMs = recentFires,
+                    alreadyNotifiedThisKickoff = alreadyThisKickoff,
+                ),
+            )
+
+            when (decision) {
+                is LiveReminderPolicy.Decision.ScheduleAt -> {
+                    LiveReminderScheduler.schedule(
+                        context = context,
+                        identityKey = key,
+                        title = show.title,
+                        fireAtMs = decision.fireAtMs,
+                        nowMs = now,
+                    )
+                }
+                is LiveReminderPolicy.Decision.NotifyNow -> {
+                    val program = show.programNow?.trim()?.takeIf { it.isNotBlank() }
+                        ?: LiveHubCatalog.programNowOf(show)
+                    ProductNotifier.notifyLiveStarting(
+                        context = context,
+                        showTitle = show.title,
+                        programHint = program,
+                        identityKey = key,
+                        preKickoff = decision.reason == LiveReminderPolicy.Reason.PRE_KICKOFF_WINDOW,
+                    )
+                    LiveReminderStore.markNotified(key, now)
+                    if (kickoffFp != null) {
+                        LiveReminderStore.setKickoffFingerprint(key, kickoffFp)
+                    }
+                    LiveReminderScheduler.cancel(context, key)
+                    recentFires += now
+                    recentFires = LiveReminderPolicy.pruneRecentFires(recentFires, now).toMutableList()
+                    sent++
+                    Log.i(TAG, "live reminder (${decision.reason}): ${show.title}")
+                }
+                LiveReminderPolicy.Decision.Skip -> Unit
+            }
         }
-        if (sent > 0) writeCooldowns(cooldowns)
         return sent
     }
 
     fun resetBaseline() {
         UserPreferences.notifyLiveBaselineReady = false
         UserPreferences.notifyLiveActiveKeys = emptySet()
-    }
-
-    private fun readCooldowns(): JSONObject {
-        val raw = UserPreferences.notifyLiveCooldownJson
-        if (raw.isBlank()) return JSONObject()
-        return runCatching { JSONObject(raw) }.getOrElse { JSONObject() }
-    }
-
-    private fun writeCooldowns(json: JSONObject) {
-        // Bound map size — drop oldest-ish keys when oversized.
-        if (json.length() > 80) {
-            val keys = json.keys().asSequence().toList()
-            keys.take(json.length() - 60).forEach { json.remove(it) }
-        }
-        UserPreferences.notifyLiveCooldownJson = json.toString()
     }
 }
