@@ -12,6 +12,7 @@ class ProfileScopedPreferenceStoreTest {
         assertTrue("LIBRARY_SCOPE" in ProfileScopedPreferenceStore.SCOPED_KEYS)
         assertTrue("SHOW_CONTINUE_WATCHING" in ProfileScopedPreferenceStore.SCOPED_KEYS)
         assertTrue("SHOW_RECENTLY_WATCHED" in ProfileScopedPreferenceStore.SCOPED_KEYS)
+        assertTrue("SHOW_NEXT_EPISODES" in ProfileScopedPreferenceStore.SCOPED_KEYS)
         assertTrue("PARENTAL_CONTROL_MAX_AGE" in ProfileScopedPreferenceStore.SCOPED_KEYS)
     }
 

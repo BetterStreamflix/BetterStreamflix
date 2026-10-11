@@ -28,7 +28,8 @@ object ContinueWatchingMerger {
                 )
 
     /**
-     * Builds a single CW list: local first, then remote extras not already present by identity key.
+     * Builds a single CW list: merge by identity, then re-sort by last engagement
+     * so remote Trakt/Jellyfin/Plex rows can surface ahead of stale locals.
      */
     fun merge(
         local: List<AppAdapter.Item>,
@@ -44,7 +45,18 @@ object ContinueWatchingMerger {
         }
         addAll(local)
         addAll(remoteExtras)
-        return out
+        return out.sortedByDescending { engagementMillis(it) }
+    }
+
+    fun engagementMillis(item: AppAdapter.Item): Long = when (item) {
+        is Movie -> item.watchHistory?.lastEngagementTimeUtcMillis
+            ?: item.watchedDate?.timeInMillis
+            ?: 0L
+        is Episode -> item.watchHistory?.lastEngagementTimeUtcMillis
+            ?: item.watchedDate?.timeInMillis
+            ?: 0L
+        is TvShow -> item.lastPlayedAtMillis ?: 0L
+        else -> 0L
     }
 
     fun identityKey(item: AppAdapter.Item): String? = when (item) {
@@ -56,8 +68,9 @@ object ContinueWatchingMerger {
         is Episode -> {
             val show = item.tvShow
             val provider = show?.providerName?.takeIf { it.isNotBlank() } ?: "_"
-            val showKey = show?.imdbId?.takeIf { it.isNotBlank() } ?: show?.id ?: return null
-            "ep:$provider:$showKey"
+            val showKey = show?.imdbId?.takeIf { it.isNotBlank() } ?: show?.id
+            // Keep orphan episodes (hydrate miss) instead of dropping them from CW.
+            if (showKey != null) "ep:$provider:$showKey" else "ep:id:${item.id}"
         }
         is TvShow -> {
             val provider = item.providerName?.takeIf { it.isNotBlank() } ?: "_"
@@ -65,6 +78,12 @@ object ContinueWatchingMerger {
             "show:$provider:${imdb ?: item.id}"
         }
         else -> null
+    }
+
+    /** True when [candidate] shares show/movie identity with any item in [active]. */
+    fun overlaps(candidate: AppAdapter.Item, active: Collection<AppAdapter.Item>): Boolean {
+        val key = identityKey(candidate) ?: return false
+        return active.any { identityKey(it) == key }
     }
 
     /** Strip provider CW categories that HomeViewModel already merged into the unified row. */

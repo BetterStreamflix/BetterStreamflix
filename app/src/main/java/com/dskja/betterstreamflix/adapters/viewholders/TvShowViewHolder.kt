@@ -205,8 +205,12 @@ class TvShowViewHolder(
 
     private fun episodeBadgeText(): String {
         if (isIptvProvider()) return context.getString(R.string.player_live_badge)
-        return tvShow.lastPlayedEpisode?.let { "E${it.number}" }
-            ?: tvShow.seasons.lastOrNull()?.episodes?.lastOrNull()?.let { "E${it.number}" }
+        return tvShow.lastPlayedEpisode?.let {
+            context.getString(R.string.episode_badge_format, it.number)
+        }
+            ?: tvShow.seasons.lastOrNull()?.episodes?.lastOrNull()?.let {
+                context.getString(R.string.episode_badge_format, it.number)
+            }
             ?: tvShow.released?.format("yyyy")
             ?: context.getString(R.string.tv_show_item_type)
     }
@@ -1202,6 +1206,11 @@ class TvShowViewHolder(
             }
         }.joinToString(" · ")
         bindFact(binding.tvDetailAboutIdsLabel, binding.tvDetailAboutIds, ids.ifBlank { null })
+        if (!tvShow.tmdbId.isNullOrBlank()) {
+            binding.tvDetailAboutIds.setTextColor(
+                ContextCompat.getColor(context, R.color.cinema_tmdb),
+            )
+        }
 
         val anyFact = listOf(
             binding.tvDetailAboutQuality,

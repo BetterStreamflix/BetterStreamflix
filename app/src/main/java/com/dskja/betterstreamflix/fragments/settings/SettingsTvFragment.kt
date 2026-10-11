@@ -692,7 +692,8 @@ class SettingsTvFragment : LeanbackPreferenceFragmentCompat() {
             isChecked = UserPreferences.showContinueWatching
             setOnPreferenceChangeListener { _, newValue ->
                 UserPreferences.showContinueWatching = newValue as Boolean
-                ProviderChangeNotifier.notifyProviderChanged()
+                // Library shelf visibility only — avoid full provider getHome().
+                UserDataNotifier.notifyChanged()
                 true
             }
         }
@@ -701,7 +702,7 @@ class SettingsTvFragment : LeanbackPreferenceFragmentCompat() {
             isChecked = UserPreferences.showRecentlyWatched
             setOnPreferenceChangeListener { _, newValue ->
                 UserPreferences.showRecentlyWatched = newValue as Boolean
-                ProviderChangeNotifier.notifyProviderChanged()
+                UserDataNotifier.notifyChanged()
                 true
             }
         }
@@ -710,7 +711,7 @@ class SettingsTvFragment : LeanbackPreferenceFragmentCompat() {
             isChecked = UserPreferences.showNextEpisodes
             setOnPreferenceChangeListener { _, newValue ->
                 UserPreferences.showNextEpisodes = newValue as Boolean
-                ProviderChangeNotifier.notifyProviderChanged()
+                UserDataNotifier.notifyChanged()
                 true
             }
         }
@@ -723,9 +724,8 @@ class SettingsTvFragment : LeanbackPreferenceFragmentCompat() {
                 .setPositiveButton(android.R.string.ok) { _, _ ->
                     viewLifecycleOwner.lifecycleScope.launch {
                         withContext(Dispatchers.IO) {
-                            val database = AppDatabase.getInstanceOrNull(requireContext()) ?: return@withContext
-                            database.movieDao().clearAllRecentlyWatched()
-                            database.tvShowDao().clearAllRecentlyWatched()
+                            com.dskja.betterstreamflix.utils.CrossProviderLibrary
+                                .clearRecentlyWatched(requireContext())
                         }
                         UserDataNotifier.notifyChanged()
                         ProviderChangeNotifier.notifyProviderChanged()

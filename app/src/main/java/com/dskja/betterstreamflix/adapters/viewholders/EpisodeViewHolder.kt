@@ -668,7 +668,12 @@ class EpisodeViewHolder(
         }
         val leanback = DeviceCapabilities.isLeanbackDevice(context) ||
             DeviceCapabilities.isAmazonFireTv(context)
-        if (!leanback) {
+        // Next Episodes reuse the CW item type but are not mid-watch — one-tap play
+        // (parity with mobile). Only confirm when resuming in-progress CW.
+        val midWatch = episode.watchHistory?.let { history ->
+            history.lastPlaybackPositionMillis > 0L && history.durationMillis > 0L
+        } == true
+        if (!leanback || !midWatch) {
             play()
             return
         }

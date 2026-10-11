@@ -59,6 +59,15 @@ class HomeTvFragment : Fragment() {
     private val appAdapter = AppAdapter()
     private var homeBindSignature: String? = null
 
+    /** Shared pool for nested shelf HorizontalGridViews (parity with mobile shelfPool). */
+    val shelfPool: RecyclerView.RecycledViewPool = RecyclerView.RecycledViewPool().apply {
+        setMaxRecycledViews(AppAdapter.Type.MOVIE_TV_ITEM.ordinal, 16)
+        setMaxRecycledViews(AppAdapter.Type.TV_SHOW_TV_ITEM.ordinal, 16)
+        setMaxRecycledViews(AppAdapter.Type.EPISODE_TV_ITEM.ordinal, 8)
+        setMaxRecycledViews(AppAdapter.Type.MOVIE_CONTINUE_WATCHING_TV_ITEM.ordinal, 8)
+        setMaxRecycledViews(AppAdapter.Type.EPISODE_CONTINUE_WATCHING_TV_ITEM.ordinal, 8)
+    }
+
     private val swiperHandler = Handler(Looper.getMainLooper())
     private var isBackgroundPinned = false
     var featuredChromeFocused = false

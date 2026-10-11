@@ -157,7 +157,9 @@ object ParentalControlUtils {
     }
 
     private suspend fun isAllowedEpisode(episode: Episode): Boolean {
-        val tvShow = episode.tvShow ?: return false
+        // Orphan episodes (missing tvShow after hydrate) stay visible outside Kids;
+        // Kids profiles still hide unknowns so age gates stay strict.
+        val tvShow = episode.tvShow ?: return !ProfileManager.isKidsActive()
         return isAllowedTvShow(tvShow)
     }
 

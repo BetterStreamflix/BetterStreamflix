@@ -26,6 +26,8 @@ class LiveHubViewModel : ViewModel() {
             val categories: List<Category>,
             val warning: String? = null,
         ) : State()
+        /** Catalog loaded cleanly but no live rows — show empty chrome, not an error toast. */
+        data object Empty : State()
         data class Failed(val error: Exception) : State()
     }
 
@@ -51,11 +53,7 @@ class LiveHubViewModel : ViewModel() {
                 )
                 val categories = ParentalControlUtils.filterCategories(result.categories)
                 if (categories.isEmpty()) {
-                    _state.emit(
-                        State.Failed(
-                            Exception("No live channels available right now. Try again later."),
-                        ),
-                    )
+                    _state.emit(State.Empty)
                     return@launch
                 }
                 val warning = result.warnings.takeIf { it.isNotEmpty() }
