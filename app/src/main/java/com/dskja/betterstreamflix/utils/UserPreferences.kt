@@ -742,6 +742,13 @@ object UserPreferences {
             setProfileScopedBoolean(Key.SHOW_RECENTLY_WATCHED, value)
         }
 
+    /** When false, Home hides the Next Episodes row. */
+    var showNextEpisodes: Boolean
+        get() = profileScopedBoolean(Key.SHOW_NEXT_EPISODES) ?: true
+        set(value) {
+            setProfileScopedBoolean(Key.SHOW_NEXT_EPISODES, value)
+        }
+
     /** When true, chronically brittle providers appear in the provider picker. */
     var showQuarantinedProviders: Boolean
         get() = Key.SHOW_QUARANTINED_PROVIDERS.getBoolean() ?: false
@@ -1324,6 +1331,7 @@ object UserPreferences {
         TMDB_LOGO_HIT_TTL_HOURS,
         SHOW_CONTINUE_WATCHING,
         SHOW_RECENTLY_WATCHED,
+        SHOW_NEXT_EPISODES,
         SHOW_QUARANTINED_PROVIDERS,
         SHOW_VAVOO_VOD_PROVIDERS,
         LIBRARY_SCOPE,

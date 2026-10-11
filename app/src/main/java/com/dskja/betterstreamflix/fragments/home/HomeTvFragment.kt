@@ -388,6 +388,17 @@ class HomeTvFragment : Fragment() {
             }
 
         categories
+            .find { it.name == Category.NEXT_EPISODES }
+            ?.also {
+                it.name = getString(R.string.home_next_episodes)
+                it.list.forEach { show ->
+                    if (show is Episode) {
+                        show.itemType = AppAdapter.Type.EPISODE_CONTINUE_WATCHING_TV_ITEM
+                    }
+                }
+            }
+
+        categories
             .find { it.name == Category.RECENTLY_WATCHED }
             ?.also {
                 it.name = getString(R.string.home_recently_watched)
@@ -417,10 +428,14 @@ class HomeTvFragment : Fragment() {
             it.name == getString(R.string.home_continue_watching) && it.list.isNotEmpty()
         }
         val visibleCategories = HomeCatalogPipeline.isolateFeatured(categories)
+        val resumeShelfTitles = setOf(
+            getString(R.string.home_continue_watching),
+            getString(R.string.home_next_episodes),
+        )
         visibleCategories
             .onEach { category ->
                 if (!Category.isFeaturedName(category.name) &&
-                    category.name != getString(R.string.home_continue_watching)
+                    category.name !in resumeShelfTitles
                 ) {
                     category.list.forEach { show ->
                         when (show) {

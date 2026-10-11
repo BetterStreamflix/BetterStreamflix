@@ -408,27 +408,7 @@ class TvShowViewHolder(
                 if (!wasVisible) ExpMotion.popIn(this)
             }
         }
-        binding.pbTvShowProgress.apply {
-            val watchHistory = tvShow.episodeToWatch?.watchHistory
-            val target = when {
-                watchHistory != null && watchHistory.durationMillis > 0 ->
-                    (watchHistory.lastPlaybackPositionMillis * 100 / watchHistory.durationMillis.toDouble()).toInt()
-                else -> 0
-            }
-            val show = watchHistory != null && watchHistory.durationMillis > 0
-            val wasVisible = isVisible
-            isVisible = show
-            if (show && ExperimentalMobileDesign.enabled() && (!wasVisible || progress != target)) {
-                android.animation.ObjectAnimator.ofInt(this, "progress", 0, target)
-                    .setDuration(420L)
-                    .start()
-            } else {
-                progress = target
-            }
-            if (ExperimentalMobileDesign.enabled() && show && !wasVisible) {
-                ExpMotion.popIn(this)
-            }
-        }
+        bindTvShowProgress(binding.pbTvShowProgress)
         bindEpisodeBadge(binding.tvTvShowLastEpisode)
         binding.tvTvShowTitle.text = tvShow.title
         com.dskja.betterstreamflix.logo.TitleLogoSurface.bindCachedOnly(
@@ -494,15 +474,7 @@ class TvShowViewHolder(
             val wasVisible = isVisible
             isVisible = show
         }
-        binding.pbTvShowProgress.apply {
-            val watchHistory = tvShow.episodeToWatch?.watchHistory
-            progress = when {
-                watchHistory != null && watchHistory.durationMillis > 0 ->
-                    (watchHistory.lastPlaybackPositionMillis * 100 / watchHistory.durationMillis.toDouble()).toInt()
-                else -> 0
-            }
-            isVisible = watchHistory != null
-        }
+        bindTvShowProgress(binding.pbTvShowProgress)
         bindEpisodeBadge(binding.tvTvShowLastEpisode)
         binding.tvTvShowTitle.text = tvShow.title
     }
@@ -546,24 +518,7 @@ class TvShowViewHolder(
                 if (!wasVisible) ExpMotion.popIn(this)
             }
         }
-        binding.pbTvShowProgress.apply {
-            val watchHistory = tvShow.episodeToWatch?.watchHistory
-            val target = when {
-                watchHistory != null && watchHistory.durationMillis > 0 ->
-                    (watchHistory.lastPlaybackPositionMillis * 100 / watchHistory.durationMillis.toDouble()).toInt()
-                else -> 0
-            }
-            val show = watchHistory != null && watchHistory.durationMillis > 0
-            val wasVisible = isVisible
-            isVisible = show
-            if (show && ExperimentalMobileDesign.enabled() && (!wasVisible || progress != target)) {
-                android.animation.ObjectAnimator.ofInt(this, "progress", 0, target)
-                    .setDuration(420L)
-                    .start()
-            } else {
-                progress = target
-            }
-        }
+        bindTvShowProgress(binding.pbTvShowProgress)
         bindEpisodeBadge(binding.tvTvShowLastEpisode)
         binding.tvTvShowTitle.text = tvShow.title
         com.dskja.betterstreamflix.logo.TitleLogoSurface.bindCachedOnly(
@@ -623,17 +578,36 @@ class TvShowViewHolder(
             val wasVisible = isVisible
             isVisible = show
         }
-        binding.pbTvShowProgress.apply {
-            val watchHistory = tvShow.episodeToWatch?.watchHistory
-            progress = when {
-                watchHistory != null && watchHistory.durationMillis > 0 ->
-                    (watchHistory.lastPlaybackPositionMillis * 100 / watchHistory.durationMillis.toDouble()).toInt()
-                else -> 0
-            }
-            isVisible = watchHistory != null
-        }
+        bindTvShowProgress(binding.pbTvShowProgress)
         bindEpisodeBadge(binding.tvTvShowLastEpisode)
         binding.tvTvShowTitle.text = tvShow.title
+    }
+
+    /**
+     * Prefer [TvShow.lastPlayedEpisode] (hydrated on Recently Watched Home rows)
+     * over [TvShow.episodeToWatch], which needs loaded seasons.
+     */
+    private fun bindTvShowProgress(bar: android.widget.ProgressBar) {
+        val watchHistory = tvShow.lastPlayedEpisode?.watchHistory
+            ?: tvShow.episodeToWatch?.watchHistory
+        val target = when {
+            watchHistory != null && watchHistory.durationMillis > 0 ->
+                (watchHistory.lastPlaybackPositionMillis * 100 / watchHistory.durationMillis.toDouble()).toInt()
+            else -> 0
+        }
+        val show = watchHistory != null && watchHistory.durationMillis > 0
+        val wasVisible = bar.isVisible
+        bar.isVisible = show
+        if (show && ExperimentalMobileDesign.enabled() && (!wasVisible || bar.progress != target)) {
+            android.animation.ObjectAnimator.ofInt(bar, "progress", 0, target)
+                .setDuration(420L)
+                .start()
+        } else {
+            bar.progress = target
+        }
+        if (ExperimentalMobileDesign.enabled() && show && !wasVisible) {
+            ExpMotion.popIn(bar)
+        }
     }
 
     private fun applyMobileSelection(view: View) {

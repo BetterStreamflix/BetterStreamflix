@@ -26,6 +26,7 @@ object ProfileManager {
     private val SCOPED_PREF_BASES = listOf(
         "SHOW_CONTINUE_WATCHING",
         "SHOW_RECENTLY_WATCHED",
+        "SHOW_NEXT_EPISODES",
         "LIBRARY_SCOPE",
         "PARENTAL_CONTROL_PIN",
         "PARENTAL_CONTROL_ADMIN_PIN",

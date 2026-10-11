@@ -125,7 +125,7 @@
     <string name="tv_shows_empty">Keine Serien verfügbar</string>
     <string name="people_filmography_empty">Keine Filmografie verfügbar</string>
     <string name="people_filmography_label">Filmografie</string>
-    <string name="home_empty">Noch nichts zu zeigen — anderen Anbieter wählen oder erneut laden</string>
+    <string name="home_empty">Noch nichts zu zeigen — Anbieter wählen; Weiterschauen erscheint, sobald du etwas schaust</string>
     <string name="exp_cd_search_clear">Suche löschen</string>
     <string name="exp_cd_voice_search">Sprachsuche</string>
     <string name="searching">Suche läuft...</string>
@@ -136,6 +136,7 @@
 
     <string name="home_swiper_watch_now">Ansehen</string>
     <string name="home_continue_watching">Weiterschauen</string>
+    <string name="home_next_episodes">Nächste Folgen</string>
     <string name="home_recently_watched">Kürzlich angesehen</string>
     <string name="home_favorite_movies">Favoriten - Filme</string>
     <string name="home_favorite_tv_shows">Favoriten - Serien</string>
@@ -713,6 +714,8 @@
     <string name="settings_show_continue_watching_summary">Die Weiterschauen-Zeile auf dem Startbildschirm anzeigen</string>
     <string name="settings_show_recently_watched_title">Zuletzt angesehen anzeigen</string>
     <string name="settings_show_recently_watched_summary">Die Zuletzt-angesehen-Zeile auf dem Startbildschirm anzeigen</string>
+    <string name="settings_show_next_episodes_title">Nächste Folgen anzeigen</string>
+    <string name="settings_show_next_episodes_summary">Die Zeile Nächste Folgen für Serien in Arbeit auf dem Startbildschirm anzeigen</string>
     <string name="settings_clear_recently_watched_title">Zuletzt angesehen leeren</string>
     <string name="settings_clear_recently_watched_summary">Alle Einträge aus Zuletzt angesehen entfernen</string>
     <string name="settings_clear_recently_watched_confirm_message">Alle Einträge aus Zuletzt angesehen löschen? Das kann nicht rückgängig gemacht werden.</string>

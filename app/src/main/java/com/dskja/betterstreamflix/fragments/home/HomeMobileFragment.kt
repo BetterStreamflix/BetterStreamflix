@@ -334,6 +334,17 @@ class HomeMobileFragment : Fragment() {
             }
 
         categories
+            .find { it.name == Category.NEXT_EPISODES }
+            ?.also {
+                it.name = getString(R.string.home_next_episodes)
+                it.list.forEach { show ->
+                    if (show is Episode) {
+                        show.itemType = AppAdapter.Type.EPISODE_CONTINUE_WATCHING_MOBILE_ITEM
+                    }
+                }
+            }
+
+        categories
             .find { it.name == Category.RECENTLY_WATCHED }
             ?.also {
                 it.name = getString(R.string.home_recently_watched)
@@ -358,8 +369,12 @@ class HomeMobileFragment : Fragment() {
 
         val homeItems = mutableListOf<AppAdapter.Item>()
         val visibleCategories = HomeCatalogPipeline.isolateFeatured(categories)
+        val resumeShelfTitles = setOf(
+            getString(R.string.home_continue_watching),
+            getString(R.string.home_next_episodes),
+        )
         visibleCategories.onEach { category ->
-            if (!Category.isFeaturedName(category.name) && category.name != getString(R.string.home_continue_watching)) {
+            if (!Category.isFeaturedName(category.name) && category.name !in resumeShelfTitles) {
                 category.list.onEach { show ->
                     when (show) {
                         is Episode -> show.itemType = AppAdapter.Type.EPISODE_MOBILE_ITEM

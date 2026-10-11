@@ -1305,6 +1305,15 @@ class SettingsMobileFragment : PreferenceFragmentCompat() {
             }
         }
 
+        findPreference<SwitchPreferenceCompat>("SHOW_NEXT_EPISODES")?.apply {
+            isChecked = UserPreferences.showNextEpisodes
+            setOnPreferenceChangeListener { _, newValue ->
+                UserPreferences.showNextEpisodes = newValue as Boolean
+                ProviderChangeNotifier.notifyProviderChanged()
+                true
+            }
+        }
+
         findPreference<Preference>("CLEAR_RECENTLY_WATCHED")?.setOnPreferenceClickListener {
             val glass = if (ExperimentalMobileDesign.enabled()) {
                 ExpDialogChrome.buildGlassMessage(

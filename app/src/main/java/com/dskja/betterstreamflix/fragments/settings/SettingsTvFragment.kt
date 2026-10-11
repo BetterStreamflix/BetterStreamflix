@@ -711,6 +711,15 @@ class SettingsTvFragment : LeanbackPreferenceFragmentCompat() {
             }
         }
 
+        findPreference<SwitchPreferenceCompat>("SHOW_NEXT_EPISODES")?.apply {
+            isChecked = UserPreferences.showNextEpisodes
+            setOnPreferenceChangeListener { _, newValue ->
+                UserPreferences.showNextEpisodes = newValue as Boolean
+                ProviderChangeNotifier.notifyProviderChanged()
+                true
+            }
+        }
+
         findPreference<Preference>("CLEAR_RECENTLY_WATCHED")?.setOnPreferenceClickListener {
             val message = getString(R.string.settings_clear_recently_watched_confirm_message)
             expAlertBuilder()

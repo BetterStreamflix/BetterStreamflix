@@ -95,7 +95,7 @@
     <string name="people_filmography_label">Filmography</string>
     <string name="people_known_for">Known for</string>
     <string name="people_meta_dot" translatable="false">·</string>
-    <string name="home_empty">Nothing to show yet — try another provider or pull to refresh</string>
+    <string name="home_empty">Nothing to show yet — pick a provider, then titles you watch will appear under Continue Watching</string>
     <string name="home_empty_choose_provider">Choose provider</string>
     <string name="exp_cd_search_clear">Clear search</string>
     <string name="exp_cd_voice_search">Voice search</string>
@@ -107,6 +107,7 @@
 
     <string name="home_swiper_watch_now">Watch Now</string>
     <string name="home_continue_watching">Continue Watching</string>
+    <string name="home_next_episodes">Next Episodes</string>
     <string name="home_recently_watched">Recently Watched</string>
     <string name="home_favorite_movies">Favorite movies</string>
     <string name="home_favorite_tv_shows">Favorite TV shows</string>
@@ -1170,6 +1171,8 @@
     <string name="settings_show_continue_watching_summary">Display the Continue Watching row on the home screen</string>
     <string name="settings_show_recently_watched_title">Show Recently Watched</string>
     <string name="settings_show_recently_watched_summary">Display the Recently Watched row on the home screen</string>
+    <string name="settings_show_next_episodes_title">Show Next Episodes</string>
+    <string name="settings_show_next_episodes_summary">Display the Next Episodes row on the home screen for series in progress</string>
     <string name="settings_clear_recently_watched_title">Clear Recently Watched</string>
     <string name="settings_clear_recently_watched_summary">Remove all entries from Recently Watched</string>
     <string name="settings_clear_recently_watched_confirm_message">Clear all Recently Watched entries? This cannot be undone.</string>

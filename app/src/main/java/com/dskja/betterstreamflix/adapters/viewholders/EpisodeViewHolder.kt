@@ -963,28 +963,36 @@ class EpisodeViewHolder(
     private fun bindEpisodeRemainingPill(root: View) {
         val remaining = root.findViewById<android.widget.TextView>(R.id.tv_episode_remaining) ?: return
         val watchHistory = episode.watchHistory
-        if (watchHistory != null && watchHistory.durationMillis > 0 && ExperimentalMobileDesign.enabled()) {
-            val pct = (watchHistory.lastPlaybackPositionMillis * 100 /
-                watchHistory.durationMillis.toDouble()).toInt().coerceIn(0, 99)
-            remaining.text = context.getString(R.string.continue_watching_percent, pct)
-            remaining.setBackgroundResource(ExperimentalMobileDesign.metaPillBackground())
-            val density = context.resources.displayMetrics.density
-            remaining.setPadding(
-                (8 * density).toInt(),
-                (2 * density).toInt(),
-                (8 * density).toInt(),
-                (2 * density).toInt(),
-            )
-            val wasVisible = remaining.visibility == View.VISIBLE
-            remaining.visibility = View.VISIBLE
-            if (!wasVisible) ExpMotion.popIn(remaining)
-        } else if (watchHistory != null && watchHistory.durationMillis > 0) {
-            val pct = (watchHistory.lastPlaybackPositionMillis * 100 /
-                watchHistory.durationMillis.toDouble()).toInt().coerceIn(0, 99)
-            remaining.text = context.getString(R.string.continue_watching_percent, pct)
-            remaining.visibility = View.VISIBLE
-        } else {
-            remaining.visibility = View.GONE
+        when {
+            watchHistory != null && watchHistory.durationMillis > 0 -> {
+                val pct = (watchHistory.lastPlaybackPositionMillis * 100 /
+                    watchHistory.durationMillis.toDouble()).toInt().coerceIn(0, 99)
+                remaining.text = context.getString(R.string.continue_watching_percent, pct)
+                if (ExperimentalMobileDesign.enabled()) {
+                    remaining.setBackgroundResource(ExperimentalMobileDesign.metaPillBackground())
+                    val density = context.resources.displayMetrics.density
+                    remaining.setPadding(
+                        (8 * density).toInt(),
+                        (2 * density).toInt(),
+                        (8 * density).toInt(),
+                        (2 * density).toInt(),
+                    )
+                }
+                val wasVisible = remaining.visibility == View.VISIBLE
+                remaining.visibility = View.VISIBLE
+                if (ExperimentalMobileDesign.enabled() && !wasVisible) ExpMotion.popIn(remaining)
+            }
+            // Next-episode shelf (and unfinished CW without a resume point): badge, not a 0% bar.
+            !episode.isWatched -> {
+                remaining.text = context.getString(R.string.detail_up_next)
+                if (ExperimentalMobileDesign.enabled()) {
+                    remaining.setBackgroundResource(ExperimentalMobileDesign.metaPillBackground())
+                }
+                val wasVisible = remaining.visibility == View.VISIBLE
+                remaining.visibility = View.VISIBLE
+                if (ExperimentalMobileDesign.enabled() && !wasVisible) ExpMotion.popIn(remaining)
+            }
+            else -> remaining.visibility = View.GONE
         }
     }
 
