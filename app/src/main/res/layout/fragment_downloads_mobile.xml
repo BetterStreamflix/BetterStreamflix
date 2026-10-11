@@ -40,8 +40,8 @@
 
     <ImageButton
         android:id="@+id/btn_downloads_menu"
-        android:layout_width="44dp"
-        android:layout_height="44dp"
+        android:layout_width="48dp"
+        android:layout_height="48dp"
         android:layout_marginEnd="4dp"
         android:background="?attr/selectableItemBackgroundBorderless"
         android:contentDescription="@string/downloads_action_settings"
@@ -218,7 +218,7 @@
         android:layout_width="36dp"
         android:layout_height="3dp"
         android:layout_marginTop="12dp"
-        android:background="@drawable/bg_exp_accent_rule"
+        android:background="@drawable/bg_cinema_accent_rule"
         android:visibility="gone"
         app:layout_constraintBottom_toTopOf="@id/btn_downloads_empty_cta"
         app:layout_constraintEnd_toEndOf="@id/tv_downloads_empty"

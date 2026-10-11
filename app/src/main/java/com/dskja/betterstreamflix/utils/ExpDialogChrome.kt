@@ -109,7 +109,7 @@ object ExpDialogChrome {
                 (36 * density).toInt(),
                 (3 * density).toInt(),
             ).also { it.bottomMargin = (12 * density).toInt() }
-            setBackgroundResource(R.drawable.bg_exp_accent_rule)
+            setBackgroundResource(R.drawable.bg_cinema_accent_rule)
         }
         val body = TextView(themed).apply {
             text = message

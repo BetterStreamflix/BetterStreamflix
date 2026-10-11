@@ -11,7 +11,7 @@
     <item>
         <shape android:shape="rectangle">
             <corners android:radius="360dp" />
-            <solid android:color="#CC646464" />
+            <solid android:color="@color/cinema_progress_track" />
         </shape>
     </item>
 

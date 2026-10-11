@@ -24,6 +24,7 @@ import com.dskja.betterstreamflix.providers.Provider
 import com.dskja.betterstreamflix.ui.HomeProfileChip
 import com.dskja.betterstreamflix.utils.CacheUtils
 import com.dskja.betterstreamflix.utils.ExpDialogChrome
+import com.dskja.betterstreamflix.utils.ExpEmptyChrome
 import com.dskja.betterstreamflix.utils.ExpMotion
 import com.dskja.betterstreamflix.utils.ExpNavAutoHide
 import com.dskja.betterstreamflix.utils.ExperimentalMobileDesign
@@ -73,7 +74,7 @@ class LiveHubMobileFragment : Fragment() {
             viewModel.state.flowWithLifecycle(lifecycle, Lifecycle.State.STARTED).collect { state ->
                 when (state) {
                     LiveHubViewModel.State.Loading -> {
-                        showEmpty(visible = false)
+                        bindEmptyChrome(visible = false)
                         binding.isLoading.apply {
                             ExpMotion.fadeInAndShow(root)
                             com.dskja.betterstreamflix.utils.ExpPressEffects.showLoadingSkeleton(root, true)
@@ -124,7 +125,7 @@ class LiveHubMobileFragment : Fragment() {
                                 LoggingUtils.showErrorDialog(requireContext(), state.error)
                             }
                         }
-                        showEmpty(visible = appAdapter.items.isEmpty())
+                        bindEmptyChrome(visible = appAdapter.items.isEmpty())
                     }
                 }
             }
@@ -156,19 +157,26 @@ class LiveHubMobileFragment : Fragment() {
             category.itemSpacing = 10.dp(requireContext())
             category.itemType = AppAdapter.Type.CATEGORY_MOBILE_ITEM
         }
-        showEmpty(visible = visible.isEmpty())
+        bindEmptyChrome(visible = visible.isEmpty())
         binding.rvLiveHub.isVisible = visible.isNotEmpty()
         appAdapter.submitList(visible)
     }
 
-    private fun showEmpty(visible: Boolean) {
+    private fun bindEmptyChrome(visible: Boolean) {
         binding.tvLiveHubEmpty.text = getString(R.string.live_hub_empty)
-        binding.tvLiveHubEmpty.isVisible = visible
+        ExpEmptyChrome.bind(
+            emptyView = binding.tvLiveHubEmpty,
+            emptyRule = binding.vLiveHubEmptyRule,
+            emptyCta = binding.btnLiveHubEmptyCta,
+            visible = visible,
+            onCtaClick = { reload() },
+        )
     }
 
     private fun displayRestricted() {
         appAdapter.submitList(emptyList())
         binding.rvLiveHub.isVisible = false
+        bindEmptyChrome(visible = false)
         binding.tvLiveHubEmpty.text = getString(R.string.live_hub_restricted)
         binding.tvLiveHubEmpty.isVisible = true
     }

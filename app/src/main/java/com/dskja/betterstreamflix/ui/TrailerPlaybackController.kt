@@ -559,7 +559,7 @@ object TrailerPlaybackController {
                     it.marginStart = (24 * density).toInt()
                     it.bottomMargin = (4 * density).toInt()
                 }
-                setBackgroundResource(R.drawable.bg_exp_accent_rule)
+                setBackgroundResource(R.drawable.bg_cinema_accent_rule)
             }
             val index = parent.indexOfChild(list).coerceAtLeast(0)
             parent.addView(rule, index)

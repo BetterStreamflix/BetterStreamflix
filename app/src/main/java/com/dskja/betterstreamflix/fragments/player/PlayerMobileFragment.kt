@@ -2540,7 +2540,7 @@ class PlayerMobileFragment : Fragment() {
         if (useExp) {
             val rule = View(requireContext()).apply {
                 layoutParams = android.widget.LinearLayout.LayoutParams(40.dp(requireContext()), 3.dp(requireContext()))
-                setBackgroundResource(R.drawable.bg_exp_accent_rule)
+                setBackgroundResource(R.drawable.bg_cinema_accent_rule)
             }
             root.addView(rule)
             ExpMotion.revealHeader(title)

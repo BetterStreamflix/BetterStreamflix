@@ -33,7 +33,7 @@
         android:layout_width="36dp"
         android:layout_height="3dp"
         android:layout_marginTop="10dp"
-        android:background="@drawable/bg_exp_accent_rule" />
+        android:background="@drawable/bg_cinema_accent_rule" />
 
     <EditText
         android:id="@+id/et_profile_pin"

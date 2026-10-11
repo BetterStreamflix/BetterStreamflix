@@ -3543,7 +3543,7 @@ class PlayerTvFragment : Fragment() {
 
         val imageView = ImageView(requireContext()).apply {
             setImageBitmap(bitmap)
-            setBackgroundColor(Color.WHITE)
+            setBackgroundColor(ContextCompat.getColor(requireContext(), R.color.cinema_cta_fill))
             scaleType = ImageView.ScaleType.FIT_CENTER
             adjustViewBounds = true
             // QR is visual only — primary DPAD focus belongs on the dialog action.
@@ -3562,13 +3562,13 @@ class PlayerTvFragment : Fragment() {
                 }
             }
             setTextSize(TypedValue.COMPLEX_UNIT_SP, 14f)
-            setTextColor(Color.WHITE)
+            setTextColor(ContextCompat.getColor(requireContext(), R.color.cinema_text))
         }
 
         val deepLinkView = TextView(requireContext()).apply {
             text = deepLink
             setTextSize(TypedValue.COMPLEX_UNIT_SP, 11f)
-            setTextColor(Color.parseColor("#BBBBBB"))
+            setTextColor(ContextCompat.getColor(requireContext(), R.color.cinema_text_muted))
             setPadding(0, (density * 8).toInt(), 0, 0)
             setTextIsSelectable(true)
         }

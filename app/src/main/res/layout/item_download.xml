@@ -13,7 +13,8 @@
         android:id="@+id/iv_download_poster"
         android:layout_width="72dp"
         android:layout_height="108dp"
-        android:contentDescription="@null"
+        android:contentDescription="@string/cd_download_poster"
+        android:importantForAccessibility="no"
         android:scaleType="centerCrop"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent" />

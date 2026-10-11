@@ -72,14 +72,6 @@
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintTop_toTopOf="@id/iv_provider_logo" />
 
-    <Space
-        android:id="@+id/btn_home_search_spacer"
-        android:layout_width="44dp"
-        android:layout_height="40dp"
-        app:layout_constraintBottom_toBottomOf="@id/iv_provider_logo"
-        app:layout_constraintEnd_toStartOf="@id/tv_home_profile_chip"
-        app:layout_constraintTop_toTopOf="@id/iv_provider_logo" />
-
     <TextView
         android:id="@+id/tv_home_catalog_warning"
         android:layout_width="0dp"
@@ -98,7 +90,7 @@
         android:paddingTop="8dp"
         android:paddingEnd="12dp"
         android:paddingBottom="8dp"
-        android:textColor="#F5E6D3"
+        android:textColor="@color/cinema_text_cream"
         android:textSize="12sp"
         android:visibility="gone"
         app:layout_constraintEnd_toEndOf="parent"
@@ -133,7 +125,7 @@
         android:layout_width="36dp"
         android:layout_height="3dp"
         android:layout_marginTop="10dp"
-        android:background="@drawable/bg_exp_accent_rule"
+        android:background="@drawable/bg_cinema_accent_rule"
         android:visibility="gone"
         app:layout_constraintBottom_toTopOf="@id/btn_home_empty_cta"
         app:layout_constraintEnd_toEndOf="@id/tv_home_empty"
