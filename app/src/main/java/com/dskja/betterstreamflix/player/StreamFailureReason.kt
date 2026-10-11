@@ -2,9 +2,11 @@ package com.dskja.betterstreamflix.player
 
 import android.content.Context
 import com.dskja.betterstreamflix.R
+import com.dskja.betterstreamflix.providers.AniWorldProvider
 import com.dskja.betterstreamflix.providers.Provider
 import com.dskja.betterstreamflix.providers.ProviderHealth
 import com.dskja.betterstreamflix.providers.SerienStreamProvider
+import com.dskja.betterstreamflix.providers.TmdbProvider
 
 /**
  * User-facing classification for “why no stream?” — replaces opaque extractor /
@@ -41,9 +43,9 @@ object StreamFailureReason {
         serversExhausted: Boolean = false,
     ): Presentation {
         val hay = errorChain(error)
-        // SerienStream / CF gate: prefer captcha CTA over generic “all servers failed”.
+        // SerienStream / AniWorld / TMDb-DE CF gate: prefer captcha CTA over generic “all servers failed”.
         if (isCaptcha(hay, provider, error) ||
-            (serversExhausted && provider is SerienStreamProvider)
+            (serversExhausted && isGermanStreamGateProvider(provider))
         ) {
             return Presentation(
                 kind = Kind.CAPTCHA,
@@ -108,9 +110,27 @@ object StreamFailureReason {
         }
     }
 
+    /** SerienStream / AniWorld / TMDb(de) wrap — CF gate CTAs apply. */
+    fun isGermanStreamGateProvider(provider: Provider?): Boolean =
+        provider is SerienStreamProvider ||
+            provider is AniWorldProvider ||
+            (provider is TmdbProvider &&
+                provider.language.lowercase(java.util.Locale.US).startsWith("de"))
+
+    /**
+     * Provider to run domain-update against — TMDb DE routes to SerienStream
+     * (underlying native hoster), not the TMDb aggregator itself.
+     */
+    fun domainUpdateTarget(provider: Provider?): Provider? = when {
+        provider == null -> null
+        provider is TmdbProvider &&
+            provider.language.lowercase(java.util.Locale.US).startsWith("de") -> SerienStreamProvider
+        else -> provider
+    }
+
     private fun domainAction(provider: Provider?): Action {
-        val p = provider ?: return Action.NONE
-        return if (ProviderHealth.supportsDomainUpdate(p)) Action.UPDATE_DOMAIN else Action.NONE
+        val target = domainUpdateTarget(provider) ?: return Action.NONE
+        return if (ProviderHealth.supportsDomainUpdate(target)) Action.UPDATE_DOMAIN else Action.NONE
     }
 
     private fun Action.labelRes(): Int? = when (this) {
@@ -120,11 +140,21 @@ object StreamFailureReason {
     }
 
     private fun isCaptcha(hay: String, provider: Provider?, error: Throwable?): Boolean {
-        if (provider is SerienStreamProvider) {
-            val msg = error?.message.orEmpty()
-            if (msg.contains("bypass", ignoreCase = true) ||
-                msg.contains("captcha", ignoreCase = true) ||
-                msg.contains("cloudflare", ignoreCase = true)
+        val msg = error?.message.orEmpty().lowercase()
+        // Gate throws often omit CF keywords: "SerienStream stream gate is still active…"
+        if ("stream gate" in hay || "stream gate" in msg ||
+            "gate is still active" in hay || "gate is still active" in msg ||
+            "tmdbde:serienstream" in hay || "tmdbde:serienstream" in msg ||
+            "tmdbde:aniworld" in hay || "tmdbde:aniworld" in msg
+        ) {
+            return true
+        }
+        if (isGermanStreamGateProvider(provider)) {
+            if (msg.contains("bypass") ||
+                msg.contains("captcha") ||
+                msg.contains("cloudflare") ||
+                msg.contains("turnstile") ||
+                msg.contains("gate")
             ) {
                 return true
             }
@@ -133,25 +163,29 @@ object StreamFailureReason {
             "cloudflare" in hay ||
             "just a moment" in hay ||
             "cf-ray" in hay ||
-            "challenge" in hay && "cloudflare" in hay ||
-            "turnstile" in hay
+            "turnstile" in hay ||
+            ("challenge" in hay && ("cf-" in hay || "turnstile" in hay || "captcha" in hay))
     }
 
     private fun isGeo(hay: String): Boolean =
         "response code: 451" in hay ||
             "http 451" in hay ||
             "unavailable for legal reasons" in hay ||
-            "geo" in hay && ("block" in hay || "restrict" in hay || "denied" in hay) ||
             "not available in your country" in hay ||
             "not available in your region" in hay ||
-            "vpn" in hay && ("required" in hay || "blocked" in hay)
+            ("geo-block" in hay || "geoblock" in hay || "geo_block" in hay) ||
+            ("geo restricted" in hay || "geo-restricted" in hay) ||
+            ("blocked in your country" in hay || "blocked in your region" in hay) ||
+            ("vpn" in hay && ("required" in hay || "blocked" in hay))
 
     private fun isTimeout(hay: String): Boolean =
         "timed out" in hay ||
             "timeout" in hay ||
             "timeoutexception" in hay ||
             "sockettimeout" in hay ||
-            "failed to connect" in hay
+            // Keep connect failures out of TIMEOUT unless they explicitly say timeout —
+            // "failed to connect" is too broad and mis-labels domain/CTA paths.
+            ("failed to connect" in hay && "timeout" in hay)
 
     private fun isDomainDead(hay: String, provider: Provider?): Boolean {
         if (provider != null && ProviderHealth.isQuarantined(provider)) return true

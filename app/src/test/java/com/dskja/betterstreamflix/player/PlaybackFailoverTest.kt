@@ -160,6 +160,17 @@ class PlaybackFailoverTest {
     }
 
     @Test
+    fun http502AndSslAreHardSourceFailures() {
+        assertTrue(PlaybackFailover.isHardSourceFailure(Exception("Response code: 502")))
+        assertTrue(PlaybackFailover.isHardSourceFailure(Exception("SSLHandshakeException")))
+        assertTrue(
+            PlaybackFailover.isHardSourceFailure(
+                Exception("ERROR_CODE_IO_BAD_HTTP_STATUS"),
+            ),
+        )
+    }
+
+    @Test
     fun serverOrdinalIsOneBased() {
         assertEquals(2, PlaybackFailover.serverOrdinal(1))
         assertEquals(1, PlaybackFailover.serverOrdinal(0))

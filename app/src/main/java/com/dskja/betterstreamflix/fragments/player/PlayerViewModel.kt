@@ -84,12 +84,16 @@ class PlayerViewModel(
             )
         )
 
-        playEpisode(nextEpisode)
-
+        // Emit-only: destination player VM owns getServers (avoids double-fetch on VOD nav,
+        // mirroring live zap). Do not cancel an in-flight failover getVideo here.
         viewModelScope.launch {
             _playPreviousOrNextEpisode.emit(nextEpisode)
         }
     }
+
+    /** True while a hoster extract / failover hop is still resolving. */
+    fun isVideoResolveInFlight(): Boolean =
+        videoJob?.isActive == true || _state.value is State.LoadingVideo
 
     enum class Direction { PREVIOUS, NEXT }
     fun playPreviousEpisode() =

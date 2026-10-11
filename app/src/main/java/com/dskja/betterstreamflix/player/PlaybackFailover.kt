@@ -40,6 +40,18 @@ object PlaybackFailover {
     /** True when Exo hit a dead CDN/HTML page — skip lingering on this server. */
     fun isHardSourceFailure(error: Throwable?): Boolean {
         val chain = errorChain(error)
+        // Prefer Media3 PlaybackException errorCode names when present (stringly fallback below).
+        if ("error_code_io_bad_http_status" in chain ||
+            "error_code_io_file_not_found" in chain ||
+            "error_code_io_network_connection_failed" in chain ||
+            "error_code_io_network_connection_timeout" in chain ||
+            "error_code_io_invalid_http_content_type" in chain ||
+            "error_code_parsing_container_unsupported" in chain ||
+            "error_code_parsing_container_malformed" in chain ||
+            "io_bad_http_status" in chain
+        ) {
+            return true
+        }
         return "unrecognizedinputformat" in chain ||
             "none of the available extractors" in chain ||
             "response code: 401" in chain ||
@@ -47,9 +59,23 @@ object PlaybackFailover {
             "response code: 404" in chain ||
             "response code: 410" in chain ||
             "response code: 451" in chain ||
+            "response code: 500" in chain ||
+            "response code: 502" in chain ||
+            "response code: 503" in chain ||
+            "response code: 504" in chain ||
+            "response code: 520" in chain ||
+            "response code: 521" in chain ||
+            "response code: 522" in chain ||
+            "response code: 523" in chain ||
+            "response code: 524" in chain ||
+            "sslhandshakeexception" in chain ||
+            "sslexception" in chain ||
+            "certpathvalidatorexception" in chain ||
             "timed out" in chain ||
             "timeoutexception" in chain ||
-            ("httpdatasource" in chain && ("401" in chain || "403" in chain || "404" in chain))
+            ("httpdatasource" in chain &&
+                ("401" in chain || "403" in chain || "404" in chain ||
+                    "500" in chain || "502" in chain || "503" in chain || "521" in chain))
     }
 
     /** HW decoder cannot handle this format (10-bit / exceeds capabilities). */
