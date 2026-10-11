@@ -191,6 +191,7 @@ class DownloadRepository private constructor(
             updatedAt = System.currentTimeMillis(),
         )
         dao.upsert(entity)
+        runCatching { DownloadSeriesFolders.ensureForItem(context, entity) }
 
         val dm = StreamflixDownloadManager.get(context)
         dm.maxParallelDownloads = UserPreferences.downloadMaxConcurrent.coerceIn(1, 4)
@@ -201,6 +202,28 @@ class DownloadRepository private constructor(
             /* foreground= */ true,
         )
         entity
+    }
+
+    /**
+     * Turn dead COMPLETED rows (cache wiped / storage relocated) into clear
+     * [DownloadErrorCode.STORAGE_RELOCATED] failures so the Downloads tab shows
+     * "Re-download needed" instead of unplayable Completed entries.
+     */
+    suspend fun reconcileOrphanedCompleted() {
+        getAllOnce()
+            .filter { it.state == DownloadItemState.COMPLETED.name }
+            .forEach { item ->
+                val playable = runCatching {
+                    OfflinePlayback.canPlayOffline(context, item)
+                }.getOrDefault(false)
+                if (!playable) {
+                    markFailed(
+                        item.id,
+                        DownloadErrorCode.STORAGE_RELOCATED,
+                        "Storage location changed — re-download required",
+                    )
+                }
+            }
     }
 
     suspend fun pause(

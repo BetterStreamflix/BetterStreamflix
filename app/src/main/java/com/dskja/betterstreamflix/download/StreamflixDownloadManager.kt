@@ -375,7 +375,7 @@ object StreamflixDownloadManager {
                             repo.markFailed(
                                 item.id,
                                 DownloadErrorCode.STORAGE_RELOCATED,
-                                "Storage location changed — re-download required",
+                                "Re-download needed",
                             )
                         }
                     }

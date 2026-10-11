@@ -33,6 +33,7 @@ class DownloadsAdapter(
     override fun getItemViewType(position: Int): Int = when (getItem(position)) {
         is DownloadRowUiModel.Header -> TYPE_HEADER
         is DownloadRowUiModel.SeasonPack -> TYPE_PACK
+        is DownloadRowUiModel.SeriesFolder -> TYPE_SERIES
         is DownloadRowUiModel.Item -> TYPE_ITEM
     }
 
@@ -53,6 +54,13 @@ class DownloadsAdapter(
                     false,
                 )
             )
+            TYPE_SERIES -> SeriesVH(
+                inflater.inflate(
+                    R.layout.item_download_series_folder,
+                    parent,
+                    false,
+                )
+            )
             else -> ItemVH(
                 inflater.inflate(
                     R.layout.item_download,
@@ -67,6 +75,7 @@ class DownloadsAdapter(
         when (val item = getItem(position)) {
             is DownloadRowUiModel.Header -> (holder as HeaderVH).bind(item)
             is DownloadRowUiModel.SeasonPack -> (holder as PackVH).bind(item)
+            is DownloadRowUiModel.SeriesFolder -> (holder as SeriesVH).bind(item)
             is DownloadRowUiModel.Item -> (holder as ItemVH).bind(item)
         }
     }
@@ -103,6 +112,21 @@ class DownloadsAdapter(
                         itemView.findViewById(R.id.v_download_header_rule),
                     )
                 }
+            }
+        }
+    }
+
+    inner class SeriesVH(view: View) : RecyclerView.ViewHolder(view) {
+        private val title: TextView = view.findViewById(R.id.tv_download_series_title)
+        private val subtitle: TextView = view.findViewById(R.id.tv_download_series_subtitle)
+        fun bind(item: DownloadRowUiModel.SeriesFolder) {
+            itemView.nextFocusLeftId = R.id.nav_main
+            title.text = item.title
+            subtitle.text = item.subtitle(itemView.context)
+            if (com.dskja.betterstreamflix.utils.ExperimentalMobileDesign.enabled()) {
+                itemView.setBackgroundResource(
+                    com.dskja.betterstreamflix.utils.ExperimentalMobileDesign.glassCardBackground(),
+                )
             }
         }
     }
@@ -189,15 +213,15 @@ class DownloadsAdapter(
             }
             actionPrimary.setOnClickListener {
                 ExpMotion.hapticTap(it)
-                when (item.state) {
-                    DownloadItemState.COMPLETED -> onPlay(item)
-                    DownloadItemState.FAILED -> onRetry(item)
-                    DownloadItemState.PAUSED,
-                    DownloadItemState.QUEUED,
-                    DownloadItemState.PREPARING,
-                    DownloadItemState.DOWNLOADING,
-                    -> onPauseResume(item)
-                    DownloadItemState.REMOVING -> Unit
+                when {
+                    item.needsRedownload -> onRetry(item)
+                    item.state == DownloadItemState.COMPLETED -> onPlay(item)
+                    item.state == DownloadItemState.FAILED -> onRetry(item)
+                    item.state == DownloadItemState.PAUSED ||
+                        item.state == DownloadItemState.QUEUED ||
+                        item.state == DownloadItemState.PREPARING ||
+                        item.state == DownloadItemState.DOWNLOADING -> onPauseResume(item)
+                    item.state == DownloadItemState.REMOVING -> Unit
                 }
             }
             if (com.dskja.betterstreamflix.utils.ExperimentalMobileDesign.enabled()) {
@@ -244,10 +268,15 @@ class DownloadsAdapter(
             }
 
         fun bindPrimaryAction(item: DownloadRowUiModel.Item) {
-            actionPrimary.text = when (item.state) {
-                DownloadItemState.COMPLETED -> itemView.context.getString(R.string.downloads_action_play)
-                DownloadItemState.FAILED -> itemView.context.getString(R.string.downloads_action_retry)
-                DownloadItemState.PAUSED -> itemView.context.getString(R.string.downloads_action_resume)
+            actionPrimary.text = when {
+                item.needsRedownload ->
+                    itemView.context.getString(R.string.downloads_action_redownload)
+                item.state == DownloadItemState.COMPLETED ->
+                    itemView.context.getString(R.string.downloads_action_play)
+                item.state == DownloadItemState.FAILED ->
+                    itemView.context.getString(R.string.downloads_action_retry)
+                item.state == DownloadItemState.PAUSED ->
+                    itemView.context.getString(R.string.downloads_action_resume)
                 else -> itemView.context.getString(R.string.downloads_action_pause)
             }
         }
@@ -255,8 +284,10 @@ class DownloadsAdapter(
         fun bindProgress(item: DownloadRowUiModel.Item) {
             val pct = item.entity.progressPct.coerceIn(0, 100)
             val wasFailed = progressLine.getTag(R.id.exp_enter_animated_tag) == "failed"
-            progress.isIndeterminate = item.state == DownloadItemState.PREPARING ||
-                (item.state.isActive && pct <= 0 && item.entity.bytesDownloaded <= 0L)
+            progress.isIndeterminate = !item.needsRedownload && (
+                item.state == DownloadItemState.PREPARING ||
+                    (item.state.isActive && pct <= 0 && item.entity.bytesDownloaded <= 0L)
+                )
             if (!progress.isIndeterminate) {
                 if (com.dskja.betterstreamflix.utils.ExperimentalMobileDesign.enabled() &&
                     progress.visibility == View.VISIBLE
@@ -267,16 +298,18 @@ class DownloadsAdapter(
                     progress.progress = pct
                 }
             }
-            progressLine.text = if (item.state == DownloadItemState.FAILED) {
-                item.failedSummary(itemView.context)
-            } else {
-                item.progressText(itemView.context)
+            progressLine.text = when {
+                item.needsRedownload || item.state == DownloadItemState.FAILED ->
+                    item.failedSummary(itemView.context)
+                else -> item.progressText(itemView.context)
             }
             progressLine.contentDescription = itemView.context.getString(
                 R.string.downloads_progress_a11y,
                 pct,
             )
-            progress.visibility = if (item.state == DownloadItemState.COMPLETED) {
+            progress.visibility = if (
+                item.state == DownloadItemState.COMPLETED || item.needsRedownload
+            ) {
                 View.GONE
             } else {
                 View.VISIBLE
@@ -341,6 +374,7 @@ class DownloadsAdapter(
         private const val TYPE_HEADER = 1
         private const val TYPE_ITEM = 2
         private const val TYPE_PACK = 3
+        private const val TYPE_SERIES = 4
 
         private fun payloadsContainProgress(payloads: List<Any>): Boolean {
             for (payload in payloads) {

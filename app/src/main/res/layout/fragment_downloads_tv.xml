@@ -37,11 +37,25 @@
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:paddingTop="8dp"
+        android:paddingEnd="12dp"
         android:textColor="#B3FFFFFF"
         android:textSize="14sp"
-        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintEnd_toStartOf="@id/switch_downloads_wifi_only"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@id/tv_downloads_title" />
+
+    <com.google.android.material.materialswitch.MaterialSwitch
+        android:id="@+id/switch_downloads_wifi_only"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:contentDescription="@string/downloads_wifi_only_toggle"
+        android:focusable="true"
+        android:text="@string/downloads_wifi_only_toggle"
+        android:textColor="#E6FFFFFF"
+        android:textSize="13sp"
+        app:layout_constraintBottom_toBottomOf="@id/tv_downloads_storage"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toTopOf="@id/tv_downloads_storage" />
 
     <TextView
         android:id="@+id/tv_downloads_banner"

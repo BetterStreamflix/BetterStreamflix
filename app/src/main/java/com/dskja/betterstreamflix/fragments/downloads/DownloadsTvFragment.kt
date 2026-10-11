@@ -179,6 +179,17 @@ class DownloadsTvFragment : Fragment() {
                 updateBanner(viewModel.lowSpace.value, paused)
             }
         }
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewModel.wifiOnlyEnabled.flowWithLifecycle(lifecycle, Lifecycle.State.STARTED).collect { enabled ->
+                val sw = binding.switchDownloadsWifiOnly
+                if (sw.isChecked != enabled) {
+                    sw.isChecked = enabled
+                }
+            }
+        }
+        binding.switchDownloadsWifiOnly.setOnCheckedChangeListener { _, isChecked ->
+            viewModel.setWifiOnly(isChecked)
+        }
         viewModel.refreshStorage()
         styleFilters(viewModel.currentFilter())
     }
@@ -198,11 +209,14 @@ class DownloadsTvFragment : Fragment() {
             binding.chipFilterCompleted,
             binding.chipFilterFailed,
         ).forEach { chip ->
-            chip.nextFocusUpId = binding.btnDownloadsMenu.id
+            chip.nextFocusUpId = binding.switchDownloadsWifiOnly.id
             chip.nextFocusDownId = binding.rvDownloads.id
         }
-        binding.btnDownloadsMenu.nextFocusDownId = binding.chipFilterAll.id
+        binding.btnDownloadsMenu.nextFocusDownId = binding.switchDownloadsWifiOnly.id
         binding.btnDownloadsMenu.nextFocusLeftId = binding.chipFilterFailed.id
+        binding.switchDownloadsWifiOnly.nextFocusUpId = binding.btnDownloadsMenu.id
+        binding.switchDownloadsWifiOnly.nextFocusDownId = binding.chipFilterAll.id
+        binding.switchDownloadsWifiOnly.nextFocusLeftId = R.id.nav_main
     }
 
     private fun updateBanner(lowSpace: Boolean, wifiPaused: Boolean) {

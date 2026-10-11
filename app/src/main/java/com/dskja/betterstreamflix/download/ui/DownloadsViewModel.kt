@@ -6,8 +6,10 @@ import androidx.lifecycle.viewModelScope
 import com.dskja.betterstreamflix.download.DownloadConnectivityMonitor
 import com.dskja.betterstreamflix.download.DownloadController
 import com.dskja.betterstreamflix.download.DownloadEventBridge
+import com.dskja.betterstreamflix.download.DownloadItemEntity
 import com.dskja.betterstreamflix.download.DownloadItemState
 import com.dskja.betterstreamflix.download.DownloadRepository
+import com.dskja.betterstreamflix.download.DownloadSeriesFolders
 import com.dskja.betterstreamflix.download.DownloadStats
 import com.dskja.betterstreamflix.download.DownloadStorage
 import com.dskja.betterstreamflix.download.StreamflixDownloadManager
@@ -19,6 +21,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
@@ -30,6 +33,7 @@ class DownloadsViewModel(
     private val filter = MutableStateFlow(DownloadsFilter.ALL)
     private val sort = MutableStateFlow(DownloadsSort.NEWEST)
     private var progressJob: Job? = null
+    private var reconcileJob: Job? = null
 
     val selectedFilter: StateFlow<DownloadsFilter> = filter.asStateFlow()
     val selectedSort: StateFlow<DownloadsSort> = sort.asStateFlow()
@@ -47,6 +51,10 @@ class DownloadsViewModel(
         wifiOnlyPreferenceTick.value = wifiOnlyPreferenceTick.value + 1
     }
 
+    val wifiOnlyEnabled: StateFlow<Boolean> = wifiOnlyPreferenceTick.map {
+        UserPreferences.downloadWifiOnly
+    }.stateIn(viewModelScope, SharingStarted.Eagerly, UserPreferences.downloadWifiOnly)
+
     val wifiPaused: StateFlow<Boolean> = combine(
         DownloadConnectivityMonitor.status,
         wifiOnlyPreferenceTick,
@@ -59,68 +67,7 @@ class DownloadsViewModel(
         repo.observeSeasonPacks(),
         combine(filter, sort) { f, s -> f to s },
     ) { items, packs, (selectedFilter, selectedSort) ->
-        val providerFilter = UserPreferences.downloadFilterCurrentProvider
-        val providerName = UserPreferences.currentProvider?.name
-        var filtered = items
-            .groupBy { it.contentKey }
-            .map { (_, rows) -> rows.maxBy { it.updatedAt } }
-        if (providerFilter && !providerName.isNullOrBlank()) {
-            filtered = filtered.filter { it.providerName == providerName }
-        }
-        filtered = when (selectedFilter) {
-            DownloadsFilter.ALL -> filtered
-            DownloadsFilter.DOWNLOADING -> filtered.filter {
-                DownloadItemState.fromKey(it.state).isActive
-            }
-            DownloadsFilter.COMPLETED -> filtered.filter {
-                it.state == DownloadItemState.COMPLETED.name
-            }
-            DownloadsFilter.FAILED -> filtered.filter {
-                it.state == DownloadItemState.FAILED.name
-            }
-        }
-        val sorter: Comparator<com.dskja.betterstreamflix.download.DownloadItemEntity> =
-            when (selectedSort) {
-                DownloadsSort.NEWEST -> compareByDescending<com.dskja.betterstreamflix.download.DownloadItemEntity> { it.createdAt }
-                    .thenBy { it.sortIndex }
-                DownloadsSort.TITLE -> compareBy(
-                    { it.title.lowercase() },
-                    { it.sortIndex },
-                )
-                DownloadsSort.SIZE -> compareByDescending {
-                    maxOf(it.contentLength, it.bytesDownloaded)
-                }
-            }
-        val active = filtered
-            .filter { DownloadItemState.fromKey(it.state).isActive }
-            .sortedWith(sorter)
-        val completed = filtered
-            .filter { it.state == DownloadItemState.COMPLETED.name }
-            .sortedWith(sorter)
-        val failed = filtered
-            .filter { it.state == DownloadItemState.FAILED.name }
-            .sortedWith(sorter)
-        buildList {
-            val relevantPacks = packs.filter { pack ->
-                filtered.any { it.seasonPackId == pack.id }
-            }
-            if (active.isNotEmpty()) {
-                add(DownloadRowUiModel.Header(appContext.getString(com.dskja.betterstreamflix.R.string.downloads_section_active)))
-                active.forEach { add(DownloadRowUiModel.Item(it)) }
-            }
-            if (relevantPacks.isNotEmpty() && selectedFilter != DownloadsFilter.FAILED) {
-                add(DownloadRowUiModel.Header(appContext.getString(com.dskja.betterstreamflix.R.string.downloads_section_seasons)))
-                relevantPacks.forEach { add(DownloadRowUiModel.SeasonPack(it)) }
-            }
-            if (completed.isNotEmpty()) {
-                add(DownloadRowUiModel.Header(appContext.getString(com.dskja.betterstreamflix.R.string.downloads_section_completed)))
-                completed.forEach { add(DownloadRowUiModel.Item(it)) }
-            }
-            if (failed.isNotEmpty()) {
-                add(DownloadRowUiModel.Header(appContext.getString(com.dskja.betterstreamflix.R.string.downloads_section_failed)))
-                failed.forEach { add(DownloadRowUiModel.Item(it)) }
-            }
-        }
+        buildRows(items, packs, selectedFilter, selectedSort)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     fun setFilter(value: DownloadsFilter) {
@@ -134,11 +81,28 @@ class DownloadsViewModel(
     fun currentFilter(): DownloadsFilter = filter.value
     fun currentSort(): DownloadsSort = sort.value
 
+    fun setWifiOnly(enabled: Boolean) {
+        if (UserPreferences.downloadWifiOnly == enabled) {
+            refreshWifiPreference()
+            return
+        }
+        UserPreferences.downloadWifiOnly = enabled
+        refreshWifiPreference()
+        viewModelScope.launch {
+            if (enabled && DownloadConnectivityMonitor.shouldHoldForWifiOnly(appContext)) {
+                repo.pauseForConnectivity()
+            } else if (!enabled) {
+                repo.resumeConnectivityHeld()
+            }
+        }
+    }
+
     /** Poll Media3 while the Downloads screen is resumed so progress/speed stay live. */
     fun startLiveProgress() {
         if (progressJob?.isActive == true) return
         // Warm the download manager / listener in this process.
         StreamflixDownloadManager.get(appContext)
+        reconcileOrphanedCompleted()
         progressJob = viewModelScope.launch {
             while (isActive) {
                 runCatching { DownloadEventBridge.syncAllActive(appContext) }
@@ -151,6 +115,13 @@ class DownloadsViewModel(
     fun stopLiveProgress() {
         progressJob?.cancel()
         progressJob = null
+    }
+
+    fun reconcileOrphanedCompleted() {
+        if (reconcileJob?.isActive == true) return
+        reconcileJob = viewModelScope.launch {
+            runCatching { repo.reconcileOrphanedCompleted() }
+        }
     }
 
     fun refreshStorage() {
@@ -191,7 +162,118 @@ class DownloadsViewModel(
 
     override fun onCleared() {
         stopLiveProgress()
+        reconcileJob?.cancel()
         super.onCleared()
+    }
+
+    private fun buildRows(
+        items: List<DownloadItemEntity>,
+        packs: List<com.dskja.betterstreamflix.download.DownloadSeasonPackEntity>,
+        selectedFilter: DownloadsFilter,
+        selectedSort: DownloadsSort,
+    ): List<DownloadRowUiModel> {
+        val providerFilter = UserPreferences.downloadFilterCurrentProvider
+        val providerName = UserPreferences.currentProvider?.name
+        var filtered = items
+            .groupBy { it.contentKey }
+            .map { (_, rows) -> rows.maxBy { it.updatedAt } }
+        if (providerFilter && !providerName.isNullOrBlank()) {
+            filtered = filtered.filter { it.providerName == providerName }
+        }
+        filtered = when (selectedFilter) {
+            DownloadsFilter.ALL -> filtered
+            DownloadsFilter.DOWNLOADING -> filtered.filter {
+                DownloadItemState.fromKey(it.state).isActive
+            }
+            DownloadsFilter.COMPLETED -> filtered.filter {
+                it.state == DownloadItemState.COMPLETED.name
+            }
+            DownloadsFilter.FAILED -> filtered.filter {
+                it.state == DownloadItemState.FAILED.name
+            }
+        }
+        val sorter: Comparator<DownloadItemEntity> =
+            when (selectedSort) {
+                DownloadsSort.NEWEST -> compareByDescending<DownloadItemEntity> { it.createdAt }
+                    .thenBy { it.sortIndex }
+                DownloadsSort.TITLE -> compareBy(
+                    { it.title.lowercase() },
+                    { it.sortIndex },
+                )
+                DownloadsSort.SIZE -> compareByDescending {
+                    maxOf(it.contentLength, it.bytesDownloaded)
+                }
+            }
+        val active = filtered
+            .filter { DownloadItemState.fromKey(it.state).isActive }
+            .sortedWith(sorter)
+        val completed = filtered
+            .filter { it.state == DownloadItemState.COMPLETED.name }
+            .sortedWith(sorter)
+        val redownload = filtered
+            .filter { DownloadSeriesFolders.needsRedownload(it) }
+            .sortedWith(sorter)
+        val failed = filtered
+            .filter {
+                it.state == DownloadItemState.FAILED.name &&
+                    !DownloadSeriesFolders.needsRedownload(it)
+            }
+            .sortedWith(sorter)
+        return buildList {
+            val relevantPacks = packs.filter { pack ->
+                filtered.any { it.seasonPackId == pack.id }
+            }
+            if (active.isNotEmpty()) {
+                add(DownloadRowUiModel.Header(appContext.getString(com.dskja.betterstreamflix.R.string.downloads_section_active)))
+                addGroupedBySeries(active)
+            }
+            if (relevantPacks.isNotEmpty() && selectedFilter != DownloadsFilter.FAILED) {
+                add(DownloadRowUiModel.Header(appContext.getString(com.dskja.betterstreamflix.R.string.downloads_section_seasons)))
+                relevantPacks.forEach { add(DownloadRowUiModel.SeasonPack(it)) }
+            }
+            if (completed.isNotEmpty()) {
+                add(DownloadRowUiModel.Header(appContext.getString(com.dskja.betterstreamflix.R.string.downloads_section_completed)))
+                addGroupedBySeries(completed)
+            }
+            if (redownload.isNotEmpty()) {
+                add(
+                    DownloadRowUiModel.Header(
+                        appContext.getString(com.dskja.betterstreamflix.R.string.downloads_section_redownload),
+                    ),
+                )
+                addGroupedBySeries(redownload)
+            }
+            if (failed.isNotEmpty()) {
+                add(DownloadRowUiModel.Header(appContext.getString(com.dskja.betterstreamflix.R.string.downloads_section_failed)))
+                addGroupedBySeries(failed)
+            }
+        }
+    }
+
+    private fun MutableList<DownloadRowUiModel>.addGroupedBySeries(items: List<DownloadItemEntity>) {
+        val movies = items.filter { DownloadSeriesFolders.seriesRef(it) == null }
+        val bySeries = items
+            .mapNotNull { item -> DownloadSeriesFolders.seriesRef(item)?.let { it to item } }
+            .groupBy({ it.first.key }, { it })
+        // Stable: series folders by title, then loose movies/items.
+        bySeries.entries
+            .sortedBy { it.value.first().first.title.lowercase() }
+            .forEach { (_, pairs) ->
+                val ref = pairs.first().first
+                val episodes = pairs.map { it.second }
+                val totalBytes = episodes.sumOf { maxOf(it.contentLength, it.bytesDownloaded) }
+                add(
+                    DownloadRowUiModel.SeriesFolder(
+                        seriesKey = ref.key,
+                        title = ref.title,
+                        episodeCount = episodes.size,
+                        totalBytes = totalBytes,
+                        posterUrl = ref.posterUrl,
+                    ),
+                )
+                episodes.forEach { add(DownloadRowUiModel.Item(it)) }
+            }
+        movies.forEach { add(DownloadRowUiModel.Item(it)) }
     }
 
     companion object {

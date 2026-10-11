@@ -533,7 +533,7 @@ object DownloadOptionsController {
             DownloadErrorCode.EXPIRED -> R.string.download_error_expired
             DownloadErrorCode.NOT_FOUND -> R.string.download_error_not_found
             DownloadErrorCode.FILE_MISSING -> R.string.download_error_file_missing
-            DownloadErrorCode.STORAGE_RELOCATED -> R.string.settings_download_storage_relocate_confirm
+            DownloadErrorCode.STORAGE_RELOCATED -> R.string.downloads_redownload_needed
             DownloadErrorCode.UNSUPPORTED -> R.string.download_error_unsupported
             DownloadErrorCode.EMPTY_RESPONSE -> R.string.download_error_empty_response
             DownloadErrorCode.UNKNOWN -> null

@@ -1,10 +1,12 @@
 package com.dskja.betterstreamflix.download.ui
 
+import com.dskja.betterstreamflix.R
 import com.dskja.betterstreamflix.download.DownloadErrorCode
 import com.dskja.betterstreamflix.download.DownloadItemEntity
 import com.dskja.betterstreamflix.download.DownloadItemState
 import com.dskja.betterstreamflix.download.DownloadKind
 import com.dskja.betterstreamflix.download.DownloadSeasonPackEntity
+import com.dskja.betterstreamflix.download.DownloadSeriesFolders
 import com.dskja.betterstreamflix.download.DownloadStorage
 
 sealed class DownloadRowUiModel {
@@ -16,10 +18,15 @@ sealed class DownloadRowUiModel {
         override val id: String get() = entity.id
         val state: DownloadItemState get() = DownloadItemState.fromKey(entity.state)
         val isMovie: Boolean get() = entity.kind == DownloadKind.MOVIE.name
+        val needsRedownload: Boolean get() = DownloadSeriesFolders.needsRedownload(entity)
         val progressText: String
             get() = progressText(context = null)
 
         fun progressText(context: android.content.Context?): String {
+            if (needsRedownload) {
+                return context?.getString(R.string.downloads_redownload_needed)
+                    ?: "Re-download needed"
+            }
             if (state == DownloadItemState.FAILED) {
                 val code = runCatching {
                     DownloadErrorCode.valueOf(entity.errorCode.orEmpty())
@@ -33,28 +40,46 @@ sealed class DownloadRowUiModel {
                     else -> "Failed"
                 }
             }
+            if (state == DownloadItemState.COMPLETED) {
+                val sizeBytes = maxOf(entity.contentLength, entity.bytesDownloaded)
+                val size = if (sizeBytes > 0L) {
+                    DownloadStorage.formatBytes(context, sizeBytes)
+                } else {
+                    context?.getString(R.string.download_size_unknown) ?: "—"
+                }
+                return context?.getString(R.string.downloads_completed_size, size) ?: size
+            }
             val used = DownloadStorage.formatBytes(context, entity.bytesDownloaded)
             val total = if (entity.contentLength > 0) {
                 DownloadStorage.formatBytes(context, entity.contentLength)
             } else {
-                "?"
+                context?.getString(R.string.download_size_unknown) ?: "?"
             }
             val speed = if (entity.speedBytesPerSec > 0) {
                 DownloadStorage.formatBytes(context, entity.speedBytesPerSec)
             } else {
-                context?.getString(com.dskja.betterstreamflix.R.string.download_size_unknown) ?: "—"
+                context?.getString(R.string.download_size_unknown) ?: "—"
             }
-            val eta = if (entity.etaSeconds > 0) {
-                val m = entity.etaSeconds / 60
-                if (m > 0) "${m}m" else "${entity.etaSeconds}s"
+            val eta = DownloadSeriesFolders.formatEta(context, entity.etaSeconds)
+            return if (context != null) {
+                context.getString(
+                    R.string.downloads_progress_line,
+                    entity.progressPct,
+                    used,
+                    total,
+                    speed,
+                    eta,
+                )
             } else {
-                context?.getString(com.dskja.betterstreamflix.R.string.download_size_unknown) ?: "—"
+                "${entity.progressPct}% · $used / $total · $speed/s · ~$eta"
             }
-            return "${entity.progressPct}% · $used / $total · $speed/s · ~$eta"
         }
 
         /** Localized failure line for the Downloads list (falls back to [progressText]). */
         fun failedSummary(context: android.content.Context): String {
+            if (needsRedownload) {
+                return context.getString(R.string.downloads_redownload_needed)
+            }
             if (state != DownloadItemState.FAILED) return progressText(context)
             val code = runCatching {
                 DownloadErrorCode.valueOf(entity.errorCode.orEmpty())
@@ -72,6 +97,29 @@ sealed class DownloadRowUiModel {
     ) : DownloadRowUiModel() {
         override val id: String get() = pack.id
         val state: DownloadItemState get() = DownloadItemState.fromKey(pack.state)
+    }
+
+    /** Collapsed series folder header grouping episode rows underneath. */
+    data class SeriesFolder(
+        val seriesKey: String,
+        val title: String,
+        val episodeCount: Int,
+        val totalBytes: Long,
+        val posterUrl: String = "",
+    ) : DownloadRowUiModel() {
+        override val id: String get() = "series_$seriesKey"
+        fun subtitle(context: android.content.Context): String {
+            val size = if (totalBytes > 0L) {
+                DownloadStorage.formatBytes(context, totalBytes)
+            } else {
+                context.getString(R.string.download_size_unknown)
+            }
+            return context.getString(
+                R.string.downloads_series_folder_subtitle,
+                episodeCount,
+                size,
+            )
+        }
     }
 
     data class Header(val title: String) : DownloadRowUiModel() {

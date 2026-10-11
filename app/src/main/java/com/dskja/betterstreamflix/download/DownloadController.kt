@@ -715,6 +715,8 @@ object DownloadController {
                 context.getString(R.string.download_error_expired)
             DownloadErrorCode.FILE_MISSING ->
                 context.getString(R.string.download_error_file_missing)
+            DownloadErrorCode.STORAGE_RELOCATED ->
+                context.getString(R.string.downloads_redownload_needed)
             else -> msg.ifBlank { code.name }
         }
         return DownloadEnqueueOutcome.Failed(code, display)
