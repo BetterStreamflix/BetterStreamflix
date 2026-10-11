@@ -37,6 +37,10 @@ object CastQueueCoordinator {
     var lastClaimedEpisode: Video.Type.Episode? = null
         private set
 
+    /** Episode id last enqueued for Cast — skip re-enqueue of the same id. */
+    @Volatile
+    private var lastEnqueuedEpisodeId: String? = null
+
     /**
      * Prefetch next episode for Cast. Safe to call repeatedly — clears stale queue first.
      * Tries up to [MAX_SERVER_ATTEMPTS] hosters so a dead first server does not empty the queue.
@@ -55,6 +59,12 @@ object CastQueueCoordinator {
         if (currentVideoType !is Video.Type.Episode) return@withContext null
         if (!UserPreferences.autoplay && !UserPreferences.castQueueNextEpisode) return@withContext null
         val next = EpisodeManager.peekNextEpisode() ?: return@withContext null
+        // Skip re-enqueue of the episode Cast is already playing / just queued.
+        if (next.id == lastEnqueuedEpisodeId ||
+            next.id == EpisodeManager.getCurrentEpisode()?.id
+        ) {
+            return@withContext null
+        }
         val activeProvider = provider ?: UserPreferences.currentProvider ?: return@withContext null
         runCatching {
             val nextType = Video.Type.Episode(
@@ -140,9 +150,15 @@ object CastQueueCoordinator {
         private set
 
     fun enqueueExclusive(item: MediaItem, episode: Video.Type.Episode? = null) {
+        val episodeId = episode?.id
+        if (episodeId != null && episodeId == lastEnqueuedEpisodeId) {
+            Log.i(TAG, "Skip re-enqueue of episode $episodeId")
+            return
+        }
         CastPlaybackHub.clearQueue()
         CastPlaybackHub.enqueue(item)
         pendingQueuedEpisode = episode
+        if (episodeId != null) lastEnqueuedEpisodeId = episodeId
         Log.i(TAG, "Cast queue size=${CastPlaybackHub.queuedCount()}")
     }
 
@@ -161,5 +177,10 @@ object CastQueueCoordinator {
             EpisodeManager.setCurrentEpisode(episode)
         }
         return episode
+    }
+
+    fun clearLastEnqueued() {
+        lastEnqueuedEpisodeId = null
+        pendingQueuedEpisode = null
     }
 }
