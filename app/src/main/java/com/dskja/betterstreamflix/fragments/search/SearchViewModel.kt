@@ -273,12 +273,26 @@ class SearchViewModel(
         }.sortedWith(providerStateComparator)
 
     private suspend fun emitLocalSuccess() {
+        rememberSearchOutcome(
+            query = query,
+            outcome = SearchMemories.outcomeForLocalResults(rawLocalResults),
+            global = false,
+        )
         _state.emit(
             State.SuccessSearching(
                 results = orderLocal(rawLocalResults),
                 hasMore = rawLocalHasMore,
             )
         )
+    }
+
+    private fun rememberSearchOutcome(
+        query: String,
+        outcome: SearchMemories.Outcome,
+        global: Boolean,
+    ) {
+        val app = BetterStreamflixApp.instance.applicationContext
+        SearchMemories.recordOutcome(app, query, outcome, global)
     }
 
     fun search(query: String) {
@@ -292,6 +306,7 @@ class SearchViewModel(
             try {
                 val provider = UserPreferences.currentProvider
                     ?: run {
+                        rememberSearchOutcome(query, SearchMemories.Outcome.FAILED, global = false)
                         _state.emit(
                             State.FailedSearching(
                                 Exception(
@@ -321,6 +336,7 @@ class SearchViewModel(
             } catch (t: Throwable) {
                 // Errors (OOM from DE HTML/sitemap scrapes) must not kill the TV process.
                 Log.e("SearchViewModel", "search: ", t)
+                rememberSearchOutcome(query, SearchMemories.Outcome.FAILED, global = false)
                 _state.emit(
                     State.FailedSearching(
                         (t as? Exception) ?: Exception(t.message ?: t.javaClass.simpleName, t),
@@ -534,6 +550,7 @@ class SearchViewModel(
 
             if (targetProviders.isEmpty()) {
                 rawGlobalResults = emptyList()
+                rememberSearchOutcome(query, SearchMemories.Outcome.EMPTY, global = true)
                 _state.emit(State.SuccessGlobalSearching(emptyList()))
                 return@launch
             }
@@ -594,7 +611,11 @@ class SearchViewModel(
                         mutableResults.toList()
                     }
                     rawGlobalResults = snapshot
-                    _state.emit(State.SuccessGlobalSearching(orderGlobal(snapshot)))
+                    val ordered = orderGlobal(snapshot)
+                    SearchMemories.outcomeForGlobal(ordered)?.let { outcome ->
+                        rememberSearchOutcome(requestedQuery, outcome, global = true)
+                    }
+                    _state.emit(State.SuccessGlobalSearching(ordered))
                 }
             }
         }

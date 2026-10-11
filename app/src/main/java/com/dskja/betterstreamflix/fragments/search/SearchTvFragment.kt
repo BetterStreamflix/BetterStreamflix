@@ -135,12 +135,15 @@ class SearchTvFragment : Fragment() {
                     is State.SuccessSearching -> {
                         displaySearch(state.results, state.hasMore)
                         appAdapter.isLoading = false
+                        refreshRecentSearches()
                     }
                     is State.SuccessGlobalSearching -> {
                         displayGlobalSearch(state.providerResults)
                         appAdapter.isLoading = false
+                        refreshRecentSearches()
                     }
                     is State.FailedSearching -> {
+                        refreshRecentSearches()
                         com.dskja.betterstreamflix.utils.TvLoadingOverlay.disarm(ui.isLoading.root)
                         ui.isLoading.root.visibility = View.VISIBLE
                         if (http409Guard.handle(requireContext(), state.error) {
@@ -227,11 +230,11 @@ class SearchTvFragment : Fragment() {
                 Toast.makeText(requireContext(), getString(R.string.search_empty_query), Toast.LENGTH_SHORT).show()
                 return true
             }
-            SearchRecentStore.remember(requireContext(), query)
+            SearchMemories.rememberAttempt(requireContext(), query, global = true)
             viewModel.searchGlobal(query, currentLanguage)
         } else {
             if (query.isNotBlank()) {
-                SearchRecentStore.remember(requireContext(), query)
+                SearchMemories.rememberAttempt(requireContext(), query, global = false)
             }
             viewModel.search(query)
         }
@@ -457,8 +460,8 @@ class SearchTvFragment : Fragment() {
     private fun refreshRecentSearches() {
         val strip = binding.root.findViewById<View>(R.id.hsv_search_recent) ?: return
         val row = binding.root.findViewById<android.widget.LinearLayout>(R.id.ll_search_recent) ?: return
-        val recent = SearchRecentStore.list(requireContext())
-        if (recent.isEmpty()) {
+        val memories = SearchMemories.list(requireContext())
+        if (memories.isEmpty()) {
             strip.visibility = View.GONE
             row.removeAllViews()
             binding.root.findViewById<View>(R.id.v_search_recent_edge_fade_start)?.visibility = View.GONE
@@ -468,74 +471,51 @@ class SearchTvFragment : Fragment() {
             return
         }
         strip.visibility = View.VISIBLE
-        binding.root.findViewById<View>(R.id.v_search_recent_edge_fade_start)?.visibility = View.GONE
-        binding.root.findViewById<View>(R.id.v_search_recent_edge_fade_end)?.visibility = View.GONE
-        row.removeAllViews()
+        binding.root.findViewById<View>(R.id.v_search_recent_edge_fade_start)?.visibility = View.VISIBLE
+        binding.root.findViewById<View>(R.id.v_search_recent_edge_fade_end)?.visibility = View.VISIBLE
         val padH = (16 * resources.displayMetrics.density).toInt()
         val padV = (10 * resources.displayMetrics.density).toInt()
         val gap = (10 * resources.displayMetrics.density).toInt()
-
-        val label = android.widget.TextView(requireContext()).apply {
-            text = getString(R.string.search_recent_title)
-            setTextColor(ContextCompat.getColor(requireContext(), R.color.cinema_text_muted))
-            textSize = 14f
-            setPadding(0, padV, gap, padV)
-        }
-        row.addView(label)
-
-        var firstChip: View? = null
-        recent.forEach { query ->
-            val chip = android.widget.TextView(requireContext()).apply {
-                id = View.generateViewId()
-                text = query
-                textSize = 15f
-                setTextColor(ContextCompat.getColor(requireContext(), R.color.cinema_text))
-                setBackgroundResource(R.drawable.bg_btn_exoplayer_tv)
-                setPadding(padH, padV, padH, padV)
-                isClickable = true
-                isFocusable = true
-                isFocusableInTouchMode = true
-                setOnClickListener {
-                    binding.etSearch.setText(query)
-                    SearchRecentStore.remember(requireContext(), query)
-                    if (binding.llGlobalSearch.isChecked) {
-                        val lang = resolveSearchLanguage()
-                        if (lang != null) {
-                            viewModel.searchGlobal(query, lang)
-                        } else {
-                            viewModel.search(query)
-                        }
-                    } else {
-                        viewModel.search(query)
-                    }
-                    refreshRecentSearches()
+        val bound = SearchMemoriesUi.bind(
+            context = requireContext(),
+            row = row,
+            memories = memories,
+            padH = padH,
+            padV = padV,
+            gap = gap,
+            tvFocusable = true,
+            chipBackground = { outcome ->
+                when (outcome) {
+                    SearchMemories.Outcome.FAILED -> R.drawable.bg_search_memory_chip_failed
+                    SearchMemories.Outcome.EMPTY -> R.drawable.bg_search_memory_chip_empty
+                    SearchMemories.Outcome.SUCCESS -> R.drawable.bg_search_sort_chip
                 }
-            }
-            if (firstChip == null) firstChip = chip
-            val lp = android.widget.LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.WRAP_CONTENT,
-                ViewGroup.LayoutParams.WRAP_CONTENT,
-            ).apply { marginEnd = gap }
-            row.addView(chip, lp)
-        }
-
-        val clear = android.widget.TextView(requireContext()).apply {
-            text = getString(R.string.search_recent_clear)
-            textSize = 14f
-            setTextColor(0xB3FFFFFF.toInt())
-            setPadding(padH, padV, padH, padV)
-            contentDescription = getString(R.string.search_recent_clear_cd)
-            isClickable = true
-            isFocusable = true
-            isFocusableInTouchMode = true
-            setOnClickListener {
-                SearchRecentStore.clear(requireContext())
+            },
+            onRetry = { entry ->
+                binding.etSearch.setText(entry.query)
+                val global = binding.llGlobalSearch.isChecked || entry.global
+                SearchMemories.rememberAttempt(requireContext(), entry.query, global = global)
+                if (global) {
+                    val lang = resolveSearchLanguage()
+                    if (lang != null) {
+                        viewModel.searchGlobal(entry.query, lang)
+                    } else {
+                        viewModel.search(entry.query)
+                    }
+                } else {
+                    viewModel.search(entry.query)
+                }
                 refreshRecentSearches()
-            }
-        }
-        row.addView(clear)
+            },
+            onClear = {
+                SearchMemories.clear(requireContext())
+                refreshRecentSearches()
+            },
+            labelColor = ContextCompat.getColor(requireContext(), R.color.cinema_text_muted),
+            clearColor = 0xB3FFFFFF.toInt(),
+        )
 
-        firstChip?.let { chip ->
+        bound.firstChip?.let { chip ->
             binding.etSearch.nextFocusDownId = chip.id
             chip.nextFocusUpId = binding.etSearch.id
             chip.nextFocusDownId = binding.llGlobalSearch.id

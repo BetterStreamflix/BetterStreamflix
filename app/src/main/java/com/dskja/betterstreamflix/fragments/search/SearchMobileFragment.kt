@@ -121,6 +121,7 @@ class SearchMobileFragment : Fragment() {
                         displaySearch(state.results, state.hasMore)
                         appAdapter.isLoading = false
                         ExpMotion.fadeOutAndHide(ui.isLoading.root)
+                        refreshRecentSearches()
                     }
                     is State.SuccessGlobalSearching -> {
                         val keepLoader = displayGlobalSearch(state.providerResults)
@@ -129,8 +130,10 @@ class SearchMobileFragment : Fragment() {
                         } else {
                             ExpMotion.fadeOutAndHide(ui.isLoading.root)
                         }
+                        refreshRecentSearches()
                     }
                     is State.FailedSearching -> {
+                        refreshRecentSearches()
                         if (http409Guard.handle(requireContext(), state.error) { retryLastSearch() }) {
                                 return@collect
                             }
@@ -227,10 +230,10 @@ class SearchMobileFragment : Fragment() {
 
                     if (binding.swGlobalSearch.isChecked) {
                         val currentLanguage = resolveSearchLanguage()
-                        SearchRecentStore.remember(requireContext(), query)
+                        SearchMemories.rememberAttempt(requireContext(), query, global = true)
                         viewModel.searchGlobal(query, currentLanguage)
                     } else {
-                        SearchRecentStore.remember(requireContext(), query)
+                        SearchMemories.rememberAttempt(requireContext(), query, global = false)
                         viewModel.search(query)
                     }
                     refreshRecentSearches()
@@ -266,8 +269,9 @@ class SearchMobileFragment : Fragment() {
                 val ui = _binding ?: return@VoiceRecognitionHelper
                 ui.btnSearchVoice.clearAnimation()
                 ui.etSearch.setText(query)
-                SearchRecentStore.remember(requireContext(), query)
-                if (ui.swGlobalSearch.isChecked) {
+                val global = ui.swGlobalSearch.isChecked
+                SearchMemories.rememberAttempt(requireContext(), query, global = global)
+                if (global) {
                     viewModel.searchGlobal(query, resolveSearchLanguage())
                 } else {
                     viewModel.search(query)
@@ -454,8 +458,8 @@ class SearchMobileFragment : Fragment() {
     private fun refreshRecentSearches() {
         val strip = binding.root.findViewById<View>(R.id.hsv_search_recent) ?: return
         val row = binding.root.findViewById<LinearLayout>(R.id.ll_search_recent) ?: return
-        val recent = SearchRecentStore.list(requireContext())
-        if (recent.isEmpty()) {
+        val memories = SearchMemories.list(requireContext())
+        if (memories.isEmpty()) {
             strip.isVisible = false
             strip.setTag(R.id.exp_enter_animated_tag, null)
             row.removeAllViews()
@@ -468,7 +472,6 @@ class SearchMobileFragment : Fragment() {
         binding.root.findViewById<View>(R.id.v_search_recent_edge_fade_end)?.isVisible = true
         @Suppress("UNCHECKED_CAST")
         val previousQueries = (strip.getTag(R.id.exp_search_recent_queries_tag) as? Set<String>) ?: emptySet()
-        row.removeAllViews()
         val padH = 12.dp(requireContext())
         val padV = 8.dp(requireContext())
         val gap = 8.dp(requireContext())
@@ -476,74 +479,52 @@ class SearchMobileFragment : Fragment() {
             strip.setTag(R.id.exp_enter_animated_tag, true)
             ExpMotion.popIn(strip)
         }
-
-        val label = TextView(requireContext()).apply {
-            text = getString(R.string.search_recent_title)
-            setTextAppearance(R.style.TextAppearance_Lumina_Caption)
-            setPadding(0, padV, gap, padV)
-        }
-        row.addView(label)
-
-        recent.forEachIndexed { index, query ->
-            val chip = TextView(requireContext()).apply {
-                text = query
-                setTextAppearance(R.style.TextAppearance_Lumina_Caption)
-                setTextColor(
-                    com.google.android.material.color.MaterialColors.getColor(
-                        this, com.google.android.material.R.attr.colorOnSurface,
-                    )
-                )
-                setBackgroundResource(ExperimentalMobileDesign.chipBackground())
-                setPadding(padH, padV, padH, padV)
-                isClickable = true
-                isFocusable = true
-                setOnClickListener {
-                    ExpMotion.hapticTap(it)
-                    binding.etSearch.setText(query)
-                    SearchRecentStore.remember(requireContext(), query)
-                    if (binding.swGlobalSearch.isChecked) {
-                        viewModel.searchGlobal(query, resolveSearchLanguage())
-                    } else {
-                        viewModel.search(query)
-                    }
-                    refreshRecentSearches()
+        val bound = SearchMemoriesUi.bind(
+            context = requireContext(),
+            row = row,
+            memories = memories,
+            padH = padH,
+            padV = padV,
+            gap = gap,
+            tvFocusable = false,
+            chipBackground = { outcome ->
+                when (outcome) {
+                    SearchMemories.Outcome.FAILED -> R.drawable.bg_search_memory_chip_failed
+                    SearchMemories.Outcome.EMPTY -> R.drawable.bg_search_memory_chip_empty
+                    SearchMemories.Outcome.SUCCESS ->
+                        if (ExperimentalMobileDesign.enabled()) ExperimentalMobileDesign.chipBackground()
+                        else R.drawable.bg_search_sort_chip
                 }
-            }
-            with(com.dskja.betterstreamflix.utils.ExpPressEffects) { chip.applyExpPress() }
-            val lp = LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.WRAP_CONTENT,
-                ViewGroup.LayoutParams.WRAP_CONTENT,
-            ).apply { marginEnd = gap }
-            row.addView(chip, lp)
-            if (ExperimentalMobileDesign.enabled() && query !in previousQueries) {
-                chip.alpha = 0f
-                chip.postDelayed({ ExpMotion.popIn(chip) }, 40L * index)
-            }
-        }
-        strip.setTag(R.id.exp_search_recent_queries_tag, recent.toSet())
-
-        val clear = TextView(requireContext()).apply {
-            text = getString(R.string.search_recent_clear)
-            setTextAppearance(R.style.TextAppearance_Lumina_Caption)
-            setTextColor(
-                com.google.android.material.color.MaterialColors.getColor(
-                    this, com.google.android.material.R.attr.colorOnSurfaceVariant,
-                )
-            )
-            setBackgroundResource(ExperimentalMobileDesign.chipBackground())
-            setPadding(padH, padV, padH, padV)
-            contentDescription = getString(R.string.search_recent_clear_cd)
-            isClickable = true
-            isFocusable = true
-            setOnClickListener {
-                ExpMotion.hapticTap(it)
-                SearchRecentStore.clear(requireContext())
+            },
+            onRetry = { entry ->
+                binding.etSearch.setText(entry.query)
+                val global = binding.swGlobalSearch.isChecked || entry.global
+                SearchMemories.rememberAttempt(requireContext(), entry.query, global = global)
+                if (global) {
+                    viewModel.searchGlobal(entry.query, resolveSearchLanguage())
+                } else {
+                    viewModel.search(entry.query)
+                }
                 refreshRecentSearches()
-            }
-        }
-        with(com.dskja.betterstreamflix.utils.ExpPressEffects) { clear.applyExpPress() }
-        ExpMotion.popIn(clear)
-        row.addView(clear)
+            },
+            onClear = {
+                SearchMemories.clear(requireContext())
+                refreshRecentSearches()
+            },
+            previousQueries = previousQueries,
+            animateNew = if (ExperimentalMobileDesign.enabled()) {
+                { chip, index ->
+                    chip.alpha = 0f
+                    chip.postDelayed({ ExpMotion.popIn(chip) }, 40L * index)
+                }
+            } else {
+                null
+            },
+            applyPress = { view ->
+                with(com.dskja.betterstreamflix.utils.ExpPressEffects) { view.applyExpPress() }
+            },
+        )
+        strip.setTag(R.id.exp_search_recent_queries_tag, bound.queries)
     }
 
     private fun refreshSortChips() {
