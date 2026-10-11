@@ -22,7 +22,7 @@
             android:layout_height="match_parent"
             android:background="#FF141418"
             android:scaleType="centerCrop"
-            tools:ignore="ContentDescription" />
+            android:importantForAccessibility="no" />
 
         <View
             android:layout_width="match_parent"
@@ -38,7 +38,7 @@
             android:contentDescription="@string/movie_trailer"
             android:padding="11dp"
             android:src="@drawable/ic_trailer_play"
-            tools:ignore="ContentDescription" />
+            android:importantForAccessibility="no" />
 
         <TextView
             android:id="@+id/tv_detail_trailer_badge"

@@ -234,9 +234,16 @@ class PlayerViewModel(
 
                 if (!hasDefaultAlready && currentProviderLang != "es") {
                     if (!(video.useServerSubtitleSetting && UserPreferences.serverAutoSubtitlesDisabled)) {
-                        video.subtitles
-                            .firstOrNull { it.label.startsWith(UserPreferences.subtitleName ?: "") }
-                            ?.default = true
+                        // null/blank subtitleName means explicit Off — never match via startsWith("").
+                        val preferred = UserPreferences.subtitleName?.trim().orEmpty()
+                        if (preferred.isNotEmpty()) {
+                            video.subtitles
+                                .firstOrNull { subtitle ->
+                                    subtitle.label.equals(preferred, ignoreCase = true) ||
+                                        subtitle.label.startsWith(preferred, ignoreCase = true)
+                                }
+                                ?.default = true
+                        }
                     }
                 }
 

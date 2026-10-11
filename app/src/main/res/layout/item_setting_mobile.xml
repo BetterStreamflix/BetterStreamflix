@@ -42,7 +42,7 @@
         android:id="@+id/barrier1"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        app:barrierDirection="right"
+        app:barrierDirection="end"
         app:constraint_referenced_ids="iv_setting_icon,v_setting_color" />
 
     <TextView

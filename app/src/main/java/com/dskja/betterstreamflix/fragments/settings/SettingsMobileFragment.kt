@@ -250,6 +250,7 @@ class SettingsMobileFragment : PreferenceFragmentCompat() {
     }
 
     private fun ensureSettingsHub(view: View) {
+        // Hub / Lumina shell is intentionally retained in-tree but retired at runtime.
         if (!ExperimentalMobileDesign.enabled()) {
             settingsHubController?.detach()
             settingsHubController = null

@@ -20,11 +20,13 @@ import android.widget.ImageView
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
+import androidx.core.view.ViewCompat
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import androidx.core.view.isGone
 import androidx.core.view.isVisible
+import android.util.Rational
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.flowWithLifecycle
@@ -168,6 +170,10 @@ class PlayerMobileFragment : Fragment() {
 
     private var servers = listOf<Video.Server>()
     private var zoomToast: Toast? = null
+    private var controlsLocked = false
+    private var defaultControllerShowTimeoutMs = 2000
+    private var savedControllerShowTimeoutMs = 2000
+    private var settingsKeepingController = false
 
     private var currentVideo: Video? = null
     private var currentServer: Video.Server? = null
@@ -308,8 +314,7 @@ class PlayerMobileFragment : Fragment() {
     override fun onResume() {
         super.onResume()
         if (!isSetupDone) {
-            requireActivity().requestedOrientation =
-                ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
+            requireActivity().requestedOrientation = playerPlaybackOrientation()
             
             val window = requireActivity().window
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
@@ -372,6 +377,9 @@ class PlayerMobileFragment : Fragment() {
             binding.pbVolume, 
             binding.tvVolumePercentage
         )
+        defaultControllerShowTimeoutMs = binding.pvPlayer.controllerShowTimeoutMs.coerceAtLeast(2000)
+        savedControllerShowTimeoutMs = defaultControllerShowTimeoutMs
+        applyPlayerSafeAreaInsets()
 
         // Stato Video
         stateCollectJob?.cancel()
@@ -622,7 +630,9 @@ class PlayerMobileFragment : Fragment() {
             viewModel.subtitleState.flowWithLifecycle(viewLifecycleOwner.lifecycle, Lifecycle.State.STARTED).collect { state ->
                 if (isTearingDown || !isAdded || _binding == null) return@collect
                 when (state) {
-                    PlayerViewModel.SubtitleState.Loading -> {}
+                    PlayerViewModel.SubtitleState.Loading -> {
+                        binding.settings.showSubtitleProvidersLoading()
+                    }
                     is PlayerViewModel.SubtitleState.SuccessOpenSubtitles -> {
                         binding.settings.openSubtitles = state.subtitles
                     }
@@ -645,7 +655,8 @@ class PlayerMobileFragment : Fragment() {
                         }
                         val fileName = state.uri.getFileName(requireContext()) ?: state.uri.toString()
                         val currentPosition = player.currentPosition
-                        UserPreferences.subtitleName = (state.subtitle.languageName ?: fileName).substringBefore(" ")
+                        UserPreferences.subtitleName =
+                            state.subtitle.languageName?.takeIf { it.isNotBlank() } ?: fileName
                         installExtraSubtitle(
                             MediaItem.SubtitleConfiguration.Builder(state.uri)
                                 .setMimeType(fileName.toSubtitleMimeType())
@@ -682,7 +693,12 @@ class PlayerMobileFragment : Fragment() {
                         }
                         val fileName = state.uri.getFileName(requireContext()) ?: state.uri.toString()
                         val currentPosition = player.currentPosition
-                        UserPreferences.subtitleName = (state.subtitle.releaseName ?: state.subtitle.name ?: fileName).substringBefore(" ")
+                        UserPreferences.subtitleName =
+                            state.subtitle.lang?.takeIf { it.isNotBlank() }
+                                ?: state.subtitle.language?.takeIf { it.isNotBlank() }
+                                ?: state.subtitle.releaseName
+                                ?: state.subtitle.name
+                                ?: fileName
                         installExtraSubtitle(
                             MediaItem.SubtitleConfiguration.Builder(state.uri)
                                 .setMimeType(fileName.toSubtitleMimeType())
@@ -744,7 +760,14 @@ class PlayerMobileFragment : Fragment() {
     }
 
     override fun onPictureInPictureModeChanged(isInPictureInPictureMode: Boolean) {
-        _binding?.pvPlayer?.useController = !isInPictureInPictureMode
+        val b = _binding
+        if (b != null) {
+            b.pvPlayer.useController = !isInPictureInPictureMode
+            if (isInPictureInPictureMode) {
+                b.settings.hide()
+                restoreControllerTimeoutAfterSettings()
+            }
+        }
         super.onPictureInPictureModeChanged(isInPictureInPictureMode)
     }
 
@@ -878,9 +901,11 @@ class PlayerMobileFragment : Fragment() {
                     systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
                     show(WindowInsetsCompat.Type.systemBars())
                 }
-                hostActivity.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
+                hostActivity.requestedOrientation = playerExitOrientation()
             }
         }
+        controlsLocked = false
+        settingsKeepingController = false
         _binding = null
         isSetupDone = false
         super.onDestroyView()
@@ -918,7 +943,7 @@ class PlayerMobileFragment : Fragment() {
             systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
             hide(WindowInsetsCompat.Type.systemBars())
         }
-        requireActivity().requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
+        requireActivity().requestedOrientation = playerPlaybackOrientation()
         when (val type = args.videoType) {
             is Video.Type.Episode -> {
                 nextEpisodeOverlayDismissed = false
@@ -1045,8 +1070,7 @@ class PlayerMobileFragment : Fragment() {
 
         binding.pvPlayer.controller.binding.btnExoLock.setOnClickListener {
             ExpMotion.hapticTap(it)
-            binding.pvPlayer.controller.binding.gControlsLock.isGone = true
-            binding.pvPlayer.controller.binding.btnExoUnlock.isVisible = true
+            setControlsLocked(true)
             if (ExperimentalMobileDesign.enabled()) {
                 binding.pvPlayer.controller.binding.btnExoUnlock.setBackgroundResource(
                     ExperimentalMobileDesign.primaryButtonBackground(),
@@ -1060,8 +1084,6 @@ class PlayerMobileFragment : Fragment() {
                         ),
                     ),
                 )
-                binding.pvPlayer.controller.binding.btnExoUnlock.contentDescription =
-                    getString(R.string.player_controls_locked_hint)
                 with(com.dskja.betterstreamflix.utils.ExpPressEffects) {
                     binding.pvPlayer.controller.binding.btnExoUnlock.applyExpPress()
                 }
@@ -1071,8 +1093,7 @@ class PlayerMobileFragment : Fragment() {
 
         binding.pvPlayer.controller.binding.btnExoUnlock.setOnClickListener {
             ExpMotion.hapticTap(it)
-            binding.pvPlayer.controller.binding.gControlsLock.isVisible = true
-            binding.pvPlayer.controller.binding.btnExoUnlock.isGone = true
+            setControlsLocked(false)
             if (ExperimentalMobileDesign.enabled()) {
                 val c = binding.pvPlayer.controller.binding
                 c.btnExoUnlock.setBackgroundResource(ExperimentalMobileDesign.iconChipBackground())
@@ -1085,7 +1106,6 @@ class PlayerMobileFragment : Fragment() {
                         ),
                     ),
                 )
-                c.btnExoUnlock.contentDescription = getString(R.string.exp_cd_unlock)
                 ExpMotion.revealHeader(c.tvExoTitle, c.tvExoSubtitle)
                 ExpMotion.popIn(c.exoBottomBar)
                 ExpMotion.popIn(c.exoCenterControls)
@@ -1116,14 +1136,17 @@ class PlayerMobileFragment : Fragment() {
             }
 
             UserPreferences.playerResize = newResize
-            binding.pvPlayer.controllerShowTimeoutMs = binding.pvPlayer.controllerShowTimeoutMs
+            binding.pvPlayer.showController()
             updatePlayerScale()
         }
 
         binding.pvPlayer.controller.binding.exoSettings.setOnClickListener {
             ExpMotion.hapticTap(it)
-            binding.pvPlayer.controllerShowTimeoutMs = binding.pvPlayer.controllerShowTimeoutMs
+            keepControllerVisibleForSettings()
             binding.settings.show()
+        }
+        binding.settings.onHidden = {
+            restoreControllerTimeoutAfterSettings()
         }
 
         binding.settings.setOnLocalSubtitlesClickedListener {
@@ -1942,11 +1965,102 @@ class PlayerMobileFragment : Fragment() {
         if (host.isFinishing || host.isDestroyed) return
         if (!host.packageManager.hasSystemFeature(PackageManager.FEATURE_PICTURE_IN_PICTURE)) return
         runCatching {
+            binding.settings.hide()
+            restoreControllerTimeoutAfterSettings()
             binding.pvPlayer.useController = false
-            host.enterPictureInPictureMode(PictureInPictureParams.Builder().build())
+            val params = PictureInPictureParams.Builder()
+            if (::player.isInitialized && !playerReleased) {
+                val format = player.videoFormat
+                val w = format?.width ?: 0
+                val h = format?.height ?: 0
+                if (w > 0 && h > 0) {
+                    params.setAspectRatio(Rational(w, h))
+                }
+            }
+            host.enterPictureInPictureMode(params.build())
         }.onFailure {
             Log.w("Player", "enterPIPMode skipped: ${it.message}")
         }
+    }
+
+    private fun playerPlaybackOrientation(): Int {
+        // Allow portrait on tablets; phones stay sensor-landscape for transport density.
+        return if (resources.configuration.smallestScreenWidthDp >= 600) {
+            ActivityInfo.SCREEN_ORIENTATION_SENSOR
+        } else {
+            ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
+        }
+    }
+
+    private fun playerExitOrientation(): Int {
+        return if (resources.configuration.smallestScreenWidthDp >= 600) {
+            ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
+        } else {
+            ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
+        }
+    }
+
+    private fun setControlsLocked(locked: Boolean) {
+        val b = _binding ?: return
+        controlsLocked = locked
+        if (::gestureHelper.isInitialized) {
+            gestureHelper.controlsLocked = locked
+        }
+        val controller = b.pvPlayer.controller.binding
+        if (locked) {
+            controller.gControlsLock.isGone = true
+            controller.btnExoUnlock.isVisible = true
+            controller.btnExoUnlock.contentDescription = getString(R.string.exp_cd_unlock)
+            b.pvPlayer.controllerShowTimeoutMs = 0
+            b.pvPlayer.showController()
+        } else {
+            controller.gControlsLock.isVisible = true
+            controller.btnExoUnlock.isGone = true
+            if (!settingsKeepingController) {
+                b.pvPlayer.controllerShowTimeoutMs = defaultControllerShowTimeoutMs
+            }
+        }
+    }
+
+    private fun keepControllerVisibleForSettings() {
+        val b = _binding ?: return
+        if (!settingsKeepingController) {
+            savedControllerShowTimeoutMs = b.pvPlayer.controllerShowTimeoutMs
+            settingsKeepingController = true
+        }
+        b.pvPlayer.controllerShowTimeoutMs = 0
+        b.pvPlayer.showController()
+    }
+
+    private fun restoreControllerTimeoutAfterSettings() {
+        val b = _binding ?: return
+        if (!settingsKeepingController) return
+        settingsKeepingController = false
+        if (!controlsLocked) {
+            b.pvPlayer.controllerShowTimeoutMs =
+                savedControllerShowTimeoutMs.coerceAtLeast(defaultControllerShowTimeoutMs)
+        }
+    }
+
+    private fun applyPlayerSafeAreaInsets() {
+        val b = _binding ?: return
+        val controllerRoot = b.pvPlayer.controller.binding.root
+        ViewCompat.setOnApplyWindowInsetsListener(controllerRoot) { view, insets ->
+            val bars = insets.getInsets(
+                WindowInsetsCompat.Type.systemBars() or WindowInsetsCompat.Type.displayCutout(),
+            )
+            view.setPadding(bars.left, bars.top, bars.right, bars.bottom)
+            insets
+        }
+        ViewCompat.setOnApplyWindowInsetsListener(b.settings) { view, insets ->
+            val bars = insets.getInsets(
+                WindowInsetsCompat.Type.systemBars() or WindowInsetsCompat.Type.displayCutout(),
+            )
+            view.setPadding(bars.left, bars.top, bars.right, bars.bottom)
+            insets
+        }
+        ViewCompat.requestApplyInsets(controllerRoot)
+        ViewCompat.requestApplyInsets(b.settings)
     }
 
 

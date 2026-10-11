@@ -54,27 +54,29 @@
             android:id="@+id/btn_search_clear"
             android:layout_width="0dp"
             android:layout_height="0dp"
+            android:contentDescription="@string/exp_cd_search_clear"
             android:padding="12dp"
             android:src="@drawable/ic_search_clear"
-            android:tint="#FFFFFF"
+            android:tint="@color/cinema_text"
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintDimensionRatio="1:1"
             app:layout_constraintEnd_toStartOf="@id/btn_search_voice"
             app:layout_constraintTop_toTopOf="parent"
-            tools:ignore="ContentDescription,PrivateResource,UseAppTint" />
+            tools:ignore="PrivateResource,UseAppTint" />
 
         <ImageView
             android:id="@+id/btn_search_voice"
             android:layout_width="0dp"
             android:layout_height="0dp"
+            android:contentDescription="@string/exp_cd_voice_search"
             android:padding="12dp"
             android:src="@drawable/ic_mic"
-            android:tint="#FFFFFF"
+            android:tint="@color/cinema_text"
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintDimensionRatio="1:1"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintTop_toTopOf="parent"
-            tools:ignore="ContentDescription,PrivateResource,UseAppTint" />
+            tools:ignore="PrivateResource,UseAppTint" />
 
     </androidx.constraintlayout.widget.ConstraintLayout>
 
@@ -220,7 +222,7 @@
         android:layout_width="36dp"
         android:layout_height="3dp"
         android:layout_marginTop="12dp"
-        android:background="@drawable/bg_exp_accent_rule"
+        android:background="@color/cinema_stroke"
         android:visibility="gone"
         app:layout_constraintBottom_toTopOf="@id/btn_search_empty_cta"
         app:layout_constraintEnd_toEndOf="@id/tv_search_empty"

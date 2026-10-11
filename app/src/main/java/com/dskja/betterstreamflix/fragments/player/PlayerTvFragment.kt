@@ -626,7 +626,7 @@ class PlayerTvFragment : Fragment() {
                                     state.uri.getFileName(requireContext()) ?: state.uri.toString()
                                 val currentPosition = player.currentPosition
                                 UserPreferences.subtitleName =
-                                    (state.subtitle.languageName ?: fileName).substringBefore(" ")
+                                    state.subtitle.languageName?.takeIf { it.isNotBlank() } ?: fileName
                                 installExtraSubtitle(
                                     MediaItem.SubtitleConfiguration.Builder(state.uri)
                                         .setMimeType(fileName.toSubtitleMimeType())
@@ -670,8 +670,11 @@ class PlayerTvFragment : Fragment() {
                                     state.uri.getFileName(requireContext()) ?: state.uri.toString()
                                 val currentPosition = player.currentPosition
                                 UserPreferences.subtitleName =
-                                    (state.subtitle.releaseName ?: state.subtitle.name
-                                    ?: fileName).substringBefore(" ")
+                                    state.subtitle.lang?.takeIf { it.isNotBlank() }
+                                        ?: state.subtitle.language?.takeIf { it.isNotBlank() }
+                                        ?: state.subtitle.releaseName
+                                        ?: state.subtitle.name
+                                        ?: fileName
                                 installExtraSubtitle(
                                     MediaItem.SubtitleConfiguration.Builder(state.uri)
                                         .setMimeType(fileName.toSubtitleMimeType())

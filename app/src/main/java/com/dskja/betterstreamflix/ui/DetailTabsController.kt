@@ -32,6 +32,8 @@ object DetailTabsController {
                 val colorRes = if (on) R.color.cinema_text else R.color.cinema_text_faint
                 tab.setTextColor(tab.context.getColor(colorRes))
                 tab.setBackgroundResource(if (on) R.drawable.bg_detail_tab_underline else 0)
+                tab.isSelected = on
+                tab.isAccessibilityHeading = on
             }
         }
 

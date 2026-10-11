@@ -170,7 +170,14 @@ class MovieMobileFragment : Fragment() {
             return
         }
         lastContentSignature = signature
-        selectedTab = if (movie.recommendations.isNotEmpty()) DetailTab.SIMILAR else DetailTab.ABOUT
+        // Preserve the user's tab across signature-driven rebuilds when still available.
+        selectedTab = when {
+            selectedTab == DetailTab.SIMILAR && movie.recommendations.isNotEmpty() -> DetailTab.SIMILAR
+            selectedTab == DetailTab.TRAILER -> DetailTab.TRAILER
+            selectedTab == DetailTab.ABOUT -> DetailTab.ABOUT
+            movie.recommendations.isNotEmpty() -> DetailTab.SIMILAR
+            else -> DetailTab.ABOUT
+        }
         appAdapter.selectedDetailTab = selectedTab
         rebuildBody(scrollTabsToTop = false)
         // Bind after body submit so the hero ImageView exists in the RecyclerView item.

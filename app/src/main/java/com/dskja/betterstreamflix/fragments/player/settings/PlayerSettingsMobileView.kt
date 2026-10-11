@@ -247,6 +247,15 @@ class PlayerSettingsMobileView @JvmOverloads constructor(
         } else {
             this.visibility = View.GONE
         }
+        onHidden?.invoke()
+    }
+
+    override fun onSubtitleProviderListsUpdated() {
+        when (currentSettings) {
+            Setting.OPEN_SUBTITLES -> openSubtitlesAdapter.notifyDataSetChanged()
+            Setting.SUBDL -> subDLAdapter.notifyDataSetChanged()
+            else -> Unit
+        }
     }
 
 
@@ -359,10 +368,16 @@ class PlayerSettingsMobileView @JvmOverloads constructor(
                                 }
 
                                 Settings.Subtitle.OpenSubtitles -> {
+                                    if (Settings.Subtitle.OpenSubtitles.list.isEmpty()) {
+                                        Settings.Subtitle.OpenSubtitles.showLoading()
+                                    }
                                     settingsView.displaySettings(Setting.OPEN_SUBTITLES)
                                 }
 
                                 Settings.Subtitle.SubDLSubtitles -> {
+                                    if (Settings.Subtitle.SubDLSubtitles.list.isEmpty()) {
+                                        Settings.Subtitle.SubDLSubtitles.showLoading()
+                                    }
                                     settingsView.displaySettings(Setting.SUBDL)
                                 }
                             }
@@ -454,6 +469,11 @@ class PlayerSettingsMobileView @JvmOverloads constructor(
                             settingsView.onMarginSelected.invoke(item)
                             settingsView.displaySettings(Setting.CAPTION_STYLE)
                         }
+
+                        is Settings.Subtitle.OpenSubtitles.Loading,
+                        is Settings.Subtitle.OpenSubtitles.Empty,
+                        is Settings.Subtitle.SubDLSubtitles.Loading,
+                        is Settings.Subtitle.SubDLSubtitles.Empty -> Unit
 
                         is Settings.Subtitle.OpenSubtitles.Subtitle -> {
                             settingsView.onOpenSubtitleSelected?.invoke(item)
@@ -649,8 +669,16 @@ class PlayerSettingsMobileView @JvmOverloads constructor(
 
                     is Settings.Subtitle.Style.WindowOpacity -> context.getString(item.stringId)
 
+                    is Settings.Subtitle.OpenSubtitles.Loading ->
+                        context.getString(R.string.player_settings_subtitles_loading)
+                    is Settings.Subtitle.OpenSubtitles.Empty ->
+                        context.getString(R.string.player_settings_subtitles_empty)
                     is Settings.Subtitle.OpenSubtitles.Subtitle -> item.openSubtitle.subFileName
 
+                    is Settings.Subtitle.SubDLSubtitles.Loading ->
+                        context.getString(R.string.player_settings_subtitles_loading)
+                    is Settings.Subtitle.SubDLSubtitles.Empty ->
+                        context.getString(R.string.player_settings_subtitles_empty)
                     is Settings.Subtitle.SubDLSubtitles.Subtitle -> item.subDLSubtitle.releaseName ?: item.subDLSubtitle.name
 
                     is Settings.Speed -> context.getString(item.stringId)

@@ -7,8 +7,9 @@ import com.dskja.betterstreamflix.models.TvShow
  * Detail list signatures used to skip full [submitList] rebuilds when only
  * My List / favorite (and similar header-only) state changed.
  *
- * Intentionally omits [Movie.isFavorite] / [TvShow.isFavorite] / [TvShow.isWatching]
- * so toggles that already update CTAs in place do not thrash hero/cover/child rows.
+ * Intentionally omits [Movie.isFavorite] / [TvShow.isFavorite] / [TvShow.isWatching],
+ * [Movie.isWatched] / [Movie.watchHistory], and per-season episode-load counts
+ * so header CTA / async episode fills do not thrash hero/cover or reset tabs.
  */
 object DetailContentSignatures {
 
@@ -23,8 +24,7 @@ object DetailContentSignatures {
         movie.quality,
         movie.rating,
         movie.runtime,
-        movie.isWatched,
-        movie.watchHistory,
+        // isWatched / watchHistory omitted — header CTA updates in place
         movie.genres.size,
         movie.directors.size,
         movie.cast.size,
@@ -44,8 +44,8 @@ object DetailContentSignatures {
         tvShow.runtime,
         tvShow.lastPlayedEpisodeId,
         tvShow.seasons.size,
-        tvShow.seasons.sumOf { it.episodes.size },
-        tvShow.seasons.map { "${it.id}:${it.episodes.size}" },
+        // Episode-fill churn omitted — season rows refresh in place; keep selectedTab stable
+        tvShow.seasons.map { it.id },
         tvShow.genres.size,
         tvShow.directors.size,
         tvShow.cast.size,

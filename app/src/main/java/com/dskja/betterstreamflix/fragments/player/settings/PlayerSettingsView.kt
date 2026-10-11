@@ -83,12 +83,24 @@ abstract class PlayerSettingsView @JvmOverloads constructor(
         set(value) {
             Settings.Subtitle.OpenSubtitles.init(value)
             field = value
+            onSubtitleProviderListsUpdated()
         }
     var subDLSubtitles: List<SubDL.Subtitle> = listOf()
         set(value) {
             Settings.Subtitle.SubDLSubtitles.init(value)
             field = value
+            onSubtitleProviderListsUpdated()
         }
+
+    fun showSubtitleProvidersLoading() {
+        Settings.Subtitle.OpenSubtitles.showLoading()
+        Settings.Subtitle.SubDLSubtitles.showLoading()
+        onSubtitleProviderListsUpdated()
+    }
+
+    protected open fun onSubtitleProviderListsUpdated() {}
+
+    var onHidden: (() -> Unit)? = null
 
     protected var currentSettings = Setting.MAIN
 
@@ -212,7 +224,9 @@ abstract class PlayerSettingsView @JvmOverloads constructor(
                         )
                         .setTrackTypeDisabled(subtitle.trackGroup.type, false)
                         .build()
-                    UserPreferences.subtitleName = (subtitle.language ?: subtitle.label).substringBefore(" ")
+                    // Persist full language/label (not first token) so multi-word names restore.
+                    UserPreferences.subtitleName =
+                        subtitle.language?.takeIf { it.isNotBlank() } ?: subtitle.label
                 }
 
                 else -> {}
@@ -488,11 +502,11 @@ abstract class PlayerSettingsView @JvmOverloads constructor(
 
             data object On : KeepScreenOn() {
                 override val isSelected: Boolean get() = UserPreferences.keepScreenOnWhenPaused
-                override val stringId: Int get() = R.string.settings_autoupdate_on
+                override val stringId: Int get() = R.string.player_settings_keep_screen_on_on
             }
             data object Off : KeepScreenOn() {
                 override val isSelected: Boolean get() = !UserPreferences.keepScreenOnWhenPaused
-                override val stringId: Int get() = R.string.settings_autoupdate_off
+                override val stringId: Int get() = R.string.player_settings_keep_screen_on_off
             }
         }
 
@@ -1219,15 +1233,25 @@ abstract class PlayerSettingsView @JvmOverloads constructor(
             sealed class OpenSubtitles : Item {
 
                 companion object : Settings.Subtitle() {
-                    val list = mutableListOf<Subtitle>()
+                    val list = mutableListOf<Item>()
+
+                    fun showLoading() {
+                        list.clear()
+                        list.add(Loading)
+                    }
 
                     fun init(openSubtitles: List<com.dskja.betterstreamflix.utils.OpenSubtitles.Subtitle>) {
                         list.clear()
-                        list.addAll(openSubtitles.map {
-                            Subtitle(it)
-                        })
+                        if (openSubtitles.isEmpty()) {
+                            list.add(Empty)
+                        } else {
+                            list.addAll(openSubtitles.map { Subtitle(it) })
+                        }
                     }
                 }
+
+                data object Loading : OpenSubtitles()
+                data object Empty : OpenSubtitles()
 
                 class Subtitle(
                     val openSubtitle: com.dskja.betterstreamflix.utils.OpenSubtitles.Subtitle
@@ -1237,15 +1261,25 @@ abstract class PlayerSettingsView @JvmOverloads constructor(
             sealed class SubDLSubtitles : Item {
 
                 companion object : Settings.Subtitle() {
-                    val list = mutableListOf<Subtitle>()
+                    val list = mutableListOf<Item>()
+
+                    fun showLoading() {
+                        list.clear()
+                        list.add(Loading)
+                    }
 
                     fun init(subDLSubtitles: List<com.dskja.betterstreamflix.utils.SubDL.Subtitle>) {
                         list.clear()
-                        list.addAll(subDLSubtitles.map {
-                            Subtitle(it)
-                        })
+                        if (subDLSubtitles.isEmpty()) {
+                            list.add(Empty)
+                        } else {
+                            list.addAll(subDLSubtitles.map { Subtitle(it) })
+                        }
                     }
                 }
+
+                data object Loading : SubDLSubtitles()
+                data object Empty : SubDLSubtitles()
 
                 class Subtitle(
                     val subDLSubtitle: com.dskja.betterstreamflix.utils.SubDL.Subtitle

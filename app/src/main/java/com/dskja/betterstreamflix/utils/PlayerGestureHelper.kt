@@ -42,6 +42,13 @@ class PlayerGestureHelper(
     private var currentVolumeFloat = 0f
     private var maxVolume = 0
 
+    /** When true, brightness/volume/pinch gestures are ignored (control lock). */
+    var controlsLocked: Boolean = false
+
+    private val density = context.resources.displayMetrics.density
+    private val topGestureExclusionPx = 72f * density
+    private val bottomGestureExclusionPx = 96f * density
+
     init {
         maxVolume = audioManager.getStreamMaxVolume(AudioManager.STREAM_MUSIC)
 
@@ -77,8 +84,10 @@ class PlayerGestureHelper(
             }
 
             override fun onScroll(e1: MotionEvent?, e2: MotionEvent, distanceX: Float, distanceY: Float): Boolean {
-                if (e1 == null || isScaling) return false
-                if (e1.y < 100) return false
+                if (e1 == null || isScaling || controlsLocked) return false
+                // Exclude top/bottom chrome bands (dp-based) so seek/play aren't stolen.
+                if (e1.y < topGestureExclusionPx) return false
+                if (e1.y > playerView.height - bottomGestureExclusionPx) return false
 
                 if (!isScrolling) {
                     val deltaX = e2.x - e1.x
@@ -100,6 +109,7 @@ class PlayerGestureHelper(
             }
             
             override fun onDoubleTap(e: MotionEvent): Boolean {
+                if (controlsLocked) return false
                 val videoView = playerView.videoSurfaceView ?: return false
                 videoView.scaleX = 1.0f
                 videoView.scaleY = 1.0f
@@ -111,6 +121,8 @@ class PlayerGestureHelper(
             // Abilitiamo le gesture solo se l'input proviene da un dispositivo di puntamento (Touch, Mouse, AirMouse)
             val isPointing = (event.source and InputDevice.SOURCE_CLASS_POINTER) != 0
             if (!isPointing) return@setOnTouchListener false
+
+            if (controlsLocked) return@setOnTouchListener false
 
             // Controllo Zoom Manuale universale (sia per Mobile che per TV)
             val isManualZoom = when (playerView) {

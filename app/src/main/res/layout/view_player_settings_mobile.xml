@@ -4,24 +4,25 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#202020"
+    android:background="@color/cinema_elevated"
     android:clickable="true"
     android:focusable="true">
 
     <ImageView
         android:id="@+id/btn_settings_back"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginStart="16dp"
-        android:layout_marginTop="16dp"
-        android:padding="6dp"
+        android:layout_width="48dp"
+        android:layout_height="48dp"
+        android:layout_marginStart="8dp"
+        android:layout_marginTop="8dp"
+        android:contentDescription="@string/player_back_content_description"
+        android:padding="12dp"
         android:src="@drawable/ic_player_settings_back"
-        android:tint="#FFFFFF"
+        android:tint="@color/cinema_text"
         android:visibility="gone"
         app:layout_constraintBottom_toTopOf="@id/barrier1"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent"
-        tools:ignore="ContentDescription,UseAppTint"
+        tools:ignore="UseAppTint"
         tools:visibility="visible" />
 
     <TextView
@@ -31,7 +32,7 @@
         android:layout_marginStart="10dp"
         android:layout_marginTop="16dp"
         android:layout_marginEnd="10dp"
-        android:textColor="#FFFFFF"
+        android:textColor="@color/cinema_text"
         android:textSize="18sp"
         android:textStyle="bold"
         app:layout_constraintBottom_toTopOf="@id/barrier1"
@@ -43,17 +44,18 @@
 
     <ImageView
         android:id="@+id/btn_settings_close"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="16dp"
-        android:layout_marginEnd="16dp"
-        android:padding="6dp"
+        android:layout_width="48dp"
+        android:layout_height="48dp"
+        android:layout_marginTop="8dp"
+        android:layout_marginEnd="8dp"
+        android:contentDescription="@string/exp_cd_close"
+        android:padding="12dp"
         android:src="@drawable/ic_player_settings_close"
-        android:tint="#FFFFFF"
+        android:tint="@color/cinema_text"
         app:layout_constraintBottom_toTopOf="@id/barrier1"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintTop_toTopOf="parent"
-        tools:ignore="ContentDescription,UseAppTint" />
+        tools:ignore="UseAppTint" />
 
     <androidx.constraintlayout.widget.Barrier
         android:id="@+id/barrier1"
