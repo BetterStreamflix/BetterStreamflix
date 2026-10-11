@@ -190,6 +190,12 @@
                 android:summary="@string/settings_show_smart_collections_summary"
                 android:defaultValue="true" />
 
+            <SwitchPreferenceCompat
+                android:key="SHOW_WATCHLIST_WEEK"
+                android:title="@string/settings_show_watchlist_week_title"
+                android:summary="@string/settings_show_watchlist_week_summary"
+                android:defaultValue="true" />
+
             <Preference
                 android:key="HOME_REMIX_OPEN"
                 android:title="@string/settings_home_remix_title"

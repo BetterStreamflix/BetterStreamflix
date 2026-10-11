@@ -80,6 +80,7 @@ internal object ProfileScopedPreferenceStore {
                 "SHOW_RECENTLY_WATCHED" -> UserPreferences.showRecentlyWatched = value
                 "SHOW_NEXT_EPISODES" -> UserPreferences.showNextEpisodes = value
                 "SHOW_SMART_COLLECTIONS" -> UserPreferences.showSmartCollections = value
+                "SHOW_WATCHLIST_WEEK" -> UserPreferences.showWatchlistWeek = value
             }
         }
 
@@ -88,6 +89,7 @@ internal object ProfileScopedPreferenceStore {
             "SHOW_RECENTLY_WATCHED" -> UserPreferences.showRecentlyWatched
             "SHOW_NEXT_EPISODES" -> UserPreferences.showNextEpisodes
             "SHOW_SMART_COLLECTIONS" -> UserPreferences.showSmartCollections
+            "SHOW_WATCHLIST_WEEK" -> UserPreferences.showWatchlistWeek
             else -> defValue
         }
     }

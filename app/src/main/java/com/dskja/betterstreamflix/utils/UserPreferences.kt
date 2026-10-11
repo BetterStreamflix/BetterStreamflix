@@ -1003,6 +1003,13 @@ object UserPreferences {
             setProfileScopedBoolean(Key.SHOW_SMART_COLLECTIONS, value)
         }
 
+    /** When false, Home hides the watchlist “New this week” calendar strip. */
+    var showWatchlistWeek: Boolean
+        get() = profileScopedBoolean(Key.SHOW_WATCHLIST_WEEK) ?: true
+        set(value) {
+            setProfileScopedBoolean(Key.SHOW_WATCHLIST_WEEK, value)
+        }
+
     /**
      * Remix Home block order — comma keys `continue,live,collections`
      * (profile-scoped). See [com.dskja.betterstreamflix.home.HomeRemix].
@@ -1697,6 +1704,7 @@ object UserPreferences {
         SHOW_RECENTLY_WATCHED,
         SHOW_NEXT_EPISODES,
         SHOW_SMART_COLLECTIONS,
+        SHOW_WATCHLIST_WEEK,
         HOME_SHELF_BLOCK_ORDER,
         SHOW_QUARANTINED_PROVIDERS,
         SHOW_VAVOO_VOD_PROVIDERS,

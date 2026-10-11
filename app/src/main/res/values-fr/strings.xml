@@ -65,6 +65,7 @@
     <string name="home_swiper_watch_now">Regarder maintenant</string>
     <string name="home_continue_watching">Continuer à regarder</string>
     <string name="home_next_episodes">Épisodes suivants</string>
+    <string name="home_new_this_week">Nouveautés de la semaine</string>
     <string name="home_recently_watched">Regardés récemment</string>
     <string name="home_smart_chill_evening">Soirée chill</string>
     <string name="home_smart_with_kids">Avec les kids</string>
@@ -1001,6 +1002,8 @@
     <string name="settings_show_next_episodes_summary">Afficher la rangée Épisodes suivants sur l\'écran d\'accueil pour les séries en cours</string>
     <string name="settings_show_smart_collections_title">Afficher les Smart Collections</string>
     <string name="settings_show_smart_collections_summary">Rayons dynamiques depuis la watchlist et Continuer à regarder — soirée chill, avec kids, audio allemand</string>
+    <string name="settings_show_watchlist_week_title">Afficher Nouveautés de la semaine</string>
+    <string name="settings_show_watchlist_week_summary">Afficher la bande de la semaine des épisodes de la watchlist diffusés cette semaine</string>
     <string name="detail_up_next">À suivre</string>
     <string name="detail_action_list">Ma liste</string>
     <string name="detail_action_trailer">Bande-annonce</string>

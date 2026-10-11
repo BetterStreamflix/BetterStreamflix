@@ -1446,6 +1446,15 @@ class SettingsMobileFragment : PreferenceFragmentCompat() {
             }
         }
 
+        findPreference<SwitchPreferenceCompat>("SHOW_WATCHLIST_WEEK")?.apply {
+            isChecked = UserPreferences.showWatchlistWeek
+            setOnPreferenceChangeListener { _, newValue ->
+                UserPreferences.showWatchlistWeek = newValue as Boolean
+                UserDataNotifier.notifyChanged()
+                true
+            }
+        }
+
         findPreference<Preference>("HOME_REMIX_OPEN")?.setOnPreferenceClickListener {
             com.dskja.betterstreamflix.home.HomeRemixUi.show(this)
             true
