@@ -122,6 +122,7 @@
     <string name="movie_runtime_hours_minutes">%d h %d min</string>
     <string name="movie_runtime_minutes">%d min</string>
     <string name="movie_watch_now">Guarda Ora</string>
+    <string name="trailer_stream_now">Guarda in streaming</string>
     <string name="movie_trailer">Trailer</string>
     <string name="movie_cast">Cast</string>
     <string name="movie_directors">Regista</string>

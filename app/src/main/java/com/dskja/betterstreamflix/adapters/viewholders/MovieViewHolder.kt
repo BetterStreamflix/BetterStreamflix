@@ -100,7 +100,9 @@ import com.dskja.betterstreamflix.ui.SpacingItemDecoration
 import com.dskja.betterstreamflix.ui.DetailRating
 import com.dskja.betterstreamflix.ui.DetailTabsController
 import com.dskja.betterstreamflix.ui.DetailTrailerMobilePlayer
+import com.dskja.betterstreamflix.ui.DetailTrailerPlayHooks
 import com.dskja.betterstreamflix.ui.DetailTrailerTvController
+import com.dskja.betterstreamflix.ui.TrailerPlayPipeline
 import com.dskja.betterstreamflix.ui.TrailerPlaybackController
 import com.dskja.betterstreamflix.ui.DetailTab
 import com.dskja.betterstreamflix.ui.TmdbLogoGlide
@@ -1193,6 +1195,17 @@ class MovieViewHolder(
             ?: DetailTrailerMobilePlayer(binding).also {
                 binding.root.setTag(R.id.detail_trailer_player_tag, it)
             }
+        val base = DetailTrailerPlayHooks.movieSession(
+            movie = movie,
+            host = binding.root,
+            leanback = false,
+        )
+        val session = TrailerPlayPipeline.Session(
+            target = base.target,
+            onStreamNow = {
+                checkProviderAndRun { base.onStreamNow?.invoke() }
+            },
+        )
         player.bind(
             seedUrl = movie.trailer,
             title = movie.title,
@@ -1202,10 +1215,27 @@ class MovieViewHolder(
             year = movie.released?.format("yyyy")?.toIntOrNull(),
             imdbId = movie.imdbId,
             sectionTag = DETAIL_SECTION_TRAILER,
+            pipelineSession = session,
         )
     }
 
     private fun displayTrailerTv(binding: ContentDetailTrailerTvBinding) {
+        val session = TrailerPlayPipeline.Session(
+            target = DetailTrailerPlayHooks.movieSession(
+                movie = movie,
+                host = binding.root,
+                leanback = true,
+            ).target,
+            onStreamNow = {
+                checkProviderAndRun {
+                    DetailTrailerPlayHooks.movieSession(
+                        movie = movie,
+                        host = binding.root,
+                        leanback = true,
+                    ).onStreamNow?.invoke()
+                }
+            },
+        )
         DetailTrailerTvController.bind(
             binding = binding,
             seedUrl = movie.trailer,
@@ -1216,6 +1246,7 @@ class MovieViewHolder(
             year = movie.released?.format("yyyy")?.toIntOrNull(),
             imdbId = movie.imdbId,
             onTrailerSeeded = { url -> movie.trailer = url },
+            pipelineSession = session,
         )
     }
 

@@ -1,0 +1,230 @@
+package com.dskja.betterstreamflix.ui
+
+import android.os.SystemClock
+import android.util.Log
+import com.dskja.betterstreamflix.models.Video
+import com.dskja.betterstreamflix.providers.IptvProvider
+import com.dskja.betterstreamflix.providers.ProviderSmoke
+import com.dskja.betterstreamflix.providers.TmdbProvider
+import com.dskja.betterstreamflix.utils.UserPreferences
+import java.util.Locale
+import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.atomic.AtomicInteger
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.launch
+
+/**
+ * Trailer → Play pipeline: warm VOD [Provider.getServers] (+ first [getVideo]) while a
+ * trailer plays so “Jetzt streamen” / Watch Now opens the player on a hot cache.
+ *
+ * Separate from [com.dskja.betterstreamflix.iptv.IptvZapPreloader] (live zap only).
+ */
+object TrailerPlayPipeline {
+
+    private const val TAG = "TrailerPlayPipeline"
+    private const val MAX_ENTRIES = 8
+    private const val MAX_VIDEO_ENTRIES = 8
+    /** Server lists for VOD stay useful for a few minutes after trailer end. */
+    private const val TTL_MS = 180_000L
+    private const val VIDEO_TTL_MS = 120_000L
+
+    data class Target(
+        val contentId: String,
+        val videoType: Video.Type,
+    )
+
+    /** Active trailer session: warm target + stream CTA action (detail / dialog). */
+    data class Session(
+        val target: Target?,
+        val onStreamNow: (() -> Unit)?,
+    )
+
+    @Volatile
+    var activeSession: Session? = null
+        private set
+
+    /** Overridable for JVM unit tests (SystemClock is not mocked there). */
+    @Volatile
+    internal var elapsedRealtimeMs: () -> Long = { SystemClock.elapsedRealtime() }
+
+    private data class CacheEntry(
+        val servers: List<Video.Server>,
+        val storedAtMs: Long,
+        val providerName: String,
+    )
+
+    private data class CachedVideo(
+        val video: Video,
+        val cachedAtMs: Long,
+    ) {
+        fun isFresh(now: Long = elapsedRealtimeMs()): Boolean =
+            now - cachedAtMs < VIDEO_TTL_MS
+    }
+
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    private val generation = AtomicInteger()
+    private val serversByContentId =
+        object : LinkedHashMap<String, CacheEntry>(8, 0.75f, /* accessOrder = */ true) {
+            override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, CacheEntry>?): Boolean =
+                size > MAX_ENTRIES
+        }
+    private val videoByServerId =
+        object : LinkedHashMap<String, CachedVideo>(8, 0.75f, /* accessOrder = */ true) {
+            override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, CachedVideo>?): Boolean =
+                size > MAX_VIDEO_ENTRIES
+        }
+    private val inflight = ConcurrentHashMap<String, Job>()
+
+    fun beginSession(session: Session?) {
+        activeSession = session
+        session?.target?.let { warm(it) }
+    }
+
+    fun endSession() {
+        activeSession = null
+    }
+
+    fun clear() {
+        generation.incrementAndGet()
+        inflight.values.forEach { it.cancel() }
+        inflight.clear()
+        synchronized(serversByContentId) { serversByContentId.clear() }
+        synchronized(videoByServerId) { videoByServerId.clear() }
+        activeSession = null
+    }
+
+    fun warm(target: Target) {
+        val contentId = target.contentId.trim()
+        if (contentId.isEmpty()) return
+        val provider = currentProviderOrNull() ?: return
+        if (provider is IptvProvider) return // Live uses IptvZapPreloader.
+        if (peekCachedServers(contentId) != null) return
+        val existing = inflight[contentId]
+        if (existing?.isActive == true) return
+
+        val gen = generation.get()
+        val job = scope.launch {
+            try {
+                val timeoutMs = serversTimeoutMs(provider)
+                val servers = ProviderSmoke.withProviderTimeout(
+                    timeoutMs = timeoutMs,
+                    label = "trailerWarm.getServers(${provider.name})",
+                ) {
+                    provider.getServers(contentId, target.videoType)
+                }
+                if (gen != generation.get() || !isActive || servers.isEmpty()) return@launch
+                synchronized(serversByContentId) {
+                    serversByContentId[contentId] = CacheEntry(
+                        servers = servers,
+                        storedAtMs = elapsedRealtimeMs(),
+                        providerName = provider.name,
+                    )
+                }
+                Log.d(TAG, "warmed $contentId (${servers.size} servers via ${provider.name})")
+                val first = servers.firstOrNull() ?: return@launch
+                if (peekCachedVideo(first.id) != null) return@launch
+                runCatching {
+                    val video = ProviderSmoke.withProviderTimeout(
+                        timeoutMs = ProviderSmoke.SERVERS_TIMEOUT_MS,
+                        label = "trailerWarm.getVideo(${first.name})",
+                    ) {
+                        provider.getVideo(first)
+                    }
+                    if (gen != generation.get() || !isActive) return@runCatching
+                    if (video.source.isBlank()) return@runCatching
+                    synchronized(videoByServerId) {
+                        videoByServerId[first.id] = CachedVideo(video, elapsedRealtimeMs())
+                    }
+                    Log.d(TAG, "warmed first video for $contentId / ${first.name}")
+                }.onFailure { e ->
+                    if (e is CancellationException) throw e
+                    Log.d(TAG, "first-video warm skipped for $contentId: ${e.message}")
+                }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                Log.d(TAG, "warm failed for $contentId: ${e.message}")
+            } finally {
+                inflight.remove(contentId)
+            }
+        }
+        inflight[contentId] = job
+    }
+
+    fun peekCachedServers(contentId: String): List<Video.Server>? {
+        val providerName = currentProviderOrNull()?.name
+        synchronized(serversByContentId) {
+            val entry = serversByContentId[contentId] ?: return null
+            if (elapsedRealtimeMs() - entry.storedAtMs > TTL_MS) {
+                serversByContentId.remove(contentId)
+                return null
+            }
+            if (providerName != null && entry.providerName != providerName) {
+                serversByContentId.remove(contentId)
+                return null
+            }
+            return entry.servers.takeIf { it.isNotEmpty() }
+        }
+    }
+
+    private fun currentProviderOrNull(): com.dskja.betterstreamflix.providers.Provider? =
+        runCatching { UserPreferences.currentProvider }.getOrNull()
+
+    fun peekCachedVideo(serverId: String): Video? {
+        synchronized(videoByServerId) {
+            val entry = videoByServerId[serverId] ?: return null
+            if (!entry.isFresh()) {
+                videoByServerId.remove(serverId)
+                return null
+            }
+            return entry.video
+        }
+    }
+
+    fun invalidate(contentId: String) {
+        val servers = synchronized(serversByContentId) {
+            serversByContentId.remove(contentId)?.servers
+        }
+        if (servers != null) {
+            synchronized(videoByServerId) {
+                servers.forEach { videoByServerId.remove(it.id) }
+            }
+        }
+        inflight.remove(contentId)?.cancel()
+    }
+
+    /** Test harness: seed warm caches without launching network work. */
+    internal fun seedForTest(
+        contentId: String,
+        servers: List<Video.Server>,
+        providerName: String = "Test",
+        video: Video? = null,
+    ) {
+        val now = elapsedRealtimeMs()
+        synchronized(serversByContentId) {
+            serversByContentId[contentId] = CacheEntry(servers, now, providerName)
+        }
+        val firstId = servers.firstOrNull()?.id
+        if (video != null && firstId != null) {
+            synchronized(videoByServerId) {
+                videoByServerId[firstId] = CachedVideo(video, now)
+            }
+        }
+    }
+
+    private fun serversTimeoutMs(provider: com.dskja.betterstreamflix.providers.Provider): Long =
+        when (provider) {
+            is TmdbProvider ->
+                if (provider.language.lowercase(Locale.US).startsWith("de")) {
+                    ProviderSmoke.SERVERS_TIMEOUT_DE_MS
+                } else {
+                    ProviderSmoke.SERVERS_TIMEOUT_MS
+                }
+            else -> ProviderSmoke.SERVERS_TIMEOUT_MS
+        }
+}

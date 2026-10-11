@@ -52,6 +52,7 @@ class DetailTrailerMobilePlayer(
     private val loading = binding.pbDetailTrailerLoading
     private val shimmer = binding.vDetailTrailerShimmer
     private val errorPanel = binding.llDetailTrailerError
+    private val streamNowBtn = binding.btnDetailTrailerStreamNow
     private val stage = binding.flDetailTrailerPlayer
     private val chromeBar = binding.llDetailTrailerChrome
     private val muteBtn: ImageButton = binding.btnDetailTrailerMute
@@ -71,6 +72,7 @@ class DetailTrailerMobilePlayer(
     private var previousSystemUi: Int? = null
     private var boundLifecycleOwner: LifecycleOwner? = null
     private var thumbQuality = readThumbQuality()
+    private var pipelineSession: TrailerPlayPipeline.Session? = null
 
     private val lifecycleObserver = object : DefaultLifecycleObserver {
         override fun onPause(owner: LifecycleOwner) {
@@ -93,8 +95,11 @@ class DetailTrailerMobilePlayer(
         year: Int?,
         imdbId: String?,
         sectionTag: Any?,
+        pipelineSession: TrailerPlayPipeline.Session? = null,
     ) {
         binding.root.tag = sectionTag
+        this.pipelineSession = pipelineSession
+        TrailerPlayPipeline.beginSession(pipelineSession)
         ensureConfigured()
         attachLifecycle()
         TrailerPlaybackController.registerActiveSession(this)
@@ -103,6 +108,8 @@ class DetailTrailerMobilePlayer(
 
         val key = listOf(tmdbId.orEmpty(), imdbId.orEmpty(), title, seedUrl.orEmpty()).joinToString("|")
         if (contentKey == key && binding.llDetailTrailerList.childCount > 0) {
+            // Refresh session hooks (watch CTA / warm target) on rebind of same title.
+            wireStreamNowCta()
             return
         }
         fetchJob?.cancel()
@@ -123,7 +130,9 @@ class DetailTrailerMobilePlayer(
         binding.tvDetailTrailerNowPlaying.visibility = View.GONE
         binding.tvDetailTrailerMoreLabel.visibility = View.GONE
         errorPanel.visibility = View.GONE
+        hideStreamNowCta()
         setLoading(false)
+        wireStreamNowCta()
 
         val seed = seedUrl?.takeIf { it.isNotBlank() }?.let { url ->
             listOf(TrailerEntry.fromSeed("$title $trailerLabel", url, trailerLabel))
@@ -164,6 +173,10 @@ class DetailTrailerMobilePlayer(
         fetchJob = null
         detachLifecycle()
         TrailerPlaybackController.unregisterActiveSession(this)
+        if (TrailerPlayPipeline.activeSession === pipelineSession) {
+            TrailerPlayPipeline.endSession()
+        }
+        pipelineSession = null
         pauseAndBlank()
         destroyWebView()
     }
@@ -259,7 +272,38 @@ class DetailTrailerMobilePlayer(
             fullscreenBtn.applyExpPress()
             binding.btnDetailTrailerRetry.applyExpPress()
             binding.btnDetailTrailerOpenExternal.applyExpPress()
+            streamNowBtn.applyExpPress()
         }
+        wireStreamNowCta()
+    }
+
+    private fun wireStreamNowCta() {
+        val action = pipelineSession?.onStreamNow
+        streamNowBtn.setOnClickListener {
+            ExpMotion.hapticTap(it)
+            action?.invoke()
+        }
+        streamNowBtn.isEnabled = action != null
+    }
+
+    private fun hideStreamNowCta() {
+        streamNowBtn.visibility = View.GONE
+    }
+
+    private fun showStreamNowCta() {
+        if (pipelineSession?.onStreamNow == null) {
+            hideStreamNowCta()
+            return
+        }
+        val wasGone = streamNowBtn.visibility != View.VISIBLE
+        streamNowBtn.visibility = View.VISIBLE
+        if (wasGone) {
+            ExpMotion.popIn(streamNowBtn)
+        }
+    }
+
+    private fun warmPipeline() {
+        pipelineSession?.target?.let { TrailerPlayPipeline.warm(it) }
     }
 
     /** @return true when a new WebView was created after a prior destroy. */
@@ -368,14 +412,19 @@ class DetailTrailerMobilePlayer(
     }
 
     private fun playSelected(title: String, url: String, forceReload: Boolean) {
+        hideStreamNowCta()
+        warmPipeline()
         if (prefersExternalPlayer()) {
             activeUrl = url
             activeTitle = title
             highlightRow(url)
+            // External players have no ENDED hook — surface Stream CTA when leaving the app.
+            showStreamNowCta()
             TrailerPlaybackController.play(
                 context = context,
                 activity = context as? androidx.fragment.app.FragmentActivity,
                 trailerUrl = url,
+                session = pipelineSession,
             )
             return
         }
@@ -387,6 +436,8 @@ class DetailTrailerMobilePlayer(
         val w = web
         val ytId = TrailerPlaybackController.youtubeVideoId(url)
         if (ytId.isNullOrBlank() || w == null) {
+            warmPipeline()
+            showStreamNowCta()
             TrailerPlaybackController.openExternalTrailer(context, url)
             return
         }
@@ -405,12 +456,14 @@ class DetailTrailerMobilePlayer(
         }
         highlightRow(url)
         if (alreadyPlaying) return
+        hideStreamNowCta()
         errorPanel.visibility = View.GONE
         // Hide-until-ready: keep WebView invisible under shimmer until IFrame ready.
         w.visibility = View.INVISIBLE
         setLoading(true)
         hasAutoPlayed = true
         loadedUrl = url
+        warmPipeline()
         TrailerPlaybackController.loadTrailerEmbed(
             web = w,
             videoId = ytId,
@@ -473,6 +526,16 @@ class DetailTrailerMobilePlayer(
             setLoading(false)
             web?.visibility = View.VISIBLE
             errorPanel.visibility = View.GONE
+            // Start (or continue) server warm as soon as the trailer is actually playing.
+            warmPipeline()
+        }
+    }
+
+    private fun onPlayerEnded() {
+        binding.root.post {
+            exitFullscreen()
+            TrailerPlaybackController.pauseTrailerMedia(web)
+            showStreamNowCta()
         }
     }
 
@@ -570,7 +633,7 @@ class DetailTrailerMobilePlayer(
         fun onPaused() = Unit
 
         @JavascriptInterface
-        fun onEnded() = Unit
+        fun onEnded() = onPlayerEnded()
 
         @JavascriptInterface
         fun onError(@Suppress("UNUSED_PARAMETER") code: Int) = onPlayerError()

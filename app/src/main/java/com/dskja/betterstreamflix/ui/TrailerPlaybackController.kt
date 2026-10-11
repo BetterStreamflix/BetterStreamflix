@@ -1,5 +1,6 @@
 package com.dskja.betterstreamflix.ui
 
+import android.annotation.SuppressLint
 import android.app.Dialog
 import android.content.ActivityNotFoundException
 import android.content.Context
@@ -10,6 +11,7 @@ import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.webkit.JavascriptInterface
 import android.webkit.WebChromeClient
 import android.webkit.WebResourceError
 import android.webkit.WebResourceRequest
@@ -118,9 +120,13 @@ object TrailerPlaybackController {
             true
         }.getOrDefault(false)
 
-    fun play(fragment: Fragment, trailerUrl: String) {
+    fun play(
+        fragment: Fragment,
+        trailerUrl: String,
+        session: TrailerPlayPipeline.Session? = null,
+    ) {
         val context = fragment.requireContext()
-        play(context, fragment.activity, trailerUrl, fragment.childFragmentManager)
+        play(context, fragment.activity, trailerUrl, fragment.childFragmentManager, session)
     }
 
     fun play(
@@ -128,7 +134,14 @@ object TrailerPlaybackController {
         activity: FragmentActivity?,
         trailerUrl: String,
         fragmentManager: androidx.fragment.app.FragmentManager? = activity?.supportFragmentManager,
+        session: TrailerPlayPipeline.Session? = null,
     ) {
+        if (session != null) {
+            TrailerPlayPipeline.beginSession(session)
+        } else {
+            // Keep any detail-tab session; still warm if one is active.
+            TrailerPlayPipeline.activeSession?.target?.let { TrailerPlayPipeline.warm(it) }
+        }
         val prefs = PreferenceManager.getDefaultSharedPreferences(context)
         val stored = prefs.getString(KEY_PREFERRED_PLAYER, null)
         val preferred = resolvePreferredPlayer(context, stored)
@@ -591,7 +604,10 @@ object TrailerPlaybackController {
         private var webView: WebView? = null
         private var videoId: String = ""
         private var watchUrl: String = ""
+        private var streamNowBtn: TextView? = null
+        private var dialogRoot: View? = null
 
+        @SuppressLint("SetJavaScriptEnabled", "AddJavascriptInterface")
         override fun onCreateDialog(savedInstanceState: Bundle?): Dialog {
             videoId = requireArguments().getString(ARG_ID).orEmpty()
             val fallback = requireArguments().getString(ARG_URL).orEmpty()
@@ -599,10 +615,14 @@ object TrailerPlaybackController {
 
             val root = LayoutInflater.from(requireContext())
                 .inflate(R.layout.dialog_in_app_trailer, null, false)
+            dialogRoot = root
             val web = root.findViewById<WebView>(R.id.wv_trailer)
             val loading = root.findViewById<ProgressBar>(R.id.pb_trailer_loading)
             val errorPanel = root.findViewById<View>(R.id.ll_trailer_error)
+            streamNowBtn = root.findViewById(R.id.btn_trailer_stream_now)
             webView = web
+
+            TrailerPlayPipeline.activeSession?.target?.let { TrailerPlayPipeline.warm(it) }
 
             val metrics = resources.displayMetrics
             // Near full-width immersive plane with side inset; keep 16:9.
@@ -619,6 +639,8 @@ object TrailerPlaybackController {
             root.findViewById<FrameLayout>(R.id.fl_trailer_player).minimumHeight = playerHeight
 
             configureTrailerWebView(web)
+            runCatching { web.removeJavascriptInterface(JS_BRIDGE) }
+            web.addJavascriptInterface(DialogTrailerBridge(), JS_BRIDGE)
             // Hide-until-ready: keep WebView invisible until the document finishes.
             web.visibility = View.INVISIBLE
             web.webChromeClient = WebChromeClient()
@@ -669,12 +691,21 @@ object TrailerPlaybackController {
             }
             root.findViewById<TextView>(R.id.btn_trailer_retry).setOnClickListener {
                 ExpMotion.hapticTap(it)
+                hideStreamNow()
                 loadEmbed(web, loading, errorPanel)
             }
             root.findViewById<TextView>(R.id.btn_trailer_error_youtube).setOnClickListener {
                 ExpMotion.hapticTap(it)
                 openExternal(dismissAfter = true)
             }
+            streamNowBtn?.setOnClickListener {
+                ExpMotion.hapticTap(it)
+                val action = TrailerPlayPipeline.activeSession?.onStreamNow
+                pauseTrailerMedia(web)
+                dismissAllowingStateLoss()
+                action?.invoke()
+            }
+            streamNowBtn?.visibility = View.GONE
 
             if (ExperimentalMobileDesign.enabled()) {
                 root.findViewById<View>(R.id.v_trailer_accent_rule)?.visibility = View.VISIBLE
@@ -684,6 +715,7 @@ object TrailerPlaybackController {
                     root.findViewById<TextView>(R.id.btn_trailer_error_youtube)?.applyExpPress()
                     root.findViewById<ImageButton>(R.id.btn_trailer_close)?.applyExpPress()
                     root.findViewById<ImageButton>(R.id.btn_trailer_youtube)?.applyExpPress()
+                    streamNowBtn?.applyExpPress()
                 }
             }
 
@@ -718,8 +750,52 @@ object TrailerPlaybackController {
             errorPanel.visibility = View.GONE
             web.visibility = View.INVISIBLE
             loading.visibility = View.VISIBLE
-            // IFrame API so pauseTrailerMedia / onPause can reach the player.
+            // IFrame API so pauseTrailerMedia / onPause / onEnded can reach the player.
             loadTrailerEmbed(web, videoId, useIframeApi = true)
+            TrailerPlayPipeline.activeSession?.target?.let { TrailerPlayPipeline.warm(it) }
+        }
+
+        private fun hideStreamNow() {
+            streamNowBtn?.visibility = View.GONE
+        }
+
+        private fun showStreamNow() {
+            val btn = streamNowBtn ?: return
+            if (TrailerPlayPipeline.activeSession?.onStreamNow == null) {
+                btn.visibility = View.GONE
+                return
+            }
+            val wasGone = btn.visibility != View.VISIBLE
+            btn.visibility = View.VISIBLE
+            if (wasGone && ExperimentalMobileDesign.enabled()) {
+                ExpMotion.popIn(btn)
+            }
+        }
+
+        private inner class DialogTrailerBridge {
+            @JavascriptInterface
+            fun onReady() {
+                dialogRoot?.post {
+                    TrailerPlayPipeline.activeSession?.target?.let { TrailerPlayPipeline.warm(it) }
+                }
+            }
+
+            @JavascriptInterface
+            fun onPlaying() = onReady()
+
+            @JavascriptInterface
+            fun onPaused() = Unit
+
+            @JavascriptInterface
+            fun onEnded() {
+                dialogRoot?.post {
+                    pauseTrailerMedia(webView)
+                    showStreamNow()
+                }
+            }
+
+            @JavascriptInterface
+            fun onError(@Suppress("UNUSED_PARAMETER") code: Int) = Unit
         }
 
         private fun showError(loading: ProgressBar, web: WebView, errorPanel: View) {
@@ -769,6 +845,7 @@ object TrailerPlaybackController {
         companion object {
             private const val ARG_ID = "id"
             private const val ARG_URL = "url"
+            private const val JS_BRIDGE = "AndroidTrailer"
             fun newInstance(videoId: String, trailerUrl: String) = InAppTrailerDialog().apply {
                 arguments = Bundle().apply {
                     putString(ARG_ID, videoId)

@@ -162,13 +162,21 @@ class PlayerViewModel(
                 val provider = UserPreferences.currentProvider
                     ?: throw Exception(com.dskja.betterstreamflix.BetterStreamflixApp.instance.getString(com.dskja.betterstreamflix.R.string.error_no_provider_selected))
                 // Live zap: peek warm ±N neighbor servers (keep cache if getVideo fails).
+                // Trailer→Play: peek VOD servers warmed while the trailer played.
                 val warmed = if (provider is com.dskja.betterstreamflix.providers.IptvProvider) {
                     com.dskja.betterstreamflix.iptv.IptvZapPreloader.peekCachedServers(id)
                 } else {
-                    null
+                    com.dskja.betterstreamflix.ui.TrailerPlayPipeline.peekCachedServers(id)
                 }
                 val servers = if (!warmed.isNullOrEmpty()) {
-                    Log.d("PlayerViewModel", "IPTV zap cache hit for $id (${warmed.size} servers)")
+                    Log.d(
+                        "PlayerViewModel",
+                        if (provider is com.dskja.betterstreamflix.providers.IptvProvider) {
+                            "IPTV zap cache hit for $id (${warmed.size} servers)"
+                        } else {
+                            "Trailer play-pipeline cache hit for $id (${warmed.size} servers)"
+                        },
+                    )
                     warmed
                 } else {
                     val serversTimeoutMs = when (provider) {
@@ -240,10 +248,17 @@ class PlayerViewModel(
                     // Peek so a mid-resolve failure can retry the same warm m3u8 once.
                     com.dskja.betterstreamflix.iptv.IptvZapPreloader.peekCachedVideo(server.id)
                 } else {
-                    null
+                    com.dskja.betterstreamflix.ui.TrailerPlayPipeline.peekCachedVideo(server.id)
                 }
                 val video = if (warmedVideo != null && warmedVideo.source.isNotBlank()) {
-                    Log.d("PlayerViewModel", "IPTV zap video cache hit for ${server.name}")
+                    Log.d(
+                        "PlayerViewModel",
+                        if (provider is com.dskja.betterstreamflix.providers.IptvProvider) {
+                            "IPTV zap video cache hit for ${server.name}"
+                        } else {
+                            "Trailer play-pipeline video cache hit for ${server.name}"
+                        },
+                    )
                     warmedVideo
                 } else {
                     ProviderSmoke.withProviderTimeout(
@@ -285,12 +300,16 @@ class PlayerViewModel(
                 throw e
             } catch (e: Exception) {
                 Log.e("PlayerViewModel", "Errore estrazione video: ", e)
-                // Stale zap warm cache — drop servers + warmed m3u8 so next attempt re-resolves.
+                // Stale warm cache — drop so next attempt re-resolves.
                 if (UserPreferences.currentProvider is com.dskja.betterstreamflix.providers.IptvProvider) {
                     lastId?.let { channelId ->
                         com.dskja.betterstreamflix.iptv.IptvZapPreloader.invalidate(channelId)
                     }
                     com.dskja.betterstreamflix.iptv.IptvZapPreloader.invalidateVideo(server.id)
+                } else {
+                    lastId?.let { contentId ->
+                        com.dskja.betterstreamflix.ui.TrailerPlayPipeline.invalidate(contentId)
+                    }
                 }
                 // Permanent hoster misses (404 / unpack / deleted) are expected failover noise —
                 // keep local logs but do not flood Sentry (BETTERSTREAMFLIX-10 / -12).

@@ -33,6 +33,8 @@ import com.dskja.betterstreamflix.ui.DetailTab
 import com.dskja.betterstreamflix.ui.DetailWatchLabels
 import com.dskja.betterstreamflix.ui.FeaturedSwiperChrome
 import com.dskja.betterstreamflix.ui.SpacingItemDecoration
+import com.dskja.betterstreamflix.ui.DetailTrailerPlayHooks
+import com.dskja.betterstreamflix.ui.TrailerPlayPipeline
 import com.dskja.betterstreamflix.ui.TrailerPlaybackController
 import com.dskja.betterstreamflix.utils.ArtworkRepair
 import com.dskja.betterstreamflix.utils.ExpMotion
@@ -360,10 +362,35 @@ internal fun TvShowViewHolder.bindTvShowTvDetail(binding: ContentTvShowTvBinding
             setOnClickListener {
                 ExpMotion.hapticTap(it)
                 if (!trailerUrl.isNullOrBlank()) {
+                    val seasonNumber = resolveEpisodeSeason(tvShow.episodeToWatch)?.number
+                    val base = DetailTrailerPlayHooks.tvShowSession(
+                        tvShow = tvShow,
+                        host = binding.root,
+                        onNoEpisode = {
+                            (bindingAdapter as? AppAdapter)?.onDetailTabSelectedListener?.invoke(
+                                DetailTab.EPISODES,
+                            )
+                        },
+                        seasonNumber = seasonNumber,
+                        isIptv = isIptvProvider(),
+                    )
+                    val session = TrailerPlayPipeline.Session(
+                        target = base.target,
+                        onStreamNow = {
+                            checkProviderAndRun {
+                                if (isIptvProvider()) {
+                                    handleDirectPlay(findNavController())
+                                } else {
+                                    base.onStreamNow?.invoke()
+                                }
+                            }
+                        },
+                    )
                     val fragment = context.toActivity()?.getCurrentFragment() as? Fragment
                     if (fragment != null) {
-                        TrailerPlaybackController.play(fragment, trailerUrl)
+                        TrailerPlaybackController.play(fragment, trailerUrl, session)
                     } else {
+                        TrailerPlayPipeline.beginSession(session)
                         handleTrailerClick(trailerUrl)
                     }
                 }

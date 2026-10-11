@@ -143,6 +143,24 @@
     </FrameLayout>
 
     <TextView
+        android:id="@+id/btn_trailer_stream_now"
+        android:layout_width="match_parent"
+        android:layout_height="56dp"
+        android:layout_marginStart="16dp"
+        android:layout_marginTop="14dp"
+        android:layout_marginEnd="16dp"
+        android:background="@drawable/bg_featured_cta_primary"
+        android:focusable="true"
+        android:fontFamily="@font/outfit"
+        android:gravity="center"
+        android:text="@string/trailer_stream_now"
+        android:textColor="@color/cinema_cta_ink"
+        android:textSize="17sp"
+        android:textStyle="bold"
+        android:visibility="gone"
+        tools:visibility="visible" />
+
+    <TextView
         android:id="@+id/btn_trailer_open_external"
         android:layout_width="match_parent"
         android:layout_height="44dp"

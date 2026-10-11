@@ -119,6 +119,7 @@
     <string name="movie_runtime_hours_minutes">%d h %d min</string>
     <string name="movie_runtime_minutes">%d min</string>
     <string name="movie_watch_now">Ver ahora</string>
+    <string name="trailer_stream_now">Ver en streaming</string>
     <string name="movie_trailer">Tráiler</string>
     <string name="movie_cast">Elenco</string>
     <string name="movie_directors">Director</string>
