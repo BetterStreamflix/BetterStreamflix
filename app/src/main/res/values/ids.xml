@@ -15,6 +15,7 @@
     <item name="detail_episodes_scroll_key" type="id" />
     <item name="detail_trailer_lookup_key_tag" type="id" />
     <item name="detail_cover_blur_tag" type="id" />
+    <item name="spoiler_shield_tag" type="id" />
     <item name="detail_header_bind_generation" type="id" />
     <item name="tv_shelf_nav_focus_listener_tag" type="id" />
     <item name="tv_shelf_row_height_tag" type="id" />

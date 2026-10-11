@@ -15,6 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Profile themes + download folders: theme preference is per-profile; Kids defaults to **Cinema-Ink Kids**, adults to **Cinema-Ink Dark**; offline files land in visible `profiles/<Name>` folders (Settings path + Downloads chip show the folder)
 
 ### Added
+- Spoiler Shield: blur episode titles and thumbs until unlock — always on for Kids (PIN gate), opt-in for adult profiles — Mobile + TV season/Continue rows
 - **Export/Import Profil:** Settings → Profiles — QR or JSON file transfer of settings, watchlist, and episode notes (no offline downloads / PINs); Mobile + TV
 - Subtitle Studio light: per-profile caption size / color / background, Studio presets, Settings preview strip, and live player sample cue while editing Caption style (Mobile + TV)
 - **Search Memories:** “Searched back then” / „Damals gesucht“ chip strip on Search (Mobile + TV) — keeps successful, empty, and failed queries for one-tap retry

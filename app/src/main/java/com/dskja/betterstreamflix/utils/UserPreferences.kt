@@ -1043,6 +1043,16 @@ object UserPreferences {
             setProfileScopedBoolean(Key.SHOW_SMART_COLLECTIONS, value)
         }
 
+    /**
+     * Adult opt-in for Spoiler Shield (Kids profiles always shield).
+     * Profile-scoped — blur episode titles/thumbs until unlock.
+     */
+    var spoilerShieldEnabled: Boolean
+        get() = profileScopedBoolean(Key.SPOILER_SHIELD_ENABLED) ?: false
+        set(value) {
+            setProfileScopedBoolean(Key.SPOILER_SHIELD_ENABLED, value)
+        }
+
     /** When false, Home hides the watchlist “New this week” calendar strip. */
     var showWatchlistWeek: Boolean
         get() = profileScopedBoolean(Key.SHOW_WATCHLIST_WEEK) ?: true
@@ -1857,6 +1867,7 @@ object UserPreferences {
         SHOW_RECENTLY_WATCHED,
         SHOW_NEXT_EPISODES,
         SHOW_SMART_COLLECTIONS,
+        SPOILER_SHIELD_ENABLED,
         SHOW_WATCHLIST_WEEK,
         HOME_SHELF_BLOCK_ORDER,
         HOME_SHELF_PINS_JSON,

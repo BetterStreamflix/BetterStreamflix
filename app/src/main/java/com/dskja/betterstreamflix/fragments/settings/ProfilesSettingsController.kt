@@ -227,6 +227,20 @@ object ProfilesSettingsController {
             }
         }
 
+        findPreference("SPOILER_SHIELD_ENABLED")?.let { pref ->
+            val switch = pref as? SwitchPreferenceCompat ?: return@let
+            switch.setOnPreferenceChangeListener { _, newValue ->
+                if (ProfileManager.isKidsActive()) {
+                    // Kids always shields; the toggle is display-only there.
+                    return@setOnPreferenceChangeListener false
+                }
+                UserPreferences.spoilerShieldEnabled = newValue as Boolean
+                com.dskja.betterstreamflix.spoilers.SpoilerShield.clearSession()
+                refresh(findPreference, context, fragment)
+                true
+            }
+        }
+
         findPreference("KIDS_BEDTIME_TIME")?.setOnPreferenceClickListener {
             if (!ProfileManager.isKidsActive()) return@setOnPreferenceClickListener true
             com.dskja.betterstreamflix.kids.KidsBedtimeUi.showTimePicker(context) {
@@ -339,6 +353,23 @@ object ProfilesSettingsController {
             isVisible = kidsProfile && UserPreferences.kidsBedtimeEnabled
             isEnabled = kidsProfile && UserPreferences.kidsBedtimeEnabled
             summary = com.dskja.betterstreamflix.kids.KidsBedtimeUi.timeSummary(context)
+        }
+        (findPreference("SPOILER_SHIELD_ENABLED") as? SwitchPreferenceCompat)?.apply {
+            if (kidsProfile) {
+                isChecked = true
+                isEnabled = false
+                summary = context.getString(R.string.settings_spoiler_shield_summary_kids)
+            } else {
+                isEnabled = true
+                isChecked = UserPreferences.spoilerShieldEnabled
+                summary = context.getString(
+                    if (UserPreferences.spoilerShieldEnabled) {
+                        R.string.settings_spoiler_shield_summary_on
+                    } else {
+                        R.string.settings_spoiler_shield_summary_off
+                    },
+                )
+            }
         }
 
         findPreference("PROFILE_PIN")?.summary = if (profile?.pinHash != null) {
