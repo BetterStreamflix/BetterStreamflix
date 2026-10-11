@@ -134,8 +134,10 @@ class HomeMobileFragment : Fragment() {
         refreshProfileChip()
         // Soft-resume featured auto-advance — avoid notifyItemChanged (full rebind glitches).
         _binding?.rvHome?.let { appAdapter.resumeCategorySwipers(it) }
-        // Belt-and-suspenders: any leaked detail/dialog trailer must die on Home.
+        // Clean Exit: kill any leaked player/trailer audio on Home.
         com.dskja.betterstreamflix.ui.TrailerPlaybackController.silenceAllActive()
+        com.dskja.betterstreamflix.player.PlaybackLifecycleGuard.stopActivePlayback()
+        com.dskja.betterstreamflix.player.PlayerCleanExit.consumeHomeFocusRestore()
         // Soft-refresh library/history (same path as UserDataNotifier).
         viewModel.softRefreshUserData()
     }

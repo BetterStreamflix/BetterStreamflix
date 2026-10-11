@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Changed
+- **Clean Exit:** Back from the player mutes audio immediately (no Exo/MediaSession/trailer zombie) and restores exact Home DPAD focus on TV (Continue Watching tile / Featured); Mobile + TV
 - **Looks Locked:** Settings offers only three complete Looks — **Cinema-Ink Dark**, **Cinema-Ink Light**, **Cinema-Ink Kids**. Retired accent palettes and OLED half-mix migrate to Dark; no mixed accents
 - Cinema Ink consistency (Mobile + TV): Featured TV CTAs/text use shared Detail styles and `cinema_*` tokens; TV player chrome (root, exo controller, settings) maps to the same ink/scrim/elevated/text roles; Detail section rules use `bg_cinema_accent_rule`; secondary TV glass and progress tracks share tokens
 - TV season episode list: per-episode Download CTA (one OK on the Cinema Ink secondary control) wires into `DownloadOptionsController.enqueueEpisode` — long-press options remain as a secondary path

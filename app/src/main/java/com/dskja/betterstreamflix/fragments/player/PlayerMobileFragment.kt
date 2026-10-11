@@ -844,11 +844,15 @@ class PlayerMobileFragment : Fragment(),
 
     /**
      * Hard-stop local audio/video. Called from Back, destination changes, and teardown.
-     * Idempotent — safe if already released.
+     * Idempotent — safe if already released. Clean Exit: mute first, no audio zombie.
      */
     fun forceStopPlayback() {
         isTearingDown = true
+        com.dskja.betterstreamflix.player.PlayerCleanExit.noteLeavingPlayer()
+        val live = if (::player.isInitialized && !playerReleased) player else null
+        com.dskja.betterstreamflix.player.PlayerCleanExit.silenceExo(live)
         releasePlayer(ReleaseMode.SOFT_LEAVE)
+        runCatching { com.dskja.betterstreamflix.ui.TrailerPlaybackController.silenceAllActive() }
     }
 
     private fun mayRunPlayerListenerWork(): Boolean =
@@ -1009,8 +1013,10 @@ class PlayerMobileFragment : Fragment(),
     private fun safeNavigateUp() {
         if (!isAdded) return
         if (!isTearingDown) {
-            // Soft-stop before pop so audio stops immediately; Exo release waits for onDestroyView.
+            // Clean Exit: mute + soft-stop before pop; Exo release waits for onDestroyView.
             forceStopPlayback()
+        } else {
+            com.dskja.betterstreamflix.player.PlayerCleanExit.noteLeavingPlayer()
         }
         runCatching { findNavController().navigateUp() }
     }
@@ -4213,11 +4219,8 @@ class PlayerMobileFragment : Fragment(),
         if (::player.isInitialized && !playerReleased) {
             playbackListener?.let { runCatching { player.removeListener(it) } }
             playbackListener = null
-            // Soft leave: pause only. stop/clear/release race OEM surface teardown on Back.
-            runCatching {
-                player.playWhenReady = false
-                player.pause()
-            }
+            // Clean Exit: mute then pause. stop/clear/release race OEM surface teardown on Back.
+            com.dskja.betterstreamflix.player.PlayerCleanExit.silenceExo(player)
             playbackSoftStopped = true
 
             val hardRelease = when (mode) {

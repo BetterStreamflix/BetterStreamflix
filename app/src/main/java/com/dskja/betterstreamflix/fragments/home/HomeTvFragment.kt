@@ -88,6 +88,26 @@ class HomeTvFragment : Fragment() {
         return true
     }
 
+    /**
+     * Clean Exit: restore the exact Home tile that launched the player.
+     * Falls back to Featured Watch / first shelf when the token is stale.
+     */
+    fun restoreCleanExitFocus(): Boolean {
+        val grid = _binding?.vgvHome ?: return false
+        if (!grid.isAttachedToWindow || (grid.adapter?.itemCount ?: 0) == 0) return false
+        if (!com.dskja.betterstreamflix.player.PlayerCleanExit.shouldRestoreHomeFocus()) return false
+        val token = com.dskja.betterstreamflix.player.PlayerCleanExit.peekHomeFocusToken()
+            ?: return false
+        grid.post {
+            val root = _binding?.vgvHome ?: return@post
+            val landed = com.dskja.betterstreamflix.player.PlayerCleanExit
+                .restoreHomeFocus(root, token)
+            com.dskja.betterstreamflix.player.PlayerCleanExit.consumeHomeFocusRestore()
+            if (!landed) focusHomeContent()
+        }
+        return true
+    }
+
     override fun onCreateView(
         inflater: LayoutInflater,
         container: ViewGroup?,
@@ -170,7 +190,11 @@ class HomeTvFragment : Fragment() {
         super.onResume()
         refreshProfileChip()
         com.dskja.betterstreamflix.ui.TrailerPlaybackController.silenceAllActive()
-        // Returning from player / detail often leaves DPAD on side nav; restore content focus.
+        // Clean Exit: prefer exact remembered tile after player; else Featured / first shelf.
+        if (com.dskja.betterstreamflix.player.PlayerCleanExit.shouldRestoreHomeFocus()) {
+            if (restoreCleanExitFocus()) return
+        }
+        // Returning from detail often leaves DPAD on side nav; restore content focus.
         val grid = _binding?.vgvHome
         val contentVisible = grid != null &&
             grid.visibility == View.VISIBLE &&

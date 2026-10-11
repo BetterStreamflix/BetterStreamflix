@@ -22,6 +22,8 @@ import com.dskja.betterstreamflix.databinding.ActivityMainTvBinding
 import com.dskja.betterstreamflix.databinding.ContentHeaderMenuMainTvBinding
 import com.dskja.betterstreamflix.fragments.player.PlayerTvFragment
 import com.dskja.betterstreamflix.player.PlaybackLifecycleGuard
+import com.dskja.betterstreamflix.player.PlayerCleanExit
+import com.dskja.betterstreamflix.ui.TrailerPlaybackController
 import com.dskja.betterstreamflix.ui.UpdateAppTvDialog
 import com.dskja.betterstreamflix.providers.IptvProvider
 import com.dskja.betterstreamflix.providers.Provider
@@ -51,6 +53,8 @@ class MainTvActivity : FragmentActivity() {
 
     private var lastNavHeaderLogoUrl: Any? = null
     private var castSessionStateListener: ((Boolean) -> Unit)? = null
+    /** Tracks prior Nav destination so Clean Exit can restore focus after player. */
+    private var lastNavDestinationId: Int? = null
 
     override fun attachBaseContext(newBase: android.content.Context) {
         super.attachBaseContext(AccessibilityPreferences.wrapAfterLanguage(newBase))
@@ -132,8 +136,13 @@ class MainTvActivity : FragmentActivity() {
         }
 
         navController.addOnDestinationChangedListener { _, destination, _ ->
+            val leavingPlayer = lastNavDestinationId == R.id.player && destination.id != R.id.player
             if (destination.id != R.id.player) {
                 PlaybackLifecycleGuard.stopActivePlayback()
+                if (leavingPlayer) {
+                    PlayerCleanExit.noteLeavingPlayer()
+                    runCatching { TrailerPlaybackController.silenceAllActive() }
+                }
             }
             binding.navMain.headerView?.apply {
                 val header = ContentHeaderMenuMainTvBinding.bind(this)
@@ -173,11 +182,21 @@ class MainTvActivity : FragmentActivity() {
                 R.id.search, R.id.home, R.id.live_hub, R.id.movies, R.id.tv_shows, R.id.favorites, R.id.downloads, R.id.settings -> {
                     binding.navMain.visibility = View.VISIBLE
                     updateNavigationVisibility()
+                    if (leavingPlayer) {
+                        // Clean Exit: land DPAD on exact Home tile (or content for other tabs).
+                        binding.root.post {
+                            if (destination.id == R.id.home) {
+                                focusHomeAfterCleanExit()
+                            } else {
+                                requestBrowseContentFocus()
+                            }
+                        }
+                    }
                 }
                 else -> {
                     val navHadFocus = binding.navMain.hasFocus()
                     binding.navMain.visibility = View.GONE
-                    if (navHadFocus) {
+                    if (navHadFocus || leavingPlayer) {
                         // Destination-specific handoff — never leave focus on the NavHost container.
                         binding.navMainFragment.post {
                             handoffFocusToDestination(destination.id)
@@ -186,6 +205,7 @@ class MainTvActivity : FragmentActivity() {
                 }
             }
             refreshCastStatusStrip(playerVisible = destination.id == R.id.player)
+            lastNavDestinationId = destination.id
         }
 
         lifecycleScope.launch {
@@ -576,6 +596,17 @@ class MainTvActivity : FragmentActivity() {
         if (home?.requestContentFocus() != true) {
             binding.navMain.requestFocus()
         }
+    }
+
+    /** Clean Exit from player → exact remembered Home tile, else Featured / first shelf. */
+    private fun focusHomeAfterCleanExit() {
+        val host = supportFragmentManager
+            .findFragmentById(binding.navMainFragment.id) as? NavHostFragment
+        val home = host?.childFragmentManager?.primaryNavigationFragment
+            as? com.dskja.betterstreamflix.fragments.home.HomeTvFragment
+        if (home?.restoreCleanExitFocus() == true) return
+        if (home?.requestContentFocus() == true) return
+        binding.navMain.requestFocus()
     }
 
     /** Side-nav DPAD-RIGHT → content for the current browse destination. */

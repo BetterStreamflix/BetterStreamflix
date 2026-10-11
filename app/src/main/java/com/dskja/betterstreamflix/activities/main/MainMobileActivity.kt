@@ -83,6 +83,9 @@ class MainMobileActivity : FragmentActivity() {
     private var _binding: ActivityMainMobileBinding? = null
     private val binding get() = _binding!!
 
+        /** Tracks prior Nav destination for Clean Exit audio/focus. */
+    private var lastNavDestinationId: Int? = null
+
     private val viewModel by viewModels<MainViewModel>()
     private val resolverWebSocketClient by lazy { OkHttpClient() }
     private val bypassWebViewLauncher =
@@ -283,13 +286,21 @@ class MainMobileActivity : FragmentActivity() {
         updateBottomNavigationVisibility(navController.currentDestination?.id)
 
         navController.addOnDestinationChangedListener { _, destination, _ ->
+            val leavingPlayer = lastNavDestinationId == R.id.player && destination.id != R.id.player
             if (destination.id != R.id.player) {
-                // Bottom nav / deep links can leave the player without Back — kill audio.
+                // Clean Exit: bottom nav / deep links can leave the player without Back — kill audio.
                 PlaybackLifecycleGuard.stopActivePlayback()
+                if (leavingPlayer) {
+                    com.dskja.betterstreamflix.player.PlayerCleanExit.noteLeavingPlayer()
+                    runCatching {
+                        com.dskja.betterstreamflix.ui.TrailerPlaybackController.silenceAllActive()
+                    }
+                }
             }
             updateNavigationVisibility(destination.id)
             updateBottomNavigationVisibility(destination.id)
             binding.mainContent.post { binding.mainContent.requestApplyInsets() }
+            lastNavDestinationId = destination.id
         }
 
         lifecycleScope.launch {

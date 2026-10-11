@@ -22,11 +22,13 @@ class PlayerTeardownPolicyTest {
     }
 
     @Test
-    fun softStop_pausesBeforeDetachAndSessionRelease() {
+    fun softStop_mutesBeforePauseAndDetachesBeforeSessionRelease() {
         val steps = PlayerTeardownPolicy.softStopSteps
+        assertTrue(steps.indexOf("mute_volume") < steps.indexOf("pause_playback"))
         assertTrue(steps.indexOf("pause_playback") < steps.indexOf("detach_player_view"))
         assertTrue(steps.indexOf("detach_player_view") < steps.indexOf("release_media_session"))
         assertTrue(steps.indexOf("release_media_session") < steps.indexOf("remove_player_listeners"))
+        assertTrue(steps.contains("silence_trailers"))
     }
 
     @Test
