@@ -765,6 +765,7 @@ class TvShowViewHolder(
             FeaturedSwiperChrome.wireWatchButton(this)
             com.dskja.betterstreamflix.player.PlayerCleanExit.tagFeaturedWatch(this)
             text = FeaturedHeroController.watchCtaLabel(context, tvShow)
+            contentDescription = context.getString(R.string.a11y_featured_watch, tvShow.title)
             applyExpPress()
             setOnClickListener(openTvShow)
             setOnLongClickListener { view ->
@@ -826,7 +827,11 @@ class TvShowViewHolder(
             )
         }
 
-        FeaturedSwiperChrome.bindListButton(binding.btnSwiperAddToList, tvShow.isFavorite)
+        FeaturedSwiperChrome.bindListButton(
+            binding.btnSwiperAddToList,
+            tvShow.isFavorite,
+            title = tvShow.title,
+        )
         binding.btnSwiperAddToList.apply {
             applyExpPress()
             setOnClickListener {
@@ -847,7 +852,11 @@ class TvShowViewHolder(
         ) { favorite ->
             if (tvShow.id != boundTvShowId) return@observeListStateTv
             tvShow.isFavorite = favorite
-            FeaturedSwiperChrome.bindListButton(binding.btnSwiperAddToList, favorite)
+            FeaturedSwiperChrome.bindListButton(
+                binding.btnSwiperAddToList,
+                favorite,
+                title = tvShow.title,
+            )
         }
 
         // Nested clickables confuse TalkBack — keep chrome buttons primary.

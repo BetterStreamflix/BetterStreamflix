@@ -1235,13 +1235,31 @@
                 android:defaultValue="false"
                 app:iconSpaceReserved="false" />
 
-            <SwitchPreference
-                android:key="OLED_MODE"
-                android:title="@string/settings_oled_mode_title"
-                android:summary="@string/settings_oled_mode_summary"
-                android:defaultValue="false"
-                android:visible="false"
+            <!-- Cinema Room master + Ambient nest (profile-scoped; affects TV Ambient). -->
+            <SwitchPreferenceCompat
+                android:key="CINEMA_ROOM"
+                android:title="@string/settings_cinema_room_master_title"
+                android:summary="@string/settings_cinema_room_mobile_summary"
+                android:defaultValue="true"
                 app:iconSpaceReserved="false" />
+
+            <SwitchPreferenceCompat
+                android:key="TV_AMBIENT_MODE"
+                android:title="@string/settings_tv_ambient_mode_title"
+                android:summary="@string/settings_tv_ambient_mode_mobile_summary"
+                android:defaultValue="true"
+                android:dependency="CINEMA_ROOM"
+                app:iconSpaceReserved="false" />
+
+            <SwitchPreferenceCompat
+                android:key="CINEMA_AMBIENT_LIGHT"
+                android:title="@string/settings_cinema_ambient_light_title"
+                android:summary="@string/settings_cinema_ambient_light_summary"
+                android:defaultValue="true"
+                android:dependency="CINEMA_ROOM"
+                app:iconSpaceReserved="false" />
+
+            <!-- OLED half-mix retired (Looks Locked) — do not re-add. -->
 
             <SwitchPreference
                 android:key="IMMERSIVE_MODE"

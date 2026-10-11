@@ -67,11 +67,22 @@ object HomeRemix {
         }
         val n = name?.trim().orEmpty()
         if (n.isEmpty() || Category.isFeaturedName(n)) return null
+        if (id.equals(Category.FAMILY_FRIDAY, ignoreCase = true) ||
+            id.equals(Category.NEW_THIS_WEEK, ignoreCase = true) ||
+            n.equals(Category.FAMILY_FRIDAY, ignoreCase = true) ||
+            n.equals(Category.NEW_THIS_WEEK, ignoreCase = true)
+        ) {
+            return Block.CONTINUE
+        }
         return when {
             n.equals(Category.CONTINUE_WATCHING, ignoreCase = true) ||
                 n.equals(Category.NEXT_EPISODES, ignoreCase = true) ||
                 n.equals(Category.RECENTLY_WATCHED, ignoreCase = true) ||
-                n.equals(Category.RECENTLY_ADDED, ignoreCase = true) -> Block.CONTINUE
+                n.equals(Category.RECENTLY_ADDED, ignoreCase = true) ||
+                id.equals(Category.CONTINUE_WATCHING, ignoreCase = true) ||
+                id.equals(Category.NEXT_EPISODES, ignoreCase = true) ||
+                id.equals(Category.RECENTLY_WATCHED, ignoreCase = true) ||
+                id.equals(Category.RECENTLY_ADDED, ignoreCase = true) -> Block.CONTINUE
             n.equals(Category.HOME_LIVE, ignoreCase = true) -> Block.LIVE
             n.equals(Category.SMART_CHILL_EVENING, ignoreCase = true) ||
                 n.equals(Category.SMART_WITH_KIDS, ignoreCase = true) ||

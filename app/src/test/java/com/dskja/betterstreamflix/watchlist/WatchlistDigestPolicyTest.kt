@@ -21,14 +21,18 @@ class WatchlistDigestPolicyTest {
 
 class WatchlistDigestPlannerTest {
 
+    private fun recentEpisode(id: String, number: Int, title: String? = null) =
+        com.dskja.betterstreamflix.models.Episode(
+            id = id,
+            number = number,
+            title = title,
+            released = java.time.LocalDate.now().minusDays(2).toString(),
+        )
+
     @Test
     fun selectCapsAtFiveAndKeepsFavoriteOrder() {
         val eps = (1..8).associate { i ->
-            "p:show$i" to com.dskja.betterstreamflix.models.Episode(
-                id = "e$i",
-                number = i,
-                title = "Ep $i",
-            )
+            "p:show$i" to recentEpisode("e$i", i, "Ep $i")
         }
         val keys = (1..8).map { "p:show$it" }
         val picked = WatchlistDigestPlanner.selectDigestEpisodes(keys, eps, max = 5)
@@ -39,8 +43,8 @@ class WatchlistDigestPlannerTest {
     @Test
     fun selectSkipsMissingShowsAndDedupesKeys() {
         val eps = mapOf(
-            "p:a" to com.dskja.betterstreamflix.models.Episode(id = "ea", number = 1),
-            "p:c" to com.dskja.betterstreamflix.models.Episode(id = "ec", number = 3),
+            "p:a" to recentEpisode("ea", 1),
+            "p:c" to recentEpisode("ec", 3),
         )
         val keys = listOf("p:a", "p:b", "p:a", "p:c")
         val picked = WatchlistDigestPlanner.selectDigestEpisodes(keys, eps, max = 5)
@@ -52,6 +56,20 @@ class WatchlistDigestPlannerTest {
         val picked = WatchlistDigestPlanner.selectDigestEpisodes(
             favoriteKeysInOrder = listOf("p:a"),
             nextByShowKey = emptyMap(),
+        )
+        assertTrue(picked.isEmpty())
+    }
+
+    @Test
+    fun selectSkipsStaleAirDates() {
+        val stale = com.dskja.betterstreamflix.models.Episode(
+            id = "old",
+            number = 1,
+            released = java.time.LocalDate.now().minusDays(40).toString(),
+        )
+        val picked = WatchlistDigestPlanner.selectDigestEpisodes(
+            favoriteKeysInOrder = listOf("p:a"),
+            nextByShowKey = mapOf("p:a" to stale),
         )
         assertTrue(picked.isEmpty())
     }

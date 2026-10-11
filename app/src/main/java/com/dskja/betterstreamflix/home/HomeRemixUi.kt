@@ -40,7 +40,6 @@ object HomeRemixUi {
                 val item = order.removeAt(from)
                 order.add(to, item)
                 adapter.notifyItemMoved(from, to)
-                adapter.notifyItemRangeChanged(0, order.size)
                 ExpMotion.hapticTap(recycler)
             },
         )
@@ -61,7 +60,6 @@ object HomeRemixUi {
                 val item = order.removeAt(from)
                 order.add(to, item)
                 adapter.notifyItemMoved(from, to)
-                adapter.notifyItemRangeChanged(0, order.size)
                 return true
             }
 

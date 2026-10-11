@@ -95,12 +95,14 @@ object ChannelPinStore {
 
     /**
      * When the strip is empty, seed from live favorites so first-run feels populated.
-     * Does nothing when the user already has pins (including after clearing to empty —
-     * pass [force] only for tests).
+     * Once the prefs key exists (including intentional empty `[]` after unpin-all),
+     * never reseed — unpin-all must stick.
      */
     fun seedFromFavoritesIfEmpty(context: Context, favorites: List<TvShow>): List<Pin> {
-        val existing = list(context)
-        if (existing.isNotEmpty()) return existing
+        val prefs = prefs(context)
+        if (prefs.contains(prefKey())) {
+            return list(context)
+        }
         val seeded = favorites
             .filter { LiveHubCatalog.isLiveFavorite(it) }
             .distinctBy { LiveHubCatalog.identityKey(it) }

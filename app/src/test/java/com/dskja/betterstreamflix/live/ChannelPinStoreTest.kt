@@ -38,8 +38,23 @@ class ChannelPinStoreTest {
         `when`(prefs.getString(eq("CHANNEL_PINS_JSON"), eq(null))).thenAnswer {
             store["CHANNEL_PINS_JSON"]
         }
+        `when`(prefs.contains(anyString())).thenAnswer { inv ->
+            store.containsKey(inv.getArgument(0))
+        }
         ChannelPinStore.clear(context)
         store.clear()
+    }
+
+    @Test
+    fun unpinAllSticksWithoutReseed() {
+        val fav = show("live1", "DaddyLive TV", "News")
+        ChannelPinStore.pin(context, fav)
+        ChannelPinStore.clear(context)
+        assertTrue(ChannelPinStore.list(context).isEmpty())
+        assertTrue(prefs.contains("CHANNEL_PINS_JSON"))
+        val seeded = ChannelPinStore.seedFromFavoritesIfEmpty(context, listOf(fav))
+        assertTrue(seeded.isEmpty())
+        assertTrue(ChannelPinStore.list(context).isEmpty())
     }
 
     private fun show(id: String, provider: String, title: String = id) =

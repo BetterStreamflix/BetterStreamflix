@@ -1234,16 +1234,28 @@ class SettingsMobileFragment : PreferenceFragmentCompat() {
         findPreference<ListPreference>("SELECTED_THEME")?.apply {
             // Looks Locked: migrate retired themes / OLED half-mix onto one of three Looks.
             val locked = ThemeManager.resolveLook(UserPreferences.selectedTheme)
-            if (UserPreferences.selectedTheme != locked) {
-                UserPreferences.selectedTheme = locked
+            val kids = com.dskja.betterstreamflix.profiles.ProfileManager.isKidsActive()
+            val clamped = if (kids) ThemeManager.KIDS_BRIGHT else locked
+            if (UserPreferences.selectedTheme != clamped) {
+                UserPreferences.selectedTheme = clamped
             }
             UserPreferences.oledMode = false
-            value = locked
+            if (kids) {
+                entries = arrayOf(getString(R.string.theme_kids_bright))
+                entryValues = arrayOf(ThemeManager.KIDS_BRIGHT)
+            }
+            value = clamped
             summaryProvider = Preference.SummaryProvider<ListPreference> { pref ->
                 getString(ThemeManager.titleRes(pref.value ?: ThemeManager.CINEMA_INK))
             }
             setOnPreferenceChangeListener { preference, newValue ->
-                val newTheme = ThemeManager.resolveLook(newValue as String)
+                val kidsActive =
+                    com.dskja.betterstreamflix.profiles.ProfileManager.isKidsActive()
+                val newTheme = if (kidsActive) {
+                    ThemeManager.KIDS_BRIGHT
+                } else {
+                    ThemeManager.resolveLook(newValue as String)
+                }
                 UserPreferences.oledMode = false
                 UserPreferences.selectedTheme = newTheme
                 if (preference is ListPreference) {
@@ -1266,17 +1278,49 @@ class SettingsMobileFragment : PreferenceFragmentCompat() {
             }
             setOnPreferenceChangeListener { _, newValue ->
                 UserPreferences.stickEnergyMode = newValue as Boolean
+                requireActivity().apply {
+                    finish()
+                    startActivity(Intent(this, MainMobileActivity::class.java))
+                }
                 true
             }
         }
 
-        findPreference<SwitchPreference>("OLED_MODE")?.apply {
-            // Looks Locked — hide OLED half-mix toggle.
-            isVisible = false
-            isChecked = false
-            UserPreferences.oledMode = false
-            setOnPreferenceChangeListener { _, _ -> false }
+        findPreference<SwitchPreferenceCompat>("CINEMA_ROOM")?.apply {
+            isChecked = UserPreferences.cinemaRoomEnabled
+            summary = getString(R.string.settings_cinema_room_mobile_summary)
+            setOnPreferenceChangeListener { _, newValue ->
+                val enabled = newValue as Boolean
+                UserPreferences.cinemaRoomEnabled = enabled
+                if (enabled) {
+                    com.dskja.betterstreamflix.ui.CinemaRoomController.onCinemaRoomEnabled()
+                }
+                findPreference<SwitchPreferenceCompat>("TV_AMBIENT_MODE")?.isEnabled = enabled
+                findPreference<SwitchPreferenceCompat>("CINEMA_AMBIENT_LIGHT")?.isEnabled = enabled
+                true
+            }
         }
+
+        findPreference<SwitchPreferenceCompat>("TV_AMBIENT_MODE")?.apply {
+            isChecked = UserPreferences.tvAmbientModeEnabled
+            isEnabled = UserPreferences.cinemaRoomEnabled
+            summary = getString(R.string.settings_tv_ambient_mode_mobile_summary)
+            setOnPreferenceChangeListener { _, newValue ->
+                UserPreferences.tvAmbientModeEnabled = newValue as Boolean
+                true
+            }
+        }
+
+        findPreference<SwitchPreferenceCompat>("CINEMA_AMBIENT_LIGHT")?.apply {
+            isChecked = UserPreferences.cinemaAmbientLightHints
+            isEnabled = UserPreferences.cinemaRoomEnabled
+            setOnPreferenceChangeListener { _, newValue ->
+                UserPreferences.cinemaAmbientLightHints = newValue as Boolean
+                true
+            }
+        }
+
+        // OLED half-mix retired (Looks Locked) — preference removed from settings_mobile.xml.
 
         findPreference<SwitchPreference>("LARGE_TEXT")?.apply {
             isChecked = UserPreferences.largeText
@@ -1579,8 +1623,8 @@ class SettingsMobileFragment : PreferenceFragmentCompat() {
                 val enabled = newValue as Boolean
                 UserPreferences.homeWatchlistDigestEnabled = enabled
                 if (enabled) {
-                    // Re-enable clears a prior permanent dismiss so the weekly card can return.
-                    UserPreferences.homeWatchlistDigestDismissed = false
+                    // Re-enable clears dismiss + show-cap / timestamps so the weekly card can return.
+                    com.dskja.betterstreamflix.watchlist.WatchlistDigestPolicy.resetForReEnable()
                 }
                 UserDataNotifier.notifyChanged()
                 true
@@ -1606,7 +1650,10 @@ class SettingsMobileFragment : PreferenceFragmentCompat() {
         }
 
         findPreference<Preference>("HOME_REMIX_OPEN")?.setOnPreferenceClickListener {
-            com.dskja.betterstreamflix.home.HomeRemixUi.show(this)
+            com.dskja.betterstreamflix.home.HomeRemixUi.show(this) {
+                // Soft refresh already fired inside show; bump again so Home clears bind signature.
+                UserDataNotifier.notifyChanged()
+            }
             true
         }
 

@@ -38,8 +38,14 @@ object WatchlistDigestQueue {
     ): Result = withContext(Dispatchers.IO) {
         if (episodes.isEmpty()) return@withContext Result(0, null)
         val seeded = seedNextEpisodes(context, episodes)
-        WatchlistDigestPolicy.recordQueued()
-        Result(seededCount = seeded, firstEpisode = episodes.firstOrNull())
+        // Cool-down only after a successful seed — failed seeds must not burn the week.
+        if (seeded > 0) {
+            WatchlistDigestPolicy.recordQueued()
+        }
+        Result(
+            seededCount = seeded,
+            firstEpisode = episodes.firstOrNull().takeIf { seeded > 0 },
+        )
     }
 
     fun seedNextEpisodes(context: Context, episodes: List<Episode>): Int {

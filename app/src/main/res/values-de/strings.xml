@@ -43,6 +43,7 @@
     <string name="meine_sender_leiste_unpin">Von Sender-Leiste entfernen</string>
     <string name="meine_sender_leiste_pinned">Zur Sender-Leiste hinzugefügt</string>
     <string name="meine_sender_leiste_unpinned">%1$s von Sender-Leiste entfernt</string>
+    <string name="meine_sender_leiste_pin_cd">%1$s. Lange drücken zum Entfernen</string>
     <string name="main_menu_movies">Filme</string>
     <string name="main_menu_tv_shows">Serien</string>
     <string name="main_menu_all_channels">Alle Kanäle</string>
@@ -1593,6 +1594,11 @@
     <string name="settings_stick_energy_mode_summary">Fire Stick: weniger Parallel-Provider, SW-Decoder-Bias, weniger UI-Motion (auto-an auf Amazon Fire TV)</string>
     <string name="settings_tv_ambient_mode_title">Ambient-Modus</string>
     <string name="settings_tv_ambient_mode_summary">Nach Leerlauf auf Home: sanfte Poster-Cinemagraphs mit Weiterschauen (High-End-TVs; burn-in sicher)</string>
+    <string name="settings_cinema_room_mobile_summary">Wohnzimmer-Markenkern für gekoppelte TVs — Looks, Ambient-Leerlauf, Trailer→Play. Für Erwachsene sichtbar; Kids bleibt auf Kids Bright.</string>
+    <string name="settings_tv_ambient_mode_mobile_summary">Wenn Cinema Room an ist, laufen Ambient-Poster im Leerlauf auf TV-Home (unter Cinema Room)</string>
+    <string name="a11y_featured_watch">%1$s ansehen</string>
+    <string name="a11y_featured_my_list">Meine Liste für %1$s</string>
+    <string name="a11y_featured_in_my_list">%1$s in Meiner Liste</string>
     <string name="tv_ambient_continue_label">Weiterschauen</string>
     <string name="settings_cinema_room_title">Cinema Room</string>
     <string name="settings_cinema_room_summary">Wohnzimmer-Markenkern — Looks, Ambient, Trailer→Play, Skip, End-Card, Clean Exit</string>

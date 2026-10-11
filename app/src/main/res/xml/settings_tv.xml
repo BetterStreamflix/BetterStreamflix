@@ -1123,12 +1123,7 @@
                 </PreferenceCategory>
             </PreferenceScreen>
 
-            <SwitchPreference
-                android:key="OLED_MODE"
-                android:title="@string/settings_oled_mode_title"
-                android:summary="@string/settings_oled_mode_summary"
-                android:defaultValue="false"
-                android:visible="false" />
+            <!-- OLED half-mix retired (Looks Locked) — do not re-add. -->
         </PreferenceCategory>
 
         <PreferenceCategory

@@ -42,6 +42,32 @@ class LeanbackDensityPolicyTest {
     }
 
     @Test
+    fun ambientStripHeight_matchesPosterPlusPadding() {
+        val comfort = LeanbackDensityPolicy.Mode.COMFORT
+        val compact = LeanbackDensityPolicy.Mode.COMPACT
+        assertEquals(
+            LeanbackDensityPolicy.shelfPosterHeightDp(comfort) + 8,
+            LeanbackDensityPolicy.ambientStripHeightDp(comfort),
+        )
+        assertEquals(
+            LeanbackDensityPolicy.shelfPosterHeightDp(compact) + 8,
+            LeanbackDensityPolicy.ambientStripHeightDp(compact),
+        )
+        assertTrue(
+            LeanbackDensityPolicy.ambientStripHeightDp(comfort) >
+                LeanbackDensityPolicy.ambientStripHeightDp(compact),
+        )
+    }
+
+    @Test
+    fun featuredCardHeight_compactIsShorter() {
+        assertTrue(
+            LeanbackDensityPolicy.featuredCardHeightDp(LeanbackDensityPolicy.Mode.COMFORT) >
+                LeanbackDensityPolicy.featuredCardHeightDp(LeanbackDensityPolicy.Mode.COMPACT),
+        )
+    }
+
+    @Test
     fun favoritesColumnCount_scalesWithScreenAndMode() {
         val wide = LeanbackDensityPolicy.favoritesColumnCount(1920, LeanbackDensityPolicy.Mode.COMPACT)
         val comfort = LeanbackDensityPolicy.favoritesColumnCount(1920, LeanbackDensityPolicy.Mode.COMFORT)

@@ -1,5 +1,6 @@
 package com.dskja.betterstreamflix.familyfriday
 
+import android.util.Log
 import com.dskja.betterstreamflix.adapters.AppAdapter
 import com.dskja.betterstreamflix.models.Category
 import com.dskja.betterstreamflix.models.Movie
@@ -21,6 +22,7 @@ import kotlin.random.Random
  */
 object FamilyFridayShelf {
 
+    private const val TAG = "FamilyFriday"
     const val SUGGESTION_COUNT = 3
 
     fun isFamilyFriday(
@@ -31,7 +33,7 @@ object FamilyFridayShelf {
 
     /**
      * @return a [Category.FAMILY_FRIDAY] shelf with exactly [SUGGESTION_COUNT] titles, or null
-     * when the kids/Friday gate fails or fewer than three age-safe candidates exist.
+     * when the kids/Friday gate fails or fewer than three kids-tilted (+padded) candidates exist.
      */
     suspend fun build(
         catalogCategories: List<Category>,
@@ -42,21 +44,51 @@ object FamilyFridayShelf {
         filterAgeSafe: suspend (List<AppAdapter.Item>) -> List<AppAdapter.Item> = {
             ParentalControlUtils.filterItems(it)
         },
+        favoriteCategories: List<Category> = emptyList(),
     ): Category? {
         if (!isKidsActive() || !isFamilyFriday(nowMs, zone)) return null
 
-        val pool = flattenCatalog(catalogCategories)
-        if (pool.size < SUGGESTION_COUNT) return null
+        val pool = flattenCatalog(catalogCategories + favoriteCategories)
+        if (pool.size < SUGGESTION_COUNT) {
+            logOmit("catalog pool thin (${pool.size})")
+            return null
+        }
 
         val ageSafe = filterAgeSafe(pool)
             .distinctBy { ContinueWatchingMerger.identityKey(it) ?: poolKeyFallback(it) }
-        if (ageSafe.size < SUGGESTION_COUNT) return null
+        if (ageSafe.size < SUGGESTION_COUNT) {
+            logOmit("age-safe pool thin (${ageSafe.size})")
+            return null
+        }
 
         val kidsTilt = ageSafe.filter { item ->
             val signals = SmartCollectionRules.signalsFor(item) ?: return@filter false
             SmartCollectionRules.matchesKids(signals)
         }
-        val candidates = if (kidsTilt.size >= SUGGESTION_COUNT) kidsTilt else ageSafe
+        // Prefer kids-tilt; pad with ageSafe only when tilt is thin but non-empty.
+        // Never adult-fill from a zero kids-tilt pool.
+        val candidates = when {
+            kidsTilt.size >= SUGGESTION_COUNT -> kidsTilt
+            kidsTilt.isEmpty() -> {
+                logOmit("no kids-tilt titles")
+                return null
+            }
+            else -> {
+                val tiltKeys = kidsTilt.mapTo(HashSet()) {
+                    ContinueWatchingMerger.identityKey(it) ?: poolKeyFallback(it)
+                }
+                val pad = ageSafe.filter {
+                    val key = ContinueWatchingMerger.identityKey(it) ?: poolKeyFallback(it)
+                    key !in tiltKeys
+                }
+                val padded = kidsTilt + pad
+                if (padded.size < SUGGESTION_COUNT) {
+                    logOmit("padded kids-tilt still thin (${padded.size})")
+                    return null
+                }
+                padded
+            }
+        }
 
         val date = LocalDate.ofInstant(Instant.ofEpochMilli(nowMs), zone)
         val seed = (profileId() + "|" + date).hashCode().toLong()
@@ -103,5 +135,9 @@ object FamilyFridayShelf {
         is Movie -> "movie:${item.id}"
         is TvShow -> "show:${item.id}"
         else -> item.hashCode().toString()
+    }
+
+    private fun logOmit(reason: String) {
+        runCatching { Log.i(TAG, "Family Friday omitted — $reason") }
     }
 }
