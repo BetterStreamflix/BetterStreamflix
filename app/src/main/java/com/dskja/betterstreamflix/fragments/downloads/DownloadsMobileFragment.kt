@@ -234,6 +234,17 @@ class DownloadsMobileFragment : Fragment() {
                 updateBanner(viewModel.lowSpace.value, paused)
             }
         }
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewModel.wifiOnlyEnabled.flowWithLifecycle(lifecycle, Lifecycle.State.STARTED).collect { enabled ->
+                val sw = binding.switchDownloadsWifiOnly
+                if (sw.isChecked != enabled) {
+                    sw.isChecked = enabled
+                }
+            }
+        }
+        binding.switchDownloadsWifiOnly.setOnCheckedChangeListener { _, isChecked ->
+            viewModel.setWifiOnly(isChecked)
+        }
         viewModel.refreshStorage()
         styleFilters(viewModel.currentFilter())
     }

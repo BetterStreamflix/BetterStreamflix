@@ -71,6 +71,32 @@ object OfflinePlayback {
         }.getOrDefault(false)
     }
 
+    /**
+     * True when a COMPLETED Room row still has playable offline bytes
+     * (Media3 index completed, or a real on-disk [DownloadItemEntity.localUri]).
+     * Used to heal dead "Completed" rows after storage relocate / cache wipe.
+     */
+    fun canPlayOffline(context: Context, item: DownloadItemEntity): Boolean {
+        if (item.state != DownloadItemState.COMPLETED.name) return false
+        if (runCatching { DownloadStorage.storageUnavailableReason(context) }.getOrNull() != null) {
+            return false
+        }
+        val cacheRoot = runCatching { DownloadStorage.cacheDir(context) }.getOrNull()
+        if (cacheRoot == null || !cacheRoot.exists() || !cacheRoot.canRead()) return false
+        val download = runCatching {
+            StreamflixDownloadManager.get(context).downloadIndex.getDownload(item.media3Id)
+        }.getOrNull()
+        if (download != null && download.state == Download.STATE_COMPLETED) return true
+        val local = item.localUri
+        if (local.isBlank()) return false
+        if (local.startsWith("http://", ignoreCase = true) ||
+            local.startsWith("https://", ignoreCase = true)
+        ) {
+            return false
+        }
+        return fileFromLocalUri(local) != null
+    }
+
     fun buildLocalVideo(context: Context, item: DownloadItemEntity): Video? {
         if (item.state != DownloadItemState.COMPLETED.name) return null
         val unavailable = runCatching {

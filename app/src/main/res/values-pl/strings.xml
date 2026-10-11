@@ -290,6 +290,17 @@
 <string name="downloads_title">Downloads</string>
 <string name="downloads_watched">watched</string>
 <string name="downloads_wifi_paused">Paused · Wi‑Fi required</string>
+<string name="downloads_wifi_only_toggle">Wi‑Fi only</string>
+<string name="downloads_redownload_needed">Re-download needed</string>
+<string name="downloads_action_redownload">Re-download</string>
+<string name="downloads_section_redownload">Re-download needed</string>
+<string name="downloads_completed_size">%1$s · Ready offline</string>
+<string name="downloads_series_folder_subtitle">%1$d episodes · %2$s</string>
+<string name="downloads_eta_hours_minutes">%1$dh %2$dm left</string>
+<string name="downloads_eta_hours">%1$dh left</string>
+<string name="downloads_eta_minutes_seconds">%1$dm %2$ds left</string>
+<string name="downloads_eta_minutes">%1$dm left</string>
+<string name="downloads_eta_seconds">%1$ds left</string>
 <string name="external_download_adaptive_unsupported">ADM/1DM cannot download HLS/DASH playlists (.m3u8/.mpd). Use in-app Download for this stream.</string>
 <string name="external_download_hls_unsupported">ADM/1DM cannot download HLS playlists (.m3u8). Use in-app Download for this stream.</string>
 <string name="external_download_invalid_url">No downloadable stream URL yet</string>
