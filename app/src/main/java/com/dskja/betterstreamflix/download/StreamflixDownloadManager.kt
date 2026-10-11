@@ -13,6 +13,7 @@ import androidx.media3.datasource.cache.SimpleCache
 import androidx.media3.exoplayer.offline.Download
 import androidx.media3.exoplayer.offline.DownloadManager
 import androidx.media3.exoplayer.offline.DownloadNotificationHelper
+import androidx.media3.exoplayer.scheduler.Requirements
 import com.dskja.betterstreamflix.utils.UserPreferences
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -82,6 +83,8 @@ object StreamflixDownloadManager {
                 executor,
             ).apply {
                 maxParallelDownloads = UserPreferences.downloadMaxConcurrent.coerceIn(1, 4)
+                // Mirror app wifi-only: Media3 will not pull on metered when set.
+                requirements = media3Requirements()
                 addListener(DownloadEventBridge)
             }
             downloadManager = manager
@@ -89,14 +92,54 @@ object StreamflixDownloadManager {
             DownloadEventBridge.attach(app)
             startConnectivityWatcher(app)
             pruneOrphanedSidecarDirs(app)
-            connectivityScope.launch {
-                runCatching {
-                    val items = DownloadRepository.get(app).getAllOnce()
-                    DownloadHeaderStore.rebuildFromRoom(app, items)
+            // Rebuild header host/url maps synchronously before any resume/FGS so
+            // the first HLS segments after process death still get Referer/UA.
+            runCatching {
+                val items = runBlocking(Dispatchers.IO) {
+                    DownloadRepository.get(app).getAllOnce()
                 }
+                DownloadHeaderStore.rebuildFromRoom(app, items)
+            }
+            connectivityScope.launch {
+                runCatching { DownloadRepository.get(app).reconcileOrphanedCompleted() }
             }
             return manager
         }
+    }
+
+    /** Update Media3 network requirements when the wifi-only preference changes. */
+    fun applyWifiOnlyRequirements(context: Context) {
+        val dm = downloadManager ?: runCatching { get(context) }.getOrNull() ?: return
+        dm.requirements = media3Requirements()
+    }
+
+    private fun media3Requirements(): Requirements {
+        val network = if (UserPreferences.downloadWifiOnly) {
+            Requirements.NETWORK_UNMETERED
+        } else {
+            Requirements.NETWORK
+        }
+        return Requirements(network)
+    }
+
+    /**
+     * True when a Media3 COMPLETED download still has spans in the bound
+     * [SimpleCache]. Index state alone is not enough after a storage-root flip.
+     */
+    fun hasPlayableCacheBytes(context: Context, media3Id: String): Boolean {
+        if (media3Id.isBlank()) return false
+        runCatching { get(context) }
+        val cache = simpleCache ?: return false
+        if (cache.cacheSpace <= 0L) return false
+        val download = runCatching {
+            downloadManager?.downloadIndex?.getDownload(media3Id)
+        }.getOrNull() ?: return false
+        if (download.state != Download.STATE_COMPLETED) return false
+        val key = download.request.customCacheKey?.takeIf { it.isNotBlank() }
+            ?: download.request.uri.toString()
+        if (cache.getCachedSpans(key).isNotEmpty()) return true
+        val uriKey = download.request.uri.toString()
+        return uriKey != key && cache.getCachedSpans(uriKey).isNotEmpty()
     }
 
     /**
@@ -125,17 +168,31 @@ object StreamflixDownloadManager {
     /**
      * True when Room has any download row or the Media3 download index still
      * holds entries (cache that would be orphaned by a storage relocate).
+     * Also treats a non-empty cache directory (stray files) as blocking.
      */
     fun hasCachedOrQueuedDownloads(context: Context): Boolean {
         val app = context.applicationContext
-        val roomNonEmpty = runBlocking(Dispatchers.IO) {
-            DownloadRepository.get(app).getAllOnce().isNotEmpty()
-        }
-        if (roomNonEmpty) return true
-        val dm = downloadManager ?: runCatching { get(app) }.getOrNull() ?: return false
-        return runCatching {
-            dm.downloadIndex.getDownloads().use { cursor -> cursor.moveToFirst() }
+        val roomNonEmpty = runCatching {
+            // Prefer an already-warmed manager path; avoid nested get()+runBlocking
+            // deadlocks by probing Room on IO without forcing manager init first.
+            kotlinx.coroutines.runBlocking(Dispatchers.IO) {
+                DownloadRepository.get(app).getAllOnce().isNotEmpty()
+            }
         }.getOrDefault(false)
+        if (roomNonEmpty) return true
+        val dm = downloadManager
+        if (dm != null) {
+            val indexNonEmpty = runCatching {
+                dm.downloadIndex.getDownloads().use { cursor -> cursor.moveToFirst() }
+            }.getOrDefault(false)
+            if (indexNonEmpty) return true
+        }
+        val cacheDir = runCatching { DownloadStorage.cacheDir(app) }.getOrNull() ?: return false
+        return cacheDir.isDirectory &&
+            (cacheDir.listFiles()?.any { file ->
+                file.isFile && file.length() > 0L ||
+                    file.isDirectory && (file.listFiles()?.isNotEmpty() == true)
+            } == true)
     }
 
     private fun startConnectivityWatcher(app: Context) {
@@ -146,8 +203,9 @@ object StreamflixDownloadManager {
                 .map { it.type }
                 .distinctUntilChanged()
                 .collectLatest { type ->
-                    // Debounce flaky network flips so we don't thrash pause/resume.
-                    delay(750)
+                    // Short debounce: long delays let metered transfers start
+                    // before wifi-only pause lands (DL-P3-D).
+                    delay(150)
                     connectivityActionMutex.withLock {
                         val repo = DownloadRepository.get(app)
                         if (DownloadConnectivityMonitor.shouldHoldForWifiOnly(app)) {
@@ -372,7 +430,11 @@ object StreamflixDownloadManager {
      * user confirms — otherwise this returns without relocating so Media3/Room
      * state is not silently orphaned.
      */
-    fun relocate(context: Context, wipeAndRebuild: Boolean = false) {
+    fun relocate(
+        context: Context,
+        wipeAndRebuild: Boolean = false,
+        previousDownloadsDir: java.io.File? = null,
+    ) {
         val app = context.applicationContext
         if (!wipeAndRebuild && hasCachedOrQueuedDownloads(app)) {
             return
@@ -405,7 +467,18 @@ object StreamflixDownloadManager {
                         }
                     }
                 }
+                DownloadHeaderStore.clear(app)
                 release()
+                // Callers must pass the pre-pref-flip downloads root; prefs already
+                // point at the new location by the time wipe runs.
+                if (previousDownloadsDir != null) {
+                    val newRoot = runCatching { DownloadStorage.downloadsDir(app) }.getOrNull()
+                    if (newRoot == null ||
+                        previousDownloadsDir.absolutePath != newRoot.absolutePath
+                    ) {
+                        DownloadStorage.deleteQuietly(previousDownloadsDir)
+                    }
+                }
                 get(app)
             } else {
                 runCatching { downloadManager?.pauseDownloads() }

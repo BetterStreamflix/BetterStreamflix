@@ -19,6 +19,9 @@ object DownloadEventBridge : DownloadManager.Listener {
     private var appContext: Context? = null
 
     private val lastBytes = mutableMapOf<String, Pair<Long, Long>>()
+    /** Consecutive zero-delta samples per media3 id — decay stale speed (DL-P2-D). */
+    private val zeroDeltaSamples = mutableMapOf<String, Int>()
+    private const val ZERO_DELTA_DECAY_AFTER = 3
 
     fun attach(context: Context) {
         appContext = context.applicationContext
@@ -53,6 +56,7 @@ object DownloadEventBridge : DownloadManager.Listener {
         val context = appContext ?: return
         scope.launch {
             lastBytes.remove(download.request.id)
+            zeroDeltaSamples.remove(download.request.id)
             val entity = DownloadRepository.get(context).getByMedia3Id(download.request.id)
             if (entity != null) DownloadNotifier.cancelFailed(context, entity.id)
             refreshAggregateNotification(context, downloadManager)
@@ -83,15 +87,23 @@ object DownloadEventBridge : DownloadManager.Listener {
             return
         }
         val now = System.currentTimeMillis()
-        val prev = lastBytes[download.request.id]
+        val media3Id = download.request.id
+        val prev = lastBytes[media3Id]
         val speed = if (prev != null && now > prev.second) {
             val deltaBytes = (download.bytesDownloaded - prev.first).coerceAtLeast(0L)
             val deltaMs = (now - prev.second).coerceAtLeast(1L)
-            if (deltaBytes > 0L) (deltaBytes * 1000L) / deltaMs else entity.speedBytesPerSec
+            if (deltaBytes > 0L) {
+                zeroDeltaSamples.remove(media3Id)
+                (deltaBytes * 1000L) / deltaMs
+            } else {
+                val zeros = (zeroDeltaSamples[media3Id] ?: 0) + 1
+                zeroDeltaSamples[media3Id] = zeros
+                if (zeros >= ZERO_DELTA_DECAY_AFTER) 0L else entity.speedBytesPerSec
+            }
         } else {
             entity.speedBytesPerSec
         }
-        lastBytes[download.request.id] = download.bytesDownloaded to now
+        lastBytes[media3Id] = download.bytesDownloaded to now
 
         val pct = when {
             download.percentDownloaded >= 0f ->
@@ -105,7 +117,8 @@ object DownloadEventBridge : DownloadManager.Listener {
 
         // Terminal states no longer need speed sampling — otherwise lastBytes grows forever.
         if (state != DownloadItemState.DOWNLOADING && state != DownloadItemState.QUEUED) {
-            lastBytes.remove(download.request.id)
+            lastBytes.remove(media3Id)
+            zeroDeltaSamples.remove(media3Id)
         }
 
         // Never persist a remote CDN URL as localUri — that poisoned Play with / share

@@ -191,15 +191,30 @@ object DownloadOptionsController {
         episodes: List<Episode>,
     ) {
         fragment.viewLifecycleOwner.lifecycleScope.launch {
-            maybeRequestNotifications(fragment.requireActivity())
-            val loading = showPreparing(fragment.requireActivity())
+            val activity = fragment.requireActivity()
+            var allowMetered = false
+            if (DownloadConnectivityMonitor.shouldHoldForWifiOnly(activity)) {
+                if (!confirmCellular(activity)) {
+                    notifyUser(
+                        activity,
+                        activity.getString(R.string.download_error_wifi),
+                        asInfo = true,
+                    )
+                    return@launch
+                }
+                allowMetered = true
+            }
+            maybeRequestNotifications(activity)
+            val loading = showPreparing(activity)
             try {
+                val metered = allowMetered
                 val outcome = withContext(Dispatchers.IO) {
                     DownloadController.enqueueSeason(
                         context = fragment.requireContext(),
                         tvShow = tvShow,
                         seasonNumber = seasonNumber,
                         episodes = episodes,
+                        allowMetered = metered,
                     ) { prepared ->
                         val serverIdx = prepared.selectedServerIndex.coerceIn(
                             0,
@@ -236,6 +251,7 @@ object DownloadOptionsController {
     ) {
         when (outcome) {
             is DownloadEnqueueOutcome.NeedsOptions -> {
+                var allowMetered = false
                 if (DownloadConnectivityMonitor.shouldHoldForWifiOnly(activity)) {
                     val proceed = confirmCellular(activity)
                     if (!proceed) {
@@ -246,9 +262,33 @@ object DownloadOptionsController {
                         )
                         return
                     }
+                    allowMetered = true
                 }
                 maybeRequestNotifications(activity)
-                showOptionsDialog(activity, outcome.prepared)
+                // One-tap when quality preset is set or there is nothing to choose (DL-P1-D).
+                if (shouldAutoConfirm(outcome.prepared)) {
+                    val trackIdx = defaultQualityIndex(outcome.prepared.trackOptions)
+                        .coerceIn(0, outcome.prepared.trackOptions.lastIndex.coerceAtLeast(0))
+                    val serverIdx = outcome.prepared.selectedServerIndex.coerceIn(
+                        0,
+                        outcome.prepared.servers.lastIndex.coerceAtLeast(0),
+                    )
+                    val label = outcome.prepared.trackOptions.getOrNull(trackIdx)?.label
+                        ?: activity.getString(R.string.download_quality_auto)
+                    val result = withContext(Dispatchers.IO) {
+                        DownloadController.confirmEnqueue(
+                            context = activity,
+                            prepared = outcome.prepared,
+                            serverIndex = serverIdx,
+                            trackIndex = trackIdx,
+                            qualityLabel = label,
+                            allowMetered = allowMetered,
+                        )
+                    }
+                    handleOutcomeActivity(activity, result, onNavigateDownloads)
+                } else {
+                    showOptionsDialog(activity, outcome.prepared, allowMetered = allowMetered)
+                }
             }
             is DownloadEnqueueOutcome.Started -> {
                 maybeRequestNotifications(activity)
@@ -272,7 +312,18 @@ object DownloadOptionsController {
         }
     }
 
-    private fun showOptionsDialog(activity: Activity, prepared: DownloadPrepareResult) {
+    private fun shouldAutoConfirm(prepared: DownloadPrepareResult): Boolean {
+        if (UserPreferences.downloadQualityPreset != DownloadQualityPreset.ASK) return true
+        val singleServer = prepared.servers.size <= 1
+        val singleTrack = prepared.trackOptions.size <= 1
+        return singleServer && singleTrack
+    }
+
+    private fun showOptionsDialog(
+        activity: Activity,
+        prepared: DownloadPrepareResult,
+        allowMetered: Boolean = false,
+    ) {
         val view = LayoutInflater.from(activity).inflate(
             R.layout.dialog_download_options,
             null,
@@ -407,12 +458,26 @@ object DownloadOptionsController {
                             serverIndex,
                             qualityIndex,
                             trackOptions.getOrNull(qualityIndex)?.label ?: autoLabel,
+                            allowMetered = allowMetered,
                         )
                     }
                     handleOutcomeActivity(activity, result) {}
                 }
             }
-            .setNeutralButton(R.string.download_options_external) { _, _ ->
+            .setNegativeButton(android.R.string.cancel) { _, _ ->
+                if (ExperimentalMobileDesign.enabled()) {
+                    ExpMotion.hapticTap(view)
+                }
+                tracksJob?.cancel()
+            }
+            .setOnCancelListener { tracksJob?.cancel() }
+        // Hide External on adaptive — ADM/1DM cannot take HLS/DASH URLs (DL-P2-I).
+        val initialUrl = prepared.servers.getOrNull(prepared.selectedServerIndex)?.video?.source
+            ?: prepared.servers.firstOrNull()?.video?.source
+        val initialMime = prepared.servers.getOrNull(prepared.selectedServerIndex)?.video?.type
+            ?: prepared.servers.firstOrNull()?.video?.type
+        if (!ExternalDownloadHandoff.isAdaptiveStream(initialUrl, initialMime)) {
+            optionsBuilder.setNeutralButton(R.string.download_options_external) { _, _ ->
                 if (ExperimentalMobileDesign.enabled()) {
                     ExpMotion.hapticTap(view)
                 }
@@ -421,8 +486,6 @@ object DownloadOptionsController {
                     ?: currentPrepared.servers.firstOrNull()
                 val video = candidate?.video
                 val url = video?.source.orEmpty()
-                // External managers receive the resolved master/progressive URL.
-                // HLS quality keys only apply to in-app Media3 downloads.
                 val result = ExternalDownloadHandoff.launch(
                     activity,
                     ExternalDownloadHandoff.Request(
@@ -438,13 +501,8 @@ object DownloadOptionsController {
                     ExpDialogChrome.notify(activity, R.string.external_download_started)
                 }
             }
-            .setNegativeButton(android.R.string.cancel) { _, _ ->
-                if (ExperimentalMobileDesign.enabled()) {
-                    ExpMotion.hapticTap(view)
-                }
-                tracksJob?.cancel()
-            }
-            .setOnCancelListener { tracksJob?.cancel() }
+        }
+        optionsBuilder
             .create()
             .also { dialog ->
                 optionsDialog = dialog

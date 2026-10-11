@@ -86,10 +86,12 @@ object OfflinePlayback {
         }
         val cacheRoot = runCatching { DownloadStorage.cacheDir(context) }.getOrNull()
         if (cacheRoot == null || !cacheRoot.exists() || !cacheRoot.canRead()) return false
-        val download = runCatching {
-            StreamflixDownloadManager.get(context).downloadIndex.getDownload(item.media3Id)
-        }.getOrNull()
-        if (download != null && download.state == Download.STATE_COMPLETED) return true
+        // Media3's download index is app-scoped; after a storage-root flip without
+        // wipe it can still say COMPLETED while the bound SimpleCache is empty.
+        // Require real cache spans (or a readable local file) before trusting it.
+        if (StreamflixDownloadManager.hasPlayableCacheBytes(context, item.media3Id)) {
+            return true
+        }
         val local = item.localUri
         if (local.isBlank()) return false
         if (local.startsWith("http://", ignoreCase = true) ||
@@ -120,12 +122,13 @@ object OfflinePlayback {
         val download = runCatching {
             StreamflixDownloadManager.get(context).downloadIndex.getDownload(media3Id)
         }.getOrNull()
-        // Only treat Media3-completed downloads with cached bytes as offline playable.
+        // Only treat Media3-completed downloads with real cache spans as offline
+        // playable. Index STATE_COMPLETED alone can lie after a root flip.
         // Keep source = request.uri so CacheDataSource keys match; never treat https as a
         // local share path (see [exportShareUri]).
-        // A completed Media3 index is enough. bytesDownloaded can stay 0 for
-        // some HLS jobs; requiring it made playback fall through to the CDN (404).
-        val hasIndex = download != null && download.state == Download.STATE_COMPLETED
+        val hasIndex = download != null &&
+            download.state == Download.STATE_COMPLETED &&
+            StreamflixDownloadManager.hasPlayableCacheBytes(context, media3Id)
         val source = when {
             hasIndex -> download!!.request.uri.toString()
             item.localUri.isNotBlank() &&
@@ -204,7 +207,10 @@ object OfflinePlayback {
             val download = runCatching {
                 StreamflixDownloadManager.get(context).downloadIndex.getDownload(media3Id)
             }.getOrNull()
-            if (download != null && download.state == Download.STATE_COMPLETED) {
+            if (download != null &&
+                download.state == Download.STATE_COMPLETED &&
+                StreamflixDownloadManager.hasPlayableCacheBytes(context, media3Id)
+            ) {
                 val builder = download.request.toMediaItem().buildUpon()
                     .setSubtitleConfigurations(subtitleConfigurations)
                 if (mediaMetadata != null) {
@@ -234,14 +240,19 @@ object OfflinePlayback {
      * 3) Loopback playlist for a completed HLS/DASH cache (Play with)
      */
     fun exportShareUri(context: Context, item: DownloadItemEntity): Uri? {
+        // Always copy local files into cache/share so FileProvider can serve
+        // secondary-volume / removable paths (DL-P2-H).
         fileFromLocalUri(item.localUri)?.let { file ->
-            return runCatching {
-                FileProvider.getUriForFile(
-                    context,
-                    "${context.packageName}.provider",
-                    file,
-                )
-            }.getOrNull()
+            val shared = copyToShareCache(context, file, item.media3Id)
+            if (shared != null) {
+                return runCatching {
+                    FileProvider.getUriForFile(
+                        context,
+                        "${context.packageName}.provider",
+                        shared,
+                    )
+                }.getOrNull()
+            }
         }
         val exported = runCatching {
             StreamflixDownloadManager.exportProgressiveShareFile(
@@ -301,5 +312,20 @@ object OfflinePlayback {
             else -> return null
         }
         return file.takeIf { it.exists() && it.canRead() }
+    }
+
+    private fun copyToShareCache(context: Context, source: File, media3Id: String): File? {
+        return runCatching {
+            val shareDir = File(context.cacheDir, "share").also { it.mkdirs() }
+            val ext = source.extension.takeIf { it.isNotBlank() } ?: "mp4"
+            val out = File(shareDir, "share_${media3Id.hashCode()}.$ext")
+            if (out.exists() && out.length() == source.length() && out.canRead()) {
+                return@runCatching out
+            }
+            source.inputStream().use { input ->
+                out.outputStream().use { output -> input.copyTo(output) }
+            }
+            out.takeIf { it.exists() && it.canRead() }
+        }.getOrNull()
     }
 }

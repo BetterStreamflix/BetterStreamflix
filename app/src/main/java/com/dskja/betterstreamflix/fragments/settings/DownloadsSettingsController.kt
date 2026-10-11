@@ -1,6 +1,7 @@
 package com.dskja.betterstreamflix.fragments.settings
 
 import android.net.Uri
+import android.os.Build
 import androidx.appcompat.app.AlertDialog
 import com.dskja.betterstreamflix.utils.ExpDialogChrome
 import com.dskja.betterstreamflix.utils.ExperimentalMobileDesign
@@ -20,6 +21,7 @@ import com.dskja.betterstreamflix.download.DownloadRepository
 import com.dskja.betterstreamflix.download.DownloadStats
 import com.dskja.betterstreamflix.download.DownloadStorage
 import com.dskja.betterstreamflix.download.DownloadStorageLocation
+import com.dskja.betterstreamflix.download.DownloadResumeScheduler
 import com.dskja.betterstreamflix.download.DownloadTreeAccess
 import com.dskja.betterstreamflix.download.ExternalDownloadHandoff
 import com.dskja.betterstreamflix.download.StreamflixDownloadManager
@@ -58,6 +60,11 @@ object DownloadsSettingsController {
 
         findPreference("DOWNLOAD_STORAGE_LOCATION")?.let { pref ->
             val list = pref as? ListPreference ?: return@let
+            // API 29+ scoped storage: public Movies needs READ_MEDIA_VIDEO —
+            // hide the option rather than request a new permission (DL-P2-R).
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                stripPublicMoviesOption(list)
+            }
             list.value = UserPreferences.downloadStorageLocation.name
             list.summaryProvider = ListPreference.SimpleSummaryProvider.getInstance()
             list.setOnPreferenceChangeListener { _, newValue ->
@@ -88,8 +95,23 @@ object DownloadsSettingsController {
                         StreamflixDownloadManager.hasCachedOrQueuedDownloads(context)
                     }
                     fun applyChange(wipe: Boolean) {
+                        val previousRoot = runCatching {
+                            DownloadStorage.downloadsDir(context)
+                        }.getOrNull()
+                        val leavingCustom =
+                            UserPreferences.downloadStorageLocation ==
+                                DownloadStorageLocation.CUSTOM_FOLDER &&
+                                location != DownloadStorageLocation.CUSTOM_FOLDER
                         UserPreferences.downloadStorageLocation = location
-                        StreamflixDownloadManager.relocate(context, wipeAndRebuild = wipe)
+                        if (leavingCustom) {
+                            DownloadTreeAccess.clearTree(context)
+                            UserPreferences.downloadStorageLocation = location
+                        }
+                        StreamflixDownloadManager.relocate(
+                            context,
+                            wipeAndRebuild = wipe,
+                            previousDownloadsDir = previousRoot.takeIf { wipe },
+                        )
                         list.value = location.name
                         refreshSummaries(findPreference, context)
                         ExpDialogChrome.notify(context, R.string.settings_download_storage_changed)
@@ -121,8 +143,15 @@ object DownloadsSettingsController {
                     StreamflixDownloadManager.hasCachedOrQueuedDownloads(context)
                 }
                 fun clearFolder(wipe: Boolean) {
+                    val previousRoot = runCatching {
+                        DownloadStorage.downloadsDir(context)
+                    }.getOrNull()
                     DownloadTreeAccess.clearTree(context)
-                    StreamflixDownloadManager.relocate(context, wipeAndRebuild = wipe)
+                    StreamflixDownloadManager.relocate(
+                        context,
+                        wipeAndRebuild = wipe,
+                        previousDownloadsDir = previousRoot.takeIf { wipe },
+                    )
                     refreshSummaries(findPreference, context)
                     ExpDialogChrome.notify(context, R.string.settings_download_storage_folder_cleared)
                 }
@@ -225,7 +254,22 @@ object DownloadsSettingsController {
             val sw = pref as? SwitchPreference ?: return@let
             sw.isChecked = UserPreferences.downloadWifiOnly
             sw.setOnPreferenceChangeListener { _, newValue ->
-                UserPreferences.downloadWifiOnly = newValue as Boolean
+                val enabled = newValue as Boolean
+                UserPreferences.downloadWifiOnly = enabled
+                StreamflixDownloadManager.applyWifiOnlyRequirements(context)
+                // Keep WorkManager boot/resume constraints in sync with the toggle.
+                DownloadResumeScheduler.enqueue(context, replace = true)
+                scope.launch(Dispatchers.IO) {
+                    val repo = DownloadRepository.get(context)
+                    if (enabled &&
+                        com.dskja.betterstreamflix.download.DownloadConnectivityMonitor
+                            .shouldHoldForWifiOnly(context)
+                    ) {
+                        repo.pauseForConnectivity()
+                    } else if (!enabled) {
+                        repo.resumeConnectivityHeld()
+                    }
+                }
                 true
             }
         }
@@ -384,7 +428,9 @@ object DownloadsSettingsController {
     ) {
         val context = fragment.requireContext()
         if (uri == null) return
-        val ok = DownloadTreeAccess.persistTree(context, uri)
+        // Take the SAF grant only — do not flip CUSTOM_FOLDER prefs until the
+        // user confirms wipe/relocate (Cancel must leave the old root intact).
+        val ok = DownloadTreeAccess.takePersistablePermission(context, uri)
         if (!ok) {
             ExpDialogChrome.notify(context, R.string.settings_download_storage_folder_failed)
             refreshSummaries(findPreference, context)
@@ -395,7 +441,23 @@ object DownloadsSettingsController {
                 StreamflixDownloadManager.hasCachedOrQueuedDownloads(context)
             }
             fun finishRelocate(wipe: Boolean) {
-                StreamflixDownloadManager.relocate(context, wipeAndRebuild = wipe)
+                val previousRoot = runCatching {
+                    DownloadStorage.downloadsDir(context)
+                }.getOrNull()
+                if (!DownloadTreeAccess.commitTreePrefs(context, uri)) {
+                    DownloadTreeAccess.releasePersistablePermission(context, uri)
+                    ExpDialogChrome.notify(
+                        context,
+                        R.string.settings_download_storage_folder_failed,
+                    )
+                    refreshSummaries(findPreference, context)
+                    return
+                }
+                StreamflixDownloadManager.relocate(
+                    context,
+                    wipeAndRebuild = wipe,
+                    previousDownloadsDir = previousRoot.takeIf { wipe },
+                )
                 ExpDialogChrome.notify(context, R.string.settings_download_storage_folder_set)
                 refreshSummaries(findPreference, context)
             }
@@ -404,9 +466,12 @@ object DownloadsSettingsController {
                     context,
                     R.string.settings_download_storage_relocate_title,
                     R.string.settings_download_storage_relocate_confirm,
-                ) {
-                    finishRelocate(wipe = true)
-                }
+                    onConfirm = { finishRelocate(wipe = true) },
+                    onCancel = {
+                        DownloadTreeAccess.releasePersistablePermission(context, uri)
+                        refreshSummaries(findPreference, context)
+                    },
+                )
             } else {
                 finishRelocate(wipe = false)
             }
@@ -417,12 +482,15 @@ object DownloadsSettingsController {
         context: android.content.Context,
         titleRes: Int,
         messageRes: Int,
+        onCancel: (() -> Unit)? = null,
         onConfirm: () -> Unit,
     ) {
         val builder = if (ExperimentalMobileDesign.enabled()) {
             MaterialAlertDialogBuilder(context)
         } else {
-            AlertDialog.Builder(context)
+            // Match Exp-on Material path so destructive confirms stay consistent
+            // when Experimental UI is off (DL-P3-C).
+            MaterialAlertDialogBuilder(context)
         }
         val glass = if (ExperimentalMobileDesign.enabled()) {
             ExpDialogChrome.buildGlassMessage(context, context.getString(messageRes))
@@ -434,7 +502,8 @@ object DownloadsSettingsController {
         else builder.setMessage(messageRes)
         builder
             .setPositiveButton(android.R.string.ok) { _, _ -> onConfirm() }
-            .setNegativeButton(android.R.string.cancel, null)
+            .setNegativeButton(android.R.string.cancel) { _, _ -> onCancel?.invoke() }
+            .setOnCancelListener { onCancel?.invoke() }
             .create()
             .also { dialog ->
                 dialog.setOnShowListener {
@@ -524,6 +593,34 @@ object DownloadsSettingsController {
         findPreference("EXTERNAL_DOWNLOADER_CLEAR")?.isEnabled = dlPkg.isNotBlank()
     }
 
+    private fun stripPublicMoviesOption(list: ListPreference) {
+        val entries = list.entries?.toMutableList() ?: return
+        val values = list.entryValues?.toMutableList() ?: return
+        val idx = values.indexOfFirst {
+            it.toString() == DownloadStorageLocation.PUBLIC_MOVIES.name
+        }
+        if (idx < 0) return
+        entries.removeAt(idx)
+        values.removeAt(idx)
+        list.entries = entries.toTypedArray()
+        list.entryValues = values.toTypedArray()
+        if (list.value == DownloadStorageLocation.PUBLIC_MOVIES.name ||
+            UserPreferences.downloadStorageLocation == DownloadStorageLocation.PUBLIC_MOVIES
+        ) {
+            // Keep a read-only entry so existing users see their current choice.
+            val label = list.context.getString(R.string.settings_download_storage_public_movies)
+            val mergedEntries = list.entries!!.toMutableList()
+            val mergedValues = list.entryValues!!.toMutableList()
+            if (mergedValues.none { it.toString() == DownloadStorageLocation.PUBLIC_MOVIES.name }) {
+                mergedEntries.add(label)
+                mergedValues.add(DownloadStorageLocation.PUBLIC_MOVIES.name)
+                list.entries = mergedEntries.toTypedArray()
+                list.entryValues = mergedValues.toTypedArray()
+            }
+            list.value = DownloadStorageLocation.PUBLIC_MOVIES.name
+        }
+    }
+
     private fun stripCustomFolderOption(list: ListPreference) {
         val entries = list.entries?.toMutableList() ?: return
         val values = list.entryValues?.toMutableList() ?: return
@@ -533,8 +630,24 @@ object DownloadsSettingsController {
         values.removeAt(idx)
         list.entries = entries.toTypedArray()
         list.entryValues = values.toTypedArray()
-        if (list.value == DownloadStorageLocation.CUSTOM_FOLDER.name) {
-            list.value = DownloadStorageLocation.INTERNAL.name
+        // Keep Custom as a read-only selection when already active so refresh()
+        // does not silently flip the ListPreference UI back without a wipe.
+        if (list.value == DownloadStorageLocation.CUSTOM_FOLDER.name ||
+            UserPreferences.downloadStorageLocation == DownloadStorageLocation.CUSTOM_FOLDER
+        ) {
+            val customLabel = list.context.getString(
+                R.string.settings_download_storage_custom_readonly,
+            )
+            val mergedEntries = list.entries!!.toMutableList()
+            val mergedValues = list.entryValues!!.toMutableList()
+            if (mergedValues.none { it.toString() == DownloadStorageLocation.CUSTOM_FOLDER.name }) {
+                mergedEntries.add(customLabel)
+                mergedValues.add(DownloadStorageLocation.CUSTOM_FOLDER.name)
+                list.entries = mergedEntries.toTypedArray()
+                list.entryValues = mergedValues.toTypedArray()
+            }
+            list.value = DownloadStorageLocation.CUSTOM_FOLDER.name
+            list.isEnabled = true
         }
     }
 }

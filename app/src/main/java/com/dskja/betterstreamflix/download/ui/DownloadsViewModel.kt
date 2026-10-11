@@ -11,6 +11,7 @@ import com.dskja.betterstreamflix.download.DownloadItemState
 import com.dskja.betterstreamflix.download.DownloadParentalFilter
 import com.dskja.betterstreamflix.download.DownloadProfileScope
 import com.dskja.betterstreamflix.download.DownloadRepository
+import com.dskja.betterstreamflix.download.DownloadResumeScheduler
 import com.dskja.betterstreamflix.download.DownloadSeriesFolders
 import com.dskja.betterstreamflix.download.DownloadStats
 import com.dskja.betterstreamflix.download.DownloadStorage
@@ -37,6 +38,7 @@ class DownloadsViewModel(
     private val repo = DownloadRepository.get(appContext)
     private val filter = MutableStateFlow(DownloadsFilter.ALL)
     private val sort = MutableStateFlow(DownloadsSort.NEWEST)
+    private val collapsedSeries = MutableStateFlow<Set<String>>(emptySet())
     private var progressJob: Job? = null
     private var reconcileJob: Job? = null
 
@@ -73,13 +75,21 @@ class DownloadsViewModel(
             items.filter { DownloadProfileScope.matchesActive(it.profileId) }
         },
         repo.observeSeasonPacks(),
-        combine(filter, sort) { f, s -> f to s },
+        combine(filter, sort, collapsedSeries) { f, s, c -> Triple(f, s, c) },
     ) { items, packs, selected ->
         Triple(items, packs, selected)
     }.flatMapLatest { (items, packs, selected) ->
         flow {
             val ageFiltered = DownloadParentalFilter.filter(items)
-            emit(buildRows(ageFiltered, packs, selected.first, selected.second))
+            emit(
+                buildRows(
+                    ageFiltered,
+                    packs,
+                    selected.first,
+                    selected.second,
+                    selected.third,
+                ),
+            )
         }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
@@ -89,6 +99,15 @@ class DownloadsViewModel(
 
     fun setSort(value: DownloadsSort) {
         sort.value = value
+    }
+
+    fun toggleSeriesCollapsed(seriesKey: String) {
+        val current = collapsedSeries.value
+        collapsedSeries.value = if (current.contains(seriesKey)) {
+            current - seriesKey
+        } else {
+            current + seriesKey
+        }
     }
 
     fun currentFilter(): DownloadsFilter = filter.value
@@ -101,6 +120,8 @@ class DownloadsViewModel(
         }
         UserPreferences.downloadWifiOnly = enabled
         refreshWifiPreference()
+        StreamflixDownloadManager.applyWifiOnlyRequirements(appContext)
+        DownloadResumeScheduler.enqueue(appContext, replace = true)
         viewModelScope.launch {
             if (enabled && DownloadConnectivityMonitor.shouldHoldForWifiOnly(appContext)) {
                 repo.pauseForConnectivity()
@@ -184,6 +205,7 @@ class DownloadsViewModel(
         packs: List<com.dskja.betterstreamflix.download.DownloadSeasonPackEntity>,
         selectedFilter: DownloadsFilter,
         selectedSort: DownloadsSort,
+        collapsed: Set<String>,
     ): List<DownloadRowUiModel> {
         val providerFilter = UserPreferences.downloadFilterCurrentProvider
         val providerName = UserPreferences.currentProvider?.name
@@ -232,13 +254,20 @@ class DownloadsViewModel(
                     !DownloadSeriesFolders.needsRedownload(it)
             }
             .sortedWith(sorter)
+        // Cross-section series counts so Active+Completed folders agree (DL-P3-G).
+        val seriesTotals = filtered
+            .mapNotNull { item -> DownloadSeriesFolders.seriesRef(item)?.let { it.key to item } }
+            .groupBy({ it.first }, { it.second })
+            .mapValues { (_, eps) ->
+                eps.size to eps.sumOf { maxOf(it.contentLength, it.bytesDownloaded) }
+            }
         return buildList {
             val relevantPacks = packs.filter { pack ->
                 filtered.any { it.seasonPackId == pack.id }
             }
             if (active.isNotEmpty()) {
                 add(DownloadRowUiModel.Header(appContext.getString(com.dskja.betterstreamflix.R.string.downloads_section_active)))
-                addGroupedBySeries(active)
+                addGroupedBySeries(active, collapsed, seriesTotals)
             }
             if (relevantPacks.isNotEmpty() && selectedFilter != DownloadsFilter.FAILED) {
                 add(DownloadRowUiModel.Header(appContext.getString(com.dskja.betterstreamflix.R.string.downloads_section_seasons)))
@@ -246,7 +275,7 @@ class DownloadsViewModel(
             }
             if (completed.isNotEmpty()) {
                 add(DownloadRowUiModel.Header(appContext.getString(com.dskja.betterstreamflix.R.string.downloads_section_completed)))
-                addGroupedBySeries(completed)
+                addGroupedBySeries(completed, collapsed, seriesTotals)
             }
             if (redownload.isNotEmpty()) {
                 add(
@@ -254,16 +283,20 @@ class DownloadsViewModel(
                         appContext.getString(com.dskja.betterstreamflix.R.string.downloads_section_redownload),
                     ),
                 )
-                addGroupedBySeries(redownload)
+                addGroupedBySeries(redownload, collapsed, seriesTotals)
             }
             if (failed.isNotEmpty()) {
                 add(DownloadRowUiModel.Header(appContext.getString(com.dskja.betterstreamflix.R.string.downloads_section_failed)))
-                addGroupedBySeries(failed)
+                addGroupedBySeries(failed, collapsed, seriesTotals)
             }
         }
     }
 
-    private fun MutableList<DownloadRowUiModel>.addGroupedBySeries(items: List<DownloadItemEntity>) {
+    private fun MutableList<DownloadRowUiModel>.addGroupedBySeries(
+        items: List<DownloadItemEntity>,
+        collapsed: Set<String>,
+        seriesTotals: Map<String, Pair<Int, Long>>,
+    ) {
         val movies = items.filter { DownloadSeriesFolders.seriesRef(it) == null }
         val bySeries = items
             .mapNotNull { item -> DownloadSeriesFolders.seriesRef(item)?.let { it to item } }
@@ -274,17 +307,22 @@ class DownloadsViewModel(
             .forEach { (_, pairs) ->
                 val ref = pairs.first().first
                 val episodes = pairs.map { it.second }
-                val totalBytes = episodes.sumOf { maxOf(it.contentLength, it.bytesDownloaded) }
+                val (count, bytes) = seriesTotals[ref.key]
+                    ?: (episodes.size to episodes.sumOf { maxOf(it.contentLength, it.bytesDownloaded) })
+                val isCollapsed = collapsed.contains(ref.key)
                 add(
                     DownloadRowUiModel.SeriesFolder(
                         seriesKey = ref.key,
                         title = ref.title,
-                        episodeCount = episodes.size,
-                        totalBytes = totalBytes,
+                        episodeCount = count,
+                        totalBytes = bytes,
                         posterUrl = ref.posterUrl,
+                        collapsed = isCollapsed,
                     ),
                 )
-                episodes.forEach { add(DownloadRowUiModel.Item(it)) }
+                if (!isCollapsed) {
+                    episodes.forEach { add(DownloadRowUiModel.Item(it)) }
+                }
             }
         movies.forEach { add(DownloadRowUiModel.Item(it)) }
     }

@@ -156,12 +156,6 @@ class SettingsTvFragment : LeanbackPreferenceFragmentCompat() {
         }
     }
 
-    private val pickDownloadFolderLauncher = registerForActivityResult(
-        com.dskja.betterstreamflix.download.DownloadTreeAccess.PersistableOpenDocumentTree()
-    ) { uri: Uri? ->
-        DownloadsSettingsController.onDownloadFolderPicked(this, { key -> findPreference(key) }, uri)
-    }
-
     override fun onCreatePreferences(savedInstanceState: Bundle?, rootKey: String?) {
         currentScreenState = SettingsScreenState(rootKey = rootKey, title = null)
         renderCurrentScreen()
@@ -841,13 +835,12 @@ class SettingsTvFragment : LeanbackPreferenceFragmentCompat() {
             true
         }
 
+        // TV hides SAF pick/clear prefs — do not register a folder launcher (DL-P3-K).
         DownloadsSettingsController.bind(
             this,
             lifecycleScope,
             findPreference = { key -> findPreference(key) },
-            onPickDownloadFolder = {
-                pickDownloadFolderLauncher.launch(null)
-            },
+            onPickDownloadFolder = null,
         )
 
         findPreference<SwitchPreference>("FORCE_EXTRA_BUFFERING")?.apply {

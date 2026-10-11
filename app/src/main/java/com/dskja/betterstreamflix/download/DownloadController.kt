@@ -88,7 +88,8 @@ object DownloadController {
             }
             val contentKey = DownloadContentKey.movie(provider.name, movie.id)
             checkExisting(context, contentKey)?.let { return@withContext it }
-            guardNetworkAndStorage(context)?.let { return@withContext it }
+            // Skip Wi‑Fi hold here so NeedsOptions can offer a cellular confirm (DL-P1-B).
+            guardNetworkAndStorage(context, skipWifi = true)?.let { return@withContext it }
 
             val videoType = Video.Type.Movie(
                 id = movie.id,
@@ -137,7 +138,8 @@ object DownloadController {
                 episodeId = episode.id,
             )
             checkExisting(context, contentKey)?.let { return@withContext it }
-            guardNetworkAndStorage(context)?.let { return@withContext it }
+            // Skip Wi‑Fi hold here so NeedsOptions can offer a cellular confirm (DL-P1-B).
+            guardNetworkAndStorage(context, skipWifi = true)?.let { return@withContext it }
 
             val videoType = Video.Type.Episode(
                 id = episode.id,
@@ -189,7 +191,8 @@ object DownloadController {
                 context.getString(R.string.download_error_iptv),
             )
         }
-        guardNetworkAndStorage(context)?.let { return@withContext it }
+        // Skip Wi‑Fi hold here so NeedsOptions can offer a cellular confirm (DL-P1-B).
+        guardNetworkAndStorage(context, skipWifi = true)?.let { return@withContext it }
 
         val contentKey: String
         val kind: DownloadKind
@@ -255,8 +258,9 @@ object DownloadController {
         trackIndex: Int,
         qualityLabel: String,
         smartEnqueued: Boolean = false,
+        allowMetered: Boolean = false,
     ): DownloadEnqueueOutcome = withContext(Dispatchers.IO) {
-        guardNetworkAndStorage(context)?.let { return@withContext it }
+        guardNetworkAndStorage(context, allowMetered = allowMetered)?.let { return@withContext it }
         val candidate = prepared.servers.getOrNull(serverIndex)
             ?: prepared.servers.firstOrNull()
             ?: return@withContext DownloadEnqueueOutcome.Failed(
@@ -291,6 +295,7 @@ object DownloadController {
         tvShow: TvShow,
         seasonNumber: Int,
         episodes: List<Episode>,
+        allowMetered: Boolean = false,
         onEachPrepared: suspend (DownloadPrepareResult) -> Pair<Int, Int>,
     ): DownloadEnqueueOutcome = withContext(Dispatchers.IO) {
         val provider = UserPreferences.currentProvider
@@ -304,7 +309,8 @@ object DownloadController {
                 context.getString(R.string.download_error_iptv),
             )
         }
-        guardNetworkAndStorage(context)?.let { return@withContext it }
+        // Skip Wi‑Fi hold; UI confirms cellular before season enqueue when needed.
+        guardNetworkAndStorage(context, skipWifi = true)?.let { return@withContext it }
         if (episodes.isEmpty()) {
             return@withContext DownloadEnqueueOutcome.Failed(
                 DownloadErrorCode.UNKNOWN,
@@ -343,7 +349,14 @@ object DownloadController {
                     )
                     val label = outcome.prepared.trackOptions.getOrNull(trackIdx)?.label
                         ?: context.getString(R.string.download_quality_auto)
-                    val confirmed = confirmEnqueue(context, outcome.prepared, serverIdx, trackIdx, label)
+                    val confirmed = confirmEnqueue(
+                        context,
+                        outcome.prepared,
+                        serverIdx,
+                        trackIdx,
+                        label,
+                        allowMetered = allowMetered,
+                    )
                     if (confirmed is DownloadEnqueueOutcome.Started) {
                         repo.assignPack(confirmed.item.id, packId, index)
                         started++
@@ -656,7 +669,11 @@ object DownloadController {
         }
     }
 
-    private fun guardNetworkAndStorage(context: Context): DownloadEnqueueOutcome.Failed? {
+    private fun guardNetworkAndStorage(
+        context: Context,
+        allowMetered: Boolean = false,
+        skipWifi: Boolean = false,
+    ): DownloadEnqueueOutcome.Failed? {
         DownloadStorage.storageUnavailableReason(context)?.let { reasonRes ->
             return DownloadEnqueueOutcome.Failed(
                 DownloadErrorCode.NOSPACE,
@@ -675,7 +692,9 @@ object DownloadController {
                 context.getString(R.string.download_error_soft_limit),
             )
         }
-        if (DownloadConnectivityMonitor.shouldHoldForWifiOnly(context)) {
+        if (!skipWifi && !allowMetered &&
+            DownloadConnectivityMonitor.shouldHoldForWifiOnly(context)
+        ) {
             return DownloadEnqueueOutcome.Failed(
                 DownloadErrorCode.WIFI_REQUIRED,
                 context.getString(R.string.download_error_wifi),

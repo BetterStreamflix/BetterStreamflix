@@ -73,10 +73,14 @@ object DownloadSeriesFolders {
         val parts = item.contentKey.split('|')
         if (parts.size >= 3 && parts[0] == "episode") {
             val showId = parts[2]
+            // Prefer show poster from videoTypeJson; never fall back to episode art (DL-P3-H).
+            val showPoster = runCatching {
+                JSONObject(item.videoTypeJson.ifBlank { "{}" }).optString("showPoster")
+            }.getOrNull().orEmpty()
             return SeriesRef(
                 key = "series|${item.providerName}|$showId",
                 title = item.title.ifBlank { showId },
-                posterUrl = item.posterUrl,
+                posterUrl = showPoster,
             )
         }
         return null

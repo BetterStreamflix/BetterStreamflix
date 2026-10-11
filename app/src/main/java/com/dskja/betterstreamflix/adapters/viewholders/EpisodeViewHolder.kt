@@ -73,6 +73,7 @@ class EpisodeViewHolder(
 
     private lateinit var episode: Episode
     private var downloadRibbonJob: Job? = null
+    private var downloadButtonJob: Job? = null
 
     fun bind(episode: Episode) {
         this.episode = episode
@@ -325,8 +326,11 @@ class EpisodeViewHolder(
                 setOnClickListener {
                     ExpMotion.hapticTap(it)
                     val fragment = context.toActivity()?.getCurrentFragment() as? Fragment ?: return@setOnClickListener
-                    DownloadOptionsController.enqueueEpisode(fragment, episode)
+                    checkProviderAndRun {
+                        DownloadOptionsController.enqueueEpisode(fragment, episode)
+                    }
                 }
+                bindEpisodeDownloadButtonState(this)
             }
         }
     }
@@ -557,11 +561,14 @@ class EpisodeViewHolder(
                     ExpMotion.hapticTap(it)
                     val fragment = context.toActivity()?.getCurrentFragment() as? Fragment
                         ?: return@setOnClickListener
-                    DownloadOptionsController.enqueueEpisode(fragment, episode)
+                    checkProviderAndRun {
+                        DownloadOptionsController.enqueueEpisode(fragment, episode)
+                    }
                 }
                 setOnFocusChangeListener { _, hasFocus ->
                     TvFocusZoom.apply(this, hasFocus)
                 }
+                bindEpisodeDownloadButtonState(this as View)
             }
         }
     }
@@ -941,6 +948,68 @@ class EpisodeViewHolder(
                     downloadRibbon.background = null
                 }
             }
+        }
+    }
+
+    /** Reflect completed / in-progress download state on the episode download button (DL-P2-K). */
+    private fun bindEpisodeDownloadButtonState(button: View) {
+        val boundEpisodeId = episode.id
+        fun applyState(completed: Boolean, active: Boolean) {
+            when {
+                completed -> {
+                    if (button is ImageView) {
+                        button.setImageResource(R.drawable.ic_offline_badge)
+                        button.imageAlpha = 255
+                    } else if (button is android.widget.TextView) {
+                        button.setText(R.string.downloads_already_completed)
+                        button.alpha = 1f
+                    }
+                    button.contentDescription = context.getString(R.string.downloads_already_completed)
+                }
+                active -> {
+                    if (button is ImageView) {
+                        button.setImageResource(R.drawable.ic_menu_downloads)
+                        button.imageAlpha = 180
+                    } else if (button is android.widget.TextView) {
+                        button.setText(R.string.downloads_already_active)
+                        button.alpha = 0.7f
+                    }
+                    button.contentDescription = context.getString(R.string.downloads_already_active)
+                }
+                else -> {
+                    if (button is ImageView) {
+                        button.setImageResource(R.drawable.ic_menu_downloads)
+                        button.imageAlpha = 255
+                    } else if (button is android.widget.TextView) {
+                        button.setText(R.string.detail_download)
+                        button.alpha = 1f
+                    }
+                    button.contentDescription = context.getString(R.string.season_download)
+                }
+            }
+        }
+        val key = episodeDownloadContentKey()
+        applyState(
+            completed = key != null && OfflineBadgeStore.isCompleted(context, key),
+            active = key != null && OfflineBadgeStore.isActive(context, key),
+        )
+        downloadButtonJob?.cancel()
+        val lifecycleOwner = itemView.findViewTreeLifecycleOwner()
+            ?: context.toActivity()
+            ?: return
+        downloadButtonJob = lifecycleOwner.lifecycleScope.launch {
+            kotlinx.coroutines.flow.combine(
+                OfflineBadgeStore.completedKeys(context),
+                OfflineBadgeStore.activeKeys(context),
+            ) { completed, active -> completed to active }
+                .collect { (completed, active) ->
+                    if (episode.id != boundEpisodeId) return@collect
+                    val contentKey = episodeDownloadContentKey()
+                    applyState(
+                        completed = contentKey != null && completed.contains(contentKey),
+                        active = contentKey != null && active.contains(contentKey),
+                    )
+                }
         }
     }
 

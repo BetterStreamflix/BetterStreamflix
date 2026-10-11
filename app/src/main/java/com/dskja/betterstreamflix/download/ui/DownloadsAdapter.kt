@@ -24,6 +24,10 @@ class DownloadsAdapter(
     private val onDelete: (DownloadRowUiModel.Item) -> Unit,
     private val onItemMore: (DownloadRowUiModel.Item, View) -> Unit = { _, _ -> },
     private val onPackMore: (DownloadRowUiModel.SeasonPack, View) -> Unit = { _, _ -> },
+    private val onPackPause: (DownloadRowUiModel.SeasonPack) -> Unit = {},
+    private val onPackResume: (DownloadRowUiModel.SeasonPack) -> Unit = {},
+    private val onPackDelete: (DownloadRowUiModel.SeasonPack) -> Unit = {},
+    private val onSeriesToggle: (DownloadRowUiModel.SeriesFolder) -> Unit = {},
 ) : ListAdapter<DownloadRowUiModel, RecyclerView.ViewHolder>(Diff) {
 
     object Payload {
@@ -117,12 +121,27 @@ class DownloadsAdapter(
     }
 
     inner class SeriesVH(view: View) : RecyclerView.ViewHolder(view) {
+        private val poster: ImageView = view.findViewById(R.id.iv_download_series_poster)
         private val title: TextView = view.findViewById(R.id.tv_download_series_title)
         private val subtitle: TextView = view.findViewById(R.id.tv_download_series_subtitle)
+        private val chevron: TextView = view.findViewById(R.id.tv_download_series_chevron)
         fun bind(item: DownloadRowUiModel.SeriesFolder) {
             itemView.nextFocusLeftId = R.id.nav_main
             title.text = item.title
             subtitle.text = item.subtitle(itemView.context)
+            chevron.text = if (item.collapsed) "▸" else "▾"
+            val posterUrl = ArtworkUrls.preferW500(item.posterUrl) ?: item.posterUrl
+            if (posterUrl.isNotBlank()) {
+                Glide.with(poster).load(posterUrl).centerCrop().into(poster)
+                poster.visibility = View.VISIBLE
+            } else {
+                Glide.with(poster).clear(poster)
+                poster.visibility = View.GONE
+            }
+            itemView.setOnClickListener {
+                ExpMotion.hapticTap(it)
+                onSeriesToggle(item)
+            }
             if (com.dskja.betterstreamflix.utils.ExperimentalMobileDesign.enabled()) {
                 itemView.setBackgroundResource(
                     com.dskja.betterstreamflix.utils.ExperimentalMobileDesign.glassCardBackground(),
@@ -140,6 +159,9 @@ class DownloadsAdapter(
         private val title: TextView = view.findViewById(R.id.tv_download_season_title)
         private val subtitle: TextView = view.findViewById(R.id.tv_download_season_subtitle)
         private val progress: ProgressBar = view.findViewById(R.id.pb_download_season)
+        private val pauseBtn: TextView = view.findViewById(R.id.btn_download_season_pause)
+        private val resumeBtn: TextView = view.findViewById(R.id.btn_download_season_resume)
+        private val deleteBtn: TextView = view.findViewById(R.id.btn_download_season_delete)
         fun bind(item: DownloadRowUiModel.SeasonPack) {
             val pack = item.pack
             itemView.nextFocusLeftId = R.id.nav_main
@@ -170,6 +192,23 @@ class DownloadsAdapter(
                     )
                 }
                 progress.progress = target
+            }
+            pauseBtn.setOnClickListener {
+                ExpMotion.hapticTap(it)
+                onPackPause(item)
+            }
+            resumeBtn.setOnClickListener {
+                ExpMotion.hapticTap(it)
+                onPackResume(item)
+            }
+            deleteBtn.setOnClickListener {
+                ExpMotion.hapticTap(it)
+                onPackDelete(item)
+            }
+            // OK / click also opens the pack menu (TV-friendly).
+            itemView.setOnClickListener {
+                ExpMotion.hapticTap(it)
+                onPackMore(item, it)
             }
             itemView.setOnLongClickListener {
                 ExpMotion.hapticTap(it)

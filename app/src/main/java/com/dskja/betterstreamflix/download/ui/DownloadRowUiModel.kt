@@ -50,7 +50,8 @@ sealed class DownloadRowUiModel {
                 return context?.getString(R.string.downloads_completed_size, size) ?: size
             }
             val used = DownloadStorage.formatBytes(context, entity.bytesDownloaded)
-            val total = if (entity.contentLength > 0) {
+            val knownTotal = entity.contentLength > 0
+            val total = if (knownTotal) {
                 DownloadStorage.formatBytes(context, entity.contentLength)
             } else {
                 context?.getString(R.string.download_size_unknown) ?: "?"
@@ -61,15 +62,27 @@ sealed class DownloadRowUiModel {
                 context?.getString(R.string.download_size_unknown) ?: "—"
             }
             val eta = DownloadSeriesFolders.formatEta(context, entity.etaSeconds)
+            // Unknown total or stalled speed: simpler line without optimistic ETA (DL-P3-E/F).
+            val useSimple = !knownTotal || entity.speedBytesPerSec <= 0L || entity.etaSeconds < 0L
             return if (context != null) {
-                context.getString(
-                    R.string.downloads_progress_line,
-                    entity.progressPct,
-                    used,
-                    total,
-                    speed,
-                    eta,
-                )
+                if (useSimple) {
+                    context.getString(
+                        R.string.downloads_progress_line_simple,
+                        entity.progressPct,
+                        used,
+                    )
+                } else {
+                    context.getString(
+                        R.string.downloads_progress_line,
+                        entity.progressPct,
+                        used,
+                        total,
+                        speed,
+                        eta,
+                    )
+                }
+            } else if (useSimple) {
+                "${entity.progressPct}% · $used"
             } else {
                 "${entity.progressPct}% · $used / $total · $speed/s · ~$eta"
             }
@@ -99,13 +112,14 @@ sealed class DownloadRowUiModel {
         val state: DownloadItemState get() = DownloadItemState.fromKey(pack.state)
     }
 
-    /** Collapsed series folder header grouping episode rows underneath. */
+    /** Series folder header grouping episode rows underneath; [collapsed] hides children. */
     data class SeriesFolder(
         val seriesKey: String,
         val title: String,
         val episodeCount: Int,
         val totalBytes: Long,
         val posterUrl: String = "",
+        val collapsed: Boolean = false,
     ) : DownloadRowUiModel() {
         override val id: String get() = "series_$seriesKey"
         fun subtitle(context: android.content.Context): String {

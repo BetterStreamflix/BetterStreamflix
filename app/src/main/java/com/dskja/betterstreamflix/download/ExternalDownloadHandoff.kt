@@ -69,7 +69,17 @@ object ExternalDownloadHandoff {
     fun rememberChosenPackage(packageName: String?) {
         val pkg = packageName?.trim().orEmpty()
         if (pkg.isEmpty()) return
+        // Only remember known download managers — SEND choosers can return browsers (DL-P3-J).
+        if (!isKnownDownloaderPackage(pkg)) return
         UserPreferences.externalDownloaderPackage = pkg
+    }
+
+    fun isKnownDownloaderPackage(packageName: String): Boolean {
+        val pkg = packageName.trim()
+        if (pkg.isEmpty()) return false
+        return CANDIDATE_PACKAGES.any { it.equals(pkg, ignoreCase = true) } ||
+            isAdmPackage(pkg) ||
+            isOneDmPackage(pkg)
     }
 
     fun clearPreferredPackage() {

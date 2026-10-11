@@ -103,10 +103,11 @@ class StreamflixDownloadService : DownloadService(
          *
          * Warms [StreamflixDownloadManager] before [startForegroundService] so
          * SimpleCache/OpenHelper work is not on the FGS timer path.
-         *
-         * @return true if foreground or background start succeeded.
          */
-        fun start(context: Context): Boolean {
+        fun start(context: Context): Boolean =
+            tryStart(context) != StartResult.Failed
+
+        fun tryStart(context: Context): StartResult {
             val app = context.applicationContext
             runCatching { StreamflixDownloadManager.get(app) }
                 .onFailure {
@@ -117,7 +118,7 @@ class StreamflixDownloadService : DownloadService(
                 }
             try {
                 startForeground(app, StreamflixDownloadService::class.java)
-                return true
+                return StartResult.StartedForeground
             } catch (foregroundBlocked: Throwable) {
                 // Includes ForegroundServiceStartNotAllowedException on API 31+
                 // (BOOT_COMPLETED / background — BETTERSTREAMFLIX-2P / SS-02 / 2G).
@@ -136,7 +137,7 @@ class StreamflixDownloadService : DownloadService(
                 }
                 return try {
                     start(app, StreamflixDownloadService::class.java)
-                    true
+                    StartResult.StartedBackground
                 } catch (backgroundBlocked: Throwable) {
                     android.util.Log.w(
                         "StreamflixDownloadService",
@@ -152,9 +153,15 @@ class StreamflixDownloadService : DownloadService(
                         )
                     }
                     runCatching { DownloadNotifier.notifyServiceStartFailed(app) }
-                    false
+                    StartResult.Failed
                 }
             }
         }
+    }
+
+    enum class StartResult {
+        StartedForeground,
+        StartedBackground,
+        Failed,
     }
 }
