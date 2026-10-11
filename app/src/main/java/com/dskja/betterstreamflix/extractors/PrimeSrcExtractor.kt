@@ -52,6 +52,17 @@ class PrimeSrcExtractor : Extractor() {
         val service = Service.build(mainUrl)
 
         val videoLink = service.getLink(link).link
+            ?.trim()
+            .orEmpty()
+        // Reject empty / placeholder hosts (e.g. "_") before extractor dispatch.
+        val host = runCatching { java.net.URI(videoLink).host }.getOrNull()
+        if (videoLink.isBlank() ||
+            host.isNullOrBlank() ||
+            host == "_" ||
+            !videoLink.startsWith("http", ignoreCase = true)
+        ) {
+            throw Exception("PrimeSrc returned an invalid stream URL")
+        }
 
         return Extractor.extract(videoLink)
     }

@@ -43,6 +43,7 @@ import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
+import kotlinx.coroutines.withTimeoutOrNull
 import okhttp3.OkHttpClient
 import okhttp3.Request
 
@@ -717,6 +718,7 @@ class TmdbProvider private constructor(override val language: String) : Provider
                 title = it.name ?: "",
                 released = it.airDate,
                 poster = it.stillPath?.w500,
+                overview = it.overview?.takeIf { text -> text.isNotBlank() },
             )
         } ?: listOf()
 
@@ -863,6 +865,9 @@ class TmdbProvider private constructor(override val language: String) : Provider
 
                 // Prefer real German hosters first (SerienStream etc.) — extractors often
                 // return optimistic dead servers that waste failover into "not available".
+                // KellerKino is intentionally omitted from TMDb DE aggregation: CF captcha
+                // via TMDb yields no streams and times out searches (upstream cf74e3a).
+                // Standalone KellerKino provider remains available in the provider picker.
                 val nativeProviders: List<Provider> = buildList {
                     if (videoType is Video.Type.Episode) {
                         add(SerienStreamProvider)
@@ -874,19 +879,35 @@ class TmdbProvider private constructor(override val language: String) : Provider
                     add(MEGAKinoProvider)
                     add(FilmPalastProvider)
                     if (videoType is Video.Type.Movie) {
-                        add(KellerKinoProvider)
                         add(FilmoProvider)
                     }
                 }
-                val nativeServers = resolveGermanNativeServers(
-                    providers = nativeProviders,
-                    titleQueries = titleQueries.toList(),
-                    videoType = videoType,
-                )
-                servers.addAll(nativeServers)
+                /*
+                 * Moflix can spend a long time in its anti-bot/session path.
+                 * Run it in parallel with native DE providers and soft-timeout
+                 * so it never blocks the whole TMDb-DE server list (upstream cf74e3a).
+                 */
+                val discoveredGermanServers = coroutineScope {
+                    val moflixTask = async(Dispatchers.IO) {
+                        withTimeoutOrNull(20_000L) {
+                            MoflixExtractor().servers(videoType)
+                        }.orEmpty().also {
+                            if (it.isEmpty()) {
+                                Log.w("TmdbProvider", "Moflix discovery empty or timed out")
+                            }
+                        }
+                    }
+                    val nativeTask = async(Dispatchers.IO) {
+                        resolveGermanNativeServers(
+                            providers = nativeProviders,
+                            titleQueries = titleQueries.toList(),
+                            videoType = videoType,
+                        )
+                    }
+                    moflixTask.await() + nativeTask.await()
+                }
+                servers.addAll(discoveredGermanServers)
 
-                // Direct extractors as fallback when natives miss
-                runCatching { servers.addAll(MoflixExtractor().servers(videoType)) }
                 if (videoType is Video.Type.Movie) {
                     runCatching { servers.add(EinschaltenExtractor().server(videoType)) }
                 }

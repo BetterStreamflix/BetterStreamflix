@@ -189,9 +189,12 @@ abstract class PlayerSettingsView @JvmOverloads constructor(
 
             when (subtitle) {
                 is Settings.Subtitle.None -> {
+                    // Clearing overrides alone is not enough — ExoPlayer can still
+                    // auto-select an embedded TEXT track (TMDb EN). Disable TEXT.
                     player.trackSelectionParameters = player.trackSelectionParameters
                         .buildUpon()
                         .clearOverridesOfType(C.TRACK_TYPE_TEXT)
+                        .setTrackTypeDisabled(C.TRACK_TYPE_TEXT, true)
                         .setIgnoredTextSelectionFlags(C.SELECTION_FLAG_FORCED.inv())
                         .build()
                     UserPreferences.subtitleName = null
@@ -200,6 +203,7 @@ abstract class PlayerSettingsView @JvmOverloads constructor(
                 is Settings.Subtitle.TextTrackInformation -> {
                     player.trackSelectionParameters = player.trackSelectionParameters
                         .buildUpon()
+                        .setTrackTypeDisabled(C.TRACK_TYPE_TEXT, false)
                         .setOverrideForType(
                             TrackSelectionOverride(
                                 subtitle.trackGroup.mediaTrackGroup,

@@ -506,18 +506,23 @@ class EpisodeViewHolder(
 
         bindEpisodeProgress(binding.pbEpisodeProgress)
 
+        binding.root.findViewById<android.widget.TextView>(R.id.tv_episode_number_badge)?.apply {
+            text = "E${episode.number}"
+            visibility = View.VISIBLE
+        }
+
         binding.tvEpisodeInfo.text = context.getString(
             R.string.episode_number,
             episode.number
         )
+        binding.tvEpisodeInfo.visibility = View.VISIBLE
 
         binding.tvEpisodeTitle.apply {
-            text = episode.title ?: context.getString(
-                R.string.episode_number,
-                episode.number
-            )
+            text = episode.title?.takeIf { it.isNotBlank() }
+                ?: context.getString(R.string.episode_number, episode.number)
             maxLines = 2
             ellipsize = android.text.TextUtils.TruncateAt.END
+            visibility = View.VISIBLE
         }
 
         binding.tvEpisodeReleased.apply {
@@ -529,10 +534,11 @@ class EpisodeViewHolder(
             visibility = if (show) View.VISIBLE else View.GONE
         }
         binding.tvEpisodeOverview.apply {
-            text = episode.overview ?: ""
-            maxLines = 5
+            val overview = episode.overview?.trim().orEmpty()
+            text = overview
+            maxLines = 4
             ellipsize = android.text.TextUtils.TruncateAt.END
-            visibility = if (episode.overview.isNullOrBlank()) View.GONE else View.VISIBLE
+            visibility = if (overview.isBlank()) View.GONE else View.VISIBLE
         }
     }
 

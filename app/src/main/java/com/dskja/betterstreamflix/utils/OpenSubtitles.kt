@@ -86,13 +86,22 @@ object OpenSubtitles {
             ".${File(subtitle.subDownloadLink).extension.ifBlank { "gz" }}"
         )
 
+        val downloadLink = subtitle.subDownloadLink.trim()
+        val host = runCatching { java.net.URI(downloadLink).host }.getOrNull()
+        if (downloadLink.isBlank() ||
+            host.isNullOrBlank() ||
+            host == "_" ||
+            !downloadLink.startsWith("http", ignoreCase = true)
+        ) {
+            throw Exception("OpenSubtitles download link has an invalid host")
+        }
         val client = OkHttpClient.Builder()
             .connectTimeout(15, TimeUnit.SECONDS)
             .readTimeout(30, TimeUnit.SECONDS)
             .callTimeout(45, TimeUnit.SECONDS)
             .build()
         val request = Request.Builder()
-            .url(subtitle.subDownloadLink)
+            .url(downloadLink)
             .header("User-Agent", OpenSubtitlesV1Client.userAgent())
             .build()
         client.newCall(request).execute().use { response ->
@@ -149,19 +158,33 @@ object OpenSubtitles {
         episode: Int? = null,
         subLanguageId: String? = null,
     ): List<Subtitle> {
+        val cleanImdb = sanitizeImdbId(imdbId)
+        val cleanQuery = query?.trim()?.takeIf { it.isNotBlank() && it != "_" }
+        if (cleanImdb == null && cleanQuery == null) {
+            return emptyList()
+        }
         val params = mapOf(
             Params.Key.EPISODE to episode?.toString(),
-            Params.Key.QUERY to query?.lowercase(),
+            Params.Key.QUERY to cleanQuery?.lowercase(),
             Params.Key.SEASON to season?.toString(),
-            Params.Key.IMDB_ID to imdbId,
-            Params.Key.SUB_LANGUAGE_ID to subLanguageId,
+            Params.Key.IMDB_ID to cleanImdb,
+            Params.Key.SUB_LANGUAGE_ID to subLanguageId?.takeIf { it.isNotBlank() && it != "_" },
         )
-        return service.search(
-            params = params
-                .filterNotNullValues()
-                .map { "${it.key}-${it.value}" }
-                .joinToString("/")
-        )
+        val path = params
+            .filterNotNullValues()
+            .filter { !it.value.isNullOrBlank() && it.value != "_" }
+            .map { "${it.key}-${it.value}" }
+            .joinToString("/")
+        if (path.isBlank()) return emptyList()
+        return service.search(params = path)
+    }
+
+    private fun sanitizeImdbId(imdbId: String?): String? {
+        val raw = imdbId?.trim().orEmpty()
+        if (raw.isBlank() || raw == "_") return null
+        // Legacy REST expects numeric imdb id (no "tt" prefix).
+        val digits = raw.removePrefix("tt").filter { it.isDigit() }
+        return digits.takeIf { it.isNotEmpty() }
     }
 
     private fun getCharsetFromEncoding(encoding: String?): java.nio.charset.Charset {

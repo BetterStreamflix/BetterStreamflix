@@ -54,7 +54,10 @@ object UnJourUnFilmProvider : Provider, ProviderPortalUrl, ProviderConfigUrl {
     override val baseUrl: String = defaultBaseUrl
         get() {
             val cacheURL = UserPreferences.getProviderCache(this, UserPreferences.PROVIDER_URL)
-            return cacheURL.ifEmpty { field }
+            return cacheURL
+                .takeIf { it.startsWith("http://") || it.startsWith("https://") }
+                ?.takeIf { !it.contains('<') }
+                ?: field
         }
 
     override val logo: String
@@ -795,14 +798,19 @@ object UnJourUnFilmProvider : Provider, ProviderPortalUrl, ProviderConfigUrl {
                 try {
                     val document = addressService.getHome()
 
-                    val newUrl = document.html().substringAfter("window.location.href = \"").substringBefore("\"")
+                    val parsed = document.html()
+                        .substringAfter("window.location.href = \"")
+                        .substringBefore("\"")
                         .trim()
-                    if (!newUrl.isNullOrEmpty()) {
+                    val candidate = parsed
+                        .takeIf { it.startsWith("http://") || it.startsWith("https://") }
+                        ?.takeIf { !it.contains('<') && !it.contains(' ') }
+                        ?.let { if (it.endsWith("/")) it else "$it/" }
+                    if (candidate != null) {
                         val newIcon = document.selectFirst("link[rel=apple-touch-icon]")
-                                                ?.attr("href") ?:
-                                                "$defaultPortalUrl/wp-content/uploads/2025/07/1J1F-150x150.jpg"
-                        val newUrl = if (newUrl.endsWith("/")) newUrl else "$newUrl/"
-                        UserPreferences.setProviderCache(this,UserPreferences.PROVIDER_URL, newUrl)
+                            ?.attr("href")
+                            ?: "$defaultPortalUrl/wp-content/uploads/2025/07/1J1F-150x150.jpg"
+                        UserPreferences.setProviderCache(this, UserPreferences.PROVIDER_URL, candidate)
                         UserPreferences.setProviderCache(
                             this,
                             UserPreferences.PROVIDER_LOGO,
@@ -814,7 +822,14 @@ object UnJourUnFilmProvider : Provider, ProviderPortalUrl, ProviderConfigUrl {
                     // No need to throw as we already have a fallback URL
                 }
             }
-            service = Service.build(baseUrl)
+            val safeBase = baseUrl.takeIf {
+                it.startsWith("http://") || it.startsWith("https://")
+            } ?: defaultBaseUrl
+            if (safeBase != baseUrl) {
+                // Cached value was HTML/garbage (BETTERSTREAMFLIX-2N) — reset.
+                UserPreferences.setProviderCache(this, UserPreferences.PROVIDER_URL, safeBase)
+            }
+            service = Service.build(safeBase)
             serviceInitialized = true
         }
         return baseUrl

@@ -20,14 +20,16 @@ class VidHideExtractor: Extractor() {
     override val aliasUrls = listOf(
         "https://peytonepre.com",
         "https://vidhideplus.com/",
-        "https://mivalyo",
-        "https://dinisglows",
+        // Full hosts only — bare "https://mivalyo" / "https://dinisglows"
+        // have no TLD and can yield UnknownHostException for host "_"/junk.
+        "https://mivalyo.com",
+        "https://dinisglows.com",
         "https://dingtezuni.com",
         "https://dintezuvio.com",
         "https://minochinos.com",
         "https://moflix-stream.click",
         "https://filelions.to",
-        "https://morencius.com"
+        "https://morencius.com",
     )
 
     companion object {

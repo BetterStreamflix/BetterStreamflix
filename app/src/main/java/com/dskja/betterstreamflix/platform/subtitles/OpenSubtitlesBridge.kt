@@ -127,6 +127,14 @@ object OpenSubtitlesBridge {
             fileId = fileId,
         )?.let { return it }
 
+        val host = runCatching { java.net.URI(url).host }.getOrNull()
+        if (url.isBlank() ||
+            host.isNullOrBlank() ||
+            host == "_" ||
+            !url.startsWith("http", ignoreCase = true)
+        ) {
+            error("OpenSubtitles download URL has an invalid host")
+        }
         val tmp = File.createTempFile("osv1-", ".srt", context.cacheDir)
         URL(url).openStream().use { input ->
             FileOutputStream(tmp).use { output -> input.copyTo(output) }

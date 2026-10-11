@@ -49,10 +49,15 @@ object DnsResolver : Dns {
     private var _internalDoh: Dns = Dns.SYSTEM
 
     override fun lookup(hostname: String): List<InetAddress> {
+        val host = hostname.trim()
+        // Guard empty / placeholder hosts (subtitle + extractor bad URLs → host "_").
+        if (host.isEmpty() || host == "_" || host == "." || !host.any { it.isLetterOrDigit() }) {
+            throw java.net.UnknownHostException("Invalid hostname: '$hostname'")
+        }
         val providerName = if (_url.isEmpty()) "SYSTEM" else _url
-        Log.d(TAG, "Resolving host: $hostname using provider: $providerName")
+        Log.d(TAG, "Resolving host: $host using provider: $providerName")
         val future = lookupExecutor.submit<List<InetAddress>> {
-            lookupUncapped(hostname, providerName)
+            lookupUncapped(host, providerName)
         }
         return try {
             future.get(LOOKUP_TIMEOUT_MS, TimeUnit.MILLISECONDS)
@@ -101,9 +106,17 @@ object DnsResolver : Dns {
 
     @Synchronized
     fun setDnsUrl(newUrl: String) {
-        Log.i(TAG, "DNS Change Requested: New URL = '$newUrl' (Current = '$_url')")
-        if (newUrl != _url) {
-            _url = newUrl
+        val sanitized = newUrl.trim().takeIf {
+            it.isEmpty() || (
+                (it.startsWith("http://") || it.startsWith("https://")) &&
+                    runCatching { it.toHttpUrl().host }
+                        .getOrNull()
+                        ?.let { host -> host.isNotBlank() && host != "_" } == true
+                )
+        } ?: ""
+        Log.i(TAG, "DNS Change Requested: New URL = '$sanitized' (Current = '$_url')")
+        if (sanitized != _url) {
+            _url = sanitized
             _internalDoh = buildDoh(_url)
             Log.i(TAG, "DNS Engine updated successfully to: ${if (newUrl.isEmpty()) "SYSTEM" else newUrl}")
         } else {
