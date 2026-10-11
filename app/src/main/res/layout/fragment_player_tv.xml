@@ -139,6 +139,17 @@
         app:layout_constraintTop_toTopOf="parent"
         tools:visibility="visible" />
 
+    <!-- Mini-Live PiP Zap (in-player preview; TV has no OS PiP). -->
+    <include
+        android:id="@+id/layout_live_pip_zap"
+        layout="@layout/view_live_pip_zap_overlay"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="32dp"
+        android:layout_marginBottom="120dp"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toStartOf="parent" />
+
     <LinearLayout
         android:id="@+id/layout_next_episode_overlay"
         android:layout_width="316dp"

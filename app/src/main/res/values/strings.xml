@@ -1777,6 +1777,10 @@
     <string name="settings_tmdb_api_key_summary">Required for the TMDb provider. Create a key at themoviedb.org/settings/api</string>
     <string name="settings_tmdb_api_key_missing">TMDb API key is missing. Add it in Settings to use the TMDb provider.</string>
     <string name="player_live_badge">LIVE</string>
+    <string name="live_pip_zap_cd">Mini live preview — tap to watch live</string>
+    <string name="live_pip_zap_tap_hint">Tap to watch live</string>
+    <string name="live_pip_zap_return_vod">Back to %1$s</string>
+    <string name="live_pip_zap_return_cd">Return to previous video</string>
     <string name="player_live_channel">Live channel</string>
     <string name="player_go_live">Go Live</string>
     <string name="player_live_channel_meta">CH %1$d · %2$s</string>

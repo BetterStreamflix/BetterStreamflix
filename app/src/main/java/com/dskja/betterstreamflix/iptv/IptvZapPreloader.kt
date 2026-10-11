@@ -111,17 +111,29 @@ object IptvZapPreloader {
         inflight.remove(channelId)?.cancel()
     }
 
+    /** Remember a resolved server list (Mini-Live preview / zap) without a network round-trip. */
+    fun rememberServers(channelId: String, servers: List<Video.Server>) {
+        if (channelId.isBlank() || servers.isEmpty()) return
+        synchronized(serversByChannelId) {
+            serversByChannelId[channelId] = CacheEntry(servers, storedAtMs = elapsedRealtimeMs())
+        }
+    }
+
+    /** Remember a warmed video for [serverId] (Mini-Live preview → promote). */
+    fun rememberVideo(serverId: String, video: Video) {
+        if (serverId.isBlank() || video.source.isBlank()) return
+        synchronized(videoByServerId) {
+            purgeStaleVideosLocked()
+            videoByServerId[serverId] = CachedVideo(video, cachedAtMs = elapsedRealtimeMs())
+        }
+    }
+
     /** Test harness: seed warm caches without launching network work. */
     internal fun seedForTest(channelId: String, servers: List<Video.Server>, video: Video? = null) {
-        val now = elapsedRealtimeMs()
-        synchronized(serversByChannelId) {
-            serversByChannelId[channelId] = CacheEntry(servers, storedAtMs = now)
-        }
+        rememberServers(channelId, servers)
         val firstId = servers.firstOrNull()?.id
         if (video != null && firstId != null) {
-            synchronized(videoByServerId) {
-                videoByServerId[firstId] = CachedVideo(video, cachedAtMs = now)
-            }
+            rememberVideo(firstId, video)
         }
     }
 
