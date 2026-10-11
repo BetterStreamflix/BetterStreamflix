@@ -8,9 +8,10 @@ class StreamFailureReasonTest {
 
     @Test
     fun classifiesCaptcha() {
+        // Infer SerienStream family from the message — avoid loading Provider singletons
+        // (Base64/Android not mocked in unit tests).
         val p = StreamFailureReason.classify(
-            error = Exception("Cloudflare captcha challenge"),
-            provider = com.dskja.betterstreamflix.providers.SerienStreamProvider,
+            error = Exception("SerienStream Cloudflare captcha challenge"),
         )
         assertEquals(StreamFailureReason.Kind.CAPTCHA, p.kind)
         assertEquals(StreamFailureReason.Action.SOLVE_CAPTCHA, p.action)
@@ -31,6 +32,7 @@ class StreamFailureReasonTest {
             Exception("tmdbde:serienstream:/serie/foo/staffel-1/episode-2 failed"),
         )
         assertEquals(StreamFailureReason.Kind.CAPTCHA, p.kind)
+        assertEquals(StreamFailureReason.Action.SOLVE_CAPTCHA, p.action)
     }
 
     @Test
@@ -44,11 +46,11 @@ class StreamFailureReasonTest {
     fun captchaActionOnlyForSerienStreamFamily() {
         val generic = StreamFailureReason.classify(Exception("Cloudflare captcha challenge"))
         assertEquals(StreamFailureReason.Kind.CAPTCHA, generic.kind)
+        // Generic Cloudflare without SerienStream/AniWorld markers → no Solve CTA.
         assertEquals(StreamFailureReason.Action.NONE, generic.action)
 
         val ss = StreamFailureReason.classify(
-            error = Exception("Cloudflare captcha challenge"),
-            provider = com.dskja.betterstreamflix.providers.SerienStreamProvider,
+            error = Exception("AniWorld Cloudflare captcha challenge"),
         )
         assertEquals(StreamFailureReason.Action.SOLVE_CAPTCHA, ss.action)
     }
