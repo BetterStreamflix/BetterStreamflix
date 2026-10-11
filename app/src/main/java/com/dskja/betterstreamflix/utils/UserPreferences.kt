@@ -637,19 +637,28 @@ object UserPreferences {
             Key.SERVER_AUTO_SUBTITLES_DISABLED.setBoolean(value)
         }
 
+    /**
+     * Locked Cinema-Ink look for the active profile. Legacy / retired theme ids are
+     * collapsed via [ThemeManager.resolveLook] so Settings never half-mix accents.
+     */
     var selectedTheme: String
-        get() = profileScopedString(Key.SELECTED_THEME)
-            ?: Key.SELECTED_THEME.getString()
-            ?: "default"
-        set(value) = setProfileScopedString(Key.SELECTED_THEME, value)
+        get() = ThemeManager.resolveLook(
+            profileScopedString(Key.SELECTED_THEME)
+                ?: Key.SELECTED_THEME.getString(),
+        )
+        set(value) = setProfileScopedString(
+            Key.SELECTED_THEME,
+            ThemeManager.resolveLook(value),
+        )
 
     /**
-     * App-wide OLED / true-black surfaces. Persists independently of the accent theme.
-     * When the Nero Amoled theme is selected, OLED is treated as active regardless.
+     * Retired with Looks Locked — OLED half-mix is ignored. Setter clears the flag.
      */
     var oledMode: Boolean
-        get() = Key.OLED_MODE.getBoolean() ?: false
-        set(value) = Key.OLED_MODE.setBoolean(value)
+        get() = false
+        set(value) {
+            Key.OLED_MODE.setBoolean(false)
+        }
 
     /** Off-by-default complete mobile shell redesign. Requires activity restart. */
     var experimentalNewAppDesign: Boolean

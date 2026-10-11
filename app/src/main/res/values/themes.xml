@@ -372,6 +372,21 @@
         <item name="category_swiper_gradient_drawable">@drawable/fg_category_swiper_cinema_ink</item>
     </style>
 
+    <style name="AppTheme.Mobile.CinemaInkLight" parent="AppTheme.Mobile">
+        <item name="app_background_color">@color/cinema_ink_light</item>
+        <item name="android:windowBackground">@drawable/bg_splash_screen_cinema_ink_light</item>
+        <item name="android:colorBackground">@color/cinema_ink_light</item>
+        <item name="colorSurface">@color/cinema_ink_light_surface</item>
+        <item name="colorSurfaceVariant">@color/cinema_ink_light_elevated</item>
+        <item name="colorAccent">@color/cinema_ink_light_accent</item>
+        <item name="android:textColorPrimary">@color/cinema_ink_light_text</item>
+        <item name="android:textColorSecondary">@color/cinema_ink_light_text_muted</item>
+        <item name="home_gradient_drawable">@drawable/bg_home_gradient_cinema_ink_light</item>
+        <item name="movie_banner_gradient_drawable">@drawable/bg_movie_banner_gradient_cinema_ink_light</item>
+        <item name="tv_show_banner_gradient_drawable">@drawable/bg_tv_show_banner_gradient_cinema_ink_light</item>
+        <item name="category_swiper_gradient_drawable">@drawable/fg_category_swiper_cinema_ink_light</item>
+    </style>
+
     <style name="AppTheme.Mobile.KidsBright" parent="AppTheme.Mobile">
         <item name="app_background_color">#243B63</item>
         <item name="android:windowBackground">@drawable/bg_splash_screen_kids_bright</item>
@@ -638,6 +653,26 @@
         <item name="movie_banner_gradient_drawable">@drawable/bg_movie_banner_gradient_cinema_ink</item>
         <item name="tv_show_banner_gradient_drawable">@drawable/bg_tv_show_banner_gradient_cinema_ink</item>
         <item name="category_swiper_gradient_drawable">@drawable/fg_category_swiper_cinema_ink</item>
+    </style>
+
+    <style name="AppTheme.CinemaInkLight" parent="AppTheme.Tv">
+        <item name="app_background_color">@color/cinema_ink_light</item>
+        <item name="preferenceTheme">@style/PreferenceThemeOverlayLeanback</item>
+        <item name="alertDialogTheme">@style/Theme.AppCompat.Light.Dialog.Alert</item>
+        <item name="colorAccent">@color/cinema_ink_light_accent</item>
+        <item name="colorControlActivated">@color/cinema_ink_light_accent</item>
+        <item name="colorControlNormal">@color/cinema_ink_light_text_muted</item>
+        <item name="android:textColorPrimary">@color/cinema_ink_light_text</item>
+        <item name="android:textColorSecondary">@color/cinema_ink_light_text_muted</item>
+        <item name="android:windowBackground">@drawable/bg_splash_screen_cinema_ink_light</item>
+        <item name="defaultBrandColor">@color/cinema_ink_light</item>
+        <item name="defaultSearchColor">@color/cinema_ink_light</item>
+        <item name="defaultSearchBrightColor">@color/cinema_ink_light_surface</item>
+        <item name="defaultSearchIconColor">@color/cinema_ink_light_text</item>
+        <item name="home_gradient_drawable">@drawable/bg_home_gradient_cinema_ink_light</item>
+        <item name="movie_banner_gradient_drawable">@drawable/bg_movie_banner_gradient_cinema_ink_light</item>
+        <item name="tv_show_banner_gradient_drawable">@drawable/bg_tv_show_banner_gradient_cinema_ink_light</item>
+        <item name="category_swiper_gradient_drawable">@drawable/fg_category_swiper_cinema_ink_light</item>
     </style>
 
     <style name="AppTheme.KidsBright" parent="AppTheme.Tv">
