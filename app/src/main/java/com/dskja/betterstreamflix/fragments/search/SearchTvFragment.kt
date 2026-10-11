@@ -324,8 +324,10 @@ class SearchTvFragment : Fragment() {
                 val ui = _binding ?: return@VoiceRecognitionHelper
                 ui.btnSearchVoice.clearAnimation()
                 ui.etSearch.setText(query)
+                ui.etSearch.setSelection(query.length)
                 // Honor global-search toggle the same way submitSearch does.
                 submitSearch()
+                ui.etSearch.post { _binding?.etSearch?.requestFocus() }
             },
             onError = { msg ->
                 val ui = _binding ?: return@VoiceRecognitionHelper
@@ -339,20 +341,30 @@ class SearchTvFragment : Fragment() {
                 val hintStringRes =
                     if (isIptv) R.string.search_input_hint_iptv else R.string.search_input_hint
                 ui.etSearch.hint = getString(hintStringRes)
+                ui.etSearch.post { _binding?.etSearch?.requestFocus() }
             },
             onListeningStateChanged = { isListening ->
                 val ui = _binding ?: return@VoiceRecognitionHelper
                 if (isListening) {
                     ui.btnSearchVoice.startAnimation(blink)
                     ui.etSearch.hint = getString(R.string.voice_prompt)
+                    ui.btnSearchVoice.contentDescription =
+                        getString(R.string.voice_prompt)
                 } else {
                     ui.btnSearchVoice.clearAnimation()
                     val isIptv = UserPreferences.currentProvider is IptvProvider
                     val hintStringRes =
                         if (isIptv) R.string.search_input_hint_iptv else R.string.search_input_hint
                     ui.etSearch.hint = getString(hintStringRes)
+                    ui.btnSearchVoice.contentDescription =
+                        getString(R.string.voice_search)
                 }
-            }
+            },
+            onPartial = { partial ->
+                val ui = _binding ?: return@VoiceRecognitionHelper
+                ui.etSearch.setText(partial)
+                ui.etSearch.setSelection(partial.length)
+            },
         )
 
         binding.btnSearchVoice.apply {
@@ -360,8 +372,10 @@ class SearchTvFragment : Fragment() {
             visibility = if (voiceVisible) View.VISIBLE else View.GONE
             binding.btnSearchClear.nextFocusRightId =
                 if (voiceVisible) id else View.NO_ID
+            contentDescription = getString(R.string.voice_search)
             setOnClickListener {
-                if (!voiceHelper.isListening) voiceHelper.startWithPermissionCheck()
+                // Toggle start/stop — second OK while listening cancels cleanly on Fire TV.
+                voiceHelper.startWithPermissionCheck()
             }
         }
 

@@ -4,6 +4,7 @@ import com.dskja.betterstreamflix.adapters.AppAdapter
 import com.dskja.betterstreamflix.models.Category
 import com.dskja.betterstreamflix.models.Genre
 import com.dskja.betterstreamflix.models.Movie
+import com.dskja.betterstreamflix.models.People
 import com.dskja.betterstreamflix.models.TvShow
 
 /**
@@ -29,16 +30,20 @@ object SearchTvRows {
     fun local(query: String, items: List<AppAdapter.Item>): Grid {
         val capped = SearchResultGuard.sanitize(items).take(MAX_LOCAL)
         // Blank Search shows genre chips — hide mature genres under Kids.
+        // Drop empty Category headers — CATEGORY_TV_ITEM with no children traps Leanback.
+        val filtered = capped.filterNot { it is Category && it.list.isEmpty() }
         val safe = if (query.isBlank()) {
-            com.dskja.betterstreamflix.utils.ParentalControlUtils.filterGenreChips(capped)
+            com.dskja.betterstreamflix.utils.ParentalControlUtils.filterGenreChips(filtered)
         } else {
-            capped
+            filtered
         }
         safe.forEach { item ->
             when (item) {
                 is Genre -> item.itemType = AppAdapter.Type.GENRE_GRID_TV_ITEM
                 is Movie -> item.itemType = AppAdapter.Type.MOVIE_GRID_TV_ITEM
                 is TvShow -> item.itemType = AppAdapter.Type.TV_SHOW_GRID_TV_ITEM
+                is People -> item.itemType = AppAdapter.Type.PEOPLE_TV_ITEM
+                is Category -> item.itemType = AppAdapter.Type.CATEGORY_TV_ITEM
             }
         }
         val columns = if (query.isBlank()) GENRE_COLUMNS else RESULT_COLUMNS
@@ -67,6 +72,7 @@ object SearchTvRows {
                 when (item) {
                     is Movie -> item.itemType = AppAdapter.Type.MOVIE_TV_ITEM
                     is TvShow -> item.itemType = AppAdapter.Type.TV_SHOW_TV_ITEM
+                    is People -> item.itemType = AppAdapter.Type.PEOPLE_TV_ITEM
                 }
             }
             Category(

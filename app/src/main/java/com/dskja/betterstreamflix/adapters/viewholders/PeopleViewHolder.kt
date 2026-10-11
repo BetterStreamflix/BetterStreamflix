@@ -18,6 +18,10 @@ import com.dskja.betterstreamflix.fragments.movie.MovieMobileFragment
 import com.dskja.betterstreamflix.fragments.movie.MovieMobileFragmentDirections
 import com.dskja.betterstreamflix.fragments.movie.MovieTvFragment
 import com.dskja.betterstreamflix.fragments.movie.MovieTvFragmentDirections
+import com.dskja.betterstreamflix.fragments.search.SearchMobileFragment
+import com.dskja.betterstreamflix.fragments.search.SearchMobileFragmentDirections
+import com.dskja.betterstreamflix.fragments.search.SearchTvFragment
+import com.dskja.betterstreamflix.fragments.search.SearchTvFragmentDirections
 import com.dskja.betterstreamflix.fragments.tv_show.TvShowMobileFragment
 import com.dskja.betterstreamflix.fragments.tv_show.TvShowMobileFragmentDirections
 import com.dskja.betterstreamflix.fragments.tv_show.TvShowTvFragment
@@ -64,6 +68,13 @@ class PeopleViewHolder(
                     )
                     is TvShowMobileFragment -> findNavController().navigate(
                         TvShowMobileFragmentDirections.actionTvShowToPeople(
+                            id = people.id,
+                            name = people.name,
+                            image = people.image,
+                        )
+                    )
+                    is SearchMobileFragment -> findNavController().navigate(
+                        SearchMobileFragmentDirections.actionSearchToPeople(
                             id = people.id,
                             name = people.name,
                             image = people.image,
@@ -124,6 +135,13 @@ class PeopleViewHolder(
                     )
                     is TvShowTvFragment -> findNavController().navigate(
                         TvShowTvFragmentDirections.actionTvShowToPeople(
+                            id = people.id,
+                            name = people.name,
+                            image = people.image,
+                        )
+                    )
+                    is SearchTvFragment -> findNavController().navigate(
+                        SearchTvFragmentDirections.actionSearchToPeople(
                             id = people.id,
                             name = people.name,
                             image = people.image,

@@ -3,6 +3,7 @@ package com.dskja.betterstreamflix.fragments.search
 import com.dskja.betterstreamflix.adapters.AppAdapter
 import com.dskja.betterstreamflix.models.Category
 import com.dskja.betterstreamflix.models.Movie
+import com.dskja.betterstreamflix.models.People
 import com.dskja.betterstreamflix.models.TvShow
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -18,6 +19,22 @@ class SearchMobileRowsTest {
         val rows = SearchMobileRows.local(hits)
         assertEquals(SearchMobileRows.MAX_LOCAL, rows.size)
         assertEquals(AppAdapter.Type.MOVIE_GRID_MOBILE_ITEM, (rows.first() as Movie).itemType)
+    }
+
+    @Test
+    fun local_stampsPeopleAndCategoryHeader() {
+        val rows = SearchMobileRows.local(
+            listOf(
+                Category(name = "Similar to Dark", list = emptyList()).apply {
+                    identityKey = "search-similar:Dark"
+                },
+                People(id = "1", name = "Nolan", knownForDepartment = "Directing"),
+                Movie(id = "2", title = "Inception"),
+            ),
+        )
+        assertEquals(AppAdapter.Type.CATEGORY_MOBILE_ITEM, (rows[0] as Category).itemType)
+        assertEquals(AppAdapter.Type.PEOPLE_MOBILE_ITEM, (rows[1] as People).itemType)
+        assertEquals(AppAdapter.Type.MOVIE_GRID_MOBILE_ITEM, (rows[2] as Movie).itemType)
     }
 
     @Test

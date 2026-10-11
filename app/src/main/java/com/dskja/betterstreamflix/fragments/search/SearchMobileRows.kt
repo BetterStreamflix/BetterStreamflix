@@ -4,6 +4,7 @@ import com.dskja.betterstreamflix.adapters.AppAdapter
 import com.dskja.betterstreamflix.models.Category
 import com.dskja.betterstreamflix.models.Genre
 import com.dskja.betterstreamflix.models.Movie
+import com.dskja.betterstreamflix.models.People
 import com.dskja.betterstreamflix.models.TvShow
 
 /**
@@ -75,6 +76,8 @@ object SearchMobileRows {
             is Genre -> item.itemType = AppAdapter.Type.GENRE_GRID_MOBILE_ITEM
             is Movie -> item.itemType = AppAdapter.Type.MOVIE_GRID_MOBILE_ITEM
             is TvShow -> item.itemType = AppAdapter.Type.TV_SHOW_GRID_MOBILE_ITEM
+            is People -> item.itemType = AppAdapter.Type.PEOPLE_MOBILE_ITEM
+            is Category -> item.itemType = AppAdapter.Type.CATEGORY_MOBILE_ITEM
         }
     }
 }

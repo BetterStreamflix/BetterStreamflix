@@ -510,11 +510,31 @@ class TmdbProvider private constructor(override val language: String) : Provider
                     tmdbId = multi.id.toString(),
                 )
 
+                is TMDb3.Person -> People(
+                    id = multi.id.toString(),
+                    name = multi.name,
+                    image = multi.profilePath?.w500 ?: multi.profilePath?.original,
+                    knownForDepartment = multi.knownForDepartment?.value,
+                ).also { person ->
+                    // Reuse character subtitle slot for department (Director / Acting / …).
+                    person.character = multi.knownForDepartment?.value
+                }
+
                 else -> null
             }
         }
 
-        return results
+        // People / directors first so name searches surface cast before loose title matches.
+        return results.sortedBy { item ->
+            when (item) {
+                is People -> when (item.knownForDepartment?.lowercase()) {
+                    "directing" -> 0
+                    "acting", "actors" -> 1
+                    else -> 2
+                }
+                else -> 3
+            }
+        }
     }
 
     override suspend fun getMovies(page: Int): List<Movie> {
