@@ -101,34 +101,8 @@ object DownloadConnectivityMonitor {
     /**
      * Product rule for Wi‑Fi-only downloads: hold when the preference is on and the
      * active network is metered (cellular, hotspot, or other metered transports).
-     * When a Wi‑Fi window is enabled, also hold outside that local minute-of-day range.
      * Shared by the connectivity watcher, enqueue/resume gates, Smart Downloads, and UI banner.
      */
-    fun shouldHoldForWifiOnly(context: Context): Boolean {
-        if (!UserPreferences.downloadWifiOnly) return false
-        if (isMetered(context)) return true
-        if (!UserPreferences.downloadWifiWindowEnabled) return false
-        return !isInsideWifiWindow()
-    }
-
-    /** True when local clock minute-of-day is inside the configured Wi‑Fi window. */
-    fun isInsideWifiWindow(
-        minuteOfDay: Int = currentMinuteOfDay(),
-    ): Boolean {
-        if (!UserPreferences.downloadWifiWindowEnabled) return true
-        val start = UserPreferences.downloadWifiWindowStartMinute
-        val end = UserPreferences.downloadWifiWindowEndMinute
-        if (start == end) return true
-        return if (start < end) {
-            minuteOfDay in start until end
-        } else {
-            // Overnight window (e.g. 22:00–07:00).
-            minuteOfDay >= start || minuteOfDay < end
-        }
-    }
-
-    private fun currentMinuteOfDay(): Int {
-        val cal = java.util.Calendar.getInstance()
-        return cal.get(java.util.Calendar.HOUR_OF_DAY) * 60 + cal.get(java.util.Calendar.MINUTE)
-    }
+    fun shouldHoldForWifiOnly(context: Context): Boolean =
+        UserPreferences.downloadWifiOnly && isMetered(context)
 }

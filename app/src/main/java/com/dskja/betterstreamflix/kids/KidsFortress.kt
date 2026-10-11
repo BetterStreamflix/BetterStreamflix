@@ -2,6 +2,7 @@ package com.dskja.betterstreamflix.kids
 
 import com.dskja.betterstreamflix.profiles.ProfileManager
 import com.dskja.betterstreamflix.profiles.UserProfile
+import com.dskja.betterstreamflix.spoilers.SpoilerShield
 import com.dskja.betterstreamflix.utils.UserPreferences
 
 /**
@@ -48,10 +49,6 @@ object KidsFortress {
     fun kidsProfiles(): List<UserProfile> =
         ProfileManager.profiles().filter { it.isKids && !it.isGuest }
 
-    /**
-     * Exit PIN available for [profile]: household parental PIN and/or that
-     * profile's own [UserProfile.pinHash].
-     */
     fun hasExitPin(profile: UserProfile? = ProfileManager.activeProfile()): Boolean {
         profile ?: return false
         val household = UserPreferences.parentalControlPin.isNotBlank()
@@ -68,11 +65,12 @@ object KidsFortress {
         )
         return KidsFortressPolicy.fortressHealthy(
             isKids = true,
-            hasExitPin = hasExitPin(profile),
+            hasExitPin = hasExitPin(profile) ||
+                UserPreferences.parentalControlPin.isNotBlank(),
             ceiling = ceiling,
         )
     }
 
-    /** Spoiler is always on for kids — same as [spoilerForced]. */
-    fun spoilerActive(): Boolean = spoilerForced()
+    /** Spoiler is always on for kids — mirrors [SpoilerShield.isActive]. */
+    fun spoilerActive(): Boolean = SpoilerShield.isActive()
 }

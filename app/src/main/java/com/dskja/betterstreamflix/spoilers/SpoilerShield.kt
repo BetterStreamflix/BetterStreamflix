@@ -18,10 +18,6 @@ import java.util.concurrent.ConcurrentHashMap
 /**
  * Spoiler Shield — blur episode titles/thumbs until unlock.
  * Always on for Kids profiles; opt-in for adult profiles.
- *
- * Unlock state is **session-only** (in-memory): process death, profile switch, or
- * [clearSession] re-shields. Intentional — spoilers should not persist across restarts
- * on a shared device (SS-007).
  */
 object SpoilerShield {
 
@@ -42,9 +38,8 @@ object SpoilerShield {
         adultOptIn: () -> Boolean = { UserPreferences.spoilerShieldEnabled },
     ): Boolean {
         if (!isActive(isKids, adultOptIn)) return false
-        // Already watched or in-progress CW — not treated as unwatched spoilers.
+        // Already watched — titles/thumbs are not spoilers for this user.
         if (episode.isWatched) return false
-        if (hasMeaningfulWatchProgress(episode)) return false
         val episodeId = episode.id.trim()
         if (episodeId.isNotEmpty() && episodeId in unlockedEpisodes) return false
         val showId = episode.tvShow?.id?.trim().orEmpty()
@@ -128,40 +123,24 @@ object SpoilerShield {
         }
     }
 
-    private fun hasMeaningfulWatchProgress(episode: Episode): Boolean {
-        val history = episode.watchHistory ?: return false
-        return history.lastPlaybackPositionMillis > 0L && history.durationMillis > 0L
-    }
-
     fun applyTextShield(textView: TextView?, shielded: Boolean) {
         textView ?: return
         if (shielded) {
-            if (textView.getTag(R.id.spoiler_shield_original_text_tag) == null) {
-                textView.setTag(R.id.spoiler_shield_original_text_tag, textView.text)
-            }
-            // Replace text so TalkBack / pre-blur APIs never speak the spoiler string.
-            textView.text = "•••"
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
                 textView.setRenderEffect(
                     RenderEffect.createBlurEffect(12f, 12f, Shader.TileMode.CLAMP),
                 )
+            } else {
+                textView.alpha = 0.45f
             }
-            textView.alpha = 1f
-            textView.importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
-            textView.contentDescription = null
             textView.setTag(R.id.spoiler_shield_tag, true)
         } else {
             if (textView.getTag(R.id.spoiler_shield_tag) == true) {
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
                     textView.setRenderEffect(null)
                 }
-                (textView.getTag(R.id.spoiler_shield_original_text_tag) as? CharSequence)?.let {
-                    textView.text = it
-                }
-                textView.setTag(R.id.spoiler_shield_original_text_tag, null)
                 textView.alpha = 1f
             }
-            textView.importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_AUTO
             textView.setTag(R.id.spoiler_shield_tag, false)
         }
     }

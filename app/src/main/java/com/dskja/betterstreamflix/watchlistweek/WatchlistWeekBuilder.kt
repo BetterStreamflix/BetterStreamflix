@@ -30,27 +30,12 @@ import java.util.Locale
 object WatchlistWeekBuilder {
     private const val TAG = "WatchlistWeek"
     private const val PARALLELISM = 3
-    private const val CACHE_TTL_MS = 6L * 60L * 60L * 1000L // 6h
-
-    private data class CacheEntry(
-        val builtAtMs: Long,
-        val fingerprint: String,
-        val category: Category?,
-    )
-
-    @Volatile
-    private var cache: CacheEntry? = null
-
-    fun invalidateCache() {
-        cache = null
-    }
 
     suspend fun build(
         context: Context,
         favoriteTvShows: List<TvShow>,
         today: LocalDate = LocalDate.now(),
         locale: Locale = Locale.getDefault(),
-        nowMs: Long = System.currentTimeMillis(),
     ): Category? = withContext(Dispatchers.IO) {
         if (!UserPreferences.showWatchlistWeek) return@withContext null
         val shows = favoriteTvShows
@@ -59,27 +44,14 @@ object WatchlistWeekBuilder {
             .take(WatchlistWeekRules.MAX_SHOWS)
         if (shows.isEmpty()) return@withContext null
 
-        val fingerprint = shows.joinToString("|") {
-            "${it.providerName}:${it.id}:${it.tmdbId}:${it.favoritedAtMillis}"
-        } + "|$today"
-        cache?.let { hit ->
-            if (hit.fingerprint == fingerprint && nowMs - hit.builtAtMs < CACHE_TTL_MS) {
-                return@withContext hit.category
-            }
-        }
-
         val week = WatchlistWeekRules.weekBounds(today, locale)
         val tips = collectTips(shows, week)
         val flat = WatchlistWeekRules.flatten(WatchlistWeekRules.bucket(tips, week, locale))
             .take(WatchlistWeekRules.MAX_EPISODES)
-        val category = if (flat.size < WatchlistWeekRules.MIN_SHELF_SIZE) {
-            null
-        } else {
-            val episodes = flat.map { tip -> tip.toEpisode(locale) }
-            Category(name = Category.NEW_THIS_WEEK, list = episodes)
-        }
-        cache = CacheEntry(builtAtMs = nowMs, fingerprint = fingerprint, category = category)
-        category
+        if (flat.size < WatchlistWeekRules.MIN_SHELF_SIZE) return@withContext null
+
+        val episodes = flat.map { tip -> tip.toEpisode(locale) }
+        Category(name = Category.NEW_THIS_WEEK, list = episodes)
     }
 
     private suspend fun collectTips(
@@ -225,7 +197,6 @@ object WatchlistWeekBuilder {
     }
 
     private suspend fun resolveTmdbId(show: TvShow): Int? {
-        // Prefer stamped favorites tmdbId — never guess when ambiguous.
         show.tmdbId?.toIntOrNull()?.let { return it }
         val imdb = show.imdbId?.takeIf { it.isNotBlank() }
         if (imdb != null) {
@@ -236,22 +207,16 @@ object WatchlistWeekBuilder {
         val lang = UserPreferences.currentProvider?.language
         val year = show.released?.get(Calendar.YEAR)
         return runCatching {
-            val results = TMDb3.Search.tv(
+            TMDb3.Search.tv(
                 query = title,
                 language = lang,
                 firstAirDateYear = year,
-            ).results
-            when {
-                results.isEmpty() -> null
-                results.size == 1 -> results.first().id
-                year != null -> {
-                    val exactYear = results.filter { result ->
-                        result.firstAirDate?.startsWith(year.toString()) == true
-                    }
-                    exactYear.singleOrNull()?.id
+            ).results.firstOrNull()?.id
+                ?: if (year != null) {
+                    TMDb3.Search.tv(query = title, language = lang).results.firstOrNull()?.id
+                } else {
+                    null
                 }
-                else -> null // ambiguous title search — take none
-            }
         }.getOrNull()
     }
 

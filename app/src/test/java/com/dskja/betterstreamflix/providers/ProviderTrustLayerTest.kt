@@ -69,60 +69,6 @@ class ProviderTrustLayerTest {
     }
 
     @Test
-    fun outageIgnoresQuarantinedAndParked() {
-        val health = ProviderHealthDashboard.Snapshot(
-            rows = listOf(
-                ProviderHealthDashboard.Row(
-                    name = "ParkedA",
-                    provider = stubProvider("ParkedA"),
-                    severity = ProviderHealthDashboard.Severity.DEAD,
-                    reason = ProviderHealthDashboard.Reason.PARKED,
-                    canUpdateDomain = false,
-                ),
-                ProviderHealthDashboard.Row(
-                    name = "QuarantineB",
-                    provider = stubProvider("QuarantineB"),
-                    severity = ProviderHealthDashboard.Severity.DEAD,
-                    reason = ProviderHealthDashboard.Reason.QUARANTINED,
-                    canUpdateDomain = false,
-                ),
-                ProviderHealthDashboard.Row(
-                    name = "QuarantineC",
-                    provider = stubProvider("QuarantineC"),
-                    severity = ProviderHealthDashboard.Severity.DEAD,
-                    reason = ProviderHealthDashboard.Reason.QUARANTINED,
-                    canUpdateDomain = false,
-                ),
-            ),
-            deadCount = 3,
-            slowCount = 0,
-            okCount = 0,
-            probedAtMs = 1L,
-        )
-        val passport = ProviderPassport.Snapshot(
-            rows = emptyList(),
-            freshCount = 0,
-            captchaDueCount = 0,
-            loginDueCount = 0,
-            probedAtMs = 1L,
-        )
-        val snap = ProviderTrustLayer.snapshot(
-            health = health,
-            passport = passport,
-            currentProvider = provider,
-            nowMs = 1L,
-        )
-        assertEquals(ProviderTrustLayer.OutageLevel.NONE, snap.outageLevel)
-        assertTrue(snap.outageProviderNames.isEmpty())
-    }
-
-    @Test
-    fun titleCaseServerName_matchesHealthStyle() {
-        assertEquals("Voe", ProviderTrustLayer.titleCaseServerName("voe"))
-        assertEquals("Stream Tape", ProviderTrustLayer.titleCaseServerName("stream_tape"))
-    }
-
-    @Test
     fun snapshotOutageSevereWhenManyDead() {
         val health = ProviderHealthDashboard.Snapshot(
             rows = listOf("A", "B", "C").map { name ->

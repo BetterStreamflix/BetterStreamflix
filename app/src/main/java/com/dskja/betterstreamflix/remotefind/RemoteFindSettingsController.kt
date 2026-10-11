@@ -10,8 +10,6 @@ import androidx.fragment.app.FragmentActivity
 import androidx.preference.Preference
 import com.dskja.betterstreamflix.R
 import com.dskja.betterstreamflix.activities.tools.QrScannerActivity
-import com.dskja.betterstreamflix.profiles.ProfileManager
-import com.dskja.betterstreamflix.profiles.ProfileUnlockGate
 import com.dskja.betterstreamflix.utils.DeviceCapabilities
 import com.dskja.betterstreamflix.utils.ExpDialogChrome
 
@@ -36,15 +34,12 @@ object RemoteFindSettingsController {
         val openPad = findPreference(KEY_OPEN_PAD)
         val end = findPreference(KEY_END)
         val leanback = DeviceCapabilities.isLeanbackDevice(fragment.requireContext())
-        val kidsBlocked = ProfileManager.isKidsActive() || ProfileUnlockGate.requiresGateForActive()
 
         fun refresh() {
             val hosting = RemoteFindSession.isHost()
             val phone = RemoteFindSession.isPhone()
-            host?.isVisible = leanback && !phone && !kidsBlocked
-            host?.isEnabled = !kidsBlocked
+            host?.isVisible = leanback && !phone
             host?.summary = when {
-                kidsBlocked -> fragment.getString(R.string.remote_find_kids_blocked)
                 hosting -> fragment.getString(
                     R.string.remote_find_host_active_summary,
                     RemoteFindSession.shortCode ?: "------",
@@ -63,10 +58,6 @@ object RemoteFindSettingsController {
         }
 
         host?.setOnPreferenceClickListener {
-            if (ProfileManager.isKidsActive() || ProfileUnlockGate.requiresGateForActive()) {
-                ExpDialogChrome.notify(fragment.requireContext(), R.string.remote_find_kids_blocked)
-                return@setOnPreferenceClickListener true
-            }
             RemoteFindUi.hostAndShowCode(fragment)
             fragment.view?.postDelayed({ refresh() }, 300)
             true
@@ -89,13 +80,13 @@ object RemoteFindSettingsController {
         }
         openPad?.setOnPreferenceClickListener {
             val ws = RemoteFindSession.wsUrl
-            val code = RemoteFindSession.shortCode
-            if (ws != null) {
+            val token = RemoteFindSession.token
+            if (ws != null && token != null) {
                 RemoteFindUi.openPhoneRemote(
                     fragment.requireActivity(),
                     ws,
-                    code,
-                    RemoteFindSession.token,
+                    token,
+                    RemoteFindSession.shortCode,
                 )
             }
             true
@@ -104,7 +95,7 @@ object RemoteFindSettingsController {
             when {
                 RemoteFindSession.isHost() -> RemoteFindUi.endHost(fragment)
                 RemoteFindSession.isPhone() -> {
-                    RemoteFindSession.leavePhone()
+                    RemoteFindSession.clear()
                     ExpDialogChrome.notify(fragment.requireContext(), R.string.remote_find_left)
                 }
             }
@@ -127,6 +118,8 @@ object RemoteFindSettingsController {
         // Scanned value might be a bare 6-char code.
         val code = RemoteFindCode.normalize(raw)
         if (code != null) {
+            // Discover on IO via a short dialog-less join from a throwaway fragment scope —
+            // settings scan already has an activity; use a background thread.
             Thread {
                 val offer = RemoteFindDiscovery.discover(code)
                 activity.runOnUiThread {
@@ -136,8 +129,8 @@ object RemoteFindSettingsController {
                         RemoteFindUi.openPhoneRemote(
                             activity,
                             offer.wsUrl,
+                            offer.token,
                             offer.code,
-                            null,
                         )
                     }
                 }

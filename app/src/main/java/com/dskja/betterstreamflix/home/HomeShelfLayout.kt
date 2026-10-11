@@ -50,18 +50,12 @@ object HomeShelfLayout {
 
     fun isPinnable(category: Category): Boolean {
         if (isFeatured(category)) return false
-        return isPinnableId(shelfId(category))
+        return shelfId(category).isNotEmpty()
     }
 
-    /**
-     * Well-known pinnable ids, plus ids the user already pinned (so unpin stays
-     * reachable even if a shelf leaves the well-known list).
-     */
     fun isPinnableId(shelfId: String): Boolean {
         val id = shelfId.trim()
-        if (id.isEmpty() || Category.isFeaturedName(id)) return false
-        if (WELL_KNOWN_PINNABLE.any { it.equals(id, ignoreCase = true) }) return true
-        return pins().any { it.equals(id, ignoreCase = true) }
+        return id.isNotEmpty() && !Category.isFeaturedName(id)
     }
 
     fun pins(): List<String> = decodeList(UserPreferences.homeShelfPinsJson)

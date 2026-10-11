@@ -6,21 +6,12 @@ import kotlin.math.roundToInt
 
 /**
  * Pure year-review aggregator. No Android dependencies — unit-testable.
- *
- * Year window uses [TimeZone.getDefault] (or the passed zone) at compute time (YR-008).
- * Finished titles use local `Calendar` millis from watch-history; in-progress movies use
- * wall-clock engagement. Near 1 Jan, TZ / DST edges can place a title in the adjacent year
- * vs the user's mental model — accepted for light Year Review.
  */
 object YearReviewCalculator {
 
     const val DEFAULT_MOVIE_MINUTES = 100
     const val DEFAULT_EPISODE_MINUTES = 45
-    /**
-     * Gap between consecutive **finish** timestamps that starts a new binge session (YR-012).
-     * Not a playback-session detector: pauses before mark-as-watched, background playback,
-     * or same-day back-to-back finishes can skew binge shape vs real viewing.
-     */
+    /** Gap between consecutive episode finishes that starts a new binge session. */
     const val BINGE_GAP_MS = 3L * 60L * 60L * 1000L
     const val TOP_SERIES_COUNT = 3
 
@@ -61,9 +52,8 @@ object YearReviewCalculator {
                 ?: (movie.runtimeMinutes?.takeIf { it > 0 } ?: DEFAULT_MOVIE_MINUTES).toDouble()
         }
         for (episode in yearEpisodes) {
-            val progressMin = episode.inProgressPositionMs?.let { it / 60_000.0 }
-            totalMinutes += progressMin
-                ?: (episode.runtimeMinutes?.takeIf { it > 0 } ?: DEFAULT_EPISODE_MINUTES).toDouble()
+            totalMinutes += (episode.runtimeMinutes?.takeIf { it > 0 } ?: DEFAULT_EPISODE_MINUTES)
+                .toDouble()
         }
 
         val topSeries = rankTopSeries(yearEpisodes)
@@ -75,7 +65,7 @@ object YearReviewCalculator {
             profileName = profileName,
             totalHours = hours,
             movieCount = yearMovies.count { it.inProgressPositionMs == null },
-            episodeCount = yearEpisodes.count { it.inProgressPositionMs == null },
+            episodeCount = yearEpisodes.size,
             topSeries = topSeries,
             longestBinge = longestBinge,
         )

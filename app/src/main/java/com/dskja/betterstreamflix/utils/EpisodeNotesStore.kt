@@ -22,14 +22,10 @@ object EpisodeNotesStore {
     private const val KEY_PREFIX = "EPISODE_NOTE_"
     private const val JSON_TEXT = "text"
     private const val JSON_UPDATED = "updatedAtMillis"
-    private const val JSON_PROVIDER = "providerName"
-    private const val JSON_SHOW = "showId"
 
     data class NoteRecord(
         val text: String,
         val updatedAtMillis: Long,
-        val providerName: String = "",
-        val showId: String = "",
     )
 
     fun get(context: Context, episodeId: String): String? =
@@ -56,81 +52,38 @@ object EpisodeNotesStore {
      * Saves a sanitized note. Empty / whitespace clears the note (tombstone with clock).
      * @return the stored text, or null when cleared.
      */
-    fun set(
-        context: Context,
-        episodeId: String,
-        raw: String?,
-        providerName: String = "",
-        showId: String = "",
-    ): String? {
+    fun set(context: Context, episodeId: String, raw: String?): String? {
         val id = episodeId.trim()
         if (id.isEmpty()) return null
         val cleaned = sanitize(raw)
         val now = System.currentTimeMillis()
-        val existing = getRecord(context, id)
-        val provider = providerName.trim().ifEmpty { existing?.providerName.orEmpty() }
-        val show = showId.trim().ifEmpty { existing?.showId.orEmpty() }
         if (cleaned.isEmpty()) {
-            clear(context, id, providerName = provider, showId = show)
+            clear(context, id)
             return null
         }
-        writeRecord(
-            context,
-            id,
-            NoteRecord(cleaned, now, provider, show),
-            enqueueCloud = true,
-        )
+        writeRecord(context, id, NoteRecord(cleaned, now), enqueueCloud = true)
         return cleaned
     }
 
     /**
      * Clears note text but keeps a tombstone clock so clears propagate via cloud LWW.
      */
-    fun clear(
-        context: Context,
-        episodeId: String,
-        providerName: String = "",
-        showId: String = "",
-    ) {
+    fun clear(context: Context, episodeId: String) {
         val id = episodeId.trim()
         if (id.isEmpty()) return
         val now = System.currentTimeMillis()
-        val existing = getRecord(context, id)
-        writeRecord(
-            context,
-            id,
-            NoteRecord(
-                text = "",
-                updatedAtMillis = now,
-                providerName = providerName.trim().ifEmpty { existing?.providerName.orEmpty() },
-                showId = showId.trim().ifEmpty { existing?.showId.orEmpty() },
-            ),
-            enqueueCloud = true,
-        )
+        writeRecord(context, id, NoteRecord("", now), enqueueCloud = true)
     }
 
     /** Apply a remote note (or tombstone) without enqueueing a cloud mutation. */
-    fun applyRemote(
-        context: Context,
-        episodeId: String,
-        text: String,
-        updatedAtMillis: Long,
-        providerName: String = "",
-        showId: String = "",
-    ) {
+    fun applyRemote(context: Context, episodeId: String, text: String, updatedAtMillis: Long) {
         val id = episodeId.trim()
         if (id.isEmpty()) return
         val cleaned = sanitize(text)
-        val existing = getRecord(context, id)
         writeRecord(
             context,
             id,
-            NoteRecord(
-                text = cleaned,
-                updatedAtMillis = updatedAtMillis.coerceAtLeast(0L),
-                providerName = providerName.trim().ifEmpty { existing?.providerName.orEmpty() },
-                showId = showId.trim().ifEmpty { existing?.showId.orEmpty() },
-            ),
+            NoteRecord(cleaned, updatedAtMillis.coerceAtLeast(0L)),
             enqueueCloud = false,
         )
     }
@@ -209,8 +162,6 @@ object EpisodeNotesStore {
         JSONObject()
             .put(JSON_TEXT, record.text)
             .put(JSON_UPDATED, record.updatedAtMillis)
-            .put(JSON_PROVIDER, record.providerName)
-            .put(JSON_SHOW, record.showId)
             .toString()
 
     internal fun decode(raw: String?): NoteRecord? {
@@ -221,8 +172,6 @@ object EpisodeNotesStore {
                 NoteRecord(
                     text = obj.optString(JSON_TEXT, ""),
                     updatedAtMillis = obj.optLong(JSON_UPDATED, 0L),
-                    providerName = obj.optString(JSON_PROVIDER, ""),
-                    showId = obj.optString(JSON_SHOW, ""),
                 )
             }.getOrNull()
         }
@@ -247,14 +196,7 @@ object EpisodeNotesStore {
     ) {
         prefs(context).edit { putString(prefKey(episodeId), encode(record)) }
         if (enqueueCloud) {
-            CloudSyncHooks.episodeNote(
-                context,
-                episodeId = episodeId,
-                text = record.text,
-                updatedAtMillis = record.updatedAtMillis,
-                providerName = record.providerName,
-                showId = record.showId,
-            )
+            CloudSyncHooks.episodeNote(context, episodeId, record.text, record.updatedAtMillis)
         }
     }
 

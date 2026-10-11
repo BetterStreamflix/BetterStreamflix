@@ -38,7 +38,6 @@ import com.dskja.betterstreamflix.models.TvShow
 import com.dskja.betterstreamflix.logo.FeaturedLogoEnrich
 import com.dskja.betterstreamflix.logo.TmdbLogoBinder
 import com.dskja.betterstreamflix.models.TrailerCatalog
-import com.dskja.betterstreamflix.profiles.ProfileManager
 import com.dskja.betterstreamflix.providers.ShelfWeather
 import com.dskja.betterstreamflix.ui.FeaturedAdvancePolicy
 import com.dskja.betterstreamflix.ui.FeaturedHeroController
@@ -180,11 +179,7 @@ class CategoryViewHolder(
 
     private fun bindShelfPin(button: ImageButton?) {
         val btn = button ?: return
-        if (!isHomeShelfContext() ||
-            ProfileManager.isKidsActive() ||
-            ProfileManager.isGuestActive() ||
-            !HomeShelfLayout.isPinnable(category)
-        ) {
+        if (!isHomeShelfContext() || !HomeShelfLayout.isPinnable(category)) {
             btn.visibility = View.GONE
             btn.setOnClickListener(null)
             return
@@ -221,10 +216,6 @@ class CategoryViewHolder(
         contentView: View,
         pill: TextView,
     ) {
-        if (ProfileManager.isKidsActive() || ProfileManager.isGuestActive()) {
-            clearShelfWeather(titleView, contentView, pill)
-            return
-        }
         val forecast = ShelfWeather.forecast(category)
         titleView.alpha = forecast.titleAlpha
         contentView.alpha = forecast.contentAlpha
@@ -247,19 +238,10 @@ class CategoryViewHolder(
         }
         val provider = forecast.providerName.orEmpty()
         val wasVisible = pill.visibility == View.VISIBLE
-        val previousLevel = pill.getTag(R.id.tv_shelf_weather) as? ShelfWeather.Level
         pill.text = context.getString(labelRes)
-        val cd = context.getString(cdRes, provider)
-        pill.contentDescription = cd
+        pill.contentDescription = context.getString(cdRes, provider)
         pill.visibility = View.VISIBLE
-        pill.setTag(R.id.tv_shelf_weather, forecast.level)
         if (!wasVisible) ExpMotion.popIn(pill)
-        // Announce when forecast becomes stormy (or first warn bind).
-        if (forecast.level == ShelfWeather.Level.STORM &&
-            previousLevel != ShelfWeather.Level.STORM
-        ) {
-            pill.announceForAccessibility(cd)
-        }
     }
 
     private fun clearShelfWeather(
@@ -277,9 +259,10 @@ class CategoryViewHolder(
     private fun bindSeriesFastForwardChip(
         chip: TextView,
         emptyHint: TextView,
+        categoryName: String,
         listEmpty: Boolean,
     ) {
-        if (!SeriesFastForward.supportsShelf(category)) {
+        if (!SeriesFastForward.supportsShelf(categoryName)) {
             chip.visibility = View.GONE
             chip.setOnClickListener(null)
             chip.setOnKeyListener(null)
@@ -339,6 +322,7 @@ class CategoryViewHolder(
         bindSeriesFastForwardChip(
             chip = binding.chipSeriesFastForward,
             emptyHint = binding.tvSeriesFastForwardEmpty,
+            categoryName = category.name,
             listEmpty = category.list.isEmpty(),
         )
         bindShelfPin(binding.btnShelfPin)
@@ -432,20 +416,17 @@ class CategoryViewHolder(
         bindSeriesFastForwardChip(
             chip = binding.chipSeriesFastForward,
             emptyHint = binding.tvSeriesFastForwardEmpty,
+            categoryName = category.name,
             listEmpty = category.list.isEmpty(),
         )
         bindShelfPin(binding.btnShelfPin)
-        // LD-037: Compact density shrinks shelf pin chrome.
-        if (binding.btnShelfPin.visibility == View.VISIBLE) {
-            com.dskja.betterstreamflix.ui.LeanbackDensityPolicy.applyChromeIconSize(binding.btnShelfPin)
-        }
 
         // Never keep empty CATEGORY shelves on screen — title-only rows still trap Leanback.
         // Search Global omits empty Success shelves; Home should not submit empties either.
         // Series Fast-Forward is the exception: keep title + focusable chip so the filter
         // can be turned off when the filtered list is empty.
         if (category.list.isEmpty()) {
-            val keepForFastForward = SeriesFastForward.supportsShelf(category)
+            val keepForFastForward = SeriesFastForward.supportsShelf(category.name)
             if (!keepForFastForward) {
                 binding.root.visibility = View.GONE
                 binding.root.isFocusable = false
@@ -470,18 +451,6 @@ class CategoryViewHolder(
                 isFocusableInTouchMode = false
                 visibility = View.GONE
             }
-            // P0: empty FF shelf must not leave chip.nextFocusDown → GONE hgv_category.
-            // Loop Down to self; pin (if focusable) is preferred when shown.
-            if (keepForFastForward) {
-                val chip = binding.chipSeriesFastForward
-                val pin = binding.btnShelfPin
-                val downTarget = when {
-                    pin.visibility == View.VISIBLE && pin.isFocusable -> pin.id
-                    else -> chip.id
-                }
-                chip.nextFocusDownId = downTarget
-                chip.nextFocusUpId = chip.nextFocusUpId.takeIf { it != View.NO_ID } ?: chip.id
-            }
             clearShelfWeather(binding.tvCategoryTitle, binding.hgvCategory, binding.tvShelfWeather)
             return
         }
@@ -491,36 +460,13 @@ class CategoryViewHolder(
         binding.root.descendantFocusability = ViewGroup.FOCUS_AFTER_DESCENDANTS
         bindShelfWeather(binding.tvCategoryTitle, binding.hgvCategory, binding.tvShelfWeather)
 
-        // Non-empty: restore chip Down into the shelf grid (XML default).
-        if (SeriesFastForward.supportsShelf(category.name)) {
-            binding.chipSeriesFastForward.nextFocusDownId = R.id.hgv_category
-        }
         binding.hgvCategory.apply {
             visibility = View.VISIBLE
-            // FA-028: Cap Home shelf row height (CW → Ambient strip; else poster + title meta).
-            // Tag stores density mode so recreate/density changes re-apply; avoid every-bind
-            // setRowHeight while the parent VerticalGridView is measuring (Leanback SO).
-            val densMode = com.dskja.betterstreamflix.ui.LeanbackDensityPolicy.mode()
-            val continueWatching = category.list.any { item ->
-                when (item.itemTypeOrNull()) {
-                    AppAdapter.Type.MOVIE_CONTINUE_WATCHING_TV_ITEM,
-                    AppAdapter.Type.EPISODE_CONTINUE_WATCHING_TV_ITEM,
-                    -> true
-                    else -> false
-                }
-            }
-            val heightDp = if (continueWatching) {
-                com.dskja.betterstreamflix.ui.LeanbackDensityPolicy.ambientContinueStripHeightDp(densMode)
-            } else {
-                com.dskja.betterstreamflix.ui.LeanbackDensityPolicy.shelfPosterHeightDp(densMode) +
-                    com.dskja.betterstreamflix.ui.LeanbackDensityPolicy.shelfTitleMetaBudgetDp(densMode)
-            }
-            val heightTag = densMode to continueWatching
-            if (getTag(R.id.tv_shelf_row_height_tag) != heightTag) {
-                setTag(R.id.tv_shelf_row_height_tag, heightTag)
-                setRowHeight(
-                    com.dskja.betterstreamflix.ui.LeanbackDensityPolicy.dpToPx(this, heightDp),
-                )
+            // setRowHeight requests a layout. Calling it on every rebind while the
+            // parent VerticalGridView is measuring is a Leanback stack overflow.
+            if (getTag(R.id.tv_shelf_row_height_tag) != true) {
+                setTag(R.id.tv_shelf_row_height_tag, true)
+                setRowHeight(ViewGroup.LayoutParams.WRAP_CONTENT)
             }
 
             (context.toActivity()?.getCurrentFragment() as? HomeTvFragment)?.let { home ->
@@ -1392,15 +1338,9 @@ class CategoryViewHolder(
             visibility = if (text.isNullOrBlank()) View.GONE else View.VISIBLE
         }
 
-        val featuredTitle = when (selected) {
-            is Movie -> selected.title
-            is TvShow -> selected.title
-            else -> context.getString(R.string.a11y_untitled)
-        }
         binding.btnSwiperWatchNow.apply {
             FeaturedSwiperChrome.wireWatchButton(this)
             text = FeaturedHeroController.watchCtaLabel(context, selected)
-            contentDescription = context.getString(R.string.a11y_featured_watch, featuredTitle)
             // DPAD: left → side nav (parity with shelf tiles); up → profile chip;
             // down stays unset so VerticalGridView focus search lands on the next shelf
             // (forcing parent.id traps DPAD-down / freezes remote near bottom).
@@ -1483,7 +1423,7 @@ class CategoryViewHolder(
             is Movie -> selected.isFavorite
             is TvShow -> selected.isFavorite
         }
-        FeaturedSwiperChrome.bindListButton(binding.btnSwiperAddToList, inList, title = featuredTitle)
+        FeaturedSwiperChrome.bindListButton(binding.btnSwiperAddToList, inList)
         binding.btnSwiperAddToList.apply {
             nextFocusLeftId = R.id.btn_swiper_watch_now
             (context.toActivity()?.findViewById<View>(R.id.tv_home_profile_chip))?.let { chip ->
@@ -1527,11 +1467,7 @@ class CategoryViewHolder(
                     return@observeListState
                 }
                 selected.isFavorite = favorite
-                FeaturedSwiperChrome.bindListButton(
-                    binding.btnSwiperAddToList,
-                    favorite,
-                    title = featuredTitle,
-                )
+                FeaturedSwiperChrome.bindListButton(binding.btnSwiperAddToList, favorite)
             }
             is TvShow -> FeaturedSwiperChrome.observeListStateTv(
                 anchor = binding.root,
@@ -1542,11 +1478,7 @@ class CategoryViewHolder(
                     return@observeListStateTv
                 }
                 selected.isFavorite = favorite
-                FeaturedSwiperChrome.bindListButton(
-                    binding.btnSwiperAddToList,
-                    favorite,
-                    title = featuredTitle,
-                )
+                FeaturedSwiperChrome.bindListButton(binding.btnSwiperAddToList, favorite)
             }
             else -> null
         }

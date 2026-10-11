@@ -92,7 +92,6 @@
                     android:layout_width="44dp"
                     android:layout_height="44dp"
                     android:background="@drawable/bg_download_filter_chip"
-                    android:contentDescription="@string/offline_studio_stepper_lookahead_minus"
                     android:focusable="true"
                     android:gravity="center"
                     android:text="−"
@@ -114,7 +113,6 @@
                     android:layout_width="44dp"
                     android:layout_height="44dp"
                     android:background="@drawable/bg_download_filter_chip"
-                    android:contentDescription="@string/offline_studio_stepper_lookahead_plus"
                     android:focusable="true"
                     android:gravity="center"
                     android:text="+"
@@ -143,7 +141,6 @@
                     android:layout_width="44dp"
                     android:layout_height="44dp"
                     android:background="@drawable/bg_download_filter_chip"
-                    android:contentDescription="@string/offline_studio_stepper_quota_minus"
                     android:focusable="true"
                     android:gravity="center"
                     android:text="−"
@@ -165,7 +162,6 @@
                     android:layout_width="44dp"
                     android:layout_height="44dp"
                     android:background="@drawable/bg_download_filter_chip"
-                    android:contentDescription="@string/offline_studio_stepper_quota_plus"
                     android:focusable="true"
                     android:gravity="center"
                     android:text="+"
@@ -213,27 +209,6 @@
                 android:textSize="13sp"
                 tools:text="Soft limit 20 GB · up to 2 parallel" />
 
-            <com.google.android.material.materialswitch.MaterialSwitch
-                android:id="@+id/switch_offline_studio_wifi"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
-                android:contentDescription="@string/offline_studio_wifi_toggle"
-                android:minHeight="48dp"
-                android:text="@string/offline_studio_wifi_toggle"
-                android:textColor="#E6FFFFFF"
-                android:textSize="14sp" />
-
-            <TextView
-                android:id="@+id/tv_offline_studio_wifi_window_body"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="4dp"
-                android:fontFamily="@font/manrope"
-                android:textColor="#99FFFFFF"
-                android:textSize="12sp"
-                tools:text="Wi‑Fi window off" />
-
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -255,7 +230,6 @@
                     android:layout_width="44dp"
                     android:layout_height="44dp"
                     android:background="@drawable/bg_download_filter_chip"
-                    android:contentDescription="@string/offline_studio_stepper_soft_minus"
                     android:focusable="true"
                     android:gravity="center"
                     android:text="−"
@@ -264,14 +238,11 @@
 
                 <TextView
                     android:id="@+id/tv_offline_studio_soft_value"
-                    android:layout_width="wrap_content"
+                    android:layout_width="56dp"
                     android:layout_height="wrap_content"
                     android:gravity="center"
-                    android:maxWidth="120dp"
-                    android:paddingStart="4dp"
-                    android:paddingEnd="4dp"
                     android:textColor="#FFFFFFFF"
-                    android:textSize="13sp"
+                    android:textSize="15sp"
                     android:textStyle="bold"
                     tools:text="20" />
 
@@ -280,58 +251,6 @@
                     android:layout_width="44dp"
                     android:layout_height="44dp"
                     android:background="@drawable/bg_download_filter_chip"
-                    android:contentDescription="@string/offline_studio_stepper_soft_plus"
-                    android:focusable="true"
-                    android:gravity="center"
-                    android:text="+"
-                    android:textColor="#FFFFFFFF"
-                    android:textSize="18sp" />
-            </LinearLayout>
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
-                android:gravity="center_vertical"
-                android:orientation="horizontal">
-
-                <TextView
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:fontFamily="@font/manrope"
-                    android:text="@string/offline_studio_max_concurrent"
-                    android:textColor="#E6FFFFFF"
-                    android:textSize="14sp" />
-
-                <TextView
-                    android:id="@+id/btn_offline_studio_concurrent_minus"
-                    android:layout_width="44dp"
-                    android:layout_height="44dp"
-                    android:background="@drawable/bg_download_filter_chip"
-                    android:contentDescription="@string/offline_studio_stepper_concurrent_minus"
-                    android:focusable="true"
-                    android:gravity="center"
-                    android:text="−"
-                    android:textColor="#FFFFFFFF"
-                    android:textSize="18sp" />
-
-                <TextView
-                    android:id="@+id/tv_offline_studio_concurrent_value"
-                    android:layout_width="48dp"
-                    android:layout_height="wrap_content"
-                    android:gravity="center"
-                    android:textColor="#FFFFFFFF"
-                    android:textSize="15sp"
-                    android:textStyle="bold"
-                    tools:text="2" />
-
-                <TextView
-                    android:id="@+id/btn_offline_studio_concurrent_plus"
-                    android:layout_width="44dp"
-                    android:layout_height="44dp"
-                    android:background="@drawable/bg_download_filter_chip"
-                    android:contentDescription="@string/offline_studio_stepper_concurrent_plus"
                     android:focusable="true"
                     android:gravity="center"
                     android:text="+"

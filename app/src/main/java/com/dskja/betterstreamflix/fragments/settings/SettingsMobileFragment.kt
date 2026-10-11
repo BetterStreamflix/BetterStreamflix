@@ -57,7 +57,6 @@ import com.dskja.betterstreamflix.providers.SerienStreamProvider
 import com.dskja.betterstreamflix.providers.StreamingCommunityProvider
 import com.dskja.betterstreamflix.providers.TmdbProvider
 import com.dskja.betterstreamflix.player.SerienStreamBypassHelper
-import com.dskja.betterstreamflix.utils.AccessibilityPreferences
 import com.dskja.betterstreamflix.utils.AppLanguageManager
 import com.dskja.betterstreamflix.utils.CatalogSortMode
 import com.dskja.betterstreamflix.utils.SearchSortMode
@@ -286,7 +285,6 @@ class SettingsMobileFragment : PreferenceFragmentCompat() {
             ?: when (key) {
                 "screen_serienstream_auth" -> getString(R.string.serienstream_auth_category_title)
                 "screen_aniworld_auth" -> getString(R.string.aniworld_auth_category_title)
-                "screen_guardaflix_auth" -> getString(R.string.settings_category_guardaflix)
                 "screen_provider_trust" -> getString(R.string.settings_provider_trust_title)
                 "screen_provider_health" -> getString(R.string.settings_provider_health_title)
                 "screen_provider_passport" -> getString(R.string.settings_provider_passport_title)
@@ -806,10 +804,7 @@ class SettingsMobileFragment : PreferenceFragmentCompat() {
             this,
             lifecycleScope,
             findPreference = { key -> findPreference(key) },
-            openScreen = { key, title ->
-                findPreference<Preference>(key)?.isVisible = true
-                openNestedSettingsScreen(key, title)
-            },
+            openScreen = { key, title -> openNestedSettingsScreen(key, title) },
         )
         NotificationsSettingsController.bind(this) { key -> findPreference(key) }
         findPreference<Preference>("PROVIDER_TRUST_OPEN")?.setOnPreferenceClickListener {
@@ -1238,29 +1233,17 @@ class SettingsMobileFragment : PreferenceFragmentCompat() {
 
         findPreference<ListPreference>("SELECTED_THEME")?.apply {
             // Looks Locked: migrate retired themes / OLED half-mix onto one of three Looks.
-            // Kids cannot pick adult Cinema-Ink shells (KF-008).
-            val kids = com.dskja.betterstreamflix.profiles.ProfileManager.isKidsActive()
-            val locked = ThemeManager.clampLookForKids(
-                ThemeManager.resolveLook(UserPreferences.selectedTheme),
-                kids,
-            )
+            val locked = ThemeManager.resolveLook(UserPreferences.selectedTheme)
             if (UserPreferences.selectedTheme != locked) {
                 UserPreferences.selectedTheme = locked
             }
             UserPreferences.oledMode = false
-            if (kids) {
-                entries = arrayOf(getString(R.string.theme_kids_bright))
-                entryValues = arrayOf(ThemeManager.KIDS_BRIGHT)
-            }
             value = locked
             summaryProvider = Preference.SummaryProvider<ListPreference> { pref ->
                 getString(ThemeManager.titleRes(pref.value ?: ThemeManager.CINEMA_INK))
             }
             setOnPreferenceChangeListener { preference, newValue ->
-                val newTheme = ThemeManager.clampLookForKids(
-                    ThemeManager.resolveLook(newValue as String),
-                    com.dskja.betterstreamflix.profiles.ProfileManager.isKidsActive(),
-                )
+                val newTheme = ThemeManager.resolveLook(newValue as String)
                 UserPreferences.oledMode = false
                 UserPreferences.selectedTheme = newTheme
                 if (preference is ListPreference) {
@@ -1275,59 +1258,25 @@ class SettingsMobileFragment : PreferenceFragmentCompat() {
         }
 
         findPreference<SwitchPreference>("STICK_ENERGY_MODE")?.apply {
-            // SE-014: hide Stick Energy on phone unless leanback / Fire TV.
-            val showEnergy = com.dskja.betterstreamflix.utils.DeviceCapabilities.isLeanbackDevice(requireContext()) ||
-                com.dskja.betterstreamflix.utils.DeviceCapabilities.isAmazonFireTv(requireContext())
-            isVisible = showEnergy
-            if (!showEnergy) return@apply
-            isPersistent = false
             isChecked = com.dskja.betterstreamflix.ui.StickEnergyMode.isEnabled(requireContext())
-            summary = getString(R.string.settings_stick_energy_mode_summary)
+            summary = if (com.dskja.betterstreamflix.player.CodecComfort.isActive()) {
+                getString(R.string.settings_stick_energy_mode_summary_with_codec_comfort)
+            } else {
+                getString(R.string.settings_stick_energy_mode_summary)
+            }
             setOnPreferenceChangeListener { _, newValue ->
                 UserPreferences.stickEnergyMode = newValue as Boolean
-                requireActivity().apply {
-                    finish()
-                    startActivity(Intent(this, MainMobileActivity::class.java))
-                }
                 true
             }
         }
 
-        findPreference<SwitchPreferenceCompat>("CINEMA_ROOM")?.apply {
-            isChecked = UserPreferences.cinemaRoomEnabled
-            summary = getString(R.string.settings_cinema_room_mobile_summary)
-            setOnPreferenceChangeListener { _, newValue ->
-                val enabled = newValue as Boolean
-                UserPreferences.cinemaRoomEnabled = enabled
-                if (enabled) {
-                    com.dskja.betterstreamflix.ui.CinemaRoomController.onCinemaRoomEnabled()
-                }
-                findPreference<SwitchPreferenceCompat>("TV_AMBIENT_MODE")?.isEnabled = enabled
-                findPreference<SwitchPreferenceCompat>("CINEMA_AMBIENT_LIGHT")?.isEnabled = enabled
-                true
-            }
+        findPreference<SwitchPreference>("OLED_MODE")?.apply {
+            // Looks Locked — hide OLED half-mix toggle.
+            isVisible = false
+            isChecked = false
+            UserPreferences.oledMode = false
+            setOnPreferenceChangeListener { _, _ -> false }
         }
-
-        findPreference<SwitchPreferenceCompat>("TV_AMBIENT_MODE")?.apply {
-            isChecked = UserPreferences.tvAmbientModeEnabled
-            isEnabled = UserPreferences.cinemaRoomEnabled
-            summary = getString(R.string.settings_tv_ambient_mode_mobile_summary)
-            setOnPreferenceChangeListener { _, newValue ->
-                UserPreferences.tvAmbientModeEnabled = newValue as Boolean
-                true
-            }
-        }
-
-        findPreference<SwitchPreferenceCompat>("CINEMA_AMBIENT_LIGHT")?.apply {
-            isChecked = UserPreferences.cinemaAmbientLightHints
-            isEnabled = UserPreferences.cinemaRoomEnabled
-            setOnPreferenceChangeListener { _, newValue ->
-                UserPreferences.cinemaAmbientLightHints = newValue as Boolean
-                true
-            }
-        }
-
-        // OLED half-mix retired (Looks Locked) — preference removed from settings_mobile.xml.
 
         findPreference<SwitchPreference>("LARGE_TEXT")?.apply {
             isChecked = UserPreferences.largeText
@@ -1344,10 +1293,7 @@ class SettingsMobileFragment : PreferenceFragmentCompat() {
         findPreference<SwitchPreference>("HIGH_CONTRAST")?.apply {
             isChecked = UserPreferences.highContrast
             setOnPreferenceChangeListener { _, newValue ->
-                val enabled = newValue as Boolean
-                UserPreferences.highContrast = enabled
-                // ST-009: align Subtitle Studio captions with accessibility High contrast.
-                AccessibilityPreferences.syncSubtitleStudioForHighContrast(enabled)
+                UserPreferences.highContrast = newValue as Boolean
                 requireActivity().apply {
                     finish()
                     startActivity(Intent(this, MainMobileActivity::class.java))
@@ -1633,8 +1579,8 @@ class SettingsMobileFragment : PreferenceFragmentCompat() {
                 val enabled = newValue as Boolean
                 UserPreferences.homeWatchlistDigestEnabled = enabled
                 if (enabled) {
-                    // Re-enable clears dismiss + show-cap / timestamps so the weekly card can return.
-                    com.dskja.betterstreamflix.watchlist.WatchlistDigestPolicy.resetForReEnable()
+                    // Re-enable clears a prior permanent dismiss so the weekly card can return.
+                    UserPreferences.homeWatchlistDigestDismissed = false
                 }
                 UserDataNotifier.notifyChanged()
                 true
@@ -1660,10 +1606,7 @@ class SettingsMobileFragment : PreferenceFragmentCompat() {
         }
 
         findPreference<Preference>("HOME_REMIX_OPEN")?.setOnPreferenceClickListener {
-            com.dskja.betterstreamflix.home.HomeRemixUi.show(this) {
-                // Soft refresh already fired inside show; bump again so Home clears bind signature.
-                UserDataNotifier.notifyChanged()
-            }
+            com.dskja.betterstreamflix.home.HomeRemixUi.show(this)
             true
         }
 
@@ -1841,17 +1784,6 @@ class SettingsMobileFragment : PreferenceFragmentCompat() {
         findPreference<PreferenceCategory>("pc_poseidon_settings")?.isVisible = isPoseidon
         findPreference<PreferenceCategory>("pc_animeonlineninja_settings")?.isVisible = isAnimeOnlineNinja
         findPreference<PreferenceCategory>("pc_guardaflix_settings")?.isVisible = isGuardaFlix
-        findPreference<PreferenceScreen>("screen_guardaflix_auth")?.isVisible = isGuardaFlix
-        findPreference<Preference>("open_guardaflix_auth")?.apply {
-            isVisible = isGuardaFlix
-            setOnPreferenceClickListener {
-                openNestedSettingsScreen(
-                    "screen_guardaflix_auth",
-                    getString(R.string.settings_category_guardaflix),
-                )
-                true
-            }
-        }
         findPreference<PreferenceCategory>("pc_provider_empty_state")?.isVisible = !hasConfigProvider && !hasSpecificOptions
 
         findPreference<Preference>("screen_serienstream_auth")?.isVisible = isSerienStream
@@ -2567,12 +2499,7 @@ class SettingsMobileFragment : PreferenceFragmentCompat() {
         applyScreenTitle()
         updateOverviewLabels()
         updateProviderVisibilityState()
-        SubtitleStudioSettingsController.refresh(this)
         PlatformSettingsController.refresh(this) { key -> findPreference(key) }
-        com.dskja.betterstreamflix.kids.ParentDashboardController.refreshOnResume(
-            fragment = this,
-            findPreference = { key -> findPreference(key) },
-        )
         ProfilesSettingsController.refresh(
             findPreference = { key -> findPreference(key) },
             context = requireContext(),
@@ -2583,10 +2510,6 @@ class SettingsMobileFragment : PreferenceFragmentCompat() {
         )
         SerienStreamAuthSettingsController.refresh { key -> findPreference(key) }
         AniWorldAuthSettingsController.refresh { key -> findPreference(key) }
-        com.dskja.betterstreamflix.sync.WatchPartySettingsController.refresh(
-            fragment = this,
-            findPreference = { key -> findPreference(key) },
-        )
         settingsHubController?.updateVisibility()
 
         findPreference<EditTextPreference>("provider_streamingcommunity_domain")?.apply {

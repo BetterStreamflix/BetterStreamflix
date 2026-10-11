@@ -441,8 +441,8 @@ object DaddyLiveTvProvider : IptvProvider, ProviderConfigUrl {
                 name = it.name,
                 logo = it.logo,
                 group = group,
-                // No schedule feed — keep programNow blank (group is not EPG).
-                programNow = null,
+                // EPG-lite: no schedule feed — surface catalog group as now-playing context.
+                programNow = group?.takeIf { g -> g.isNotBlank() },
             )
         }.let { all ->
             if (aroundId == null) all.take(limit)

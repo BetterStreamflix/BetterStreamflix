@@ -296,8 +296,7 @@ class ArtworkRepairWorker(
         val providerName = inputData.getString(ArtworkRepair.KEY_PROVIDER_NAME)
             ?: return Result.success()
         val provider = Provider.findByName(providerName) ?: return Result.success()
-        val database = AppDatabase.getInstanceForProviderOrNull(provider.name, applicationContext)
-            ?: return Result.success()
+        val database = AppDatabase.getInstanceForProvider(provider.name, applicationContext)
 
         return try {
             ArtworkRepair.repairStoredArtwork(applicationContext, provider, database)

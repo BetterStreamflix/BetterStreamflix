@@ -26,35 +26,8 @@ object SearchMobileRows {
 
     fun local(items: List<AppAdapter.Item>?): List<AppAdapter.Item> {
         val safe = SearchResultGuard.bound(items, MAX_LOCAL)
-        // Drop orphan Category headers with no following show/people rows (mood/negatives).
-        val cleaned = dropOrphanCategoryHeaders(safe)
-        cleaned.forEach { stampGrid(it) }
-        return cleaned
-    }
-
-    private fun dropOrphanCategoryHeaders(items: List<AppAdapter.Item>): List<AppAdapter.Item> {
-        if (items.none { it is Category }) return items
-        return buildList {
-            var i = 0
-            while (i < items.size) {
-                val item = items[i]
-                if (item is Category) {
-                    var j = i + 1
-                    var hasChild = false
-                    while (j < items.size && items[j] !is Category) {
-                        if (items[j] is Movie || items[j] is TvShow || items[j] is People) {
-                            hasChild = true
-                            break
-                        }
-                        j++
-                    }
-                    if (hasChild) add(item)
-                } else {
-                    add(item)
-                }
-                i++
-            }
-        }
+        safe.forEach { stampGrid(it) }
+        return safe
     }
 
     fun global(

@@ -13,8 +13,6 @@
         <exclude domain="sharedpref" path="download_headers.xml" />
         <exclude domain="sharedpref" path="com.dskja.betterstreamflix.preferences.xml" />
         <exclude domain="sharedpref" path="com.dskja.betterstreamflix.debug.preferences.xml" />
-        <exclude domain="sharedpref" path="com.dskja.betterstreamflix_preferences.xml" />
-        <exclude domain="sharedpref" path="com.dskja.betterstreamflix.debug_preferences.xml" />
     </cloud-backup>
     <device-transfer>
         <exclude domain="file" path="downloads/" />
@@ -27,7 +25,5 @@
         <exclude domain="sharedpref" path="download_headers.xml" />
         <exclude domain="sharedpref" path="com.dskja.betterstreamflix.preferences.xml" />
         <exclude domain="sharedpref" path="com.dskja.betterstreamflix.debug.preferences.xml" />
-        <exclude domain="sharedpref" path="com.dskja.betterstreamflix_preferences.xml" />
-        <exclude domain="sharedpref" path="com.dskja.betterstreamflix.debug_preferences.xml" />
     </device-transfer>
 </data-extraction-rules>

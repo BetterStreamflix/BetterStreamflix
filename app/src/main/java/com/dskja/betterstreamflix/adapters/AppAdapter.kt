@@ -1279,11 +1279,6 @@ class AppAdapter(
             onClick: ((WatchlistDigestBannerItem) -> Unit)?,
             onDismiss: ((WatchlistDigestBannerItem) -> Unit)?,
         ) {
-            val bannerH = com.dskja.betterstreamflix.ui.LeanbackDensityPolicy.dpToPx(
-                root,
-                com.dskja.betterstreamflix.ui.LeanbackDensityPolicy.supportBannerHeightDp(),
-            )
-            root.minimumHeight = bannerH
             val count = item.episodeCount.coerceAtLeast(1)
             val title = root.context.getString(R.string.watchlist_digest_banner_title)
             val subtitle = root.context.getString(R.string.watchlist_digest_banner_subtitle, count)

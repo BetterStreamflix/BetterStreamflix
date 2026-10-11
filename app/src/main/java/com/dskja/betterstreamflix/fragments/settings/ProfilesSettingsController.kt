@@ -24,8 +24,6 @@ import androidx.preference.ListPreference
 import androidx.preference.Preference
 import androidx.preference.SwitchPreferenceCompat
 import com.dskja.betterstreamflix.R
-import com.dskja.betterstreamflix.kids.KidsBedtime
-import com.dskja.betterstreamflix.kids.KidsFortressPolicy
 import com.dskja.betterstreamflix.profiles.ProfileAvatarStyle
 import com.dskja.betterstreamflix.profiles.ProfileAvatarView
 import com.dskja.betterstreamflix.profiles.ProfileManager
@@ -226,15 +224,10 @@ object ProfilesSettingsController {
                     }
                 }
                 UserPreferences.kidsBedtimeEnabled = enable
-                // KB-011: disabling clears lock + overnight bypass.
-                val after = KidsBedtime.prefsAfterSetEnabled(
-                    enabled = enable,
-                    locked = UserPreferences.kidsBedtimeLocked,
-                    bypassUntilMs = UserPreferences.kidsBedtimeBypassUntilMs,
-                )
-                UserPreferences.kidsBedtimeLocked = after.locked
-                UserPreferences.kidsBedtimeBypassUntilMs = after.bypassUntilMs
-                if (enable) {
+                if (!enable) {
+                    UserPreferences.kidsBedtimeLocked = false
+                    UserPreferences.kidsBedtimeBypassUntilMs = 0L
+                } else {
                     notifyUser(
                         context,
                         context.getString(R.string.kids_bedtime_enabled_toast),
@@ -398,10 +391,6 @@ object ProfilesSettingsController {
         }
 
         findPreference("PROFILE_PIN_CLEAR")?.isVisible = profile?.pinHash != null
-
-        // Year review is adult-only — hide entry on Kids / Guest (YR-001).
-        findPreference("PROFILE_YEAR_REVIEW")?.isVisible =
-            profile != null && !profile.isKids && !profile.isGuest
 
         val active = profile
         integrationPrefKeys.forEach { (prefKey, integration) ->
@@ -758,9 +747,6 @@ object ProfilesSettingsController {
      * When leaving a parental-locked / kids profile for one without a ceiling,
      * challenge the parental PIN (or active profile PIN) before [onAllowed].
      *
-     * Also challenges kid→kid (and any leave) while the source kids profile is
-     * bedtime-locked or in an active bedtime window (KF-004 / KB-005).
-     *
      * Also used when disabling Kids / raising the Kids age ceiling on the active
      * profile (pass an adult stub as [target]).
      */
@@ -772,31 +758,9 @@ object ProfilesSettingsController {
         val active = ProfileManager.activeProfile()
         val leavingRestricted =
             ProfileManager.hasParentalCeiling(active) || UserPreferences.isParentalControlActive
-        val targetAlsoRestricted = ProfileManager.hasParentalCeiling(target)
-        val switchingAway = active != null && active.id != target.id
-        KidsBedtime.refreshLockState()
-        val sourceKidsBedtimeBlock = switchingAway &&
-            active?.isKids == true &&
-            (KidsBedtime.isLocked() || KidsBedtime.isActiveWindow())
-        val needsChallenge =
-            (leavingRestricted && !targetAlsoRestricted) || sourceKidsBedtimeBlock
-        if (!needsChallenge) {
+        // Target still parental-locked → no exit challenge.
+        if (ProfileManager.hasParentalCeiling(target) || !leavingRestricted) {
             onAllowed()
-            return
-        }
-        val hasHousehold = UserPreferences.parentalControlPin.isNotBlank()
-        val hasProfile = active?.pinHash != null
-        if (!KidsFortressPolicy.exitChallengeRequired(
-                leavingRestricted = true,
-                hasHouseholdPin = hasHousehold,
-                hasProfilePin = hasProfile,
-            )
-        ) {
-            notifyUser(
-                fragment.requireContext(),
-                fragment.getString(R.string.profile_kids_exit_requires_pin),
-                R.string.profile_kids_title,
-            )
             return
         }
         challengeKidsUnlock(fragment.requireContext(), onAllowed)
@@ -807,26 +771,23 @@ object ProfilesSettingsController {
      * raising the age ceiling / otherwise unlocking adult catalog access.
      */
     fun challengeKidsUnlock(context: Context, onVerified: () -> Unit) {
+        val parentalPin = UserPreferences.parentalControlPin
+        if (parentalPin.isNotBlank()) {
+            promptParentalPin(context) { onVerified() }
+            return
+        }
         val active = ProfileManager.activeProfile()
-        val hasHousehold = UserPreferences.parentalControlPin.isNotBlank()
-        val hasProfile = active?.pinHash != null
-        val restricted = active?.isKids == true || ProfileManager.hasParentalCeiling(active)
-        if (restricted &&
-            !KidsFortressPolicy.kidsUnlockAllowed(hasHousehold, hasProfile)
-        ) {
+        if (active?.pinHash != null) {
+            promptPin(context, active) { onVerified() }
+            return
+        }
+        // Kids / parental ceiling without any exit PIN must not silently unlock.
+        if (active?.isKids == true || ProfileManager.hasParentalCeiling(active)) {
             notifyUser(
                 context,
                 context.getString(R.string.profile_kids_exit_requires_pin),
                 R.string.profile_kids_title,
             )
-            return
-        }
-        if (hasHousehold) {
-            promptParentalPin(context) { onVerified() }
-            return
-        }
-        if (active?.pinHash != null) {
-            promptPin(context, active) { onVerified() }
             return
         }
         onVerified()
@@ -970,16 +931,7 @@ object ProfilesSettingsController {
     ) {
         guardParentalExit(fragment, target) {
             val context = fragment.requireContext()
-            if (!ProfileManager.switchTo(context, target.id)) {
-                if (target.isKids) {
-                    notifyUser(
-                        context,
-                        context.getString(R.string.profile_kids_exit_requires_pin),
-                        R.string.profile_kids_title,
-                    )
-                }
-                return@guardParentalExit
-            }
+            if (!ProfileManager.switchTo(context, target.id)) return@guardParentalExit
             notifyUser(
                 context,
                 context.getString(R.string.profile_switched_toast, target.displayName),

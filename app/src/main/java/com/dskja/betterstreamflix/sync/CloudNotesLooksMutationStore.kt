@@ -22,22 +22,11 @@ object CloudNotesLooksMutationStore {
         val episodeId: String? = null,
         val text: String? = null,
         val look: String? = null,
-        val providerName: String? = null,
-        val showId: String? = null,
         val clientUpdatedAtMillis: Long,
     ) {
         val queueKey: String
             get() = when (kind) {
-                KIND_NOTE -> {
-                    val provider = providerName.orEmpty().trim()
-                    val show = showId.orEmpty().trim()
-                    if (provider.isEmpty() && show.isEmpty()) {
-                        listOf(userId, "note", episodeId.orEmpty()).joinToString("\u001f")
-                    } else {
-                        listOf(userId, "note", provider, show, episodeId.orEmpty())
-                            .joinToString("\u001f")
-                    }
-                }
+                KIND_NOTE -> listOf(userId, "note", episodeId.orEmpty()).joinToString("\u001f")
                 KIND_LOOK -> listOf(userId, "look").joinToString("\u001f")
                 else -> listOf(userId, kind).joinToString("\u001f")
             }
@@ -60,8 +49,6 @@ object CloudNotesLooksMutationStore {
         episodeId: String,
         text: String,
         clientUpdatedAtMillis: Long,
-        providerName: String = "",
-        showId: String = "",
         profileId: String = ProfileManager.activeProfileId,
     ) {
         enqueue(
@@ -71,8 +58,6 @@ object CloudNotesLooksMutationStore {
                 userId = userId,
                 episodeId = episodeId,
                 text = text,
-                providerName = providerName.trim(),
-                showId = showId.trim(),
                 clientUpdatedAtMillis = clientUpdatedAtMillis,
             ),
             profileId,

@@ -15,12 +15,6 @@ import com.dskja.betterstreamflix.utils.UserPreferences
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
-/**
- * Applies a decoded [ProfileTransferPayload] to the active profile.
- *
- * Settings apply is overwrite-by-design (EI-011): no three-way merge — last import wins
- * for toggles, theme, and shelf-order keys present in the snapshot.
- */
 object ProfileTransferImporter {
 
     data class Result(
@@ -46,10 +40,7 @@ object ProfileTransferImporter {
         payload: ProfileTransferPayload,
         options: Options = Options(),
     ): Result = withContext(Dispatchers.IO) {
-        require(
-            payload.v == ProfileTransferPayload.VERSION ||
-                payload.v == ProfileTransferPayload.VERSION_LEGACY,
-        ) { "unsupported version" }
+        require(payload.v == ProfileTransferPayload.VERSION) { "unsupported version" }
         require(payload.kind == ProfileTransferPayload.KIND) { "unsupported kind" }
         val app = context.applicationContext
 
@@ -102,7 +93,6 @@ object ProfileTransferImporter {
             UserPreferences.libraryScope = UserPreferences.LibraryScope.fromKey(it)
         }
         s.selectedTheme?.takeIf { it.isNotBlank() }?.let { UserPreferences.selectedTheme = it }
-        s.leanbackDensity?.takeIf { it.isNotBlank() }?.let { UserPreferences.leanbackDensity = it }
         s.showContinueWatching?.let { UserPreferences.showContinueWatching = it }
         s.showRecentlyWatched?.let { UserPreferences.showRecentlyWatched = it }
         s.showNextEpisodes?.let { UserPreferences.showNextEpisodes = it }
@@ -111,28 +101,9 @@ object ProfileTransferImporter {
         s.homeShelfBlockOrder?.let { UserPreferences.homeShelfBlockOrder = it }
         s.homeShelfPinsJson?.let { UserPreferences.homeShelfPinsJson = it }
         s.seriesFastForwardEnabled?.let { UserPreferences.seriesFastForwardEnabled = it }
-        s.spoilerShieldEnabled?.let { UserPreferences.spoilerShieldEnabled = it }
         // Age ceiling only — never PINs / lockout.
         if (s.parentalControlMaxAge != null) {
             UserPreferences.parentalControlMaxAge = s.parentalControlMaxAge
-        }
-        runCatching {
-            val app = com.dskja.betterstreamflix.BetterStreamflixApp.instance.applicationContext
-            if (s.tasteSignalsJson != null ||
-                s.tasteAffinityJson != null ||
-                s.tasteQueryTokensJson != null
-            ) {
-                com.dskja.betterstreamflix.taste.TasteGraphStore.importBundle(
-                    app,
-                    s.tasteSignalsJson,
-                    s.tasteAffinityJson,
-                    s.tasteQueryTokensJson,
-                )
-                com.dskja.betterstreamflix.taste.TasteGraph.invalidate()
-            }
-            s.searchMemoriesJson?.let {
-                com.dskja.betterstreamflix.fragments.search.SearchMemories.importJson(app, it)
-            }
         }
         s.favoriteSortByProvider.forEach { (provider, mode) ->
             if (provider.isNotBlank() && mode.isNotBlank()) {
@@ -215,10 +186,7 @@ object ProfileTransferImporter {
                     continue
                 }
             } else {
-                AppDatabase.getInstanceForProviderOrNull(provider.name, context) ?: run {
-                    skipped++
-                    continue
-                }
+                AppDatabase.getInstanceForProvider(provider.name, context)
             }
             try {
                 when (item.mediaType) {

@@ -36,8 +36,8 @@ class BackupRestoreManager(
 
     private val backupVersion = 5
 
-    private inline fun <T> withProviderDb(providerName: String, block: (AppDatabase) -> T): T? {
-        val db = AppDatabase.getInstanceForProviderOrNull(providerName, context) ?: return null
+    private inline fun <T> withProviderDb(providerName: String, block: (AppDatabase) -> T): T {
+        val db = AppDatabase.getInstanceForProvider(providerName, context)
         try {
             return block(db)
         } finally {
@@ -347,7 +347,7 @@ class BackupRestoreManager(
     }
 
     private suspend fun buildCacheForProvider(providerCtx: ProviderBackupContext) {
-        val db = AppDatabase.getInstanceForProviderOrNull(providerCtx.name, context) ?: return
+        val db = AppDatabase.getInstanceForProvider(providerCtx.name, context)
         try {
             val movies = db.movieDao().getFavorites().first()
             val tvShows = db.tvShowDao().getFavorites().first()

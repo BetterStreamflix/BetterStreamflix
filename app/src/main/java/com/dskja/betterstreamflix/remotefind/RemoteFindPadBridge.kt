@@ -7,17 +7,14 @@ import java.lang.ref.WeakReference
 
 /**
  * Converts phone touchpad deltas into DPAD focus moves on the TV activity.
- * Injects are throttled to avoid main-thread DPAD storms.
  */
 object RemoteFindPadBridge {
     private const val THRESHOLD = 28f
-    private const val MIN_INJECT_INTERVAL_MS = 40L
 
     @Volatile
     private var activityRef: WeakReference<Activity>? = null
     private var accX = 0f
     private var accY = 0f
-    private var lastInjectAt = 0L
 
     fun attach(activity: Activity) {
         activityRef = WeakReference(activity)
@@ -52,17 +49,13 @@ object RemoteFindPadBridge {
         }
     }
 
-    fun tap() = inject(KeyEvent.KEYCODE_DPAD_CENTER, force = true)
+    fun tap() = inject(KeyEvent.KEYCODE_DPAD_CENTER)
 
-    fun back() = inject(KeyEvent.KEYCODE_BACK, force = true)
+    fun back() = inject(KeyEvent.KEYCODE_BACK)
 
-    private fun inject(keyCode: Int, force: Boolean = false) {
+    private fun inject(keyCode: Int) {
         val activity = activityRef?.get() ?: return
         val now = SystemClock.uptimeMillis()
-        if (!force && now - lastInjectAt < MIN_INJECT_INTERVAL_MS) {
-            return
-        }
-        lastInjectAt = now
         activity.runOnUiThread {
             activity.dispatchKeyEvent(KeyEvent(now, now, KeyEvent.ACTION_DOWN, keyCode, 0))
             activity.dispatchKeyEvent(KeyEvent(now, now + 16, KeyEvent.ACTION_UP, keyCode, 0))

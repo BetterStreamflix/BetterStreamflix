@@ -46,6 +46,10 @@ object CastRoomQueue {
     }
 
     /** Short codes: A–Z and 2–9 (no 0/1/O/I/L confusion on the wire). */
-    fun newShortCode(random: () -> Int = { kotlin.random.Random.nextInt(0, CompanionShortCodes.ALPHABET.length) }): String =
-        CompanionShortCodes.newShortCode(random)
+    fun newShortCode(random: () -> Int = { kotlin.random.Random.nextInt(0, 32) }): String {
+        val alphabet = "ABCDEFGHJKMNPQRSTUVWXYZ23456789"
+        return buildString(6) {
+            repeat(6) { append(alphabet[random() % alphabet.length]) }
+        }
+    }
 }

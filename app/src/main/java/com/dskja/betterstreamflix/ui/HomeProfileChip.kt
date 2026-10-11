@@ -58,8 +58,7 @@ object HomeProfileChip {
             ?: root.findViewById<View>(R.id.rv_favorites)
         if (grid != null) {
             chip.isFocusableInTouchMode = true
-            // FA-026: avoid nextFocusDown → grid container trap; key handler lands on poster.
-            chip.nextFocusDownId = View.NO_ID
+            chip.nextFocusDownId = grid.id
             chip.setOnKeyListener { _, keyCode, event ->
                 if (event.action != KeyEvent.ACTION_DOWN || keyCode != KeyEvent.KEYCODE_DPAD_DOWN) {
                     return@setOnKeyListener false

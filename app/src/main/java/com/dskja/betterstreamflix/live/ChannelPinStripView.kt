@@ -93,7 +93,6 @@ class ChannelPinStripView @JvmOverloads constructor(
         private val ring = image.parent as? FrameLayout
 
         fun bind(show: TvShow) {
-            applyPinDensity(itemView, ring, image)
             ring?.setBackgroundResource(R.drawable.bg_channel_pin_ring)
             name.text = show.title
             live.isVisible = !LiveHubCatalog.programNowOf(show).isNullOrBlank()
@@ -101,20 +100,12 @@ class ChannelPinStripView @JvmOverloads constructor(
             val cover = runCatching {
                 ChannelCoverResolver.resolveSync(show.title, show.poster, show.poster)
             }.getOrNull()
-            val pin = com.dskja.betterstreamflix.ui.LeanbackDensityPolicy.channelPinSizeDp()
-            val pinPx = com.dskja.betterstreamflix.ui.LeanbackDensityPolicy.dpToPx(image, pin)
             Glide.with(image)
                 .load(cover ?: show.poster)
                 .placeholder(R.drawable.bg_people_circle)
                 .error(R.drawable.bg_people_circle)
-                .override(pinPx, pinPx)
                 .into(image)
-            // SL-007: long-click unpins; nextFocusDown into main content.
-            itemView.contentDescription = context.getString(
-                R.string.meine_sender_leiste_pin_cd,
-                show.title,
-            )
-            itemView.nextFocusDownId = R.id.nav_main_fragment
+            itemView.contentDescription = show.title
             itemView.setOnClickListener { onChannelClick?.invoke(show) }
             itemView.setOnLongClickListener {
                 onChannelLongClick?.invoke(show)
@@ -130,7 +121,6 @@ class ChannelPinStripView @JvmOverloads constructor(
         private val ring = image.parent as? FrameLayout
 
         fun bind() {
-            applyPinDensity(itemView, ring, image)
             live.isVisible = false
             name.setText(R.string.meine_sender_leiste_add)
             ring?.setBackgroundResource(R.drawable.bg_channel_pin_add)
@@ -138,31 +128,8 @@ class ChannelPinStripView @JvmOverloads constructor(
             image.setBackgroundResource(android.R.color.transparent)
             ensurePlusLabel(ring)
             itemView.contentDescription = context.getString(R.string.meine_sender_leiste_add)
-            itemView.nextFocusDownId = R.id.nav_main_fragment
             itemView.setOnClickListener { onAddClick?.invoke() }
             itemView.setOnLongClickListener(null)
-        }
-    }
-
-    private fun applyPinDensity(itemView: View, ring: FrameLayout?, image: ImageView) {
-        val mode = com.dskja.betterstreamflix.ui.LeanbackDensityPolicy.mode()
-        val itemW = com.dskja.betterstreamflix.ui.LeanbackDensityPolicy.dpToPx(
-            itemView,
-            com.dskja.betterstreamflix.ui.LeanbackDensityPolicy.channelPinItemWidthDp(mode),
-        )
-        val pin = com.dskja.betterstreamflix.ui.LeanbackDensityPolicy.dpToPx(
-            itemView,
-            com.dskja.betterstreamflix.ui.LeanbackDensityPolicy.channelPinSizeDp(mode),
-        )
-        itemView.layoutParams = itemView.layoutParams?.also { it.width = itemW }
-            ?: ViewGroup.LayoutParams(itemW, ViewGroup.LayoutParams.WRAP_CONTENT)
-        ring?.layoutParams = ring?.layoutParams?.also {
-            it.width = pin
-            it.height = pin
-        }
-        image.layoutParams = image.layoutParams?.also {
-            it.width = ViewGroup.LayoutParams.MATCH_PARENT
-            it.height = ViewGroup.LayoutParams.MATCH_PARENT
         }
     }
 

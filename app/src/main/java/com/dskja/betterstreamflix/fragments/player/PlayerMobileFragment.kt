@@ -54,7 +54,6 @@ import com.dskja.betterstreamflix.R
 import com.dskja.betterstreamflix.kids.KidsBedtime
 import com.dskja.betterstreamflix.player.EndCardPolicy
 import com.dskja.betterstreamflix.support.ThanksAfterBingeBinder
-import com.dskja.betterstreamflix.player.FailoverTimelineBuilder
 import com.dskja.betterstreamflix.player.FailoverTimelineSession
 import com.dskja.betterstreamflix.player.FailoverTimelineUi
 import com.dskja.betterstreamflix.player.PlaybackFailover
@@ -225,52 +224,6 @@ class PlayerMobileFragment : Fragment(),
                 runCatching { activePlayer().seekTo(positionMs) }
             }
         }
-
-    private val castRoomBridge =
-        object : com.dskja.betterstreamflix.sync.CastRoomPlayerHooks.PlayerBridge {
-            override fun isLiveOrOffline(): Boolean =
-                isLiveTvPlayback() || isOfflinePlayback()
-
-            override fun videoType(): Video.Type = args.videoType
-
-            override fun positionMs(): Long =
-                runCatching { activePlayer().currentPosition }.getOrDefault(0L)
-
-            override fun isPlaying(): Boolean =
-                runCatching { activePlayer().isPlaying }.getOrDefault(false)
-
-            override fun setPlayWhenReady(playing: Boolean) {
-                runCatching {
-                    activePlayer().playWhenReady = playing
-                    if (playing) activePlayer().play() else activePlayer().pause()
-                }
-            }
-
-            override fun seekTo(positionMs: Long) {
-                runCatching { activePlayer().seekTo(positionMs.coerceAtLeast(0L)) }
-            }
-
-            override fun currentCastRoomIndex(): Int =
-                com.dskja.betterstreamflix.sync.CastRoomUi.latestPayload()?.nowPlayingIndex ?: 0
-        }
-
-    fun castRoomApplyRemotePlaying(playing: Boolean) {
-        if (!isAdded || _binding == null) return
-        com.dskja.betterstreamflix.sync.CastRoomPlayerHooks.applyRemotePlaying(
-            this,
-            castRoomBridge,
-            playing,
-        )
-    }
-
-    fun castRoomApplyRemoteSeek(positionMs: Long) {
-        if (!isAdded || _binding == null) return
-        com.dskja.betterstreamflix.sync.CastRoomPlayerHooks.applyRemoteSeek(
-            this,
-            castRoomBridge,
-            positionMs,
-        )
-    }
 
     private lateinit var player: ExoPlayer
     private var playbackListener: Player.Listener? = null
@@ -548,8 +501,6 @@ class PlayerMobileFragment : Fragment(),
                         servers = state.servers
                         failoverTimeline.clear()
                         FailoverTimelineUi.clearErrorTimeline(_binding?.root)
-                        // PT-026: clear per-title A/B session so the same hoster can be
-                        // re-learned across titles within one player fragment lifetime.
                         com.dskja.betterstreamflix.providers.ProviderServerAb.clearSession()
                         com.dskja.betterstreamflix.providers.ServerWhy.clearSessionFlags()
                         paintServerWhyBadges()
@@ -591,20 +542,7 @@ class PlayerMobileFragment : Fragment(),
                                     viewModel.getVideo(selected)
                                 }
                                 val preferredServer = state.servers.firstOrNull {
-                                    !args.preferredServerId.isNullOrBlank() && it.id == args.preferredServerId
-                                } ?: state.servers.firstOrNull {
                                     it.name.equals(args.preferredServerName, ignoreCase = true)
-                                } ?: state.servers.firstOrNull {
-                                    !com.dskja.betterstreamflix.sync.CastHandoffSession
-                                        .preferredServerIdOrNull().isNullOrBlank() &&
-                                        it.id == com.dskja.betterstreamflix.sync.CastHandoffSession
-                                        .preferredServerIdOrNull()
-                                } ?: state.servers.firstOrNull {
-                                    it.name.equals(
-                                        com.dskja.betterstreamflix.sync.CastHandoffSession
-                                            .preferredServerNameOrNull(),
-                                        ignoreCase = true,
-                                    )
                                 }
                                 val playServer = state.servers.firstOrNull {
                                     !isSerienStreamBypassUrl(it.id) && !isSerienStreamBypassUrl(it.src)
@@ -680,20 +618,7 @@ class PlayerMobileFragment : Fragment(),
                                 viewModel.getVideo(selected)
                             }
                             val preferredServer = state.servers.firstOrNull {
-                                !args.preferredServerId.isNullOrBlank() && it.id == args.preferredServerId
-                            } ?: state.servers.firstOrNull {
                                 it.name.equals(args.preferredServerName, ignoreCase = true)
-                            } ?: state.servers.firstOrNull {
-                                !com.dskja.betterstreamflix.sync.CastHandoffSession
-                                    .preferredServerIdOrNull().isNullOrBlank() &&
-                                    it.id == com.dskja.betterstreamflix.sync.CastHandoffSession
-                                    .preferredServerIdOrNull()
-                            } ?: state.servers.firstOrNull {
-                                it.name.equals(
-                                    com.dskja.betterstreamflix.sync.CastHandoffSession
-                                        .preferredServerNameOrNull(),
-                                    ignoreCase = true,
-                                )
                             }
                             viewModel.getVideo(preferredServer ?: state.servers.first())
                         }
@@ -729,8 +654,9 @@ class PlayerMobileFragment : Fragment(),
                                 ),
                             )
                         }
-                        // OK only after first frame / hasStarted (see onIsPlayingChanged).
+                        failoverTimeline.recordOk(state.server, servers)
                         maybeShowServerWhyCue(state.server)
+                        maybeShowFailoverTimeline()
                         displayVideo(state.video, state.server)
                     }
 
@@ -769,18 +695,14 @@ class PlayerMobileFragment : Fragment(),
                             }
                             PlaybackFailover.Action.RetrySoftwareDecoder -> {
                                 pendingPlayWithAfterResolve = false
-                                val capability =
-                                    PlaybackFailover.isDecoderCapabilityFailure(state.error)
-                                if (capability) {
+                                if (PlaybackFailover.isDecoderCapabilityFailure(state.error)) {
                                     com.dskja.betterstreamflix.player.CodecComfort
                                         .recordDecoderTrouble(requireContext())
                                 }
                                 failoverTimeline.recordSoftwareDecoder()
                                 // Leave currentSoftwareDecoder stale so needsReinit rebuilds Exo.
-                                // CC-005: force On only for capability; else Auto-on.
                                 PlayerSettingsView.Settings.SoftwareDecoder.init(true)
-                                PlayerSettingsView.Settings.SoftwareDecoder.selectedValue =
-                                    if (capability) true else null
+                                PlayerSettingsView.Settings.SoftwareDecoder.selectedValue = true
                                 showPlayerCue(R.string.player_retry_software_decoder)
                                 viewModel.getVideo(state.server)
                             }
@@ -921,8 +843,8 @@ class PlayerMobileFragment : Fragment(),
                 viewLifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
                     viewModel.playPreviousOrNextEpisode.collect { nextEpisode ->
                     if (isTearingDown || !isAdded || _binding == null) return@collect
-                    // Hard-release before self-nav so the next fragment does not double Exo.
-                    releasePlayer(ReleaseMode.HARD_REPLACE)
+                    // Navigating away — soft-stop; hard release happens in onDestroyView.
+                    releasePlayer(ReleaseMode.SOFT_LEAVE)
                     isSetupDone = false
                     val live = UserPreferences.currentProvider is IptvProvider
                     val action = PlayerMobileFragmentDirections
@@ -989,17 +911,13 @@ class PlayerMobileFragment : Fragment(),
      */
     fun forceStopPlayback() {
         isTearingDown = true
-        endCardCountdownCancelled = true
-        hideEndCardChooser()
-        com.dskja.betterstreamflix.player.PlayerCleanExit.noteLeavingPlayer(returningToHome = false)
-        com.dskja.betterstreamflix.download.DownloadLaneFocus.clearFromPlayerTeardown(
-            context?.applicationContext,
-        )
+        com.dskja.betterstreamflix.player.PlayerCleanExit.noteLeavingPlayer()
         livePipZapController?.release()
         livePipZapController = null
         val live = if (::player.isInitialized && !playerReleased) player else null
-        com.dskja.betterstreamflix.player.PlayerCleanExit.silenceEverything(live)
+        com.dskja.betterstreamflix.player.PlayerCleanExit.silenceExo(live)
         releasePlayer(ReleaseMode.SOFT_LEAVE)
+        runCatching { com.dskja.betterstreamflix.ui.TrailerPlaybackController.silenceAllActive() }
     }
 
     private fun mayRunPlayerListenerWork(): Boolean =
@@ -1125,12 +1043,8 @@ class PlayerMobileFragment : Fragment(),
         // Tear down player/UI while the fragment is still attached. Doing this after
         // super.onDestroyView() races with OEM back stacks (crash on Zurück).
         isTearingDown = true
-        com.dskja.betterstreamflix.download.DownloadLaneFocus.clearFromPlayerTeardown(
-            context?.applicationContext,
-        )
         com.dskja.betterstreamflix.sync.WatchPartyPlayerHooks.onDestroyView(this)
         com.dskja.betterstreamflix.sync.CastHandoffPlayerHooks.onDestroyView(this)
-        com.dskja.betterstreamflix.sync.SessionHandoffPlayerHooks.onDestroyView(this)
         com.dskja.betterstreamflix.sync.CastRoomPlayerHooks.onDestroyView(this)
         livePipZapController?.release()
         livePipZapController = null
@@ -1150,10 +1064,6 @@ class PlayerMobileFragment : Fragment(),
         episodeNavJob = null
         castNextQueueJob = null
         nextEpisodePrefetchJob = null
-        endCardCountdownJob?.cancel()
-        endCardCountdownJob = null
-        endCardCountdownCancelled = true
-        hideEndCardChooser()
         stopProgressHandler()
         stopLiveEdgeWatcher()
         hideNextEpisodeOverlay()
@@ -1230,18 +1140,8 @@ class PlayerMobileFragment : Fragment(),
                 if (KidsBedtime.shouldBlockAutoplay()) {
                     endCardCountdownCancelled = true
                     endCardCountdownJob?.cancel()
-                    // KB-012: if STATE_ENDED was missed, still engageLock + exit.
-                    if (::player.isInitialized &&
-                        !playerReleased &&
-                        player.playbackState == Player.STATE_ENDED &&
-                        player.hasReallyFinished()
-                    ) {
-                        finishForKidsBedtime()
-                        return@launch
-                    }
                 }
-                KidsBedtime.refreshLockState()
-                delay(3_000L)
+                delay(15_000L)
             }
         }
     }
@@ -1368,12 +1268,6 @@ class PlayerMobileFragment : Fragment(),
             displayVideo(
                 currentVideo ?: return@setOnSoftwareDecoderSelectedListener,
                 currentServer ?: return@setOnSoftwareDecoderSelectedListener
-            )
-        }
-        binding.settings.setOnNightAudioSelectedListener {
-            displayVideo(
-                currentVideo ?: return@setOnNightAudioSelectedListener,
-                currentServer ?: return@setOnNightAudioSelectedListener,
             )
         }
         binding.pvPlayer.resizeMode = UserPreferences.playerResize.resizeMode
@@ -1834,7 +1728,7 @@ class PlayerMobileFragment : Fragment(),
     ) {
         if (isTearingDown || !isAdded || _binding == null) return
         EpisodeManager.getPreviousEpisode()
-        releasePlayer(ReleaseMode.HARD_REPLACE)
+        releasePlayer(ReleaseMode.SOFT_LEAVE)
         isSetupDone = false
         val live = UserPreferences.currentProvider is IptvProvider
         val action = PlayerMobileFragmentDirections
@@ -1865,11 +1759,9 @@ class PlayerMobileFragment : Fragment(),
     }
 
     private fun playNextEpisodeAcrossSeasons(autoplay: Boolean = false) {
-        if (isTearingDown || !isAdded) return
         val type = args.videoType as? Video.Type.Episode ?: return
 
-        viewLifecycleOwner.lifecycleScope.launch {
-            if (isTearingDown || !isAdded) return@launch
+        lifecycleScope.launch {
             if (KidsBedtime.shouldBlockAutoplay()) {
                 finishForKidsBedtime()
                 return@launch
@@ -1921,11 +1813,7 @@ class PlayerMobileFragment : Fragment(),
                     }
                     if (!hasOffline) {
                         if (autoplay) {
-                            // Keep End-Card / offer offline dialog instead of blank ENDED.
-                            if (isAdded && _binding != null) {
-                                showEndCardChooser()
-                                showOfflineNextEpisodeDialog(nextType)
-                            }
+                            // Don't silently fail network getServers with offline preferredServerName.
                             return@launch
                         }
                         showOfflineNextEpisodeDialog(nextType)
@@ -1956,7 +1844,7 @@ class PlayerMobileFragment : Fragment(),
     ) {
         if (isTearingDown || !isAdded || _binding == null) return
         EpisodeManager.getNextEpisode() // advance index to match playNextEpisode
-        releasePlayer(ReleaseMode.HARD_REPLACE)
+        releasePlayer(ReleaseMode.SOFT_LEAVE)
         isSetupDone = false
         val live = UserPreferences.currentProvider is IptvProvider
         val action = PlayerMobileFragmentDirections
@@ -2038,7 +1926,32 @@ class PlayerMobileFragment : Fragment(),
         )
         com.dskja.betterstreamflix.sync.CastRoomPlayerHooks.ensureHostHeartbeat(
             this,
-            castRoomBridge,
+            object : com.dskja.betterstreamflix.sync.CastRoomPlayerHooks.PlayerBridge {
+                override fun isLiveOrOffline(): Boolean =
+                    isLiveTvPlayback() || isOfflinePlayback()
+
+                override fun videoType(): Video.Type = args.videoType
+
+                override fun positionMs(): Long =
+                    runCatching { activePlayer().currentPosition }.getOrDefault(0L)
+
+                override fun isPlaying(): Boolean =
+                    runCatching { activePlayer().isPlaying }.getOrDefault(false)
+
+                override fun setPlayWhenReady(playing: Boolean) {
+                    runCatching {
+                        activePlayer().playWhenReady = playing
+                        if (playing) activePlayer().play() else activePlayer().pause()
+                    }
+                }
+
+                override fun seekTo(positionMs: Long) {
+                    runCatching { activePlayer().seekTo(positionMs.coerceAtLeast(0L)) }
+                }
+
+                override fun currentCastRoomIndex(): Int =
+                    com.dskja.betterstreamflix.sync.CastRoomUi.latestPayload()?.nowPlayingIndex ?: 0
+            },
         )
         com.dskja.betterstreamflix.sync.CastRoomPlayerHooks.refreshChrome(
             binding.pvPlayer.controller.binding.btnExoCastRoom,
@@ -2190,12 +2103,6 @@ class PlayerMobileFragment : Fragment(),
                     revealTrailerStreamBridge()
                     hideStuckOverlay()
                     livePipZapController?.onPrimaryPlaybackReady()
-                    // CC-001: decay Comfort latch after clean HW Auto sessions.
-                    if (!currentSoftwareDecoder &&
-                        PlayerSettingsView.Settings.SoftwareDecoder.selectedValue != true
-                    ) {
-                        com.dskja.betterstreamflix.player.CodecComfort.noteStableHardwarePlayback()
-                    }
                 }
                 val playWhenReady = ::player.isInitialized && !playerReleased && player.playWhenReady
                 stuckDetector.onPlaybackStateChanged(playbackState, playWhenReady)
@@ -2244,13 +2151,8 @@ class PlayerMobileFragment : Fragment(),
                     if (::player.isInitialized && player.hasStarted()) {
                         com.dskja.betterstreamflix.providers.ProviderServerAb
                             .notePlaybackStable(currentServer)
-                        if (!currentSoftwareDecoder) {
-                            com.dskja.betterstreamflix.player.CodecComfort
-                                .noteStableHardwarePlayback()
-                        }
                         // Mid-play SW rebuilds skip SuccessLoadingVideo — surface timeline here.
                         failoverTimeline.recordOk(currentServer, servers)
-                        // Prefer failover story over ServerWhy when both would stack.
                         maybeShowFailoverTimeline()
                     }
                     hideStuckOverlay()
@@ -2366,17 +2268,14 @@ class PlayerMobileFragment : Fragment(),
                     PlaybackFailover.Action.RetrySoftwareDecoder -> {
                         suppressBuiltInErrorOverlay()
                         pendingPlayWithAfterResolve = false
-                        val capability = PlaybackFailover.isDecoderCapabilityFailure(error)
-                        if (capability) {
+                        if (PlaybackFailover.isDecoderCapabilityFailure(error)) {
                             com.dskja.betterstreamflix.player.CodecComfort
                                 .recordDecoderTrouble(requireContext())
                         }
                         failoverTimeline.recordSoftwareDecoder()
                         // Leave currentSoftwareDecoder stale so needsReinit rebuilds Exo.
-                        // CC-005: force On only for capability; else Auto-on.
                         PlayerSettingsView.Settings.SoftwareDecoder.init(true)
-                        PlayerSettingsView.Settings.SoftwareDecoder.selectedValue =
-                            if (capability) true else null
+                        PlayerSettingsView.Settings.SoftwareDecoder.selectedValue = true
                         val video = currentVideo
                         val server = currentServer
                         if (video != null && server != null) {
@@ -2399,15 +2298,6 @@ class PlayerMobileFragment : Fragment(),
                                 positionMs = pos,
                                 title = resolvePlayerTitle(),
                             )
-                        } else {
-                            val currentIdx = servers.indexOfFirst { it.id == currentServer?.id }
-                            val next = servers.getOrNull(currentIdx + 1)
-                            if (next != null) {
-                                showFailoverServerCue(currentIdx + 1, servers.size)
-                                viewModel.getVideo(next)
-                            } else {
-                                showStreamFailure(error, serversExhausted = true)
-                            }
                         }
                     }
                     PlaybackFailover.Action.GiveUp -> {
@@ -2468,12 +2358,7 @@ class PlayerMobileFragment : Fragment(),
                     ) {
                         return@withContext
                     }
-                    // Session / Cast handoff: seek exactly — no Continue Watching rewind.
-                    val target = if (handoffPosition != null) {
-                        handoffPosition
-                    } else {
-                        PlaybackProgress.resumeTargetMs(savedPosition, player.duration)
-                    }
+                    val target = PlaybackProgress.resumeTargetMs(savedPosition, player.duration)
                     runCatching { player.seekTo(target) }
                 }
             }
@@ -2702,14 +2587,6 @@ class PlayerMobileFragment : Fragment(),
                     (watchItem as? Movie)?.let {
                         database?.movieDao()?.update(it)
                         UserDataCache.syncMovieToCache(appContext, resolvedProvider, it)
-                        if (started) {
-                            runCatching {
-                                com.dskja.betterstreamflix.taste.TasteFeedback.watchEngagement(
-                                    appContext,
-                                    it,
-                                )
-                            }
-                        }
                         if (finished) {
                             SmartDownloadsManager.onMovieFinished(
                                 appContext,
@@ -2854,11 +2731,8 @@ class PlayerMobileFragment : Fragment(),
     }
 
 
-    private fun isLiveTvPlayback(): Boolean {
-        if (UserPreferences.currentProvider is IptvProvider) return true
-        return ::player.isInitialized && !playerReleased &&
-            runCatching { player.isCurrentMediaItemLive }.getOrDefault(false)
-    }
+    private fun isLiveTvPlayback(): Boolean =
+        UserPreferences.currentProvider is IptvProvider
 
     private fun isOfflinePlayback(): Boolean =
         currentServer?.id == PlayerViewModel.OFFLINE_SERVER_ID ||
@@ -3443,10 +3317,7 @@ class PlayerMobileFragment : Fragment(),
 
     private fun revealTrailerStreamBridge() {
         val bridge = _binding?.ivTrailerStreamBridge ?: return
-        val duration = TrailerStreamCrossfade.revealDurationMs(
-            cinemaRoomEnabled = UserPreferences.cinemaRoomEnabled,
-        )
-        TrailerStreamCrossfade.revealStream(bridge, durationMs = duration)
+        TrailerStreamCrossfade.revealStream(bridge)
     }
 
     private fun resolvePlayerTitle(videoType: Video.Type = currentVideoTypeForUi()): String {
@@ -3691,13 +3562,12 @@ class PlayerMobileFragment : Fragment(),
     private fun tickSmartMuteAds(active: androidx.media3.common.Player) {
         if (isCasting || CastPlaybackHub.isCasting) return
         if (active !is ExoPlayer) return
-        if (com.dskja.betterstreamflix.profiles.ProfileManager.isKidsActive()) return
         val isPlayingAd = runCatching {
             active.isCommandAvailable(Player.COMMAND_GET_CURRENT_MEDIA_ITEM) && active.isPlayingAd
         }.getOrDefault(false)
         val action = smartMuteAdsWatchdog.onTick(
             SmartMuteAds.Snapshot(
-                nowMs = android.os.SystemClock.elapsedRealtime(),
+                nowMs = System.currentTimeMillis(),
                 positionMs = active.currentPosition.coerceAtLeast(0L),
                 bufferedPositionMs = active.bufferedPosition.coerceAtLeast(0L),
                 durationMs = active.duration,
@@ -3708,21 +3578,12 @@ class PlayerMobileFragment : Fragment(),
                 isLive = isLiveTvPlayback(),
                 isOffline = isOfflinePlayback(),
             ),
-        )
-        if (action == null) {
-            if (smartMuteAdsWatchdog.isBudgetExhausted() && servers.size >= 2) {
-                stuckDetector.armSoonerAfterSmartMute()
-            }
-            return
-        }
+        ) ?: return
         runCatching {
             active.seekTo(action.positionMs)
             active.playWhenReady = true
         }
         showPlayerCue(R.string.player_smart_mute_ads_skipped)
-        if (smartMuteAdsWatchdog.isBudgetExhausted() && servers.size >= 2) {
-            stuckDetector.armSoonerAfterSmartMute()
-        }
     }
 
     private fun reportTraktProgress(
@@ -3818,8 +3679,14 @@ class PlayerMobileFragment : Fragment(),
         )
         binding.tvNextEpisodeTitle.text = nextEpisode.title
             ?: getString(R.string.episode_number, nextEpisode.number)
-        // Up-Next is ready-state only — End-Card owns the autoplay countdown.
-        binding.tvNextEpisodeCountdown.text = getString(R.string.player_next_episode_ready)
+        binding.tvNextEpisodeCountdown.text = if (UserPreferences.autoplay) {
+            getString(
+                R.string.player_next_episode_autoplay_in,
+                ((remainingMs + 999L) / 1000L).toInt()
+            )
+        } else {
+            getString(R.string.player_next_episode_ready)
+        }
 
         Glide.with(this)
             .load(nextEpisode.poster ?: nextEpisode.tvShow.poster)
@@ -3929,8 +3796,6 @@ class PlayerMobileFragment : Fragment(),
             }
             return
         }
-        // PT-135: dismissing the near-end Up-Next overlay must NOT suppress End-Card
-        // at STATE_ENDED — separate surfaces (ready cue vs post-credits chooser).
         if (endCardVisible) return
         // Prefetch next so the Next button can stay enabled.
         (currentVideoTypeForUi() as? Video.Type.Episode)?.let { ensureNextEpisodePrepared(it) }
@@ -3977,30 +3842,15 @@ class PlayerMobileFragment : Fragment(),
         if (shouldCountdown) {
             card.tvEndCardCountdown.isVisible = true
             endCardCountdownJob = viewLifecycleOwner.lifecycleScope.launch {
-                val countdownSec = EndCardPolicy.autoplayCountdownSec(
-                    codecComfortActive = com.dskja.betterstreamflix.player.CodecComfort.isActive(),
-                )
-                for (sec in countdownSec downTo 1) {
-                    if (endCardCountdownCancelled || isTearingDown || !isAdded || _binding == null) {
-                        return@launch
-                    }
-                    if (KidsBedtime.shouldBlockAutoplay()) {
-                        finishForKidsBedtime()
-                        return@launch
-                    }
+                for (sec in EndCardPolicy.AUTOPLAY_COUNTDOWN_SEC downTo 1) {
+                    if (endCardCountdownCancelled || !isAdded || _binding == null) return@launch
                     card.tvEndCardCountdown.text = getString(
                         R.string.player_end_card_autoplay_in,
                         EndCardPolicy.countdownLabelSec(sec),
                     )
                     delay(1_000L)
                 }
-                if (!endCardCountdownCancelled && !isTearingDown && isAdded &&
-                    _binding != null && endCardVisible
-                ) {
-                    if (KidsBedtime.shouldBlockAutoplay()) {
-                        finishForKidsBedtime()
-                        return@launch
-                    }
+                if (!endCardCountdownCancelled && isAdded && _binding != null && endCardVisible) {
                     hideEndCardChooser()
                     playNextEpisodeAcrossSeasons(autoplay = true)
                 }
@@ -4142,12 +3992,6 @@ class PlayerMobileFragment : Fragment(),
 
     private fun maybeShowServerWhyCue(server: com.dskja.betterstreamflix.models.Video.Server) {
         if (!isAdded) return
-        // Prefer the failover mini-timeline when a failure→OK story is already brewing.
-        if (FailoverTimelineBuilder.shouldShowAfterSuccess(failoverTimeline.snapshot()) ||
-            FailoverTimelineBuilder.shouldShowOnFailure(failoverTimeline.snapshot())
-        ) {
-            return
-        }
         val providerName = UserPreferences.currentProvider?.name ?: return
         val explanation = com.dskja.betterstreamflix.providers.ServerWhy.explainSelection(
             providerName = providerName,
@@ -4165,14 +4009,10 @@ class PlayerMobileFragment : Fragment(),
     }
 
     private fun configureStuckDetector() {
-        val casting = isCasting || CastPlaybackHub.isCasting
-        val enabled = !isLiveTvPlayback() && !isOfflinePlayback() && !casting && servers.size >= 2
+        val enabled = !isLiveTvPlayback() && !isOfflinePlayback() && servers.size >= 2
         stuckDetector.setEnabled(enabled)
         stuckDetector.setResolveInFlight(viewModel.isVideoResolveInFlight())
-        if (enabled) startStuckWatch() else {
-            hideStuckOverlay()
-            stopStuckWatch()
-        }
+        if (enabled) startStuckWatch() else stopStuckWatch()
     }
 
     private fun startStuckWatch() {
@@ -4274,7 +4114,6 @@ class PlayerMobileFragment : Fragment(),
         hideStuckOverlay()
         com.dskja.betterstreamflix.providers.ProviderServerAb.notePlaybackUnstable(currentServer)
         com.dskja.betterstreamflix.providers.ServerWhy.markStuckSwitch()
-        failoverTimeline.recordStuckHop(currentServer, servers)
         stuckDetector.onServerChanged()
         Log.i("PlayerMobileFragment", "Stuck buffering — trying next server: ${next.name}")
         showFailoverServerCue(nextIndex, servers.size)
@@ -5005,9 +4844,6 @@ class PlayerMobileFragment : Fragment(),
         }
         isCasting = true
         CastPlaybackHub.markCasting(true)
-        hideStuckOverlay()
-        stuckDetector.setEnabled(false)
-        stopStuckWatch()
         livePipZapController?.onCastingChanged()
         if (UserPreferences.castKeepScreenAwake) {
             activity?.window?.addFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
@@ -5121,9 +4957,6 @@ class PlayerMobileFragment : Fragment(),
             playbackListener = null
             // Clean Exit: mute then pause. stop/clear/release race OEM surface teardown on Back.
             com.dskja.betterstreamflix.player.PlayerCleanExit.silenceExo(player)
-            runCatching {
-                com.dskja.betterstreamflix.ui.TrailerPlaybackController.silenceAllActive()
-            }
             playbackSoftStopped = true
 
             val hardRelease = when (mode) {
@@ -5164,17 +4997,6 @@ class PlayerMobileFragment : Fragment(),
                 } else {
                     doRelease.run()
                 }
-            } else if (mode == ReleaseMode.SOFT_LEAVE && isTearingDown) {
-                // Short deferred hard release after surface clear (low-end TV / Back animation).
-                val toRelease = player
-                playerReleased = true
-                android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
-                    runCatching {
-                        toRelease.stop()
-                        toRelease.clearMediaItems()
-                        toRelease.release()
-                    }
-                }, 400L)
             }
         }
     }

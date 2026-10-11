@@ -1,8 +1,5 @@
 package com.dskja.betterstreamflix.player
 
-import com.dskja.betterstreamflix.providers.Provider
-import com.dskja.betterstreamflix.utils.UserPreferences
-
 /**
  * Pure failover storytelling — builds mini-timeline steps from session attempts.
  * JVM-safe for unit tests (no Android Context).
@@ -10,11 +7,8 @@ import com.dskja.betterstreamflix.utils.UserPreferences
 object FailoverTimelineBuilder {
     const val MAX_VISIBLE_STEPS = 4
 
-    fun kindFromError(
-        error: Throwable?,
-        provider: Provider? = runCatching { UserPreferences.currentProvider }.getOrNull(),
-    ): FailoverStepKind {
-        return when (StreamFailureReason.classify(error, provider = provider).kind) {
+    fun kindFromError(error: Throwable?): FailoverStepKind {
+        return when (StreamFailureReason.classify(error).kind) {
             StreamFailureReason.Kind.TIMEOUT -> FailoverStepKind.TIMEOUT
             StreamFailureReason.Kind.CAPTCHA -> FailoverStepKind.CAPTCHA
             StreamFailureReason.Kind.GEO -> FailoverStepKind.GEO
@@ -62,7 +56,7 @@ object FailoverTimelineBuilder {
         val tail = collapsed.last()
         return buildList {
             head.forEach { add(FailoverTimelineStep(it.serverOrdinal, it.kind)) }
-            add(FailoverTimelineStep(0, FailoverStepKind.ELLIPSIS, ellipsis = true))
+            add(FailoverTimelineStep(0, FailoverStepKind.GENERIC, ellipsis = true))
             add(FailoverTimelineStep(tail.serverOrdinal, tail.kind))
         }
     }
@@ -71,7 +65,7 @@ object FailoverTimelineBuilder {
     fun wireLabels(steps: List<FailoverTimelineStep>): List<String> =
         steps.map { step ->
             when {
-                step.ellipsis || step.kind == FailoverStepKind.ELLIPSIS -> "…"
+                step.ellipsis -> "…"
                 step.kind == FailoverStepKind.SOFTWARE_DECODER -> "SW"
                 step.kind == FailoverStepKind.EXTERNAL_PLAYER -> "EXT"
                 step.kind == FailoverStepKind.OK && step.serverOrdinal > 0 ->

@@ -1,5 +1,4 @@
--- Profile Looks / theme prefs (one row per Supabase user, LWW on client_updated_at_millis).
--- SC-018: not per local profile — one cloud account ↔ one look; multi-profile needs multi-account.
+-- Profile Looks / theme prefs (one row per user, LWW on client_updated_at_millis).
 
 create table if not exists public.user_profile_prefs (
     user_id uuid not null default auth.uid() references auth.users(id) on delete cascade,

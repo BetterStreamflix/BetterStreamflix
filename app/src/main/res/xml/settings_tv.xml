@@ -128,12 +128,6 @@
                 android:key="PROFILE_IMPORT"
                 android:title="@string/profile_transfer_import_title"
                 android:summary="@string/profile_transfer_import_summary" />
-
-            <Preference
-                android:key="PARENT_DASHBOARD_OPEN"
-                android:title="@string/parent_dashboard_title"
-                android:summary="@string/parent_dashboard_summary"
-                android:widgetLayout="@layout/preference_widget_chevron" />
         </PreferenceCategory>
 
         <PreferenceCategory
@@ -362,34 +356,6 @@
                 android:summary="@string/profile_integration_summary"
                 android:defaultValue="true" />
         </PreferenceCategory>
-    </PreferenceScreen>
-
-    <!-- Kids Fortress — Parent Dashboard (adult sessions; Mobile + TV parity KF-010 / SS-B10-11). -->
-    <PreferenceScreen
-        android:key="screen_parent_dashboard"
-        android:title="@string/parent_dashboard_title"
-        android:summary="@string/parent_dashboard_summary"
-        android:widgetLayout="@layout/preference_widget_chevron">
-
-        <PreferenceCategory
-            android:key="pc_parent_dashboard_overview"
-            android:title="@string/parent_dashboard_overview_title">
-
-            <Preference
-                android:key="PARENT_DASHBOARD_HOUSEHOLD"
-                android:title="@string/parent_dashboard_household_title"
-                android:selectable="false" />
-
-            <Preference
-                android:key="PARENT_DASHBOARD_EMPTY"
-                android:title="@string/parent_dashboard_empty_title"
-                android:summary="@string/parent_dashboard_empty_summary"
-                android:selectable="false" />
-        </PreferenceCategory>
-
-        <PreferenceCategory
-            android:key="pc_parent_dashboard_kids"
-            android:title="@string/parent_dashboard_kids_title" />
     </PreferenceScreen>
 
     <PreferenceScreen
@@ -1112,18 +1078,7 @@
                 android:key="STICK_ENERGY_MODE"
                 android:title="@string/settings_stick_energy_mode_title"
                 android:summary="@string/settings_stick_energy_mode_summary"
-                android:persistent="false" />
-
-            <Preference
-                android:key="CODEC_COMFORT_STATUS"
-                android:title="@string/settings_codec_comfort_title"
-                android:summary="@string/settings_codec_comfort_summary_idle"
-                android:selectable="false" />
-
-            <Preference
-                android:key="CODEC_COMFORT_RESET"
-                android:title="@string/settings_codec_comfort_reset"
-                android:summary="@string/settings_codec_comfort_summary_active" />
+                android:defaultValue="false" />
 
             <PreferenceScreen
                 android:key="screen_cinema_room"
@@ -1168,7 +1123,12 @@
                 </PreferenceCategory>
             </PreferenceScreen>
 
-            <!-- OLED half-mix retired (Looks Locked) — do not re-add. -->
+            <SwitchPreference
+                android:key="OLED_MODE"
+                android:title="@string/settings_oled_mode_title"
+                android:summary="@string/settings_oled_mode_summary"
+                android:defaultValue="false"
+                android:visible="false" />
         </PreferenceCategory>
 
         <PreferenceCategory
@@ -1190,19 +1150,11 @@
             <PreferenceScreen
                 android:key="screen_subtitle_studio"
                 android:title="@string/subtitle_studio_title"
-                android:summary="@string/subtitle_studio_summary"
-                android:widgetLayout="@layout/preference_widget_chevron">
+                android:summary="@string/subtitle_studio_summary">
 
                 <com.dskja.betterstreamflix.fragments.settings.SubtitleStudioPreviewPreference
                     android:key="SUBTITLE_STUDIO_PREVIEW"
                     android:selectable="false" />
-
-                <ListPreference
-                    android:key="SUBTITLE_STUDIO_PRESET"
-                    android:title="@string/subtitle_studio_presets_title"
-                    android:entries="@array/subtitle_studio_preset_entries"
-                    android:entryValues="@array/subtitle_studio_preset_values"
-                    android:summary="@string/subtitle_studio_preset_hint" />
 
                 <ListPreference
                     android:key="SUBTITLE_STUDIO_SIZE"
@@ -1769,27 +1721,6 @@
                 android:entryValues="@array/animeonlineninja_preferred_server_values" />
         </PreferenceCategory>
 
-        <Preference
-            android:key="open_guardaflix_auth"
-            android:title="@string/settings_category_guardaflix"
-            android:summary="@string/guardaflix_sign_in_summary" />
-
-        <PreferenceCategory
-            android:key="pc_provider_empty_state"
-            android:title="@string/settings_provider_connection_title">
-
-            <Preference
-                android:key="provider_no_options"
-                android:title="@string/settings_provider_no_options_title"
-                android:summary="@string/settings_provider_no_options_summary" />
-        </PreferenceCategory>
-    </PreferenceScreen>
-
-
-    <PreferenceScreen
-        android:key="screen_guardaflix_auth"
-        android:title="@string/settings_category_guardaflix">
-
         <PreferenceCategory
             android:key="pc_guardaflix_settings"
             android:title="@string/settings_category_guardaflix">
@@ -1813,6 +1744,16 @@
                 android:key="provider_guardaflix_sign_out"
                 android:title="@string/guardaflix_sign_out"
                 android:summary="@string/guardaflix_sign_out_summary" />
+        </PreferenceCategory>
+
+        <PreferenceCategory
+            android:key="pc_provider_empty_state"
+            android:title="@string/settings_provider_connection_title">
+
+            <Preference
+                android:key="provider_no_options"
+                android:title="@string/settings_provider_no_options_title"
+                android:summary="@string/settings_provider_no_options_summary" />
         </PreferenceCategory>
     </PreferenceScreen>
 
@@ -1864,10 +1805,6 @@
                 android:title="@string/device_link_enter_title"
                 android:summary="@string/device_link_enter_summary" />
         </PreferenceCategory>
-        <PreferenceCategory
-            android:key="pc_cast_companion"
-            android:title="@string/cast_companion_hub_title"
-            android:summary="@string/cast_companion_hub_summary" />
         <PreferenceCategory
             android:key="pc_remote_find"
             android:title="@string/remote_find_category_title">

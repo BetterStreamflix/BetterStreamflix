@@ -113,30 +113,4 @@ class DownloadLanePolicyTest {
         assertTrue(DownloadQueuePolicy.shouldResumeAfterLane(DownloadQueuePolicy.STOP_LANE))
         assertFalse(DownloadQueuePolicy.shouldResumeAfterLane(DownloadQueuePolicy.STOP_USER))
     }
-
-    @Test
-    fun titleAndSizeSort_primaryKeyIsLaneRank() {
-        val focus = DownloadLanePolicy.WatchingFocus(
-            providerName = "Demo",
-            contentKey = "episode|Demo|show|1|1|e1",
-            seriesKey = "series|Demo|show",
-        )
-        val watching = item("w", "episode|Demo|show|1|2|e2", createdAt = 1).copy(title = "Zulu")
-        val queue = item("q", "movie|Demo|m1", kind = DownloadKind.MOVIE, createdAt = 2)
-            .copy(title = "Alpha", contentLength = 9_000L)
-        val smart = item("s", "episode|Demo|other|1|1|x", smart = true, createdAt = 3)
-            .copy(title = "Beta", contentLength = 99_000L)
-        val titleSorted = listOf(smart, queue, watching).sortedWith(
-            compareBy<DownloadItemEntity> { DownloadLanePolicy.laneOf(it, focus).rank }
-                .thenBy { it.title.lowercase() },
-        )
-        assertEquals(listOf("w", "q", "s"), titleSorted.map { it.id })
-        val sizeSorted = listOf(smart, queue, watching).sortedWith(
-            compareBy<DownloadItemEntity> { DownloadLanePolicy.laneOf(it, focus).rank }
-                .thenByDescending { maxOf(it.contentLength, it.bytesDownloaded) },
-        )
-        assertEquals(listOf("w", "q", "s"), sizeSorted.map { it.id })
-        assertTrue(DownloadLane.WATCHING.rank < DownloadLane.QUEUE.rank)
-        assertTrue(DownloadLane.QUEUE.rank < DownloadLane.SMART_AUTO.rank)
-    }
 }

@@ -121,12 +121,7 @@ class MoviesTvFragment : Fragment() {
                 stateRestorationPolicy = RecyclerView.Adapter.StateRestorationPolicy.PREVENT_WHEN_EMPTY
             }
             setNumColumns(com.dskja.betterstreamflix.ui.LeanbackDensityPolicy.posterGridColumns())
-            setItemSpacing(
-                com.dskja.betterstreamflix.ui.LeanbackDensityPolicy.dpToPx(
-                    this,
-                    com.dskja.betterstreamflix.ui.LeanbackDensityPolicy.catalogItemSpacingDp(),
-                ),
-            )
+            setItemSpacing(requireContext().resources.getDimension(R.dimen.movies_spacing).toInt())
         }
 
         binding.root.requestFocus()

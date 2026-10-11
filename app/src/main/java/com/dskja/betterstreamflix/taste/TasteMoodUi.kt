@@ -7,19 +7,12 @@ import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.core.content.ContextCompat
 import com.dskja.betterstreamflix.R
-import com.dskja.betterstreamflix.profiles.ProfileManager
 import com.dskja.betterstreamflix.utils.ExpMotion
 
 /**
  * Binds mood chips into the Search mood strip (Mobile + TV).
  */
 object TasteMoodUi {
-
-    data class Bound(
-        val firstChip: View?,
-        val lastChip: View?,
-        val chips: List<View>,
-    )
 
     fun bind(
         context: Context,
@@ -31,44 +24,23 @@ object TasteMoodUi {
         tvFocusable: Boolean,
         onSelect: (TasteMood) -> Unit,
         applyPress: ((View) -> Unit)? = null,
-    ): View? = bindDetailed(
-        context, row, selected, padH, padV, gap, tvFocusable, onSelect, applyPress,
-    ).firstChip
-
-    fun bindDetailed(
-        context: Context,
-        row: LinearLayout,
-        selected: TasteMood,
-        padH: Int,
-        padV: Int,
-        gap: Int,
-        tvFocusable: Boolean,
-        onSelect: (TasteMood) -> Unit,
-        applyPress: ((View) -> Unit)? = null,
-    ): Bound {
+    ): View? {
         row.removeAllViews()
         val label = TextView(context).apply {
             text = context.getString(R.string.taste_mood_label)
             setTextColor(ContextCompat.getColor(context, R.color.cinema_text_muted))
             textSize = if (tvFocusable) 14f else 12f
             setPadding(0, padV, gap, padV)
-            isFocusable = false
-            importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
         }
         row.addView(label)
 
-        val moods = TasteMood.entriesForProfile(ProfileManager.isKidsActive())
-        // If Intense was sticky from an adult session, clamp for Kids.
-        val effectiveSelected =
-            if (selected in moods) selected else TasteMood.ALL
-
-        val chips = mutableListOf<View>()
-        for (mood in moods) {
+        var first: View? = null
+        for (mood in TasteMood.entries) {
             val chip = TextView(context).apply {
                 if (tvFocusable) id = View.generateViewId()
                 text = labelFor(context, mood)
                 textSize = if (tvFocusable) 15f else 13f
-                val selectedNow = mood == effectiveSelected
+                val selectedNow = mood == selected
                 setTextColor(
                     ContextCompat.getColor(
                         context,
@@ -93,25 +65,14 @@ object TasteMoodUi {
                 }
             }
             applyPress?.invoke(chip)
-            chips += chip
+            if (first == null) first = chip
             val lp = LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.WRAP_CONTENT,
                 ViewGroup.LayoutParams.WRAP_CONTENT,
             ).apply { marginEnd = gap }
             row.addView(chip, lp)
         }
-        // Horizontal DPAD chain among mood chips.
-        if (tvFocusable && chips.isNotEmpty()) {
-            chips.forEachIndexed { index, chip ->
-                chip.nextFocusLeftId = chips.getOrNull(index - 1)?.id ?: View.NO_ID
-                chip.nextFocusRightId = chips.getOrNull(index + 1)?.id ?: View.NO_ID
-            }
-        }
-        return Bound(
-            firstChip = chips.firstOrNull(),
-            lastChip = chips.lastOrNull(),
-            chips = chips,
-        )
+        return first
     }
 
     fun labelFor(context: Context, mood: TasteMood): String = when (mood) {

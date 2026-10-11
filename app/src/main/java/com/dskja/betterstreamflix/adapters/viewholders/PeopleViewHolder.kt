@@ -1,7 +1,6 @@
 package com.dskja.betterstreamflix.adapters.viewholders
 
 import android.view.View
-import android.view.ViewGroup
 import android.view.animation.AnimationUtils
 import androidx.navigation.findNavController
 import androidx.recyclerview.widget.RecyclerView
@@ -156,27 +155,11 @@ class PeopleViewHolder(
             }
         }
 
-        val mode = com.dskja.betterstreamflix.ui.LeanbackDensityPolicy.mode()
-        val itemW = com.dskja.betterstreamflix.ui.LeanbackDensityPolicy.dpToPx(
-            binding.root,
-            com.dskja.betterstreamflix.ui.LeanbackDensityPolicy.peopleItemWidthDp(mode),
-        )
-        val avatar = com.dskja.betterstreamflix.ui.LeanbackDensityPolicy.dpToPx(
-            binding.root,
-            com.dskja.betterstreamflix.ui.LeanbackDensityPolicy.peopleAvatarSizeDp(mode),
-        )
-        binding.root.layoutParams = binding.root.layoutParams?.also { it.width = itemW }
-            ?: ViewGroup.LayoutParams(itemW, ViewGroup.LayoutParams.WRAP_CONTENT)
-        binding.ivPeopleImage.layoutParams = binding.ivPeopleImage.layoutParams?.also {
-            it.width = avatar
-            it.height = avatar
-        }
         binding.ivPeopleImage.apply {
             clipToOutline = true
             Glide.with(context)
                 .load(people.image)
                 .placeholder(R.drawable.ic_person_placeholder)
-                .override(avatar, avatar)
                 .centerCrop()
                 .transition(DrawableTransitionOptions.withCrossFade())
                 .into(this)

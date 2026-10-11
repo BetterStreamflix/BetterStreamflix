@@ -40,7 +40,6 @@ import com.dskja.betterstreamflix.database.AppDatabase
 import com.dskja.betterstreamflix.databinding.*
 import com.dskja.betterstreamflix.fragments.home.HomeTvFragment
 import com.dskja.betterstreamflix.fragments.home.HomeTvFragmentDirections
-import com.dskja.betterstreamflix.fragments.live.LiveHubTvFragment
 import androidx.core.content.ContextCompat
 import androidx.preference.PreferenceManager
 import androidx.appcompat.app.AlertDialog
@@ -394,21 +393,15 @@ class TvShowViewHolder(
         }
     }
 
-    private fun setPoster(
-        imageView: ImageView,
-        shelfDensity: Boolean = false,
-        liveShelf: Boolean = false,
-    ) {
+    private fun setPoster(imageView: ImageView, shelfDensity: Boolean = false) {
         imageView.scaleType = if (isIptvProvider()) ImageView.ScaleType.FIT_CENTER else ImageView.ScaleType.CENTER_CROP
         imageView.loadTvShowPoster(tvShow) {
             val dens = imageView.resources.displayMetrics.density
-            val (w, h) = when {
-                liveShelf ->
-                    com.dskja.betterstreamflix.ui.LeanbackDensityPolicy.liveShelfPosterOverridePx(dens)
-                shelfDensity ->
-                    com.dskja.betterstreamflix.ui.LeanbackDensityPolicy.shelfPosterOverridePx(dens)
-                else ->
-                    com.dskja.betterstreamflix.ui.LeanbackDensityPolicy.gridPosterOverridePx(dens)
+            val (w, h) = if (shelfDensity) {
+                com.dskja.betterstreamflix.ui.LeanbackDensityPolicy.shelfPosterOverridePx(dens)
+            } else {
+                val height = (200f * dens).toInt().coerceAtLeast(400)
+                (height * 2 / 3f).toInt().coerceAtLeast(280) to height
             }
             val reduce = DeviceCapabilities.shouldReduceHomeEffects(imageView.context)
             fallback(R.drawable.glide_fallback_cover)
@@ -515,19 +508,8 @@ class TvShowViewHolder(
                 }
             }
         }
-        // LD-026: Live Hub shelves use denser Compact poster height.
-        val onLiveHub = context.toActivity()?.getCurrentFragment() is LiveHubTvFragment
-        if (onLiveHub) {
-            com.dskja.betterstreamflix.ui.LeanbackDensityPolicy.applyLiveShelfPosterHeight(
-                binding.ivTvShowPoster,
-            )
-            setPoster(binding.ivTvShowPoster, shelfDensity = true, liveShelf = true)
-        } else {
-            com.dskja.betterstreamflix.ui.LeanbackDensityPolicy.applyShelfPosterHeight(
-                binding.ivTvShowPoster,
-            )
-            setPoster(binding.ivTvShowPoster, shelfDensity = true)
-        }
+        com.dskja.betterstreamflix.ui.LeanbackDensityPolicy.applyShelfPosterHeight(binding.ivTvShowPoster)
+        setPoster(binding.ivTvShowPoster, shelfDensity = true)
         bindRibbons(binding.ivTvShowFavoriteRibbon, binding.ivTvShowWatchedRibbon, binding.root.findViewById(R.id.iv_tv_show_download_ribbon))
         binding.tvTvShowQuality.apply {
             text = tvShow.quality ?: ""
@@ -783,7 +765,6 @@ class TvShowViewHolder(
             FeaturedSwiperChrome.wireWatchButton(this)
             com.dskja.betterstreamflix.player.PlayerCleanExit.tagFeaturedWatch(this)
             text = FeaturedHeroController.watchCtaLabel(context, tvShow)
-            contentDescription = context.getString(R.string.a11y_featured_watch, tvShow.title)
             applyExpPress()
             setOnClickListener(openTvShow)
             setOnLongClickListener { view ->
@@ -845,11 +826,7 @@ class TvShowViewHolder(
             )
         }
 
-        FeaturedSwiperChrome.bindListButton(
-            binding.btnSwiperAddToList,
-            tvShow.isFavorite,
-            title = tvShow.title,
-        )
+        FeaturedSwiperChrome.bindListButton(binding.btnSwiperAddToList, tvShow.isFavorite)
         binding.btnSwiperAddToList.apply {
             applyExpPress()
             setOnClickListener {
@@ -870,11 +847,7 @@ class TvShowViewHolder(
         ) { favorite ->
             if (tvShow.id != boundTvShowId) return@observeListStateTv
             tvShow.isFavorite = favorite
-            FeaturedSwiperChrome.bindListButton(
-                binding.btnSwiperAddToList,
-                favorite,
-                title = tvShow.title,
-            )
+            FeaturedSwiperChrome.bindListButton(binding.btnSwiperAddToList, favorite)
         }
 
         // Nested clickables confuse TalkBack — keep chrome buttons primary.

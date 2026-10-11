@@ -321,13 +321,7 @@ object SettingsListStyler {
         val rowBackgroundColor = ColorUtils.blendARGB(surfaceColor, titleColor, if (isTv) 0.09f else 0.07f)
         val rowBorderColor = ColorUtils.blendARGB(surfaceColor, summaryColor, 0.42f)
         val rowHighlightColor = ColorUtils.blendARGB(surfaceColor, accentColor, if (isTv) 0.22f else 0.18f)
-        // FA-013: focused stroke uses HC yellow token when High Contrast overlay is on.
-        val focusStrokeColor = resolveThemeColor(
-            view,
-            R.attr.tvFocusStrokeColor,
-            ColorUtils.blendARGB(surfaceColor, accentColor, 0.62f),
-        )
-        val focusStrokeDp = resolveThemeDimenDp(view, R.attr.tvFocusStrokeWidth, if (isTv) 2 else 1)
+        val rowHighlightBorderColor = ColorUtils.blendARGB(surfaceColor, accentColor, 0.62f)
 
         layoutParams?.setMargins(
             context.dp(if (isTv) 28 else 16),
@@ -342,8 +336,7 @@ object SettingsListStyler {
             defaultColor = rowBackgroundColor,
             defaultStrokeColor = rowBorderColor,
             activeColor = rowHighlightColor,
-            activeStrokeColor = focusStrokeColor,
-            activeStrokeDp = focusStrokeDp,
+            activeStrokeColor = rowHighlightBorderColor,
         )
         view.minimumHeight = context.dp(if (isTv) 88 else 72)
         view.setPadding(
@@ -377,9 +370,9 @@ object SettingsListStyler {
         activeColor: Int,
         activeStrokeColor: Int,
         radiusDp: Int = if (isTv) 22 else 18,
-        activeStrokeDp: Int = if (isTv) 2 else 1,
     ): Drawable {
         val defaultStrokeDp = 1
+        val activeStrokeDp = if (isTv) 2 else 1
 
         return StateListDrawable().apply {
             if (isTv) {
@@ -434,22 +427,6 @@ object SettingsListStyler {
             }
         }
         return fallback
-    }
-
-    private fun resolveThemeDimenDp(view: View, attr: Int, fallbackDp: Int): Int {
-        val typedValue = android.util.TypedValue()
-        if (!view.context.theme.resolveAttribute(attr, typedValue, true)) return fallbackDp
-        return if (typedValue.resourceId != 0) {
-            (view.resources.getDimension(typedValue.resourceId) /
-                view.resources.displayMetrics.density).toInt().coerceAtLeast(1)
-        } else {
-            TypedValue.complexToDimensionPixelSize(
-                typedValue.data,
-                view.resources.displayMetrics,
-            ).let { px ->
-                (px / view.resources.displayMetrics.density).toInt().coerceAtLeast(1)
-            }
-        }
     }
 
     private fun findRecyclerView(view: View): RecyclerView? {

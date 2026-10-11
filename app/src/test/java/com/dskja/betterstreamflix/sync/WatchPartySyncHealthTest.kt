@@ -39,25 +39,8 @@ class WatchPartySyncHealthTest {
     @Test
     fun shortCodeNormalize() {
         assertEquals("ABCDE2", WatchPartyLinks.normalizeShortCode("abcde2"))
-        assertEquals("QJJ234", WatchPartyLinks.normalizeShortCode("011234"))
+        assertEquals("OII234", WatchPartyLinks.normalizeShortCode("011234"))
         assertTrue(WatchPartyLinks.isValidShortCode("AB2C3D"))
         assertEquals(6, WatchPartyLinks.newShortCode().length)
-    }
-
-    @Test
-    fun fromPayloadReflectsControlsLocked() {
-        val payload = WatchPartyPayload(
-            provider = "demo",
-            mediaType = "movie",
-            mediaId = "1",
-            title = "Demo",
-            positionMs = 1_000L,
-            hostControlsLocked = true,
-            displayMode = WatchTogetherPro.MODE_TV_SCREEN,
-        )
-        val snap = WatchPartySyncHealth.fromPayload(localPositionMs = 1_200L, payload = payload)
-        assertTrue(snap.controlsLocked)
-        assertEquals(WatchTogetherPro.MODE_TV_SCREEN, snap.displayMode)
-        assertEquals(200L, snap.driftMs)
     }
 }

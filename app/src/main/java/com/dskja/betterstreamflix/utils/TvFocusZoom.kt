@@ -1,17 +1,13 @@
 package com.dskja.betterstreamflix.utils
 
 import android.view.View
-import com.dskja.betterstreamflix.ui.FeaturedAdvancePolicy
 
-/** Shared TV focus zoom — skipped on Fire Stick / reduce-motion / low-RAM / TalkBack. */
+/** Shared TV focus zoom — skipped on Fire Stick / reduce-motion / low-RAM. */
 object TvFocusZoom {
     fun apply(view: View, hasFocus: Boolean) {
         view.clearAnimation()
         view.animate().cancel()
-        val ctx = view.context
-        // FA-014: TalkBack / touch exploration must not animate scale.
-        val reduce = DeviceCapabilities.shouldReduceHomeEffects(ctx) ||
-            FeaturedAdvancePolicy.isTouchExplorationEnabled(ctx)
+        val reduce = DeviceCapabilities.shouldReduceHomeEffects(view.context)
         val density = view.resources.displayMetrics.density
         view.elevation = if (hasFocus) (if (reduce) 12f else 10f) * density else 0f
         // Do not mirror focus into isSelected — list selectors / tint recycle wrongly.

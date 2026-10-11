@@ -141,21 +141,23 @@ class ShowOptionsMobileDialog(
 
         binding.tvOptionsShowTitle.text = episode.tvShow?.title ?: ""
 
-        val epTitle = com.dskja.betterstreamflix.spoilers.SpoilerShield.displayTitle(
-            episode,
-            episodeNumberFallback = { context.getString(R.string.episode_number, it) },
-        )
         binding.tvShowSubtitle.text = episode.season?.takeIf { it.number != 0 }?.let { season ->
             context.getString(
                 R.string.episode_item_info,
                 season.number,
                 episode.number,
-                epTitle,
+                episode.title ?: context.getString(
+                    R.string.episode_number,
+                    episode.number
+                )
             )
         } ?: context.getString(
             R.string.episode_item_info_episode_only,
             episode.number,
-            epTitle,
+            episode.title ?: context.getString(
+                R.string.episode_number,
+                episode.number
+            )
         )
 
 
@@ -630,9 +632,7 @@ class ShowOptionsMobileDialog(
     private fun bindChannelPinOption(tvShow: TvShow) {
         val btn = binding.btnOptionChannelPin
         val isLive = com.dskja.betterstreamflix.utils.LiveHubCatalog.isLiveFavorite(tvShow)
-        val gated = com.dskja.betterstreamflix.profiles.ProfileManager.isKidsActive() ||
-            com.dskja.betterstreamflix.utils.LiveHubCatalog.isAgeGated()
-        if (!isLive || tvShow.providerName.isNullOrBlank() || gated) {
+        if (!isLive || tvShow.providerName.isNullOrBlank()) {
             btn.visibility = View.GONE
             return
         }

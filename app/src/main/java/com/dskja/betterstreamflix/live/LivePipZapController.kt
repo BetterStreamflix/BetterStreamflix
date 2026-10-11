@@ -17,7 +17,9 @@ import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.datasource.DefaultDataSource
 import androidx.media3.datasource.okhttp.OkHttpDataSource
+import androidx.media3.exoplayer.DefaultLoadControl
 import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.ui.PlayerView
 import androidx.navigation.fragment.NavHostFragment
 import androidx.navigation.fragment.findNavController
@@ -25,6 +27,7 @@ import com.dskja.betterstreamflix.R
 import com.dskja.betterstreamflix.iptv.IptvLivePlayback
 import com.dskja.betterstreamflix.iptv.IptvLiveSession
 import com.dskja.betterstreamflix.iptv.IptvZapPreloader
+import com.dskja.betterstreamflix.models.TvShow
 import com.dskja.betterstreamflix.models.Video
 import com.dskja.betterstreamflix.player.PlaybackHttp
 import com.dskja.betterstreamflix.player.PlaybackMime
@@ -32,19 +35,16 @@ import com.dskja.betterstreamflix.player.PlaybackRequestHeaders
 import com.dskja.betterstreamflix.profiles.ProfileManager
 import com.dskja.betterstreamflix.providers.IptvProvider
 import com.dskja.betterstreamflix.providers.Provider
-import com.dskja.betterstreamflix.providers.ProviderTrustLayer
 import com.dskja.betterstreamflix.ui.FeaturedProviderSwitch
 import com.dskja.betterstreamflix.utils.CrossProviderLibrary
 import com.dskja.betterstreamflix.utils.DeviceCapabilities
 import com.dskja.betterstreamflix.utils.LiveHubCatalog
 import com.dskja.betterstreamflix.utils.NetworkClient
-import com.dskja.betterstreamflix.utils.ParentalControlUtils
 import com.dskja.betterstreamflix.utils.UserPreferences
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import okhttp3.OkHttpClient
 
 /**
  * In-player Mini-Live overlay: muted secondary ExoPlayer preview over VOD,
@@ -80,14 +80,8 @@ class LivePipZapController(
     private val returnButton: TextView = overlayRoot.findViewById(R.id.btn_live_pip_return_vod)
 
     private var previewPlayer: ExoPlayer? = null
-    private var previewListener: Player.Listener? = null
     private var httpFactory: OkHttpDataSource.Factory? = null
-    private var streamingClient: OkHttpClient? = null
     private var candidate: LivePipZapPolicy.Candidate? = null
-    /** Pin+favorite ring cached during resolve for promote (PZ-006, main-thread safe). */
-    private var promoteRingCandidates: List<LivePipZapPolicy.Candidate> = emptyList()
-    /** null = not resolved yet; false = pins+favorites empty. */
-    private var knownHasCandidate: Boolean? = null
     private var resolveJob: Job? = null
     private var chromeVisible: Boolean = true
     private var started: Boolean = false
@@ -155,12 +149,6 @@ class LivePipZapController(
             return
         }
         if (started && previewPlayer != null) {
-            // PZ-003: re-check eligibility even while preview is running.
-            if (!baseEligible()) {
-                stopPreview(cancelJob = true)
-                hideAll()
-                return
-            }
             overlayRoot.isVisible = true
             previewPanel.isVisible = true
             applyTvFocusPolicy()
@@ -176,60 +164,41 @@ class LivePipZapController(
         started = false
     }
 
-    private fun baseEligible(): Boolean {
-        val ctx = fragment.context
-        return LivePipZapPolicy.isEligible(
+    private fun baseEligible(): Boolean =
+        LivePipZapPolicy.isEligible(
             LivePipZapPolicy.Eligibility(
                 isLivePlayback = host.isLivePlayback(),
                 isOffline = host.isOfflinePlayback(),
                 isKidsOrAgeGated = ProfileManager.isKidsActive() || LiveHubCatalog.isAgeGated(),
                 isCasting = host.isCasting(),
                 isSystemPip = host.isSystemPip(),
-                hasChannelCandidate = hasChannelCandidate(),
-                stickEnergyOrLowRam = ctx != null && (
-                    com.dskja.betterstreamflix.ui.StickEnergyMode.isEnabled(ctx) ||
-                        DeviceCapabilities.isLowRamDevice(ctx)
-                    ),
-                codecComfortActive = com.dskja.betterstreamflix.player.CodecComfort.isActive(),
+                hasChannelCandidate = true,
             ),
         )
-    }
-
-    /** PZ-011: real candidate check — pins sync, or last resolve / active candidate. */
-    private fun hasChannelCandidate(): Boolean {
-        if (candidate != null) return true
-        if (knownHasCandidate == false) return false
-        val ctx = fragment.context?.applicationContext
-        if (ctx != null && ChannelPinStore.pinCount(ctx) > 0) return true
-        // Unknown until IO — allow first resolve attempt when not proven empty.
-        return knownHasCandidate != false
-    }
 
     private fun startPreview() {
         resolveJob?.cancel()
         resolveJob = fragment.viewLifecycleOwner.lifecycleScope.launch {
             val picked = withContext(Dispatchers.IO) { resolveCandidate() }
             if (!fragment.isAdded) return@launch
-            knownHasCandidate = picked != null
             if (picked == null || !baseEligible()) {
                 stopPreview(cancelJob = false)
                 hideAll()
                 return@launch
             }
             candidate = picked
-            // PZ-008: resolve video before showing overlay.
-            val video = withContext(Dispatchers.IO) { resolvePreviewVideo(picked) }
-            if (!fragment.isAdded || video == null || host.isLivePlayback() || !baseEligible()) {
-                stopPreview(cancelJob = false)
-                hideAll()
-                return@launch
-            }
             titleView.text = picked.title
             hintView.setText(R.string.live_pip_zap_tap_hint)
             overlayRoot.isVisible = true
             previewPanel.isVisible = true
             returnButton.isGone = true
             applyTvFocusPolicy()
+            val video = withContext(Dispatchers.IO) { resolvePreviewVideo(picked) }
+            if (!fragment.isAdded || video == null || host.isLivePlayback() || !baseEligible()) {
+                stopPreview(cancelJob = false)
+                hideAll()
+                return@launch
+            }
             playPreview(picked, video)
             started = true
         }
@@ -258,7 +227,6 @@ class LivePipZapController(
                 poster = it.poster,
             )
         }
-        promoteRingCandidates = LivePipZapPolicy.mergeCandidates(pins, favCandidates)
         val recent = IptvLiveSession.recent(1).firstOrNull()?.let { ch ->
             val provider = pins.firstOrNull { it.id == ch.id }?.provider
                 ?: favCandidates.firstOrNull { it.id == ch.id }?.provider
@@ -284,18 +252,12 @@ class LivePipZapController(
             logo = candidate.poster,
         )
         val episode = IptvLiveSession.toEpisodeType(channel)
-        val servers = IptvZapPreloader.peekCachedServers(candidate.provider, candidate.id)
+        val servers = IptvZapPreloader.peekCachedServers(candidate.id)
             ?: runCatching { provider.getServers(candidate.id, episode) }.getOrNull()
             ?: return null
         if (servers.isEmpty()) return null
-        IptvZapPreloader.rememberServers(candidate.provider, candidate.id, servers)
-        // PZ-007: trust-layer order for preview server pick.
-        val ordered = ProviderTrustLayer.prioritizeServers(
-            provider = provider,
-            servers = servers,
-            preferredServerName = null,
-        )
-        val first = ordered.firstOrNull() ?: return null
+        IptvZapPreloader.rememberServers(candidate.id, servers)
+        val first = servers.first()
         val cached = IptvZapPreloader.peekCachedVideo(first.id)
         if (cached != null) return cached
         val video = runCatching { provider.getVideo(first) }.getOrNull() ?: return null
@@ -330,7 +292,7 @@ class LivePipZapController(
         player.volume = 0f
         player.prepare()
         player.playWhenReady = true
-        val listener = object : Player.Listener {
+        player.addListener(object : Player.Listener {
             override fun onPlayerError(error: androidx.media3.common.PlaybackException) {
                 Log.w(TAG, "Mini-Live preview failed: ${error.message}")
                 if (fragment.isAdded) {
@@ -338,32 +300,27 @@ class LivePipZapController(
                     hideAll()
                 }
             }
-        }
-        previewListener = listener
-        player.addListener(listener)
+        })
     }
 
     private fun buildMutedPreviewPlayer(context: android.content.Context): ExoPlayer {
-        // PZ-004: reuse one client; shut down in stopPreviewPlayerOnly.
-        // CC-004: PlayerBuilderFactory applies Comfort/Energy SW + constrained buffers.
-        val okHttp = streamingClient ?: PlaybackHttp.newStreamingClient().also { streamingClient = it }
+        val constrained = DeviceCapabilities.shouldUseConstrainedPlayback(context)
+        val minBufferMs = if (constrained) 2_000 else 3_000
+        val maxBufferMs = if (constrained) 15_000 else 25_000
+        val playbackMs = if (constrained) 1_000 else 1_250
+        val rebufferMs = if (constrained) 2_000 else 2_500
+        val loadControl = DefaultLoadControl.Builder()
+            .setBufferDurationsMs(minBufferMs, maxBufferMs, playbackMs, rebufferMs)
+            .build()
+        val okHttp = PlaybackHttp.newStreamingClient()
         val http = OkHttpDataSource.Factory(okHttp)
         httpFactory = http
         val dataSource = DefaultDataSource.Factory(context, http)
-        val preferSw = com.dskja.betterstreamflix.ui.StickEnergyMode.preferSoftwareDecoder(context) ||
-            com.dskja.betterstreamflix.player.CodecComfort.preferSoftwareDecoder()
-        val player = com.dskja.betterstreamflix.player.PlayerBuilderFactory.build(
-            context = context,
-            dataSourceFactory = dataSource,
-            options = com.dskja.betterstreamflix.player.PlayerBuilderFactory.Options(
-                extraBuffering = false,
-                softwareDecoder = preferSw,
-                softwareDecoderForced = false,
-                liveOptimized = true,
-            ),
-        )
+        val player = ExoPlayer.Builder(context)
+            .setMediaSourceFactory(DefaultMediaSourceFactory(dataSource))
+            .setLoadControl(loadControl)
+            .build()
         player.volume = 0f
-        // PZ-013: keep muted; leave USAGE_MEDIA as-is (handleAudioFocus=false).
         player.setAudioAttributes(
             AudioAttributes.Builder()
                 .setUsage(C.USAGE_MEDIA)
@@ -377,9 +334,6 @@ class LivePipZapController(
     private fun promoteToLive() {
         val picked = candidate ?: return
         if (!fragment.isAdded || host.isLivePlayback()) return
-        // PZ-005: do not sticky-switch / stash when parental filter blocks live.
-        if (ParentalControlUtils.isFilteringActive()) return
-
         val ticket = LivePipZapPolicy.buildReturnTicket(
             providerName = UserPreferences.currentProvider?.name,
             id = host.contentId(),
@@ -389,51 +343,32 @@ class LivePipZapController(
             preferredServerName = host.preferredServerName(),
             positionMs = host.positionMs(),
         )
-
-        // PZ-006: pin/favorite-scoped zap ring (not leftover sport session).
-        val ring = buildPromoteRing(picked)
-        val provider = Provider.findByName(picked.provider)
-        IptvLiveSession.replaceWindow(ring, provider, complete = true)
-        IptvLiveSession.setCurrent(picked.id)
-
-        stopPreview(cancelJob = true)
-        hideAll()
-        FeaturedProviderSwitch.switchSticky(picked.provider, fragment.context)
         if (ticket != null) {
             LivePipZapSession.stash(ticket)
         }
+        stopPreview(cancelJob = true)
+        hideAll()
+        val show = TvShow(
+            id = picked.id,
+            title = picked.title,
+            poster = picked.poster,
+        ).apply { providerName = picked.provider }
+        FeaturedProviderSwitch.switchSticky(picked.provider, fragment.context)
+        val provider = Provider.findByName(picked.provider)
+        if (!IptvLiveSession.contains(picked.id)) {
+            IptvLiveSession.rememberShows(
+                listOf(show),
+                provider,
+                clearOnProviderChange = false,
+            )
+        }
+        IptvLiveSession.setCurrent(picked.id)
         val channel = IptvLiveSession.Channel(
             id = picked.id,
             name = picked.title,
             logo = picked.poster,
         )
         host.playLiveChannel(channel)
-    }
-
-    private fun buildPromoteRing(picked: LivePipZapPolicy.Candidate): List<IptvLiveSession.Channel> {
-        val merged = LinkedHashMap<String, IptvLiveSession.Channel>()
-        promoteRingCandidates.forEach { c ->
-            merged.putIfAbsent(
-                c.key,
-                IptvLiveSession.Channel(id = c.id, name = c.title, logo = c.poster),
-            )
-        }
-        // Fallback: sync pins if resolve cache empty.
-        if (merged.isEmpty()) {
-            fragment.context?.applicationContext?.let { ctx ->
-                ChannelPinStore.list(ctx).forEach { pin ->
-                    merged.putIfAbsent(
-                        pin.key,
-                        IptvLiveSession.Channel(id = pin.id, name = pin.title, logo = pin.poster),
-                    )
-                }
-            }
-        }
-        merged.putIfAbsent(
-            picked.key,
-            IptvLiveSession.Channel(id = picked.id, name = picked.title, logo = picked.poster),
-        )
-        return merged.values.toList()
     }
 
     private fun showReturnChipIfNeeded() {
@@ -453,57 +388,33 @@ class LivePipZapController(
     }
 
     private fun returnToVod() {
-        // PZ-002: peek first; consume only when nav is available; restore on failure.
-        if (LivePipZapSession.peek() == null) return
+        val ticket = LivePipZapSession.beginReturn() ?: return
         if (!fragment.isAdded) return
-
-        fun navigateWithTicket(): Boolean {
-            val nav = runCatching { fragment.findNavController() }.getOrNull()
-                ?: (fragment.activity?.supportFragmentManager
-                    ?.findFragmentById(R.id.nav_main_fragment) as? NavHostFragment)
-                    ?.navController
-                ?: return false
-            val consumed = LivePipZapSession.beginReturn() ?: return false
-            stopPreview(cancelJob = true)
-            hideAll()
-            FeaturedProviderSwitch.switchSticky(consumed.providerName, fragment.context)
-            val args = bundleOf(
-                "id" to consumed.id,
-                "title" to consumed.title,
-                "subtitle" to consumed.subtitle,
-                "videoType" to consumed.videoType,
-                "preferredServerName" to consumed.preferredServerName,
-                // PZ-009: pass start position for resume on return.
-                "startPositionMs" to consumed.positionMs,
-            )
-            val navigated = runCatching {
-                when {
-                    nav.currentDestination?.getAction(R.id.action_playerMobileFragment_self) != null ->
-                        nav.navigate(R.id.action_playerMobileFragment_self, args)
-                    nav.currentDestination?.getAction(R.id.action_playerTvFragment_self) != null ->
-                        nav.navigate(R.id.action_playerTvFragment_self, args)
-                    else -> nav.navigate(R.id.player, args)
-                }
-                true
-            }.getOrDefault(false)
-            if (!navigated) {
-                LivePipZapSession.restore(consumed)
-                showReturnChipIfNeeded()
+        stopPreview(cancelJob = true)
+        hideAll()
+        FeaturedProviderSwitch.switchSticky(ticket.providerName, fragment.context)
+        val args = bundleOf(
+            "id" to ticket.id,
+            "title" to ticket.title,
+            "subtitle" to ticket.subtitle,
+            "videoType" to ticket.videoType,
+            "preferredServerName" to ticket.preferredServerName,
+            "startPositionMs" to ticket.positionMs,
+        )
+        val nav = runCatching { fragment.findNavController() }.getOrNull()
+            ?: (fragment.activity?.supportFragmentManager
+                ?.findFragmentById(R.id.nav_main_fragment) as? NavHostFragment)
+                ?.navController
+            ?: return
+        runCatching {
+            when {
+                nav.currentDestination?.getAction(R.id.action_playerMobileFragment_self) != null ->
+                    nav.navigate(R.id.action_playerMobileFragment_self, args)
+                nav.currentDestination?.getAction(R.id.action_playerTvFragment_self) != null ->
+                    nav.navigate(R.id.action_playerTvFragment_self, args)
+                else -> nav.navigate(R.id.player, args)
             }
-            return navigated
         }
-
-        val activity = fragment.activity
-        if (activity != null &&
-            com.dskja.betterstreamflix.kids.KidsBedtime.shouldBlockEnteringPlayer()
-        ) {
-            // KF-021: bedtime pre-check before returning to VOD player.
-            com.dskja.betterstreamflix.kids.KidsBedtimeUi.blockPlayerEntry(activity) {
-                navigateWithTicket()
-            }
-            return
-        }
-        navigateWithTicket()
     }
 
     private fun applyTvFocusPolicy() {
@@ -511,9 +422,9 @@ class LivePipZapController(
         val focusPreview = tv &&
             LivePipZapPolicy.tvOverlayFocusable(chromeVisible) &&
             previewPanel.isVisible
-        // PZ-010: return chip focusable whenever visible (chrome optional).
         val focusReturn = tv &&
-            LivePipZapPolicy.tvReturnChipFocusable(returnButton.isVisible)
+            LivePipZapPolicy.tvOverlayFocusable(chromeVisible) &&
+            returnButton.isVisible
         previewPanel.isFocusable = focusPreview
         previewPanel.isFocusableInTouchMode = focusPreview
         previewPanel.isClickable = previewPanel.isVisible
@@ -540,7 +451,6 @@ class LivePipZapController(
         playerView.player = null
         previewPlayer?.let { p ->
             runCatching {
-                previewListener?.let { p.removeListener(it) }
                 p.playWhenReady = false
                 p.stop()
                 p.clearMediaItems()
@@ -548,16 +458,7 @@ class LivePipZapController(
             }
         }
         previewPlayer = null
-        previewListener = null
         httpFactory = null
-        // PZ-004: shut down dedicated OkHttp client.
-        streamingClient?.let { client ->
-            runCatching {
-                client.dispatcher.executorService.shutdown()
-                client.connectionPool.evictAll()
-            }
-        }
-        streamingClient = null
     }
 
     private fun hideAll() {

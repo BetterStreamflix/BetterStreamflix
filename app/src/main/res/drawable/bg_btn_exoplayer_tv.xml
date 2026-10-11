@@ -5,7 +5,7 @@
         <shape android:shape="rectangle">
             <corners android:radius="360dp" />
             <stroke
-                android:width="?attr/tvFocusStrokeWidth"
+                android:width="@dimen/tv_focus_stroke_width"
                 android:color="?attr/tvFocusStrokeColor" />
             <solid android:color="@color/cinema_player_btn_focus" />
         </shape>

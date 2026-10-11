@@ -88,30 +88,23 @@ object CloudAccountSettingsController {
         fun refresh() {
             val email = CloudSyncManager.currentUserEmail()
             val kids = com.dskja.betterstreamflix.profiles.ProfileManager.isKidsActive()
-            val guest = com.dskja.betterstreamflix.profiles.ProfileManager.isGuestActive()
-            val restricted = kids || guest
             status.summary = when {
-                restricted && email == null ->
-                    fragment.getString(R.string.cloud_sync_kids_sign_in_blocked)
-                kids && email != null ->
-                    fragment.getString(R.string.cloud_sync_kids_sign_in_blocked)
-                guest && email != null ->
+                kids && email == null ->
                     fragment.getString(R.string.cloud_sync_kids_sign_in_blocked)
                 email != null ->
                     fragment.getString(R.string.cloud_sync_signed_in_notes_looks, email)
                 else ->
                     fragment.getString(R.string.cloud_sync_signed_out)
             }
-            signIn?.isVisible = email == null && !restricted
-            signUp?.isVisible = email == null && !restricted
-            // Kids/guest: allow sign-out of a stale session; hide sync (KF-026 / GP-002).
+            signIn?.isVisible = email == null && !kids
+            signUp?.isVisible = email == null && !kids
             signOut?.isVisible = email != null
-            syncNow?.isVisible = email != null && !restricted
+            syncNow?.isVisible = email != null
             status.isEnabled = SupabaseProvider.isConfigured
-            signIn?.isEnabled = SupabaseProvider.isConfigured && email == null && !restricted
-            signUp?.isEnabled = SupabaseProvider.isConfigured && email == null && !restricted
+            signIn?.isEnabled = SupabaseProvider.isConfigured && email == null && !kids
+            signUp?.isEnabled = SupabaseProvider.isConfigured && email == null && !kids
             signOut?.isEnabled = SupabaseProvider.isConfigured && email != null
-            syncNow?.isEnabled = SupabaseProvider.isConfigured && email != null && !restricted
+            syncNow?.isEnabled = SupabaseProvider.isConfigured && email != null
             DeviceLinkSettingsController.bind(
                 fragment,
                 findPreference,
@@ -120,9 +113,7 @@ object CloudAccountSettingsController {
         }
 
         signIn?.setOnPreferenceClickListener {
-            if (com.dskja.betterstreamflix.profiles.ProfileManager.isKidsActive() ||
-                com.dskja.betterstreamflix.profiles.ProfileManager.isGuestActive()
-            ) {
+            if (com.dskja.betterstreamflix.profiles.ProfileManager.isKidsActive()) {
                 ExpDialogChrome.notify(fragment.requireContext(), R.string.cloud_sync_kids_sign_in_blocked)
                 return@setOnPreferenceClickListener true
             }
@@ -141,9 +132,7 @@ object CloudAccountSettingsController {
         }
 
         signUp?.setOnPreferenceClickListener {
-            if (com.dskja.betterstreamflix.profiles.ProfileManager.isKidsActive() ||
-                com.dskja.betterstreamflix.profiles.ProfileManager.isGuestActive()
-            ) {
+            if (com.dskja.betterstreamflix.profiles.ProfileManager.isKidsActive()) {
                 ExpDialogChrome.notify(fragment.requireContext(), R.string.cloud_sync_kids_sign_in_blocked)
                 return@setOnPreferenceClickListener true
             }
@@ -196,12 +185,6 @@ object CloudAccountSettingsController {
         }
 
         syncNow?.setOnPreferenceClickListener {
-            if (com.dskja.betterstreamflix.profiles.ProfileManager.isKidsActive() ||
-                com.dskja.betterstreamflix.profiles.ProfileManager.isGuestActive()
-            ) {
-                ExpDialogChrome.notify(fragment.requireContext(), R.string.cloud_sync_kids_sign_in_blocked)
-                return@setOnPreferenceClickListener true
-            }
             runProgressAction(fragment, scope, ::refresh) { onProgress ->
                 CloudSyncManager.syncNow(fragment.requireContext(), onProgress)
                 R.string.cloud_sync_success

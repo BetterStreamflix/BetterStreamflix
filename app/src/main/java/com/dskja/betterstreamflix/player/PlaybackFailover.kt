@@ -82,21 +82,14 @@ object PlaybackFailover {
                     "500" in chain || "502" in chain || "503" in chain || "521" in chain))
     }
 
-    /**
-     * HW decoder cannot handle this format (10-bit / exceeds capabilities).
-     * CC-002: require an exceeds_capabilities / format signal — do not treat generic
-     * MediaCodec teardown / "decoder failed" as latch triggers (false positives under
-     * Live PiP dual-decode / surface release).
-     */
+    /** HW decoder cannot handle this format (10-bit / exceeds capabilities). */
     fun isDecoderCapabilityFailure(error: Throwable?): Boolean {
         val chain = errorChain(error)
-        if ("no_exceeds_capabilities" in chain) return true
-        if ("exceeds_capabilities" in chain) return true
-        // Format-specific MediaCodec capability codes only.
-        if ("mediacodec" in chain && ("0x80001009" in chain || "error 0x8000" in chain)) {
-            return true
-        }
-        return false
+        return "no_exceeds_capabilities" in chain ||
+            "exceeds_capabilities" in chain ||
+            "mediacodecvideodecoderexception" in chain ||
+            "decoder failed" in chain ||
+            ("mediacodec" in chain && ("0x80001009" in chain || "error 0x8000" in chain))
     }
 
     fun decide(

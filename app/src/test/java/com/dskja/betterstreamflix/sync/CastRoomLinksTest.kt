@@ -46,16 +46,11 @@ class CastRoomLinksTest {
     @Test
     fun shortCodeNormalization() {
         assertEquals("ABC234", CastRoomLinks.normalizeShortCode("abc234"))
-        // Ambiguous glyphs map into generator alphabet (0/O→Q, 1/I/L→J).
-        assertEquals("ABCQJ2", CastRoomLinks.normalizeShortCode("abc012"))
-        assertEquals("ABC234", CastRoomLinks.normalizeShortCode("ABC-234"))
-        assertEquals("ABC234", CastRoomLinks.normalizeShortCode(" abc 234 "))
+        assertEquals("ABCOI2", CastRoomLinks.normalizeShortCode("abc012"))
         assertNull(CastRoomLinks.normalizeShortCode("short"))
         assertNull(CastRoomLinks.normalizeShortCode("HAS!@#"))
         assertTrue(CastRoomLinks.isValidShortCode("XK9M2P"))
         assertFalse(CastRoomLinks.isValidShortCode("abc"))
-        // O/I/L never survive normalize into invalid generator letters.
-        assertEquals("QJJ234", CastRoomLinks.normalizeShortCode("OIL234"))
     }
 
     @Test

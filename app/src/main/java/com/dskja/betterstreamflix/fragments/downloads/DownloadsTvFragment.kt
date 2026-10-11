@@ -102,7 +102,7 @@ class DownloadsTvFragment : Fragment() {
         onPackPause = { viewModel.pausePack(it.pack.id) },
         onPackResume = { viewModel.resumePack(it.pack.id) },
         onPackDelete = { pack ->
-            confirmDestructive(R.string.downloads_pack_delete_confirm) {
+            confirmDestructive(R.string.downloads_delete_confirm) {
                 viewModel.removePack(pack.pack.id)
             }
         },
@@ -226,10 +226,7 @@ class DownloadsTvFragment : Fragment() {
         val queue = mode == DownloadsViewMode.QUEUE
         val studioPanel = mode == DownloadsViewMode.CARE || mode == DownloadsViewMode.CONTROLS
         binding.tvDownloadsTitle.setText(
-            when (mode) {
-                DownloadsViewMode.CARE, DownloadsViewMode.CONTROLS -> R.string.offline_studio_title
-                else -> studioController?.modeTitleRes(mode) ?: R.string.offline_studio_title
-            },
+            studioController?.modeTitleRes(mode) ?: R.string.offline_studio_title,
         )
         binding.llOfflineLibraryBadge.isVisible = library
         binding.clOfflineLibrarySearch.isVisible = library
@@ -268,10 +265,7 @@ class DownloadsTvFragment : Fragment() {
                 }
             }
             binding.rvDownloads.adapter = libraryAdapter
-            val libraryGap = com.dskja.betterstreamflix.ui.LeanbackDensityPolicy
-                .downloadsLibrarySpacingDp()
-                .dp(requireContext())
-            librarySpacing = SpacingItemDecoration(libraryGap).also {
+            librarySpacing = SpacingItemDecoration(12.dp(requireContext())).also {
                 binding.rvDownloads.addItemDecoration(it)
             }
             libraryAdapter.submitList(OfflineLibrary.toAppItems(libraryEntries, mobile = false))
@@ -303,9 +297,8 @@ class DownloadsTvFragment : Fragment() {
                 }
             }
             binding.rvDownloads.adapter = adapter
-            adapter.submitList(viewModel.rows.value)
             renderTvEmpty(
-                empty = viewModel.rows.value.isEmpty(),
+                empty = adapter.itemCount == 0,
                 libraryMode = false,
                 searchActive = false,
                 manageFilter = viewModel.currentFilter(),
@@ -415,15 +408,10 @@ class DownloadsTvFragment : Fragment() {
         )
         binding.chipModeLibrary.nextFocusLeftId = R.id.nav_main
         binding.chipFilterAll.nextFocusLeftId = R.id.nav_main
-        val snap = viewModel.studioSnapshot.value
         val modeDownId = when (viewModel.currentViewMode()) {
             DownloadsViewMode.LIBRARY -> binding.etOfflineLibrarySearch.id
             DownloadsViewMode.QUEUE -> binding.chipFilterAll.id
-            DownloadsViewMode.CARE -> when {
-                snap.health.hasUnhealthy -> R.id.btn_offline_studio_health_redownload
-                snap.expiryCount > 0 -> R.id.btn_offline_studio_expiry_keep
-                else -> R.id.card_offline_studio_lane
-            }
+            DownloadsViewMode.CARE -> R.id.btn_offline_studio_health_redownload
             DownloadsViewMode.CONTROLS -> R.id.switch_offline_studio_smart
         }
         listOf(
@@ -478,7 +466,6 @@ class DownloadsTvFragment : Fragment() {
     ) {
         val row = binding.llDownloadsBanner
         val cta = binding.btnDownloadsHealthRedownload
-        val hideHealthInCare = viewModel.currentViewMode() == DownloadsViewMode.CARE
         when {
             wifiPaused -> {
                 row.isVisible = true
@@ -490,7 +477,7 @@ class DownloadsTvFragment : Fragment() {
                 binding.tvDownloadsBanner.setText(R.string.downloads_low_space)
                 cta.isVisible = false
             }
-            health.hasUnhealthy && !hideHealthInCare -> {
+            health.hasUnhealthy -> {
                 row.isVisible = true
                 binding.tvDownloadsBanner.text =
                     com.dskja.betterstreamflix.download.DownloadHealth
@@ -511,32 +498,13 @@ class DownloadsTvFragment : Fragment() {
         viewModel.refreshWifiPreference()
         viewModel.startLiveProgress()
         maybePromptOfflineExpiry()
-        restoreCleanExitFocus()
-    }
-
-    /** Clean Exit from offline play → focus the same Downloads row (OS-079). */
-    fun restoreCleanExitFocus(): Boolean {
-        val root = view ?: return false
-        if (!com.dskja.betterstreamflix.player.PlayerCleanExit.shouldRestoreHomeFocus()) return false
-        val token = com.dskja.betterstreamflix.player.PlayerCleanExit.peekHomeFocusToken()
-            ?: return false
-        if (token.rowHint != "downloads") return false
-        binding.rvDownloads.post {
-            val landed = com.dskja.betterstreamflix.player.PlayerCleanExit
-                .restoreHomeFocus(root, token)
-            com.dskja.betterstreamflix.player.PlayerCleanExit.consumeHomeFocusRestore()
-            if (!landed) binding.rvDownloads.requestFocus()
-        }
-        return true
     }
 
     private fun maybePromptOfflineExpiry() {
         viewLifecycleOwner.lifecycleScope.launch {
             delay(450L)
             if (!isAdded || view == null) return@launch
-            // CARE/CONTROLS skip stays; wifi / low-space banners may coexist (OS-024).
-            val mode = viewModel.currentViewMode()
-            if (mode == DownloadsViewMode.CARE || mode == DownloadsViewMode.CONTROLS) return@launch
+            if (viewModel.wifiPaused.value || viewModel.lowSpace.value) return@launch
             val stale = viewModel.loadOfflineExpiryCandidates()
             if (stale.isEmpty() || !isAdded) return@launch
             OfflineExpiryNudge.maybeShow(
@@ -699,7 +667,7 @@ class DownloadsTvFragment : Fragment() {
                     )
                     1 -> viewModel.pausePack(pack.pack.id)
                     2 -> viewModel.resumePack(pack.pack.id)
-                    3 -> confirmDestructive(R.string.downloads_pack_delete_confirm) {
+                    3 -> confirmDestructive(R.string.downloads_delete_confirm) {
                         viewModel.removePack(pack.pack.id)
                     }
                 }
@@ -778,10 +746,6 @@ class DownloadsTvFragment : Fragment() {
             }
             viewModel.touchDownloads(listOf(entity.id))
             OfflineVideoCache.put(entity.contentKey, local)
-            com.dskja.betterstreamflix.player.PlayerCleanExit.rememberHomeFocus(
-                entity.contentKey,
-                rowHint = "downloads",
-            )
             findNavController().navigate(
                 R.id.action_global_player,
                 bundleOf(

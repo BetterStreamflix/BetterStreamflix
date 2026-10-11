@@ -17,26 +17,8 @@ import com.google.android.material.dialog.MaterialAlertDialogBuilder
 
 /**
  * Unlock chooser for Spoiler Shield — adult confirm, Kids parental PIN.
- *
- * Adults with the opt-in toggle need only a confirm dialog (no profile PIN).
- * Intentional for household adults; Kids always require parental/profile PIN (SS-013).
- * Not a substitute for Kids Fortress on a shared adult profile.
  */
 object SpoilerShieldUi {
-
-    /** Runs [onAllowed] immediately when the episode is not shielded; otherwise unlock first. */
-    fun gateEpisodePlay(
-        fragment: Fragment?,
-        episode: Episode,
-        onAllowed: () -> Unit,
-    ) {
-        if (!SpoilerShield.isShielded(episode)) {
-            onAllowed()
-            return
-        }
-        if (fragment == null) return
-        requestUnlock(fragment, episode, onAllowed)
-    }
 
     fun requestUnlock(
         fragment: Fragment,
@@ -124,11 +106,33 @@ object SpoilerShieldUi {
                 onVerified = onVerified,
             )
             else -> {
-                ExpDialogChrome.notify(
-                    context,
-                    R.string.spoiler_shield_kids_pin_required,
-                    R.string.spoiler_shield_unlock_title,
-                )
+                // No PIN configured — confirm with a guardian-style dialog.
+                val message = context.getString(R.string.spoiler_shield_kids_confirm_message)
+                val glass = if (ExperimentalMobileDesign.enabled()) {
+                    ExpDialogChrome.buildGlassMessage(context, message)
+                } else {
+                    null
+                }
+                val builder = if (ExperimentalMobileDesign.enabled()) {
+                    MaterialAlertDialogBuilder(ExpDialogChrome.themedContext(context))
+                } else {
+                    AlertDialog.Builder(ExpDialogChrome.themedContext(context))
+                }
+                builder.setTitle(R.string.spoiler_shield_unlock_title)
+                if (glass != null) builder.setView(glass.root) else builder.setMessage(message)
+                builder
+                    .setPositiveButton(R.string.spoiler_shield_unlock_episode) { _, _ ->
+                        onVerified()
+                    }
+                    .setNegativeButton(android.R.string.cancel, null)
+                    .create()
+                    .also { dialog ->
+                        dialog.setOnShowListener {
+                            if (glass != null) ExpDialogChrome.polishGlassMessageShown(dialog, glass)
+                            else ExpDialogChrome.polishButtons(dialog)
+                        }
+                        dialog.show()
+                    }
             }
         }
     }

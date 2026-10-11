@@ -70,10 +70,7 @@ sealed class DownloadEnqueueOutcome {
         val total: Int,
         val alreadyPresent: Int,
         val skippedQuota: Int,
-        val skippedPrepareFailures: Int = 0,
         val stoppedLowStorage: Boolean = false,
-        /** Episodes newly confirmed into the queue (excludes already present). */
-        val newlyQueued: Int = 0,
     ) : DownloadEnqueueOutcome()
     data class Failed(val code: DownloadErrorCode, val message: String) : DownloadEnqueueOutcome()
 }
@@ -281,8 +278,7 @@ object DownloadController {
             )
         val track = prepared.trackOptions.getOrNull(trackIndex)
         val autoLabel = context.getString(R.string.download_quality_auto)
-        val repo = DownloadRepository.get(context)
-        val item = repo.enqueueResolved(
+        val item = DownloadRepository.get(context).enqueueResolved(
             contentKey = prepared.contentKey,
             providerName = prepared.providerName,
             kind = prepared.kind,
@@ -300,7 +296,6 @@ object DownloadController {
             subtitleUrls = candidate.video.subtitles.map { it.label to it.file },
             smartEnqueued = smartEnqueued,
         )
-        runCatching { repo.maybeUpsertOpportunisticSeasonPack(item) }
         DownloadEnqueueOutcome.Started(item)
     }
 
@@ -334,6 +329,11 @@ object DownloadController {
 
         val packId = DownloadContentKey.seasonPack(provider.name, tvShow.id, seasonNumber)
         val repo = DownloadRepository.get(context)
+        val seriesKey = SmartDownloadsPolicy.seriesKeyForShow(provider.name, tvShow.id)
+        val quota = SmartDownloadsPolicy.clampSeriesQuota(UserPreferences.downloadSmartSeriesQuota)
+        val profileItems = repo.getAllOnce().filter { DownloadProfileScope.matchesActive(it.profileId) }
+        var occupancy = SmartDownloadsPolicy.seriesOccupancy(profileItems, seriesKey)
+        val slotsAtStart = SmartDownloadsPolicy.slotsRemaining(occupancy, quota)
 
         // Classify season episodes: already present vs missing (need new queue slots).
         data class SeasonEpisode(val index: Int, val episode: Episode, val contentKey: String)
@@ -360,12 +360,20 @@ object DownloadController {
                 else -> true
             }
         }
-        // Explicit season is not Smart-quota capped — budget is all missing episodes.
         val budget = SmartDownloadsPolicy.seasonEnqueueBudget(
             missingInSeason = missing.size,
-            occupancy = 0,
-            quota = SmartDownloadsPolicy.DEFAULT_SERIES_QUOTA,
+            occupancy = occupancy,
+            quota = quota,
         )
+        if (missing.isNotEmpty() && budget <= 0) {
+            return@withContext DownloadEnqueueOutcome.Failed(
+                DownloadErrorCode.SERIES_QUOTA,
+                context.getString(
+                    R.string.season_download_quota_exhausted,
+                    quota,
+                ),
+            )
+        }
 
         repo.upsertSeasonPack(
             DownloadSeasonPackEntity(
@@ -375,15 +383,13 @@ object DownloadController {
                 tvShowTitle = tvShow.title,
                 seasonNumber = seasonNumber,
                 posterUrl = tvShow.poster.orEmpty(),
-                totalEpisodes = 0,
-                profileId = DownloadProfileScope.activeId(),
+                totalEpisodes = episodes.size,
             ),
         )
 
         var started = 0
         var alreadyPresent = 0
         var newlyQueued = 0
-        var skippedPrepareFailures = 0
         var stoppedLowStorage = false
         val missingKeysBudget = missing.take(budget).map { it.contentKey }.toHashSet()
         var stopNewEnqueues = false
@@ -415,6 +421,11 @@ object DownloadController {
                 Log.i(TAG, "Season enqueue stopped: low storage after $newlyQueued new")
                 continue
             }
+            // Re-check remaining slots as we enqueue (occupancy grows).
+            if (SmartDownloadsPolicy.slotsRemaining(occupancy, quota) <= 0) {
+                stopNewEnqueues = true
+                continue
+            }
 
             val outcome = prepareEpisode(context, episode)
             when (outcome) {
@@ -436,39 +447,24 @@ object DownloadController {
                         serverIdx,
                         trackIdx,
                         label,
-                        // Season one-tap is a user QUEUE action, not Smart-Auto.
-                        smartEnqueued = false,
+                        smartEnqueued = true,
                         allowMetered = allowMetered,
                     )
-                    when (confirmed) {
-                        is DownloadEnqueueOutcome.Started -> {
-                            repo.assignPack(confirmed.item.id, packId, row.index)
-                            started++
-                            newlyQueued++
-                        }
-                        is DownloadEnqueueOutcome.Failed -> {
-                            if (confirmed.code == DownloadErrorCode.NOSPACE ||
-                                confirmed.code == DownloadErrorCode.SOFT_LIMIT ||
-                                confirmed.code == DownloadErrorCode.LOW_STORAGE
-                            ) {
-                                stoppedLowStorage = true
-                                stopNewEnqueues = true
-                            } else {
-                                skippedPrepareFailures++
-                            }
-                            Log.w(TAG, "Season NeedsOptions confirm failed for ${episode.id}: $confirmed")
-                        }
-                        else -> {
-                            skippedPrepareFailures++
-                            Log.w(TAG, "Season NeedsOptions confirm failed for ${episode.id}: $confirmed")
-                        }
+                    if (confirmed is DownloadEnqueueOutcome.Started) {
+                        repo.assignPack(confirmed.item.id, packId, row.index)
+                        started++
+                        newlyQueued++
+                        occupancy++
+                    } else {
+                        Log.w(TAG, "Season NeedsOptions confirm failed for ${episode.id}: $confirmed")
                     }
                 }
                 is DownloadEnqueueOutcome.Started -> {
-                    repo.upsert(outcome.item.copy(smartEnqueued = false))
+                    repo.upsert(outcome.item.copy(smartEnqueued = true))
                     repo.assignPack(outcome.item.id, packId, row.index)
                     started++
                     newlyQueued++
+                    occupancy++
                 }
                 is DownloadEnqueueOutcome.AlreadyActive -> {
                     repo.assignPack(outcome.item.id, packId, row.index)
@@ -481,31 +477,19 @@ object DownloadController {
                     alreadyPresent++
                 }
                 is DownloadEnqueueOutcome.SeasonStarted -> Unit
-                is DownloadEnqueueOutcome.Failed -> {
-                    skippedPrepareFailures++
-                    Log.w(TAG, "Season item failed: ${outcome.message}")
-                }
+                is DownloadEnqueueOutcome.Failed -> Log.w(TAG, "Season item failed: ${outcome.message}")
             }
         }
-        // Pack total = assigned members (not full season size when partial).
-        val assigned = maxOf(started, newlyQueued + alreadyPresent)
-        repo.upsertSeasonPack(
-            DownloadSeasonPackEntity(
-                id = packId,
-                providerName = provider.name,
-                tvShowId = tvShow.id,
-                tvShowTitle = tvShow.title,
-                seasonNumber = seasonNumber,
-                posterUrl = tvShow.poster.orEmpty(),
-                totalEpisodes = assigned,
-                profileId = DownloadProfileScope.activeId(),
-            ),
-        )
+        val skippedQuota = (missing.size - newlyQueued).coerceAtLeast(0)
         repo.refreshSeasonPack(packId)
         if (started == 0 && newlyQueued == 0) {
             DownloadEnqueueOutcome.Failed(
-                DownloadErrorCode.NO_SERVERS,
-                context.getString(R.string.download_error_no_episodes_queued),
+                if (slotsAtStart <= 0) DownloadErrorCode.SERIES_QUOTA else DownloadErrorCode.NO_SERVERS,
+                if (slotsAtStart <= 0) {
+                    context.getString(R.string.season_download_quota_exhausted, quota)
+                } else {
+                    context.getString(R.string.download_error_no_episodes_queued)
+                },
             )
         } else {
             DownloadEnqueueOutcome.SeasonStarted(
@@ -520,20 +504,17 @@ object DownloadController {
                         R.string.download_season_pack_subtitle,
                         seasonNumber,
                         started,
-                        assigned,
+                        episodes.size,
                     ),
                     posterUrl = tvShow.poster.orEmpty(),
                     seasonPackId = packId,
-                    smartEnqueued = false,
-                    profileId = DownloadProfileScope.activeId(),
+                    smartEnqueued = true,
                 ),
                 started = started,
-                total = assigned.coerceAtLeast(1),
+                total = episodes.size,
                 alreadyPresent = alreadyPresent,
-                skippedQuota = 0,
-                skippedPrepareFailures = skippedPrepareFailures,
+                skippedQuota = skippedQuota.coerceAtLeast(0),
                 stoppedLowStorage = stoppedLowStorage,
-                newlyQueued = newlyQueued,
             )
         }
     }
@@ -695,7 +676,6 @@ object DownloadController {
     /** Returns how many failed items were successfully re-queued. */
     suspend fun retryAllFailed(context: Context): Int = withContext(Dispatchers.IO) {
         val failed = DownloadRepository.get(context).getAllOnce()
-            .filter { DownloadProfileScope.matchesActive(it.profileId) }
             .filter { it.state == DownloadItemState.FAILED.name }
         var started = 0
         failed.forEach { entity ->
@@ -713,16 +693,9 @@ object DownloadController {
     /**
      * Re-queues only unplayable / cache-missing rows ([DownloadHealth.isUnhealthy]),
      * not every generic FAILED network error.
-     * @param onlyIds when non-null/non-empty, only those Room ids (Care / parental-visible).
      */
-    suspend fun redownloadAllUnhealthy(
-        context: Context,
-        onlyIds: Collection<String>? = null,
-    ): Int = withContext(Dispatchers.IO) {
-        val idFilter = onlyIds?.takeIf { it.isNotEmpty() }?.toHashSet()
+    suspend fun redownloadAllUnhealthy(context: Context): Int = withContext(Dispatchers.IO) {
         val unhealthy = DownloadRepository.get(context).getAllOnce()
-            .filter { DownloadProfileScope.matchesActive(it.profileId) }
-            .filter { idFilter == null || it.id in idFilter }
             .filter { DownloadHealth.isUnhealthy(it) }
             .groupBy { it.contentKey }
             .map { (_, rows) -> rows.maxBy { it.updatedAt } }
@@ -853,7 +826,7 @@ object DownloadController {
         }
         if (DownloadStorage.isOverSoftLimit(context)) {
             return DownloadEnqueueOutcome.Failed(
-                DownloadErrorCode.SOFT_LIMIT,
+                DownloadErrorCode.NOSPACE,
                 context.getString(R.string.download_error_soft_limit),
             )
         }

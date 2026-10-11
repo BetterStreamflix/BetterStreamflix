@@ -17,7 +17,6 @@ import androidx.navigation.fragment.NavHostFragment
 import com.dskja.betterstreamflix.R
 import com.dskja.betterstreamflix.download.DownloadConnectivityMonitor
 import com.dskja.betterstreamflix.models.Video
-import com.dskja.betterstreamflix.profiles.ProfileUnlockGate
 import com.dskja.betterstreamflix.providers.Provider
 import com.dskja.betterstreamflix.utils.DeviceCapabilities
 import com.dskja.betterstreamflix.utils.ExpDialogChrome
@@ -42,10 +41,6 @@ object SessionHandoffUi {
     }
 
     private var offerPollJob: Job? = null
-    private val promptedPendingCodes = mutableSetOf<String>()
-
-    @Volatile
-    private var confirmInFlight = false
 
     fun offerFromPlayer(
         fragment: Fragment,
@@ -70,13 +65,6 @@ object SessionHandoffUi {
         }
         if (!DownloadConnectivityMonitor.isOnline(context)) {
             ExpDialogChrome.notify(context, R.string.session_handoff_offline)
-            return
-        }
-        // Prefer phone for offer (directional UX).
-        if (DeviceCapabilities.isLeanbackDevice(context) ||
-            DeviceCapabilities.isAmazonFireTv(context)
-        ) {
-            ExpDialogChrome.notify(context, R.string.session_handoff_offer_prefer_phone)
             return
         }
 
@@ -139,10 +127,6 @@ object SessionHandoffUi {
     }
 
     fun promptClaimCode(activity: FragmentActivity) {
-        if (ProfileUnlockGate.requiresGateForActive()) {
-            // Wait for unlock; Settings re-entry or tryFlushPending resumes claim.
-            return
-        }
         if (!SupabaseProvider.isConfigured) {
             ExpDialogChrome.notify(activity, R.string.session_handoff_needs_supabase)
             return
@@ -151,10 +135,14 @@ object SessionHandoffUi {
             ExpDialogChrome.notify(activity, R.string.session_handoff_needs_sign_in)
             return
         }
+        if (!DownloadConnectivityMonitor.isOnline(activity)) {
+            ExpDialogChrome.notify(activity, R.string.session_handoff_offline)
+            return
+        }
 
         val input = EditText(activity).apply {
             inputType = InputType.TYPE_TEXT_FLAG_CAP_CHARACTERS or InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS
-            filters = arrayOf(InputFilter.LengthFilter(8), InputFilter.AllCaps())
+            filters = arrayOf(InputFilter.LengthFilter(7), InputFilter.AllCaps())
             hint = activity.getString(R.string.session_handoff_code_hint)
             setPadding(48, 32, 48, 32)
         }
@@ -174,7 +162,7 @@ object SessionHandoffUi {
             .setView(container)
             .setNegativeButton(android.R.string.cancel, null)
             .setPositiveButton(R.string.session_handoff_claim_action) { _, _ ->
-                handleIncomingCode(activity, input.text?.toString().orEmpty())
+                claimAndPlay(activity, input.text?.toString().orEmpty())
             }
             .show()
     }
@@ -183,63 +171,12 @@ object SessionHandoffUi {
         val code = SessionHandoffLinks.parseCode(raw)
             ?: SessionHandoffCodes.normalize(raw)
         if (code != null) {
-            handleIncomingCode(activity, code)
+            claimAndPlay(activity, code)
             return
         }
         if (SessionHandoffLinks.parseToken(raw) != null) {
             ExpDialogChrome.notify(activity, R.string.session_handoff_use_code)
         }
-    }
-
-    fun handleIncomingCode(activity: FragmentActivity, rawCode: String) {
-        val appContext = activity.applicationContext
-        val cleaned = SessionHandoffCodes.normalize(rawCode)
-        if (cleaned == null) {
-            ExpDialogChrome.notify(activity, R.string.session_handoff_invalid_code)
-            return
-        }
-        // Prefer TV for claim; warn on mobile but allow with confirm.
-        val isTv = DeviceCapabilities.isLeanbackDevice(activity) ||
-            DeviceCapabilities.isAmazonFireTv(activity)
-        if (!isTv) {
-            Toast.makeText(
-                activity,
-                R.string.session_handoff_claim_prefer_tv,
-                Toast.LENGTH_LONG,
-            ).show()
-        }
-        // PIN gate + offline / auth queue via SessionHandoffPendingClaim.
-        if (ProfileUnlockGate.requiresGateForActive()) {
-            SessionHandoffPendingClaim.enqueue(appContext, cleaned)
-            return
-        }
-        if (!SupabaseProvider.isConfigured) {
-            SessionHandoffPendingClaim.enqueue(appContext, cleaned)
-            ExpDialogChrome.notify(activity, R.string.session_handoff_needs_supabase)
-            return
-        }
-        if (CloudSyncManager.currentUserId() == null) {
-            SessionHandoffPendingClaim.enqueue(appContext, cleaned)
-            ExpDialogChrome.notify(activity, R.string.session_handoff_needs_sign_in)
-            return
-        }
-        if (!DownloadConnectivityMonitor.isOnline(appContext)) {
-            SessionHandoffPendingClaim.enqueue(appContext, cleaned)
-            ExpDialogChrome.notify(activity, R.string.session_handoff_claim_queued_offline)
-            return
-        }
-        promptClaim(activity, cleaned)
-    }
-
-    fun tryFlushPending(activity: FragmentActivity) {
-        if (ProfileUnlockGate.requiresGateForActive()) return
-        if (!SupabaseProvider.isConfigured) return
-        if (CloudSyncManager.currentUserId() == null) return
-        if (!DownloadConnectivityMonitor.isOnline(activity)) return
-        val pending = SessionHandoffPendingClaim.peek(activity)
-        val next = pending.firstOrNull { it !in promptedPendingCodes } ?: return
-        promptedPendingCodes.add(next)
-        promptClaim(activity, next)
     }
 
     private fun showOfferDialog(fragment: Fragment, shortCode: String) {
@@ -278,6 +215,7 @@ object SessionHandoffUi {
                     }
                     return@launch
                 }
+                // Keep position fresh while the offer is live.
                 val offer = fragment as? OfferAware
                 if (offer != null && handoffId.isNotBlank()) {
                     withContext(Dispatchers.IO) {
@@ -295,80 +233,16 @@ object SessionHandoffUi {
         }
     }
 
-    private fun promptClaim(activity: FragmentActivity, code: String) {
-        if (confirmInFlight) return
-        confirmInFlight = true
-        activity.lifecycleScope.launch {
-            val result = withContext(Dispatchers.IO) {
-                runCatching { SessionHandoffRepository.fetchByCode(activity, code) }
-            }
-            confirmInFlight = false
-            if (activity.isFinishing || activity.isDestroyed) return@launch
-            result.onFailure { error ->
-                SessionHandoffPendingClaim.acknowledge(activity, code)
-                promptedPendingCodes.remove(code)
-                ExpDialogChrome.notify(
-                    activity,
-                    activity.getString(
-                        R.string.session_handoff_claim_failed,
-                        error.message ?: error.javaClass.simpleName,
-                    ),
-                )
-                return@launch
-            }
-            val payload = result.getOrNull() ?: return@launch
-            val title = payload.title.ifBlank {
-                activity.getString(R.string.session_handoff_claim_title)
-            }
-            val positionLabel = CastHandoffRepository.formatPositionLabel(payload.positionMs)
-            val detail = buildString {
-                append(title)
-                if (payload.subtitle.isNotBlank()) {
-                    append(" · ")
-                    append(payload.subtitle)
-                }
-                append('\n')
-                append(activity.getString(R.string.session_handoff_claim_position_note, positionLabel))
-                if (!payload.serverName.isNullOrBlank()) {
-                    append('\n')
-                    append(activity.getString(R.string.session_handoff_claim_server_note, payload.serverName))
-                }
-            }
-            AlertDialog.Builder(activity)
-                .setTitle(R.string.session_handoff_claim_confirm_title)
-                .setMessage(detail)
-                .setNegativeButton(android.R.string.cancel) { _, _ ->
-                    SessionHandoffPendingClaim.acknowledge(activity, code)
-                    promptedPendingCodes.remove(code)
-                }
-                .setPositiveButton(R.string.session_handoff_claim_action) { _, _ ->
-                    SessionHandoffPendingClaim.acknowledge(activity, code)
-                    promptedPendingCodes.remove(code)
-                    claimAndPlay(activity, code)
-                }
-                .setOnCancelListener {
-                    SessionHandoffPendingClaim.acknowledge(activity, code)
-                    promptedPendingCodes.remove(code)
-                }
-                .show()
-        }
-    }
-
     private fun claimAndPlay(activity: FragmentActivity, rawCode: String) {
         val code = SessionHandoffCodes.normalize(rawCode)
         if (code == null) {
             ExpDialogChrome.notify(activity, R.string.session_handoff_invalid_code)
             return
         }
-        if (ProfileUnlockGate.requiresGateForActive()) {
-            SessionHandoffPendingClaim.enqueue(activity.applicationContext, code)
-            return
-        }
         activity.lifecycleScope.launch {
             val result = withContext(Dispatchers.IO) {
                 runCatching { SessionHandoffRepository.claimByCode(activity, code) }
             }
-            promptedPendingCodes.remove(code)
             if (activity.isFinishing || activity.isDestroyed) return@launch
             result.onFailure { error ->
                 ExpDialogChrome.notify(
@@ -431,6 +305,7 @@ object SessionHandoffUi {
             activity.getString(R.string.session_handoff_playing),
             Toast.LENGTH_SHORT,
         ).show()
+        // Leanback: nudge focus into the player after navigation.
         if (DeviceCapabilities.isLeanbackDevice(activity) ||
             DeviceCapabilities.isAmazonFireTv(activity)
         ) {
@@ -466,7 +341,6 @@ object SessionHandoffUi {
             "subtitle" to subtitle,
             "videoType" to videoType,
             "preferredServerName" to payload.serverName,
-            "preferredServerId" to payload.serverId,
             "startPositionMs" to payload.positionMs.coerceAtLeast(0L),
         )
     }

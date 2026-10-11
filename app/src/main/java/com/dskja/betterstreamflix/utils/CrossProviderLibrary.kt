@@ -253,8 +253,7 @@ object CrossProviderLibrary {
             if (provider.name == currentName && currentDb != null) {
                 block(provider, currentDb)
             } else {
-                val db = AppDatabase.getInstanceForProviderOrNull(provider.name, appContext)
-                    ?: return@forEach
+                val db = AppDatabase.getInstanceForProvider(provider.name, appContext)
                 try {
                     block(provider, db)
                 } finally {

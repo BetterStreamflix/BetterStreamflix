@@ -1,28 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <selector xmlns:android="http://schemas.android.com/apk/res/android">
 
-    <!-- FA-037: activated+focused keeps favorite fill; stroke uses HC-aware focus attr. -->
-    <item android:state_activated="true" android:state_focused="true">
-        <layer-list>
-            <item android:bottom="-5dp" android:left="-5dp" android:right="-5dp" android:top="-5dp">
-                <shape android:shape="rectangle">
-                    <solid android:color="#2200E5FF" />
-                    <stroke
-                        android:width="?attr/tvFocusStrokeWidth"
-                        android:color="?attr/tvFocusStrokeColor" />
-                </shape>
-            </item>
-        </layer-list>
-    </item>
-
     <item android:state_activated="true">
         <layer-list>
             <item android:bottom="-5dp" android:left="-5dp" android:right="-5dp" android:top="-5dp">
                 <shape android:shape="rectangle">
                     <solid android:color="#2200E5FF" />
-                    <stroke
-                        android:width="@dimen/tv_activated_stroke_width"
-                        android:color="@color/favorite_selected" />
+                    <stroke android:width="5dp" android:color="@color/favorite_selected" />
                 </shape>
             </item>
         </layer-list>
@@ -33,7 +17,7 @@
             <item android:bottom="-4dp" android:left="-4dp" android:right="-4dp" android:top="-4dp">
                 <shape android:shape="rectangle">
                     <stroke
-                        android:width="?attr/tvFocusStrokeWidth"
+                        android:width="@dimen/tv_focus_stroke_width"
                         android:color="?attr/tvFocusStrokeColor" />
                 </shape>
             </item>

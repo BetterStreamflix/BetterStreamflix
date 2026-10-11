@@ -449,11 +449,9 @@ abstract class PlayerSettingsView @JvmOverloads constructor(
     protected fun syncSubtitleStudioPreview(setting: Setting) {
         val preview = subtitleStudioPreview ?: return
         if (SubtitleStudio.isStudioSettingName(setting.name)) {
-            subtitleView?.visibility = android.view.View.INVISIBLE
-            val sample = SubtitleStudio.previewSampleText(context)
+            val sample = context.getString(R.string.subtitle_studio_preview_sample)
             SubtitleStudio.showPreview(preview, sample)
         } else {
-            subtitleView?.visibility = android.view.View.VISIBLE
             SubtitleStudio.hidePreview(preview)
         }
     }
@@ -463,13 +461,12 @@ abstract class PlayerSettingsView @JvmOverloads constructor(
         if (preview.visibility != android.view.View.VISIBLE) return
         SubtitleStudio.showPreview(
             preview,
-            SubtitleStudio.previewSampleText(context),
+            context.getString(R.string.subtitle_studio_preview_sample),
         )
     }
 
     protected fun hideSubtitleStudioPreview() {
         subtitleStudioPreview?.let { SubtitleStudio.hidePreview(it) }
-        subtitleView?.visibility = android.view.View.VISIBLE
     }
 
     protected var onFontOpacitySelected: ((Settings.Subtitle.Style.FontOpacity) -> Unit) =
@@ -591,12 +588,6 @@ abstract class PlayerSettingsView @JvmOverloads constructor(
         this.onSoftwareDecoderListener = listener
     }
 
-    /** Soft-rebuild Exo so Night stereo downmix / channel cap re-applies mid-session. */
-    protected var onNightAudioListener: (() -> Unit)? = null
-    fun setOnNightAudioSelectedListener(listener: () -> Unit) {
-        this.onNightAudioListener = listener
-    }
-
     protected var onExtraBufferingSelected: ((Settings.ExtraBuffering) -> Unit) =
         fun(extraBuffering) {
             val newValue = when (extraBuffering) {
@@ -614,7 +605,6 @@ abstract class PlayerSettingsView @JvmOverloads constructor(
                 is Settings.SoftwareDecoder.Off -> false
             }
             Settings.SoftwareDecoder.selectedValue = if (newValue == Settings.SoftwareDecoder.isDefaultEnabled) null else newValue
-            Settings.SoftwareDecoder.persistForcedOffFromSelection()
             onSoftwareDecoderListener?.invoke(newValue)
         }
 
@@ -786,20 +776,7 @@ abstract class PlayerSettingsView @JvmOverloads constructor(
 
                 fun init(defaultEnabled: Boolean) {
                     isDefaultEnabled = defaultEnabled
-                    // CC-006: restore Forced Off across process death when Auto would be On.
-                    selectedValue = when {
-                        UserPreferences.codecSoftwareForcedOff && defaultEnabled -> false
-                        UserPreferences.codecSoftwareForcedOff && !defaultEnabled -> {
-                            UserPreferences.codecSoftwareForcedOff = false
-                            null
-                        }
-                        else -> null
-                    }
-                }
-
-                fun persistForcedOffFromSelection() {
-                    UserPreferences.codecSoftwareForcedOff =
-                        selectedValue == false && isDefaultEnabled
+                    selectedValue = null
                 }
             }
 

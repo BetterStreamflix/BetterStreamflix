@@ -1,38 +1,24 @@
 package com.dskja.betterstreamflix.home
 
-import android.content.Context
 import com.dskja.betterstreamflix.adapters.AppAdapter
-import com.dskja.betterstreamflix.fragments.search.searchIdentityKey
 import com.dskja.betterstreamflix.models.Category
 import com.dskja.betterstreamflix.models.Episode
-import com.dskja.betterstreamflix.models.Movie
 import com.dskja.betterstreamflix.models.TvShow
-import com.dskja.betterstreamflix.taste.TasteGraph
-import com.dskja.betterstreamflix.taste.TasteSnapshot
 import com.dskja.betterstreamflix.utils.UserPreferences
 
 /**
  * Home shelf filter “only new since last visit” for series rows
  * (Next Episodes + Favorite TV shows).
  *
- * Visit watermark: on Home pause (when not opening Detail) we snapshot shelf
- * ids + timestamp; on the next resume the filter keeps items that were not in
- * that snapshot (or aired after). Resume never advances the watermark — pause
- * commits it.
+ * Visit watermark: on Home pause we snapshot shelf ids + timestamp; on the next
+ * resume the filter keeps items that were not in that snapshot (or aired after).
+ * Resume never advances the watermark — pause commits it.
  */
 object SeriesFastForward {
 
-    /** English stamp / identityKey for Next Episodes + Favorite TV. */
-    fun supportsShelf(categoryName: String): Boolean {
-        val n = categoryName.trim()
-        if (n.isEmpty()) return false
-        return n.equals(Category.NEXT_EPISODES, ignoreCase = true) ||
-            n.equals(Category.FAVORITE_TV_SHOWS, ignoreCase = true)
-    }
-
-    /** Prefer [Category.identityKey]; fall back to English [Category.name]. */
-    fun supportsShelf(category: Category): Boolean =
-        supportsShelf(category.identityKey.orEmpty()) || supportsShelf(category.name)
+    fun supportsShelf(categoryName: String): Boolean =
+        categoryName == Category.NEXT_EPISODES ||
+            categoryName == Category.FAVORITE_TV_SHOWS
 
     fun isEnabled(): Boolean = UserPreferences.seriesFastForwardEnabled
 
@@ -45,14 +31,12 @@ object SeriesFastForward {
     /**
      * Commit the end of a Home visit. Pass **unfiltered** shelf ids so a later
      * Fast-Forward pass can detect titles that appeared after this pause.
-     * No-ops when both id sets are empty (avoids timestamp-only baselines).
      */
     fun commitVisit(
         nextEpisodeIds: Set<String>,
         favoriteTvIds: Set<String>,
         nowMs: Long = System.currentTimeMillis(),
     ) {
-        if (nextEpisodeIds.isEmpty() && favoriteTvIds.isEmpty()) return
         UserPreferences.homeLastVisitAtMs = nowMs.coerceAtLeast(0L)
         UserPreferences.homeVisitNextEpisodeIds = nextEpisodeIds
         UserPreferences.homeVisitFavoriteTvIds = favoriteTvIds
@@ -106,12 +90,9 @@ object SeriesFastForward {
         return false
     }
 
-    /**
-     * True once a prior Home pause wrote a watermark **with** shelf ids.
-     * Timestamp-only commits are ignored so first-session novelty is correct.
-     */
+    /** True once a prior Home pause wrote a watermark (and ideally a snapshot). */
     fun hasVisitBaseline(sinceMs: Long, previousIds: Set<String>): Boolean =
-        previousIds.isNotEmpty() && sinceMs > 0L
+        sinceMs > 0L || previousIds.isNotEmpty()
 
     fun keepShelfWhenEmpty(
         categoryName: String,
@@ -123,16 +104,6 @@ object SeriesFastForward {
         return isEnabled() && supportsShelf(categoryName)
     }
 
-    fun keepShelfWhenEmpty(
-        category: Category,
-        unfilteredCount: Int,
-        filteredCount: Int,
-    ): Boolean {
-        if (unfilteredCount <= 0) return false
-        if (filteredCount > 0) return true
-        return isEnabled() && supportsShelf(category)
-    }
-
     fun applyToLibraryItem(
         item: AppAdapter.Item,
         sinceMs: Long,
@@ -142,29 +113,5 @@ object SeriesFastForward {
         is Episode -> isNewEpisode(item, sinceMs, previousNextIds)
         is TvShow -> isNewTvShow(item, sinceMs, previousFavIds)
         else -> true
-    }
-
-    /** Drop Taste hard-hidden titles from Home FF shelves (and Favorites TV). */
-    fun <T : AppAdapter.Item> filterTasteHidden(
-        context: Context,
-        items: List<T>,
-    ): List<T> {
-        val snap = TasteGraph.snapshot(context.applicationContext)
-        if (snap.hardHidden.isEmpty()) return items
-        return items.filterNot { item -> isTasteHardHidden(item, snap) }
-    }
-
-    fun isTasteHardHidden(item: AppAdapter.Item, snap: TasteSnapshot): Boolean {
-        val key = item.searchIdentityKey()
-        val tmdb = when (item) {
-            is Movie -> TasteSnapshot.tmdbKey(item.tmdbId, isTv = false)
-            is TvShow -> TasteSnapshot.tmdbKey(item.tmdbId, isTv = true)
-            is Episode -> TasteSnapshot.tmdbKey(item.tvShow?.tmdbId, isTv = true)
-            else -> null
-        }
-        // Episodes: also check parent show identity when present.
-        val showKey = (item as? Episode)?.tvShow?.id?.takeIf { it.isNotBlank() }?.let { "tvshow:$it" }
-        return snap.isHardHidden(key, tmdb) ||
-            (showKey != null && snap.isHardHidden(showKey, null))
     }
 }

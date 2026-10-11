@@ -75,26 +75,12 @@ class ShelfWeatherTest {
     }
 
     @Test
-    fun mixedShelfIgnoresSingleBadStamp() {
+    fun worstWinsAcrossMixedShelf() {
         val category = Category(
             name = Category.CONTINUE_WATCHING,
             list = listOf(
                 movie("Healthy", provider = "SerienStream"),
                 tv("Bad", provider = "AnyMovie"),
-            ),
-        )
-        // 1:1 — no strict majority, no unique dominant → clear (not worst-of-one).
-        assertEquals(ShelfWeather.Level.CLEAR, ShelfWeather.forecast(category).level)
-    }
-
-    @Test
-    fun mixedShelfStormsWhenDominantUnhealthy() {
-        val category = Category(
-            name = Category.CONTINUE_WATCHING,
-            list = listOf(
-                movie("A", provider = "AnyMovie"),
-                movie("B", provider = "AnyMovie"),
-                tv("C", provider = "SerienStream"),
             ),
         )
         val forecast = ShelfWeather.forecast(category)
@@ -113,20 +99,14 @@ class ShelfWeatherTest {
     }
 
     @Test
-    fun identityKeyFallbackOnlyForKnownProvider() {
-        val known = Category(
+    fun identityKeyFallbackWhenItemsUnstamped() {
+        val category = Category(
             name = "Searching…",
             list = listOf(movie("A", provider = null)),
         ).also { it.identityKey = "Kidraz" }
-        val forecast = ShelfWeather.forecast(known)
+        val forecast = ShelfWeather.forecast(category)
         assertEquals(ShelfWeather.Level.STORM, forecast.level)
         assertEquals("Kidraz", forecast.providerName)
-
-        val shelfId = Category(
-            name = "Continue Watching",
-            list = listOf(movie("A", provider = null)),
-        ).also { it.identityKey = "home_downloads" }
-        assertEquals(ShelfWeather.Level.CLEAR, ShelfWeather.forecast(shelfId).level)
     }
 
     @Test

@@ -27,27 +27,6 @@ object ExpDialogChrome {
     }
 
     /**
-     * FA-020: Leanback-safe AlertDialog shell — themed context + focus on the
-     * primary (or first available) button after show.
-     */
-    fun showAlert(
-        context: Context,
-        configure: (AlertDialog.Builder) -> AlertDialog.Builder,
-    ): AlertDialog {
-        val themed = themedContext(context)
-        val dialog = configure(AlertDialog.Builder(themed)).create()
-        dialog.setOnShowListener {
-            runCatching { polishShown(dialog) }
-            val positive = dialog.getButton(AlertDialog.BUTTON_POSITIVE)
-            val negative = dialog.getButton(AlertDialog.BUTTON_NEGATIVE)
-            val neutral = dialog.getButton(AlertDialog.BUTTON_NEUTRAL)
-            (positive ?: negative ?: neutral)?.requestFocus()
-        }
-        dialog.show()
-        return dialog
-    }
-
-    /**
      * Attaches an OnShowListener that ExpPresses dialog buttons.
      * Call only when the dialog does not already own an OnShowListener;
      * otherwise call [polishShown] from inside that listener.

@@ -82,19 +82,14 @@ class StreamflixDownloadService : DownloadService(
             val remaining = (d.contentLength - d.bytesDownloaded).coerceAtLeast(0L)
             val history = com.dskja.betterstreamflix.net.NetworkThroughputHistory
                 .estimateBytesPerSec()
-            val instantaneous = DownloadEventBridge.lastSpeedBps(d.request.id)
             val honest = com.dskja.betterstreamflix.net.HonestEta.download(
                 remainingBytes = remaining,
-                instantaneousBps = instantaneous,
+                instantaneousBps = 0L,
                 historyBps = history,
                 historySampleCount = com.dskja.betterstreamflix.net.NetworkThroughputHistory
                     .sampleCount(),
             )
-            if (honest.confident && honest.speedBytesPerSec > 0L && remaining > 0L) {
-                honest.etaSeconds
-            } else {
-                -1L
-            }
+            if (honest.speedBytesPerSec > 0L && remaining > 0L) honest.etaSeconds else -1L
         } ?: -1L
         val text = when {
             notMetRequirements != 0 -> getString(R.string.downloads_wifi_paused)

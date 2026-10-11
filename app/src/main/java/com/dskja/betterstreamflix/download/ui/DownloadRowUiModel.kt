@@ -94,24 +94,15 @@ sealed class DownloadRowUiModel {
                 context?.getString(R.string.download_size_unknown) ?: "—"
             }
             val eta = DownloadSeriesFolders.formatEta(context, entity.etaSeconds)
-            // Unknown total or non-confident ETA: simpler line; still show speed when known.
+            // Unknown total or stalled speed: simpler line without optimistic ETA (DL-P3-E/F).
             val useSimple = !knownTotal || entity.speedBytesPerSec <= 0L || entity.etaSeconds < 0L
             return if (context != null) {
                 if (useSimple) {
-                    if (entity.speedBytesPerSec > 0L) {
-                        context.getString(
-                            R.string.downloads_progress_line_simple_speed,
-                            entity.progressPct,
-                            used,
-                            speed,
-                        )
-                    } else {
-                        context.getString(
-                            R.string.downloads_progress_line_simple,
-                            entity.progressPct,
-                            used,
-                        )
-                    }
+                    context.getString(
+                        R.string.downloads_progress_line_simple,
+                        entity.progressPct,
+                        used,
+                    )
                 } else {
                     context.getString(
                         R.string.downloads_progress_line,
@@ -123,11 +114,7 @@ sealed class DownloadRowUiModel {
                     )
                 }
             } else if (useSimple) {
-                if (entity.speedBytesPerSec > 0L) {
-                    "${entity.progressPct}% · $used · $speed/s"
-                } else {
-                    "${entity.progressPct}% · $used"
-                }
+                "${entity.progressPct}% · $used"
             } else {
                 "${entity.progressPct}% · $used / $total · $speed/s · ~$eta"
             }

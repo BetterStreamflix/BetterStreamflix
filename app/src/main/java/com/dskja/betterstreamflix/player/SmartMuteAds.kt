@@ -82,9 +82,6 @@ object SmartMuteAds {
             lastPositionMs = -1L
         }
 
-        /** True once the per-session seek budget is spent (host can arm Stuck sooner). */
-        fun isBudgetExhausted(): Boolean = seeksThisSession >= MAX_SEEKS_PER_SESSION
-
         fun onTick(snapshot: Snapshot): SeekTo? {
             if (snapshot.isLive || snapshot.isOffline) {
                 clearFreeze()
@@ -149,19 +146,12 @@ object SmartMuteAds {
                 return null
             }
 
-            // Preroll: require BUFFERING or explicit ad (avoid seeking into DRM/slow starts).
-            // Mid-roll / explicit ads: also allow frozen READY + playWhenReady.
-            val hung = when (reason) {
-                Reason.STUCK_PREROLL ->
-                    snapshot.isPlayingAd || snapshot.phase == PlaybackPhase.BUFFERING
-                Reason.STUCK_AD,
-                Reason.STUCK_MIDROLL,
-                ->
-                    snapshot.isPlayingAd ||
-                        snapshot.phase == PlaybackPhase.BUFFERING ||
-                        (snapshot.playWhenReady &&
-                            !positionAdvancing(previous, snapshot.positionMs))
-            }
+            // Require buffering, an explicit ad, or playWhenReady while frozen
+            // (broken rolls often sit in BUFFERING or fake-playing with a dead clock).
+            val hung =
+                snapshot.isPlayingAd ||
+                    snapshot.phase == PlaybackPhase.BUFFERING ||
+                    (snapshot.playWhenReady && !positionAdvancing(previous, snapshot.positionMs))
             if (!hung) return null
 
             val target = seekTarget(snapshot) ?: return null
@@ -177,13 +167,9 @@ object SmartMuteAds {
         private fun classifyStuck(snapshot: Snapshot): Reason? {
             if (snapshot.isPlayingAd) return Reason.STUCK_AD
             if (snapshot.positionMs < PRE_ROLL_WINDOW_MS) return Reason.STUCK_PREROLL
-            // Mid-roll: after real content advanced past the opening — frozen READY OK.
+            // Mid-roll: only after we already saw real content advance past the opening.
             if (everAdvancedPastPreroll &&
-                (
-                    snapshot.phase == PlaybackPhase.BUFFERING ||
-                        snapshot.isPlayingAd ||
-                        (snapshot.playWhenReady && snapshot.phase == PlaybackPhase.READY)
-                    )
+                (snapshot.phase == PlaybackPhase.BUFFERING || snapshot.isPlayingAd)
             ) {
                 return Reason.STUCK_MIDROLL
             }

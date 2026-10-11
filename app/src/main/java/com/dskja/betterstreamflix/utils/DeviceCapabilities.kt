@@ -29,40 +29,6 @@ object DeviceCapabilities {
             context.packageManager.hasSystemFeature("android.software.leanback")
         }.getOrDefault(false)
 
-    /**
-     * Known Fire TV Stick / Stick Lite / Stick 4K SKUs — not Cube / Fire TV Edition.
-     * Used for Stick Energy auto-on (SE-001) without punishing Cube / high-RAM boxes.
-     */
-    fun isFireTvStickModel(
-        model: String = Build.MODEL.orEmpty(),
-    ): Boolean {
-        val m = model.trim().uppercase()
-        if (m.isEmpty()) return false
-        // Explicit Cube / pendant codes — never auto Stick Energy.
-        val cubes = setOf(
-            "AFTA", "AFTB", "AFTBAMR", "AFTRIGID", "AFTGAZL", "AFTBUZ", "AFTPR001",
-        )
-        if (m in cubes) return false
-        // Stick-class Amazon models (Stick, Stick Lite, Stick 4K, Stick 4K Max).
-        val stickExact = setOf(
-            "AFTM", "AFTT", "AFTS", "AFTN", "AFTMM", "AFTSS", "AFTSSS",
-            "AFTKA", "AFTKM", "AFTKRT", "AFTBTX4", "AFTSSS", "AFTSO001",
-        )
-        if (m in stickExact) return true
-        // Marketing strings sometimes appear in MODEL on sideloaded builds.
-        if (m.contains("STICK") && !m.contains("CUBE")) return true
-        return false
-    }
-
-    /**
-     * Stick Energy auto-on when preference is unset (SE-001).
-     * Legacy Fire OS, low-RAM, or known Stick SKU — not every Amazon OEM box.
-     */
-    fun shouldAutoEnableStickEnergy(context: Context): Boolean {
-        if (!isAmazonFireTv(context)) return false
-        return isLegacyFireOs(context) || isLowRamDevice(context) || isFireTvStickModel()
-    }
-
     /** Xiaomi / OEM Android TV sticks that often crash on HW decoder init. */
     fun isFragileTvOem(): Boolean {
         val mfr = Build.MANUFACTURER.orEmpty()
@@ -106,33 +72,17 @@ object DeviceCapabilities {
     fun isLegacyFireOs(context: Context): Boolean =
         isAmazonFireTv(context) && Build.VERSION.SDK_INT <= 25
 
-    /**
-     * Hard home-effect constraints excluding Stick Energy.
-     * Low-RAM / constrained playback / animator-scale 0 — Ambient must stay off.
-     * Stick Energy alone may still enter Ambient with reduced Ken Burns.
-     * Codec Comfort alone does not hard-reduce home effects (CC-003).
-     */
-    fun shouldHardReduceHomeEffects(context: Context): Boolean {
-        if (isLowRamDevice(context)) return true
-        if (shouldUseConstrainedPlayback(context)) return true
-        return isAnimatorDurationScaleOff(context)
-    }
-
-    fun isAnimatorDurationScaleOff(context: Context): Boolean =
-        Build.VERSION.SDK_INT >= 17 &&
-            android.provider.Settings.Global.getFloat(
-                context.contentResolver,
-                android.provider.Settings.Global.ANIMATOR_DURATION_SCALE,
-                1f,
-            ) == 0f
-
-    /**
-     * Soften home motion (ken-burns, swiper progress, focus zoom) on Stick Energy /
-     * low-RAM / reduce-motion — **not** when only Codec Comfort is latched (CC-003).
-     */
+    /** Soften home motion (ken-burns, swiper progress) on constrained devices. */
     fun shouldReduceHomeEffects(context: Context): Boolean {
         if (com.dskja.betterstreamflix.ui.StickEnergyMode.isEnabled(context)) return true
-        return shouldHardReduceHomeEffects(context)
+        return isLowRamDevice(context) ||
+            shouldUseConstrainedPlayback(context) ||
+            (Build.VERSION.SDK_INT >= 17 &&
+                android.provider.Settings.Global.getFloat(
+                    context.contentResolver,
+                    android.provider.Settings.Global.ANIMATOR_DURATION_SCALE,
+                    1f,
+                ) == 0f)
     }
 
     /**

@@ -31,7 +31,6 @@ internal object ProfileScopedPreferenceStore {
         "KIDS_BEDTIME_ENABLED",
         "PARENTAL_CONTROL_MAX_AGE",
         "SELECTED_THEME",
-        "LEANBACK_DENSITY",
     )
 
     fun attach(fragment: PreferenceFragmentCompat) {
@@ -66,16 +65,7 @@ internal object ProfileScopedPreferenceStore {
                 }
                 "SELECTED_THEME" -> {
                     if (!value.isNullOrBlank()) {
-                        UserPreferences.selectedTheme =
-                            com.dskja.betterstreamflix.utils.ThemeManager.clampLookForKids(
-                                value,
-                                ProfileManager.isKidsActive(),
-                            )
-                    }
-                }
-                "LEANBACK_DENSITY" -> {
-                    if (!value.isNullOrBlank()) {
-                        UserPreferences.leanbackDensity = value
+                        UserPreferences.selectedTheme = value
                     }
                 }
             }
@@ -86,7 +76,6 @@ internal object ProfileScopedPreferenceStore {
             "PARENTAL_CONTROL_MAX_AGE" ->
                 UserPreferences.parentalControlMaxAge?.toString().orEmpty()
             "SELECTED_THEME" -> UserPreferences.selectedTheme
-            "LEANBACK_DENSITY" -> UserPreferences.leanbackDensity
             else -> defValue
         }
 

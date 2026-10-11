@@ -18,8 +18,6 @@ object ChannelPinStore {
     private const val PREFS = "channel_pin_strip"
     private const val KEY_PINS = "CHANNEL_PINS_JSON"
 
-    private val lock = Any()
-
     data class Pin(
         val id: String,
         val provider: String,
@@ -38,8 +36,8 @@ object ChannelPinStore {
         }
     }
 
-    fun list(context: Context): List<Pin> = synchronized(lock) {
-        val raw = prefs(context).getString(prefKey(), null) ?: return emptyList()
+    fun list(context: Context): List<Pin> {
+        val raw = prefs(context).getString(prefKey(), null).orEmpty()
         if (raw.isBlank()) return emptyList()
         return runCatching { parse(raw) }.getOrDefault(emptyList())
     }
@@ -54,11 +52,6 @@ object ChannelPinStore {
     fun isPinnedKey(context: Context, key: String): Boolean =
         list(context).any { it.key == key }
 
-    /**
-     * @return true when the pin was stored. When at [MAX_PINS] and [show] is new,
-     * still pins (evicts oldest) and returns true; callers may toast that the
-     * strip was at capacity (SL-006).
-     */
     fun pin(context: Context, show: TvShow): Boolean {
         val provider = show.providerName?.trim().orEmpty()
         val id = show.id.trim()
@@ -69,72 +62,66 @@ object ChannelPinStore {
             title = show.title.ifBlank { id },
             poster = show.poster,
         )
-        synchronized(lock) {
-            val current = listUnlocked(context).toMutableList()
-            current.removeAll { it.key == pin.key }
-            current.add(0, pin)
-            while (current.size > MAX_PINS) {
-                current.removeAt(current.lastIndex)
-            }
-            writeUnlocked(context, current)
+        val current = list(context).toMutableList()
+        current.removeAll { it.key == pin.key }
+        current.add(0, pin)
+        while (current.size > MAX_PINS) {
+            current.removeAt(current.lastIndex)
         }
+        write(context, current)
         return true
     }
 
     fun unpin(context: Context, show: TvShow): Boolean =
         unpinKey(context, LiveHubCatalog.identityKey(show))
 
-    fun unpinKey(context: Context, key: String): Boolean = synchronized(lock) {
-        val current = listUnlocked(context)
+    fun unpinKey(context: Context, key: String): Boolean {
+        val current = list(context)
         val next = current.filterNot { it.key == key }
         if (next.size == current.size) return false
-        writeUnlocked(context, next)
+        write(context, next)
         return true
     }
 
-    /** @return true when pinned after toggle; false when unpinned or pin failed (SL-005). */
     fun toggle(context: Context, show: TvShow): Boolean {
         return if (isPinned(context, show)) {
             unpin(context, show)
             false
         } else {
             pin(context, show)
+            true
         }
     }
 
     /**
-     * Seed from live favorites only when the prefs key is **absent** (first run).
-     * An intentional empty strip stores `"[]"` and must not re-seed (SL-001).
+     * When the strip is empty, seed from live favorites so first-run feels populated.
+     * Does nothing when the user already has pins (including after clearing to empty —
+     * pass [force] only for tests).
      */
-    fun seedFromFavoritesIfEmpty(context: Context, favorites: List<TvShow>): List<Pin> =
-        synchronized(lock) {
-            if (prefs(context).contains(prefKey())) {
-                return listUnlocked(context)
+    fun seedFromFavoritesIfEmpty(context: Context, favorites: List<TvShow>): List<Pin> {
+        val existing = list(context)
+        if (existing.isNotEmpty()) return existing
+        val seeded = favorites
+            .filter { LiveHubCatalog.isLiveFavorite(it) }
+            .distinctBy { LiveHubCatalog.identityKey(it) }
+            .take(MAX_PINS)
+            .map {
+                Pin(
+                    id = it.id,
+                    provider = it.providerName.orEmpty(),
+                    title = it.title.ifBlank { it.id },
+                    poster = it.poster,
+                )
             }
-            val seeded = favorites
-                .filter { LiveHubCatalog.isLiveFavorite(it) }
-                .distinctBy { LiveHubCatalog.identityKey(it) }
-                .take(MAX_PINS)
-                .map {
-                    Pin(
-                        id = it.id,
-                        provider = it.providerName.orEmpty(),
-                        title = it.title.ifBlank { it.id },
-                        poster = it.poster,
-                    )
-                }
-                .filter { it.provider.isNotBlank() && it.id.isNotBlank() }
-            if (seeded.isNotEmpty()) {
-                writeUnlocked(context, seeded)
-                return seeded
-            }
-            // Leave key absent when there is nothing to seed so a later favorites
-            // load can still populate on first run.
-            return emptyList()
+            .filter { it.provider.isNotBlank() && it.id.isNotBlank() }
+        if (seeded.isNotEmpty()) {
+            write(context, seeded)
         }
+        return seeded
+    }
 
-    fun clear(context: Context) = synchronized(lock) {
-        writeUnlocked(context, emptyList())
+    fun clear(context: Context) {
+        write(context, emptyList())
     }
 
     /** Ordered shows for the strip — pins first, enrich from [catalog] when present. */
@@ -150,13 +137,7 @@ object ChannelPinStore {
         }
     }
 
-    private fun listUnlocked(context: Context): List<Pin> {
-        val raw = prefs(context).getString(prefKey(), null) ?: return emptyList()
-        if (raw.isBlank()) return emptyList()
-        return runCatching { parse(raw) }.getOrDefault(emptyList())
-    }
-
-    private fun writeUnlocked(context: Context, pins: List<Pin>) {
+    private fun write(context: Context, pins: List<Pin>) {
         val arr = JSONArray()
         pins.forEach { pin ->
             arr.put(

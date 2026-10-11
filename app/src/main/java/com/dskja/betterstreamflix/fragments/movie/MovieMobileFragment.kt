@@ -121,9 +121,6 @@ class MovieMobileFragment : Fragment() {
 
     override fun onDestroyView() {
         com.dskja.betterstreamflix.ui.TrailerPlaybackController.silenceAllActive()
-        com.dskja.betterstreamflix.ui.TrailerPlayPipeline.endSession()
-        com.dskja.betterstreamflix.ui.TrailerStreamCrossfade.clear()
-        com.dskja.betterstreamflix.player.PlayerCleanExit.clearHomeRestore()
         _binding?.let { appAdapter.onSaveInstanceState(it.rvMovie) }
         _binding = null
         super.onDestroyView()

@@ -40,10 +40,6 @@ object CastRoomSession {
     @Volatile
     var lastAppliedTextSeq: Long = 0L
 
-    /** Last chat message timestamp toasted on the host surface (CC-035). */
-    @Volatile
-    var lastHostChatSeenAt: String? = null
-
     fun beginHost(token: String, roomId: String?, shortCode: String?) {
         role = Role.HOST
         this.token = token
@@ -54,7 +50,6 @@ object CastRoomSession {
         lastAppliedPlaying = null
         lastAppliedSeekSeq = 0L
         lastAppliedTextSeq = 0L
-        lastHostChatSeenAt = null
     }
 
     fun beginController(token: String, roomId: String?, shortCode: String?) {
@@ -67,7 +62,6 @@ object CastRoomSession {
         lastAppliedPlaying = null
         lastAppliedSeekSeq = 0L
         lastAppliedTextSeq = 0L
-        lastHostChatSeenAt = null
     }
 
     fun clear() {
@@ -80,7 +74,6 @@ object CastRoomSession {
         lastAppliedPlaying = null
         lastAppliedSeekSeq = 0L
         lastAppliedTextSeq = 0L
-        lastHostChatSeenAt = null
     }
 
     fun isActive(): Boolean = role != null && !token.isNullOrBlank()

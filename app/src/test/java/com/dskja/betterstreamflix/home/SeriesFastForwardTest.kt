@@ -17,15 +17,6 @@ class SeriesFastForwardTest {
         assertTrue(SeriesFastForward.supportsShelf(Category.FAVORITE_TV_SHOWS))
         assertFalse(SeriesFastForward.supportsShelf(Category.CONTINUE_WATCHING))
         assertFalse(SeriesFastForward.supportsShelf(Category.FAVORITE_MOVIES))
-        val localized = Category(name = "Nächste Folgen", list = emptyList()).also {
-            it.identityKey = Category.NEXT_EPISODES
-        }
-        assertTrue(SeriesFastForward.supportsShelf(localized))
-        assertFalse(
-            SeriesFastForward.supportsShelf(
-                Category(name = "Nächste Folgen", list = emptyList()),
-            ),
-        )
     }
 
     @Test
@@ -98,19 +89,10 @@ class SeriesFastForwardTest {
     }
 
     @Test
-    fun hasVisitBaselineNeedsTimestampAndSnapshotIds() {
+    fun hasVisitBaselineNeedsWatermarkOrSnapshot() {
         assertFalse(SeriesFastForward.hasVisitBaseline(0L, emptySet()))
-        // Timestamp-only is not a baseline (avoids first-session novelty flicker).
-        assertFalse(SeriesFastForward.hasVisitBaseline(10L, emptySet()))
-        assertFalse(SeriesFastForward.hasVisitBaseline(0L, setOf("a")))
-        assertTrue(SeriesFastForward.hasVisitBaseline(10L, setOf("a")))
-    }
-
-    @Test
-    fun commitVisitIgnoresEmptyIdSets() {
-        // Pure helper: empty commit must not create a timestamp-only baseline.
-        // (UserPreferences-backed commitVisit is integration-tested on device.)
-        assertFalse(SeriesFastForward.hasVisitBaseline(1L, emptySet()))
+        assertTrue(SeriesFastForward.hasVisitBaseline(10L, emptySet()))
+        assertTrue(SeriesFastForward.hasVisitBaseline(0L, setOf("a")))
     }
 
     @Test

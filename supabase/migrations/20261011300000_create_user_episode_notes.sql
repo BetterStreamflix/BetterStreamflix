@@ -1,5 +1,4 @@
 -- Episode notes cloud sync (LWW on client_updated_at_millis).
--- Not added to supabase_realtime — clients poll/pull only (see CloudNotesLooksSync / SC-002).
 
 create table if not exists public.user_episode_notes (
     user_id uuid not null default auth.uid() references auth.users(id) on delete cascade,

@@ -11,13 +11,6 @@ import com.dskja.betterstreamflix.utils.UserPreferences
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
-/**
- * Builds a profile transfer payload from the active profile.
- *
- * Provider favorite layout (sort/order) is snapshotted for every provider that has
- * layout prefs on the active profile, plus providers present in the exported
- * watchlist (EI-010).
- */
 object ProfileTransferExporter {
 
     suspend fun exportActive(context: Context): ProfileTransferPayload = withContext(Dispatchers.IO) {
@@ -33,16 +26,10 @@ object ProfileTransferExporter {
                 .forEach { show ->
                     add(show.toItem())
                 }
-        // Silent truncate — see ProfileTransferPayload.MAX_FILE_* caps.
         }.take(ProfileTransferPayload.MAX_FILE_WATCHLIST)
 
-        // EI-010: include layout for all providers with stored sort/order, not only
-        // those that still appear in the exported watchlist slice.
-        val providers = (
-            watchlist.map { it.provider }.filter { it.isNotBlank() } +
-                UserPreferences.providersWithFavoriteLayout()
-            ).distinct()
-        val settings = snapshotSettings(app, providers)
+        val providers = watchlist.map { it.provider }.filter { it.isNotBlank() }.distinct()
+        val settings = snapshotSettings(providers)
         val notes = EpisodeNotesStore.listForActiveProfile(app)
             .take(ProfileTransferPayload.MAX_FILE_NOTES)
             .map { (id, text) ->
@@ -73,10 +60,7 @@ object ProfileTransferExporter {
         )
     }
 
-    private fun snapshotSettings(
-        appContext: Context,
-        providers: List<String>,
-    ): ProfileTransferPayload.SettingsSnapshot {
+    private fun snapshotSettings(providers: List<String>): ProfileTransferPayload.SettingsSnapshot {
         val sort = LinkedHashMap<String, String>()
         val itemOrder = LinkedHashMap<String, Map<String, List<String>>>()
         val catOrder = LinkedHashMap<String, List<String>>()
@@ -98,7 +82,6 @@ object ProfileTransferExporter {
         return ProfileTransferPayload.SettingsSnapshot(
             libraryScope = UserPreferences.libraryScope.key,
             selectedTheme = UserPreferences.selectedTheme,
-            leanbackDensity = UserPreferences.leanbackDensity,
             showContinueWatching = UserPreferences.showContinueWatching,
             showRecentlyWatched = UserPreferences.showRecentlyWatched,
             showNextEpisodes = UserPreferences.showNextEpisodes,
@@ -107,24 +90,10 @@ object ProfileTransferExporter {
             homeShelfBlockOrder = UserPreferences.homeShelfBlockOrder.takeIf { it.isNotBlank() },
             homeShelfPinsJson = UserPreferences.homeShelfPinsJson.takeIf { it.isNotBlank() },
             seriesFastForwardEnabled = UserPreferences.seriesFastForwardEnabled,
-            spoilerShieldEnabled = UserPreferences.spoilerShieldEnabled,
-            // Age ceiling stays device-local — never transfer without a parental flow.
-            parentalControlMaxAge = null,
+            parentalControlMaxAge = UserPreferences.parentalControlMaxAge,
             favoriteSortByProvider = sort,
             favoriteItemOrderByProvider = itemOrder,
             favoriteCategoryOrderByProvider = catOrder,
-            tasteSignalsJson = runCatching {
-                com.dskja.betterstreamflix.taste.TasteGraphStore.exportSignalsJson(appContext)
-            }.getOrNull(),
-            tasteAffinityJson = runCatching {
-                com.dskja.betterstreamflix.taste.TasteGraphStore.exportAffinityJson(appContext)
-            }.getOrNull(),
-            tasteQueryTokensJson = runCatching {
-                com.dskja.betterstreamflix.taste.TasteGraphStore.exportTokensJson(appContext)
-            }.getOrNull(),
-            searchMemoriesJson = runCatching {
-                com.dskja.betterstreamflix.fragments.search.SearchMemories.exportJson(appContext)
-            }.getOrNull(),
         )
     }
 

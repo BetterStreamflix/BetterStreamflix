@@ -18,11 +18,6 @@ class ProviderOutageBannerViewHolder(
         onOpen: ((ProviderOutageBannerItem) -> Unit)?,
         onDismiss: ((ProviderOutageBannerItem) -> Unit)?,
     ) {
-        val bannerH = com.dskja.betterstreamflix.ui.LeanbackDensityPolicy.dpToPx(
-            itemView,
-            com.dskja.betterstreamflix.ui.LeanbackDensityPolicy.supportBannerHeightDp(),
-        )
-        itemView.minimumHeight = bannerH
         val title = itemView.findViewById<TextView>(R.id.tv_provider_outage_title)
         val subtitle = itemView.findViewById<TextView>(R.id.tv_provider_outage_subtitle)
         val cta = itemView.findViewById<TextView>(R.id.btn_provider_outage_cta)

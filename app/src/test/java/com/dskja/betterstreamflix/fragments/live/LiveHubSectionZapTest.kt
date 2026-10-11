@@ -33,15 +33,13 @@ class LiveHubSectionZapTest {
     }
 
     @Test
-    fun sportZapRingKeepsSameProviderEvenWhenSingleton() {
+    fun sportZapRingFallsBackToFullShelfWhenSingletonProvider() {
         val sport = listOf(
             TvShow(id = "a", title = "ESPN", providerName = "DaddyLive TV"),
             TvShow(id = "c", title = "DAZN", providerName = "StreamSports99"),
         )
         val ring = LiveHubSectionZap.sportZapRing(sport[0], sport)
-        // ZP-005: never mix providers for zap.
-        assertEquals(1, ring.size)
-        assertEquals("DaddyLive TV", ring[0].providerName)
+        assertEquals(2, ring.size)
     }
 
     @Test
@@ -87,50 +85,5 @@ class LiveHubSectionZapTest {
                 provider = null,
             ),
         )
-    }
-
-    @Test
-    fun warmSportRingDoesNotClobberSessionWindow() {
-        // Pre-existing playback window must survive hub warm (ZP-001).
-        IptvLiveSession.replaceWindow(
-            listOf(
-                IptvLiveSession.Channel("keep-1", "Keep One"),
-                IptvLiveSession.Channel("keep-2", "Keep Two"),
-            ),
-            provider = null,
-            complete = true,
-        )
-        IptvLiveSession.setCurrent("keep-1")
-        assertEquals(2, IptvLiveSession.size())
-        assertTrue(IptvLiveSession.isWindowComplete())
-
-        val sport = Category(
-            "Sport",
-            listOf(
-                TvShow(id = "a", title = "ESPN", providerName = "DaddyLive TV"),
-                TvShow(id = "b", title = "Sky", providerName = "DaddyLive TV"),
-                TvShow(id = "c", title = "DAZN", providerName = "StreamSports99"),
-            ),
-        ).also { it.identityKey = LiveHubCatalog.SECTION_SPORT }
-
-        LiveHubSectionZap.warmSportRing(sport)
-
-        assertEquals(2, IptvLiveSession.size())
-        assertEquals("keep-1", IptvLiveSession.current()?.id)
-        assertTrue(IptvLiveSession.isWindowComplete())
-        assertTrue(IptvLiveSession.contains("keep-2"))
-    }
-
-    @Test
-    fun bindCategoriesKeysByProviderAndId() {
-        val a = TvShow(id = "same", title = "A", providerName = "DaddyLive TV")
-        val b = TvShow(id = "same", title = "B", providerName = "StreamSports99")
-        val sport = Category("Sport", listOf(a, b)).also {
-            it.identityKey = LiveHubCatalog.SECTION_SPORT
-        }
-        LiveHubSectionZap.bindCategories(listOf(sport))
-        assertTrue(LiveHubSectionZap.preparePlayback(a, null))
-        // Same id, different provider — still bound independently.
-        assertEquals(LiveHubCatalog.SECTION_SPORT, LiveHubSectionZap.sectionKeyOf(b))
     }
 }

@@ -174,32 +174,6 @@ class FamilyFridayShelfTest {
         assertTrue(shelf!!.list.all { (it as Movie).id.startsWith("k") })
     }
 
-    @Test
-    fun build_nullWhenKidsTiltEmptyEvenIfAgeSafeFull() = runBlocking {
-        val catalog = listOf(
-            Category(
-                name = "Featured",
-                list = listOf(
-                    Movie(id = "a1", title = "Action One", genres = listOf(Genre("28", "Action")))
-                        .apply { contentRating = "PG" },
-                    Movie(id = "a2", title = "Action Two", genres = listOf(Genre("28", "Action")))
-                        .apply { contentRating = "PG" },
-                    Movie(id = "a3", title = "Action Three", genres = listOf(Genre("28", "Action")))
-                        .apply { contentRating = "PG" },
-                ),
-            ),
-        )
-        val shelf = FamilyFridayShelf.build(
-            catalogCategories = catalog,
-            nowMs = fridayMs,
-            zone = utc,
-            isKidsActive = { true },
-            profileId = { "kids01" },
-            filterAgeSafe = { it },
-        )
-        assertNull(shelf)
-    }
-
     private fun sampleCatalog(size: Int = 5): List<Category> =
         listOf(
             Category(

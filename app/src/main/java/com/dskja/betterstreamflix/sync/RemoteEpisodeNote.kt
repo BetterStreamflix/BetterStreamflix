@@ -10,19 +10,9 @@ import kotlinx.serialization.Serializable
 data class RemoteEpisodeNote(
     @SerialName("user_id") val userId: String,
     @SerialName("episode_id") val episodeId: String,
-    @SerialName("provider_name") @EncodeDefault val providerName: String = "",
-    @SerialName("show_id") @EncodeDefault val showId: String = "",
     @EncodeDefault val text: String = "",
     @SerialName("client_updated_at_millis") val clientUpdatedAtMillis: Long,
 ) {
     val queueKey: String
-        get() {
-            val provider = providerName.trim()
-            val show = showId.trim()
-            return if (provider.isEmpty() && show.isEmpty()) {
-                listOf(userId, "note", episodeId).joinToString("\u001f")
-            } else {
-                listOf(userId, "note", provider, show, episodeId).joinToString("\u001f")
-            }
-        }
+        get() = listOf(userId, "note", episodeId).joinToString("\u001f")
 }

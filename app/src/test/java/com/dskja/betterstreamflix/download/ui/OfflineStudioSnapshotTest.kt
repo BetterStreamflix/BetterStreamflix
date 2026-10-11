@@ -105,35 +105,6 @@ class OfflineStudioSnapshotTest {
         assertTrue(snap.wifiOnly)
         assertTrue(snap.seriesQuotaOccupied >= 1)
         assertEquals(1, snap.seriesWithQuota)
-        assertTrue(snap.maxSeriesOccupancy >= 1)
-        assertTrue(snap.maxSeriesOccupancy <= snap.seriesQuotaOccupied)
-    }
-
-    @Test
-    fun build_maxSeriesOccupancy_isHottestSeriesNotSum() {
-        val items = listOf(
-            episode("h1", "episode|P|hot|1|1|e1", DownloadItemState.QUEUED.name, smart = true),
-            episode("h2", "episode|P|hot|1|2|e2", DownloadItemState.QUEUED.name, smart = true),
-            episode("h3", "episode|P|hot|1|3|e3", DownloadItemState.COMPLETED.name, smart = true),
-            episode("c1", "episode|P|cool|1|1|c1", DownloadItemState.QUEUED.name, smart = true),
-        )
-        val snap = OfflineStudioSnapshot.build(
-            items = items,
-            packs = emptyList(),
-            smartEnabled = true,
-            smartLookahead = 3,
-            smartSeriesQuota = 5,
-            autoDeleteWatched = false,
-            wifiOnly = false,
-            softLimitGb = 0,
-            maxConcurrent = 2,
-            nowMs = now,
-            watchingFocus = null,
-        )
-        // hot: 3 quota rows, cool: 1 → max is 3, sum is 4
-        assertEquals(3, snap.maxSeriesOccupancy)
-        assertEquals(4, snap.seriesQuotaOccupied)
-        assertEquals(2, snap.seriesWithQuota)
     }
 
     @Test
@@ -166,22 +137,19 @@ class OfflineStudioSnapshotTest {
         title: String = "Show",
         updatedAt: Long = now,
         completedAt: Long = 0L,
-    ): DownloadItemEntity {
-        val showId = contentKey.split('|').getOrNull(2) ?: "show"
-        return DownloadItemEntity(
-            id = id,
-            contentKey = contentKey,
-            media3Id = id,
-            providerName = "P",
-            kind = DownloadKind.EPISODE.name,
-            title = title,
-            state = state,
-            errorCode = errorCode,
-            smartEnqueued = smart,
-            updatedAt = updatedAt,
-            completedAt = completedAt,
-            createdAt = updatedAt,
-            videoTypeJson = """{"showId":"$showId","showTitle":"$title","seasonNumber":1,"number":1}""",
-        )
-    }
+    ) = DownloadItemEntity(
+        id = id,
+        contentKey = contentKey,
+        media3Id = id,
+        providerName = "P",
+        kind = DownloadKind.EPISODE.name,
+        title = title,
+        state = state,
+        errorCode = errorCode,
+        smartEnqueued = smart,
+        updatedAt = updatedAt,
+        completedAt = completedAt,
+        createdAt = updatedAt,
+        videoTypeJson = """{"showId":"show","showTitle":"Show","seasonNumber":1,"number":1}""",
+    )
 }

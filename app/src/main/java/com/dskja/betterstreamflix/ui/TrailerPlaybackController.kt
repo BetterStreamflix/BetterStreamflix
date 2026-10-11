@@ -584,7 +584,6 @@ object TrailerPlaybackController {
     private fun launchSmartTube(context: Context, packageName: String, trailerUrl: String) {
         val intent = Intent(Intent.ACTION_VIEW, Uri.parse(trailerUrl)).apply {
             setPackage(packageName)
-            applyExternalLaunchFlags(context, this)
         }
         try {
             context.startActivity(intent)
@@ -702,8 +701,6 @@ object TrailerPlaybackController {
             streamNowBtn?.setOnClickListener {
                 ExpMotion.hapticTap(it)
                 val session = TrailerPlayPipeline.activeSession
-                // Kill every other trailer session before arm/navigate (dual audio).
-                silenceAllActive()
                 // Arm cover before dialog teardown so the player never opens black.
                 TrailerStreamCrossfade.arm(session?.target)
                 pauseTrailerMedia(web)
@@ -801,16 +798,7 @@ object TrailerPlaybackController {
             }
 
             @JavascriptInterface
-            fun onError(@Suppress("UNUSED_PARAMETER") code: Int) {
-                dialogRoot?.post {
-                    val loading = dialogRoot?.findViewById<ProgressBar>(R.id.pb_trailer_loading)
-                    val web = webView
-                    val errorPanel = dialogRoot?.findViewById<View>(R.id.ll_trailer_error)
-                    if (loading != null && web != null && errorPanel != null) {
-                        showError(loading, web, errorPanel)
-                    }
-                }
-            }
+            fun onError(@Suppress("UNUSED_PARAMETER") code: Int) = Unit
         }
 
         private fun showError(loading: ProgressBar, web: WebView, errorPanel: View) {
@@ -823,102 +811,37 @@ object TrailerPlaybackController {
             }
         }
 
-        private val webDestroyed = java.util.concurrent.atomic.AtomicBoolean(false)
-
-        private fun blankWeb() {
-            pauseTrailerMedia(webView)
-            webView?.stopLoading()
-            webView?.loadUrl("about:blank")
-        }
-
         private fun destroyWeb() {
-            if (!webDestroyed.compareAndSet(false, true)) return
             pauseTrailerMedia(webView)
             destroyTrailerWebView(webView)
             webView = null
             unregisterActiveSession(dialogSession)
         }
 
-        /** Recreate the WebView if we blanked on stop but the dialog is still shown. */
-        private fun ensureWebAlive() {
-            if (webView != null || !isAdded) return
-            if (webDestroyed.get()) return
-            val root = dialogRoot ?: return
-            val container = root.findViewById<FrameLayout>(R.id.fl_trailer_player) ?: return
-            val loading = root.findViewById<ProgressBar>(R.id.pb_trailer_loading) ?: return
-            val errorPanel = root.findViewById<View>(R.id.ll_trailer_error) ?: return
-            val web = WebView(requireContext())
-            web.id = R.id.wv_trailer
-            val metrics = resources.displayMetrics
-            val dialogWidth = (metrics.widthPixels * 0.96f).toInt()
-            val playerHeight = (dialogWidth * 9 / 16).coerceIn(
-                (200 * metrics.density).toInt(),
-                (metrics.heightPixels * 0.72f).toInt(),
-            )
-            web.layoutParams = FrameLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                playerHeight,
-            )
-            container.removeAllViews()
-            container.addView(web)
-            webView = web
-            configureTrailerWebView(web)
-            runCatching { web.removeJavascriptInterface(JS_BRIDGE) }
-            web.addJavascriptInterface(DialogTrailerBridge(), JS_BRIDGE)
-            web.visibility = View.INVISIBLE
-            web.webChromeClient = WebChromeClient()
-            web.webViewClient = object : WebViewClient() {
-                override fun onPageFinished(view: WebView?, url: String?) {
-                    if (errorPanel.visibility != View.VISIBLE &&
-                        url != null &&
-                        url != "about:blank"
-                    ) {
-                        loading.visibility = View.GONE
-                        web.visibility = View.VISIBLE
-                    }
-                }
-
-                override fun onReceivedError(
-                    view: WebView?,
-                    request: WebResourceRequest?,
-                    resourceError: WebResourceError?,
-                ) {
-                    if (request?.isForMainFrame == true) {
-                        showError(loading, web, errorPanel)
-                    }
-                }
-            }
-            loadEmbed(web, loading, errorPanel)
-        }
-
         private val dialogSession = ActiveSession {
-            blankWeb()
+            pauseTrailerMedia(webView)
+            webView?.stopLoading()
+            webView?.loadUrl("about:blank")
         }
 
         override fun onStart() {
             super.onStart()
             registerActiveSession(dialogSession)
-            if (webView == null && !webDestroyed.get()) {
-                ensureWebAlive()
-            }
         }
 
         override fun onPause() {
-            blankWeb()
+            pauseTrailerMedia(webView)
             super.onPause()
         }
 
         override fun onStop() {
-            // Pause + blank only — full destroy waits for onDestroyView (zombie-dialog fix).
-            blankWeb()
-            unregisterActiveSession(dialogSession)
+            // Leaving the dialog (home, back, overlay) must kill audio immediately.
+            destroyWeb()
             super.onStop()
         }
 
         override fun onDestroyView() {
             destroyWeb()
-            dialogRoot = null
-            streamNowBtn = null
             super.onDestroyView()
         }
 

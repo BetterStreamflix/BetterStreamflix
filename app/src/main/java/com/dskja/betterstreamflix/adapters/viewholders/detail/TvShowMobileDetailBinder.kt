@@ -47,8 +47,6 @@ import com.dskja.betterstreamflix.utils.format
 import com.dskja.betterstreamflix.utils.getCurrentFragment
 import com.dskja.betterstreamflix.utils.loadTvShowPoster
 import com.dskja.betterstreamflix.utils.toActivity
-import com.dskja.betterstreamflix.spoilers.SpoilerShield
-import com.dskja.betterstreamflix.spoilers.SpoilerShieldUi
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import java.util.Locale
 import kotlinx.coroutines.Dispatchers
@@ -260,44 +258,33 @@ internal fun TvShowViewHolder.bindTvShowMobileDetail(binding: ContentTvShowMobil
                     )
                     return@checkProviderAndRun
                 }
-                val fragment = context.toActivity()?.getCurrentFragment() as? Fragment
-                SpoilerShieldUi.gateEpisodePlay(fragment, episode) {
-                    val displayTitle = SpoilerShield.displayTitle(
-                        episode,
-                        episodeNumberFallback = {
-                            context.getString(R.string.episode_number, it)
-                        },
-                    )
-                    val videoType = Video.Type.Episode(
-                        id = episode.id,
-                        number = episode.number,
-                        title = displayTitle,
-                        poster = episode.poster,
-                        overview = episode.overview,
-                        tvShow = Video.Type.Episode.TvShow(
-                            id = tvShow.id,
-                            title = tvShow.title,
-                            poster = tvShow.poster,
-                            banner = tvShow.banner,
-                            releaseDate = tvShow.released?.format("yyyy-MM-dd"),
-                            imdbId = tvShow.imdbId,
-                        ),
-                        season = Video.Type.Episode.Season(
-                            number = episodeSeason?.number ?: 1,
-                            title = episodeSeason?.title ?: "",
-                        ),
-                    )
-                    val args = Bundle().apply {
-                        putString("id", episode.id)
-                        putString("title", tvShow.title)
-                        putString(
-                            "subtitle",
-                            "S${videoType.season.number} E${videoType.number}  •  $displayTitle",
-                        )
-                        putSerializable("videoType", videoType)
-                    }
-                    findNavController().navigate(R.id.player, args)
+                val videoType = Video.Type.Episode(
+                    id = episode.id,
+                    number = episode.number,
+                    title = episode.title,
+                    poster = episode.poster,
+                    overview = episode.overview,
+                    tvShow = Video.Type.Episode.TvShow(
+                        id = tvShow.id,
+                        title = tvShow.title,
+                        poster = tvShow.poster,
+                        banner = tvShow.banner,
+                        releaseDate = tvShow.released?.format("yyyy-MM-dd"),
+                        imdbId = tvShow.imdbId,
+                    ),
+                    season = Video.Type.Episode.Season(
+                        number = episodeSeason?.number ?: 1,
+                        title = episodeSeason?.title ?: "",
+                    ),
+                )
+                val args = Bundle().apply {
+                    putString("id", episode.id)
+                    putString("title", tvShow.title)
+                    putString("subtitle", "S${videoType.season.number} E${videoType.number}  •  ${videoType.title}")
+                    putSerializable("videoType", videoType)
+                    // Dual CTA: Watch streams online; Offline uses the Download button.
                 }
+                findNavController().navigate(R.id.player, args)
             }
         }
         text = DetailWatchLabels.tvShow(

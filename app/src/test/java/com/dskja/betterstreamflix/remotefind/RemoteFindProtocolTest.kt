@@ -1,8 +1,6 @@
 package com.dskja.betterstreamflix.remotefind
 
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertNotNull
-import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -11,9 +9,9 @@ class RemoteFindProtocolTest {
     @Test
     fun helloAndKeyboardRoundTrip() {
         assertEquals(
-            RemoteFindProtocol.Inbound.Hello("XK9M2P"),
+            RemoteFindProtocol.Inbound.Hello("abc12345abc12345"),
             RemoteFindProtocol.parseInbound(
-                RemoteFindProtocol.encodeHello("XK9M2P"),
+                RemoteFindProtocol.encodeHello("abc12345abc12345"),
             ),
         )
         assertEquals(
@@ -32,15 +30,6 @@ class RemoteFindProtocolTest {
             RemoteFindProtocol.Inbound.Submit,
             RemoteFindProtocol.parseInbound(RemoteFindProtocol.encodeSubmit()),
         )
-    }
-
-    @Test
-    fun welcomeCarriesToken() {
-        val raw = RemoteFindProtocol.encodeWelcome("XK9M2P", "abcdef12abcdef12")
-        val welcome = RemoteFindProtocol.parseWelcome(raw)
-        assertNotNull(welcome)
-        assertEquals("XK9M2P", welcome!!.code)
-        assertEquals("abcdef12abcdef12", welcome.token)
     }
 
     @Test
@@ -64,25 +53,5 @@ class RemoteFindProtocolTest {
     fun sanitizeStripsControlChars() {
         val text = RemoteFindProtocol.sanitizeText("hi\u0000there\nworld")
         assertEquals("hi there world", text)
-    }
-
-    @Test
-    fun codedDiscoverMatching_usesFullDiscoverPrefix() {
-        assertEquals("", RemoteFindDiscovery.parseDiscoverWanted("remotefind:discover"))
-        assertEquals(
-            "XK9M2P",
-            RemoteFindDiscovery.parseDiscoverWanted("remotefind:discover:XK9M2P"),
-        )
-        assertEquals(
-            "abc234",
-            RemoteFindDiscovery.parseDiscoverWanted("REMOTEFIND:DISCOVER:abc234"),
-        )
-        // Bug regression: substringAfter(':') alone would yield "discover:CODE".
-        val buggy = "remotefind:discover:XK9M2P".substringAfter(':').trim()
-        assertEquals("discover:XK9M2P", buggy)
-        assertNull(RemoteFindCode.normalize(buggy))
-        val wanted = RemoteFindDiscovery.parseDiscoverWanted("remotefind:discover:XK9M2P")!!
-        assertEquals("XK9M2P", RemoteFindCode.normalize(wanted))
-        assertNull(RemoteFindDiscovery.parseDiscoverWanted("noise"))
     }
 }

@@ -11,8 +11,6 @@ import com.dskja.betterstreamflix.utils.UserPreferences
  * Complements [com.dskja.betterstreamflix.ui.StickEnergyMode]: Energy Mode is a
  * Fire Stick power/RAM policy; Codec Comfort is learned from real decode failures
  * on this device fingerprint and applies even when Energy Mode is off.
- *
- * Does **not** kill Ambient / Featured home motion (CC-003) — only decoder/buffers.
  */
 object CodecComfort {
 
@@ -20,9 +18,6 @@ object CodecComfort {
     const val FAILURES_BEFORE_ACTIVE = 2
 
     const val MAX_FAILURES_TRACKED = 24
-
-    /** Clean HW sessions before a latched Comfort can fully clear (CC-001). */
-    const val STABLE_SESSIONS_TO_DECAY = 3
 
     /** Pure helper for unit tests. */
     fun resolveActive(failureCount: Int, threshold: Int = FAILURES_BEFORE_ACTIVE): Boolean =
@@ -32,9 +27,8 @@ object CodecComfort {
         manufacturer: String = Build.MANUFACTURER.orEmpty(),
         model: String = Build.MODEL.orEmpty(),
         device: String = Build.DEVICE.orEmpty(),
-        sdkInt: Int = Build.VERSION.SDK_INT,
     ): String {
-        val parts = listOf(manufacturer, model, device, "sdk$sdkInt")
+        val parts = listOf(manufacturer, model, device)
             .map { it.trim().lowercase() }
             .filter { it.isNotEmpty() }
         return parts.joinToString("|").ifBlank { "unknown" }
@@ -62,40 +56,21 @@ object CodecComfort {
         val next = (UserPreferences.codecComfortFailureCount + 1)
             .coerceAtMost(MAX_FAILURES_TRACKED)
         UserPreferences.codecComfortFailureCount = next
-        UserPreferences.codecComfortStableStreak = 0
         if (resolveActive(next) && UserPreferences.codecComfortActivatedAtMs <= 0L) {
             UserPreferences.codecComfortActivatedAtMs = System.currentTimeMillis()
         }
     }
 
-    /**
-     * Soft decay when HW Auto plays cleanly (CC-001). After [STABLE_SESSIONS_TO_DECAY]
-     * successes while latched, drop one failure; Comfort clears when count falls
-     * below [FAILURES_BEFORE_ACTIVE].
-     */
+    /** Optional decay when HW Auto plays cleanly for a long stretch — not used to flip off quickly. */
     fun noteStableHardwarePlayback() {
         ensureFingerprintBound()
+        if (!isActive()) return
+        // Soft decay: one success nudges the counter down but never below the latch threshold
+        // once activated — comfort stays on so the stick does not re-crash.
         val count = UserPreferences.codecComfortFailureCount
-        if (count <= 0) return
-        val streak = UserPreferences.codecComfortStableStreak + 1
-        if (streak < STABLE_SESSIONS_TO_DECAY) {
-            UserPreferences.codecComfortStableStreak = streak
-            return
+        if (count > FAILURES_BEFORE_ACTIVE) {
+            UserPreferences.codecComfortFailureCount = count - 1
         }
-        UserPreferences.codecComfortStableStreak = 0
-        val next = (count - 1).coerceAtLeast(0)
-        UserPreferences.codecComfortFailureCount = next
-        if (!resolveActive(next)) {
-            UserPreferences.codecComfortActivatedAtMs = 0L
-        }
-    }
-
-    /** Settings “Reset Codec Comfort” — clear latch + counters (CC-001/009). */
-    fun reset() {
-        UserPreferences.codecComfortDeviceFingerprint = deviceFingerprint()
-        UserPreferences.codecComfortFailureCount = 0
-        UserPreferences.codecComfortActivatedAtMs = 0L
-        UserPreferences.codecComfortStableStreak = 0
     }
 
     fun failureCount(): Int {
@@ -111,11 +86,10 @@ object CodecComfort {
             return
         }
         if (stored != current) {
-            // Different stick / ROM / SDK — reset learning for the new hardware (CC-010).
+            // Different stick / ROM — reset learning for the new hardware.
             UserPreferences.codecComfortDeviceFingerprint = current
             UserPreferences.codecComfortFailureCount = 0
             UserPreferences.codecComfortActivatedAtMs = 0L
-            UserPreferences.codecComfortStableStreak = 0
         }
     }
 }

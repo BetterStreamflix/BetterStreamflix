@@ -87,10 +87,7 @@ object ProfileTransferLinks {
     fun encode(payload: ProfileTransferPayload): String {
         require(payload.v == ProfileTransferPayload.VERSION) { "unsupported profile version" }
         require(payload.kind == ProfileTransferPayload.KIND) { "unsupported profile kind" }
-        val signed = payload.copy(
-            integrity = ProfileTransferCodec.computeIntegrity(payload.copy(integrity = null)),
-        )
-        val plain = json.encodeToString(signed).toByteArray(Charsets.UTF_8)
+        val plain = json.encodeToString(payload).toByteArray(Charsets.UTF_8)
         val compressed = deflate(plain)
         val encoded = Base64.getUrlEncoder().withoutPadding().encodeToString(compressed)
         require(encoded.length <= MAX_ENCODED_CHARS) {

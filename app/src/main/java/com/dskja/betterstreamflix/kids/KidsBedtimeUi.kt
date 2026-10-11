@@ -17,19 +17,10 @@ import com.google.android.material.dialog.MaterialAlertDialogBuilder
  */
 object KidsBedtimeUi {
 
-    /**
-     * Identity of the [FragmentActivity] currently showing the lock sheet.
-     * Rotation creates a new activity, so a stale id does not block the new
-     * sheet; duplicate calls on the same activity still collapse (KB-010).
-     */
     @Volatile
-    private var lockDialogActivityId: Int? = null
-
-    /** True while the non-dismissible bedtime PIN lock dialog is on screen. */
-    fun isLockDialogShowing(): Boolean = lockDialogActivityId != null
+    private var lockDialogShowing: Boolean = false
 
     fun enabledSummary(context: Context): String {
-        KidsBedtime.refreshLockState()
         if (!UserPreferences.kidsBedtimeEnabled) {
             return context.getString(R.string.kids_bedtime_summary_off)
         }
@@ -107,17 +98,11 @@ object KidsBedtimeUi {
     /**
      * Challenge PIN to clear the bedtime lock (and set overnight bypass).
      * Cancel leaves the lock engaged.
-     *
-     * When bedtime [KidsBedtime.applies] is false, this is a no-op: it must not
-     * call [KidsBedtime.unlockUntilWake] (KB-013).
      */
-    fun challengeUnlock(
-        context: Context,
-        onUnlocked: () -> Unit,
-        onFailedOrCancelled: (() -> Unit)? = null,
-    ) {
+    fun challengeUnlock(context: Context, onUnlocked: () -> Unit) {
         if (!KidsBedtime.applies()) {
-            onFailedOrCancelled?.invoke()
+            KidsBedtime.unlockUntilWake()
+            onUnlocked()
             return
         }
         val parental = UserPreferences.parentalControlPin
@@ -128,7 +113,6 @@ object KidsBedtimeUi {
                 context.getString(R.string.kids_bedtime_needs_pin),
                 Toast.LENGTH_LONG,
             ).show()
-            onFailedOrCancelled?.invoke()
             return
         }
         ProfilesSettingsController.challengeKidsUnlock(context) {
@@ -144,23 +128,18 @@ object KidsBedtimeUi {
 
     /**
      * Show a Cinema-Ink bedtime lock sheet when [KidsBedtime.isLocked].
-     * Safe to call from Activity.onStart; ignores duplicates for the same activity.
+     * Safe to call from Activity.onStart; ignores duplicates.
      */
-    fun maybeShowLock(
-        activity: FragmentActivity,
-        onUnlocked: (() -> Unit)? = null,
-    ) {
+    fun maybeShowLock(activity: FragmentActivity) {
         if (activity.isFinishing || activity.isDestroyed) return
-        KidsBedtime.refreshLockState()
-        val activityId = System.identityHashCode(activity)
         if (!KidsBedtime.isLocked()) {
-            if (lockDialogActivityId == activityId) lockDialogActivityId = null
+            lockDialogShowing = false
             return
         }
-        if (lockDialogActivityId == activityId) return
+        if (lockDialogShowing) return
         if (activity.supportFragmentManager.isStateSaved) return
 
-        lockDialogActivityId = activityId
+        lockDialogShowing = true
         val time = KidsBedtime.formatMinuteOfDay(UserPreferences.kidsBedtimeMinuteOfDay)
         val dialog: AlertDialog = MaterialAlertDialogBuilder(activity)
             .setTitle(R.string.kids_bedtime_lock_title)
@@ -170,23 +149,16 @@ object KidsBedtimeUi {
             .create()
         dialog.setOnShowListener {
             dialog.getButton(AlertDialog.BUTTON_POSITIVE)?.setOnClickListener {
-                challengeUnlock(
-                    context = activity,
-                    onUnlocked = {
-                        if (lockDialogActivityId == activityId) lockDialogActivityId = null
-                        dialog.dismiss()
-                        onUnlocked?.invoke()
-                    },
-                    onFailedOrCancelled = {
-                        // Stay locked; allow later retry.
-                    },
-                )
+                challengeUnlock(activity) {
+                    lockDialogShowing = false
+                    dialog.dismiss()
+                }
             }
         }
         dialog.setOnDismissListener {
-            // Always clear so onStart / rotation can retry (KB-010).
-            if (lockDialogActivityId == activityId) {
-                lockDialogActivityId = null
+            // If still locked (cancel / wrong PIN path), allow a later onStart retry.
+            if (KidsBedtime.isLocked()) {
+                lockDialogShowing = false
             }
         }
         dialog.show()
@@ -194,37 +166,23 @@ object KidsBedtimeUi {
 
     /**
      * Guard navigating into the player after bedtime. Returns true when the
-     * caller should abort the navigation for now. On successful unlock, invokes
-     * [onAllowed] so the caller can retry (no "blocked" toast after success).
+     * caller should abort the navigation (PIN sheet shown or hard-blocked).
      */
-    fun blockPlayerEntry(
-        activity: FragmentActivity,
-        onAllowed: (() -> Unit)? = null,
-    ): Boolean {
-        KidsBedtime.refreshLockState()
-        if (!KidsBedtime.shouldBlockEnteringPlayer()) {
-            onAllowed?.invoke()
-            return false
-        }
+    fun blockPlayerEntry(activity: FragmentActivity): Boolean {
+        if (!KidsBedtime.shouldBlockEnteringPlayer()) return false
         if (KidsBedtime.isLocked()) {
-            maybeShowLock(activity, onUnlocked = onAllowed)
+            maybeShowLock(activity)
             return true
         }
         // In window but not yet locked — require PIN before a new title.
-        challengeUnlock(
-            context = activity,
-            onUnlocked = {
-                // Bypass set — allow retry without a false "blocked" toast (KB-001/004).
-                onAllowed?.invoke()
-            },
-            onFailedOrCancelled = {
-                Toast.makeText(
-                    activity,
-                    activity.getString(R.string.kids_bedtime_new_playback_blocked),
-                    Toast.LENGTH_LONG,
-                ).show()
-            },
-        )
+        challengeUnlock(activity) {
+            // Bypass set — caller may retry play; we only unlock here.
+        }
+        Toast.makeText(
+            activity,
+            activity.getString(R.string.kids_bedtime_new_playback_blocked),
+            Toast.LENGTH_LONG,
+        ).show()
         return true
     }
 }

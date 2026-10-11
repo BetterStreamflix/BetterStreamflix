@@ -2,7 +2,6 @@ package com.dskja.betterstreamflix.sync
 
 import android.content.Context
 import com.dskja.betterstreamflix.profiles.ProfileManager
-import com.dskja.betterstreamflix.ui.LeanbackDensityPolicy
 import com.dskja.betterstreamflix.utils.EpisodeNotesStore
 import com.dskja.betterstreamflix.utils.ThemeManager
 import com.dskja.betterstreamflix.utils.UserPreferences
@@ -15,10 +14,6 @@ import kotlinx.coroutines.withContext
 /**
  * Notes + Looks cloud sync: collect / flush / merge / apply with local-primary LWW.
  * Tie → local (pending local wins ties).
- *
- * **No Realtime subscription** (SC-002): unlike [CloudRealtimeSync] (`user_media_state`),
- * notes and looks sync only on poll/pull — `syncNow`, `flushPending`, login merge, and
- * WorkManager. Multi-device lag until the next sync is expected.
  */
 object CloudNotesLooksSync {
     private const val NOTES_TABLE = "user_episode_notes"
@@ -61,32 +56,19 @@ object CloudNotesLooksSync {
      * kids_bright does not stick on adult profiles unless already chosen.
      */
     fun clampLookForActiveProfile(look: String, kidsActive: Boolean): String {
-        val resolved = ThemeManager.clampLookForKids(look, kidsActive)
+        val resolved = ThemeManager.resolveLook(look)
         return when {
-            kidsActive -> resolved
+            kidsActive -> ThemeManager.KIDS_BRIGHT
             resolved == ThemeManager.KIDS_BRIGHT -> ThemeManager.CINEMA_INK
             else -> resolved
         }
     }
-
-    /** Resolve compact/comfort for cloud upsert (null/blank/unknown → Comfort). */
-    fun resolveLeanbackDensityForSync(raw: String?): String =
-        LeanbackDensityPolicy.valueOf(LeanbackDensityPolicy.resolve(raw))
-
-    /**
-     * When the look-row LWW says remote wins, apply [remoteDensity] if present.
-     * Null/blank remote density leaves local prefs untouched (pre-migration rows).
-     */
-    fun shouldApplyRemoteLeanbackDensity(remoteDensity: String?): Boolean =
-        !remoteDensity.isNullOrBlank()
 
     fun collectLocalNotes(context: Context, userId: String): List<RemoteEpisodeNote> =
         EpisodeNotesStore.listRecordsForActiveProfile(context).map { (episodeId, record) ->
             RemoteEpisodeNote(
                 userId = userId,
                 episodeId = episodeId,
-                providerName = record.providerName,
-                showId = record.showId,
                 text = record.text,
                 clientUpdatedAtMillis = record.updatedAtMillis,
             )
@@ -94,14 +76,15 @@ object CloudNotesLooksSync {
 
     fun collectLocalLook(userId: String): RemoteProfilePrefs {
         val look = ThemeManager.resolveLook(UserPreferences.selectedTheme)
-        // Do not bump the LWW clock as a side effect of collect — use 1L so remote
-        // wins when local was never touched, without rewriting prefs on sync.
-        val clock = UserPreferences.selectedThemeUpdatedAtMillis.takeIf { it > 0L } ?: 1L
+        val clock = UserPreferences.selectedThemeUpdatedAtMillis
+            .takeIf { it > 0L }
+            ?: System.currentTimeMillis().also {
+                UserPreferences.selectedThemeUpdatedAtMillis = it
+            }
         return RemoteProfilePrefs(
             userId = userId,
             look = look,
             clientUpdatedAtMillis = clock,
-            leanbackDensity = resolveLeanbackDensityForSync(UserPreferences.leanbackDensity),
         )
     }
 
@@ -129,8 +112,6 @@ object CloudNotesLooksSync {
                         val local = RemoteEpisodeNote(
                             userId = userId,
                             episodeId = episodeId,
-                            providerName = mutation.providerName.orEmpty(),
-                            showId = mutation.showId.orEmpty(),
                             text = mutation.text.orEmpty(),
                             clientUpdatedAtMillis = mutation.clientUpdatedAtMillis,
                         )
@@ -146,9 +127,6 @@ object CloudNotesLooksSync {
                             userId = userId,
                             look = ThemeManager.resolveLook(mutation.look),
                             clientUpdatedAtMillis = mutation.clientUpdatedAtMillis,
-                            leanbackDensity = resolveLeanbackDensityForSync(
-                                UserPreferences.leanbackDensity,
-                            ),
                         )
                         if (remoteLook == null ||
                             lookLocalWins(local.clientUpdatedAtMillis, remoteLook.clientUpdatedAtMillis)
@@ -173,7 +151,7 @@ object CloudNotesLooksSync {
             if (notesToUpload.isNotEmpty()) {
                 notesToUpload.chunked(250).forEach { chunk ->
                     client.from(NOTES_TABLE).upsert(chunk) {
-                        onConflict = "user_id,provider_name,show_id,episode_id"
+                        onConflict = "user_id,episode_id"
                     }
                     uploaded += chunk.size
                     onProgress(
@@ -246,7 +224,7 @@ object CloudNotesLooksSync {
         if (toUpload.isNotEmpty()) {
             toUpload.chunked(250).forEach { chunk ->
                 client.from(NOTES_TABLE).upsert(chunk) {
-                    onConflict = "user_id,provider_name,show_id,episode_id"
+                    onConflict = "user_id,episode_id"
                 }
             }
         }
@@ -283,7 +261,6 @@ object CloudNotesLooksSync {
                 continue
             }
             val localRecord = EpisodeNotesStore.getRecord(context, note.episodeId)
-            // SC-012: local-clock branch overlaps noteLocalWins; both keep local-primary LWW.
             if (localRecord != null &&
                 noteLocalWins(localRecord.updatedAtMillis, note.clientUpdatedAtMillis) &&
                 localPending == null
@@ -293,11 +270,9 @@ object CloudNotesLooksSync {
             }
             EpisodeNotesStore.applyRemote(
                 context,
-                episodeId = note.episodeId,
-                text = note.text,
-                updatedAtMillis = note.clientUpdatedAtMillis,
-                providerName = note.providerName,
-                showId = note.showId,
+                note.episodeId,
+                note.text,
+                note.clientUpdatedAtMillis,
             )
         }
     }
@@ -324,12 +299,8 @@ object CloudNotesLooksSync {
         val kids = ProfileManager.isKidsActive()
         val clamped = clampLookForActiveProfile(remote.look, kids)
         UserPreferences.applyRemoteSelectedTheme(clamped, remote.clientUpdatedAtMillis)
-        remote.leanbackDensity
-            ?.takeIf { shouldApplyRemoteLeanbackDensity(it) }
-            ?.let { UserPreferences.applyRemoteLeanbackDensity(it) }
     }
 
-    /** SC-016: no client-side user_id filter — RLS scopes rows to the auth session. */
     private suspend fun fetchNotes(client: SupabaseClient): List<RemoteEpisodeNote> =
         CloudSyncManager.collectPages(FETCH_PAGE_SIZE) { from, to ->
             client.from(NOTES_TABLE).select {

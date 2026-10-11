@@ -239,11 +239,10 @@ class FavoritesMobileFragment : Fragment() {
     private suspend fun removeMovieFavorite(appContext: android.content.Context, movie: Movie, currentName: String?) {
         val provider = resolveProvider(movie.providerName, currentName) ?: return
         val ownsDb = provider.name == currentName
-        // SS-B10-08: softOpen / softOpenForProvider — never crash mid provider-clear.
         val db = if (ownsDb) {
-            AppDatabase.softOpen(appContext) ?: return
+            AppDatabase.getInstanceOrNull(appContext) ?: return
         } else {
-            AppDatabase.softOpenForProvider(provider.name, appContext) ?: return
+            AppDatabase.getInstanceForProvider(provider.name, appContext)
         }
         try {
             FavoriteMutations.setMovieFavorite(
@@ -262,9 +261,9 @@ class FavoritesMobileFragment : Fragment() {
         val provider = resolveProvider(tvShow.providerName, currentName) ?: return
         val ownsDb = provider.name == currentName
         val db = if (ownsDb) {
-            AppDatabase.softOpen(appContext) ?: return
+            AppDatabase.getInstanceOrNull(appContext) ?: return
         } else {
-            AppDatabase.softOpenForProvider(provider.name, appContext) ?: return
+            AppDatabase.getInstanceForProvider(provider.name, appContext)
         }
         try {
             FavoriteMutations.setTvShowFavorite(

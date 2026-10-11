@@ -21,8 +21,7 @@ object TasteRanker {
         val scored = items.mapIndexedNotNull { index, item ->
             if (item is Movie || item is TvShow) {
                 val key = item.searchIdentityKey()
-                val tmdb = TasteSnapshot.tmdbKey(tmdbIdOf(item), item is TvShow)
-                if (snapshot.isHardHidden(key, tmdb)) return@mapIndexedNotNull null
+                if (snapshot.isNegative(key)) return@mapIndexedNotNull null
                 if (!TasteMoodMatcher.matches(item, mood)) return@mapIndexedNotNull null
             } else if (mood != TasteMood.ALL) {
                 // Keep people / genres / headers when mood filtering shows.
@@ -45,12 +44,10 @@ object TasteRanker {
     ): Double {
         if (item !is Movie && item !is TvShow) return 0.0
         val key = item.searchIdentityKey()
-        val tmdb = TasteSnapshot.tmdbKey(tmdbIdOf(item), item is TvShow)
-        if (snapshot.isHardHidden(key, tmdb)) return Double.NEGATIVE_INFINITY
+        if (snapshot.isNegative(key)) return Double.NEGATIVE_INFINITY
 
         var total = 0.0
         total += snapshot.titleBoosts[key]?.toDouble() ?: 0.0
-        total += snapshot.softDemote(key, tmdb).toDouble()
 
         val genres = when (item) {
             is Movie -> item.genres
@@ -72,18 +69,12 @@ object TasteRanker {
         }
         total += favoriteBoost
 
-        // Movies: watched −1. TV: in-progress CW franchise demote; finished binge softer.
-        total += when (item) {
+        val watchedPenalty = when (item) {
             is Movie -> if (item.isWatched) -1.0 else 0.0
-            is TvShow -> {
-                when {
-                    item.lastPlayedAtMillis != null -> -0.75
-                    item.isWatching -> -0.35
-                    else -> 0.0
-                }
-            }
+            is TvShow -> 0.0
             else -> 0.0
         }
+        total += watchedPenalty
 
         if (mood != TasteMood.ALL && TasteMoodMatcher.matches(item, mood)) {
             total += 0.75
@@ -108,23 +99,7 @@ object TasteRanker {
             total += (hits * 0.5).coerceAtMost(1.5)
         }
 
-        // Within FOR_YOU, prefer newer releases when a year filter is active (product #47).
-        val year = when (item) {
-            is Movie -> item.released?.get(java.util.Calendar.YEAR)
-            is TvShow -> item.released?.get(java.util.Calendar.YEAR)
-            else -> null
-        }
-        if (year != null && year > 0) {
-            total += ((year - 1980).coerceIn(0, 50)) * 0.01
-        }
-
         return total
-    }
-
-    private fun tmdbIdOf(item: AppAdapter.Item): String? = when (item) {
-        is Movie -> item.tmdbId?.takeIf { it.isNotBlank() }
-        is TvShow -> item.tmdbId?.takeIf { it.isNotBlank() }
-        else -> null
     }
 
     private data class Scored(

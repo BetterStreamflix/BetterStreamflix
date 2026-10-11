@@ -668,7 +668,8 @@ class MovieViewHolder(
         }
         binding.ivMoviePoster.loadMoviePoster(movie) {
             val dens = binding.ivMoviePoster.resources.displayMetrics.density
-            val (w, h) = com.dskja.betterstreamflix.ui.LeanbackDensityPolicy.gridPosterOverridePx(dens)
+            val h = (200f * dens).toInt().coerceAtLeast(300)
+            val w = (h * 2 / 3f).toInt().coerceAtLeast(200)
             fallback(R.drawable.glide_fallback_cover)
                 .override(w, h)
                 .centerCrop()
@@ -901,7 +902,6 @@ class MovieViewHolder(
             FeaturedSwiperChrome.wireWatchButton(this)
             com.dskja.betterstreamflix.player.PlayerCleanExit.tagFeaturedWatch(this)
             text = FeaturedHeroController.watchCtaLabel(context, movie)
-            contentDescription = context.getString(R.string.a11y_featured_watch, movie.title)
             applyExpPress()
             setOnClickListener(openMovie)
             setOnLongClickListener { view ->
@@ -963,11 +963,7 @@ class MovieViewHolder(
             )
         }
 
-        FeaturedSwiperChrome.bindListButton(
-            binding.btnSwiperAddToList,
-            movie.isFavorite,
-            title = movie.title,
-        )
+        FeaturedSwiperChrome.bindListButton(binding.btnSwiperAddToList, movie.isFavorite)
         binding.btnSwiperAddToList.apply {
             applyExpPress()
             setOnClickListener {
@@ -988,11 +984,7 @@ class MovieViewHolder(
         ) { favorite ->
             if (movie.id != boundMovieId) return@observeListState
             movie.isFavorite = favorite
-            FeaturedSwiperChrome.bindListButton(
-                binding.btnSwiperAddToList,
-                favorite,
-                title = movie.title,
-            )
+            FeaturedSwiperChrome.bindListButton(binding.btnSwiperAddToList, favorite)
         }
 
         // Nested clickables confuse TalkBack — keep chrome buttons primary.

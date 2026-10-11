@@ -72,8 +72,6 @@ object IptvLiveSession {
                 IptvZapPreloader.clear()
             }
             providerName = name ?: providerName
-            // ZP-006: merging must not keep a prior complete=true short window sticky.
-            windowComplete = false
             // Preserve existing zap order; update in place; append new ids in list order.
             val existing = LinkedHashMap<String, Channel>()
             channels.forEach { existing[it.id] = it }

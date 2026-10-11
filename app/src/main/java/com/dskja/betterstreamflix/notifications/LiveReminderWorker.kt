@@ -8,7 +8,7 @@ import com.dskja.betterstreamflix.utils.UserPreferences
 
 /**
  * Fires a single pre-kickoff Live reminder scheduled by [LiveReminderScheduler].
- * Re-checks opt-in, kids/age gate, snooze, and flood gates before posting.
+ * Re-checks opt-in, snooze, and flood gates before posting.
  */
 class LiveReminderWorker(
     appContext: Context,
@@ -17,51 +17,24 @@ class LiveReminderWorker(
 
     override suspend fun doWork(): Result {
         if (!UserPreferences.notifyLiveFavoriteStarting) return Result.success()
-        if (LiveReminderArm.deliveryBlocked()) return Result.success()
         if (!NotificationPermission.canPost(applicationContext)) return Result.success()
 
         val identityKey = inputData.getString(KEY_IDENTITY).orEmpty()
         val title = inputData.getString(KEY_TITLE).orEmpty()
         if (identityKey.isBlank() || title.isBlank()) return Result.success()
 
-        // Still a tracked favorite / schedule — drop alerts after unfavorite.
-        val stillRelevant = identityKey in UserPreferences.notifyLiveActiveKeys ||
-            identityKey in UserPreferences.notifyLiveScheduledKeys
-        if (!stillRelevant) return Result.success()
-
-        val fireAt = inputData.getLong(KEY_FIRE_AT, -1L)
-        val kickoffFromInput = inputData.getLong(KEY_KICKOFF, -1L)
-        val kickoff = when {
-            kickoffFromInput > 0L -> kickoffFromInput
-            fireAt > 0L -> fireAt + LiveReminderPolicy.LEAD_BEFORE_KICKOFF_MS
-            else -> return Result.success()
-        }
-        val snoozeWake = inputData.getBoolean(KEY_SNOOZE_WAKE, false)
-
         val now = System.currentTimeMillis()
-        val pastWindow = now > kickoff + 2L * 60L * 1000L
-        // Late Doze delivery of the original schedule: never fabricate now+LEAD.
-        if (pastWindow && !snoozeWake) return Result.success()
-
-        if (now >= LiveReminderStore.snoozedUntil(identityKey)) {
-            LiveReminderStore.clearSnooze(identityKey)
-        }
-
-        val kickoffFp = kickoff.toString()
-        val alreadyThisKickoff = !snoozeWake &&
-            LiveReminderStore.kickoffFingerprint(identityKey) == kickoffFp
-
         val gate = LiveReminderPolicy.Gate(
             snoozedUntilMs = LiveReminderStore.snoozedUntil(identityKey),
-            lastNotifiedMs = if (snoozeWake) 0L else LiveReminderStore.lastNotifiedMs(identityKey),
+            lastNotifiedMs = LiveReminderStore.lastNotifiedMs(identityKey),
             recentFireTimesMs = LiveReminderStore.recentFires(),
-            alreadyNotifiedThisKickoff = alreadyThisKickoff,
+            alreadyNotifiedThisKickoff = false,
         )
         when (
             LiveReminderPolicy.decide(
                 nowMs = now,
-                kickoffEpochMs = kickoff,
-                newlyLive = snoozeWake && pastWindow,
+                kickoffEpochMs = now + LiveReminderPolicy.LEAD_BEFORE_KICKOFF_MS,
+                newlyLive = false,
                 gate = gate,
             )
         ) {
@@ -72,12 +45,10 @@ class LiveReminderWorker(
                     showTitle = title,
                     programHint = null,
                     identityKey = identityKey,
-                    preKickoff = !pastWindow,
-                    kickoffEpochMs = kickoff,
+                    preKickoff = true,
                 )
                 LiveReminderStore.markNotified(identityKey, now)
-                LiveReminderStore.setKickoffFingerprint(identityKey, kickoffFp)
-                LiveReminderScheduler.cancel(applicationContext, identityKey)
+                LiveReminderStore.setKickoffFingerprint(identityKey, "fired:$now")
                 Log.i(TAG, "pre-kickoff: $title")
             }
             else -> Unit
@@ -90,7 +61,5 @@ class LiveReminderWorker(
         const val KEY_IDENTITY = "identity"
         const val KEY_TITLE = "title"
         const val KEY_FIRE_AT = "fire_at"
-        const val KEY_KICKOFF = "kickoff"
-        const val KEY_SNOOZE_WAKE = "snooze_wake"
     }
 }

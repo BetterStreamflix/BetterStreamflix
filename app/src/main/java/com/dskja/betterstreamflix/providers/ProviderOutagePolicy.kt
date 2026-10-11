@@ -7,10 +7,6 @@ import com.dskja.betterstreamflix.utils.UserPreferences
 /**
  * Home outage-banner visibility: show when Trust Layer sees dead sources,
  * with a short dismiss cool-down per profile.
- *
- * Defaults to the **current** provider being dead (or other enabled providers
- * when the global outage level is SEVERE). Unrelated WATCH-level dead rows do
- * not raise the Home banner. Hidden for kids / guest profiles.
  */
 object ProviderOutagePolicy {
 
@@ -23,37 +19,12 @@ object ProviderOutagePolicy {
     var nowMs: () -> Long = { System.currentTimeMillis() }
 
     fun shouldShow(snapshot: ProviderTrustLayer.Snapshot, context: Context? = null): Boolean {
-        if (ProfileManager.isKidsActive() || ProfileManager.isGuestActive()) return false
-        val relevant = relevantOutageNames(snapshot)
-        if (relevant.isEmpty()) return false
+        if (snapshot.outageLevel == ProviderTrustLayer.OutageLevel.NONE) return false
+        if (snapshot.outageProviderNames.isEmpty()) return false
         val app = context?.applicationContext ?: return true
         val dismissedAt = prefs(app).getLong(KEY_DISMISS_AT, 0L)
         if (dismissedAt <= 0L) return true
         return nowMs() - dismissedAt >= DISMISS_COOLDOWN_MS
-    }
-
-    /**
-     * Current-provider dead always qualifies. SEVERE global optionally includes
-     * other enabled providers that are DEAD.
-     */
-    fun relevantOutageNames(snapshot: ProviderTrustLayer.Snapshot): List<String> {
-        val dead = snapshot.outageProviderNames
-        if (dead.isEmpty()) return emptyList()
-        val current = snapshot.currentProviderName?.trim().orEmpty()
-        if (current.isNotEmpty() &&
-            dead.any { it.equals(current, ignoreCase = true) }
-        ) {
-            return listOf(current)
-        }
-        if (snapshot.outageLevel != ProviderTrustLayer.OutageLevel.SEVERE) {
-            return emptyList()
-        }
-        // SEVERE global (optional): prefer enabled providers; fall back to the dead list.
-        val enabled = runCatching { enabledProviderNames() }.getOrDefault(emptySet())
-        val filtered = dead.filter { name ->
-            enabled.any { it.equals(name, ignoreCase = true) }
-        }
-        return filtered.ifEmpty { dead }
     }
 
     fun dismiss(context: Context) {
@@ -65,26 +36,8 @@ object ProviderOutagePolicy {
     }
 
     fun bannerTitle(snapshot: ProviderTrustLayer.Snapshot): String {
-        val names = relevantOutageNames(snapshot).ifEmpty { snapshot.outageProviderNames }.take(3)
+        val names = snapshot.outageProviderNames.take(3)
         return names.joinToString(", ")
-    }
-
-    private fun enabledProviderNames(): Set<String> {
-        val names = LinkedHashSet<String>()
-        runCatching {
-            UserPreferences.currentProvider?.name?.takeIf { it.isNotBlank() }?.let { names += it }
-        }
-        // Prefer non-quarantined registry names when the Provider companion is available.
-        runCatching {
-            Provider.providers.keys.forEach { provider ->
-                if (!ProviderHealth.isQuarantined(provider) &&
-                    !ProviderHealth.parkedDefaultNames.contains(provider.name)
-                ) {
-                    names += provider.name
-                }
-            }
-        }
-        return names
     }
 
     private fun prefs(context: Context) =

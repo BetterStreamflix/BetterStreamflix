@@ -24,16 +24,11 @@ object DownloadEventBridge : DownloadManager.Listener {
     private val lastBytes = mutableMapOf<String, Pair<Long, Long>>()
     /** Consecutive zero-delta samples per media3 id — decay stale speed (DL-P2-D). */
     private val zeroDeltaSamples = mutableMapOf<String, Int>()
-    /** Last honest speed for notification / UI when Content-Length is unknown. */
-    private val lastSpeeds = java.util.concurrent.ConcurrentHashMap<String, Long>()
     private const val ZERO_DELTA_DECAY_AFTER = 3
 
     fun attach(context: Context) {
         appContext = context.applicationContext
     }
-
-    /** Last blended download speed for [media3Id], or 0 when unknown. */
-    fun lastSpeedBps(media3Id: String): Long = lastSpeeds[media3Id] ?: 0L
 
     /** Pull live Media3 progress into Room so the Downloads UI updates in real time. */
     suspend fun syncAllActive(context: Context) {
@@ -65,7 +60,6 @@ object DownloadEventBridge : DownloadManager.Listener {
         scope.launch {
             lastBytes.remove(download.request.id)
             zeroDeltaSamples.remove(download.request.id)
-            lastSpeeds.remove(download.request.id)
             val entity = DownloadRepository.get(context).getByMedia3Id(download.request.id)
             if (entity != null) DownloadNotifier.cancelFailed(context, entity.id)
             refreshAggregateNotification(context, downloadManager)
@@ -138,16 +132,14 @@ object DownloadEventBridge : DownloadManager.Listener {
             historyBps = historyBps,
             historySampleCount = NetworkThroughputHistory.sampleCount(),
         )
-        // Unknown length: still persist blended speed; ETA only when remaining known + confident.
         val speed = honest.speedBytesPerSec
-        val eta = if (honest.confident && remaining > 0L && speed > 0L) honest.etaSeconds else -1L
-        if (speed > 0L) lastSpeeds[media3Id] = speed
+        // Honest: ETA only from measured throughput + known remaining (never length-% alone).
+        val eta = if (speed > 0L && remaining > 0L) honest.etaSeconds else -1L
 
         // Terminal states no longer need speed sampling — otherwise lastBytes grows forever.
         if (state != DownloadItemState.DOWNLOADING && state != DownloadItemState.QUEUED) {
             lastBytes.remove(media3Id)
             zeroDeltaSamples.remove(media3Id)
-            lastSpeeds.remove(media3Id)
         }
 
         // Never persist a remote CDN URL as localUri — that poisoned Play with / share

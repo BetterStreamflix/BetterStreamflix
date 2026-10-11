@@ -95,7 +95,6 @@ class MainMobileActivity : FragmentActivity() {
         registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
             val wsUrl = pendingWs
             val token = pendingToken
-            val payloadBound = pendingPayloadBound
             val cookies =
                 result.data?.getStringExtra(BypassWebViewActivity.EXTRA_COOKIE_HEADER)?.trim()
 
@@ -106,13 +105,8 @@ class MainMobileActivity : FragmentActivity() {
             }
 
             // Never echo cookies to a non-LAN / unbound WebSocket (SEC-DL-01).
-            // Require a prior successful payload bind for this exact (ws, token) pair.
-            if (!BypassWebSocketEndpointHelper.isAllowedPeerWs(wsUrl) || !payloadBound) {
-                Log.w(
-                    "ResolverWS",
-                    "Refusing cookie send to disallowed/unbound ws peer " +
-                        "(allowed=${BypassWebSocketEndpointHelper.isAllowedPeerWs(wsUrl)} bound=$payloadBound)",
-                )
+            if (!BypassWebSocketEndpointHelper.isAllowedPeerWs(wsUrl)) {
+                Log.w("ResolverWS", "Refusing cookie send to disallowed ws peer")
                 return@registerForActivityResult
             }
 
@@ -129,8 +123,6 @@ class MainMobileActivity : FragmentActivity() {
 
     private var pendingWs: String? = null
     private var pendingToken: String? = null
-    /** Set only after a successful payload: response for the pending (ws, token) pair. */
-    private var pendingPayloadBound: Boolean = false
 
     private var updateAppDialog: UpdateAppMobileDialog? = null
 
@@ -306,13 +298,12 @@ class MainMobileActivity : FragmentActivity() {
             if (destination.id == R.id.player &&
                 com.dskja.betterstreamflix.kids.KidsBedtime.shouldBlockEnteringPlayer()
             ) {
-                // KB-016: pop synchronously to shrink one-frame player flash; PIN sheet posts.
-                runCatching {
-                    if (navController.currentDestination?.id == R.id.player) {
-                        navController.popBackStack()
-                    }
-                }
                 binding.root.post {
+                    runCatching {
+                        if (navController.currentDestination?.id == R.id.player) {
+                            navController.popBackStack()
+                        }
+                    }
                     com.dskja.betterstreamflix.kids.KidsBedtimeUi.blockPlayerEntry(this@MainMobileActivity)
                 }
             }
@@ -320,9 +311,7 @@ class MainMobileActivity : FragmentActivity() {
                 // Clean Exit: bottom nav / deep links can leave the player without Back — kill audio.
                 PlaybackLifecycleGuard.stopActivePlayback()
                 if (leavingPlayer) {
-                    com.dskja.betterstreamflix.player.PlayerCleanExit.noteLeavingPlayer(
-                        returningToHome = destination.id == R.id.home,
-                    )
+                    com.dskja.betterstreamflix.player.PlayerCleanExit.noteLeavingPlayer()
                     runCatching {
                         com.dskja.betterstreamflix.ui.TrailerPlaybackController.silenceAllActive()
                     }
@@ -438,82 +427,6 @@ class MainMobileActivity : FragmentActivity() {
             this,
             telegramGateLauncher,
         )
-        registerCastRoomHostConsumer()
-    }
-
-    /** CC-009: Mobile host needs the same Sidekick consumer as TV. */
-    private fun registerCastRoomHostConsumer() {
-        com.dskja.betterstreamflix.sync.CastRoomUi.registerHostConsumer(
-            object : com.dskja.betterstreamflix.sync.CastRoomUi.HostConsumer {
-                override fun onCastRoomPlayItem(
-                    item: com.dskja.betterstreamflix.sync.CastRoomItemPayload,
-                    preferredServerName: String?,
-                ) {
-                    com.dskja.betterstreamflix.sync.CastRoomUi.navigateHostToItem(
-                        this@MainMobileActivity,
-                        item,
-                    )
-                }
-
-                override fun onCastRoomSetPlaying(playing: Boolean) {
-                    val navHost =
-                        supportFragmentManager.findFragmentById(R.id.nav_main_fragment) as? NavHostFragment
-                    val player = navHost?.childFragmentManager?.primaryNavigationFragment
-                        as? PlayerMobileFragment
-                    player?.castRoomApplyRemotePlaying(playing)
-                }
-
-                override fun onCastRoomSeek(positionMs: Long) {
-                    runOnUiThread {
-                        val navHost =
-                            supportFragmentManager.findFragmentById(R.id.nav_main_fragment) as? NavHostFragment
-                        val player = navHost?.childFragmentManager?.primaryNavigationFragment
-                            as? PlayerMobileFragment
-                        player?.castRoomApplyRemoteSeek(positionMs)
-                    }
-                }
-
-                override fun onCastRoomSidekickText(text: String) {
-                    runOnUiThread {
-                        applySidekickKeyboardQuery(text)
-                    }
-                }
-
-                override fun onCastRoomEnded() {
-                    runOnUiThread {
-                        com.dskja.betterstreamflix.utils.ExpDialogChrome.notify(
-                            this@MainMobileActivity,
-                            R.string.cast_room_ended,
-                        )
-                    }
-                }
-            },
-        )
-    }
-
-    private fun applySidekickKeyboardQuery(text: String) {
-        val query = com.dskja.betterstreamflix.sync.TvSidekick.sanitizeKeyboard(text) ?: return
-        val navController =
-            (supportFragmentManager.findFragmentById(R.id.nav_main_fragment) as? NavHostFragment)
-                ?.navController
-        runCatching { navController?.navigate(R.id.search) }
-        binding.root.post {
-            val frag = getCurrentFragment()
-                as? com.dskja.betterstreamflix.fragments.search.SearchMobileFragment
-            if (frag != null) {
-                frag.applySidekickQuery(query)
-            } else {
-                binding.root.postDelayed({
-                    (getCurrentFragment()
-                        as? com.dskja.betterstreamflix.fragments.search.SearchMobileFragment)
-                        ?.applySidekickQuery(query)
-                }, 350L)
-            }
-            com.dskja.betterstreamflix.utils.ExpDialogChrome.notify(
-                this,
-                getString(R.string.tv_sidekick_keyboard_applied, query),
-            )
-        }
     }
 
     override fun onResume() {
@@ -527,7 +440,6 @@ class MainMobileActivity : FragmentActivity() {
         com.dskja.betterstreamflix.download.DownloadPackUi.tryFlushPending(this)
         com.dskja.betterstreamflix.sync.CastRoomUi.tryFlushPending(this)
         com.dskja.betterstreamflix.sync.CastHandoffUi.tryFlushPending(this)
-        com.dskja.betterstreamflix.sync.SessionHandoffUi.tryFlushPending(this)
     }
 
     override fun onStart() {
@@ -536,7 +448,6 @@ class MainMobileActivity : FragmentActivity() {
         runCatching {
             com.dskja.betterstreamflix.profiles.ProfileManager.sweepExpiredGuests(this)
         }
-        com.dskja.betterstreamflix.profiles.GuestForegroundSweep.onStart(this)
         com.dskja.betterstreamflix.telegram.TelegramJoinGateController.onActivityStarted(
             this,
             telegramGateLauncher,
@@ -555,11 +466,9 @@ class MainMobileActivity : FragmentActivity() {
         com.dskja.betterstreamflix.profiletransfer.ProfileTransferUi.tryFlushPending(this)
         com.dskja.betterstreamflix.sync.CastRoomUi.tryFlushPending(this)
         com.dskja.betterstreamflix.sync.CastHandoffUi.tryFlushPending(this)
-        com.dskja.betterstreamflix.sync.SessionHandoffUi.tryFlushPending(this)
     }
 
     override fun onStop() {
-        com.dskja.betterstreamflix.profiles.GuestForegroundSweep.onStop()
         com.dskja.betterstreamflix.profiles.ProfileUnlockGate.markBackgrounded()
         super.onStop()
     }
@@ -573,7 +482,6 @@ class MainMobileActivity : FragmentActivity() {
             com.dskja.betterstreamflix.profiletransfer.ProfileTransferUi.tryFlushPending(this)
             com.dskja.betterstreamflix.sync.CastRoomUi.tryFlushPending(this)
             com.dskja.betterstreamflix.sync.CastHandoffUi.tryFlushPending(this)
-            com.dskja.betterstreamflix.sync.SessionHandoffUi.tryFlushPending(this)
             return
         }
         val host = navHost.childFragmentManager.primaryNavigationFragment ?: navHost
@@ -587,7 +495,6 @@ class MainMobileActivity : FragmentActivity() {
                 com.dskja.betterstreamflix.profiletransfer.ProfileTransferUi.tryFlushPending(this)
                 com.dskja.betterstreamflix.sync.CastRoomUi.tryFlushPending(this)
                 com.dskja.betterstreamflix.sync.CastHandoffUi.tryFlushPending(this)
-                com.dskja.betterstreamflix.sync.SessionHandoffUi.tryFlushPending(this)
             },
         )
     }
@@ -599,7 +506,6 @@ class MainMobileActivity : FragmentActivity() {
     }
 
     override fun onDestroy() {
-        com.dskja.betterstreamflix.sync.CastRoomUi.registerHostConsumer(null)
         CastPlaybackHub.removeSessionStateListener(castSessionListener)
         dismissUpdateDialog()
         // Cancel deferred posts only — clearing launching here races the gate Activity
@@ -612,7 +518,6 @@ class MainMobileActivity : FragmentActivity() {
     private fun clearResolverState() {
         pendingWs = null
         pendingToken = null
-        pendingPayloadBound = false
     }
 
     private fun showUpdateDialog(state: MainViewModel.State.SuccessCheckingUpdate) {
@@ -750,8 +655,7 @@ class MainMobileActivity : FragmentActivity() {
         val provider = UserPreferences.currentProvider ?: return
         val supportsMovies = Provider.supportsMovies(provider)
         val supportsTvShows = Provider.supportsTvShows(provider)
-        val liveHubVisible = !com.dskja.betterstreamflix.utils.LiveHubCatalog.isAgeGated() &&
-            com.dskja.betterstreamflix.kids.KidsFortress.liveHubAllowed()
+        val liveHubVisible = !com.dskja.betterstreamflix.profiles.ProfileManager.isKidsActive()
 
         binding.bnvMain.menu.findItem(R.id.movies)?.isVisible = supportsMovies
         binding.bnvMain.menu.findItem(R.id.tv_shows)?.apply {
@@ -762,11 +666,12 @@ class MainMobileActivity : FragmentActivity() {
                 getString(R.string.main_menu_tv_shows)
             }
         }
-        // Kids Fortress: kids keep Downloads (isolated DB + folder); Live Hub stays off
-        // under kids profiles and parental age-gate (LC-020).
+        val kidsProfile = ProfileManager.isKidsActive()
+        // Kids Fortress: kids keep Downloads (isolated DB + folder); Live Hub stays off.
         binding.bnvMain.menu.findItem(R.id.downloads)?.isVisible =
             com.dskja.betterstreamflix.kids.KidsFortress.downloadsNavVisible()
-        binding.bnvMain.menu.findItem(R.id.live_hub)?.isVisible = liveHubVisible
+        binding.bnvMain.menu.findItem(R.id.live_hub)?.isVisible =
+            liveHubVisible && com.dskja.betterstreamflix.kids.KidsFortress.liveHubAllowed()
 
         val navHost =
             supportFragmentManager.findFragmentById(R.id.nav_main_fragment) as? NavHostFragment
@@ -780,7 +685,7 @@ class MainMobileActivity : FragmentActivity() {
                 navController.navigate(R.id.home)
             }
 
-            currentDestinationId == R.id.live_hub && !liveHubVisible -> {
+            currentDestinationId == R.id.live_hub && (!liveHubVisible || kidsProfile) -> {
                 navController.navigate(R.id.home)
             }
         }
@@ -979,16 +884,6 @@ class MainMobileActivity : FragmentActivity() {
             return true
         }
         if (intent.getBooleanExtra("open_live", false)) {
-            // Kids Fortress: redirect before Live Hub navigation (KF-009).
-            if (!com.dskja.betterstreamflix.kids.KidsFortress.liveHubAllowed()) {
-                val navHost =
-                    supportFragmentManager.findFragmentById(R.id.nav_main_fragment) as? NavHostFragment
-                val navController = navHost?.navController
-                if (navController != null && navController.currentDestination?.id != R.id.home) {
-                    navController.navigate(R.id.home)
-                }
-                return true
-            }
             val navHost =
                 supportFragmentManager.findFragmentById(R.id.nav_main_fragment) as? NavHostFragment
             val navController = navHost?.navController
@@ -1094,28 +989,17 @@ class MainMobileActivity : FragmentActivity() {
         }
         pendingWs = ws
         pendingToken = token
-        pendingPayloadBound = false
 
         lifecycleScope.launch {
             val payload = requestResolverPayload(ws, token)
             if (payload == null) {
-                clearResolverState()
                 showResolverConnectionErrorDialog(ws, token)
                 return@launch
             }
             // Never load attacker payload URLs in Bypass WebView (SEC-DL-01 / WV-01).
             if (!isAllowedResolverPayloadUrl(payload.url)) {
                 Log.w("ResolverWS", "Rejected resolver payload URL: ${payload.url}")
-                clearResolverState()
                 showResolverConnectionErrorDialog(ws, token)
-                return@launch
-            }
-            // Bind cookie return to this successful resolve pair only.
-            if (pendingWs == ws && pendingToken == token) {
-                pendingPayloadBound = true
-            } else {
-                Log.w("ResolverWS", "Pending resolve pair changed; refusing payload bind")
-                clearResolverState()
                 return@launch
             }
 

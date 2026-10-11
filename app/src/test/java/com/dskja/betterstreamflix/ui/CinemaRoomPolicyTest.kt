@@ -154,31 +154,20 @@ class CinemaRoomPolicyTest {
 
     @Test
     fun highEndOk_delegatesAmbientGate() {
-        // Cinema Room reuses AmbientModePolicy.highEndOk — TalkBack / reduce-motion / HC hard off.
-        // Stick Energy alone is not hardReduceEffects.
+        // Cinema Room reuses AmbientModePolicy.highEndOk — TalkBack / reduce-motion hard off.
         assertFalse(
             AmbientModePolicy.highEndOk(
-                hardReduceEffects = false,
+                reduceHomeEffects = false,
                 touchExploration = true,
                 reduceMotion = false,
             ),
         )
         assertTrue(
             AmbientModePolicy.highEndOk(
-                hardReduceEffects = false,
+                reduceHomeEffects = false,
                 touchExploration = false,
                 reduceMotion = false,
-                highContrast = false,
-            ),
-        )
-        assertFalse(
-            AmbientModePolicy.highEndOk(
-                hardReduceEffects = false,
-                touchExploration = false,
-                reduceMotion = false,
-                highContrast = true,
             ),
         )
     }
 }
-

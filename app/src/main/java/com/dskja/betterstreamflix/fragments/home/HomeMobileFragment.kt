@@ -143,11 +143,8 @@ class HomeMobileFragment : Fragment() {
     }
 
     override fun onPause() {
-        // Series Fast-Forward: commit visit watermark only when leaving Home
-        // (not when opening Movie/TV Detail — that was emptying FF shelves).
-        if (!isPausedForDetailNavigation()) {
-            viewModel.commitHomeVisit()
-        }
+        // Series Fast-Forward: commit visit watermark + unfiltered shelf snapshot.
+        viewModel.commitHomeVisit()
         // Soft-pause featured auto-advance while Home is under the detail back stack
         // (prevents BETTERSTREAMFLIX-1 NavHost NPEs from delayed page callbacks).
         _binding?.rvHome?.let { appAdapter.pauseCategorySwipers(it) }
@@ -157,13 +154,6 @@ class HomeMobileFragment : Fragment() {
     /** Shelf chip toggle for “new since last visit”. */
     fun setSeriesFastForwardEnabled(enabled: Boolean) {
         viewModel.setSeriesFastForwardEnabled(enabled)
-    }
-
-    /** True when Home paused because Movie/TV Detail was pushed on the nav stack. */
-    private fun isPausedForDetailNavigation(): Boolean {
-        val destId = runCatching { findNavController().currentDestination?.id }.getOrNull()
-            ?: return false
-        return destId == R.id.movie || destId == R.id.tv_show
     }
 
     override fun onDestroyView() {
@@ -188,17 +178,11 @@ class HomeMobileFragment : Fragment() {
 
         refreshProviderLogo()
         refreshProfileChip()
-        binding.root.findViewById<View>(R.id.btn_home_remix)?.let { remix ->
-            val hideRemix = com.dskja.betterstreamflix.profiles.ProfileManager.isKidsActive() ||
-                com.dskja.betterstreamflix.profiles.ProfileManager.isGuestActive()
-            remix.visibility = if (hideRemix) View.GONE else View.VISIBLE
-            remix.setOnClickListener {
-                if (hideRemix) return@setOnClickListener
-                ExpMotion.hapticTap(it)
-                com.dskja.betterstreamflix.home.HomeRemixUi.show(this) {
-                    homeBindSignature = null
-                    viewModel.getHome()
-                }
+        binding.root.findViewById<View>(R.id.btn_home_remix)?.setOnClickListener {
+            ExpMotion.hapticTap(it)
+            com.dskja.betterstreamflix.home.HomeRemixUi.show(this) {
+                homeBindSignature = null
+                viewModel.getHome()
             }
         }
         binding.ivProviderLogo.apply {
@@ -349,16 +333,8 @@ class HomeMobileFragment : Fragment() {
 
         categories
             .find { Category.isFeaturedName(it.name) }
-            ?.also { featured ->
-                // Restore Featured rotation index across pin/remix rematerialize (parity with TV).
-                val previous = appAdapter.items
-                    .filterIsInstance<Category>()
-                    .find { item -> Category.isFeaturedName(item.name) }
-                featured.selectedIndex = FeaturedTvRotation.coerceIndex(
-                    previous?.selectedIndex ?: featured.selectedIndex,
-                    featured.list.size,
-                )
-                featured.list.forEach { show ->
+            ?.also {
+                it.list.forEach { show ->
                     when (show) {
                         is Movie -> show.itemType = AppAdapter.Type.MOVIE_SWIPER_MOBILE_ITEM
                         is TvShow -> show.itemType = AppAdapter.Type.TV_SHOW_SWIPER_MOBILE_ITEM
@@ -472,16 +448,13 @@ class HomeMobileFragment : Fragment() {
                     banner.episodes,
                 )
                 val first = result.firstEpisode
-                val navigated = if (first != null) {
+                if (first != null) {
                     com.dskja.betterstreamflix.watchlist.WatchlistDigestQueue.navigateToEpisode(
                         findNavController(),
                         requireContext(),
                         first,
                     )
-                } else {
-                    false
                 }
-                if (result.seededCount <= 0 && !navigated) return@launch
                 val without = appAdapter.items.filterNot {
                     it is com.dskja.betterstreamflix.watchlist.WatchlistDigestBannerItem
                 }
@@ -562,9 +535,6 @@ class HomeMobileFragment : Fragment() {
             trustSnapshot,
             requireContext(),
         )
-        val outageNames = com.dskja.betterstreamflix.providers.ProviderOutagePolicy
-            .relevantOutageNames(trustSnapshot)
-        var digestRecorded = false
         visibleCategories.forEachIndexed { index, category ->
             homeItems.add(category)
             // Place digest + support cards after featured / continue watching — never first.
@@ -580,7 +550,7 @@ class HomeMobileFragment : Fragment() {
                 ) {
                     homeItems.add(
                         com.dskja.betterstreamflix.providers.ProviderOutageBannerItem(
-                            providerNames = outageNames.ifEmpty { trustSnapshot.outageProviderNames },
+                            providerNames = trustSnapshot.outageProviderNames,
                             level = trustSnapshot.outageLevel,
                         ).apply {
                             itemType = AppAdapter.Type.PROVIDER_OUTAGE_BANNER_MOBILE_ITEM
@@ -597,10 +567,6 @@ class HomeMobileFragment : Fragment() {
                             itemType = AppAdapter.Type.WATCHLIST_DIGEST_MOBILE_ITEM
                         }
                     )
-                    if (!digestRecorded) {
-                        com.dskja.betterstreamflix.watchlist.WatchlistDigestPolicy.recordShown()
-                        digestRecorded = true
-                    }
                 }
                 if (com.dskja.betterstreamflix.support.SupportPromptPolicy.shouldShowHomeCard() &&
                     homeItems.none { it is com.dskja.betterstreamflix.support.SupportBannerItem }
@@ -624,7 +590,7 @@ class HomeMobileFragment : Fragment() {
             homeItems.add(
                 1.coerceAtMost(homeItems.size),
                 com.dskja.betterstreamflix.providers.ProviderOutageBannerItem(
-                    providerNames = outageNames.ifEmpty { trustSnapshot.outageProviderNames },
+                    providerNames = trustSnapshot.outageProviderNames,
                     level = trustSnapshot.outageLevel,
                 ).apply {
                     itemType = AppAdapter.Type.PROVIDER_OUTAGE_BANNER_MOBILE_ITEM
@@ -652,10 +618,6 @@ class HomeMobileFragment : Fragment() {
                     itemType = AppAdapter.Type.WATCHLIST_DIGEST_MOBILE_ITEM
                 }
             )
-            if (!digestRecorded) {
-                com.dskja.betterstreamflix.watchlist.WatchlistDigestPolicy.recordShown()
-                digestRecorded = true
-            }
         }
         if (com.dskja.betterstreamflix.support.SupportPromptPolicy.shouldShowHomeCard() &&
             homeItems.none { it is com.dskja.betterstreamflix.support.SupportBannerItem } &&
@@ -713,8 +675,6 @@ class HomeMobileFragment : Fragment() {
             "\n" + com.dskja.betterstreamflix.support.SupportPromptPolicy.shouldShowHomeCard() +
             "\n" + UserPreferences.supportEpisodesWatchedCount +
             "\n" + UserPreferences.homeShelfBlockOrder +
-            "\n" + UserPreferences.homeShelfPinsJson +
-            "\n" + com.dskja.betterstreamflix.providers.ShelfWeather.healthSmokeDigest() +
             "\n" + com.dskja.betterstreamflix.watchlist.WatchlistDigestPolicy.shouldShow(
                 watchlistDigestEpisodes,
             ) +

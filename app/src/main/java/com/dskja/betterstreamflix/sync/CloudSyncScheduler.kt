@@ -11,11 +11,6 @@ import androidx.work.workDataOf
 import com.dskja.betterstreamflix.profiles.ProfileManager
 import java.util.concurrent.TimeUnit
 
-/**
- * Schedules [CloudSyncWorker] with [ExistingWorkPolicy.KEEP] (SC-006): bursts while a
- * worker is already queued/running do not replace it — follow-up sync waits until the
- * kept work finishes (acceptable latency for Sync Cloud leicht).
- */
 object CloudSyncScheduler {
     const val KEY_PROFILE_ID = "profile_id"
     const val KEY_USER_ID = "user_id"

@@ -5,6 +5,7 @@ import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.time.format.DateTimeParseException
 import java.time.temporal.TemporalAdjusters
+import java.time.temporal.WeekFields
 import java.util.Locale
 
 /**
@@ -37,32 +38,19 @@ object WatchlistWeekRules {
         val tips: List<AirTip>,
     )
 
-    /**
-     * Product week is always Monday→Sunday for consistency across locales
-     * (US Sunday-start would shift “New this week” mid-week for DE users).
-     */
-    fun weekBounds(today: LocalDate, @Suppress("UNUSED_PARAMETER") locale: Locale = Locale.getDefault()): ClosedRange<LocalDate> {
-        val start = today.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))
+    fun weekBounds(today: LocalDate, locale: Locale = Locale.getDefault()): ClosedRange<LocalDate> {
+        val firstDay = WeekFields.of(locale).firstDayOfWeek
+        val start = today.with(TemporalAdjusters.previousOrSame(firstDay))
         val end = start.plusDays(6)
         return start..end
     }
 
     fun parseAirDate(raw: String?): LocalDate? {
         val trimmed = raw?.trim()?.takeIf { it.isNotEmpty() } ?: return null
-        // Prefer calendar date prefix (handles …T20:00:00Z without zone skew).
-        val datePrefix = trimmed.take(10)
         return try {
-            LocalDate.parse(datePrefix, DateTimeFormatter.ISO_LOCAL_DATE)
+            LocalDate.parse(trimmed.take(10), DateTimeFormatter.ISO_LOCAL_DATE)
         } catch (_: DateTimeParseException) {
-            try {
-                java.time.OffsetDateTime.parse(trimmed).toLocalDate()
-            } catch (_: DateTimeParseException) {
-                try {
-                    java.time.Instant.parse(trimmed).atZone(java.time.ZoneOffset.UTC).toLocalDate()
-                } catch (_: DateTimeParseException) {
-                    null
-                }
-            }
+            null
         }
     }
 

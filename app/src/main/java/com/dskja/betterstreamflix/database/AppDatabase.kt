@@ -84,26 +84,10 @@ abstract class AppDatabase : RoomDatabase() {
         /**
          * Soft open for UI / ViewModels. Returns null when no provider is set or
          * the provider DB cannot be opened after one wipe-and-retry.
-         * Prefer this from fragments / adapters (SS-B10-08).
          */
-        @Suppress("DEPRECATION")
         fun getInstanceOrNull(context: Context): AppDatabase? =
             runCatching { getInstance(context) }.getOrNull()
 
-        /**
-         * Soft-open alias for UI call sites mid provider-clear / TV restore.
-         * Same as [getInstanceOrNull] — never throws.
-         */
-        fun softOpen(context: Context): AppDatabase? = getInstanceOrNull(context)
-
-        /**
-         * Hard open for the active provider singleton. External callers should use
-         * [getInstanceOrNull] / [softOpen] instead (SS-B10-08).
-         */
-        @Deprecated(
-            message = "Prefer getInstanceOrNull / softOpen — never throws on provider-clear",
-            replaceWith = ReplaceWith("getInstanceOrNull(context)"),
-        )
         fun getInstance(context: Context): AppDatabase {
             val providerName = UserPreferences.currentProvider?.name
                 ?: currentProviderName
@@ -142,26 +126,6 @@ abstract class AppDatabase : RoomDatabase() {
                 com.dskja.betterstreamflix.download.StreamflixDownloadManager.release()
             }
         }
-
-        /**
-         * Soft open for a specific provider DB. Returns null when Room cannot open
-         * after one wipe-and-retry (SS-B10-08). Prefer this from UI / resume paths.
-         */
-        fun getInstanceForProviderOrNull(
-            providerName: String,
-            context: Context,
-            profileId: String = ProfileManager.activeProfileId,
-        ): AppDatabase? =
-            runCatching { getInstanceForProvider(providerName, context, profileId) }.getOrNull()
-
-        /**
-         * Soft-open alias for cross-provider UI sites. Same as [getInstanceForProviderOrNull].
-         */
-        fun softOpenForProvider(
-            providerName: String,
-            context: Context,
-            profileId: String = ProfileManager.activeProfileId,
-        ): AppDatabase? = getInstanceForProviderOrNull(providerName, context, profileId)
 
         fun getInstanceForProvider(
             providerName: String,

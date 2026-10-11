@@ -9,35 +9,28 @@ import org.junit.Test
 class RemoteFindLinksTest {
 
     @Test
-    fun deepLinkRoundTrip_codeOnlyNoToken() {
+    fun deepLinkRoundTrip() {
         val link = RemoteFindLinks.buildDeepLink(
             wsUrl = "ws://192.168.1.20:47822",
+            token = "abcdef12abcdef12",
             code = "XK9M2P",
         )
         assertTrue(link.startsWith("betterstreamflix://remotefind?"))
-        assertTrue(!link.contains("token="))
         val target = RemoteFindLinks.parse(link)
         assertNotNull(target)
         assertEquals("ws://192.168.1.20:47822", target!!.wsUrl)
-        assertNull(target.token)
+        assertEquals("abcdef12abcdef12", target.token)
         assertEquals("XK9M2P", target.code)
     }
 
     @Test
-    fun httpsMirrorIsCodeOnly() {
-        val link = RemoteFindLinks.buildHttpsLink("ABC234")
-        assertEquals("https://betterstreamflix.app/remotefind?code=ABC234", link)
-        val target = RemoteFindLinks.parse(link)
-        assertNull(target?.wsUrl)
-        assertNull(target?.token)
-        assertEquals("ABC234", target?.code)
-    }
-
-    @Test
-    fun legacyTokenLinksStillParse() {
-        val target = RemoteFindLinks.parse(
-            "betterstreamflix://remotefind?ws=ws%3A%2F%2F10.0.0.5%3A47822&token=tokentokentoken12&code=ABC234",
+    fun httpsMirrorParses() {
+        val link = RemoteFindLinks.buildHttpsLink(
+            wsUrl = "ws://10.0.0.5:47822",
+            token = "tokentokentoken12",
+            code = "ABC234",
         )
+        val target = RemoteFindLinks.parse(link)
         assertEquals("tokentokentoken12", target?.token)
         assertEquals("ABC234", target?.code)
     }
@@ -56,31 +49,19 @@ class RemoteFindLinksTest {
     fun shortCodeHelpers() {
         assertEquals(6, RemoteFindCode.newShortCode().length)
         assertTrue(RemoteFindCode.isValid(RemoteFindCode.newShortCode()))
-        // Ambiguous glyphs remap into generator alphabet (0/O→Q, 1/I/L→J).
-        assertEquals("ABCQJ2", RemoteFindCode.normalize("abc012"))
+        assertEquals("ABCOI2", RemoteFindCode.normalize("abc012"))
         assertNull(RemoteFindCode.normalize("short"))
-        assertEquals("ABCDEF", RemoteFindCode.normalize("ABC-DEF"))
     }
 
     @Test
-    fun discoveryOfferParse_tokenless() {
-        val offer = RemoteFindDiscovery.parseOffer(
-            "remotefind:offer:XK9M2P:ws://192.168.0.8:47822",
-            fromHost = "192.168.0.8",
-        )
-        assertNotNull(offer)
-        assertEquals("XK9M2P", offer!!.code)
-        assertEquals("ws://192.168.0.8:47822", offer.wsUrl)
-    }
-
-    @Test
-    fun discoveryOfferParse_legacyTokenStillAccepted() {
+    fun discoveryOfferParse() {
         val offer = RemoteFindDiscovery.parseOffer(
             "remotefind:offer:XK9M2P:abcdef12abcdef12:ws://192.168.0.8:47822",
             fromHost = "192.168.0.8",
         )
         assertNotNull(offer)
         assertEquals("XK9M2P", offer!!.code)
+        assertEquals("abcdef12abcdef12", offer.token)
         assertEquals("ws://192.168.0.8:47822", offer.wsUrl)
     }
 }

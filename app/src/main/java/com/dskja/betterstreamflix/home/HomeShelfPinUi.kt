@@ -6,7 +6,7 @@ import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import com.dskja.betterstreamflix.R
 import com.dskja.betterstreamflix.models.Category
-import com.dskja.betterstreamflix.ui.UserDataNotifier
+import com.dskja.betterstreamflix.utils.ProviderChangeNotifier
 
 /** Shared pin feedback + Settings picker for Shelf Pinning. */
 object HomeShelfPinUi {
@@ -50,11 +50,11 @@ object HomeShelfPinUi {
         when (result) {
             is HomeShelfLayout.ToggleResult.Pinned -> {
                 toast(context, context.getString(R.string.home_shelf_pinned, labelFor(context, shelfId)))
-                UserDataNotifier.notifyChanged()
+                ProviderChangeNotifier.notifyProviderChanged()
             }
             is HomeShelfLayout.ToggleResult.Unpinned -> {
                 toast(context, context.getString(R.string.home_shelf_unpinned, labelFor(context, shelfId)))
-                UserDataNotifier.notifyChanged()
+                ProviderChangeNotifier.notifyProviderChanged()
             }
             is HomeShelfLayout.ToggleResult.MaxReached -> {
                 toast(
@@ -106,7 +106,7 @@ object HomeShelfPinUi {
             }
             .setPositiveButton(android.R.string.ok) { _, _ ->
                 HomeShelfLayout.setPins(selected)
-                UserDataNotifier.notifyChanged()
+                ProviderChangeNotifier.notifyProviderChanged()
                 onChanged()
             }
             .setNegativeButton(android.R.string.cancel, null)

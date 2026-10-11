@@ -1,13 +1,10 @@
 package com.dskja.betterstreamflix.providers
 
 import com.dskja.betterstreamflix.player.SerienStreamBypassHelper
-import com.dskja.betterstreamflix.ui.StickEnergyMode
 import com.dskja.betterstreamflix.utils.UserPreferences
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
-import kotlinx.coroutines.sync.Semaphore
-import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.withContext
 
 /**
@@ -87,19 +84,11 @@ object ProviderPassport {
     /** Pure status resolution — unit-tested without Android prefs. */
     fun resolveStatus(signals: Signals): Status = when (signals.kind) {
         Kind.CLEARANCE_GATE -> when {
-            // Failed live /account probe must not show green “Sitzung frisch”
-            // just because CF cookie names are still present.
-            signals.lastValidatedOk == false -> when {
-                signals.isLoggedIn || signals.hasWebSession || signals.hasClearance ->
-                    Status.CAPTCHA_DUE
-                else -> Status.LOGIN_DUE
-            }
             signals.hasClearance -> Status.SESSION_FRESH
             signals.isLoggedIn || signals.hasWebSession -> Status.CAPTCHA_DUE
             else -> Status.LOGIN_DUE
         }
         Kind.ACCOUNT_TOKEN -> when {
-            signals.lastValidatedOk == false -> Status.LOGIN_DUE
             signals.isLoggedIn -> Status.SESSION_FRESH
             else -> Status.LOGIN_DUE
         }
@@ -139,53 +128,25 @@ object ProviderPassport {
         return snapshotFromEntries(runtimeEntries(), nowMs)
     }
 
-    /** Shared TTL so Trust + Passport screens do not double-probe within a minute. */
-    const val REFRESH_TTL_MS: Long = 60_000L
-
-    @Volatile
-    private var cachedSnapshot: Snapshot? = null
-
-    @Volatile
-    private var cachedAtMs: Long = 0L
-
     /**
      * Re-read jars and optionally live-validate SerienStream / AniWorld account
      * probes so Settings can refresh “Sitzung frisch” after login/captcha.
      */
-    suspend fun refresh(
-        validateSessions: Boolean = true,
-        force: Boolean = false,
-        nowMs: Long = System.currentTimeMillis(),
-    ): Snapshot =
+    suspend fun refresh(validateSessions: Boolean = true): Snapshot =
         withContext(Dispatchers.IO) {
-            if (!force && validateSessions) {
-                val hit = cachedSnapshot
-                if (hit != null && nowMs - cachedAtMs < REFRESH_TTL_MS) {
-                    return@withContext hit
-                }
-            }
             if (validateSessions) {
-                // SE-009: serial session probes under Stick Energy.
-                val gate = Semaphore(StickEnergyMode.providerParallelism(default = 2))
                 coroutineScope {
                     val ss = async {
-                        gate.withPermit {
-                            runCatching { SerienStreamAuthManager.validateSession() }
-                        }
+                        runCatching { SerienStreamAuthManager.validateSession() }
                     }
                     val aw = async {
-                        gate.withPermit {
-                            runCatching { AniWorldAuthManager.validateSession() }
-                        }
+                        runCatching { AniWorldAuthManager.validateSession() }
                     }
                     ss.await()
                     aw.await()
                 }
             }
-            val snap = snapshotFromRuntime(nowMs)
-            cachedSnapshot = snap
-            cachedAtMs = nowMs
-            snap
+            snapshotFromRuntime()
         }
 
     /** Status for picker badges — null when the provider has no passport. */
@@ -201,11 +162,6 @@ object ProviderPassport {
         return resolveStatus(entry.signals)
     }
 
-    /**
-     * Passport covers providers with a real login / captcha clearance surface only
-     * (SerienStream, AniWorld, GuardaFlix). Other sources stay out of Passport by
-     * design (PT-024) — extend when a comparable auth/cookie gate exists.
-     */
     fun supportsPassport(provider: Provider): Boolean =
         provider is SerienStreamProvider ||
             provider is AniWorldProvider ||
@@ -276,12 +232,13 @@ object ProviderPassport {
         )
     }
 
-    /** Prefer display name / domain — no English wire codes (Settings never binds detail). */
-    private fun detailFor(signals: Signals, @Suppress("UNUSED_PARAMETER") status: Status): String? {
+    private fun detailFor(signals: Signals, status: Status): String? {
         return when {
             !signals.displayName.isNullOrBlank() -> signals.displayName
-            !signals.domain.isNullOrBlank() -> signals.domain
-            else -> null
+            status == Status.SESSION_FRESH && signals.lastValidatedOk == true -> "validated"
+            status == Status.CAPTCHA_DUE && signals.isLoggedIn -> "logged_in_no_clearance"
+            status == Status.LOGIN_DUE -> "signed_out"
+            else -> signals.domain
         }
     }
 

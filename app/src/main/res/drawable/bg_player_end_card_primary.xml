@@ -5,8 +5,8 @@
             <solid android:color="@color/cinema_accent" />
             <corners android:radius="14dp" />
             <stroke
-                android:width="?attr/tvFocusStrokeWidth"
-                android:color="?attr/tvFocusStrokeColor" />
+                android:width="3dp"
+                android:color="@color/cinema_text" />
         </shape>
     </item>
     <item android:state_pressed="true">

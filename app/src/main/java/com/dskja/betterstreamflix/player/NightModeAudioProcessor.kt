@@ -19,9 +19,8 @@ import kotlin.math.sin
  * - soft-knee compressor to tame loud action peaks
  * - gentle makeup + soft limiter
  *
- * Attached only while Night is enabled ([SubtitleOffsetRenderersFactory] — PT-134).
- * Soft-rebuild on toggle keeps a true empty-chain bypass when Night is off.
- * If [NightModeAudio.enabled] flips mid-buffer before rebuild, samples copy through.
+ * Always stays in the sink chain; when [NightModeAudio.enabled] is false it
+ * copies samples through unchanged so the toggle is instant.
  */
 @UnstableApi
 class NightModeAudioProcessor : BaseAudioProcessor() {
@@ -32,10 +31,6 @@ class NightModeAudioProcessor : BaseAudioProcessor() {
     private var envelopes = FloatArray(0)
     private var attackCoeff = 0f
     private var releaseCoeff = 0f
-
-    /** Leftover bytes that do not form a whole PCM frame yet (Night path). */
-    private var pendingInput: ByteArray? = null
-    private var pendingSize = 0
 
     override fun onConfigure(inputAudioFormat: AudioProcessor.AudioFormat): AudioProcessor.AudioFormat {
         if (inputAudioFormat.encoding != C.ENCODING_PCM_16BIT) {
@@ -53,50 +48,24 @@ class NightModeAudioProcessor : BaseAudioProcessor() {
         envelopes = FloatArray(channelCount)
         attackCoeff = expCoeff(ATTACK_MS, sampleRate)
         releaseCoeff = expCoeff(RELEASE_MS, sampleRate)
-        pendingSize = 0
         return inputAudioFormat
     }
 
     override fun queueInput(inputBuffer: ByteBuffer) {
         val remaining = inputBuffer.remaining()
         if (remaining == 0) return
-        // Pass-through when Night is off — still need an output buffer while active
-        // in the sink chain for instant toggle (true Media3 bypass would drop mid-toggle).
+        val output = replaceOutputBuffer(remaining)
         if (!NightModeAudio.enabled || channelCount <= 0 || biquad == null) {
-            pendingSize = 0
-            val output = replaceOutputBuffer(remaining)
             output.put(inputBuffer)
             output.flip()
             return
         }
-        val channels = channelCount
-        val bytesPerFrame = channels * 2
-        if (bytesPerFrame <= 0) {
-            val output = replaceOutputBuffer(remaining)
-            output.put(inputBuffer)
-            output.flip()
-            return
-        }
-
-        // Concatenate leftover + new input, process only whole frames, keep remainder.
-        val totalIn = pendingSize + remaining
-        val combined = ByteArray(totalIn)
-        if (pendingSize > 0) {
-            System.arraycopy(pendingInput!!, 0, combined, 0, pendingSize)
-        }
-        inputBuffer.get(combined, pendingSize, remaining)
-        pendingSize = 0
-
-        val processable = totalIn - (totalIn % bytesPerFrame)
-        val leftover = totalIn - processable
-        val output = replaceOutputBuffer(processable)
         val eq = biquad!!
-        val order = inputBuffer.order()
-        var offset = 0
-        while (offset + bytesPerFrame <= processable) {
-            val frame = ByteBuffer.wrap(combined, offset, bytesPerFrame).order(order)
+        val channels = channelCount
+        while (inputBuffer.hasRemaining()) {
             for (ch in 0 until channels) {
-                val sample = frame.short
+                if (!inputBuffer.hasRemaining()) break
+                val sample = inputBuffer.short
                 var x = sample / 32768f
                 x = eq.process(ch, x)
                 val abs = kotlin.math.abs(x)
@@ -111,14 +80,6 @@ class NightModeAudioProcessor : BaseAudioProcessor() {
                 val out = (x * 32767f).toInt().coerceIn(Short.MIN_VALUE.toInt(), Short.MAX_VALUE.toInt())
                 output.putShort(out.toShort())
             }
-            offset += bytesPerFrame
-        }
-        if (leftover > 0) {
-            val buf = pendingInput?.takeIf { it.size >= leftover }
-                ?: ByteArray(leftover.coerceAtLeast(bytesPerFrame))
-            System.arraycopy(combined, processable, buf, 0, leftover)
-            pendingInput = buf
-            pendingSize = leftover
         }
         output.flip()
     }
@@ -126,7 +87,6 @@ class NightModeAudioProcessor : BaseAudioProcessor() {
     override fun onFlush() {
         envelopes.fill(0f)
         biquad?.reset()
-        pendingSize = 0
     }
 
     override fun onReset() {
@@ -134,8 +94,6 @@ class NightModeAudioProcessor : BaseAudioProcessor() {
         biquad = null
         channelCount = 0
         sampleRate = 0
-        pendingSize = 0
-        pendingInput = null
     }
 
     private fun compressorGain(envelope: Float): Float {

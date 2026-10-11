@@ -12,20 +12,12 @@ object SettingsDeepLink {
         pendingScreenKey = "screen_downloads"
     }
 
-    fun openAppearanceScreen() {
-        pendingScreenKey = "screen_appearance"
-    }
-
     fun openSerienStreamAuth() {
         pendingScreenKey = "screen_serienstream_auth"
     }
 
     fun openAniWorldAuth() {
         pendingScreenKey = "screen_aniworld_auth"
-    }
-
-    fun openGuardaFlixAuth() {
-        pendingScreenKey = "screen_guardaflix_auth"
     }
 
     fun openProviderTrust() {

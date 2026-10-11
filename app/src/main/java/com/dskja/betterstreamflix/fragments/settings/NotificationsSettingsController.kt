@@ -5,7 +5,6 @@ import androidx.preference.Preference
 import androidx.preference.SwitchPreference
 import androidx.preference.SwitchPreferenceCompat
 import com.dskja.betterstreamflix.notifications.LiveFavoriteStartingChecker
-import com.dskja.betterstreamflix.notifications.LiveReminderScheduler
 import com.dskja.betterstreamflix.notifications.NotificationCheckScheduler
 import com.dskja.betterstreamflix.notifications.NotificationPermission
 import com.dskja.betterstreamflix.utils.UserPreferences
@@ -21,12 +20,7 @@ object NotificationsSettingsController {
         }
         bindSwitch(fragment, findPreference, "NOTIFY_LIVE_FAVORITE_STARTING") { enabled ->
             UserPreferences.notifyLiveFavoriteStarting = enabled
-            if (enabled) {
-                LiveFavoriteStartingChecker.resetBaseline()
-            } else {
-                // Cancel outstanding pre-kickoff OneTime work on opt-out.
-                LiveReminderScheduler.syncFromFavorites(fragment.requireContext(), emptyList())
-            }
+            if (enabled) LiveFavoriteStartingChecker.resetBaseline()
         }
         bindSwitch(fragment, findPreference, "DOWNLOAD_NOTIFY_COMPLETE") { enabled ->
             UserPreferences.downloadNotifyComplete = enabled

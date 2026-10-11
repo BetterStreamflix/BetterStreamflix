@@ -23,9 +23,7 @@ import com.dskja.betterstreamflix.profiles.ProfileUnlockGate
 import com.dskja.betterstreamflix.utils.ExpDialogChrome
 import com.dskja.betterstreamflix.utils.ExperimentalMobileDesign
 import com.dskja.betterstreamflix.utils.QrUtils
-import com.dskja.betterstreamflix.utils.UserPreferences
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
-import kotlin.coroutines.resume
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -46,19 +44,16 @@ object DownloadPackUi {
             }
             if (!fragment.isAdded) return@launch
             val ctx = fragment.context ?: return@launch
-            result.onSuccess { built ->
-                if (built.truncated) {
-                    ExpDialogChrome.notify(
-                        ctx,
-                        ctx.getString(
-                            R.string.download_pack_share_truncated,
-                            DownloadPackPayload.MAX_EPISODES,
-                        ),
-                    )
-                }
-                presentShare(fragment, built.payload.withShareTtl())
+            result.onSuccess { payload ->
+                presentShare(fragment, payload)
             }.onFailure { error ->
-                notifyShareFailure(ctx, error)
+                ExpDialogChrome.notify(
+                    ctx,
+                    ctx.getString(
+                        R.string.download_pack_share_failed,
+                        error.message ?: error.javaClass.simpleName,
+                    ),
+                )
             }
         }
     }
@@ -76,42 +71,29 @@ object DownloadPackUi {
             if (!fragment.isAdded) return@launch
             val ctx = fragment.context ?: return@launch
             result.onSuccess { payload ->
-                presentShare(fragment, payload.withShareTtl())
+                presentShare(fragment, payload)
             }.onFailure { error ->
-                notifyShareFailure(ctx, error)
+                ExpDialogChrome.notify(
+                    ctx,
+                    ctx.getString(
+                        R.string.download_pack_share_failed,
+                        error.message ?: error.javaClass.simpleName,
+                    ),
+                )
             }
         }
-    }
-
-    private fun DownloadPackPayload.withShareTtl(): DownloadPackPayload =
-        copy(
-            version = DownloadPackPayload.VERSION,
-            expiresAtEpochMs = if (expiresAtEpochMs > 0L) {
-                expiresAtEpochMs
-            } else {
-                System.currentTimeMillis() + DownloadPackPayload.SHARE_TTL_MS
-            },
-        )
-
-    private fun notifyShareFailure(context: Context, error: Throwable) {
-        val message = error.message.orEmpty()
-        if (message.contains("pack too large", ignoreCase = true)) {
-            ExpDialogChrome.notify(context, R.string.download_pack_share_too_large)
-            return
-        }
-        ExpDialogChrome.notify(
-            context,
-            context.getString(
-                R.string.download_pack_share_failed,
-                error.message ?: error.javaClass.simpleName,
-            ),
-        )
     }
 
     private fun presentShare(fragment: Fragment, payload: DownloadPackPayload) {
         val context = fragment.context ?: return
         val uri = runCatching { DownloadPackLinks.buildUri(payload) }.getOrElse { error ->
-            notifyShareFailure(context, error)
+            ExpDialogChrome.notify(
+                context,
+                context.getString(
+                    R.string.download_pack_share_failed,
+                    error.message ?: error.javaClass.simpleName,
+                ),
+            )
             return
         }
         val qrUri = runCatching { DownloadPackLinks.buildCustomSchemeUri(payload) }.getOrDefault(uri)
@@ -294,7 +276,6 @@ object DownloadPackUi {
         }
         if (glass != null) builder.setView(glass.root) else builder.setMessage(message)
         var importing = false
-        val encodedMark = runCatching { DownloadPackLinks.encode(payload) }.getOrNull()
         val dialog = builder
             .setTitle(R.string.download_pack_import_confirm_title)
             .setNegativeButton(android.R.string.cancel, null)
@@ -304,10 +285,7 @@ object DownloadPackUi {
             }
             .create()
         dialog.setOnDismissListener {
-            if (!importing) {
-                confirmInFlight = false
-                encodedMark?.let { promptedEncoded.remove(it) }
-            }
+            if (!importing) confirmInFlight = false
         }
         dialog.setOnShowListener {
             if (glass != null) {
@@ -325,63 +303,18 @@ object DownloadPackUi {
             ExpDialogChrome.notify(activity, R.string.download_pack_import_invalid)
             return
         }
-        if (payload.isExpired()) {
-            ExpDialogChrome.notify(activity, R.string.download_pack_import_expired)
-            return
-        }
         handleIncoming(activity, payload)
-    }
-
-    /** TV / paste-link entry: EditText dialog then [handleIncomingRaw]. */
-    fun promptImportFromLink(activity: FragmentActivity) {
-        val input = android.widget.EditText(activity).apply {
-            hint = activity.getString(R.string.offline_studio_pack_import_link_hint)
-            minLines = 2
-            setTextIsSelectable(true)
-            inputType = android.text.InputType.TYPE_CLASS_TEXT or
-                android.text.InputType.TYPE_TEXT_FLAG_MULTI_LINE or
-                android.text.InputType.TYPE_TEXT_VARIATION_URI
-        }
-        val pad = (16 * activity.resources.displayMetrics.density).toInt()
-        val container = android.widget.FrameLayout(activity).apply {
-            setPadding(pad, pad / 2, pad, 0)
-            addView(
-                input,
-                android.widget.FrameLayout.LayoutParams(
-                    android.widget.FrameLayout.LayoutParams.MATCH_PARENT,
-                    android.widget.FrameLayout.LayoutParams.WRAP_CONTENT,
-                ),
-            )
-        }
-        androidx.appcompat.app.AlertDialog.Builder(activity)
-            .setTitle(R.string.offline_studio_pack_import_tv)
-            .setMessage(R.string.offline_studio_pack_import_paste_message)
-            .setView(container)
-            .setPositiveButton(R.string.download_pack_import_confirm_action) { _, _ ->
-                handleIncomingRaw(activity, input.text?.toString())
-            }
-            .setNegativeButton(android.R.string.cancel, null)
-            .show()
     }
 
     private fun runImport(activity: FragmentActivity, payload: DownloadPackPayload) {
         activity.lifecycleScope.launch {
-            val allowMetered = confirmCellularIfNeeded(activity)
-            if (UserPreferences.downloadWifiOnly &&
-                DownloadConnectivityMonitor.isMetered(activity) &&
-                !allowMetered
-            ) {
-                confirmInFlight = false
-                runCatching { DownloadPackLinks.encode(payload) }.getOrNull()
-                    ?.let { promptedEncoded.remove(it) }
-                return@launch
-            }
+            // Wi‑Fi-only preference is honoured inside DownloadController / queue policy.
             val result = withContext(Dispatchers.IO) {
                 runCatching {
                     DownloadPackImporter.importPayload(
                         activity.applicationContext,
                         payload,
-                        allowMetered = allowMetered,
+                        allowMetered = false,
                     )
                 }
             }
@@ -402,8 +335,6 @@ object DownloadPackUi {
                 navigateDownloads(activity)
                 tryFlushPending(activity)
             }.onFailure { error ->
-                runCatching { DownloadPackLinks.encode(payload) }.getOrNull()
-                    ?.let { promptedEncoded.remove(it) }
                 ExpDialogChrome.notify(
                     activity,
                     activity.getString(
@@ -411,37 +342,6 @@ object DownloadPackUi {
                         error.message ?: error.javaClass.simpleName,
                     ),
                 )
-            }
-        }
-    }
-
-    /**
-     * @return true when metered downloads are allowed for this import
-     * (user confirmed on cellular, or Wi‑Fi-only is off).
-     */
-    private suspend fun confirmCellularIfNeeded(activity: FragmentActivity): Boolean {
-        if (!UserPreferences.downloadWifiOnly) return true
-        if (!DownloadConnectivityMonitor.isMetered(activity)) return false
-        return kotlinx.coroutines.suspendCancellableCoroutine { cont ->
-            activity.runOnUiThread {
-                val builder = if (ExperimentalMobileDesign.enabled()) {
-                    MaterialAlertDialogBuilder(activity)
-                } else {
-                    androidx.appcompat.app.AlertDialog.Builder(activity)
-                }
-                builder
-                    .setTitle(R.string.download_options_cellular_confirm_title)
-                    .setMessage(R.string.download_options_cellular_confirm_message)
-                    .setPositiveButton(android.R.string.ok) { _, _ ->
-                        if (cont.isActive) cont.resume(true)
-                    }
-                    .setNegativeButton(android.R.string.cancel) { _, _ ->
-                        if (cont.isActive) cont.resume(false)
-                    }
-                    .setOnCancelListener {
-                        if (cont.isActive) cont.resume(false)
-                    }
-                    .show()
             }
         }
     }
@@ -474,91 +374,34 @@ object DownloadPackUi {
 }
 
 /**
- * Small FIFO of pending pack deep links while PIN gate / prior confirm is busy.
- * Keeps the last [MAX_QUEUE] encoded packs; [peekEncoded] returns the oldest matching
- * the active profile; [clear] removes that head after consume (OS-055).
+ * One pending pack deep link while PIN gate / prior confirm is busy.
+ * Stored as encoded link string in process memory + SharedPreferences fallback.
  */
 object DownloadPackPendingImport {
     private const val PREFS = "download_pack_pending"
-    private const val KEY_QUEUE = "queue_json"
-    private const val KEY_LEGACY = "encoded"
-    private const val KEY_LEGACY_PROFILE = "profile_id"
-    private const val MAX_QUEUE = 3
+    private const val KEY = "encoded"
 
-    private data class Entry(val encoded: String, val profileId: String)
-
-    private val memory = ArrayDeque<Entry>()
+    @Volatile
+    private var memory: String? = null
 
     fun enqueue(context: Context, payload: DownloadPackPayload) {
         val encoded = runCatching { DownloadPackLinks.encode(payload) }.getOrNull() ?: return
-        val profileId = com.dskja.betterstreamflix.profiles.ProfileManager.activeProfileId
-        synchronized(memory) {
-            migrateLegacy(context)
-            memory.removeAll { it.encoded == encoded && it.profileId == profileId }
-            memory.addLast(Entry(encoded, profileId))
-            while (memory.size > MAX_QUEUE) memory.removeFirst()
-            persist(context)
-        }
-    }
-
-    fun peekEncoded(context: Context): String? {
-        val active = com.dskja.betterstreamflix.profiles.ProfileManager.activeProfileId
-        synchronized(memory) {
-            migrateLegacy(context)
-            return memory.firstOrNull { it.profileId == active }?.encoded
-        }
-    }
-
-    fun clear(context: Context) {
-        val active = com.dskja.betterstreamflix.profiles.ProfileManager.activeProfileId
-        synchronized(memory) {
-            migrateLegacy(context)
-            val idx = memory.indexOfFirst { it.profileId == active }
-            if (idx >= 0) memory.removeAt(idx)
-            persist(context)
-        }
-    }
-
-    private fun migrateLegacy(context: Context) {
-        if (memory.isNotEmpty()) return
-        val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-        val queueJson = prefs.getString(KEY_QUEUE, null)
-        if (!queueJson.isNullOrBlank()) {
-            runCatching {
-                val arr = org.json.JSONArray(queueJson)
-                for (i in 0 until arr.length()) {
-                    val o = arr.optJSONObject(i) ?: continue
-                    val encoded = o.optString("encoded").trim()
-                    val profileId = o.optString("profileId")
-                    if (encoded.isNotEmpty()) memory.addLast(Entry(encoded, profileId))
-                }
-            }
-            while (memory.size > MAX_QUEUE) memory.removeFirst()
-            return
-        }
-        val legacy = prefs.getString(KEY_LEGACY, null)?.trim().orEmpty()
-        if (legacy.isNotEmpty()) {
-            val profileId = prefs.getString(KEY_LEGACY_PROFILE, null).orEmpty()
-            memory.addLast(Entry(legacy, profileId))
-            prefs.edit().remove(KEY_LEGACY).remove(KEY_LEGACY_PROFILE).apply()
-            persist(context)
-        }
-    }
-
-    private fun persist(context: Context) {
-        val arr = org.json.JSONArray()
-        memory.forEach { entry ->
-            arr.put(
-                org.json.JSONObject()
-                    .put("encoded", entry.encoded)
-                    .put("profileId", entry.profileId),
-            )
-        }
+        memory = encoded
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
             .edit()
-            .putString(KEY_QUEUE, arr.toString())
-            .remove(KEY_LEGACY)
-            .remove(KEY_LEGACY_PROFILE)
+            .putString(KEY, encoded)
+            .apply()
+    }
+
+    fun peekEncoded(context: Context): String? =
+        memory
+            ?: context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getString(KEY, null)
+
+    fun clear(context: Context) {
+        memory = null
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            .edit()
+            .remove(KEY)
             .apply()
     }
 }

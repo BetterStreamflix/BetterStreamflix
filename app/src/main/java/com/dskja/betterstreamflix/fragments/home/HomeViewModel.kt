@@ -347,14 +347,8 @@ class HomeViewModel(
                 lastUnfilteredNextEpisodeIds = nextDeduped.map { it.id }.filter { it.isNotBlank() }.toSet()
                 lastUnfilteredFavoriteTvIds =
                     history.favoriteTvShows.map { it.id }.filter { it.isNotBlank() }.toSet()
-                val appCtx = BetterStreamflixApp.instance.applicationContext
-                val nextTasteClean = SeriesFastForward.filterTasteHidden(appCtx, nextDeduped)
-                val favTasteClean = SeriesFastForward.filterTasteHidden(
-                    appCtx,
-                    history.favoriteTvShows,
-                )
-                val nextFiltered = SeriesFastForward.filterEpisodes(nextTasteClean)
-                val favoriteTvFiltered = SeriesFastForward.filterTvShows(favTasteClean)
+                val nextFiltered = SeriesFastForward.filterEpisodes(nextDeduped)
+                val favoriteTvFiltered = SeriesFastForward.filterTvShows(history.favoriteTvShows)
                 val rwDeduped = filterRecentlyWatchedAgainstActive(
                     recentlyWatched = history.recentlyWatched,
                     continueWatching = mergedCw,
@@ -384,19 +378,9 @@ class HomeViewModel(
                 fun stamp(category: Category): Category =
                     HomeShelfLayout.stampIdentity(category, category.name)
 
-                // Kids Friday ritual — catalog + favorites pool, independent of Smart Collections.
+                // Kids Friday ritual — catalog suggestions, independent of Smart Collections.
                 val familyFriday = FamilyFridayShelf.build(
                     catalogCategories = state.categories,
-                    favoriteCategories = listOf(
-                        Category(
-                            name = Category.FAVORITE_MOVIES,
-                            list = history.favoritesMovies,
-                        ),
-                        Category(
-                            name = Category.FAVORITE_TV_SHOWS,
-                            list = history.favoriteTvShows,
-                        ),
-                    ),
                 )?.let(::stamp)
 
                 val watchlistWeek = WatchlistWeekBuilder.build(
@@ -438,11 +422,8 @@ class HomeViewModel(
                     categories = continueShelves + listOfNotNull(liveShelf) + collectionShelves,
                     order = HomeRemix.parseOrder(UserPreferences.homeShelfBlockOrder),
                 )
-                val appContext = BetterStreamflixApp.instance.applicationContext
                 val downloadsShelf = HomeShelfCompanions.downloadsShelf(
-                    context = appContext,
-                    mobile = !com.dskja.betterstreamflix.utils.DeviceCapabilities
-                        .isLeanbackDevice(appContext),
+                    BetterStreamflixApp.instance.applicationContext,
                 )
 
                 val categories = ParentalControlUtils.filterCategories(
@@ -511,8 +492,6 @@ class HomeViewModel(
         viewModelScope.launch {
             ProviderChangeNotifier.providerChangeFlow.collect {
                 libraryRefresh.value += 1
-                HomeShelfCompanions.invalidateDownloadsCache()
-                WatchlistWeekBuilder.invalidateCache()
                 getHome()
             }
         }
@@ -520,8 +499,6 @@ class HomeViewModel(
         viewModelScope.launch {
             UserDataNotifier.updates.collect {
                 libraryRefresh.value += 1
-                HomeShelfCompanions.invalidateDownloadsCache()
-                WatchlistWeekBuilder.invalidateCache()
                 val provider = UserPreferences.currentProvider ?: return@collect
                 loadUserDataCache(provider)
             }

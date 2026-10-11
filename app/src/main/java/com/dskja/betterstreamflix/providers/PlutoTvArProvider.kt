@@ -291,7 +291,7 @@ object PlutoTvArProvider : IptvProvider, ProviderConfigUrl {
                     name = channel.name,
                     logo = channel.logo,
                     group = channel.group,
-                    programNow = null, // group is not real EPG
+                    programNow = channel.group?.takeIf { it.isNotBlank() },
                 )
             }
         return com.dskja.betterstreamflix.iptv.IptvChannelWindow.fromChannels(channels, aroundId, limit)

@@ -89,56 +89,34 @@ class AmbientModePolicyTest {
     }
 
     @Test
-    fun highEndOk_blocksHardReduceTalkBackAnimatorAndHighContrast_allowsStickEnergyAlone() {
-        // Stick Energy alone is not hardReduceEffects — Ambient may enter.
+    fun highEndOk_blocksReduceMotionAndTalkBack() {
         assertTrue(
             AmbientModePolicy.highEndOk(
-                hardReduceEffects = false,
-                touchExploration = false,
-                reduceMotion = false,
-                highContrast = false,
-            ),
-        )
-        assertFalse(
-            AmbientModePolicy.highEndOk(
-                hardReduceEffects = true,
+                reduceHomeEffects = false,
                 touchExploration = false,
                 reduceMotion = false,
             ),
         )
         assertFalse(
             AmbientModePolicy.highEndOk(
-                hardReduceEffects = false,
+                reduceHomeEffects = true,
+                touchExploration = false,
+                reduceMotion = false,
+            ),
+        )
+        assertFalse(
+            AmbientModePolicy.highEndOk(
+                reduceHomeEffects = false,
                 touchExploration = true,
                 reduceMotion = false,
             ),
         )
         assertFalse(
             AmbientModePolicy.highEndOk(
-                hardReduceEffects = false,
+                reduceHomeEffects = false,
                 touchExploration = false,
                 reduceMotion = true,
             ),
-        )
-        assertFalse(
-            AmbientModePolicy.highEndOk(
-                hardReduceEffects = false,
-                touchExploration = false,
-                reduceMotion = false,
-                highContrast = true,
-            ),
-        )
-    }
-
-    @Test
-    fun kenBurns_reducedWhenStickEnergy() {
-        assertTrue(
-            AmbientModePolicy.kenBurnsScaleEnd(stickEnergy = true) <
-                AmbientModePolicy.kenBurnsScaleEnd(stickEnergy = false),
-        )
-        assertTrue(
-            AmbientModePolicy.kenBurnsDurationMs(stickEnergy = true) <
-                AmbientModePolicy.kenBurnsDurationMs(stickEnergy = false),
         )
     }
 
@@ -213,29 +191,18 @@ class AmbientModePolicyTest {
     }
 
     @Test
-    fun shouldExitOnKey_keepsStripNav_exitsOnActivateBackAndOther() {
+    fun shouldExitOnKey_keepsStripNav_exitsOnBackAndOther() {
         assertTrue(AmbientModePolicy.shouldExitOnKey(AmbientModePolicy.KEYCODE_BACK, true))
         assertFalse(
             AmbientModePolicy.shouldExitOnKey(AmbientModePolicy.KEYCODE_DPAD_LEFT, true),
         )
-        // Activate exits Ambient (click forwarded by controller).
-        assertTrue(
+        assertFalse(
             AmbientModePolicy.shouldExitOnKey(AmbientModePolicy.KEYCODE_DPAD_CENTER, true),
-        )
-        assertTrue(
-            AmbientModePolicy.isStripActivateKey(AmbientModePolicy.KEYCODE_ENTER),
         )
         assertTrue(
             AmbientModePolicy.shouldExitOnKey(AmbientModePolicy.KEYCODE_DPAD_LEFT, false),
         )
-        // FA-029: DPAD_UP/DOWN stay strip-safe while Continue has focus.
-        assertFalse(
-            AmbientModePolicy.shouldExitOnKey(AmbientModePolicy.KEYCODE_DPAD_UP, true),
-        )
-        assertFalse(
-            AmbientModePolicy.shouldExitOnKey(AmbientModePolicy.KEYCODE_DPAD_DOWN, true),
-        )
-        // Non-nav key still wakes Home.
-        assertTrue(AmbientModePolicy.shouldExitOnKey(82, true)) // KEYCODE_MENU
+        // DPAD_UP (19) wakes Home.
+        assertTrue(AmbientModePolicy.shouldExitOnKey(19, true))
     }
 }

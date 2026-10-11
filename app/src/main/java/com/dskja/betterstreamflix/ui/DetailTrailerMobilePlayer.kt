@@ -176,7 +176,6 @@ class DetailTrailerMobilePlayer(
         if (TrailerPlayPipeline.activeSession === pipelineSession) {
             TrailerPlayPipeline.endSession()
         }
-        TrailerStreamCrossfade.clear()
         pipelineSession = null
         pauseAndBlank()
         destroyWebView()
@@ -282,8 +281,6 @@ class DetailTrailerMobilePlayer(
         val action = pipelineSession?.onStreamNow
         streamNowBtn.setOnClickListener {
             ExpMotion.hapticTap(it)
-            // Kill every trailer session before arm/navigate (dual audio).
-            TrailerPlaybackController.silenceAllActive()
             // Cover arms before pause so Stream Now never flashes black.
             TrailerStreamCrossfade.arm(pipelineSession?.target)
             TrailerPlaybackController.pauseTrailerMedia(web)

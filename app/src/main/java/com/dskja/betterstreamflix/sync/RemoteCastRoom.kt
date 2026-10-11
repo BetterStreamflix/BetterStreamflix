@@ -42,23 +42,9 @@ data class RemoteCastRoomHostHeartbeat(
     @SerialName("updated_at") val updatedAt: String,
 )
 
-/** Heartbeat without position — used while a Sidekick seek is still unacked (CC-010). */
-@Serializable
-data class RemoteCastRoomHostHeartbeatMeta(
-    val playing: Boolean,
-    @SerialName("now_playing_index") val nowPlayingIndex: Int,
-    @SerialName("updated_at") val updatedAt: String,
-)
-
 @Serializable
 data class CastRoomTokenParam(
     @SerialName("p_token") val token: String,
-)
-
-@Serializable
-data class CastRoomAckSidekickTextParam(
-    @SerialName("p_token") val token: String,
-    @SerialName("p_seq") val seq: Long,
 )
 
 @Serializable

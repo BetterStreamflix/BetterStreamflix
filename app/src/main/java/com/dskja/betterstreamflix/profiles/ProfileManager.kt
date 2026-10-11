@@ -32,36 +32,23 @@ object ProfileManager {
         "SHOW_SMART_COLLECTIONS",
         "SPOILER_SHIELD_ENABLED",
         "HOME_SHELF_BLOCK_ORDER",
-        "HOME_SHELF_PINS_JSON",
-        "HOME_WATCHLIST_DIGEST_ENABLED",
-        "HOME_WATCHLIST_DIGEST_DISMISSED",
-        "HOME_WATCHLIST_DIGEST_LAST_DISMISSED_AT_MS",
-        "HOME_WATCHLIST_DIGEST_LAST_SHOWN_AT_MS",
-        "HOME_WATCHLIST_DIGEST_SHOW_COUNT",
-        "HOME_WATCHLIST_DIGEST_LAST_QUEUED_AT_MS",
         "SERIES_FAST_FORWARD_ENABLED",
         "HOME_LAST_VISIT_AT_MS",
         "HOME_VISIT_NEXT_EPISODE_IDS",
         "HOME_VISIT_FAVORITE_TV_IDS",
-        "SEARCH_SORT_MODE",
-        "SEARCH_YEAR_FILTER",
-        "SEARCH_MOOD",
         "KIDS_BEDTIME_ENABLED",
         "KIDS_BEDTIME_MINUTE_OF_DAY",
-        "KIDS_BEDTIME_WAKE_MINUTE_OF_DAY",
         "KIDS_BEDTIME_LOCKED",
         "KIDS_BEDTIME_BYPASS_UNTIL_MS",
         "LIBRARY_SCOPE",
-        // Age ceiling stays profile-scoped; household PIN/lockout use unsuffixed keys.
+        "PARENTAL_CONTROL_PIN",
+        "PARENTAL_CONTROL_ADMIN_PIN",
         "PARENTAL_CONTROL_MAX_AGE",
+        "PARENTAL_CONTROL_FAILED_ATTEMPTS",
+        "PARENTAL_CONTROL_LOCKED_UNTIL",
+        "PARENTAL_CONTROL_HARD_LOCKED",
         "SELECTED_THEME",
-        // Thanks After Binge — per-profile cool-down / opt-out
-        "NEVER_SHOW_THANKS_AFTER_BINGE",
-        "THANKS_AFTER_BINGE_LAST_SHOWN_AT_MS",
-        "THANKS_AFTER_BINGE_LAST_DISMISSED_AT_MS",
-        "THANKS_AFTER_BINGE_SHOW_COUNT",
         "SELECTED_THEME_UPDATED_AT_MILLIS",
-        "LEANBACK_DENSITY",
         // Subtitle Studio light — size / color / background per profile
         "CAPTION_TEXT_SIZE",
         "CAPTION_STYLE_FONT_COLOR",
@@ -132,9 +119,6 @@ object ProfileManager {
     /**
      * Creates or reuses the temporary Guest profile (one at a time).
      * Fresh shell when none exists or the previous guest already expired.
-     *
-     * Does **not** auto-switch the active profile (GP-009) — callers (e.g. profile
-     * picker [startGuestSession]) must [switchTo] after parental-exit checks.
      */
     fun createGuest(displayName: String = GuestProfilePolicy.DEFAULT_DISPLAY_NAME): UserProfile {
         require(::appContext.isInitialized) { "ProfileManager.init() must be called first" }
@@ -216,32 +200,14 @@ object ProfileManager {
     /**
      * Switching away from a parental-locked profile (kids / parental max-age) to a
      * profile without a ceiling requires verifying the parental PIN (or the active
-     * profile PIN as fallback). Also true for kid→kid during bedtime lock/window.
+     * profile PIN as fallback).
      */
     fun requiresParentalExitChallenge(target: UserProfile): Boolean {
+        if (hasParentalCeiling(target)) return false
         val active = activeProfile()
-        val hasProfile = active?.pinHash != null
-        val switchingAway = active != null && active.id != target.id
-        val bedtimeBlock = switchingAway &&
-            active?.isKids == true &&
-            runCatching {
-                com.dskja.betterstreamflix.kids.KidsBedtime.isLocked() ||
-                    com.dskja.betterstreamflix.kids.KidsBedtime.isActiveWindow()
-            }.getOrDefault(false)
-        // Kids/ceiling targets normally skip exit — except kid→kid during bedtime.
-        if (!bedtimeBlock && hasParentalCeiling(target)) return false
-        val leavingRestricted = bedtimeBlock ||
-            hasParentalCeiling(active) ||
-            runCatching { UserPreferences.isParentalControlActive }.getOrDefault(false)
+        val leavingRestricted = hasParentalCeiling(active) || UserPreferences.isParentalControlActive
         if (!leavingRestricted) return false
-        val hasHousehold = runCatching {
-            UserPreferences.parentalControlPin.isNotBlank()
-        }.getOrDefault(false)
-        return com.dskja.betterstreamflix.kids.KidsFortressPolicy.exitChallengeRequired(
-            leavingRestricted = true,
-            hasHouseholdPin = hasHousehold,
-            hasProfilePin = hasProfile,
-        )
+        return UserPreferences.parentalControlPin.isNotBlank() || active?.pinHash != null
     }
 
     fun profiles(): List<UserProfile> {
@@ -319,12 +285,6 @@ object ProfileManager {
     fun switchTo(context: Context, id: String, markUnlocked: Boolean = true): Boolean {
         require(::appContext.isInitialized) { "ProfileManager.init() must be called first" }
         val profile = profiles().find { it.id == id } ?: return false
-        // Refuse kids sessions without an exit PIN (household or profile) — KF-007.
-        if (profile.isKids &&
-            !com.dskja.betterstreamflix.kids.KidsFortress.fortressHealthy(profile)
-        ) {
-            return false
-        }
         val previous = activeProfile()
         if (activeProfileId == id) {
             applyKidsParentalDefaults(profile, previous)
@@ -337,8 +297,6 @@ object ProfileManager {
         AppDatabase.resetInstance()
         UserDataCache.clearMemory()
         com.dskja.betterstreamflix.spoilers.SpoilerShield.clearSession()
-        // CC-037 / CC-088: companion sessions are process singletons — clear on profile switch.
-        runCatching { com.dskja.betterstreamflix.sync.CompanionSessions.onProfileSwitched() }
         applyKidsParentalDefaults(profile, previous)
         if (markUnlocked) ProfileUnlockGate.markUnlocked(profile.id)
         UserDataNotifier.notifyChanged()
@@ -390,13 +348,11 @@ object ProfileManager {
     fun updateMaxAgeRating(profileId: String, maxAge: Int?): Boolean {
         val previous = profiles().find { it.id == profileId }
         val clamped = maxAge?.coerceIn(0, 18)
-        // Age ceiling always lives on the UserProfile row for that kids id.
         val ok = updateProfile(profileId) { it.copy(maxAgeRating = clamped) }
         if (ok && profileId == activeProfileId) {
-            // After switch, prefs scope is the active profile — keep parental max
-            // age in sync so Settings / filters match the kids ceiling (KF-028).
             val updated = profiles().find { it.id == profileId }
             if (updated?.isKids == true) {
+                // Keep the scoped parental pref aligned so Settings lists match the filter.
                 UserPreferences.parentalControlMaxAge =
                     updated.maxAgeRating ?: KIDS_DEFAULT_MAX_AGE
             } else {
@@ -491,13 +447,6 @@ object ProfileManager {
         }
         // Seed kids/adult shell themes when this profile has never picked one.
         applyDefaultThemeForProfile(profile, force = false)
-        // Kids session start: Cinema Room looksHint clamps to Kids Bright locally
-        // (parity with cloud clampLookForActiveProfile).
-        if (profile.isKids && profile.id == activeProfileId) {
-            runCatching {
-                com.dskja.betterstreamflix.ui.CinemaRoomController.applyLooksHintForActiveProfile()
-            }
-        }
     }
 
     /**
@@ -511,19 +460,17 @@ object ProfileManager {
             Context.MODE_PRIVATE,
         )
         val key = scopedPrefKeyFor("SELECTED_THEME", profile.id)
-        val desired = com.dskja.betterstreamflix.utils.ThemeManager.defaultThemeForKids(profile.isKids)
-        val stored = prefs.getString(key, null)
-        val needsKidsClamp = profile.isKids &&
-            stored != null &&
-            com.dskja.betterstreamflix.utils.ThemeManager.resolveLook(stored) !=
-            com.dskja.betterstreamflix.utils.ThemeManager.KIDS_BRIGHT
-        if (!force && prefs.contains(key) && !needsKidsClamp) return
+        if (!force && prefs.contains(key)) return
         // Active-profile writes go through UserPreferences so getters stay consistent.
         if (profile.id == activeProfileId) {
-            UserPreferences.selectedTheme = desired
+            UserPreferences.selectedTheme =
+                com.dskja.betterstreamflix.utils.ThemeManager.defaultThemeForKids(profile.isKids)
         } else {
             prefs.edit {
-                putString(key, desired)
+                putString(
+                    key,
+                    com.dskja.betterstreamflix.utils.ThemeManager.defaultThemeForKids(profile.isKids),
+                )
             }
         }
     }
@@ -550,11 +497,6 @@ object ProfileManager {
      * Delete Room DB files, scoped prefs, and cached userdata for a removed profile.
      * The default profile is also wiped (provider `*.db` files + userdata cache);
      * only identity prefs for default stay (no scoped `_p_` suffix to clear).
-     *
-     * Guest wipe scope (GP-004): Room (`guest_*__` / `downloads__guest`), scoped prefs,
-     * notes, and userdata cache. Integrations/themes/favorites touched during the
-     * session are cleared with the profile delete; downloads folder for that guest id
-     * is removed. Account-level / other-profile data is untouched.
      */
     private fun wipeProfileLocalData(profileId: String) {
         runCatching {
@@ -598,15 +540,6 @@ object ProfileManager {
             }
             runCatching {
                 com.dskja.betterstreamflix.utils.EpisodeNotesStore.wipeProfile(appContext, profileId)
-            }
-            runCatching {
-                com.dskja.betterstreamflix.taste.TasteGraph.wipeProfile(appContext, profileId)
-            }
-            runCatching {
-                com.dskja.betterstreamflix.fragments.search.SearchMemories.wipeProfile(
-                    appContext,
-                    profileId,
-                )
             }
             runCatching {
                 val folder = com.dskja.betterstreamflix.download.DownloadStorage

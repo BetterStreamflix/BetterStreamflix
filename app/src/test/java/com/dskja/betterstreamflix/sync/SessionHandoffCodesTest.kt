@@ -22,12 +22,9 @@ class SessionHandoffCodesTest {
     }
 
     @Test
-    fun normalize_mapsAmbiguousAndStripsDash() {
-        assertEquals("ABCMDE", SessionHandoffCodes.normalize("abcmde"))
-        // 0/O→Q, 1/I/L→J (generator alphabet) — avoid literal O/I/L in expected codes
-        assertEquals("QJCMDE", SessionHandoffCodes.normalize("01cmde"))
-        assertEquals("ABCDEF", SessionHandoffCodes.normalize("ABC-DEF"))
-        assertEquals("ABCDEF", SessionHandoffCodes.normalize("ABC DEF"))
+    fun normalize_mapsAmbiguousDigitsAndLowercase() {
+        assertEquals("ABCODE", SessionHandoffCodes.normalize("abcode"))
+        assertEquals("OICODE", SessionHandoffCodes.normalize("01code"))
         assertNull(SessionHandoffCodes.normalize("ABC"))
         assertNull(SessionHandoffCodes.normalize("ABCDEFG"))
     }

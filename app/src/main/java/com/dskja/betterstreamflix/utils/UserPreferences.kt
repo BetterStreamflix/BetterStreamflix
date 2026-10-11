@@ -26,12 +26,6 @@ object UserPreferences {
 
     private const val TAG = "UserPrefsDebug"
 
-    /** Device-wide parental PIN salt (not profile-scoped). */
-    private const val HOUSEHOLD_PARENTAL_SALT = "parental_household"
-
-    /** Device-wide admin recovery PIN salt (not profile-scoped). */
-    private const val HOUSEHOLD_ADMIN_SALT = "admin_household"
-
     private lateinit var prefs: SharedPreferences
 
     // Default DoH Provider URL (Cloudflare)
@@ -239,30 +233,6 @@ object UserPreferences {
         get() = Key.DOWNLOAD_WIFI_ONLY.getBoolean() ?: true
         set(value) {
             Key.DOWNLOAD_WIFI_ONLY.setBoolean(value)
-        }
-
-    /**
-     * Optional Wi‑Fi download window (minute-of-day, local). When enabled with
-     * [downloadWifiOnly], downloads also hold outside [start, end).
-     */
-    var downloadWifiWindowEnabled: Boolean
-        get() = Key.DOWNLOAD_WIFI_WINDOW_ENABLED.getBoolean() ?: false
-        set(value) {
-            Key.DOWNLOAD_WIFI_WINDOW_ENABLED.setBoolean(value)
-        }
-
-    var downloadWifiWindowStartMinute: Int
-        get() = (Key.DOWNLOAD_WIFI_WINDOW_START_MINUTE.getInt() ?: (1 * 60))
-            .coerceIn(0, 24 * 60 - 1)
-        set(value) {
-            Key.DOWNLOAD_WIFI_WINDOW_START_MINUTE.setInt(value.coerceIn(0, 24 * 60 - 1))
-        }
-
-    var downloadWifiWindowEndMinute: Int
-        get() = (Key.DOWNLOAD_WIFI_WINDOW_END_MINUTE.getInt() ?: (7 * 60))
-            .coerceIn(0, 24 * 60 - 1)
-        set(value) {
-            Key.DOWNLOAD_WIFI_WINDOW_END_MINUTE.setInt(value.coerceIn(0, 24 * 60 - 1))
         }
 
     var downloadMaxConcurrent: Int
@@ -734,24 +704,15 @@ object UserPreferences {
      * collapsed via [ThemeManager.resolveLook] so Settings never half-mix accents.
      */
     var selectedTheme: String
-        get() = ThemeManager.clampLookForKids(
-            ThemeManager.resolveLook(
-                profileScopedString(Key.SELECTED_THEME)
-                    ?: Key.SELECTED_THEME.getString(),
-            ),
-            ProfileManager.isKidsActive(),
+        get() = ThemeManager.resolveLook(
+            profileScopedString(Key.SELECTED_THEME)
+                ?: Key.SELECTED_THEME.getString(),
         )
         set(value) {
-            val resolved = ThemeManager.clampLookForKids(
-                ThemeManager.resolveLook(value),
-                ProfileManager.isKidsActive(),
-            )
-            val previous = ThemeManager.clampLookForKids(
-                ThemeManager.resolveLook(
-                    profileScopedString(Key.SELECTED_THEME)
-                        ?: Key.SELECTED_THEME.getString(),
-                ),
-                ProfileManager.isKidsActive(),
+            val resolved = ThemeManager.resolveLook(value)
+            val previous = ThemeManager.resolveLook(
+                profileScopedString(Key.SELECTED_THEME)
+                    ?: Key.SELECTED_THEME.getString(),
             )
             setProfileScopedString(Key.SELECTED_THEME, resolved)
             if (resolved != previous || selectedThemeUpdatedAtMillis <= 0L) {
@@ -806,48 +767,16 @@ object UserPreferences {
     /**
      * TV Leanback poster density: [com.dskja.betterstreamflix.ui.LeanbackDensityPolicy.COMPACT]
      * (more tiles) or [com.dskja.betterstreamflix.ui.LeanbackDensityPolicy.COMFORT]
-     * (larger posters). Profile-scoped like Looks; falls back to legacy device-wide
-     * key for migration. Requires activity restart for column rematerialize.
+     * (larger posters). Device-wide; requires activity restart like Looks.
      */
     var leanbackDensity: String
-        get() = profileScopedString(Key.LEANBACK_DENSITY)
-            ?: Key.LEANBACK_DENSITY.getString()
+        get() = Key.LEANBACK_DENSITY.getString()
             ?: com.dskja.betterstreamflix.ui.LeanbackDensityPolicy.DEFAULT
-        set(value) {
-            val resolved = com.dskja.betterstreamflix.ui.LeanbackDensityPolicy.valueOf(
-                com.dskja.betterstreamflix.ui.LeanbackDensityPolicy.resolve(value),
-            )
-            val previous = com.dskja.betterstreamflix.ui.LeanbackDensityPolicy.valueOf(
-                com.dskja.betterstreamflix.ui.LeanbackDensityPolicy.resolve(
-                    profileScopedString(Key.LEANBACK_DENSITY)
-                        ?: Key.LEANBACK_DENSITY.getString(),
-                ),
-            )
-            setProfileScopedString(Key.LEANBACK_DENSITY, resolved)
-            // Density shares the Looks LWW clock so cloud upserts carry both (LD-007).
-            if (resolved != previous) {
-                val now = System.currentTimeMillis()
-                selectedThemeUpdatedAtMillis = now
-                runCatching {
-                    val app = com.dskja.betterstreamflix.BetterStreamflixApp.instance
-                    com.dskja.betterstreamflix.sync.CloudSyncHooks.look(
-                        app,
-                        ThemeManager.resolveLook(selectedTheme),
-                        now,
-                    )
-                }
-            }
-        }
-
-    /** Apply a remote Leanback density without enqueueing a cloud mutation. */
-    fun applyRemoteLeanbackDensity(density: String) {
-        setProfileScopedString(
-            Key.LEANBACK_DENSITY,
+        set(value) = Key.LEANBACK_DENSITY.setString(
             com.dskja.betterstreamflix.ui.LeanbackDensityPolicy.valueOf(
-                com.dskja.betterstreamflix.ui.LeanbackDensityPolicy.resolve(density),
+                com.dskja.betterstreamflix.ui.LeanbackDensityPolicy.resolve(value),
             ),
         )
-    }
 
     /**
      * Explicit Stick Energy Mode toggle, or null when never set (Fire TV auto-on —
@@ -881,19 +810,6 @@ object UserPreferences {
     var codecComfortActivatedAtMs: Long
         get() = Key.CODEC_COMFORT_ACTIVATED_AT_MS.getLong() ?: 0L
         set(value) = Key.CODEC_COMFORT_ACTIVATED_AT_MS.setLong(value.coerceAtLeast(0L))
-
-    /** Consecutive clean HW sessions toward Codec Comfort soft decay (CC-001). */
-    var codecComfortStableStreak: Int
-        get() = Key.CODEC_COMFORT_STABLE_STREAK.getInt() ?: 0
-        set(value) = Key.CODEC_COMFORT_STABLE_STREAK.setInt(value.coerceAtLeast(0))
-
-    /**
-     * CC-006: User explicitly Forced Off software decode while Auto would prefer On
-     * (Comfort / Energy). Survives process death so Comfort re-init cannot defeat it.
-     */
-    var codecSoftwareForcedOff: Boolean
-        get() = Key.CODEC_SOFTWARE_FORCED_OFF.getBoolean() ?: false
-        set(value) = Key.CODEC_SOFTWARE_FORCED_OFF.setBoolean(value)
 
     /** Off-by-default complete mobile shell redesign. Requires activity restart. */
     var experimentalNewAppDesign: Boolean
@@ -966,74 +882,59 @@ object UserPreferences {
     /**
      * Weekly Watchlist Digest home card (5 new episodes from My List → one-tap queue).
      * Default on — soft dismiss uses cool-down; hard hide via [homeWatchlistDigestDismissed].
-     * Profile-scoped so adult Never / cap never bleeds into Kids.
      */
     var homeWatchlistDigestEnabled: Boolean
-        get() = profileScopedBoolean(Key.HOME_WATCHLIST_DIGEST_ENABLED) ?: true
-        set(value) = setProfileScopedBoolean(Key.HOME_WATCHLIST_DIGEST_ENABLED, value)
+        get() = Key.HOME_WATCHLIST_DIGEST_ENABLED.getBoolean() ?: true
+        set(value) = Key.HOME_WATCHLIST_DIGEST_ENABLED.setBoolean(value)
 
     var homeWatchlistDigestDismissed: Boolean
-        get() = profileScopedBoolean(Key.HOME_WATCHLIST_DIGEST_DISMISSED) ?: false
-        set(value) = setProfileScopedBoolean(Key.HOME_WATCHLIST_DIGEST_DISMISSED, value)
+        get() = Key.HOME_WATCHLIST_DIGEST_DISMISSED.getBoolean() ?: false
+        set(value) = Key.HOME_WATCHLIST_DIGEST_DISMISSED.setBoolean(value)
 
     var homeWatchlistDigestLastDismissedAtMs: Long
-        get() = profileScopedLong(Key.HOME_WATCHLIST_DIGEST_LAST_DISMISSED_AT_MS) ?: 0L
-        set(value) = setProfileScopedLong(Key.HOME_WATCHLIST_DIGEST_LAST_DISMISSED_AT_MS, value)
+        get() = Key.HOME_WATCHLIST_DIGEST_LAST_DISMISSED_AT_MS.getLong() ?: 0L
+        set(value) = Key.HOME_WATCHLIST_DIGEST_LAST_DISMISSED_AT_MS.setLong(value)
 
     var homeWatchlistDigestLastShownAtMs: Long
-        get() = profileScopedLong(Key.HOME_WATCHLIST_DIGEST_LAST_SHOWN_AT_MS) ?: 0L
-        set(value) = setProfileScopedLong(Key.HOME_WATCHLIST_DIGEST_LAST_SHOWN_AT_MS, value)
+        get() = Key.HOME_WATCHLIST_DIGEST_LAST_SHOWN_AT_MS.getLong() ?: 0L
+        set(value) = Key.HOME_WATCHLIST_DIGEST_LAST_SHOWN_AT_MS.setLong(value)
 
     var homeWatchlistDigestShowCount: Int
-        get() = profileScopedInt(Key.HOME_WATCHLIST_DIGEST_SHOW_COUNT) ?: 0
-        set(value) = setProfileScopedInt(Key.HOME_WATCHLIST_DIGEST_SHOW_COUNT, value)
+        get() = Key.HOME_WATCHLIST_DIGEST_SHOW_COUNT.getInt() ?: 0
+        set(value) = Key.HOME_WATCHLIST_DIGEST_SHOW_COUNT.setInt(value)
 
     var homeWatchlistDigestLastQueuedAtMs: Long
-        get() = profileScopedLong(Key.HOME_WATCHLIST_DIGEST_LAST_QUEUED_AT_MS) ?: 0L
-        set(value) = setProfileScopedLong(Key.HOME_WATCHLIST_DIGEST_LAST_QUEUED_AT_MS, value)
+        get() = Key.HOME_WATCHLIST_DIGEST_LAST_QUEUED_AT_MS.getLong() ?: 0L
+        set(value) = Key.HOME_WATCHLIST_DIGEST_LAST_QUEUED_AT_MS.setLong(value)
 
     /**
      * Thanks After Binge — soft Support nudge after a season finale.
      * Permanent opt-out; soft shows use a long cool-down (see ThanksAfterBingePolicy).
      */
     var neverShowThanksAfterBinge: Boolean
-        get() = profileScopedBoolean(Key.NEVER_SHOW_THANKS_AFTER_BINGE)
-            ?: Key.NEVER_SHOW_THANKS_AFTER_BINGE.getBoolean()
-            ?: false
-        set(value) {
-            setProfileScopedBoolean(Key.NEVER_SHOW_THANKS_AFTER_BINGE, value)
-            Key.NEVER_SHOW_THANKS_AFTER_BINGE.setBoolean(value)
-        }
+        get() = Key.NEVER_SHOW_THANKS_AFTER_BINGE.getBoolean() ?: false
+        set(value) = Key.NEVER_SHOW_THANKS_AFTER_BINGE.setBoolean(value)
 
     var thanksAfterBingeLastShownAtMs: Long
-        get() = readThanksLong(Key.THANKS_AFTER_BINGE_LAST_SHOWN_AT_MS)
-        set(value) = setThanksLong(Key.THANKS_AFTER_BINGE_LAST_SHOWN_AT_MS, value)
+        get() = Key.THANKS_AFTER_BINGE_LAST_SHOWN_AT_MS.getLong() ?: 0L
+        set(value) = Key.THANKS_AFTER_BINGE_LAST_SHOWN_AT_MS.setLong(value)
 
     var thanksAfterBingeLastDismissedAtMs: Long
-        get() = readThanksLong(Key.THANKS_AFTER_BINGE_LAST_DISMISSED_AT_MS)
-        set(value) = setThanksLong(Key.THANKS_AFTER_BINGE_LAST_DISMISSED_AT_MS, value)
+        get() = Key.THANKS_AFTER_BINGE_LAST_DISMISSED_AT_MS.getLong() ?: 0L
+        set(value) = Key.THANKS_AFTER_BINGE_LAST_DISMISSED_AT_MS.setLong(value)
 
     var thanksAfterBingeShowCount: Int
-        get() = profileScopedInt(Key.THANKS_AFTER_BINGE_SHOW_COUNT)
-            ?: Key.THANKS_AFTER_BINGE_SHOW_COUNT.getInt()
-            ?: 0
-        set(value) {
-            setProfileScopedInt(Key.THANKS_AFTER_BINGE_SHOW_COUNT, value)
-            Key.THANKS_AFTER_BINGE_SHOW_COUNT.setInt(value)
-        }
+        get() = Key.THANKS_AFTER_BINGE_SHOW_COUNT.getInt() ?: 0
+        set(value) = Key.THANKS_AFTER_BINGE_SHOW_COUNT.setInt(value)
 
-    /** Offline Expiry Nudge — last soft prompt timestamps (profile-scoped). */
+    /** Offline Expiry Nudge — last soft prompt timestamps (see OfflineExpiryPolicy). */
     var offlineExpiryNudgeLastShownAtMs: Long
-        get() = profileScopedLong(Key.OFFLINE_EXPIRY_NUDGE_LAST_SHOWN_AT_MS)
-            ?: Key.OFFLINE_EXPIRY_NUDGE_LAST_SHOWN_AT_MS.getLong()
-            ?: 0L
-        set(value) = setProfileScopedLong(Key.OFFLINE_EXPIRY_NUDGE_LAST_SHOWN_AT_MS, value)
+        get() = Key.OFFLINE_EXPIRY_NUDGE_LAST_SHOWN_AT_MS.getLong() ?: 0L
+        set(value) = Key.OFFLINE_EXPIRY_NUDGE_LAST_SHOWN_AT_MS.setLong(value)
 
     var offlineExpiryNudgeLastDismissedAtMs: Long
-        get() = profileScopedLong(Key.OFFLINE_EXPIRY_NUDGE_LAST_DISMISSED_AT_MS)
-            ?: Key.OFFLINE_EXPIRY_NUDGE_LAST_DISMISSED_AT_MS.getLong()
-            ?: 0L
-        set(value) = setProfileScopedLong(Key.OFFLINE_EXPIRY_NUDGE_LAST_DISMISSED_AT_MS, value)
+        get() = Key.OFFLINE_EXPIRY_NUDGE_LAST_DISMISSED_AT_MS.getLong() ?: 0L
+        set(value) = Key.OFFLINE_EXPIRY_NUDGE_LAST_DISMISSED_AT_MS.setLong(value)
 
     /** Unique finished episodes counted toward the Support tip threshold. */
     var supportEpisodesWatchedCount: Int
@@ -1101,31 +1002,18 @@ object UserPreferences {
         set(value) = Key.CATALOG_SORT_MODE.setString(value.name)
 
     var searchSortMode: SearchSortMode
-        get() = SearchSortMode.fromKey(
-            profileScopedString(Key.SEARCH_SORT_MODE) ?: Key.SEARCH_SORT_MODE.getString(),
-        )
-        set(value) {
-            setProfileScopedString(Key.SEARCH_SORT_MODE, value.name)
-            Key.SEARCH_SORT_MODE.setString(value.name)
-        }
+        get() = SearchSortMode.fromKey(Key.SEARCH_SORT_MODE.getString())
+        set(value) = Key.SEARCH_SORT_MODE.setString(value.name)
 
-    /** Null means show all years. Profile-scoped. */
+    /** Null means show all years. */
     var searchYearFilter: Int?
-        get() = profileScopedInt(Key.SEARCH_YEAR_FILTER) ?: Key.SEARCH_YEAR_FILTER.getInt()
-        set(value) {
-            setProfileScopedInt(Key.SEARCH_YEAR_FILTER, value)
-            Key.SEARCH_YEAR_FILTER.setInt(value)
-        }
+        get() = Key.SEARCH_YEAR_FILTER.getInt()
+        set(value) = Key.SEARCH_YEAR_FILTER.setInt(value)
 
-    /** Active Search mood chip (Taste Graph). Profile-scoped. */
+    /** Active Search mood chip (Taste Graph). */
     var searchMood: com.dskja.betterstreamflix.taste.TasteMood
-        get() = com.dskja.betterstreamflix.taste.TasteMood.fromKey(
-            profileScopedString(Key.SEARCH_MOOD) ?: Key.SEARCH_MOOD.getString(),
-        )
-        set(value) {
-            setProfileScopedString(Key.SEARCH_MOOD, value.name)
-            Key.SEARCH_MOOD.setString(value.name)
-        }
+        get() = com.dskja.betterstreamflix.taste.TasteMood.fromKey(Key.SEARCH_MOOD.getString())
+        set(value) = Key.SEARCH_MOOD.setString(value.name)
 
     var castEnabled: Boolean
         get() = Key.CAST_ENABLED.getBoolean() ?: true
@@ -1363,21 +1251,6 @@ object UserPreferences {
             setProfileScopedLong(Key.KIDS_BEDTIME_BYPASS_UNTIL_MS, value.coerceAtLeast(0L))
         }
 
-    /**
-     * Optional wake minute-of-day (0–1439). Unset / invalid →
-     * [com.dskja.betterstreamflix.kids.KidsBedtime.WAKE_MINUTE_OF_DAY] (05:00).
-     * Not exposed in Settings UI yet (KB-007).
-     */
-    var kidsBedtimeWakeMinuteOfDay: Int
-        get() = profileScopedInt(Key.KIDS_BEDTIME_WAKE_MINUTE_OF_DAY)
-            ?: com.dskja.betterstreamflix.kids.KidsBedtime.WAKE_MINUTE_OF_DAY
-        set(value) {
-            setProfileScopedInt(
-                Key.KIDS_BEDTIME_WAKE_MINUTE_OF_DAY,
-                com.dskja.betterstreamflix.kids.KidsBedtime.clampMinuteOfDay(value),
-            )
-        }
-
     /** Peek Kids Bedtime enabled for any profile (Parent Dashboard). */
     fun kidsBedtimeEnabledFor(profileId: String): Boolean =
         readBoolean(ProfileManager.scopedPrefKeyFor(Key.KIDS_BEDTIME_ENABLED.name, profileId))
@@ -1432,41 +1305,30 @@ object UserPreferences {
         get() = libraryScope == LibraryScope.CROSS_PROVIDER
 
     /**
-     * Household parental PIN (device-wide, not profile-scoped).
-     * Kids / bedtime / cold-start unlock all read this same value.
+     * Stored parental PIN hash (or legacy plaintext until first successful verify).
      * Assigning a raw digit PIN always hashes via [PinHasher] before write.
      * Assign `""` to clear.
      */
     var parentalControlPin: String
-        get() = readHouseholdParentalPin()
+        get() = profileScopedString(Key.PARENTAL_CONTROL_PIN) ?: ""
         set(value) {
-            val trimmed = value.trim()
-            if (trimmed.isEmpty()) {
-                Key.PARENTAL_CONTROL_PIN.setString(null)
-                return
-            }
-            Key.PARENTAL_CONTROL_PIN.setString(
-                hashParentalPinForStorage(trimmed, HOUSEHOLD_PARENTAL_SALT),
+            setProfileScopedString(
+                Key.PARENTAL_CONTROL_PIN,
+                hashParentalPinForStorage(value.trim(), ProfileManager.parentalPinSalt()),
             )
         }
 
     /**
-     * Household admin recovery PIN (device-wide).
+     * Stored admin PIN hash (or legacy plaintext until first successful verify).
      * Assigning a raw digit PIN always hashes via [PinHasher] before write.
      * Assign `""` to clear.
      */
     var parentalControlAdminPin: String
-        get() = Key.PARENTAL_CONTROL_ADMIN_PIN.getString()
-            ?: profileScopedString(Key.PARENTAL_CONTROL_ADMIN_PIN)
-            ?: ""
+        get() = profileScopedString(Key.PARENTAL_CONTROL_ADMIN_PIN) ?: ""
         set(value) {
-            val trimmed = value.trim()
-            if (trimmed.isEmpty()) {
-                Key.PARENTAL_CONTROL_ADMIN_PIN.setString(null)
-                return
-            }
-            Key.PARENTAL_CONTROL_ADMIN_PIN.setString(
-                hashParentalPinForStorage(trimmed, HOUSEHOLD_ADMIN_SALT),
+            setProfileScopedString(
+                Key.PARENTAL_CONTROL_ADMIN_PIN,
+                hashParentalPinForStorage(value.trim(), ProfileManager.adminPinSalt()),
             )
         }
 
@@ -1477,27 +1339,21 @@ object UserPreferences {
         }
 
     var parentalControlFailedAttempts: Int
-        get() = Key.PARENTAL_CONTROL_FAILED_ATTEMPTS.getInt()
-            ?: profileScopedInt(Key.PARENTAL_CONTROL_FAILED_ATTEMPTS)
-            ?: 0
+        get() = profileScopedInt(Key.PARENTAL_CONTROL_FAILED_ATTEMPTS) ?: 0
         set(value) {
-            Key.PARENTAL_CONTROL_FAILED_ATTEMPTS.setInt(value)
+            setProfileScopedInt(Key.PARENTAL_CONTROL_FAILED_ATTEMPTS, value)
         }
 
     var parentalControlLockedUntilMillis: Long
-        get() = Key.PARENTAL_CONTROL_LOCKED_UNTIL.getLong()
-            ?: profileScopedLong(Key.PARENTAL_CONTROL_LOCKED_UNTIL)
-            ?: 0L
+        get() = profileScopedLong(Key.PARENTAL_CONTROL_LOCKED_UNTIL) ?: 0L
         set(value) {
-            Key.PARENTAL_CONTROL_LOCKED_UNTIL.setLong(value)
+            setProfileScopedLong(Key.PARENTAL_CONTROL_LOCKED_UNTIL, value)
         }
 
     var parentalControlHardLocked: Boolean
-        get() = Key.PARENTAL_CONTROL_HARD_LOCKED.getBoolean()
-            ?: profileScopedBoolean(Key.PARENTAL_CONTROL_HARD_LOCKED)
-            ?: false
+        get() = profileScopedBoolean(Key.PARENTAL_CONTROL_HARD_LOCKED) ?: false
         set(value) {
-            Key.PARENTAL_CONTROL_HARD_LOCKED.setBoolean(value)
+            setProfileScopedBoolean(Key.PARENTAL_CONTROL_HARD_LOCKED, value)
         }
 
     val isParentalControlActive: Boolean
@@ -1510,31 +1366,22 @@ object UserPreferences {
         get() = (parentalControlLockedUntilMillis - System.currentTimeMillis()).coerceAtLeast(0L)
 
     /**
-     * Verify the household parental PIN. Legacy plaintext and old per-profile
-     * salts are accepted once and re-hashed to the household salt on success.
+     * Verify the parental PIN. Legacy plaintext values are accepted once and
+     * re-hashed on success (lazy migration).
      */
     fun verifyParentalControlPin(entered: String): Boolean {
         val stored = parentalControlPin
         if (stored.isBlank()) return false
         if (PinHasher.looksLikePlaintextPin(stored)) {
             if (stored != entered) return false
+            // Lazy migrate: setter hashes raw PINs.
             parentalControlPin = entered
             return true
         }
-        if (PinHasher.verify(entered, stored, HOUSEHOLD_PARENTAL_SALT)) {
-            return true
-        }
-        // Legacy per-profile salts (pre–household PIN).
-        for (profile in ProfileManager.profiles()) {
-            if (PinHasher.verify(entered, stored, ProfileManager.parentalPinSalt(profile.id))) {
-                parentalControlPin = entered
-                return true
-            }
-        }
-        return false
+        return PinHasher.verify(entered, stored, ProfileManager.parentalPinSalt())
     }
 
-    /** Verify the household admin recovery PIN with the same hash / migrate rules. */
+    /** Verify the admin recovery PIN with the same hash / migrate rules. */
     fun verifyParentalControlAdminPin(entered: String): Boolean {
         val stored = parentalControlAdminPin
         if (stored.isBlank()) return false
@@ -1543,16 +1390,7 @@ object UserPreferences {
             parentalControlAdminPin = entered
             return true
         }
-        if (PinHasher.verify(entered, stored, HOUSEHOLD_ADMIN_SALT)) {
-            return true
-        }
-        for (profile in ProfileManager.profiles()) {
-            if (PinHasher.verify(entered, stored, ProfileManager.adminPinSalt(profile.id))) {
-                parentalControlAdminPin = entered
-                return true
-            }
-        }
-        return false
+        return PinHasher.verify(entered, stored, ProfileManager.adminPinSalt())
     }
 
     /**
@@ -1999,43 +1837,6 @@ object UserPreferences {
         }
     }
 
-    /**
-     * Provider names that have any favorite layout prefs for the active profile
-     * (sort mode, item order, or category order) — used by profile transfer so
-     * layout exports are not limited to watchlist providers (EI-010).
-     */
-    fun providersWithFavoriteLayout(): Set<String> {
-        if (!::prefs.isInitialized) return emptySet()
-        val profileId = ProfileManager.activeProfileId
-        val profileSuffix =
-            if (profileId == ProfileManager.DEFAULT_PROFILE_ID) "" else "_p_$profileId"
-        val out = linkedSetOf<String>()
-        for (key in prefs.all.keys) {
-            val bare = when {
-                profileSuffix.isEmpty() -> {
-                    if ("_p_" in key) continue
-                    key
-                }
-                key.endsWith(profileSuffix) -> key.removeSuffix(profileSuffix)
-                else -> continue
-            }
-            when {
-                bare.startsWith("FAVORITE_SORT_MODE_") ->
-                    out += bare.removePrefix("FAVORITE_SORT_MODE_")
-                bare.startsWith("FAVORITE_CATEGORY_ORDER_") ->
-                    out += bare.removePrefix("FAVORITE_CATEGORY_ORDER_")
-                bare.startsWith("FAVORITE_ITEM_ORDER_") -> {
-                    val rest = bare.removePrefix("FAVORITE_ITEM_ORDER_")
-                    when {
-                        rest.endsWith("_movies") -> out += rest.removeSuffix("_movies")
-                        rest.endsWith("_tv_shows") -> out += rest.removeSuffix("_tv_shows")
-                    }
-                }
-            }
-        }
-        return out.filter { it.isNotBlank() }.toCollection(linkedSetOf())
-    }
-
     private fun profileScopedBoolean(key: Key): Boolean? =
         readBoolean(ProfileManager.scopedPrefKey(key.name))
 
@@ -2066,28 +1867,6 @@ object UserPreferences {
             return PinHasher.hash(trimmed, saltScope)
         }
         return trimmed
-    }
-
-    /**
-     * Household PIN key first; migrate any leftover profile-scoped PIN into the
-     * household slot so Kids sessions always see the adult-set PIN (KF-001).
-     */
-    private fun readHouseholdParentalPin(): String {
-        val household = Key.PARENTAL_CONTROL_PIN.getString()
-        if (!household.isNullOrBlank()) return household
-        val scopedActive = profileScopedString(Key.PARENTAL_CONTROL_PIN)
-        if (!scopedActive.isNullOrBlank()) {
-            Key.PARENTAL_CONTROL_PIN.setString(scopedActive)
-            return scopedActive
-        }
-        for (profile in ProfileManager.profiles()) {
-            val scoped = readString(ProfileManager.scopedPrefKeyFor("PARENTAL_CONTROL_PIN", profile.id))
-            if (!scoped.isNullOrBlank()) {
-                Key.PARENTAL_CONTROL_PIN.setString(scoped)
-                return scoped
-            }
-        }
-        return ""
     }
 
     private fun profileScopedInt(key: Key): Int? =
@@ -2146,17 +1925,6 @@ object UserPreferences {
 
     private fun setProfileScopedLong(key: Key, value: Long) {
         prefs.edit { putLong(ProfileManager.scopedPrefKey(key.name), value) }
-    }
-
-    private fun readThanksLong(key: Key): Long {
-        profileScopedLong(key)?.let { return it }
-        val legacy = key.getLong() ?: return 0L
-        setProfileScopedLong(key, legacy)
-        return legacy
-    }
-
-    private fun setThanksLong(key: Key, value: Long) {
-        setProfileScopedLong(key, value)
     }
 
     private fun profileScopedStringSet(key: Key): Set<String> {
@@ -2235,7 +2003,6 @@ object UserPreferences {
         HOME_VISIT_FAVORITE_TV_IDS,
         KIDS_BEDTIME_ENABLED,
         KIDS_BEDTIME_MINUTE_OF_DAY,
-        KIDS_BEDTIME_WAKE_MINUTE_OF_DAY,
         KIDS_BEDTIME_LOCKED,
         KIDS_BEDTIME_BYPASS_UNTIL_MS,
         SHOW_QUARANTINED_PROVIDERS,
@@ -2257,8 +2024,6 @@ object UserPreferences {
         CODEC_COMFORT_DEVICE_FINGERPRINT,
         CODEC_COMFORT_FAILURE_COUNT,
         CODEC_COMFORT_ACTIVATED_AT_MS,
-        CODEC_COMFORT_STABLE_STREAK,
-        CODEC_SOFTWARE_FORCED_OFF,
         EXPERIMENTAL_NEW_APP_DESIGN,
         EXPERIMENTAL_REACT_HOME,
         EXPERIMENTAL_LUMINA_ACCENT,
@@ -2321,9 +2086,6 @@ object UserPreferences {
         FAVORITE_PROVIDERS,
         ONBOARDING_COMPLETED,
         DOWNLOAD_WIFI_ONLY,
-        DOWNLOAD_WIFI_WINDOW_ENABLED,
-        DOWNLOAD_WIFI_WINDOW_START_MINUTE,
-        DOWNLOAD_WIFI_WINDOW_END_MINUTE,
         DOWNLOAD_MAX_CONCURRENT,
         DOWNLOAD_QUALITY_PRESET,
         DOWNLOAD_NOTIFY_COMPLETE,

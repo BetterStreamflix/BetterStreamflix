@@ -41,7 +41,6 @@
         <item name="tv_show_banner_gradient_drawable">@drawable/bg_tv_show_banner_gradient_default</item>
         <item name="category_swiper_gradient_drawable">@drawable/fg_category_swiper_default</item>
         <item name="tvFocusStrokeColor">@color/tv_focus_stroke</item>
-        <item name="tvFocusStrokeWidth">@dimen/tv_focus_stroke_width</item>
     </style>
 
     <style name="BottomNavLabelStyle" parent="TextAppearance.AppCompat.Caption">
@@ -450,7 +449,6 @@
         <item name="tv_show_banner_gradient_drawable">@drawable/bg_tv_show_banner_gradient_default</item>
         <item name="category_swiper_gradient_drawable">@drawable/fg_category_swiper_default</item>
         <item name="tvFocusStrokeColor">@color/tv_focus_stroke</item>
-        <item name="tvFocusStrokeWidth">@dimen/tv_focus_stroke_width</item>
     </style>
 
     <!-- Tema Nero Amoled/Oled per TV (Nero Puro #000000) -->
@@ -736,7 +734,6 @@
         <item name="android:textColorPrimary">@color/a11y_hc_text</item>
         <item name="android:textColorSecondary">@color/a11y_hc_text_secondary</item>
         <item name="tvFocusStrokeColor">@color/tv_focus_stroke_high_contrast</item>
-        <item name="tvFocusStrokeWidth">@dimen/tv_focus_stroke_width_hc</item>
     </style>
 
     <style name="AppTheme.Tv.HighContrastOverlay">
@@ -754,18 +751,6 @@
         <item name="android:textColorSecondary">@color/a11y_hc_text_secondary</item>
         <item name="defaultBrandColor">@color/a11y_hc_background</item>
         <item name="tvFocusStrokeColor">@color/tv_focus_stroke_high_contrast</item>
-        <item name="tvFocusStrokeWidth">@dimen/tv_focus_stroke_width_hc</item>
-    </style>
-
-    <!--
-      LD-010 / LD-027 / LD-034: Compact Leanback theme overlay.
-      Remaps focus stroke via theme attr (HC overlay wins after).
-      tv_shelf_poster_height / tv_ambient_continue_strip_height stay Comfort XML defaults;
-      Compact heights apply at bind via LeanbackDensityPolicy (layout @dimen cannot be
-      theme-item overridden without attr migration).
-    -->
-    <style name="AppTheme.Tv.LeanbackCompactOverlay">
-        <item name="tvFocusStrokeWidth">@dimen/tv_focus_stroke_width_compact</item>
     </style>
 
 </resources>

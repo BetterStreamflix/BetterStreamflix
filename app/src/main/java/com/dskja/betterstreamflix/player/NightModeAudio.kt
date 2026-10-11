@@ -4,10 +4,8 @@ import com.dskja.betterstreamflix.utils.UserPreferences
 
 /**
  * Runtime flag for the Night audio preset (dialog boost + quieter action peaks).
- *
- * Preference changes soft-rebuild Exo so the Night [NightModeAudioProcessor] is
- * present in the audio sink only while enabled (true bypass when off — PT-134).
- * The live flag is also read per-buffer for mid-rebuild safety.
+ * Toggling updates playback without rebuilding ExoPlayer — the PCM processor
+ * reads this on every buffer.
  */
 object NightModeAudio {
     @Volatile

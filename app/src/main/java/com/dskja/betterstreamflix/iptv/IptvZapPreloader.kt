@@ -19,8 +19,6 @@ import kotlinx.coroutines.launch
 /**
  * Warms getServers (+ optional getVideo for the first server) for ±N neighbors
  * so channel zapping skips a full cold resolve on the critical path.
- *
- * Server lists are keyed by `provider|channelId` (ZP-003).
  */
 object IptvZapPreloader {
 
@@ -54,8 +52,8 @@ object IptvZapPreloader {
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val generation = AtomicInteger()
-    /** Access-order LRU; guarded by itself. Keys are provider|channelId. */
-    private val serversByChannelKey =
+    /** Access-order LRU; guarded by itself. */
+    private val serversByChannelId =
         object : LinkedHashMap<String, CacheEntry>(16, 0.75f, /* accessOrder = */ true) {
             override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, CacheEntry>?): Boolean =
                 size > MAX_ENTRIES
@@ -68,53 +66,41 @@ object IptvZapPreloader {
         }
     private val inflight = ConcurrentHashMap<String, Job>()
 
-    fun cacheKey(providerName: String, channelId: String): String =
-        "${providerName.trim()}|${channelId.trim()}"
-
     fun clear() {
         generation.incrementAndGet()
         inflight.values.forEach { it.cancel() }
         inflight.clear()
-        synchronized(serversByChannelKey) {
-            serversByChannelKey.clear()
+        synchronized(serversByChannelId) {
+            serversByChannelId.clear()
         }
         synchronized(videoByServerId) {
             videoByServerId.clear()
         }
     }
 
-    /** Cancel in-flight warms without dropping LRU cache (ZP-008 hub destroy). */
-    fun cancelInflight() {
-        inflight.values.forEach { it.cancel() }
-        inflight.clear()
-    }
-
     /** Consume a warm entry (remove-on-take). Expired entries are dropped. */
-    fun takeCachedServers(providerName: String, channelId: String): List<Video.Server>? {
-        val key = cacheKey(providerName, channelId)
-        synchronized(serversByChannelKey) {
-            val entry = serversByChannelKey.remove(key) ?: return null
+    fun takeCachedServers(channelId: String): List<Video.Server>? {
+        synchronized(serversByChannelId) {
+            val entry = serversByChannelId.remove(channelId) ?: return null
             if (elapsedRealtimeMs() - entry.storedAtMs > TTL_MS) return null
             return entry.servers.takeIf { it.isNotEmpty() }
         }
     }
 
-    fun peekCachedServers(providerName: String, channelId: String): List<Video.Server>? {
-        val key = cacheKey(providerName, channelId)
-        synchronized(serversByChannelKey) {
-            val entry = serversByChannelKey[key] ?: return null
+    fun peekCachedServers(channelId: String): List<Video.Server>? {
+        synchronized(serversByChannelId) {
+            val entry = serversByChannelId[channelId] ?: return null
             if (elapsedRealtimeMs() - entry.storedAtMs > TTL_MS) {
-                serversByChannelKey.remove(key)
+                serversByChannelId.remove(channelId)
                 return null
             }
             return entry.servers.takeIf { it.isNotEmpty() }
         }
     }
 
-    fun invalidate(providerName: String, channelId: String) {
-        val key = cacheKey(providerName, channelId)
-        val servers = synchronized(serversByChannelKey) {
-            serversByChannelKey.remove(key)?.servers
+    fun invalidate(channelId: String) {
+        val servers = synchronized(serversByChannelId) {
+            serversByChannelId.remove(channelId)?.servers
         }
         // Also drop warmed m3u8 for this channel — otherwise peek re-serves dead CDN URLs ≤ VIDEO_TTL.
         if (servers != null) {
@@ -122,15 +108,14 @@ object IptvZapPreloader {
                 servers.forEach { server -> videoByServerId.remove(server.id) }
             }
         }
-        inflight.remove(key)?.cancel()
+        inflight.remove(channelId)?.cancel()
     }
 
     /** Remember a resolved server list (Mini-Live preview / zap) without a network round-trip. */
-    fun rememberServers(providerName: String, channelId: String, servers: List<Video.Server>) {
-        if (providerName.isBlank() || channelId.isBlank() || servers.isEmpty()) return
-        val key = cacheKey(providerName, channelId)
-        synchronized(serversByChannelKey) {
-            serversByChannelKey[key] = CacheEntry(servers, storedAtMs = elapsedRealtimeMs())
+    fun rememberServers(channelId: String, servers: List<Video.Server>) {
+        if (channelId.isBlank() || servers.isEmpty()) return
+        synchronized(serversByChannelId) {
+            serversByChannelId[channelId] = CacheEntry(servers, storedAtMs = elapsedRealtimeMs())
         }
     }
 
@@ -144,13 +129,8 @@ object IptvZapPreloader {
     }
 
     /** Test harness: seed warm caches without launching network work. */
-    internal fun seedForTest(
-        providerName: String,
-        channelId: String,
-        servers: List<Video.Server>,
-        video: Video? = null,
-    ) {
-        rememberServers(providerName, channelId, servers)
+    internal fun seedForTest(channelId: String, servers: List<Video.Server>, video: Video? = null) {
+        rememberServers(channelId, servers)
         val firstId = servers.firstOrNull()?.id
         if (video != null && firstId != null) {
             rememberVideo(firstId, video)
@@ -186,10 +166,7 @@ object IptvZapPreloader {
 
     fun warmNeighbors(provider: Provider, radius: Int = DEFAULT_WARM_RADIUS) {
         if (provider !is IptvProvider) return
-        // SE-008: Stick Energy caps warm radius to 0–1 and serializes via single-job gate.
-        val effectiveRadius = com.dskja.betterstreamflix.ui.StickEnergyMode.zapWarmRadius(radius)
-        if (effectiveRadius <= 0) return
-        val neighbors = IptvLiveSession.neighbors(effectiveRadius)
+        val neighbors = IptvLiveSession.neighbors(radius)
         if (neighbors.isEmpty()) return
         neighbors.forEach { channel ->
             warmChannel(provider, channel)
@@ -198,14 +175,13 @@ object IptvZapPreloader {
 
     fun warmChannel(provider: Provider, channel: IptvLiveSession.Channel) {
         if (provider !is IptvProvider) return
-        val key = cacheKey(provider.name, channel.id)
-        val serversHit = peekCachedServers(provider.name, channel.id)
+        val serversHit = peekCachedServers(channel.id)
         val firstServerId = serversHit?.firstOrNull()?.id
         val freshVideo = firstServerId?.let { peekCachedVideo(it) }
         if (serversHit != null && freshVideo != null) {
             return
         }
-        if (inflight.containsKey(key)) return
+        if (inflight.containsKey(channel.id)) return
         val gen = generation.get()
         // Register inflight before launch so a concurrent warm cannot race.
         lateinit var job: Job
@@ -214,9 +190,9 @@ object IptvZapPreloader {
                 val episode = IptvLiveSession.toEpisodeType(channel)
                 val servers = provider.getServers(channel.id, episode)
                 if (!isActive || gen != generation.get() || servers.isEmpty()) return@launch
-                synchronized(serversByChannelKey) {
+                synchronized(serversByChannelId) {
                     if (gen != generation.get()) return@synchronized
-                    serversByChannelKey[key] = CacheEntry(servers, storedAtMs = elapsedRealtimeMs())
+                    serversByChannelId[channel.id] = CacheEntry(servers, storedAtMs = elapsedRealtimeMs())
                 }
                 Log.d(TAG, "warmed ${channel.name} (${servers.size} servers)")
 
@@ -237,10 +213,10 @@ object IptvZapPreloader {
             } catch (e: Exception) {
                 Log.d(TAG, "warm failed ${channel.name}: ${e.message}")
             } finally {
-                inflight.remove(key, job)
+                inflight.remove(channel.id, job)
             }
         }
-        val previous = inflight.putIfAbsent(key, job)
+        val previous = inflight.putIfAbsent(channel.id, job)
         if (previous != null) {
             job.cancel()
             return

@@ -19,15 +19,9 @@ object AmbientModePolicy {
     const val BURN_IN_SHIFT_MS = 60_000L
     const val CROSSFADE_MS = 900
     const val KEN_BURNS_MS = 22_000L
-    /** Stick Energy: shorter, subtler Ken Burns so Ambient still paints on Fire Stick. */
-    const val KEN_BURNS_STICK_MS = 14_000L
-    const val KEN_BURNS_SCALE_END = 1.06f
-    const val KEN_BURNS_SCALE_END_STICK = 1.02f
     const val MAX_POOL = 24
     const val MAX_CONTINUE = 12
     const val MAX_SHIFT_PX = 18f
-    /** How often to re-check prefs / a11y / Stick Energy while Ambient is active. */
-    const val ACTIVE_GATE_RECHECK_MS = 2_000L
 
     data class AmbientImage(
         val key: String,
@@ -54,30 +48,18 @@ object AmbientModePolicy {
 
     /**
      * Whether Ambient may run on this device class.
-     *
-     * Stick Energy alone does **not** hard-off Ambient (use reduced Ken Burns instead).
-     * [hardReduceEffects] covers low-RAM / constrained playback / animator-scale 0 —
-     * anything that is not “Stick Energy only”.
-     * TalkBack, reduce-motion (animator-off), and High Contrast hard-off enter.
+     * Stick Energy / reduce-home-effects / TalkBack / animator-off → hard off.
      */
     fun highEndOk(
-        hardReduceEffects: Boolean,
+        reduceHomeEffects: Boolean,
         touchExploration: Boolean,
         reduceMotion: Boolean,
-        highContrast: Boolean = false,
     ): Boolean {
-        if (hardReduceEffects) return false
+        if (reduceHomeEffects) return false
         if (touchExploration) return false
         if (reduceMotion) return false
-        if (highContrast) return false
         return true
     }
-
-    fun kenBurnsScaleEnd(stickEnergy: Boolean): Float =
-        if (stickEnergy) KEN_BURNS_SCALE_END_STICK else KEN_BURNS_SCALE_END
-
-    fun kenBurnsDurationMs(stickEnergy: Boolean): Long =
-        if (stickEnergy) KEN_BURNS_STICK_MS else KEN_BURNS_MS
 
     fun resolvePrefEnabled(explicit: Boolean?): Boolean = explicit ?: true
 
@@ -160,24 +142,14 @@ object AmbientModePolicy {
     const val KEYCODE_BACK = 4
     const val KEYCODE_DPAD_LEFT = 21
     const val KEYCODE_DPAD_RIGHT = 22
-    const val KEYCODE_DPAD_UP = 19
-    const val KEYCODE_DPAD_DOWN = 20
     const val KEYCODE_DPAD_CENTER = 23
     const val KEYCODE_ENTER = 66
     const val KEYCODE_NUMPAD_ENTER = 160
 
-    /** D-pad Left/Right stay inside the Continue strip while ambient is up. */
+    /** Navigation keys that should stay inside the Continue strip while ambient is up. */
     fun isStripNavigationKey(keyCode: Int): Boolean = when (keyCode) {
         KEYCODE_DPAD_LEFT,
         KEYCODE_DPAD_RIGHT,
-        KEYCODE_DPAD_UP,
-        KEYCODE_DPAD_DOWN,
-        -> true
-        else -> false
-    }
-
-    /** Center / Enter activate a strip tile — exit Ambient after the click. */
-    fun isStripActivateKey(keyCode: Int): Boolean = when (keyCode) {
         KEYCODE_DPAD_CENTER,
         KEYCODE_ENTER,
         KEYCODE_NUMPAD_ENTER,
@@ -187,7 +159,6 @@ object AmbientModePolicy {
 
     fun shouldExitOnKey(keyCode: Int, stripHasFocus: Boolean): Boolean {
         if (keyCode == KEYCODE_BACK) return true
-        if (stripHasFocus && isStripActivateKey(keyCode)) return true
         if (stripHasFocus && isStripNavigationKey(keyCode)) return false
         // Any other key wakes the living-room UI.
         return true

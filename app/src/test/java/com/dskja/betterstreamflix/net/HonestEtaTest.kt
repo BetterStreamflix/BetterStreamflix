@@ -22,7 +22,7 @@ class HonestEtaTest {
     }
 
     @Test
-    fun download_unknownRemaining_hidesEta_keepsSpeed() {
+    fun download_unknownRemaining_hidesEta() {
         val estimate = HonestEta.download(
             remainingBytes = 0L,
             instantaneousBps = 5_000_000L,
@@ -31,7 +31,6 @@ class HonestEtaTest {
         )
         assertEquals(-1L, estimate.etaSeconds)
         assertFalse(estimate.confident)
-        assertTrue(estimate.speedBytesPerSec > 0L)
     }
 
     @Test
@@ -48,7 +47,7 @@ class HonestEtaTest {
     }
 
     @Test
-    fun download_coldHistory_usesInstantaneous_hidesUnconfidentEta() {
+    fun download_coldHistory_usesInstantaneous() {
         val estimate = HonestEta.download(
             remainingBytes = 500_000L,
             instantaneousBps = 100_000L,
@@ -56,8 +55,7 @@ class HonestEtaTest {
             historySampleCount = 0,
         )
         assertEquals(100_000L, estimate.speedBytesPerSec)
-        assertEquals(-1L, estimate.etaSeconds)
-        assertFalse(estimate.confident)
+        assertEquals(5L, estimate.etaSeconds)
     }
 
     @Test

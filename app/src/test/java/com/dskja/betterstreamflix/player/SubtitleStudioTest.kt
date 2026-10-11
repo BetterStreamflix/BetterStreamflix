@@ -32,21 +32,6 @@ class SubtitleStudioTest {
     }
 
     @Test
-    fun matchesCurrentRequiresEdgeColorParity() {
-        // ST-003/ST-012: HIGH_CONTRAST is the only preset with a non-default edge;
-        // edgeColor must participate in matchesCurrent (classic/yellow leave EDGE_NONE).
-        assertEquals(0xFF000000.toInt(), SubtitleStudio.HIGH_CONTRAST.edgeColor)
-        assertEquals(
-            CaptionStyleCompat.EDGE_TYPE_NONE,
-            SubtitleStudio.CLASSIC.edgeType,
-        )
-        assertTrue(
-            SubtitleStudio.HIGH_CONTRAST.edgeType != SubtitleStudio.CLASSIC.edgeType ||
-                SubtitleStudio.HIGH_CONTRAST.edgeColor != SubtitleStudio.CLASSIC.edgeColor,
-        )
-    }
-
-    @Test
     fun previewCueAnchorsNearBottom() {
         val cue = SubtitleStudio.buildPreviewCue("Hello")
         assertEquals("Hello", cue.text?.toString())
@@ -61,8 +46,6 @@ class SubtitleStudioTest {
         assertTrue(SubtitleStudio.isStudioSettingName("CAPTION_STYLE_FONT_COLOR"))
         assertTrue(SubtitleStudio.isStudioSettingName("CAPTION_STYLE_TEXT_SIZE"))
         assertTrue(SubtitleStudio.isStudioSettingName("CAPTION_STYLE_BACKGROUND_COLOR"))
-        assertTrue(SubtitleStudio.isStudioSettingName("SUBTITLE_STUDIO_PRESET"))
-        assertTrue(SubtitleStudio.isStudioSettingName("SUBTITLE_STUDIO_SIZE"))
         assertFalse(SubtitleStudio.isStudioSettingName("SUBTITLES"))
         assertFalse(SubtitleStudio.isStudioSettingName("MAIN"))
     }
@@ -71,14 +54,5 @@ class SubtitleStudioTest {
     fun yellowLargeBiggerThanClassic() {
         assertTrue(SubtitleStudio.YELLOW_LARGE.textSize > SubtitleStudio.CLASSIC.textSize)
         assertEquals(0xFFFFFF00.toInt(), SubtitleStudio.YELLOW_LARGE.fontColor)
-    }
-
-    @Test
-    fun highContrastPreset_isReadyForAccessibilityToggle() {
-        // ST-009: AccessibilityPreferences.syncSubtitleStudioForHighContrast applies this.
-        val preset = SubtitleStudio.HIGH_CONTRAST
-        assertEquals("high_contrast", preset.id)
-        assertEquals(CaptionStyleCompat.EDGE_TYPE_OUTLINE, preset.edgeType)
-        assertTrue(preset.textSize >= 1.5f)
     }
 }

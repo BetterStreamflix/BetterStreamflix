@@ -38,14 +38,8 @@ object WatchlistDigestQueue {
     ): Result = withContext(Dispatchers.IO) {
         if (episodes.isEmpty()) return@withContext Result(0, null)
         val seeded = seedNextEpisodes(context, episodes)
-        // Cool-down only after a successful seed — failed seeds must not burn the week.
-        if (seeded > 0) {
-            WatchlistDigestPolicy.recordQueued()
-        }
-        Result(
-            seededCount = seeded,
-            firstEpisode = episodes.firstOrNull().takeIf { seeded > 0 },
-        )
+        WatchlistDigestPolicy.recordQueued()
+        Result(seededCount = seeded, firstEpisode = episodes.firstOrNull())
     }
 
     fun seedNextEpisodes(context: Context, episodes: List<Episode>): Int {
@@ -76,27 +70,22 @@ object WatchlistDigestQueue {
                 UserPreferences.setCurrentProviderForPlayback(it)
             }
         }
-        // SS-011: shield episode titles on digests → player handoff.
-        val epTitle = com.dskja.betterstreamflix.spoilers.SpoilerShield.displayTitle(
-            episode,
-            episodeNumberFallback = { context.getString(R.string.episode_number, it) },
-        )
         val subtitle = episode.season?.takeIf { it.number != 0 }?.let { season ->
             context.getString(
                 R.string.player_subtitle_tv_show,
                 season.number,
                 episode.number,
-                epTitle,
+                episode.title ?: context.getString(R.string.episode_number, episode.number),
             )
         } ?: context.getString(
             R.string.player_subtitle_tv_show_episode_only,
             episode.number,
-            epTitle,
+            episode.title ?: context.getString(R.string.episode_number, episode.number),
         )
         val videoType = Video.Type.Episode(
             id = episode.id,
             number = episode.number,
-            title = epTitle,
+            title = episode.title,
             poster = episode.poster,
             overview = episode.overview,
             tvShow = Video.Type.Episode.TvShow(
@@ -142,11 +131,7 @@ object WatchlistDigestQueue {
         val currentName = UserPreferences.currentProvider?.name
         val currentDb = AppDatabase.getInstanceOrNull(context)
         val ownsDb = provider.name != currentName || currentDb == null
-        val db = if (!ownsDb) {
-            currentDb!!
-        } else {
-            AppDatabase.getInstanceForProviderOrNull(provider.name, context) ?: return false
-        }
+        val db = if (!ownsDb) currentDb!! else AppDatabase.getInstanceForProvider(provider.name, context)
         try {
             if (!db.isOpen) return false
             val episodeDao = db.episodeDao()

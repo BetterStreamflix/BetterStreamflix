@@ -19,12 +19,9 @@ import kotlinx.coroutines.sync.withPermit
 
 object ParentalControlUtils {
 
-    /**
-     * Cap concurrent TMDb age lookups — Fire Stick Search fans out dozens of rows (KF-022).
-     * Constrained devices stay low to protect leanback search; phones get a modest fan-out.
-     */
-    private const val AGE_LOOKUP_CONCURRENCY_DEFAULT = 8
-    private const val AGE_LOOKUP_CONCURRENCY_CONSTRAINED = 3
+    /** Cap concurrent TMDb age lookups — Fire Stick Search fans out dozens of rows. */
+    private const val AGE_LOOKUP_CONCURRENCY_DEFAULT = 6
+    private const val AGE_LOOKUP_CONCURRENCY_CONSTRAINED = 2
 
     private val matureGenreMarkers = listOf(
         "horror", "terror", "thriller", "erotic", "erótica", "erotica",
@@ -76,7 +73,7 @@ object ParentalControlUtils {
             val filteredItems = filterItems(category.list)
             if (filteredItems.isEmpty()) {
                 // Keep Series Fast-Forward shelves so the chip stays reachable when empty.
-                if (com.dskja.betterstreamflix.home.SeriesFastForward.supportsShelf(category) &&
+                if (com.dskja.betterstreamflix.home.SeriesFastForward.supportsShelf(category.name) &&
                     com.dskja.betterstreamflix.home.SeriesFastForward.isEnabled()
                 ) {
                     category.copy(list = emptyList()).also { emptyCategory ->
@@ -117,11 +114,11 @@ object ParentalControlUtils {
     }
 
     /**
-     * Hide mature genre chips when parental filtering is active (kids or adult PIN mode).
+     * Hide mature genre chips on blank Search / kids browse.
      * Genres are not Movie/TvShow rows so [filterItems] would otherwise pass them through.
      */
     fun filterGenreChips(items: List<AppAdapter.Item>): List<AppAdapter.Item> {
-        if (!isFilteringActive()) return items
+        if (!ProfileManager.isKidsActive()) return items
         return items.filterNot { item ->
             item is Genre && isMatureGenre(item)
         }
@@ -139,7 +136,7 @@ object ParentalControlUtils {
             is Movie -> item.takeIf { isAllowedMovie(it) }
             is TvShow -> item.takeIf { isAllowedTvShow(it) }
             is Episode -> item.takeIf { isAllowedEpisode(it) }
-            is Genre -> item.takeUnless { isFilteringActive() && isMatureGenre(item) }
+            is Genre -> item.takeUnless { ProfileManager.isKidsActive() && isMatureGenre(item) }
             else -> item
         }
     }

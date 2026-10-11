@@ -38,23 +38,8 @@ class ChannelPinStoreTest {
         `when`(prefs.getString(eq("CHANNEL_PINS_JSON"), eq(null))).thenAnswer {
             store["CHANNEL_PINS_JSON"]
         }
-        `when`(prefs.contains(anyString())).thenAnswer { inv ->
-            store.containsKey(inv.getArgument(0))
-        }
         ChannelPinStore.clear(context)
         store.clear()
-    }
-
-    @Test
-    fun unpinAllSticksWithoutReseed() {
-        val fav = show("live1", "DaddyLive TV", "News")
-        ChannelPinStore.pin(context, fav)
-        ChannelPinStore.clear(context)
-        assertTrue(ChannelPinStore.list(context).isEmpty())
-        assertTrue(prefs.contains("CHANNEL_PINS_JSON"))
-        val seeded = ChannelPinStore.seedFromFavoritesIfEmpty(context, listOf(fav))
-        assertTrue(seeded.isEmpty())
-        assertTrue(ChannelPinStore.list(context).isEmpty())
     }
 
     private fun show(id: String, provider: String, title: String = id) =
@@ -107,33 +92,5 @@ class ChannelPinStoreTest {
     fun pinKeyUsesProviderAndId() {
         val pin = ChannelPinStore.Pin("42", "StreamSports99", "Fox")
         assertEquals("StreamSports99|42", pin.key)
-    }
-
-    @Test
-    fun seedOnlyWhenPrefsKeyAbsent() {
-        // Empty favorites + absent key → leave key absent (retry later).
-        assertFalse(store.containsKey("CHANNEL_PINS_JSON"))
-        assertTrue(ChannelPinStore.seedFromFavoritesIfEmpty(context, emptyList()).isEmpty())
-        assertFalse(store.containsKey("CHANNEL_PINS_JSON"))
-
-        // Pin then clear → key present with "[]"; seed must not rewrite (SL-001).
-        ChannelPinStore.pin(context, show("f1", "DaddyLive TV", "Fav One"))
-        assertEquals(1, ChannelPinStore.list(context).size)
-        ChannelPinStore.clear(context)
-        assertEquals("[]", store["CHANNEL_PINS_JSON"])
-        assertTrue(ChannelPinStore.list(context).isEmpty())
-        val again = ChannelPinStore.seedFromFavoritesIfEmpty(
-            context,
-            listOf(show("f1", "DaddyLive TV", "Fav One")),
-        )
-        assertTrue(again.isEmpty())
-        assertTrue(ChannelPinStore.list(context).isEmpty())
-    }
-
-    @Test
-    fun toggleReturnsFalseWhenPinRejected() {
-        val blankProvider = TvShow(id = "x", title = "X").apply { providerName = "  " }
-        assertFalse(ChannelPinStore.toggle(context, blankProvider))
-        assertTrue(ChannelPinStore.list(context).isEmpty())
     }
 }

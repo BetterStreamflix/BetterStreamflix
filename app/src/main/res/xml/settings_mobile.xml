@@ -1235,31 +1235,13 @@
                 android:defaultValue="false"
                 app:iconSpaceReserved="false" />
 
-            <!-- Cinema Room master + Ambient nest (profile-scoped; affects TV Ambient). -->
-            <SwitchPreferenceCompat
-                android:key="CINEMA_ROOM"
-                android:title="@string/settings_cinema_room_master_title"
-                android:summary="@string/settings_cinema_room_mobile_summary"
-                android:defaultValue="true"
+            <SwitchPreference
+                android:key="OLED_MODE"
+                android:title="@string/settings_oled_mode_title"
+                android:summary="@string/settings_oled_mode_summary"
+                android:defaultValue="false"
+                android:visible="false"
                 app:iconSpaceReserved="false" />
-
-            <SwitchPreferenceCompat
-                android:key="TV_AMBIENT_MODE"
-                android:title="@string/settings_tv_ambient_mode_title"
-                android:summary="@string/settings_tv_ambient_mode_mobile_summary"
-                android:defaultValue="true"
-                android:dependency="CINEMA_ROOM"
-                app:iconSpaceReserved="false" />
-
-            <SwitchPreferenceCompat
-                android:key="CINEMA_AMBIENT_LIGHT"
-                android:title="@string/settings_cinema_ambient_light_title"
-                android:summary="@string/settings_cinema_ambient_light_summary"
-                android:defaultValue="true"
-                android:dependency="CINEMA_ROOM"
-                app:iconSpaceReserved="false" />
-
-            <!-- OLED half-mix retired (Looks Locked) — do not re-add. -->
 
             <SwitchPreference
                 android:key="IMMERSIVE_MODE"
@@ -1343,14 +1325,6 @@
                 <com.dskja.betterstreamflix.fragments.settings.SubtitleStudioPreviewPreference
                     android:key="SUBTITLE_STUDIO_PREVIEW"
                     android:selectable="false"
-                    app:iconSpaceReserved="false" />
-
-                <ListPreference
-                    android:key="SUBTITLE_STUDIO_PRESET"
-                    android:title="@string/subtitle_studio_presets_title"
-                    android:entries="@array/subtitle_studio_preset_entries"
-                    android:entryValues="@array/subtitle_studio_preset_values"
-                    android:summary="@string/subtitle_studio_preset_hint"
                     app:iconSpaceReserved="false" />
 
                 <ListPreference
@@ -2044,30 +2018,6 @@
                 app:iconSpaceReserved="false" />
         </PreferenceCategory>
 
-        <Preference
-            android:key="open_guardaflix_auth"
-            android:title="@string/settings_category_guardaflix"
-            android:summary="@string/guardaflix_sign_in_summary"
-            app:iconSpaceReserved="false" />
-
-        <PreferenceCategory
-            android:key="pc_provider_empty_state"
-            android:title="@string/settings_provider_connection_title"
-            app:iconSpaceReserved="false">
-
-            <Preference
-                android:key="provider_no_options"
-                android:title="@string/settings_provider_no_options_title"
-                android:summary="@string/settings_provider_no_options_summary"
-                app:iconSpaceReserved="false" />
-        </PreferenceCategory>
-    </PreferenceScreen>
-
-
-    <PreferenceScreen
-        android:key="screen_guardaflix_auth"
-        android:title="@string/settings_category_guardaflix"
-        app:iconSpaceReserved="false">
         <PreferenceCategory
             android:key="pc_guardaflix_settings"
             android:title="@string/settings_category_guardaflix"
@@ -2095,6 +2045,18 @@
                 android:key="provider_guardaflix_sign_out"
                 android:title="@string/guardaflix_sign_out"
                 android:summary="@string/guardaflix_sign_out_summary"
+                app:iconSpaceReserved="false" />
+        </PreferenceCategory>
+
+        <PreferenceCategory
+            android:key="pc_provider_empty_state"
+            android:title="@string/settings_provider_connection_title"
+            app:iconSpaceReserved="false">
+
+            <Preference
+                android:key="provider_no_options"
+                android:title="@string/settings_provider_no_options_title"
+                android:summary="@string/settings_provider_no_options_summary"
                 app:iconSpaceReserved="false" />
         </PreferenceCategory>
     </PreferenceScreen>
@@ -2177,12 +2139,6 @@
                 android:summary="@string/device_link_enter_summary"
                 app:iconSpaceReserved="false" />
         </PreferenceCategory>
-
-        <PreferenceCategory
-            android:key="pc_cast_companion"
-            android:title="@string/cast_companion_hub_title"
-            android:summary="@string/cast_companion_hub_summary"
-            app:iconSpaceReserved="false" />
 
         <PreferenceCategory
             android:key="pc_remote_find"

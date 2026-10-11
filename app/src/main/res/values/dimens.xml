@@ -39,12 +39,7 @@
     <dimen name="player_settings_panel_min_width">280dp</dimen>
     <dimen name="player_settings_panel_max_width">420dp</dimen>
     <dimen name="detail_episode_list_height">420dp</dimen>
-    <!-- Mobile CW poster height (land/sw600 qualifiers adjust). TV uses values-tv + policy bind. -->
+    <!-- Comfort Leanback default; Compact/Comfort override at bind via LeanbackDensityPolicy. -->
     <dimen name="continue_watching_poster_height">240dp</dimen>
-    <!-- TV shelf alias; values-tv overrides. Mobile layouts should not reference this. -->
-    <dimen name="tv_shelf_poster_height">240dp</dimen>
-    <dimen name="tv_ambient_continue_strip_height">304dp</dimen>
-    <dimen name="tv_focus_stroke_width_compact">3dp</dimen>
-    <dimen name="tv_activated_stroke_width">5dp</dimen>
     <dimen name="player_settings_mobile_max_width">2000dp</dimen>
 </resources>

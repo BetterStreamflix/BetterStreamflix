@@ -38,25 +38,9 @@ class PlayerCleanExitTest {
 
     @Test
     fun noteLeavingPlayer_marksLeftFlag() {
-        PlayerCleanExit.noteLeavingPlayer(returningToHome = true)
+        PlayerCleanExit.noteLeavingPlayer()
         assertTrue(PlayerCleanExit.consumeLeftPlayer())
         assertFalse(PlayerCleanExit.consumeLeftPlayer())
-    }
-
-    @Test
-    fun noteLeavingPlayer_toDetailClearsHomeRestore() {
-        PlayerCleanExit.rememberHomeFocus("ep-9")
-        PlayerCleanExit.noteLeavingPlayer(returningToHome = false)
-        assertFalse(PlayerCleanExit.shouldRestoreHomeFocus())
-        assertNull(PlayerCleanExit.consumeHomeFocusRestore())
-    }
-
-    @Test
-    fun noteLeavingPlayer_toHomeKeepsRestore() {
-        PlayerCleanExit.rememberHomeFocus("ep-9")
-        PlayerCleanExit.noteLeavingPlayer(returningToHome = true)
-        assertTrue(PlayerCleanExit.shouldRestoreHomeFocus())
-        assertEquals("ep-9", PlayerCleanExit.consumeHomeFocusRestore()?.itemKey)
     }
 
     @Test

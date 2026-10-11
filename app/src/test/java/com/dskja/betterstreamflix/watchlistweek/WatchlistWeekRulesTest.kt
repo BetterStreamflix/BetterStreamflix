@@ -19,11 +19,11 @@ class WatchlistWeekRulesTest {
     }
 
     @Test
-    fun weekBoundsMondayFirstEvenForUs() {
-        // Product week is always Mon→Sun (not locale Sunday-start).
+    fun weekBoundsSundayFirstForUs() {
+        // Wednesday 2026-10-07 → week Sun 4 … Sat 10
         val week = WatchlistWeekRules.weekBounds(LocalDate.of(2026, 10, 7), Locale.US)
-        assertEquals(LocalDate.of(2026, 10, 5), week.start)
-        assertEquals(LocalDate.of(2026, 10, 11), week.endInclusive)
+        assertEquals(LocalDate.of(2026, 10, 4), week.start)
+        assertEquals(LocalDate.of(2026, 10, 10), week.endInclusive)
     }
 
     @Test

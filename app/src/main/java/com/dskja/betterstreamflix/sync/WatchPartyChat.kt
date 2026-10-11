@@ -12,27 +12,18 @@ object WatchPartyChat {
 
     val REACTIONS: List<String> = listOf("😂", "🔥", "👏", "😮", "❤️", "👍")
 
-    private val URL_PATTERN = Regex(
-        "(?i)\\b(?:https?://|www\\.|betterstreamflix://|streamflix://)\\S+",
-    )
-    private val CONTROL_CHARS = Regex("[\\p{Cntrl}]")
-
     fun isAllowedReaction(emoji: String?): Boolean =
         !emoji.isNullOrBlank() && emoji.trim() in REACTIONS
 
     fun sanitizeChatBody(raw: String?): String? {
         val trimmed = raw?.trim().orEmpty()
-            .replace(CONTROL_CHARS, "")
-            .replace(URL_PATTERN, "")
-            .replace(Regex("\\s+"), " ")
-            .trim()
         if (trimmed.isEmpty()) return null
         return trimmed.take(MAX_BODY_CHARS)
     }
 
     fun sanitizeDisplayName(raw: String?): String {
         val trimmed = raw?.trim().orEmpty()
-            .replace(CONTROL_CHARS, "")
+            .replace(Regex("[\\p{Cntrl}]"), "")
             .take(MAX_DISPLAY_NAME)
         return trimmed.ifBlank { "Guest" }
     }

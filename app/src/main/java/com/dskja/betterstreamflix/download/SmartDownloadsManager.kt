@@ -25,30 +25,6 @@ object SmartDownloadsManager {
     /** In-memory debounce so repeated pause/stop events don't re-trigger work. */
     private val handled = mutableSetOf<String>()
 
-    /**
-     * After enabling Smart in Studio Controls — best-effort lookahead from the
-     * latest completed episode per series on the active profile.
-     */
-    suspend fun sweepAfterEnable(context: Context) {
-        if (!UserPreferences.downloadSmartEnabled) return
-        val repo = DownloadRepository.get(context)
-        val completed = repo.getAllOnce()
-            .filter { DownloadProfileScope.matchesActive(it.profileId) }
-            .filter { it.kind == DownloadKind.EPISODE.name }
-            .filter { it.state == DownloadItemState.COMPLETED.name }
-        val bySeries = completed.groupBy { SmartDownloadsPolicy.seriesKeyOf(it).orEmpty() }
-            .filterKeys { it.isNotBlank() }
-        for ((_, eps) in bySeries) {
-            val latest = eps.maxByOrNull { it.updatedAt } ?: continue
-            val videoType = DownloadController.deserializeVideoType(latest.videoTypeJson)
-                as? Video.Type.Episode
-                ?: continue
-            runCatching {
-                enqueueNextEpisodes(context, videoType, latest.providerName)
-            }.onFailure { Log.w(TAG, "sweep failed for ${latest.id}: ${it.message}") }
-        }
-    }
-
     suspend fun onEpisodeFinished(
         context: Context,
         videoType: Video.Type.Episode,

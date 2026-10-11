@@ -11,65 +11,48 @@ import com.dskja.betterstreamflix.utils.LiveHubCatalog
 /**
  * Live Hub zap window is scoped to the **tapped shelf**, not a merge of every
  * Favorites/Sport/News/Channels row. Sport uses a dedicated ring: same-provider
- * sport siblings only (ZP-005).
+ * sport siblings first (reliable zap), falling back to the full Sport shelf.
  *
- * [bindCategories] records per-show siblings keyed by `provider|id` (ZP-004);
- * playback calls [preparePlayback] → [IptvLiveSession.replaceWindow] with
- * `complete = true` so [IptvLiveSession.ensureLoaded] cannot widen past the hub ring.
- *
- * [warmSportRing] only warms via the preloader — it must not mutate the global
- * [IptvLiveSession] window (ZP-001 / ZP-002).
+ * [bindCategories] records per-show siblings; playback calls [preparePlayback]
+ * → [IptvLiveSession.replaceWindow] with `complete = true` so [IptvLiveSession.ensureLoaded]
+ * cannot widen past the hub ring.
  */
 object LiveHubSectionZap {
     @Volatile
-    private var sectionByShowKey: Map<String, List<TvShow>> = emptyMap()
+    private var sectionByShowId: Map<String, List<TvShow>> = emptyMap()
 
     @Volatile
-    private var sectionKeyByShowKey: Map<String, String> = emptyMap()
-
-    /** Soft cache for Sender-Leiste enrichment after hub unbind (SL-009). */
-    @Volatile
-    private var lastBoundShows: List<TvShow> = emptyList()
+    private var sectionKeyByShowId: Map<String, String> = emptyMap()
 
     fun bindCategories(categories: List<Category>) {
         val map = HashMap<String, List<TvShow>>()
         val keys = HashMap<String, String>()
-        val bound = ArrayList<TvShow>()
         for (category in categories) {
             val shows = category.list.filterIsInstance<TvShow>()
             if (shows.isEmpty()) continue
             val identity = category.identityKey.orEmpty()
             for (show in shows) {
-                val showKey = LiveHubCatalog.identityKey(show)
-                map[showKey] = shows
+                map[show.id] = shows
                 if (identity.isNotBlank()) {
-                    keys[showKey] = identity
+                    keys[show.id] = identity
                 }
-                bound += show
             }
         }
-        sectionByShowKey = map
-        sectionKeyByShowKey = keys
-        lastBoundShows = bound.distinctBy { LiveHubCatalog.identityKey(it) }
+        sectionByShowId = map
+        sectionKeyByShowId = keys
     }
 
     fun clear() {
-        sectionByShowKey = emptyMap()
-        sectionKeyByShowKey = emptyMap()
-        // ZP-008: stop hub warms; keep LRU for in-flight playback.
-        IptvZapPreloader.cancelInflight()
+        sectionByShowId = emptyMap()
+        sectionKeyByShowId = emptyMap()
     }
 
-    fun enrichmentCatalog(): List<TvShow> = lastBoundShows
-
-    fun sectionKeyOf(tvShow: TvShow): String? =
-        sectionKeyByShowKey[LiveHubCatalog.identityKey(tvShow)]
+    fun sectionKeyOf(tvShow: TvShow): String? = sectionKeyByShowId[tvShow.id]
 
     /** True when [tvShow] came from a bound Live Hub shelf. */
     fun preparePlayback(tvShow: TvShow, provider: Provider?): Boolean {
-        val showKey = LiveHubCatalog.identityKey(tvShow)
-        val section = sectionByShowKey[showKey] ?: return false
-        val sectionKey = sectionKeyByShowKey[showKey]
+        val section = sectionByShowId[tvShow.id] ?: return false
+        val sectionKey = sectionKeyByShowId[tvShow.id]
         val ring = when (sectionKey) {
             LiveHubCatalog.SECTION_SPORT -> sportZapRing(tvShow, section)
             else -> section
@@ -85,33 +68,30 @@ object LiveHubSectionZap {
     }
 
     /**
-     * Dedicated Sport zap ring: always same-provider siblings so CH± stays
-     * on a playable catalog (ZP-005). Size may be 1.
+     * Dedicated Sport zap ring: prefer same-provider sport siblings so CH± stays
+     * on a playable catalog; if the provider only contributed one sport tile,
+     * keep the full Sport shelf order for discovery.
      */
     fun sportZapRing(anchor: TvShow, sportShelf: List<TvShow>): List<TvShow> {
         val providerName = anchor.providerName.orEmpty()
-        if (providerName.isBlank()) return listOf(anchor)
+        if (providerName.isBlank()) return sportShelf
         val sameProvider = sportShelf.filter {
             it.providerName.equals(providerName, ignoreCase = true)
         }
-        return sameProvider.ifEmpty { listOf(anchor) }
+        return if (sameProvider.size >= 2) sameProvider else sportShelf
     }
 
-    /**
-     * Pre-warm the Sport ring from the hub without mutating [IptvLiveSession]
-     * (ZP-001 / ZP-002).
-     */
+    /** Pre-warm the Sport ring from the hub (TV) without merging other shelves. */
     fun warmSportRing(sportCategory: Category?) {
         val shows = sportCategory?.list?.filterIsInstance<TvShow>().orEmpty()
         if (shows.isEmpty()) return
         val byProvider = shows.groupBy { it.providerName.orEmpty() }
         byProvider.forEach { (providerName, providerShows) ->
             if (providerName.isBlank()) return@forEach
-            val provider = runCatching {
-                Provider.findByName(providerName) as? IptvProvider
-            }.getOrNull() ?: return@forEach
+            val provider = Provider.findByName(providerName) as? IptvProvider ?: return@forEach
             val ring = sportZapRing(providerShows.first(), providerShows)
-            // Warm ±2 per provider without replaceWindow / setCurrent / preloader clear.
+            IptvLiveSession.replaceWindow(ring.map { toChannel(it) }, provider, complete = true)
+            ring.firstOrNull()?.let { IptvLiveSession.setCurrent(it.id) }
             warmRing(provider, ring, aroundId = ring.firstOrNull()?.id)
         }
     }
@@ -124,11 +104,10 @@ object LiveHubSectionZap {
             ring.getOrNull(anchorIdx - delta)?.let { warmIds += it }
             ring.getOrNull(anchorIdx + delta)?.let { warmIds += it }
         }
-        // ZP-002: warm per provider without session-dependent warmNeighbors
-        // (which would require setCurrent / could clear across provider changes).
         warmIds.take(5).forEach { show ->
             IptvZapPreloader.warmChannel(provider, toChannel(show))
         }
+        IptvZapPreloader.warmNeighbors(provider, radius = 2)
     }
 
     private fun toChannel(show: TvShow): IptvLiveSession.Channel =

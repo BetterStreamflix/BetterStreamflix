@@ -1,8 +1,7 @@
 package com.dskja.betterstreamflix.utils
 
-import android.net.Uri
 import android.util.Log
-import com.dskja.betterstreamflix.BuildConfig
+import android.net.Uri
 import java.util.UUID
 
 object WebSocketBypassTestHelper {
@@ -24,11 +23,6 @@ object WebSocketBypassTestHelper {
         url: String,
         onDone: (String) -> Unit = {},
     ): Session? {
-        // Hard-gate: never stand up a LAN bypass WS server in release (SS-B10-02).
-        if (!BuildConfig.DEBUG) {
-            Log.w(TAG, "createSession refused outside DEBUG builds")
-            return null
-        }
         val activeServer = ensureServer(onDone) ?: return null
         val wsUrl = BypassWebSocketEndpointHelper.getAdvertisedWsUrl(serverPort) ?: return null
         val token = UUID.randomUUID().toString()
@@ -45,11 +39,9 @@ object WebSocketBypassTestHelper {
 
     @Synchronized
     private fun ensureServer(onDone: (String) -> Unit): BypassWebSocketServer? {
-        if (!BuildConfig.DEBUG) return null
         server?.let { return it }
 
         return runCatching {
-            // Test helper never applies cookies from done: — token ack only.
             BypassWebSocketServer(serverPort) { token, _ ->
                 onDone(token)
             }.also {

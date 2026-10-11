@@ -18,10 +18,8 @@ import androidx.navigation.fragment.NavHostFragment
 import com.dskja.betterstreamflix.R
 import com.dskja.betterstreamflix.download.DownloadConnectivityMonitor
 import com.dskja.betterstreamflix.models.Video
-import com.dskja.betterstreamflix.profiles.ProfileManager
 import com.dskja.betterstreamflix.profiles.ProfileUnlockGate
 import com.dskja.betterstreamflix.providers.Provider
-import com.dskja.betterstreamflix.ui.LeanbackDensityPolicy
 import com.dskja.betterstreamflix.utils.ExpDialogChrome
 import com.dskja.betterstreamflix.utils.QrUtils
 import com.dskja.betterstreamflix.utils.UserPreferences
@@ -31,7 +29,6 @@ import kotlinx.coroutines.withContext
 
 object WatchPartyUi {
     private val promptedPendingTokens = mutableSetOf<String>()
-    private val promptedPendingCodes = mutableSetOf<String>()
 
     @Volatile
     private var confirmInFlight = false
@@ -53,17 +50,6 @@ object WatchPartyUi {
         val context = fragment.context ?: return
         if (isLiveOrOffline) {
             ExpDialogChrome.notify(context, R.string.watch_party_unavailable_live_offline)
-            return
-        }
-        if (ProfileManager.isKidsActive()) {
-            ExpDialogChrome.notify(context, R.string.watch_party_kids_blocked)
-            return
-        }
-        if (CompanionSessions.refuseIfOtherCompanionActive(
-                context,
-                CompanionSessions.Kind.WATCH_TOGETHER,
-            )
-        ) {
             return
         }
         if (!SupabaseProvider.isConfigured) {
@@ -96,7 +82,6 @@ object WatchPartyUi {
                         R.string.watch_party_lock_controls_action
                     },
                 ),
-                context.getString(R.string.watch_party_pause_all_action),
                 context.getString(R.string.watch_party_end_action),
             )
             if (WatchPartySession.isInLobby()) {
@@ -125,8 +110,6 @@ object WatchPartyUi {
                         context.getString(R.string.watch_party_lock_controls_action),
                         context.getString(R.string.watch_party_unlock_controls_action),
                         -> toggleControlsLocked(fragment)
-                        context.getString(R.string.watch_party_pause_all_action) ->
-                            pauseAll(fragment, positionMs)
                         context.getString(R.string.watch_party_end_action) ->
                             endHostParty(fragment)
                     }
@@ -210,12 +193,9 @@ object WatchPartyUi {
         val link = WatchPartyLinks.buildUri(token)
         val code = WatchPartySession.shortCode?.takeIf { it.isNotBlank() } ?: "------"
         val qr = runCatching { QrUtils.generate(link, 640) }.getOrNull()
-        val density = context.resources.displayMetrics.density
-        val chrome = LeanbackDensityPolicy.overlayChromePadPx(density)
-        val gap = LeanbackDensityPolicy.overlayStackGapPx(density)
         val container = LinearLayout(context).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(chrome, chrome, chrome, chrome)
+            setPadding(48, 32, 48, 16)
             gravity = Gravity.CENTER_HORIZONTAL
         }
         if (qr != null) {
@@ -235,7 +215,7 @@ object WatchPartyUi {
                 text = context.getString(R.string.watch_party_code_label, code)
                 textSize = 22f
                 gravity = Gravity.CENTER
-                setPadding(0, gap * 2, 0, gap)
+                setPadding(0, 24, 0, 8)
             },
         )
         container.addView(
@@ -391,40 +371,6 @@ object WatchPartyUi {
         }
     }
 
-    /** CC-086: pause host + force guests to the paused playhead. */
-    private fun pauseAll(fragment: Fragment, positionMs: Long) {
-        val context = fragment.context ?: return
-        val token = WatchPartySession.token ?: return
-        val partyId = WatchPartySession.partyId ?: return
-        fragment.viewLifecycleOwner.lifecycleScope.launch {
-            val result = withContext(Dispatchers.IO) {
-                runCatching {
-                    WatchPartyRepository.heartbeat(
-                        context = context,
-                        partyId = partyId,
-                        server = null,
-                        positionMs = positionMs,
-                        playing = false,
-                    )
-                    WatchPartyRepository.forceResync(context, token, positionMs)
-                }
-            }
-            if (!fragment.isAdded) return@launch
-            result.onSuccess {
-                WatchPartySession.updateFromPayload(it)
-                ExpDialogChrome.notify(context, R.string.watch_party_pause_all_done)
-            }.onFailure { error ->
-                ExpDialogChrome.notify(
-                    context,
-                    context.getString(
-                        R.string.watch_party_force_resync_failed,
-                        error.message ?: error.javaClass.simpleName,
-                    ),
-                )
-            }
-        }
-    }
-
     fun shareLink(context: Context, link: String) {
         launchShare(context, link)
     }
@@ -505,15 +451,8 @@ object WatchPartyUi {
     }
 
     fun leaveGuestParty(fragment: Fragment) {
-        val token = WatchPartySession.token
-        val ctx = fragment.context?.applicationContext
         fragment.viewLifecycleOwner.lifecycleScope.launch {
-            withContext(Dispatchers.IO) {
-                if (ctx != null && token != null) {
-                    runCatching { WatchPartyRepository.leaveMember(ctx, token) }
-                }
-                WatchPartySync.stop()
-            }
+            WatchPartySync.stop()
             WatchPartyRemoteUi.clear()
             WatchPartySession.clear()
             fragment.context?.let {
@@ -528,24 +467,16 @@ object WatchPartyUi {
             ExpDialogChrome.notify(activity, R.string.watch_party_invalid_code)
             return
         }
-        if (ProfileManager.isKidsActive()) {
-            ExpDialogChrome.notify(activity, R.string.watch_party_kids_blocked)
-            return
-        }
-        val appContext = activity.applicationContext
         if (ProfileUnlockGate.requiresGateForActive()) {
-            WatchPartyPendingJoin.enqueueCode(appContext, code)
             ExpDialogChrome.notify(activity, R.string.watch_party_join_needs_unlock)
             return
         }
         if (!SupabaseProvider.isConfigured) {
-            WatchPartyPendingJoin.enqueueCode(appContext, code)
             ExpDialogChrome.notify(activity, R.string.watch_party_join_needs_supabase)
             return
         }
         if (!DownloadConnectivityMonitor.isOnline(activity)) {
-            WatchPartyPendingJoin.enqueueCode(appContext, code)
-            ExpDialogChrome.notify(activity, R.string.watch_party_join_queued_offline)
+            ExpDialogChrome.notify(activity, R.string.watch_party_offline)
             return
         }
         activity.lifecycleScope.launch {
@@ -555,11 +486,7 @@ object WatchPartyUi {
             if (activity.isFinishing || activity.isDestroyed) return@launch
             result.onSuccess { payload ->
                 val token = payload.shareToken ?: return@onSuccess
-                promptJoin(
-                    activity,
-                    token,
-                    preferRemote = WatchTogetherPro.isTvScreenMode(payload.displayMode),
-                )
+                promptJoin(activity, token, preferRemote = WatchTogetherPro.isTvScreenMode(payload.displayMode))
             }.onFailure { error ->
                 ExpDialogChrome.notify(
                     activity,
@@ -578,10 +505,6 @@ object WatchPartyUi {
             ExpDialogChrome.notify(activity, R.string.watch_party_invalid_link)
             return
         }
-        if (ProfileManager.isKidsActive()) {
-            ExpDialogChrome.notify(activity, R.string.watch_party_kids_blocked)
-            return
-        }
         if (ProfileUnlockGate.requiresGateForActive()) {
             WatchPartyPendingJoin.enqueue(appContext, token)
             return
@@ -596,47 +519,13 @@ object WatchPartyUi {
             ExpDialogChrome.notify(activity, R.string.watch_party_join_queued_offline)
             return
         }
-        // preferRemote resolved from payload display_mode inside promptJoin.
-        promptJoin(activity, token, preferRemote = true)
+        promptJoin(activity, token, preferRemote = false)
     }
 
     fun tryFlushPending(activity: FragmentActivity) {
         if (ProfileUnlockGate.requiresGateForActive()) return
-        if (ProfileManager.isKidsActive()) return
         if (!SupabaseProvider.isConfigured) return
         if (!DownloadConnectivityMonitor.isOnline(activity)) return
-
-        val pendingCode = WatchPartyPendingJoin.peekCodes(activity)
-            .firstOrNull { it !in promptedPendingCodes }
-        if (pendingCode != null) {
-            promptedPendingCodes.add(pendingCode)
-            activity.lifecycleScope.launch {
-                val result = withContext(Dispatchers.IO) {
-                    runCatching { WatchPartyRepository.fetchByCode(activity, pendingCode) }
-                }
-                if (activity.isFinishing || activity.isDestroyed) return@launch
-                result.onSuccess { payload ->
-                    val token = payload.shareToken
-                    if (token.isNullOrBlank()) {
-                        WatchPartyPendingJoin.acknowledgeCode(activity, pendingCode)
-                        promptedPendingCodes.remove(pendingCode)
-                        return@onSuccess
-                    }
-                    WatchPartyPendingJoin.acknowledgeCode(activity, pendingCode)
-                    promptedPendingCodes.remove(pendingCode)
-                    promptJoin(
-                        activity,
-                        token,
-                        preferRemote = WatchTogetherPro.isTvScreenMode(payload.displayMode),
-                    )
-                }.onFailure {
-                    WatchPartyPendingJoin.acknowledgeCode(activity, pendingCode)
-                    promptedPendingCodes.remove(pendingCode)
-                }
-            }
-            return
-        }
-
         val pending = WatchPartyPendingJoin.peek(activity)
         val next = pending.firstOrNull { it !in promptedPendingTokens } ?: return
         promptedPendingTokens.add(next)
@@ -645,7 +534,7 @@ object WatchPartyUi {
                 runCatching { WatchPartyRepository.flushStalePending(activity) }
             }
             if (WatchPartyPendingJoin.peek(activity).contains(next)) {
-                promptJoin(activity, next, preferRemote = true)
+                promptJoin(activity, next, preferRemote = false)
             } else {
                 promptedPendingTokens.remove(next)
             }
@@ -655,7 +544,7 @@ object WatchPartyUi {
     private fun promptJoin(
         activity: FragmentActivity,
         token: String,
-        @Suppress("UNUSED_PARAMETER") preferRemote: Boolean = true,
+        preferRemote: Boolean = false,
     ) {
         if (confirmInFlight) return
         confirmInFlight = true
@@ -679,8 +568,7 @@ object WatchPartyUi {
             }
             val payload = result.getOrNull() ?: return@launch
             val title = payload.title.ifBlank { activity.getString(R.string.watch_party_menu_title) }
-            // CC-030: tv_screen parties default to phone-remote join path.
-            val tvScreen = WatchTogetherPro.isTvScreenMode(payload.displayMode)
+            val tvScreen = WatchTogetherPro.isTvScreenMode(payload.displayMode) || preferRemote
             val detail = buildString {
                 append(title)
                 if (payload.subtitle.isNotBlank()) {
@@ -714,13 +602,12 @@ object WatchPartyUi {
                     promptedPendingTokens.remove(token)
                 }
             if (tvScreen) {
-                // CC-030: default / primary path is phone remote for tv_screen parties.
-                builder.setPositiveButton(R.string.watch_party_join_as_remote_action) { _, _ ->
+                builder.setNeutralButton(R.string.watch_party_join_as_remote_action) { _, _ ->
                     WatchPartyPendingJoin.acknowledge(activity, token)
                     promptedPendingTokens.remove(token)
                     enterParty(activity, token, payload, asRemote = true)
                 }
-                builder.setNeutralButton(R.string.watch_party_join_action) { _, _ ->
+                builder.setPositiveButton(R.string.watch_party_join_action) { _, _ ->
                     WatchPartyPendingJoin.acknowledge(activity, token)
                     promptedPendingTokens.remove(token)
                     enterParty(activity, token, payload, asRemote = false)
@@ -732,11 +619,7 @@ object WatchPartyUi {
                     enterParty(activity, token, payload, asRemote = false)
                 }
             }
-            val dialog = builder.create()
-            dialog.setOnShowListener {
-                dialog.getButton(androidx.appcompat.app.AlertDialog.BUTTON_POSITIVE)?.requestFocus()
-            }
-            dialog.show()
+            builder.show()
         }
     }
 
@@ -822,39 +705,30 @@ object WatchPartyUi {
                 displayMode = payload.displayMode,
             )
             val args = playerArgs(videoType, payload)
-            fun navigateToPlayer() {
-                val navHost =
-                    activity.supportFragmentManager.findFragmentById(R.id.nav_main_fragment) as? NavHostFragment
-                val nav = navHost?.navController
-                if (nav == null) {
-                    ExpDialogChrome.notify(activity, R.string.watch_party_join_failed_nav)
-                    WatchPartySession.clear()
-                    return
-                }
-                val navigated = runCatching {
-                    when {
-                        nav.currentDestination?.getAction(R.id.action_playerMobileFragment_self) != null ->
-                            nav.navigate(R.id.action_playerMobileFragment_self, args)
-                        nav.currentDestination?.getAction(R.id.action_playerTvFragment_self) != null ->
-                            nav.navigate(R.id.action_playerTvFragment_self, args)
-                        else ->
-                            nav.navigate(R.id.action_global_player, args)
-                    }
-                }.isSuccess || runCatching {
-                    nav.navigate(R.id.player, args)
-                }.isSuccess
-                if (!navigated) {
-                    ExpDialogChrome.notify(activity, R.string.watch_party_join_failed_nav)
-                    WatchPartySession.clear()
-                }
-            }
-            if (com.dskja.betterstreamflix.kids.KidsBedtime.shouldBlockEnteringPlayer()) {
-                com.dskja.betterstreamflix.kids.KidsBedtimeUi.blockPlayerEntry(activity) {
-                    navigateToPlayer()
-                }
+            val navHost =
+                activity.supportFragmentManager.findFragmentById(R.id.nav_main_fragment) as? NavHostFragment
+            val nav = navHost?.navController
+            if (nav == null) {
+                ExpDialogChrome.notify(activity, R.string.watch_party_join_failed_nav)
+                WatchPartySession.clear()
                 return@launch
             }
-            navigateToPlayer()
+            val navigated = runCatching {
+                when {
+                    nav.currentDestination?.getAction(R.id.action_playerMobileFragment_self) != null ->
+                        nav.navigate(R.id.action_playerMobileFragment_self, args)
+                    nav.currentDestination?.getAction(R.id.action_playerTvFragment_self) != null ->
+                        nav.navigate(R.id.action_playerTvFragment_self, args)
+                    else ->
+                        nav.navigate(R.id.action_global_player, args)
+                }
+            }.isSuccess || runCatching {
+                nav.navigate(R.id.player, args)
+            }.isSuccess
+            if (!navigated) {
+                ExpDialogChrome.notify(activity, R.string.watch_party_join_failed_nav)
+                WatchPartySession.clear()
+            }
         }
     }
 

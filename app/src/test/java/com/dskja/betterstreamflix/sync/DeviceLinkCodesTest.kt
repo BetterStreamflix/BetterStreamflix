@@ -20,7 +20,7 @@ class DeviceLinkCodesTest {
     @Test
     fun normalize_stripsDashAndMapsAmbiguous() {
         assertEquals("ABCDEF", DeviceLinkCodes.normalize("abc-def"))
-        assertEquals("QJCQDE", DeviceLinkCodes.normalize("01code"))
+        assertEquals("OICODE", DeviceLinkCodes.normalize("01code"))
         assertNull(DeviceLinkCodes.normalize("ABC"))
         assertNull(DeviceLinkCodes.normalize("ABCDEFG"))
     }

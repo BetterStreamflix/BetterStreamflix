@@ -1,12 +1,8 @@
 package com.dskja.betterstreamflix.sync
 
 import androidx.fragment.app.Fragment
-import androidx.lifecycle.lifecycleScope
 import com.dskja.betterstreamflix.R
 import com.dskja.betterstreamflix.models.Video
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 
 /**
  * Player chrome glue for Phone→TV Session Handoff.
@@ -53,21 +49,6 @@ object SessionHandoffPlayerHooks {
                 )
             else ->
                 button.context.getString(R.string.session_handoff_cd)
-        }
-    }
-
-    /** End/revoke open offer when the offering player is destroyed (match Cast reverse). */
-    fun onDestroyView(fragment: Fragment) {
-        if (!SessionHandoffSession.isOffering()) return
-        val handoffId = SessionHandoffSession.handoffId
-        val ctx = fragment.context?.applicationContext
-        fragment.lifecycleScope.launch {
-            if (ctx != null) {
-                withContext(Dispatchers.IO) {
-                    runCatching { SessionHandoffRepository.endOffer(ctx, handoffId) }
-                }
-            }
-            SessionHandoffSession.clear()
         }
     }
 }

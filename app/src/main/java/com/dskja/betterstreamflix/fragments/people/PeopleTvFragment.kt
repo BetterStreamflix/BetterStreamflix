@@ -137,12 +137,7 @@ class PeopleTvFragment : Fragment() {
                 stateRestorationPolicy = RecyclerView.Adapter.StateRestorationPolicy.PREVENT_WHEN_EMPTY
             }
             setNumColumns(com.dskja.betterstreamflix.ui.LeanbackDensityPolicy.posterGridColumns())
-            setItemSpacing(
-                com.dskja.betterstreamflix.ui.LeanbackDensityPolicy.dpToPx(
-                    this,
-                    com.dskja.betterstreamflix.ui.LeanbackDensityPolicy.peopleFilmographySpacingDp(),
-                ),
-            )
+            setItemSpacing(20)
         }
     }
 

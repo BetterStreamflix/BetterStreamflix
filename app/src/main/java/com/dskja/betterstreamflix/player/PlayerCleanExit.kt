@@ -62,30 +62,10 @@ object PlayerCleanExit {
         tagHomeFocusView(view, FEATURED_WATCH_KEY)
     }
 
-    /**
-     * Call when Back / nav leaves the player destination.
-     * @param returningToHome arm Home tile restore only when the leave destination
-     * is Home — Detail/other destinations must not keep a stale pending restore.
-     */
-    fun noteLeavingPlayer(returningToHome: Boolean = false) {
+    /** Call when Back / nav leaves the player destination. */
+    fun noteLeavingPlayer() {
         leftPlayer.set(true)
-        if (returningToHome && homeFocusToken.get() != null) {
-            pendingHomeRestore.set(true)
-        } else {
-            pendingHomeRestore.set(false)
-            if (!returningToHome) {
-                // Leaving to Detail (or elsewhere): drop the token so a later Home
-                // resume does not jump DPAD to an old tile.
-                homeFocusToken.set(null)
-            }
-        }
-    }
-
-    /** Clear a pending Home restore when landing on Detail (or any non-Home). */
-    fun clearHomeRestore() {
-        pendingHomeRestore.set(false)
-        homeFocusToken.set(null)
-        leftPlayer.set(false)
+        pendingHomeRestore.set(homeFocusToken.get() != null)
     }
 
     fun peekHomeFocusToken(): HomeFocusToken? = homeFocusToken.get()
@@ -133,8 +113,8 @@ object PlayerCleanExit {
         if (root == null || !root.isAttachedToWindow) return false
         val match = findTagged(root, token.itemKey) ?: return false
         if (!match.isShown) return false
-        // FA-040: never force-focusable a view intentionally disabled.
-        if (!match.isFocusable) return false
+        match.isFocusable = true
+        match.isFocusableInTouchMode = match.isFocusableInTouchMode
         return match.requestFocus()
     }
 

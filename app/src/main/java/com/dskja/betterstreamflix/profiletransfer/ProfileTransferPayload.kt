@@ -20,8 +20,6 @@ data class ProfileTransferPayload(
     val settings: SettingsSnapshot = SettingsSnapshot(),
     val watchlist: List<WatchlistItem> = emptyList(),
     val notes: List<NoteItem> = emptyList(),
-    /** HMAC-SHA256 (hex) over canonical JSON — present on v2 exports. */
-    val integrity: String? = null,
 ) {
     @Serializable
     data class Persona(
@@ -36,8 +34,6 @@ data class ProfileTransferPayload(
     data class SettingsSnapshot(
         val libraryScope: String? = null,
         val selectedTheme: String? = null,
-        /** Compact / comfort — profile Leanback density (TV). */
-        val leanbackDensity: String? = null,
         val showContinueWatching: Boolean? = null,
         val showRecentlyWatched: Boolean? = null,
         val showNextEpisodes: Boolean? = null,
@@ -46,17 +42,10 @@ data class ProfileTransferPayload(
         val homeShelfBlockOrder: String? = null,
         val homeShelfPinsJson: String? = null,
         val seriesFastForwardEnabled: Boolean? = null,
-        val spoilerShieldEnabled: Boolean? = null,
         val parentalControlMaxAge: Int? = null,
         val favoriteSortByProvider: Map<String, String> = emptyMap(),
         val favoriteItemOrderByProvider: Map<String, Map<String, List<String>>> = emptyMap(),
         val favoriteCategoryOrderByProvider: Map<String, List<String>> = emptyMap(),
-        /** Taste Graph JSON bundle (signals / affinity / tokens). Omitted from QR. */
-        val tasteSignalsJson: String? = null,
-        val tasteAffinityJson: String? = null,
-        val tasteQueryTokensJson: String? = null,
-        /** Search Memories JSON array. Omitted from QR. */
-        val searchMemoriesJson: String? = null,
     )
 
     @Serializable
@@ -80,37 +69,31 @@ data class ProfileTransferPayload(
         watchlist = watchlist.take(MAX_QR_WATCHLIST).map {
             it.copy(poster = null, banner = null, title = it.title.take(MAX_TITLE_CHARS))
         },
-        // QR is shoulder-surfable — omit notes and kids/age metadata.
-        notes = emptyList(),
+        notes = notes.take(MAX_QR_NOTES).map {
+            it.copy(
+                episodeId = it.episodeId.take(MAX_ID_CHARS),
+                text = it.text.take(MAX_NOTE_CHARS),
+            )
+        },
         persona = persona?.copy(
             displayName = persona.displayName.take(MAX_TITLE_CHARS),
-            isKids = false,
-            maxAgeRating = null,
             enabledIntegrations = persona.enabledIntegrations.take(16),
         ),
         settings = settings.copy(
             homeShelfBlockOrder = settings.homeShelfBlockOrder?.take(240),
             homeShelfPinsJson = settings.homeShelfPinsJson?.take(480),
-            parentalControlMaxAge = null,
             // Favorite order maps can blow QR — keep sort modes only.
             favoriteItemOrderByProvider = emptyMap(),
             favoriteCategoryOrderByProvider = emptyMap(),
             favoriteSortByProvider = settings.favoriteSortByProvider
                 .entries.take(24)
                 .associate { it.key.take(64) to it.value.take(32) },
-            // Taste / memories are file-export only (too large for QR).
-            tasteSignalsJson = null,
-            tasteAffinityJson = null,
-            tasteQueryTokensJson = null,
-            searchMemoriesJson = null,
         ),
     )
 
     companion object {
-        const val VERSION = 2
-        const val VERSION_LEGACY = 1
+        const val VERSION = 1
         const val KIND = "bsf.profile"
-        /** Silent caps at export — lists longer than this are truncated. */
         const val MAX_QR_WATCHLIST = 80
         const val MAX_QR_NOTES = 40
         const val MAX_FILE_WATCHLIST = 500

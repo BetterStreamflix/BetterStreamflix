@@ -251,13 +251,7 @@ object WatchlistImporter {
             )
         }
         val provider = providerFor(source)
-        val database = AppDatabase.getInstanceForProviderOrNull(provider.name, context)
-            ?: return@withContext Result(
-                importedCount = 0,
-                errors = listOf(
-                    context.getString(R.string.watchlist_import_failed, "database unavailable"),
-                ),
-            )
+        val database = AppDatabase.getInstanceForProvider(provider.name, context)
         try {
             var count = 0
             val now = System.currentTimeMillis()

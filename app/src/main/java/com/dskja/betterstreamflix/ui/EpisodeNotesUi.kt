@@ -16,7 +16,6 @@ import com.dskja.betterstreamflix.R
 import com.dskja.betterstreamflix.models.Episode
 import com.dskja.betterstreamflix.utils.EpisodeNotesStore
 import com.dskja.betterstreamflix.utils.ExpDialogChrome
-import com.dskja.betterstreamflix.utils.UserPreferences
 import com.dskja.betterstreamflix.utils.dp
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 
@@ -103,15 +102,7 @@ object EpisodeNotesUi {
             .setTitle(R.string.episode_note_title)
             .setView(frame)
             .setPositiveButton(R.string.episode_note_save) { dialog, _ ->
-                val provider = UserPreferences.currentProvider?.name.orEmpty()
-                val showId = episode.tvShow?.id.orEmpty()
-                val saved = EpisodeNotesStore.set(
-                    appCtx,
-                    episode.id,
-                    input.text?.toString(),
-                    providerName = provider,
-                    showId = showId,
-                )
+                val saved = EpisodeNotesStore.set(appCtx, episode.id, input.text?.toString())
                 onChanged?.invoke(saved)
                 dialog.dismiss()
             }
@@ -119,12 +110,7 @@ object EpisodeNotesUi {
 
         if (existing.isNotBlank()) {
             builder.setNeutralButton(R.string.episode_note_clear) { dialog, _ ->
-                EpisodeNotesStore.clear(
-                    appCtx,
-                    episode.id,
-                    providerName = UserPreferences.currentProvider?.name.orEmpty(),
-                    showId = episode.tvShow?.id.orEmpty(),
-                )
+                EpisodeNotesStore.clear(appCtx, episode.id)
                 onChanged?.invoke(null)
                 dialog.dismiss()
             }

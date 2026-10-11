@@ -14,11 +14,6 @@ import kotlin.math.max
  * Device-wide accessibility overlays: large text (fontScale) and high contrast theme.
  * Reads SharedPreferences directly so [wrap] works in attachBaseContext before
  * [UserPreferences.setup].
- *
- * Enabling app [HIGH_CONTRAST] also applies
- * [com.dskja.betterstreamflix.player.SubtitleStudio.HIGH_CONTRAST] captions (ST-009)
- * via [syncSubtitleStudioForHighContrast]. Turning HIGH_CONTRAST off leaves captions
- * as-is so user tweaks are not wiped.
  */
 object AccessibilityPreferences {
     const val LARGE_TEXT_SCALE = 1.3f
@@ -39,14 +34,6 @@ object AccessibilityPreferences {
     fun wrapAfterLanguage(context: Context): Context =
         wrap(AppLanguageManager.wrap(context))
 
-    /**
-     * LD-027 / LD-034: intentional no-op — do **not** shrink Configuration.densityDpi for
-     * Compact Leanback. Global dpi scales nav/player/dialogs and compounds Large Text.
-     * Compact sizing is owned by [com.dskja.betterstreamflix.ui.LeanbackDensityPolicy]
-     * plus [R.style.AppTheme_Tv_LeanbackCompactOverlay] from MainTvActivity.onCreate.
-     */
-    fun wrapLeanbackDensity(context: Context): Context = context
-
     fun isLargeTextEnabled(context: Context): Boolean =
         prefs(context).getBoolean(KEY_LARGE_TEXT, false)
 
@@ -55,20 +42,6 @@ object AccessibilityPreferences {
 
     fun isHighContrastActive(): Boolean =
         runCatching { UserPreferences.highContrast }.getOrDefault(false)
-
-    /**
-     * ST-009: when the accessibility High contrast toggle turns **on**, apply the
-     * Subtitle Studio high-contrast caption preset so UI chrome and captions align.
-     * No-op when [enabled] is false (preserves any caption customizations).
-     */
-    fun syncSubtitleStudioForHighContrast(enabled: Boolean) {
-        if (!enabled) return
-        runCatching {
-            com.dskja.betterstreamflix.player.SubtitleStudio.applyPreset(
-                com.dskja.betterstreamflix.player.SubtitleStudio.HIGH_CONTRAST,
-            )
-        }
-    }
 
     @StyleRes
     fun highContrastOverlay(mobile: Boolean): Int =
@@ -79,17 +52,6 @@ object AccessibilityPreferences {
     fun applyHighContrastOverlay(activity: Activity, mobile: Boolean) {
         if (!isHighContrastActive() && !isHighContrastEnabled(activity)) return
         activity.theme.applyStyle(highContrastOverlay(mobile), true)
-    }
-
-    /**
-     * FA-031: shared helper for secondary Activities — leanback → TV overlay,
-     * otherwise mobile.
-     */
-    fun applyHighContrastOverlayAuto(activity: Activity) {
-        val leanback = activity.packageManager.hasSystemFeature(
-            android.content.pm.PackageManager.FEATURE_LEANBACK,
-        )
-        applyHighContrastOverlay(activity, mobile = !leanback)
     }
 
     fun posterLabel(

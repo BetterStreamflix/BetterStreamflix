@@ -25,45 +25,20 @@ object RemoteFindSession {
     @Volatile
     var phoneConnected: Boolean = false
 
-    /** Closes the live phone WS client + finishes the phone activity (Settings Leave). */
-    @Volatile
-    private var phoneLeaveAction: (() -> Unit)? = null
-
     fun beginHost(token: String, shortCode: String, wsUrl: String) {
         role = Role.TV_HOST
         this.token = token
         this.shortCode = shortCode
         this.wsUrl = wsUrl
         phoneConnected = false
-        phoneLeaveAction = null
     }
 
-    fun beginPhone(token: String?, shortCode: String?, wsUrl: String) {
+    fun beginPhone(token: String, shortCode: String?, wsUrl: String) {
         role = Role.PHONE
         this.token = token
         this.shortCode = shortCode
         this.wsUrl = wsUrl
         phoneConnected = true
-    }
-
-    fun updatePhoneToken(token: String) {
-        if (role == Role.PHONE) {
-            this.token = token
-        }
-    }
-
-    fun registerPhoneLeave(action: (() -> Unit)?) {
-        phoneLeaveAction = action
-    }
-
-    /** Close live phone client, finish activity, clear session. */
-    fun leavePhone() {
-        val leave = phoneLeaveAction
-        phoneLeaveAction = null
-        leave?.invoke()
-        if (role == Role.PHONE) {
-            clear()
-        }
     }
 
     fun clear() {
@@ -72,10 +47,9 @@ object RemoteFindSession {
         shortCode = null
         wsUrl = null
         phoneConnected = false
-        phoneLeaveAction = null
     }
 
-    fun isActive(): Boolean = role != null && (!token.isNullOrBlank() || !shortCode.isNullOrBlank())
+    fun isActive(): Boolean = role != null && !token.isNullOrBlank()
 
     fun isHost(): Boolean = role == Role.TV_HOST
 

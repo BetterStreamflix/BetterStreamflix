@@ -18,7 +18,7 @@ class CastHandoffLinksTest {
 
     @Test
     fun parseCustomSchemeAndHttps() {
-        val code = "ABCQJ2"
+        val code = "ABCOI2"
         assertEquals(code, CastHandoffLinks.parseShortCode("betterstreamflix://casthand?code=$code"))
         assertEquals(code, CastHandoffLinks.parseShortCode(CastHandoffLinks.buildCustomSchemeUri(code)))
         assertEquals(code, CastHandoffLinks.parseShortCode("https://betterstreamflix.app/casthand/$code"))
@@ -46,8 +46,7 @@ class CastHandoffLinksTest {
     @Test
     fun shortCodeNormalization() {
         assertEquals("ABC234", CastHandoffLinks.normalizeShortCode("abc234"))
-        assertEquals("ABCQJ2", CastHandoffLinks.normalizeShortCode("abc012"))
-        assertEquals("ABCDEF", CastHandoffLinks.normalizeShortCode("ABC-DEF"))
+        assertEquals("ABCOI2", CastHandoffLinks.normalizeShortCode("abc012"))
         assertNull(CastHandoffLinks.normalizeShortCode("short"))
         assertNull(CastHandoffLinks.normalizeShortCode("HAS!@#"))
         assertTrue(CastHandoffLinks.isValidShortCode("XK9M2P"))

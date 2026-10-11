@@ -28,7 +28,7 @@
         android:fontFamily="@font/manrope"
         android:maxLines="1"
         android:nextFocusLeft="@id/nav_main"
-        android:nextFocusDown="@id/live_command_chrome"
+        android:nextFocusDown="@id/vgv_live_hub"
         android:nextFocusRight="@id/tv_home_profile_chip"
         android:text="@string/live_hub_title"
         android:textColor="@color/cinema_text"

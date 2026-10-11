@@ -1,6 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<resources>
-    <!-- TV landscape tablets/sticks: keep Comfort default (240) — do not inherit mobile sw600dp-land 180. -->
-    <dimen name="continue_watching_poster_height">240dp</dimen>
-    <dimen name="tv_shelf_poster_height">240dp</dimen>
-</resources>

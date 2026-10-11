@@ -151,7 +151,6 @@ object CloudSyncManager {
             this.email = email
             this.password = password
         }
-        // SC-013: email-confirm flows may leave session null — UI treats false as needs confirm.
         val sessionUser = client.auth.currentSessionOrNull()?.user ?: return false
         val userId = sessionUser.id
         rejectIfLinkedElsewhere(appContext, profileId, userId)
@@ -186,7 +185,7 @@ object CloudSyncManager {
     }
 
     private fun rejectKidsCloudAuth() {
-        if (ProfileManager.isKidsActive() || ProfileManager.isGuestActive()) {
+        if (ProfileManager.isKidsActive()) {
             throw KidsCloudAuthException()
         }
     }
@@ -273,9 +272,8 @@ object CloudSyncManager {
             if (uploadable.isNotEmpty()) {
                 upsert(client, uploadable, onProgress)
             }
-            // SC-008: acknowledge losers too (LWW) — no conflict UI; stale offline
-            // edits drop from the queue. acknowledge() still keeps newer versions
-            // queued while this upload was in progress.
+            // Acknowledge stale mutations too. acknowledge() keeps any newer
+            // version that was queued while this upload was in progress.
             CloudMutationStore.acknowledge(context, pending, profileId)
         }
         if (!ProfileManager.isKidsActive()) {
@@ -362,7 +360,8 @@ object CloudSyncManager {
                     collectLocalState(context, userId, profileId)
                 }
                 if (local.isNotEmpty()) {
-                    // SC-009: hard stop + sign-out when local data cannot merge — user must resolve.
+                    // Do not silently destroy local state when reconnecting a
+                    // device to a different cloud account.
                     try {
                         client.auth.signOut()
                     } catch (_: Throwable) {
@@ -556,6 +555,12 @@ object CloudSyncManager {
                 mergedAtMillis,
             ),
         )
+    }
+
+    private fun maxNullable(first: Long?, second: Long?): Long? = when {
+        first == null -> second
+        second == null -> first
+        else -> maxOf(first, second)
     }
 
     private suspend fun fetchRemote(client: io.github.jan.supabase.SupabaseClient): List<RemoteMediaState> =
@@ -851,6 +856,25 @@ object CloudSyncManager {
         watchedDate?.timeInMillis,
         watchHistory?.lastEngagementTimeUtcMillis,
     ).maxOrNull() ?: Long.MIN_VALUE
+
+    private fun clearLocalUserState(context: Context) {
+        val profileId = ProfileManager.activeProfileId
+        existingProviders(context, profileId).forEach { provider ->
+            val opened = AppDatabase.openForProfile(provider.name, context, profileId)
+            val db = opened.database
+            try {
+                db.runInTransaction {
+                    db.movieDao().clearUserState()
+                    db.tvShowDao().clearUserState()
+                    db.episodeDao().clearUserState()
+                }
+            } finally {
+                if (opened.ownsConnection) runCatching { db.close() }
+            }
+        }
+        UserDataCache.clearAll(context)
+        UserDataNotifier.notifyChanged()
+    }
 
     private fun existingProviders(context: Context, profileId: String): List<Provider> = allProviders()
         .distinctBy { it.name }

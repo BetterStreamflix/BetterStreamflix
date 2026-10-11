@@ -5,8 +5,6 @@
     android:id="@+id/live_command_chrome"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:descendantFocusability="afterDescendants"
-    android:focusable="true"
     android:orientation="vertical"
     android:paddingBottom="4dp">
 

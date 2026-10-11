@@ -10,7 +10,6 @@ import androidx.media3.exoplayer.audio.AudioSink
 import androidx.media3.exoplayer.audio.DefaultAudioSink
 import androidx.media3.exoplayer.text.TextOutput
 import androidx.media3.exoplayer.text.TextRenderer
-import com.dskja.betterstreamflix.player.NightModeAudio
 import com.dskja.betterstreamflix.player.NightModeAudioProcessor
 
 /** Runtime subtitle timing shared by the player settings and text renderer. */
@@ -77,18 +76,10 @@ class SubtitleOffsetRenderersFactory(context: Context) : DefaultRenderersFactory
         enableFloatOutput: Boolean,
         enableAudioTrackPlaybackParams: Boolean,
     ): AudioSink {
-        // PT-134 / CC-007: empty processor chain when Night is off (zero copy on sticks).
-        // Night PCM only while user-enabled Night is on — Comfort/Energy never force it.
-        NightModeAudio.syncFromPreferences()
-        val processors = if (NightModeAudio.enabled) {
-            arrayOf(NightModeAudioProcessor())
-        } else {
-            emptyArray()
-        }
         return DefaultAudioSink.Builder(context)
             .setEnableFloatOutput(enableFloatOutput)
             .setEnableAudioTrackPlaybackParams(enableAudioTrackPlaybackParams)
-            .setAudioProcessors(processors)
+            .setAudioProcessors(arrayOf(NightModeAudioProcessor()))
             .build()
     }
 }

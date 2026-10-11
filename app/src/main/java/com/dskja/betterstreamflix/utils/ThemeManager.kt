@@ -36,12 +36,6 @@ object ThemeManager {
     fun defaultThemeForKids(isKids: Boolean): String =
         if (isKids) KIDS_BRIGHT else CINEMA_INK
 
-    /** Kids sessions may only use Cinema-Ink Kids — never adult Cinema-Ink shells. */
-    fun clampLookForKids(look: String, isKids: Boolean): String {
-        val resolved = resolveLook(look)
-        return if (isKids) KIDS_BRIGHT else resolved
-    }
-
     /**
      * Collapse any stored theme (including retired palettes / OLED) onto one locked look.
      */
@@ -135,32 +129,16 @@ object ThemeManager {
             )
         }
         // High contrast a11y overlay sits on top of the locked look (text/chrome only).
-        // Kids Bright keeps warm navy + accent tint so HC does not wipe the kids shell.
-        // Light keeps cool paper surfaces with ink text rather than a black nav wipe.
         return if (UserPreferences.highContrast) {
-            when (resolveLook(theme)) {
-                KIDS_BRIGHT -> base.copy(
-                    mobileNavActive = color("#FFB347"),
-                    mobileNavInactive = color("#FFFFFF"),
-                    tvHeaderPrimary = color("#FFFFFF"),
-                    tvHeaderSecondary = color("#FFE08A"),
-                )
-                CINEMA_INK_LIGHT -> base.copy(
-                    mobileNavActive = color("#000000"),
-                    mobileNavInactive = color("#1A1A1A"),
-                    tvHeaderPrimary = color("#000000"),
-                    tvHeaderSecondary = color("#1A1A1A"),
-                )
-                else -> base.copy(
-                    mobileNavBackground = color("#000000"),
-                    mobileNavActive = color("#FFFFFF"),
-                    mobileNavInactive = color("#F0F0F0"),
-                    systemBar = color("#000000"),
-                    tvNavBackground = color("#000000"),
-                    tvHeaderPrimary = color("#FFFFFF"),
-                    tvHeaderSecondary = color("#F0F0F0"),
-                )
-            }
+            base.copy(
+                mobileNavBackground = color("#000000"),
+                mobileNavActive = color("#FFFFFF"),
+                mobileNavInactive = color("#F0F0F0"),
+                systemBar = color("#000000"),
+                tvNavBackground = color("#000000"),
+                tvHeaderPrimary = color("#FFFFFF"),
+                tvHeaderSecondary = color("#F0F0F0"),
+            )
         } else {
             base
         }

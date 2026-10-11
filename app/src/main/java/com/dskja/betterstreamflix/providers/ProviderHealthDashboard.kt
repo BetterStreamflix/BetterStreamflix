@@ -1,14 +1,11 @@
 package com.dskja.betterstreamflix.providers
 
-import com.dskja.betterstreamflix.ui.StickEnergyMode
 import com.dskja.betterstreamflix.utils.DomainRedirectChecker
 import com.dskja.betterstreamflix.utils.UserPreferences
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
-import kotlinx.coroutines.sync.Semaphore
-import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.withContext
 
 /**
@@ -106,14 +103,10 @@ object ProviderHealthDashboard {
             .distinctBy { it.name }
             .take(MAX_LIVE_PROBES)
         if (targets.isEmpty()) return@withContext emptyMap()
-        // SE-009: serialize probes under Stick Energy.
-        val gate = Semaphore(StickEnergyMode.providerParallelism(default = 3))
         coroutineScope {
             targets.map { provider ->
                 async {
-                    gate.withPermit {
-                        provider.name to probeOne(provider, provider as ProviderConfigUrl)
-                    }
+                    provider.name to probeOne(provider, provider as ProviderConfigUrl)
                 }
             }.awaitAll().toMap()
         }

@@ -233,25 +233,13 @@ class DownloadRepository private constructor(
      * "Re-download needed" instead of unplayable Completed entries.
      */
     suspend fun reconcileOrphanedCompleted() {
-        val now = System.currentTimeMillis()
-        // Grace: skip freshly completed rows (cache may still be warming — OS-052).
-        val graceMs = 90_000L
         getAllOnce()
-            .filter { DownloadProfileScope.matchesActive(it.profileId) }
             .filter { it.state == DownloadItemState.COMPLETED.name }
             .forEach { item ->
-                val touch = maxOf(item.completedAt, item.updatedAt, item.createdAt)
-                if (touch > 0L && now - touch < graceMs) return@forEach
                 val playable = runCatching {
                     OfflinePlayback.canPlayOffline(context, item)
                 }.getOrDefault(false)
                 if (!playable) {
-                    // Second probe after a short yield reduces false positives on cold start.
-                    kotlinx.coroutines.delay(120L)
-                    val stillDead = !runCatching {
-                        OfflinePlayback.canPlayOffline(context, item)
-                    }.getOrDefault(false)
-                    if (!stillDead) return@forEach
                     markFailed(
                         item.id,
                         DownloadErrorCode.STORAGE_RELOCATED,
@@ -697,75 +685,9 @@ class DownloadRepository private constructor(
         }.getOrDefault(false)
     }
 
-    suspend fun upsertSeasonPack(pack: DownloadSeasonPackEntity) {
-        val stamped = if (pack.profileId.isBlank()) {
-            pack.copy(profileId = DownloadProfileScope.activeId())
-        } else {
-            pack
-        }
-        dao.upsertSeasonPack(stamped)
-    }
+    suspend fun upsertSeasonPack(pack: DownloadSeasonPackEntity) = dao.upsertSeasonPack(pack)
 
     suspend fun getSeasonPack(id: String) = dao.getSeasonPack(id)
-
-    /**
-     * When several per-episode downloads for the same show/season exist without a pack,
-     * create one cheaply so Controls Packs can share them (OS-054).
-     */
-    suspend fun maybeUpsertOpportunisticSeasonPack(item: DownloadItemEntity) {
-        if (item.kind != DownloadKind.EPISODE.name) return
-        if (!item.seasonPackId.isNullOrBlank()) return
-        val parts = item.contentKey.split('|')
-        if (parts.size < 6 || parts[0] != "episode") return
-        val provider = parts[1].trim()
-        val showId = parts[2].trim()
-        val season = parts[3].toIntOrNull() ?: return
-        if (provider.isBlank() || showId.isBlank()) return
-        val packId = DownloadContentKey.seasonPack(provider, showId, season)
-        if (dao.getSeasonPack(packId) != null) return
-        val siblings = getAllOnce()
-            .filter { DownloadProfileScope.matchesActive(it.profileId) }
-            .filter { it.kind == DownloadKind.EPISODE.name }
-            .filter { row ->
-                val p = row.contentKey.split('|')
-                p.size >= 6 &&
-                    p[0] == "episode" &&
-                    p[1] == provider &&
-                    p[2] == showId &&
-                    p[3].toIntOrNull() == season
-            }
-        val present = siblings.filter { row ->
-            val state = DownloadItemState.fromKey(row.state)
-            state.isActive ||
-                row.state == DownloadItemState.COMPLETED.name ||
-                row.state == DownloadItemState.PAUSED.name
-        }
-        if (present.size < 2) return
-        val title = runCatching {
-            org.json.JSONObject(item.videoTypeJson.ifBlank { "{}" }).optString("showTitle")
-        }.getOrNull()?.takeIf { it.isNotBlank() } ?: item.title
-        val poster = runCatching {
-            org.json.JSONObject(item.videoTypeJson.ifBlank { "{}" }).optString("showPoster")
-        }.getOrNull()?.takeIf { it.isNotBlank() } ?: item.posterUrl
-        upsertSeasonPack(
-            DownloadSeasonPackEntity(
-                id = packId,
-                providerName = provider,
-                tvShowId = showId,
-                tvShowTitle = title,
-                seasonNumber = season,
-                posterUrl = poster,
-                totalEpisodes = present.size,
-                profileId = DownloadProfileScope.activeId(),
-            ),
-        )
-        present.sortedBy { it.sortIndex }.forEachIndexed { index, row ->
-            if (row.seasonPackId.isNullOrBlank()) {
-                assignPack(row.id, packId, index)
-            }
-        }
-        refreshSeasonPack(packId)
-    }
 
     suspend fun refreshSeasonPack(packId: String) {
         val pack = dao.getSeasonPack(packId) ?: return
@@ -787,10 +709,9 @@ class DownloadRepository private constructor(
             pack.copy(
                 completedEpisodes = completed,
                 failedEpisodes = failed,
-                totalEpisodes = items.size,
+                totalEpisodes = items.size.coerceAtLeast(pack.totalEpisodes),
                 state = state.name,
                 updatedAt = System.currentTimeMillis(),
-                profileId = pack.profileId.ifBlank { DownloadProfileScope.activeId() },
             ),
         )
     }

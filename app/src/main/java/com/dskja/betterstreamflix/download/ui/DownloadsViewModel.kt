@@ -9,25 +9,25 @@ import com.dskja.betterstreamflix.download.DownloadEventBridge
 import com.dskja.betterstreamflix.download.DownloadHealth
 import com.dskja.betterstreamflix.download.DownloadItemEntity
 import com.dskja.betterstreamflix.download.DownloadItemState
+import com.dskja.betterstreamflix.download.DownloadKind
 import com.dskja.betterstreamflix.download.DownloadLane
 import com.dskja.betterstreamflix.download.DownloadLaneFocus
 import com.dskja.betterstreamflix.download.DownloadLanePolicy
-import com.dskja.betterstreamflix.download.DownloadLaneScheduler
-import com.dskja.betterstreamflix.download.DownloadParentalFilter
 import com.dskja.betterstreamflix.download.DownloadRepository
-import com.dskja.betterstreamflix.download.DownloadResumeScheduler
-import com.dskja.betterstreamflix.download.DownloadSeasonPackEntity
 import com.dskja.betterstreamflix.download.DownloadSeriesFolders
 import com.dskja.betterstreamflix.download.DownloadStats
 import com.dskja.betterstreamflix.download.DownloadStorage
 import com.dskja.betterstreamflix.download.OfflineExpiryPolicy
 import com.dskja.betterstreamflix.download.OfflineLibrary
 import com.dskja.betterstreamflix.download.OfflinePlayback
-import com.dskja.betterstreamflix.download.SmartDownloadsManager
 import com.dskja.betterstreamflix.download.SmartDownloadsPolicy
 import com.dskja.betterstreamflix.download.StreamflixDownloadManager
-import com.dskja.betterstreamflix.fragments.downloads.OfflineVideoCache
+import com.dskja.betterstreamflix.models.Episode
+import com.dskja.betterstreamflix.models.Movie
+import com.dskja.betterstreamflix.models.Season
+import com.dskja.betterstreamflix.models.TvShow
 import com.dskja.betterstreamflix.profiles.ProfileManager
+import com.dskja.betterstreamflix.utils.ParentalControlUtils
 import com.dskja.betterstreamflix.utils.UserPreferences
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -45,6 +45,7 @@ import kotlinx.coroutines.flow.mapLatest
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import org.json.JSONObject
 
 class DownloadsViewModel(
     private val appContext: Context,
@@ -93,7 +94,6 @@ class DownloadsViewModel(
         if (active == boundProfileId) return
         boundProfileId = active
         collapsedSeries.value = emptySet()
-        OfflineVideoCache.clear()
         profileTick.value = profileTick.value + 1
         refreshStorage()
     }
@@ -112,9 +112,9 @@ class DownloadsViewModel(
     /** Unplayable / cache-missing count for the Downloads health banner. */
     @OptIn(ExperimentalCoroutinesApi::class)
     val healthSummary: StateFlow<DownloadHealth.Summary> = profileTick
-        .flatMapLatest { repo().observeForActiveProfile() }
+        .flatMapLatest { repo().observeAll() }
         .mapLatest { items ->
-            DownloadHealth.summarize(appContext, applyParentalFilter(items))
+            DownloadHealth.summarize(applyParentalFilter(items))
         }
         .flowOn(Dispatchers.Default)
         .stateIn(
@@ -125,25 +125,23 @@ class DownloadsViewModel(
 
     /**
      * Offline Studio aggregate for Care + Controls + status rail.
-     * Rebuilds when Room rows, packs, Studio prefs, or Lane focus change.
+     * Rebuilds when Room rows, packs, or Studio prefs change.
      */
     @OptIn(ExperimentalCoroutinesApi::class)
     val studioSnapshot: StateFlow<OfflineStudioSnapshot> = profileTick
         .flatMapLatest {
             combine(
-                repo().observeForActiveProfile(),
+                repo().observeAll(),
                 repo().observeSeasonPacks(),
                 studioPrefsTick,
-                DownloadLaneFocus.tick,
-            ) { items, packs, _, _ ->
+            ) { items, packs, _ ->
                 items to packs
             }
         }
         .mapLatest { (items, packs) ->
-            val parental = applyParentalFilter(items)
             OfflineStudioSnapshot.build(
-                items = parental,
-                packs = filterPacksForParental(packs, parental),
+                items = applyParentalFilter(items),
+                packs = packs,
                 smartEnabled = UserPreferences.downloadSmartEnabled,
                 smartLookahead = UserPreferences.downloadSmartLookahead,
                 smartSeriesQuota = UserPreferences.downloadSmartSeriesQuota,
@@ -151,9 +149,6 @@ class DownloadsViewModel(
                 wifiOnly = UserPreferences.downloadWifiOnly,
                 softLimitGb = UserPreferences.downloadSoftLimitGb,
                 maxConcurrent = UserPreferences.downloadMaxConcurrent,
-                watchingFocus = DownloadLaneFocus.current(),
-                careExpiryAllowed = OfflineExpiryPolicy.shouldPrompt(),
-                context = appContext,
             )
         }
         .flowOn(Dispatchers.Default)
@@ -170,7 +165,6 @@ class DownloadsViewModel(
                 wifiOnly = UserPreferences.downloadWifiOnly,
                 softLimitGb = UserPreferences.downloadSoftLimitGb,
                 maxConcurrent = UserPreferences.downloadMaxConcurrent,
-                careExpiryAllowed = OfflineExpiryPolicy.shouldPrompt(),
             ),
         )
 
@@ -178,21 +172,19 @@ class DownloadsViewModel(
     val rows: StateFlow<List<DownloadRowUiModel>> = profileTick
         .flatMapLatest {
             combine(
-                repo().observeForActiveProfile(),
+                repo().observeAll(),
                 repo().observeSeasonPacks(),
                 combine(filter, sort, collapsedSeries) { f, s, collapsed ->
                     Triple(f, s, collapsed)
                 },
-                DownloadLaneFocus.tick,
-            ) { items, packs, filters, _ ->
+            ) { items, packs, filters ->
                 val (selectedFilter, selectedSort, collapsed) = filters
                 Quad(items, packs, selectedFilter, selectedSort, collapsed)
             }
         }
         .mapLatest { q ->
             val filteredItems = applyParentalFilter(q.items)
-            val packs = filterPacksForParental(q.packs, filteredItems)
-            buildRows(filteredItems, packs, q.filter, q.sort, q.collapsed)
+            buildRows(filteredItems, q.packs, q.filter, q.sort, q.collapsed)
         }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
@@ -203,7 +195,7 @@ class DownloadsViewModel(
     @OptIn(ExperimentalCoroutinesApi::class)
     val libraryEntries: StateFlow<List<OfflineLibrary.Entry>> = profileTick
         .flatMapLatest {
-            combine(repo().observeForActiveProfile(), libraryQuery) { items, query -> items to query }
+            combine(repo().observeAll(), libraryQuery) { items, query -> items to query }
         }
         .mapLatest { (items, query) ->
             val parental = applyParentalFilter(items)
@@ -254,26 +246,18 @@ class DownloadsViewModel(
         }
         UserPreferences.downloadWifiOnly = enabled
         refreshWifiPreference()
-        StreamflixDownloadManager.applyWifiOnlyRequirements(appContext)
-        DownloadResumeScheduler.enqueue(appContext, replace = true)
         viewModelScope.launch {
             if (enabled && DownloadConnectivityMonitor.shouldHoldForWifiOnly(appContext)) {
                 repo().pauseForConnectivity()
             } else if (!enabled) {
                 repo().resumeConnectivityHeld()
             }
-            DownloadLaneScheduler.apply(appContext)
         }
     }
 
     fun setSmartEnabled(enabled: Boolean) {
         UserPreferences.downloadSmartEnabled = enabled
         refreshStudioPreferences()
-        if (enabled) {
-            viewModelScope.launch {
-                runCatching { SmartDownloadsManager.sweepAfterEnable(appContext) }
-            }
-        }
     }
 
     fun setSmartLookahead(value: Int) {
@@ -303,29 +287,11 @@ class DownloadsViewModel(
         UserPreferences.downloadSoftLimitGb = value.coerceIn(0, 500)
         refreshStudioPreferences()
         refreshStorage()
-        viewModelScope.launch {
-            if (!DownloadStorage.isOverSoftLimit(appContext) &&
-                !DownloadStorage.isLowSpace(appContext)
-            ) {
-                repo().resumeStorageHeld()
-            }
-            DownloadLaneScheduler.apply(appContext)
-        }
     }
 
     fun bumpSoftLimitGb(delta: Int) {
         val step = if (delta > 0) 5 else -5
         setSoftLimitGb(UserPreferences.downloadSoftLimitGb + step)
-    }
-
-    fun setMaxConcurrent(value: Int) {
-        UserPreferences.downloadMaxConcurrent = value.coerceIn(1, 4)
-        refreshStudioPreferences()
-        viewModelScope.launch { DownloadLaneScheduler.apply(appContext) }
-    }
-
-    fun bumpMaxConcurrent(delta: Int) {
-        setMaxConcurrent(UserPreferences.downloadMaxConcurrent + delta)
     }
 
     /** Poll Media3 while the Downloads screen is resumed so progress/speed stay live. */
@@ -387,12 +353,8 @@ class DownloadsViewModel(
      */
     suspend fun loadOfflineExpiryCandidates(): List<DownloadItemEntity> {
         if (!OfflineExpiryPolicy.shouldPrompt()) return emptyList()
-        val all = applyParentalFilter(
-            repo().getAllOnce().filter {
-                com.dskja.betterstreamflix.download.DownloadProfileScope.matchesActive(it.profileId)
-            },
-        )
-        return OfflineExpiryPolicy.selectStale(all, max = OfflineExpiryPolicy.MAX_BATCH)
+        val all = applyParentalFilter(repo().getAllOnce())
+        return OfflineExpiryPolicy.selectStale(all)
     }
     fun pauseAll() = viewModelScope.launch { repo().pauseAll() }
     fun resumeAll() = viewModelScope.launch { repo().resumeAll() }
@@ -414,8 +376,7 @@ class DownloadsViewModel(
     }
 
     fun redownloadAllUnhealthy() = viewModelScope.launch {
-        val ids = healthSummary.value.ids
-        DownloadController.redownloadAllUnhealthy(appContext, onlyIds = ids)
+        DownloadController.redownloadAllUnhealthy(appContext)
         refreshStorage()
     }
     fun pausePack(packId: String) = viewModelScope.launch { repo().pausePack(packId) }
@@ -425,8 +386,11 @@ class DownloadsViewModel(
         refreshStorage()
     }
 
-    suspend fun isPlayAllowed(entity: DownloadItemEntity): Boolean =
-        DownloadParentalFilter.isAllowed(entity)
+    suspend fun isPlayAllowed(entity: DownloadItemEntity): Boolean {
+        if (!ProfileManager.isKidsActive() && !UserPreferences.isParentalControlActive) return true
+        val item = toFilterable(entity) ?: return !ProfileManager.isKidsActive()
+        return ParentalControlUtils.filterItems(listOf(item)).isNotEmpty()
+    }
 
     override fun onCleared() {
         stopLiveProgress()
@@ -434,21 +398,61 @@ class DownloadsViewModel(
         super.onCleared()
     }
 
-    private suspend fun applyParentalFilter(items: List<DownloadItemEntity>): List<DownloadItemEntity> =
-        DownloadParentalFilter.filter(items)
+    private suspend fun applyParentalFilter(items: List<DownloadItemEntity>): List<DownloadItemEntity> {
+        if (!ProfileManager.isKidsActive() && !UserPreferences.isParentalControlActive) return items
+        return items.filter { entity ->
+            val item = toFilterable(entity) ?: return@filter !ProfileManager.isKidsActive()
+            ParentalControlUtils.filterItems(listOf(item)).isNotEmpty()
+        }
+    }
 
-    /** Hide packs whose every linked episode is parental-hidden. */
-    private fun filterPacksForParental(
-        packs: List<DownloadSeasonPackEntity>,
-        visibleItems: List<DownloadItemEntity>,
-    ): List<DownloadSeasonPackEntity> {
-        val visiblePackIds = visibleItems.mapNotNull { it.seasonPackId }.toHashSet()
-        return packs.filter { it.id in visiblePackIds }
+    private fun toFilterable(entity: DownloadItemEntity): com.dskja.betterstreamflix.adapters.AppAdapter.Item? {
+        return when (entity.kind) {
+            DownloadKind.MOVIE.name -> {
+                val id = entity.contentKey.split('|').getOrNull(2) ?: entity.id
+                Movie(
+                    id = id,
+                    title = entity.title,
+                    poster = entity.posterUrl.takeIf { it.isNotBlank() },
+                    providerName = entity.providerName,
+                )
+            }
+            DownloadKind.EPISODE.name -> {
+                val o = runCatching {
+                    JSONObject(entity.videoTypeJson.ifBlank { "{}" })
+                }.getOrNull()
+                val showId = o?.optString("showId")?.takeIf { it.isNotBlank() }
+                    ?: entity.contentKey.split('|').getOrNull(2)
+                    ?: return null
+                val showTitle = o?.optString("showTitle")?.takeIf { it.isNotBlank() }
+                    ?: entity.title
+                val showPoster = o?.optString("showPoster")?.takeIf { it.isNotBlank() }
+                    ?: entity.posterUrl.takeIf { it.isNotBlank() }
+                Episode(
+                    id = entity.contentKey.split('|').lastOrNull() ?: entity.id,
+                    number = o?.optInt("number", 1) ?: 1,
+                    title = entity.title,
+                    poster = entity.posterUrl.takeIf { it.isNotBlank() },
+                    tvShow = TvShow(
+                        id = showId,
+                        title = showTitle,
+                        poster = showPoster,
+                        providerName = entity.providerName,
+                    ),
+                    season = Season(
+                        id = "",
+                        number = o?.optInt("seasonNumber", 1) ?: 1,
+                        title = "",
+                    ),
+                )
+            }
+            else -> null
+        }
     }
 
     private fun buildRows(
         items: List<DownloadItemEntity>,
-        packs: List<DownloadSeasonPackEntity>,
+        packs: List<com.dskja.betterstreamflix.download.DownloadSeasonPackEntity>,
         selectedFilter: DownloadsFilter,
         selectedSort: DownloadsSort,
         collapsed: Set<String>,
@@ -480,12 +484,11 @@ class DownloadsViewModel(
                 DownloadsSort.NEWEST -> compareBy<DownloadItemEntity> {
                     DownloadLanePolicy.laneOf(it, watchingFocus).rank
                 }.thenByDescending { it.createdAt }.thenBy { it.sortIndex }
-                DownloadsSort.TITLE -> compareBy<DownloadItemEntity> {
-                    DownloadLanePolicy.laneOf(it, watchingFocus).rank
-                }.thenBy { it.title.lowercase() }.thenBy { it.sortIndex }
-                DownloadsSort.SIZE -> compareBy<DownloadItemEntity> {
-                    DownloadLanePolicy.laneOf(it, watchingFocus).rank
-                }.thenByDescending {
+                DownloadsSort.TITLE -> compareBy(
+                    { it.title.lowercase() },
+                    { it.sortIndex },
+                )
+                DownloadsSort.SIZE -> compareByDescending {
                     maxOf(it.contentLength, it.bytesDownloaded)
                 }
             }
@@ -619,7 +622,7 @@ class DownloadsViewModel(
 
     private data class Quad(
         val items: List<DownloadItemEntity>,
-        val packs: List<DownloadSeasonPackEntity>,
+        val packs: List<com.dskja.betterstreamflix.download.DownloadSeasonPackEntity>,
         val filter: DownloadsFilter,
         val sort: DownloadsSort,
         val collapsed: Set<String>,

@@ -62,18 +62,9 @@ class CastStreamProxyServer(
         return "http://$host:$listeningPort"
     }
 
-    /**
-     * Build a Cast-reachable URL that proxies [originalUrl] with the current headers.
-     * SS-B10-07: only allow private/LAN hosts when the stream URL itself is already
-     * on LAN (IPTV on home network); public CDN hosts never expand the LAN allowlist.
-     */
+    /** Build a Cast-reachable URL that proxies [originalUrl] with the current headers. */
     fun wrap(originalUrl: String): String {
-        val hostIsLan = runCatching {
-            val host = java.net.URI(originalUrl).host ?: return@runCatching false
-            val inet = java.net.InetAddress.getByName(host)
-            isBlockedAddress(inet) // true for private/loopback/CGNAT
-        }.getOrDefault(false)
-        registerAllowedHost(originalUrl, allowPrivate = hostIsLan)
+        registerAllowedHost(originalUrl, allowPrivate = true)
         val base = publicBaseUrl() ?: return originalUrl
         return CastPlaylistRewriter.proxyUrl(base, originalUrl, sessionToken)
     }

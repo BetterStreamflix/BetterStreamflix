@@ -31,40 +31,19 @@ class IptvZapPreloaderTest {
 
     @Test
     fun invalidate_clearsServersAndWarmedVideos() {
-        val provider = "DaddyLive TV"
         val channelId = "ch-1"
         val server = Video.Server(id = "srv-1", name = "A", src = "https://example.com/a.m3u8")
         val video = Video(source = "https://cdn.example.com/live.m3u8")
 
-        IptvZapPreloader.seedForTest(provider, channelId, listOf(server), video)
+        IptvZapPreloader.seedForTest(channelId, listOf(server), video)
 
-        assertNotNull(IptvZapPreloader.peekCachedServers(provider, channelId))
+        assertNotNull(IptvZapPreloader.peekCachedServers(channelId))
         assertNotNull(IptvZapPreloader.peekCachedVideo(server.id))
         assertEquals("https://cdn.example.com/live.m3u8", IptvZapPreloader.peekCachedVideo(server.id)?.source)
 
-        IptvZapPreloader.invalidate(provider, channelId)
+        IptvZapPreloader.invalidate(channelId)
 
-        assertNull(IptvZapPreloader.peekCachedServers(provider, channelId))
+        assertNull(IptvZapPreloader.peekCachedServers(channelId))
         assertNull(IptvZapPreloader.peekCachedVideo(server.id))
-    }
-
-    @Test
-    fun cacheKeyIsProviderAndChannelId() {
-        val serverA = Video.Server(id = "srv-a", name = "A", src = "https://a.example/a.m3u8")
-        val serverB = Video.Server(id = "srv-b", name = "B", src = "https://b.example/b.m3u8")
-        val channelId = "42"
-
-        IptvZapPreloader.seedForTest("DaddyLive TV", channelId, listOf(serverA))
-        IptvZapPreloader.seedForTest("StreamSports99", channelId, listOf(serverB))
-
-        assertEquals(
-            "srv-a",
-            IptvZapPreloader.peekCachedServers("DaddyLive TV", channelId)?.first()?.id,
-        )
-        assertEquals(
-            "srv-b",
-            IptvZapPreloader.peekCachedServers("StreamSports99", channelId)?.first()?.id,
-        )
-        assertEquals("DaddyLive TV|42", IptvZapPreloader.cacheKey("DaddyLive TV", "42"))
     }
 }

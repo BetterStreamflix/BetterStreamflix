@@ -7,6 +7,7 @@ import com.dskja.betterstreamflix.models.Video
  * Eligible during VOD; picks a preview channel from pins then live favorites.
  */
 object LivePipZapPolicy {
+
     /** Preview audio is always muted so VOD keeps focus. */
     const val PREVIEW_MUTED = true
 
@@ -39,10 +40,6 @@ object LivePipZapPolicy {
         val isCasting: Boolean,
         val isSystemPip: Boolean,
         val hasChannelCandidate: Boolean,
-        /** SE-003: Stick Energy / low-RAM — dual Exo preview is too heavy. */
-        val stickEnergyOrLowRam: Boolean = false,
-        /** CC-004: Codec Comfort latch — prefer no HW preview path. */
-        val codecComfortActive: Boolean = false,
     )
 
     fun isEligible(state: Eligibility): Boolean {
@@ -51,8 +48,6 @@ object LivePipZapPolicy {
         if (state.isKidsOrAgeGated) return false
         if (state.isCasting) return false
         if (state.isSystemPip) return false
-        if (state.stickEnergyOrLowRam) return false
-        if (state.codecComfortActive) return false
         return state.hasChannelCandidate
     }
 
@@ -108,14 +103,8 @@ object LivePipZapPolicy {
         )
     }
 
-    /** TV: preview overlay may take focus only while player chrome is visible. */
+    /** TV: overlay may take focus only while player chrome is visible. */
     fun tvOverlayFocusable(chromeVisible: Boolean): Boolean = chromeVisible
-
-    /**
-     * TV: return-to-VOD chip stays focusable whenever visible so leanback users
-     * need not show chrome first (PZ-010).
-     */
-    fun tvReturnChipFocusable(visible: Boolean): Boolean = visible
 }
 
 /**
@@ -129,23 +118,16 @@ object LivePipZapSession {
     private var suppressClearOnDestroy: Boolean = false
 
     /**
-     * Sticky across promote and subsequent LIVE→LIVE player destroys.
-     * Cleared only by [beginReturn] or [clear] (PZ-001).
+     * After promote we sticky-switch to IPTV before the VOD fragment tears down, so
+     * [onPlayerDestroyed] must not treat that destroy as “left live without returning”.
      */
     @Volatile
-    private var retainForLiveSession: Boolean = false
+    private var protectAcrossPromoteNav: Boolean = false
 
     fun stash(ticket: LivePipZapPolicy.ReturnTicket) {
         this.ticket = ticket
         suppressClearOnDestroy = false
-        retainForLiveSession = true
-    }
-
-    /** Re-stash after a failed return navigate (PZ-002). */
-    fun restore(ticket: LivePipZapPolicy.ReturnTicket) {
-        this.ticket = ticket
-        suppressClearOnDestroy = false
-        retainForLiveSession = true
+        protectAcrossPromoteNav = true
     }
 
     fun peek(): LivePipZapPolicy.ReturnTicket? = ticket
@@ -157,13 +139,14 @@ object LivePipZapSession {
         val current = ticket ?: return null
         ticket = null
         suppressClearOnDestroy = true
-        retainForLiveSession = false
+        protectAcrossPromoteNav = false
         return current
     }
 
     fun onPlayerDestroyed(wasLivePlayback: Boolean) {
-        if (retainForLiveSession && wasLivePlayback) {
-            // Keep ticket across promote and CH± / live self-nav destroys.
+        if (protectAcrossPromoteNav) {
+            // VOD player destroyed right after promote — keep the ticket for live.
+            protectAcrossPromoteNav = false
             return
         }
         if (wasLivePlayback && !suppressClearOnDestroy) {
@@ -175,6 +158,6 @@ object LivePipZapSession {
     fun clear() {
         ticket = null
         suppressClearOnDestroy = false
-        retainForLiveSession = false
+        protectAcrossPromoteNav = false
     }
 }

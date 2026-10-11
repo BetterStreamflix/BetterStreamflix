@@ -10,7 +10,6 @@ data class RemoteDeviceLinkCode(
     @SerialName("host_user_id") val hostUserId: String? = null,
     @SerialName("host_email") val hostEmail: String,
     @SerialName("claimed_at") val claimedAt: String? = null,
-    @SerialName("looked_up_at") val lookedUpAt: String? = null,
     @SerialName("expires_at") val expiresAt: String? = null,
     @SerialName("created_at") val createdAt: String? = null,
 )
@@ -26,7 +25,6 @@ data class DeviceLinkLookupPayload(
     val email: String? = null,
     @SerialName("expires_at") val expiresAt: String? = null,
     @SerialName("claimed_at") val claimedAt: String? = null,
-    @SerialName("looked_up_at") val lookedUpAt: String? = null,
 )
 
 @Serializable

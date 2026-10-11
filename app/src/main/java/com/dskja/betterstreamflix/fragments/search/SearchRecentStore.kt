@@ -4,14 +4,8 @@ import android.content.Context
 
 /**
  * Compatibility façade for Search Memories (“damals gesucht”).
- *
- * @deprecated Prefer [SearchMemories] for outcome-aware APIs. No production
- * call sites remain; kept only for binary/API compatibility with older tests.
+ * Prefer [SearchMemories] for outcome-aware APIs.
  */
-@Deprecated(
-    message = "Use SearchMemories",
-    replaceWith = ReplaceWith("SearchMemories"),
-)
 object SearchRecentStore {
 
     fun list(context: Context): List<String> =

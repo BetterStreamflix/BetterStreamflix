@@ -7,16 +7,15 @@ import com.dskja.betterstreamflix.utils.UserPreferences
 
 /**
  * Fire Stick / leanback energy mode — fewer parallel provider scrapes,
- * reduced UI motion, and (separately from SW decode) constrained work.
+ * software-decoder bias, and reduced UI motion for high-end Stick polish.
  *
- * Unset preference auto-enables on constrained Fire Stick-class devices
- * (legacy Fire OS, low-RAM, known Stick SKUs) — not Cube / high-end Fire TV
- * Edition by default. Users can toggle in Settings → Appearance.
+ * Unset preference auto-enables on Amazon Fire TV; users can toggle in
+ * Settings → Appearance.
  *
  * Coordinates with [com.dskja.betterstreamflix.player.CodecComfort]: Energy Mode
  * is the Fire Stick power policy; Codec Comfort is learned from HW decode
- * failures. SW Auto preference is driven by Comfort / fragile-OEM heuristics,
- * not by Energy alone (SE-013).
+ * failures. [preferSoftwareDecoder] ORs both so Auto picks SW when either applies
+ * without forcing Energy Mode on when the user turned it off.
  */
 object StickEnergyMode {
 
@@ -24,16 +23,15 @@ object StickEnergyMode {
     const val PREF_KEY = "STICK_ENERGY_MODE"
 
     /**
-     * Effective on/off. When the preference was never written, constrained
-     * Fire Stick-class devices default to on; Cube / high-RAM Fire boxes stay
-     * off until the user enables it.
+     * Effective on/off. When the preference was never written, Amazon Fire TV
+     * defaults to on; other devices stay off until the user enables it.
      */
     fun isEnabled(context: Context? = null): Boolean {
         UserPreferences.stickEnergyModeExplicit?.let { return it }
         val ctx = context
             ?: runCatching { BetterStreamflixApp.instance.applicationContext }.getOrNull()
             ?: return false
-        return DeviceCapabilities.shouldAutoEnableStickEnergy(ctx)
+        return DeviceCapabilities.isAmazonFireTv(ctx)
     }
 
     /**
@@ -47,38 +45,25 @@ object StickEnergyMode {
 
     /**
      * Whether player Auto should prefer software / extension renderers first.
-     * Learned Codec Comfort and static fragile-device heuristics — Energy Mode
-     * alone does not force SW (serial scrapes + less UI are enough for power).
+     * Energy Mode, learned Codec Comfort, and static fragile-device heuristics.
      */
     fun preferSoftwareDecoder(context: Context): Boolean =
-        DeviceCapabilities.shouldPreferSoftwareDecoder(context)
+        isEnabled(context) || DeviceCapabilities.shouldPreferSoftwareDecoder(context)
 
     /**
      * Ken-burns, Featured advance, focus zoom, Glide transitions, etc.
-     * Delegates to [DeviceCapabilities.shouldReduceHomeEffects], which folds
-     * Stick Energy Mode in (but not Codec Comfort — see CC-003).
-     *
-     * Ambient is special-cased: Stick Energy alone does not hard-off enter
-     * ([AmbientModePolicy.highEndOk]); Ambient uses reduced Ken Burns instead.
+     * Delegates to [DeviceCapabilities.shouldReduceHomeEffects], which already
+     * folds Stick Energy Mode in.
      */
     fun shouldReduceUiMotion(context: Context): Boolean =
         DeviceCapabilities.shouldReduceHomeEffects(context)
 
-    /** Warm radius for IPTV neighbor prefetch (±N). Energy → 0–1. */
-    fun zapWarmRadius(default: Int = 2, context: Context? = null): Int {
-        val base = default.coerceAtLeast(0)
-        return if (isEnabled(context)) base.coerceAtMost(1) else base
-    }
-
     /** Pure helpers for unit tests (no SharedPreferences / Context). */
     fun resolveEnabled(
         explicit: Boolean?,
-        autoOn: Boolean,
-    ): Boolean = explicit ?: autoOn
+        isAmazonFireTv: Boolean,
+    ): Boolean = explicit ?: isAmazonFireTv
 
     fun resolveProviderParallelism(enabled: Boolean, default: Int): Int =
         if (enabled) 1 else default.coerceAtLeast(1)
-
-    fun resolveZapWarmRadius(enabled: Boolean, default: Int): Int =
-        if (enabled) default.coerceAtMost(1).coerceAtLeast(0) else default.coerceAtLeast(0)
 }

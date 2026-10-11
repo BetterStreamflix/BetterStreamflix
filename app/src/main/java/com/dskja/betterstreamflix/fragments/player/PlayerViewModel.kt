@@ -164,10 +164,7 @@ class PlayerViewModel(
                 // Live zap: peek warm ±N neighbor servers (keep cache if getVideo fails).
                 // Trailer→Play: peek VOD servers warmed while the trailer played.
                 val warmed = if (provider is com.dskja.betterstreamflix.providers.IptvProvider) {
-                    com.dskja.betterstreamflix.iptv.IptvZapPreloader.peekCachedServers(
-                        provider.name,
-                        id,
-                    )
+                    com.dskja.betterstreamflix.iptv.IptvZapPreloader.peekCachedServers(id)
                 } else {
                     com.dskja.betterstreamflix.ui.TrailerPlayPipeline.peekCachedServers(id)
                 }
@@ -319,12 +316,8 @@ class PlayerViewModel(
                 }
                 // Stale warm cache — drop so next attempt re-resolves.
                 if (UserPreferences.currentProvider is com.dskja.betterstreamflix.providers.IptvProvider) {
-                    val iptvName = UserPreferences.currentProvider?.name.orEmpty()
                     lastId?.let { channelId ->
-                        com.dskja.betterstreamflix.iptv.IptvZapPreloader.invalidate(
-                            iptvName,
-                            channelId,
-                        )
+                        com.dskja.betterstreamflix.iptv.IptvZapPreloader.invalidate(channelId)
                     }
                     com.dskja.betterstreamflix.iptv.IptvZapPreloader.invalidateVideo(server.id)
                 } else {

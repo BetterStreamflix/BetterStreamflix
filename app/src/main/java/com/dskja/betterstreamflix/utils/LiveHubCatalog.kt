@@ -52,17 +52,15 @@ object LiveHubCatalog {
     private val SPORTS_KEYS = listOf(
         "sport", "espn", "sky sport", "bein", "nba", "nfl", "nhl", "mlb", "mls",
         "fox sport", "dazn", "tennis", "golf", "moto", "f1", "ufc", "boxing",
-        "cricket", "rugby", "serie a", "laliga", "bundesliga", "premier league",
+        "cricket", "rugby", "serie a", "laliga", "bundesliga", "premier",
         "football", "soccer", "basket", "olymp", "ppv",
     )
 
     private val NEWS_KEYS = listOf(
-        "news", "cnn", "msnbc", "fox news", "sky news", "al jazeera",
+        "news", "cnn", "bbc", "msnbc", "fox news", "sky news", "al jazeera",
         "euronews", "bloomberg", "cnbc", "nbc news", "abc news", "cbs news",
         "france 24", "dw ", "nhk", "reuters", "weather channel", "nachrichten",
         "telegiornale", "tg1", "tg5", "rai news", "n-tv", "welt ",
-        // "bbc" alone is handled in classify — must not steal BBC Sport.
-        "bbc news", "bbc world",
     )
 
     data class HubResult(
@@ -75,21 +73,15 @@ object LiveHubCatalog {
         if (g.contains("sport")) return Section.SPORT
         if (g.contains("news") || g.contains("weather")) return Section.NEWS
 
-        val titleL = title.lowercase(Locale.US)
         val blob = buildString {
-            append(titleL)
+            append(title.lowercase(Locale.US))
             append(' ')
             append(overview.orEmpty().lowercase(Locale.US))
             append(' ')
             append(g)
         }
-        // Sport before News so "BBC Sport" / sport titles never land in News.
-        val sportHit = SPORTS_KEYS.any { blob.contains(it) }
-        if (sportHit) return Section.SPORT
-        val newsHit = NEWS_KEYS.any { blob.contains(it) } ||
-            // Bare "bbc" is news only when the title is not sport-context.
-            (blob.contains("bbc") && !titleL.contains("sport") && !blob.contains("sport"))
-        if (newsHit) return Section.NEWS
+        if (NEWS_KEYS.any { blob.contains(it) }) return Section.NEWS
+        if (SPORTS_KEYS.any { blob.contains(it) }) return Section.SPORT
         return Section.CHANNELS
     }
 
@@ -257,12 +249,11 @@ object LiveHubCatalog {
         return hubSources(includeQuarantined = true).any { it.name.equals(name, ignoreCase = true) }
     }
 
-    /**
-     * Real now-playing when providers set [TvShow.programNow]. Does **not** fall
-     * back to category/group labels (those live in [groupOf] / overview).
-     */
-    fun programNowOf(show: TvShow): String? =
-        show.programNow?.trim()?.takeIf { it.isNotBlank() }
+    /** EPG-lite “now playing” from overview / group when providers omit schedule. */
+    fun programNowOf(show: TvShow): String? {
+        show.programNow?.trim()?.takeIf { it.isNotBlank() }?.let { return it }
+        return groupFromOverview(show.overview)?.takeIf { it.isNotBlank() && it.length <= 80 }
+    }
 
     fun programNextOf(show: TvShow): String? =
         show.programNext?.trim()?.takeIf { it.isNotBlank() }
@@ -270,7 +261,9 @@ object LiveHubCatalog {
     fun groupOf(show: TvShow): String? = groupFromOverview(show.overview)
 
     fun enrichEpgLite(show: TvShow): TvShow {
-        // Keep provider-supplied programNow; do not invent group-as-EPG.
+        if (show.programNow.isNullOrBlank()) {
+            show.programNow = programNowOf(show)
+        }
         return show
     }
 
@@ -326,8 +319,9 @@ object LiveHubCatalog {
                         group = groupHint,
                     )
                 }
-                // EPG-001: never stamp shelf/group names into programNow — that
-                // field is reserved for real now-playing / catch-up overlays.
+                if (show.programNow.isNullOrBlank() && groupHint.isNotBlank()) {
+                    show.programNow = groupHint
+                }
                 out.putIfAbsent(showKey(show), stamp(show))
             }
         }

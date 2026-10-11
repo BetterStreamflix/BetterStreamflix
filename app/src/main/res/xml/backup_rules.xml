@@ -13,7 +13,4 @@
     <!-- Tokens, cookies, parental PIN live in the main prefs file -->
     <exclude domain="sharedpref" path="com.dskja.betterstreamflix.preferences.xml" />
     <exclude domain="sharedpref" path="com.dskja.betterstreamflix.debug.preferences.xml" />
-    <!-- SS-B10-15: PreferenceManager default store (orphan keys / Stick Energy dual-write). -->
-    <exclude domain="sharedpref" path="com.dskja.betterstreamflix_preferences.xml" />
-    <exclude domain="sharedpref" path="com.dskja.betterstreamflix.debug_preferences.xml" />
 </full-backup-content>

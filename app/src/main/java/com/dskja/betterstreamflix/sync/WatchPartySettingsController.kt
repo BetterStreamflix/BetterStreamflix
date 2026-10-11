@@ -7,7 +7,6 @@ import androidx.appcompat.app.AlertDialog
 import androidx.fragment.app.Fragment
 import androidx.preference.Preference
 import com.dskja.betterstreamflix.R
-import com.dskja.betterstreamflix.ui.LeanbackDensityPolicy
 
 object WatchPartySettingsController {
 
@@ -22,6 +21,23 @@ object WatchPartySettingsController {
         val joinCode = findPreference(KEY_JOIN_CODE)
         val openRemote = findPreference(KEY_OPEN_REMOTE)
         val showCode = findPreference(KEY_SHOW_CODE)
+
+        fun refresh() {
+            val hosting = WatchPartySession.isHost()
+            val remote = WatchPartySession.isRemote()
+            joinCode?.isVisible = !hosting
+            openRemote?.isVisible = remote
+            showCode?.isVisible = hosting
+            showCode?.summary = if (hosting) {
+                fragment.getString(
+                    R.string.watch_party_code_label,
+                    WatchPartySession.shortCode ?: "------",
+                )
+            } else {
+                fragment.getString(R.string.watch_party_show_code_summary)
+            }
+            joinCode?.summary = fragment.getString(R.string.watch_party_join_code_summary)
+        }
 
         joinCode?.setOnPreferenceClickListener {
             promptCode(fragment)
@@ -38,31 +54,7 @@ object WatchPartySettingsController {
             true
         }
 
-        refresh(fragment, findPreference)
-    }
-
-    /** CC-054: call from Settings onResume so Open remote / Show code stay accurate. */
-    fun refresh(
-        fragment: Fragment,
-        findPreference: (String) -> Preference?,
-    ) {
-        val joinCode = findPreference(KEY_JOIN_CODE)
-        val openRemote = findPreference(KEY_OPEN_REMOTE)
-        val showCode = findPreference(KEY_SHOW_CODE)
-        val hosting = WatchPartySession.isHost()
-        val remote = WatchPartySession.isRemote()
-        joinCode?.isVisible = !hosting
-        openRemote?.isVisible = remote
-        showCode?.isVisible = hosting
-        showCode?.summary = if (hosting) {
-            fragment.getString(
-                R.string.watch_party_code_label,
-                WatchPartySession.shortCode ?: "------",
-            )
-        } else {
-            fragment.getString(R.string.watch_party_show_code_summary)
-        }
-        joinCode?.summary = fragment.getString(R.string.watch_party_join_code_summary)
+        refresh()
     }
 
     private fun promptCode(fragment: Fragment) {
@@ -72,9 +64,7 @@ object WatchPartySettingsController {
             hint = context.getString(R.string.watch_party_code_hint)
             setSingleLine()
         }
-        val pad = LeanbackDensityPolicy.overlayChromePadPx(
-            context.resources.displayMetrics.density,
-        )
+        val pad = (16 * context.resources.displayMetrics.density).toInt()
         val wrap = LinearLayout(context).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(pad, pad / 2, pad, 0)

@@ -11,7 +11,6 @@ import androidx.lifecycle.LifecycleCoroutineScope
 import androidx.preference.Preference
 import com.dskja.betterstreamflix.R
 import com.dskja.betterstreamflix.activities.tools.QrScannerActivity
-import com.dskja.betterstreamflix.ui.LeanbackDensityPolicy
 import com.dskja.betterstreamflix.utils.ExpDialogChrome
 
 object CastRoomSettingsController {
@@ -39,18 +38,15 @@ object CastRoomSettingsController {
         fun refresh() {
             val hosting = CastRoomSession.isHost()
             val controlling = CastRoomSession.isController()
-            val kids = com.dskja.betterstreamflix.profiles.ProfileManager.isKidsActive()
-            host?.isVisible = !controlling && !kids
+            host?.isVisible = !controlling
             host?.summary = when {
                 hosting -> fragment.getString(
                     R.string.cast_room_host_active_summary,
                     CastRoomSession.shortCode ?: "------",
                 )
-                kids -> fragment.getString(R.string.cast_room_kids_blocked_host)
                 else -> fragment.getString(R.string.cast_room_host_summary)
             }
-            // CC-075: hide QR scan on TV / surfaces without a scanner.
-            joinScan?.isVisible = !hosting && scanLauncher != null
+            joinScan?.isVisible = !hosting
             joinCode?.isVisible = !hosting
             openQueue?.isVisible = controlling
             showQr?.isVisible = hosting
@@ -116,9 +112,7 @@ object CastRoomSettingsController {
             hint = context.getString(R.string.cast_room_code_hint)
             setSingleLine()
         }
-        val pad = LeanbackDensityPolicy.overlayChromePadPx(
-            context.resources.displayMetrics.density,
-        )
+        val pad = (16 * context.resources.displayMetrics.density).toInt()
         val wrap = LinearLayout(context).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(pad, pad / 2, pad, 0)

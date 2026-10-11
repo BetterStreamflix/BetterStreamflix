@@ -21,7 +21,6 @@ class TelegramJoinGateActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         setTheme(R.style.TelegramJoinGateActivityTheme)
-        com.dskja.betterstreamflix.utils.AccessibilityPreferences.applyHighContrastOverlayAuto(this)
         super.onCreate(savedInstanceState)
         if (!TelegramJoinGatePolicy.shouldShowGate()) {
             setResult(RESULT_OK)

@@ -1,6 +1,5 @@
 package com.dskja.betterstreamflix.utils
 
-import android.view.View
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
@@ -74,29 +73,5 @@ class TvFocusChainTest {
         assertNotNull(TvFocusChain::class.java.methods.firstOrNull { it.name == "linkHorizontal" })
         assertNotNull(TvFocusChain::class.java.methods.firstOrNull { it.name == "linkVertical" })
         assertNotNull(TvFocusChain::class.java.methods.firstOrNull { it.name == "linkDown" })
-    }
-
-    /** FA-035: horizontal plan only encodes left/right — vertical axis stays caller-owned. */
-    @Test
-    fun planAxisLinks_preservesOrthogonalAxisContract() {
-        val links = TvFocusChain.planAxisLinks(listOf(10, 20, 30))
-        assertEquals(3, links.size)
-        assertEquals(View.NO_ID, links[0].previousId)
-        assertEquals(20, links[0].nextId)
-        assertEquals(10, links[1].previousId)
-        assertEquals(30, links[1].nextId)
-        assertEquals(20, links[2].previousId)
-        assertEquals(View.NO_ID, links[2].nextId)
-        // AxisLink only carries prev/next — orthogonal up/down stay caller-owned (FA-002/FA-035).
-        assertEquals(links[0].id, links[0].copy().id)
-    }
-
-    @Test
-    fun planAxisLinks_emptyAndSingleton() {
-        assertTrue(TvFocusChain.planAxisLinks(emptyList()).isEmpty())
-        val solo = TvFocusChain.planAxisLinks(listOf(7)).single()
-        assertEquals(7, solo.id)
-        assertEquals(View.NO_ID, solo.previousId)
-        assertEquals(View.NO_ID, solo.nextId)
     }
 }

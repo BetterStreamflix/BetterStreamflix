@@ -493,7 +493,6 @@ class PlayerSettingsTvView @JvmOverloads constructor(
                                 is Settings.NightAudio.Off ->
                                     com.dskja.betterstreamflix.player.NightModeAudio.setPersisted(false)
                             }
-                            settingsView.onNightAudioListener?.invoke()
                             settingsView.hide()
                         }
 
@@ -981,8 +980,7 @@ class PlayerSettingsTvView @JvmOverloads constructor(
                     }
 
                     is Settings.Subtitle.Style -> when (item) {
-                        // ST-011: show all StudioPreset rows (checkmark still selected-only).
-                        is Settings.Subtitle.Style.StudioPreset -> View.VISIBLE
+                        is Settings.Subtitle.Style.StudioPreset -> View.GONE
                         Settings.Subtitle.Style.ResetStyle -> View.GONE
                         else -> View.VISIBLE
                     }
