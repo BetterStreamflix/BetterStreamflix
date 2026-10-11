@@ -31,6 +31,7 @@ import com.dskja.betterstreamflix.familyfriday.FamilyFridayShelf
 import com.dskja.betterstreamflix.home.HomeRemix
 import com.dskja.betterstreamflix.smartcollections.SmartCollectionsBuilder
 import com.dskja.betterstreamflix.utils.LiveHubCatalog
+import com.dskja.betterstreamflix.watchlist.WatchlistDigestPlanner
 import com.dskja.betterstreamflix.utils.UserPreferences
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
@@ -71,7 +72,8 @@ class HomeViewModel(
         val nextEpisodes: List<Episode>,
         val recentlyWatched: List<AppAdapter.Item>,
         val favoritesMovies: List<Movie>,
-        val favoriteTvShows: List<TvShow>
+        val favoriteTvShows: List<TvShow>,
+        val watchlistDigestEpisodes: List<Episode> = emptyList(),
     )
 
     private fun <T> preserveCacheOrder(
@@ -106,7 +108,11 @@ class HomeViewModel(
             val localEpisodes = raw.continueWatching.filterIsInstance<Episode>()
             val localNext = raw.nextEpisodes
 
-            fun build(episodes: List<Episode>, next: List<Episode>) = HomeHistory(
+            fun build(
+                episodes: List<Episode>,
+                next: List<Episode>,
+                digest: List<Episode> = emptyList(),
+            ) = HomeHistory(
                 continueWatching = (movies + episodes)
                     .sortedByDescending { engagementMillis(it) }
                     .distinctBy { continueWatchingKey(it) },
@@ -120,7 +126,15 @@ class HomeViewModel(
                 ),
                 favoritesMovies = raw.favoriteMovies,
                 favoriteTvShows = raw.favoriteTvShows,
+                watchlistDigestEpisodes = digest,
             )
+
+            val digest = runCatching {
+                WatchlistDigestPlanner.plan(appContext)
+            }.getOrElse {
+                Log.w("HomeViewModel", "watchlist digest plan failed", it)
+                emptyList()
+            }
 
             // Stale-while-revalidate: if Room CW is empty, surface JSON cache until sync fills it.
             // UserDataCache is CW+favorites only — overlay Room Next/RW when present.
@@ -128,14 +142,14 @@ class HomeViewModel(
                 val cachedFallback = historyFromUserDataCache(
                     nextEpisodes = localNext,
                     recentlyWatched = raw.recentlyWatched,
-                )
+                )?.copy(watchlistDigestEpisodes = digest)
                 if (cachedFallback != null) {
                     emit(cachedFallback)
                 } else {
-                    emit(build(localEpisodes, localNext))
+                    emit(build(localEpisodes, localNext, digest))
                 }
             } else {
-                emit(build(localEpisodes, localNext))
+                emit(build(localEpisodes, localNext, digest))
             }
 
             val toEnrich = (localEpisodes + localNext).distinctBy { it.id }
@@ -159,6 +173,7 @@ class HomeViewModel(
                 build(
                     episodes = localEpisodes.map { enrichedById[it.id] ?: it },
                     next = localNext.map { enrichedById[it.id] ?: it },
+                    digest = digest,
                 )
             )
         } catch (e: CancellationException) {
@@ -178,6 +193,7 @@ class HomeViewModel(
                     recentlyWatched = roomNextRw?.second.orEmpty(),
                     favoritesMovies = emptyList(),
                     favoriteTvShows = emptyList(),
+                    watchlistDigestEpisodes = emptyList(),
                 )
             )
         }
@@ -402,6 +418,7 @@ class HomeViewModel(
                 State.SuccessLoading(
                     HomeCatalogPipeline.ensureFeaturedShelf(categories),
                     providerWarning = state.providerWarning,
+                    watchlistDigestEpisodes = history.watchlistDigestEpisodes,
                 )
             }
 
@@ -415,6 +432,8 @@ class HomeViewModel(
             val categories: List<Category>,
             /** Soft warning when provider catalog failed but library rows can still show. */
             val providerWarning: String? = null,
+            /** Weekly Watchlist Digest picks (≤5) for the home card. */
+            val watchlistDigestEpisodes: List<Episode> = emptyList(),
         ) : State()
         data class FailedLoading(val error: Exception) : State()
     }

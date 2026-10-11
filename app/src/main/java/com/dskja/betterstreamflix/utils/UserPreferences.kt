@@ -804,6 +804,34 @@ object UserPreferences {
         get() = Key.HOME_SUPPORT_CARD_SHOW_COUNT.getInt() ?: 0
         set(value) = Key.HOME_SUPPORT_CARD_SHOW_COUNT.setInt(value)
 
+    /**
+     * Weekly Watchlist Digest home card (5 new episodes from My List → one-tap queue).
+     * Default on — soft dismiss uses cool-down; hard hide via [homeWatchlistDigestDismissed].
+     */
+    var homeWatchlistDigestEnabled: Boolean
+        get() = Key.HOME_WATCHLIST_DIGEST_ENABLED.getBoolean() ?: true
+        set(value) = Key.HOME_WATCHLIST_DIGEST_ENABLED.setBoolean(value)
+
+    var homeWatchlistDigestDismissed: Boolean
+        get() = Key.HOME_WATCHLIST_DIGEST_DISMISSED.getBoolean() ?: false
+        set(value) = Key.HOME_WATCHLIST_DIGEST_DISMISSED.setBoolean(value)
+
+    var homeWatchlistDigestLastDismissedAtMs: Long
+        get() = Key.HOME_WATCHLIST_DIGEST_LAST_DISMISSED_AT_MS.getLong() ?: 0L
+        set(value) = Key.HOME_WATCHLIST_DIGEST_LAST_DISMISSED_AT_MS.setLong(value)
+
+    var homeWatchlistDigestLastShownAtMs: Long
+        get() = Key.HOME_WATCHLIST_DIGEST_LAST_SHOWN_AT_MS.getLong() ?: 0L
+        set(value) = Key.HOME_WATCHLIST_DIGEST_LAST_SHOWN_AT_MS.setLong(value)
+
+    var homeWatchlistDigestShowCount: Int
+        get() = Key.HOME_WATCHLIST_DIGEST_SHOW_COUNT.getInt() ?: 0
+        set(value) = Key.HOME_WATCHLIST_DIGEST_SHOW_COUNT.setInt(value)
+
+    var homeWatchlistDigestLastQueuedAtMs: Long
+        get() = Key.HOME_WATCHLIST_DIGEST_LAST_QUEUED_AT_MS.getLong() ?: 0L
+        set(value) = Key.HOME_WATCHLIST_DIGEST_LAST_QUEUED_AT_MS.setLong(value)
+
     /** Unique finished episodes counted toward the Support tip threshold. */
     var supportEpisodesWatchedCount: Int
         get() = Key.SUPPORT_EPISODES_WATCHED_COUNT.getInt() ?: 0
@@ -1697,6 +1725,12 @@ object UserPreferences {
         HOME_SUPPORT_CARD_LAST_DISMISSED_AT_MS,
         HOME_SUPPORT_CARD_LAST_SHOWN_AT_MS,
         HOME_SUPPORT_CARD_SHOW_COUNT,
+        HOME_WATCHLIST_DIGEST_ENABLED,
+        HOME_WATCHLIST_DIGEST_DISMISSED,
+        HOME_WATCHLIST_DIGEST_LAST_DISMISSED_AT_MS,
+        HOME_WATCHLIST_DIGEST_LAST_SHOWN_AT_MS,
+        HOME_WATCHLIST_DIGEST_SHOW_COUNT,
+        HOME_WATCHLIST_DIGEST_LAST_QUEUED_AT_MS,
         SUPPORT_EPISODES_WATCHED_COUNT,
         SUPPORT_EPISODE_IDS_COUNTED,
         SUPPORT_STARTUP_LAST_SHOWN_AT_MS,

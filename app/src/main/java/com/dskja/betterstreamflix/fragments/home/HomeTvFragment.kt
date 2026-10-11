@@ -144,7 +144,7 @@ class HomeTvFragment : Fragment() {
                                 val hadCatalog = (binding.vgvHome.adapter?.itemCount ?: 0) > 0
                                 val focusInsideHome = binding.vgvHome.hasFocus() ||
                                     binding.vgvHome.findFocus() != null
-                                displayHome(state.categories)
+                                displayHome(state.categories, state.watchlistDigestEpisodes)
                                 binding.vgvHome.visibility = View.VISIBLE
                                 com.dskja.betterstreamflix.utils.TvLoadingOverlay.hide(binding.isLoading.root)
                                 showCatalogWarning(state.providerWarning)
@@ -384,24 +384,37 @@ class HomeTvFragment : Fragment() {
             val child = if (grid is ViewGroup && grid.childCount > 0) grid.getChildAt(0) else grid
             if (child.isShown && child.isFocusable) return child
         }
+        val digestCta = root.findViewById<View>(R.id.btn_watchlist_digest_cta)
+        if (digestCta != null && digestCta.isShown && digestCta.isFocusable) return digestCta
         val banner = root.findViewById<View>(R.id.btn_support_banner_cta)
         if (banner != null && banner.isShown && banner.isFocusable) return banner
         return null
     }
 
     /** Logo-only Room merges reuse the bound shelves. Returns true when submit can be skipped. */
-    private fun homeUnchanged(categories: List<Category>): Boolean {
+    private fun homeUnchanged(
+        categories: List<Category>,
+        watchlistDigestEpisodes: List<Episode> = emptyList(),
+    ): Boolean {
+        val digestIds = watchlistDigestEpisodes.joinToString(",") { it.id }
         val signature = HomeCatalogPipeline.homeBindSignature(categories) +
             "\n" + (UserPreferences.currentProvider?.name ?: "") +
             "\n" + com.dskja.betterstreamflix.support.SupportPromptPolicy.shouldShowHomeCard() +
             "\n" + UserPreferences.supportEpisodesWatchedCount +
-            "\n" + UserPreferences.homeShelfBlockOrder
+            "\n" + UserPreferences.homeShelfBlockOrder +
+            "\n" + com.dskja.betterstreamflix.watchlist.WatchlistDigestPolicy.shouldShow(
+                watchlistDigestEpisodes,
+            ) +
+            "\n" + digestIds
         if (signature == homeBindSignature && appAdapter.items.isNotEmpty()) return true
         homeBindSignature = signature
         return false
     }
 
-    private fun displayHome(categories: List<Category>) {
+    private fun displayHome(
+        categories: List<Category>,
+        watchlistDigestEpisodes: List<Episode> = emptyList(),
+    ) {
         categories
             .find { Category.isFeaturedName(it.name) }
             ?.also { featured ->
@@ -504,6 +517,40 @@ class HomeTvFragment : Fragment() {
             }
             appAdapter.submitList(withoutBanner)
         }
+        appAdapter.onWatchlistDigestClickListener = { banner ->
+            viewLifecycleOwner.lifecycleScope.launch {
+                val result = com.dskja.betterstreamflix.watchlist.WatchlistDigestQueue.apply(
+                    requireContext(),
+                    banner.episodes,
+                )
+                val first = result.firstEpisode
+                if (first != null) {
+                    com.dskja.betterstreamflix.watchlist.WatchlistDigestQueue.navigateToEpisode(
+                        findNavController(),
+                        requireContext(),
+                        first,
+                    )
+                }
+                val without = appAdapter.items.filterNot {
+                    it is com.dskja.betterstreamflix.watchlist.WatchlistDigestBannerItem
+                }
+                appAdapter.submitList(without)
+                if (result.seededCount > 0) {
+                    Toast.makeText(
+                        requireContext(),
+                        getString(R.string.watchlist_digest_queued_toast, result.seededCount),
+                        Toast.LENGTH_SHORT,
+                    ).show()
+                }
+            }
+        }
+        appAdapter.onWatchlistDigestDismissListener = {
+            com.dskja.betterstreamflix.watchlist.WatchlistDigestPolicy.dismiss()
+            val without = appAdapter.items.filterNot {
+                it is com.dskja.betterstreamflix.watchlist.WatchlistDigestBannerItem
+            }
+            appAdapter.submitList(without)
+        }
 
         val homeItems = mutableListOf<AppAdapter.Item>()
         val hasContinueWatching = categories.any {
@@ -533,31 +580,68 @@ class HomeTvFragment : Fragment() {
                     else -> AppAdapter.Type.CATEGORY_TV_ITEM
                 }
             }
-        if (homeUnchanged(visibleCategories)) return
+        if (homeUnchanged(visibleCategories, watchlistDigestEpisodes)) return
+        val showDigest = com.dskja.betterstreamflix.watchlist.WatchlistDigestPolicy.shouldShow(
+            watchlistDigestEpisodes,
+        )
         visibleCategories
             .forEach { category ->
                 homeItems.add(category)
                 // CW was already renamed to the localized title; don't use the English constant.
                 val insertAfter = category.name == getString(R.string.home_continue_watching) ||
                     (Category.isFeaturedName(category.name) && !hasContinueWatching)
-                if (insertAfter &&
-                    com.dskja.betterstreamflix.support.SupportPromptPolicy.shouldShowHomeCard() &&
-                    homeItems.none { it is com.dskja.betterstreamflix.support.SupportBannerItem }
-                ) {
-                    homeItems.add(
-                        com.dskja.betterstreamflix.support.SupportBannerItem().apply {
-                            itemType = AppAdapter.Type.SUPPORT_BANNER_TV_ITEM
+                if (insertAfter) {
+                    if (showDigest &&
+                        homeItems.none {
+                            it is com.dskja.betterstreamflix.watchlist.WatchlistDigestBannerItem
                         }
-                    )
+                    ) {
+                        homeItems.add(
+                            com.dskja.betterstreamflix.watchlist.WatchlistDigestBannerItem(
+                                episodes = watchlistDigestEpisodes,
+                            ).apply {
+                                itemType = AppAdapter.Type.WATCHLIST_DIGEST_TV_ITEM
+                            }
+                        )
+                    }
+                    if (com.dskja.betterstreamflix.support.SupportPromptPolicy.shouldShowHomeCard() &&
+                        homeItems.none { it is com.dskja.betterstreamflix.support.SupportBannerItem }
+                    ) {
+                        homeItems.add(
+                            com.dskja.betterstreamflix.support.SupportBannerItem().apply {
+                                itemType = AppAdapter.Type.SUPPORT_BANNER_TV_ITEM
+                            }
+                        )
+                    }
                 }
             }
 
-        if (com.dskja.betterstreamflix.support.SupportPromptPolicy.shouldShowHomeCard() &&
-            homeItems.none { it is com.dskja.betterstreamflix.support.SupportBannerItem } &&
+        if (showDigest &&
+            homeItems.none { it is com.dskja.betterstreamflix.watchlist.WatchlistDigestBannerItem } &&
             homeItems.isNotEmpty()
         ) {
             homeItems.add(
                 1.coerceAtMost(homeItems.size),
+                com.dskja.betterstreamflix.watchlist.WatchlistDigestBannerItem(
+                    episodes = watchlistDigestEpisodes,
+                ).apply {
+                    itemType = AppAdapter.Type.WATCHLIST_DIGEST_TV_ITEM
+                }
+            )
+        }
+        if (com.dskja.betterstreamflix.support.SupportPromptPolicy.shouldShowHomeCard() &&
+            homeItems.none { it is com.dskja.betterstreamflix.support.SupportBannerItem } &&
+            homeItems.isNotEmpty()
+        ) {
+            val insertAt = when {
+                homeItems.any { it is com.dskja.betterstreamflix.watchlist.WatchlistDigestBannerItem } ->
+                    homeItems.indexOfFirst {
+                        it is com.dskja.betterstreamflix.watchlist.WatchlistDigestBannerItem
+                    } + 1
+                else -> 1.coerceAtMost(homeItems.size)
+            }
+            homeItems.add(
+                insertAt.coerceAtMost(homeItems.size),
                 com.dskja.betterstreamflix.support.SupportBannerItem().apply {
                     itemType = AppAdapter.Type.SUPPORT_BANNER_TV_ITEM
                 }

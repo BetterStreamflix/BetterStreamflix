@@ -1762,6 +1762,15 @@
     <string name="support_banner_subtitle">Optionaler Tipp über Support oder Telegram — nie Pflicht</string>
     <string name="support_banner_cta">Unterstützen</string>
     <string name="support_banner_dismiss_cd">Support-Karte ausblenden</string>
+
+    <string name="watchlist_digest_banner_title">Deine wöchentliche Watchlist</string>
+    <string name="watchlist_digest_banner_subtitle">%1$d neue Episoden aus Meiner Liste — mit einem Tippen in die Queue</string>
+    <string name="watchlist_digest_banner_cta">Queue</string>
+    <string name="watchlist_digest_banner_dismiss_cd">Watchlist-Digest ausblenden</string>
+    <string name="watchlist_digest_banner_never">Nicht mehr anzeigen</string>
+    <string name="watchlist_digest_queued_toast">%1$d Episoden in die Queue gelegt</string>
+    <string name="settings_watchlist_digest_title">Wöchentlicher Watchlist-Digest</string>
+    <string name="settings_watchlist_digest_summary">Startkarte mit bis zu 5 neuen Episoden aus Meiner Liste und Ein-Tipp-Queue</string>
     <string name="support_thanks_title">Danke für deine Unterstützung</string>
     <string name="support_thanks_body">Jede Unterstützung hilft, das Projekt weiterzubringen.</string>
     <string name="support_thanks_body_with_supporters">Jede Unterstützung hilft, das Projekt weiterzubringen.\n\nBesonderer Dank an unsere Unterstützer: %1$s.</string>
