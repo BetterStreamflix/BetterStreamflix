@@ -34,6 +34,9 @@ object PlaybackFailover {
         return servers.indexOf(server)
     }
 
+    /** 1-based ordinal for “Server 2/5” toasts ([nextIndex] is 0-based). */
+    fun serverOrdinal(nextIndex: Int): Int = nextIndex + 1
+
     /** True when Exo hit a dead CDN/HTML page — skip lingering on this server. */
     fun isHardSourceFailure(error: Throwable?): Boolean {
         val chain = errorChain(error)

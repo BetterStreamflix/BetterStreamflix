@@ -286,11 +286,23 @@
             tools:text="Error message" />
 
         <TextView
+            android:id="@+id/btn_player_error_action"
+            style="@style/AppTheme.Widget.Tv.Button"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="20dp"
+            android:focusable="true"
+            android:focusableInTouchMode="true"
+            android:visibility="gone"
+            tools:text="Update domain"
+            tools:visibility="visible" />
+
+        <TextView
             android:id="@+id/btn_player_error_close"
             style="@style/AppTheme.Widget.Tv.Button"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginTop="24dp"
+            android:layout_marginTop="12dp"
             android:focusable="true"
             android:focusableInTouchMode="true"
             android:text="@string/exp_cd_close" />

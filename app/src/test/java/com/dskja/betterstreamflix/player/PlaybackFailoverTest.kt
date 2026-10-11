@@ -158,4 +158,10 @@ class PlaybackFailoverTest {
     fun timeoutIsHardSourceFailure() {
         assertTrue(PlaybackFailover.isHardSourceFailure(Exception("getVideo(VOE) timed out after 40000ms")))
     }
+
+    @Test
+    fun serverOrdinalIsOneBased() {
+        assertEquals(2, PlaybackFailover.serverOrdinal(1))
+        assertEquals(1, PlaybackFailover.serverOrdinal(0))
+    }
 }

@@ -183,10 +183,29 @@
             tools:text="Error message" />
 
         <TextView
+            android:id="@+id/btn_player_error_action"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:background="@drawable/bg_next_episode_action"
+            android:clickable="true"
+            android:focusable="true"
+            android:paddingStart="14dp"
+            android:paddingTop="8dp"
+            android:paddingEnd="14dp"
+            android:paddingBottom="8dp"
+            android:textColor="?android:attr/textColorPrimary"
+            android:textSize="12sp"
+            android:textStyle="bold"
+            android:visibility="gone"
+            tools:text="Update domain"
+            tools:visibility="visible" />
+
+        <TextView
             android:id="@+id/btn_player_error_close"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginTop="20dp"
+            android:layout_marginTop="12dp"
             android:background="@drawable/bg_next_episode_action"
             android:clickable="true"
             android:focusable="true"

@@ -57,6 +57,8 @@ import com.dskja.betterstreamflix.player.PlaybackLifecycleGuard
 import com.dskja.betterstreamflix.player.PlayerTeardownPolicy
 import com.dskja.betterstreamflix.player.PlayerBuilderFactory
 import com.dskja.betterstreamflix.player.SerienStreamBypassHelper
+import com.dskja.betterstreamflix.player.StreamFailureReason
+import com.dskja.betterstreamflix.providers.ProviderDomainUpdater
 import com.dskja.betterstreamflix.providers.SerienStreamAuthManager
 import com.dskja.betterstreamflix.utils.CrashReporter
 import com.dskja.betterstreamflix.utils.ExpMotion
@@ -158,6 +160,7 @@ class PlayerMobileFragment : Fragment() {
     private var castPlayer: CastPlayer? = null
     private var castEndedListener: Player.Listener? = null
     private var castQueueExhaustedListener: (() -> Unit)? = null
+    private var castQueueChangedListener: ((Int) -> Unit)? = null
     private var isCasting = false
     /** Skip one onResume auto-play after handing off to an external player. */
     private var skipNextAutoResume = false
@@ -482,10 +485,14 @@ class PlayerMobileFragment : Fragment() {
                                     if (isTmdb) getString(R.string.player_not_available_lang_message, langDisplayName)
                                     else getString(R.string.player_retry_later_message)
                                 } else {
-                                    "No servers found for this content."
+                                    getString(R.string.player_stream_fail_generic_message)
                                 }
-                                notifyPlayer(message)
-                                safeNavigateUp()
+                                // Stay in the player with a typed failure — do not dump to the list.
+                                showStreamFailure(
+                                    error = Exception(message),
+                                    serversExhausted = true,
+                                    fallbackMessage = message,
+                                )
                                 return@collect
                             }
 
@@ -515,20 +522,11 @@ class PlayerMobileFragment : Fragment() {
                     }
 
                     is PlayerViewModel.State.FailedLoadingServers -> {
-                        val message = state.error.message?.takeIf { it.isNotBlank() }
-                            ?: getString(R.string.exp_player_error_title)
-                        if (ExperimentalMobileDesign.enabled()) {
-                            ExpDialogChrome.showInfo(
-                                requireContext(),
-                                R.string.exp_player_error_title,
-                                message,
-                            ) { ctx ->
-                                MaterialAlertDialogBuilder(ExpDialogChrome.themedContext(ctx))
-                            }
-                        } else {
-                            Toast.makeText(requireContext(), message, Toast.LENGTH_LONG).show()
-                        }
-                        safeNavigateUp()
+                        showStreamFailure(
+                            error = state.error,
+                            serversExhausted = true,
+                            fallbackMessage = state.error.message,
+                        )
                     }
 
                     is PlayerViewModel.State.LoadingVideo -> {
@@ -564,11 +562,17 @@ class PlayerMobileFragment : Fragment() {
                             )
                         ) {
                             is PlaybackFailover.Action.TryNextServer -> {
-                                servers.getOrNull(action.nextIndex)?.let {
-                                    showPlayerCue(
-                                        getString(R.string.player_trying_next_server, it.name),
+                                val next = servers.getOrNull(action.nextIndex)
+                                if (next != null) {
+                                    showFailoverServerCue(action.nextIndex, servers.size)
+                                    viewModel.getVideo(next)
+                                } else {
+                                    CrashReporter.logNonFatal(
+                                        "PlayerMobileFragment",
+                                        "All servers failed",
+                                        state.error,
                                     )
-                                    viewModel.getVideo(it)
+                                    showStreamFailure(state.error, serversExhausted = true)
                                 }
                             }
                             PlaybackFailover.Action.RetrySoftwareDecoder -> {
@@ -591,33 +595,16 @@ class PlayerMobileFragment : Fragment() {
                                 }
                             }
                             PlaybackFailover.Action.GiveUp -> {
-                            val message = if (isOfflinePlayback()) {
-                                getString(R.string.player_offline_missing)
-                            } else {
-                                val providerName = UserPreferences.currentProvider?.name ?: ""
-                                val isTmdb = providerName.contains("TMDb", ignoreCase = true)
-                                val isAD = providerName.contains("AfterDark", ignoreCase = true)
-
-                                if (isTmdb || isAD) {
-                                    val langCode = providerName.substringAfter("(").substringBefore(")")
-                                    val locale = Locale.forLanguageTag(langCode)
-                                    val langDisplayName = locale.getDisplayLanguage(Locale.getDefault())
-                                        .replaceFirstChar { if (it.isLowerCase()) it.titlecase(Locale.getDefault()) else it.toString() }
-                                    if (isTmdb) getString(R.string.player_not_available_lang_message, langDisplayName)
-                                    else getString(R.string.player_retry_later_message)
-                                } else if (UserPreferences.currentProvider is SerienStreamProvider) {
-                                    getString(R.string.player_bypass_retry_needed_mobile)
+                                if (isOfflinePlayback()) {
+                                    showPlayerError(getString(R.string.player_offline_missing))
                                 } else {
-                                    getString(R.string.player_all_servers_failed)
+                                    CrashReporter.logNonFatal(
+                                        "PlayerMobileFragment",
+                                        "All servers failed",
+                                        state.error,
+                                    )
+                                    showStreamFailure(state.error, serversExhausted = true)
                                 }
-                            }
-
-                            CrashReporter.logNonFatal(
-                                "PlayerMobileFragment",
-                                "All servers failed",
-                                state.error,
-                            )
-                            showPlayerError(message)
                             }
                         }
                     }
@@ -880,6 +867,8 @@ class PlayerMobileFragment : Fragment() {
         castEndedListener = null
         castQueueExhaustedListener?.let { CastPlaybackHub.removeQueueExhaustedListener(it) }
         castQueueExhaustedListener = null
+        castQueueChangedListener?.let { CastPlaybackHub.removeQueueChangedListener(it) }
+        castQueueChangedListener = null
         releasePlayer(ReleaseMode.HARD_DESTROY)
         runCatching {
             appContext?.let { CastPlaybackHub.detachUi(it) }
@@ -1062,10 +1051,7 @@ class PlayerMobileFragment : Fragment() {
 
         updatePlayerHeader()
 
-        binding.pvPlayer.controller.binding.btnExoExternalPlayer.setOnClickListener {
-            ExpMotion.hapticTap(it)
-            openCurrentStreamExternally(forceChooser = false)
-        }
+        wirePlayWithChromeButton(binding.pvPlayer.controller.binding)
 
         binding.pvPlayer.controller.binding.exoReplay.setOnClickListener {
             ExpMotion.hapticTap(it)
@@ -1718,9 +1704,7 @@ class PlayerMobileFragment : Fragment() {
             pushMediaToCast(video, server, mediaMetadata, startPosition = currentPosition)
         }
 
-        binding.pvPlayer.controller.binding.btnExoExternalPlayer.setOnClickListener {
-            openCurrentStreamExternally(forceChooser = false)
-        }
+        wirePlayWithChromeButton(binding.pvPlayer.controller.binding)
         if (pendingPlayWithAfterResolve && !isOfflinePlayback()) {
             pendingPlayWithAfterResolve = false
             openCurrentStreamExternally(forceChooser = true)
@@ -1813,10 +1797,16 @@ class PlayerMobileFragment : Fragment() {
                     )
                 ) {
                     is PlaybackFailover.Action.TryNextServer -> {
-                        servers.getOrNull(action.nextIndex)?.let {
-                            Log.i("PlayerMobileFragment", "Playback failed, trying next server: ${it.name}")
-                            showPlayerCue(getString(R.string.player_trying_next_server, it.name))
-                            viewModel.getVideo(it)
+                        val next = servers.getOrNull(action.nextIndex)
+                        if (next != null) {
+                            Log.i(
+                                "PlayerMobileFragment",
+                                "Playback failed, trying next server: ${next.name}",
+                            )
+                            showFailoverServerCue(action.nextIndex, servers.size)
+                            viewModel.getVideo(next)
+                        } else {
+                            showStreamFailure(error, serversExhausted = true)
                         }
                     }
                     PlaybackFailover.Action.RetrySoftwareDecoder -> {
@@ -1844,7 +1834,11 @@ class PlayerMobileFragment : Fragment() {
                         if (isOfflinePlayback()) {
                             showPlayerError(getString(R.string.player_offline_missing))
                         } else {
-                            showPlayerError(error.message ?: error.errorCodeName)
+                            showStreamFailure(
+                                error,
+                                serversExhausted = true,
+                                fallbackMessage = error.message ?: error.errorCodeName,
+                            )
                         }
                     }
                 }
@@ -2387,7 +2381,11 @@ class PlayerMobileFragment : Fragment() {
                     Toast.LENGTH_SHORT,
                 ).show()
             }
+            controller.btnExoExternalPlayer.setOnLongClickListener(null)
+        } else {
+            wirePlayWithChromeButton(controller)
         }
+        updateCastQueueChrome()
     }
 
     private var liveEdgeWatcher: Runnable? = null
@@ -3178,16 +3176,73 @@ class PlayerMobileFragment : Fragment() {
         }
     }
 
-    private fun showPlayerError(message: String) {
+    private fun showFailoverServerCue(nextIndex: Int, serverCount: Int) {
+        showPlayerCue(
+            getString(
+                R.string.player_failover_server_n_of_m,
+                PlaybackFailover.serverOrdinal(nextIndex),
+                serverCount,
+            ),
+        )
+    }
+
+    private fun showStreamFailure(
+        error: Throwable?,
+        serversExhausted: Boolean = false,
+        fallbackMessage: String? = null,
+    ) {
+        val presentation = StreamFailureReason.classify(
+            error = error,
+            provider = UserPreferences.currentProvider,
+            serversExhausted = serversExhausted,
+        )
+        val message = StreamFailureReason.message(requireContext(), presentation, fallbackMessage)
+        showPlayerError(
+            message = message,
+            titleRes = presentation.titleRes,
+            action = presentation.action,
+            actionLabelRes = presentation.actionLabelRes,
+        )
+    }
+
+    private fun showPlayerError(
+        message: String,
+        titleRes: Int = R.string.exp_player_error_title,
+        action: StreamFailureReason.Action = StreamFailureReason.Action.NONE,
+        actionLabelRes: Int? = null,
+    ) {
         val root = _binding?.root ?: return
         val overlay = root.findViewById<View>(R.id.ll_player_error)
         if (overlay == null) {
             notifyPlayer(message)
-            safeNavigateUp()
+            // Keep the user on the player chrome path when possible — toast only.
             return
         }
         if (isOfflinePlayback()) suppressBuiltInErrorOverlay()
+        root.findViewById<android.widget.TextView>(R.id.tv_player_error_title)?.setText(titleRes)
         root.findViewById<android.widget.TextView>(R.id.tv_player_error_message)?.text = message
+        val actionBtn = root.findViewById<android.widget.TextView>(R.id.btn_player_error_action)
+        if (action != StreamFailureReason.Action.NONE && actionLabelRes != null) {
+            actionBtn?.isVisible = true
+            actionBtn?.setText(actionLabelRes)
+            if (ExperimentalMobileDesign.enabled()) {
+                actionBtn?.let {
+                    with(com.dskja.betterstreamflix.utils.ExpPressEffects) { it.applyExpPress() }
+                }
+            }
+            actionBtn?.setOnClickListener {
+                ExpMotion.hapticTap(it)
+                overlay.isGone = true
+                when (action) {
+                    StreamFailureReason.Action.SOLVE_CAPTCHA -> launchSolveCaptcha()
+                    StreamFailureReason.Action.UPDATE_DOMAIN -> launchUpdateDomain()
+                    StreamFailureReason.Action.NONE -> Unit
+                }
+            }
+        } else {
+            actionBtn?.isGone = true
+            actionBtn?.setOnClickListener(null)
+        }
         root.findViewById<View>(R.id.btn_player_error_close)?.let { close ->
             if (ExperimentalMobileDesign.enabled()) {
                 with(com.dskja.betterstreamflix.utils.ExpPressEffects) { close.applyExpPress() }
@@ -3216,9 +3271,87 @@ class PlayerMobileFragment : Fragment() {
                 close.setBackgroundResource(ExperimentalMobileDesign.primaryButtonBackground())
                 ExpMotion.popIn(close)
             }
+            actionBtn?.let {
+                it.setBackgroundResource(ExperimentalMobileDesign.primaryButtonBackground())
+                ExpMotion.popIn(it)
+            }
         } else {
             overlay.isVisible = true
         }
+    }
+
+    private fun launchSolveCaptcha() {
+        val bypassUrl = buildSerienStreamBypassUrl(servers)
+        if (!bypassUrl.isNullOrBlank()) {
+            waitingForBypass = true
+            bypassDone = false
+            SerienStreamBypassHelper.applyStoredSessionCookies(bypassUrl)
+            SerienStreamAuthManager.seedRuntimeCookies()
+            bypassWebViewLauncher.launch(
+                Intent(requireContext(), BypassWebViewActivity::class.java)
+                    .putExtra(BypassWebViewActivity.EXTRA_URL, bypassUrl),
+            )
+            return
+        }
+        Toast.makeText(
+            requireContext(),
+            R.string.player_bypass_retry_needed_mobile,
+            Toast.LENGTH_LONG,
+        ).show()
+        viewModel.reloadServersAfterBypass()
+    }
+
+    private fun launchUpdateDomain() {
+        val provider = UserPreferences.currentProvider ?: return
+        lifecycleScope.launch {
+            val outcome = ProviderDomainUpdater.update(provider)
+            val msg = when (outcome) {
+                is ProviderDomainUpdater.Outcome.Updated ->
+                    getString(R.string.provider_update_domain_updated, outcome.newUrl)
+                ProviderDomainUpdater.Outcome.Unchanged ->
+                    getString(R.string.provider_update_domain_unchanged)
+                is ProviderDomainUpdater.Outcome.Failed ->
+                    getString(R.string.provider_update_domain_failed, outcome.message)
+            }
+            Toast.makeText(requireContext(), msg, Toast.LENGTH_LONG).show()
+            if (outcome is ProviderDomainUpdater.Outcome.Updated) {
+                viewModel.reloadServersAfterBypass()
+            }
+        }
+    }
+
+    private fun wirePlayWithChromeButton(controller: ContentExoControllerMobileBinding) {
+        controller.btnExoExternalPlayer.setOnClickListener {
+            ExpMotion.hapticTap(it)
+            openCurrentStreamExternally(forceChooser = false)
+        }
+        controller.btnExoExternalPlayer.setOnLongClickListener {
+            ExpMotion.hapticTap(it)
+            openCurrentStreamWithDownloader()
+            true
+        }
+        controller.btnExoExternalPlayer.contentDescription =
+            getString(R.string.exp_cd_external_player) + ". " +
+                getString(R.string.player_download_with_long_press)
+    }
+
+    private fun updateCastQueueChrome() {
+        val binding = _binding ?: return
+        val badge = binding.pvPlayer.controller.binding.tvCastQueue
+        val casting = isCasting || CastPlaybackHub.isCasting
+        val count = CastPlaybackHub.queuedCount()
+        if (!casting || count <= 0) {
+            badge.isGone = true
+            return
+        }
+        val nextTitle = CastPlaybackHub.peekNextQueued()
+            ?.mediaMetadata?.title?.toString()?.takeIf { it.isNotBlank() }
+        badge.text = if (nextTitle != null) {
+            getString(R.string.player_cast_queue_next, nextTitle)
+        } else {
+            getString(R.string.player_cast_queue_badge, count)
+        }
+        badge.isVisible = true
     }
 
     private fun showSkipIntroButton(show: Boolean) {
@@ -3417,15 +3550,25 @@ class PlayerMobileFragment : Fragment() {
                 if (isAdded && view != null && !isTearingDown && UserPreferences.autoplay) {
                     playNextEpisodeAcrossSeasons(autoplay = true)
                 }
+                updateCastQueueChrome()
             }
             castQueueExhaustedListener = onQueueExhausted
             CastPlaybackHub.addQueueExhaustedListener(onQueueExhausted)
+            castQueueChangedListener?.let { CastPlaybackHub.removeQueueChangedListener(it) }
+            val onQueueChanged: (Int) -> Unit = {
+                if (isAdded && view != null && !isTearingDown) {
+                    updateCastQueueChrome()
+                }
+            }
+            castQueueChangedListener = onQueueChanged
+            CastPlaybackHub.addQueueChangedListener(onQueueChanged)
             castEndedListener = null
 
             // Re-attach if a session is already active (e.g. returning from browse).
             if (CastPlaybackHub.isCasting || castPlayer?.isCastSessionAvailable == true) {
                 switchPlaybackToCast()
             }
+            updateCastQueueChrome()
         }.onFailure {
             Log.w("PlayerCast", "Cast unavailable: ${it.message}")
             routeButton.isGone = true
@@ -3504,6 +3647,7 @@ class PlayerMobileFragment : Fragment() {
             }
             if (prepared != null && isAdded) {
                 CastQueueCoordinator.enqueueExclusive(prepared.mediaItem)
+                updateCastQueueChrome()
             } else if (
                 isAdded &&
                 EpisodeManager.peekNextEpisode() != null &&

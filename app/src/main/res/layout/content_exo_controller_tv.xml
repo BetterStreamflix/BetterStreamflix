@@ -24,7 +24,7 @@
         android:layout_marginStart="30dp"
         android:layout_marginTop="30dp"
         android:layout_marginEnd="16dp"
-        app:layout_constraintEnd_toStartOf="@id/media_route_button"
+        app:layout_constraintEnd_toStartOf="@id/tv_cast_queue"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent">
 
@@ -58,10 +58,35 @@
         android:layout_marginTop="4dp"
         android:layout_marginEnd="16dp"
         android:textSize="20sp"
-        app:layout_constraintEnd_toStartOf="@id/media_route_button"
+        app:layout_constraintEnd_toStartOf="@id/tv_cast_queue"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@id/fl_exo_title_slot"
         tools:text="Description" />
+
+    <TextView
+        android:id="@+id/tv_cast_queue"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="7dp"
+        android:layout_marginEnd="12dp"
+        android:layout_marginBottom="7dp"
+        android:background="@drawable/bg_live_indicator"
+        android:ellipsize="end"
+        android:focusable="false"
+        android:maxLines="1"
+        android:paddingStart="12dp"
+        android:paddingTop="8dp"
+        android:paddingEnd="12dp"
+        android:paddingBottom="8dp"
+        android:textColor="#FFFFFFFF"
+        android:textSize="14sp"
+        android:textStyle="bold"
+        android:visibility="gone"
+        app:layout_constraintBottom_toBottomOf="@id/tv_exo_subtitle"
+        app:layout_constraintEnd_toStartOf="@id/media_route_button"
+        app:layout_constraintTop_toTopOf="@id/fl_exo_title_slot"
+        tools:text="Cast queue · 1"
+        tools:visibility="visible" />
 
     <androidx.mediarouter.app.MediaRouteButton
         android:id="@+id/media_route_button"
@@ -84,26 +109,35 @@
         app:layout_constraintTop_toTopOf="@id/fl_exo_title_slot"
         tools:visibility="visible" />
 
-    <ImageView
+    <TextView
         android:id="@+id/btn_exo_external_player"
-        android:layout_width="48dp"
+        android:layout_width="wrap_content"
         android:layout_height="48dp"
         android:layout_marginTop="7dp"
         android:layout_marginEnd="30dp"
         android:layout_marginBottom="7dp"
         android:background="@drawable/bg_btn_exoplayer_tv"
+        android:contentDescription="@string/exp_cd_external_player"
+        android:drawablePadding="8dp"
         android:focusable="true"
         android:focusableInTouchMode="true"
+        android:gravity="center_vertical"
         android:nextFocusLeft="@id/media_route_button"
         android:nextFocusRight="@id/btn_exo_external_player"
-        android:padding="12dp"
-        android:contentDescription="@string/exp_cd_external_player"
-        android:src="@drawable/exo_styled_controls_external_player"
-        android:tint="@color/cinema_text"
+        android:paddingStart="14dp"
+        android:paddingTop="8dp"
+        android:paddingEnd="16dp"
+        android:paddingBottom="8dp"
+        android:text="@string/player_play_with_chrome"
+        android:textColor="@color/cinema_text"
+        android:textSize="14sp"
+        android:textStyle="bold"
+        app:drawableStartCompat="@drawable/exo_styled_controls_external_player"
+        app:drawableTint="@color/cinema_text"
         app:layout_constraintBottom_toBottomOf="@id/tv_exo_subtitle"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintTop_toTopOf="@id/fl_exo_title_slot"
-        tools:ignore="PrivateResource,UseAppTint" />
+        tools:ignore="PrivateResource" />
 
     <LinearLayout
         android:layout_width="wrap_content"

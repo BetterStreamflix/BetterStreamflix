@@ -478,14 +478,14 @@ abstract class PlayerSettingsView @JvmOverloads constructor(
 
         companion object {
             val listMobile = listOf(
+                PlayWith,
+                DownloadWith,
                 Quality,
                 Audio,
                 Subtitle,
                 Speed,
                 Server,
                 Download,
-                PlayWith,
-                DownloadWith,
                 ExtraBuffering,
                 SoftwareDecoder,
                 Gestures,
@@ -493,14 +493,14 @@ abstract class PlayerSettingsView @JvmOverloads constructor(
                 ManualZoom,
             )
             val listTv = listOf(
+                PlayWith,
+                DownloadWith,
                 Quality,
                 Audio,
                 Subtitle,
                 Speed,
                 Server,
                 Download,
-                PlayWith,
-                DownloadWith,
                 ExtraBuffering,
                 SoftwareDecoder,
                 ManualZoom,

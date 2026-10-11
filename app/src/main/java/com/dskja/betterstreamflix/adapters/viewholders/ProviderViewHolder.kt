@@ -15,9 +15,7 @@ import com.bumptech.glide.load.resource.drawable.DrawableTransitionOptions
 import com.dskja.betterstreamflix.R
 import com.dskja.betterstreamflix.fragments.settings.SettingsDeepLink
 import com.dskja.betterstreamflix.providers.AniWorldProvider
-import com.dskja.betterstreamflix.providers.ProviderConfigUrl
 import com.dskja.betterstreamflix.providers.SerienStreamProvider
-import com.dskja.betterstreamflix.utils.DomainRedirectChecker
 import com.dskja.betterstreamflix.utils.ExpMotion
 import com.dskja.betterstreamflix.utils.ExpPressEffects.applyExpPress
 import com.dskja.betterstreamflix.utils.ExperimentalMobileDesign
@@ -28,9 +26,7 @@ import com.dskja.betterstreamflix.providers.ProviderHealth
 import com.dskja.betterstreamflix.providers.ProviderSmoke
 import com.dskja.betterstreamflix.utils.UserPreferences
 import com.dskja.betterstreamflix.utils.toActivity
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import java.util.Locale
 
 class ProviderViewHolder(
@@ -266,43 +262,23 @@ class ProviderViewHolder(
     }
 
     private fun updateProviderDomain() {
-        val config = provider.provider as? ProviderConfigUrl ?: return
         val activity = context.toActivity() ?: return
         activity.lifecycleScope.launch {
-            val outcome = withContext(Dispatchers.IO) {
-                runCatching {
-                    val start = UserPreferences.getProviderCache(
-                        provider.provider,
-                        UserPreferences.PROVIDER_URL,
-                    ).ifBlank { config.defaultBaseUrl }
-                    val result = DomainRedirectChecker.check(start)
-                    if (result.changed) {
-                        val newUrl = result.finalUrl.trimEnd('/') + "/"
-                        UserPreferences.setProviderCache(
-                            provider.provider,
-                            UserPreferences.PROVIDER_URL,
-                            newUrl,
-                        )
-                        config.onChangeUrl(true)
-                        Result.success(newUrl)
-                    } else {
-                        Result.success(null)
-                    }
-                }.getOrElse { Result.failure(it) }
-            }
-            val msg = when {
-                outcome.isFailure ->
-                    context.getString(
-                        R.string.provider_update_domain_failed,
-                        outcome.exceptionOrNull()?.message ?: "?",
-                    )
-                outcome.getOrNull() != null ->
+            val outcome = com.dskja.betterstreamflix.providers.ProviderDomainUpdater
+                .update(provider.provider)
+            val msg = when (outcome) {
+                is com.dskja.betterstreamflix.providers.ProviderDomainUpdater.Outcome.Updated ->
                     context.getString(
                         R.string.provider_update_domain_updated,
-                        outcome.getOrNull(),
+                        outcome.newUrl,
                     )
-                else ->
+                com.dskja.betterstreamflix.providers.ProviderDomainUpdater.Outcome.Unchanged ->
                     context.getString(R.string.provider_update_domain_unchanged)
+                is com.dskja.betterstreamflix.providers.ProviderDomainUpdater.Outcome.Failed ->
+                    context.getString(
+                        R.string.provider_update_domain_failed,
+                        outcome.message,
+                    )
             }
             Toast.makeText(context, msg, Toast.LENGTH_LONG).show()
         }
