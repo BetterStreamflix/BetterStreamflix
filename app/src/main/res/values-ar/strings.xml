@@ -627,6 +627,10 @@
     <string name="player_settings_subtitle_offset_label">إزاحة التوقيت</string>
     <string name="player_settings_subtitle_offset_seconds">%+.1f ث</string>
     <string name="player_trying_next_server">تجربة الخادم التالي: %1$s</string>
+    <string name="player_stuck_buffering_title">ما زال التحميل؟</string>
+    <string name="player_stuck_buffering_message">يبدو أن هذا الخادم عالق. جرّب خادمًا آخر قبل المغادرة.</string>
+    <string name="player_stuck_try_another_server">خادم آخر</string>
+    <string name="player_stuck_pick_server">اختر خادمًا</string>
     <string name="shared_watchlist_share_action">مشاركة القائمة</string>
     <string name="shared_watchlist_share_subject">قائمة مشاهدة BetterStreamflix</string>
     <string name="shared_watchlist_share_needs_supabase">قم بإعداد Supabase ضمن الحساب والمزامنة قبل مشاركة قائمة</string>

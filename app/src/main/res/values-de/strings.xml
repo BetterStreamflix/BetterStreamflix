@@ -1349,6 +1349,10 @@
     <string name="settings_tmdb_api_key_missing">TMDb-API-Schlüssel fehlt. Trage ihn in den Einstellungen ein, um den TMDb-Provider zu nutzen.</string>
     <string name="player_retry_software_decoder">Erneuter Versuch mit Software-Decoder…</string>
     <string name="player_failover_server_n_of_m">Server %1$d/%2$d</string>
+    <string name="player_stuck_buffering_title">Lädt noch?</string>
+    <string name="player_stuck_buffering_message">Dieser Server hängt. Anderen Server versuchen, bevor du gehst.</string>
+    <string name="player_stuck_try_another_server">Anderen Server</string>
+    <string name="player_stuck_pick_server">Server wählen</string>
     <string name="player_all_servers_failed">Alle Server konnten das Video nicht laden.</string>
     <string name="player_stream_fail_captcha_title">Captcha nötig</string>
     <string name="player_stream_fail_captcha_message">Dieser Anbieter braucht ein Captcha, bevor Streams freigeschaltet werden. Einmal lösen, dann erneut abspielen.</string>

@@ -670,6 +670,10 @@
     <string name="player_settings_subtitle_offset_label">Przesunięcie czasu</string>
     <string name="player_settings_subtitle_offset_seconds">%+.1f s</string>
     <string name="player_trying_next_server">Próba kolejnego serwera: %1$s</string>
+    <string name="player_stuck_buffering_title">Nadal ładuje?</string>
+    <string name="player_stuck_buffering_message">Ten serwer wygląda na zawieszony. Spróbuj innego zanim wyjdziesz.</string>
+    <string name="player_stuck_try_another_server">Inny serwer</string>
+    <string name="player_stuck_pick_server">Wybierz serwer</string>
     <string name="shared_watchlist_share_action">Udostępnij listę</string>
     <string name="shared_watchlist_share_subject">Lista BetterStreamflix</string>
     <string name="shared_watchlist_share_needs_supabase">Skonfiguruj Supabase w Konto i synchronizacja przed udostępnieniem listy</string>
