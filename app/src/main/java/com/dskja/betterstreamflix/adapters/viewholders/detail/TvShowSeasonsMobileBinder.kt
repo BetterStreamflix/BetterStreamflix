@@ -233,17 +233,18 @@ private fun TvShowViewHolder.requestSeasonEpisodes(
                 val provider = UserPreferences.currentProvider
                     ?: return@runCatching emptyList<Episode>()
                 val episodes = provider.getEpisodesBySeason(season.id)
+                val db = database ?: return@runCatching emptyList<Episode>()
                 val episodeMap = episodes.associateBy { it.id }
                 episodes.map { it.id }.chunked(400).forEach { chunk ->
-                    database.episodeDao().getByIds(chunk).forEach { db ->
-                        episodeMap[db.id]?.merge(db)
+                    db.episodeDao().getByIds(chunk).forEach { row ->
+                        episodeMap[row.id]?.merge(row)
                     }
                 }
                 episodes.forEach {
                     it.tvShow = tvShow
                     it.season = season
                 }
-                database.episodeDao().insertAll(episodes)
+                db.episodeDao().insertAll(episodes)
                 episodes
             }
         }

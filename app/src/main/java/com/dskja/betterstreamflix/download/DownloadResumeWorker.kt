@@ -16,6 +16,18 @@ class DownloadResumeWorker(
 
     override suspend fun doWork(): Result {
         return try {
+            // Idle-check here (not in the boot receiver) so BOOT_COMPLETED never
+            // blocks on Room (SS-01).
+            val hasPending = runCatching {
+                DownloadRepository.get(applicationContext).getAllOnce().any { item ->
+                    val state = DownloadItemState.fromKey(item.state)
+                    state.isActive ||
+                        state == DownloadItemState.FAILED ||
+                        state == DownloadItemState.QUEUED
+                }
+            }.getOrDefault(false)
+            if (!hasPending) return Result.success()
+
             // Warm SimpleCache / DownloadManager on the worker executor before FGS
             // so StreamflixDownloadService.onCreate is not racing the FGS timer.
             StreamflixDownloadManager.get(applicationContext)

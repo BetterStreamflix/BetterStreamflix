@@ -506,7 +506,8 @@ internal fun TvShowViewHolder.bindTvShowMobileDetail(binding: ContentTvShowMobil
             ExpMotion.hapticTap(it)
             checkProviderAndRun {
                 itemView.findViewTreeLifecycleOwner()?.lifecycleScope?.launch(Dispatchers.IO) {
-                    val dao = database.tvShowDao()
+                    val db = database ?: return@launch
+                    val dao = db.tvShowDao()
                     val current = dao.getById(tvShow.id)
                     val currentlyWatching = current?.isWatching ?: tvShow.isWatching
                     val targetWatching = !currentlyWatching
@@ -539,13 +540,14 @@ internal fun TvShowViewHolder.bindTvShowMobileDetail(binding: ContentTvShowMobil
             checkProviderAndRun {
                 itemView.findViewTreeLifecycleOwner()?.lifecycleScope?.launch(Dispatchers.IO) {
                     val provider = UserPreferences.currentProvider ?: return@launch
-                    val target = !(database.tvShowDao().getById(tvShow.id)?.isFavorite ?: tvShow.isFavorite)
+                    val db = database ?: return@launch
+                    val target = !(db.tvShowDao().getById(tvShow.id)?.isFavorite ?: tvShow.isFavorite)
                     val resolved = com.dskja.betterstreamflix.sync.FavoriteMutations.setTvShowFavorite(
                         context = context,
                         provider = provider,
                         tvShow = tvShow,
                         favorite = target,
-                        database = database,
+                        database = db,
                     )
                     withContext(Dispatchers.Main) {
                         tvShow.poster = resolved.poster
