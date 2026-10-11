@@ -131,6 +131,12 @@
     <string name="search_recent_title">Zuletzt</string>
     <string name="search_recent_clear">Löschen</string>
     <string name="search_recent_clear_cd">Letzte Suchen löschen</string>
+    <string name="search_memories_title">Damals gesucht</string>
+    <string name="search_memories_clear">Löschen</string>
+    <string name="search_memories_clear_cd">Such-Erinnerungen löschen</string>
+    <string name="search_memories_chip_failed">%1$s · fehlgeschlagen</string>
+    <string name="search_memories_chip_empty">%1$s · keine Treffer</string>
+    <string name="search_memories_retry_cd">Suche nach %1$s erneut starten</string>
     <string name="continue_watching_percent">%1$d%%</string>
     <string name="continue_watching_minutes_left">Noch %1$d Min.</string>
     <string name="provider_health_quarantined">quarantäne</string>

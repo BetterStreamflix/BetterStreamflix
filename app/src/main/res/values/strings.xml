@@ -98,6 +98,12 @@
     <string name="search_recent_title">Recent</string>
     <string name="search_recent_clear">Clear</string>
     <string name="search_recent_clear_cd">Clear recent searches</string>
+    <string name="search_memories_title">Searched back then</string>
+    <string name="search_memories_clear">Clear</string>
+    <string name="search_memories_clear_cd">Clear search memories</string>
+    <string name="search_memories_chip_failed">%1$s · failed</string>
+    <string name="search_memories_chip_empty">%1$s · no results</string>
+    <string name="search_memories_retry_cd">Retry search for %1$s</string>
     <string name="continue_watching_percent">%1$d%%</string>
     <string name="continue_watching_minutes_left">%1$d min left</string>
     <string name="provider_health_quarantined">quarantined</string>
