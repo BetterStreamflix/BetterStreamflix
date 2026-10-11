@@ -647,14 +647,22 @@ object ProfilesSettingsController {
             onAllowed()
             return
         }
-        val context = fragment.requireContext()
+        challengeKidsUnlock(fragment.requireContext(), onAllowed)
+    }
+
+    /**
+     * Challenge parental PIN (preferred) or active profile PIN before clearing Kids /
+     * raising the age ceiling / otherwise unlocking adult catalog access.
+     */
+    fun challengeKidsUnlock(context: Context, onVerified: () -> Unit) {
         val parentalPin = UserPreferences.parentalControlPin
         if (parentalPin.isNotBlank()) {
-            promptParentalPin(context) { onAllowed() }
+            promptParentalPin(context) { onVerified() }
             return
         }
+        val active = ProfileManager.activeProfile()
         if (active?.pinHash != null) {
-            promptPin(context, active) { onAllowed() }
+            promptPin(context, active) { onVerified() }
             return
         }
         // Kids / parental ceiling without any exit PIN must not silently unlock.
@@ -666,7 +674,7 @@ object ProfilesSettingsController {
             )
             return
         }
-        onAllowed()
+        onVerified()
     }
 
     private fun promptParentalPin(context: Context, onVerified: () -> Unit) {
