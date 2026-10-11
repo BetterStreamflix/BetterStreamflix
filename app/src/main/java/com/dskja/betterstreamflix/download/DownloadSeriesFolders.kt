@@ -112,9 +112,15 @@ object DownloadSeriesFolders {
         }
     }
 
-    fun needsRedownload(item: DownloadItemEntity): Boolean =
-        item.state == DownloadItemState.FAILED.name &&
-            item.errorCode == DownloadErrorCode.STORAGE_RELOCATED.name
+    /**
+     * Failed rows that need a full re-download (cache/file gone), not a simple network retry.
+     * Includes [DownloadErrorCode.STORAGE_RELOCATED] and [DownloadErrorCode.FILE_MISSING].
+     */
+    fun needsRedownload(item: DownloadItemEntity): Boolean {
+        if (item.state != DownloadItemState.FAILED.name) return false
+        return item.errorCode == DownloadErrorCode.STORAGE_RELOCATED.name ||
+            item.errorCode == DownloadErrorCode.FILE_MISSING.name
+    }
 
     private fun ensureDir(dir: File): File? {
         return try {

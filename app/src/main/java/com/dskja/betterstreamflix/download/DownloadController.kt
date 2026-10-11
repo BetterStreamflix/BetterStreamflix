@@ -690,6 +690,28 @@ object DownloadController {
         started
     }
 
+    /**
+     * Re-queues only unplayable / cache-missing rows ([DownloadHealth.isUnhealthy]),
+     * not every generic FAILED network error.
+     */
+    suspend fun redownloadAllUnhealthy(context: Context): Int = withContext(Dispatchers.IO) {
+        val unhealthy = DownloadRepository.get(context).getAllOnce()
+            .filter { DownloadHealth.isUnhealthy(it) }
+            .groupBy { it.contentKey }
+            .map { (_, rows) -> rows.maxBy { it.updatedAt } }
+        var started = 0
+        unhealthy.forEach { entity ->
+            when (retryItem(context, entity)) {
+                is DownloadEnqueueOutcome.Started,
+                is DownloadEnqueueOutcome.AlreadyActive,
+                is DownloadEnqueueOutcome.AlreadyCompleted,
+                -> started++
+                else -> Unit
+            }
+        }
+        started
+    }
+
     suspend fun prepareTrackOptions(context: Context, video: Video): List<DownloadTrackOption> {
         return try {
             val helper = createHelper(context, video)

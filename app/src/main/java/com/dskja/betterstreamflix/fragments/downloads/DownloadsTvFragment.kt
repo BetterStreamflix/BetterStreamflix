@@ -181,13 +181,21 @@ class DownloadsTvFragment : Fragment() {
         }
         viewLifecycleOwner.lifecycleScope.launch {
             viewModel.lowSpace.flowWithLifecycle(lifecycle, Lifecycle.State.STARTED).collect { low ->
-                updateBanner(low, viewModel.wifiPaused.value)
+                updateBanner(low, viewModel.wifiPaused.value, viewModel.healthSummary.value)
             }
         }
         viewLifecycleOwner.lifecycleScope.launch {
             viewModel.wifiPaused.flowWithLifecycle(lifecycle, Lifecycle.State.STARTED).collect { paused ->
-                updateBanner(viewModel.lowSpace.value, paused)
+                updateBanner(viewModel.lowSpace.value, paused, viewModel.healthSummary.value)
             }
+        }
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewModel.healthSummary.flowWithLifecycle(lifecycle, Lifecycle.State.STARTED).collect { health ->
+                updateBanner(viewModel.lowSpace.value, viewModel.wifiPaused.value, health)
+            }
+        }
+        binding.btnDownloadsHealthRedownload.setOnClickListener {
+            viewModel.redownloadAllUnhealthy()
         }
         viewLifecycleOwner.lifecycleScope.launch {
             viewModel.wifiOnlyEnabled.flowWithLifecycle(lifecycle, Lifecycle.State.STARTED).collect { enabled ->
@@ -398,22 +406,55 @@ class DownloadsTvFragment : Fragment() {
         binding.btnDownloadsMenu.nextFocusDownId = binding.switchDownloadsWifiOnly.id
         binding.btnDownloadsMenu.nextFocusLeftId = binding.chipModeManage.id
         binding.switchDownloadsWifiOnly.nextFocusUpId = binding.btnDownloadsMenu.id
-        binding.switchDownloadsWifiOnly.nextFocusDownId = binding.chipModeLibrary.id
         binding.switchDownloadsWifiOnly.nextFocusLeftId = R.id.nav_main
+        val healthCta = binding.btnDownloadsHealthRedownload
+        if (healthCta.isVisible) {
+            binding.switchDownloadsWifiOnly.nextFocusDownId = healthCta.id
+            healthCta.nextFocusUpId = binding.switchDownloadsWifiOnly.id
+            healthCta.nextFocusDownId = binding.chipModeLibrary.id
+            healthCta.nextFocusLeftId = R.id.nav_main
+            listOf(binding.chipModeLibrary, binding.chipModeManage).forEach { chip ->
+                chip.nextFocusUpId = healthCta.id
+            }
+        } else {
+            binding.switchDownloadsWifiOnly.nextFocusDownId = binding.chipModeLibrary.id
+            listOf(binding.chipModeLibrary, binding.chipModeManage).forEach { chip ->
+                chip.nextFocusUpId = binding.switchDownloadsWifiOnly.id
+            }
+        }
     }
 
-    private fun updateBanner(lowSpace: Boolean, wifiPaused: Boolean) {
+    private fun updateBanner(
+        lowSpace: Boolean,
+        wifiPaused: Boolean,
+        health: com.dskja.betterstreamflix.download.DownloadHealth.Summary,
+    ) {
+        val row = binding.llDownloadsBanner
+        val cta = binding.btnDownloadsHealthRedownload
         when {
             wifiPaused -> {
-                binding.tvDownloadsBanner.isVisible = true
+                row.isVisible = true
                 binding.tvDownloadsBanner.setText(R.string.downloads_wifi_paused)
+                cta.isVisible = false
             }
             lowSpace -> {
-                binding.tvDownloadsBanner.isVisible = true
+                row.isVisible = true
                 binding.tvDownloadsBanner.setText(R.string.downloads_low_space)
+                cta.isVisible = false
             }
-            else -> binding.tvDownloadsBanner.isVisible = false
+            health.hasUnhealthy -> {
+                row.isVisible = true
+                binding.tvDownloadsBanner.text =
+                    com.dskja.betterstreamflix.download.DownloadHealth
+                        .bannerMessage(requireContext(), health)
+                cta.isVisible = true
+            }
+            else -> {
+                cta.isVisible = false
+                row.isVisible = false
+            }
         }
+        wireDownloadFocus()
     }
 
     override fun onResume() {

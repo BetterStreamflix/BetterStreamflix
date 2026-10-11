@@ -58,15 +58,42 @@
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintTop_toTopOf="@id/tv_downloads_storage" />
 
-    <TextView
-        android:id="@+id/tv_downloads_banner"
+    <LinearLayout
+        android:id="@+id/ll_downloads_banner"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:textColor="#FFFF8A80"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:paddingStart="4dp"
+        android:paddingEnd="4dp"
+        android:paddingBottom="4dp"
         android:visibility="gone"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/tv_downloads_storage" />
+        app:layout_constraintTop_toBottomOf="@id/tv_downloads_storage">
+
+        <TextView
+            android:id="@+id/tv_downloads_banner"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:focusable="false"
+            android:textColor="#FFFF8A80"
+            android:textSize="14sp" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btn_downloads_health_redownload"
+            style="@style/Widget.Material3.Button.TonalButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="12dp"
+            android:contentDescription="@string/downloads_health_redownload_all_a11y"
+            android:focusable="true"
+            android:minHeight="48dp"
+            android:text="@string/downloads_health_redownload_all"
+            android:textAllCaps="false"
+            android:visibility="gone" />
+    </LinearLayout>
 
     <LinearLayout
         android:id="@+id/ll_offline_library_badge"
@@ -77,7 +104,7 @@
         android:paddingTop="4dp"
         android:paddingBottom="2dp"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/tv_downloads_banner">
+        app:layout_constraintTop_toBottomOf="@id/ll_downloads_banner">
 
         <ImageView
             android:layout_width="18dp"

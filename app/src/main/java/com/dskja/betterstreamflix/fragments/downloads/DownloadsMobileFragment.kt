@@ -263,13 +263,21 @@ class DownloadsMobileFragment : Fragment() {
         }
         viewLifecycleOwner.lifecycleScope.launch {
             viewModel.lowSpace.flowWithLifecycle(lifecycle, Lifecycle.State.STARTED).collect { low ->
-                updateBanner(low, viewModel.wifiPaused.value)
+                updateBanner(low, viewModel.wifiPaused.value, viewModel.healthSummary.value)
             }
         }
         viewLifecycleOwner.lifecycleScope.launch {
             viewModel.wifiPaused.flowWithLifecycle(lifecycle, Lifecycle.State.STARTED).collect { paused ->
-                updateBanner(viewModel.lowSpace.value, paused)
+                updateBanner(viewModel.lowSpace.value, paused, viewModel.healthSummary.value)
             }
+        }
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewModel.healthSummary.flowWithLifecycle(lifecycle, Lifecycle.State.STARTED).collect { health ->
+                updateBanner(viewModel.lowSpace.value, viewModel.wifiPaused.value, health)
+            }
+        }
+        binding.btnDownloadsHealthRedownload.setOnClickListener {
+            viewModel.redownloadAllUnhealthy()
         }
         viewLifecycleOwner.lifecycleScope.launch {
             viewModel.wifiOnlyEnabled.flowWithLifecycle(lifecycle, Lifecycle.State.STARTED).collect { enabled ->
@@ -530,12 +538,19 @@ class DownloadsMobileFragment : Fragment() {
         }
     }
 
-    private fun updateBanner(lowSpace: Boolean, wifiPaused: Boolean) {
+    private fun updateBanner(
+        lowSpace: Boolean,
+        wifiPaused: Boolean,
+        health: com.dskja.betterstreamflix.download.DownloadHealth.Summary,
+    ) {
+        val row = binding.llDownloadsBanner
         val banner = binding.tvDownloadsBanner
-        val wasVisible = banner.isVisible
+        val cta = binding.btnDownloadsHealthRedownload
+        val wasVisible = row.isVisible
         when {
             wifiPaused -> {
                 banner.setText(R.string.downloads_wifi_paused)
+                cta.isVisible = false
                 if (ExperimentalMobileDesign.enabled()) {
                     banner.setTextColor(
                         com.google.android.material.color.MaterialColors.getColor(
@@ -546,6 +561,19 @@ class DownloadsMobileFragment : Fragment() {
             }
             lowSpace -> {
                 banner.setText(R.string.downloads_low_space)
+                cta.isVisible = false
+                if (ExperimentalMobileDesign.enabled()) {
+                    banner.setTextColor(
+                        com.google.android.material.color.MaterialColors.getColor(
+                            banner, androidx.appcompat.R.attr.colorError,
+                        ),
+                    )
+                }
+            }
+            health.hasUnhealthy -> {
+                banner.text = com.dskja.betterstreamflix.download.DownloadHealth
+                    .bannerMessage(requireContext(), health)
+                cta.isVisible = true
                 if (ExperimentalMobileDesign.enabled()) {
                     banner.setTextColor(
                         com.google.android.material.color.MaterialColors.getColor(
@@ -555,27 +583,27 @@ class DownloadsMobileFragment : Fragment() {
                 }
             }
             else -> {
+                cta.isVisible = false
                 if (ExperimentalMobileDesign.enabled() && wasVisible) {
-                    ExpMotion.fadeOutAndHide(banner)
+                    ExpMotion.fadeOutAndHide(row)
                 } else {
-                    banner.isVisible = false
+                    row.isVisible = false
                 }
                 return
             }
         }
-        banner.isVisible = true
+        row.isVisible = true
         if (ExperimentalMobileDesign.enabled()) {
-            banner.setBackgroundResource(ExperimentalMobileDesign.metaPillBackground())
+            row.setBackgroundResource(ExperimentalMobileDesign.metaPillBackground())
             val density = resources.displayMetrics.density
-            banner.setPadding(
+            row.setPadding(
                 (14 * density).toInt(),
                 (10 * density).toInt(),
-                (14 * density).toInt(),
+                (12 * density).toInt(),
                 (10 * density).toInt(),
             )
-            with(com.dskja.betterstreamflix.utils.ExpPressEffects) { banner.applyExpPress() }
             if (!wasVisible) {
-                ExpMotion.popIn(banner)
+                ExpMotion.popIn(row)
             }
         }
     }
