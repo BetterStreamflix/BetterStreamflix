@@ -104,7 +104,7 @@
     <string name="people_filmography_label">Filmography</string>
     <string name="people_known_for">Known for</string>
     <string name="people_meta_dot" translatable="false">·</string>
-    <string name="home_empty">Nothing to show yet — pick a provider, then titles you watch will appear under Continue Watching</string>
+    <string name="home_empty">Nothing to show yet — pick a provider, then titles you watch will appear under Continue Watching, Next Episodes, and Recently Watched</string>
     <string name="home_empty_choose_provider">Choose provider</string>
     <string name="exp_cd_search_clear">Clear search</string>
     <string name="exp_cd_voice_search">Voice search</string>
@@ -122,6 +122,13 @@
     <string name="home_favorite_tv_shows">Favorite TV shows</string>
     <string name="home_catalog_warning_tap_retry">Tap to retry catalog</string>
     <string name="home_catalog_unavailable">Catalog unavailable — library still shown</string>
+    <string name="home_catalog_empty_from_provider">Empty catalog from %1$s</string>
+    <string name="home_catalog_no_usable_rows">No usable rows from %1$s</string>
+    <string name="home_featured_restored_from">Featured shelf restored from “%1$s”</string>
+    <string name="episode_badge_format">E%1$d</string>
+    <string name="cd_title_logo">Title logo</string>
+    <string name="cd_download_poster">Download poster</string>
+    <string name="cd_next_episode_poster">Next episode poster</string>
     <string name="trailer_player_in_app">In-app trailer</string>
     <string name="trailer_player_unavailable">No app found to play this trailer</string>
     <string name="detail_share">Share</string>
@@ -202,6 +209,7 @@
     <string name="detail_download">Download</string>
     <string name="people_read_less">Show less</string>
     <string name="favorites_empty">Your lists are empty — add a title to keep it here</string>
+    <string name="watchlist_empty">Your watchlist is empty</string>
     <string name="favorites_reorder_categories">Sort favorites</string>
     <string name="favorites_sort_title">Sort favorites</string>
     <string name="favorites_sort_manual">Manual order</string>
@@ -1084,6 +1092,9 @@
     <string name="player_settings_software_decoder_auto_on">Active (Default)</string>
     <string name="player_settings_software_decoder_auto_off">Disabled (Default)</string>
 
+        <string name="error_no_provider_selected">No provider selected</string>
+    <string name="error_no_servers_found">No servers found</string>
+    <string name="error_no_source_found">No source found</string>
     <string name="error_dialog_title">Error Details</string>
     <string name="error_dialog_message">Error Message</string>
     <string name="error_dialog_cause">Cause</string>
