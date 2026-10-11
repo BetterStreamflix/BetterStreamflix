@@ -400,26 +400,11 @@ class MovieViewHolder(
         }
 
         bindMovieProgress(binding.pbMovieProgress)
+        bindMovieRemainingPill(binding.root, continueWatching = movie.itemType == AppAdapter.Type.MOVIE_CONTINUE_WATCHING_MOBILE_ITEM)
         if (ExperimentalMobileDesign.enabled() &&
             movie.itemType == AppAdapter.Type.MOVIE_CONTINUE_WATCHING_MOBILE_ITEM
         ) {
             ExpMotion.kenBurns(binding.ivMoviePoster)
-            binding.root.findViewById<android.widget.TextView>(R.id.tv_movie_remaining)?.let { remaining ->
-                val watchHistory = movie.watchHistory
-                if (watchHistory != null && watchHistory.durationMillis > 0) {
-                    val pct = (watchHistory.lastPlaybackPositionMillis * 100 /
-                        watchHistory.durationMillis.toDouble()).toInt().coerceIn(0, 99)
-                    remaining.text = context.getString(R.string.continue_watching_percent, pct)
-                    remaining.setBackgroundResource(ExperimentalMobileDesign.metaPillBackground())
-                    val wasVisible = remaining.visibility == View.VISIBLE
-                    remaining.visibility = View.VISIBLE
-                    if (!wasVisible) ExpMotion.popIn(remaining)
-                } else {
-                    remaining.visibility = View.GONE
-                }
-            }
-        } else {
-            binding.root.findViewById<View>(R.id.tv_movie_remaining)?.visibility = View.GONE
         }
 
         binding.tvMovieTitle.text = movie.title
@@ -535,7 +520,10 @@ class MovieViewHolder(
             text = year ?: context.getString(R.string.movie_item_type)
         }
         binding.tvMovieTitle.text = movie.title
-        binding.root.findViewById<View>(R.id.tv_movie_remaining)?.visibility = View.GONE
+        bindMovieRemainingPill(
+            binding.root,
+            continueWatching = movie.itemType == AppAdapter.Type.MOVIE_CONTINUE_WATCHING_TV_ITEM,
+        )
     }
 
     private fun displayGridMobileItem(binding: ItemMovieGridMobileBinding) {
@@ -1176,6 +1164,24 @@ class MovieViewHolder(
                 .start()
         } else {
             bar.progress = target
+        }
+    }
+
+    private fun bindMovieRemainingPill(root: View, continueWatching: Boolean) {
+        val remaining = root.findViewById<android.widget.TextView>(R.id.tv_movie_remaining) ?: return
+        val watchHistory = movie.watchHistory
+        if (continueWatching && watchHistory != null && watchHistory.durationMillis > 0) {
+            val pct = (watchHistory.lastPlaybackPositionMillis * 100 /
+                watchHistory.durationMillis.toDouble()).toInt().coerceIn(0, 99)
+            remaining.text = context.getString(R.string.continue_watching_percent, pct)
+            if (ExperimentalMobileDesign.enabled()) {
+                remaining.setBackgroundResource(ExperimentalMobileDesign.metaPillBackground())
+            }
+            val wasVisible = remaining.visibility == View.VISIBLE
+            remaining.visibility = View.VISIBLE
+            if (ExperimentalMobileDesign.enabled() && !wasVisible) ExpMotion.popIn(remaining)
+        } else {
+            remaining.visibility = View.GONE
         }
     }
 

@@ -21,6 +21,7 @@ internal object ProfileScopedPreferenceStore {
         "LIBRARY_SCOPE",
         "SHOW_CONTINUE_WATCHING",
         "SHOW_RECENTLY_WATCHED",
+        "SHOW_NEXT_EPISODES",
         "PARENTAL_CONTROL_MAX_AGE",
     )
 
@@ -64,12 +65,14 @@ internal object ProfileScopedPreferenceStore {
             when (key) {
                 "SHOW_CONTINUE_WATCHING" -> UserPreferences.showContinueWatching = value
                 "SHOW_RECENTLY_WATCHED" -> UserPreferences.showRecentlyWatched = value
+                "SHOW_NEXT_EPISODES" -> UserPreferences.showNextEpisodes = value
             }
         }
 
         override fun getBoolean(key: String, defValue: Boolean): Boolean = when (key) {
             "SHOW_CONTINUE_WATCHING" -> UserPreferences.showContinueWatching
             "SHOW_RECENTLY_WATCHED" -> UserPreferences.showRecentlyWatched
+            "SHOW_NEXT_EPISODES" -> UserPreferences.showNextEpisodes
             else -> defValue
         }
     }

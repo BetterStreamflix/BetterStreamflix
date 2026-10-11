@@ -21,6 +21,8 @@ object CrossProviderLibrary {
 
     data class HomeHistory(
         val continueWatching: List<AppAdapter.Item>,
+        /** Next unwatched episode after the last finished one (separate Home shelf). */
+        val nextEpisodes: List<Episode>,
         val recentlyWatched: List<AppAdapter.Item>,
         val favoriteMovies: List<Movie>,
         val favoriteTvShows: List<TvShow>,
@@ -28,6 +30,7 @@ object CrossProviderLibrary {
 
     suspend fun loadHomeHistory(context: Context): HomeHistory {
         val continueWatching = mutableListOf<AppAdapter.Item>()
+        val nextEpisodes = mutableListOf<Episode>()
         val recentlyWatched = mutableListOf<AppAdapter.Item>()
         val favoriteMovies = mutableListOf<Movie>()
         val favoriteTvShows = mutableListOf<TvShow>()
@@ -44,8 +47,8 @@ object CrossProviderLibrary {
                     .map { it.withProvider(provider.name) }
 
                 val watchingEpisodes = db.episodeDao().getWatchingEpisodesCapped().first()
-                val nextEpisodes = db.episodeDao().getNextEpisodesToWatch().first()
-                val allEpisodes = (watchingEpisodes + nextEpisodes).distinctBy { it.id }
+                val nextEpisodesRaw = db.episodeDao().getNextEpisodesToWatch().first()
+                val allEpisodes = (watchingEpisodes + nextEpisodesRaw).distinctBy { it.id }
                 // Prefer getByIds — getAll() on large libraries stalls the home combine.
                 val tvShowIds = allEpisodes.mapNotNull { it.tvShow?.id }.distinct()
                 val tvShowsMap = if (tvShowIds.isEmpty()) {
@@ -60,13 +63,14 @@ object CrossProviderLibrary {
                     db.seasonDao().getByIds(seasonIds).associateBy { it.id }
                 }
 
-                continueWatching += allEpisodes.map { episode ->
-                    episode.copy(
-                        tvShow = (episode.tvShow?.id?.let { tvShowsMap[it] } ?: episode.tvShow)
-                            ?.withProvider(provider.name),
-                        season = episode.season?.id?.let { seasonsMap[it] } ?: episode.season,
-                    ).apply { merge(episode) }
-                }
+                fun hydrate(episode: Episode): Episode = episode.copy(
+                    tvShow = (episode.tvShow?.id?.let { tvShowsMap[it] } ?: episode.tvShow)
+                        ?.withProvider(provider.name),
+                    season = episode.season?.id?.let { seasonsMap[it] } ?: episode.season,
+                ).apply { merge(episode) }
+
+                continueWatching += watchingEpisodes.map(::hydrate)
+                nextEpisodes += nextEpisodesRaw.map(::hydrate)
 
                 recentlyWatched += db.movieDao().getRecentlyWatched().first()
                     .map { it.withProvider(provider.name) }
@@ -92,6 +96,9 @@ object CrossProviderLibrary {
 
         return HomeHistory(
             continueWatching = continueWatching
+                .sortedByDescending { engagementMillis(it) }
+                .distinctBy { continueWatchingKey(it) },
+            nextEpisodes = nextEpisodes
                 .sortedByDescending { engagementMillis(it) }
                 .distinctBy { continueWatchingKey(it) },
             recentlyWatched = recentlyWatched

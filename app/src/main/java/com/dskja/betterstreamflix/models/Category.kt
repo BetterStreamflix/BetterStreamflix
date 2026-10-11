@@ -72,6 +72,8 @@ class Category(
          */
         const val FEATURED = "Featured"
         const val CONTINUE_WATCHING = "Continue Watching"
+        /** Unwatched next episode for shows already in progress (no mid-episode resume). */
+        const val NEXT_EPISODES = "Next Episodes"
         const val RECENTLY_WATCHED = "Recently Watched"
         const val FAVORITE_MOVIES = "Favorite movies"
         const val FAVORITE_TV_SHOWS = "Favorite TV shows"

@@ -180,6 +180,13 @@
                 android:defaultValue="true"
                 app:iconSpaceReserved="false" />
 
+            <SwitchPreferenceCompat
+                android:key="SHOW_NEXT_EPISODES"
+                android:title="@string/settings_show_next_episodes_title"
+                android:summary="@string/settings_show_next_episodes_summary"
+                android:defaultValue="true"
+                app:iconSpaceReserved="false" />
+
             <Preference
                 android:key="CLEAR_RECENTLY_WATCHED"
                 android:title="@string/settings_clear_recently_watched_title"

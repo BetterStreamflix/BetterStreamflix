@@ -47,6 +47,8 @@ interface EpisodeDao {
             FROM episodes e
             WHERE e.tvShow = episodes.tvShow AND e.lastEngagementTimeUtcMillis IS NOT NULL
         )
+        ORDER BY watchedDate DESC
+        LIMIT 25
     """
     )
     fun getNextEpisodesToWatch(): Flow<List<Episode>>

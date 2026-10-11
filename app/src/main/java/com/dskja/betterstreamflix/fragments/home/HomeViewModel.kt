@@ -23,6 +23,9 @@ import com.dskja.betterstreamflix.utils.ParentalControlUtils
 import com.dskja.betterstreamflix.utils.ProviderChangeNotifier
 import com.dskja.betterstreamflix.utils.UserDataCache
 import com.dskja.betterstreamflix.utils.UserDataCache.toCached
+import com.dskja.betterstreamflix.utils.UserDataCache.toEpisode
+import com.dskja.betterstreamflix.utils.UserDataCache.toMovie
+import com.dskja.betterstreamflix.utils.UserDataCache.toTvShow
 import com.dskja.betterstreamflix.utils.UserPreferences
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
@@ -58,6 +61,7 @@ class HomeViewModel(
 
     private data class HomeHistory(
         val continueWatching: List<AppAdapter.Item>,
+        val nextEpisodes: List<Episode>,
         val recentlyWatched: List<AppAdapter.Item>,
         val favoritesMovies: List<Movie>,
         val favoriteTvShows: List<TvShow>
@@ -93,22 +97,41 @@ class HomeViewModel(
             val raw = CrossProviderLibrary.loadHomeHistory(appContext)
             val movies = raw.continueWatching.filterIsInstance<Movie>()
             val localEpisodes = raw.continueWatching.filterIsInstance<Episode>()
+            val localNext = raw.nextEpisodes
 
-            fun build(episodes: List<Episode>) = HomeHistory(
+            fun build(episodes: List<Episode>, next: List<Episode>) = HomeHistory(
                 continueWatching = (movies + episodes)
                     .sortedByDescending { engagementMillis(it) }
                     .distinctBy { continueWatchingKey(it) },
-                recentlyWatched = raw.recentlyWatched,
+                nextEpisodes = next
+                    .sortedByDescending { engagementMillis(it) }
+                    .distinctBy { continueWatchingKey(it) },
+                recentlyWatched = filterRecentlyWatchedAgainstActive(
+                    recentlyWatched = raw.recentlyWatched,
+                    continueWatching = movies + episodes,
+                    nextEpisodes = next,
+                ),
                 favoritesMovies = raw.favoriteMovies,
                 favoriteTvShows = raw.favoriteTvShows,
             )
 
-            emit(build(localEpisodes))
+            // Stale-while-revalidate: if Room is empty, surface JSON cache until sync fills it.
+            if (movies.isEmpty() && localEpisodes.isEmpty() && localNext.isEmpty()) {
+                val cachedFallback = historyFromUserDataCache()
+                if (cachedFallback != null) {
+                    emit(cachedFallback)
+                } else {
+                    emit(build(localEpisodes, localNext))
+                }
+            } else {
+                emit(build(localEpisodes, localNext))
+            }
 
-            if (localEpisodes.isEmpty()) return@transformLatest
+            val toEnrich = (localEpisodes + localNext).distinctBy { it.id }
+            if (toEnrich.isEmpty()) return@transformLatest
             val enriched = try {
                 withTimeout(ProviderSmoke.CW_ENRICH_TIMEOUT_MS) {
-                    enrichContinueWatchingEpisodes(localEpisodes)
+                    enrichContinueWatchingEpisodes(toEnrich)
                 }
             } catch (e: TimeoutCancellationException) {
                 Log.w("HomeViewModel", "CW enrich timed out; keeping local episode rows")
@@ -120,7 +143,13 @@ class HomeViewModel(
                 null
             } ?: return@transformLatest
 
-            emit(build(enriched))
+            val enrichedById = enriched.associateBy { it.id }
+            emit(
+                build(
+                    episodes = localEpisodes.map { enrichedById[it.id] ?: it },
+                    next = localNext.map { enrichedById[it.id] ?: it },
+                )
+            )
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
@@ -128,8 +157,9 @@ class HomeViewModel(
             Log.e("HomeViewModel", "homeHistory failed", e)
             CrashReporter.logNonFatal("HomeViewModel", "homeHistory failed", e)
             emit(
-                HomeHistory(
+                historyFromUserDataCache() ?: HomeHistory(
                     continueWatching = emptyList(),
+                    nextEpisodes = emptyList(),
                     recentlyWatched = emptyList(),
                     favoritesMovies = emptyList(),
                     favoriteTvShows = emptyList(),
@@ -270,6 +300,14 @@ class HomeViewModel(
                         ),
                     ).takeIf { UserPreferences.showContinueWatching },
 
+                    // NEXT EPISODES — separate from mid-watch resume
+                    Category(
+                        name = Category.NEXT_EPISODES,
+                        list = history.nextEpisodes,
+                    ).takeIf {
+                        UserPreferences.showNextEpisodes && history.nextEpisodes.isNotEmpty()
+                    },
+
                     Category(
                         name = Category.RECENTLY_WATCHED,
                         list = history.recentlyWatched,
@@ -353,6 +391,61 @@ class HomeViewModel(
         is Episode -> "${item.tvShow?.providerName}:${item.tvShow?.id}"
         is Movie -> "${item.providerName}:${item.id}"
         else -> null
+    }
+
+    /** Drop Recently Watched tiles that are already on Continue / Next shelves. */
+    private fun filterRecentlyWatchedAgainstActive(
+        recentlyWatched: List<AppAdapter.Item>,
+        continueWatching: List<AppAdapter.Item>,
+        nextEpisodes: List<Episode>,
+    ): List<AppAdapter.Item> {
+        val activeKeys = buildSet {
+            continueWatching.mapNotNullTo(this) { continueWatchingKey(it) }
+            nextEpisodes.mapNotNullTo(this) { continueWatchingKey(it) }
+        }
+        if (activeKeys.isEmpty()) return recentlyWatched
+        return recentlyWatched.filter { item ->
+            val key = when (item) {
+                is Movie -> "${item.providerName}:${item.id}"
+                is TvShow -> "${item.providerName}:${item.id}"
+                else -> null
+            }
+            key == null || key !in activeKeys
+        }
+    }
+
+    private fun historyFromUserDataCache(): HomeHistory? {
+        val providerName = UserPreferences.currentProvider?.name
+        val cached = _userDataCache.value ?: run {
+            val provider = UserPreferences.currentProvider ?: return null
+            UserDataCache.read(BetterStreamflixApp.instance.applicationContext, provider)
+        } ?: return null
+        val movies = cached.continueWatchingMovies.map {
+            it.toMovie().apply { this.providerName = providerName }
+        }
+        val episodes = cached.continueWatchingEpisodes.map {
+            it.toEpisode().apply {
+                tvShow?.providerName = providerName
+            }
+        }
+        if (movies.isEmpty() && episodes.isEmpty() &&
+            cached.favoritesMovies.isEmpty() && cached.favoritesTvShows.isEmpty()
+        ) {
+            return null
+        }
+        return HomeHistory(
+            continueWatching = (movies + episodes)
+                .sortedByDescending { engagementMillis(it) }
+                .distinctBy { continueWatchingKey(it) },
+            nextEpisodes = emptyList(),
+            recentlyWatched = emptyList(),
+            favoritesMovies = cached.favoritesMovies.map {
+                it.toMovie().apply { this.providerName = providerName }
+            },
+            favoriteTvShows = cached.favoritesTvShows.map {
+                it.toTvShow().apply { this.providerName = providerName }
+            },
+        )
     }
 
     private suspend fun enrichContinueWatchingEpisodes(episodes: List<Episode>): List<Episode> = coroutineScope {
