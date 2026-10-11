@@ -20,35 +20,41 @@ class PlayerTvView @JvmOverloads constructor(
     private var cachedController: PlayerControlView? = null
 
     /**
-     * Safely resolve Exo PlayerControlView. Never throw — a missing controller must not
-     * crash TV playback to the Android launcher (GitHub #103 class of failures).
+     * Resolve the layout PlayerControlView. Prefer [controllerOrNull] on hot paths —
+     * never invent a detached ghost controller (chrome updates would be invisible).
      */
     val controller: PlayerControlView
-        get() {
-            cachedController?.let { return it }
-            val resolved = runCatching {
-                val field = PlayerView::class.java.getDeclaredField("controller")
-                field.isAccessible = true
-                field.get(this) as? PlayerControlView
-            }.onFailure {
-                Log.w(TAG, "controller reflection failed: ${it.message}")
-            }.getOrNull()
-                ?: findViewById(androidx.media3.ui.R.id.exo_controller)
-            cachedController = resolved
-            if (resolved != null) return resolved
-            // Last resort: inflate a detached control view so callers never crash the TV process.
-            Log.e(TAG, "PlayerControlView missing — using detached fallback")
-            return PlayerControlView(context).also { cachedController = it }
-        }
+        get() = controllerOrNull()
+            ?: error("PlayerControlView missing from PlayerTvView layout")
 
     /** Non-throwing access for hot paths that can no-op when controller is absent. */
-    fun controllerOrNull(): PlayerControlView? = runCatching { controller }.getOrNull()
+    fun controllerOrNull(): PlayerControlView? {
+        cachedController?.let { return it }
+        val resolved = runCatching {
+            val field = PlayerView::class.java.getDeclaredField("controller")
+            field.isAccessible = true
+            field.get(this) as? PlayerControlView
+        }.onFailure {
+            Log.w(TAG, "controller reflection failed: ${it.message}")
+        }.getOrNull()
+            ?: findViewById(androidx.media3.ui.R.id.exo_controller)
+        if (resolved == null) {
+            Log.e(TAG, "PlayerControlView missing — skipping chrome binds")
+        }
+        cachedController = resolved
+        return resolved
+    }
 
     var isManualZoomEnabled: Boolean = false
         private set
 
     var onMediaPreviousClicked: (() -> Boolean)? = null
     var onMediaNextClicked: (() -> Boolean)? = null
+
+    /** When true, hidden-chrome DPAD L/R zap channels instead of seeking. */
+    var isLivePlayback: Boolean = false
+    var onLiveZapPrevious: (() -> Boolean)? = null
+    var onLiveZapNext: (() -> Boolean)? = null
 
     private var zoomToast: Toast? = null
 
@@ -135,14 +141,22 @@ class PlayerTvView @JvmOverloads constructor(
         return when (event.keyCode) {
             KeyEvent.KEYCODE_DPAD_LEFT -> {
                 if (event.action == KeyEvent.ACTION_DOWN) {
-                    player.seekTo(player.currentPosition - 10_000)
+                    if (isLivePlayback) {
+                        onLiveZapPrevious?.invoke()
+                    } else {
+                        player.seekTo(player.currentPosition - 10_000)
+                    }
                 }
                 true
             }
 
             KeyEvent.KEYCODE_DPAD_RIGHT -> {
                 if (event.action == KeyEvent.ACTION_DOWN) {
-                    player.seekTo(player.currentPosition + 10_000)
+                    if (isLivePlayback) {
+                        onLiveZapNext?.invoke()
+                    } else {
+                        player.seekTo(player.currentPosition + 10_000)
+                    }
                 }
                 true
             }

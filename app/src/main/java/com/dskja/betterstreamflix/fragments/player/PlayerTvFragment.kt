@@ -498,8 +498,10 @@ class PlayerTvFragment : Fragment() {
 
                         is PlayerViewModel.State.SuccessLoadingVideo -> {
                             PlayerSettingsView.Settings.ExtraBuffering.init(state.video.extraBuffering)
-                            if (!currentSoftwareDecoder) {
-                                PlayerSettingsView.Settings.SoftwareDecoder.init(false)
+                            if (PlayerSettingsView.Settings.SoftwareDecoder.selectedValue == null) {
+                                PlayerSettingsView.Settings.SoftwareDecoder.init(
+                                    DeviceCapabilities.shouldPreferSoftwareDecoder(requireContext()),
+                                )
                             }
                             displayVideo(state.video, state.server)
                         }
@@ -529,8 +531,10 @@ class PlayerTvFragment : Fragment() {
                                     }
                                 }
                                 PlaybackFailover.Action.RetrySoftwareDecoder -> {
-                                    currentSoftwareDecoder = true
+                                    // Do not mutate currentSoftwareDecoder here — displayVideo
+                                    // must see a flag mismatch so initializePlayer rebuilds.
                                     PlayerSettingsView.Settings.SoftwareDecoder.init(true)
+                                    PlayerSettingsView.Settings.SoftwareDecoder.selectedValue = true
                                     showPlayerCue(R.string.player_retry_software_decoder)
                                     viewModel.getVideo(state.server)
                                 }
@@ -1240,12 +1244,16 @@ class PlayerTvFragment : Fragment() {
                     currentServer ?: return@setOnExtraBufferingSelectedListener
                 )
             }
-            binding.settings.setOnSoftwareDecoderSelectedListener { useSoftware ->
-                currentSoftwareDecoder = useSoftware
+            binding.settings.setOnSoftwareDecoderSelectedListener {
+                // Flag is already in Settings; leave currentSoftwareDecoder stale so needsReinit fires.
                 displayVideo(
                     currentVideo ?: return@setOnSoftwareDecoderSelectedListener,
                     currentServer ?: return@setOnSoftwareDecoderSelectedListener
                 )
+            }
+            binding.settings.onHidden = {
+                binding.pvPlayer.showController()
+                binding.pvPlayer.requestFocus()
             }
 
             updatePlayerHeader()
@@ -1708,8 +1716,8 @@ class PlayerTvFragment : Fragment() {
                             }
                         }
                         PlaybackFailover.Action.RetrySoftwareDecoder -> {
-                            currentSoftwareDecoder = true
                             PlayerSettingsView.Settings.SoftwareDecoder.init(true)
+                            PlayerSettingsView.Settings.SoftwareDecoder.selectedValue = true
                             val video = currentVideo
                             val server = currentServer
                             if (video != null && server != null) {
@@ -2217,8 +2225,9 @@ class PlayerTvFragment : Fragment() {
 
         private fun setupLiveChannelZapButtons() {
             if (!isLiveTvPlayback()) return
-            val btnPrevious = binding.pvPlayer.controller.binding.btnCustomPrev
-            val btnNext = binding.pvPlayer.controller.binding.btnCustomNext
+            wireLiveHiddenDpadZap()
+            val btnPrevious = binding.pvPlayer.controllerOrNull()?.binding?.btnCustomPrev ?: return
+            val btnNext = binding.pvPlayer.controllerOrNull()?.binding?.btnCustomNext ?: return
             val hasPrev = com.dskja.betterstreamflix.iptv.IptvLiveSession.hasPrevious()
             val hasNext = com.dskja.betterstreamflix.iptv.IptvLiveSession.hasNext()
             btnPrevious.isGone = !hasPrev
@@ -2662,11 +2671,41 @@ class PlayerTvFragment : Fragment() {
                 options = PlayerBuilderFactory.Options(
                     extraBuffering = extraBuffering && !isLiveTvPlayback(),
                     softwareDecoder = currentSoftwareDecoder,
+                    softwareDecoderForced =
+                        PlayerSettingsView.Settings.SoftwareDecoder.selectedValue == true,
                     seekIncrementsMs = null,
-                    preferStereoAudio = false,
+                    preferStereoAudio =
+                        DeviceCapabilities.shouldUseConstrainedPlayback(requireContext()),
                     liveOptimized = isLiveTvPlayback(),
                 ),
             )
+        }
+
+        private fun wireLiveHiddenDpadZap() {
+            val tv = binding.pvPlayer as? PlayerTvView ?: return
+            tv.isLivePlayback = isLiveTvPlayback()
+            tv.onLiveZapPrevious = {
+                val channel = com.dskja.betterstreamflix.iptv.IptvLiveSession.previous()
+                if (channel == null) {
+                    showLiveCue(R.string.player_live_no_more_channels)
+                    true
+                } else {
+                    showLiveCue(R.string.player_live_zapping)
+                    viewModel.playLiveChannel(channel)
+                    true
+                }
+            }
+            tv.onLiveZapNext = {
+                val channel = com.dskja.betterstreamflix.iptv.IptvLiveSession.next()
+                if (channel == null) {
+                    showLiveCue(R.string.player_live_no_more_channels)
+                    true
+                } else {
+                    showLiveCue(R.string.player_live_zapping)
+                    viewModel.playLiveChannel(channel)
+                    true
+                }
+            }
         }
 
         private fun initializePlayer(
@@ -2763,6 +2802,16 @@ class PlayerTvFragment : Fragment() {
             }.getOrNull() ?: return
 
             if (!UserPreferences.castEnabled || isLiveTvPlayback() || isOfflinePlayback()) {
+                routeButton.isGone = true
+                return
+            }
+
+            // Fire TV / no-GMS builds: CastContext unavailable — keep the button hidden.
+            val castContextOk = runCatching {
+                com.google.android.gms.cast.framework.CastContext
+                    .getSharedInstance(requireContext().applicationContext)
+            }.isSuccess
+            if (!castContextOk) {
                 routeButton.isGone = true
                 return
             }
@@ -2911,7 +2960,7 @@ class PlayerTvFragment : Fragment() {
                 requireContext(),
                 message,
                 titleRes,
-            ) { ctx -> MaterialAlertDialogBuilder(ctx) }
+            ) { ctx -> MaterialAlertDialogBuilder(ExpDialogChrome.themedContext(ctx)) }
         }
 
         private fun notifyPlayer(messageRes: Int, titleRes: Int = R.string.player_settings_title) {
@@ -3147,7 +3196,9 @@ class PlayerTvFragment : Fragment() {
             addView(container)
         }
 
-        val builder = androidx.appcompat.app.AlertDialog.Builder(requireActivity())
+        val builder = androidx.appcompat.app.AlertDialog.Builder(
+            ExpDialogChrome.themedContext(requireActivity()),
+        )
         qrDialog = builder
             .setTitle(R.string.player_bypass_qr_title)
             .setView(scrollView)

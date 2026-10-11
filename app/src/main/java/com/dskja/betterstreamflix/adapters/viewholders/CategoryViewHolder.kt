@@ -275,17 +275,47 @@ class CategoryViewHolder(
             isFocusable = true
             descendantFocusability = ViewGroup.FOCUS_AFTER_DESCENDANTS
             nextFocusLeftId = R.id.nav_main
-            // First shelf tile → side nav (focusOutFront alone is unreliable on some Fire OS builds).
+            // First *visible* shelf tile → side nav (focusOutFront alone is unreliable on Fire OS).
             if (getTag(R.id.tv_shelf_nav_focus_listener_tag) != true) {
                 setTag(R.id.tv_shelf_nav_focus_listener_tag, true)
+                fun rewireLeftmostNav() {
+                    val lm = layoutManager as? androidx.recyclerview.widget.LinearLayoutManager
+                    val firstVisible = lm?.findFirstVisibleItemPosition()
+                        ?: (0 until childCount).mapNotNull { getChildAt(it) }
+                            .minOfOrNull { getChildAdapterPosition(it) }
+                            ?.takeIf { it != RecyclerView.NO_POSITION }
+                        ?: 0
+                    for (i in 0 until childCount) {
+                        val child = getChildAt(i) ?: continue
+                        val pos = getChildAdapterPosition(child)
+                        child.nextFocusLeftId =
+                            if (pos == firstVisible || pos == 0) R.id.nav_main else View.NO_ID
+                    }
+                }
                 addOnChildAttachStateChangeListener(object : RecyclerView.OnChildAttachStateChangeListener {
                     override fun onChildViewAttachedToWindow(view: View) {
-                        val pos = getChildAdapterPosition(view)
-                        view.nextFocusLeftId = if (pos == 0) R.id.nav_main else View.NO_ID
+                        rewireLeftmostNav()
                     }
 
                     override fun onChildViewDetachedFromWindow(view: View) = Unit
                 })
+                addOnScrollListener(object : RecyclerView.OnScrollListener() {
+                    override fun onScrollStateChanged(recyclerView: RecyclerView, newState: Int) {
+                        if (newState == RecyclerView.SCROLL_STATE_IDLE) rewireLeftmostNav()
+                    }
+                })
+                setOnChildViewHolderSelectedListener(
+                    object : androidx.leanback.widget.OnChildViewHolderSelectedListener() {
+                        override fun onChildViewHolderSelected(
+                            parent: RecyclerView,
+                            child: RecyclerView.ViewHolder?,
+                            position: Int,
+                            subposition: Int,
+                        ) {
+                            rewireLeftmostNav()
+                        }
+                    },
+                )
             }
         }
     }
@@ -1096,7 +1126,17 @@ class CategoryViewHolder(
             (context.toActivity()?.findViewById<View>(R.id.tv_home_profile_chip))?.let { chip ->
                 nextFocusUpId = chip.id
             }
-            nextFocusDownId = View.NO_ID
+            // Prefer Support CTA / first shelf; never leave DOWN as NO_ID near overscan.
+            nextFocusDownId = R.id.btn_support_banner_cta
+            post {
+                val support = context.toActivity()?.findViewById<View>(R.id.btn_support_banner_cta)
+                val downId = when {
+                    support != null && support.isShown && support.isFocusable -> support.id
+                    else -> View.NO_ID
+                }
+                nextFocusDownId = downId
+                binding.btnSwiperAddToList.nextFocusDownId = downId
+            }
             if (ExperimentalMobileDesign.enabled()) {
                 setBackgroundResource(ExperimentalMobileDesign.primaryButtonBackground())
                 setTextColor(
@@ -1136,13 +1176,14 @@ class CategoryViewHolder(
                 if (event.action == KeyEvent.ACTION_DOWN &&
                     event.keyCode == KeyEvent.KEYCODE_DPAD_RIGHT
                 ) {
-                    // Prefer focus to My List when present; otherwise advance.
-                    if (binding.btnSwiperAddToList.visibility == View.VISIBLE) {
+                    // RIGHT moves focus to My List — do not rotate the carousel.
+                    if (binding.btnSwiperAddToList.visibility == View.VISIBLE &&
+                        binding.btnSwiperAddToList.isFocusable
+                    ) {
                         binding.btnSwiperAddToList.requestFocus()
-                    } else {
-                        advanceFeatured()
+                        return@setOnKeyListener true
                     }
-                    return@setOnKeyListener true
+                    return@setOnKeyListener false
                 }
                 // Menu / long-press remote: play trailer when available.
                 if (event.action == KeyEvent.ACTION_DOWN &&
@@ -1189,12 +1230,7 @@ class CategoryViewHolder(
                 }
             }
             setOnKeyListener { _, _, event ->
-                if (event.action == KeyEvent.ACTION_DOWN &&
-                    event.keyCode == KeyEvent.KEYCODE_DPAD_RIGHT
-                ) {
-                    advanceFeatured()
-                    return@setOnKeyListener true
-                }
+                // RIGHT from My List does not rotate — leave focus search / no-op.
                 false
             }
             setOnFocusChangeListener { _, hasFocus ->

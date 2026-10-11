@@ -117,6 +117,24 @@ class SeasonViewModel(
                 episode.season = season
             }
 
+            // Fill blank episode overviews from TMDb when the provider omitted them.
+            if (episodes.any { it.overview.isNullOrBlank() } && !tvShow.tmdbId.isNullOrBlank()) {
+                runCatching {
+                    val tmdbEps = com.dskja.betterstreamflix.utils.TmdbUtils.getEpisodesBySeason(
+                        tvShowId = tvShow.tmdbId!!,
+                        seasonNumber = seasonNumber,
+                    )
+                    val byNumber = tmdbEps.associateBy { it.number }
+                    episodes.forEach { ep ->
+                        if (ep.overview.isNullOrBlank()) {
+                            byNumber[ep.number]?.overview?.takeIf { it.isNotBlank() }?.let {
+                                ep.overview = it
+                            }
+                        }
+                    }
+                }
+            }
+
             database.seasonDao().insert(season)
             database.episodeDao().insertAll(episodes)
 
@@ -124,9 +142,9 @@ class SeasonViewModel(
                 EpisodeManager.convertToVideoTypeEpisodes(episodes, database, seasonNumber)
             )
             _state.emit(State.SuccessLoadingEpisodes(episodes))
-        } catch (e: Exception) {
+        } catch (e: Throwable) {
             Log.e("SeasonViewModel", "getSeasonEpisodes: ", e)
-            _state.emit(State.FailedLoadingEpisodes(e))
+            _state.emit(State.FailedLoadingEpisodes(e as? Exception ?: Exception(e)))
         }
     }
 

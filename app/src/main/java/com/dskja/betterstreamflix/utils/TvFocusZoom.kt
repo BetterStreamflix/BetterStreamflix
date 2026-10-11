@@ -10,7 +10,7 @@ object TvFocusZoom {
         val reduce = DeviceCapabilities.shouldReduceHomeEffects(view.context)
         val density = view.resources.displayMetrics.density
         view.elevation = if (hasFocus) (if (reduce) 12f else 10f) * density else 0f
-        view.isSelected = hasFocus
+        // Do not mirror focus into isSelected — list selectors / tint recycle wrongly.
         if (reduce) {
             view.scaleX = 1f
             view.scaleY = 1f

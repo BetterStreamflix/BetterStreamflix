@@ -66,17 +66,13 @@ class TvShowTvFragment : Fragment() {
         viewLifecycleOwner.lifecycleScope.launch {
             viewModel.state.flowWithLifecycle(lifecycle, Lifecycle.State.STARTED).collect { state ->
                 when (state) {
-                    TvShowViewModel.State.Loading -> binding.isLoading.apply {
-                        root.visibility = View.VISIBLE
-                        com.dskja.betterstreamflix.utils.ExpPressEffects.showLoadingSkeleton(root, true)
-                        gIsLoadingRetry.visibility = View.GONE
+                    TvShowViewModel.State.Loading -> {
+                        com.dskja.betterstreamflix.utils.TvLoadingOverlay.show(binding.isLoading.root)
+                        binding.isLoading.gIsLoadingRetry.visibility = View.GONE
                     }
                     is TvShowViewModel.State.SuccessLoading -> {
                         displayTvShow(state.tvShow)
-                        binding.isLoading.root.visibility = View.GONE
-                        com.dskja.betterstreamflix.utils.ExpPressEffects.showLoadingSkeleton(
-                            binding.isLoading.root, false,
-                        )
+                        com.dskja.betterstreamflix.utils.TvLoadingOverlay.hide(binding.isLoading.root)
                         requestWatchFocus()
                         viewModel.prefetchSeasonEpisodesForRibbons(state.tvShow)
                     }
@@ -84,6 +80,7 @@ class TvShowTvFragment : Fragment() {
                         if (http409Guard.handle(requireContext(), state.error) { viewModel.getTvShow(args.id) }) {
                                 return@collect
                             }
+                        com.dskja.betterstreamflix.utils.TvLoadingOverlay.disarm(binding.isLoading.root)
                         DetailLoadingErrorChrome.bind(
                             root = binding.isLoading.root,
                             context = requireContext(),

@@ -63,12 +63,15 @@ internal object SeasonSwitcher {
                     val byNumber = list.firstOrNull { it.number == currentSeasonNumber }
                     if (byNumber != null) {
                         resolvedId = byNumber.id
-                    } else {
-                        list = (list + Season(
-                            id = currentSeasonId,
-                            number = currentSeasonNumber,
-                            title = currentSeasonTitle,
-                        )).sortedBy { it.number }
+                    } else if (list.isEmpty()) {
+                        // Last resort after Room + provider getTvShow both returned nothing.
+                        list = listOf(
+                            Season(
+                                id = currentSeasonId,
+                                number = currentSeasonNumber,
+                                title = currentSeasonTitle,
+                            ),
+                        )
                     }
                 }
                 ResolvedSeasons(list, resolvedId)

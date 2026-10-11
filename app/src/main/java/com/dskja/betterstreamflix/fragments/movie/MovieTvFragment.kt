@@ -59,17 +59,13 @@ class MovieTvFragment : Fragment() {
         viewLifecycleOwner.lifecycleScope.launch {
             viewModel.state.flowWithLifecycle(lifecycle, Lifecycle.State.STARTED).collect { state ->
                 when (state) {
-                    MovieViewModel.State.Loading -> binding.isLoading.apply {
-                        root.visibility = View.VISIBLE
-                        com.dskja.betterstreamflix.utils.ExpPressEffects.showLoadingSkeleton(root, true)
-                        gIsLoadingRetry.visibility = View.GONE
+                    MovieViewModel.State.Loading -> {
+                        com.dskja.betterstreamflix.utils.TvLoadingOverlay.show(binding.isLoading.root)
+                        binding.isLoading.gIsLoadingRetry.visibility = View.GONE
                     }
                     is MovieViewModel.State.SuccessLoading -> {
                         displayMovie(state.movie)
-                        binding.isLoading.root.visibility = View.GONE
-                        com.dskja.betterstreamflix.utils.ExpPressEffects.showLoadingSkeleton(
-                            binding.isLoading.root, false,
-                        )
+                        com.dskja.betterstreamflix.utils.TvLoadingOverlay.hide(binding.isLoading.root)
                         requestWatchFocus()
                     }
                     is MovieViewModel.State.FailedLoading -> {
@@ -79,6 +75,7 @@ class MovieTvFragment : Fragment() {
                         ) {
                             return@collect
                         }
+                        com.dskja.betterstreamflix.utils.TvLoadingOverlay.disarm(binding.isLoading.root)
                         DetailLoadingErrorChrome.bind(
                             root = binding.isLoading.root,
                             context = requireContext(),

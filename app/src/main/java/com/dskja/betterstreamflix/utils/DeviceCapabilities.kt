@@ -43,19 +43,21 @@ object DeviceCapabilities {
 
     /** Fire Stick / low-RAM / fragile leanback boxes struggle with huge buffers and HW-only decode. */
     fun shouldUseConstrainedPlayback(context: Context): Boolean {
-        return isAmazonFireTv(context) ||
+        // Newer Fire Stick 4K Max / Cube have enough RAM — only constrain legacy/low-RAM/fragile.
+        return isLegacyFireOs(context) ||
             isLowRamDevice(context) ||
             (isLeanbackDevice(context) && isFragileTvOem())
     }
 
-    /** Prefer software/extension renderers from the first player build (TV crash mitigation). */
+    /**
+     * Prefer software/extension renderers from the first player build.
+     * Limited to devices that actually crash on HW decode — not every Leanback/Fire box —
+     * so Settings → Software Decoder Off can force hardware on Shield / CCwGTV.
+     */
     fun shouldPreferSoftwareDecoder(context: Context): Boolean {
-        // Fire OS 6 (API 25) and older Amazon sticks are especially brittle with HW decode.
-        if (isAmazonFireTv(context) && Build.VERSION.SDK_INT <= 25) return true
-        return isAmazonFireTv(context) ||
-            isLeanbackDevice(context) ||
-            isFragileTvOem() ||
-            isLowRamDevice(context)
+        return isLegacyFireOs(context) ||
+            isLowRamDevice(context) ||
+            isFragileTvOem()
     }
 
     /** True for Fire OS 6-era Amazon devices (API ≤ 25). */

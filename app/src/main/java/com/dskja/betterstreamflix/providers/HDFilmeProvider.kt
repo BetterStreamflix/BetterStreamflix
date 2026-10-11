@@ -71,6 +71,7 @@ object HDFilmeProvider : Provider, ProviderConfigUrl {
 
     private const val USER_AGENT = "User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
     private const val SITEMAP_ENTRY_CAP = 4_000
+    private const val SITEMAP_ENTRY_CAP_LOW_RAM = 1_000
 
     private interface HDFilmeService {
         companion object {
@@ -487,19 +488,23 @@ object HDFilmeProvider : Provider, ProviderConfigUrl {
 
         sitemapMutex.lock()
         return try {
-            sitemapEntries ?: coroutineScope {
-                listOf("news_pages.xml", "news_pages2.xml")
-                    .map { sitemap ->
-                        async {
-                            runCatching {
-                                parseSitemap(service.getRawPage("$baseUrl/$sitemap"), maxEntries = SITEMAP_ENTRY_CAP)
-                            }.getOrDefault(emptyList())
-                        }
-                    }
-                    .awaitAll()
-                    .flatten()
-                    .distinctBy { it.url }
-                    .also { sitemapEntries = it }
+            sitemapEntries ?: run {
+                val ctx = com.dskja.betterstreamflix.BetterStreamflixApp.instance.applicationContext
+                val cap = if (com.dskja.betterstreamflix.utils.DeviceCapabilities.isLowRamDevice(ctx) ||
+                    com.dskja.betterstreamflix.utils.DeviceCapabilities.isLegacyFireOs(ctx)
+                ) {
+                    SITEMAP_ENTRY_CAP_LOW_RAM
+                } else {
+                    SITEMAP_ENTRY_CAP
+                }
+                // Serialize dual sitemaps on constrained devices to avoid peak RAM spikes.
+                val pages = mutableListOf<SitemapEntry>()
+                for (sitemap in listOf("news_pages.xml", "news_pages2.xml")) {
+                    pages += runCatching {
+                        parseSitemap(service.getRawPage("$baseUrl/$sitemap"), maxEntries = cap)
+                    }.getOrDefault(emptyList())
+                }
+                pages.distinctBy { it.url }.also { sitemapEntries = it }
             }
         } catch (e: kotlinx.coroutines.CancellationException) {
             throw e

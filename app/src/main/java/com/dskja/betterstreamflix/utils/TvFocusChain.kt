@@ -32,9 +32,14 @@ object TvFocusChain {
             if (horizontal) {
                 view.nextFocusLeftId = previous
                 view.nextFocusRightId = next
+                // Clear stale vertical XML cross-links after a horizontal rewire.
+                view.nextFocusUpId = View.NO_ID
+                view.nextFocusDownId = View.NO_ID
             } else {
                 view.nextFocusUpId = previous
                 view.nextFocusDownId = next
+                view.nextFocusLeftId = View.NO_ID
+                view.nextFocusRightId = View.NO_ID
             }
         }
     }

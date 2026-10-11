@@ -933,7 +933,10 @@ class TvShowViewHolder(
             }
         }
         binding.hgvTvShowSeasons.apply {
-            setRowHeight(ViewGroup.LayoutParams.WRAP_CONTENT)
+            if (getTag(R.id.tv_shelf_row_height_tag) != true) {
+                setTag(R.id.tv_shelf_row_height_tag, true)
+                setRowHeight((210 * resources.displayMetrics.density).toInt())
+            }
             submitAppList(tvShow.seasons.onEach { it.itemType = AppAdapter.Type.SEASON_TV_ITEM })
             setItemSpacing(20)
         }
@@ -979,7 +982,10 @@ class TvShowViewHolder(
             }
         }
         binding.hgvTvShowDirectors.apply {
-            setRowHeight(ViewGroup.LayoutParams.WRAP_CONTENT)
+            if (getTag(R.id.tv_shelf_row_height_tag) != true) {
+                setTag(R.id.tv_shelf_row_height_tag, true)
+                setRowHeight((210 * resources.displayMetrics.density).toInt())
+            }
             submitAppList(tvShow.directors.onEach {
                 it.itemType = AppAdapter.Type.PEOPLE_TV_ITEM
             })
@@ -1028,7 +1034,10 @@ class TvShowViewHolder(
             }
         }
         binding.hgvTvShowCast.apply {
-            setRowHeight(ViewGroup.LayoutParams.WRAP_CONTENT)
+            if (getTag(R.id.tv_shelf_row_height_tag) != true) {
+                setTag(R.id.tv_shelf_row_height_tag, true)
+                setRowHeight((210 * resources.displayMetrics.density).toInt())
+            }
             submitAppList(tvShow.cast.onEach {
                 it.itemType = AppAdapter.Type.PEOPLE_TV_ITEM
             })
@@ -1094,7 +1103,10 @@ class TvShowViewHolder(
             }
         }
         binding.hgvTvShowRecommendations.apply {
-            setRowHeight(ViewGroup.LayoutParams.WRAP_CONTENT)
+            if (getTag(R.id.tv_shelf_row_height_tag) != true) {
+                setTag(R.id.tv_shelf_row_height_tag, true)
+                setRowHeight((210 * resources.displayMetrics.density).toInt())
+            }
             submitAppList(tvShow.recommendations.onEach {
                 when (it) {
                     is Movie -> it.itemType = AppAdapter.Type.MOVIE_TV_ITEM

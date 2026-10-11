@@ -225,9 +225,13 @@ class PlayerSettingsTvView @JvmOverloads constructor(
         }
     }
 
+    /** Invoked after the panel is hidden so the host can restore controller focus. */
+    var onHidden: (() -> Unit)? = null
+
     fun hide() {
         lastRevealedSetting = null
         this.visibility = View.GONE
+        onHidden?.invoke()
     }
 
     private class SettingsAdapter(

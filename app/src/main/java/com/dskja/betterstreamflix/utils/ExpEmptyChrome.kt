@@ -41,11 +41,17 @@ object ExpEmptyChrome {
         }
         emptyView.visibility = View.VISIBLE
         emptyRule?.visibility = if (exp) View.VISIBLE else View.GONE
-        emptyCta?.visibility = if (exp) View.VISIBLE else View.GONE
+        // Leanback needs a focusable CTA even without Experimental Design (empty Home trap).
+        val leanback = DeviceCapabilities.isLeanbackDevice(emptyView.context)
+        emptyCta?.visibility = if (exp || leanback) View.VISIBLE else View.GONE
 
-        if (exp && emptyCta != null) {
-            emptyCta.setBackgroundResource(ExperimentalMobileDesign.primaryButtonBackground())
-            with(ExpPressEffects) { emptyCta.applyExpPress() }
+        if (emptyCta != null && (exp || leanback)) {
+            if (exp) {
+                emptyCta.setBackgroundResource(ExperimentalMobileDesign.primaryButtonBackground())
+                with(ExpPressEffects) { emptyCta.applyExpPress() }
+            }
+            emptyCta.isFocusable = true
+            emptyCta.isFocusableInTouchMode = true
             if (onCtaClick != null) {
                 emptyCta.setOnClickListener { view ->
                     ExpMotion.hapticTap(view)

@@ -9,6 +9,7 @@ import android.view.ViewTreeObserver
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.fragment.app.Fragment
+import androidx.navigation.fragment.findNavController
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.flowWithLifecycle
 import androidx.lifecycle.lifecycleScope
@@ -45,12 +46,14 @@ class SeasonTvFragment : Fragment() {
     private val binding get() = _binding!!
 
     private val args by navArgs<SeasonTvFragmentArgs>()
-    private val database get() = AppDatabase.getInstance(requireContext())
+    private val database get() = AppDatabase.getInstanceOrNull(requireContext())
     private val viewModel by viewModelsFactory {
+        val db = AppDatabase.getInstanceOrNull(requireContext())
+            ?: error("Provider database unavailable")
         SeasonViewModel(
             args.seasonId,
             args.tvShowId,
-            database,
+            db,
             args.seasonNumber,
         )
     }
@@ -75,18 +78,14 @@ class SeasonTvFragment : Fragment() {
         viewLifecycleOwner.lifecycleScope.launch {
             viewModel.state.flowWithLifecycle(lifecycle, Lifecycle.State.STARTED).collect { state ->
                 when (state) {
-                    SeasonViewModel.State.LoadingEpisodes -> binding.isLoading.apply {
-                        root.visibility = View.VISIBLE
-                        com.dskja.betterstreamflix.utils.ExpPressEffects.showLoadingSkeleton(root, true)
-                        gIsLoadingRetry.visibility = View.GONE
+                    SeasonViewModel.State.LoadingEpisodes -> {
+                        com.dskja.betterstreamflix.utils.TvLoadingOverlay.show(binding.isLoading.root)
+                        binding.isLoading.gIsLoadingRetry.visibility = View.GONE
                     }
 
                     is SeasonViewModel.State.SuccessLoadingEpisodes -> {
                         displaySeason(state.episodes)
-                        binding.isLoading.root.visibility = View.GONE
-                        com.dskja.betterstreamflix.utils.ExpPressEffects.showLoadingSkeleton(
-                            binding.isLoading.root, false,
-                        )
+                        com.dskja.betterstreamflix.utils.TvLoadingOverlay.hide(binding.isLoading.root)
                     }
 
                     is SeasonViewModel.State.FailedLoadingEpisodes -> {
@@ -94,6 +93,7 @@ class SeasonTvFragment : Fragment() {
                         if (http409Guard.handle(requireContext(), state.error) { viewModel.getSeasonEpisodes(args.seasonId) }) {
                                 return@collect
                             }
+                        com.dskja.betterstreamflix.utils.TvLoadingOverlay.disarm(binding.isLoading.root)
                         DetailLoadingErrorChrome.bind(
                             root = binding.isLoading.root,
                             context = requireContext(),
@@ -120,10 +120,17 @@ class SeasonTvFragment : Fragment() {
         }
         bindSeasonBanner()
 
+        val db = database
+        if (db == null) {
+            runCatching {
+                findNavController().navigate(R.id.providers)
+            }
+            return
+        }
         SeasonSwitcher.bind(
             fragment = this,
             spinner = binding.spSeasonPicker,
-            database = database,
+            database = db,
             tvShowId = args.tvShowId,
             tvShowTitle = args.tvShowTitle,
             tvShowPoster = args.tvShowPoster,
@@ -149,7 +156,7 @@ class SeasonTvFragment : Fragment() {
                 .setPositiveButton(android.R.string.ok) { _, _ ->
                     viewLifecycleOwner.lifecycleScope.launch {
                         val tvShow = withContext(Dispatchers.IO) {
-                            database.tvShowDao().getById(args.tvShowId)
+                            database?.tvShowDao()?.getById(args.tvShowId)
                         } ?: TvShow(
                             id = args.tvShowId,
                             title = viewModel.tvShowTitle.ifBlank {
@@ -200,7 +207,7 @@ class SeasonTvFragment : Fragment() {
     private fun wireSeasonTrailerButton() {
         viewLifecycleOwner.lifecycleScope.launch {
             val tvShow = withContext(Dispatchers.IO) {
-                database.tvShowDao().getById(args.tvShowId)
+                database?.tvShowDao()?.getById(args.tvShowId)
             }
             val year = tvShow?.released?.format("yyyy")?.toIntOrNull()
             val canLookup = TmdbUtils.hasTrailerLookupKeys(

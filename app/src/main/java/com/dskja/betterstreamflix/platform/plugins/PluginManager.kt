@@ -1,6 +1,7 @@
 package com.dskja.betterstreamflix.platform.plugins
 
 import android.content.Context
+import android.content.Intent
 import android.util.Log
 import com.dskja.betterstreamflix.adapters.AppAdapter
 import com.dskja.betterstreamflix.models.Category
@@ -89,9 +90,24 @@ object PluginManager {
         PluginEvents.record(pluginId, if (enabled) "enabled" else "disabled")
         val current = UserPreferences.currentProvider
         if (current != null && !PluginRegistry.isProviderVisible(current)) {
-            UserPreferences.currentProvider = PluginRegistry.enabledProviders().firstOrNull()
+            val next = PluginRegistry.enabledProviders().firstOrNull()
                 ?: Provider.providers.keys.firstOrNull()
+            if (next != null) {
+                // Same CLEAR_TASK handoff as the provider picker — never the full setter.
+                UserPreferences.prepareProviderSwitch(next)
+                restartMainTask()
+            } else {
+                UserPreferences.clearInvalidCurrentProvider()
+                runCatching { com.dskja.betterstreamflix.database.AppDatabase.resetInstance() }
+            }
         }
+    }
+
+    private fun restartMainTask() {
+        val ctx = appContext ?: return
+        val launch = ctx.packageManager.getLaunchIntentForPackage(ctx.packageName) ?: return
+        launch.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
+        runCatching { ctx.startActivity(launch) }
     }
 
     fun isEnabled(pluginId: String): Boolean = !UserPreferences.isPluginDisabled(pluginId)

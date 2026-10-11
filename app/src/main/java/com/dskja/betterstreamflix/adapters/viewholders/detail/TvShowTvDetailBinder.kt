@@ -153,7 +153,7 @@ internal fun TvShowViewHolder.bindTvShowTvDetail(binding: ContentTvShowTvBinding
                     openGenre(genres.first())
                 } else {
                     val labels = genres.map { it.name }.toTypedArray()
-                    AlertDialog.Builder(context)
+                    AlertDialog.Builder(com.dskja.betterstreamflix.utils.ExpDialogChrome.themedContext(context))
                         .setTitle(R.string.genre_section_label)
                         .setItems(labels) { _, which ->
                             genres.getOrNull(which)?.let(::openGenre)
@@ -161,8 +161,6 @@ internal fun TvShowViewHolder.bindTvShowTvDetail(binding: ContentTvShowTvBinding
                         .show()
                 }
             }
-            nextFocusDownId = binding.btnTvShowWatchNow.id
-            binding.btnTvShowWatchNow.nextFocusUpId = id
         }
     }
 
@@ -196,17 +194,23 @@ internal fun TvShowViewHolder.bindTvShowTvDetail(binding: ContentTvShowTvBinding
                     ellipsize = null
                 }
             }
-            nextFocusDownId = binding.btnTvShowWatchNow.id
-            binding.btnTvShowWatchNow.nextFocusUpId = id
         } else {
             text = ""
             visibility = View.GONE
             isFocusable = false
             setOnClickListener(null)
-            val genres = binding.tvTvShowGenres
-            binding.btnTvShowWatchNow.nextFocusUpId =
-                if (genres.isVisible && genres.isFocusable) genres.id else View.NO_ID
         }
+        fun rewireOverviewWatch() {
+            com.dskja.betterstreamflix.utils.TvFocusChain.linkVertical(
+                *listOfNotNull(
+                    binding.tvTvShowOverview.takeIf { it.isFocusable && it.isVisible },
+                    binding.tvTvShowGenres.takeIf { it.isFocusable && it.isVisible },
+                    binding.btnTvShowWatchNow,
+                ).toTypedArray(),
+            )
+        }
+        rewireOverviewWatch()
+        post { rewireOverviewWatch() }
     }
     val episodeToWatch = tvShow.episodeToWatch
     val episodeSeason = resolveEpisodeSeason(episodeToWatch)
@@ -226,7 +230,8 @@ internal fun TvShowViewHolder.bindTvShowTvDetail(binding: ContentTvShowTvBinding
                     if (adapter?.onDetailTabSelectedListener != null) {
                         adapter.onDetailTabSelectedListener?.invoke(DetailTab.EPISODES)
                     } else {
-                        val season = tvShow.seasons.firstOrNull()
+                        val season = tvShow.seasons.firstOrNull { it.episodes.isNotEmpty() }
+                            ?: tvShow.seasons.firstOrNull()
                         if (season != null) {
                             findNavController().navigate(
                                 TvShowTvFragmentDirections.actionTvShowToSeason(
@@ -347,9 +352,12 @@ internal fun TvShowViewHolder.bindTvShowTvDetail(binding: ContentTvShowTvBinding
             }
             // Hide until a playable URL is ready — avoids dead clicks while lookup runs.
             isVisible = !trailerUrl.isNullOrBlank()
+            isFocusable = !trailerUrl.isNullOrBlank()
+            isFocusableInTouchMode = isFocusable
             rewireTvCtaFocus()
         }
         bindTrailer(tvShow.trailer)
+        rewireTvCtaFocus()
         if (tvShow.trailer.isNullOrBlank() && canLookup) {
             itemView.findViewTreeLifecycleOwner()?.lifecycleScope?.launch {
                 val remote = withContext(Dispatchers.IO) {
