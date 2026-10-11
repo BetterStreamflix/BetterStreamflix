@@ -197,12 +197,23 @@ class PlayerViewModel(
                 }
                 if (servers.isEmpty()) throw Exception(com.dskja.betterstreamflix.BetterStreamflixApp.instance.getString(com.dskja.betterstreamflix.R.string.error_no_servers_found))
 
-                Log.i("BetterStreamflix", "[SERVERS LIST] -> Provider: ${provider.name}")
-                Log.i("BetterStreamflix", "[SERVERS LIST] -> Found ${servers.size} servers: ${servers.joinToString { it.name }}")
+                // Provider A/B: put this profile's most stable hosters first so failover hops wisely.
+                val ordered = if (com.dskja.betterstreamflix.providers.ProviderServerAb.shouldTrack(provider)) {
+                    com.dskja.betterstreamflix.providers.ProviderServerAb.prioritize(
+                        providerName = provider.name,
+                        servers = servers,
+                        preferredServerName = preferredServerName,
+                    )
+                } else {
+                    servers
+                }
 
-                Log.d("PlayerViewModel", "Ricerca server completata: ${servers.size} server trovati")
+                Log.i("BetterStreamflix", "[SERVERS LIST] -> Provider: ${provider.name}")
+                Log.i("BetterStreamflix", "[SERVERS LIST] -> Found ${ordered.size} servers: ${ordered.joinToString { it.name }}")
+
+                Log.d("PlayerViewModel", "Ricerca server completata: ${ordered.size} server trovati")
                 if (generation == serversGeneration && isActive) {
-                    _state.emit(State.SuccessLoadingServers(servers))
+                    _state.emit(State.SuccessLoadingServers(ordered))
                 }
                 if (provider is com.dskja.betterstreamflix.providers.IptvProvider) {
                     com.dskja.betterstreamflix.iptv.IptvZapPreloader.warmNeighbors(
@@ -300,6 +311,13 @@ class PlayerViewModel(
                 throw e
             } catch (e: Exception) {
                 Log.e("PlayerViewModel", "Errore estrazione video: ", e)
+                val failingProvider = UserPreferences.currentProvider
+                if (com.dskja.betterstreamflix.providers.ProviderServerAb.shouldTrack(failingProvider)) {
+                    com.dskja.betterstreamflix.providers.ProviderServerAb.recordFailure(
+                        failingProvider!!.name,
+                        server,
+                    )
+                }
                 // Stale warm cache — drop so next attempt re-resolves.
                 if (UserPreferences.currentProvider is com.dskja.betterstreamflix.providers.IptvProvider) {
                     lastId?.let { channelId ->
