@@ -12,13 +12,34 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginStart="70dp"
-        android:layout_marginEnd="70dp"
+        android:layout_marginEnd="12dp"
         android:textColor="@color/cinema_text"
         android:textSize="20sp"
         android:textStyle="bold"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent"
         tools:text="Title" />
+
+    <TextView
+        android:id="@+id/tv_shelf_weather"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="14dp"
+        android:layout_marginEnd="70dp"
+        android:background="@drawable/bg_shelf_weather_pill"
+        android:paddingStart="12dp"
+        android:paddingTop="5dp"
+        android:paddingEnd="12dp"
+        android:paddingBottom="5dp"
+        android:textColor="@color/cinema_destructive"
+        android:textSize="12sp"
+        android:textStyle="bold"
+        android:visibility="gone"
+        app:layout_constraintBottom_toBottomOf="@id/tv_category_title"
+        app:layout_constraintStart_toEndOf="@id/tv_category_title"
+        app:layout_constraintTop_toTopOf="@id/tv_category_title"
+        tools:text="unstable"
+        tools:visibility="visible" />
 
     <View
         android:id="@+id/v_category_rule"

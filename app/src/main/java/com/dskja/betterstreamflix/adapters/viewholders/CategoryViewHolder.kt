@@ -34,6 +34,7 @@ import com.dskja.betterstreamflix.models.TvShow
 import com.dskja.betterstreamflix.logo.FeaturedLogoEnrich
 import com.dskja.betterstreamflix.logo.TmdbLogoBinder
 import com.dskja.betterstreamflix.models.TrailerCatalog
+import com.dskja.betterstreamflix.providers.ShelfWeather
 import com.dskja.betterstreamflix.ui.FeaturedAdvancePolicy
 import com.dskja.betterstreamflix.ui.FeaturedHeroController
 import com.dskja.betterstreamflix.ui.FeaturedProviderSwitch
@@ -155,6 +156,55 @@ class CategoryViewHolder(
         }
     }
 
+    /**
+     * Shelf Weather: dim the poster row and show a source-health pill when
+     * [ProviderHealth] / [ProviderSmoke] mark the stamped providers unhealthy.
+     */
+    private fun bindShelfWeather(
+        titleView: TextView,
+        contentView: View,
+        pill: TextView,
+    ) {
+        val forecast = ShelfWeather.forecast(category)
+        titleView.alpha = forecast.titleAlpha
+        contentView.alpha = forecast.contentAlpha
+        if (!forecast.shouldWarn) {
+            pill.visibility = View.GONE
+            pill.text = null
+            pill.contentDescription = null
+            return
+        }
+        val reason = forecast.reason ?: ShelfWeather.Reason.FLAKY
+        val labelRes = when (reason) {
+            ShelfWeather.Reason.QUARANTINED -> R.string.shelf_weather_quarantined
+            ShelfWeather.Reason.PARKED -> R.string.shelf_weather_parked
+            ShelfWeather.Reason.CIRCUIT_OPEN -> R.string.shelf_weather_circuit
+            ShelfWeather.Reason.FLAKY -> R.string.shelf_weather_flaky
+        }
+        val cdRes = when (forecast.level) {
+            ShelfWeather.Level.STORM -> R.string.shelf_weather_cd_storm
+            else -> R.string.shelf_weather_cd_haze
+        }
+        val provider = forecast.providerName.orEmpty()
+        val wasVisible = pill.visibility == View.VISIBLE
+        pill.text = context.getString(labelRes)
+        pill.contentDescription = context.getString(cdRes, provider)
+        pill.visibility = View.VISIBLE
+        if (!wasVisible) ExpMotion.popIn(pill)
+    }
+
+    private fun clearShelfWeather(
+        titleView: TextView,
+        contentView: View,
+        pill: TextView,
+    ) {
+        titleView.alpha = ShelfWeather.CLEAR_ALPHA
+        contentView.alpha = ShelfWeather.CLEAR_ALPHA
+        pill.visibility = View.GONE
+        pill.text = null
+        pill.contentDescription = null
+    }
+
     private fun displayMobileItem(
         binding: ItemCategoryMobileBinding,
         onMovieClick: ((Movie) -> Unit)?,
@@ -171,10 +221,12 @@ class CategoryViewHolder(
             binding.rvCategory.visibility = View.GONE
             binding.rvCategory.isNestedScrollingEnabled = false
             (binding.rvCategory.adapter as? AppAdapter)?.submitList(emptyList())
+            clearShelfWeather(binding.tvCategoryTitle, binding.rvCategory, binding.tvShelfWeather)
             return
         }
         binding.root.visibility = View.VISIBLE
         binding.rvCategory.visibility = View.VISIBLE
+        bindShelfWeather(binding.tvCategoryTitle, binding.rvCategory, binding.tvShelfWeather)
 
         if (ExperimentalMobileDesign.enabled()) {
             binding.tvCategoryTitle.setBackgroundResource(ExperimentalMobileDesign.chipBackground())
@@ -268,12 +320,14 @@ class CategoryViewHolder(
                 isFocusableInTouchMode = false
                 visibility = View.GONE
             }
+            clearShelfWeather(binding.tvCategoryTitle, binding.hgvCategory, binding.tvShelfWeather)
             return
         }
         binding.root.visibility = View.VISIBLE
         binding.root.isFocusable = false
         binding.root.isFocusableInTouchMode = false
         binding.root.descendantFocusability = ViewGroup.FOCUS_AFTER_DESCENDANTS
+        bindShelfWeather(binding.tvCategoryTitle, binding.hgvCategory, binding.tvShelfWeather)
 
         binding.hgvCategory.apply {
             visibility = View.VISIBLE
