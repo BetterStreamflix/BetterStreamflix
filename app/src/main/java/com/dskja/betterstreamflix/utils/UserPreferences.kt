@@ -427,6 +427,13 @@ object UserPreferences {
             Key.PLAYER_GESTURES.setBoolean(value)
         }
 
+    /** Night audio preset: dialog boost + quieter action peaks (player PCM DSP). */
+    var nightAudioMode: Boolean
+        get() = Key.NIGHT_AUDIO_MODE.getBoolean() ?: false
+        set(value) {
+            Key.NIGHT_AUDIO_MODE.setBoolean(value)
+        }
+
     /** Phones: when true, player uses SENSOR (portrait allowed); default landscape. */
     var allowPhonePortraitPlayback: Boolean
         get() = Key.ALLOW_PHONE_PORTRAIT_PLAYBACK.getBoolean() ?: false
@@ -1618,6 +1625,7 @@ object UserPreferences {
         PROVIDER_CACHE,
         KEEP_SCREEN_ON_WHEN_PAUSED,
         PLAYER_GESTURES,
+        NIGHT_AUDIO_MODE,
         ALLOW_PHONE_PORTRAIT_PLAYBACK,
         DOWNLOAD_WITH_LONG_PRESS_HINT_SHOWN,
         IMMERSIVE_MODE,

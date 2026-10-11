@@ -50,6 +50,7 @@ class PlayerSettingsTvView @JvmOverloads constructor(
     private val speedAdapter = SettingsAdapter(this, Settings.Speed.list)
     private val extraBufferingAdapter = SettingsAdapter(this, Settings.ExtraBuffering.list)
     private val softwareDecoderAdapter = SettingsAdapter(this, Settings.SoftwareDecoder.list)
+    private val nightAudioAdapter = SettingsAdapter(this, Settings.NightAudio.list)
     private val serversAdapter = SettingsAdapter(this, Settings.Server.list)
     private val marginAdapter = SettingsAdapter(this, Settings.Subtitle.Style.Margin.list)
 
@@ -84,6 +85,7 @@ class PlayerSettingsTvView @JvmOverloads constructor(
             Setting.SERVERS,
             Setting.GESTURES,
             Setting.KEEP_SCREEN_ON,
+            Setting.NIGHT_AUDIO,
             Setting.MANUAL_ZOOM -> displaySettings(Setting.MAIN)
             Setting.SUBTITLE_OFFSET -> displaySettings(Setting.SUBTITLES)
             Setting.CAPTION_STYLE -> displaySettings(Setting.SUBTITLES)
@@ -167,6 +169,7 @@ class PlayerSettingsTvView @JvmOverloads constructor(
                 Setting.CAPTION_STYLE_MARGIN -> context.getString(R.string.player_settings_caption_style_margin_title)
                 Setting.GESTURES -> context.getString(R.string.player_settings_gestures_title)
                 Setting.KEEP_SCREEN_ON -> context.getString(R.string.player_settings_keep_screen_on_title)
+                Setting.NIGHT_AUDIO -> context.getString(R.string.player_settings_night_audio_title)
                 Setting.MANUAL_ZOOM -> context.getString(R.string.player_settings_manual_zoom_label)
             }
         }
@@ -191,6 +194,7 @@ class PlayerSettingsTvView @JvmOverloads constructor(
             Setting.SPEED -> speedAdapter
             Setting.EXTRA_BUFFERING -> extraBufferingAdapter
             Setting.SOFTWARE_DECODER -> softwareDecoderAdapter
+            Setting.NIGHT_AUDIO -> nightAudioAdapter
             Setting.SERVERS -> serversAdapter
             Setting.CAPTION_STYLE_MARGIN -> marginAdapter
             else -> settingsAdapter
@@ -288,6 +292,7 @@ class PlayerSettingsTvView @JvmOverloads constructor(
                             when (item) {
                                 Settings.Quality -> settingsView.displaySettings(Setting.QUALITY)
                                 Settings.Audio -> settingsView.displaySettings(Setting.AUDIO)
+                                Settings.NightAudio -> settingsView.displaySettings(Setting.NIGHT_AUDIO)
                                 Settings.Subtitle -> settingsView.displaySettings(Setting.SUBTITLES)
                                 Settings.Speed -> settingsView.displaySettings(Setting.SPEED)
                                 Settings.ExtraBuffering -> settingsView.displaySettings(Setting.EXTRA_BUFFERING)
@@ -475,6 +480,16 @@ class PlayerSettingsTvView @JvmOverloads constructor(
                             settingsView.hide()
                         }
 
+                        is Settings.NightAudio -> {
+                            when (item) {
+                                is Settings.NightAudio.On ->
+                                    com.dskja.betterstreamflix.player.NightModeAudio.setPersisted(true)
+                                is Settings.NightAudio.Off ->
+                                    com.dskja.betterstreamflix.player.NightModeAudio.setPersisted(false)
+                            }
+                            settingsView.hide()
+                        }
+
                         is Settings.Server -> {
                             settingsView.onServerSelected?.invoke(item)
                             settingsView.hide()
@@ -502,6 +517,9 @@ class PlayerSettingsTvView @JvmOverloads constructor(
                             )
                             Settings.Audio -> setImageDrawable(
                                 ContextCompat.getDrawable(context, R.drawable.ic_player_settings_audio)
+                            )
+                            Settings.NightAudio -> setImageDrawable(
+                                ContextCompat.getDrawable(context, R.drawable.ic_player_settings_night)
                             )
                             Settings.Subtitle -> setImageDrawable(
                                 ContextCompat.getDrawable(
@@ -602,6 +620,7 @@ class PlayerSettingsTvView @JvmOverloads constructor(
                     is Settings -> when (item) {
                         Settings.Quality -> context.getString(R.string.player_settings_quality_label)
                         Settings.Audio -> context.getString(R.string.player_settings_audio_label)
+                        Settings.NightAudio -> context.getString(R.string.player_settings_night_audio_label)
                         Settings.Subtitle -> context.getString(R.string.player_settings_subtitles_label)
                         Settings.Speed -> context.getString(R.string.player_settings_speed_label)
                         Settings.ExtraBuffering -> context.getString(R.string.player_settings_extra_buffer_server_label)
@@ -707,6 +726,8 @@ class PlayerSettingsTvView @JvmOverloads constructor(
 
                     is Settings.SoftwareDecoder -> context.getString(item.stringId)
 
+                    is Settings.NightAudio -> context.getString(item.stringId)
+
                     is Settings.Server -> item.name
 
                     else -> ""
@@ -730,6 +751,7 @@ class PlayerSettingsTvView @JvmOverloads constructor(
                             )
                         }
                         Settings.Audio -> settingsView.audioPreferenceSubLabel().orEmpty()
+                        Settings.NightAudio -> context.getString(Settings.NightAudio.selected.stringId)
                         Settings.Subtitle -> when (val selected = Settings.Subtitle.selected) {
                             is Settings.Subtitle.TextTrackInformation -> selected.label
                             else -> context.getString(R.string.player_settings_subtitles_off)
@@ -869,6 +891,11 @@ class PlayerSettingsTvView @JvmOverloads constructor(
                         else -> View.GONE
                     }
 
+                    is Settings.NightAudio -> when {
+                        item.isSelected -> View.VISIBLE
+                        else -> View.GONE
+                    }
+
                     is Settings.Server -> when {
                         item.isSelected -> View.VISIBLE
                         else -> View.GONE
@@ -884,6 +911,7 @@ class PlayerSettingsTvView @JvmOverloads constructor(
                         when(item) {
                             Settings.Quality,
                             Settings.Audio,
+                            Settings.NightAudio,
                             Settings.Subtitle,
                             Settings.Speed,
                             Settings.ExtraBuffering,

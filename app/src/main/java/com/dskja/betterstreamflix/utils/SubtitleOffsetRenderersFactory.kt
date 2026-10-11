@@ -6,8 +6,11 @@ import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.DefaultRenderersFactory
 import androidx.media3.exoplayer.ForwardingRenderer
 import androidx.media3.exoplayer.Renderer
+import androidx.media3.exoplayer.audio.AudioSink
+import androidx.media3.exoplayer.audio.DefaultAudioSink
 import androidx.media3.exoplayer.text.TextOutput
 import androidx.media3.exoplayer.text.TextRenderer
+import com.dskja.betterstreamflix.player.NightModeAudioProcessor
 
 /** Runtime subtitle timing shared by the player settings and text renderer. */
 object SubtitleOffset {
@@ -66,5 +69,17 @@ class SubtitleOffsetRenderersFactory(context: Context) : DefaultRenderersFactory
                 super.render(adjustedPositionUs(positionUs), elapsedRealtimeUs)
             }
         })
+    }
+
+    override fun buildAudioSink(
+        context: Context,
+        enableFloatOutput: Boolean,
+        enableAudioTrackPlaybackParams: Boolean,
+    ): AudioSink {
+        return DefaultAudioSink.Builder(context)
+            .setEnableFloatOutput(enableFloatOutput)
+            .setEnableAudioTrackPlaybackParams(enableAudioTrackPlaybackParams)
+            .setAudioProcessors(arrayOf(NightModeAudioProcessor()))
+            .build()
     }
 }

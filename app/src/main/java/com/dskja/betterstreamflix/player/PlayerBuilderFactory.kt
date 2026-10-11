@@ -48,6 +48,7 @@ object PlayerBuilderFactory {
         options: Options,
     ): ExoPlayer {
         SubtitleOffset.reset()
+        NightModeAudio.syncFromPreferences()
         val constrained = DeviceCapabilities.shouldUseConstrainedPlayback(context)
         val minBufferMs: Int
         val maxBufferMs: Int
@@ -151,7 +152,8 @@ object PlayerBuilderFactory {
                 params.setTrackTypeDisabled(C.TRACK_TYPE_TEXT, true)
                 params.setIgnoredTextSelectionFlags(C.SELECTION_FLAG_FORCED.inv())
             }
-            if (options.preferStereoAudio || constrained) {
+            // Night preset targets a stereo dialog mix; also keep constrained devices safe.
+            if (options.preferStereoAudio || constrained || NightModeAudio.enabled) {
                 params.setMaxAudioChannelCount(2)
             }
             UserPreferences.effectivePlaybackVideoQuality.applyMaxVideoSize(params)
