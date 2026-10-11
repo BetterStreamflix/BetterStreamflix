@@ -26,6 +26,12 @@ object WatchPartyUi {
     @Volatile
     private var confirmInFlight = false
 
+    /** Optional callback so the active player can start host heartbeats immediately. */
+    interface WatchPartyHostAware {
+        fun onWatchPartyHostStarted()
+        fun watchPartyServerSource(): WatchPartyLobbyUi.ServerSource? = null
+    }
+
     fun showHostMenu(
         fragment: Fragment,
         videoType: Video.Type,
@@ -49,16 +55,27 @@ object WatchPartyUi {
         }
 
         if (WatchPartySession.isHost()) {
-            val options = arrayOf(
+            val options = mutableListOf(
                 context.getString(R.string.watch_party_reshare_action),
+                context.getString(R.string.watch_party_chat_action),
                 context.getString(R.string.watch_party_end_action),
             )
+            if (WatchPartySession.isInLobby()) {
+                options.add(0, context.getString(R.string.watch_party_open_lobby_action))
+            }
             androidx.appcompat.app.AlertDialog.Builder(context)
                 .setTitle(R.string.watch_party_menu_title)
-                .setItems(options) { _, which ->
-                    when (which) {
-                        0 -> shareExistingHostLink(fragment)
-                        1 -> endHostParty(fragment)
+                .setItems(options.toTypedArray()) { _, which ->
+                    val label = options[which]
+                    when (label) {
+                        context.getString(R.string.watch_party_open_lobby_action) ->
+                            reopenHostLobby(fragment)
+                        context.getString(R.string.watch_party_reshare_action) ->
+                            shareExistingHostLink(fragment)
+                        context.getString(R.string.watch_party_chat_action) ->
+                            WatchPartyLobbyUi.showChatPanel(fragment)
+                        context.getString(R.string.watch_party_end_action) ->
+                            endHostParty(fragment)
                     }
                 }
                 .setNegativeButton(android.R.string.cancel, null)
@@ -67,13 +84,19 @@ object WatchPartyUi {
         }
 
         if (WatchPartySession.isGuest()) {
+            val options = arrayOf(
+                context.getString(R.string.watch_party_chat_action),
+                context.getString(R.string.watch_party_leave_action),
+            )
             androidx.appcompat.app.AlertDialog.Builder(context)
                 .setTitle(R.string.watch_party_menu_title)
-                .setMessage(R.string.watch_party_guest_leave_message)
-                .setNegativeButton(android.R.string.cancel, null)
-                .setPositiveButton(R.string.watch_party_leave_action) { _, _ ->
-                    leaveGuestParty(fragment)
+                .setItems(options) { _, which ->
+                    when (which) {
+                        0 -> WatchPartyLobbyUi.showChatPanel(fragment)
+                        1 -> leaveGuestParty(fragment)
+                    }
                 }
+                .setNegativeButton(android.R.string.cancel, null)
                 .show()
             return
         }
@@ -88,10 +111,25 @@ object WatchPartyUi {
             .show()
     }
 
+    private fun reopenHostLobby(fragment: Fragment) {
+        val token = WatchPartySession.token ?: return
+        val serverSource = (fragment as? WatchPartyHostAware)?.watchPartyServerSource()
+        WatchPartyLobbyUi.showHostLobby(
+            fragment = fragment,
+            token = token,
+            link = WatchPartyLinks.buildUri(token),
+            serverSource = serverSource,
+        )
+    }
+
     private fun shareExistingHostLink(fragment: Fragment) {
         val token = WatchPartySession.token ?: return
         val ctx = fragment.context ?: return
-        launchShare(ctx, WatchPartyLinks.buildUri(token))
+        shareLink(ctx, WatchPartyLinks.buildUri(token))
+    }
+
+    fun shareLink(context: Context, link: String) {
+        launchShare(context, link)
     }
 
     private fun hostAndShare(
@@ -114,18 +152,26 @@ object WatchPartyUi {
                         videoType = videoType,
                         server = server,
                         positionMs = positionMs,
-                        playing = playing,
                     )
                 }
             }
             if (!fragment.isAdded) return@launch
             val ctx = fragment.context ?: return@launch
             result.onSuccess { created ->
-                WatchPartySession.beginHost(created.token, created.partyId)
-                launchShare(ctx, created.link)
-                // Player fragment picks up session via WatchPartyPlayerHooks.ensureSyncRunning.
-                ExpDialogChrome.notify(ctx, R.string.watch_party_host_started)
-                (fragment as? WatchPartyHostAware)?.onWatchPartyHostStarted()
+                WatchPartySession.beginHost(created.token, created.partyId, inLobby = true)
+                shareLink(ctx, created.link)
+                ExpDialogChrome.notify(ctx, R.string.watch_party_host_lobby_ready)
+                val serverSource = (fragment as? WatchPartyHostAware)?.watchPartyServerSource()
+                // Pause while waiting in lobby; playback starts when host taps Start.
+                if (playing) {
+                    serverSource?.pauseLocalPlayback()
+                }
+                WatchPartyLobbyUi.showHostLobby(
+                    fragment = fragment,
+                    token = created.token,
+                    link = created.link,
+                    serverSource = serverSource,
+                )
             }.onFailure { error ->
                 ExpDialogChrome.notify(
                     ctx,
@@ -136,11 +182,6 @@ object WatchPartyUi {
                 )
             }
         }
-    }
-
-    /** Optional callback so the active player can start host heartbeats immediately. */
-    interface WatchPartyHostAware {
-        fun onWatchPartyHostStarted()
     }
 
     fun endHostParty(fragment: Fragment) {
@@ -241,6 +282,10 @@ object WatchPartyUi {
                 }
                 append('\n')
                 append(activity.getString(R.string.watch_party_join_privacy_note))
+                if (payload.inLobby) {
+                    append('\n')
+                    append(activity.getString(R.string.watch_party_join_lobby_note))
+                }
             }
             androidx.appcompat.app.AlertDialog.Builder(activity)
                 .setTitle(R.string.watch_party_join_confirm_title)
@@ -252,13 +297,44 @@ object WatchPartyUi {
                 .setPositiveButton(R.string.watch_party_join_action) { _, _ ->
                     WatchPartyPendingJoin.acknowledge(activity, token)
                     promptedPendingTokens.remove(token)
-                    joinAndNavigate(activity, token, payload)
+                    enterParty(activity, token, payload)
                 }
                 .setOnCancelListener {
                     WatchPartyPendingJoin.acknowledge(activity, token)
                     promptedPendingTokens.remove(token)
                 }
                 .show()
+        }
+    }
+
+    private fun enterParty(
+        activity: FragmentActivity,
+        token: String,
+        payload: WatchPartyPayload,
+    ) {
+        activity.lifecycleScope.launch {
+            val lobbyResult = withContext(Dispatchers.IO) {
+                runCatching { WatchPartyRepository.joinLobby(activity, token, isHost = false) }
+            }
+            lobbyResult.onFailure { error ->
+                ExpDialogChrome.notify(
+                    activity,
+                    activity.getString(
+                        R.string.watch_party_join_failed,
+                        error.message ?: error.javaClass.simpleName,
+                    ),
+                )
+                return@launch
+            }
+            val lobby = lobbyResult.getOrNull() ?: return@launch
+            WatchPartySession.beginGuest(token, lobby.party.id, inLobby = lobby.party.inLobby)
+            if (lobby.party.inLobby) {
+                WatchPartyLobbyUi.showGuestLobby(activity, token) { readyToken, readyPayload ->
+                    joinAndNavigate(activity, readyToken, readyPayload)
+                }
+            } else {
+                joinAndNavigate(activity, token, lobby.party)
+            }
         }
     }
 
@@ -271,6 +347,7 @@ object WatchPartyUi {
             val provider = Provider.findByName(payload.provider)
             if (provider == null) {
                 ExpDialogChrome.notify(activity, R.string.watch_party_unknown_provider)
+                WatchPartySession.clear()
                 return@launch
             }
             UserPreferences.setCurrentProviderForPlayback(provider)
@@ -282,9 +359,10 @@ object WatchPartyUi {
                         it.message ?: it.javaClass.simpleName,
                     ),
                 )
+                WatchPartySession.clear()
                 return@launch
             }
-            WatchPartySession.beginGuest(token, payload.id)
+            WatchPartySession.beginGuest(token, payload.id, inLobby = false)
             val args = playerArgs(videoType, payload)
             val navHost =
                 activity.supportFragmentManager.findFragmentById(R.id.nav_main_fragment) as? NavHostFragment

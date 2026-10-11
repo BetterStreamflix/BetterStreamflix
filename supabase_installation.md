@@ -110,13 +110,13 @@ Opening that link on Mobile or TV fetches the list through the `get_shared_watch
 
 Personal cross-device sync continues to use `user_media_state`. Shared lists are a separate snapshot for link sharing; they do not replace Account & sync.
 
-## Watch-Party light
+## Watch-Party 2.0
 
-After the watch-parties migration is applied (included in **Copy database setup SQL** and `supabase/migrations/20261011210000_create_watch_parties.sql`), a signed-in host can start a Watch Party from the player (Mobile or TV). The app inserts a `watch_parties` row with an opaque `share_token`, ~12-hour `expires_at`, and the current media identity + **position_ms** + **server_id/server_name** + playing flag. The share link looks like:
+After the watch-parties migrations are applied (included in **Copy database setup SQL**, plus `supabase/migrations/20261011210000_create_watch_parties.sql` and `20261011220000_watch_party_v2_lobby_chat.sql`), a signed-in host can open a Watch Party lobby from the player (Mobile or TV). The app inserts a `watch_parties` row with an opaque `share_token`, ~12-hour `expires_at`, `in_lobby=true`, media identity, and the host-picked **server_id/server_name**. The share link looks like:
 
 `https://betterstreamflix.app/party/<share_token>`
 
-Opening that link on Mobile or TV fetches the session through `get_watch_party` (works with the publishable/anon key) and asks before joining. Each device still loads its own stream from the provider — **no video is relayed through Supabase**. Guests poll for host updates; when the host leaves the player or taps **End party**, `ended` is set and guests disconnect gracefully. Live TV and offline playback cannot host a party. Kids/PIN gates queue the join token per profile until unlock.
+Opening that link on Mobile or TV fetches the session through `get_watch_party` / `join_watch_party_lobby` (publishable/anon key) and asks before joining. Guests wait in the lobby (chat + emoji reacts) until the host taps **Start watching** (`start_watch_party`). After start, devices sync **position_ms + chosen server + playing** only — each device still loads its own stream from the provider (**no video relay**). Host server picks apply to everyone. When the host leaves the player or taps **End party**, `ended` is set and guests disconnect gracefully. Live TV and offline playback cannot host a party. Kids/PIN gates queue the join token per profile until unlock.
 
 ## Troubleshooting
 

@@ -17,7 +17,13 @@ import java.util.UUID
 object WatchPartyRepository {
     private const val TAG = "WatchParty"
     private const val TABLE = "watch_parties"
-    private const val RPC = "get_watch_party"
+    private const val RPC_GET = "get_watch_party"
+    private const val RPC_LOBBY = "get_watch_party_lobby"
+    private const val RPC_JOIN_LOBBY = "join_watch_party_lobby"
+    private const val RPC_MEMBER_HB = "heartbeat_watch_party_member"
+    private const val RPC_POST_MSG = "post_watch_party_message"
+    private const val RPC_LIST_MSG = "list_watch_party_messages"
+    private const val RPC_START = "start_watch_party"
     /** Short TTL — parties are ephemeral social sessions, not long-lived shares. */
     private const val TOKEN_TTL_HOURS = 12L
 
@@ -25,6 +31,7 @@ object WatchPartyRepository {
         val token: String,
         val link: String,
         val partyId: String?,
+        val inLobby: Boolean,
     )
 
     suspend fun createParty(
@@ -32,7 +39,6 @@ object WatchPartyRepository {
         videoType: Video.Type,
         server: Video.Server?,
         positionMs: Long,
-        playing: Boolean,
     ): HostCreateResult {
         requireConfigured()
         val appContext = context.applicationContext
@@ -56,16 +62,25 @@ object WatchPartyRepository {
             videoType = videoType,
             server = server,
             positionMs = positionMs.coerceAtLeast(0L),
-            playing = playing,
         )
         val inserted = client.from(TABLE)
             .insert(row) { select(Columns.ALL) }
             .decodeSingle<RemoteWatchParty>()
 
+        // Register host in lobby presence.
+        runCatching {
+            joinLobby(
+                context = appContext,
+                token = inserted.shareToken,
+                isHost = true,
+            )
+        }.onFailure { Log.w(TAG, "Host lobby join failed", it) }
+
         return HostCreateResult(
             token = inserted.shareToken,
             link = WatchPartyLinks.buildUri(inserted.shareToken),
             partyId = inserted.id,
+            inLobby = inserted.inLobby,
         )
     }
 
@@ -98,6 +113,65 @@ object WatchPartyRepository {
                     eq("ended", false)
                 }
             }
+    }
+
+    /** Host picks the server everyone will use (lobby or during play). */
+    suspend fun pickServer(
+        context: Context,
+        partyId: String,
+        server: Video.Server,
+    ) {
+        requireConfigured()
+        val appContext = context.applicationContext
+        val profileId = ProfileManager.activeProfileId
+        val client = SupabaseProvider.clientFor(appContext, profileId)
+        client.auth.awaitInitialization()
+        if (client.auth.currentSessionOrNull()?.user?.id == null) {
+            error("Sign in to pick a Watch Party server")
+        }
+        client.from(TABLE)
+            .update(
+                RemoteWatchPartyServerPick(
+                    serverId = server.id,
+                    serverName = server.name,
+                    updatedAt = Instant.now().toString(),
+                ),
+            ) {
+                filter {
+                    eq("id", partyId)
+                    eq("ended", false)
+                }
+            }
+    }
+
+    suspend fun startParty(
+        context: Context,
+        token: String,
+        server: Video.Server?,
+    ): WatchPartyPayload {
+        requireConfigured()
+        if (!WatchPartyLinks.isValidToken(token)) error("Invalid share token")
+        val appContext = context.applicationContext
+        val profileId = ProfileManager.activeProfileId
+        val client = SupabaseProvider.clientFor(appContext, profileId)
+        client.auth.awaitInitialization()
+        if (client.auth.currentSessionOrNull()?.user?.id == null) {
+            error("Sign in to start a Watch Party")
+        }
+        val payload = runCatching {
+            client.postgrest.rpc(
+                RPC_START,
+                WatchPartyStartParam(
+                    token = token.trim(),
+                    serverId = server?.id,
+                    serverName = server?.name,
+                ),
+            ).decodeAs<WatchPartyPayload>()
+        }.getOrNull()
+        if (payload == null || payload.shareToken.isNullOrBlank()) {
+            error("Could not start Watch Party")
+        }
+        return payload
     }
 
     suspend fun endParty(context: Context, partyId: String?) {
@@ -136,7 +210,7 @@ object WatchPartyRepository {
 
         val payload = runCatching {
             client.postgrest.rpc(
-                RPC,
+                RPC_GET,
                 WatchPartyTokenParam(token.trim()),
             ).decodeAs<WatchPartyPayload>()
         }.getOrNull()
@@ -146,6 +220,144 @@ object WatchPartyRepository {
         }
         if (payload.ended) error("Watch Party ended")
         return payload
+    }
+
+    suspend fun joinLobby(
+        context: Context,
+        token: String,
+        isHost: Boolean = false,
+    ): WatchPartyLobbyPayload {
+        requireConfigured()
+        if (!WatchPartyLinks.isValidToken(token)) error("Invalid share token")
+        val appContext = context.applicationContext
+        val profileId = ProfileManager.activeProfileId
+        val client = SupabaseProvider.initializeForProfile(appContext, profileId)
+            ?: error("Configure Supabase before joining a Watch Party")
+        client.auth.awaitInitialization()
+
+        val lobby = runCatching {
+            client.postgrest.rpc(
+                RPC_JOIN_LOBBY,
+                WatchPartyLobbyJoinParam(
+                    token = token.trim(),
+                    memberKey = WatchPartyMemberIdentity.memberKey(appContext),
+                    displayName = WatchPartyMemberIdentity.displayName(),
+                    isHost = isHost,
+                ),
+            ).decodeAs<WatchPartyLobbyPayload>()
+        }.getOrNull()
+        if (lobby == null || lobby.party.shareToken.isNullOrBlank()) {
+            error("Watch Party not found or ended")
+        }
+        if (lobby.party.ended) error("Watch Party ended")
+        return lobby
+    }
+
+    suspend fun fetchLobby(context: Context, token: String): WatchPartyLobbyPayload {
+        requireConfigured()
+        if (!WatchPartyLinks.isValidToken(token)) error("Invalid share token")
+        val appContext = context.applicationContext
+        val profileId = ProfileManager.activeProfileId
+        val client = SupabaseProvider.initializeForProfile(appContext, profileId)
+            ?: error("Configure Supabase before joining a Watch Party")
+        client.auth.awaitInitialization()
+
+        val lobby = runCatching {
+            client.postgrest.rpc(
+                RPC_LOBBY,
+                WatchPartyTokenParam(token.trim()),
+            ).decodeAs<WatchPartyLobbyPayload>()
+        }.getOrNull()
+        if (lobby == null || lobby.party.shareToken.isNullOrBlank()) {
+            error("Watch Party not found or ended")
+        }
+        return lobby
+    }
+
+    suspend fun heartbeatMember(context: Context, token: String) {
+        if (!WatchPartyLinks.isValidToken(token)) return
+        val appContext = context.applicationContext
+        val profileId = ProfileManager.activeProfileId
+        val client = SupabaseProvider.initializeForProfile(appContext, profileId) ?: return
+        client.auth.awaitInitialization()
+        runCatching {
+            client.postgrest.rpc(
+                RPC_MEMBER_HB,
+                WatchPartyMemberHeartbeatParam(
+                    token = token.trim(),
+                    memberKey = WatchPartyMemberIdentity.memberKey(appContext),
+                ),
+            )
+        }.onFailure { Log.w(TAG, "Member heartbeat failed", it) }
+    }
+
+    suspend fun postMessage(
+        context: Context,
+        token: String,
+        kind: String,
+        body: String,
+    ): WatchPartyMessagePayload {
+        requireConfigured()
+        if (!WatchPartyLinks.isValidToken(token)) error("Invalid share token")
+        val kindClean = kind.trim().lowercase()
+        val bodyClean = when (kindClean) {
+            WatchPartyChat.KIND_REACT -> {
+                if (!WatchPartyChat.isAllowedReaction(body)) error("Unsupported reaction")
+                body.trim()
+            }
+            WatchPartyChat.KIND_CHAT -> {
+                WatchPartyChat.sanitizeChatBody(body) ?: error("Empty message")
+            }
+            else -> error("Unsupported message kind")
+        }
+        val appContext = context.applicationContext
+        val profileId = ProfileManager.activeProfileId
+        val client = SupabaseProvider.initializeForProfile(appContext, profileId)
+            ?: error("Configure Supabase before chatting in a Watch Party")
+        client.auth.awaitInitialization()
+
+        val posted = runCatching {
+            client.postgrest.rpc(
+                RPC_POST_MSG,
+                WatchPartyMessagePostParam(
+                    token = token.trim(),
+                    memberKey = WatchPartyMemberIdentity.memberKey(appContext),
+                    displayName = WatchPartyMemberIdentity.displayName(),
+                    kind = kindClean,
+                    body = bodyClean,
+                ),
+            ).decodeAs<WatchPartyMessagePayload>()
+        }.getOrNull()
+        if (posted == null || posted.body.isBlank()) {
+            error("Could not send message")
+        }
+        return posted
+    }
+
+    suspend fun listMessages(
+        context: Context,
+        token: String,
+        after: String? = null,
+    ): List<WatchPartyMessagePayload> {
+        requireConfigured()
+        if (!WatchPartyLinks.isValidToken(token)) return emptyList()
+        val appContext = context.applicationContext
+        val profileId = ProfileManager.activeProfileId
+        val client = SupabaseProvider.initializeForProfile(appContext, profileId) ?: return emptyList()
+        client.auth.awaitInitialization()
+
+        return runCatching {
+            client.postgrest.rpc(
+                RPC_LIST_MSG,
+                WatchPartyMessagesListParam(
+                    token = token.trim(),
+                    after = after,
+                ),
+            ).decodeAs<List<WatchPartyMessagePayload>>()
+        }.getOrElse {
+            Log.w(TAG, "List messages failed", it)
+            emptyList()
+        }
     }
 
     suspend fun flushStalePending(context: Context): Int {
@@ -237,7 +449,6 @@ object WatchPartyRepository {
         videoType: Video.Type,
         server: Video.Server?,
         positionMs: Long,
-        playing: Boolean,
     ): RemoteWatchParty {
         val expiresAt = Instant.now().plus(TOKEN_TTL_HOURS, ChronoUnit.HOURS).toString()
         return when (videoType) {
@@ -255,7 +466,8 @@ object WatchPartyRepository {
                 serverId = server?.id,
                 serverName = server?.name,
                 positionMs = positionMs,
-                playing = playing,
+                playing = false,
+                inLobby = true,
                 ended = false,
                 expiresAt = expiresAt,
             )
@@ -280,7 +492,8 @@ object WatchPartyRepository {
                 serverId = server?.id,
                 serverName = server?.name,
                 positionMs = positionMs,
-                playing = playing,
+                playing = false,
+                inLobby = true,
                 ended = false,
                 expiresAt = expiresAt,
             )

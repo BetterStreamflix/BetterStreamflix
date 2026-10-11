@@ -65,6 +65,8 @@ object WatchPartyPlayerHooks {
     /** Call once video is ready (and whenever session begins while already playing). */
     fun ensureSyncRunning(fragment: Fragment, bridge: PlayerBridge) {
         if (!WatchPartySession.isActive()) return
+        // Lobby: presence/chat only — no position sync until the host starts.
+        if (WatchPartySession.isInLobby()) return
         if (bridge.isLiveOrOffline()) {
             fragment.viewLifecycleOwner.lifecycleScope.launch {
                 teardown(fragment, endHost = WatchPartySession.isHost())
@@ -109,7 +111,7 @@ object WatchPartyPlayerHooks {
     }
 
     fun onLocalControlChanged(fragment: Fragment, bridge: PlayerBridge) {
-        if (!WatchPartySession.isHost()) return
+        if (!WatchPartySession.isHost() || WatchPartySession.isInLobby()) return
         val partyId = WatchPartySession.partyId ?: return
         WatchPartySync.publishHostNow(
             context = fragment.requireContext(),
