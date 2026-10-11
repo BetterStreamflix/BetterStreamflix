@@ -48,7 +48,9 @@ class TvShowMobileFragment : Fragment() {
 
     private val appAdapter = AppAdapter()
     private var currentTvShow: TvShow? = null
-    private var selectedTab: DetailTab = DetailTab.EPISODES
+    private var selectedTab: DetailTab =
+        if (args.openTab.equals("similar", ignoreCase = true)) DetailTab.SIMILAR
+        else DetailTab.EPISODES
 
     /** Season episode load UI state for the in-page Episodes tab. */
     fun seasonEpisodeUi(): TvShowViewModel = viewModel

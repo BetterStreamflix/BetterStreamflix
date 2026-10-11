@@ -40,7 +40,9 @@ class MovieMobileFragment : Fragment() {
 
     private val appAdapter = AppAdapter()
     private var currentMovie: Movie? = null
-    private var selectedTab: DetailTab = DetailTab.SIMILAR
+    private var selectedTab: DetailTab =
+        if (args.openTab.equals("about", ignoreCase = true)) DetailTab.ABOUT
+        else DetailTab.SIMILAR
 
     override fun onCreateView(
         inflater: LayoutInflater,

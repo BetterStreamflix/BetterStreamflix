@@ -164,7 +164,7 @@ class TvShowTvFragment : Fragment() {
             }
         }
 
-        appAdapter.submitList(listOfNotNull(
+        val items = listOfNotNull(
             tvShow.apply { itemType = AppAdapter.Type.TV_SHOW_TV },
 
             tvShow.takeIf { it.seasons.isNotEmpty() }
@@ -194,6 +194,17 @@ class TvShowTvFragment : Fragment() {
             tvShow.takeIf { it.recommendations.isNotEmpty() }
                 ?.copy()
                 ?.apply { itemType = AppAdapter.Type.TV_SHOW_RECOMMENDATIONS_TV },
-        ))
+        )
+        appAdapter.submitList(items)
+        if (args.openTab.equals("similar", ignoreCase = true)) {
+            val similarIndex = items.indexOfFirst {
+                it.itemType == AppAdapter.Type.TV_SHOW_RECOMMENDATIONS_TV
+            }
+            if (similarIndex >= 0) {
+                binding.vgvTvShow.post {
+                    runCatching { binding.vgvTvShow.scrollToPosition(similarIndex) }
+                }
+            }
+        }
     }
 }

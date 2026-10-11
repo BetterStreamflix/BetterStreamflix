@@ -124,6 +124,11 @@
         <argument
             android:name="id"
             app:argType="string" />
+        <argument
+            android:name="openTab"
+            android:defaultValue="@null"
+            app:argType="string"
+            app:nullable="true" />
         <action
             android:id="@+id/action_movie_to_player"
             app:destination="@id/player" />
@@ -154,6 +159,11 @@
             app:nullable="true" />
         <argument
             android:name="banner"
+            app:argType="string"
+            app:nullable="true" />
+        <argument
+            android:name="openTab"
+            android:defaultValue="@null"
             app:argType="string"
             app:nullable="true" />
         <action

@@ -25,6 +25,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Watch-Party light: host/join via shareable `party/<token>` link (Mobile + TV); syncs play position + chosen server only through Supabase (no video relay); graceful host end / guest leave; Kids/PIN and offline join queue
 - Smart Skip Intro/Recap on Mobile + TV: chapter marks first, silence probe in the opening minutes, then a conservative episode heuristic — button only while inside a skippable segment (not a 2-minute spam window)
 - Support tip flow (Trinkgeld): after ~10 watched episodes, a subtle dismissible Support/Telegram card on Home (Mobile + TV) with 5-day cool-down, soft-show cap, and never-again — no spam, never blocks playback
+- End-Card Chooser after credits (Mobile + TV): large Next episode / Similar / Back to series with optional autoplay countdown
 - Familien-Profile TV parity: editable Kids age ceiling in Settings (Mobile + TV), profile chip on TV Movies/TV Shows with visible name, Leanback PIN dialog for kids exit, Favorites age-filtered, favorite sort prefs scoped per profile; Settings create path requires kids exit PIN
 - Smart provider failover toast shows **Server N/M** on Mobile + TV; stream death keeps the user in the player while hopping hosters
 - “Warum kein Stream?” typed failures (captcha / domain dead / geo / timeout) with one-tap **Solve captcha** or **Update domain** on the player error overlay
