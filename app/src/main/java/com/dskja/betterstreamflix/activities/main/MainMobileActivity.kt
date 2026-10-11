@@ -773,6 +773,12 @@ class MainMobileActivity : FragmentActivity() {
             return true
         }
 
+        val shareToken = com.dskja.betterstreamflix.sync.SharedWatchlistLinks.parseToken(data)
+        if (shareToken != null) {
+            com.dskja.betterstreamflix.sync.SharedWatchlistUi.handleIncomingToken(this, shareToken)
+            return true
+        }
+
         return false
     }
 

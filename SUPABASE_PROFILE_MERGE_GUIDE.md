@@ -27,6 +27,12 @@ policies isolate rows by `auth.uid() = user_id`, so separate Supabase Auth
 accounts can safely share the same project URL, publishable key, and
 `user_media_state` table.
 
+Shareable watchlist links (`shared_watchlists.share_token`) belong to the
+Supabase Auth user who published them, not to a local profile id. Profile-scoped
+sessions still apply when creating/updating a shared list; importing a link uses
+the `get_shared_watchlist` RPC with the publishable key and does not require the
+recipient to use the owner's Auth account.
+
 ## Important distinction
 
 Do not store a Supabase URL or key per profile unless the product explicitly

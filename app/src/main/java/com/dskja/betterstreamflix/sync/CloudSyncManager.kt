@@ -63,10 +63,13 @@ object CloudSyncManager {
             // watch history.
             CloudAccountStore.setActiveAccount(appContext, profileId, null, null)
             com.dskja.betterstreamflix.utils.SentryBootstrap.clearUser()
+            // Shared-list import uses the publishable key + RPC (no Auth session required).
+            runCatching { SharedWatchlistRepository.flushPendingImports(appContext) }
             return
         }
         activateAccount(appContext, profileId, userId)
         CloudRealtimeSync.start(appContext, profileId, userId)
+        runCatching { SharedWatchlistRepository.flushPendingImports(appContext) }
         com.dskja.betterstreamflix.utils.SentryBootstrap.setCloudUser(userId, email)
     }
 
@@ -470,11 +473,10 @@ object CloudSyncManager {
             title = newest.title.ifBlank { oldest.title },
             poster = newest.poster ?: oldest.poster,
             banner = newest.banner ?: oldest.banner,
-            isFavorite = remote.isFavorite || local.isFavorite,
-            favoritedAtMillis = maxNullable(
-                remote.favoritedAtMillis,
-                local.favoritedAtMillis,
-            ),
+            // Favorites are last-write-wins (same spirit as watched). OR made it
+            // impossible for a newer unfavorite on one device to clear the other.
+            isFavorite = newest.isFavorite,
+            favoritedAtMillis = newest.favoritedAtMillis,
             // Watched state is replaceable. OR made it impossible for a newer
             // local "unwatched" state to clear a stale cloud completion.
             isWatched = newest.isWatched,

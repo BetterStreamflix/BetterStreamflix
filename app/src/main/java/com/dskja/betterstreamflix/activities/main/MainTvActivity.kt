@@ -259,12 +259,14 @@ class MainTvActivity : FragmentActivity() {
         com.dskja.betterstreamflix.support.SupportStartupController.schedule(this, isTv = true)
 
         handleOpenDownloadsIntent(intent)
+        handleSharedWatchlistIntent(intent)
     }
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
         handleOpenDownloadsIntent(intent)
+        handleSharedWatchlistIntent(intent)
     }
 
     /** Notification / deep-link tap → Downloads tab (parity with [MainMobileActivity]). */
@@ -277,6 +279,12 @@ class MainTvActivity : FragmentActivity() {
         if (navController.currentDestination?.id != R.id.downloads) {
             runCatching { navController.navigate(R.id.downloads) }
         }
+    }
+
+    private fun handleSharedWatchlistIntent(intent: Intent?) {
+        val token = com.dskja.betterstreamflix.sync.SharedWatchlistLinks.parseToken(intent?.data)
+            ?: return
+        com.dskja.betterstreamflix.sync.SharedWatchlistUi.handleIncomingToken(this, token)
     }
 
     private fun bindingRootAndChrome() {

@@ -463,16 +463,14 @@ internal fun MovieViewHolder.bindMovieMobileDetail(binding: ContentMovieMobileBi
             ExpMotion.hapticTap(it)
             checkProviderAndRun {
                 itemView.findViewTreeLifecycleOwner()?.lifecycleScope?.launch(Dispatchers.IO) {
-                    val dao = database.movieDao()
-                    val target = !(dao.getById(movie.id)?.isFavorite ?: movie.isFavorite)
-                    val resolved =
-                        ArtworkRepair.resolveMovieForFavorite(context, movie, target)
-                    dao.upsertFavorite(resolved, target)
-                    com.dskja.betterstreamflix.platform.simkl.SimklSyncHooks.onListToggle(
-                        add = target,
-                        imdbId = movie.imdbId,
-                        tmdbId = movie.tmdbId,
-                        isTv = false,
+                    val provider = UserPreferences.currentProvider ?: return@launch
+                    val target = !(database.movieDao().getById(movie.id)?.isFavorite ?: movie.isFavorite)
+                    val resolved = com.dskja.betterstreamflix.sync.FavoriteMutations.setMovieFavorite(
+                        context = context,
+                        provider = provider,
+                        movie = movie,
+                        favorite = target,
+                        database = database,
                     )
                     withContext(Dispatchers.Main) {
                         movie.poster = resolved.poster

@@ -17,10 +17,9 @@ import com.dskja.betterstreamflix.logo.TitleLogoSurface
 import com.dskja.betterstreamflix.logo.TmdbLogoBinder
 import com.dskja.betterstreamflix.models.Movie
 import com.dskja.betterstreamflix.models.TvShow
-import com.dskja.betterstreamflix.platform.simkl.SimklSyncHooks
-import com.dskja.betterstreamflix.utils.ArtworkRepair
 import com.dskja.betterstreamflix.utils.DeviceCapabilities
 import com.dskja.betterstreamflix.utils.ExpMotion
+import com.dskja.betterstreamflix.utils.UserPreferences
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
@@ -216,11 +215,16 @@ object FeaturedSwiperChrome {
     ) {
         val owner = anchor.findViewTreeLifecycleOwner() ?: return
         owner.lifecycleScope.launch(Dispatchers.IO) {
+            val provider = UserPreferences.currentProvider ?: return@launch
             val db = AppDatabase.getInstance(anchor.context)
-            val dao = db.movieDao()
-            val target = !(dao.getById(movie.id)?.isFavorite ?: movie.isFavorite)
-            val resolved = ArtworkRepair.resolveMovieForFavorite(anchor.context, movie, target)
-            dao.upsertFavorite(resolved, target)
+            val target = !(db.movieDao().getById(movie.id)?.isFavorite ?: movie.isFavorite)
+            val resolved = com.dskja.betterstreamflix.sync.FavoriteMutations.setMovieFavorite(
+                context = anchor.context,
+                provider = provider,
+                movie = movie,
+                favorite = target,
+                database = db,
+            )
             withContext(Dispatchers.Main) {
                 movie.isFavorite = target
                 movie.poster = resolved.poster
@@ -228,21 +232,6 @@ object FeaturedSwiperChrome {
                 bindListButton(button, target, animate = true)
                 onDone?.invoke(target)
             }
-            SimklSyncHooks.onListToggle(
-                add = target,
-                imdbId = movie.imdbId,
-                tmdbId = movie.tmdbId,
-                isTv = false,
-                onError = {
-                    owner.lifecycleScope.launch(Dispatchers.Main) {
-                        android.widget.Toast.makeText(
-                            anchor.context,
-                            R.string.simkl_sync_failed,
-                            android.widget.Toast.LENGTH_SHORT,
-                        ).show()
-                    }
-                },
-            )
         }
     }
 
@@ -254,11 +243,16 @@ object FeaturedSwiperChrome {
     ) {
         val owner = anchor.findViewTreeLifecycleOwner() ?: return
         owner.lifecycleScope.launch(Dispatchers.IO) {
+            val provider = UserPreferences.currentProvider ?: return@launch
             val db = AppDatabase.getInstance(anchor.context)
-            val dao = db.tvShowDao()
-            val target = !(dao.getById(tvShow.id)?.isFavorite ?: tvShow.isFavorite)
-            val resolved = ArtworkRepair.resolveTvShowForFavorite(anchor.context, tvShow, target)
-            dao.upsertFavorite(resolved, target)
+            val target = !(db.tvShowDao().getById(tvShow.id)?.isFavorite ?: tvShow.isFavorite)
+            val resolved = com.dskja.betterstreamflix.sync.FavoriteMutations.setTvShowFavorite(
+                context = anchor.context,
+                provider = provider,
+                tvShow = tvShow,
+                favorite = target,
+                database = db,
+            )
             withContext(Dispatchers.Main) {
                 tvShow.isFavorite = target
                 tvShow.poster = resolved.poster
@@ -266,21 +260,6 @@ object FeaturedSwiperChrome {
                 bindListButton(button, target, animate = true)
                 onDone?.invoke(target)
             }
-            SimklSyncHooks.onListToggle(
-                add = target,
-                imdbId = tvShow.imdbId,
-                tmdbId = tvShow.tmdbId,
-                isTv = true,
-                onError = {
-                    owner.lifecycleScope.launch(Dispatchers.Main) {
-                        android.widget.Toast.makeText(
-                            anchor.context,
-                            R.string.simkl_sync_failed,
-                            android.widget.Toast.LENGTH_SHORT,
-                        ).show()
-                    }
-                },
-            )
         }
     }
 }
