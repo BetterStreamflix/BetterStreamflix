@@ -297,11 +297,31 @@ object UserPreferences {
             Key.EXTERNAL_DOWNLOADER_PACKAGE.setString(value.trim().ifEmpty { null })
         }
 
-    /** Smart Downloads: auto-download the next episode after one finishes (opt-in). */
+    /** Smart Downloads: auto-download the next episodes after one finishes (opt-in). */
     var downloadSmartEnabled: Boolean
         get() = Key.DOWNLOAD_SMART_ENABLED.getBoolean() ?: false
         set(value) {
             Key.DOWNLOAD_SMART_ENABLED.setBoolean(value)
+        }
+
+    /** How many upcoming episodes Smart Downloads tries to keep queued (default 3). */
+    var downloadSmartLookahead: Int
+        get() = Key.DOWNLOAD_SMART_LOOKAHEAD.getInt()
+            ?: com.dskja.betterstreamflix.download.SmartDownloadsPolicy.DEFAULT_LOOKAHEAD
+        set(value) {
+            Key.DOWNLOAD_SMART_LOOKAHEAD.setInt(
+                com.dskja.betterstreamflix.download.SmartDownloadsPolicy.clampLookahead(value),
+            )
+        }
+
+    /** Max unwatched / in-flight Smart Downloads episodes kept per series. */
+    var downloadSmartSeriesQuota: Int
+        get() = Key.DOWNLOAD_SMART_SERIES_QUOTA.getInt()
+            ?: com.dskja.betterstreamflix.download.SmartDownloadsPolicy.DEFAULT_SERIES_QUOTA
+        set(value) {
+            Key.DOWNLOAD_SMART_SERIES_QUOTA.setInt(
+                com.dskja.betterstreamflix.download.SmartDownloadsPolicy.clampSeriesQuota(value),
+            )
         }
 
     /** Delete episode downloads once they were watched (Netflix-style, opt-in). */
@@ -1560,6 +1580,8 @@ object UserPreferences {
         EXTERNAL_PLAYER_PACKAGE,
         EXTERNAL_DOWNLOADER_PACKAGE,
         DOWNLOAD_SMART_ENABLED,
+        DOWNLOAD_SMART_LOOKAHEAD,
+        DOWNLOAD_SMART_SERIES_QUOTA,
         DOWNLOAD_AUTO_DELETE_WATCHED,
         TRAKT_ENABLED,
         TRAKT_CLIENT_ID,

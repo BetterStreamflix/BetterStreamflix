@@ -11,14 +11,24 @@ object DownloadQueuePolicy {
     /** Wi-Fi-only held the download. Cleared when unmetered network returns. */
     const val STOP_CONNECTIVITY = 2
 
+    /** Low free space / soft-limit hold. Cleared when storage recovers. */
+    const val STOP_STORAGE = 3
+
     fun shouldPauseForConnectivity(state: DownloadItemState): Boolean =
         state == DownloadItemState.QUEUED ||
             state == DownloadItemState.PREPARING ||
             state == DownloadItemState.DOWNLOADING
 
+    fun shouldPauseForStorage(state: DownloadItemState): Boolean =
+        shouldPauseForConnectivity(state)
+
     fun shouldResumeAfterConnectivity(stopReason: Int, errorCode: String): Boolean =
         stopReason == STOP_CONNECTIVITY ||
             errorCode == DownloadErrorCode.WIFI_REQUIRED.name
+
+    fun shouldResumeAfterStorage(stopReason: Int, errorCode: String): Boolean =
+        stopReason == STOP_STORAGE ||
+            errorCode == DownloadErrorCode.LOW_STORAGE.name
 
     /**
      * A late Media3 callback must not rewind a newer Room row

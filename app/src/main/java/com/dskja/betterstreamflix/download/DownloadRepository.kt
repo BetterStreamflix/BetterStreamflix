@@ -267,15 +267,22 @@ class DownloadRepository private constructor(
             android.util.Log.w("DownloadRepository", "pause sendSetStopReason: ${it.message}")
         }
         val connectivityHold = stopReason == DownloadQueuePolicy.STOP_CONNECTIVITY
+        val storageHold = stopReason == DownloadQueuePolicy.STOP_STORAGE
         runCatching {
             dao.upsert(
                 item.copy(
                     state = DownloadItemState.PAUSED.name,
-                    errorCode = if (connectivityHold) DownloadErrorCode.WIFI_REQUIRED.name else "",
-                    errorMessage = if (connectivityHold) {
-                        context.getString(com.dskja.betterstreamflix.R.string.download_error_wifi)
-                    } else {
-                        ""
+                    errorCode = when {
+                        connectivityHold -> DownloadErrorCode.WIFI_REQUIRED.name
+                        storageHold -> DownloadErrorCode.LOW_STORAGE.name
+                        else -> ""
+                    },
+                    errorMessage = when {
+                        connectivityHold ->
+                            context.getString(com.dskja.betterstreamflix.R.string.download_error_wifi)
+                        storageHold ->
+                            context.getString(com.dskja.betterstreamflix.R.string.download_error_nospace)
+                        else -> ""
                     },
                     updatedAt = System.currentTimeMillis(),
                 ),
@@ -299,6 +306,24 @@ class DownloadRepository private constructor(
                 Toast.makeText(
                     context,
                     com.dskja.betterstreamflix.R.string.download_error_wifi,
+                    Toast.LENGTH_SHORT,
+                ).show()
+            }
+            return
+        }
+        if (DownloadStorage.isLowSpace(context)) {
+            dao.upsert(
+                item.copy(
+                    state = DownloadItemState.PAUSED.name,
+                    errorCode = DownloadErrorCode.LOW_STORAGE.name,
+                    errorMessage = context.getString(com.dskja.betterstreamflix.R.string.download_error_nospace),
+                    updatedAt = System.currentTimeMillis(),
+                ),
+            )
+            withContext(Dispatchers.Main.immediate) {
+                Toast.makeText(
+                    context,
+                    com.dskja.betterstreamflix.R.string.downloads_low_space,
                     Toast.LENGTH_SHORT,
                 ).show()
             }
@@ -446,12 +471,24 @@ class DownloadRepository private constructor(
             }
     }
 
+    /** Low-storage hold. Leaves user-paused and Wi‑Fi-held rows alone. */
+    suspend fun pauseForLowStorage() {
+        getAllOnce()
+            .filter { DownloadQueuePolicy.shouldPauseForStorage(DownloadItemState.fromKey(it.state)) }
+            .forEach { item ->
+                runCatching {
+                    pause(item.id, DownloadQueuePolicy.STOP_STORAGE, foreground = true)
+                }.onFailure { Log.w(TAG, "Storage pause skipped: ${it.message}") }
+            }
+    }
+
     /**
      * Resume only connectivity holds. Per-id stop-reason clear — never
      * [DownloadService.sendResumeDownloads], which would also restart a user pause.
      */
     suspend fun resumeConnectivityHeld() {
         if (DownloadConnectivityMonitor.shouldHoldForWifiOnly(context)) return
+        if (DownloadStorage.isLowSpace(context)) return
         val held = getAllOnce().filter {
             val state = DownloadItemState.fromKey(it.state)
             DownloadQueuePolicy.shouldResumeAfterConnectivity(
@@ -469,8 +506,31 @@ class DownloadRepository private constructor(
         }
     }
 
+    /** Resume only low-storage holds once free space / soft-limit recovers. */
+    suspend fun resumeStorageHeld() {
+        if (DownloadStorage.isLowSpace(context)) return
+        val held = getAllOnce().filter {
+            val state = DownloadItemState.fromKey(it.state)
+            DownloadQueuePolicy.shouldResumeAfterStorage(
+                stopReason = if (it.errorCode == DownloadErrorCode.LOW_STORAGE.name) {
+                    DownloadQueuePolicy.STOP_STORAGE
+                } else {
+                    DownloadQueuePolicy.STOP_USER
+                },
+                errorCode = it.errorCode,
+            ) && (state == DownloadItemState.PAUSED || state == DownloadItemState.FAILED)
+        }
+        held.forEach { item ->
+            runCatching { resume(item.id, foreground = true) }
+                .onFailure { Log.w(TAG, "Storage resume skipped: ${it.message}") }
+        }
+        // Space recovered — also unblock Wi‑Fi holds deferred while storage was full.
+        resumeConnectivityHeld()
+    }
+
     suspend fun resumeAll() {
         if (DownloadConnectivityMonitor.shouldHoldForWifiOnly(context)) return
+        if (DownloadStorage.isLowSpace(context)) return
         // Connectivity watcher can fire while the app is backgrounded (Android 12+),
         // which throws BackgroundServiceStartNotAllowedException / IllegalStateException.
         // Prefer a foreground start; if that is still blocked, skip silently until next
@@ -482,7 +542,10 @@ class DownloadRepository private constructor(
                 it.state == DownloadItemState.PAUSED.name ||
                     (
                         it.state == DownloadItemState.FAILED.name &&
-                            it.errorCode == DownloadErrorCode.WIFI_REQUIRED.name
+                            (
+                                it.errorCode == DownloadErrorCode.WIFI_REQUIRED.name ||
+                                    it.errorCode == DownloadErrorCode.LOW_STORAGE.name
+                                )
                         )
             }
             .forEach { resume(it.id) }

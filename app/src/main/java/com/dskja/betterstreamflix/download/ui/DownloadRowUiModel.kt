@@ -51,7 +51,9 @@ sealed class DownloadRowUiModel {
             }
             val wifiHeld = state == DownloadItemState.PAUSED &&
                 entity.errorCode == DownloadErrorCode.WIFI_REQUIRED.name
-            if (wifiHeld) {
+            val storageHeld = state == DownloadItemState.PAUSED &&
+                entity.errorCode == DownloadErrorCode.LOW_STORAGE.name
+            if (wifiHeld || storageHeld) {
                 val used = DownloadStorage.formatBytes(context, entity.bytesDownloaded)
                 val total = if (entity.contentLength > 0) {
                     DownloadStorage.formatBytes(context, entity.contentLength)
@@ -60,11 +62,17 @@ sealed class DownloadRowUiModel {
                 }
                 return if (context != null) {
                     context.getString(
-                        R.string.downloads_progress_wifi_held,
+                        if (storageHeld) {
+                            R.string.downloads_progress_storage_held
+                        } else {
+                            R.string.downloads_progress_wifi_held
+                        },
                         entity.progressPct,
                         used,
                         total,
                     )
+                } else if (storageHeld) {
+                    "${entity.progressPct}% · $used / $total · Low storage"
                 } else {
                     "${entity.progressPct}% · $used / $total · Wi‑Fi required"
                 }

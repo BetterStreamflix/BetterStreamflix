@@ -179,7 +179,9 @@ object DownloadEventBridge : DownloadManager.Listener {
             val reason = runCatching {
                 context.getString(
                     when (code) {
-                        DownloadErrorCode.NOSPACE -> com.dskja.betterstreamflix.R.string.download_error_nospace
+                        DownloadErrorCode.NOSPACE,
+                        DownloadErrorCode.LOW_STORAGE,
+                        -> com.dskja.betterstreamflix.R.string.download_error_nospace
                         DownloadErrorCode.WIFI_REQUIRED -> com.dskja.betterstreamflix.R.string.download_error_wifi
                         DownloadErrorCode.EXPIRED -> com.dskja.betterstreamflix.R.string.download_error_expired
                         DownloadErrorCode.NOT_FOUND -> com.dskja.betterstreamflix.R.string.download_error_not_found
@@ -223,10 +225,16 @@ object DownloadEventBridge : DownloadManager.Listener {
             download.stopReason == DownloadQueuePolicy.STOP_CONNECTIVITY ->
             DownloadErrorCode.WIFI_REQUIRED.name
         state == DownloadItemState.PAUSED &&
+            download.stopReason == DownloadQueuePolicy.STOP_STORAGE ->
+            DownloadErrorCode.LOW_STORAGE.name
+        state == DownloadItemState.PAUSED &&
             download.stopReason == DownloadQueuePolicy.STOP_USER -> ""
         state == DownloadItemState.PAUSED &&
             entity.errorCode == DownloadErrorCode.WIFI_REQUIRED.name ->
             DownloadErrorCode.WIFI_REQUIRED.name
+        state == DownloadItemState.PAUSED &&
+            entity.errorCode == DownloadErrorCode.LOW_STORAGE.name ->
+            DownloadErrorCode.LOW_STORAGE.name
         else -> ""
     }
 
