@@ -18,6 +18,23 @@
             android:textStyle="bold" />
 
         <TextView
+            android:id="@+id/tv_watch_party_lobby_code"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:textAppearance="?attr/textAppearanceHeadline6"
+            android:textStyle="bold"
+            android:visibility="gone" />
+
+        <TextView
+            android:id="@+id/tv_watch_party_lobby_sync"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:textAppearance="?attr/textAppearanceCaption"
+            android:visibility="gone" />
+
+        <TextView
             android:id="@+id/tv_watch_party_lobby_server"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"

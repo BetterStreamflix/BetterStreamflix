@@ -1,11 +1,11 @@
 package com.dskja.betterstreamflix.sync
 
 /**
- * In-memory Watch-Party role for the active player / lobby instance.
- * Syncs position + chosen server only — never stream URLs.
+ * In-memory Watch Together / Watch-Party role for the active player / lobby / remote.
+ * Syncs position + chosen server (+ sidekick commands) only — never stream URLs.
  */
 object WatchPartySession {
-    enum class Role { HOST, GUEST }
+    enum class Role { HOST, GUEST, REMOTE }
 
     @Volatile
     var role: Role? = null
@@ -20,8 +20,19 @@ object WatchPartySession {
         private set
 
     @Volatile
+    var shortCode: String? = null
+        private set
+
+    @Volatile
+    var displayMode: String = WatchTogetherPro.MODE_SYNC_ALL
+        private set
+
+    @Volatile
     var inLobby: Boolean = false
         private set
+
+    @Volatile
+    var hostControlsLocked: Boolean = false
 
     @Volatile
     var lastAppliedPositionMs: Long = -1L
@@ -35,41 +46,93 @@ object WatchPartySession {
     @Volatile
     var lastMessageAt: String? = null
 
-    fun beginHost(token: String, partyId: String?, inLobby: Boolean = true) {
+    @Volatile
+    var lastAppliedSeekSeq: Long = 0L
+
+    @Volatile
+    var lastAppliedPlaySeq: Long = 0L
+
+    @Volatile
+    var lastAppliedSyncRevision: Long = 0L
+
+    @Volatile
+    var lastLocalDriftMs: Long = 0L
+
+    fun beginHost(
+        token: String,
+        partyId: String?,
+        inLobby: Boolean = true,
+        shortCode: String? = null,
+        displayMode: String = WatchTogetherPro.MODE_SYNC_ALL,
+    ) {
         role = Role.HOST
         this.token = token
         this.partyId = partyId
+        this.shortCode = WatchPartyLinks.normalizeShortCode(shortCode) ?: shortCode
+        this.displayMode = WatchTogetherPro.normalizeDisplayMode(displayMode)
         this.inLobby = inLobby
-        lastAppliedPositionMs = -1L
-        lastAppliedServerKey = null
-        lastAppliedPlaying = null
-        lastMessageAt = null
+        resetCursors()
     }
 
-    fun beginGuest(token: String, partyId: String?, inLobby: Boolean = false) {
+    fun beginGuest(
+        token: String,
+        partyId: String?,
+        inLobby: Boolean = false,
+        shortCode: String? = null,
+        displayMode: String = WatchTogetherPro.MODE_SYNC_ALL,
+    ) {
         role = Role.GUEST
         this.token = token
         this.partyId = partyId
+        this.shortCode = WatchPartyLinks.normalizeShortCode(shortCode) ?: shortCode
+        this.displayMode = WatchTogetherPro.normalizeDisplayMode(displayMode)
         this.inLobby = inLobby
-        lastAppliedPositionMs = -1L
-        lastAppliedServerKey = null
-        lastAppliedPlaying = null
-        lastMessageAt = null
+        resetCursors()
+    }
+
+    fun beginRemote(
+        token: String,
+        partyId: String?,
+        shortCode: String? = null,
+        displayMode: String = WatchTogetherPro.MODE_TV_SCREEN,
+    ) {
+        role = Role.REMOTE
+        this.token = token
+        this.partyId = partyId
+        this.shortCode = WatchPartyLinks.normalizeShortCode(shortCode) ?: shortCode
+        this.displayMode = WatchTogetherPro.normalizeDisplayMode(displayMode)
+        this.inLobby = false
+        resetCursors()
     }
 
     fun markPlaybackStarted() {
         inLobby = false
     }
 
+    fun updateFromPayload(payload: WatchPartyPayload) {
+        if (!payload.shortCode.isNullOrBlank()) {
+            shortCode = WatchPartyLinks.normalizeShortCode(payload.shortCode) ?: payload.shortCode
+        }
+        displayMode = WatchTogetherPro.normalizeDisplayMode(payload.displayMode)
+        hostControlsLocked = payload.hostControlsLocked
+        if (!payload.id.isNullOrBlank()) {
+            partyId = payload.id
+        }
+    }
+
+    fun setDisplayMode(mode: String) {
+        displayMode = WatchTogetherPro.normalizeDisplayMode(mode)
+    }
+
     fun clear() {
         role = null
         token = null
         partyId = null
+        shortCode = null
+        displayMode = WatchTogetherPro.MODE_SYNC_ALL
         inLobby = false
-        lastAppliedPositionMs = -1L
-        lastAppliedServerKey = null
-        lastAppliedPlaying = null
-        lastMessageAt = null
+        hostControlsLocked = false
+        resetCursors()
     }
 
     fun isActive(): Boolean = role != null && !token.isNullOrBlank()
@@ -78,5 +141,21 @@ object WatchPartySession {
 
     fun isGuest(): Boolean = role == Role.GUEST
 
+    fun isRemote(): Boolean = role == Role.REMOTE
+
     fun isInLobby(): Boolean = isActive() && inLobby
+
+    fun isTvScreenMode(): Boolean = WatchTogetherPro.isTvScreenMode(displayMode)
+
+    private fun resetCursors() {
+        lastAppliedPositionMs = -1L
+        lastAppliedServerKey = null
+        lastAppliedPlaying = null
+        lastMessageAt = null
+        lastAppliedSeekSeq = 0L
+        lastAppliedPlaySeq = 0L
+        lastAppliedSyncRevision = 0L
+        lastLocalDriftMs = 0L
+        hostControlsLocked = false
+    }
 }
