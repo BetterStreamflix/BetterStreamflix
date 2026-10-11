@@ -407,6 +407,40 @@ class SearchMobileFragment : Fragment() {
         binding.rvSearch.apply {
             adapter = appAdapter.apply {
                 stateRestorationPolicy = RecyclerView.Adapter.StateRestorationPolicy.PREVENT_WHEN_EMPTY
+                onMovieLongClickListener = { movie ->
+                    com.dskja.betterstreamflix.taste.TasteSignalsUi.showFor(
+                        fragment = this@SearchMobileFragment,
+                        item = movie,
+                        onChanged = { viewModel.reapplyOrdering() },
+                        onMoreLike = { item ->
+                            binding.etSearch.setText(
+                                when (item) {
+                                    is com.dskja.betterstreamflix.models.Movie -> item.title
+                                    is com.dskja.betterstreamflix.models.TvShow -> item.title
+                                    else -> ""
+                                },
+                            )
+                            viewModel.searchMoreLike(item)
+                        },
+                    )
+                }
+                onTvShowLongClickListener = { show ->
+                    com.dskja.betterstreamflix.taste.TasteSignalsUi.showFor(
+                        fragment = this@SearchMobileFragment,
+                        item = show,
+                        onChanged = { viewModel.reapplyOrdering() },
+                        onMoreLike = { item ->
+                            binding.etSearch.setText(
+                                when (item) {
+                                    is com.dskja.betterstreamflix.models.Movie -> item.title
+                                    is com.dskja.betterstreamflix.models.TvShow -> item.title
+                                    else -> ""
+                                },
+                            )
+                            viewModel.searchMoreLike(item)
+                        },
+                    )
+                }
             }
             val columns = (layoutManager as? GridLayoutManager)?.spanCount ?: SearchMobileRows.GRID_SPAN
             (layoutManager as? GridLayoutManager)?.spanSizeLookup =
@@ -422,11 +456,13 @@ class SearchMobileFragment : Fragment() {
             )
         }
         initializeSearchSortControls()
+        refreshMoodChips()
         refreshRecentSearches()
     }
 
     private fun initializeSearchSortControls() {
         val chipDefault = binding.root.findViewById<TextView>(R.id.chip_search_sort_default) ?: return
+        val chipForYou = binding.root.findViewById<TextView>(R.id.chip_search_sort_for_you)
         val chipNewest = binding.root.findViewById<TextView>(R.id.chip_search_sort_newest) ?: return
         val chipYear = binding.root.findViewById<TextView>(R.id.chip_search_filter_year) ?: return
 
@@ -435,6 +471,11 @@ class SearchMobileFragment : Fragment() {
         chipDefault.setOnClickListener {
             ExpMotion.hapticTap(it)
             viewModel.setSortMode(com.dskja.betterstreamflix.utils.SearchSortMode.PROVIDER_DEFAULT)
+            refreshSortChips()
+        }
+        chipForYou?.setOnClickListener {
+            ExpMotion.hapticTap(it)
+            viewModel.setSortMode(com.dskja.betterstreamflix.utils.SearchSortMode.FOR_YOU)
             refreshSortChips()
         }
         chipNewest.setOnClickListener {
@@ -453,6 +494,29 @@ class SearchMobileFragment : Fragment() {
                 refreshSortChips()
             }
         }
+    }
+
+    private fun refreshMoodChips() {
+        val row = binding.root.findViewById<LinearLayout>(R.id.ll_search_mood) ?: return
+        val padH = 12.dp(requireContext())
+        val padV = 8.dp(requireContext())
+        val gap = 8.dp(requireContext())
+        com.dskja.betterstreamflix.taste.TasteMoodUi.bind(
+            context = requireContext(),
+            row = row,
+            selected = viewModel.currentMood(),
+            padH = padH,
+            padV = padV,
+            gap = gap,
+            tvFocusable = false,
+            onSelect = { mood ->
+                viewModel.setMood(mood)
+                refreshMoodChips()
+            },
+            applyPress = { view ->
+                with(com.dskja.betterstreamflix.utils.ExpPressEffects) { view.applyExpPress() }
+            },
+        )
     }
 
     private fun refreshRecentSearches() {
@@ -511,6 +575,10 @@ class SearchMobileFragment : Fragment() {
                 SearchMemories.clear(requireContext())
                 refreshRecentSearches()
             },
+            onLongPressMoreLike = { entry ->
+                binding.etSearch.setText(getString(R.string.search_query_more_like, entry.query))
+                viewModel.search(getString(R.string.search_query_more_like, entry.query))
+            },
             previousQueries = previousQueries,
             animateNew = if (ExperimentalMobileDesign.enabled()) {
                 { chip, index ->
@@ -532,12 +600,14 @@ class SearchMobileFragment : Fragment() {
         val chipDefault = root.findViewById<TextView>(R.id.chip_search_sort_default) ?: return
         val chipNewest = root.findViewById<TextView>(R.id.chip_search_sort_newest) ?: return
         val chipYear = root.findViewById<TextView>(R.id.chip_search_filter_year) ?: return
+        val chipForYou = root.findViewById<TextView>(R.id.chip_search_sort_for_you)
         SearchSortUi.bindChips(
             chipDefault = chipDefault,
             chipNewest = chipNewest,
             chipYear = chipYear,
             mode = viewModel.currentSortMode(),
             year = viewModel.currentYearFilter(),
+            chipForYou = chipForYou,
         )
     }
 

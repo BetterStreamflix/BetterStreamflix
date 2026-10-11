@@ -38,6 +38,9 @@ object FavoriteMutations {
         }
         if (favorite) {
             UserDataCache.addMovieToFavorites(appContext, provider, favorited)
+            runCatching {
+                com.dskja.betterstreamflix.taste.TasteFeedback.favoriteBoost(appContext, favorited)
+            }
         } else {
             UserDataCache.removeMovieFromFavorites(appContext, provider, movie.id)
         }
@@ -70,6 +73,9 @@ object FavoriteMutations {
         }
         if (favorite) {
             UserDataCache.addTvShowToFavorites(appContext, provider, favorited)
+            runCatching {
+                com.dskja.betterstreamflix.taste.TasteFeedback.favoriteBoost(appContext, favorited)
+            }
         } else {
             UserDataCache.removeTvShowFromFavorites(appContext, provider, tvShow.id)
         }

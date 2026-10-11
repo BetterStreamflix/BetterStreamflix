@@ -8,6 +8,8 @@ import java.util.Calendar
 enum class SearchSortMode {
     PROVIDER_DEFAULT,
     NEWEST_FIRST,
+    /** History-aware Taste Graph ranking (“For you”). */
+    FOR_YOU,
     ;
 
     companion object {
@@ -34,7 +36,9 @@ object SearchSort {
         }
 
         return when (mode) {
-            SearchSortMode.PROVIDER_DEFAULT -> filtered
+            SearchSortMode.PROVIDER_DEFAULT,
+            SearchSortMode.FOR_YOU,
+            -> filtered
             SearchSortMode.NEWEST_FIRST -> {
                 val shows = mutableListOf<AppAdapter.Item>()
                 val others = mutableListOf<AppAdapter.Item>()

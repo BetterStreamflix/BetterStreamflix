@@ -19,6 +19,10 @@ import com.dskja.betterstreamflix.utils.SearchSortMode
 import com.dskja.betterstreamflix.utils.UserPreferences
 import com.dskja.betterstreamflix.R
 import com.dskja.betterstreamflix.BetterStreamflixApp
+import com.dskja.betterstreamflix.taste.TasteGraph
+import com.dskja.betterstreamflix.taste.TasteMood
+import com.dskja.betterstreamflix.taste.TasteMoodMatcher
+import com.dskja.betterstreamflix.taste.TasteRanker
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -209,6 +213,8 @@ class SearchViewModel(
 
     fun currentYearFilter(): Int? = UserPreferences.searchYearFilter
 
+    fun currentMood(): TasteMood = UserPreferences.searchMood
+
     /** Years present in the current raw result set (local or global). */
     fun yearsInCurrentResults(): List<Int> {
         val items = when (val s = _state.value) {
@@ -239,11 +245,20 @@ class SearchViewModel(
         reapplyOrdering()
     }
 
+    fun setMood(mood: TasteMood) {
+        if (UserPreferences.searchMood == mood) {
+            reapplyOrdering()
+            return
+        }
+        UserPreferences.searchMood = mood
+        reapplyOrdering()
+    }
+
     fun reapplyOrdering() {
         viewModelScope.launch(Dispatchers.IO) {
             when (_state.value) {
                 is State.SuccessSearching, is State.SearchingMore -> {
-                    emitLocalSuccess()
+                    emitLocalSuccess(recordMemory = false)
                 }
                 is State.SuccessGlobalSearching -> {
                     _state.emit(State.SuccessGlobalSearching(orderGlobal(rawGlobalResults)))
@@ -253,31 +268,133 @@ class SearchViewModel(
         }
     }
 
-    private fun orderLocal(items: List<AppAdapter.Item>): List<AppAdapter.Item> =
-        SearchSort.items(items, UserPreferences.searchSortMode, UserPreferences.searchYearFilter)
+    /**
+     * Launch a “more like this” search seeded by TMDb id when available.
+     */
+    fun searchMoreLike(item: AppAdapter.Item) {
+        val title = when (item) {
+            is Movie -> item.title
+            is TvShow -> item.title
+            else -> return
+        }
+        val tmdbId = when (item) {
+            is Movie -> item.tmdbId?.takeIf { it.isNotBlank() }
+            is TvShow -> item.tmdbId?.takeIf { it.isNotBlank() }
+            else -> null
+        }
+        val isTv = item is TvShow
+        searchJob?.cancel()
+        loadMoreJob?.cancel()
+        globalSearchJob?.cancel()
+        searchJob = viewModelScope.launch(Dispatchers.IO) {
+            _state.emit(State.Searching)
+            try {
+                val provider = UserPreferences.currentProvider
+                    ?: run {
+                        rememberSearchOutcome(title, SearchMemories.Outcome.FAILED, global = false)
+                        _state.emit(
+                            State.FailedSearching(
+                                Exception(
+                                    BetterStreamflixApp.instance.getString(
+                                        R.string.error_no_provider_selected,
+                                    ),
+                                ),
+                            ),
+                        )
+                        return@launch
+                    }
+                query = "more like $title"
+                page = 1
+                rawGlobalResults = emptyList()
+                val language = resolveSearchLanguage(provider)
+                val similar = ParentalControlUtils.filterItems(
+                    SearchResultGuard.sanitize(
+                        if (tmdbId != null) {
+                            SearchTmdbAssist.similarToTmdb(tmdbId, isTv, language)
+                        } else {
+                            SearchTmdbAssist.similarTo(title, language)
+                        },
+                    ),
+                )
+                val headerLabel = BetterStreamflixApp.instance.getString(
+                    R.string.search_similar_header,
+                    title,
+                )
+                val merged = buildList {
+                    if (similar.isNotEmpty()) {
+                        add(
+                            Category(name = headerLabel, list = emptyList()).also {
+                                it.identityKey = "search-similar:$title"
+                            },
+                        )
+                        addAll(similar)
+                    }
+                }
+                rawLocalResults = merged
+                rawLocalHasMore = false
+                emitLocalSuccess()
+            } catch (e: CancellationException) {
+                throw e
+            } catch (t: Throwable) {
+                Log.e("SearchViewModel", "searchMoreLike: ", t)
+                rememberSearchOutcome(title, SearchMemories.Outcome.FAILED, global = false)
+                _state.emit(
+                    State.FailedSearching(
+                        (t as? Exception) ?: Exception(t.message ?: t.javaClass.simpleName, t),
+                    ),
+                )
+            }
+        }
+    }
+
+    private fun orderLocal(items: List<AppAdapter.Item>): List<AppAdapter.Item> {
+        val mode = UserPreferences.searchSortMode
+        val year = UserPreferences.searchYearFilter
+        val mood = UserPreferences.searchMood
+        val sortMode = if (mode == SearchSortMode.FOR_YOU) {
+            SearchSortMode.PROVIDER_DEFAULT
+        } else {
+            mode
+        }
+        val yearSorted = SearchSort.items(items, sortMode, year)
+        val app = BetterStreamflixApp.instance.applicationContext
+        val snap = TasteGraph.snapshot(app)
+        val withoutNegatives = yearSorted.filter { item ->
+            if (item !is Movie && item !is TvShow) return@filter true
+            !snap.isNegative(item.searchIdentityKey())
+        }
+        val moodFiltered = if (mood == TasteMood.ALL) {
+            withoutNegatives
+        } else {
+            withoutNegatives.filter { TasteMoodMatcher.matches(it, mood) }
+        }
+        return if (mode == SearchSortMode.FOR_YOU || mood != TasteMood.ALL) {
+            TasteRanker.apply(moodFiltered, snap, mood, query)
+        } else {
+            moodFiltered
+        }
+    }
 
     private fun orderGlobal(rows: List<ProviderResult>): List<ProviderResult> =
         rows.map { pr ->
             when (val st = pr.state) {
                 is ProviderResult.State.Success -> pr.copy(
-                    state = ProviderResult.State.Success(
-                        SearchSort.items(
-                            st.results,
-                            UserPreferences.searchSortMode,
-                            UserPreferences.searchYearFilter,
-                        )
-                    )
+                    state = ProviderResult.State.Success(orderLocal(st.results)),
                 )
                 else -> pr
             }
         }.sortedWith(providerStateComparator)
 
-    private suspend fun emitLocalSuccess() {
-        rememberSearchOutcome(
-            query = query,
-            outcome = SearchMemories.outcomeForLocalResults(rawLocalResults),
-            global = false,
-        )
+    private suspend fun emitLocalSuccess(recordMemory: Boolean = true) {
+        if (recordMemory) {
+            rememberSearchOutcome(
+                query = query,
+                outcome = SearchMemories.outcomeForLocalResults(
+                    rawLocalResults.filter { it is Movie || it is TvShow || it is People },
+                ),
+                global = false,
+            )
+        }
         _state.emit(
             State.SuccessSearching(
                 results = orderLocal(rawLocalResults),
@@ -293,6 +410,15 @@ class SearchViewModel(
     ) {
         val app = BetterStreamflixApp.instance.applicationContext
         SearchMemories.recordOutcome(app, query, outcome, global)
+        if (outcome == SearchMemories.Outcome.SUCCESS) {
+            val top = when {
+                rawLocalResults.isNotEmpty() -> rawLocalResults
+                else -> rawGlobalResults.flatMap { pr ->
+                    (pr.state as? ProviderResult.State.Success)?.results.orEmpty()
+                }
+            }.filter { it is Movie || it is TvShow }
+            TasteGraph.ingestSearchMemory(app, query, top)
+        }
     }
 
     fun search(query: String) {

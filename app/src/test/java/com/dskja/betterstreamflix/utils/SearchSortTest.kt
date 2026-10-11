@@ -39,6 +39,15 @@ class SearchSortTest {
         val sorted = SearchSort.items(listOf(a, b), SearchSortMode.PROVIDER_DEFAULT)
         assertEquals(listOf("a", "b"), sorted.map { (it as Movie).id })
         assertTrue(SearchSortMode.fromKey("newest_first") == SearchSortMode.NEWEST_FIRST)
+        assertTrue(SearchSortMode.fromKey("for_you") == SearchSortMode.FOR_YOU)
+    }
+
+    @Test
+    fun forYouPreservesProviderOrderBeforeTasteRanker() {
+        val a = Movie(id = "a", title = "A")
+        val b = Movie(id = "b", title = "B")
+        val sorted = SearchSort.items(listOf(a, b), SearchSortMode.FOR_YOU)
+        assertEquals(listOf("a", "b"), sorted.map { (it as Movie).id })
     }
 
     @Test
