@@ -16,6 +16,7 @@ import androidx.media3.ui.DefaultTrackNameProvider
 import androidx.media3.ui.SubtitleView
 import com.dskja.betterstreamflix.R
 import com.dskja.betterstreamflix.player.SeriesAudioPreference
+import com.dskja.betterstreamflix.player.SubtitleStudio
 import com.dskja.betterstreamflix.utils.OpenSubtitles
 import com.dskja.betterstreamflix.utils.mediaServers
 import com.dskja.betterstreamflix.utils.SubDL
@@ -94,6 +95,8 @@ abstract class PlayerSettingsView @JvmOverloads constructor(
             field = value
         }
     var subtitleView: SubtitleView? = null
+    /** Dedicated overlay for Subtitle Studio light sample cues (does not steal live tracks). */
+    var subtitleStudioPreview: SubtitleView? = null
     var openSubtitles: List<OpenSubtitles.Subtitle> = listOf()
         set(value) {
             Settings.Subtitle.OpenSubtitles.init(value)
@@ -398,19 +401,26 @@ abstract class PlayerSettingsView @JvmOverloads constructor(
 
     protected var onCaptionStyleChanged: ((CaptionStyleCompat) -> Unit) =
         fun(captionStyle) {
-            val subtitleView = subtitleView ?: return
-
             UserPreferences.captionStyle = captionStyle
-            subtitleView.setStyle(UserPreferences.captionStyle)
-            subtitleView.setPadding(0, 0, 0, UserPreferences.captionMargin.dp(subtitleView.context))
+            subtitleView?.let { live ->
+                live.setStyle(UserPreferences.captionStyle)
+                live.setPadding(0, 0, 0, UserPreferences.captionMargin.dp(live.context))
+            }
+            refreshSubtitleStudioPreview()
         }
 
     protected var onMarginSelected: ((Settings.Subtitle.Style.Margin) -> Unit) =
         fun(margin) {
-            val subtitleView = subtitleView ?: return
-
             UserPreferences.captionMargin = margin.value
-            subtitleView.setPadding(0, 0, 0, UserPreferences.captionMargin.dp(subtitleView.context))
+            subtitleView?.setPadding(0, 0, 0, UserPreferences.captionMargin.dp(context))
+            refreshSubtitleStudioPreview()
+        }
+
+    protected var onStudioPresetSelected: ((Settings.Subtitle.Style.StudioPreset) -> Unit) =
+        fun(presetItem) {
+            SubtitleStudio.applyPreset(presetItem.preset)
+            subtitleView?.let { SubtitleStudio.applyToView(it) }
+            refreshSubtitleStudioPreview()
         }
 
     protected var onFontColorSelected: ((Settings.Subtitle.Style.FontColor) -> Unit) =
@@ -429,11 +439,35 @@ abstract class PlayerSettingsView @JvmOverloads constructor(
 
     protected var onTextSizeSelected: ((Settings.Subtitle.Style.TextSize) -> Unit) =
         fun(textSize) {
-            val subtitleView = subtitleView ?: return
-
             UserPreferences.captionTextSize = textSize.value
-            subtitleView.setFractionalTextSize(SubtitleView.DEFAULT_TEXT_SIZE_FRACTION * UserPreferences.captionTextSize)
+            subtitleView?.setFractionalTextSize(
+                SubtitleView.DEFAULT_TEXT_SIZE_FRACTION * UserPreferences.captionTextSize,
+            )
+            refreshSubtitleStudioPreview()
         }
+
+    protected fun syncSubtitleStudioPreview(setting: Setting) {
+        val preview = subtitleStudioPreview ?: return
+        if (SubtitleStudio.isStudioSettingName(setting.name)) {
+            val sample = context.getString(R.string.subtitle_studio_preview_sample)
+            SubtitleStudio.showPreview(preview, sample)
+        } else {
+            SubtitleStudio.hidePreview(preview)
+        }
+    }
+
+    protected fun refreshSubtitleStudioPreview() {
+        val preview = subtitleStudioPreview ?: return
+        if (preview.visibility != android.view.View.VISIBLE) return
+        SubtitleStudio.showPreview(
+            preview,
+            context.getString(R.string.subtitle_studio_preview_sample),
+        )
+    }
+
+    protected fun hideSubtitleStudioPreview() {
+        subtitleStudioPreview?.let { SubtitleStudio.hidePreview(it) }
+    }
 
     protected var onFontOpacitySelected: ((Settings.Subtitle.Style.FontOpacity) -> Unit) =
         fun(fontOpacity) {
@@ -1044,7 +1078,7 @@ abstract class PlayerSettingsView @JvmOverloads constructor(
                         null
                     )
 
-                    val list: List<Item> = listOf(
+                    val list: List<Item> = StudioPreset.list + listOf(
                         ResetStyle,
                         FontColor,
                         TextSize,
@@ -1056,6 +1090,19 @@ abstract class PlayerSettingsView @JvmOverloads constructor(
                         WindowOpacity,
                         Margin,
                     )
+                }
+
+                /** Subtitle Studio light quick presets (size + color + background). */
+                class StudioPreset(
+                    val preset: SubtitleStudio.LightPreset,
+                ) : Style() {
+                    val isSelected: Boolean
+                        get() = SubtitleStudio.matchesCurrent(preset)
+
+                    companion object {
+                        val list: List<StudioPreset> =
+                            SubtitleStudio.presets.map { StudioPreset(it) }
+                    }
                 }
 
                 class Margin(

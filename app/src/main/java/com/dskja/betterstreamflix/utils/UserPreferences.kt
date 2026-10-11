@@ -211,11 +211,16 @@ object UserPreferences {
         get() = Key.PROVIDER_LANGUAGE.getString()
         set(value) = Key.PROVIDER_LANGUAGE.setString(value)
 
+    /**
+     * Caption text-size multiplier for the active profile (Subtitle Studio light).
+     * Falls back to the legacy device-wide value so existing installs keep their size.
+     */
     var captionTextSize: Float
-        get() = Key.CAPTION_TEXT_SIZE.getFloat()
+        get() = profileScopedFloat(Key.CAPTION_TEXT_SIZE)
+            ?: Key.CAPTION_TEXT_SIZE.getFloat()
             ?: PlayerSettingsView.Settings.Subtitle.Style.TextSize.DEFAULT.value
         set(value) {
-            Key.CAPTION_TEXT_SIZE.setFloat(value)
+            setProfileScopedFloat(Key.CAPTION_TEXT_SIZE, value)
         }
 
     var autoplay: Boolean
@@ -1398,32 +1403,43 @@ object UserPreferences {
             Key.PLAYER_RESIZE_NAME.setString(value.name)
         }
 
+    /**
+     * Caption colors / edge for the active profile (Subtitle Studio light).
+     * Reads profile-scoped keys first, then legacy global keys, then defaults.
+     */
     var captionStyle: CaptionStyleCompat
         get() = CaptionStyleCompat(
-            Key.CAPTION_STYLE_FONT_COLOR.getInt()
+            profileScopedInt(Key.CAPTION_STYLE_FONT_COLOR)
+                ?: Key.CAPTION_STYLE_FONT_COLOR.getInt()
                 ?: PlayerSettingsView.Settings.Subtitle.Style.DEFAULT.foregroundColor,
-            Key.CAPTION_STYLE_BACKGROUND_COLOR.getInt()
+            profileScopedInt(Key.CAPTION_STYLE_BACKGROUND_COLOR)
+                ?: Key.CAPTION_STYLE_BACKGROUND_COLOR.getInt()
                 ?: PlayerSettingsView.Settings.Subtitle.Style.DEFAULT.backgroundColor,
-            Key.CAPTION_STYLE_WINDOW_COLOR.getInt()
+            profileScopedInt(Key.CAPTION_STYLE_WINDOW_COLOR)
+                ?: Key.CAPTION_STYLE_WINDOW_COLOR.getInt()
                 ?: PlayerSettingsView.Settings.Subtitle.Style.DEFAULT.windowColor,
-            Key.CAPTION_STYLE_EDGE_TYPE.getInt()
+            profileScopedInt(Key.CAPTION_STYLE_EDGE_TYPE)
+                ?: Key.CAPTION_STYLE_EDGE_TYPE.getInt()
                 ?: PlayerSettingsView.Settings.Subtitle.Style.DEFAULT.edgeType,
-            Key.CAPTION_STYLE_EDGE_COLOR.getInt()
+            profileScopedInt(Key.CAPTION_STYLE_EDGE_COLOR)
+                ?: Key.CAPTION_STYLE_EDGE_COLOR.getInt()
                 ?: PlayerSettingsView.Settings.Subtitle.Style.DEFAULT.edgeColor,
             PlayerSettingsView.Settings.Subtitle.Style.DEFAULT.typeface
         )
         set(value) {
-            Key.CAPTION_STYLE_FONT_COLOR.setInt(value.foregroundColor)
-            Key.CAPTION_STYLE_BACKGROUND_COLOR.setInt(value.backgroundColor)
-            Key.CAPTION_STYLE_WINDOW_COLOR.setInt(value.windowColor)
-            Key.CAPTION_STYLE_EDGE_TYPE.setInt(value.edgeType)
-            Key.CAPTION_STYLE_EDGE_COLOR.setInt(value.edgeColor)
+            setProfileScopedInt(Key.CAPTION_STYLE_FONT_COLOR, value.foregroundColor)
+            setProfileScopedInt(Key.CAPTION_STYLE_BACKGROUND_COLOR, value.backgroundColor)
+            setProfileScopedInt(Key.CAPTION_STYLE_WINDOW_COLOR, value.windowColor)
+            setProfileScopedInt(Key.CAPTION_STYLE_EDGE_TYPE, value.edgeType)
+            setProfileScopedInt(Key.CAPTION_STYLE_EDGE_COLOR, value.edgeColor)
         }
 
     var captionMargin: Int
-        get() = Key.CAPTION_STYLE_MARGIN.getInt() ?: 24
+        get() = profileScopedInt(Key.CAPTION_STYLE_MARGIN)
+            ?: Key.CAPTION_STYLE_MARGIN.getInt()
+            ?: 24
         set(value) {
-            Key.CAPTION_STYLE_MARGIN.setInt(value)
+            setProfileScopedInt(Key.CAPTION_STYLE_MARGIN, value)
         }
 
     var qualityHeight: Int?
@@ -1734,6 +1750,13 @@ object UserPreferences {
     private fun profileScopedLong(key: Key): Long? =
         readLong(ProfileManager.scopedPrefKey(key.name))
 
+    private fun profileScopedFloat(key: Key): Float? =
+        readFloat(ProfileManager.scopedPrefKey(key.name))
+
+    private fun setProfileScopedFloat(key: Key, value: Float) {
+        prefs.edit { putFloat(ProfileManager.scopedPrefKey(key.name), value) }
+    }
+
     /**
      * Profile-scoped keys never fall back to the unsuffixed default-profile value.
      * That fallback copied parental PINs, age ceilings, and library toggles onto
@@ -1760,6 +1783,12 @@ object UserPreferences {
         if (!prefs.contains(key)) return null
         runCatching { return prefs.getLong(key, 0L) }
         return runCatching { prefs.getString(key, null)?.trim()?.toLongOrNull() }.getOrNull()
+    }
+
+    private fun readFloat(key: String): Float? {
+        if (!prefs.contains(key)) return null
+        runCatching { return prefs.getFloat(key, 0f) }
+        return runCatching { prefs.getString(key, null)?.trim()?.toFloatOrNull() }.getOrNull()
     }
 
     private fun setProfileScopedLong(key: Key, value: Long) {

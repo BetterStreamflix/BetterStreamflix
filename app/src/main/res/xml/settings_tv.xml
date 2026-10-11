@@ -1063,6 +1063,40 @@
                 android:title="@string/settings_high_contrast_title"
                 android:summary="@string/settings_high_contrast_summary"
                 android:defaultValue="false" />
+
+            <PreferenceScreen
+                android:key="screen_subtitle_studio"
+                android:title="@string/subtitle_studio_title"
+                android:summary="@string/subtitle_studio_summary">
+
+                <com.dskja.betterstreamflix.fragments.settings.SubtitleStudioPreviewPreference
+                    android:key="SUBTITLE_STUDIO_PREVIEW"
+                    android:selectable="false" />
+
+                <ListPreference
+                    android:key="SUBTITLE_STUDIO_SIZE"
+                    android:title="@string/subtitle_studio_size_title"
+                    android:entries="@array/subtitle_studio_size_entries"
+                    android:entryValues="@array/subtitle_studio_size_values"
+                    android:defaultValue="1"
+                    app:useSimpleSummaryProvider="true" />
+
+                <ListPreference
+                    android:key="SUBTITLE_STUDIO_FONT_COLOR"
+                    android:title="@string/subtitle_studio_font_color_title"
+                    android:entries="@array/subtitle_studio_font_color_entries"
+                    android:entryValues="@array/subtitle_studio_font_color_values"
+                    android:defaultValue="white"
+                    app:useSimpleSummaryProvider="true" />
+
+                <ListPreference
+                    android:key="SUBTITLE_STUDIO_BACKGROUND"
+                    android:title="@string/subtitle_studio_background_title"
+                    android:entries="@array/subtitle_studio_background_entries"
+                    android:entryValues="@array/subtitle_studio_background_values"
+                    android:defaultValue="128"
+                    app:useSimpleSummaryProvider="true" />
+            </PreferenceScreen>
         </PreferenceCategory>
 
         <PreferenceCategory

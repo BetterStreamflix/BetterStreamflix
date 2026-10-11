@@ -199,6 +199,7 @@ class PlayerSettingsTvView @JvmOverloads constructor(
             Setting.CAPTION_STYLE_MARGIN -> marginAdapter
             else -> settingsAdapter
         }
+        syncSubtitleStudioPreview(setting)
 
         if (setting == Setting.SUBTITLE_OFFSET) {
             focusSelectedSubtitleOffset()
@@ -243,6 +244,7 @@ class PlayerSettingsTvView @JvmOverloads constructor(
 
     fun hide() {
         lastRevealedSetting = null
+        hideSubtitleStudioPreview()
         this.visibility = View.GONE
         onHidden?.invoke()
     }
@@ -370,6 +372,10 @@ class PlayerSettingsTvView @JvmOverloads constructor(
 
                         is Settings.Subtitle.Style -> {
                             when (item) {
+                                is Settings.Subtitle.Style.StudioPreset -> {
+                                    settingsView.onStudioPresetSelected.invoke(item)
+                                    settingsView.displaySettings(Setting.CAPTION_STYLE)
+                                }
                                 Settings.Subtitle.Style.ResetStyle -> {
                                     settingsView.onTextSizeSelected.invoke(Settings.Subtitle.Style.TextSize.DEFAULT)
                                     settingsView.onCaptionStyleChanged.invoke(Settings.Subtitle.Style.DEFAULT)
@@ -679,6 +685,8 @@ class PlayerSettingsTvView @JvmOverloads constructor(
                     )
 
                     is Settings.Subtitle.Style -> when (item) {
+                        is Settings.Subtitle.Style.StudioPreset ->
+                            context.getString(item.preset.titleRes)
                         Settings.Subtitle.Style.ResetStyle -> context.getString(R.string.player_settings_caption_style_reset_style_label)
                         Settings.Subtitle.Style.FontColor -> context.getString(R.string.player_settings_caption_style_font_color_label)
                         Settings.Subtitle.Style.TextSize -> context.getString(R.string.player_settings_caption_style_text_size_label)
@@ -777,6 +785,8 @@ class PlayerSettingsTvView @JvmOverloads constructor(
                     }
 
                     is Settings.Subtitle.Style -> when (item) {
+                        is Settings.Subtitle.Style.StudioPreset ->
+                            context.getString(R.string.subtitle_studio_preset_hint)
                         Settings.Subtitle.Style.ResetStyle -> ""
                         Settings.Subtitle.Style.FontColor -> context.getString(Settings.Subtitle.Style.FontColor.selected.stringId)
                         Settings.Subtitle.Style.TextSize -> context.getString(Settings.Subtitle.Style.TextSize.selected.stringId)
@@ -823,6 +833,11 @@ class PlayerSettingsTvView @JvmOverloads constructor(
                             item.isSelected -> View.VISIBLE
                             else -> View.GONE
                         }
+                        else -> View.GONE
+                    }
+
+                    is Settings.Subtitle.Style.StudioPreset -> when {
+                        item.isSelected -> View.VISIBLE
                         else -> View.GONE
                     }
 
@@ -932,6 +947,7 @@ class PlayerSettingsTvView @JvmOverloads constructor(
                     }
 
                     is Settings.Subtitle.Style -> when (item) {
+                        is Settings.Subtitle.Style.StudioPreset -> View.GONE
                         Settings.Subtitle.Style.ResetStyle -> View.GONE
                         else -> View.VISIBLE
                     }

@@ -1295,6 +1295,8 @@ class SettingsTvFragment : LeanbackPreferenceFragmentCompat() {
             }
         }
 
+        SubtitleStudioSettingsController.bind(this)
+
         findPreference<ListPreference>("APP_LANGUAGE")?.apply {
             entries = AppLanguageManager.buildLanguageEntries(requireContext())
             entryValues = AppLanguageManager.buildLanguageValues(requireContext())
