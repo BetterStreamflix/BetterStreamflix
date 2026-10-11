@@ -39,6 +39,7 @@
     <dimen name="player_settings_panel_min_width">280dp</dimen>
     <dimen name="player_settings_panel_max_width">420dp</dimen>
     <dimen name="detail_episode_list_height">420dp</dimen>
-    <dimen name="continue_watching_poster_height">200dp</dimen>
+    <!-- Comfort Leanback default; Compact/Comfort override at bind via LeanbackDensityPolicy. -->
+    <dimen name="continue_watching_poster_height">240dp</dimen>
     <dimen name="player_settings_mobile_max_width">2000dp</dimen>
 </resources>

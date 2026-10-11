@@ -12,6 +12,16 @@
         <item>kids_bright</item>
     </string-array>
 
+    <!-- TV Leanback poster density (Appearance → Leanback density). -->
+    <string-array name="leanback_density_names">
+        <item>@string/settings_leanback_density_comfort</item>
+        <item>@string/settings_leanback_density_compact</item>
+    </string-array>
+    <string-array name="leanback_density_values">
+        <item>comfort</item>
+        <item>compact</item>
+    </string-array>
+
     <string-array name="catalog_sort_names">
         <item>@string/catalog_sort_default</item>
         <item>@string/catalog_sort_last_release</item>

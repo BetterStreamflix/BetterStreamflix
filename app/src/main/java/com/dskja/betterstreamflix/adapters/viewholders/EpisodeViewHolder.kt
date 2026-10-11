@@ -922,6 +922,7 @@ class EpisodeViewHolder(
 
         binding.ivEpisodeTvShowPoster.apply {
             clipToOutline = true
+            com.dskja.betterstreamflix.ui.LeanbackDensityPolicy.applyShelfPosterHeight(this)
             loadContinueWatchingArtwork(withFallback = true)
             if (ExperimentalMobileDesign.enabled()) {
                 ExpMotion.kenBurns(this)

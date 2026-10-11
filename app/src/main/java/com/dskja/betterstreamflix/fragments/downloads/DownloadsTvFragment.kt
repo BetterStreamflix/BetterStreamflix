@@ -216,7 +216,9 @@ class DownloadsTvFragment : Fragment() {
         librarySpacing?.let { binding.rvDownloads.removeItemDecoration(it) }
         librarySpacing = null
         if (library) {
-            binding.rvDownloads.layoutManager = object : GridLayoutManager(requireContext(), 5) {
+            val libraryCols =
+                com.dskja.betterstreamflix.ui.LeanbackDensityPolicy.downloadsLibraryColumns()
+            binding.rvDownloads.layoutManager = object : GridLayoutManager(requireContext(), libraryCols) {
                 override fun onInterceptFocusSearch(focused: View, direction: Int): View? {
                     if (direction == View.FOCUS_LEFT) {
                         val pos = binding.rvDownloads.getChildAdapterPosition(

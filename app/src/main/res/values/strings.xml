@@ -1434,6 +1434,10 @@
 
     <string name="settings_screen_appearance_summary">Theme, accessibility, immersive mode and screen layout adjustments</string>
     <string name="settings_theme_title">App Theme</string>
+    <string name="settings_leanback_density_title">Leanback density</string>
+    <string name="settings_leanback_density_summary">Compact shows more tiles; Comfort uses larger posters (restarts the app)</string>
+    <string name="settings_leanback_density_comfort">Comfort — larger posters</string>
+    <string name="settings_leanback_density_compact">Compact — more tiles</string>
     <string name="settings_oled_mode_title">OLED mode</string>
     <string name="settings_oled_mode_summary">Replace gray surfaces with true black across the app</string>
     <string name="settings_category_accessibility">Accessibility</string>
