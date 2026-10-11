@@ -70,7 +70,17 @@ object ParentalControlUtils {
         return categories.mapNotNull { category ->
             val filteredItems = filterItems(category.list)
             if (filteredItems.isEmpty()) {
-                null
+                // Keep Series Fast-Forward shelves so the chip stays reachable when empty.
+                if (com.dskja.betterstreamflix.home.SeriesFastForward.supportsShelf(category.name) &&
+                    com.dskja.betterstreamflix.home.SeriesFastForward.isEnabled()
+                ) {
+                    category.copy(list = emptyList()).also { emptyCategory ->
+                        emptyCategory.selectedIndex = 0
+                        emptyCategory.itemSpacing = category.itemSpacing
+                    }
+                } else {
+                    null
+                }
             } else {
                 category.copy(list = filteredItems).also { filteredCategory ->
                     filteredCategory.selectedIndex = category.selectedIndex

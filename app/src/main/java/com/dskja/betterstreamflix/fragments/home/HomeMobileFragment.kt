@@ -143,10 +143,17 @@ class HomeMobileFragment : Fragment() {
     }
 
     override fun onPause() {
+        // Series Fast-Forward: commit visit watermark + unfiltered shelf snapshot.
+        viewModel.commitHomeVisit()
         // Soft-pause featured auto-advance while Home is under the detail back stack
         // (prevents BETTERSTREAMFLIX-1 NavHost NPEs from delayed page callbacks).
         _binding?.rvHome?.let { appAdapter.pauseCategorySwipers(it) }
         super.onPause()
+    }
+
+    /** Shelf chip toggle for “new since last visit”. */
+    fun setSeriesFastForwardEnabled(enabled: Boolean) {
+        viewModel.setSeriesFastForwardEnabled(enabled)
     }
 
     override fun onDestroyView() {

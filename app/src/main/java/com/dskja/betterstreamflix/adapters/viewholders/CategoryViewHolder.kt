@@ -27,6 +27,7 @@ import com.dskja.betterstreamflix.databinding.ItemCategoryMobileBinding
 import com.dskja.betterstreamflix.databinding.ItemCategoryTvBinding
 import com.dskja.betterstreamflix.fragments.home.HomeMobileFragment
 import com.dskja.betterstreamflix.fragments.home.HomeTvFragment
+import com.dskja.betterstreamflix.home.SeriesFastForward
 import com.dskja.betterstreamflix.models.Category
 import com.dskja.betterstreamflix.models.Movie
 import com.dskja.betterstreamflix.models.Show
@@ -206,6 +207,61 @@ class CategoryViewHolder(
         pill.contentDescription = null
     }
 
+    private fun bindSeriesFastForwardChip(
+        chip: TextView,
+        emptyHint: TextView,
+        categoryName: String,
+        listEmpty: Boolean,
+    ) {
+        if (!SeriesFastForward.supportsShelf(categoryName)) {
+            chip.visibility = View.GONE
+            chip.setOnClickListener(null)
+            chip.setOnKeyListener(null)
+            emptyHint.visibility = View.GONE
+            return
+        }
+        val enabled = SeriesFastForward.isEnabled()
+        chip.visibility = View.VISIBLE
+        chip.isSelected = enabled
+        chip.contentDescription = chip.resources.getString(R.string.home_series_fast_forward_cd)
+        chip.setTextColor(
+            chip.resources.getColor(
+                if (enabled) R.color.cinema_text else R.color.cinema_text_soft,
+                chip.context.theme,
+            ),
+        )
+        emptyHint.visibility =
+            if (enabled && listEmpty) View.VISIBLE else View.GONE
+
+        val toggle = View.OnClickListener {
+            ExpMotion.hapticTap(it)
+            val next = !SeriesFastForward.isEnabled()
+            it.isSelected = next
+            it.animate().scaleX(0.94f).scaleY(0.94f).setDuration(90).withEndAction {
+                it.animate().scaleX(1f).scaleY(1f).setDuration(120).start()
+            }.start()
+            val home = context.toActivity()?.getCurrentFragment()
+            when (home) {
+                is HomeMobileFragment -> home.setSeriesFastForwardEnabled(next)
+                is HomeTvFragment -> home.setSeriesFastForwardEnabled(next)
+                else -> {
+                    SeriesFastForward.setEnabled(next)
+                }
+            }
+        }
+        chip.setOnClickListener(toggle)
+        chip.setOnKeyListener { v, keyCode, event ->
+            if (event.action != KeyEvent.ACTION_DOWN) return@setOnKeyListener false
+            when (keyCode) {
+                KeyEvent.KEYCODE_DPAD_CENTER, KeyEvent.KEYCODE_ENTER -> {
+                    toggle.onClick(v)
+                    true
+                }
+                else -> false
+            }
+        }
+    }
+
     private fun displayMobileItem(
         binding: ItemCategoryMobileBinding,
         onMovieClick: ((Movie) -> Unit)?,
@@ -214,9 +270,16 @@ class CategoryViewHolder(
         onTvShowLongClick: ((TvShow) -> Unit)?,
     ) {
         binding.tvCategoryTitle.text = localizedCategoryTitle(category.name)
+        bindSeriesFastForwardChip(
+            chip = binding.chipSeriesFastForward,
+            emptyHint = binding.tvSeriesFastForwardEmpty,
+            categoryName = category.name,
+            listEmpty = category.list.isEmpty(),
+        )
 
         // Empty shelves: hide the horizontal list (parity with TV empty-shelf defense).
         // Home usually filters empties before submit; this guards Search / edge rebinds.
+        // Series Fast-Forward keeps the row visible with chip + empty hint.
         if (category.list.isEmpty()) {
             binding.root.visibility = View.VISIBLE
             binding.rvCategory.visibility = View.GONE
@@ -300,14 +363,30 @@ class CategoryViewHolder(
         onTvShowLongClick: ((TvShow) -> Unit)?,
     ) {
         binding.tvCategoryTitle.text = localizedCategoryTitle(category.name)
+        bindSeriesFastForwardChip(
+            chip = binding.chipSeriesFastForward,
+            emptyHint = binding.tvSeriesFastForwardEmpty,
+            categoryName = category.name,
+            listEmpty = category.list.isEmpty(),
+        )
 
         // Never keep empty CATEGORY shelves on screen — title-only rows still trap Leanback.
         // Search Global omits empty Success shelves; Home should not submit empties either.
+        // Series Fast-Forward is the exception: keep title + focusable chip so the filter
+        // can be turned off when the filtered list is empty.
         if (category.list.isEmpty()) {
-            binding.root.visibility = View.GONE
-            binding.root.isFocusable = false
-            binding.root.isFocusableInTouchMode = false
-            binding.root.descendantFocusability = ViewGroup.FOCUS_BLOCK_DESCENDANTS
+            val keepForFastForward = SeriesFastForward.supportsShelf(category.name)
+            if (!keepForFastForward) {
+                binding.root.visibility = View.GONE
+                binding.root.isFocusable = false
+                binding.root.isFocusableInTouchMode = false
+                binding.root.descendantFocusability = ViewGroup.FOCUS_BLOCK_DESCENDANTS
+            } else {
+                binding.root.visibility = View.VISIBLE
+                binding.root.isFocusable = false
+                binding.root.isFocusableInTouchMode = false
+                binding.root.descendantFocusability = ViewGroup.FOCUS_AFTER_DESCENDANTS
+            }
             binding.hgvCategory.apply {
                 // Clear DPAD focus before emptying. Never set adapter = null: Fire OS
                 // Leanback throws IllegalStateException when a nested HorizontalGridView
