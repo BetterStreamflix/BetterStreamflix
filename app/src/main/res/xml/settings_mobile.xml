@@ -239,6 +239,12 @@
                 app:iconSpaceReserved="false" />
 
             <Preference
+                android:key="HOME_SHELF_PINS"
+                android:title="@string/settings_home_shelf_pins_title"
+                android:summary="@string/settings_home_shelf_pins_summary_empty"
+                app:iconSpaceReserved="false" />
+
+            <Preference
                 android:key="CLEAR_RECENTLY_WATCHED"
                 android:title="@string/settings_clear_recently_watched_title"
                 android:summary="@string/settings_clear_recently_watched_summary"

@@ -5,6 +5,7 @@ import android.os.Looper
 import android.view.KeyEvent
 import android.view.View
 import android.view.ViewGroup
+import android.widget.ImageButton
 import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.core.os.postDelayed
@@ -27,6 +28,8 @@ import com.dskja.betterstreamflix.databinding.ItemCategoryMobileBinding
 import com.dskja.betterstreamflix.databinding.ItemCategoryTvBinding
 import com.dskja.betterstreamflix.fragments.home.HomeMobileFragment
 import com.dskja.betterstreamflix.fragments.home.HomeTvFragment
+import com.dskja.betterstreamflix.home.HomeShelfLayout
+import com.dskja.betterstreamflix.home.HomeShelfPinUi
 import com.dskja.betterstreamflix.home.SeriesFastForward
 import com.dskja.betterstreamflix.models.Category
 import com.dskja.betterstreamflix.models.Movie
@@ -146,15 +149,61 @@ class CategoryViewHolder(
     /** Map stable English Category constants to locale strings when they still leak into UI. */
     private fun localizedCategoryTitle(name: String): String {
         val res = itemView.resources
+        val key = category.identityKey?.trim().takeIf { !it.isNullOrEmpty() } ?: name
         return when {
-            Category.isFeaturedName(name) -> res.getString(R.string.home_featured_title)
-            name == Category.CONTINUE_WATCHING -> res.getString(R.string.home_continue_watching)
-            name == Category.NEXT_EPISODES -> res.getString(R.string.home_next_episodes)
-            name == Category.NEW_THIS_WEEK -> res.getString(R.string.home_new_this_week)
-            name == Category.RECENTLY_WATCHED -> res.getString(R.string.home_recently_watched)
-            name == Category.FAVORITE_MOVIES -> res.getString(R.string.home_favorite_movies)
-            name == Category.FAVORITE_TV_SHOWS -> res.getString(R.string.home_favorite_tv_shows)
+            Category.isFeaturedName(key) || Category.isFeaturedName(name) ->
+                res.getString(R.string.home_featured_title)
+            key == Category.CONTINUE_WATCHING -> res.getString(R.string.home_continue_watching)
+            key == Category.NEXT_EPISODES -> res.getString(R.string.home_next_episodes)
+            key == Category.NEW_THIS_WEEK -> res.getString(R.string.home_new_this_week)
+            key == Category.FAMILY_FRIDAY -> res.getString(R.string.home_family_friday)
+            key == Category.RECENTLY_WATCHED -> res.getString(R.string.home_recently_watched)
+            key == Category.RECENTLY_ADDED -> res.getString(R.string.home_recently_added)
+            key == Category.HOME_LIVE || key == Category.HOME_LIVE_ID ->
+                res.getString(R.string.home_live_shelf)
+            key == Category.DOWNLOADS || key == Category.DOWNLOADS_ID ->
+                res.getString(R.string.home_downloads_shelf)
+            key == Category.SMART_CHILL_EVENING -> res.getString(R.string.home_smart_chill_evening)
+            key == Category.SMART_WITH_KIDS -> res.getString(R.string.home_smart_with_kids)
+            key == Category.SMART_DE_AUDIO -> res.getString(R.string.home_smart_de_audio)
+            key == Category.FAVORITE_MOVIES -> res.getString(R.string.home_favorite_movies)
+            key == Category.FAVORITE_TV_SHOWS -> res.getString(R.string.home_favorite_tv_shows)
             else -> name
+        }
+    }
+
+    private fun isHomeShelfContext(): Boolean {
+        val fragment = context.toActivity()?.getCurrentFragment()
+        return fragment is HomeMobileFragment || fragment is HomeTvFragment
+    }
+
+    private fun bindShelfPin(button: ImageButton?) {
+        val btn = button ?: return
+        if (!isHomeShelfContext() || !HomeShelfLayout.isPinnable(category)) {
+            btn.visibility = View.GONE
+            btn.setOnClickListener(null)
+            return
+        }
+        val shelfId = HomeShelfLayout.shelfId(category)
+        val pinned = HomeShelfLayout.isPinned(shelfId)
+        btn.visibility = View.VISIBLE
+        btn.isSelected = pinned
+        btn.alpha = if (pinned) 1f else 0.78f
+        val tint = if (pinned) {
+            MaterialColors.getColor(btn, androidx.appcompat.R.attr.colorPrimary)
+        } else {
+            context.getColor(R.color.cinema_text_muted)
+        }
+        btn.imageTintList = ColorStateList.valueOf(tint)
+        btn.contentDescription = if (pinned) {
+            context.getString(R.string.home_shelf_unpin_cd)
+        } else {
+            context.getString(R.string.home_shelf_pin_cd)
+        }
+        btn.setOnClickListener {
+            ExpMotion.hapticTap(it)
+            HomeShelfPinUi.applyToggle(context, shelfId)
+            bindShelfPin(btn)
         }
     }
 
@@ -276,6 +325,7 @@ class CategoryViewHolder(
             categoryName = category.name,
             listEmpty = category.list.isEmpty(),
         )
+        bindShelfPin(binding.btnShelfPin)
 
         // Empty shelves: hide the horizontal list (parity with TV empty-shelf defense).
         // Home usually filters empties before submit; this guards Search / edge rebinds.
@@ -369,6 +419,7 @@ class CategoryViewHolder(
             categoryName = category.name,
             listEmpty = category.list.isEmpty(),
         )
+        bindShelfPin(binding.btnShelfPin)
 
         // Never keep empty CATEGORY shelves on screen — title-only rows still trap Leanback.
         // Search Global omits empty Success shelves; Home should not submit empties either.

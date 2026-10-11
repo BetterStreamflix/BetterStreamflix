@@ -90,6 +90,9 @@ class Category(
         const val FAMILY_FRIDAY = "Family Friday"
         /** Watchlist calendar — episodes airing this locale week (day-major strip). */
         const val NEW_THIS_WEEK = "New This Week"
+        /** Offline Downloads ready strip on Home (pinnable; post-Remix rest). */
+        const val DOWNLOADS = "Downloads"
+        const val DOWNLOADS_ID = "home_downloads"
 
         /** True for the Featured constant or a blank legacy name. */
         fun isFeaturedName(name: String?): Boolean {

@@ -411,6 +411,20 @@ class HomeMobileFragment : Fragment() {
             ?.also { it.name = getString(R.string.home_family_friday) }
 
         categories
+            .find {
+                it.name == Category.DOWNLOADS || it.identityKey == Category.DOWNLOADS_ID
+            }
+            ?.also {
+                it.name = getString(R.string.home_downloads_shelf)
+                it.list.forEach { show ->
+                    when (show) {
+                        is Movie -> show.itemType = AppAdapter.Type.MOVIE_MOBILE_ITEM
+                        is TvShow -> show.itemType = AppAdapter.Type.TV_SHOW_MOBILE_ITEM
+                    }
+                }
+            }
+
+        categories
             .find { it.name == Category.FAVORITE_MOVIES }
             ?.also { it.name = getString(R.string.home_favorite_movies) }
 

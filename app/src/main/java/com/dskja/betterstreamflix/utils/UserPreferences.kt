@@ -1021,6 +1021,14 @@ object UserPreferences {
         }
 
     /**
+     * JSON array of up to 3 Home shelf ids pinned under Featured (Shelf Pinning).
+     * Profile-scoped. Applied after Remix Home block order.
+     */
+    var homeShelfPinsJson: String
+        get() = profileScopedString(Key.HOME_SHELF_PINS_JSON).orEmpty()
+        set(value) = setProfileScopedString(Key.HOME_SHELF_PINS_JSON, value.trim())
+
+    /**
      * Series Fast-Forward: when true, Next Episodes / Favorite TV shelves keep
      * only titles new since the last Home visit watermark.
      */
@@ -1752,6 +1760,7 @@ object UserPreferences {
         SHOW_SMART_COLLECTIONS,
         SHOW_WATCHLIST_WEEK,
         HOME_SHELF_BLOCK_ORDER,
+        HOME_SHELF_PINS_JSON,
         SERIES_FAST_FORWARD_ENABLED,
         HOME_LAST_VISIT_AT_MS,
         HOME_VISIT_NEXT_EPISODE_IDS,

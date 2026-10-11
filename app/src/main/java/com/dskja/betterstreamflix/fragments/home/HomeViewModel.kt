@@ -29,6 +29,8 @@ import com.dskja.betterstreamflix.utils.UserDataCache.toMovie
 import com.dskja.betterstreamflix.utils.UserDataCache.toTvShow
 import com.dskja.betterstreamflix.familyfriday.FamilyFridayShelf
 import com.dskja.betterstreamflix.home.HomeRemix
+import com.dskja.betterstreamflix.home.HomeShelfCompanions
+import com.dskja.betterstreamflix.home.HomeShelfLayout
 import com.dskja.betterstreamflix.home.SeriesFastForward
 import com.dskja.betterstreamflix.smartcollections.SmartCollectionsBuilder
 import com.dskja.betterstreamflix.utils.LiveHubCatalog
@@ -373,15 +375,18 @@ class HomeViewModel(
                     continueWatching = mergedCw,
                 )
 
+                fun stamp(category: Category): Category =
+                    HomeShelfLayout.stampIdentity(category, category.name)
+
                 // Kids Friday ritual — catalog suggestions, independent of Smart Collections.
                 val familyFriday = FamilyFridayShelf.build(
                     catalogCategories = state.categories,
-                )
+                )?.let(::stamp)
 
                 val watchlistWeek = WatchlistWeekBuilder.build(
                     context = BetterStreamflixApp.instance.applicationContext,
                     favoriteTvShows = history.favoriteTvShows,
-                )
+                )?.let(::stamp)
 
                 val continueShelves = listOfNotNull(
                     Category(
@@ -389,7 +394,7 @@ class HomeViewModel(
                         list = mergedCw,
                     ).takeIf {
                         UserPreferences.showContinueWatching && mergedCw.isNotEmpty()
-                    },
+                    }?.let(::stamp),
                     familyFriday,
                     Category(
                         name = Category.NEXT_EPISODES,
@@ -401,48 +406,62 @@ class HomeViewModel(
                                 unfilteredCount = nextDeduped.size,
                                 filteredCount = nextFiltered.size,
                             )
-                    },
+                    }?.let(::stamp),
                     watchlistWeek,
                     Category(
                         name = Category.RECENTLY_WATCHED,
                         list = rwDeduped,
                     ).takeIf {
                         UserPreferences.showRecentlyWatched && rwDeduped.isNotEmpty()
-                    },
-                    recentlyAdded,
+                    }?.let(::stamp),
+                    recentlyAdded?.let(::stamp),
                 )
                 val liveShelf = buildHomeLiveShelf(history.favoriteTvShows)
-                val collectionShelves = smartShelves
+                val collectionShelves = smartShelves.map(::stamp)
                 val remixedLibrary = HomeRemix.apply(
                     categories = continueShelves + listOfNotNull(liveShelf) + collectionShelves,
                     order = HomeRemix.parseOrder(UserPreferences.homeShelfBlockOrder),
                 )
+                val downloadsShelf = HomeShelfCompanions.downloadsShelf(
+                    BetterStreamflixApp.instance.applicationContext,
+                )
 
                 val categories = ParentalControlUtils.filterCategories(
-                    listOfNotNull(featuredCategory) +
+                    listOfNotNull(featuredCategory?.let(::stamp)) +
                         remixedLibrary +
+                        listOfNotNull(downloadsShelf) +
                         listOf(
-                            Category(
-                                name = Category.FAVORITE_MOVIES,
-                                list = history.favoritesMovies,
+                            stamp(
+                                Category(
+                                    name = Category.FAVORITE_MOVIES,
+                                    list = history.favoritesMovies,
+                                ),
                             ),
-                            Category(
-                                name = Category.FAVORITE_TV_SHOWS,
-                                list = favoriteTvFiltered,
+                            stamp(
+                                Category(
+                                    name = Category.FAVORITE_TV_SHOWS,
+                                    list = favoriteTvFiltered,
+                                ),
                             ),
                         ) +
                         com.dskja.betterstreamflix.platform.ContinueWatchingMerger
                             .filterProviderCategories(state.categories)
                             .filter { !Category.isFeaturedName(it.name) }
                             .map { category ->
-                                category.copy(
-                                    list = category.list.map(::mergeItem)
+                                stamp(
+                                    category.copy(
+                                        list = category.list.map(::mergeItem),
+                                    ),
                                 )
                             }
                 )
 
-                State.SuccessLoading(
+                // Remix orders blocks; Shelf Pinning floats up to 3 shelves under Featured.
+                val ordered = HomeShelfLayout.apply(
                     HomeCatalogPipeline.ensureFeaturedShelf(categories),
+                )
+                State.SuccessLoading(
+                    ordered,
                     providerWarning = state.providerWarning,
                     watchlistDigestEpisodes = history.watchlistDigestEpisodes,
                 )
