@@ -161,6 +161,13 @@
                 <data android:scheme="betterstreamflix" android:host="resolve"/>
                 <data android:scheme="streamflix" android:host="resolve"/>
             </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+                <category android:name="android.intent.category.BROWSABLE"/>
+                <data android:scheme="betterstreamflix" android:host="list"/>
+                <data android:scheme="streamflix" android:host="list"/>
+            </intent-filter>
         </activity>
 
         <activity

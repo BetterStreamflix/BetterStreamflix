@@ -111,6 +111,10 @@ class FavoritesMobileFragment : Fragment() {
             ExpMotion.hapticTap(it)
             showSortDialog()
         }
+        binding.btnFavoritesShare.setOnClickListener {
+            ExpMotion.hapticTap(it)
+            com.dskja.betterstreamflix.sync.SharedWatchlistUi.shareCurrentList(this)
+        }
         setRearrangeMode(false)
 
         viewLifecycleOwner.lifecycleScope.launch {

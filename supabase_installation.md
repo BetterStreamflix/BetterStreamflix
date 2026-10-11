@@ -100,6 +100,16 @@ Streamflix keeps its normal local database and uses Supabase as an additional sy
 - signing out stops synchronization but does not clear local data;
 - changing to a different signed-in account is blocked when the existing local state belongs to another account, preventing that data from being silently overwritten or uploaded to the wrong account.
 
+## Shareable watchlist links
+
+After the shared-watchlist migration is applied (included in **Copy database setup SQL** and `supabase/migrations/`), signed-in users can publish a snapshot of their Favorites from the Favorites screen (**Share list**). The app creates or updates one `shared_watchlists` row for the account, replaces `shared_watchlist_items`, and shares a deep link:
+
+`betterstreamflix://list/<share_token>`
+
+Opening that link on Mobile or TV fetches the list through the `get_shared_watchlist` RPC (works with the publishable/anon key; no need to sign in as the owner) and can import titles into local Favorites. Unknown providers on the receiving device are skipped. If the device is offline or Supabase is not configured yet, the token is queued and imported later when connection and configuration are available.
+
+Personal cross-device sync continues to use `user_media_state`. Shared lists are a separate snapshot for link sharing; they do not replace Account & sync.
+
 ## Troubleshooting
 
 ### “Configure Supabase before using account sync”

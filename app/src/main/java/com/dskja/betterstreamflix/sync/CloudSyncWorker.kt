@@ -25,6 +25,10 @@ class CloudSyncWorker(
                     val client = SupabaseProvider.initializeForProfile(applicationContext, profileId)
                         ?: return Result.success()
                     client.auth.awaitInitialization()
+                    // Shared-list imports work with the publishable key alone.
+                    runCatching {
+                        SharedWatchlistRepository.flushPendingImports(applicationContext)
+                    }
                     val sessionUserId = client.auth.currentSessionOrNull()?.user?.id
                     if (sessionUserId == null ||
                         (expectedUserId != null && sessionUserId != expectedUserId)

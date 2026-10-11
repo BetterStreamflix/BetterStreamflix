@@ -7,6 +7,23 @@
     android:background="?attr/app_background_color">
 
     <Button
+        android:id="@+id/btn_favorites_share"
+        android:layout_width="wrap_content"
+        android:layout_height="48dp"
+        android:layout_marginTop="8dp"
+        android:layout_marginEnd="28dp"
+        android:background="@drawable/bg_favorites_action_tv"
+        android:backgroundTint="@null"
+        android:paddingStart="18dp"
+        android:paddingEnd="18dp"
+        android:stateListAnimator="@animator/item_season_tv_zoom"
+        android:text="@string/shared_watchlist_share_action"
+        android:textColor="@color/favorites_action_text_tv"
+        android:textStyle="bold"
+        app:layout_constraintEnd_toStartOf="@id/btn_favorites_reorder_mode"
+        app:layout_constraintTop_toTopOf="parent" />
+
+    <Button
         android:id="@+id/btn_favorites_reorder_mode"
         android:layout_width="wrap_content"
         android:layout_height="48dp"
@@ -45,7 +62,7 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         app:barrierDirection="bottom"
-        app:constraint_referenced_ids="btn_favorites_reorder_mode,btn_favorites_reorder" />
+        app:constraint_referenced_ids="btn_favorites_share,btn_favorites_reorder_mode,btn_favorites_reorder" />
 
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/rv_favorites"

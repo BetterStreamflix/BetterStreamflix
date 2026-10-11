@@ -91,7 +91,7 @@ class FavoritesTvFragment : Fragment() {
                         val position = itemView?.let(binding.rvFavorites::getChildAdapterPosition)
                             ?: RecyclerView.NO_POSITION
                         if (isInFirstGridRow(position)) {
-                            return binding.btnFavoritesReorderMode
+                            return binding.btnFavoritesShare
                         }
                     }
                     if (direction == View.FOCUS_LEFT) {
@@ -111,6 +111,9 @@ class FavoritesTvFragment : Fragment() {
         }
         binding.btnFavoritesReorder.setOnClickListener { showSortDialog() }
         binding.btnFavoritesReorderMode.setOnClickListener { setRearrangeMode(!rearrangeMode) }
+        binding.btnFavoritesShare.setOnClickListener {
+            com.dskja.betterstreamflix.sync.SharedWatchlistUi.shareCurrentList(this)
+        }
         wireFavoriteActionFocus()
         requireActivity().onBackPressedDispatcher.addCallback(viewLifecycleOwner, rearrangeBackCallback)
         setRearrangeMode(false)
@@ -123,8 +126,13 @@ class FavoritesTvFragment : Fragment() {
     }
 
     private fun wireFavoriteActionFocus() {
-        TvFocusChain.linkHorizontal(binding.btnFavoritesReorderMode, binding.btnFavoritesReorder)
-        binding.btnFavoritesReorderMode.nextFocusLeftId = R.id.nav_main
+        TvFocusChain.linkHorizontal(
+            binding.btnFavoritesShare,
+            binding.btnFavoritesReorderMode,
+            binding.btnFavoritesReorder,
+        )
+        binding.btnFavoritesShare.nextFocusLeftId = R.id.nav_main
+        binding.btnFavoritesShare.nextFocusDownId = binding.rvFavorites.id
         binding.btnFavoritesReorderMode.nextFocusDownId = binding.rvFavorites.id
         binding.btnFavoritesReorder.nextFocusDownId = binding.rvFavorites.id
     }

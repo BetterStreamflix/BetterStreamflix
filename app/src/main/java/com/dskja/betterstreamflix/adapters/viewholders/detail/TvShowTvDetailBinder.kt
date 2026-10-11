@@ -531,17 +531,14 @@ internal fun TvShowViewHolder.bindTvShowTvDetail(binding: ContentTvShowTvBinding
             ExpMotion.hapticTap(it)
             checkProviderAndRun {
                 itemView.findViewTreeLifecycleOwner()?.lifecycleScope?.launch(Dispatchers.IO) {
-                    val dao = database.tvShowDao()
-                    val current = dao.getById(tvShow.id)?.isFavorite ?: false
-                    val newValue = !current
-                    val resolvedTvShow = ArtworkRepair.resolveTvShowForFavorite(context, tvShow, newValue)
-
-                    dao.upsertFavorite(resolvedTvShow, newValue)
-                    com.dskja.betterstreamflix.platform.simkl.SimklSyncHooks.onListToggle(
-                        add = newValue,
-                        imdbId = tvShow.imdbId,
-                        tmdbId = tvShow.tmdbId,
-                        isTv = true,
+                    val provider = UserPreferences.currentProvider ?: return@launch
+                    val newValue = !(database.tvShowDao().getById(tvShow.id)?.isFavorite ?: false)
+                    val resolvedTvShow = com.dskja.betterstreamflix.sync.FavoriteMutations.setTvShowFavorite(
+                        context = context,
+                        provider = provider,
+                        tvShow = tvShow,
+                        favorite = newValue,
+                        database = database,
                     )
 
                     withContext(Dispatchers.Main) {

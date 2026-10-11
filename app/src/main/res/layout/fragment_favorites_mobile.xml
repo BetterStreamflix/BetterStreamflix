@@ -46,7 +46,20 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         app:barrierDirection="start"
-        app:constraint_referenced_ids="btn_favorites_sort,btn_favorites_edit,btn_favorites_remove" />
+        app:constraint_referenced_ids="btn_favorites_share,btn_favorites_sort,btn_favorites_edit,btn_favorites_remove" />
+
+    <ImageButton
+        android:id="@+id/btn_favorites_share"
+        android:layout_width="48dp"
+        android:layout_height="48dp"
+        android:background="?attr/selectableItemBackgroundBorderless"
+        android:contentDescription="@string/shared_watchlist_share_action"
+        android:padding="12dp"
+        android:scaleType="centerInside"
+        android:src="@drawable/ic_detail_share"
+        android:tint="?android:attr/textColorPrimary"
+        app:layout_constraintEnd_toStartOf="@id/btn_favorites_sort"
+        app:layout_constraintTop_toTopOf="parent" />
 
     <ImageButton
         android:id="@+id/btn_favorites_sort"
