@@ -367,10 +367,11 @@ class HomeMobileFragment : Fragment() {
             ?.also { it.name = getString(R.string.home_favorite_tv_shows) }
 
         appAdapter.onSupportBannerClickListener = {
+            com.dskja.betterstreamflix.support.SupportPromptPolicy.openHomeCard()
             runCatching { findNavController().navigate(R.id.support) }
         }
         appAdapter.onSupportBannerDismissListener = {
-            UserPreferences.homeSupportCardDismissed = true
+            com.dskja.betterstreamflix.support.SupportPromptPolicy.dismissHomeCard()
             val withoutBanner = appAdapter.items.filterNot { it is com.dskja.betterstreamflix.support.SupportBannerItem }
             appAdapter.submitList(withoutBanner)
         }
@@ -422,7 +423,7 @@ class HomeMobileFragment : Fragment() {
             val insertAfter = category.name == getString(R.string.home_continue_watching) ||
                 (Category.isFeaturedName(category.name) && !hasContinueWatching)
             if (insertAfter &&
-                !UserPreferences.homeSupportCardDismissed &&
+                com.dskja.betterstreamflix.support.SupportPromptPolicy.shouldShowHomeCard() &&
                 homeItems.none { it is com.dskja.betterstreamflix.support.SupportBannerItem }
             ) {
                 homeItems.add(
@@ -434,7 +435,7 @@ class HomeMobileFragment : Fragment() {
         }
 
         // Fallback: if no featured/continue rows, append near the top after first category.
-        if (!UserPreferences.homeSupportCardDismissed &&
+        if (com.dskja.betterstreamflix.support.SupportPromptPolicy.shouldShowHomeCard() &&
             homeItems.none { it is com.dskja.betterstreamflix.support.SupportBannerItem } &&
             homeItems.isNotEmpty()
         ) {
@@ -469,7 +470,8 @@ class HomeMobileFragment : Fragment() {
     private fun homeUnchanged(categories: List<Category>): Boolean {
         val signature = HomeCatalogPipeline.homeBindSignature(categories) +
             "\n" + (UserPreferences.currentProvider?.name ?: "") +
-            "\n" + UserPreferences.homeSupportCardDismissed
+            "\n" + com.dskja.betterstreamflix.support.SupportPromptPolicy.shouldShowHomeCard() +
+            "\n" + UserPreferences.supportEpisodesWatchedCount
         if (signature == homeBindSignature && appAdapter.items.isNotEmpty()) return true
         homeBindSignature = signature
         return false
