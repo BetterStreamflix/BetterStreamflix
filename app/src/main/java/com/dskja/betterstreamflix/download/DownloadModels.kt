@@ -46,6 +46,8 @@ enum class DownloadErrorCode {
     WIFI_REQUIRED,
     /** Soft hold while free space / soft-limit is exhausted. */
     LOW_STORAGE,
+    /** Smart Downloads per-series unwatched quota has no free slots. */
+    SERIES_QUOTA,
     EXPIRED,
     /** Provider/CDN returned HTTP 404 — content removed or bad resolve URL. */
     NOT_FOUND,

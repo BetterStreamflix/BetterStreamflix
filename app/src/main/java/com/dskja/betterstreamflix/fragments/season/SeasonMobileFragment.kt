@@ -6,7 +6,6 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.Toast
-import androidx.appcompat.app.AlertDialog
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.flowWithLifecycle
@@ -199,54 +198,23 @@ class SeasonMobileFragment : Fragment() {
                 }
                 return@setOnClickListener
             }
-            val confirm = if (ExperimentalMobileDesign.enabled()) {
-                com.google.android.material.dialog.MaterialAlertDialogBuilder(requireContext())
-            } else {
-                AlertDialog.Builder(requireContext())
-            }
-            val confirmMessage = getString(R.string.season_download_confirm, episodes.size)
-            val glass = if (ExperimentalMobileDesign.enabled()) {
-                com.dskja.betterstreamflix.utils.ExpDialogChrome.buildGlassMessage(
-                    requireContext(),
-                    confirmMessage,
+            // One-tap season → Smart-Download queue (quota checked inside enqueueSeason).
+            viewLifecycleOwner.lifecycleScope.launch {
+                val tvShow = withContext(Dispatchers.IO) {
+                    database?.tvShowDao()?.getById(args.tvShowId)
+                } ?: TvShow(
+                    id = args.tvShowId,
+                    title = viewModel.tvShowTitle.ifBlank {
+                        episodes.firstOrNull()?.tvShow?.title.orEmpty()
+                    },
                 )
-            } else {
-                null
+                DownloadOptionsController.enqueueSeason(
+                    this@SeasonMobileFragment,
+                    tvShow,
+                    viewModel.seasonNumber,
+                    episodes,
+                )
             }
-            if (glass != null) confirm.setView(glass.root)
-            else confirm.setMessage(confirmMessage)
-            confirm
-                .setPositiveButton(android.R.string.ok) { _, _ ->
-                    ExpMotion.hapticTap(binding.root)
-                    viewLifecycleOwner.lifecycleScope.launch {
-                        val tvShow = withContext(Dispatchers.IO) {
-                            database?.tvShowDao()?.getById(args.tvShowId)
-                        } ?: TvShow(
-                            id = args.tvShowId,
-                            title = viewModel.tvShowTitle.ifBlank {
-                                episodes.firstOrNull()?.tvShow?.title.orEmpty()
-                            },
-                        )
-                        DownloadOptionsController.enqueueSeason(
-                            this@SeasonMobileFragment,
-                            tvShow,
-                            viewModel.seasonNumber,
-                            episodes,
-                        )
-                    }
-                }
-                .setNegativeButton(android.R.string.cancel, null)
-                .create()
-                .also { dialog ->
-                    dialog.setOnShowListener {
-                        if (glass != null) {
-                            com.dskja.betterstreamflix.utils.ExpDialogChrome.polishGlassMessageShown(dialog, glass)
-                        } else {
-                            com.dskja.betterstreamflix.utils.ExpDialogChrome.polishButtons(dialog)
-                        }
-                    }
-                    dialog.show()
-                }
         }
 
         binding.rvEpisodes.apply {

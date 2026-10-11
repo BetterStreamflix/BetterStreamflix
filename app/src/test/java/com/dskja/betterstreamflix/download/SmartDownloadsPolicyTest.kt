@@ -94,6 +94,34 @@ class SmartDownloadsPolicyTest {
         assertEquals(1, SmartDownloadsPolicy.seriesOccupancy(listOf(a, b), keyA))
     }
 
+    @Test
+    fun seasonEnqueueBudgetUsesQuotaSlotsOnly() {
+        assertEquals(
+            3,
+            SmartDownloadsPolicy.seasonEnqueueBudget(
+                missingInSeason = 12,
+                occupancy = 0,
+                quota = 3,
+            ),
+        )
+        assertEquals(
+            0,
+            SmartDownloadsPolicy.seasonEnqueueBudget(
+                missingInSeason = 12,
+                occupancy = 3,
+                quota = 3,
+            ),
+        )
+        assertEquals(
+            5,
+            SmartDownloadsPolicy.seasonEnqueueBudget(
+                missingInSeason = 5,
+                occupancy = 0,
+                quota = 10,
+            ),
+        )
+    }
+
     private fun sampleEpisode(
         showId: String = "show-a",
         state: DownloadItemState = DownloadItemState.QUEUED,

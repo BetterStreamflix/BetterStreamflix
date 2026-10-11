@@ -291,6 +291,36 @@ object DownloadOptionsController {
                 maybeRequestNotifications(activity)
                 notifyUser(activity, activity.getString(R.string.downloads_started))
             }
+            is DownloadEnqueueOutcome.SeasonStarted -> {
+                maybeRequestNotifications(activity)
+                val message = when {
+                    outcome.stoppedLowStorage && outcome.started < outcome.total ->
+                        activity.getString(
+                            R.string.download_season_partial_storage,
+                            outcome.started,
+                            outcome.total,
+                        )
+                    outcome.skippedQuota > 0 ->
+                        activity.getString(
+                            R.string.download_season_partial_quota,
+                            outcome.started,
+                            outcome.total,
+                        )
+                    outcome.started < outcome.total ->
+                        activity.getString(
+                            R.string.download_season_partial,
+                            outcome.started,
+                            outcome.total,
+                        )
+                    else ->
+                        activity.getString(
+                            R.string.download_season_complete_queued,
+                            outcome.started,
+                        )
+                }
+                notifyUser(activity, message)
+                onNavigateDownloads()
+            }
             is DownloadEnqueueOutcome.AlreadyActive -> {
                 notifyUser(activity, activity.getString(R.string.downloads_already_active))
                 onNavigateDownloads()
@@ -586,6 +616,8 @@ object DownloadOptionsController {
             DownloadErrorCode.NOSPACE,
             DownloadErrorCode.LOW_STORAGE,
             -> R.string.download_error_nospace
+            // Prefer Failed.message (includes quota size) via fallback below.
+            DownloadErrorCode.SERIES_QUOTA -> null
             DownloadErrorCode.WIFI_REQUIRED -> R.string.download_error_wifi
             DownloadErrorCode.EXPIRED -> R.string.download_error_expired
             DownloadErrorCode.NOT_FOUND -> R.string.download_error_not_found

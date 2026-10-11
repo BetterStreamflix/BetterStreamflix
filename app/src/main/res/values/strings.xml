@@ -1863,6 +1863,10 @@
     <string name="download_error_empty_response">The provider returned an empty response. Try another server or check your connection.</string>
     <string name="download_error_no_episodes_queued">Could not queue any episodes for download.</string>
     <string name="download_season_partial">Queued %1$d of %2$d episodes</string>
+    <string name="download_season_partial_quota">Queued %1$d of %2$d episodes (series quota)</string>
+    <string name="download_season_partial_storage">Queued %1$d of %2$d episodes (storage limit)</string>
+    <string name="download_season_complete_queued">Queued %1$d episodes</string>
+    <string name="season_download_quota_exhausted">Series download quota is full (%1$d unwatched). Free slots in Downloads or raise the quota under Settings → Downloads.</string>
     <string name="download_preparing">Preparing download…</string>
     <string name="about_links_heading">Links &amp; community</string>
 
