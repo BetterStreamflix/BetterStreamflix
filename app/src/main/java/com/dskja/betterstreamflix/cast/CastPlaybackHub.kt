@@ -53,6 +53,7 @@ object CastPlaybackHub {
     private val queue = CopyOnWriteArrayList<MediaItem>()
     private val sessionStateListeners = CopyOnWriteArrayList<(Boolean) -> Unit>()
     private val queueExhaustedListeners = CopyOnWriteArrayList<() -> Unit>()
+    private val queueChangedListeners = CopyOnWriteArrayList<(Int) -> Unit>()
     private var sessionManagerListener: SessionManagerListener<CastSession>? = null
     private var playerListener: Player.Listener? = null
 
@@ -129,6 +130,22 @@ object CastPlaybackHub {
 
     fun removeQueueExhaustedListener(listener: () -> Unit) {
         queueExhaustedListeners.remove(listener)
+    }
+
+    fun addQueueChangedListener(listener: (Int) -> Unit) {
+        queueChangedListeners.add(listener)
+    }
+
+    fun removeQueueChangedListener(listener: (Int) -> Unit) {
+        queueChangedListeners.remove(listener)
+    }
+
+    /** Next Cast queue item, if any (does not dequeue). */
+    fun peekNextQueued(): MediaItem? = queue.firstOrNull()
+
+    private fun notifyQueueChanged() {
+        val count = queue.size
+        queueChangedListeners.forEach { runCatching { it.invoke(count) } }
     }
 
     /** True when Cast END is advancing a queued item (fragments must skip local autoplay). */
@@ -210,14 +227,21 @@ object CastPlaybackHub {
         }.getOrNull()
     }
 
-    fun clearQueue() = queue.clear()
+    fun clearQueue() {
+        if (queue.isEmpty()) return
+        queue.clear()
+        notifyQueueChanged()
+    }
 
     fun enqueue(item: MediaItem) {
         queue.add(item)
+        notifyQueueChanged()
     }
 
     fun enqueueAll(items: List<MediaItem>) {
+        if (items.isEmpty()) return
         queue.addAll(items)
+        notifyQueueChanged()
     }
 
     fun queuedCount(): Int = queue.size
@@ -246,6 +270,7 @@ object CastPlaybackHub {
         if (queue.isEmpty()) return false
         advancingQueue = true
         val next = queue.removeAt(0)
+        notifyQueueChanged()
         mainHandler.post {
             runCatching {
                 player.setMediaItem(next)
