@@ -624,6 +624,10 @@ class PlayerTvFragment : Fragment(),
                                     }
                                 }
                                 PlaybackFailover.Action.RetrySoftwareDecoder -> {
+                                    if (PlaybackFailover.isDecoderCapabilityFailure(state.error)) {
+                                        com.dskja.betterstreamflix.player.CodecComfort
+                                            .recordDecoderTrouble(requireContext())
+                                    }
                                     failoverTimeline.recordSoftwareDecoder()
                                     // Do not mutate currentSoftwareDecoder here — displayVideo
                                     // must see a flag mismatch so initializePlayer rebuilds.
@@ -2485,6 +2489,10 @@ class PlayerTvFragment : Fragment(),
                             }
                         }
                         PlaybackFailover.Action.RetrySoftwareDecoder -> {
+                            if (PlaybackFailover.isDecoderCapabilityFailure(error)) {
+                                com.dskja.betterstreamflix.player.CodecComfort
+                                    .recordDecoderTrouble(requireContext())
+                            }
                             failoverTimeline.recordSoftwareDecoder()
                             PlayerSettingsView.Settings.SoftwareDecoder.init(true)
                             PlayerSettingsView.Settings.SoftwareDecoder.selectedValue = true

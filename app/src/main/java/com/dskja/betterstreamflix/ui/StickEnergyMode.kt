@@ -11,6 +11,11 @@ import com.dskja.betterstreamflix.utils.UserPreferences
  *
  * Unset preference auto-enables on Amazon Fire TV; users can toggle in
  * Settings → Appearance.
+ *
+ * Coordinates with [com.dskja.betterstreamflix.player.CodecComfort]: Energy Mode
+ * is the Fire Stick power policy; Codec Comfort is learned from HW decode
+ * failures. [preferSoftwareDecoder] ORs both so Auto picks SW when either applies
+ * without forcing Energy Mode on when the user turned it off.
  */
 object StickEnergyMode {
 
@@ -38,7 +43,10 @@ object StickEnergyMode {
         return if (isEnabled(context)) 1 else cappedDefault
     }
 
-    /** Whether player Auto should prefer software / extension renderers first. */
+    /**
+     * Whether player Auto should prefer software / extension renderers first.
+     * Energy Mode, learned Codec Comfort, and static fragile-device heuristics.
+     */
     fun preferSoftwareDecoder(context: Context): Boolean =
         isEnabled(context) || DeviceCapabilities.shouldPreferSoftwareDecoder(context)
 

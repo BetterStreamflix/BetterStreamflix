@@ -1197,6 +1197,11 @@ class SettingsMobileFragment : PreferenceFragmentCompat() {
 
         findPreference<SwitchPreference>("STICK_ENERGY_MODE")?.apply {
             isChecked = com.dskja.betterstreamflix.ui.StickEnergyMode.isEnabled(requireContext())
+            summary = if (com.dskja.betterstreamflix.player.CodecComfort.isActive()) {
+                getString(R.string.settings_stick_energy_mode_summary_with_codec_comfort)
+            } else {
+                getString(R.string.settings_stick_energy_mode_summary)
+            }
             setOnPreferenceChangeListener { _, newValue ->
                 UserPreferences.stickEnergyMode = newValue as Boolean
                 true

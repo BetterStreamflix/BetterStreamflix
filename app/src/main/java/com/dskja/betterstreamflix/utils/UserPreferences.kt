@@ -756,6 +756,24 @@ object UserPreferences {
         get() = com.dskja.betterstreamflix.ui.StickEnergyMode.isEnabled()
         set(value) = Key.STICK_ENERGY_MODE.setBoolean(value)
 
+    /**
+     * Device fingerprint for [com.dskja.betterstreamflix.player.CodecComfort]
+     * (manufacturer|model|device). Device-scoped, not per-profile.
+     */
+    var codecComfortDeviceFingerprint: String
+        get() = Key.CODEC_COMFORT_DEVICE_FINGERPRINT.getString().orEmpty()
+        set(value) = Key.CODEC_COMFORT_DEVICE_FINGERPRINT.setString(value.trim().ifEmpty { null })
+
+    /** Count of HW decoder capability failures for Codec Comfort. */
+    var codecComfortFailureCount: Int
+        get() = Key.CODEC_COMFORT_FAILURE_COUNT.getInt() ?: 0
+        set(value) = Key.CODEC_COMFORT_FAILURE_COUNT.setInt(value.coerceAtLeast(0))
+
+    /** Epoch ms when Codec Comfort first latched (0 = never). */
+    var codecComfortActivatedAtMs: Long
+        get() = Key.CODEC_COMFORT_ACTIVATED_AT_MS.getLong() ?: 0L
+        set(value) = Key.CODEC_COMFORT_ACTIVATED_AT_MS.setLong(value.coerceAtLeast(0L))
+
     /** Off-by-default complete mobile shell redesign. Requires activity restart. */
     var experimentalNewAppDesign: Boolean
         get() = Key.EXPERIMENTAL_NEW_APP_DESIGN.getBoolean() ?: false
@@ -1903,6 +1921,9 @@ object UserPreferences {
         HIGH_CONTRAST,
         LEANBACK_DENSITY,
         STICK_ENERGY_MODE,
+        CODEC_COMFORT_DEVICE_FINGERPRINT,
+        CODEC_COMFORT_FAILURE_COUNT,
+        CODEC_COMFORT_ACTIVATED_AT_MS,
         EXPERIMENTAL_NEW_APP_DESIGN,
         EXPERIMENTAL_REACT_HOME,
         EXPERIMENTAL_LUMINA_ACCENT,

@@ -1337,6 +1337,7 @@
     <string name="settings_theme_title">App-Design</string>
     <string name="settings_stick_energy_mode_title">Energie-Modus Stick</string>
     <string name="settings_stick_energy_mode_summary">Fire Stick: weniger Parallel-Provider, SW-Decoder-Bias, weniger UI-Motion (auto-an auf Amazon Fire TV)</string>
+    <string name="settings_stick_energy_mode_summary_with_codec_comfort">Energie-Modus Stick · Codec Comfort aktiv — SW-Decoder und stabile Puffer nach Decode-Abstürzen auf diesem Gerät</string>
     <string name="settings_oled_mode_title">OLED-Modus</string>
     <string name="settings_oled_mode_summary">Graue Flächen app-weit durch echtes Schwarz ersetzen</string>
     <string name="settings_category_accessibility">Barrierefreiheit</string>
