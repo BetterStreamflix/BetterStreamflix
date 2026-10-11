@@ -59,6 +59,7 @@ import com.dskja.betterstreamflix.player.PlayerBuilderFactory
 import com.dskja.betterstreamflix.player.SerienStreamBypassHelper
 import com.dskja.betterstreamflix.player.SkipIntroChapters
 import com.dskja.betterstreamflix.player.SkipIntroSilenceProbe
+import com.dskja.betterstreamflix.player.SmartMuteAds
 import com.dskja.betterstreamflix.player.SmartSkipIntro
 import com.dskja.betterstreamflix.player.StreamFailureReason
 import com.dskja.betterstreamflix.player.StuckBufferDetector
@@ -239,6 +240,7 @@ class PlayerMobileFragment : Fragment(),
     private var skipIntroChapters: List<SmartSkipIntro.ChapterMark> = emptyList()
     private var skipIntroProbe: SkipIntroSilenceProbe? = null
     private var activeSkipOpportunity: SmartSkipIntro.Opportunity? = null
+    private val smartMuteAdsWatchdog = SmartMuteAds.Watchdog()
     private var bypassDone = false
     private var nextEpisodePrefetchTargetId: String? = null
     private var nextEpisodePrefetchJob: Job? = null
@@ -1885,6 +1887,7 @@ class PlayerMobileFragment : Fragment(),
             applyLiveControllerChrome(live = false)
         }
         player.setMediaItem(localMediaItem)
+        smartMuteAdsWatchdog.reset()
 
         if ((isCasting || CastPlaybackHub.isCasting) && !isOfflinePlayback()) {
             pushMediaToCast(video, server, mediaMetadata, startPosition = currentPosition)
@@ -1916,6 +1919,10 @@ class PlayerMobileFragment : Fragment(),
                 }
                 val playWhenReady = ::player.isInitialized && !playerReleased && player.playWhenReady
                 stuckDetector.onPlaybackStateChanged(playbackState, playWhenReady)
+                // Keep Smart Mute Ads ticking while hung in BUFFERING (isPlaying often false).
+                if (playbackState == Player.STATE_BUFFERING) {
+                    startProgressHandler()
+                }
             }
 
             override fun onPositionDiscontinuity(
@@ -1930,6 +1937,7 @@ class PlayerMobileFragment : Fragment(),
                 ) {
                     stuckDetector.onSeek()
                     hideStuckOverlay()
+                    smartMuteAdsWatchdog.onUserSeek(System.currentTimeMillis())
                 }
             }
 
@@ -1956,7 +1964,12 @@ class PlayerMobileFragment : Fragment(),
                     ensureSkipIntroProbe()
                     startProgressHandler()
                 } else {
-                    stopProgressHandler()
+                    // Do not stop the handler while buffering a hung pre-/mid-roll.
+                    if (::player.isInitialized &&
+                        player.playbackState != Player.STATE_BUFFERING
+                    ) {
+                        stopProgressHandler()
+                    }
                 }
 
                 val hasUri = player.currentMediaItem?.localConfiguration?.uri
@@ -3294,6 +3307,7 @@ class PlayerMobileFragment : Fragment(),
             if (isTearingDown || !isAdded || _binding == null) return@Runnable
             if (playerReleased || !::player.isInitialized) return@Runnable
             val active = runCatching { activePlayer() }.getOrNull() ?: return@Runnable
+            tickSmartMuteAds(active)
             if (active.isPlaying) {
                 if (!isLiveTvPlayback()) {
                     val pos = active.currentPosition
@@ -3318,6 +3332,34 @@ class PlayerMobileFragment : Fragment(),
             }
         }
         progressHandler.post(progressRunnable)
+    }
+
+    /** Stuck pre-/mid-roll rescue — local ExoPlayer only, never Cast/live/offline. */
+    private fun tickSmartMuteAds(active: androidx.media3.common.Player) {
+        if (isCasting || CastPlaybackHub.isCasting) return
+        if (active !is ExoPlayer) return
+        val isPlayingAd = runCatching {
+            active.isCommandAvailable(Player.COMMAND_GET_CURRENT_MEDIA_ITEM) && active.isPlayingAd
+        }.getOrDefault(false)
+        val action = smartMuteAdsWatchdog.onTick(
+            SmartMuteAds.Snapshot(
+                nowMs = System.currentTimeMillis(),
+                positionMs = active.currentPosition.coerceAtLeast(0L),
+                bufferedPositionMs = active.bufferedPosition.coerceAtLeast(0L),
+                durationMs = active.duration,
+                phase = SmartMuteAds.phaseFromMedia3(active.playbackState),
+                isPlaying = active.isPlaying,
+                playWhenReady = active.playWhenReady,
+                isPlayingAd = isPlayingAd,
+                isLive = isLiveTvPlayback(),
+                isOffline = isOfflinePlayback(),
+            ),
+        ) ?: return
+        runCatching {
+            active.seekTo(action.positionMs)
+            active.playWhenReady = true
+        }
+        showPlayerCue(R.string.player_smart_mute_ads_skipped)
     }
 
     private fun reportTraktProgress(
