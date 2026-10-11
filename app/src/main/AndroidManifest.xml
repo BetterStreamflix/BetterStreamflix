@@ -229,6 +229,14 @@
                     android:host="betterstreamflix.app"
                     android:pathPrefix="/list" />
             </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+                <category android:name="android.intent.category.BROWSABLE"/>
+                <data android:scheme="betterstreamflix" android:host="watch"/>
+                <data android:scheme="streamflix" android:host="watch"/>
+                <data android:scheme="betterstreamflix" android:host="home"/>
+            </intent-filter>
         </activity>
 
         <provider
@@ -272,6 +280,16 @@
             android:exported="false">
             <intent-filter>
                 <action android:name="com.dskja.betterstreamflix.ACTION_EXTERNAL_DOWNLOADER_CHOSEN" />
+            </intent-filter>
+        </receiver>
+
+        <receiver
+            android:name=".tvlauncher.TvLauncherBrowsableReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.media.tv.action.WATCH_NEXT_PROGRAM_BROWSABLE_DISABLED" />
+                <action android:name="android.media.tv.action.PREVIEW_PROGRAM_BROWSABLE_DISABLED" />
+                <action android:name="android.media.tv.action.INITIALIZE_PROGRAMS" />
             </intent-filter>
         </receiver>
 
