@@ -49,11 +49,23 @@ object IptvLiveSession {
 
     fun isWindowComplete(): Boolean = windowComplete
 
-    fun remember(list: List<Channel>, provider: Provider? = null) {
+    /**
+     * @param clearOnProviderChange When false (Live Hub multi-provider warm), merge
+     * into the existing zap list without wiping prior providers or the preloader.
+     */
+    fun remember(
+        list: List<Channel>,
+        provider: Provider? = null,
+        clearOnProviderChange: Boolean = true,
+    ) {
         if (list.isEmpty()) return
         val name = provider?.name
         synchronized(this) {
-            if (name != null && providerName != null && providerName != name) {
+            if (clearOnProviderChange &&
+                name != null &&
+                providerName != null &&
+                providerName != name
+            ) {
                 channels.clear()
                 recentIds.clear()
                 windowComplete = false
@@ -78,6 +90,8 @@ object IptvLiveSession {
         }
     }
 
+    fun contains(id: String): Boolean = channels.any { it.id == id }
+
     private fun mergeChannel(prior: Channel?, incoming: Channel): Channel {
         if (prior == null) return incoming
         return incoming.copy(
@@ -88,7 +102,11 @@ object IptvLiveSession {
         )
     }
 
-    fun rememberShows(shows: List<TvShow>, provider: Provider? = null) {
+    fun rememberShows(
+        shows: List<TvShow>,
+        provider: Provider? = null,
+        clearOnProviderChange: Boolean = true,
+    ) {
         remember(
             shows.map {
                 Channel(
@@ -101,6 +119,7 @@ object IptvLiveSession {
                 )
             },
             provider,
+            clearOnProviderChange = clearOnProviderChange,
         )
     }
 

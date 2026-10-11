@@ -30,7 +30,7 @@
         <View
             android:layout_width="match_parent"
             android:layout_height="match_parent"
-            android:background="#33000000" />
+            android:background="@color/cinema_scrim" />
 
         <ImageView
             android:id="@+id/iv_trailer_play"
@@ -57,7 +57,7 @@
             android:paddingBottom="3dp"
             android:text="@string/detail_trailer_official_badge"
             android:textAllCaps="true"
-            android:textColor="#121218"
+            android:textColor="@color/cinema_cta_ink"
             android:textSize="10sp"
             android:textStyle="bold"
             android:visibility="gone"
@@ -72,7 +72,7 @@
         android:duplicateParentState="true"
         android:ellipsize="end"
         android:maxLines="2"
-        android:textColor="#FFFFFF"
+        android:textColor="@color/cinema_text"
         android:textSize="14sp"
         android:textStyle="bold"
         app:layout_constraintEnd_toEndOf="parent"
@@ -88,7 +88,7 @@
         android:ellipsize="end"
         android:maxLines="1"
         android:textAllCaps="true"
-        android:textColor="#99FFFFFF"
+        android:textColor="@color/cinema_text_muted"
         android:textSize="11sp"
         android:textStyle="bold"
         app:layout_constraintEnd_toEndOf="parent"

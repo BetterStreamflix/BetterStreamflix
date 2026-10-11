@@ -77,7 +77,7 @@
                 android:layout_height="wrap_content"
                 android:text="@string/player_next_episode_up_next"
                 android:textAllCaps="true"
-                android:textColor="?android:attr/textColorSecondary"
+                android:textColor="@color/cinema_text_muted"
                 android:textSize="11sp"
                 android:textStyle="bold" />
 
@@ -94,7 +94,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="2dp"
-                android:textColor="?android:attr/textColorPrimary"
+                android:textColor="@color/cinema_text"
                 android:textSize="14sp"
                 android:textStyle="bold"
                 tools:text="S2 E8" />
@@ -106,7 +106,7 @@
                 android:layout_marginTop="4dp"
                 android:ellipsize="end"
                 android:maxLines="2"
-                android:textColor="?android:attr/textColorPrimary"
+                android:textColor="@color/cinema_text"
                 android:textSize="14sp"
                 tools:text="Finale" />
 
@@ -115,7 +115,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="4dp"
-                android:textColor="?android:attr/textColorSecondary"
+                android:textColor="@color/cinema_text_muted"
                 android:textSize="12sp"
                 tools:text="Playing next in 8s" />
 
@@ -139,7 +139,7 @@
                     android:paddingEnd="12dp"
                     android:paddingBottom="8dp"
                     android:text="@string/player_next_episode_action"
-                    android:textColor="?android:attr/textColorPrimary"
+                    android:textColor="@color/cinema_text"
                     android:textSize="12sp"
                     android:textStyle="bold" />
 
@@ -156,7 +156,7 @@
                     android:nextFocusRight="@id/btn_next_episode_action"
                     android:padding="8dp"
                     android:src="@drawable/ic_player_settings_close"
-                    android:tint="?android:attr/textColorPrimary"
+                    android:tint="@color/cinema_text"
                     tools:ignore="UseAppTint" />
             </LinearLayout>
         </LinearLayout>
@@ -248,14 +248,39 @@
             app:tint="@color/cinema_text" />
     </LinearLayout>
 
+    <!-- Non-focusable cue pill — failover / live / decoder (TV-INK-07). -->
+    <TextView
+        android:id="@+id/tv_player_cue"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="56dp"
+        android:background="@drawable/bg_player_cue_tv"
+        android:elevation="16dp"
+        android:focusable="false"
+        android:focusableInTouchMode="false"
+        android:fontFamily="@font/manrope"
+        android:gravity="center"
+        android:paddingStart="20dp"
+        android:paddingTop="10dp"
+        android:paddingEnd="20dp"
+        android:paddingBottom="10dp"
+        android:textColor="@color/cinema_text"
+        android:textSize="15sp"
+        android:visibility="gone"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        tools:text="Server 2 of 4"
+        tools:visibility="visible" />
+
     <LinearLayout
         android:id="@+id/ll_player_error"
         android:layout_width="360dp"
         android:layout_height="wrap_content"
         android:background="@drawable/bg_next_episode_overlay"
         android:elevation="14dp"
-        android:focusable="true"
-        android:focusableInTouchMode="true"
+        android:focusable="false"
+        android:focusableInTouchMode="false"
         android:gravity="center_horizontal"
         android:orientation="vertical"
         android:padding="28dp"

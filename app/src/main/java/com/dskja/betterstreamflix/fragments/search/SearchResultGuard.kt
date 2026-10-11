@@ -1,10 +1,13 @@
 package com.dskja.betterstreamflix.fragments.search
 
+import android.content.Context
 import android.util.Log
+import com.dskja.betterstreamflix.BetterStreamflixApp
 import com.dskja.betterstreamflix.adapters.AppAdapter
 import com.dskja.betterstreamflix.models.Genre
 import com.dskja.betterstreamflix.models.Movie
 import com.dskja.betterstreamflix.models.TvShow
+import com.dskja.betterstreamflix.utils.DeviceCapabilities
 import kotlinx.coroutines.CancellationException
 
 /**
@@ -16,11 +19,39 @@ object SearchResultGuard {
     /** Local Search stops paging once the grid is holding this many rows. */
     const val MAX_LOCAL_RESULTS = 96
 
+    /** Constrained TV (Fire Stick / low-RAM) — keep heap under OOM pressure. */
+    const val MAX_LOCAL_RESULTS_CONSTRAINED = 48
+
     /** One Global Search provider shelf / section. Keeps DE fan-out off the TV heap. */
     const val MAX_GLOBAL_PER_PROVIDER = 16
 
+    const val MAX_GLOBAL_PER_PROVIDER_CONSTRAINED = 10
+
     /** Room `IN (:ids)` blows past the SQLite bind limit around 999. */
     const val ROOM_LOOKUP_LIMIT = 400
+
+    fun maxLocalResults(context: Context? = null): Int {
+        val ctx = context ?: runCatching { BetterStreamflixApp.instance.applicationContext }.getOrNull()
+        return if (ctx != null && isConstrainedTv(ctx)) MAX_LOCAL_RESULTS_CONSTRAINED
+        else MAX_LOCAL_RESULTS
+    }
+
+    fun maxGlobalPerProvider(context: Context? = null): Int {
+        val ctx = context ?: runCatching { BetterStreamflixApp.instance.applicationContext }.getOrNull()
+        return if (ctx != null && isConstrainedTv(ctx)) MAX_GLOBAL_PER_PROVIDER_CONSTRAINED
+        else MAX_GLOBAL_PER_PROVIDER
+    }
+
+    private fun isConstrainedTv(context: Context): Boolean =
+        DeviceCapabilities.shouldUseConstrainedPlayback(context) ||
+            DeviceCapabilities.isLowRamDevice(context) ||
+            (
+                DeviceCapabilities.isLeanbackDevice(context) &&
+                    (
+                        DeviceCapabilities.isAmazonFireTv(context) ||
+                            DeviceCapabilities.isFragileTvOem()
+                        )
+                )
 
     fun sanitize(items: List<AppAdapter.Item>?): List<AppAdapter.Item> {
         if (items.isNullOrEmpty()) return emptyList()

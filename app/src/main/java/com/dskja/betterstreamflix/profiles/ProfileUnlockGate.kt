@@ -2,6 +2,8 @@ package com.dskja.betterstreamflix.profiles
 
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.FragmentActivity
+import com.dskja.betterstreamflix.fragments.settings.ProfilesSettingsController
+import com.dskja.betterstreamflix.utils.UserPreferences
 
 /**
  * Forces Who's Watching on cold start when the active profile is PIN-locked
@@ -104,8 +106,24 @@ object ProfileUnlockGate {
             ProfilePickerDialog.show(
                 fragment = host,
                 onSwitched = {
-                    markUnlocked(ProfileManager.activeProfileId)
-                    onUnlocked?.invoke()
+                    val active = ProfileManager.activeProfile()
+                    val parentalPin = UserPreferences.parentalControlPin
+                    // Kids with no profile PIN but a household parental PIN must still
+                    // challenge before the session unlocks (shared-device cold start).
+                    val needsParentalForKids = active?.isKids == true &&
+                        active.pinHash == null &&
+                        parentalPin.isNotBlank()
+                    if (needsParentalForKids) {
+                        // Leave unlockedProfileId null until parental PIN succeeds.
+                        // Cancel keeps the gate closed; Activity.onStart will re-prompt.
+                        ProfilesSettingsController.challengeKidsUnlock(activity) {
+                            markUnlocked(ProfileManager.activeProfileId)
+                            onUnlocked?.invoke()
+                        }
+                    } else {
+                        markUnlocked(ProfileManager.activeProfileId)
+                        onUnlocked?.invoke()
+                    }
                 },
                 requireUnlock = true,
             )

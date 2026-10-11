@@ -126,6 +126,14 @@ object ProfilesSettingsController {
                         )
                         return@setOnPreferenceChangeListener false
                     }
+                    // Leaving Kids (or raising the ceiling) must pass the same exit PIN as profile switch.
+                    if (!enableKids && profile?.isKids == true) {
+                        challengeKidsUnlock(context) {
+                            ProfileManager.updateKids(ProfileManager.activeProfileId, false)
+                            refresh(findPreference, context, fragment)
+                        }
+                        return@setOnPreferenceChangeListener false
+                    }
                     val profileId = ProfileManager.activeProfileId
                     ProfileManager.updateKids(profileId, enableKids)
                     refresh(findPreference, context, fragment)
@@ -137,14 +145,16 @@ object ProfilesSettingsController {
         (findPreference("PROFILE_MAX_AGE") as? ListPreference)?.setOnPreferenceChangeListener { _, newValue ->
             val age = (newValue as? String)?.toIntOrNull() ?: return@setOnPreferenceChangeListener false
             if (!ProfileManager.isKidsActive()) return@setOnPreferenceChangeListener false
-            ProfileManager.updateMaxAgeRating(ProfileManager.activeProfileId, age)
-            notifyUser(
-                context,
-                context.getString(R.string.settings_parental_max_age_saved),
-                R.string.profile_kids_max_age_title,
-            )
-            refresh(findPreference, context, fragment)
-            true
+            challengeKidsUnlock(context) {
+                ProfileManager.updateMaxAgeRating(ProfileManager.activeProfileId, age)
+                notifyUser(
+                    context,
+                    context.getString(R.string.settings_parental_max_age_saved),
+                    R.string.profile_kids_max_age_title,
+                )
+                refresh(findPreference, context, fragment)
+            }
+            false
         }
 
         findPreference("PROFILE_PIN")?.setOnPreferenceClickListener {
@@ -612,18 +622,25 @@ object ProfilesSettingsController {
             onAllowed()
             return
         }
-        val context = fragment.requireContext()
+        challengeKidsUnlock(fragment.requireContext(), onAllowed)
+    }
+
+    /**
+     * Challenge parental PIN (preferred) or active profile PIN before clearing Kids /
+     * raising the age ceiling / otherwise unlocking adult catalog access.
+     */
+    fun challengeKidsUnlock(context: Context, onVerified: () -> Unit) {
         val parentalPin = UserPreferences.parentalControlPin
         if (parentalPin.isNotBlank()) {
-            promptParentalPin(context) { onAllowed() }
+            promptParentalPin(context) { onVerified() }
             return
         }
         val active = ProfileManager.activeProfile()
         if (active?.pinHash != null) {
-            promptPin(context, active) { onAllowed() }
+            promptPin(context, active) { onVerified() }
             return
         }
-        // Kids without any exit PIN must not silently unlock adult profiles.
+        // Kids without any exit PIN must not silently unlock adult catalogs.
         if (active?.isKids == true) {
             notifyUser(
                 context,
@@ -632,7 +649,7 @@ object ProfilesSettingsController {
             )
             return
         }
-        onAllowed()
+        onVerified()
     }
 
     private fun promptParentalPin(context: Context, onVerified: () -> Unit) {

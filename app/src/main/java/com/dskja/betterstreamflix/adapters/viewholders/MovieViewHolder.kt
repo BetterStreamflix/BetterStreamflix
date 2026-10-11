@@ -230,12 +230,7 @@ class MovieViewHolder(
     }
 
     internal fun checkProviderAndRun(action: () -> Unit) {
-        val providerName = movie.providerName
-        if (!providerName.isNullOrBlank() && providerName != UserPreferences.currentProvider?.name) {
-            Provider.findByName(providerName)?.let {
-                UserPreferences.setCurrentProviderForPlayback(it)
-            }
-        }
+        FeaturedProviderSwitch.switchSticky(movie.providerName, context)
         action()
     }
 
@@ -274,20 +269,17 @@ class MovieViewHolder(
             play()
             return
         }
-        val items = arrayOf(
-            context.getString(R.string.home_swiper_watch_now),
-            context.getString(R.string.continue_watching_go_to_details),
-            context.getString(R.string.option_cancel),
-        )
+        // OK / Details / Cancel buttons — setItems is fragile for Fire OS DPAD focus.
         AlertDialog.Builder(context)
             .setTitle(R.string.continue_watching_confirm_title)
-            .setItems(items) { _, which ->
-                when (which) {
-                    0 -> play()
-                    1 -> details()
-                }
+            .setPositiveButton(R.string.home_swiper_watch_now) { _, _ -> play() }
+            .setNeutralButton(R.string.continue_watching_go_to_details) { _, _ -> details() }
+            .setNegativeButton(R.string.option_cancel, null)
+            .create()
+            .also { dialog ->
+                dialog.setOnShowListener { ExpDialogChrome.polishButtons(dialog) }
+                dialog.show()
             }
-            .show()
     }
 
     internal fun handleTrailerClick(trailer: String, logPrefix: String = "Movie") {
@@ -500,14 +492,15 @@ class MovieViewHolder(
         bindRibbons(binding.ivMovieFavoriteRibbon, binding.ivMovieWatchedRibbon, binding.ivMovieDownloadRibbon)
         binding.pbMovieProgress.apply {
             val watchHistory = movie.watchHistory
-            progress = when {
-                watchHistory != null -> (watchHistory.lastPlaybackPositionMillis * 100 / watchHistory.durationMillis.toDouble()).toInt()
-                else -> 0
+            val show = watchHistory != null && watchHistory.durationMillis > 0
+            progress = if (show) {
+                (watchHistory!!.lastPlaybackPositionMillis * 100 / watchHistory.durationMillis.toDouble())
+                    .toInt()
+                    .coerceIn(0, 99)
+            } else {
+                0
             }
-            visibility = when {
-                watchHistory != null -> View.VISIBLE
-                else -> View.GONE
-            }
+            visibility = if (show) View.VISIBLE else View.GONE
         }
         binding.tvMovieQuality.apply {
             text = movie.quality ?: ""
@@ -671,14 +664,15 @@ class MovieViewHolder(
         bindRibbons(binding.ivMovieFavoriteRibbon, binding.ivMovieWatchedRibbon, binding.ivMovieDownloadRibbon)
         binding.pbMovieProgress.apply {
             val watchHistory = movie.watchHistory
-            progress = when {
-                watchHistory != null -> (watchHistory.lastPlaybackPositionMillis * 100 / watchHistory.durationMillis.toDouble()).toInt()
-                else -> 0
+            val show = watchHistory != null && watchHistory.durationMillis > 0
+            progress = if (show) {
+                (watchHistory!!.lastPlaybackPositionMillis * 100 / watchHistory.durationMillis.toDouble())
+                    .toInt()
+                    .coerceIn(0, 99)
+            } else {
+                0
             }
-            visibility = when {
-                watchHistory != null -> View.VISIBLE
-                else -> View.GONE
-            }
+            visibility = if (show) View.VISIBLE else View.GONE
         }
         binding.tvMovieQuality.apply {
             text = movie.quality ?: ""
@@ -861,7 +855,7 @@ class MovieViewHolder(
 
         val openMovie = View.OnClickListener { view ->
             ExpMotion.hapticTap(view)
-            FeaturedProviderSwitch.runWithProvider(movie) {
+            FeaturedProviderSwitch.runWithProvider(movie, context) {
                 view.findNavController().navigate(
                     HomeMobileFragmentDirections.actionHomeToMovie(id = movie.id)
                 )
@@ -1014,10 +1008,9 @@ class MovieViewHolder(
             }
         }
         binding.hgvMovieCast.apply {
-            if (getTag(R.id.tv_shelf_row_height_tag) != true) {
-                setTag(R.id.tv_shelf_row_height_tag, true)
-                setRowHeight((210 * resources.displayMetrics.density).toInt())
-            }
+            // Always pin after bind — Leanback WRAP_CONTENT HGV focus bugs on Fire OS.
+            setRowHeight((210 * resources.displayMetrics.density).toInt())
+            setTag(R.id.tv_shelf_row_height_tag, true)
             submitAppList(movie.cast.onEach {
                 it.itemType = AppAdapter.Type.PEOPLE_TV_ITEM
             })
@@ -1065,10 +1058,9 @@ class MovieViewHolder(
             }
         }
         binding.hgvMovieDirectors.apply {
-            if (getTag(R.id.tv_shelf_row_height_tag) != true) {
-                setTag(R.id.tv_shelf_row_height_tag, true)
-                setRowHeight((210 * resources.displayMetrics.density).toInt())
-            }
+            // Always pin after bind — Leanback WRAP_CONTENT HGV focus bugs on Fire OS.
+            setRowHeight((210 * resources.displayMetrics.density).toInt())
+            setTag(R.id.tv_shelf_row_height_tag, true)
             submitAppList(movie.directors.onEach {
                 it.itemType = AppAdapter.Type.PEOPLE_TV_ITEM
             })
@@ -1135,10 +1127,9 @@ class MovieViewHolder(
             }
         }
         binding.hgvMovieRecommendations.apply {
-            if (getTag(R.id.tv_shelf_row_height_tag) != true) {
-                setTag(R.id.tv_shelf_row_height_tag, true)
-                setRowHeight((210 * resources.displayMetrics.density).toInt())
-            }
+            // Always pin after bind — Leanback WRAP_CONTENT HGV focus bugs on Fire OS.
+            setRowHeight((210 * resources.displayMetrics.density).toInt())
+            setTag(R.id.tv_shelf_row_height_tag, true)
             submitAppList(movie.recommendations.onEach {
                 when (it) {
                     is Movie -> it.itemType = AppAdapter.Type.MOVIE_TV_ITEM

@@ -158,13 +158,25 @@ internal fun TvShowViewHolder.bindTvShowTvDetail(binding: ContentTvShowTvBinding
                 if (genres.size == 1) {
                     openGenre(genres.first())
                 } else {
+                    // Leanback single-choice (Search year pattern) — not a raw AlertDialog list.
                     val labels = genres.map { it.name }.toTypedArray()
                     AlertDialog.Builder(com.dskja.betterstreamflix.utils.ExpDialogChrome.themedContext(context))
                         .setTitle(R.string.genre_section_label)
                         .setItems(labels) { _, which ->
                             genres.getOrNull(which)?.let(::openGenre)
                         }
-                        .show()
+                        .create()
+                        .also { dialog ->
+                            dialog.setOnShowListener {
+                                com.dskja.betterstreamflix.utils.ExpDialogChrome.polishShown(dialog)
+                                dialog.listView?.apply {
+                                    isFocusable = true
+                                    isFocusableInTouchMode = true
+                                    requestFocus()
+                                }
+                            }
+                            dialog.show()
+                        }
                 }
             }
         }

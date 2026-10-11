@@ -29,6 +29,9 @@ object UserDataCache {
         val favoritesTvShows: List<CachedTvShow> = emptyList(),
         val continueWatchingMovies: List<CachedMovie> = emptyList(),
         val continueWatchingEpisodes: List<CachedEpisode> = emptyList(),
+        val nextEpisodes: List<CachedEpisode> = emptyList(),
+        val recentlyWatchedMovies: List<CachedMovie> = emptyList(),
+        val recentlyWatchedTvShows: List<CachedTvShow> = emptyList(),
     )
 
     private fun UserData.normalized(): UserData = copy(
@@ -36,6 +39,13 @@ object UserDataCache {
         favoritesTvShows = favoritesTvShows.sortedByDescending { it.favoritedAtMillis ?: 0L },
         continueWatchingMovies = continueWatchingMovies.sortedByDescending { it.lastEngagementTimeUtcMillis ?: 0L },
         continueWatchingEpisodes = continueWatchingEpisodes.sortedByDescending { it.lastEngagementTimeUtcMillis ?: 0L },
+        nextEpisodes = nextEpisodes.take(25),
+        recentlyWatchedMovies = recentlyWatchedMovies
+            .sortedByDescending { it.lastPlayedAtMillis ?: 0L }
+            .take(10),
+        recentlyWatchedTvShows = recentlyWatchedTvShows
+            .sortedByDescending { it.lastPlayedAtMillis ?: 0L }
+            .take(10),
     )
 
     // -------------------------
@@ -404,6 +414,7 @@ object UserDataCache {
         val lastEngagementTimeUtcMillis: Long? = null,
         val lastPlaybackPositionMillis: Long? = null,
         val durationMillis: Long? = null,
+        val lastPlayedAtMillis: Long? = null,
     )
 
     data class CachedTvShow(
@@ -419,6 +430,7 @@ object UserDataCache {
         val banner: String? = null,
         val isFavorite: Boolean = false,
         val favoritedAtMillis: Long? = null,
+        val lastPlayedAtMillis: Long? = null,
     )
 
     data class CachedEpisode(
@@ -458,6 +470,7 @@ object UserDataCache {
         isFavorite = this@toMovie.isFavorite
         favoritedAtMillis = this@toMovie.favoritedAtMillis
         isWatched = this@toMovie.isWatched
+        lastPlayedAtMillis = this@toMovie.lastPlayedAtMillis
         if (this@toMovie.lastEngagementTimeUtcMillis != null) {
             watchHistory = WatchItem.WatchHistory(
                 lastEngagementTimeUtcMillis = this@toMovie.lastEngagementTimeUtcMillis,
@@ -481,6 +494,7 @@ object UserDataCache {
     ).apply {
         isFavorite = this@toTvShow.isFavorite
         favoritedAtMillis = this@toTvShow.favoritedAtMillis
+        lastPlayedAtMillis = this@toTvShow.lastPlayedAtMillis
     }
 
     fun CachedEpisode.toEpisode() = Episode(
@@ -532,7 +546,8 @@ object UserDataCache {
         favoritedAtMillis = favoritedAtMillis,
         lastEngagementTimeUtcMillis = watchHistory?.lastEngagementTimeUtcMillis,
         lastPlaybackPositionMillis = watchHistory?.lastPlaybackPositionMillis,
-        durationMillis = watchHistory?.durationMillis
+        durationMillis = watchHistory?.durationMillis,
+        lastPlayedAtMillis = lastPlayedAtMillis,
     )
     fun TvShow.toCached() = UserDataCache.CachedTvShow(
         id = id,
@@ -547,6 +562,7 @@ object UserDataCache {
         banner = banner,
         isFavorite = isFavorite,
         favoritedAtMillis = favoritedAtMillis,
+        lastPlayedAtMillis = lastPlayedAtMillis,
     )
     fun Episode.toCached() = UserDataCache.CachedEpisode(
         id = id,

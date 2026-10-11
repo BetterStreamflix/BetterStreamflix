@@ -37,7 +37,7 @@ abstract class PlayerSettingsView @JvmOverloads constructor(
 
     private var playerEventsListener: Player.Listener? = null
 
-    var player: ExoPlayer? = null
+    var player: Player? = null
         set(value) {
             if (field === value) return
 
@@ -644,7 +644,7 @@ abstract class PlayerSettingsView @JvmOverloads constructor(
                 val selected: Quality
                     get() = list.find { it.isSelected } ?: Auto
 
-                fun init(player: ExoPlayer, resources: Resources) {
+                fun init(player: Player, resources: Resources) {
                     list.clear()
                     list.add(Auto)
                     list.addAll(
@@ -712,11 +712,11 @@ abstract class PlayerSettingsView @JvmOverloads constructor(
                 val bitrate: Int,
                 val trackGroup: Tracks.Group,
                 val trackIndex: Int,
-                val player: ExoPlayer,
+                val player: Player,
             ) : Quality() {
                 val isCurrentlyPlayed: Boolean
                     get() {
-                        val currentFormat = player.videoFormat ?: return false
+                        val currentFormat = (player as? ExoPlayer)?.videoFormat ?: return false
                         val bitrateMatch = currentFormat.bitrate == bitrate
                         val resolutionMatch = currentFormat.height == height && currentFormat.width == width
 
@@ -738,7 +738,7 @@ abstract class PlayerSettingsView @JvmOverloads constructor(
                 val selected: AudioTrackInformation?
                     get() = list.find { it.isSelected }
 
-                fun init(player: ExoPlayer, resources: Resources) {
+                fun init(player: Player, resources: Resources) {
                     val currentServerId = player.currentMediaItem?.mediaMetadata?.extras?.getString("mediaServerId")
                     val servers = player.playlistMetadata.mediaServers
                     val currentServer = servers.find { it.id == currentServerId }
@@ -805,7 +805,7 @@ abstract class PlayerSettingsView @JvmOverloads constructor(
                         }
                     } ?: None
 
-                fun init(player: ExoPlayer, resources: Resources) {
+                fun init(player: Player, resources: Resources) {
                     list.clear()
                     list.add(Style)
                     list.add(Offset)
@@ -1354,7 +1354,7 @@ abstract class PlayerSettingsView @JvmOverloads constructor(
                         ?: list.find { it.value == 1F }
                         ?: DEFAULT
 
-                fun refresh(player: ExoPlayer) {
+                fun refresh(player: Player) {
                     list.forEach { it.isSelected = false }
                     list.findClosest(player.playbackParameters.speed) { it.value }?.let {
                         it.isSelected = true
@@ -1375,7 +1375,7 @@ abstract class PlayerSettingsView @JvmOverloads constructor(
                 val selected: Server?
                     get() = list.find { it.isSelected }
 
-                fun init(player: ExoPlayer) {
+                fun init(player: Player) {
                     list.clear()
                     list.addAll(player.playlistMetadata.mediaServers.map {
                         Server(
@@ -1387,7 +1387,7 @@ abstract class PlayerSettingsView @JvmOverloads constructor(
                     list.firstOrNull()?.isSelected = true
                 }
 
-                fun refresh(player: ExoPlayer) {
+                fun refresh(player: Player) {
                     list.forEach {
                         it.isSelected = (it.id == player.mediaMetadata.mediaServerId)
                     }

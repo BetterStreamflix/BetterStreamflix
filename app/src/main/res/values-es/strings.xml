@@ -41,6 +41,7 @@
     <string name="live_hub_section_news">Noticias</string>
     <string name="live_hub_section_channels">Canales</string>
     <string name="live_hub_empty">No hay canales en vivo ahora — reintenta</string>
+    <string name="live_hub_empty_tv">No hay canales en vivo ahora — pulsa OK para reintentar</string>
     <string name="main_menu_theme_change">Cambiar tema</string>
     <string name="theme_default">Predeterminado</string>
     <string name="theme_nero_amoled_oled">Nero Amoled/Oled</string>

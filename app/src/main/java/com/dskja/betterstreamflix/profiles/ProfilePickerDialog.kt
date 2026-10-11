@@ -115,17 +115,27 @@ class ProfilePickerDialog : DialogFragment() {
         }
         view.findViewById<View>(R.id.btn_profile_picker_close)?.visibility =
             if (requireUnlock) View.GONE else View.VISIBLE
-        view.findViewById<TextView>(R.id.btn_profile_picker_create).setOnClickListener {
-            ExpMotion.hapticTap(it)
-            showCreateDialog()
-        }
-        view.findViewById<TextView>(R.id.btn_profile_picker_manage).setOnClickListener {
-            ExpMotion.hapticTap(it)
-            if (editorVisible) {
-                restorePickerView()
-                return@setOnClickListener
+        // Unlock gate is pick-only: hide manage/create so kids cannot edit Kids off without PIN.
+        val createBtn = view.findViewById<TextView>(R.id.btn_profile_picker_create)
+        val manageBtn = view.findViewById<TextView>(R.id.btn_profile_picker_manage)
+        if (requireUnlock) {
+            createBtn?.visibility = View.GONE
+            manageBtn?.visibility = View.GONE
+        } else {
+            createBtn?.visibility = View.VISIBLE
+            manageBtn?.visibility = View.VISIBLE
+            createBtn?.setOnClickListener {
+                ExpMotion.hapticTap(it)
+                showCreateDialog()
             }
-            enterManageMode(!manageMode)
+            manageBtn?.setOnClickListener {
+                ExpMotion.hapticTap(it)
+                if (editorVisible) {
+                    restorePickerView()
+                    return@setOnClickListener
+                }
+                enterManageMode(!manageMode)
+            }
         }
         with(com.dskja.betterstreamflix.utils.ExpPressEffects) {
             view.findViewById<View>(R.id.btn_profile_picker_create)?.applyExpPress()
@@ -528,12 +538,20 @@ class ProfilePickerDialog : DialogFragment() {
                 )
                 return@setOnClickListener
             }
-            ProfileManager.rename(profile.id, name)
-            ProfileManager.updateAvatar(profile.id, selected)
-            ProfileManager.updateKids(profile.id, becomingKids)
-            ProfileManager.setEnabledIntegrations(profile.id, readEnabledIntegrations(form))
-            restorePickerView()
-            view?.let(::bindProfiles)
+            val leavingKids = profile.isKids && !becomingKids
+            fun commitEdit() {
+                ProfileManager.rename(profile.id, name)
+                ProfileManager.updateAvatar(profile.id, selected)
+                ProfileManager.updateKids(profile.id, becomingKids)
+                ProfileManager.setEnabledIntegrations(profile.id, readEnabledIntegrations(form))
+                restorePickerView()
+                view?.let(::bindProfiles)
+            }
+            if (leavingKids) {
+                ProfilesSettingsController.challengeKidsUnlock(requireContext()) { commitEdit() }
+            } else {
+                commitEdit()
+            }
         }
         val deleteBtn = form.findViewById<TextView>(R.id.btn_profile_create_delete)
         if (ProfileManager.profiles().size > 1) {

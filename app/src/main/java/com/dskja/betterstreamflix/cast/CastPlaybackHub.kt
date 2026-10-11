@@ -342,9 +342,31 @@ object CastPlaybackHub {
         playerListener = null
         runCatching { castPlayer?.release() }
         castPlayer = null
+        val wasCasting = isCasting
         isCasting = false
-        queue.clear()
+        // clearQueue notifies badge listeners; bare queue.clear() left stale counts.
+        if (queue.isNotEmpty()) {
+            queue.clear()
+            notifyQueueChanged()
+        }
+        runCatching { CastQueueCoordinator.clearLastEnqueued() }
         stopProxy()
+        if (wasCasting) {
+            sessionStateListeners.forEach { runCatching { it(false) } }
+        }
+    }
+
+    /** End the Cast session from TV chrome (status strip / queue dialog). Fire/GMS-safe. */
+    fun stopCasting(context: Context) {
+        val app = context.applicationContext
+        runCatching {
+            CastContext.getSharedInstance(app)
+                .sessionManager
+                .endCurrentSession(true)
+        }.onFailure {
+            Log.w(TAG, "endCurrentSession failed: ${it.message}")
+        }
+        releaseFully()
     }
 
     private fun attachSessionManager(castContext: CastContext) {

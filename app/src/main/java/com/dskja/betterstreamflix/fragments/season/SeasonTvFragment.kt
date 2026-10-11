@@ -26,6 +26,7 @@ import com.dskja.betterstreamflix.utils.ExpDialogChrome
 import com.dskja.betterstreamflix.utils.ExpEmptyChrome
 import com.dskja.betterstreamflix.utils.Http409CacheGuard
 import com.dskja.betterstreamflix.utils.TmdbUtils
+import com.dskja.betterstreamflix.utils.TvFocusChain
 import com.dskja.betterstreamflix.utils.format
 import com.dskja.betterstreamflix.utils.viewModelsFactory
 import com.dskja.betterstreamflix.ui.DetailLoadingErrorChrome
@@ -105,10 +106,30 @@ class SeasonTvFragment : Fragment() {
         }
     }
 
+    override fun onPause() {
+        captureFocusedEpisodeIndex()
+        super.onPause()
+    }
+
+    override fun onResume() {
+        super.onResume()
+        restoreEpisodeFocus()
+    }
+
     override fun onDestroyView() {
         _binding?.let { appAdapter.onSaveInstanceState(it.hgvEpisodes) }
         _binding = null
         super.onDestroyView()
+    }
+
+    private fun captureFocusedEpisodeIndex() {
+        val ui = _binding ?: return
+        val focused = ui.hgvEpisodes.focusedChild ?: return
+        val holder = ui.hgvEpisodes.findContainingViewHolder(focused) ?: return
+        val pos = holder.bindingAdapterPosition
+        if (pos != RecyclerView.NO_POSITION) {
+            focusedEpisodeIndex = pos
+        }
     }
 
     private fun initializeSeason() {
@@ -184,6 +205,9 @@ class SeasonTvFragment : Fragment() {
                 stateRestorationPolicy = RecyclerView.Adapter.StateRestorationPolicy.PREVENT_WHEN_EMPTY
             }
             setItemSpacing(resources.getDimension(R.dimen.season_episodes_spacing).toInt())
+            // Leanback WRAP_CONTENT HGV is unsafe — pin like detail cast rows (TV-SEAS-06).
+            setRowHeight(resources.getDimensionPixelSize(R.dimen.season_episode_row_height))
+            setHasFixedSize(true)
         }
     }
 
@@ -217,6 +241,7 @@ class SeasonTvFragment : Fragment() {
             if (!isAdded || _binding == null) return@launch
             // Hide until a playable URL is ready (parity with Movie/TV detail hero CTAs).
             binding.btnSeasonTrailer.isVisible = false
+            rewireSeasonHeaderFocus()
             if (!canLookup) return@launch
 
             val remote = withContext(Dispatchers.IO) {
@@ -234,10 +259,18 @@ class SeasonTvFragment : Fragment() {
             val url = TrailerCatalog.preferredPlayableUrl(remote)
             if (url.isNullOrBlank()) return@launch
 
+            // Empty season: keep exclusive focus on empty CTA (TV-SEAS-07).
+            if (loadedEpisodes.isEmpty() && binding.tvSeasonEmpty.isVisible) {
+                binding.btnSeasonTrailer.isVisible = false
+                rewireSeasonHeaderFocus()
+                return@launch
+            }
+
             binding.btnSeasonTrailer.isVisible = true
             binding.btnSeasonTrailer.setOnClickListener {
                 TrailerPlaybackController.play(this@SeasonTvFragment, url)
             }
+            rewireSeasonHeaderFocus()
         }
     }
 
@@ -260,6 +293,8 @@ class SeasonTvFragment : Fragment() {
         )
         binding.hgvEpisodes.visibility = if (empty) View.GONE else View.VISIBLE
         if (empty) {
+            // Trailer competes with empty CTA — hide it while empty (TV-SEAS-07).
+            binding.btnSeasonTrailer.isVisible = false
             val emptyCta = binding.root.findViewById<View>(R.id.btn_season_empty_cta)
             emptyCta?.visibility = View.VISIBLE
             emptyCta?.isFocusable = true
@@ -281,15 +316,68 @@ class SeasonTvFragment : Fragment() {
 
         appAdapter.submitList(preparedEpisodes)
 
-        if (!empty && focusedEpisodeIndex == null) {
-            val scrollIndex = when {
+        if (!empty) {
+            val scrollIndex = focusedEpisodeIndex ?: when {
                 lastWatchedIndex == -1 -> 0
                 lastWatchedIndex < episodes.lastIndex -> lastWatchedIndex + 1
                 else -> lastWatchedIndex
             }
-            binding.hgvEpisodes.scrollAndFocus(scrollIndex)
             focusedEpisodeIndex = scrollIndex
+            binding.hgvEpisodes.scrollAndFocus(scrollIndex)
         }
+        rewireSeasonHeaderFocus()
+        binding.hgvEpisodes.post { rewireSeasonHeaderFocus() }
+    }
+
+    /** Header actions ↔ episode HGV (or empty CTA) vertical chain. */
+    private fun rewireSeasonHeaderFocus() {
+        val ui = _binding ?: return
+        val picker = ui.btnSeasonPicker.takeIf { it.isVisible } ?: ui.spSeasonPicker
+        TvFocusChain.linkHorizontal(
+            picker,
+            ui.btnSeasonTrailer,
+            ui.btnSeasonDownload,
+        )
+        val emptyCta = ui.root.findViewById<View>(R.id.btn_season_empty_cta)
+        val episodeTarget = when {
+            ui.hgvEpisodes.isVisible && ui.hgvEpisodes.childCount > 0 -> {
+                val focusedChild = ui.hgvEpisodes.focusedChild
+                focusedChild
+                    ?: ui.hgvEpisodes
+                        .findViewHolderForAdapterPosition(focusedEpisodeIndex ?: 0)
+                        ?.itemView
+                    ?: ui.hgvEpisodes.getChildAt(0)
+                    ?: ui.hgvEpisodes
+            }
+            emptyCta?.isVisible == true -> emptyCta
+            else -> ui.hgvEpisodes.takeIf { it.isVisible }
+        }
+        TvFocusChain.linkDown(
+            listOf(picker, ui.btnSeasonTrailer, ui.btnSeasonDownload),
+            episodeTarget,
+        )
+        episodeTarget?.nextFocusUpId = listOf(
+            ui.btnSeasonDownload,
+            ui.btnSeasonTrailer,
+            picker,
+        ).firstOrNull { it.isVisible && it.isFocusable }?.id ?: View.NO_ID
+    }
+
+    /** Public handoff for side-nav / destination focus (Leanback). */
+    fun requestContentFocus(): Boolean {
+        val ui = _binding ?: return false
+        if (!ui.hgvEpisodes.isVisible || loadedEpisodes.isEmpty()) return false
+        restoreEpisodeFocus()
+        return true
+    }
+
+    private fun restoreEpisodeFocus() {
+        val ui = _binding ?: return
+        if (!ui.hgvEpisodes.isVisible || loadedEpisodes.isEmpty()) return
+        val index = (focusedEpisodeIndex ?: 0).coerceIn(0, loadedEpisodes.lastIndex)
+        focusedEpisodeIndex = index
+        ui.hgvEpisodes.scrollAndFocus(index)
+        ui.hgvEpisodes.post { rewireSeasonHeaderFocus() }
     }
 
     private fun RecyclerView.scrollAndFocus(position: Int) {
@@ -298,6 +386,7 @@ class SeasonTvFragment : Fragment() {
             override fun onGlobalLayout() {
                 viewTreeObserver.removeOnGlobalLayoutListener(this)
                 findViewHolderForAdapterPosition(position)?.itemView?.requestFocus()
+                rewireSeasonHeaderFocus()
             }
         })
     }

@@ -6,6 +6,7 @@ import android.view.View
 import android.widget.ImageView
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
 import androidx.navigation.findNavController
 import androidx.recyclerview.widget.RecyclerView
@@ -98,7 +99,7 @@ class ProviderViewHolder(
             }
         }
 
-        bindLoginGear(binding.root.findViewById(R.id.iv_provider_login_gear))
+        bindLoginGear(binding.root.findViewById(R.id.iv_provider_login_gear), tvNonFocusable = false)
 
         loadProviderLogo(binding.ivProviderLogo)
 
@@ -171,10 +172,7 @@ class ProviderViewHolder(
             }
             setOnLongClickListener {
                 ExpMotion.hapticTap(it)
-                toggleFavorite(provider)
-                val fav = binding.ivProviderFavorite
-                val wasVisible = fav.visibility == View.VISIBLE
-                fav.visibility = if (provider.isFavorite) View.VISIBLE else View.GONE
+                showTvProviderActions(binding)
                 true
             }
         }
@@ -182,7 +180,12 @@ class ProviderViewHolder(
         binding.ivProviderFavorite.visibility =
             if (provider.isFavorite) View.VISIBLE else View.GONE
 
-        bindLoginGear(binding.root.findViewById(R.id.iv_provider_login_gear))
+        binding.root.findViewById<ImageView>(R.id.iv_provider_selected)?.let { selected ->
+            val isCurrent = UserPreferences.currentProvider?.name == provider.name
+            selected.visibility = if (isCurrent) View.VISIBLE else View.GONE
+        }
+
+        bindLoginGear(binding.root.findViewById(R.id.iv_provider_login_gear), tvNonFocusable = true)
 
         loadProviderLogo(binding.ivProviderLogo)
 
@@ -192,6 +195,65 @@ class ProviderViewHolder(
             .let { it.getDisplayLanguage(it) }
             .replaceFirstChar { it.titlecase() }
         binding.tvProviderLanguage.text = providerHealthLabel(lang, provider.name)
+        // TMDb providers get the Cinema TMDb accent (TV-INK-09).
+        if (provider.name.contains("TMDb", ignoreCase = true)) {
+            binding.tvProviderLanguage.setTextColor(
+                ContextCompat.getColor(context, R.color.cinema_tmdb),
+            )
+        } else {
+            binding.tvProviderLanguage.setTextColor(
+                ContextCompat.getColor(context, R.color.cinema_text_muted),
+            )
+        }
+    }
+
+    /** Long-press menu: favorite, domain update (independent of quarantine), login. */
+    private fun showTvProviderActions(binding: ItemProviderTvBinding) {
+        val supportsLogin = provider.provider is SerienStreamProvider ||
+            provider.provider is AniWorldProvider
+        val offerDomain = ProviderHealth.supportsDomainUpdate(provider.provider)
+        val labels = mutableListOf<String>()
+        val actions = mutableListOf<() -> Unit>()
+        labels += if (provider.isFavorite) {
+            context.getString(R.string.option_show_unfavorite)
+        } else {
+            context.getString(R.string.option_show_favorite)
+        }
+        actions += {
+            toggleFavorite(provider)
+            binding.ivProviderFavorite.visibility =
+                if (provider.isFavorite) View.VISIBLE else View.GONE
+        }
+        if (offerDomain) {
+            labels += context.getString(R.string.provider_update_domain)
+            actions += { updateProviderDomain() }
+        }
+        if (supportsLogin) {
+            labels += context.getString(R.string.provider_login_gear_cd)
+            actions += { openProviderLoginSettings() }
+        }
+        if (actions.size == 1) {
+            actions.first().invoke()
+            return
+        }
+        AlertDialog.Builder(com.dskja.betterstreamflix.utils.ExpDialogChrome.themedContext(context))
+            .setTitle(provider.name)
+            .setItems(labels.toTypedArray()) { _, which ->
+                actions.getOrNull(which)?.invoke()
+            }
+            .setNegativeButton(android.R.string.cancel, null)
+            .create()
+            .also { dialog ->
+                dialog.setOnShowListener {
+                    com.dskja.betterstreamflix.utils.ExpDialogChrome.polishShown(dialog)
+                    dialog.listView?.apply {
+                        isFocusable = true
+                        isFocusableInTouchMode = true
+                        requestFocus()
+                    }
+                }
+                dialog.show()
+            }
     }
 
     private fun providerHealthLabel(language: String, providerName: String): String {
@@ -299,7 +361,7 @@ class ProviderViewHolder(
         }
     }
 
-    private fun bindLoginGear(gear: ImageView?) {
+    private fun bindLoginGear(gear: ImageView?, tvNonFocusable: Boolean) {
         if (gear == null) return
         val supportsLogin = provider.provider is SerienStreamProvider ||
             provider.provider is AniWorldProvider
@@ -310,6 +372,20 @@ class ProviderViewHolder(
         }
         val wasVisible = gear.visibility == View.VISIBLE
         gear.visibility = View.VISIBLE
+        if (tvNonFocusable) {
+            // Nested focusable gear traps DPAD on Leanback — long-press opens login;
+            // keep click for touch remotes / mouse.
+            gear.isFocusable = false
+            gear.isFocusableInTouchMode = false
+            gear.isClickable = true
+            gear.setOnClickListener { view ->
+                ExpMotion.hapticTap(view)
+                openProviderLoginSettings()
+            }
+            return
+        }
+        gear.isFocusable = true
+        gear.isClickable = true
         if (ExperimentalMobileDesign.enabled()) {
             gear.setBackgroundResource(ExperimentalMobileDesign.iconChipBackground())
             if (!wasVisible) ExpMotion.popIn(gear)

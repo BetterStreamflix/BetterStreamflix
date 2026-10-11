@@ -39,6 +39,7 @@
     <string name="live_hub_section_news">Infos</string>
     <string name="live_hub_section_channels">Chaînes</string>
     <string name="live_hub_empty">Aucune chaîne live pour le moment — réessayez</string>
+    <string name="live_hub_empty_tv">Aucune chaîne live pour le moment — appuyez sur OK pour réessayer</string>
     <string name="main_menu_theme_change">Changer de thème</string>
     <string name="theme_default">Par défaut</string>
     <string name="theme_nero_amoled_oled">Noir Amoled/Oled</string>

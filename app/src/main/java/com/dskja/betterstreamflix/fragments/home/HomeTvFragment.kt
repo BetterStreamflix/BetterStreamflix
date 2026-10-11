@@ -161,6 +161,17 @@ class HomeTvFragment : Fragment() {
         super.onResume()
         refreshProfileChip()
         com.dskja.betterstreamflix.ui.TrailerPlaybackController.silenceAllActive()
+        // Returning from player / detail often leaves DPAD on side nav; restore content focus.
+        val grid = _binding?.vgvHome
+        val contentVisible = grid != null &&
+            grid.visibility == View.VISIBLE &&
+            (grid.adapter?.itemCount ?: 0) > 0 &&
+            _binding?.isLoading?.root?.visibility != View.VISIBLE
+        val navHasFocus = activity?.findViewById<View>(R.id.nav_main)?.hasFocus() == true ||
+            activity?.findViewById<View>(R.id.nav_main)?.findFocus() != null
+        if (contentVisible && !navHasFocus && grid?.hasFocus() != true && grid?.findFocus() == null) {
+            requestContentFocus()
+        }
     }
     
     // Restart the carousel when data is already loaded and the fragment is visible.

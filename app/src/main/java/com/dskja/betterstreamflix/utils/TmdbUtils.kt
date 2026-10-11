@@ -1690,6 +1690,9 @@ object TmdbUtils {
             .distinct()
     }
 
+    /** Parse a content-rating / certification string into an approximate age ceiling. */
+    fun parseContentRatingToAge(raw: String?): Int? = parseAgeRating(raw)
+
     private fun parseAgeRating(raw: String?): Int? {
         val normalized = raw
             ?.trim()

@@ -117,7 +117,15 @@ class TvShowTvFragment : Fragment() {
         }
     }
 
-    private fun requestWatchFocus() {
+    /** Public handoff for side-nav / destination focus (Leanback). */
+    fun requestContentFocus(): Boolean {
+        val grid = _binding?.vgvTvShow ?: return false
+        if (!grid.isAttachedToWindow || (grid.adapter?.itemCount ?: 0) == 0) return false
+        requestWatchFocus(force = true)
+        return true
+    }
+
+    private fun requestWatchFocus(force: Boolean = false) {
         binding.vgvTvShow.post {
             if (!isAdded || _binding == null) return@post
             val watch = binding.vgvTvShow
@@ -127,7 +135,7 @@ class TvShowTvFragment : Fragment() {
                 ?: return@post
             // After a progress refresh the list is rebuilt and focus is gone.
             // Keep an existing focus (seasons, cast) where the user left it.
-            if (watchFocusedOnce && binding.vgvTvShow.findFocus() != null) return@post
+            if (!force && watchFocusedOnce && binding.vgvTvShow.findFocus() != null) return@post
             watch.requestFocus()
             watchFocusedOnce = true
         }

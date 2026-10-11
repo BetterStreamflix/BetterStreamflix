@@ -4,33 +4,29 @@ import android.os.Bundle
 import android.view.View
 import android.view.ViewGroup
 import android.widget.TextView
+import com.dskja.betterstreamflix.R
 import com.dskja.betterstreamflix.utils.ExpMotion
 import com.dskja.betterstreamflix.utils.ExpPressEffects.applyExpPress
-import com.dskja.betterstreamflix.utils.ExperimentalMobileDesign
 import com.google.android.gms.cast.framework.media.widget.ExpandedControllerActivity
 
 /** Full-screen Cast media controls (required by CastOptions notification target). */
 class CastExpandedControllerActivity : ExpandedControllerActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
-        if (ExperimentalMobileDesign.enabled()) {
-            setTheme(ExperimentalMobileDesign.themeRes())
-        }
         super.onCreate(savedInstanceState)
-        if (ExperimentalMobileDesign.enabled()) {
-            ExperimentalMobileDesign.applyDynamicColors(this)
-            window?.decorView?.let { decor ->
-                ExperimentalMobileDesign.applyReducedGlass(decor)
-                ExpMotion.enterScreen(decor)
-                decor.post { polishCastControls(decor) }
-            }
+        // TV-safe polish without ExperimentalMobileDesign gate (Fire / Leanback remotes).
+        window?.decorView?.let { decor ->
+            ExpMotion.enterScreen(decor)
+            decor.post { polishCastControls(decor) }
         }
     }
 
     private fun polishCastControls(root: View) {
-        val onSurface = com.google.android.material.color.MaterialColors.getColor(
-            root,
-            com.google.android.material.R.attr.colorOnSurface,
-        )
+        val onSurface = runCatching {
+            com.google.android.material.color.MaterialColors.getColor(
+                root,
+                com.google.android.material.R.attr.colorOnSurface,
+            )
+        }.getOrDefault(0xFFFFFFFF.toInt())
         val titleViews = mutableListOf<TextView>()
         val chipViews = mutableListOf<View>()
         fun walk(view: View) {
@@ -45,7 +41,9 @@ class CastExpandedControllerActivity : ExpandedControllerActivity() {
                 view is android.widget.ImageView && view.isClickable ||
                 view is android.widget.Button
             if (chipTarget) {
-                view.setBackgroundResource(ExperimentalMobileDesign.iconChipBackground())
+                view.setBackgroundResource(R.drawable.bg_btn_exoplayer_tv)
+                view.isFocusable = true
+                view.isFocusableInTouchMode = true
                 view.applyExpPress()
                 when (view) {
                     is android.widget.ImageButton ->
