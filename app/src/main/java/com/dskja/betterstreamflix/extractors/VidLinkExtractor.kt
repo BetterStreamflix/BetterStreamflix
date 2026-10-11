@@ -50,8 +50,7 @@ class VidLinkExtractor : Extractor() {
         return withContext(Dispatchers.Main) {
             suspendCancellableCoroutine { continuation ->
                 val webView = WebView(BetterStreamflixApp.instance.applicationContext)
-<<<<<<< HEAD
-                
+
                 // Configure WebView settings (SEC-WV-04)
                 webView.settings.apply {
                     javaScriptEnabled = true
@@ -60,10 +59,6 @@ class VidLinkExtractor : Extractor() {
                     javaScriptCanOpenWindowsAutomatically = false
                     mixedContentMode = android.webkit.WebSettings.MIXED_CONTENT_NEVER_ALLOW
                 }
-=======
-
-                webView.settings.javaScriptEnabled = true
->>>>>>> 6ba88265 (Harden Live Hub, zap cache, and provider playback failover)
 
                 val timeoutHandler = Handler(Looper.getMainLooper())
                 val timeoutRunnable = Runnable {
@@ -72,6 +67,7 @@ class VidLinkExtractor : Extractor() {
                         webView.destroy()
                     }
                 }
+                // Shorter than the old 30s — EN stubs must not burn VIDEO_RESOLVE_TIMEOUT alone.
                 timeoutHandler.postDelayed(timeoutRunnable, 18_000L)
 
                 continuation.invokeOnCancellation {
@@ -91,6 +87,12 @@ class VidLinkExtractor : Extractor() {
                         }
                         val stream = json.getJSONObject("stream")
                         val playlist = stream.optString("playlist")
+                        if (!isSafePlaylistUrl(playlist)) {
+                            continuation.resumeWithException(
+                                Exception("Rejected playlist URL from WebView bridge"),
+                            )
+                            return
+                        }
                         val captionsList = mutableListOf<Video.Subtitle>()
                         val captions = stream.optJSONArray("captions")
                         if (captions != null) {
@@ -115,50 +117,6 @@ class VidLinkExtractor : Extractor() {
                     }
                 }
 
-<<<<<<< HEAD
-                // Add JavaScript Interface — validate playlist URL scheme/host (SEC-WV-04).
-                webView.addJavascriptInterface(object : Any() {
-                    @android.webkit.JavascriptInterface
-                    fun onStreamFound(jsonData: String) {
-                        timeoutHandler.removeCallbacks(timeoutRunnable)
-                        if (continuation.isActive) {
-                            try {
-                                val json = JSONObject(jsonData)
-                                if (json.has("stream")) {
-                                    val stream = json.getJSONObject("stream")
-                                    val playlist = stream.optString("playlist")
-                                    if (!isSafePlaylistUrl(playlist)) {
-                                        continuation.resumeWithException(
-                                            Exception("Rejected playlist URL from WebView bridge"),
-                                        )
-                                        return
-                                    }
-                                    
-                                    val captionsList = mutableListOf<Video.Subtitle>()
-                                    val captions = stream.optJSONArray("captions")
-                                    if (captions != null) {
-                                        for (i in 0 until captions.length()) {
-                                            val cap = captions.getJSONObject(i)
-                                            val id = cap.optString("id")
-                                            val lang = cap.optString("language")
-                                            captionsList.add(Video.Subtitle(lang, id))
-                                        }
-                                    }
-                                    
-                                    val video = Video(
-                                        source = playlist,
-                                        subtitles = captionsList,
-                                        headers = mapOf("Referer" to mainUrl)
-                                    )
-                                    continuation.resume(video)
-                                } else {
-                                     continuation.resumeWithException(Exception("Stream data missing in response"))
-                                }
-                            } catch (e: Exception) {
-                                continuation.resumeWithException(e)
-                            } finally {
-                                Handler(Looper.getMainLooper()).post { webView.destroy() }
-=======
                 val jsInterceptor = """
                     (function() {
                         if (window.__vidlinkFetchHooked) return;
@@ -201,7 +159,6 @@ class VidLinkExtractor : Extractor() {
                             // rely on JS hook for JSON. Still re-inject early if navigations hop.
                             Handler(Looper.getMainLooper()).post {
                                 view?.evaluateJavascript(jsInterceptor, null)
->>>>>>> 6ba88265 (Harden Live Hub, zap cache, and provider playback failover)
                             }
                         }
                         return super.shouldInterceptRequest(view, request)
