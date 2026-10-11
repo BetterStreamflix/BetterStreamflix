@@ -33,6 +33,7 @@ object ProfileManager {
         "PARENTAL_CONTROL_FAILED_ATTEMPTS",
         "PARENTAL_CONTROL_LOCKED_UNTIL",
         "PARENTAL_CONTROL_HARD_LOCKED",
+        "SELECTED_THEME",
     )
 
     val avatarKeys = listOf(
@@ -146,6 +147,7 @@ object ProfileManager {
         )
         val updated = profiles() + profile
         ProfileStore.saveAll(appContext, updated)
+        applyDefaultThemeForProfile(profile)
         return profile
     }
 
@@ -237,8 +239,14 @@ object ProfileManager {
                 maxAgeRating = if (isKids) (it.maxAgeRating ?: KIDS_DEFAULT_MAX_AGE) else null,
             )
         }
-        if (ok && profileId == activeProfileId) {
-            applyKidsParentalDefaults(profiles().find { it.id == profileId }, previous)
+        if (ok) {
+            val updated = profiles().find { it.id == profileId }
+            if (updated != null && previous?.isKids != updated.isKids) {
+                applyDefaultThemeForProfile(updated, force = true)
+            }
+            if (profileId == activeProfileId) {
+                applyKidsParentalDefaults(updated, previous)
+            }
         }
         return ok
     }
@@ -343,6 +351,34 @@ object ProfileManager {
         if (next != UserPreferences.parentalControlMaxAge) {
             UserPreferences.parentalControlMaxAge = next
         }
+        // Seed kids/adult shell themes when this profile has never picked one.
+        applyDefaultThemeForProfile(profile, force = false)
+    }
+
+    /**
+     * Kids → Kids Bright, adult → Cinema Ink. With [force], overwrites when the kids
+     * flag flips; otherwise only writes when the scoped theme key is missing.
+     */
+    private fun applyDefaultThemeForProfile(profile: UserProfile, force: Boolean = false) {
+        if (!::appContext.isInitialized) return
+        val prefs = appContext.getSharedPreferences(
+            "${BuildConfig.APPLICATION_ID}.preferences",
+            Context.MODE_PRIVATE,
+        )
+        val key = scopedPrefKeyFor("SELECTED_THEME", profile.id)
+        if (!force && prefs.contains(key)) return
+        // Active-profile writes go through UserPreferences so getters stay consistent.
+        if (profile.id == activeProfileId) {
+            UserPreferences.selectedTheme =
+                com.dskja.betterstreamflix.utils.ThemeManager.defaultThemeForKids(profile.isKids)
+        } else {
+            prefs.edit {
+                putString(
+                    key,
+                    com.dskja.betterstreamflix.utils.ThemeManager.defaultThemeForKids(profile.isKids),
+                )
+            }
+        }
     }
 
     /**
@@ -407,6 +443,11 @@ object ProfileManager {
                 appContext.deleteSharedPreferences(
                     scopedPrefKeyFor("watch_party_pending", profileId),
                 )
+            }
+            runCatching {
+                val folder = com.dskja.betterstreamflix.download.DownloadStorage
+                    .profileDownloadsDir(appContext, profileId)
+                com.dskja.betterstreamflix.download.DownloadStorage.deleteQuietly(folder)
             }
         }
     }

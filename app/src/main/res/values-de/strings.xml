@@ -98,6 +98,9 @@
     <string name="detail_download">Herunterladen</string>
     <string name="main_menu_theme_change">Design ändern</string>
     <string name="theme_default">Standard</string>
+    <string name="theme_cinema_ink">Cinema Ink</string>
+    <string name="theme_kids_bright">Kids Hell</string>
+    <string name="downloads_profile_folder_label">Profilordner: %1$s</string>
     <string name="theme_nero_amoled_oled">Nero Amoled/Oled</string>
 
     <string name="search_input_hint">Titel, Personen oder ähnlich wie…</string>

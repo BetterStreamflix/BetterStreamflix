@@ -122,6 +122,8 @@ abstract class AppDatabase : RoomDatabase() {
                 com.dskja.betterstreamflix.download.DownloadDatabase.resetInstance()
                 com.dskja.betterstreamflix.download.DownloadRepository.resetInstance()
                 com.dskja.betterstreamflix.download.OfflineBadgeStore.reset()
+                // Re-open SimpleCache under the next profile's downloads folder.
+                com.dskja.betterstreamflix.download.StreamflixDownloadManager.release()
             }
         }
 

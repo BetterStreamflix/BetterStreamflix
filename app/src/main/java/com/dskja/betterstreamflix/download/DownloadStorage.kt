@@ -4,11 +4,13 @@ import android.content.Context
 import android.os.Environment
 import android.os.StatFs
 import com.dskja.betterstreamflix.R
+import com.dskja.betterstreamflix.profiles.ProfileManager
 import com.dskja.betterstreamflix.utils.UserPreferences
 import java.io.File
 
 object DownloadStorage {
     private const val DIR_NAME = "downloads"
+    private const val PROFILES_ROOT = "profiles"
     private const val PUBLIC_FOLDER = "BetterStreamflix"
     private const val MIN_FREE_BYTES = 500L * 1024L * 1024L
 
@@ -16,7 +18,53 @@ object DownloadStorage {
         UserPreferences.downloadStorageLocation
     }.getOrDefault(DownloadStorageLocation.INTERNAL)
 
+    /**
+     * Visible per-profile segment under the storage root, e.g.
+     * `profiles/Kids__a1b2c3d4e5f6` or `profiles/default`.
+     */
+    fun profileFolderSegment(
+        profileId: String = ProfileManager.activeProfileId,
+        displayName: String? = ProfileManager.activeProfile()?.displayName,
+    ): String {
+        val safeName = DownloadSeriesFolders.sanitizeFolderName(
+            displayName?.takeIf { it.isNotBlank() } ?: profileId,
+        )
+        return if (profileId == ProfileManager.DEFAULT_PROFILE_ID) {
+            "$PROFILES_ROOT/$safeName"
+        } else {
+            "$PROFILES_ROOT/${safeName}__$profileId"
+        }
+    }
+
+    fun profileDownloadsDir(
+        context: Context,
+        profileId: String,
+        displayName: String? = null,
+    ): File {
+        val root = storageRootDir(context)
+        return File(root, profileFolderSegment(profileId, displayName))
+    }
+
     fun downloadsDir(context: Context): File {
+        val preferred = File(
+            storageRootDir(context),
+            profileFolderSegment(),
+        )
+        ensureWritableDir(preferred)?.let { return it }
+        if (preferred.isDirectory && preferred.canRead()) return preferred
+        if (location() == DownloadStorageLocation.CUSTOM_FOLDER ||
+            location() == DownloadStorageLocation.REMOVABLE
+        ) {
+            // Never retarget an open SimpleCache onto a different volume.
+            return preferred
+        }
+        val fallbackRoot = appExternalDownloads(context.applicationContext)
+        val nested = File(fallbackRoot, profileFolderSegment())
+        return ensureWritableDir(nested) ?: nested.also { if (!it.exists()) it.mkdirs() }
+    }
+
+    /** Shared volume root (not profile-nested). */
+    fun storageRootDir(context: Context): File {
         val app = context.applicationContext
         val preferred = when (location()) {
             DownloadStorageLocation.INTERNAL ->
@@ -35,7 +83,6 @@ object DownloadStorage {
         if (location() == DownloadStorageLocation.CUSTOM_FOLDER ||
             location() == DownloadStorageLocation.REMOVABLE
         ) {
-            // Never retarget an open SimpleCache onto a different volume.
             return preferred
         }
         return ensureWritableDir(appExternalDownloads(app)) ?: File(app.filesDir, DIR_NAME).also {
@@ -168,7 +215,11 @@ object DownloadStorage {
 
     fun absolutePathSummary(context: Context): String {
         val cachePath = downloadsDir(context).absolutePath
-        return when (location()) {
+        val profileLabel = context.getString(
+            R.string.downloads_profile_folder_label,
+            profileFolderSegment(),
+        )
+        val body = when (location()) {
             DownloadStorageLocation.CUSTOM_FOLDER -> {
                 val health = DownloadTreeAccess.customStorageHealth(context)
                 val treeName = DownloadTreeAccess.displayName(context)
@@ -203,6 +254,7 @@ object DownloadStorage {
                 context.getString(R.string.settings_download_storage_cache_path, cachePath)
             else -> cachePath
         }
+        return "$profileLabel\n$body"
     }
 
     fun usedBytes(context: Context): Long =

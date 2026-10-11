@@ -64,7 +64,7 @@ object DownloadStats {
         val used = DownloadStorage.formatBytes(context, DownloadStorage.usedBytes(context))
         val free = DownloadStorage.formatBytes(context, DownloadStorage.freeBytes(context))
         val soft = UserPreferences.downloadSoftLimitGb
-        return if (soft > 0) {
+        val usage = if (soft > 0) {
             context.getString(
                 R.string.settings_download_storage_detail,
                 used,
@@ -74,6 +74,11 @@ object DownloadStats {
         } else {
             context.getString(R.string.downloads_storage_chip, used, free)
         }
+        val profileFolder = context.getString(
+            R.string.downloads_profile_folder_label,
+            DownloadStorage.profileFolderSegment(),
+        )
+        return "$profileFolder · $usage"
     }
 
     fun clampSoftLimitGb(raw: String?): Int {

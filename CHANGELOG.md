@@ -10,8 +10,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - Cinema Ink consistency (Mobile + TV): Featured TV CTAs/text use shared Detail styles and `cinema_*` tokens; TV player chrome (root, exo controller, settings) maps to the same ink/scrim/elevated/text roles; Detail section rules use `bg_cinema_accent_rule`; secondary TV glass and progress tracks share tokens
 - TV season episode list: per-episode Download CTA (one OK on the Cinema Ink secondary control) wires into `DownloadOptionsController.enqueueEpisode` — long-press options remain as a secondary path
+- Profile themes + download folders: theme preference is per-profile; Kids defaults to **Kids Bright**, adults to **Cinema Ink**; offline files land in visible `profiles/<Name>` folders (Settings path + Downloads chip show the folder)
 
 ### Added
+- **Cinema Ink** and **Kids Bright** app themes (Mobile + TV) for adult vs kids profiles
 - Smart Downloads (opt-in, Settings → Downloads, Mobile + TV): auto-queue the next **3** episodes by default, Wi‑Fi only, per-series unwatched quota, and pause in-flight downloads when free space / soft-limit is low — builds on the existing download stack and offline library
 - Watch-Party light: host/join via shareable `party/<token>` link (Mobile + TV); syncs play position + chosen server only through Supabase (no video relay); graceful host end / guest leave; Kids/PIN and offline join queue
 - Smart Skip Intro/Recap on Mobile + TV: chapter marks first, silence probe in the opening minutes, then a conservative episode heuristic — button only while inside a skippable segment (not a 2-minute spam window)

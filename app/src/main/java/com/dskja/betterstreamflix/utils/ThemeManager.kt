@@ -17,6 +17,13 @@ object ThemeManager {
     const val NORD_FROST = "nord_frost"
     const val EMERALD_LUXE = "emerald_luxe"
     const val RETRO_NEON = "retro_neon"
+    /** Adult shell — near-black Cinema Ink surfaces. */
+    const val CINEMA_INK = "cinema_ink"
+    /** Kids shell — brighter navy + warm accent than Cinema Ink. */
+    const val KIDS_BRIGHT = "kids_bright"
+
+    fun defaultThemeForKids(isKids: Boolean): String =
+        if (isKids) KIDS_BRIGHT else CINEMA_INK
 
     data class Palette(
         @ColorInt val mobileNavBackground: Int,
@@ -45,6 +52,8 @@ object ThemeManager {
             NORD_FROST -> R.style.AppTheme_Mobile_NordFrost
             EMERALD_LUXE -> R.style.AppTheme_Mobile_EmeraldLuxe
             RETRO_NEON -> R.style.AppTheme_Mobile_RetroNeon
+            CINEMA_INK -> R.style.AppTheme_Mobile_CinemaInk
+            KIDS_BRIGHT -> R.style.AppTheme_Mobile_KidsBright
             else -> R.style.AppTheme_Mobile
         }
     }
@@ -61,6 +70,8 @@ object ThemeManager {
             NORD_FROST -> R.style.AppTheme_NordFrost
             EMERALD_LUXE -> R.style.AppTheme_EmeraldLuxe
             RETRO_NEON -> R.style.AppTheme_RetroNeon
+            CINEMA_INK -> R.style.AppTheme_CinemaInk
+            KIDS_BRIGHT -> R.style.AppTheme_KidsBright
             else -> R.style.AppTheme_Tv
         }
     }
@@ -76,6 +87,8 @@ object ThemeManager {
         NORD_FROST -> R.string.theme_nord_frost
         EMERALD_LUXE -> R.string.theme_emerald_luxe
         RETRO_NEON -> R.string.theme_retro_neon
+        CINEMA_INK -> R.string.theme_cinema_ink
+        KIDS_BRIGHT -> R.string.theme_kids_bright
         else -> R.string.theme_default
     }
 
@@ -161,6 +174,24 @@ object ThemeManager {
                 tvNavBackground = color("#18181E"),
                 tvHeaderPrimary = color("#F4F7FF"),
                 tvHeaderSecondary = color("#CFB7DA"),
+            )
+            CINEMA_INK -> Palette(
+                mobileNavBackground = color("#0A0A0C"),
+                mobileNavActive = color("#F7F7F8"),
+                mobileNavInactive = color("#A1A1AA"),
+                systemBar = color("#0A0A0C"),
+                tvNavBackground = color("#0A0A0C"),
+                tvHeaderPrimary = color("#F7F7F8"),
+                tvHeaderSecondary = color("#A1A1AA"),
+            )
+            KIDS_BRIGHT -> Palette(
+                mobileNavBackground = color("#243B63"),
+                mobileNavActive = color("#FFB347"),
+                mobileNavInactive = color("#C9D6F0"),
+                systemBar = color("#243B63"),
+                tvNavBackground = color("#243B63"),
+                tvHeaderPrimary = color("#FFF8E7"),
+                tvHeaderSecondary = color("#FFE08A"),
             )
             else -> Palette(
                 mobileNavBackground = color("#1E2129"),

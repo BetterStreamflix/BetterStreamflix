@@ -1149,7 +1149,8 @@ class SettingsTvFragment : LeanbackPreferenceFragmentCompat() {
             true
         }
 
-        findPreference<ListPreference>("theme_preference")?.apply {
+        findPreference<ListPreference>("SELECTED_THEME")?.apply {
+            value = UserPreferences.selectedTheme
             summaryProvider = Preference.SummaryProvider<ListPreference> { pref ->
                 getString(ThemeManager.titleRes(pref.value ?: ThemeManager.DEFAULT))
             }

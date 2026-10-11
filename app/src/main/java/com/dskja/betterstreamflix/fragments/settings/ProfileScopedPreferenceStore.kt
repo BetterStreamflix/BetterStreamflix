@@ -24,6 +24,7 @@ internal object ProfileScopedPreferenceStore {
         "SHOW_RECENTLY_WATCHED",
         "SHOW_NEXT_EPISODES",
         "PARENTAL_CONTROL_MAX_AGE",
+        "SELECTED_THEME",
     )
 
     fun attach(fragment: PreferenceFragmentCompat) {
@@ -56,6 +57,11 @@ internal object ProfileScopedPreferenceStore {
                         ProfileManager.updateMaxAgeRating(ProfileManager.activeProfileId, age)
                     }
                 }
+                "SELECTED_THEME" -> {
+                    if (!value.isNullOrBlank()) {
+                        UserPreferences.selectedTheme = value
+                    }
+                }
             }
         }
 
@@ -63,6 +69,7 @@ internal object ProfileScopedPreferenceStore {
             "LIBRARY_SCOPE" -> UserPreferences.libraryScope.key
             "PARENTAL_CONTROL_MAX_AGE" ->
                 UserPreferences.parentalControlMaxAge?.toString().orEmpty()
+            "SELECTED_THEME" -> UserPreferences.selectedTheme
             else -> defValue
         }
 
