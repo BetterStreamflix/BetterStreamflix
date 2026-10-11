@@ -59,6 +59,7 @@ import com.dskja.betterstreamflix.R
 import com.dskja.betterstreamflix.cast.CastMediaFactory
 import com.dskja.betterstreamflix.cast.CastPlaybackHub
 import com.dskja.betterstreamflix.cast.CastQueueCoordinator
+import com.dskja.betterstreamflix.player.EndCardPolicy
 import com.dskja.betterstreamflix.player.FailoverTimelineSession
 import com.dskja.betterstreamflix.player.FailoverTimelineUi
 import com.dskja.betterstreamflix.player.PlaybackFailover
@@ -73,6 +74,7 @@ import com.dskja.betterstreamflix.player.SmartMuteAds
 import com.dskja.betterstreamflix.player.SmartSkipIntro
 import com.dskja.betterstreamflix.player.StreamFailureReason
 import com.dskja.betterstreamflix.player.StuckBufferDetector
+import androidx.core.os.bundleOf
 import com.dskja.betterstreamflix.providers.ProviderDomainUpdater
 import com.dskja.betterstreamflix.providers.SerienStreamAuthManager
 import com.dskja.betterstreamflix.utils.CrashReporter
@@ -300,6 +302,9 @@ class PlayerTvFragment : Fragment(),
     private var nextEpisodePrefetchTargetId: String? = null
     private var nextEpisodePrefetchJob: Job? = null
     private var nextEpisodeOverlayDismissed = false
+    private var endCardVisible = false
+    private var endCardCountdownCancelled = false
+    private var endCardCountdownJob: Job? = null
 
     private var skipIntroContentId: String? = null
     private var skipIntroConsumed = false
@@ -1728,6 +1733,7 @@ class PlayerTvFragment : Fragment(),
                 is Video.Type.Episode -> {
                     nextEpisodeOverlayDismissed = false
                     nextEpisodePrefetchTargetId = null
+                    hideEndCardChooser()
 
                     if (isLiveTvPlayback()) {
                         EpisodeManager.clearEpisodes()
@@ -1756,6 +1762,7 @@ class PlayerTvFragment : Fragment(),
                     nextEpisodePrefetchTargetId = null
                     EpisodeManager.clearEpisodes()
                     hideNextEpisodeOverlay()
+                    hideEndCardChooser()
                 }
             }
             setupEpisodeNavigationButtons()
@@ -1866,6 +1873,7 @@ class PlayerTvFragment : Fragment(),
             binding.btnNextEpisodeDismiss.setOnFocusChangeListener { _, hasFocus ->
                 updateNextEpisodeOverlayAlpha(hasFocus || binding.btnNextEpisodeAction.hasFocus())
             }
+            wireEndCardChooserButtons()
 
             binding.settings.setOnLocalSubtitlesClickedListener {
                 pickLocalSubtitle.launch(
@@ -2349,8 +2357,8 @@ class PlayerTvFragment : Fragment(),
                             if (com.dskja.betterstreamflix.sync.CastRoomSession.isHost()) {
                                 com.dskja.betterstreamflix.sync.CastRoomPlayerHooks
                                     .onLocalPlaybackEnded(this@PlayerTvFragment)
-                            } else if (UserPreferences.autoplay && !viewModel.isVideoResolveInFlight()) {
-                                playNextEpisodeAcrossSeasons(autoplay = true)
+                            } else {
+                                maybeShowEndCardChooser()
                             }
                         }
                     }
@@ -3436,6 +3444,166 @@ class PlayerTvFragment : Fragment(),
                 )
                 b.layoutNextEpisodeOverlay.startAnimation(fadeOut)
                 b.layoutNextEpisodeOverlay.isGone = true
+            }
+        }
+
+        private fun wireEndCardChooserButtons() {
+            val card = _binding?.layoutEndCardChooser ?: return
+            card.btnEndCardNext.setOnClickListener {
+                endCardCountdownCancelled = true
+                endCardCountdownJob?.cancel()
+                hideEndCardChooser()
+                playNextEpisodeAcrossSeasons()
+            }
+            card.btnEndCardSimilar.setOnClickListener {
+                navigateEndCardToDetail(openSimilar = true)
+            }
+            card.btnEndCardBack.setOnClickListener {
+                navigateEndCardToDetail(openSimilar = false)
+            }
+        }
+
+        private fun maybeShowEndCardChooser() {
+            if (!isAdded || _binding == null) return
+            if (!EndCardPolicy.shouldShowEndCard(
+                    reallyFinished = true,
+                    stateEnded = true,
+                    isLive = isLiveTvPlayback(),
+                    isCasting = isCasting || CastPlaybackHub.isCasting,
+                    resolveInFlight = viewModel.isVideoResolveInFlight(),
+                )
+            ) {
+                if (!isLiveTvPlayback() &&
+                    (isCasting || CastPlaybackHub.isCasting) &&
+                    UserPreferences.autoplay &&
+                    !viewModel.isVideoResolveInFlight()
+                ) {
+                    playNextEpisodeAcrossSeasons(autoplay = true)
+                }
+                return
+            }
+            if (endCardVisible) return
+            (currentVideoTypeForUi() as? Video.Type.Episode)?.let { ensureNextEpisodePrepared(it) }
+            showEndCardChooser()
+        }
+
+        private fun showEndCardChooser() {
+            val b = _binding ?: return
+            val card = b.layoutEndCardChooser
+            val root = card.root
+            hideNextEpisodeOverlay()
+            val episode = currentVideoTypeForUi() as? Video.Type.Episode
+            val movie = currentVideoTypeForUi() as? Video.Type.Movie
+            val hasNext = episode != null && EpisodeManager.peekNextEpisode() != null
+            card.tvEndCardTitle.setText(R.string.player_end_card_title)
+            card.tvEndCardSubtitle.text = when {
+                episode != null -> {
+                    val meta = getString(
+                        R.string.tv_show_item_season_number_episode_number,
+                        episode.season.number,
+                        episode.number,
+                    )
+                    val title = episode.title ?: getString(R.string.episode_number, episode.number)
+                    "$meta · $title"
+                }
+                movie != null -> movie.title
+                else -> ""
+            }
+            card.btnEndCardNext.isVisible = hasNext
+            card.btnEndCardNext.text = getString(R.string.player_end_card_next)
+            card.btnEndCardSimilar.setText(R.string.player_end_card_similar)
+            card.btnEndCardBack.setText(
+                if (episode != null) R.string.player_end_card_back_to_series
+                else R.string.player_end_card_back_to_title,
+            )
+            endCardCountdownCancelled = false
+            endCardCountdownJob?.cancel()
+            val shouldCountdown = EndCardPolicy.shouldAutoplayAfterCountdown(
+                autoplayEnabled = UserPreferences.autoplay,
+                hasNextEpisode = hasNext,
+                countdownCancelled = false,
+            )
+            if (shouldCountdown) {
+                card.tvEndCardCountdown.isVisible = true
+                endCardCountdownJob = viewLifecycleOwner.lifecycleScope.launch {
+                    for (sec in EndCardPolicy.AUTOPLAY_COUNTDOWN_SEC downTo 1) {
+                        if (endCardCountdownCancelled || !isAdded || _binding == null) return@launch
+                        card.tvEndCardCountdown.text = getString(
+                            R.string.player_end_card_autoplay_in,
+                            EndCardPolicy.countdownLabelSec(sec),
+                        )
+                        delay(1_000L)
+                    }
+                    if (!endCardCountdownCancelled && isAdded && _binding != null && endCardVisible) {
+                        hideEndCardChooser()
+                        playNextEpisodeAcrossSeasons(autoplay = true)
+                    }
+                }
+            } else {
+                card.tvEndCardCountdown.isVisible = false
+            }
+            if (root.isGone) {
+                val fadeIn = android.view.animation.AnimationUtils.loadAnimation(
+                    requireContext(),
+                    R.anim.fade_in,
+                )
+                root.startAnimation(fadeIn)
+                root.isVisible = true
+            }
+            endCardVisible = true
+            runCatching { b.pvPlayer.hideController() }
+            val focusTarget = if (hasNext) card.btnEndCardNext else card.btnEndCardSimilar
+            focusTarget.post { focusTarget.requestFocus() }
+        }
+
+        private fun hideEndCardChooser() {
+            endCardCountdownJob?.cancel()
+            endCardCountdownJob = null
+            endCardCountdownCancelled = true
+            endCardVisible = false
+            val root = _binding?.layoutEndCardChooser?.root ?: return
+            if (root.isVisible) {
+                root.isGone = true
+            }
+        }
+
+        private fun navigateEndCardToDetail(openSimilar: Boolean) {
+            endCardCountdownCancelled = true
+            endCardCountdownJob?.cancel()
+            hideEndCardChooser()
+            if (!isAdded) return
+            forceStopPlayback()
+            val openTab = if (openSimilar) "similar" else null
+            val options = NavOptions.Builder()
+                .setPopUpTo(R.id.player, true)
+                .build()
+            when (val type = currentVideoTypeForUi()) {
+                is Video.Type.Episode -> {
+                    runCatching {
+                        findNavController().navigate(
+                            R.id.action_global_tv_show,
+                            bundleOf(
+                                "id" to type.tvShow.id,
+                                "poster" to type.tvShow.poster,
+                                "banner" to type.tvShow.banner,
+                                "openTab" to openTab,
+                            ),
+                            options,
+                        )
+                    }.onFailure { safeNavigateUp() }
+                }
+                is Video.Type.Movie -> {
+                    runCatching {
+                        findNavController().navigate(
+                            R.id.action_global_movie,
+                            bundleOf(
+                                "id" to type.id,
+                                "openTab" to openTab,
+                            ),
+                            options,
+                        )
+                    }.onFailure { safeNavigateUp() }
+                }
             }
         }
 

@@ -268,6 +268,12 @@
     <string name="player_next_episode_dismiss">Ausblenden</string>
     <string name="player_next_episode_ready">Nächste Folge bereit</string>
     <string name="player_next_episode_autoplay_in">Nächste Folge in %ds</string>
+    <string name="player_end_card_title">Was kommt als Nächstes?</string>
+    <string name="player_end_card_next">Nächste Folge</string>
+    <string name="player_end_card_similar">Ähnlich</string>
+    <string name="player_end_card_back_to_series">Zurück zur Serie</string>
+    <string name="player_end_card_back_to_title">Zurück zum Titel</string>
+    <string name="player_end_card_autoplay_in">Nächste Folge in %ds</string>
     <string name="player_picture_in_picture_not_supported">PiP wird auf diesem Gerät nicht unterstützt</string>
     <string name="player_external_player_title">Abspielen mit</string>
     <string name="player_external_player_error_video">Stream noch nicht bereit</string>

@@ -159,7 +159,7 @@ class MovieTvFragment : Fragment() {
             }
         }
 
-        appAdapter.submitList(listOfNotNull(
+        val items = listOfNotNull(
             movie.apply { itemType = AppAdapter.Type.MOVIE_TV },
 
             movie.takeIf { it.directors.isNotEmpty() }
@@ -185,6 +185,17 @@ class MovieTvFragment : Fragment() {
             movie.takeIf { it.recommendations.isNotEmpty() }
                 ?.copy()
                 ?.apply { itemType = AppAdapter.Type.MOVIE_RECOMMENDATIONS_TV },
-        ))
+        )
+        appAdapter.submitList(items)
+        if (args.openTab.equals("similar", ignoreCase = true)) {
+            val similarIndex = items.indexOfFirst {
+                it.itemType == AppAdapter.Type.MOVIE_RECOMMENDATIONS_TV
+            }
+            if (similarIndex >= 0) {
+                binding.vgvMovie.post {
+                    runCatching { binding.vgvMovie.scrollToPosition(similarIndex) }
+                }
+            }
+        }
     }
 }

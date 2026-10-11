@@ -1,0 +1,111 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Post-credits chooser: Next / Similar / Back — large clear actions. -->
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/bg_player_end_card_scrim"
+    android:clickable="true"
+    android:elevation="20dp"
+    android:focusable="false"
+    android:visibility="gone"
+    tools:visibility="visible">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center"
+        android:gravity="center_horizontal"
+        android:orientation="vertical"
+        android:paddingStart="28dp"
+        android:paddingEnd="28dp">
+
+        <TextView
+            android:id="@+id/tv_end_card_title"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:fontFamily="@font/manrope"
+            android:gravity="center"
+            android:text="@string/player_end_card_title"
+            android:textColor="@color/cinema_text"
+            android:textSize="26sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/tv_end_card_subtitle"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:ellipsize="end"
+            android:fontFamily="@font/manrope"
+            android:gravity="center"
+            android:maxLines="2"
+            android:textColor="@color/cinema_text_soft"
+            android:textSize="15sp"
+            tools:text="S2 E8 · Finale" />
+
+        <TextView
+            android:id="@+id/tv_end_card_countdown"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:fontFamily="@font/manrope"
+            android:textColor="@color/cinema_text_muted"
+            android:textSize="13sp"
+            android:visibility="gone"
+            tools:text="Playing next in 8s"
+            tools:visibility="visible" />
+
+        <TextView
+            android:id="@+id/btn_end_card_next"
+            android:layout_width="match_parent"
+            android:layout_height="56dp"
+            android:layout_marginTop="22dp"
+            android:background="@drawable/bg_player_end_card_primary"
+            android:clickable="true"
+            android:focusable="true"
+            android:fontFamily="@font/manrope"
+            android:gravity="center"
+            android:maxWidth="420dp"
+            android:nextFocusDown="@id/btn_end_card_similar"
+            android:text="@string/player_end_card_next"
+            android:textColor="@color/cinema_text"
+            android:textSize="17sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/btn_end_card_similar"
+            android:layout_width="match_parent"
+            android:layout_height="56dp"
+            android:layout_marginTop="12dp"
+            android:background="@drawable/bg_player_end_card_secondary"
+            android:clickable="true"
+            android:focusable="true"
+            android:fontFamily="@font/manrope"
+            android:gravity="center"
+            android:maxWidth="420dp"
+            android:nextFocusUp="@id/btn_end_card_next"
+            android:nextFocusDown="@id/btn_end_card_back"
+            android:text="@string/player_end_card_similar"
+            android:textColor="@color/cinema_text"
+            android:textSize="17sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/btn_end_card_back"
+            android:layout_width="match_parent"
+            android:layout_height="56dp"
+            android:layout_marginTop="12dp"
+            android:background="@drawable/bg_player_end_card_secondary"
+            android:clickable="true"
+            android:focusable="true"
+            android:fontFamily="@font/manrope"
+            android:gravity="center"
+            android:maxWidth="420dp"
+            android:nextFocusUp="@id/btn_end_card_similar"
+            android:text="@string/player_end_card_back_to_series"
+            android:textColor="@color/cinema_text"
+            android:textSize="17sp"
+            android:textStyle="bold" />
+    </LinearLayout>
+</FrameLayout>
