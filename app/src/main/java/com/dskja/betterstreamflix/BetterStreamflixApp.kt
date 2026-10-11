@@ -135,6 +135,9 @@ class BetterStreamflixApp : Application() {
                 com.dskja.betterstreamflix.download.DownloadResumeScheduler.enqueue(appContext)
             }
             runCatching { AppDatabase.setup(appContext) }
+            runCatching {
+                com.dskja.betterstreamflix.tvlauncher.TvLauncherSync.start(appContext)
+            }
             runCatching { SupabaseProvider.initialize(appContext) }
             runCatching {
                 CloudSyncManager.initialize(appContext)

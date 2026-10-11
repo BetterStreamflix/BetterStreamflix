@@ -269,6 +269,8 @@ class MainTvActivity : FragmentActivity() {
         handleOpenDownloadsIntent(intent)
         handleOpenLiveIntent(intent)
         handleSharedWatchlistIntent(intent)
+        handleWatchDeepLink(intent)
+        com.dskja.betterstreamflix.tvlauncher.TvLauncherSync.start(this)
     }
 
     override fun onNewIntent(intent: Intent) {
@@ -277,6 +279,7 @@ class MainTvActivity : FragmentActivity() {
         handleOpenDownloadsIntent(intent)
         handleOpenLiveIntent(intent)
         handleSharedWatchlistIntent(intent)
+        handleWatchDeepLink(intent)
     }
 
     /** Notification / deep-link tap → Downloads tab (parity with [MainMobileActivity]). */
@@ -318,6 +321,13 @@ class MainTvActivity : FragmentActivity() {
         com.dskja.betterstreamflix.sync.SharedWatchlistUi.handleIncomingToken(this, token)
     }
 
+    /** Watch Next / Preview Channel card → resume or open details. */
+    private fun handleWatchDeepLink(intent: Intent?) {
+        val data = intent?.data ?: return
+        if (data.host.equals("home", ignoreCase = true)) return
+        com.dskja.betterstreamflix.tvlauncher.TvWatchDeepLinkRouter.handle(this, data)
+    }
+
     private fun bindingRootAndChrome() {
         _binding = ActivityMainTvBinding.inflate(layoutInflater)
         setContentView(binding.root)
@@ -342,6 +352,7 @@ class MainTvActivity : FragmentActivity() {
         super.onResume()
         viewModel.checkUpdate()
         com.dskja.betterstreamflix.sync.SharedWatchlistUi.tryFlushPending(this)
+        com.dskja.betterstreamflix.tvlauncher.TvLauncherSync.requestPublish(this)
         val destId = (supportFragmentManager.findFragmentById(binding.navMainFragment.id)
             as? NavHostFragment)?.navController?.currentDestination?.id
         refreshCastStatusStrip(playerVisible = destId == R.id.player)
