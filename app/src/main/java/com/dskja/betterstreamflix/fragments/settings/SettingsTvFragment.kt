@@ -1257,6 +1257,14 @@ class SettingsTvFragment : LeanbackPreferenceFragmentCompat() {
             }
         }
 
+        findPreference<SwitchPreference>("STICK_ENERGY_MODE")?.apply {
+            isChecked = com.dskja.betterstreamflix.ui.StickEnergyMode.isEnabled(requireContext())
+            setOnPreferenceChangeListener { _, newValue ->
+                UserPreferences.stickEnergyMode = newValue as Boolean
+                true
+            }
+        }
+
         findPreference<SwitchPreference>("OLED_MODE")?.apply {
             isVisible = false
             isChecked = false

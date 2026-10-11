@@ -736,6 +736,21 @@ object UserPreferences {
             ),
         )
 
+    /**
+     * Explicit Stick Energy Mode toggle, or null when never set (Fire TV auto-on —
+     * see [com.dskja.betterstreamflix.ui.StickEnergyMode.isEnabled]).
+     */
+    val stickEnergyModeExplicit: Boolean?
+        get() = Key.STICK_ENERGY_MODE.getBoolean()
+
+    /**
+     * Fire Stick energy mode: fewer parallel providers, SW-decoder bias, less UI motion.
+     * Getter is the effective value; setter persists an explicit choice.
+     */
+    var stickEnergyMode: Boolean
+        get() = com.dskja.betterstreamflix.ui.StickEnergyMode.isEnabled()
+        set(value) = Key.STICK_ENERGY_MODE.setBoolean(value)
+
     /** Off-by-default complete mobile shell redesign. Requires activity restart. */
     var experimentalNewAppDesign: Boolean
         get() = Key.EXPERIMENTAL_NEW_APP_DESIGN.getBoolean() ?: false
@@ -1799,6 +1814,7 @@ object UserPreferences {
         LARGE_TEXT,
         HIGH_CONTRAST,
         LEANBACK_DENSITY,
+        STICK_ENERGY_MODE,
         EXPERIMENTAL_NEW_APP_DESIGN,
         EXPERIMENTAL_REACT_HOME,
         EXPERIMENTAL_LUMINA_ACCENT,

@@ -1018,6 +1018,12 @@
                 android:defaultValue="comfort" />
 
             <SwitchPreference
+                android:key="STICK_ENERGY_MODE"
+                android:title="@string/settings_stick_energy_mode_title"
+                android:summary="@string/settings_stick_energy_mode_summary"
+                android:defaultValue="false" />
+
+            <SwitchPreference
                 android:key="OLED_MODE"
                 android:title="@string/settings_oled_mode_title"
                 android:summary="@string/settings_oled_mode_summary"

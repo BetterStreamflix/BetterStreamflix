@@ -53,7 +53,7 @@ object ParentalControlUtils {
     private fun ageLookupPermits(): Int {
         val ctx = runCatching { BetterStreamflixApp.instance.applicationContext }.getOrNull()
             ?: return AGE_LOOKUP_CONCURRENCY_DEFAULT
-        return if (
+        val baseline = if (
             DeviceCapabilities.shouldUseConstrainedPlayback(ctx) ||
             DeviceCapabilities.isLowRamDevice(ctx) ||
             DeviceCapabilities.isLeanbackDevice(ctx)
@@ -62,6 +62,10 @@ object ParentalControlUtils {
         } else {
             AGE_LOOKUP_CONCURRENCY_DEFAULT
         }
+        return com.dskja.betterstreamflix.ui.StickEnergyMode.providerParallelism(
+            default = baseline,
+            context = ctx,
+        )
     }
 
     suspend fun filterCategories(categories: List<Category>): List<Category> {

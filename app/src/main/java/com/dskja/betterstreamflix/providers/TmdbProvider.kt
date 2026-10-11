@@ -29,11 +29,14 @@ import com.dskja.betterstreamflix.utils.UserPreferences
 import com.dskja.betterstreamflix.utils.safeSubList
 import android.util.Base64
 import android.util.Log
+import com.dskja.betterstreamflix.ui.StickEnergyMode
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
 import kotlinx.coroutines.withTimeoutOrNull
@@ -945,21 +948,21 @@ class TmdbProvider private constructor(override val language: String) : Provider
                  * Moflix can spend a long time in its anti-bot/session path.
                  * Run it in parallel with native DE providers and soft-timeout
                  * so it never blocks the whole TMDb-DE server list (upstream cf74e3a).
+                 * Stick Energy Mode serializes Moflix after natives to cut peak RAM.
                  */
                 val discoveredGermanServers = coroutineScope {
-                    val moflixTask = async(Dispatchers.IO) {
+                    suspend fun discoverMoflix(): List<Video.Server> {
                         // Skip Moflix when MStream domain recently looked unhealthy —
                         // empty/premium-locked discovery only burns the soft-timeout.
                         if (moflixSkipUntilMs > System.currentTimeMillis()) {
                             Log.d("TmdbProvider", "Moflix skipped (domain cooldown)")
-                            return@async emptyList()
+                            return emptyList()
                         }
                         val discovered = withTimeoutOrNull(20_000L) {
                             MoflixExtractor().servers(videoType)
                         }
-                        when {
+                        return when {
                             discovered == null -> {
-                                // Soft-timeout: do not start the 10-min domain cooldown.
                                 Log.w("TmdbProvider", "Moflix discovery timed out")
                                 emptyList()
                             }
@@ -971,14 +974,27 @@ class TmdbProvider private constructor(override val language: String) : Provider
                             else -> discovered
                         }
                     }
-                    val nativeTask = async(Dispatchers.IO) {
-                        resolveGermanNativeServers(
-                            providers = nativeProviders,
-                            titleQueries = titleQueries.toList(),
-                            videoType = videoType,
-                        )
+                    if (StickEnergyMode.isEnabled()) {
+                        val native = withContext(Dispatchers.IO) {
+                            resolveGermanNativeServers(
+                                providers = nativeProviders,
+                                titleQueries = titleQueries.toList(),
+                                videoType = videoType,
+                            )
+                        }
+                        val moflix = withContext(Dispatchers.IO) { discoverMoflix() }
+                        native + moflix
+                    } else {
+                        val moflixTask = async(Dispatchers.IO) { discoverMoflix() }
+                        val nativeTask = async(Dispatchers.IO) {
+                            resolveGermanNativeServers(
+                                providers = nativeProviders,
+                                titleQueries = titleQueries.toList(),
+                                videoType = videoType,
+                            )
+                        }
+                        moflixTask.await() + nativeTask.await()
                     }
-                    moflixTask.await() + nativeTask.await()
                 }
                 servers.addAll(discoveredGermanServers)
 
@@ -1190,8 +1206,12 @@ class TmdbProvider private constructor(override val language: String) : Provider
         titleQueries: List<String>,
         videoType: Video.Type,
     ): List<Video.Server> = coroutineScope {
+        val gate = Semaphore(
+            StickEnergyMode.providerParallelism(default = providers.size.coerceAtLeast(1)),
+        )
         providers.map { provider ->
             async {
+                gate.withPermit {
                 runCatching {
                     withContext(Dispatchers.IO) {
                         val timeoutMs = if (provider == SerienStreamProvider) 25_000L else 15_000L
@@ -1273,6 +1293,7 @@ class TmdbProvider private constructor(override val language: String) : Provider
                 }.onFailure {
                     Log.e("TmdbProvider", "DE native provider ${provider.name} failed: ${it.message}")
                 }.getOrDefault(emptyList())
+                }
             }
         }.awaitAll().flatten()
     }

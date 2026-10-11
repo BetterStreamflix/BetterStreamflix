@@ -58,7 +58,11 @@ object WatchlistWeekBuilder {
         shows: List<TvShow>,
         week: ClosedRange<LocalDate>,
     ): List<WatchlistWeekRules.AirTip> = coroutineScope {
-        val gate = Semaphore(PARALLELISM)
+        val gate = Semaphore(
+            com.dskja.betterstreamflix.ui.StickEnergyMode.providerParallelism(
+                default = PARALLELISM,
+            ),
+        )
         shows.map { show ->
             async {
                 gate.withPermit {

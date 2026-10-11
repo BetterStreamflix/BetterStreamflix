@@ -621,7 +621,9 @@ class PlayerMobileFragment : Fragment(),
                         PlayerSettingsView.Settings.ExtraBuffering.init(state.video.extraBuffering)
                         if (PlayerSettingsView.Settings.SoftwareDecoder.selectedValue == null) {
                             PlayerSettingsView.Settings.SoftwareDecoder.init(
-                                DeviceCapabilities.shouldPreferSoftwareDecoder(requireContext()),
+                                com.dskja.betterstreamflix.ui.StickEnergyMode.preferSoftwareDecoder(
+                                    requireContext(),
+                                ),
                             )
                         }
                         failoverTimeline.recordOk(state.server, servers)
