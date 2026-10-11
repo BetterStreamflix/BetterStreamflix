@@ -44,6 +44,14 @@ object ProfileManager {
         "PARENTAL_CONTROL_LOCKED_UNTIL",
         "PARENTAL_CONTROL_HARD_LOCKED",
         "SELECTED_THEME",
+        // Subtitle Studio light — size / color / background per profile
+        "CAPTION_TEXT_SIZE",
+        "CAPTION_STYLE_FONT_COLOR",
+        "CAPTION_STYLE_BACKGROUND_COLOR",
+        "CAPTION_STYLE_WINDOW_COLOR",
+        "CAPTION_STYLE_EDGE_TYPE",
+        "CAPTION_STYLE_EDGE_COLOR",
+        "CAPTION_STYLE_MARGIN",
     )
 
     val avatarKeys = listOf(

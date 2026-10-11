@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string-array name="subtitle_studio_size_entries">
+        <item>@string/player_settings_caption_style_text_size_0_75</item>
+        <item>@string/player_settings_caption_style_text_size_1</item>
+        <item>@string/player_settings_caption_style_text_size_1_25</item>
+        <item>@string/player_settings_caption_style_text_size_1_5</item>
+        <item>@string/player_settings_caption_style_text_size_2</item>
+    </string-array>
+    <string-array name="subtitle_studio_size_values">
+        <item>0.75</item>
+        <item>1</item>
+        <item>1.25</item>
+        <item>1.5</item>
+        <item>2</item>
+    </string-array>
+
+    <string-array name="subtitle_studio_font_color_entries">
+        <item>@string/player_settings_caption_style_font_color_white</item>
+        <item>@string/player_settings_caption_style_font_color_yellow</item>
+        <item>@string/player_settings_caption_style_font_color_cyan</item>
+        <item>@string/player_settings_caption_style_font_color_green</item>
+        <item>@string/player_settings_caption_style_font_color_black</item>
+    </string-array>
+    <string-array name="subtitle_studio_font_color_values">
+        <item>white</item>
+        <item>yellow</item>
+        <item>cyan</item>
+        <item>green</item>
+        <item>black</item>
+    </string-array>
+
+    <string-array name="subtitle_studio_background_entries">
+        <item>@string/player_settings_caption_style_background_opacity_0</item>
+        <item>@string/player_settings_caption_style_background_opacity_0_5</item>
+        <item>@string/player_settings_caption_style_background_opacity_0_75</item>
+        <item>@string/player_settings_caption_style_background_opacity_1</item>
+    </string-array>
+    <string-array name="subtitle_studio_background_values">
+        <item>0</item>
+        <item>128</item>
+        <item>191</item>
+        <item>255</item>
+    </string-array>
+</resources>

@@ -27,6 +27,20 @@
         app:show_timeout="5000"
         app:surface_type="texture_view" />
 
+    <!-- Subtitle Studio light: sample cue while Caption style screens are open. -->
+    <androidx.media3.ui.SubtitleView
+        android:id="@+id/sv_subtitle_studio_preview"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:elevation="5dp"
+        android:focusable="false"
+        android:importantForAccessibility="no"
+        android:visibility="gone"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
+
     <!-- Trailer→Stream bridge: full-bleed cover until first ready frame (no black flash). -->
     <ImageView
         android:id="@+id/iv_trailer_stream_bridge"

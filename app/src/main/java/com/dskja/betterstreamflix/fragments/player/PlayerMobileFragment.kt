@@ -4440,6 +4440,7 @@ class PlayerMobileFragment : Fragment(),
             binding.settings.player = player
         }
         binding.settings.subtitleView = binding.pvPlayer.subtitleView
+        binding.settings.subtitleStudioPreview = binding.svSubtitleStudioPreview
         binding.settings.onSubtitlesClicked = {
             viewModel.getSubtitles(args.videoType)
         }
@@ -4730,6 +4731,7 @@ class PlayerMobileFragment : Fragment(),
             b.pvPlayer.player = null
             b.settings.player = null
             b.settings.subtitleView = null
+            b.settings.subtitleStudioPreview = null
         }
         runCatching {
             com.bumptech.glide.Glide.with(b.root).clear(b.ivNextEpisodePoster)

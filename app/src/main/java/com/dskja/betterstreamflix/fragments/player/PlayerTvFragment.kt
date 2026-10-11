@@ -4001,6 +4001,7 @@ class PlayerTvFragment : Fragment(),
                 binding.settings.player = player
             }
             binding.settings.subtitleView = binding.pvPlayer.subtitleView
+            binding.settings.subtitleStudioPreview = binding.svSubtitleStudioPreview
             binding.settings.onSubtitlesClicked = {
                 viewModel.getSubtitles(args.videoType)
             }
@@ -4288,6 +4289,7 @@ class PlayerTvFragment : Fragment(),
             b.pvPlayer.player = null
             b.settings.player = null
             b.settings.subtitleView = null
+            b.settings.subtitleStudioPreview = null
         }
         runCatching { TrailerStreamCrossfade.revealStream(b.ivTrailerStreamBridge, durationMs = 0L) }
         playerViewDetached = true
