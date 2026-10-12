@@ -11,6 +11,8 @@ import androidx.work.workDataOf
 import com.dskja.betterstreamflix.models.TvShow
 import com.dskja.betterstreamflix.utils.LiveHubCatalog
 import com.dskja.betterstreamflix.utils.UserPreferences
+import java.nio.charset.StandardCharsets
+import java.util.Base64
 import java.util.concurrent.TimeUnit
 
 /**
@@ -21,8 +23,12 @@ object LiveReminderScheduler {
     private const val TAG = "LiveReminderSched"
     private const val WORK_PREFIX = "live_reminder_"
 
-    fun uniqueWorkName(identityKey: String): String =
-        WORK_PREFIX + identityKey.hashCode().toUInt().toString(16)
+    fun uniqueWorkName(identityKey: String): String {
+        val encoded = Base64.getUrlEncoder()
+            .withoutPadding()
+            .encodeToString(identityKey.toByteArray(StandardCharsets.UTF_8))
+        return WORK_PREFIX + encoded
+    }
 
     /**
      * Called from Live Hub after Favorites resolve — schedules upcoming kickoffs
@@ -30,7 +36,7 @@ object LiveReminderScheduler {
      */
     fun syncFromFavorites(context: Context, favorites: List<TvShow>) {
         if (!UserPreferences.notifyLiveFavoriteStarting) {
-            cancelAllTracked(context)
+            cancelAll(context)
             return
         }
         val app = context.applicationContext
@@ -47,7 +53,7 @@ object LiveReminderScheduler {
             if (fireAt <= now) continue
             if (LiveReminderStore.snoozedUntil(key) > now) continue
             keep += key
-            schedule(app, key, show.title, fireAt, now)
+            schedule(app, key, show.title, fireAt, now, kickoffEpochMs = kickoff)
         }
         // Drop schedules for favorites that disappeared or lost kickoff times.
         pruneMissing(app, keep)
@@ -59,14 +65,18 @@ object LiveReminderScheduler {
         title: String,
         fireAtMs: Long,
         nowMs: Long = System.currentTimeMillis(),
+        kickoffEpochMs: Long = fireAtMs + LiveReminderPolicy.LEAD_BEFORE_KICKOFF_MS,
+        snoozeWake: Boolean = false,
     ) {
         val delay = (fireAtMs - nowMs).coerceAtLeast(0L)
-        if (delay <= 0L) return
+        if (delay <= 0L && !snoozeWake) return
         runCatching {
             val data = workDataOf(
                 LiveReminderWorker.KEY_IDENTITY to identityKey,
                 LiveReminderWorker.KEY_TITLE to title,
                 LiveReminderWorker.KEY_FIRE_AT to fireAtMs,
+                LiveReminderWorker.KEY_KICKOFF to kickoffEpochMs,
+                LiveReminderWorker.KEY_SNOOZE_WAKE to snoozeWake,
             )
             val request = OneTimeWorkRequestBuilder<LiveReminderWorker>()
                 .setInitialDelay(delay, TimeUnit.MILLISECONDS)
@@ -98,7 +108,8 @@ object LiveReminderScheduler {
         untrack(identityKey)
     }
 
-    private fun cancelAllTracked(context: Context) {
+    /** Cancel every tracked Live reminder OneTime (opt-out / kids gate). */
+    fun cancelAll(context: Context) {
         val keys = UserPreferences.notifyLiveScheduledKeys
         keys.forEach { cancel(context, it) }
         UserPreferences.notifyLiveScheduledKeys = emptySet()

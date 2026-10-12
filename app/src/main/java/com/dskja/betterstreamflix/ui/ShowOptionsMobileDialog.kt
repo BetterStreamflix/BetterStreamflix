@@ -632,7 +632,9 @@ class ShowOptionsMobileDialog(
     private fun bindChannelPinOption(tvShow: TvShow) {
         val btn = binding.btnOptionChannelPin
         val isLive = com.dskja.betterstreamflix.utils.LiveHubCatalog.isLiveFavorite(tvShow)
-        if (!isLive || tvShow.providerName.isNullOrBlank()) {
+        val gated = com.dskja.betterstreamflix.profiles.ProfileManager.isKidsActive() ||
+            com.dskja.betterstreamflix.utils.LiveHubCatalog.isAgeGated()
+        if (!isLive || tvShow.providerName.isNullOrBlank() || gated) {
             btn.visibility = View.GONE
             return
         }

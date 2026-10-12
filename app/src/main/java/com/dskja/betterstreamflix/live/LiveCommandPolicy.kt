@@ -19,7 +19,9 @@ object LiveCommandPolicy {
     const val MAX_REMINDER_ROWS = 24
     /** Kickoff within this window after start → catch-up hint. */
     const val CATCH_UP_AFTER_KICKOFF_MS = 20L * 60L * 1000L
+    /** Kickoff within this window before start → up-next catch-up hint. */
     const val CATCH_UP_BEFORE_NEXT_MS = 15L * 60L * 1000L
+    const val MIN_SEARCH_TOKEN_LEN = 2
 
     data class ReminderRow(
         val show: TvShow,
@@ -59,6 +61,32 @@ object LiveCommandPolicy {
         val isTv: Boolean,
     )
 
+    /**
+     * Localized reminder row labels. JVM tests can pass English literals;
+     * UI passes [android.content.Context.getString] results / format templates.
+     */
+    data class ReminderLabelResources(
+        val snoozed: String,
+        val live: String,
+        /** Format with one long/int hours arg, e.g. "Starts in %1$d h". */
+        val startsInHours: String,
+        /** Format with one long/int minutes arg. */
+        val startsInMinutes: String,
+        /** Format with one long/int minutes-ago arg. */
+        val startedMinutesAgo: String,
+    ) {
+        companion object {
+            /** English defaults for JVM unit tests. */
+            fun english() = ReminderLabelResources(
+                snoozed = "Snoozed",
+                live = "Live",
+                startsInHours = "Starts in %1\$d h",
+                startsInMinutes = "Starts in %1\$d min",
+                startedMinutesAgo = "Started %1\$d min ago",
+            )
+        }
+    }
+
     fun filterCategories(
         categories: List<Category>,
         mode: LiveCommandMode,
@@ -77,9 +105,11 @@ object LiveCommandPolicy {
         searchLabel: String,
         maxHits: Int = MAX_SEARCH_HITS,
     ): List<Category> {
-        val q = query.trim().lowercase(Locale.US)
+        val locale = Locale.getDefault()
+        val q = query.trim().lowercase(locale)
         if (q.isEmpty()) return emptyList()
-        val tokens = q.split(Regex("""\s+""")).filter { it.isNotBlank() }
+        val tokens = q.split(Regex("""\s+"""))
+            .filter { it.length >= MIN_SEARCH_TOKEN_LEN }
         if (tokens.isEmpty()) return emptyList()
 
         val pool = LinkedHashMap<String, Pair<TvShow, Int>>()
@@ -107,28 +137,31 @@ object LiveCommandPolicy {
     }
 
     fun scoreShow(show: TvShow, tokens: List<String>): Int? {
-        val title = show.title.lowercase(Locale.US)
-        val provider = show.providerName.orEmpty().lowercase(Locale.US)
-        val now = LiveHubCatalog.programNowOf(show).orEmpty().lowercase(Locale.US)
-        val next = LiveHubCatalog.programNextOf(show).orEmpty().lowercase(Locale.US)
-        val group = LiveHubCatalog.groupOf(show).orEmpty().lowercase(Locale.US)
-        val overview = show.overview.orEmpty().lowercase(Locale.US)
+        val locale = Locale.getDefault()
+        val title = show.title.lowercase(locale)
+        val provider = show.providerName.orEmpty().lowercase(locale)
+        val now = LiveHubCatalog.programNowOf(show).orEmpty().lowercase(locale)
+        val next = LiveHubCatalog.programNextOf(show).orEmpty().lowercase(locale)
+        val group = LiveHubCatalog.groupOf(show).orEmpty().lowercase(locale)
+        val overview = show.overview.orEmpty().lowercase(locale)
         var score = 0
         for (token in tokens) {
+            if (token.length < MIN_SEARCH_TOKEN_LEN) continue
             val hit = when {
                 title == token -> 100
                 title.startsWith(token) -> 80
                 title.contains(token) -> 60
                 now.contains(token) -> 55
                 next.contains(token) -> 45
-                group.contains(token) -> 40
+                // Group is often a shelf name (Sports/News) — do not over-rank as EPG.
+                group.contains(token) -> 18
                 provider.contains(token) -> 25
                 overview.contains(token) -> 15
                 else -> return null
             }
             score += hit
         }
-        return score
+        return score.takeIf { it > 0 }
     }
 
     fun buildReminderRows(
@@ -136,6 +169,7 @@ object LiveCommandPolicy {
         nowMs: Long,
         snoozedUntil: (String) -> Long = { 0L },
         maxRows: Int = MAX_REMINDER_ROWS,
+        labels: ReminderLabelResources = ReminderLabelResources.english(),
     ): List<ReminderRow> {
         val rows = ArrayList<ReminderRow>()
         for (show in favorites) {
@@ -149,11 +183,10 @@ object LiveCommandPolicy {
             val snoozed = snoozedUntil(key) > nowMs
             val fireAt = kickoff?.let { it - LiveReminderPolicy.LEAD_BEFORE_KICKOFF_MS }
             val minutes = kickoff?.let { ((it - nowMs).coerceAtLeast(0L) + 59_999L) / 60_000L }
-            // Keep upcoming kickoffs, snoozed, or live-now favorites with EPG.
+            // Keep only parseable kickoff (upcoming or started-recently), or snoozed.
             val keep = when {
                 kickoff != null && kickoff >= nowMs - CATCH_UP_AFTER_KICKOFF_MS -> true
                 snoozed -> true
-                !LiveHubCatalog.programNowOf(show).isNullOrBlank() -> true
                 else -> false
             }
             if (!keep) continue
@@ -162,6 +195,7 @@ object LiveCommandPolicy {
                 nowMs = nowMs,
                 snoozed = snoozed,
                 programNow = LiveHubCatalog.programNowOf(show),
+                labels = labels,
             )
             rows += ReminderRow(
                 show = show,
@@ -184,11 +218,12 @@ object LiveCommandPolicy {
         rows: List<ReminderRow>,
         label: String,
     ): Category {
+        // Never mutate shared hub TvShow rows — copy for display overlay.
         val shows = rows.map { row ->
-            row.show.apply {
+            row.show.copy().apply {
                 programNow = row.label
                 if (programNext.isNullOrBlank() && row.kickoffEpochMs != null) {
-                    programNext = LiveHubCatalog.programNextOf(this)
+                    programNext = LiveHubCatalog.programNextOf(row.show)
                 }
             }
         }
@@ -202,26 +237,27 @@ object LiveCommandPolicy {
         nowMs: Long,
         snoozed: Boolean,
         programNow: String?,
+        labels: ReminderLabelResources = ReminderLabelResources.english(),
     ): String {
-        if (snoozed) return "Snoozed"
+        if (snoozed) return labels.snoozed
         if (kickoffEpochMs == null) {
-            return programNow?.takeIf { it.isNotBlank() } ?: "Live"
+            return programNow?.takeIf { it.isNotBlank() } ?: labels.live
         }
         val delta = kickoffEpochMs - nowMs
         return when {
             delta > TimeUnit.HOURS.toMillis(2) -> {
                 val h = TimeUnit.MILLISECONDS.toHours(delta)
-                "Starts in ${h}h"
+                String.format(Locale.getDefault(), labels.startsInHours, h)
             }
             delta > 0 -> {
                 val m = (delta + 59_999L) / 60_000L
-                "Starts in ${m} min"
+                String.format(Locale.getDefault(), labels.startsInMinutes, m)
             }
             delta > -CATCH_UP_AFTER_KICKOFF_MS -> {
                 val m = ((-delta) + 59_999L) / 60_000L
-                "Started ${m} min ago"
+                String.format(Locale.getDefault(), labels.startedMinutesAgo, m)
             }
-            else -> programNow?.takeIf { it.isNotBlank() } ?: "Live"
+            else -> programNow?.takeIf { it.isNotBlank() } ?: labels.live
         }
     }
 
@@ -233,6 +269,11 @@ object LiveCommandPolicy {
             nowMs = nowMs,
         )
         if (kickoff != null) {
+            val until = kickoff - nowMs
+            if (until in 1..CATCH_UP_BEFORE_NEXT_MS) {
+                val m = (until + 59_999L) / 60_000L
+                return CatchUpHint(key, CatchUpKind.UP_NEXT, "${m}m")
+            }
             val since = nowMs - kickoff
             if (since in 1 until CATCH_UP_AFTER_KICKOFF_MS) {
                 val m = (since + 59_999L) / 60_000L
@@ -259,13 +300,26 @@ object LiveCommandPolicy {
         favorites: List<TvShow>,
         nowMs: Long,
         snoozedUntil: (String) -> Long,
+        labels: ReminderLabelResources = ReminderLabelResources.english(),
     ): List<Category> {
         val trimmed = query.trim()
         if (trimmed.isNotEmpty()) {
-            return searchHits(categories, trimmed, searchLabel)
+            // Search within the active mode shelves (All → all non-empty shelves).
+            val scoped = when (mode) {
+                LiveCommandMode.REMINDERS -> {
+                    val favShelf = categories.filter {
+                        it.identityKey == LiveHubCatalog.SECTION_FAVORITES && it.list.isNotEmpty()
+                    }
+                    favShelf.ifEmpty { categories.filter { it.list.isNotEmpty() } }
+                }
+                else -> filterCategories(categories, mode).ifEmpty {
+                    categories.filter { it.list.isNotEmpty() }
+                }
+            }
+            return searchHits(scoped, trimmed, searchLabel)
         }
         if (mode == LiveCommandMode.REMINDERS) {
-            val rows = buildReminderRows(favorites, nowMs, snoozedUntil)
+            val rows = buildReminderRows(favorites, nowMs, snoozedUntil, labels = labels)
             if (rows.isEmpty()) return emptyList()
             return listOf(remindersCategory(rows, remindersLabel))
         }
@@ -275,17 +329,21 @@ object LiveCommandPolicy {
     fun statusLine(
         mode: LiveCommandMode,
         query: String,
+        /** Item hits for search; shelf count for Mode; ignored for dedicated kinds. */
         visibleCount: Int,
         reminderCount: Int,
         pinCount: Int,
+        favoriteCount: Int = pinCount,
+        shelfCount: Int = visibleCount,
     ): StatusKind {
         val q = query.trim()
         return when {
             q.isNotEmpty() -> StatusKind.Search(visibleCount, q)
             mode == LiveCommandMode.REMINDERS -> StatusKind.Reminders(reminderCount)
             mode == LiveCommandMode.SPORT -> StatusKind.SportZap
-            mode == LiveCommandMode.FAVORITES -> StatusKind.Favorites(pinCount)
-            else -> StatusKind.Mode(mode, visibleCount)
+            mode == LiveCommandMode.NEWS -> StatusKind.News(visibleCount)
+            mode == LiveCommandMode.FAVORITES -> StatusKind.Favorites(favoriteCount)
+            else -> StatusKind.Mode(mode, shelfCount)
         }
     }
 
@@ -293,7 +351,8 @@ object LiveCommandPolicy {
         data class Search(val hits: Int, val query: String) : StatusKind()
         data class Reminders(val count: Int) : StatusKind()
         data object SportZap : StatusKind()
-        data class Favorites(val pinCount: Int) : StatusKind()
+        data class News(val count: Int) : StatusKind()
+        data class Favorites(val favoriteCount: Int) : StatusKind()
         data class Mode(val mode: LiveCommandMode, val shelves: Int) : StatusKind()
     }
 

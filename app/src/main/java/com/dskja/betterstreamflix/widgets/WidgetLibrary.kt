@@ -49,6 +49,12 @@ object WidgetLibrary {
 
     suspend fun loadLiveFavorites(context: Context, limit: Int = 4): List<LiveFavoriteRow> =
         withContext(Dispatchers.IO) {
+            // EPG-008 / kids: do not build live tiles under age-gate / Kids Fortress.
+            if (LiveHubCatalog.isAgeGated() ||
+                !com.dskja.betterstreamflix.kids.KidsFortress.liveHubAllowed()
+            ) {
+                return@withContext emptyList()
+            }
             val favorites = runCatching {
                 LiveHubCatalog.resolveFavoriteChannels(context, hubShows = emptyList())
             }.getOrElse { emptyList() }

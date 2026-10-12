@@ -95,6 +95,12 @@ class LivePipZapPolicyTest {
     }
 
     @Test
+    fun tvReturnChipFocusableWheneverVisible() {
+        assertTrue(LivePipZapPolicy.tvReturnChipFocusable(visible = true))
+        assertFalse(LivePipZapPolicy.tvReturnChipFocusable(visible = false))
+    }
+
+    @Test
     fun buildReturnTicketRequiresProviderAndId() {
         val movie = Video.Type.Movie(
             id = "m1",
@@ -158,7 +164,7 @@ class LivePipZapPolicyTest {
     }
 
     @Test
-    fun orphanLiveDestroyClearsTicket() {
+    fun retainTicketAcrossSubsequentLiveDestroys() {
         val movie = Video.Type.Movie(
             id = "m1",
             title = "Film",
@@ -177,11 +183,70 @@ class LivePipZapPolicyTest {
                 positionMs = 0L,
             )!!,
         )
-        // Promote nav consume-protect, then leaving live for real.
+        // Promote destroy + CH± live self-nav destroys must keep the ticket (PZ-001).
         LivePipZapSession.onPlayerDestroyed(wasLivePlayback = true)
         assertTrue(LivePipZapSession.hasReturnTicket())
         LivePipZapSession.onPlayerDestroyed(wasLivePlayback = true)
+        assertTrue(LivePipZapSession.hasReturnTicket())
+        LivePipZapSession.onPlayerDestroyed(wasLivePlayback = true)
+        assertTrue(LivePipZapSession.hasReturnTicket())
+        LivePipZapSession.clear()
         assertFalse(LivePipZapSession.hasReturnTicket())
+    }
+
+    @Test
+    fun beginReturnClearsRetainSoLaterLiveDestroyDoesNotResurrect() {
+        val movie = Video.Type.Movie(
+            id = "m1",
+            title = "Film",
+            releaseDate = "2024",
+            poster = "",
+            imdbId = null,
+        )
+        val ticket = LivePipZapPolicy.buildReturnTicket(
+            providerName = "SerienStream",
+            id = "m1",
+            videoType = movie,
+            title = "Film",
+            subtitle = "",
+            preferredServerName = null,
+            positionMs = 0L,
+        )!!
+        LivePipZapSession.stash(ticket)
+        val consumed = LivePipZapSession.beginReturn()
+        assertEquals("m1", consumed?.id)
+        assertFalse(LivePipZapSession.hasReturnTicket())
+        LivePipZapSession.onPlayerDestroyed(wasLivePlayback = true)
+        assertFalse(LivePipZapSession.hasReturnTicket())
+    }
+
+    @Test
+    fun restoreReinstatesTicketAfterFailedNav() {
+        val movie = Video.Type.Movie(
+            id = "m1",
+            title = "Film",
+            releaseDate = "2024",
+            poster = "",
+            imdbId = null,
+        )
+        val ticket = LivePipZapPolicy.buildReturnTicket(
+            providerName = "SerienStream",
+            id = "m1",
+            videoType = movie,
+            title = "Film",
+            subtitle = "",
+            preferredServerName = null,
+            positionMs = 500L,
+        )!!
+        LivePipZapSession.stash(ticket)
+        val consumed = LivePipZapSession.beginReturn()!!
+        assertFalse(LivePipZapSession.hasReturnTicket())
+        LivePipZapSession.restore(consumed)
+        assertTrue(LivePipZapSession.hasReturnTicket())
+        assertEquals(500L, LivePipZapSession.peek()?.positionMs)
+        // Retain again across live destroys.
+        LivePipZapSession.onPlayerDestroyed(wasLivePlayback = true)
+        assertTrue(LivePipZapSession.hasReturnTicket())
     }
 
     @Test
@@ -231,8 +296,8 @@ class LivePipZapPolicyTest {
         // Sticky switch already flipped isLivePlayback before VOD onDestroyView.
         LivePipZapSession.onPlayerDestroyed(wasLivePlayback = true)
         assertTrue(LivePipZapSession.hasReturnTicket())
-        // Leaving live without return clears it.
+        // Subsequent LIVE→LIVE still keeps it until beginReturn/clear.
         LivePipZapSession.onPlayerDestroyed(wasLivePlayback = true)
-        assertFalse(LivePipZapSession.hasReturnTicket())
+        assertTrue(LivePipZapSession.hasReturnTicket())
     }
 }

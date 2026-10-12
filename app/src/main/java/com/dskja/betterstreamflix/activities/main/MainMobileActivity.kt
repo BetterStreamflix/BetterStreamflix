@@ -736,7 +736,8 @@ class MainMobileActivity : FragmentActivity() {
         val provider = UserPreferences.currentProvider ?: return
         val supportsMovies = Provider.supportsMovies(provider)
         val supportsTvShows = Provider.supportsTvShows(provider)
-        val liveHubVisible = !com.dskja.betterstreamflix.profiles.ProfileManager.isKidsActive()
+        val liveHubVisible = !com.dskja.betterstreamflix.utils.LiveHubCatalog.isAgeGated() &&
+            com.dskja.betterstreamflix.kids.KidsFortress.liveHubAllowed()
 
         binding.bnvMain.menu.findItem(R.id.movies)?.isVisible = supportsMovies
         binding.bnvMain.menu.findItem(R.id.tv_shows)?.apply {
@@ -747,12 +748,11 @@ class MainMobileActivity : FragmentActivity() {
                 getString(R.string.main_menu_tv_shows)
             }
         }
-        val kidsProfile = ProfileManager.isKidsActive()
-        // Kids Fortress: kids keep Downloads (isolated DB + folder); Live Hub stays off.
+        // Kids Fortress: kids keep Downloads (isolated DB + folder); Live Hub stays off
+        // under kids profiles and parental age-gate (LC-020).
         binding.bnvMain.menu.findItem(R.id.downloads)?.isVisible =
             com.dskja.betterstreamflix.kids.KidsFortress.downloadsNavVisible()
-        binding.bnvMain.menu.findItem(R.id.live_hub)?.isVisible =
-            liveHubVisible && com.dskja.betterstreamflix.kids.KidsFortress.liveHubAllowed()
+        binding.bnvMain.menu.findItem(R.id.live_hub)?.isVisible = liveHubVisible
 
         val navHost =
             supportFragmentManager.findFragmentById(R.id.nav_main_fragment) as? NavHostFragment
@@ -766,7 +766,7 @@ class MainMobileActivity : FragmentActivity() {
                 navController.navigate(R.id.home)
             }
 
-            currentDestinationId == R.id.live_hub && (!liveHubVisible || kidsProfile) -> {
+            currentDestinationId == R.id.live_hub && !liveHubVisible -> {
                 navController.navigate(R.id.home)
             }
         }
