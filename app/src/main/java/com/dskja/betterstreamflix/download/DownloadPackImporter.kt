@@ -7,7 +7,9 @@ import com.dskja.betterstreamflix.models.Episode
 import com.dskja.betterstreamflix.models.Season
 import com.dskja.betterstreamflix.models.TvShow
 import com.dskja.betterstreamflix.models.Video
+import com.dskja.betterstreamflix.profiles.ProfileManager
 import com.dskja.betterstreamflix.providers.Provider
+import com.dskja.betterstreamflix.utils.ParentalControlUtils
 import com.dskja.betterstreamflix.utils.UserPreferences
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -17,6 +19,11 @@ data class DownloadPackImportResult(
     val alreadyPresent: Int,
     val failed: Int,
     val packId: String?,
+)
+
+data class DownloadPackBuildResult(
+    val payload: DownloadPackPayload,
+    val truncated: Boolean,
 )
 
 object DownloadPackImporter {
@@ -29,21 +36,26 @@ object DownloadPackImporter {
     suspend fun buildFromSeasonPack(
         context: Context,
         pack: DownloadSeasonPackEntity,
-    ): DownloadPackPayload = withContext(Dispatchers.IO) {
+    ): DownloadPackBuildResult = withContext(Dispatchers.IO) {
         val items = DownloadRepository.get(context).getAllOnce()
+            .filter { DownloadProfileScope.matchesActive(it.profileId) }
             .filter { it.seasonPackId == pack.id }
             .sortedBy { it.sortIndex }
         require(items.isNotEmpty()) { "pack has no episodes" }
-        val refs = items.mapNotNull { toEpisodeRef(it) }
-            .take(DownloadPackPayload.MAX_EPISODES)
+        val allRefs = items.mapNotNull { toEpisodeRef(it) }
+        val truncated = allRefs.size > DownloadPackPayload.MAX_EPISODES
+        val refs = allRefs.take(DownloadPackPayload.MAX_EPISODES)
         require(refs.isNotEmpty()) { "pack has no shareable episode metadata" }
-        DownloadPackPayload(
-            providerName = pack.providerName.ifBlank { items.first().providerName },
-            tvShowId = pack.tvShowId,
-            tvShowTitle = pack.tvShowTitle.ifBlank { items.first().title },
-            seasonNumber = pack.seasonNumber,
-            posterUrl = pack.posterUrl.ifBlank { items.first().posterUrl },
-            episodes = refs,
+        DownloadPackBuildResult(
+            payload = DownloadPackPayload(
+                providerName = pack.providerName.ifBlank { items.first().providerName },
+                tvShowId = pack.tvShowId,
+                tvShowTitle = pack.tvShowTitle.ifBlank { items.first().title },
+                seasonNumber = pack.seasonNumber,
+                posterUrl = pack.posterUrl.ifBlank { items.first().posterUrl },
+                episodes = refs,
+            ),
+            truncated = truncated,
         )
     }
 
@@ -54,10 +66,12 @@ object DownloadPackImporter {
         titleFallback: String = "",
     ): DownloadPackPayload = withContext(Dispatchers.IO) {
         require(items.isNotEmpty()) { "no episodes" }
-        val episodeItems = items.filter { it.kind == DownloadKind.EPISODE.name }
+        val episodeItems = items
+            .filter { DownloadProfileScope.matchesActive(it.profileId) }
+            .filter { it.kind == DownloadKind.EPISODE.name }
         require(episodeItems.isNotEmpty()) { "no episodes" }
-        val refs = episodeItems.mapNotNull { toEpisodeRef(it) }
-            .take(DownloadPackPayload.MAX_EPISODES)
+        val allRefs = episodeItems.mapNotNull { toEpisodeRef(it) }
+        val refs = allRefs.take(DownloadPackPayload.MAX_EPISODES)
         require(refs.isNotEmpty()) { "no shareable episode metadata" }
         val first = episodeItems.first()
         val videoType = DownloadController.deserializeVideoType(first.videoTypeJson) as? Video.Type.Episode
@@ -95,91 +109,114 @@ object DownloadPackImporter {
                 context.getString(R.string.download_pack_import_unknown_provider, payload.providerName),
             )
         }
-        val previousProvider = UserPreferences.currentProvider
-        if (previousProvider?.name != provider.name) {
-            UserPreferences.setCurrentProviderForPlayback(provider)
-        }
         val tvShow = TvShow(
             id = payload.tvShowId,
             title = payload.tvShowTitle,
             poster = payload.posterUrl.takeIf { it.isNotBlank() },
+            providerName = provider.name,
         )
-        val packId = DownloadContentKey.seasonPack(
-            provider.name,
-            payload.tvShowId,
-            payload.seasonNumber,
-        )
-        val repo = DownloadRepository.get(context)
-        repo.upsertSeasonPack(
-            DownloadSeasonPackEntity(
-                id = packId,
-                providerName = provider.name,
-                tvShowId = payload.tvShowId,
-                tvShowTitle = payload.tvShowTitle,
-                seasonNumber = payload.seasonNumber,
-                posterUrl = payload.posterUrl,
-                totalEpisodes = payload.episodes.size,
-            ),
-        )
+        if (ParentalControlUtils.isFilteringActive() && !ParentalControlUtils.isAllowed(tvShow)) {
+            throw IllegalStateException(
+                context.getString(R.string.download_pack_import_parental_blocked),
+            )
+        }
+        if (ProfileManager.isKidsActive() && !ParentalControlUtils.isAllowed(tvShow)) {
+            throw IllegalStateException(
+                context.getString(R.string.download_pack_import_parental_blocked),
+            )
+        }
 
-        var queued = 0
-        var already = 0
-        var failed = 0
-        payload.episodes.forEachIndexed { index, ref ->
-            val episode = Episode(
-                id = ref.id,
-                number = ref.number,
-                title = ref.title.takeIf { it.isNotBlank() },
-                poster = ref.posterUrl.takeIf { it.isNotBlank() } ?: payload.posterUrl.takeIf { it.isNotBlank() },
-                tvShow = tvShow,
-                season = Season(
-                    id = "",
-                    number = payload.seasonNumber,
-                    title = null,
+        val previousProvider = UserPreferences.currentProvider
+        try {
+            if (previousProvider?.name != provider.name) {
+                UserPreferences.setCurrentProviderForPlayback(provider)
+            }
+            val packId = DownloadContentKey.seasonPack(
+                provider.name,
+                payload.tvShowId,
+                payload.seasonNumber,
+            )
+            val repo = DownloadRepository.get(context)
+            repo.upsertSeasonPack(
+                DownloadSeasonPackEntity(
+                    id = packId,
+                    providerName = provider.name,
+                    tvShowId = payload.tvShowId,
+                    tvShowTitle = payload.tvShowTitle,
+                    seasonNumber = payload.seasonNumber,
+                    posterUrl = payload.posterUrl,
+                    totalEpisodes = payload.episodes.size,
+                    profileId = DownloadProfileScope.activeId(),
                 ),
             )
-            val outcome = enqueueEpisode(context, episode, allowMetered)
-            when (outcome) {
-                is DownloadEnqueueOutcome.Started -> {
-                    repo.assignPack(outcome.item.id, packId, index)
-                    queued++
+
+            var queued = 0
+            var already = 0
+            var failed = 0
+            payload.episodes.forEachIndexed { index, ref ->
+                val episode = Episode(
+                    id = ref.id,
+                    number = ref.number,
+                    title = ref.title.takeIf { it.isNotBlank() },
+                    poster = ref.posterUrl.takeIf { it.isNotBlank() }
+                        ?: payload.posterUrl.takeIf { it.isNotBlank() },
+                    tvShow = tvShow,
+                    season = Season(
+                        id = "",
+                        number = payload.seasonNumber,
+                        title = null,
+                    ),
+                )
+                if (ParentalControlUtils.isFilteringActive() &&
+                    !ParentalControlUtils.isAllowed(tvShow)
+                ) {
+                    failed++
+                    return@forEachIndexed
                 }
-                is DownloadEnqueueOutcome.AlreadyActive,
-                is DownloadEnqueueOutcome.AlreadyCompleted,
-                -> {
-                    val item = when (outcome) {
-                        is DownloadEnqueueOutcome.AlreadyActive -> outcome.item
-                        is DownloadEnqueueOutcome.AlreadyCompleted -> outcome.item
-                        else -> null
+                val outcome = enqueueEpisode(context, episode, allowMetered)
+                when (outcome) {
+                    is DownloadEnqueueOutcome.Started -> {
+                        repo.assignPack(outcome.item.id, packId, index)
+                        queued++
                     }
-                    item?.let { repo.assignPack(it.id, packId, index) }
-                    already++
-                }
-                is DownloadEnqueueOutcome.Failed -> {
-                    Log.w(TAG, "Pack episode ${ref.id} failed: ${outcome.message}")
-                    failed++
-                }
-                is DownloadEnqueueOutcome.NeedsOptions -> {
-                    // Should not happen — enqueueEpisode auto-confirms.
-                    failed++
-                }
-                is DownloadEnqueueOutcome.SeasonStarted -> {
-                    // Per-episode path never returns SeasonStarted.
-                    repo.assignPack(outcome.item.id, packId, index)
-                    queued += outcome.started.coerceAtLeast(1)
+                    is DownloadEnqueueOutcome.AlreadyActive,
+                    is DownloadEnqueueOutcome.AlreadyCompleted,
+                    -> {
+                        val item = when (outcome) {
+                            is DownloadEnqueueOutcome.AlreadyActive -> outcome.item
+                            is DownloadEnqueueOutcome.AlreadyCompleted -> outcome.item
+                            else -> null
+                        }
+                        item?.let { repo.assignPack(it.id, packId, index) }
+                        already++
+                    }
+                    is DownloadEnqueueOutcome.Failed -> {
+                        Log.w(TAG, "Pack episode ${ref.id} failed: ${outcome.message}")
+                        failed++
+                    }
+                    is DownloadEnqueueOutcome.NeedsOptions -> {
+                        failed++
+                    }
+                    is DownloadEnqueueOutcome.SeasonStarted -> {
+                        repo.assignPack(outcome.item.id, packId, index)
+                        queued += outcome.started.coerceAtLeast(1)
+                    }
                 }
             }
+            repo.refreshSeasonPack(packId)
+            DownloadPackImportResult(
+                queued = queued,
+                alreadyPresent = already,
+                failed = failed,
+                packId = packId,
+            )
+        } finally {
+            if (previousProvider != null &&
+                previousProvider.name != UserPreferences.currentProvider?.name
+            ) {
+                UserPreferences.setCurrentProviderForPlayback(previousProvider)
+            }
         }
-        repo.refreshSeasonPack(packId)
-        if (previousProvider != null && previousProvider.name != UserPreferences.currentProvider?.name) {
-            UserPreferences.setCurrentProviderForPlayback(previousProvider)
-        }
-        DownloadPackImportResult(
-            queued = queued,
-            alreadyPresent = already,
-            failed = failed,
-            packId = packId,
-        )
     }
 
     private suspend fun enqueueEpisode(

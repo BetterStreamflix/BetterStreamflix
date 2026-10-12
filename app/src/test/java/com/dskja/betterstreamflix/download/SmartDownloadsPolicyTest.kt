@@ -47,6 +47,15 @@ class SmartDownloadsPolicyTest {
     }
 
     @Test
+    fun manualQueueDoesNotCountTowardSmartQuota() {
+        assertFalse(
+            SmartDownloadsPolicy.countsTowardSeriesQuota(
+                sampleEpisode(state = DownloadItemState.QUEUED, smart = false),
+            ),
+        )
+    }
+
+    @Test
     fun enqueueBudgetHonorsQuotaAndLookahead() {
         assertEquals(
             3,
@@ -95,9 +104,9 @@ class SmartDownloadsPolicyTest {
     }
 
     @Test
-    fun seasonEnqueueBudgetUsesQuotaSlotsOnly() {
+    fun seasonEnqueueBudgetIsFullMissing_notQuotaCapped() {
         assertEquals(
-            3,
+            12,
             SmartDownloadsPolicy.seasonEnqueueBudget(
                 missingInSeason = 12,
                 occupancy = 0,
@@ -105,7 +114,7 @@ class SmartDownloadsPolicyTest {
             ),
         )
         assertEquals(
-            0,
+            12,
             SmartDownloadsPolicy.seasonEnqueueBudget(
                 missingInSeason = 12,
                 occupancy = 3,
@@ -120,12 +129,21 @@ class SmartDownloadsPolicyTest {
                 quota = 10,
             ),
         )
+        assertEquals(
+            0,
+            SmartDownloadsPolicy.seasonEnqueueBudget(
+                missingInSeason = 0,
+                occupancy = 0,
+                quota = 3,
+            ),
+        )
     }
 
     private fun sampleEpisode(
         showId: String = "show-a",
         state: DownloadItemState = DownloadItemState.QUEUED,
         watched: Boolean = false,
+        smart: Boolean = true,
     ): DownloadItemEntity = DownloadItemEntity(
         id = "id-$showId-${state.name}",
         contentKey = "episode|Provider|$showId|1|1|ep1",
@@ -135,6 +153,7 @@ class SmartDownloadsPolicyTest {
         title = "Show",
         state = state.name,
         watchedOffline = watched,
+        smartEnqueued = smart,
         videoTypeJson = """{"id":"ep1","showId":"$showId","showTitle":"Show"}""",
     )
 }

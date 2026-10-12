@@ -80,6 +80,19 @@ class DownloadHealthTest {
         errorCode = DownloadErrorCode.FILE_MISSING.name,
     )
 
+    @Test
+    fun needsRedownload_noContext_ignoresCompletedUnplayable() {
+        // Profile-agnostic path stays FAILED+FILE_MISSING/STORAGE_RELOCATED only (OS-019/OS-031).
+        val completed = episode(
+            id = "ok",
+            contentKey = "episode|P|1|1|1|a",
+            state = DownloadItemState.COMPLETED.name,
+            errorCode = "",
+        )
+        assertFalse(DownloadSeriesFolders.needsRedownload(completed))
+        assertFalse(DownloadHealth.isUnhealthy(completed))
+    }
+
     private fun networkFail(id: String, contentKey: String) = DownloadItemEntity(
         id = id,
         contentKey = contentKey,

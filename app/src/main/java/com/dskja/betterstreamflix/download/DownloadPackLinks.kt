@@ -77,26 +77,33 @@ object DownloadPackLinks {
     }
 
     fun encode(payload: DownloadPackPayload): String {
-        require(payload.version == DownloadPackPayload.VERSION) { "unsupported pack version" }
+        require(
+            payload.version == DownloadPackPayload.VERSION ||
+                payload.version == DownloadPackPayload.VERSION_V1,
+        ) { "unsupported pack version" }
         require(payload.providerName.isNotBlank()) { "provider required" }
         require(payload.tvShowId.isNotBlank()) { "show id required" }
         require(payload.episodes.isNotEmpty()) { "episodes required" }
         require(payload.episodes.size <= DownloadPackPayload.MAX_EPISODES) {
             "at most ${DownloadPackPayload.MAX_EPISODES} episodes"
         }
+        val writeVersion = DownloadPackPayload.VERSION
         val lines = ArrayList<String>(4 + payload.episodes.size)
-        lines += "v${DownloadPackPayload.VERSION}"
+        lines += "v$writeVersion"
+        val provider = requireId(payload.providerName, DownloadPackPayload.MAX_ID_CHARS, "providerName")
+        val showId = requireId(payload.tvShowId, DownloadPackPayload.MAX_ID_CHARS, "tvShowId")
         lines += listOf(
-            clip(payload.providerName, DownloadPackPayload.MAX_ID_CHARS),
-            clip(payload.tvShowId, DownloadPackPayload.MAX_ID_CHARS),
+            provider,
+            showId,
             clip(payload.tvShowTitle, DownloadPackPayload.MAX_TITLE_CHARS),
             payload.seasonNumber.coerceAtLeast(0).toString(),
             clip(payload.posterUrl, DownloadPackPayload.MAX_POSTER_CHARS),
+            payload.expiresAtEpochMs.coerceAtLeast(0L).toString(),
         ).joinToString(US.toString())
         payload.episodes.forEach { ep ->
             require(ep.id.isNotBlank()) { "episode id required" }
             lines += listOf(
-                clip(ep.id, DownloadPackPayload.MAX_ID_CHARS),
+                requireId(ep.id, DownloadPackPayload.MAX_ID_CHARS, "episodeId"),
                 ep.number.coerceAtLeast(0).toString(),
                 clip(ep.title, DownloadPackPayload.MAX_TITLE_CHARS),
                 clip(ep.posterUrl, DownloadPackPayload.MAX_POSTER_CHARS),
@@ -122,7 +129,9 @@ object DownloadPackLinks {
         val lines = text.split(RS)
         if (lines.size < 3) return null
         val version = lines[0].removePrefix("v").toIntOrNull() ?: return null
-        if (version != DownloadPackPayload.VERSION) return null
+        if (version != DownloadPackPayload.VERSION && version != DownloadPackPayload.VERSION_V1) {
+            return null
+        }
         val header = lines[1].split(US)
         if (header.size < 5) return null
         val provider = header[0].trim().takeIf { it.isNotEmpty() } ?: return null
@@ -130,6 +139,11 @@ object DownloadPackLinks {
         val showTitle = header[2].trim()
         val season = header[3].toIntOrNull() ?: return null
         val poster = header.getOrNull(4).orEmpty().trim()
+        val expiresAt = if (version >= DownloadPackPayload.VERSION) {
+            header.getOrNull(5)?.toLongOrNull()?.coerceAtLeast(0L) ?: 0L
+        } else {
+            0L
+        }
         val episodes = lines.drop(2).mapNotNull { line ->
             if (line.isBlank()) return@mapNotNull null
             val parts = line.split(US)
@@ -144,7 +158,7 @@ object DownloadPackLinks {
             )
         }
         if (episodes.isEmpty() || episodes.size > DownloadPackPayload.MAX_EPISODES) return null
-        return DownloadPackPayload(
+        val payload = DownloadPackPayload(
             version = version,
             providerName = provider,
             tvShowId = showId,
@@ -152,13 +166,26 @@ object DownloadPackLinks {
             seasonNumber = season,
             posterUrl = poster,
             episodes = episodes,
+            expiresAtEpochMs = expiresAt,
         )
+        if (payload.isExpired()) return null
+        return payload
     }
 
     fun isPackLink(raw: String?): Boolean = extractEncoded(raw) != null
 
     private fun clip(value: String, max: Int): String =
         value.trim().take(max)
+
+    /** Id fields must not silently change — fail encode when over the limit (OS-064). */
+    private fun requireId(value: String, max: Int, label: String): String {
+        val trimmed = value.trim()
+        require(trimmed.isNotEmpty()) { "$label required" }
+        require(trimmed.length <= max) {
+            "$label exceeds $max chars (${trimmed.length})"
+        }
+        return trimmed
+    }
 
     private fun deflate(input: ByteArray): ByteArray {
         val deflater = Deflater(Deflater.BEST_COMPRESSION, /* nowrap */ true)

@@ -3,6 +3,7 @@ package com.dskja.betterstreamflix.download.ui
 import android.view.View
 import android.widget.TextView
 import android.widget.Toast
+import androidx.appcompat.app.AlertDialog
 import androidx.core.view.isVisible
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.Lifecycle
@@ -11,10 +12,14 @@ import androidx.lifecycle.lifecycleScope
 import androidx.navigation.fragment.findNavController
 import com.dskja.betterstreamflix.R
 import com.dskja.betterstreamflix.download.DownloadHealth
+import com.dskja.betterstreamflix.download.DownloadItemState
 import com.dskja.betterstreamflix.download.DownloadPackUi
 import com.dskja.betterstreamflix.download.DownloadRepository
+import com.dskja.betterstreamflix.download.DownloadStorage
+import com.dskja.betterstreamflix.download.OfflineExpiryPolicy
 import com.dskja.betterstreamflix.fragments.settings.SettingsDeepLink
 import com.dskja.betterstreamflix.utils.ExpMotion
+import com.dskja.betterstreamflix.utils.UserPreferences
 import com.google.android.material.materialswitch.MaterialSwitch
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
@@ -51,15 +56,18 @@ class OfflineStudioController(
     private val expiryBody: TextView? = root.findViewById(R.id.tv_offline_studio_expiry_body)
     private val expiryKeep: View? = root.findViewById(R.id.btn_offline_studio_expiry_keep)
     private val expiryDelete: View? = root.findViewById(R.id.btn_offline_studio_expiry_delete)
-    private val careEmpty: View? = root.findViewById(R.id.tv_offline_studio_care_empty)
+    private val careEmpty: TextView? = root.findViewById(R.id.tv_offline_studio_care_empty)
 
     private val smartSwitch: MaterialSwitch? = root.findViewById(R.id.switch_offline_studio_smart)
     private val autoDeleteSwitch: MaterialSwitch? = root.findViewById(R.id.switch_offline_studio_auto_delete)
+    private val wifiSwitch: MaterialSwitch? = root.findViewById(R.id.switch_offline_studio_wifi)
     private val quotaSummary: TextView? = root.findViewById(R.id.tv_offline_studio_quota_summary)
     private val lookaheadValue: TextView? = root.findViewById(R.id.tv_offline_studio_lookahead_value)
     private val quotaValue: TextView? = root.findViewById(R.id.tv_offline_studio_quota_value)
     private val softValue: TextView? = root.findViewById(R.id.tv_offline_studio_soft_value)
+    private val concurrentValue: TextView? = root.findViewById(R.id.tv_offline_studio_concurrent_value)
     private val storageBody: TextView? = root.findViewById(R.id.tv_offline_studio_storage_body)
+    private val wifiWindowBody: TextView? = root.findViewById(R.id.tv_offline_studio_wifi_window_body)
     private val packsBody: TextView? = root.findViewById(R.id.tv_offline_studio_packs_body)
     private val packShare: View? = root.findViewById(R.id.btn_offline_studio_pack_share)
     private val packImport: View? = root.findViewById(R.id.btn_offline_studio_pack_import)
@@ -67,6 +75,7 @@ class OfflineStudioController(
 
     private var bindingControls = false
     private var lastExpiryIds: List<String> = emptyList()
+    private var pendingScrollToPacks = false
 
     fun attach() {
         chipLibrary?.setOnClickListener {
@@ -95,14 +104,27 @@ class OfflineStudioController(
         healthCta?.setOnClickListener {
             ExpMotion.hapticTap(it)
             viewModel.redownloadAllUnhealthy()
+            viewModel.setViewMode(DownloadsViewMode.QUEUE)
+            viewModel.setFilter(DownloadsFilter.DOWNLOADING)
+        }
+        root.findViewById<View>(R.id.card_offline_studio_lane)?.setOnClickListener {
+            ExpMotion.hapticTap(it)
+            viewModel.setViewMode(DownloadsViewMode.QUEUE)
+            viewModel.setFilter(DownloadsFilter.DOWNLOADING)
         }
         expiryKeep?.setOnClickListener {
             ExpMotion.hapticTap(it)
-            if (lastExpiryIds.isNotEmpty()) viewModel.touchDownloads(lastExpiryIds)
+            if (lastExpiryIds.isNotEmpty()) {
+                viewModel.touchDownloads(lastExpiryIds)
+                OfflineExpiryPolicy.recordDismissed()
+                viewModel.refreshStudioPreferences()
+                viewModel.setViewMode(DownloadsViewMode.QUEUE)
+            }
         }
         expiryDelete?.setOnClickListener {
             ExpMotion.hapticTap(it)
-            if (lastExpiryIds.isNotEmpty()) viewModel.removeDownloads(lastExpiryIds)
+            if (lastExpiryIds.isEmpty()) return@setOnClickListener
+            confirmExpiryDelete(lastExpiryIds)
         }
 
         root.findViewById<View>(R.id.btn_offline_studio_lookahead_minus)?.setOnClickListener {
@@ -129,6 +151,14 @@ class OfflineStudioController(
             ExpMotion.hapticTap(it)
             viewModel.bumpSoftLimitGb(1)
         }
+        root.findViewById<View>(R.id.btn_offline_studio_concurrent_minus)?.setOnClickListener {
+            ExpMotion.hapticTap(it)
+            viewModel.bumpMaxConcurrent(-1)
+        }
+        root.findViewById<View>(R.id.btn_offline_studio_concurrent_plus)?.setOnClickListener {
+            ExpMotion.hapticTap(it)
+            viewModel.bumpMaxConcurrent(1)
+        }
 
         smartSwitch?.setOnCheckedChangeListener { _, checked ->
             if (bindingControls) return@setOnCheckedChangeListener
@@ -136,21 +166,25 @@ class OfflineStudioController(
         }
         autoDeleteSwitch?.setOnCheckedChangeListener { _, checked ->
             if (bindingControls) return@setOnCheckedChangeListener
-            viewModel.setAutoDeleteWatched(checked)
+            if (checked) {
+                confirmEnableAutoDelete()
+            } else {
+                viewModel.setAutoDeleteWatched(false)
+            }
+        }
+        wifiSwitch?.setOnCheckedChangeListener { _, checked ->
+            if (bindingControls) return@setOnCheckedChangeListener
+            viewModel.setWifiOnly(checked)
         }
 
         packShare?.setOnClickListener {
             ExpMotion.hapticTap(it)
-            shareLatestPack()
+            sharePackChooser()
         }
         packImport?.setOnClickListener {
             ExpMotion.hapticTap(it)
             if (isTv) {
-                Toast.makeText(
-                    fragment.requireContext(),
-                    R.string.offline_studio_pack_import_tv_hint,
-                    Toast.LENGTH_LONG,
-                ).show()
+                DownloadPackUi.promptImportFromLink(fragment.requireActivity())
             } else {
                 onScanPackQr()
             }
@@ -164,12 +198,15 @@ class OfflineStudioController(
         statusRail?.setOnClickListener {
             ExpMotion.hapticTap(it)
             val snap = viewModel.studioSnapshot.value
-            viewModel.setViewMode(
-                when {
-                    snap.health.hasUnhealthy || snap.expiryCount > 0 -> DownloadsViewMode.CARE
-                    else -> DownloadsViewMode.CONTROLS
-                },
-            )
+            when {
+                snap.health.hasUnhealthy || snap.expiryCount > 0 ->
+                    viewModel.setViewMode(DownloadsViewMode.CARE)
+                snap.packCount > 0 && !snap.hasCareWork -> {
+                    pendingScrollToPacks = true
+                    viewModel.setViewMode(DownloadsViewMode.CONTROLS)
+                }
+                else -> viewModel.setViewMode(DownloadsViewMode.CONTROLS)
+            }
         }
 
         fragment.viewLifecycleOwner.lifecycleScope.launch {
@@ -190,6 +227,13 @@ class OfflineStudioController(
         chipControls?.let { styleModeChip(it, controls) }
         carePanel?.isVisible = care
         controlsPanel?.isVisible = controls
+        if (controls) {
+            viewModel.refreshStudioPreferences()
+            if (pendingScrollToPacks) {
+                pendingScrollToPacks = false
+                scrollControlsToPacks()
+            }
+        }
     }
 
     fun modeTitleRes(mode: DownloadsViewMode): Int = when (mode) {
@@ -197,6 +241,57 @@ class OfflineStudioController(
         DownloadsViewMode.QUEUE -> R.string.downloads_title
         DownloadsViewMode.CARE -> R.string.offline_studio_care_title
         DownloadsViewMode.CONTROLS -> R.string.offline_studio_controls_title
+    }
+
+    private fun scrollControlsToPacks() {
+        val scroll = controlsPanel ?: return
+        val card = root.findViewById<View>(R.id.card_offline_studio_packs) ?: return
+        scroll.post {
+            scroll.scrollTo(0, card.top.coerceAtLeast(0))
+            if (isTv) card.requestFocus()
+        }
+    }
+
+    private fun confirmExpiryDelete(ids: List<String>) {
+        val ctx = fragment.requireContext()
+        AlertDialog.Builder(ctx)
+            .setTitle(R.string.offline_studio_expiry_delete)
+            .setMessage(
+                ctx.getString(R.string.offline_studio_expiry_delete_confirm, ids.size),
+            )
+            .setPositiveButton(R.string.offline_studio_expiry_delete) { _, _ ->
+                viewModel.removeDownloads(ids)
+                OfflineExpiryPolicy.recordDismissed()
+                viewModel.refreshStudioPreferences()
+                viewModel.setViewMode(DownloadsViewMode.QUEUE)
+            }
+            .setNegativeButton(android.R.string.cancel, null)
+            .show()
+    }
+
+    private fun confirmEnableAutoDelete() {
+        val ctx = fragment.requireContext()
+        AlertDialog.Builder(ctx)
+            .setTitle(R.string.offline_studio_auto_delete)
+            .setMessage(R.string.offline_studio_auto_delete_confirm)
+            .setPositiveButton(R.string.offline_studio_auto_delete_clean_now) { _, _ ->
+                viewModel.setAutoDeleteWatched(true)
+                viewModel.clearWatched()
+            }
+            .setNeutralButton(R.string.offline_studio_auto_delete_enable_only) { _, _ ->
+                viewModel.setAutoDeleteWatched(true)
+            }
+            .setNegativeButton(android.R.string.cancel) { _, _ ->
+                bindingControls = true
+                autoDeleteSwitch?.isChecked = false
+                bindingControls = false
+            }
+            .setOnCancelListener {
+                bindingControls = true
+                autoDeleteSwitch?.isChecked = false
+                bindingControls = false
+            }
+            .show()
     }
 
     private fun bindSnapshot(snap: OfflineStudioSnapshot) {
@@ -252,25 +347,38 @@ class OfflineStudioController(
 
         val careHasWork = snap.health.hasUnhealthy || snap.expiryCount > 0
         careEmpty?.isVisible = !careHasWork
+        if (!careHasWork) {
+            careEmpty?.setText(
+                if (snap.laneActiveCount > 0) {
+                    R.string.offline_studio_care_empty_lane
+                } else {
+                    R.string.offline_studio_care_empty
+                },
+            )
+        }
 
         bindingControls = true
         smartSwitch?.isChecked = snap.smartEnabled
         autoDeleteSwitch?.isChecked = snap.autoDeleteWatched
+        wifiSwitch?.isChecked = snap.wifiOnly
         bindingControls = false
 
         lookaheadValue?.text = snap.smartLookahead.toString()
         quotaValue?.text = snap.smartSeriesQuota.toString()
+        concurrentValue?.text = snap.maxConcurrent.toString()
         softValue?.text = if (snap.softLimitGb <= 0) {
-            ctx.getString(R.string.offline_studio_soft_unlimited)
+            ctx.getString(R.string.settings_download_soft_limit_unlimited)
         } else {
             snap.softLimitGb.toString()
         }
         quotaSummary?.text = ctx.getString(
             R.string.offline_studio_quota_summary,
-            snap.seriesQuotaOccupied,
-            snap.seriesWithQuota,
+            snap.maxSeriesOccupancy,
             snap.smartSeriesQuota,
+            snap.seriesWithQuota,
         )
+        val used = DownloadStorage.formatBytes(ctx, DownloadStorage.usedBytes(ctx))
+        val free = DownloadStorage.formatBytes(ctx, DownloadStorage.freeBytes(ctx))
         storageBody?.text = ctx.getString(
             R.string.offline_studio_storage_body,
             if (snap.softLimitGb <= 0) {
@@ -284,7 +392,10 @@ class OfflineStudioController(
             } else {
                 ctx.getString(R.string.offline_studio_wifi_off)
             },
+            used,
+            free,
         )
+        wifiWindowBody?.text = wifiWindowSummary(ctx)
         packsBody?.text = when {
             snap.packCount <= 0 -> ctx.getString(R.string.offline_studio_packs_empty)
             snap.packCount == 1 -> ctx.getString(R.string.offline_studio_packs_one)
@@ -298,17 +409,32 @@ class OfflineStudioController(
         }
     }
 
-    private fun shareLatestPack() {
+    private fun wifiWindowSummary(ctx: android.content.Context): String {
+        if (!UserPreferences.downloadWifiWindowEnabled) {
+            return ctx.getString(R.string.offline_studio_wifi_window_off)
+        }
+        return ctx.getString(
+            R.string.offline_studio_wifi_window_summary,
+            formatMinute(UserPreferences.downloadWifiWindowStartMinute),
+            formatMinute(UserPreferences.downloadWifiWindowEndMinute),
+        )
+    }
+
+    private fun formatMinute(minuteOfDay: Int): String {
+        val m = minuteOfDay.coerceIn(0, 24 * 60 - 1)
+        return String.format("%02d:%02d", m / 60, m % 60)
+    }
+
+    private fun sharePackChooser() {
         fragment.viewLifecycleOwner.lifecycleScope.launch {
-            val chosen = withContext(Dispatchers.IO) {
+            val packs = withContext(Dispatchers.IO) {
                 runCatching {
                     DownloadRepository.get(fragment.requireContext().applicationContext)
                         .observeSeasonPacks()
                         .first()
-                        .maxByOrNull { it.updatedAt }
-                }.getOrNull()
+                }.getOrDefault(emptyList())
             }
-            if (chosen == null) {
+            if (packs.isEmpty()) {
                 Toast.makeText(
                     fragment.requireContext(),
                     R.string.offline_studio_packs_empty,
@@ -316,7 +442,30 @@ class OfflineStudioController(
                 ).show()
                 return@launch
             }
-            DownloadPackUi.shareSeasonPack(fragment, chosen)
+            val completed = packs.filter { it.state == DownloadItemState.COMPLETED.name }
+            val candidates = if (completed.isNotEmpty()) completed else packs
+            if (candidates.size == 1) {
+                DownloadPackUi.shareSeasonPack(fragment, candidates.first())
+                return@launch
+            }
+            val labels = candidates.map { pack ->
+                fragment.getString(
+                    R.string.offline_studio_pack_picker_item,
+                    pack.tvShowTitle,
+                    pack.seasonNumber,
+                    pack.completedEpisodes,
+                    pack.totalEpisodes,
+                )
+            }.toTypedArray()
+            AlertDialog.Builder(fragment.requireContext())
+                .setTitle(R.string.offline_studio_pack_share)
+                .setItems(labels) { _, which ->
+                    candidates.getOrNull(which)?.let { pack ->
+                        DownloadPackUi.shareSeasonPack(fragment, pack)
+                    }
+                }
+                .setNegativeButton(android.R.string.cancel, null)
+                .show()
         }
     }
 }

@@ -38,21 +38,30 @@ object HonestEta {
         historySampleCount: Int,
         minSamplesForConfidence: Int = 3,
     ): DownloadEstimate {
-        if (remainingBytes <= 0L) {
-            return DownloadEstimate(speedBytesPerSec = 0L, etaSeconds = -1L, confident = false)
-        }
         val instant = instantaneousBps.coerceAtLeast(0L)
         val history = historyBps?.coerceAtLeast(0L)
         val speed = blendSpeed(instant, history, historySampleCount)
+        // Unknown Content-Length: still surface blended speed; ETA stays hidden.
+        if (remainingBytes <= 0L) {
+            return DownloadEstimate(
+                speedBytesPerSec = speed,
+                etaSeconds = -1L,
+                confident = false,
+            )
+        }
         if (speed <= 0L) {
             return DownloadEstimate(0L, -1L, confident = false)
+        }
+        val confident = historySampleCount >= minSamplesForConfidence &&
+            (history != null && history > 0L || instant > 0L)
+        // Low confidence: show speed but withhold ETA copy.
+        if (!confident) {
+            return DownloadEstimate(speed, etaSeconds = -1L, confident = false)
         }
         val eta = ceil(remainingBytes.toDouble() / speed.toDouble())
             .roundToLong()
             .coerceIn(1L, MAX_ETA_SECONDS)
-        val confident = historySampleCount >= minSamplesForConfidence &&
-            (history != null && history > 0L || instant > 0L)
-        return DownloadEstimate(speed, eta, confident)
+        return DownloadEstimate(speed, eta, confident = true)
     }
 
     /**

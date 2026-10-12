@@ -942,6 +942,9 @@ class PlayerTvFragment : Fragment(),
         hideEndCardChooser()
         clearBypassSession(dismissDialog = true)
         com.dskja.betterstreamflix.player.PlayerCleanExit.noteLeavingPlayer(returningToHome = false)
+        com.dskja.betterstreamflix.download.DownloadLaneFocus.clearFromPlayerTeardown(
+            context?.applicationContext,
+        )
         livePipZapController?.release()
         livePipZapController = null
         val live = if (::player.isInitialized && !playerReleased) player else null
@@ -1024,6 +1027,9 @@ class PlayerTvFragment : Fragment(),
         // Tear down while still attached — requireContext()/binding after super crash on
         // Zurück from player (especially TV OEM paths).
         isTearingDown = true
+        com.dskja.betterstreamflix.download.DownloadLaneFocus.clearFromPlayerTeardown(
+            context?.applicationContext,
+        )
         com.dskja.betterstreamflix.sync.WatchPartyPlayerHooks.onDestroyView(this)
         com.dskja.betterstreamflix.sync.CastHandoffPlayerHooks.onDestroyView(this)
         com.dskja.betterstreamflix.sync.SessionHandoffPlayerHooks.onDestroyView(this)

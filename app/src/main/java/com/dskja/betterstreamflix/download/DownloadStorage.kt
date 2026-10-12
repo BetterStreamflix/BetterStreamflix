@@ -257,8 +257,21 @@ object DownloadStorage {
         return "$profileLabel\n$body"
     }
 
-    fun usedBytes(context: Context): Long =
-        downloadsDir(context).walkTopDown().filter { it.isFile }.sumOf { it.length() }
+    fun usedBytes(context: Context): Long {
+        val downloads = downloadsDir(context)
+        val cache = cacheDir(context)
+        val downloadsBytes = dirSizeBytes(downloads)
+        // cacheDir is nested under downloadsDir today; only sum separately if paths diverge.
+        val cacheNested = cache.absolutePath.startsWith(downloads.absolutePath)
+        val cacheBytes = if (cacheNested) 0L else dirSizeBytes(cache)
+        return downloadsBytes + cacheBytes
+    }
+
+    private fun dirSizeBytes(dir: java.io.File): Long =
+        runCatching {
+            if (!dir.exists()) 0L
+            else dir.walkTopDown().filter { it.isFile }.sumOf { it.length() }
+        }.getOrDefault(0L)
 
     fun freeBytes(context: Context): Long {
         return try {

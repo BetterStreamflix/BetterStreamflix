@@ -3,7 +3,6 @@ package com.dskja.betterstreamflix.download
 import com.dskja.betterstreamflix.models.Movie
 import com.dskja.betterstreamflix.models.TvShow
 import com.dskja.betterstreamflix.models.Video
-import com.dskja.betterstreamflix.profiles.ProfileManager
 import com.dskja.betterstreamflix.utils.ParentalControlUtils
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
@@ -43,8 +42,8 @@ object DownloadParentalFilter {
                     providerName = item.providerName,
                 ),
             )
-            // No metadata to resolve a rating — fail-closed for kids profiles.
-            null -> !ProfileManager.isKidsActive()
+            // No metadata to resolve a rating — fail-closed whenever filtering is active.
+            null -> false
         }
     }
 }

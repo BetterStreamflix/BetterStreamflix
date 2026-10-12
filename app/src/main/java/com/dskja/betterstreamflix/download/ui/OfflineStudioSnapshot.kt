@@ -1,5 +1,6 @@
 package com.dskja.betterstreamflix.download.ui
 
+import android.content.Context
 import com.dskja.betterstreamflix.download.DownloadHealth
 import com.dskja.betterstreamflix.download.DownloadItemEntity
 import com.dskja.betterstreamflix.download.DownloadItemState
@@ -35,9 +36,14 @@ data class OfflineStudioSnapshot(
     /** Sum of series-quota occupancy across all series (approximate load). */
     val seriesQuotaOccupied: Int,
     val seriesWithQuota: Int,
+    /** Highest per-series occupancy (near-cap signal for Controls). */
+    val maxSeriesOccupancy: Int,
 ) {
     val hasCareWork: Boolean
         get() = health.hasUnhealthy || expiryCount > 0
+
+    val laneActiveCount: Int
+        get() = watchingLaneCount + queueLaneCount + smartLaneCount
 
     companion object {
         fun build(
@@ -52,6 +58,10 @@ data class OfflineStudioSnapshot(
             maxConcurrent: Int,
             nowMs: Long = System.currentTimeMillis(),
             watchingFocus: DownloadLanePolicy.WatchingFocus? = DownloadLaneFocus.current(),
+            /** When false (kids / cooldown), Care expiry card stays empty. */
+            careExpiryAllowed: Boolean = true,
+            /** When set, health includes COMPLETED-unplayable via live probe (OS-019). */
+            context: Context? = null,
         ): OfflineStudioSnapshot {
             val unique = items
                 .groupBy { it.contentKey }
@@ -68,8 +78,20 @@ data class OfflineStudioSnapshot(
                     DownloadLane.SMART_AUTO -> smart++
                 }
             }
-            val health = DownloadHealth.summarize(unique)
-            val stale = OfflineExpiryPolicy.selectStale(unique, nowMs = nowMs, max = 20)
+            val health = if (context != null) {
+                DownloadHealth.summarize(context, unique)
+            } else {
+                DownloadHealth.summarize(unique)
+            }
+            val stale = if (careExpiryAllowed) {
+                OfflineExpiryPolicy.selectStale(
+                    unique,
+                    nowMs = nowMs,
+                    max = OfflineExpiryPolicy.MAX_BATCH,
+                )
+            } else {
+                emptyList()
+            }
             val (titles, _) = OfflineExpiryPolicy.formatTitleLines(stale)
             val occupancyBySeries = unique
                 .mapNotNull { item ->
@@ -99,6 +121,7 @@ data class OfflineStudioSnapshot(
                 maxConcurrent = maxConcurrent,
                 seriesQuotaOccupied = occupancyBySeries.values.sum(),
                 seriesWithQuota = occupancyBySeries.size,
+                maxSeriesOccupancy = occupancyBySeries.values.maxOrNull() ?: 0,
             )
         }
     }

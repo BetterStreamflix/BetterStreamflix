@@ -235,6 +235,30 @@ object UserPreferences {
             Key.DOWNLOAD_WIFI_ONLY.setBoolean(value)
         }
 
+    /**
+     * Optional Wi‑Fi download window (minute-of-day, local). When enabled with
+     * [downloadWifiOnly], downloads also hold outside [start, end).
+     */
+    var downloadWifiWindowEnabled: Boolean
+        get() = Key.DOWNLOAD_WIFI_WINDOW_ENABLED.getBoolean() ?: false
+        set(value) {
+            Key.DOWNLOAD_WIFI_WINDOW_ENABLED.setBoolean(value)
+        }
+
+    var downloadWifiWindowStartMinute: Int
+        get() = (Key.DOWNLOAD_WIFI_WINDOW_START_MINUTE.getInt() ?: (1 * 60))
+            .coerceIn(0, 24 * 60 - 1)
+        set(value) {
+            Key.DOWNLOAD_WIFI_WINDOW_START_MINUTE.setInt(value.coerceIn(0, 24 * 60 - 1))
+        }
+
+    var downloadWifiWindowEndMinute: Int
+        get() = (Key.DOWNLOAD_WIFI_WINDOW_END_MINUTE.getInt() ?: (7 * 60))
+            .coerceIn(0, 24 * 60 - 1)
+        set(value) {
+            Key.DOWNLOAD_WIFI_WINDOW_END_MINUTE.setInt(value.coerceIn(0, 24 * 60 - 1))
+        }
+
     var downloadMaxConcurrent: Int
         get() = Key.DOWNLOAD_MAX_CONCURRENT.getInt() ?: 2
         set(value) {
@@ -928,14 +952,18 @@ object UserPreferences {
         get() = Key.THANKS_AFTER_BINGE_SHOW_COUNT.getInt() ?: 0
         set(value) = Key.THANKS_AFTER_BINGE_SHOW_COUNT.setInt(value)
 
-    /** Offline Expiry Nudge — last soft prompt timestamps (see OfflineExpiryPolicy). */
+    /** Offline Expiry Nudge — last soft prompt timestamps (profile-scoped). */
     var offlineExpiryNudgeLastShownAtMs: Long
-        get() = Key.OFFLINE_EXPIRY_NUDGE_LAST_SHOWN_AT_MS.getLong() ?: 0L
-        set(value) = Key.OFFLINE_EXPIRY_NUDGE_LAST_SHOWN_AT_MS.setLong(value)
+        get() = profileScopedLong(Key.OFFLINE_EXPIRY_NUDGE_LAST_SHOWN_AT_MS)
+            ?: Key.OFFLINE_EXPIRY_NUDGE_LAST_SHOWN_AT_MS.getLong()
+            ?: 0L
+        set(value) = setProfileScopedLong(Key.OFFLINE_EXPIRY_NUDGE_LAST_SHOWN_AT_MS, value)
 
     var offlineExpiryNudgeLastDismissedAtMs: Long
-        get() = Key.OFFLINE_EXPIRY_NUDGE_LAST_DISMISSED_AT_MS.getLong() ?: 0L
-        set(value) = Key.OFFLINE_EXPIRY_NUDGE_LAST_DISMISSED_AT_MS.setLong(value)
+        get() = profileScopedLong(Key.OFFLINE_EXPIRY_NUDGE_LAST_DISMISSED_AT_MS)
+            ?: Key.OFFLINE_EXPIRY_NUDGE_LAST_DISMISSED_AT_MS.getLong()
+            ?: 0L
+        set(value) = setProfileScopedLong(Key.OFFLINE_EXPIRY_NUDGE_LAST_DISMISSED_AT_MS, value)
 
     /** Unique finished episodes counted toward the Support tip threshold. */
     var supportEpisodesWatchedCount: Int
@@ -2100,6 +2128,9 @@ object UserPreferences {
         FAVORITE_PROVIDERS,
         ONBOARDING_COMPLETED,
         DOWNLOAD_WIFI_ONLY,
+        DOWNLOAD_WIFI_WINDOW_ENABLED,
+        DOWNLOAD_WIFI_WINDOW_START_MINUTE,
+        DOWNLOAD_WIFI_WINDOW_END_MINUTE,
         DOWNLOAD_MAX_CONCURRENT,
         DOWNLOAD_QUALITY_PRESET,
         DOWNLOAD_NOTIFY_COMPLETE,

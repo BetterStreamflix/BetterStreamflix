@@ -25,8 +25,8 @@ object DownloadLaneScheduler {
     }
 
     suspend fun apply(context: Context) = mutex.withLock {
-        if (DownloadConnectivityMonitor.shouldHoldForWifiOnly(context)) return
-        if (DownloadStorage.isLowSpace(context)) return
+        val wifiHeld = DownloadConnectivityMonitor.shouldHoldForWifiOnly(context)
+        val storageHeld = DownloadStorage.isLowSpace(context)
 
         val repo = DownloadRepository.get(context)
         val slots = UserPreferences.downloadMaxConcurrent.coerceIn(1, 4)
@@ -34,6 +34,7 @@ object DownloadLaneScheduler {
         val plan = DownloadLanePolicy.plan(items, slots, DownloadLaneFocus.current())
         if (plan.runIds.isEmpty() && plan.holdIds.isEmpty()) return
 
+        // Always annotate lower-lane holds (no early return on wifi/storage).
         for (id in plan.holdIds) {
             val item = items.find { it.id == id } ?: continue
             val state = DownloadItemState.fromKey(item.state)
@@ -49,6 +50,8 @@ object DownloadLaneScheduler {
             }.onFailure { Log.w(TAG, "lane hold failed for $id: ${it.message}") }
         }
 
+        // Resume LANE_HOLD only when Wi‑Fi / storage are not holding the queue.
+        if (wifiHeld || storageHeld) return
         for (id in plan.runIds) {
             val item = items.find { it.id == id } ?: continue
             if (!DownloadLanePolicy.isLaneHeld(item)) continue
