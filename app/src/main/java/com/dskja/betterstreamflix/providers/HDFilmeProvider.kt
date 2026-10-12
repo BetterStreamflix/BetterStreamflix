@@ -276,14 +276,12 @@ object HDFilmeProvider : Provider, ProviderConfigUrl {
 
         val banner = imageUrl(el.selectFirst("img"))
 
-        val tmdbMovie = TmdbUtils.getMovie(title, language = language)
-
-        // Keep full watchnow href as id (incl. /filme1/... paths).
+        // Home slider: no per-item TMDb (N+1). Detail still enriches via TmdbUtils.
         return Movie(
             id = href,
             title = title,
             banner = banner,
-            rating = tmdbMovie?.rating
+            poster = banner,
         )
     }
 

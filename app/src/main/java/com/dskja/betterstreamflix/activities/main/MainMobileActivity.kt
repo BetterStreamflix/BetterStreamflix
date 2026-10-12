@@ -676,7 +676,13 @@ class MainMobileActivity : FragmentActivity() {
             destinationId != R.id.player
         if (show) {
             if (ExperimentalMobileDesign.enabled()) {
-                controller.setBackgroundResource(ExperimentalMobileDesign.castMiniBackground())
+                // Prefer flat cast chrome on OEM forks that crash LayerDrawable
+                // linear gradients during draw (BETTERSTREAMFLIX-3J).
+                runCatching {
+                    controller.setBackgroundResource(ExperimentalMobileDesign.castMiniBackground())
+                }.onFailure {
+                    controller.setBackgroundResource(R.drawable.bg_exp_cast_mini_flat)
+                }
                 val wasVisible = controller.visibility == View.VISIBLE
                 controller.visibility = View.VISIBLE
                 controller.elevation = 10f * resources.displayMetrics.density
@@ -696,9 +702,11 @@ class MainMobileActivity : FragmentActivity() {
                                     is android.widget.ImageView,
                                     -> {
                                         if (child.isClickable || child is android.widget.ImageButton) {
-                                            child.setBackgroundResource(
-                                                ExperimentalMobileDesign.iconChipBackground(),
-                                            )
+                                            runCatching {
+                                                child.setBackgroundResource(
+                                                    ExperimentalMobileDesign.iconChipBackground(),
+                                                )
+                                            }
                                             (child as android.widget.ImageView).imageTintList =
                                                 android.content.res.ColorStateList.valueOf(primary)
                                             ExpMotion.popIn(child)

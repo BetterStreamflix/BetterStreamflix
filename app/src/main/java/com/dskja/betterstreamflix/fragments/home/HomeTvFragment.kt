@@ -96,11 +96,12 @@ class HomeTvFragment : Fragment() {
 
     /** Shared pool for nested shelf HorizontalGridViews (parity with mobile shelfPool). */
     val shelfPool: RecyclerView.RecycledViewPool = RecyclerView.RecycledViewPool().apply {
-        setMaxRecycledViews(AppAdapter.Type.MOVIE_TV_ITEM.ordinal, 16)
-        setMaxRecycledViews(AppAdapter.Type.TV_SHOW_TV_ITEM.ordinal, 16)
-        setMaxRecycledViews(AppAdapter.Type.EPISODE_TV_ITEM.ordinal, 8)
-        setMaxRecycledViews(AppAdapter.Type.MOVIE_CONTINUE_WATCHING_TV_ITEM.ordinal, 8)
-        setMaxRecycledViews(AppAdapter.Type.EPISODE_CONTINUE_WATCHING_TV_ITEM.ordinal, 8)
+        setMaxRecycledViews(AppAdapter.Type.MOVIE_TV_ITEM.ordinal, 24)
+        setMaxRecycledViews(AppAdapter.Type.TV_SHOW_TV_ITEM.ordinal, 24)
+        setMaxRecycledViews(AppAdapter.Type.EPISODE_TV_ITEM.ordinal, 12)
+        setMaxRecycledViews(AppAdapter.Type.MOVIE_CONTINUE_WATCHING_TV_ITEM.ordinal, 12)
+        setMaxRecycledViews(AppAdapter.Type.EPISODE_CONTINUE_WATCHING_TV_ITEM.ordinal, 12)
+        setMaxRecycledViews(AppAdapter.Type.CATEGORY_TV_ITEM.ordinal, 6)
     }
 
     private val swiperHandler = Handler(Looper.getMainLooper())
@@ -418,6 +419,7 @@ class HomeTvFragment : Fragment() {
                 stateRestorationPolicy = RecyclerView.Adapter.StateRestorationPolicy.PREVENT_WHEN_EMPTY
             }
             itemAnimator = null
+            setItemViewCacheSize(6)
             descendantFocusability = ViewGroup.FOCUS_AFTER_DESCENDANTS
             setItemSpacing(
                 com.dskja.betterstreamflix.ui.LeanbackDensityPolicy.dpToPx(

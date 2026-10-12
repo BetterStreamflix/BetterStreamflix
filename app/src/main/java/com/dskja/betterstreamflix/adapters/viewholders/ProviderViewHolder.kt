@@ -111,8 +111,13 @@ class ProviderViewHolder(
             .let { it.getDisplayLanguage(it) }
             .replaceFirstChar { it.titlecase() }
         if (ExperimentalMobileDesign.enabled()) {
-            binding.root.setBackgroundResource(ExperimentalMobileDesign.glassCardBackground())
-            binding.tvProviderLanguage.setBackgroundResource(
+            // OEM LayerDrawable/GradientDrawable draw crashes (BETTERSTREAMFLIX-3J).
+            setBackgroundResourceSafe(
+                binding.root,
+                ExperimentalMobileDesign.glassCardBackground(),
+            )
+            setBackgroundResourceSafe(
+                binding.tvProviderLanguage,
                 ExperimentalMobileDesign.metaPillBackground(),
             )
             binding.tvProviderLanguage.text = lang
@@ -512,7 +517,15 @@ class ProviderViewHolder(
         val isSvg = logo?.substringBefore("?")?.endsWith(".svg", ignoreCase = true) == true
 
         if (isSvg) {
-            imageView.setLayerType(View.LAYER_TYPE_SOFTWARE, null)
+            // SOFTWARE layers on every TV provider tile force CPU raster during
+            // grid measure/draw and contribute to Providers ANRs. Keep hardware
+            // on Leanback; mobile may still need software for some SVG paths.
+            val leanback = com.dskja.betterstreamflix.utils.DeviceCapabilities
+                .isLeanbackDevice(context)
+            imageView.setLayerType(
+                if (leanback) View.LAYER_TYPE_NONE else View.LAYER_TYPE_SOFTWARE,
+                null,
+            )
             Glide.with(context)
                 .`as`(PictureDrawable::class.java)
                 .load(logo)
@@ -538,5 +551,19 @@ class ProviderViewHolder(
             favorites.remove(provider.name)
         }
         UserPreferences.favoriteProviders = favorites
+    }
+
+    /**
+     * Some OEM Android 10 forks throw from GradientDrawable.draw when a
+     * LayerDrawable/gradient ConstantState is odd (BETTERSTREAMFLIX-3J). Prefer
+     * the themed drawable, but never let a bad resource crash the Providers grid.
+     */
+    private fun setBackgroundResourceSafe(view: View, resId: Int) {
+        runCatching { view.setBackgroundResource(resId) }
+            .onFailure {
+                view.setBackgroundColor(
+                    ContextCompat.getColor(context, R.color.exp_nav_glass),
+                )
+            }
     }
 }

@@ -101,18 +101,9 @@ object EinschaltenProvider : Provider, ProviderConfigUrl {
         if (posterPath.isNotBlank()) {
             return "$baseUrl/api/image/poster$posterPath"
         }
-        
-        return try {
-            val tmdbId = movieId.toIntOrNull()
-            if (tmdbId != null) {
-                val movie = TmdbUtils.getMovieById(tmdbId, language = language)
-                movie?.poster ?: ""
-            } else {
-                ""
-            }
-        } catch (e: Exception) {
-            ""
-        }
+        // Do not fan out to TMDb per missing poster on home/list (N+1). Leave blank;
+        // detail / getTmdbMovie still enrich when the user opens a title.
+        return ""
     }
     
     private suspend fun getTmdbMovie(movieId: String): Movie? {
