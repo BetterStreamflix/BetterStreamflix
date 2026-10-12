@@ -5,6 +5,8 @@ import android.content.Context
 import android.graphics.Color
 import android.graphics.drawable.ColorDrawable
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.text.InputType
 import android.view.LayoutInflater
 import android.view.View
@@ -43,6 +45,14 @@ class ProfilePickerDialog : DialogFragment() {
     private var requireUnlock = false
     private var editorVisible = false
     private var backCallback: OnBackPressedCallback? = null
+    private val guestRefreshHandler = Handler(Looper.getMainLooper())
+    private val guestRefreshTick = object : Runnable {
+        override fun run() {
+            if (!isAdded || editorVisible) return
+            view?.let(::bindProfiles)
+            guestRefreshHandler.postDelayed(this, 60_000L)
+        }
+    }
 
     override fun onCreateDialog(savedInstanceState: Bundle?): Dialog {
         val dialog = Dialog(requireContext(), R.style.ProfilePickerDialogTheme)
@@ -61,10 +71,17 @@ class ProfilePickerDialog : DialogFragment() {
 
     override fun onStart() {
         super.onStart()
+        guestRefreshHandler.removeCallbacks(guestRefreshTick)
+        guestRefreshHandler.postDelayed(guestRefreshTick, 60_000L)
         dialog?.window?.setLayout(
             WindowManager.LayoutParams.MATCH_PARENT,
             WindowManager.LayoutParams.MATCH_PARENT,
         )
+    }
+
+    override fun onStop() {
+        guestRefreshHandler.removeCallbacks(guestRefreshTick)
+        super.onStop()
     }
 
     private fun capCardHeight(view: View) {
@@ -666,8 +683,8 @@ class ProfilePickerDialog : DialogFragment() {
                 ProfileManager.updateAvatar(profile.id, selected)
                 if (!profile.isGuest) {
                     ProfileManager.updateKids(profile.id, becomingKids)
+                    ProfileManager.setEnabledIntegrations(profile.id, readEnabledIntegrations(form))
                 }
-                ProfileManager.setEnabledIntegrations(profile.id, readEnabledIntegrations(form))
                 restorePickerView()
                 view?.let(::bindProfiles)
                 Unit
@@ -902,7 +919,19 @@ class ProfilePickerDialog : DialogFragment() {
 
     private fun completeSwitch(profile: UserProfile) {
         val context = requireContext()
-        if (!ProfileManager.switchTo(context, profile.id)) return
+        // Defer session unlock for kids without a profile PIN so ProfileUnlockGate
+        // (or the caller) can challenge the household parental PIN first (KF-002).
+        val deferUnlock = profile.isKids && profile.pinHash == null
+        if (!ProfileManager.switchTo(context, profile.id, markUnlocked = !deferUnlock)) {
+            if (profile.isKids) {
+                ExpDialogChrome.notify(
+                    context,
+                    getString(R.string.profile_kids_exit_requires_pin),
+                    R.string.profile_kids_title,
+                )
+            }
+            return
+        }
         ExpDialogChrome.notify(
             context,
             getString(R.string.profile_switched_toast, profile.displayName),

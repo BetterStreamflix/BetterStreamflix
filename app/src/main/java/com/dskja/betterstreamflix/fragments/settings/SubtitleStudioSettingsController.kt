@@ -4,7 +4,9 @@ import android.graphics.Color
 import androidx.media3.ui.CaptionStyleCompat
 import androidx.preference.ListPreference
 import androidx.preference.PreferenceFragmentCompat
+import com.dskja.betterstreamflix.R
 import com.dskja.betterstreamflix.utils.UserPreferences
+import kotlin.math.abs
 import com.dskja.betterstreamflix.utils.getAlpha
 import com.dskja.betterstreamflix.utils.getRgb
 import com.dskja.betterstreamflix.utils.setAlpha
@@ -16,7 +18,11 @@ import com.dskja.betterstreamflix.utils.setRgb
  */
 object SubtitleStudioSettingsController {
 
+    private val sizeOptions = listOf(0.75f, 1f, 1.25f, 1.5f, 2f)
+    private val backgroundOptions = listOf(0, 128, 191, 255)
+
     fun bind(fragment: PreferenceFragmentCompat) {
+        val context = fragment.requireContext()
         val sizePref = fragment.findPreference<ListPreference>("SUBTITLE_STUDIO_SIZE")
         val colorPref = fragment.findPreference<ListPreference>("SUBTITLE_STUDIO_FONT_COLOR")
         val bgPref = fragment.findPreference<ListPreference>("SUBTITLE_STUDIO_BACKGROUND")
@@ -29,11 +35,34 @@ object SubtitleStudioSettingsController {
 
         fun syncFromPrefs() {
             val size = UserPreferences.captionTextSize
-            sizePref?.value = closestSizeValue(size)
-            colorPref?.value = colorKey(UserPreferences.captionStyle.foregroundColor)
-            bgPref?.value = closestBackgroundValue(
-                UserPreferences.captionStyle.backgroundColor.getAlpha(),
-            )
+            if (sizeOptions.any { abs(it - size) < 0.02f }) {
+                sizePref?.value = closestSizeValue(size)
+                sizePref?.summary = null
+            } else {
+                sizePref?.value = null
+                sizePref?.summary = context.getString(R.string.subtitle_studio_custom_value, size)
+            }
+            val fg = UserPreferences.captionStyle.foregroundColor
+            val mappedKey = colorKey(fg)
+            val matchesPalette = colorFromKey(mappedKey)?.getRgb() == fg.getRgb()
+            if (matchesPalette) {
+                colorPref?.value = mappedKey
+                colorPref?.summary = null
+            } else {
+                colorPref?.value = null
+                colorPref?.summary = context.getString(
+                    R.string.subtitle_studio_custom_value,
+                    "#%06X".format(0xFFFFFF and fg.getRgb()),
+                )
+            }
+            val alpha = UserPreferences.captionStyle.backgroundColor.getAlpha()
+            if (backgroundOptions.any { abs(it - alpha) <= 8 }) {
+                bgPref?.value = closestBackgroundValue(alpha)
+                bgPref?.summary = null
+            } else {
+                bgPref?.value = null
+                bgPref?.summary = context.getString(R.string.subtitle_studio_custom_value, alpha)
+            }
             refreshPreview()
         }
 
@@ -77,6 +106,11 @@ object SubtitleStudioSettingsController {
         }
 
         syncFromPrefs()
+    }
+
+    /** Re-sync ListPreferences + preview after returning from the player editor. */
+    fun refresh(fragment: PreferenceFragmentCompat) {
+        bind(fragment)
     }
 
     private fun closestSizeValue(size: Float): String {

@@ -17,21 +17,46 @@ class CloudSyncNotesLooksMergeTest {
 
     @Test
     fun mergeNote_prefersNewerRemote() {
-        val local = RemoteEpisodeNote("u1", "ep1", "local", 50L)
-        val remote = RemoteEpisodeNote("u1", "ep1", "remote", 90L)
+        val local = RemoteEpisodeNote(
+            userId = "u1",
+            episodeId = "ep1",
+            text = "local",
+            clientUpdatedAtMillis = 50L,
+        )
+        val remote = RemoteEpisodeNote(
+            userId = "u1",
+            episodeId = "ep1",
+            text = "remote",
+            clientUpdatedAtMillis = 90L,
+        )
         assertEquals("remote", CloudNotesLooksSync.mergeNote(remote, local).text)
     }
 
     @Test
     fun mergeNote_tiePrefersLocal() {
-        val local = RemoteEpisodeNote("u1", "ep1", "local", 90L)
-        val remote = RemoteEpisodeNote("u1", "ep1", "remote", 90L)
+        val local = RemoteEpisodeNote(
+            userId = "u1",
+            episodeId = "ep1",
+            text = "local",
+            clientUpdatedAtMillis = 90L,
+        )
+        val remote = RemoteEpisodeNote(
+            userId = "u1",
+            episodeId = "ep1",
+            text = "remote",
+            clientUpdatedAtMillis = 90L,
+        )
         assertEquals("local", CloudNotesLooksSync.mergeNote(remote, local).text)
     }
 
     @Test
     fun mergeNote_nullRemoteKeepsLocal() {
-        val local = RemoteEpisodeNote("u1", "ep1", "only", 10L)
+        val local = RemoteEpisodeNote(
+            userId = "u1",
+            episodeId = "ep1",
+            text = "only",
+            clientUpdatedAtMillis = 10L,
+        )
         assertEquals(local, CloudNotesLooksSync.mergeNote(null, local))
     }
 
@@ -60,5 +85,28 @@ class CloudSyncNotesLooksMergeTest {
             ThemeManager.CINEMA_INK_LIGHT,
             CloudNotesLooksSync.clampLookForActiveProfile(ThemeManager.CINEMA_INK_LIGHT, kidsActive = false),
         )
+    }
+
+    @Test
+    fun noteQueueKey_includesProviderAndShow() {
+        val a = RemoteEpisodeNote(
+            userId = "u1",
+            episodeId = "ep1",
+            providerName = "SerienStream",
+            showId = "showA",
+            text = "a",
+            clientUpdatedAtMillis = 1L,
+        )
+        val b = RemoteEpisodeNote(
+            userId = "u1",
+            episodeId = "ep1",
+            providerName = "AniWorld",
+            showId = "showB",
+            text = "b",
+            clientUpdatedAtMillis = 1L,
+        )
+        assertTrue(a.queueKey != b.queueKey)
+        assertTrue(a.queueKey.contains("SerienStream"))
+        assertTrue(b.queueKey.contains("AniWorld"))
     }
 }

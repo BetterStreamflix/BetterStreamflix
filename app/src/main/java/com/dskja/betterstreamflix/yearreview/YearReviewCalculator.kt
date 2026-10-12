@@ -52,8 +52,9 @@ object YearReviewCalculator {
                 ?: (movie.runtimeMinutes?.takeIf { it > 0 } ?: DEFAULT_MOVIE_MINUTES).toDouble()
         }
         for (episode in yearEpisodes) {
-            totalMinutes += (episode.runtimeMinutes?.takeIf { it > 0 } ?: DEFAULT_EPISODE_MINUTES)
-                .toDouble()
+            val progressMin = episode.inProgressPositionMs?.let { it / 60_000.0 }
+            totalMinutes += progressMin
+                ?: (episode.runtimeMinutes?.takeIf { it > 0 } ?: DEFAULT_EPISODE_MINUTES).toDouble()
         }
 
         val topSeries = rankTopSeries(yearEpisodes)
@@ -65,7 +66,7 @@ object YearReviewCalculator {
             profileName = profileName,
             totalHours = hours,
             movieCount = yearMovies.count { it.inProgressPositionMs == null },
-            episodeCount = yearEpisodes.size,
+            episodeCount = yearEpisodes.count { it.inProgressPositionMs == null },
             topSeries = topSeries,
             longestBinge = longestBinge,
         )

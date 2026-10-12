@@ -449,9 +449,11 @@ abstract class PlayerSettingsView @JvmOverloads constructor(
     protected fun syncSubtitleStudioPreview(setting: Setting) {
         val preview = subtitleStudioPreview ?: return
         if (SubtitleStudio.isStudioSettingName(setting.name)) {
+            subtitleView?.visibility = android.view.View.INVISIBLE
             val sample = context.getString(R.string.subtitle_studio_preview_sample)
             SubtitleStudio.showPreview(preview, sample)
         } else {
+            subtitleView?.visibility = android.view.View.VISIBLE
             SubtitleStudio.hidePreview(preview)
         }
     }
@@ -467,6 +469,7 @@ abstract class PlayerSettingsView @JvmOverloads constructor(
 
     protected fun hideSubtitleStudioPreview() {
         subtitleStudioPreview?.let { SubtitleStudio.hidePreview(it) }
+        subtitleView?.visibility = android.view.View.VISIBLE
     }
 
     protected var onFontOpacitySelected: ((Settings.Subtitle.Style.FontOpacity) -> Unit) =

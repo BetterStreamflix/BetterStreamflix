@@ -663,6 +663,10 @@
     <string name="subtitle_studio_size_title">Text size</string>
     <string name="subtitle_studio_font_color_title">Font color</string>
     <string name="subtitle_studio_background_title">Background</string>
+    <string name="subtitle_studio_custom_value">Custom (%1$s)</string>
+    <string name="year_review_blocked_profile">Year review is not available on Kids or Guest profiles.</string>
+    <string name="year_review_load_error">Could not load your year review. Try again later.</string>
+    <string name="year_review_previous_year">View %1$d</string>
     <string name="player_settings_caption_style_reset_style_label">Reset style</string>
     <string name="player_settings_caption_style_font_color_title">Font color</string>
     <string name="player_settings_caption_style_font_color_label">Font color</string>
@@ -1033,6 +1037,9 @@
     <string name="profile_transfer_import_confirm_title">Import into this profile?</string>
     <string name="profile_transfer_import_confirm_message">Merge %1$d watchlist titles and %2$d notes, and apply settings. Source: %3$s. Offline downloads and PINs are never transferred.</string>
     <string name="profile_transfer_import_confirm_action">Import</string>
+    <string name="profile_transfer_kids_import_pin_title">Parental PIN required</string>
+    <string name="profile_transfer_kids_import_pin_message">Enter your parental PIN to apply a Kids profile from this import.</string>
+    <string name="profile_transfer_kids_import_requires_pin">Set a parental PIN in Settings before importing a Kids profile.</string>
     <string name="profile_transfer_import_done">Imported %1$d watchlist titles and %2$d notes</string>
     <string name="profile_transfer_import_failed">Import failed: %1$s</string>
     <string name="profile_transfer_import_invalid">Not a valid profile transfer</string>
@@ -1094,6 +1101,7 @@
     <string name="spoiler_shield_kids_pin_title">Adult PIN</string>
     <string name="spoiler_shield_kids_pin_message">Enter the parental or profile PIN to reveal episode titles and thumbs.</string>
     <string name="spoiler_shield_kids_confirm_message">Reveal episode titles and thumbs for this Kids profile?</string>
+    <string name="spoiler_shield_kids_pin_required">Set a parental or profile PIN in Settings before revealing spoilers on this Kids profile.</string>
     <string name="profile_kids_exit_requires_pin">Set a parental PIN or a profile PIN before leaving Kids</string>
     <string name="profile_kids_requires_exit_pin">Kids profiles need a parental PIN (or a PIN on this profile) so adults can leave safely</string>
     <string name="profile_kids_pin_clear_blocked">Set a parental PIN first — Kids profiles cannot clear their profile PIN without one</string>

@@ -185,7 +185,7 @@ object CloudSyncManager {
     }
 
     private fun rejectKidsCloudAuth() {
-        if (ProfileManager.isKidsActive()) {
+        if (ProfileManager.isKidsActive() || ProfileManager.isGuestActive()) {
             throw KidsCloudAuthException()
         }
     }
@@ -557,12 +557,6 @@ object CloudSyncManager {
         )
     }
 
-    private fun maxNullable(first: Long?, second: Long?): Long? = when {
-        first == null -> second
-        second == null -> first
-        else -> maxOf(first, second)
-    }
-
     private suspend fun fetchRemote(client: io.github.jan.supabase.SupabaseClient): List<RemoteMediaState> =
         collectPages(FETCH_PAGE_SIZE) { from, to ->
             client.from(TABLE).select {
@@ -856,25 +850,6 @@ object CloudSyncManager {
         watchedDate?.timeInMillis,
         watchHistory?.lastEngagementTimeUtcMillis,
     ).maxOrNull() ?: Long.MIN_VALUE
-
-    private fun clearLocalUserState(context: Context) {
-        val profileId = ProfileManager.activeProfileId
-        existingProviders(context, profileId).forEach { provider ->
-            val opened = AppDatabase.openForProfile(provider.name, context, profileId)
-            val db = opened.database
-            try {
-                db.runInTransaction {
-                    db.movieDao().clearUserState()
-                    db.tvShowDao().clearUserState()
-                    db.episodeDao().clearUserState()
-                }
-            } finally {
-                if (opened.ownsConnection) runCatching { db.close() }
-            }
-        }
-        UserDataCache.clearAll(context)
-        UserDataNotifier.notifyChanged()
-    }
 
     private fun existingProviders(context: Context, profileId: String): List<Provider> = allProviders()
         .distinctBy { it.name }

@@ -102,28 +102,16 @@ class EpisodeViewHolder(
                     SeasonMobileFragmentDirections.actionSeasonToPlayer(
                         id = episode.id,
                         title = episode.tvShow?.title ?: "",
-                        subtitle = episode.season?.takeIf { it.number != 0 }?.let { season ->
-                            context.getString(
-                                R.string.player_subtitle_tv_show,
-                                season.number,
-                                episode.number,
-                                episode.title ?: context.getString(
-                                    R.string.episode_number,
-                                    episode.number
-                                )
-                            )
-                        } ?: context.getString(
-                            R.string.player_subtitle_tv_show_episode_only,
-                            episode.number,
-                            episode.title ?: context.getString(
-                                R.string.episode_number,
-                                episode.number
-                            )
-                        ),
+                        subtitle = playerEpisodeSubtitle(),
                         videoType = Video.Type.Episode(
                             id = episode.id,
                             number = episode.number,
-                            title = episode.title,
+                            title = SpoilerShield.displayTitle(
+                                episode,
+                                episodeNumberFallback = {
+                                    context.getString(R.string.episode_number, it)
+                                },
+                            ),
                             poster = episode.poster,
                             overview = episode.overview,
                             tvShow = Video.Type.Episode.TvShow(
@@ -154,7 +142,7 @@ class EpisodeViewHolder(
                         context.getString(R.string.favorites_show_options),
                     )
                     androidx.appcompat.app.AlertDialog.Builder(context)
-                        .setTitle(episode.title ?: context.getString(R.string.episode_number, episode.number))
+                        .setTitle(shieldedEpisodeTitle())
                         .setItems(options) { _, which ->
                             when (which) {
                                 0 -> com.dskja.betterstreamflix.sync.CastRoomUi.offerAddFromDetail(
@@ -438,22 +426,14 @@ class EpisodeViewHolder(
     }
 
     private fun navigateToPlayer() {
-        val subtitle = episode.season?.takeIf { it.number != 0 }?.let { season ->
-            context.getString(
-                R.string.player_subtitle_tv_show,
-                season.number,
-                episode.number,
-                episode.title ?: context.getString(R.string.episode_number, episode.number),
-            )
-        } ?: context.getString(
-            R.string.player_subtitle_tv_show_episode_only,
-            episode.number,
-            episode.title ?: context.getString(R.string.episode_number, episode.number),
-        )
+        val subtitle = playerEpisodeSubtitle()
         val videoType = Video.Type.Episode(
             id = episode.id,
             number = episode.number,
-            title = episode.title,
+            title = SpoilerShield.displayTitle(
+                episode,
+                episodeNumberFallback = { context.getString(R.string.episode_number, it) },
+            ),
             poster = episode.poster,
             overview = episode.overview,
             tvShow = Video.Type.Episode.TvShow(
@@ -501,28 +481,16 @@ class EpisodeViewHolder(
                     SeasonTvFragmentDirections.actionSeasonToPlayer(
                         id = episode.id,
                         title = episode.tvShow?.title ?: "",
-                        subtitle = episode.season?.takeIf { it.number != 0 }?.let { season ->
-                            context.getString(
-                                R.string.player_subtitle_tv_show,
-                                season.number,
-                                episode.number,
-                                episode.title ?: context.getString(
-                                    R.string.episode_number,
-                                    episode.number
-                                )
-                            )
-                        } ?: context.getString(
-                            R.string.player_subtitle_tv_show_episode_only,
-                            episode.number,
-                            episode.title ?: context.getString(
-                                R.string.episode_number,
-                                episode.number
-                            )
-                        ),
+                        subtitle = playerEpisodeSubtitle(),
                         videoType = Video.Type.Episode(
                             id = episode.id,
                             number = episode.number,
-                            title = episode.title,
+                            title = SpoilerShield.displayTitle(
+                                episode,
+                                episodeNumberFallback = {
+                                    context.getString(R.string.episode_number, it)
+                                },
+                            ),
                             poster = episode.poster,
                             overview = episode.overview,
                             tvShow = Video.Type.Episode.TvShow(
@@ -679,23 +647,10 @@ class EpisodeViewHolder(
     /** Leanback: confirm before jumping straight into the player from Continue Watching. */
     private fun openContinueWatchingEpisode() {
         val play = {
-            val subtitle = episode.season?.takeIf { it.number != 0 }?.let { season ->
-                context.getString(
-                    R.string.player_subtitle_tv_show,
-                    season.number,
-                    episode.number,
-                    episode.title ?: context.getString(
-                        R.string.episode_number,
-                        episode.number,
-                    ),
-                )
-            } ?: context.getString(
-                R.string.player_subtitle_tv_show_episode_only,
-                episode.number,
-                episode.title ?: context.getString(
-                    R.string.episode_number,
-                    episode.number,
-                ),
+            val subtitle = playerEpisodeSubtitle()
+            val navTitle = SpoilerShield.displayTitle(
+                episode,
+                episodeNumberFallback = { context.getString(R.string.episode_number, it) },
             )
             com.dskja.betterstreamflix.player.PlayerCleanExit.tagHomeFocusView(itemView, episode.id)
             com.dskja.betterstreamflix.player.PlayerCleanExit.rememberHomeFocus(
@@ -713,7 +668,7 @@ class EpisodeViewHolder(
                         Video.Type.Episode(
                             id = episode.id,
                             number = episode.number,
-                            title = episode.title,
+                            title = navTitle,
                             poster = episode.poster,
                             overview = episode.overview,
                             tvShow = Video.Type.Episode.TvShow(
@@ -777,23 +732,10 @@ class EpisodeViewHolder(
                 ExpMotion.hapticTap(it)
                 // Go straight to player (parity with continue-watching movies) — no detail detour.
                 checkProviderAndRun {
-                    val subtitle = episode.season?.takeIf { it.number != 0 }?.let { season ->
-                        context.getString(
-                            R.string.player_subtitle_tv_show,
-                            season.number,
-                            episode.number,
-                            episode.title ?: context.getString(
-                                R.string.episode_number,
-                                episode.number
-                            )
-                        )
-                    } ?: context.getString(
-                        R.string.player_subtitle_tv_show_episode_only,
-                        episode.number,
-                        episode.title ?: context.getString(
-                            R.string.episode_number,
-                            episode.number
-                        )
+                    val subtitle = playerEpisodeSubtitle()
+                    val navTitle = SpoilerShield.displayTitle(
+                        episode,
+                        episodeNumberFallback = { context.getString(R.string.episode_number, it) },
                     )
                     findNavController().navigate(
                         R.id.action_global_player,
@@ -806,7 +748,7 @@ class EpisodeViewHolder(
                                 Video.Type.Episode(
                                     id = episode.id,
                                     number = episode.number,
-                                    title = episode.title,
+                                    title = navTitle,
                                     poster = episode.poster,
                                     overview = episode.overview,
                                     tvShow = Video.Type.Episode.TvShow(
@@ -1241,11 +1183,14 @@ class EpisodeViewHolder(
      */
     private fun applySpoilerShieldAfterBind() {
         val shielded = SpoilerShield.isShielded(episode)
-        val poster = itemView.findViewById<ImageView>(R.id.iv_episode_poster)
+        val posterViews = listOfNotNull(
+            itemView.findViewById<ImageView>(R.id.iv_episode_poster),
+            itemView.findViewById<ImageView>(R.id.iv_episode_tv_show_poster),
+        )
         val titleView = itemView.findViewById<TextView>(R.id.tv_episode_title)
         val overviewView = itemView.findViewById<TextView>(R.id.tv_episode_overview)
         val infoView = itemView.findViewById<TextView>(R.id.tv_episode_info)
-        if (poster != null) SpoilerShield.applyPosterShield(poster, shielded)
+        posterViews.forEach { SpoilerShield.applyPosterShield(it, shielded) }
         if (!shielded) {
             SpoilerShield.applyTextShield(titleView, false)
             SpoilerShield.applyTextShield(overviewView, false)
@@ -1273,26 +1218,48 @@ class EpisodeViewHolder(
             SpoilerShield.applyTextShield(infoView, true)
         }
         if (overviewView != null) {
-            overviewView.text = context.getString(R.string.spoiler_shield_overview_placeholder)
-            overviewView.visibility = View.VISIBLE
-            SpoilerShield.applyTextShield(overviewView, true)
+            SpoilerShield.applyOverviewShield(
+                overviewView,
+                shielded = true,
+                placeholder = context.getString(R.string.spoiler_shield_overview_placeholder),
+                real = episode.overview,
+            )
         }
         itemView.contentDescription = context.getString(
             R.string.spoiler_shield_episode_cd,
             context.getString(R.string.episode_number, episode.number),
         )
-        itemView.setOnClickListener {
-            ExpMotion.hapticTap(it)
-            val fragment = context.toActivity()?.getCurrentFragment() as? Fragment
-            if (fragment == null) {
-                SpoilerShield.unlockEpisode(episode.id)
-                bind(episode)
-                return@setOnClickListener
-            }
+        val shieldedClick = View.OnClickListener { tapped ->
+            ExpMotion.hapticTap(tapped)
+            val fragment = context.toActivity()?.getCurrentFragment() as? Fragment ?: return@OnClickListener
             SpoilerShieldUi.requestUnlock(fragment, episode) {
                 bind(episode)
             }
         }
+        itemView.setOnClickListener(shieldedClick)
+        itemView.setOnLongClickListener {
+            shieldedClick.onClick(it)
+            true
+        }
+    }
+
+    private fun playerEpisodeSubtitle(): String {
+        val titlePart = SpoilerShield.displayTitle(
+            episode,
+            episodeNumberFallback = { context.getString(R.string.episode_number, it) },
+        )
+        return episode.season?.takeIf { it.number != 0 }?.let { season ->
+            context.getString(
+                R.string.player_subtitle_tv_show,
+                season.number,
+                episode.number,
+                titlePart,
+            )
+        } ?: context.getString(
+            R.string.player_subtitle_tv_show_episode_only,
+            episode.number,
+            titlePart,
+        )
     }
 
 
