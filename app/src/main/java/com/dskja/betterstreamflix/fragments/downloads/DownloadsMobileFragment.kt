@@ -313,8 +313,9 @@ class DownloadsMobileFragment : Fragment() {
         viewLifecycleOwner.lifecycleScope.launch {
             delay(450L)
             if (!isAdded || view == null) return@launch
-            // Don't stack on top of wifi / low-space urgency.
-            if (viewModel.wifiPaused.value || viewModel.lowSpace.value) return@launch
+            // Don't stack on Care / Controls; wifi / low-space banners may coexist (OS-024).
+            val mode = viewModel.currentViewMode()
+            if (mode == DownloadsViewMode.CARE || mode == DownloadsViewMode.CONTROLS) return@launch
             val stale = viewModel.loadOfflineExpiryCandidates()
             if (stale.isEmpty() || !isAdded) return@launch
             OfflineExpiryNudge.maybeShow(
@@ -336,7 +337,10 @@ class DownloadsMobileFragment : Fragment() {
         val queue = mode == DownloadsViewMode.QUEUE
         val studioPanel = mode == DownloadsViewMode.CARE || mode == DownloadsViewMode.CONTROLS
         binding.tvDownloadsTitle.setText(
-            studioController?.modeTitleRes(mode) ?: R.string.offline_studio_title,
+            when (mode) {
+                DownloadsViewMode.CARE, DownloadsViewMode.CONTROLS -> R.string.offline_studio_title
+                else -> studioController?.modeTitleRes(mode) ?: R.string.offline_studio_title
+            },
         )
         binding.llOfflineLibraryBadge.isVisible = library
         binding.clOfflineLibrarySearch.isVisible = library
@@ -381,8 +385,9 @@ class DownloadsMobileFragment : Fragment() {
                 LinearLayoutManager(requireContext())
             }
             binding.rvDownloads.adapter = adapter
+            adapter.submitList(viewModel.rows.value)
             renderEmptyState(
-                empty = adapter.itemCount == 0,
+                empty = viewModel.rows.value.isEmpty(),
                 libraryMode = false,
                 searchActive = false,
                 manageFilter = viewModel.currentFilter(),
@@ -562,6 +567,8 @@ class DownloadsMobileFragment : Fragment() {
         val banner = binding.tvDownloadsBanner
         val cta = binding.btnDownloadsHealthRedownload
         val wasVisible = row.isVisible
+        // Care already hosts health CTAs — avoid duplicate banner (OS-028 / OS-017).
+        val hideHealthInCare = viewModel.currentViewMode() == DownloadsViewMode.CARE
         when {
             wifiPaused -> {
                 banner.setText(R.string.downloads_wifi_paused)
@@ -585,7 +592,7 @@ class DownloadsMobileFragment : Fragment() {
                     )
                 }
             }
-            health.hasUnhealthy -> {
+            health.hasUnhealthy && !hideHealthInCare -> {
                 banner.text = com.dskja.betterstreamflix.download.DownloadHealth
                     .bannerMessage(requireContext(), health)
                 cta.isVisible = true
@@ -881,6 +888,10 @@ class DownloadsMobileFragment : Fragment() {
             // Opening offline counts as a touch for the 30-day expiry clock.
             viewModel.touchDownloads(listOf(entity.id))
             OfflineVideoCache.put(entity.contentKey, local)
+            com.dskja.betterstreamflix.player.PlayerCleanExit.rememberHomeFocus(
+                entity.contentKey,
+                rowHint = "downloads",
+            )
             findNavController().navigate(
                 R.id.action_global_player,
                 bundleOf(

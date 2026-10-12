@@ -23,9 +23,26 @@ object DownloadHealth {
     fun isUnhealthy(item: DownloadItemEntity): Boolean =
         DownloadSeriesFolders.needsRedownload(item)
 
+    fun isUnhealthy(context: Context, item: DownloadItemEntity): Boolean =
+        DownloadSeriesFolders.needsRedownload(context, item)
+
     fun summarize(items: List<DownloadItemEntity>): Summary {
         val unhealthy = items
             .filter(::isUnhealthy)
+            .groupBy { it.contentKey }
+            .map { (_, rows) -> rows.maxBy { it.updatedAt } }
+        return Summary(
+            count = unhealthy.size,
+            episodeCount = unhealthy.count { it.kind == DownloadKind.EPISODE.name },
+            movieCount = unhealthy.count { it.kind == DownloadKind.MOVIE.name },
+            ids = unhealthy.map { it.id },
+        )
+    }
+
+    /** Prefer live playability probe when a [Context] is available (OS-059). */
+    fun summarize(context: Context, items: List<DownloadItemEntity>): Summary {
+        val unhealthy = items
+            .filter { isUnhealthy(context, it) }
             .groupBy { it.contentKey }
             .map { (_, rows) -> rows.maxBy { it.updatedAt } }
         return Summary(

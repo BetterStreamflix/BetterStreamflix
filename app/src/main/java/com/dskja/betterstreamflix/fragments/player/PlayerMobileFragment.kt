@@ -986,6 +986,9 @@ class PlayerMobileFragment : Fragment(),
         endCardCountdownCancelled = true
         hideEndCardChooser()
         com.dskja.betterstreamflix.player.PlayerCleanExit.noteLeavingPlayer(returningToHome = false)
+        com.dskja.betterstreamflix.download.DownloadLaneFocus.clearFromPlayerTeardown(
+            context?.applicationContext,
+        )
         livePipZapController?.release()
         livePipZapController = null
         val live = if (::player.isInitialized && !playerReleased) player else null
@@ -1116,6 +1119,9 @@ class PlayerMobileFragment : Fragment(),
         // Tear down player/UI while the fragment is still attached. Doing this after
         // super.onDestroyView() races with OEM back stacks (crash on Zurück).
         isTearingDown = true
+        com.dskja.betterstreamflix.download.DownloadLaneFocus.clearFromPlayerTeardown(
+            context?.applicationContext,
+        )
         com.dskja.betterstreamflix.sync.WatchPartyPlayerHooks.onDestroyView(this)
         com.dskja.betterstreamflix.sync.CastHandoffPlayerHooks.onDestroyView(this)
         com.dskja.betterstreamflix.sync.SessionHandoffPlayerHooks.onDestroyView(this)

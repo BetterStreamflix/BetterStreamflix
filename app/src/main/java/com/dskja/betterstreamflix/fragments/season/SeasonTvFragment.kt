@@ -291,6 +291,15 @@ class SeasonTvFragment : Fragment() {
         }
         binding.btnSeasonDownload.isEnabled = !empty
         binding.btnSeasonDownload.alpha = if (empty) 0.4f else 1f
+        if (episodes.isNotEmpty()) {
+            binding.btnSeasonDownload.text = getString(
+                R.string.detail_download_season_count,
+                args.seasonNumber.coerceAtLeast(1),
+                episodes.size,
+            )
+        } else {
+            binding.btnSeasonDownload.setText(R.string.season_download)
+        }
 
         val lastWatchedIndex = episodes
             .filter { it.watchHistory != null }

@@ -15,6 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Profile themes + download folders: theme preference is per-profile; Kids defaults to **Cinema-Ink Kids**, adults to **Cinema-Ink Dark**; offline files land in visible `profiles/<Name>` folders (Settings path + Downloads chip show the folder)
 
 ### Fixed
+- Offline Studio audit Fix-All (Batch 10 §4): profile-scoped Studio/packs, sticky Lane focus clear, Care confirm + Wi‑Fi Media3 sync, season/smart quota decoupling, Honest ETA, Wi‑Fi window, i18n, pack TTL/queue/TV paste, health COMPLETED probe, Lane-primary sort, Controls polish, Clean Exit back to Downloads — all 87 OS findings (P0–P3)
 - Live Command audit (Batch 10 §3): TV search focus, kids/age-gated reminder delivery, kickoff worker fire-at, opt-in arming, Mini-Live Back-to-VOD ticket, Sport warm no longer clobbers zap session, Reminders/EPG mutations, Sender-Leiste seed/gates, provider-keyed preload, mode/search/i18n/status/empty polish — Mobile + TV
 - Batch 10 Home & Cinema Fix-All: Series Fast-Forward empty/locale chip, Watchlist Digest kids gate + TV focus, Stick Energy × Ambient, Remix Friday/Week block, Shelf Weather false positives, Ambient density strip, Cinema Room looks/mobile toggles, pin-strip Home-only, and remaining P0–P3 audit items (66)
 

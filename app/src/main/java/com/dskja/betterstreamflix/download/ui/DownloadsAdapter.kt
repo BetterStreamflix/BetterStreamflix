@@ -261,6 +261,14 @@ class DownloadsAdapter(
             Glide.with(poster).load(posterUrl).centerCrop().into(poster)
             TvFocusChain.linkHorizontal(actionPrimary, actionDelete)
             actionPrimary.nextFocusLeftId = R.id.nav_main
+            com.dskja.betterstreamflix.player.PlayerCleanExit.tagHomeFocusView(
+                itemView,
+                item.entity.contentKey,
+            )
+            com.dskja.betterstreamflix.player.PlayerCleanExit.tagHomeFocusView(
+                actionPrimary,
+                item.entity.contentKey,
+            )
             bindProgress(item)
             bindPrimaryAction(item)
             actionDelete.setOnClickListener {
