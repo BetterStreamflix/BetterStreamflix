@@ -10,6 +10,7 @@ import com.dskja.betterstreamflix.notifications.LiveReminderScheduler
 import com.dskja.betterstreamflix.utils.LiveHubCatalog
 import com.dskja.betterstreamflix.utils.ParentalControlUtils
 import com.dskja.betterstreamflix.utils.UserPreferences
+import kotlin.coroutines.cancellation.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -90,11 +91,18 @@ class LiveHubViewModel : ViewModel() {
                 lastWarning = result.warnings.takeIf { it.isNotEmpty() }
                     ?.joinToString(separator = " · ")
                 if (categories.isEmpty()) {
-                    _state.emit(State.Empty)
+                    // Sources failed with warnings → Failed (retryable), not silent Empty.
+                    if (!lastWarning.isNullOrBlank()) {
+                        _state.emit(State.Failed(Exception(lastWarning)))
+                    } else {
+                        _state.emit(State.Empty)
+                    }
                     return@launch
                 }
                 _state.emit(State.Success(categories, lastWarning))
                 scheduleLiveReminders(categories)
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 if (!silent) {
                     _state.emit(State.Failed(e))
@@ -136,6 +144,8 @@ class LiveHubViewModel : ViewModel() {
                     _state.emit(State.Success(categories, lastWarning))
                     scheduleLiveReminders(categories)
                 }
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 Log.w(TAG, "Favorites shelf refresh failed: ${e.message}", e)
             }

@@ -773,6 +773,7 @@ class PlayerTvFragment : Fragment(),
 
                             PlayerViewModel.SubtitleState.DownloadingOpenSubtitle -> {}
                             is PlayerViewModel.SubtitleState.SuccessDownloadingOpenSubtitle -> {
+                                if (!::player.isInitialized || playerReleased || isTearingDown) return@collect
                                 val mediaUri = player.currentMediaItem?.localConfiguration?.uri
                                 if (mediaUri == null || mediaUri.toString().isBlank()) {
                                     notifyPlayer(R.string.player_subtitle_needs_playback, R.string.player_settings_subtitles_title)
@@ -817,6 +818,7 @@ class PlayerTvFragment : Fragment(),
 
                             PlayerViewModel.SubtitleState.DownloadingSubDLSubtitle -> {}
                             is PlayerViewModel.SubtitleState.SuccessDownloadingSubDLSubtitle -> {
+                                if (!::player.isInitialized || playerReleased || isTearingDown) return@collect
                                 val mediaUri = player.currentMediaItem?.localConfiguration?.uri
                                 if (mediaUri == null || mediaUri.toString().isBlank()) {
                                     notifyPlayer(R.string.player_subtitle_needs_playback, R.string.player_settings_subtitles_title)
@@ -3349,6 +3351,11 @@ class PlayerTvFragment : Fragment(),
                 is Video.Type.Movie -> t.id
             }
             com.dskja.betterstreamflix.iptv.IptvLiveSession.setCurrent(aroundId)
+            if (com.dskja.betterstreamflix.iptv.IptvLiveSession.isWindowComplete()) {
+                refreshLiveChannelMeta()
+                setupLiveChannelZapButtons()
+                return
+            }
             lifecycleScope.launch(Dispatchers.IO) {
                 com.dskja.betterstreamflix.iptv.IptvLiveSession.ensureLoaded(provider, aroundId)
                 withContext(Dispatchers.Main) {

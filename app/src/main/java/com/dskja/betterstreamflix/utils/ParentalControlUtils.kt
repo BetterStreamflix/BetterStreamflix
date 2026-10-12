@@ -159,15 +159,26 @@ object ParentalControlUtils {
     private suspend fun isAllowedMovie(movie: Movie): Boolean {
         val maxAge = effectiveMaxAge() ?: return true
         // Kids profiles hide unrated titles; parental-control PIN mode keeps prior behavior.
-        val ageRating = resolveMovieAgeRating(movie)
-            ?: return !ProfileManager.isKidsActive()
+        // TMDb/network failures must not wipe entire Movies/Search catalogs (empty tabs).
+        val ageRating = try {
+            resolveMovieAgeRating(movie)
+        } catch (e: kotlin.coroutines.cancellation.CancellationException) {
+            throw e
+        } catch (_: Exception) {
+            return true
+        } ?: return !ProfileManager.isKidsActive()
         return ageRating <= maxAge
     }
 
     private suspend fun isAllowedTvShow(tvShow: TvShow): Boolean {
         val maxAge = effectiveMaxAge() ?: return true
-        val ageRating = resolveTvShowAgeRating(tvShow)
-            ?: return !ProfileManager.isKidsActive()
+        val ageRating = try {
+            resolveTvShowAgeRating(tvShow)
+        } catch (e: kotlin.coroutines.cancellation.CancellationException) {
+            throw e
+        } catch (_: Exception) {
+            return true
+        } ?: return !ProfileManager.isKidsActive()
         return ageRating <= maxAge
     }
 

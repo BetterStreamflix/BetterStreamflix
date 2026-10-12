@@ -119,7 +119,11 @@ class MoviesViewModel(
                     }
                 ).filterIsInstance<Movie>().let { CatalogSort.movies(it) }
 
-                if (providerName != UserPreferences.currentProvider?.name) return@launch
+                if (providerName != UserPreferences.currentProvider?.name) {
+                    // Sticky playback switched providers mid-fetch — never leave Loading stuck.
+                    viewModelScope.launch { getMovies() }
+                    return@launch
+                }
                 page = 1
 
                 _state.emit(State.SuccessLoading(movies, movies.isNotEmpty()))
@@ -152,7 +156,10 @@ class MoviesViewModel(
                     }
                 ).filterIsInstance<Movie>().let { CatalogSort.movies(it) }
 
-                if (providerName != UserPreferences.currentProvider?.name) return@launch
+                if (providerName != UserPreferences.currentProvider?.name) {
+                    _state.emit(currentState)
+                    return@launch
+                }
                 page += 1
 
                 _state.emit(

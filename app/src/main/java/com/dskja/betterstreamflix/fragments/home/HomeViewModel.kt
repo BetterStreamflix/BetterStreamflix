@@ -912,7 +912,8 @@ class HomeViewModel(
                 if (!cachedCategories.isNullOrEmpty()) {
                     _state.emit(State.SuccessLoading(cachedCategories, providerWarning = hint))
                 } else {
-                    _state.emit(State.SuccessLoading(emptyList(), providerWarning = hint))
+                    // Empty cache + open circuit looked like a permanently blank Home.
+                    _state.emit(State.FailedLoading(Exception(hint)))
                 }
                 return@launch
             }
@@ -931,7 +932,15 @@ class HomeViewModel(
                 }
                 // Compare by name: TMDb used to allocate a new instance per
                 // UserPreferences read, so reference != always aborted Success.
-                if (!isActive || providerName != UserPreferences.currentProvider?.name) return@launch
+                if (!isActive) return@launch
+                if (providerName != UserPreferences.currentProvider?.name) {
+                    // Sticky playback switched mid-home-fetch. SWR may already be on screen;
+                    // only re-dispatch when we would otherwise leave a bare Loading state.
+                    if (cachedCategories.isNullOrEmpty() || deferCachedHomeForClearance) {
+                        viewModelScope.launch { getHome() }
+                    }
+                    return@launch
+                }
                 val addonRows = runCatching {
                     com.dskja.betterstreamflix.platform.plugins.PluginManager
                         .collectHomeCategories(provider)

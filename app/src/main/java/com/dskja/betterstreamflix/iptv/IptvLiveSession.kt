@@ -23,6 +23,8 @@ object IptvLiveSession {
         val programNow: String? = null,
         /** Optional upcoming program label. */
         val programNext: String? = null,
+        /** Owning IPTV provider — required for multi-source Live Hub zap. */
+        val providerName: String? = null,
     )
 
     private val channels = CopyOnWriteArrayList<Channel>()
@@ -101,6 +103,7 @@ object IptvLiveSession {
             group = incoming.group ?: prior.group,
             programNow = incoming.programNow ?: prior.programNow,
             programNext = incoming.programNext ?: prior.programNext,
+            providerName = incoming.providerName ?: prior.providerName,
         )
     }
 
@@ -118,6 +121,7 @@ object IptvLiveSession {
                     programNow = it.overview?.takeIf { o ->
                         o.length in 1..80 && !o.contains('\n')
                     },
+                    providerName = it.providerName ?: provider?.name,
                 )
             },
             provider,
@@ -182,7 +186,16 @@ object IptvLiveSession {
             }
             providerName = name ?: providerName
             channels.clear()
-            channels.addAll(list)
+            // Stamp providerName on every channel so zap → getServers stays on-catalog.
+            channels.addAll(
+                list.map { channel ->
+                    if (channel.providerName.isNullOrBlank() && name != null) {
+                        channel.copy(providerName = name)
+                    } else {
+                        channel
+                    }
+                },
+            )
             if (complete != null) {
                 windowComplete = complete
             }
