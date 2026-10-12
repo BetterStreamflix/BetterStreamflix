@@ -40,9 +40,8 @@ class MovieMobileFragment : Fragment() {
 
     private val appAdapter = AppAdapter()
     private var currentMovie: Movie? = null
-    private var selectedTab: DetailTab =
-        if (args.openTab.equals("about", ignoreCase = true)) DetailTab.ABOUT
-        else DetailTab.SIMILAR
+    // Avoid navArgs during field init (BETTERSTREAMFLIX-46 / Fragment null arguments).
+    private var selectedTab: DetailTab = DetailTab.SIMILAR
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -61,6 +60,9 @@ class MovieMobileFragment : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+        if (args.openTab.equals("about", ignoreCase = true)) {
+            selectedTab = DetailTab.ABOUT
+        }
         ExpNavAutoHide.attach(binding.root)
         com.dskja.betterstreamflix.utils.ExpPressEffects.wireLoadingRetry(binding.isLoading.root)
         ExpMotion.enterScreen(binding.root)

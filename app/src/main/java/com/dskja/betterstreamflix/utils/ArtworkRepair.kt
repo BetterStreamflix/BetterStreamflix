@@ -25,10 +25,19 @@ object ArtworkRepair {
     const val KEY_PROVIDER_NAME = "provider_name"
 
     fun shouldRepair(url: String?, error: GlideException?): Boolean {
-        if (url.isNullOrBlank()) return false
-        return !isRemoteArtworkUrl(url) ||
-                containsFileNotFound(error) ||
-                isAnimeOnlineNinjaArtwork(url) && containsAuthFailure(error)
+        if (url.isNullOrBlank()) return true
+        if (!isRemoteArtworkUrl(url)) return true
+        if (containsFileNotFound(error)) return true
+        if (containsHttpFailure(error)) return true
+        return isAnimeOnlineNinjaArtwork(url) && containsAuthFailure(error)
+    }
+
+    private fun containsHttpFailure(error: GlideException?): Boolean {
+        if (error == null) return false
+        return error.rootCauses.any { cause ->
+            cause is HttpException ||
+                (cause is java.io.IOException && cause.message?.contains("HTTP", ignoreCase = true) == true)
+        }
     }
 
     fun isRemoteArtworkUrl(url: String?): Boolean {

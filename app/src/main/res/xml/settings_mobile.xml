@@ -283,6 +283,21 @@
                 android:summary="@string/settings_home_shelf_pins_summary_empty"
                 app:iconSpaceReserved="false" />
 
+            <SwitchPreferenceCompat
+                android:key="CHANNEL_PIN_STRIP_ENABLED"
+                android:title="@string/settings_channel_pin_strip_title"
+                android:summary="@string/settings_channel_pin_strip_summary"
+                android:defaultValue="true"
+                app:iconSpaceReserved="false" />
+
+            <SwitchPreferenceCompat
+                android:key="CHANNEL_PIN_STRIP_LIVE_ONLY"
+                android:title="@string/settings_channel_pin_strip_live_only_title"
+                android:summary="@string/settings_channel_pin_strip_live_only_summary"
+                android:defaultValue="true"
+                android:dependency="CHANNEL_PIN_STRIP_ENABLED"
+                app:iconSpaceReserved="false" />
+
             <Preference
                 android:key="PROFILE_YEAR_REVIEW"
                 android:title="@string/settings_year_review_title"

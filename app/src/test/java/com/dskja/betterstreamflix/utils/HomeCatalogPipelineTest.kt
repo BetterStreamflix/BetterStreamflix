@@ -10,6 +10,7 @@ import com.dskja.betterstreamflix.models.Genre
 import com.dskja.betterstreamflix.models.People
 import com.dskja.betterstreamflix.models.Video
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -227,7 +228,7 @@ class HomeCatalogPipelineTest {
     }
 
     @Test
-    fun isolateFeaturedKeepsEmptyFastForwardShelves() {
+    fun isolateFeaturedDropsEmptyShelvesAfterFastForwardRemoval() {
         val emptyNext = Category(name = "Nächste Folgen", list = emptyList()).also {
             it.identityKey = Category.NEXT_EPISODES
         }
@@ -239,8 +240,10 @@ class HomeCatalogPipelineTest {
                 emptyFav,
             ),
         )
-        assertTrue(isolated.any { it.identityKey == Category.NEXT_EPISODES })
-        assertTrue(isolated.any { it.name == Category.FAVORITE_TV_SHOWS })
+        // Fast-Forward empty-shelf keep was retired with the chip.
+        assertFalse(isolated.any { it.identityKey == Category.NEXT_EPISODES })
+        assertFalse(isolated.any { it.name == Category.FAVORITE_TV_SHOWS })
+        assertTrue(isolated.any { Category.isFeaturedName(it.name) })
     }
 
     @Test

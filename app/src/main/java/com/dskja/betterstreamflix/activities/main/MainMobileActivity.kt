@@ -648,10 +648,12 @@ class MainMobileActivity : FragmentActivity() {
             }
         }
         // Keep Search FAB on Downloads (and Settings) so Search stays reachable —
-        // Downloads has no in-page Search entry otherwise.
+        // Downloads has no in-page Search entry otherwise. Hide on Home — bottom
+        // nav already has Search, and the FAB collides with the profile pill.
         val showSearch = UserPreferences.currentProvider != null &&
             isTopLevelProviderDestination(destinationId) &&
-            destinationId != R.id.search
+            destinationId != R.id.search &&
+            destinationId != R.id.home
         val searchWasVisible = binding.btnMainSearch.visibility == View.VISIBLE
         if (showSearch) {
             binding.btnMainSearch.visibility = View.VISIBLE
@@ -759,7 +761,8 @@ class MainMobileActivity : FragmentActivity() {
         val supportsMovies = Provider.supportsMovies(provider)
         val supportsTvShows = Provider.supportsTvShows(provider)
         val liveHubVisible = !com.dskja.betterstreamflix.utils.LiveHubCatalog.isAgeGated() &&
-            com.dskja.betterstreamflix.kids.KidsFortress.liveHubAllowed()
+            com.dskja.betterstreamflix.kids.KidsFortress.liveHubAllowed() &&
+            com.dskja.betterstreamflix.utils.LiveHubCatalog.isLiveProvider(provider)
 
         binding.bnvMain.menu.findItem(R.id.movies)?.isVisible = supportsMovies
         binding.bnvMain.menu.findItem(R.id.tv_shows)?.apply {
@@ -770,8 +773,8 @@ class MainMobileActivity : FragmentActivity() {
                 getString(R.string.main_menu_tv_shows)
             }
         }
-        // Kids Fortress: kids keep Downloads (isolated DB + folder); Live Hub stays off
-        // under kids profiles and parental age-gate (LC-020).
+        // Kids Fortress: kids keep Downloads (isolated DB + folder); Live Hub only for
+        // Live/IPTV providers (and never under kids / parental age-gate).
         binding.bnvMain.menu.findItem(R.id.downloads)?.isVisible =
             com.dskja.betterstreamflix.kids.KidsFortress.downloadsNavVisible()
         binding.bnvMain.menu.findItem(R.id.live_hub)?.isVisible = liveHubVisible

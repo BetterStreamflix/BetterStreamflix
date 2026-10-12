@@ -77,6 +77,7 @@ import java.io.IOException
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import com.dskja.betterstreamflix.fragments.settings.setSummaryProviderOnce
 
 class SettingsMobileFragment : PreferenceFragmentCompat() {
     private fun alertBuilder() =
@@ -1398,7 +1399,7 @@ class SettingsMobileFragment : PreferenceFragmentCompat() {
 
         findPreference<ListPreference>("CATALOG_SORT_MODE")?.apply {
             value = UserPreferences.catalogSortMode.name
-            summaryProvider = ListPreference.SimpleSummaryProvider.getInstance()
+            setSummaryProviderOnce(ListPreference.SimpleSummaryProvider.getInstance())
             setOnPreferenceChangeListener { preference, newValue ->
                 val mode = CatalogSortMode.fromKey(newValue as String)
                 UserPreferences.catalogSortMode = mode
@@ -1412,7 +1413,7 @@ class SettingsMobileFragment : PreferenceFragmentCompat() {
 
         findPreference<ListPreference>("SEARCH_SORT_MODE")?.apply {
             value = UserPreferences.searchSortMode.name
-            summaryProvider = ListPreference.SimpleSummaryProvider.getInstance()
+            setSummaryProviderOnce(ListPreference.SimpleSummaryProvider.getInstance())
             setOnPreferenceChangeListener { preference, newValue ->
                 val mode = SearchSortMode.fromKey(newValue as String)
                 UserPreferences.searchSortMode = mode
@@ -1673,6 +1674,23 @@ class SettingsMobileFragment : PreferenceFragmentCompat() {
                 com.dskja.betterstreamflix.home.HomeShelfPinUi.showPicker(requireContext()) {
                     summary = com.dskja.betterstreamflix.home.HomeShelfPinUi.pinsSummary(requireContext())
                 }
+                true
+            }
+        }
+
+        findPreference<SwitchPreferenceCompat>("CHANNEL_PIN_STRIP_ENABLED")?.apply {
+            isChecked = UserPreferences.channelPinStripEnabled
+            setOnPreferenceChangeListener { _, newValue ->
+                UserPreferences.channelPinStripEnabled = newValue as Boolean
+                UserDataNotifier.notifyChanged()
+                true
+            }
+        }
+        findPreference<SwitchPreferenceCompat>("CHANNEL_PIN_STRIP_LIVE_ONLY")?.apply {
+            isChecked = UserPreferences.channelPinStripLiveOnly
+            setOnPreferenceChangeListener { _, newValue ->
+                UserPreferences.channelPinStripLiveOnly = newValue as Boolean
+                UserDataNotifier.notifyChanged()
                 true
             }
         }
@@ -2682,7 +2700,7 @@ class SettingsMobileFragment : PreferenceFragmentCompat() {
 
         (findPreference("EXPERIMENTAL_LUMINA_ACCENT") as? ListPreference)?.apply {
             value = UserPreferences.experimentalLuminaAccent
-            summaryProvider = ListPreference.SimpleSummaryProvider.getInstance()
+            setSummaryProviderOnce(ListPreference.SimpleSummaryProvider.getInstance())
             isEnabled = luminaOn
             setOnPreferenceChangeListener { _, newValue ->
                 UserPreferences.experimentalLuminaAccent = newValue.toString()

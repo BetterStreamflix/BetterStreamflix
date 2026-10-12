@@ -285,11 +285,12 @@ class CategoryViewHolder(
         emptyHint: TextView,
         listEmpty: Boolean,
     ) {
+        // “Nur neu seit letzten Besuch” removed — chip never shown.
+        chip.visibility = View.GONE
+        chip.setOnClickListener(null)
+        chip.setOnKeyListener(null)
+        emptyHint.visibility = View.GONE
         if (!SeriesFastForward.supportsShelf(category)) {
-            chip.visibility = View.GONE
-            chip.setOnClickListener(null)
-            chip.setOnKeyListener(null)
-            emptyHint.visibility = View.GONE
             return
         }
         val enabled = SeriesFastForward.isEnabled()

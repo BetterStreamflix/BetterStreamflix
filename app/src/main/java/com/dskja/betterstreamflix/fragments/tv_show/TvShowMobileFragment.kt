@@ -48,9 +48,9 @@ class TvShowMobileFragment : Fragment() {
 
     private val appAdapter = AppAdapter()
     private var currentTvShow: TvShow? = null
-    private var selectedTab: DetailTab =
-        if (args.openTab.equals("similar", ignoreCase = true)) DetailTab.SIMILAR
-        else DetailTab.EPISODES
+    // Must not touch navArgs during field init — Fragment ctor runs before
+    // arguments are attached (BETTERSTREAMFLIX-46 InstantiationException).
+    private var selectedTab: DetailTab = DetailTab.EPISODES
 
     /** Season episode load UI state for the in-page Episodes tab. */
     fun seasonEpisodeUi(): TvShowViewModel = viewModel
@@ -68,6 +68,9 @@ class TvShowMobileFragment : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+        if (args.openTab.equals("similar", ignoreCase = true)) {
+            selectedTab = DetailTab.SIMILAR
+        }
         ExpNavAutoHide.attach(binding.root)
         com.dskja.betterstreamflix.utils.ExpPressEffects.wireLoadingRetry(binding.isLoading.root)
         ExpMotion.enterScreen(binding.root)

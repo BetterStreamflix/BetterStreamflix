@@ -32,6 +32,7 @@ import com.dskja.betterstreamflix.utils.UserPreferences
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import com.dskja.betterstreamflix.fragments.settings.setSummaryProviderOnce
 
 /**
  * Shared Downloads preference wiring for Mobile + TV Settings.
@@ -67,7 +68,7 @@ object DownloadsSettingsController {
                 stripPublicMoviesOption(list)
             }
             list.value = UserPreferences.downloadStorageLocation.name
-            list.summaryProvider = ListPreference.SimpleSummaryProvider.getInstance()
+            list.setSummaryProviderOnce(ListPreference.SimpleSummaryProvider.getInstance())
             list.setOnPreferenceChangeListener { _, newValue ->
                 val location = DownloadStorageLocation.fromKey(newValue as String)
                 when (location) {
@@ -278,7 +279,7 @@ object DownloadsSettingsController {
         findPreference("DOWNLOAD_QUALITY_PRESET")?.let { pref ->
             val list = pref as? ListPreference ?: return@let
             list.value = UserPreferences.downloadQualityPreset.name
-            list.summaryProvider = ListPreference.SimpleSummaryProvider.getInstance()
+            list.setSummaryProviderOnce(ListPreference.SimpleSummaryProvider.getInstance())
             list.setOnPreferenceChangeListener { _, newValue ->
                 UserPreferences.downloadQualityPreset =
                     DownloadQualityPreset.fromKey(newValue as String)
@@ -289,7 +290,7 @@ object DownloadsSettingsController {
         findPreference("DOWNLOAD_MAX_CONCURRENT")?.let { pref ->
             val list = pref as? ListPreference ?: return@let
             list.value = UserPreferences.downloadMaxConcurrent.toString()
-            list.summaryProvider = ListPreference.SimpleSummaryProvider.getInstance()
+            list.setSummaryProviderOnce(ListPreference.SimpleSummaryProvider.getInstance())
             list.setOnPreferenceChangeListener { _, newValue ->
                 val max = (newValue as String).toIntOrNull()?.coerceIn(1, 4) ?: 2
                 UserPreferences.downloadMaxConcurrent = max
@@ -348,7 +349,7 @@ object DownloadsSettingsController {
         findPreference("DOWNLOAD_SMART_LOOKAHEAD")?.let { pref ->
             val list = pref as? ListPreference ?: return@let
             list.value = UserPreferences.downloadSmartLookahead.toString()
-            list.summaryProvider = ListPreference.SimpleSummaryProvider.getInstance()
+            list.setSummaryProviderOnce(ListPreference.SimpleSummaryProvider.getInstance())
             list.setOnPreferenceChangeListener { _, newValue ->
                 val n = (newValue as String).toIntOrNull()
                     ?: SmartDownloadsPolicy.DEFAULT_LOOKAHEAD
@@ -360,7 +361,7 @@ object DownloadsSettingsController {
         findPreference("DOWNLOAD_SMART_SERIES_QUOTA")?.let { pref ->
             val list = pref as? ListPreference ?: return@let
             list.value = UserPreferences.downloadSmartSeriesQuota.toString()
-            list.summaryProvider = ListPreference.SimpleSummaryProvider.getInstance()
+            list.setSummaryProviderOnce(ListPreference.SimpleSummaryProvider.getInstance())
             list.setOnPreferenceChangeListener { _, newValue ->
                 val n = (newValue as String).toIntOrNull()
                     ?: SmartDownloadsPolicy.DEFAULT_SERIES_QUOTA

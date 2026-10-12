@@ -12,50 +12,32 @@ import com.dskja.betterstreamflix.taste.TasteSnapshot
 import com.dskja.betterstreamflix.utils.UserPreferences
 
 /**
- * Home shelf filter “only new since last visit” for series rows
- * (Next Episodes + Favorite TV shows).
- *
- * Visit watermark: on Home pause (when not opening Detail) we snapshot shelf
- * ids + timestamp; on the next resume the filter keeps items that were not in
- * that snapshot (or aired after). Resume never advances the watermark — pause
- * commits it.
+ * Formerly “only new since last visit” for Next Episodes / Favorite TV.
+ * Feature removed from the product — methods stay as no-ops / pass-through
+ * so call sites and tests compile without reintroducing the chip.
  */
 object SeriesFastForward {
 
     /** English stamp / identityKey for Next Episodes + Favorite TV. */
-    fun supportsShelf(categoryName: String): Boolean {
-        val n = categoryName.trim()
-        if (n.isEmpty()) return false
-        return n.equals(Category.NEXT_EPISODES, ignoreCase = true) ||
-            n.equals(Category.FAVORITE_TV_SHOWS, ignoreCase = true)
-    }
+    fun supportsShelf(categoryName: String): Boolean = false
 
-    /** Prefer [Category.identityKey]; fall back to English [Category.name]. */
-    fun supportsShelf(category: Category): Boolean =
-        supportsShelf(category.identityKey.orEmpty()) || supportsShelf(category.name)
+    fun supportsShelf(category: Category): Boolean = false
 
-    fun isEnabled(): Boolean = UserPreferences.seriesFastForwardEnabled
+    fun isEnabled(): Boolean = false
 
     fun setEnabled(enabled: Boolean) {
-        UserPreferences.seriesFastForwardEnabled = enabled
+        // Feature removed — clear any leftover profile flag.
+        UserPreferences.seriesFastForwardEnabled = false
     }
 
-    fun lastVisitAtMs(): Long = UserPreferences.homeLastVisitAtMs
+    fun lastVisitAtMs(): Long = 0L
 
-    /**
-     * Commit the end of a Home visit. Pass **unfiltered** shelf ids so a later
-     * Fast-Forward pass can detect titles that appeared after this pause.
-     * No-ops when both id sets are empty (avoids timestamp-only baselines).
-     */
     fun commitVisit(
         nextEpisodeIds: Set<String>,
         favoriteTvIds: Set<String>,
         nowMs: Long = System.currentTimeMillis(),
     ) {
-        if (nextEpisodeIds.isEmpty() && favoriteTvIds.isEmpty()) return
-        UserPreferences.homeLastVisitAtMs = nowMs.coerceAtLeast(0L)
-        UserPreferences.homeVisitNextEpisodeIds = nextEpisodeIds
-        UserPreferences.homeVisitFavoriteTvIds = favoriteTvIds
+        // no-op — visit watermark retired with the Fast-Forward chip
     }
 
     fun filterEpisodes(

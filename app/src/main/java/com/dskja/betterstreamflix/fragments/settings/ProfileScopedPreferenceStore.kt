@@ -32,6 +32,8 @@ internal object ProfileScopedPreferenceStore {
         "PARENTAL_CONTROL_MAX_AGE",
         "SELECTED_THEME",
         "LEANBACK_DENSITY",
+        "CHANNEL_PIN_STRIP_ENABLED",
+        "CHANNEL_PIN_STRIP_LIVE_ONLY",
     )
 
     /** Leanback density is TV-only; mobile settings XML must not expose it. */
@@ -107,6 +109,8 @@ internal object ProfileScopedPreferenceStore {
                 "SPOILER_SHIELD_ENABLED" -> UserPreferences.spoilerShieldEnabled = value
                 "SHOW_WATCHLIST_WEEK" -> UserPreferences.showWatchlistWeek = value
                 "KIDS_BEDTIME_ENABLED" -> UserPreferences.kidsBedtimeEnabled = value
+                "CHANNEL_PIN_STRIP_ENABLED" -> UserPreferences.channelPinStripEnabled = value
+                "CHANNEL_PIN_STRIP_LIVE_ONLY" -> UserPreferences.channelPinStripLiveOnly = value
             }
         }
 
@@ -121,6 +125,8 @@ internal object ProfileScopedPreferenceStore {
             "SPOILER_SHIELD_ENABLED" -> UserPreferences.spoilerShieldEnabled
             "SHOW_WATCHLIST_WEEK" -> UserPreferences.showWatchlistWeek
             "KIDS_BEDTIME_ENABLED" -> UserPreferences.kidsBedtimeEnabled
+            "CHANNEL_PIN_STRIP_ENABLED" -> UserPreferences.channelPinStripEnabled
+            "CHANNEL_PIN_STRIP_LIVE_ONLY" -> UserPreferences.channelPinStripLiveOnly
             else -> defValue
         }
     }

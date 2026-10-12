@@ -353,14 +353,8 @@ object HomeCatalogPipeline {
         }.filter { keepAfterIsolate(it) }
     }
 
-    /**
-     * Drop empty rows except Series Fast-Forward shelves (chip must stay reachable
-     * when the filter empties Next / Favorite TV — gate on identityKey or English name).
-     */
-    private fun keepAfterIsolate(category: Category): Boolean {
-        if (category.list.isNotEmpty()) return true
-        return com.dskja.betterstreamflix.home.SeriesFastForward.supportsShelf(category)
-    }
+    /** Drop empty rows (Fast-Forward empty-shelf keep was removed with the chip). */
+    private fun keepAfterIsolate(category: Category): Boolean = category.list.isNotEmpty()
 
     /** Public: restore FEATURED after parental / live-DB filters drop it. */
     fun ensureFeaturedShelf(categories: List<Category>): List<Category> =

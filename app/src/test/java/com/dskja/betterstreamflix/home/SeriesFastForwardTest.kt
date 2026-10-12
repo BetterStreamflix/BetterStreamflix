@@ -9,23 +9,16 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.util.Calendar
 
+/**
+ * Fast-Forward UI was removed; helpers stay as no-ops / pure predicates.
+ */
 class SeriesFastForwardTest {
 
     @Test
-    fun supportsNextEpisodesAndFavoriteTvOnly() {
-        assertTrue(SeriesFastForward.supportsShelf(Category.NEXT_EPISODES))
-        assertTrue(SeriesFastForward.supportsShelf(Category.FAVORITE_TV_SHOWS))
-        assertFalse(SeriesFastForward.supportsShelf(Category.CONTINUE_WATCHING))
-        assertFalse(SeriesFastForward.supportsShelf(Category.FAVORITE_MOVIES))
-        val localized = Category(name = "Nächste Folgen", list = emptyList()).also {
-            it.identityKey = Category.NEXT_EPISODES
-        }
-        assertTrue(SeriesFastForward.supportsShelf(localized))
-        assertFalse(
-            SeriesFastForward.supportsShelf(
-                Category(name = "Nächste Folgen", list = emptyList()),
-            ),
-        )
+    fun supportsShelfAlwaysFalseAfterRemoval() {
+        assertFalse(SeriesFastForward.supportsShelf(Category.NEXT_EPISODES))
+        assertFalse(SeriesFastForward.supportsShelf(Category.FAVORITE_TV_SHOWS))
+        assertFalse(SeriesFastForward.isEnabled())
     }
 
     @Test
@@ -80,47 +73,8 @@ class SeriesFastForwardTest {
     }
 
     @Test
-    fun keepShelfWhenFilteredStillHasItems() {
-        assertTrue(
-            SeriesFastForward.keepShelfWhenEmpty(
-                categoryName = Category.NEXT_EPISODES,
-                unfilteredCount = 3,
-                filteredCount = 2,
-            ),
-        )
-        assertFalse(
-            SeriesFastForward.keepShelfWhenEmpty(
-                categoryName = Category.NEXT_EPISODES,
-                unfilteredCount = 0,
-                filteredCount = 0,
-            ),
-        )
-    }
-
-    @Test
-    fun hasVisitBaselineNeedsTimestampAndSnapshotIds() {
-        assertFalse(SeriesFastForward.hasVisitBaseline(0L, emptySet()))
-        // Timestamp-only is not a baseline (avoids first-session novelty flicker).
-        assertFalse(SeriesFastForward.hasVisitBaseline(10L, emptySet()))
-        assertFalse(SeriesFastForward.hasVisitBaseline(0L, setOf("a")))
-        assertTrue(SeriesFastForward.hasVisitBaseline(10L, setOf("a")))
-    }
-
-    @Test
-    fun commitVisitIgnoresEmptyIdSets() {
-        // Pure helper: empty commit must not create a timestamp-only baseline.
-        // (UserPreferences-backed commitVisit is integration-tested on device.)
-        assertFalse(SeriesFastForward.hasVisitBaseline(1L, emptySet()))
-    }
-
-    @Test
-    fun filterEpisodesPassesThroughWithoutBaselineLogicWhenCheckingIds() {
-        val old = Episode(id = "old", number = 1)
-        val fresh = Episode(id = "fresh", number = 2)
-        // Pure helpers (no UserPreferences enabled gate):
-        val kept = listOf(old, fresh).filter {
-            SeriesFastForward.isNewEpisode(it, sinceMs = 1L, previousIds = setOf("old"))
-        }
-        assertEquals(listOf(fresh), kept)
+    fun filterEpisodesPassesThroughWhenDisabled() {
+        val list = listOf(Episode(id = "a", number = 1), Episode(id = "b", number = 2))
+        assertEquals(list, SeriesFastForward.filterEpisodes(list))
     }
 }

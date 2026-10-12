@@ -327,6 +327,10 @@
     <string name="settings_home_shelf_pins_title">Gepinnte Home-Regale</string>
     <string name="settings_home_shelf_pins_summary_empty">Bis zu 3 Regale unter Featured pinnen (Weiterschauen, Live, Downloads…)</string>
     <string name="settings_home_shelf_pins_summary">Gepinnt: %1$s</string>
+    <string name="settings_channel_pin_strip_title">Meine-Sender-Leiste</string>
+    <string name="settings_channel_pin_strip_summary">Gepinnte Live-Sender über Home / Live anzeigen</string>
+    <string name="settings_channel_pin_strip_live_only_title">Nur bei Live-Providern</string>
+    <string name="settings_channel_pin_strip_live_only_summary">Leiste bei Film-/Serien-Providern ausblenden</string>
     <string name="home_remix_title">Home remixen</string>
     <string name="home_remix_summary">Per Drag Continue, Live und Collections neu ordnen</string>
     <string name="home_remix_message">Ziehen oder Pfeile nutzen. Featured bleibt oben.</string>

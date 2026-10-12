@@ -794,7 +794,8 @@ class MainTvActivity : FragmentActivity() {
         val supportsTvShows = Provider.supportsTvShows(provider)
         // Age-gate + Kids Fortress (upstream Batch 10 + SS-B10-03 parity).
         val liveHubVisible = !com.dskja.betterstreamflix.utils.LiveHubCatalog.isAgeGated() &&
-            com.dskja.betterstreamflix.kids.KidsFortress.liveHubAllowed()
+            com.dskja.betterstreamflix.kids.KidsFortress.liveHubAllowed() &&
+            com.dskja.betterstreamflix.utils.LiveHubCatalog.isLiveProvider(provider)
         binding.navMain.menu.findItem(R.id.movies)?.isVisible = supportsMovies
         val tvShowsItem = binding.navMain.menu.findItem(R.id.tv_shows)
         tvShowsItem?.isVisible = supportsTvShows
