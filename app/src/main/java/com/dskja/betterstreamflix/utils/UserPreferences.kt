@@ -2117,28 +2117,34 @@ object UserPreferences {
      * Readers tolerate a string left behind by a Preference widget on an int key.
      */
     private fun readBoolean(key: String): Boolean? {
+        // Prefs may be touched from density / search column helpers before setup().
+        if (!::prefs.isInitialized) return null
         if (!prefs.contains(key)) return null
         return runCatching { prefs.getBoolean(key, false) }.getOrNull()
     }
 
     private fun readString(key: String): String? {
+        if (!::prefs.isInitialized) return null
         if (!prefs.contains(key)) return null
         return runCatching { prefs.getString(key, null) }.getOrNull()
     }
 
     private fun readInt(key: String): Int? {
+        if (!::prefs.isInitialized) return null
         if (!prefs.contains(key)) return null
         runCatching { return prefs.getInt(key, 0) }
         return runCatching { prefs.getString(key, null)?.trim()?.toIntOrNull() }.getOrNull()
     }
 
     private fun readLong(key: String): Long? {
+        if (!::prefs.isInitialized) return null
         if (!prefs.contains(key)) return null
         runCatching { return prefs.getLong(key, 0L) }
         return runCatching { prefs.getString(key, null)?.trim()?.toLongOrNull() }.getOrNull()
     }
 
     private fun readFloat(key: String): Float? {
+        if (!::prefs.isInitialized) return null
         if (!prefs.contains(key)) return null
         runCatching { return prefs.getFloat(key, 0f) }
         return runCatching { prefs.getString(key, null)?.trim()?.toFloatOrNull() }.getOrNull()

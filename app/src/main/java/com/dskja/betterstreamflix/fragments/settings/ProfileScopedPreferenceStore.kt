@@ -34,6 +34,11 @@ internal object ProfileScopedPreferenceStore {
         "LEANBACK_DENSITY",
     )
 
+    /** Leanback density is TV-only; mobile settings XML must not expose it. */
+    val TV_ONLY_SCOPED_KEYS = setOf(
+        "LEANBACK_DENSITY",
+    )
+
     fun attach(fragment: PreferenceFragmentCompat) {
         val screen = fragment.preferenceScreen ?: return
         walk(screen)
