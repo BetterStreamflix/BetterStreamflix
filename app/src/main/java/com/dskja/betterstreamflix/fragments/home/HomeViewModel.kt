@@ -549,9 +549,11 @@ class HomeViewModel(
         else -> null
     }
 
-    /** Home Live strip from favorited IPTV / hub channels (Remix Home block). */
+    /** Home Live strip from favorited IPTV / hub channels — Live providers only. */
     private fun buildHomeLiveShelf(favoriteTvShows: List<TvShow>): Category? {
         if (LiveHubCatalog.isAgeGated()) return null
+        // Do not flood VOD Home with a Live shelf when the current provider is not IPTV.
+        if (!LiveHubCatalog.isLiveProvider(UserPreferences.currentProvider)) return null
         val live = favoriteTvShows
             .filter { LiveHubCatalog.isLiveFavorite(it) }
             .sortedByDescending { it.favoritedAtMillis ?: 0L }

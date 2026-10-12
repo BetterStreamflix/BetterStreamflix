@@ -76,7 +76,8 @@ class AnimeOnlineNinjaCronetUrlLoader(
                 putAll(model.headers)
                 putAll(ArtworkRequestHeaders.headersFor(parsed))
                 putIfAbsent("User-Agent", NetworkClient.USER_AGENT)
-                putIfAbsent("Accept", "image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8")
+                // Match GlideCustomModule — AVIF blanks many Android devices.
+                putIfAbsent("Accept", "image/webp,image/png,image/jpeg,image/*,*/*;q=0.8")
                 AnimeOnlineNinjaProvider.clearanceCookieForCronet()
                     ?.takeIf { it.isNotBlank() }
                     ?.let { put("Cookie", it) }

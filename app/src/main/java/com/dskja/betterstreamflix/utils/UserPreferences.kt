@@ -1308,11 +1308,12 @@ object UserPreferences {
         }
 
     /**
-     * Meine Sender strip on Main. Configured in Settings — not a Home chrome
-     * flood. Default on; visibility still gated by [channelPinStripLiveOnly].
+     * Meine Sender strip on Main. Configured in Settings — opt-in only
+     * (default off) so Home/Live are not flooded. Visibility still gated by
+     * [channelPinStripLiveOnly] when enabled.
      */
     var channelPinStripEnabled: Boolean
-        get() = profileScopedBoolean(Key.CHANNEL_PIN_STRIP_ENABLED) ?: true
+        get() = profileScopedBoolean(Key.CHANNEL_PIN_STRIP_ENABLED) ?: false
         set(value) {
             setProfileScopedBoolean(Key.CHANNEL_PIN_STRIP_ENABLED, value)
         }

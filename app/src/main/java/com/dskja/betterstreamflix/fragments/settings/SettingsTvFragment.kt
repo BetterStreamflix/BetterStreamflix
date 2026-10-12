@@ -95,7 +95,6 @@ import java.io.IOException
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
-import com.dskja.betterstreamflix.fragments.settings.setSummaryProviderOnce
 
 class SettingsTvFragment : LeanbackPreferenceFragmentCompat() {
     private data class SettingsScreenState(
@@ -504,7 +503,7 @@ class SettingsTvFragment : LeanbackPreferenceFragmentCompat() {
                 val BLOCKED = listOf("streamingcommunityz.green", "streamingunity.club", "streamingunity.bike", "streamingcommunityz.buzz")
                 val effectiveDomain = if (BLOCKED.any { typed.contains(it) }) DEFAULT_DOMAIN_VALUE else typed
                 UserPreferences.streamingcommunityDomain = effectiveDomain
-                preference.summary = effectiveDomain
+                preference.setSummaryText(effectiveDomain)
                 if (effectiveDomain != typed) {
                     findPreference<EditTextPreference>("provider_streamingcommunity_domain")?.text = null
                     showSettingsInfo(getString(R.string.settings_streamingcommunity_domain_blocked))
@@ -553,7 +552,7 @@ class SettingsTvFragment : LeanbackPreferenceFragmentCompat() {
                 val typed = (newValue as String).trim()
                 val effectiveDomain = typed.ifBlank { DEFAULT_SERIENSTREAM_DOMAIN_VALUE }
                 UserPreferences.serienstreamDomain = effectiveDomain
-                preference.summary = getString(R.string.settings_serienstream_domain_current, effectiveDomain)
+                preference.setSummaryText(getString(R.string.settings_serienstream_domain_current, effectiveDomain))
                 if (UserPreferences.currentProvider is SerienStreamProvider) {
                     viewLifecycleOwner.lifecycleScope.launch {
                         SerienStreamProvider.reloadService()
@@ -598,7 +597,7 @@ class SettingsTvFragment : LeanbackPreferenceFragmentCompat() {
                 val typed = (newValue as String).trim()
                 val effectiveDomain = typed.ifBlank { DEFAULT_MOFLIX_DOMAIN_VALUE }
                 UserPreferences.moflixDomain = effectiveDomain
-                preference.summary = effectiveDomain
+                preference.setSummaryText(effectiveDomain)
                 true
             }
         }
@@ -624,7 +623,7 @@ class SettingsTvFragment : LeanbackPreferenceFragmentCompat() {
             setOnPreferenceChangeListener { preference, newValue ->
                 val newDomainFromDialog = newValue as String
                 UserPreferences.cuevanaDomain = newDomainFromDialog
-                preference.summary = UserPreferences.cuevanaDomain
+                preference.setSummaryText(UserPreferences.cuevanaDomain)
                 if (UserPreferences.currentProvider?.name == "Cuevana 3") {
                     requireActivity().apply {
                         finish()
@@ -646,7 +645,7 @@ class SettingsTvFragment : LeanbackPreferenceFragmentCompat() {
             setOnPreferenceChangeListener { preference, newValue ->
                 val newDomainFromDialog = newValue as String
                 UserPreferences.poseidonDomain = newDomainFromDialog
-                preference.summary = UserPreferences.poseidonDomain
+                preference.setSummaryText(UserPreferences.poseidonDomain)
                 if (UserPreferences.currentProvider?.name == "Poseidonhd2") {
                     requireActivity().apply {
                         finish()
@@ -842,7 +841,7 @@ class SettingsTvFragment : LeanbackPreferenceFragmentCompat() {
                 val scope = UserPreferences.LibraryScope.fromKey(newValue as String)
                 UserPreferences.libraryScope = scope
                 (preference as ListPreference).value = scope.key
-                preference.summary = preference.entry
+                preference.setSummaryText(preference.entry)
                 UserDataNotifier.notifyChanged()
                 ProviderChangeNotifier.notifyProviderChanged()
                 showSettingsInfo(getString(R.string.settings_library_scope_updated))
@@ -1125,10 +1124,10 @@ class SettingsTvFragment : LeanbackPreferenceFragmentCompat() {
         }
 
         findPreference<EditTextPreference>("p_settings_autoplay_buffer")?.apply {
-            summaryProvider = Preference.SummaryProvider<EditTextPreference> { pref ->
+            setSummaryProviderOnce(Preference.SummaryProvider<EditTextPreference> { pref ->
                 val value = pref.text?.toLongOrNull() ?: 3L
                 "$value s"
-            }
+            })
             setOnPreferenceChangeListener { _, newValue ->
                 UserPreferences.autoplayBuffer = (newValue as String).toLongOrNull() ?: 3L
                 true
@@ -1274,7 +1273,7 @@ class SettingsTvFragment : LeanbackPreferenceFragmentCompat() {
                                 }
                             }
                         }
-                        findPreference<EditTextPreference>("provider_url")?.summary = summary
+                        findPreference<EditTextPreference>("provider_url")?.setSummaryText(summary)
                     }
                     true
                 }
@@ -1400,9 +1399,9 @@ class SettingsTvFragment : LeanbackPreferenceFragmentCompat() {
                 entryValues = arrayOf(ThemeManager.KIDS_BRIGHT)
             }
             value = locked
-            summaryProvider = Preference.SummaryProvider<ListPreference> { pref ->
+            setSummaryProviderOnce(Preference.SummaryProvider<ListPreference> { pref ->
                 getString(ThemeManager.titleRes(pref.value ?: ThemeManager.CINEMA_INK))
-            }
+            })
 
             setOnPreferenceChangeListener { _, newValue ->
                 val newTheme = ThemeManager.clampLookForKids(
@@ -1426,11 +1425,11 @@ class SettingsTvFragment : LeanbackPreferenceFragmentCompat() {
                 UserPreferences.leanbackDensity = density
             }
             value = density
-            summaryProvider = Preference.SummaryProvider<ListPreference> { pref ->
+            setSummaryProviderOnce(Preference.SummaryProvider<ListPreference> { pref ->
                 val idx = pref.findIndexOfValue(pref.value)
                 pref.entries.getOrNull(idx)?.toString()
                     ?: getString(R.string.settings_leanback_density_summary)
-            }
+            })
             setOnPreferenceChangeListener { _, newValue ->
                 UserPreferences.leanbackDensity = newValue as String
                 // LD-023: prefer Activity.recreate() so Compact theme overlay rematerializes
@@ -1490,9 +1489,9 @@ class SettingsTvFragment : LeanbackPreferenceFragmentCompat() {
             entries = AppLanguageManager.buildLanguageEntries(requireContext())
             entryValues = AppLanguageManager.buildLanguageValues(requireContext())
             value = AppLanguageManager.getSelectedLanguage(requireContext())
-            summaryProvider = Preference.SummaryProvider<ListPreference> { pref ->
+            setSummaryProviderOnce(Preference.SummaryProvider<ListPreference> { pref ->
                 pref.entries.getOrNull(pref.findIndexOfValue(pref.value)) ?: getString(R.string.settings_app_language_system)
-            }
+            })
             setOnPreferenceChangeListener { _, newValue ->
                 val newLanguage = newValue as String
                 AppLanguageManager.setSelectedLanguage(newLanguage)
@@ -2187,9 +2186,11 @@ class SettingsTvFragment : LeanbackPreferenceFragmentCompat() {
             UserPreferences.PROVIDER_PREFERRED_SERVER
         )
         preference.value = currentValue
-        preference.summary = preference.entries
-            ?.getOrNull(preference.findIndexOfValue(currentValue))
-            ?: getString(R.string.settings_provider_animeonlineninja_preferred_server_summary)
+        preference.setSummaryText(
+            preference.entries
+                ?.getOrNull(preference.findIndexOfValue(currentValue))
+                ?: getString(R.string.settings_provider_animeonlineninja_preferred_server_summary),
+        )
         preference.setOnPreferenceChangeListener { pref, newValue ->
             val value = (newValue as String).trim()
             UserPreferences.setProviderCache(
@@ -2198,8 +2199,10 @@ class SettingsTvFragment : LeanbackPreferenceFragmentCompat() {
                 value
             )
             if (pref is ListPreference) {
-                pref.summary = pref.entries?.getOrNull(pref.findIndexOfValue(value))
-                    ?: getString(R.string.settings_provider_animeonlineninja_preferred_server_summary)
+                pref.setSummaryText(
+                    pref.entries?.getOrNull(pref.findIndexOfValue(value))
+                        ?: getString(R.string.settings_provider_animeonlineninja_preferred_server_summary),
+                )
             }
             true
         }
@@ -2660,7 +2663,7 @@ class SettingsTvFragment : LeanbackPreferenceFragmentCompat() {
             ExperimentalMobileDesign.isAvailable() && luminaOn
         (findPreference("EXPERIMENTAL_LUMINA_ACCENT") as? androidx.preference.ListPreference)?.apply {
             value = UserPreferences.experimentalLuminaAccent
-            summaryProvider = androidx.preference.ListPreference.SimpleSummaryProvider.getInstance()
+            setSummaryProviderOnce(androidx.preference.ListPreference.SimpleSummaryProvider.getInstance())
             isEnabled = luminaOn
             setOnPreferenceChangeListener { _, newValue ->
                 UserPreferences.experimentalLuminaAccent = newValue.toString()
@@ -2811,11 +2814,11 @@ class SettingsTvFragment : LeanbackPreferenceFragmentCompat() {
             scope = lifecycleScope,
         )
         
-        val bufferPref: EditTextPreference? = findPreference("p_settings_autoplay_buffer") 
-        bufferPref?.summaryProvider = Preference.SummaryProvider<EditTextPreference> { pref ->
+        val bufferPref: EditTextPreference? = findPreference("p_settings_autoplay_buffer")
+        bufferPref?.setSummaryProviderOnce(Preference.SummaryProvider<EditTextPreference> { pref ->
             val value = pref.text?.toLongOrNull() ?: 3L
             "$value s"
-        }
+        })
         updateParentalControlPreferenceState()
     }
 

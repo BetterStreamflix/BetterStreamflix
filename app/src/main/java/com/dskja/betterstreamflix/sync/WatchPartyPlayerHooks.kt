@@ -50,6 +50,11 @@ object WatchPartyPlayerHooks {
 
     fun refreshChrome(button: android.view.View?, bridge: PlayerBridge) {
         if (button == null) return
+        // Hide experimental sync chrome unless a session is already live —
+        // always-visible buttons flooded the player and confused users.
+        val active = WatchPartySession.isActive()
+        button.visibility = if (active) android.view.View.VISIBLE else android.view.View.GONE
+        if (!active) return
         val disabled = bridge.isLiveOrOffline()
         button.isEnabled = !disabled
         button.alpha = if (disabled) 0.4f else 1f

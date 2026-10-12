@@ -433,19 +433,8 @@ class HomeTvFragment : Fragment() {
             // Do not requestFocus while the adapter is empty — Leanback then loses the
             // focus target and DPAD stays trapped on the side nav until Movies/etc.
         }
-        binding.root.findViewById<View>(R.id.btn_home_remix)?.let { remix ->
-            val hideRemix = com.dskja.betterstreamflix.profiles.ProfileManager.isKidsActive() ||
-                com.dskja.betterstreamflix.profiles.ProfileManager.isGuestActive()
-            remix.visibility = if (hideRemix) View.GONE else View.VISIBLE
-            remix.setOnClickListener {
-                if (hideRemix) return@setOnClickListener
-                ExpMotion.hapticTap(it)
-                com.dskja.betterstreamflix.home.HomeRemixUi.show(this) {
-                    homeBindSignature = null
-                    viewModel.getHome()
-                }
-            }
-        }
+        // Home remix stays Settings-only — chrome button flooded Home.
+        binding.root.findViewById<View>(R.id.btn_home_remix)?.visibility = View.GONE
     }
 
     /**

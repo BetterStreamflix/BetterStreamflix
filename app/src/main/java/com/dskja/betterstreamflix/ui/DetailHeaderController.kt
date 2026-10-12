@@ -41,9 +41,13 @@ object DetailHeaderController {
     fun wireCast(fragment: Fragment, root: View) {
         val button = root.findViewById<androidx.mediarouter.app.MediaRouteButton>(R.id.btn_detail_cast) ?: return
         runCatching {
-            com.dskja.betterstreamflix.cast.CastPlaybackHub.ensureCastContext(fragment.requireContext())
-            com.google.android.gms.cast.framework.CastButtonFactory.setUpMediaRouteButton(
+            val ctx = androidx.appcompat.view.ContextThemeWrapper(
                 fragment.requireContext(),
+                androidx.appcompat.R.style.Theme_AppCompat,
+            )
+            com.dskja.betterstreamflix.cast.CastPlaybackHub.ensureCastContext(ctx)
+            com.google.android.gms.cast.framework.CastButtonFactory.setUpMediaRouteButton(
+                ctx,
                 button,
             )
             button.visibility = View.VISIBLE

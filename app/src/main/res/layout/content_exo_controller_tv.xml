@@ -110,6 +110,7 @@
         app:layout_constraintTop_toTopOf="@id/fl_exo_title_slot"
         tools:visibility="visible" />
 
+    <!-- Sync experiments: gone unless an active session (hooks flip visibility). -->
     <ImageView
         android:id="@+id/btn_exo_watch_party"
         android:layout_width="48dp"
@@ -124,6 +125,7 @@
         android:padding="12dp"
         android:src="@drawable/ic_detail_share"
         android:tint="@color/cinema_text"
+        android:visibility="gone"
         app:layout_constraintBottom_toBottomOf="@id/tv_exo_subtitle"
         app:layout_constraintEnd_toStartOf="@id/btn_exo_cast_handoff"
         app:layout_constraintTop_toTopOf="@id/fl_exo_title_slot"
@@ -143,6 +145,7 @@
         android:padding="12dp"
         android:src="@drawable/ic_update_arrow_right"
         android:tint="@color/cinema_text"
+        android:visibility="gone"
         app:layout_constraintBottom_toBottomOf="@id/tv_exo_subtitle"
         app:layout_constraintEnd_toStartOf="@id/btn_exo_cast_room"
         app:layout_constraintTop_toTopOf="@id/fl_exo_title_slot"
@@ -162,6 +165,7 @@
         android:padding="12dp"
         android:src="@drawable/ic_menu_tv"
         android:tint="@color/cinema_text"
+        android:visibility="gone"
         app:layout_constraintBottom_toBottomOf="@id/tv_exo_subtitle"
         app:layout_constraintEnd_toStartOf="@id/btn_exo_session_handoff"
         app:layout_constraintTop_toTopOf="@id/fl_exo_title_slot"
@@ -181,6 +185,7 @@
         android:padding="12dp"
         android:src="@drawable/ic_session_handoff"
         android:tint="@color/cinema_text"
+        android:visibility="gone"
         app:layout_constraintBottom_toBottomOf="@id/tv_exo_subtitle"
         app:layout_constraintEnd_toStartOf="@id/btn_exo_external_player"
         app:layout_constraintTop_toTopOf="@id/fl_exo_title_slot"
