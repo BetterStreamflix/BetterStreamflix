@@ -2236,7 +2236,10 @@ class PlayerMobileFragment : Fragment(),
             override fun onIsPlayingChanged(isPlaying: Boolean) {
                 super.onIsPlayingChanged(isPlaying)
                 if (!mayRunPlayerListenerWork()) return
-                binding.pvPlayer.keepScreenOn = isPlaying || UserPreferences.keepScreenOnWhenPaused
+                // Prefer nullable binding — view can be cleared between the gate and use
+                // (BETTERSTREAMFLIX-1S NPE on getBinding).
+                val playerView = _binding?.pvPlayer ?: return
+                playerView.keepScreenOn = isPlaying || UserPreferences.keepScreenOnWhenPaused
                 stuckDetector.onIsPlayingChanged(isPlaying)
 
                 if (isPlaying) {

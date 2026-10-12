@@ -237,6 +237,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - DnsResolver ProGuard keep for release builds (BETTERSTREAMFLIX-1Z hardening)
 - Downloads / Settings storage summaries and live progress warm moved off the main thread (File IO / ANR)
 - FilmPalast and StreamingIta home sliders no longer fire per-item TMDb calls (N+1)
+- Mobile bottom nav allows 7 items so Live Hub no longer crashes inflate (BETTERSTREAMFLIX-3N)
+- ProfileAvatarView falls back if Syne font lookup throws (BETTERSTREAMFLIX-3M)
+- Player mobile `onIsPlayingChanged` uses nullable binding (BETTERSTREAMFLIX-1S)
+- TV Cast route button uses AppCompat themed context (BETTERSTREAMFLIX-26)
 
 ### Changed
 - Sentry Android SDK pinned to 8.60.0

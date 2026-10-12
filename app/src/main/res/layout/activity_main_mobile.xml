@@ -57,7 +57,7 @@
         app:layout_constraintStart_toStartOf="parent"
         tools:ignore="FragmentTagUsage" />
 
-    <com.google.android.material.bottomnavigation.BottomNavigationView
+    <com.dskja.betterstreamflix.ui.WideBottomNavigationView
         android:id="@+id/bnv_main"
         android:layout_width="0dp"
         android:layout_height="wrap_content"

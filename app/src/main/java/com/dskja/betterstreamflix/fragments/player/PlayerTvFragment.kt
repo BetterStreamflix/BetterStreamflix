@@ -4431,8 +4431,14 @@ class PlayerTvFragment : Fragment(),
             }
 
             runCatching {
+                // Leanback activity theme is not AppCompat; MediaRouteChooserDialog
+                // requires Theme.AppCompat (BETTERSTREAMFLIX-26).
+                val castContext = android.view.ContextThemeWrapper(
+                    requireContext(),
+                    androidx.appcompat.R.style.Theme_AppCompat,
+                )
                 CastPlaybackHub.ensureCastContext(requireContext())
-                CastButtonFactory.setUpMediaRouteButton(requireContext(), routeButton)
+                CastButtonFactory.setUpMediaRouteButton(castContext, routeButton)
                 routeButton.isVisible = true
 
                 castPlayer = CastPlaybackHub.obtainPlayer(requireContext())
