@@ -39,39 +39,45 @@ object SubtitleStudioSettingsController {
             val matchedPreset = SubtitleStudio.presets.firstOrNull { SubtitleStudio.matchesCurrent(it) }
             if (matchedPreset != null) {
                 presetPref?.value = matchedPreset.id
-                presetPref?.summary = context.getString(matchedPreset.titleRes)
+                presetPref?.setSummaryText(context.getString(matchedPreset.titleRes))
             } else {
                 presetPref?.value = null
-                presetPref?.summary = context.getString(R.string.subtitle_studio_preset_hint)
+                presetPref?.setSummaryText(context.getString(R.string.subtitle_studio_preset_hint))
             }
             val size = UserPreferences.captionTextSize
             if (sizeOptions.any { abs(it - size) < 0.02f }) {
                 sizePref?.value = closestSizeValue(size)
-                sizePref?.summary = null
+                sizePref?.clearSummaryText()
             } else {
                 sizePref?.value = null
-                sizePref?.summary = context.getString(R.string.subtitle_studio_custom_value, size)
+                sizePref?.setSummaryText(
+                    context.getString(R.string.subtitle_studio_custom_value, size),
+                )
             }
             val fg = UserPreferences.captionStyle.foregroundColor
             val mappedKey = colorKey(fg)
             val matchesPalette = colorFromKey(mappedKey)?.getRgb() == fg.getRgb()
             if (matchesPalette) {
                 colorPref?.value = mappedKey
-                colorPref?.summary = null
+                colorPref?.clearSummaryText()
             } else {
                 colorPref?.value = null
-                colorPref?.summary = context.getString(
-                    R.string.subtitle_studio_custom_value,
-                    "#%06X".format(0xFFFFFF and fg.getRgb()),
+                colorPref?.setSummaryText(
+                    context.getString(
+                        R.string.subtitle_studio_custom_value,
+                        "#%06X".format(0xFFFFFF and fg.getRgb()),
+                    ),
                 )
             }
             val alpha = UserPreferences.captionStyle.backgroundColor.getAlpha()
             if (backgroundOptions.any { abs(it - alpha) <= 8 }) {
                 bgPref?.value = closestBackgroundValue(alpha)
-                bgPref?.summary = null
+                bgPref?.clearSummaryText()
             } else {
                 bgPref?.value = null
-                bgPref?.summary = context.getString(R.string.subtitle_studio_custom_value, alpha)
+                bgPref?.setSummaryText(
+                    context.getString(R.string.subtitle_studio_custom_value, alpha),
+                )
             }
             refreshPreview()
         }

@@ -1298,13 +1298,33 @@ object UserPreferences {
         set(value) = setProfileScopedString(Key.HOME_SHELF_PINS_JSON, value.trim())
 
     /**
-     * Series Fast-Forward: when true, Next Episodes / Favorite TV shelves keep
-     * only titles new since the last Home visit watermark.
+     * Series Fast-Forward (removed). Pref kept so old profile transfers do not
+     * crash; readers always treat the feature as off.
      */
     var seriesFastForwardEnabled: Boolean
         get() = profileScopedBoolean(Key.SERIES_FAST_FORWARD_ENABLED) ?: false
         set(value) {
             setProfileScopedBoolean(Key.SERIES_FAST_FORWARD_ENABLED, value)
+        }
+
+    /**
+     * Meine Sender strip on Main. Configured in Settings — not a Home chrome
+     * flood. Default on; visibility still gated by [channelPinStripLiveOnly].
+     */
+    var channelPinStripEnabled: Boolean
+        get() = profileScopedBoolean(Key.CHANNEL_PIN_STRIP_ENABLED) ?: true
+        set(value) {
+            setProfileScopedBoolean(Key.CHANNEL_PIN_STRIP_ENABLED, value)
+        }
+
+    /**
+     * When true (default), Meine Sender only appears while the active provider
+     * is a Live/IPTV source. When false, the strip may show for all providers.
+     */
+    var channelPinStripLiveOnly: Boolean
+        get() = profileScopedBoolean(Key.CHANNEL_PIN_STRIP_LIVE_ONLY) ?: true
+        set(value) {
+            setProfileScopedBoolean(Key.CHANNEL_PIN_STRIP_LIVE_ONLY, value)
         }
 
     /** Epoch ms of the last Home [onPause] visit commit (per profile). */
@@ -2236,6 +2256,8 @@ object UserPreferences {
         HOME_SHELF_BLOCK_ORDER,
         HOME_SHELF_PINS_JSON,
         SERIES_FAST_FORWARD_ENABLED,
+        CHANNEL_PIN_STRIP_ENABLED,
+        CHANNEL_PIN_STRIP_LIVE_ONLY,
         HOME_LAST_VISIT_AT_MS,
         HOME_VISIT_NEXT_EPISODE_IDS,
         HOME_VISIT_FAVORITE_TV_IDS,

@@ -95,6 +95,7 @@ import java.io.IOException
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import com.dskja.betterstreamflix.fragments.settings.setSummaryProviderOnce
 
 class SettingsTvFragment : LeanbackPreferenceFragmentCompat() {
     private data class SettingsScreenState(
@@ -925,6 +926,23 @@ class SettingsTvFragment : LeanbackPreferenceFragmentCompat() {
             }
         }
 
+        findPreference<SwitchPreferenceCompat>("CHANNEL_PIN_STRIP_ENABLED")?.apply {
+            isChecked = UserPreferences.channelPinStripEnabled
+            setOnPreferenceChangeListener { _, newValue ->
+                UserPreferences.channelPinStripEnabled = newValue as Boolean
+                UserDataNotifier.notifyChanged()
+                true
+            }
+        }
+        findPreference<SwitchPreferenceCompat>("CHANNEL_PIN_STRIP_LIVE_ONLY")?.apply {
+            isChecked = UserPreferences.channelPinStripLiveOnly
+            setOnPreferenceChangeListener { _, newValue ->
+                UserPreferences.channelPinStripLiveOnly = newValue as Boolean
+                UserDataNotifier.notifyChanged()
+                true
+            }
+        }
+
         findPreference<Preference>("PROFILE_YEAR_REVIEW")?.setOnPreferenceClickListener {
             com.dskja.betterstreamflix.yearreview.YearReviewUi.show(this)
             true
@@ -932,7 +950,7 @@ class SettingsTvFragment : LeanbackPreferenceFragmentCompat() {
 
         findPreference<ListPreference>("SEARCH_SORT_MODE")?.apply {
             value = UserPreferences.searchSortMode.name
-            summaryProvider = ListPreference.SimpleSummaryProvider.getInstance()
+            setSummaryProviderOnce(ListPreference.SimpleSummaryProvider.getInstance())
             setOnPreferenceChangeListener { preference, newValue ->
                 val mode = com.dskja.betterstreamflix.utils.SearchSortMode.fromKey(newValue as String)
                 UserPreferences.searchSortMode = mode

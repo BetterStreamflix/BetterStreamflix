@@ -14,9 +14,9 @@ import com.bumptech.glide.module.AppGlideModule
 import com.caverock.androidsvg.SVG
 import com.dskja.betterstreamflix.utils.ArtworkRequestHeaders
 import com.dskja.betterstreamflix.utils.DeviceCapabilities
-import com.dskja.betterstreamflix.utils.DnsResolver
 import com.dskja.betterstreamflix.utils.NetworkClient
 import okhttp3.*
+import okhttp3.Dns
 import okhttp3.OkHttpClient.Builder
 import okhttp3.logging.HttpLoggingInterceptor
 import java.io.File
@@ -66,7 +66,13 @@ class GlideCustomModule : AppGlideModule() {
                     requestBuilder.header("User-Agent", NetworkClient.USER_AGENT)
                 }
                 if (original.header("Accept") == null) {
-                    requestBuilder.header("Accept", "image/avif,image/webp,image/apng,image/*,*/*;q=0.8")
+                    // Never advertise AVIF first — many phone/TV Glide/Bitmap paths
+                    // cannot decode it, so CDNs return undecodable bodies and every
+                    // provider's posters stay blank.
+                    requestBuilder.header(
+                        "Accept",
+                        "image/webp,image/png,image/jpeg,image/*,*/*;q=0.8",
+                    )
                 }
                 if (original.header("Accept-Language") == null) {
                     requestBuilder.header(
@@ -96,7 +102,10 @@ class GlideCustomModule : AppGlideModule() {
             .addInterceptor(logging)
             .sslSocketFactory(sslContext.socketFactory, trustManager)
             .hostnameVerifier { _, _ -> true }
-            .dns(DnsResolver.doh)
+            // Image CDN hosts (TMDb, provider CDNs) are fine on system DNS.
+            // Routing every poster through DoH multiplies timeout blanks when
+            // DoH is slow — DnsResolver still backs provider HTTP elsewhere.
+            .dns(Dns.SYSTEM)
             .build()
     }
 

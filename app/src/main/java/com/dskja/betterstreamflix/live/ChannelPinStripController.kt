@@ -15,6 +15,7 @@ import com.dskja.betterstreamflix.providers.Provider
 import com.dskja.betterstreamflix.ui.UserDataNotifier
 import com.dskja.betterstreamflix.utils.CrossProviderLibrary
 import com.dskja.betterstreamflix.utils.LiveHubCatalog
+import com.dskja.betterstreamflix.utils.UserPreferences
 import com.dskja.betterstreamflix.widgets.WidgetDeepLinkRouter
 import com.dskja.betterstreamflix.widgets.WidgetDeepLinks
 import kotlinx.coroutines.Dispatchers
@@ -59,13 +60,19 @@ class ChannelPinStripController(
         if (destinationAllowsStrip) refresh()
     }
 
+    private fun settingsAllowStrip(): Boolean {
+        if (!UserPreferences.channelPinStripEnabled) return false
+        if (!UserPreferences.channelPinStripLiveOnly) return true
+        return LiveHubCatalog.isLiveProvider(UserPreferences.currentProvider)
+    }
+
     fun refresh() {
         refreshJob?.cancel()
         // SL-003: hide immediately so kids/gate cannot click during IO.
         strip.isVisible = false
         refreshJob = activity.lifecycleScope.launch {
             val gated = ProfileManager.isKidsActive() || LiveHubCatalog.isAgeGated()
-            if (gated || !destinationAllowsStrip) {
+            if (gated || !destinationAllowsStrip || !settingsAllowStrip()) {
                 strip.isVisible = false
                 return@launch
             }
@@ -93,6 +100,7 @@ class ChannelPinStripController(
             }
             // SL-002: re-check kids AND age-gate after IO.
             if (!destinationAllowsStrip ||
+                !settingsAllowStrip() ||
                 ProfileManager.isKidsActive() ||
                 LiveHubCatalog.isAgeGated()
             ) {
@@ -105,7 +113,7 @@ class ChannelPinStripController(
 
     private fun applyVisibility() {
         val gated = ProfileManager.isKidsActive() || LiveHubCatalog.isAgeGated()
-        if (!destinationAllowsStrip || gated) {
+        if (!destinationAllowsStrip || gated || !settingsAllowStrip()) {
             strip.isVisible = false
         }
     }

@@ -298,6 +298,15 @@ object LiveHubCatalog {
         return withSportsBite.filterIsInstance<IptvProvider>()
     }
 
+    /** True when [provider] is an IPTV / Live Hub source (Live tab + Meine Sender scope). */
+    fun isLiveProvider(provider: Provider?): Boolean {
+        if (provider == null) return false
+        if (provider is IptvProvider) return true
+        return hubSources(includeQuarantined = true).any {
+            it.name.equals(provider.name, ignoreCase = true)
+        }
+    }
+
     private suspend fun collectFrom(provider: Provider): List<TvShow> {
         val out = LinkedHashMap<String, TvShow>()
         fun stamp(show: TvShow): TvShow {
