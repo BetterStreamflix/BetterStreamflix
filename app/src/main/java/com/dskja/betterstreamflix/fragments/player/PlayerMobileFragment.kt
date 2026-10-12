@@ -548,6 +548,8 @@ class PlayerMobileFragment : Fragment(),
                         servers = state.servers
                         failoverTimeline.clear()
                         FailoverTimelineUi.clearErrorTimeline(_binding?.root)
+                        // PT-026: clear per-title A/B session so the same hoster can be
+                        // re-learned across titles within one player fragment lifetime.
                         com.dskja.betterstreamflix.providers.ProviderServerAb.clearSession()
                         com.dskja.betterstreamflix.providers.ServerWhy.clearSessionFlags()
                         paintServerWhyBadges()
@@ -3904,6 +3906,8 @@ class PlayerMobileFragment : Fragment(),
             }
             return
         }
+        // PT-135: dismissing the near-end Up-Next overlay must NOT suppress End-Card
+        // at STATE_ENDED — separate surfaces (ready cue vs post-credits chooser).
         if (endCardVisible) return
         // Prefetch next so the Next button can stay enabled.
         (currentVideoTypeForUi() as? Video.Type.Episode)?.let { ensureNextEpisodePrepared(it) }
