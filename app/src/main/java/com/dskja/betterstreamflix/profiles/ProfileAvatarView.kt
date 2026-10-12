@@ -31,7 +31,9 @@ class ProfileAvatarView @JvmOverloads constructor(
         gravity = Gravity.CENTER
         includeFontPadding = false
         setTextColor(0xFFFFFFFF.toInt())
-        typeface = ResourcesCompat.getFont(context, R.font.syne)
+        // Some devices throw NotFoundException instead of returning null
+        // (BETTERSTREAMFLIX-3M MainTvActivity inflate crash).
+        typeface = runCatching { ResourcesCompat.getFont(context, R.font.syne) }.getOrNull()
             ?: Typeface.create("sans-serif-medium", Typeface.BOLD)
         setShadowLayer(6f, 0f, 2f, 0x99000000.toInt())
     }
