@@ -27,16 +27,30 @@ object ExpAmbientGlow {
     fun applyColor(color: Int, target: View) {
         target.post {
             val radius = (maxOf(target.width, target.height) / 2f).coerceAtLeast(1f)
-            target.background = GradientDrawable().apply {
-                shape = GradientDrawable.OVAL
-                gradientType = GradientDrawable.RADIAL_GRADIENT
-                gradientRadius = radius
-                colors = intArrayOf(
-                    ColorUtils.setAlphaComponent(color, 0x59),
-                    ColorUtils.setAlphaComponent(color, 0x22),
-                    ColorUtils.setAlphaComponent(color, 0x00),
-                )
+            // Construct as radial explicitly — never leave a LINEAR GradientDrawable
+            // with a non-45° angle (BETTERSTREAMFLIX-3J on some OEMs).
+            // Atouch/Android-10 forks have thrown from GradientDrawable.draw; fall back
+            // to a flat translucent oval so Providers/Home never crash on paint.
+            val glow = runCatching {
+                GradientDrawable().apply {
+                    shape = GradientDrawable.OVAL
+                    gradientType = GradientDrawable.RADIAL_GRADIENT
+                    gradientRadius = radius
+                    setColors(
+                        intArrayOf(
+                            ColorUtils.setAlphaComponent(color, 0x59),
+                            ColorUtils.setAlphaComponent(color, 0x22),
+                            ColorUtils.setAlphaComponent(color, 0x00),
+                        ),
+                    )
+                }
+            }.getOrElse {
+                GradientDrawable().apply {
+                    shape = GradientDrawable.OVAL
+                    setColor(ColorUtils.setAlphaComponent(color, 0x40))
+                }
             }
+            target.background = glow
             target.visibility = View.VISIBLE
             // Prefer a short one-shot fade; skip restart if already visible.
             if (target.alpha >= 0.7f) {

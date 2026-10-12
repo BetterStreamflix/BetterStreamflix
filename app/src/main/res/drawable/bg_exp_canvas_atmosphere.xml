@@ -1,10 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- Solid surface — avoid linear gradients that some OEM forks reject at draw
+     time (BETTERSTREAMFLIX-3J). -->
 <shape xmlns:android="http://schemas.android.com/apk/res/android"
     android:shape="rectangle">
-    <gradient
-        android:angle="270"
-        android:centerColor="?attr/colorSurface"
-        android:endColor="?attr/colorSurfaceContainerLow"
-        android:startColor="?attr/colorSurface"
-        android:type="linear" />
+    <solid android:color="?attr/colorSurface" />
 </shape>

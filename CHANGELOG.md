@@ -229,6 +229,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Sentry drops JobCancellationException noise; `isSendDefaultPii` disabled
 - Cast stream proxy closes upstream OkHttp responses on playlist/error paths
 
+## [1.1.6] — 2026-10-12
+
+### Fixed
+- TV Home nested shelf inflate ANRs: stagger shelf `submitList`, lower nested prefetch, larger shared RecycledViewPool (AppAdapter CreateViewHolder)
+- Providers TV: skip SOFTWARE layer for SVG logos on Leanback (CPU raster ANR)
+- HDFilme + Einschalten home/list no longer fan out to TMDb per item (N+1)
+- Conscrypt + ISRG trust install moved off main thread (BETTERSTREAMFLIX-2J startup ANR)
+- UnJourUnFilm Retrofit `baseUrl` / portal cache harden against HTML garbage (BETTERSTREAMFLIX-2N)
+- Gradient/LayerDrawable OEM draw crashes: liquid-glass + canvas atmosphere solids; safe background apply + ambient glow fallback (BETTERSTREAMFLIX-3J)
+
+### Changed
+- Version 1.1.6 (10106)
+
 ## [1.1.5] — 2026-10-12
 
 ### Fixed

@@ -47,17 +47,16 @@ object UnJourUnFilmProvider : Provider, ProviderPortalUrl, ProviderConfigUrl {
     override val portalUrl: String = defaultPortalUrl
         get() {
             val cachePortalURL = UserPreferences.getProviderCache(this, UserPreferences.PROVIDER_PORTAL_URL)
-            return cachePortalURL.ifEmpty { field }
+            return cachePortalURL
+                .takeIf { isSafeHttpUrl(it) }
+                ?: field
         }
 
     override val defaultBaseUrl: String = "https://1jour1film0826b.website/"
     override val baseUrl: String = defaultBaseUrl
         get() {
             val cacheURL = UserPreferences.getProviderCache(this, UserPreferences.PROVIDER_URL)
-            return cacheURL
-                .takeIf { it.startsWith("http://") || it.startsWith("https://") }
-                ?.takeIf { !it.contains('<') }
-                ?: field
+            return cacheURL.takeIf { isSafeHttpUrl(it) } ?: field
         }
 
     override val logo: String
@@ -822,9 +821,7 @@ object UnJourUnFilmProvider : Provider, ProviderPortalUrl, ProviderConfigUrl {
                     // No need to throw as we already have a fallback URL
                 }
             }
-            val safeBase = baseUrl.takeIf {
-                it.startsWith("http://") || it.startsWith("https://")
-            } ?: defaultBaseUrl
+            val safeBase = baseUrl.takeIf { isSafeHttpUrl(it) } ?: defaultBaseUrl
             if (safeBase != baseUrl) {
                 // Cached value was HTML/garbage (BETTERSTREAMFLIX-2N) — reset.
                 UserPreferences.setProviderCache(this, UserPreferences.PROVIDER_URL, safeBase)
@@ -833,6 +830,15 @@ object UnJourUnFilmProvider : Provider, ProviderPortalUrl, ProviderConfigUrl {
             serviceInitialized = true
         }
         return baseUrl
+    }
+
+    /** Reject HTML bodies / relative junk before Retrofit.baseUrl (BETTERSTREAMFLIX-2N). */
+    internal fun isSafeHttpUrl(url: String): Boolean {
+        val trimmed = url.trim()
+        if (trimmed.isEmpty()) return false
+        if (!(trimmed.startsWith("http://") || trimmed.startsWith("https://"))) return false
+        if (trimmed.contains('<') || trimmed.contains(' ') || trimmed.contains('\n')) return false
+        return true
     }
 
     private suspend fun initializeService() {
@@ -852,20 +858,23 @@ object UnJourUnFilmProvider : Provider, ProviderPortalUrl, ProviderConfigUrl {
                 .build()
 
             fun buildAddressFetcher(): Service {
+                val safePortal = portalUrl.takeIf { UnJourUnFilmProvider.isSafeHttpUrl(it) }
+                    ?: defaultPortalUrl
                 val addressRetrofit = Retrofit.Builder()
-                    .baseUrl(portalUrl)
-
+                    .baseUrl(if (safePortal.endsWith("/")) safePortal else "$safePortal/")
                     .addConverterFactory(JsoupConverterFactory.create())
                     .client(client)
-
                     .build()
 
                 return addressRetrofit.create(Service::class.java)
             }
 
             fun build(baseUrl: String): Service {
+                val safe = baseUrl.takeIf { UnJourUnFilmProvider.isSafeHttpUrl(it) }
+                    ?: defaultBaseUrl
+                val normalized = if (safe.endsWith("/")) safe else "$safe/"
                 val retrofit = Retrofit.Builder()
-                    .baseUrl(baseUrl)
+                    .baseUrl(normalized)
                     .addConverterFactory(JsoupConverterFactory.create())
                     .addConverterFactory(GsonConverterFactory.create())
                     .client(client)

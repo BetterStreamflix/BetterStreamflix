@@ -80,17 +80,10 @@ class BetterStreamflixApp : Application() {
             }
         })
 
-        // 0. Initialize Conscrypt for modern SSL on old Android.
-        // Fire OS / low-RAM sticks can fail loading native Conscrypt — never abort startup.
-        runCatching {
-            Security.insertProviderAt(Conscrypt.newProvider(), 1)
-        }.onFailure {
-            android.util.Log.e("BetterStreamflixApp", "Conscrypt init failed: ${it.message}")
-        }
-
-        // 1. Install ISRG Root X1 globally for Let's Encrypt. On Android < 7 (API 24)
-        // network_security_config.xml is not supported so the certificate must be injected manually.
-        runCatching { IsrgRootTrustProvider.install() }
+        // 0–1. Conscrypt clinit + ISRG trust install do jar/manifest I/O and can
+        // ANR on main (BETTERSTREAMFLIX-2J). Prefs/UI setup do not need them yet;
+        // the IO block below installs both before DoH / first OkHttp traffic.
+        // Fire OS / low-RAM sticks can fail loading native Conscrypt — never abort.
 
         // 2. Inizializzazione preferenze (con applicationContext)
         runCatching { UserPreferences.setup(this) }
@@ -125,8 +118,15 @@ class BetterStreamflixApp : Application() {
         val threshold = if (isTv) 10L else 50L
         val dohUrl = runCatching { UserPreferences.dohProviderUrl }.getOrDefault("")
 
-        // Keep SYSTEM DNS until DoH is applied off-main (BETTERSTREAMFLIX-2J).
+        // SSL providers + DoH off-main (BETTERSTREAMFLIX-2J).
         applicationScope.launch(Dispatchers.IO) {
+            runCatching {
+                Security.insertProviderAt(Conscrypt.newProvider(), 1)
+            }.onFailure {
+                Log.e("BetterStreamflixApp", "Conscrypt init failed: ${it.message}")
+            }
+            // ISRG Root X1 for Let's Encrypt on Android < 7 (no network_security_config).
+            runCatching { IsrgRootTrustProvider.install() }
             runCatching { DnsResolver.setDnsUrl(dohUrl) }
                 .onFailure { Log.e("BetterStreamflixApp", "DnsResolver.setDnsUrl failed", it) }
             // Rebuild after DoH is applied so TMDB prefers the configured resolver.

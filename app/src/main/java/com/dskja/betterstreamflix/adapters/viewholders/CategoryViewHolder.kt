@@ -81,6 +81,8 @@ class CategoryViewHolder(
     companion object {
         /** Cap Featured dots so ll_dots_indicator never balloons on long shelves. */
         const val MAX_VISIBLE_FEATURED_DOTS = 7
+        /** First-pass nested shelf bind size — rest fills in on the next frame. */
+        private const val TV_SHELF_INITIAL_BIND = 8
     }
 
     /** Stop auto-advance + page callbacks so recycled holders cannot touch a torn-down NavHost. */
@@ -526,7 +528,10 @@ class CategoryViewHolder(
             (context.toActivity()?.getCurrentFragment() as? HomeTvFragment)?.let { home ->
                 setRecycledViewPool(home.shelfPool)
                 itemAnimator = null
-                setItemViewCacheSize(8)
+                setItemViewCacheSize(12)
+                // Prefetch fewer nested posters during parent measure (ANR on CreateViewHolder).
+                (layoutManager as? androidx.recyclerview.widget.LinearLayoutManager)
+                    ?.initialPrefetchItemCount = 4
             }
             val categoryAdapter = (adapter as? AppAdapter) ?: AppAdapter().also { adapter = it }
             categoryAdapter.apply {
@@ -534,7 +539,24 @@ class CategoryViewHolder(
                 this.onTvShowClickListener = onTvShowClick
                 this.onMovieLongClickListener = onMovieLongClick
                 this.onTvShowLongClickListener = onTvShowLongClick
-                submitList(category.list)
+            }
+            // Stagger nested submitList so VerticalGridView measure is not blocked by
+            // inflating an entire shelf of posters in one frame (BETTERSTREAMFLIX-3S/20).
+            val fullList = category.list
+            val initial = if (fullList.size > TV_SHELF_INITIAL_BIND) {
+                fullList.take(TV_SHELF_INITIAL_BIND)
+            } else {
+                fullList
+            }
+            val bindToken = Any()
+            setTag(R.id.tv_shelf_bind_token_tag, bindToken)
+            categoryAdapter.submitList(initial)
+            if (fullList.size > TV_SHELF_INITIAL_BIND) {
+                post {
+                    if (getTag(R.id.tv_shelf_bind_token_tag) !== bindToken) return@post
+                    if (!isAttachedToWindow) return@post
+                    categoryAdapter.submitList(fullList)
+                }
             }
             setItemSpacing(category.itemSpacing)
 
