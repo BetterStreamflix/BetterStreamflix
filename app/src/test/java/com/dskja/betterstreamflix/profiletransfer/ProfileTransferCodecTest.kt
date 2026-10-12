@@ -98,7 +98,8 @@ class ProfileTransferCodecTest {
         assertNull(decoded.watchlist.first().poster)
         assertNull(decoded.watchlist.first().banner)
         assertEquals("Title 1", decoded.watchlist.first().title)
-        assertEquals("Paused after kitchen scene", decoded.notes.first().text)
+        // QR omits notes (shoulder-surfing / spoiler surface).
+        assertTrue(decoded.notes.isEmpty())
         assertEquals("cross_provider", decoded.settings.libraryScope)
     }
 
