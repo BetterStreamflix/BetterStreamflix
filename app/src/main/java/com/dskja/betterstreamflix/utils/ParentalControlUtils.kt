@@ -114,11 +114,11 @@ object ParentalControlUtils {
     }
 
     /**
-     * Hide mature genre chips on blank Search / kids browse.
+     * Hide mature genre chips when parental filtering is active (kids or adult PIN mode).
      * Genres are not Movie/TvShow rows so [filterItems] would otherwise pass them through.
      */
     fun filterGenreChips(items: List<AppAdapter.Item>): List<AppAdapter.Item> {
-        if (!ProfileManager.isKidsActive()) return items
+        if (!isFilteringActive()) return items
         return items.filterNot { item ->
             item is Genre && isMatureGenre(item)
         }
@@ -136,7 +136,7 @@ object ParentalControlUtils {
             is Movie -> item.takeIf { isAllowedMovie(it) }
             is TvShow -> item.takeIf { isAllowedTvShow(it) }
             is Episode -> item.takeIf { isAllowedEpisode(it) }
-            is Genre -> item.takeUnless { ProfileManager.isKidsActive() && isMatureGenre(item) }
+            is Genre -> item.takeUnless { isFilteringActive() && isMatureGenre(item) }
             else -> item
         }
     }

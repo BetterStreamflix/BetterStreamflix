@@ -110,10 +110,24 @@ class KidsFortressPolicyTest {
     }
 
     @Test
-    fun bedtimeApplies_requiresKidsAndEnabled() {
+    fun bedtimeApplies_requiresKidsOrGuestAndEnabled() {
         assertTrue(KidsFortressPolicy.bedtimeApplies(enabled = true, isKids = true))
         assertFalse(KidsFortressPolicy.bedtimeApplies(enabled = true, isKids = false))
         assertFalse(KidsFortressPolicy.bedtimeApplies(enabled = false, isKids = true))
+        assertTrue(
+            KidsFortressPolicy.bedtimeApplies(
+                enabled = true,
+                isKids = false,
+                isGuest = true,
+            ),
+        )
+        assertFalse(
+            KidsFortressPolicy.bedtimeApplies(
+                enabled = false,
+                isKids = false,
+                isGuest = true,
+            ),
+        )
     }
 
     @Test

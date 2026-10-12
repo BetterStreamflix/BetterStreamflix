@@ -66,7 +66,11 @@ internal object ProfileScopedPreferenceStore {
                 }
                 "SELECTED_THEME" -> {
                     if (!value.isNullOrBlank()) {
-                        UserPreferences.selectedTheme = value
+                        UserPreferences.selectedTheme =
+                            com.dskja.betterstreamflix.utils.ThemeManager.clampLookForKids(
+                                value,
+                                ProfileManager.isKidsActive(),
+                            )
                     }
                 }
                 "LEANBACK_DENSITY" -> {

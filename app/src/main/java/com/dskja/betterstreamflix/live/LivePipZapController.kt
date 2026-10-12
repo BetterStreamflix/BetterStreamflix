@@ -454,40 +454,56 @@ class LivePipZapController(
 
     private fun returnToVod() {
         // PZ-002: peek first; consume only when nav is available; restore on failure.
-        val ticket = LivePipZapSession.peek() ?: return
+        if (LivePipZapSession.peek() == null) return
         if (!fragment.isAdded) return
-        val nav = runCatching { fragment.findNavController() }.getOrNull()
-            ?: (fragment.activity?.supportFragmentManager
-                ?.findFragmentById(R.id.nav_main_fragment) as? NavHostFragment)
-                ?.navController
-        if (nav == null) return
-        val consumed = LivePipZapSession.beginReturn() ?: return
-        stopPreview(cancelJob = true)
-        hideAll()
-        FeaturedProviderSwitch.switchSticky(consumed.providerName, fragment.context)
-        val args = bundleOf(
-            "id" to consumed.id,
-            "title" to consumed.title,
-            "subtitle" to consumed.subtitle,
-            "videoType" to consumed.videoType,
-            "preferredServerName" to consumed.preferredServerName,
-            // PZ-009: pass start position for resume on return.
-            "startPositionMs" to consumed.positionMs,
-        )
-        val navigated = runCatching {
-            when {
-                nav.currentDestination?.getAction(R.id.action_playerMobileFragment_self) != null ->
-                    nav.navigate(R.id.action_playerMobileFragment_self, args)
-                nav.currentDestination?.getAction(R.id.action_playerTvFragment_self) != null ->
-                    nav.navigate(R.id.action_playerTvFragment_self, args)
-                else -> nav.navigate(R.id.player, args)
+
+        fun navigateWithTicket(): Boolean {
+            val nav = runCatching { fragment.findNavController() }.getOrNull()
+                ?: (fragment.activity?.supportFragmentManager
+                    ?.findFragmentById(R.id.nav_main_fragment) as? NavHostFragment)
+                    ?.navController
+                ?: return false
+            val consumed = LivePipZapSession.beginReturn() ?: return false
+            stopPreview(cancelJob = true)
+            hideAll()
+            FeaturedProviderSwitch.switchSticky(consumed.providerName, fragment.context)
+            val args = bundleOf(
+                "id" to consumed.id,
+                "title" to consumed.title,
+                "subtitle" to consumed.subtitle,
+                "videoType" to consumed.videoType,
+                "preferredServerName" to consumed.preferredServerName,
+                // PZ-009: pass start position for resume on return.
+                "startPositionMs" to consumed.positionMs,
+            )
+            val navigated = runCatching {
+                when {
+                    nav.currentDestination?.getAction(R.id.action_playerMobileFragment_self) != null ->
+                        nav.navigate(R.id.action_playerMobileFragment_self, args)
+                    nav.currentDestination?.getAction(R.id.action_playerTvFragment_self) != null ->
+                        nav.navigate(R.id.action_playerTvFragment_self, args)
+                    else -> nav.navigate(R.id.player, args)
+                }
+                true
+            }.getOrDefault(false)
+            if (!navigated) {
+                LivePipZapSession.restore(consumed)
+                showReturnChipIfNeeded()
             }
-            true
-        }.getOrDefault(false)
-        if (!navigated) {
-            LivePipZapSession.restore(consumed)
-            showReturnChipIfNeeded()
+            return navigated
         }
+
+        val activity = fragment.activity
+        if (activity != null &&
+            com.dskja.betterstreamflix.kids.KidsBedtime.shouldBlockEnteringPlayer()
+        ) {
+            // KF-021: bedtime pre-check before returning to VOD player.
+            com.dskja.betterstreamflix.kids.KidsBedtimeUi.blockPlayerEntry(activity) {
+                navigateWithTicket()
+            }
+            return
+        }
+        navigateWithTicket()
     }
 
     private fun applyTvFocusPolicy() {

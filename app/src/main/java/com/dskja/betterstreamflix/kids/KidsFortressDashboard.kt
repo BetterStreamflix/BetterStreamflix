@@ -16,6 +16,8 @@ import kotlin.math.max
 /**
  * Builds Parent Dashboard snapshots — kids PIN/bedtime/age + isolated CW/DL stats
  * without switching the active profile.
+ *
+ * Pure formatting helpers live on [KidsFortressPolicy]; IO stays here.
  */
 object KidsFortressDashboard {
 
@@ -24,6 +26,48 @@ object KidsFortressDashboard {
         val householdPinSet: Boolean,
         val kids: List<KidsFortressPolicy.KidsProfileCard>,
     )
+
+    /** Count files under a downloads folder (for DL fallback when DB missing). */
+    fun countFilesInFolder(root: java.io.File): Int {
+        if (!root.exists()) return 0
+        if (root.isFile) return 1
+        var count = 0
+        root.walkTopDown().forEach { file ->
+            if (file.isFile) count++
+        }
+        return count
+    }
+
+    fun folderBytes(root: java.io.File): Long {
+        if (!root.exists()) return 0L
+        if (root.isFile) return root.length().coerceAtLeast(0L)
+        var total = 0L
+        root.walkTopDown().forEach { file ->
+            if (file.isFile) total += file.length().coerceAtLeast(0L)
+        }
+        return total
+    }
+
+    /**
+     * Provider names that already have a Room DB on disk for [profileId]
+     * (avoids silently reporting CW=0 when currentProvider is null).
+     */
+    fun existingProviderNamesForProfile(context: Context, profileId: String): List<String> {
+        val names = context.databaseList()?.toList().orEmpty()
+        val out = LinkedHashSet<String>()
+        for (name in names) {
+            if (!name.endsWith(".db")) continue
+            if (name.contains("-")) continue // Room WAL sidecars use suffixes; list is base names
+            val base = name.removeSuffix(".db")
+            val provider = when {
+                profileId == ProfileManager.DEFAULT_PROFILE_ID && !base.contains("__") -> base
+                base.startsWith("${profileId}__") -> base.removePrefix("${profileId}__")
+                else -> continue
+            }
+            if (provider.isNotBlank()) out.add(provider)
+        }
+        return out.toList()
+    }
 
     suspend fun load(context: Context): Snapshot = withContext(Dispatchers.IO) {
         val eligible = KidsFortress.parentDashboardEligible()
@@ -61,8 +105,8 @@ object KidsFortressDashboard {
             profileId = profile.id,
             displayName = profile.displayName,
             maxAgeRating = ceiling,
-            hasPin = !profile.pinHash.isNullOrBlank() ||
-                UserPreferences.parentalControlPin.isNotBlank(),
+            // Per-kid card PIN = profile.pinHash only; household shown separately.
+            hasPin = !profile.pinHash.isNullOrBlank(),
             bedtimeEnabled = UserPreferences.kidsBedtimeEnabledFor(profile.id),
             bedtimeLocked = UserPreferences.kidsBedtimeLockedFor(profile.id),
             bedtimeMinuteOfDay = UserPreferences.kidsBedtimeMinuteOfDayFor(profile.id),
@@ -78,10 +122,12 @@ object KidsFortressDashboard {
         profile: UserProfile,
         providerName: String?,
     ): Triple<Int, Int, Long> {
-        val continueCount = if (providerName.isNullOrBlank()) {
-            0
-        } else {
+        val continueCount = if (!providerName.isNullOrBlank()) {
             countContinueWatching(context, providerName, profile.id)
+        } else {
+            existingProviderNamesForProfile(context, profile.id).sumOf { name ->
+                countContinueWatching(context, name, profile.id)
+            }
         }
         val (dlCount, dlBytes) = countDownloads(context, profile)
         return Triple(continueCount, dlCount, dlBytes)
@@ -131,10 +177,10 @@ object KidsFortressDashboard {
                 }
             }
         }.getOrElse {
-            // Fall back to on-disk folder estimate when DB missing.
+            // Fall back to on-disk folder estimate when DB missing (count real files).
             val dir = DownloadStorage.profileDownloadsDir(context, profile.id, profile.displayName)
             val bytes = folderBytes(dir)
-            (if (bytes > 0L) 1 else 0) to bytes
+            countFilesInFolder(dir) to bytes
         }
     }
 
@@ -148,14 +194,4 @@ object KidsFortressDashboard {
             DownloadDatabase.MIGRATION_2_3,
             DownloadDatabase.MIGRATION_3_4,
         ).build()
-
-    private fun folderBytes(root: java.io.File): Long {
-        if (!root.exists()) return 0L
-        if (root.isFile) return root.length().coerceAtLeast(0L)
-        var total = 0L
-        root.walkTopDown().forEach { file ->
-            if (file.isFile) total += file.length().coerceAtLeast(0L)
-        }
-        return total
-    }
 }

@@ -5,6 +5,11 @@ package com.dskja.betterstreamflix.kids
  * JVM-safe for unit tests (no Android Context).
  *
  * Builds on Kids Bedtime, Spoiler Shield, Guest (2h), and Familien-Profile ceilings.
+ *
+ * **Guest vs Kids (KF-012):** Guest is [SessionKind.GUEST], not Fortress kids —
+ * no kids age ceiling, no forced spoiler, Live Hub may stay available. Guest still
+ * cannot become kids ([canEnableKids]), cloud auth is blocked like kids, and bedtime
+ * can apply when the guest profile has bedtime enabled ([bedtimeApplies]).
  */
 object KidsFortressPolicy {
 
@@ -22,6 +27,7 @@ object KidsFortressPolicy {
         val profileId: String,
         val displayName: String,
         val maxAgeRating: Int,
+        /** Per-kid profile PIN only — household PIN is reported separately. */
         val hasPin: Boolean,
         val bedtimeEnabled: Boolean,
         val bedtimeLocked: Boolean,
@@ -42,8 +48,9 @@ object KidsFortressPolicy {
     fun canEnableKids(isGuest: Boolean): Boolean = !isGuest
 
     /**
-     * Parent Dashboard is phone-only and only when the active session is a
-     * non-kids, non-guest adult (so parents aren't configuring fortress from inside it).
+     * Parent Dashboard when the active session is a non-kids, non-guest adult
+     * (so parents aren't configuring fortress from inside it). Eligible on phone
+     * and TV settings hubs.
      */
     fun parentDashboardEligible(
         isKidsActive: Boolean,
@@ -82,11 +89,19 @@ object KidsFortressPolicy {
 
     fun clampMaxAge(age: Int): Int = age.coerceIn(MIN_MAX_AGE, MAX_MAX_AGE)
 
-    fun bedtimeApplies(enabled: Boolean, isKids: Boolean): Boolean = enabled && isKids
+    /**
+     * Bedtime when enabled on a kids **or guest** profile (guest shells can carry
+     * the same bedtime prefs when parents enable them on that profile).
+     */
+    fun bedtimeApplies(
+        enabled: Boolean,
+        isKids: Boolean,
+        isGuest: Boolean = false,
+    ): Boolean = enabled && (isKids || isGuest)
 
     /**
-     * Leaving a kids (or ceiling) session requires a PIN when household or
-     * profile PIN exists.
+     * Leaving a kids (or ceiling / bedtime-locked) session requires a PIN when
+     * household or profile PIN exists.
      */
     fun exitChallengeRequired(
         leavingRestricted: Boolean,

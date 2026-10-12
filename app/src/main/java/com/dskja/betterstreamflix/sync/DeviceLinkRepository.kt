@@ -132,8 +132,9 @@ object DeviceLinkRepository {
         }
     }
 
+    /** Kids and Guest cannot mint/claim device links (KF-012 / KF-027). */
     private fun rejectKids() {
-        if (ProfileManager.isKidsActive()) {
+        if (ProfileManager.isKidsActive() || ProfileManager.isGuestActive()) {
             throw KidsCloudAuthException()
         }
     }
