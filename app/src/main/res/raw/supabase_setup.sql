@@ -2974,11 +2974,15 @@ create table if not exists public.device_link_codes (
     host_user_id uuid not null references auth.users(id) on delete cascade,
     host_email text not null,
     claimed_at timestamptz,
+    looked_up_at timestamptz,
     expires_at timestamptz not null,
     created_at timestamptz not null default now(),
     constraint device_link_codes_code_chk check (short_code ~ '^[A-Z2-9]{6}$'),
     constraint device_link_codes_email_chk check (char_length(host_email) between 3 and 320)
 );
+
+alter table public.device_link_codes
+    add column if not exists looked_up_at timestamptz;
 
 create index if not exists device_link_codes_host_idx
     on public.device_link_codes (host_user_id);
@@ -3020,21 +3024,28 @@ begin
     if cleaned !~ '^[A-Z2-9]{6}$' then
         return null;
     end if;
-    select * into row_data
-    from public.device_link_codes c
+    -- SC-004: burn on first successful email reveal.
+    update public.device_link_codes c
+    set looked_up_at = now()
     where c.short_code = cleaned
       and c.expires_at >= now()
-      and c.claimed_at is null;
+      and c.claimed_at is null
+      and c.looked_up_at is null
+    returning * into row_data;
     if row_data.id is null then
         return null;
     end if;
     return json_build_object(
         'short_code', row_data.short_code,
         'email', row_data.host_email,
-        'expires_at', row_data.expires_at
+        'expires_at', row_data.expires_at,
+        'looked_up_at', row_data.looked_up_at
     );
 end;
 $$;
+
+comment on function public.get_device_link_by_code(text) is
+    'Returns host email once; sets looked_up_at so the code cannot be re-probed (SC-004).';
 
 create or replace function public.claim_device_link_code(p_code text)
 returns json

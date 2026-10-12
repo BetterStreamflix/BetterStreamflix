@@ -15,9 +15,10 @@ import kotlin.math.max
  * Reads SharedPreferences directly so [wrap] works in attachBaseContext before
  * [UserPreferences.setup].
  *
- * App [HIGH_CONTRAST] is **UI chrome** (theme overlay), not Subtitle Studio captions.
- * It does not auto-apply [com.dskja.betterstreamflix.player.SubtitleStudio.HIGH_CONTRAST]
- * — users pick caption presets separately to avoid surprising caption changes (ST-009).
+ * Enabling app [HIGH_CONTRAST] also applies
+ * [com.dskja.betterstreamflix.player.SubtitleStudio.HIGH_CONTRAST] captions (ST-009)
+ * via [syncSubtitleStudioForHighContrast]. Turning HIGH_CONTRAST off leaves captions
+ * as-is so user tweaks are not wiped.
  */
 object AccessibilityPreferences {
     const val LARGE_TEXT_SCALE = 1.3f
@@ -46,6 +47,20 @@ object AccessibilityPreferences {
 
     fun isHighContrastActive(): Boolean =
         runCatching { UserPreferences.highContrast }.getOrDefault(false)
+
+    /**
+     * ST-009: when the accessibility High contrast toggle turns **on**, apply the
+     * Subtitle Studio high-contrast caption preset so UI chrome and captions align.
+     * No-op when [enabled] is false (preserves any caption customizations).
+     */
+    fun syncSubtitleStudioForHighContrast(enabled: Boolean) {
+        if (!enabled) return
+        runCatching {
+            com.dskja.betterstreamflix.player.SubtitleStudio.applyPreset(
+                com.dskja.betterstreamflix.player.SubtitleStudio.HIGH_CONTRAST,
+            )
+        }
+    }
 
     @StyleRes
     fun highContrastOverlay(mobile: Boolean): Int =

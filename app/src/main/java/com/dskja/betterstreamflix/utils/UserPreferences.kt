@@ -1970,6 +1970,43 @@ object UserPreferences {
         }
     }
 
+    /**
+     * Provider names that have any favorite layout prefs for the active profile
+     * (sort mode, item order, or category order) — used by profile transfer so
+     * layout exports are not limited to watchlist providers (EI-010).
+     */
+    fun providersWithFavoriteLayout(): Set<String> {
+        if (!::prefs.isInitialized) return emptySet()
+        val profileId = ProfileManager.activeProfileId
+        val profileSuffix =
+            if (profileId == ProfileManager.DEFAULT_PROFILE_ID) "" else "_p_$profileId"
+        val out = linkedSetOf<String>()
+        for (key in prefs.all.keys) {
+            val bare = when {
+                profileSuffix.isEmpty() -> {
+                    if ("_p_" in key) continue
+                    key
+                }
+                key.endsWith(profileSuffix) -> key.removeSuffix(profileSuffix)
+                else -> continue
+            }
+            when {
+                bare.startsWith("FAVORITE_SORT_MODE_") ->
+                    out += bare.removePrefix("FAVORITE_SORT_MODE_")
+                bare.startsWith("FAVORITE_CATEGORY_ORDER_") ->
+                    out += bare.removePrefix("FAVORITE_CATEGORY_ORDER_")
+                bare.startsWith("FAVORITE_ITEM_ORDER_") -> {
+                    val rest = bare.removePrefix("FAVORITE_ITEM_ORDER_")
+                    when {
+                        rest.endsWith("_movies") -> out += rest.removeSuffix("_movies")
+                        rest.endsWith("_tv_shows") -> out += rest.removeSuffix("_tv_shows")
+                    }
+                }
+            }
+        }
+        return out.filter { it.isNotBlank() }.toCollection(linkedSetOf())
+    }
+
     private fun profileScopedBoolean(key: Key): Boolean? =
         readBoolean(ProfileManager.scopedPrefKey(key.name))
 

@@ -73,6 +73,7 @@ import com.dskja.betterstreamflix.providers.SerienStreamProvider
 import com.dskja.betterstreamflix.providers.StreamingCommunityProvider
 import com.dskja.betterstreamflix.providers.TmdbProvider
 import com.dskja.betterstreamflix.player.SerienStreamBypassHelper
+import com.dskja.betterstreamflix.utils.AccessibilityPreferences
 import com.dskja.betterstreamflix.utils.BypassWebSocketEndpointHelper
 import com.dskja.betterstreamflix.utils.AppLanguageManager
 import com.dskja.betterstreamflix.utils.CrashReporter
@@ -1442,7 +1443,10 @@ class SettingsTvFragment : LeanbackPreferenceFragmentCompat() {
         findPreference<SwitchPreference>("HIGH_CONTRAST")?.apply {
             isChecked = UserPreferences.highContrast
             setOnPreferenceChangeListener { _, newValue ->
-                UserPreferences.highContrast = newValue as Boolean
+                val enabled = newValue as Boolean
+                UserPreferences.highContrast = enabled
+                // ST-009: align Subtitle Studio captions with accessibility High contrast.
+                AccessibilityPreferences.syncSubtitleStudioForHighContrast(enabled)
                 restartMainTvWithoutAnimation(openSettingsScreen = "screen_appearance")
                 true
             }

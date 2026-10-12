@@ -14,8 +14,9 @@ import kotlinx.coroutines.withContext
 /**
  * Builds a profile transfer payload from the active profile.
  *
- * Provider favorite layout (sort/order) is snapshotted only for providers present in
- * the exported watchlist — other providers' shelf layout is intentionally omitted (EI-010).
+ * Provider favorite layout (sort/order) is snapshotted for every provider that has
+ * layout prefs on the active profile, plus providers present in the exported
+ * watchlist (EI-010).
  */
 object ProfileTransferExporter {
 
@@ -35,7 +36,12 @@ object ProfileTransferExporter {
         // Silent truncate — see ProfileTransferPayload.MAX_FILE_* caps.
         }.take(ProfileTransferPayload.MAX_FILE_WATCHLIST)
 
-        val providers = watchlist.map { it.provider }.filter { it.isNotBlank() }.distinct()
+        // EI-010: include layout for all providers with stored sort/order, not only
+        // those that still appear in the exported watchlist slice.
+        val providers = (
+            watchlist.map { it.provider }.filter { it.isNotBlank() } +
+                UserPreferences.providersWithFavoriteLayout()
+            ).distinct()
         val settings = snapshotSettings(app, providers)
         val notes = EpisodeNotesStore.listForActiveProfile(app)
             .take(ProfileTransferPayload.MAX_FILE_NOTES)
