@@ -81,8 +81,12 @@ class CategoryViewHolder(
     companion object {
         /** Cap Featured dots so ll_dots_indicator never balloons on long shelves. */
         const val MAX_VISIBLE_FEATURED_DOTS = 7
-        /** First-pass nested shelf bind size — rest fills in on the next frame. */
-        private const val TV_SHELF_INITIAL_BIND = 8
+        /** First-pass nested shelf bind size — rest fills in chunked posts. */
+        private const val TV_SHELF_INITIAL_BIND = 4
+        /** Extra posters per subsequent frame (keeps CreateViewHolder off one long frame). */
+        private const val TV_SHELF_BIND_CHUNK = 4
+        /** Nested prefetch during parent VerticalGridView measure. */
+        private const val TV_SHELF_PREFETCH = 2
     }
 
     /** Stop auto-advance + page callbacks so recycled holders cannot touch a torn-down NavHost. */
@@ -528,11 +532,13 @@ class CategoryViewHolder(
             (context.toActivity()?.getCurrentFragment() as? HomeTvFragment)?.let { home ->
                 setRecycledViewPool(home.shelfPool)
                 itemAnimator = null
-                setItemViewCacheSize(12)
+                setItemViewCacheSize(6)
                 // Prefetch fewer nested posters during parent measure (ANR on CreateViewHolder).
                 (layoutManager as? androidx.recyclerview.widget.LinearLayoutManager)
-                    ?.initialPrefetchItemCount = 4
+                    ?.initialPrefetchItemCount = TV_SHELF_PREFETCH
             }
+            // Row height is fixed above — stop nested wrap_content remeasure storms.
+            setHasFixedSize(true)
             val categoryAdapter = (adapter as? AppAdapter) ?: AppAdapter().also { adapter = it }
             categoryAdapter.apply {
                 this.onMovieClickListener = onMovieClick
@@ -540,25 +546,49 @@ class CategoryViewHolder(
                 this.onMovieLongClickListener = onMovieLongClick
                 this.onTvShowLongClickListener = onTvShowLongClick
             }
-            // Stagger nested submitList so VerticalGridView measure is not blocked by
+            // Chunk nested submitList so VerticalGridView measure is not blocked by
             // inflating an entire shelf of posters in one frame (BETTERSTREAMFLIX-3S/20).
             val fullList = category.list
-            val initial = if (fullList.size > TV_SHELF_INITIAL_BIND) {
-                fullList.take(TV_SHELF_INITIAL_BIND)
-            } else {
-                fullList
-            }
-            val bindToken = Any()
-            setTag(R.id.tv_shelf_bind_token_tag, bindToken)
-            categoryAdapter.submitList(initial)
-            if (fullList.size > TV_SHELF_INITIAL_BIND) {
-                post {
-                    if (getTag(R.id.tv_shelf_bind_token_tag) !== bindToken) return@post
-                    if (!isAttachedToWindow) return@post
-                    categoryAdapter.submitList(fullList)
+            val listSig = buildString {
+                append(fullList.size)
+                append('|')
+                fullList.take(3).forEach { item ->
+                    append(item.javaClass.simpleName)
+                    append(':')
+                    append(
+                        when (item) {
+                            is com.dskja.betterstreamflix.models.Movie -> item.id
+                            is com.dskja.betterstreamflix.models.TvShow -> item.id
+                            is com.dskja.betterstreamflix.models.Episode -> item.id
+                            else -> item.hashCode()
+                        },
+                    )
+                    append(';')
                 }
             }
-            setItemSpacing(category.itemSpacing)
+            if (getTag(R.id.tv_shelf_list_sig_tag) == listSig &&
+                categoryAdapter.itemCount == fullList.size
+            ) {
+                // Same shelf content already fully bound — skip inflate storm on rebind.
+                setItemSpacing(category.itemSpacing)
+            } else {
+                setTag(R.id.tv_shelf_list_sig_tag, listSig)
+                val bindToken = Any()
+                setTag(R.id.tv_shelf_bind_token_tag, bindToken)
+                fun submitPrefix(count: Int) {
+                    if (getTag(R.id.tv_shelf_bind_token_tag) !== bindToken) return
+                    if (!isAttachedToWindow) return
+                    val n = count.coerceAtMost(fullList.size)
+                    categoryAdapter.submitList(if (n >= fullList.size) fullList else fullList.take(n))
+                    if (n < fullList.size) {
+                        post {
+                            submitPrefix(n + TV_SHELF_BIND_CHUNK)
+                        }
+                    }
+                }
+                submitPrefix(TV_SHELF_INITIAL_BIND)
+                setItemSpacing(category.itemSpacing)
+            }
 
             isFocusable = true
             descendantFocusability = ViewGroup.FOCUS_AFTER_DESCENDANTS

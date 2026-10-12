@@ -21,6 +21,7 @@
     <item name="tv_shelf_nav_focus_listener_tag" type="id" />
     <item name="tv_shelf_row_height_tag" type="id" />
     <item name="tv_shelf_bind_token_tag" type="id" />
+    <item name="tv_shelf_list_sig_tag" type="id" />
     <!-- Clean Exit: Home tile / Featured CTA key for exact focus restore after player. -->
     <item name="home_clean_exit_focus_key" type="id" />
     <item name="exp_search_recent_queries_tag" type="id" />
