@@ -22,6 +22,11 @@ import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
+/**
+ * Realtime for [TABLE] (`user_media_state`) only.
+ * Notes/looks intentionally stay poll/pull via [CloudNotesLooksSync] (SC-002).
+ * On channel failure, falls back to [CloudSyncScheduler.enqueue] (SC-015).
+ */
 object CloudRealtimeSync {
     private const val TAG = "CloudRealtime"
     private const val TABLE = "user_media_state"

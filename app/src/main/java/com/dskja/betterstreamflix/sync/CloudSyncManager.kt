@@ -151,6 +151,7 @@ object CloudSyncManager {
             this.email = email
             this.password = password
         }
+        // SC-013: email-confirm flows may leave session null — UI treats false as needs confirm.
         val sessionUser = client.auth.currentSessionOrNull()?.user ?: return false
         val userId = sessionUser.id
         rejectIfLinkedElsewhere(appContext, profileId, userId)
@@ -272,8 +273,9 @@ object CloudSyncManager {
             if (uploadable.isNotEmpty()) {
                 upsert(client, uploadable, onProgress)
             }
-            // Acknowledge stale mutations too. acknowledge() keeps any newer
-            // version that was queued while this upload was in progress.
+            // SC-008: acknowledge losers too (LWW) — no conflict UI; stale offline
+            // edits drop from the queue. acknowledge() still keeps newer versions
+            // queued while this upload was in progress.
             CloudMutationStore.acknowledge(context, pending, profileId)
         }
         if (!ProfileManager.isKidsActive()) {
@@ -360,8 +362,7 @@ object CloudSyncManager {
                     collectLocalState(context, userId, profileId)
                 }
                 if (local.isNotEmpty()) {
-                    // Do not silently destroy local state when reconnecting a
-                    // device to a different cloud account.
+                    // SC-009: hard stop + sign-out when local data cannot merge — user must resolve.
                     try {
                         client.auth.signOut()
                     } catch (_: Throwable) {

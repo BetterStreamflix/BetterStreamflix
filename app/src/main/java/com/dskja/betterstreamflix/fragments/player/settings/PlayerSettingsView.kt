@@ -450,7 +450,7 @@ abstract class PlayerSettingsView @JvmOverloads constructor(
         val preview = subtitleStudioPreview ?: return
         if (SubtitleStudio.isStudioSettingName(setting.name)) {
             subtitleView?.visibility = android.view.View.INVISIBLE
-            val sample = context.getString(R.string.subtitle_studio_preview_sample)
+            val sample = SubtitleStudio.previewSampleText(context)
             SubtitleStudio.showPreview(preview, sample)
         } else {
             subtitleView?.visibility = android.view.View.VISIBLE
@@ -463,7 +463,7 @@ abstract class PlayerSettingsView @JvmOverloads constructor(
         if (preview.visibility != android.view.View.VISIBLE) return
         SubtitleStudio.showPreview(
             preview,
-            context.getString(R.string.subtitle_studio_preview_sample),
+            SubtitleStudio.previewSampleText(context),
         )
     }
 

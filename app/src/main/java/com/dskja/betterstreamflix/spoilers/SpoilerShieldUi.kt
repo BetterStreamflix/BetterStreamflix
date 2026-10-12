@@ -17,6 +17,10 @@ import com.google.android.material.dialog.MaterialAlertDialogBuilder
 
 /**
  * Unlock chooser for Spoiler Shield — adult confirm, Kids parental PIN.
+ *
+ * Adults with the opt-in toggle need only a confirm dialog (no profile PIN).
+ * Intentional for household adults; Kids always require parental/profile PIN (SS-013).
+ * Not a substitute for Kids Fortress on a shared adult profile.
  */
 object SpoilerShieldUi {
 

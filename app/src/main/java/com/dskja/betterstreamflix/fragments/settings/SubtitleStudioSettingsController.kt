@@ -19,7 +19,7 @@ import com.dskja.betterstreamflix.utils.setRgb
  */
 object SubtitleStudioSettingsController {
 
-    private val sizeOptions = listOf(0.75f, 1f, 1.25f, 1.5f, 2f)
+    private val sizeOptions = listOf(0.5f, 0.75f, 1f, 1.25f, 1.5f, 2f, 3f)
     private val backgroundOptions = listOf(0, 128, 191, 255)
 
     fun bind(fragment: PreferenceFragmentCompat) {
@@ -132,7 +132,7 @@ object SubtitleStudioSettingsController {
     }
 
     private fun closestSizeValue(size: Float): String {
-        val options = listOf(0.75f, 1f, 1.25f, 1.5f, 2f)
+        val options = sizeOptions
         val best = options.minByOrNull { kotlin.math.abs(it - size) } ?: 1f
         return if (best % 1f == 0f) best.toInt().toString() else best.toString()
     }
@@ -146,6 +146,9 @@ object SubtitleStudioSettingsController {
         Color.YELLOW.getRgb() -> "yellow"
         Color.CYAN.getRgb() -> "cyan"
         Color.GREEN.getRgb() -> "green"
+        Color.BLUE.getRgb() -> "blue"
+        Color.MAGENTA.getRgb() -> "magenta"
+        Color.RED.getRgb() -> "red"
         Color.BLACK.getRgb() -> "black"
         else -> "white"
     }
@@ -155,6 +158,9 @@ object SubtitleStudioSettingsController {
         "yellow" -> Color.YELLOW
         "cyan" -> Color.CYAN
         "green" -> Color.GREEN
+        "blue" -> Color.BLUE
+        "magenta" -> Color.MAGENTA
+        "red" -> Color.RED
         "black" -> Color.BLACK
         else -> null
     }

@@ -4,6 +4,10 @@ package com.dskja.betterstreamflix.profiles
  * Pure rules for the temporary Guest profile (Batch 7 §1).
  * Wall-clock TTL from [UserProfile.createdAtMillis]; Continue/History
  * are wiped when the guest expires (and the temp profile is removed).
+ *
+ * Guest has **no exit PIN** (GP-005): leaving Guest does not require a challenge;
+ * parental exit PIN only applies when *leaving* a restricted (kids/ceiling) profile
+ * *into* Guest.
  */
 object GuestProfilePolicy {
 

@@ -1012,7 +1012,8 @@ class PlayerSettingsMobileView @JvmOverloads constructor(
                     }
 
                     is Settings.Subtitle.Style -> when (item) {
-                        is Settings.Subtitle.Style.StudioPreset -> View.GONE
+                        // ST-011: show all StudioPreset rows (checkmark still selected-only).
+                        is Settings.Subtitle.Style.StudioPreset -> View.VISIBLE
                         Settings.Subtitle.Style.ResetStyle -> View.GONE
                         else -> View.VISIBLE
                     }

@@ -18,6 +18,10 @@ import java.util.concurrent.ConcurrentHashMap
 /**
  * Spoiler Shield — blur episode titles/thumbs until unlock.
  * Always on for Kids profiles; opt-in for adult profiles.
+ *
+ * Unlock state is **session-only** (in-memory): process death, profile switch, or
+ * [clearSession] re-shields. Intentional — spoilers should not persist across restarts
+ * on a shared device (SS-007).
  */
 object SpoilerShield {
 

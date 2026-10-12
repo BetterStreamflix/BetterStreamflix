@@ -14,6 +14,10 @@ import kotlinx.coroutines.withContext
 /**
  * Notes + Looks cloud sync: collect / flush / merge / apply with local-primary LWW.
  * Tie → local (pending local wins ties).
+ *
+ * **No Realtime subscription** (SC-002): unlike [CloudRealtimeSync] (`user_media_state`),
+ * notes and looks sync only on poll/pull — `syncNow`, `flushPending`, login merge, and
+ * WorkManager. Multi-device lag until the next sync is expected.
  */
 object CloudNotesLooksSync {
     private const val NOTES_TABLE = "user_episode_notes"
@@ -263,6 +267,7 @@ object CloudNotesLooksSync {
                 continue
             }
             val localRecord = EpisodeNotesStore.getRecord(context, note.episodeId)
+            // SC-012: local-clock branch overlaps noteLocalWins; both keep local-primary LWW.
             if (localRecord != null &&
                 noteLocalWins(localRecord.updatedAtMillis, note.clientUpdatedAtMillis) &&
                 localPending == null
@@ -305,6 +310,7 @@ object CloudNotesLooksSync {
         UserPreferences.applyRemoteSelectedTheme(clamped, remote.clientUpdatedAtMillis)
     }
 
+    /** SC-016: no client-side user_id filter — RLS scopes rows to the auth session. */
     private suspend fun fetchNotes(client: SupabaseClient): List<RemoteEpisodeNote> =
         CloudSyncManager.collectPages(FETCH_PAGE_SIZE) { from, to ->
             client.from(NOTES_TABLE).select {

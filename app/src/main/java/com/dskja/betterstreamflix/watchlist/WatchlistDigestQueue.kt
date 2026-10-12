@@ -76,22 +76,27 @@ object WatchlistDigestQueue {
                 UserPreferences.setCurrentProviderForPlayback(it)
             }
         }
+        // SS-011: shield episode titles on digests → player handoff.
+        val epTitle = com.dskja.betterstreamflix.spoilers.SpoilerShield.displayTitle(
+            episode,
+            episodeNumberFallback = { context.getString(R.string.episode_number, it) },
+        )
         val subtitle = episode.season?.takeIf { it.number != 0 }?.let { season ->
             context.getString(
                 R.string.player_subtitle_tv_show,
                 season.number,
                 episode.number,
-                episode.title ?: context.getString(R.string.episode_number, episode.number),
+                epTitle,
             )
         } ?: context.getString(
             R.string.player_subtitle_tv_show_episode_only,
             episode.number,
-            episode.title ?: context.getString(R.string.episode_number, episode.number),
+            epTitle,
         )
         val videoType = Video.Type.Episode(
             id = episode.id,
             number = episode.number,
-            title = episode.title,
+            title = epTitle,
             poster = episode.poster,
             overview = episode.overview,
             tvShow = Video.Type.Episode.TvShow(
