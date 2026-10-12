@@ -410,12 +410,14 @@
     -->
     <style name="AppTheme.Tv" parent="Theme.Leanback">
         <item name="app_background_color">#181818</item>
-        <item name="preferenceTheme">@style/PreferenceThemeOverlayLeanback</item>
+        <item name="preferenceTheme">@style/PreferenceThemeOverlayLeanbackSafe</item>
         <item name="alertDialogTheme">@style/Theme.AppCompat.Dialog.Alert</item>
         <item name="android:alertDialogTheme">@style/Theme.AppCompat.Dialog.Alert</item>
         <item name="dialogTheme">@style/Theme.AppCompat.Dialog</item>
         <!-- Cast MediaRouteChooserDialog requires an AppCompat theme (BETTERSTREAMFLIX-26). -->
         <item name="mediaRouteTheme">@style/Theme.AppCompat</item>
+        <!-- BETTERSTREAMFLIX-27: SwitchCompat needs AppCompat switchStyle under Leanback. -->
+        <item name="switchStyle">@style/Widget.BetterStreamflix.Switch.LeanbackSafe</item>
         <!-- Framework ripples — available without AppCompat parent. -->
         <item name="selectableItemBackground">?android:attr/selectableItemBackground</item>
         <item name="selectableItemBackgroundBorderless">?android:attr/selectableItemBackgroundBorderless</item>
@@ -481,7 +483,7 @@
 
     <style name="AppTheme.SunsetCinema" parent="AppTheme.Tv">
         <item name="app_background_color">#201410</item>
-        <item name="preferenceTheme">@style/PreferenceThemeOverlayLeanback</item>
+        <item name="preferenceTheme">@style/PreferenceThemeOverlayLeanbackSafe</item>
         <item name="alertDialogTheme">@style/Theme.AppCompat.Dialog.Alert</item>
         <item name="colorAccent">#F39A5B</item>
         <item name="colorControlActivated">#F39A5B</item>
@@ -501,7 +503,7 @@
 
     <style name="AppTheme.SteelBlue" parent="AppTheme.Tv">
         <item name="app_background_color">#141C25</item>
-        <item name="preferenceTheme">@style/PreferenceThemeOverlayLeanback</item>
+        <item name="preferenceTheme">@style/PreferenceThemeOverlayLeanbackSafe</item>
         <item name="alertDialogTheme">@style/Theme.AppCompat.Dialog.Alert</item>
         <item name="colorAccent">#7DB3E8</item>
         <item name="colorControlActivated">#7DB3E8</item>
@@ -521,7 +523,7 @@
 
     <style name="AppTheme.ForestNight" parent="AppTheme.Tv">
         <item name="app_background_color">#101816</item>
-        <item name="preferenceTheme">@style/PreferenceThemeOverlayLeanback</item>
+        <item name="preferenceTheme">@style/PreferenceThemeOverlayLeanbackSafe</item>
         <item name="alertDialogTheme">@style/Theme.AppCompat.Dialog.Alert</item>
         <item name="colorAccent">#65D7C2</item>
         <item name="colorControlActivated">#65D7C2</item>
@@ -541,7 +543,7 @@
 
     <style name="AppTheme.CrimsonNoir" parent="AppTheme.Tv">
         <item name="app_background_color">#1C1014</item>
-        <item name="preferenceTheme">@style/PreferenceThemeOverlayLeanback</item>
+        <item name="preferenceTheme">@style/PreferenceThemeOverlayLeanbackSafe</item>
         <item name="alertDialogTheme">@style/Theme.AppCompat.Dialog.Alert</item>
         <item name="colorAccent">#D86A7A</item>
         <item name="colorControlActivated">#D86A7A</item>
@@ -561,7 +563,7 @@
 
     <style name="AppTheme.MidnightViolet" parent="AppTheme.Tv">
         <item name="app_background_color">#151523</item>
-        <item name="preferenceTheme">@style/PreferenceThemeOverlayLeanback</item>
+        <item name="preferenceTheme">@style/PreferenceThemeOverlayLeanbackSafe</item>
         <item name="alertDialogTheme">@style/Theme.AppCompat.Dialog.Alert</item>
         <item name="colorAccent">#AFA3FF</item>
         <item name="colorControlActivated">#AFA3FF</item>
@@ -581,7 +583,7 @@
 
     <style name="AppTheme.NordFrost" parent="AppTheme.Tv">
         <item name="app_background_color">#182029</item>
-        <item name="preferenceTheme">@style/PreferenceThemeOverlayLeanback</item>
+        <item name="preferenceTheme">@style/PreferenceThemeOverlayLeanbackSafe</item>
         <item name="alertDialogTheme">@style/Theme.AppCompat.Dialog.Alert</item>
         <item name="colorAccent">#8ED0E8</item>
         <item name="colorControlActivated">#8ED0E8</item>
@@ -601,7 +603,7 @@
 
     <style name="AppTheme.EmeraldLuxe" parent="AppTheme.Tv">
         <item name="app_background_color">#11201B</item>
-        <item name="preferenceTheme">@style/PreferenceThemeOverlayLeanback</item>
+        <item name="preferenceTheme">@style/PreferenceThemeOverlayLeanbackSafe</item>
         <item name="alertDialogTheme">@style/Theme.AppCompat.Dialog.Alert</item>
         <item name="colorAccent">#7ED6A3</item>
         <item name="colorControlActivated">#7ED6A3</item>
@@ -621,7 +623,7 @@
 
     <style name="AppTheme.RetroNeon" parent="AppTheme.Tv">
         <item name="app_background_color">#16161D</item>
-        <item name="preferenceTheme">@style/PreferenceThemeOverlayLeanback</item>
+        <item name="preferenceTheme">@style/PreferenceThemeOverlayLeanbackSafe</item>
         <item name="alertDialogTheme">@style/Theme.AppCompat.Dialog.Alert</item>
         <item name="colorAccent">#4DE0D7</item>
         <item name="colorControlActivated">#4DE0D7</item>
@@ -641,7 +643,7 @@
 
     <style name="AppTheme.CinemaInk" parent="AppTheme.Tv">
         <item name="app_background_color">@color/cinema_ink</item>
-        <item name="preferenceTheme">@style/PreferenceThemeOverlayLeanback</item>
+        <item name="preferenceTheme">@style/PreferenceThemeOverlayLeanbackSafe</item>
         <item name="alertDialogTheme">@style/Theme.AppCompat.Dialog.Alert</item>
         <item name="colorAccent">@color/cinema_text</item>
         <item name="colorControlActivated">@color/cinema_text</item>
@@ -661,7 +663,7 @@
 
     <style name="AppTheme.CinemaInkLight" parent="AppTheme.Tv">
         <item name="app_background_color">@color/cinema_ink_light</item>
-        <item name="preferenceTheme">@style/PreferenceThemeOverlayLeanback</item>
+        <item name="preferenceTheme">@style/PreferenceThemeOverlayLeanbackSafe</item>
         <item name="alertDialogTheme">@style/Theme.AppCompat.Light.Dialog.Alert</item>
         <item name="colorAccent">@color/cinema_ink_light_accent</item>
         <item name="colorControlActivated">@color/cinema_ink_light_accent</item>
@@ -681,7 +683,7 @@
 
     <style name="AppTheme.KidsBright" parent="AppTheme.Tv">
         <item name="app_background_color">#243B63</item>
-        <item name="preferenceTheme">@style/PreferenceThemeOverlayLeanback</item>
+        <item name="preferenceTheme">@style/PreferenceThemeOverlayLeanbackSafe</item>
         <item name="alertDialogTheme">@style/Theme.AppCompat.Dialog.Alert</item>
         <item name="colorAccent">#FFB347</item>
         <item name="colorControlActivated">#FFB347</item>

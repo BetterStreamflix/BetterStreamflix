@@ -45,6 +45,7 @@ import kotlinx.coroutines.flow.mapLatest
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 class DownloadsViewModel(
     private val appContext: Context,
@@ -66,11 +67,14 @@ class DownloadsViewModel(
     val selectedViewMode: StateFlow<DownloadsViewMode> = viewMode.asStateFlow()
     val librarySearchQuery: StateFlow<String> = libraryQuery.asStateFlow()
 
-    val storageLabel: StateFlow<String> = MutableStateFlow(
-        DownloadStats.storageSummary(appContext),
-    )
+    // Avoid walkTopDown / SimpleCache on the main thread during ViewModel init.
+    val storageLabel: StateFlow<String> = MutableStateFlow("")
 
-    val lowSpace: StateFlow<Boolean> = MutableStateFlow(DownloadStorage.isLowSpace(appContext))
+    val lowSpace: StateFlow<Boolean> = MutableStateFlow(false)
+
+    init {
+        refreshStorage()
+    }
 
     private val wifiOnlyPreferenceTick = MutableStateFlow(0)
     private val studioPrefsTick = MutableStateFlow(0)
@@ -331,12 +335,14 @@ class DownloadsViewModel(
     /** Poll Media3 while the Downloads screen is resumed so progress/speed stay live. */
     fun startLiveProgress() {
         if (progressJob?.isActive == true) return
-        // Warm the download manager / listener in this process.
-        StreamflixDownloadManager.get(appContext)
         reconcileOrphanedCompleted()
         progressJob = viewModelScope.launch {
+            // Warm SimpleCache / OpenHelper off the main thread (ANR / File IO).
+            runCatching { withContext(Dispatchers.IO) { StreamflixDownloadManager.get(appContext) } }
             while (isActive) {
-                runCatching { DownloadEventBridge.syncAllActive(appContext) }
+                runCatching {
+                    withContext(Dispatchers.IO) { DownloadEventBridge.syncAllActive(appContext) }
+                }
                 refreshStorage()
                 delay(PROGRESS_POLL_MS)
             }
@@ -356,8 +362,16 @@ class DownloadsViewModel(
     }
 
     fun refreshStorage() {
-        (storageLabel as MutableStateFlow).value = DownloadStats.storageSummary(appContext)
-        (lowSpace as MutableStateFlow).value = DownloadStorage.isLowSpace(appContext)
+        viewModelScope.launch {
+            val summary = withContext(Dispatchers.IO) {
+                DownloadStats.storageSummary(appContext)
+            }
+            val low = withContext(Dispatchers.IO) {
+                DownloadStorage.isLowSpace(appContext)
+            }
+            (storageLabel as MutableStateFlow).value = summary
+            (lowSpace as MutableStateFlow).value = low
+        }
     }
 
     fun pause(id: String) = viewModelScope.launch { repo().pause(id) }

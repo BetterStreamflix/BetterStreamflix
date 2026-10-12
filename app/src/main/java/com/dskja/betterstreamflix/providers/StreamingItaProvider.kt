@@ -111,16 +111,11 @@ object StreamingItaProvider : Provider, ProviderConfigUrl {
 						val img = el.selectFirst(".image img")?.attr("src")
 						val title = el.selectFirst(".data h3.title, .data h3 a, h3.title")?.text()
 							?: el.selectFirst("img")?.attr("alt") ?: ""
-						
-						val tmdbRating = when {
-							href.contains("/film/") -> TmdbUtils.getMovie(title, language = language)?.rating
-							href.contains("/tv/") -> TmdbUtils.getTvShow(title, language = language)?.rating
-							else -> null
-						}
 
+						// Home slider: no per-item TMDb rating fetch (N+1 hotspot).
 						when {
-							href.contains("/film/") -> Movie(id = href, title = title, poster = img, banner = img, rating = tmdbRating)
-							href.contains("/tv/") -> TvShow(id = href, title = title, poster = img, banner = img, rating = tmdbRating)
+							href.contains("/film/") -> Movie(id = href, title = title, poster = img, banner = img)
+							href.contains("/tv/") -> TvShow(id = href, title = title, poster = img, banner = img)
 							else -> null
 						}
 					}

@@ -73,6 +73,10 @@
 -keep class com.dskja.betterstreamflix.utils.HomeCacheStore$* { *; }
 -keep class com.dskja.betterstreamflix.utils.SubtitleFileCache$* { *; }
 
+# DnsResolver used from workers/providers (BETTERSTREAMFLIX-1Z NCDFE hardening)
+-keep class com.dskja.betterstreamflix.utils.DnsResolver { *; }
+-keepclassmembers class com.dskja.betterstreamflix.utils.DnsResolver { *; }
+
 # Plugin reflection API (R8-H2)
 -keep class com.dskja.betterstreamflix.platform.plugins.** { *; }
 

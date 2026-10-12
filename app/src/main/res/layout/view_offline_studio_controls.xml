@@ -50,15 +50,21 @@
                 android:textSize="16sp"
                 android:textStyle="bold" />
 
-            <com.google.android.material.materialswitch.MaterialSwitch
+            <!-- CheckBox on TV-safe path: MaterialSwitch NPEs under Leanback themes. -->
+            <CheckBox
                 android:id="@+id/switch_offline_studio_smart"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="8dp"
+                android:buttonTint="#E6FFFFFF"
                 android:contentDescription="@string/offline_studio_smart_toggle"
+                android:focusable="true"
+                android:focusableInTouchMode="true"
                 android:minHeight="48dp"
                 android:text="@string/offline_studio_smart_toggle"
                 android:textColor="#E6FFFFFF"
+                android:textOff="@string/offline_studio_smart_toggle"
+                android:textOn="@string/offline_studio_smart_toggle"
                 android:textSize="14sp" />
 
             <TextView
@@ -173,15 +179,20 @@
                     android:textSize="18sp" />
             </LinearLayout>
 
-            <com.google.android.material.materialswitch.MaterialSwitch
+            <CheckBox
                 android:id="@+id/switch_offline_studio_auto_delete"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="8dp"
+                android:buttonTint="#E6FFFFFF"
                 android:contentDescription="@string/offline_studio_auto_delete"
+                android:focusable="true"
+                android:focusableInTouchMode="true"
                 android:minHeight="48dp"
                 android:text="@string/offline_studio_auto_delete"
                 android:textColor="#E6FFFFFF"
+                android:textOff="@string/offline_studio_auto_delete"
+                android:textOn="@string/offline_studio_auto_delete"
                 android:textSize="14sp" />
         </LinearLayout>
 
@@ -213,15 +224,20 @@
                 android:textSize="13sp"
                 tools:text="Soft limit 20 GB · up to 2 parallel" />
 
-            <com.google.android.material.materialswitch.MaterialSwitch
+            <CheckBox
                 android:id="@+id/switch_offline_studio_wifi"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="8dp"
+                android:buttonTint="#E6FFFFFF"
                 android:contentDescription="@string/offline_studio_wifi_toggle"
+                android:focusable="true"
+                android:focusableInTouchMode="true"
                 android:minHeight="48dp"
                 android:text="@string/offline_studio_wifi_toggle"
                 android:textColor="#E6FFFFFF"
+                android:textOff="@string/offline_studio_wifi_toggle"
+                android:textOn="@string/offline_studio_wifi_toggle"
                 android:textSize="14sp" />
 
             <TextView

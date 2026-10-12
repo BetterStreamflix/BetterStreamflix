@@ -197,9 +197,22 @@
         <item name="cornerSize">50%</item>
     </style>
 
+    <!-- SwitchCompat under Leanback: null textOn/textOff → NPE in StaticLayout
+         (BETTERSTREAMFLIX-27). Force non-null labels and hide switch text. -->
+    <style name="Widget.BetterStreamflix.Switch.LeanbackSafe" parent="Widget.AppCompat.CompoundButton.Switch">
+        <item name="showText">false</item>
+        <item name="android:textOn">@android:string/ok</item>
+        <item name="android:textOff">@android:string/cancel</item>
+    </style>
+
+    <!-- Leanback preference theme: keep SwitchPreferenceCompat API, harden switchStyle. -->
+    <style name="PreferenceThemeOverlayLeanbackSafe" parent="PreferenceThemeOverlayLeanback">
+        <item name="switchStyle">@style/Widget.BetterStreamflix.Switch.LeanbackSafe</item>
+    </style>
+
     <!-- Stile per forzare il fondo nero nelle schermate di impostazione (Leanback) -->
     <!-- Usiamo direttamente android:background nella preferenceTheme per non romper il build -->
-    <style name="PreferenceThemeOverlay.Leanback.Amoled" parent="PreferenceThemeOverlayLeanback">
+    <style name="PreferenceThemeOverlay.Leanback.Amoled" parent="PreferenceThemeOverlayLeanbackSafe">
         <item name="android:windowBackground">?attr/app_background_color</item>
         <item name="android:colorBackground">?attr/app_background_color</item>
     </style>

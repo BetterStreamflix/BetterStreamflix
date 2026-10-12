@@ -229,6 +229,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Sentry drops JobCancellationException noise; `isSendDefaultPii` disabled
 - Cast stream proxy closes upstream OkHttp responses on playlist/error paths
 
+## [1.1.5] — 2026-10-12
+
+### Fixed
+- TV Leanback SwitchCompat NPE: framework CheckBox on Downloads/Offline Studio, Leanback-safe switchStyle for Settings preferences (BETTERSTREAMFLIX-27 siblings)
+- Download FGS: catch Media3 foreground denial on service start; notification actions fall back to WorkManager when FGS is blocked (BETTERSTREAMFLIX-2P)
+- DnsResolver ProGuard keep for release builds (BETTERSTREAMFLIX-1Z hardening)
+- Downloads / Settings storage summaries and live progress warm moved off the main thread (File IO / ANR)
+- FilmPalast and StreamingIta home sliders no longer fire per-item TMDb calls (N+1)
+
+### Changed
+- Sentry Android SDK pinned to 8.60.0
+- Version 1.1.5 (10105)
+
 ## [1.1.4] — 2026-10-11
 
 ### Fixed

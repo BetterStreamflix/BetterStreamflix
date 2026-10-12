@@ -45,14 +45,20 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@id/tv_downloads_title" />
 
-    <com.google.android.material.materialswitch.MaterialSwitch
+    <!-- Framework CheckBox: MaterialSwitch/SwitchCompat NPEs under Leanback
+         (same class as BETTERSTREAMFLIX-27 on Search). -->
+    <CheckBox
         android:id="@+id/switch_downloads_wifi_only"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
+        android:buttonTint="@color/cinema_text"
         android:contentDescription="@string/downloads_wifi_only_toggle"
         android:focusable="true"
+        android:focusableInTouchMode="true"
         android:text="@string/downloads_wifi_only_toggle"
         android:textColor="#E6FFFFFF"
+        android:textOff="@string/downloads_wifi_only_toggle"
+        android:textOn="@string/downloads_wifi_only_toggle"
         android:textSize="13sp"
         app:layout_constraintBottom_toBottomOf="@id/tv_downloads_storage"
         app:layout_constraintEnd_toEndOf="parent"
