@@ -238,7 +238,7 @@ object CineCityProvider : IptvProvider, ProviderConfigUrl {
                     name = channel.name,
                     logo = channel.logo,
                     group = channel.group,
-                    programNow = channel.group?.takeIf { it.isNotBlank() },
+                    programNow = null, // group is not real EPG
                 )
             }
         return com.dskja.betterstreamflix.iptv.IptvChannelWindow.fromChannels(channels, aroundId, limit)

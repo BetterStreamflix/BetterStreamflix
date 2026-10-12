@@ -105,10 +105,12 @@ class ChannelPinStripView @JvmOverloads constructor(
                 .placeholder(R.drawable.bg_people_circle)
                 .error(R.drawable.bg_people_circle)
                 .into(image)
+            // SL-007: long-click unpins; nextFocusDown into main content.
             itemView.contentDescription = context.getString(
                 R.string.meine_sender_leiste_pin_cd,
                 show.title,
             )
+            itemView.nextFocusDownId = R.id.nav_main_fragment
             itemView.setOnClickListener { onChannelClick?.invoke(show) }
             itemView.setOnLongClickListener {
                 onChannelLongClick?.invoke(show)
@@ -131,6 +133,7 @@ class ChannelPinStripView @JvmOverloads constructor(
             image.setBackgroundResource(android.R.color.transparent)
             ensurePlusLabel(ring)
             itemView.contentDescription = context.getString(R.string.meine_sender_leiste_add)
+            itemView.nextFocusDownId = R.id.nav_main_fragment
             itemView.setOnClickListener { onAddClick?.invoke() }
             itemView.setOnLongClickListener(null)
         }

@@ -70,14 +70,20 @@ class LiveHubMobileFragment : Fragment() {
             fragment = this,
             root = binding.root,
             isTv = false,
-            onVisibleChanged = { display(it) },
+            onVisibleChanged = { cats, _ -> display(cats) },
             onModeChanged = { mode ->
                 if (mode == LiveCommandMode.SPORT) {
                     warmSportZapRing(lastHubCategories)
                 }
             },
             focusPins = {
-                LiveCommandController.refreshPinStrip(activity)
+                val strip = activity?.findViewById<View>(R.id.channel_pin_strip)
+                if (strip != null) {
+                    strip.isVisible = true
+                    strip.post { strip.requestFocus() }
+                } else {
+                    LiveCommandController.refreshPinStrip(activity)
+                }
             },
         ).also { it.attach() }
 
@@ -103,7 +109,9 @@ class LiveHubMobileFragment : Fragment() {
                     LiveHubViewModel.State.Restricted -> {
                         ExpMotion.fadeOutAndHide(binding.isLoading.root)
                         hideWarning()
+                        lastHubCategories = emptyList()
                         command?.setRestricted(true)
+                        command?.bindEmpty()
                         displayRestricted()
                     }
                     is LiveHubViewModel.State.Success -> {
@@ -128,13 +136,13 @@ class LiveHubMobileFragment : Fragment() {
                         hideWarning()
                     }
                     is LiveHubViewModel.State.Failed -> {
-                        if (!ExperimentalMobileDesign.enabled()) {
-                            Toast.makeText(
-                                requireContext(),
-                                state.error.message ?: "",
-                                Toast.LENGTH_SHORT,
-                            ).show()
-                        }
+                        lastHubCategories = emptyList()
+                        command?.bindEmpty()
+                        Toast.makeText(
+                            requireContext(),
+                            state.error.message ?: "",
+                            Toast.LENGTH_SHORT,
+                        ).show()
                         binding.isLoading.apply {
                             com.dskja.betterstreamflix.utils.ExpPressEffects.showLoadingSkeleton(root, false)
                             gIsLoadingRetry.visibility = View.VISIBLE
@@ -166,7 +174,6 @@ class LiveHubMobileFragment : Fragment() {
     override fun onResume() {
         super.onResume()
         HomeProfileChip.refresh(this, _binding?.root)
-        // Cheap Favorites-shelf refresh (no live-source re-fetch).
         if (lastHubCategories.isNotEmpty()) {
             viewModel.refreshFavoritesShelf()
         }
@@ -182,19 +189,22 @@ class LiveHubMobileFragment : Fragment() {
     }
 
     private fun display(categories: List<Category>) {
-        val visible = categories.filter { it.list.isNotEmpty() }
         val now = System.currentTimeMillis()
-        visible.forEach { category ->
-            category.list.filterIsInstance<TvShow>().forEach { show ->
-                show.itemType = AppAdapter.Type.TV_SHOW_MOBILE_ITEM
-                enrichCatchUp(show, now)
+        val visible = categories.filter { it.list.isNotEmpty() }.map { category ->
+            val shows = category.list.filterIsInstance<TvShow>().map { show ->
+                show.copy().apply {
+                    itemType = AppAdapter.Type.TV_SHOW_MOBILE_ITEM
+                    enrichCatchUp(this, now)
+                }
             }
-            category.itemSpacing = 10.dp(requireContext())
-            category.itemType = AppAdapter.Type.CATEGORY_MOBILE_ITEM
+            Category(category.name, shows).also {
+                it.identityKey = category.identityKey
+                it.itemSpacing = 10.dp(requireContext())
+                it.itemType = AppAdapter.Type.CATEGORY_MOBILE_ITEM
+            }
         }
         LiveHubSectionZap.bindCategories(
             if (command?.currentQuery().isNullOrBlank()) {
-                // Prefer mode-scoped zap when a shelf mode is active.
                 val preferred = command?.currentMode()?.let {
                     LiveCommandPolicy.preferredZapSection(it)
                 }
@@ -208,7 +218,7 @@ class LiveHubMobileFragment : Fragment() {
             },
         )
         val emptyForMode = visible.isEmpty() && lastHubCategories.isNotEmpty()
-        bindEmptyChrome(visible = visible.isEmpty())
+        bindEmptyChrome(visible = visible.isEmpty(), commandEmpty = emptyForMode)
         if (emptyForMode) {
             binding.tvLiveHubEmpty.text = emptyMessageForCommand()
         }
@@ -227,7 +237,14 @@ class LiveHubMobileFragment : Fragment() {
                     )
                 }
             }
-            LiveCommandPolicy.CatchUpKind.UP_NEXT -> Unit
+            LiveCommandPolicy.CatchUpKind.UP_NEXT -> {
+                if (show.programNext.isNullOrBlank() && !hint.detail.isNullOrBlank()) {
+                    show.programNext = getString(
+                        R.string.live_command_catchup_up_next,
+                        hint.detail,
+                    )
+                }
+            }
             LiveCommandPolicy.CatchUpKind.LIVE_NOW -> Unit
         }
     }
@@ -237,18 +254,40 @@ class LiveHubMobileFragment : Fragment() {
         if (q.isNotBlank()) return getString(R.string.live_command_empty_search)
         return when (command?.currentMode()) {
             LiveCommandMode.REMINDERS -> getString(R.string.live_command_empty_reminders)
+            LiveCommandMode.FAVORITES -> getString(R.string.live_command_empty_favorites)
+            LiveCommandMode.SPORT -> getString(R.string.live_command_empty_sport)
+            LiveCommandMode.NEWS -> getString(R.string.live_command_empty_news)
+            LiveCommandMode.CHANNELS -> getString(R.string.live_command_empty_channels)
             else -> getString(R.string.live_hub_empty)
         }
     }
 
-    private fun bindEmptyChrome(visible: Boolean) {
-        binding.tvLiveHubEmpty.text = getString(R.string.live_hub_empty)
+    private fun bindEmptyChrome(visible: Boolean, commandEmpty: Boolean = false) {
+        if (!commandEmpty) {
+            binding.tvLiveHubEmpty.text = getString(R.string.live_hub_empty)
+        }
+        val ctaLabel = when {
+            command?.currentQuery()?.isNotBlank() == true ->
+                getString(R.string.exp_empty_clear_search)
+            commandEmpty && command?.currentMode() != null &&
+                command?.currentMode() != LiveCommandMode.ALL ->
+                getString(R.string.exp_empty_clear_filter)
+            else -> getString(R.string.exp_empty_try_channel)
+        }
+        binding.btnLiveHubEmptyCta.text = ctaLabel
         ExpEmptyChrome.bind(
             emptyView = binding.tvLiveHubEmpty,
             emptyRule = binding.vLiveHubEmptyRule,
             emptyCta = binding.btnLiveHubEmptyCta,
             visible = visible,
-            onCtaClick = { reload() },
+            onCtaClick = {
+                when {
+                    command?.currentQuery()?.isNotBlank() == true -> command?.clearQuery()
+                    commandEmpty && command?.currentMode() != LiveCommandMode.ALL ->
+                        command?.setMode(LiveCommandMode.ALL)
+                    else -> reload()
+                }
+            },
         )
     }
 
@@ -268,6 +307,7 @@ class LiveHubMobileFragment : Fragment() {
         }
         banner.text = warning
         banner.isVisible = true
+        banner.contentDescription = getString(R.string.home_catalog_warning_tap_retry)
         banner.setOnClickListener {
             ExpMotion.hapticTap(it)
             reload()
@@ -289,17 +329,20 @@ class LiveHubMobileFragment : Fragment() {
     }
 
     private fun pipCandidateCount(categories: List<Category>): Int {
-        val pins = ChannelPinStore.pinCount(requireContext())
-        val favs = categories
+        val pinKeys = ChannelPinStore.list(requireContext()).map { it.key }.toHashSet()
+        val favKeys = categories
             .firstOrNull { it.identityKey == LiveHubCatalog.SECTION_FAVORITES }
             ?.list
-            ?.size
-            ?: 0
-        return (pins + favs).coerceAtLeast(pins)
+            ?.filterIsInstance<TvShow>()
+            ?.map { LiveHubCatalog.identityKey(it) }
+            ?.toHashSet()
+            .orEmpty()
+        return (pinKeys + favKeys).size
     }
 
     override fun onDestroyView() {
         LiveHubSectionZap.clear()
+        command?.detach()
         command = null
         super.onDestroyView()
         _binding = null

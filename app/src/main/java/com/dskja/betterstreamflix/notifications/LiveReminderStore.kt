@@ -77,9 +77,17 @@ object LiveReminderStore {
         return runCatching { JSONObject(raw) }.getOrElse { JSONObject() }
     }
 
+    /** Drop oldest entries by timestamp value (lastNotified / snooze-until / kickoff epoch). */
     private fun trim(json: JSONObject, max: Int) {
         if (json.length() <= max) return
-        val keys = json.keys().asSequence().toList()
-        keys.take(json.length() - (max - 20)).forEach { json.remove(it) }
+        val overflow = json.length() - max
+        val oldestFirst = json.keys().asSequence().toList().sortedBy { key ->
+            when (val v = json.opt(key)) {
+                is Number -> v.toLong()
+                is String -> v.toLongOrNull() ?: 0L
+                else -> 0L
+            }
+        }
+        oldestFirst.take(overflow).forEach { json.remove(it) }
     }
 }

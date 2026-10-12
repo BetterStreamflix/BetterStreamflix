@@ -19,6 +19,8 @@ object LiveReminderPolicy {
     const val MAX_LIVE_PER_RUN = 1
     const val MAX_LIVE_PER_HOUR = 2
     private const val HOUR_MS = 60L * 60L * 1000L
+    /** Bare 24h times earlier than this need sport context (avoids score-like 1:05). */
+    private const val MIN_BARE_24H_HOUR = 6
 
     sealed class Decision {
         data object Skip : Decision()
@@ -55,16 +57,16 @@ object LiveReminderPolicy {
 
         if (kickoffEpochMs != null) {
             val fireAt = kickoffEpochMs - LEAD_BEFORE_KICKOFF_MS
-            return when {
-                nowMs < fireAt -> Decision.ScheduleAt(fireAt)
+            when {
+                nowMs < fireAt -> return Decision.ScheduleAt(fireAt)
                 // Inside the 5-minute lead (or up to ~2 min after kickoff).
                 nowMs <= kickoffEpochMs + 2L * 60L * 1000L ->
-                    Decision.NotifyNow(Reason.PRE_KICKOFF_WINDOW)
-                else -> Decision.Skip
+                    return Decision.NotifyNow(Reason.PRE_KICKOFF_WINDOW)
+                // Past the pre-kickoff window: fall through to newly-live.
             }
         }
 
-        // No clock: only ping once when the channel newly appears live.
+        // No clock, or kickoff already more than ~2 min past: ping once when newly live.
         return if (newlyLive) Decision.NotifyNow(Reason.NEWLY_LIVE) else Decision.Skip
     }
 
@@ -110,13 +112,28 @@ object LiveReminderPolicy {
         if (m24.find()) {
             val hour = m24.group(1).toInt()
             val minute = m24.group(2).toInt()
+            if (hour !in 0..23) return null
+            // Low hours look like scores (1:05) unless the title has sport context.
+            if (hour < MIN_BARE_24H_HOUR && !hasSportContext(blob)) return null
             return runCatching { LocalTime.of(hour, minute) }.getOrNull()
         }
         return null
     }
 
+    private fun hasSportContext(blob: String): Boolean {
+        val lower = blob.lowercase(Locale.US)
+        return SPORT_HINTS.any { lower.contains(it) }
+    }
+
+    private val SPORT_HINTS = listOf(
+        " vs ", " vs.", " vs-", "v.", " match", "match ", "kickoff", "kick-off",
+        "sport", "liga", "league", "cup ", " final", "fixture", "derby",
+        "fc ", " united", "game ",
+    )
+
     private val TIME_12: Pattern =
         Pattern.compile("""\b(1[0-2]|0?[1-9])[:.]([0-5]\d)\s*([AaPp][Mm])\b""")
+    /** HH:MM at start or after whitespace; optional leading `h` (e.g. h20:45). */
     private val TIME_24: Pattern =
-        Pattern.compile("""\b([01]?\d|2[0-3])[:.]([0-5]\d)\b""")
+        Pattern.compile("""(?:^|\s)h?([01]?\d|2[0-3])[:.]([0-5]\d)\b""")
 }

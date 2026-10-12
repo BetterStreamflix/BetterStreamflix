@@ -1,5 +1,6 @@
 package com.dskja.betterstreamflix.fragments.live
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.dskja.betterstreamflix.BetterStreamflixApp
@@ -22,10 +23,16 @@ class LiveHubViewModel : ViewModel() {
     val state = _state.asSharedFlow()
 
     private var loadJob: Job? = null
+    /** Separate from [loadJob] so resume Favorites refresh cannot cancel an in-flight load. */
+    private var favoritesJob: Job? = null
     private var lastLabels: Labels? = null
     /** Last successful hub rows (pre-favorites) for cheap Favorites-shelf refresh. */
     private var lastHubShows: List<TvShow> = emptyList()
     private var lastWarning: String? = null
+
+    companion object {
+        private const val TAG = "LiveHubViewModel"
+    }
 
     private data class Labels(
         val sport: String,
@@ -91,6 +98,8 @@ class LiveHubViewModel : ViewModel() {
             } catch (e: Exception) {
                 if (!silent) {
                     _state.emit(State.Failed(e))
+                } else {
+                    Log.w(TAG, "Silent Live Hub load failed: ${e.message}", e)
                 }
             }
         }
@@ -100,31 +109,35 @@ class LiveHubViewModel : ViewModel() {
     fun refreshFavoritesShelf() {
         val labels = lastLabels ?: return
         if (lastHubShows.isEmpty()) return
-        loadJob?.cancel()
-        loadJob = viewModelScope.launch {
+        favoritesJob?.cancel()
+        favoritesJob = viewModelScope.launch {
             if (LiveHubCatalog.isAgeGated()) {
                 _state.emit(State.Restricted)
                 return@launch
             }
-            val ctx = runCatching { BetterStreamflixApp.instance }.getOrNull()
-            val favorites = withContext(Dispatchers.IO) {
-                LiveHubCatalog.resolveFavoriteChannels(ctx, lastHubShows)
-            }
-            val categories = ParentalControlUtils.filterCategories(
-                LiveHubCatalog.buildCategories(
-                    shows = lastHubShows,
-                    sportLabel = labels.sport,
-                    newsLabel = labels.news,
-                    channelsLabel = labels.channels,
-                    favorites = favorites,
-                    favoritesLabel = labels.favorites,
-                ),
-            )
-            if (categories.isEmpty()) {
-                _state.emit(State.Empty)
-            } else {
-                _state.emit(State.Success(categories, lastWarning))
-                scheduleLiveReminders(categories)
+            try {
+                val ctx = runCatching { BetterStreamflixApp.instance }.getOrNull()
+                val favorites = withContext(Dispatchers.IO) {
+                    LiveHubCatalog.resolveFavoriteChannels(ctx, lastHubShows)
+                }
+                val categories = ParentalControlUtils.filterCategories(
+                    LiveHubCatalog.buildCategories(
+                        shows = lastHubShows,
+                        sportLabel = labels.sport,
+                        newsLabel = labels.news,
+                        channelsLabel = labels.channels,
+                        favorites = favorites,
+                        favoritesLabel = labels.favorites,
+                    ),
+                )
+                if (categories.isEmpty()) {
+                    _state.emit(State.Empty)
+                } else {
+                    _state.emit(State.Success(categories, lastWarning))
+                    scheduleLiveReminders(categories)
+                }
+            } catch (e: Exception) {
+                Log.w(TAG, "Favorites shelf refresh failed: ${e.message}", e)
             }
         }
     }
