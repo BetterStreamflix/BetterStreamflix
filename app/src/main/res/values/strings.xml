@@ -657,6 +657,7 @@
     <string name="subtitle_studio_preview_sample">Subtitle Studio — sample line</string>
     <string name="subtitle_studio_preview_label">Preview</string>
     <string name="subtitle_studio_preset_hint">Size · color · background</string>
+    <string name="subtitle_studio_presets_title">Quick presets</string>
     <string name="subtitle_studio_preset_classic">Studio · Classic</string>
     <string name="subtitle_studio_preset_yellow_large">Studio · Yellow large</string>
     <string name="subtitle_studio_preset_high_contrast">Studio · High contrast</string>

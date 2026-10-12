@@ -5,6 +5,7 @@ import androidx.media3.ui.CaptionStyleCompat
 import androidx.preference.ListPreference
 import androidx.preference.PreferenceFragmentCompat
 import com.dskja.betterstreamflix.R
+import com.dskja.betterstreamflix.player.SubtitleStudio
 import com.dskja.betterstreamflix.utils.UserPreferences
 import kotlin.math.abs
 import com.dskja.betterstreamflix.utils.getAlpha
@@ -23,17 +24,26 @@ object SubtitleStudioSettingsController {
 
     fun bind(fragment: PreferenceFragmentCompat) {
         val context = fragment.requireContext()
+        val presetPref = fragment.findPreference<ListPreference>("SUBTITLE_STUDIO_PRESET")
         val sizePref = fragment.findPreference<ListPreference>("SUBTITLE_STUDIO_SIZE")
         val colorPref = fragment.findPreference<ListPreference>("SUBTITLE_STUDIO_FONT_COLOR")
         val bgPref = fragment.findPreference<ListPreference>("SUBTITLE_STUDIO_BACKGROUND")
         val previewPref = fragment.findPreference<SubtitleStudioPreviewPreference>("SUBTITLE_STUDIO_PREVIEW")
-        if (sizePref == null && colorPref == null && bgPref == null) return
+        if (sizePref == null && colorPref == null && bgPref == null && presetPref == null) return
 
         fun refreshPreview() {
             previewPref?.refresh()
         }
 
         fun syncFromPrefs() {
+            val matchedPreset = SubtitleStudio.presets.firstOrNull { SubtitleStudio.matchesCurrent(it) }
+            if (matchedPreset != null) {
+                presetPref?.value = matchedPreset.id
+                presetPref?.summary = context.getString(matchedPreset.titleRes)
+            } else {
+                presetPref?.value = null
+                presetPref?.summary = context.getString(R.string.subtitle_studio_preset_hint)
+            }
             val size = UserPreferences.captionTextSize
             if (sizeOptions.any { abs(it - size) < 0.02f }) {
                 sizePref?.value = closestSizeValue(size)
@@ -66,11 +76,19 @@ object SubtitleStudioSettingsController {
             refreshPreview()
         }
 
+        presetPref?.setOnPreferenceChangeListener { _, newValue ->
+            val id = newValue as? String ?: return@setOnPreferenceChangeListener false
+            val preset = SubtitleStudio.presets.firstOrNull { it.id == id }
+                ?: return@setOnPreferenceChangeListener false
+            SubtitleStudio.applyPreset(preset)
+            syncFromPrefs()
+            true
+        }
         sizePref?.setOnPreferenceChangeListener { _, newValue ->
             val parsed = (newValue as? String)?.toFloatOrNull()
                 ?: return@setOnPreferenceChangeListener false
             UserPreferences.captionTextSize = parsed
-            refreshPreview()
+            syncFromPrefs()
             true
         }
         colorPref?.setOnPreferenceChangeListener { _, newValue ->
@@ -85,7 +103,7 @@ object SubtitleStudioSettingsController {
                 current.edgeColor,
                 null,
             )
-            refreshPreview()
+            syncFromPrefs()
             true
         }
         bgPref?.setOnPreferenceChangeListener { _, newValue ->
@@ -101,7 +119,7 @@ object SubtitleStudioSettingsController {
                 current.edgeColor,
                 null,
             )
-            refreshPreview()
+            syncFromPrefs()
             true
         }
 

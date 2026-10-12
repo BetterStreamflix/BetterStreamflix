@@ -177,4 +177,38 @@ class KidsBedtimeTest {
             ),
         )
     }
+
+    /** KB-011: disabling bedtime must clear lock + bypass (prefs side-effects). */
+    @Test
+    fun prefsAfterSetEnabled_disablingClearsLockAndBypass() {
+        val cleared = KidsBedtime.prefsAfterSetEnabled(
+            enabled = false,
+            locked = true,
+            bypassUntilMs = 9_999_999L,
+        )
+        assertFalse(cleared.locked)
+        assertEquals(0L, cleared.bypassUntilMs)
+    }
+
+    @Test
+    fun prefsAfterSetEnabled_enablingPreservesLockState() {
+        val kept = KidsBedtime.prefsAfterSetEnabled(
+            enabled = true,
+            locked = true,
+            bypassUntilMs = 42L,
+        )
+        assertTrue(kept.locked)
+        assertEquals(42L, kept.bypassUntilMs)
+    }
+
+    @Test
+    fun settingsSummary_lockedUsesPlainTextNoEmoji() {
+        val summary = KidsBedtime.settingsSummary(
+            enabled = true,
+            minuteOfDay = 20 * 60,
+            locked = true,
+        )
+        assertEquals("Locked · 20:00", summary)
+        assertFalse(summary.contains("🔒"))
+    }
 }

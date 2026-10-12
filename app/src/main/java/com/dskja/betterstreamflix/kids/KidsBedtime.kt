@@ -55,6 +55,10 @@ object KidsBedtime {
     /**
      * True when [minuteOfDayNow] falls in the bedtime→wake window.
      * Bedtime after wake (e.g. 20:00→05:00) crosses midnight.
+     *
+     * Minute precision only (seconds within the current minute are ignored) —
+     * the window opens at the bedtime minute and closes at the wake minute
+     * (KB-015).
      */
     fun isInWindow(
         minuteOfDayNow: Int,
@@ -72,6 +76,13 @@ object KidsBedtime {
         }
     }
 
+    /**
+     * Local minute-of-day for [nowMs] in [zone].
+     *
+     * Call sites default to [ZoneId.systemDefault] at invocation time, so a
+     * timezone / travel change is picked up on the next call without a
+     * dedicated TZ listener (KB-014).
+     */
     fun minuteOfDay(
         nowMs: Long = System.currentTimeMillis(),
         zone: ZoneId = ZoneId.systemDefault(),
@@ -80,7 +91,10 @@ object KidsBedtime {
         return local.hour * 60 + local.minute
     }
 
-    /** Next wake instant at or after [nowMs] (today or tomorrow). */
+    /**
+     * Next wake instant at or after [nowMs] (today or tomorrow).
+     * Uses [zone] at call time (same TZ pickup as [minuteOfDay], KB-014).
+     */
     fun nextWakeEpochMs(
         nowMs: Long = System.currentTimeMillis(),
         wakeMinute: Int = WAKE_MINUTE_OF_DAY,
@@ -223,6 +237,10 @@ object KidsBedtime {
     fun shouldStopLiveNow(nowMs: Long = System.currentTimeMillis()): Boolean =
         shouldStopAfterEpisode(nowMs)
 
+    /**
+     * Compact settings label. Locked state uses a plain "Locked · HH:MM" prefix
+     * (no emoji — KB-017).
+     */
     fun settingsSummary(
         enabled: Boolean = UserPreferences.kidsBedtimeEnabled,
         minuteOfDay: Int = UserPreferences.kidsBedtimeMinuteOfDay,
@@ -230,8 +248,28 @@ object KidsBedtime {
     ): String {
         if (!enabled) return ""
         val time = formatMinuteOfDay(minuteOfDay)
-        return if (locked) "🔒 $time" else time
+        return if (locked) "Locked · $time" else time
     }
+
+    /**
+     * Pref side-effects when bedtime enabled is toggled.
+     * Disabling must clear lock + bypass (KB-011).
+     */
+    data class EnabledTogglePrefs(
+        val locked: Boolean,
+        val bypassUntilMs: Long,
+    )
+
+    fun prefsAfterSetEnabled(
+        enabled: Boolean,
+        locked: Boolean,
+        bypassUntilMs: Long,
+    ): EnabledTogglePrefs =
+        if (!enabled) {
+            EnabledTogglePrefs(locked = false, bypassUntilMs = 0L)
+        } else {
+            EnabledTogglePrefs(locked = locked, bypassUntilMs = bypassUntilMs)
+        }
 
     fun dateKey(
         nowMs: Long = System.currentTimeMillis(),

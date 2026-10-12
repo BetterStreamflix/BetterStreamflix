@@ -1113,6 +1113,15 @@ class PlayerTvFragment : Fragment(),
                 if (KidsBedtime.shouldBlockAutoplay()) {
                     endCardCountdownCancelled = true
                     endCardCountdownJob?.cancel()
+                    // KB-012: if STATE_ENDED was missed, still engageLock + exit.
+                    if (::player.isInitialized &&
+                        !playerReleased &&
+                        player.playbackState == Player.STATE_ENDED &&
+                        player.hasReallyFinished()
+                    ) {
+                        finishForKidsBedtime()
+                        return@launch
+                    }
                 }
                 KidsBedtime.refreshLockState()
                 delay(3_000L)
