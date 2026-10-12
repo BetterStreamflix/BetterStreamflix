@@ -1931,7 +1931,7 @@
     <string name="settings_large_text_title">Large text</string>
     <string name="settings_large_text_summary">Enlarge app text for easier reading (restarts the app)</string>
     <string name="settings_high_contrast_title">High contrast</string>
-    <string name="settings_high_contrast_summary">Maximize text and focus-ring contrast across the app (restarts the app). Does not change Subtitle Studio captions.</string>
+    <string name="settings_high_contrast_summary">Maximize text and focus-ring contrast across the app (restarts the app). Also applies the Subtitle Studio high-contrast caption preset.</string>
     <string name="a11y_untitled">Untitled</string>
     <string name="a11y_state_in_my_list">in My List</string>
     <string name="a11y_state_watched">watched</string>
