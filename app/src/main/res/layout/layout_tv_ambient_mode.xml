@@ -117,11 +117,12 @@
             android:textSize="28sp"
             tools:text="Severance" />
 
-        <!-- Height set at runtime via LeanbackDensityPolicy.ambientStripHeightDp(). -->
+        <!-- Height set at runtime via LeanbackDensityPolicy.applyAmbientContinueStripHeight(). -->
         <androidx.leanback.widget.HorizontalGridView
             android:id="@+id/hgv_ambient_continue"
             android:layout_width="match_parent"
-            android:layout_height="188dp"
+            android:layout_height="@dimen/tv_ambient_continue_strip_height"
+
             android:layout_marginTop="14dp"
             android:clipChildren="false"
             android:clipToPadding="false"

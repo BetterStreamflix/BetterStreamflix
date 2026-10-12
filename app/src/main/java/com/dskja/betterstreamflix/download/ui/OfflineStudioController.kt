@@ -99,6 +99,12 @@ class OfflineStudioController(
                 it.isFocusable = true
                 it.isFocusableInTouchMode = true
             }
+            // SS-B10-13: MaterialSwitch needs explicit Leanback focusability.
+            listOfNotNull(smartSwitch, autoDeleteSwitch).forEach { sw ->
+                sw.isFocusable = true
+                sw.isFocusableInTouchMode = true
+                sw.isClickable = true
+            }
         }
 
         healthCta?.setOnClickListener {
@@ -296,6 +302,7 @@ class OfflineStudioController(
 
     private fun bindSnapshot(snap: OfflineStudioSnapshot) {
         val ctx = fragment.requireContext()
+        applyDensityChrome()
         statusRail?.let { rail ->
             val parts = buildList {
                 if (snap.activeCount > 0) {
@@ -466,6 +473,29 @@ class OfflineStudioController(
                 }
                 .setNegativeButton(android.R.string.cancel, null)
                 .show()
+        }
+    }
+
+    /** Compact Leanback: slightly tighter Care/Controls typography and padding (LD-015). */
+    private fun applyDensityChrome() {
+        if (!isTv) return
+        val compact = com.dskja.betterstreamflix.ui.LeanbackDensityPolicy.offlineStudioCompactChrome()
+        val textSp = if (compact) 13f else 15f
+        val padDp = if (compact) 10 else 16
+        val padPx = (padDp * fragment.resources.displayMetrics.density).toInt()
+        listOfNotNull(carePanel, controlsPanel).forEach { panel ->
+            panel.setPadding(padPx, padPx, padPx, padPx)
+        }
+        listOfNotNull(
+            laneBody,
+            healthBody,
+            expiryBody,
+            quotaSummary,
+            storageBody,
+            packsBody,
+            statusRail,
+        ).forEach { tv ->
+            tv.textSize = textSp
         }
     }
 }

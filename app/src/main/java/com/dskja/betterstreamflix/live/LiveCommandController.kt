@@ -23,9 +23,11 @@ import com.dskja.betterstreamflix.notifications.LiveReminderStore
 import com.dskja.betterstreamflix.ui.AmbientModePolicy
 import com.dskja.betterstreamflix.ui.FeaturedAdvancePolicy
 import com.dskja.betterstreamflix.ui.UserDataNotifier
+import com.dskja.betterstreamflix.utils.AccessibilityPreferences
 import com.dskja.betterstreamflix.utils.DeviceCapabilities
 import com.dskja.betterstreamflix.utils.ExpMotion
 import com.dskja.betterstreamflix.utils.LiveHubCatalog
+import com.dskja.betterstreamflix.utils.TvFocusChain
 import com.dskja.betterstreamflix.utils.UserPreferences
 import com.dskja.betterstreamflix.widgets.WidgetDeepLinkRouter
 import com.dskja.betterstreamflix.widgets.WidgetDeepLinks
@@ -120,11 +122,43 @@ class LiveCommandController(
         query = ""
         searchBox?.setText("")
         searchClear?.isVisible = false
+        if (isTv) {
+            searchClear?.isFocusable = false
+            searchClear?.isFocusableInTouchMode = false
+        }
         publish(focusGrid = false)
     }
 
     fun setMode(next: LiveCommandMode) {
         selectMode(next)
+    }
+
+    /** True when EPG search or a mode/action chip currently holds focus. */
+    fun chromeHasFocus(): Boolean {
+        val focused = fragment.activity?.currentFocus ?: return false
+        if (focused === searchBox || focused === searchClear) return true
+        if (focused.id == R.id.et_live_command_search ||
+            focused.id == R.id.btn_live_command_search_clear
+        ) {
+            return true
+        }
+        if (modeChips.values.any { it === focused || it.hasFocus() }) return true
+        val modes = modesHost
+        if (modes != null && focused.isDescendantOf(modes)) return true
+        val actions = actionsHost
+        if (actions != null && focused.isDescendantOf(actions)) return true
+        return false
+    }
+
+    fun firstModeChip(): View? = modeChips.values.firstOrNull()
+
+    private fun View.isDescendantOf(ancestor: View): Boolean {
+        var current: View? = this
+        while (current != null) {
+            if (current === ancestor) return true
+            current = current.parent as? View
+        }
+        return false
     }
 
     private fun reminderLabels(): LiveCommandPolicy.ReminderLabelResources {
@@ -158,6 +192,7 @@ class LiveCommandController(
             modeChips[m] = chip
         }
         modesRow?.isVisible = true
+        if (isTv) wireChromeFocusChain()
     }
 
     private fun bindSearch() {
@@ -183,7 +218,15 @@ class LiveCommandController(
             override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) = Unit
             override fun afterTextChanged(s: Editable?) {
                 query = s?.toString().orEmpty()
-                searchClear?.isVisible = query.isNotBlank()
+                val clear = searchClear
+                if (clear != null) {
+                    clear.isVisible = query.isNotBlank()
+                    // FA-019: clear is DPAD-reachable when visible.
+                    if (isTv) {
+                        clear.isFocusable = clear.isVisible
+                        clear.isFocusableInTouchMode = clear.isVisible
+                    }
+                }
                 searchDebounce?.let { searchHandler.removeCallbacks(it) }
                 val run = Runnable { publish(focusGrid = false) }
                 searchDebounce = run
@@ -193,7 +236,12 @@ class LiveCommandController(
         // TV: keep focusable for DPAD but not touch-mode so keyboards don't steal first focus.
         box.isFocusable = true
         box.isFocusableInTouchMode = !isTv
+        if (isTv) {
+            searchClear?.isFocusable = query.isNotBlank()
+            searchClear?.isFocusableInTouchMode = query.isNotBlank()
+        }
         updateSearchNextFocus()
+        if (isTv) wireChromeFocusChain()
     }
 
     private fun selectMode(next: LiveCommandMode) {
@@ -223,11 +271,12 @@ class LiveCommandController(
                 if (selected) R.drawable.bg_download_filter_chip_selected
                 else R.drawable.bg_download_filter_chip,
             )
+            // FA-018: cinema theme tokens (not hardcoded black/white) for HC / Looks.
             chip.setTextColor(
                 if (selected) {
-                    fragment.resources.getColor(R.color.black, fragment.requireContext().theme)
+                    fragment.resources.getColor(R.color.cinema_surface, fragment.requireContext().theme)
                 } else {
-                    fragment.resources.getColor(R.color.white, fragment.requireContext().theme)
+                    fragment.resources.getColor(R.color.cinema_text, fragment.requireContext().theme)
                 },
             )
             val label = modeLabel(m)
@@ -250,10 +299,14 @@ class LiveCommandController(
                     info.isSelected = selected
                 }
             })
+            // FA-032: announce selection for TalkBack without relying on visual alone.
+            AccessibilityPreferences.announceSelected(chip, selected)
         }
+        if (isTv) wireChromeFocusChain()
     }
 
     private fun publish(focusGrid: Boolean) {
+
         val favorites = hubCategories
             .firstOrNull { it.identityKey == LiveHubCatalog.SECTION_FAVORITES }
             ?.list
@@ -357,6 +410,7 @@ class LiveCommandController(
             reminderCount = reminderCount,
             remindersEnabled = UserPreferences.notifyLiveFavoriteStarting,
             ambientEnabled = UserPreferences.tvAmbientModeEnabled,
+            // Cinema Room + hard reduce + TalkBack / reduce-motion / HC gates (FA-011 / SE-007).
             ambientAvailable = isTv &&
                 UserPreferences.cinemaRoomEnabled &&
                 run {
@@ -364,7 +418,8 @@ class LiveCommandController(
                     AmbientModePolicy.highEndOk(
                         hardReduceEffects = DeviceCapabilities.shouldHardReduceHomeEffects(ctx),
                         touchExploration = FeaturedAdvancePolicy.isTouchExplorationEnabled(ctx),
-                        reduceMotion = DeviceCapabilities.isAnimatorDurationScaleOff(ctx),
+                        reduceMotion = FeaturedAdvancePolicy.shouldReduceMotion(ctx) ||
+                            DeviceCapabilities.isAnimatorDurationScaleOff(ctx),
                         highContrast = UserPreferences.highContrast,
                     )
                 },
@@ -376,7 +431,9 @@ class LiveCommandController(
             val chip = inflater.inflate(R.layout.view_live_command_chip, host, false) as TextView
             chip.text = actionLabel(action, snapshot)
             chip.setBackgroundResource(R.drawable.bg_download_filter_chip)
-            chip.setTextColor(fragment.resources.getColor(R.color.white, fragment.requireContext().theme))
+            chip.setTextColor(
+                fragment.resources.getColor(R.color.cinema_text, fragment.requireContext().theme),
+            )
             if (isTv) {
                 chip.isFocusable = true
                 chip.isFocusableInTouchMode = false
@@ -389,6 +446,7 @@ class LiveCommandController(
         }
         host.isVisible = host.childCount > 0
         updateSearchNextFocus()
+        if (isTv) wireChromeFocusChain()
     }
 
     private fun updateSearchNextFocus() {
@@ -399,6 +457,40 @@ class LiveCommandController(
             isTv -> R.id.vgv_live_hub
             else -> R.id.rv_live_hub
         }
+    }
+
+    /** FA-012: modes → search → clear → actions vertical + horizontal chains. */
+    private fun wireChromeFocusChain() {
+        val modes = modeChips.values.toList()
+        if (modes.isNotEmpty()) {
+            TvFocusChain.linkHorizontal(*modes.toTypedArray())
+        }
+        val actions = mutableListOf<View>()
+        val host = actionsHost
+        if (host != null) {
+            for (i in 0 until host.childCount) {
+                val child = host.getChildAt(i)
+                if (child.isFocusable && child.isVisible) actions.add(child)
+            }
+            if (actions.isNotEmpty()) {
+                TvFocusChain.linkHorizontal(*actions.toTypedArray())
+            }
+        }
+        val search = searchBox
+        val clear = searchClear?.takeIf { it.isVisible && it.isFocusable }
+        val column = buildList {
+            modes.firstOrNull()?.let { add(it) }
+            search?.let { add(it) }
+            clear?.let { add(it) }
+            actions.firstOrNull()?.let { add(it) }
+        }
+        if (column.size >= 2) {
+            TvFocusChain.linkVertical(*column.toTypedArray())
+        }
+        // Status is polite live region — do not steal TalkBack (FA-042).
+        statusView?.importantForAccessibility =
+            View.IMPORTANT_FOR_ACCESSIBILITY_NO
+        statusView?.accessibilityLiveRegion = View.ACCESSIBILITY_LIVE_REGION_POLITE
     }
 
     private fun handleAction(

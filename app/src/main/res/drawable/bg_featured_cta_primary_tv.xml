@@ -7,7 +7,7 @@
                 <shape android:shape="rectangle">
                     <corners android:radius="@dimen/cinema_radius_lg" />
                     <stroke
-                        android:width="@dimen/tv_focus_stroke_width"
+                        android:width="?attr/tvFocusStrokeWidth"
                         android:color="?attr/tvFocusStrokeColor" />
                     <solid android:color="@android:color/transparent" />
                 </shape>

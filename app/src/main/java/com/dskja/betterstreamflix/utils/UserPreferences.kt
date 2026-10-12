@@ -791,12 +791,15 @@ object UserPreferences {
     /**
      * TV Leanback poster density: [com.dskja.betterstreamflix.ui.LeanbackDensityPolicy.COMPACT]
      * (more tiles) or [com.dskja.betterstreamflix.ui.LeanbackDensityPolicy.COMFORT]
-     * (larger posters). Device-wide; requires activity restart like Looks.
+     * (larger posters). Profile-scoped like Looks; falls back to legacy device-wide
+     * key for migration. Requires activity restart for column rematerialize.
      */
     var leanbackDensity: String
-        get() = Key.LEANBACK_DENSITY.getString()
+        get() = profileScopedString(Key.LEANBACK_DENSITY)
+            ?: Key.LEANBACK_DENSITY.getString()
             ?: com.dskja.betterstreamflix.ui.LeanbackDensityPolicy.DEFAULT
-        set(value) = Key.LEANBACK_DENSITY.setString(
+        set(value) = setProfileScopedString(
+            Key.LEANBACK_DENSITY,
             com.dskja.betterstreamflix.ui.LeanbackDensityPolicy.valueOf(
                 com.dskja.betterstreamflix.ui.LeanbackDensityPolicy.resolve(value),
             ),
@@ -834,6 +837,19 @@ object UserPreferences {
     var codecComfortActivatedAtMs: Long
         get() = Key.CODEC_COMFORT_ACTIVATED_AT_MS.getLong() ?: 0L
         set(value) = Key.CODEC_COMFORT_ACTIVATED_AT_MS.setLong(value.coerceAtLeast(0L))
+
+    /** Consecutive clean HW sessions toward Codec Comfort soft decay (CC-001). */
+    var codecComfortStableStreak: Int
+        get() = Key.CODEC_COMFORT_STABLE_STREAK.getInt() ?: 0
+        set(value) = Key.CODEC_COMFORT_STABLE_STREAK.setInt(value.coerceAtLeast(0))
+
+    /**
+     * CC-006: User explicitly Forced Off software decode while Auto would prefer On
+     * (Comfort / Energy). Survives process death so Comfort re-init cannot defeat it.
+     */
+    var codecSoftwareForcedOff: Boolean
+        get() = Key.CODEC_SOFTWARE_FORCED_OFF.getBoolean() ?: false
+        set(value) = Key.CODEC_SOFTWARE_FORCED_OFF.setBoolean(value)
 
     /** Off-by-default complete mobile shell redesign. Requires activity restart. */
     var experimentalNewAppDesign: Boolean
@@ -2066,6 +2082,8 @@ object UserPreferences {
         CODEC_COMFORT_DEVICE_FINGERPRINT,
         CODEC_COMFORT_FAILURE_COUNT,
         CODEC_COMFORT_ACTIVATED_AT_MS,
+        CODEC_COMFORT_STABLE_STREAK,
+        CODEC_SOFTWARE_FORCED_OFF,
         EXPERIMENTAL_NEW_APP_DESIGN,
         EXPERIMENTAL_REACT_HOME,
         EXPERIMENTAL_LUMINA_ACCENT,

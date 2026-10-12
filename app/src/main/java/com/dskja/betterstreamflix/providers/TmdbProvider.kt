@@ -210,6 +210,17 @@ class TmdbProvider private constructor(override val language: String) : Provider
 
     private suspend fun fillHomeCategories(categories: MutableList<Category>) = coroutineScope {
         val watchRegion = if (language == "en") "US" else language.uppercase()
+        // SE-002: cap Home shelf fan-out under Stick Energy (serial on sticks).
+        val homeShelfGate = Semaphore(
+            StickEnergyMode.providerParallelism(default = 4),
+        )
+        suspend fun <T> gatedShelf(
+            label: String,
+            fallback: T,
+            block: suspend kotlinx.coroutines.CoroutineScope.() -> T,
+        ): T = homeShelfGate.withPermit {
+            softShelf(label, fallback, block = block)
+        }
 
         val mapMulti: (TMDb3.MultiItem) -> AppAdapter.Item? = { multi ->
             when (multi) {
@@ -267,7 +278,7 @@ class TmdbProvider private constructor(override val language: String) : Provider
         // One page per list — three pages × many shelves was a request storm that
         // hung Home when DNS/API stalled (callTimeout previously 60s each).
         val trendingDeferred = async {
-            softShelf("trending", emptyList()) {
+            gatedShelf("trending", emptyList()) {
                 // compactResults drops Gson nulls from incomplete media_type rows.
                 TMDb3.Trending.all(TMDb3.Params.TimeWindow.DAY, page = 1, language = language)
                     .results
@@ -276,19 +287,19 @@ class TmdbProvider private constructor(override val language: String) : Provider
         }
 
         val popularMoviesDeferred = async {
-            softShelf("popularMovies", emptyList()) {
+            gatedShelf("popularMovies", emptyList()) {
                 TMDb3.MovieLists.popular(page = 1, language = language).results
             }
         }
 
         val popularTvShowsDeferred = async {
-            softShelf("popularTv", emptyList()) {
+            gatedShelf("popularTv", emptyList()) {
                 TMDb3.TvSeriesLists.popular(page = 1, language = language).results
             }
         }
 
         val popularAnimeDeferred = async {
-            softShelf("anime", emptyList()) {
+            gatedShelf("anime", emptyList()) {
                 // Keep Movie/Tv lists typed separately — never force List<MultiItem>
                 // via awaitAll/cast (BETTERSTREAMFLIX-Q ClassCast).
                 val movies = async {
@@ -323,7 +334,7 @@ class TmdbProvider private constructor(override val language: String) : Provider
             label: String,
             movieProvider: TMDb3.Provider.WatchProviderId,
             tvNetwork: TMDb3.Network.NetworkId,
-        ): List<TMDb3.MultiItem> = softShelf(label, emptyList()) {
+        ): List<TMDb3.MultiItem> = gatedShelf(label, emptyList()) {
             val movies = async {
                 runCatching {
                     TMDb3.Discover.movie(
@@ -368,7 +379,7 @@ class TmdbProvider private constructor(override val language: String) : Provider
         }
 
         val hboDeferred = async {
-            softShelf("hbo", emptyList()) {
+            gatedShelf("hbo", emptyList()) {
                 TMDb3.Discover.tv(
                     language = language,
                     withNetworks = TMDb3.Params.WithBuilder(TMDb3.Network.NetworkId.HBO),
@@ -378,32 +389,32 @@ class TmdbProvider private constructor(override val language: String) : Provider
         }
 
         val topRatedMoviesDeferred = async {
-            softShelf("topRatedMovies", emptyList()) {
+            gatedShelf("topRatedMovies", emptyList()) {
                 TMDb3.MovieLists.topRated(mapOf("language" to language, "page" to "1")).results
             }
         }
         val topRatedTvDeferred = async {
-            softShelf("topRatedTv", emptyList()) {
+            gatedShelf("topRatedTv", emptyList()) {
                 TMDb3.TvSeriesLists.topRated(mapOf("language" to language, "page" to "1")).results
             }
         }
         val nowPlayingDeferred = async {
-            softShelf("nowPlaying", emptyList()) {
+            gatedShelf("nowPlaying", emptyList()) {
                 TMDb3.MovieLists.nowPlaying(language = language, page = 1, region = watchRegion).results
             }
         }
         val upcomingDeferred = async {
-            softShelf("upcoming", emptyList()) {
+            gatedShelf("upcoming", emptyList()) {
                 TMDb3.MovieLists.upcoming(language = language, page = 1, region = watchRegion).results
             }
         }
         val airingTodayDeferred = async {
-            softShelf("airingToday", emptyList()) {
+            gatedShelf("airingToday", emptyList()) {
                 TMDb3.TvSeriesLists.airingToday(language = language, page = 1).results
             }
         }
         val onTheAirDeferred = async {
-            softShelf("onTheAir", emptyList()) {
+            gatedShelf("onTheAir", emptyList()) {
                 TMDb3.TvSeriesLists.onTheAir(language = language, page = 1).results
             }
         }

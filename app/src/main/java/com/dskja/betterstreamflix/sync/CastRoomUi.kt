@@ -141,17 +141,18 @@ object CastRoomUi {
             context.getString(R.string.cast_room_share_action),
             context.getString(R.string.cast_room_end_action),
         )
-        androidx.appcompat.app.AlertDialog.Builder(context)
-            .setTitle(R.string.cast_room_menu_title)
-            .setItems(options) { _, which ->
-                when (which) {
-                    0 -> showHostQr(fragment, CastRoomSession.token!!, CastRoomSession.shortCode)
-                    1 -> shareLink(context, CastRoomLinks.buildUri(CastRoomSession.token!!))
-                    2 -> endHostRoom(fragment)
+        ExpDialogChrome.showAlert(context) { builder ->
+            builder
+                .setTitle(R.string.cast_room_menu_title)
+                .setItems(options) { _, which ->
+                    when (which) {
+                        0 -> showHostQr(fragment, CastRoomSession.token!!, CastRoomSession.shortCode)
+                        1 -> shareLink(context, CastRoomLinks.buildUri(CastRoomSession.token!!))
+                        2 -> endHostRoom(fragment)
+                    }
                 }
-            }
-            .setNegativeButton(android.R.string.cancel, null)
-            .show()
+                .setNegativeButton(android.R.string.cancel, null)
+        }
     }
 
     fun showHostQr(fragment: Fragment, token: String, shortCode: String?) {
@@ -193,14 +194,15 @@ object CastRoomUi {
             },
         )
 
-        androidx.appcompat.app.AlertDialog.Builder(context)
-            .setTitle(R.string.cast_room_host_qr_title)
-            .setView(container)
-            .setPositiveButton(R.string.cast_room_share_action) { _, _ ->
-                shareLink(context, link)
-            }
-            .setNegativeButton(android.R.string.ok, null)
-            .show()
+        ExpDialogChrome.showAlert(context) { builder ->
+            builder
+                .setTitle(R.string.cast_room_host_qr_title)
+                .setView(container)
+                .setPositiveButton(R.string.cast_room_share_action) { _, _ ->
+                    shareLink(context, link)
+                }
+                .setNegativeButton(android.R.string.ok, null)
+        }
     }
 
     fun endHostRoom(fragment: Fragment) {
@@ -413,16 +415,17 @@ object CastRoomUi {
             context.getString(R.string.detail_share),
             context.getString(R.string.cast_room_add_action),
         )
-        androidx.appcompat.app.AlertDialog.Builder(context)
-            .setTitle(R.string.cast_room_menu_title)
-            .setItems(options) { _, which ->
-                when (which) {
-                    0 -> defaultShare()
-                    1 -> offerAddFromDetail(fragment, videoType)
+        ExpDialogChrome.showAlert(context) { builder ->
+            builder
+                .setTitle(R.string.cast_room_menu_title)
+                .setItems(options) { _, which ->
+                    when (which) {
+                        0 -> defaultShare()
+                        1 -> offerAddFromDetail(fragment, videoType)
+                    }
                 }
-            }
-            .setNegativeButton(android.R.string.cancel, null)
-            .show()
+                .setNegativeButton(android.R.string.cancel, null)
+        }
     }
 
     fun applyHostUpdate(context: Context, payload: CastRoomPayload) {
@@ -621,26 +624,27 @@ object CastRoomUi {
                 )
             }
             // CC-061: clear confirmInFlight only after dialog dismiss.
-            androidx.appcompat.app.AlertDialog.Builder(activity)
-                .setTitle(R.string.cast_room_join_confirm_title)
-                .setMessage(detail)
-                .setNegativeButton(android.R.string.cancel) { _, _ ->
-                    CastRoomPendingJoin.acknowledge(activity, token)
-                    promptedPendingTokens.remove(token)
-                }
-                .setPositiveButton(R.string.cast_room_join_action) { _, _ ->
-                    CastRoomPendingJoin.acknowledge(activity, token)
-                    promptedPendingTokens.remove(token)
-                    enterAsController(activity, token, payload)
-                }
-                .setOnCancelListener {
-                    CastRoomPendingJoin.acknowledge(activity, token)
-                    promptedPendingTokens.remove(token)
-                }
-                .setOnDismissListener {
-                    confirmInFlight = false
-                }
-                .show()
+            val dialog = ExpDialogChrome.showAlert(activity) { builder ->
+                builder
+                    .setTitle(R.string.cast_room_join_confirm_title)
+                    .setMessage(detail)
+                    .setNegativeButton(android.R.string.cancel) { _, _ ->
+                        CastRoomPendingJoin.acknowledge(activity, token)
+                        promptedPendingTokens.remove(token)
+                    }
+                    .setPositiveButton(R.string.cast_room_join_action) { _, _ ->
+                        CastRoomPendingJoin.acknowledge(activity, token)
+                        promptedPendingTokens.remove(token)
+                        enterAsController(activity, token, payload)
+                    }
+                    .setOnCancelListener {
+                        CastRoomPendingJoin.acknowledge(activity, token)
+                        promptedPendingTokens.remove(token)
+                    }
+            }
+            dialog.setOnDismissListener {
+                confirmInFlight = false
+            }
         }
     }
 
@@ -839,29 +843,30 @@ object CastRoomUi {
         bindQueue(payload)
         list.addView(queueContainer)
 
-        val dialog = androidx.appcompat.app.AlertDialog.Builder(context)
-            .setTitle(R.string.tv_sidekick_title)
-            .setView(scroll)
-            .setNeutralButton(R.string.cast_room_skip_action) { _, _ ->
-                mutate(fragment, token) { CastRoomRepository.skip(context, it) }
-            }
-            .setNegativeButton(
-                if (payload.playing) R.string.cast_room_pause_action else R.string.cast_room_resume_action,
-            ) { _, _ ->
-                val playing = latestPayload?.playing ?: payload.playing
-                mutate(fragment, token) {
-                    CastRoomRepository.setPlaying(context, it, !playing)
+        val dialog = ExpDialogChrome.showAlert(context) { builder ->
+            builder
+                .setTitle(R.string.tv_sidekick_title)
+                .setView(scroll)
+                .setNeutralButton(R.string.cast_room_skip_action) { _, _ ->
+                    mutate(fragment, token) { CastRoomRepository.skip(context, it) }
                 }
-            }
-            .setPositiveButton(R.string.cast_room_leave_action) { _, _ ->
-                leaveController(fragment)
-            }
-            .setOnDismissListener {
-                if (controllerPanelRefresh?.get() != null) {
-                    controllerPanelRefresh = null
+                .setNegativeButton(
+                    if (payload.playing) R.string.cast_room_pause_action else R.string.cast_room_resume_action,
+                ) { _, _ ->
+                    val playing = latestPayload?.playing ?: payload.playing
+                    mutate(fragment, token) {
+                        CastRoomRepository.setPlaying(context, it, !playing)
+                    }
                 }
+                .setPositiveButton(R.string.cast_room_leave_action) { _, _ ->
+                    leaveController(fragment)
+                }
+        }
+        dialog.setOnDismissListener {
+            if (controllerPanelRefresh?.get() != null) {
+                controllerPanelRefresh = null
             }
-            .create()
+        }
 
         controllerPanelRefresh = WeakReference { p ->
             if (!fragment.isAdded || !dialog.isShowing) return@WeakReference
@@ -875,7 +880,6 @@ object CastRoomUi {
                 refreshSidekickChat(fragment, token, chatView)
             }
         }
-        dialog.show()
     }
 
     private fun sectionLabel(context: Context, titleRes: Int): TextView =
@@ -946,19 +950,20 @@ object CastRoomUi {
             setText(TvSidekick.formatPosition(currentMs))
             inputType = InputType.TYPE_CLASS_TEXT
         }
-        androidx.appcompat.app.AlertDialog.Builder(context)
-            .setTitle(R.string.tv_sidekick_scrub_to_action)
-            .setView(input)
-            .setNegativeButton(android.R.string.cancel, null)
-            .setPositiveButton(R.string.tv_sidekick_scrub_go) { _, _ ->
-                val target = TvSidekick.parsePositionInput(input.text?.toString())
-                if (target == null) {
-                    ExpDialogChrome.notify(context, R.string.tv_sidekick_scrub_invalid)
-                    return@setPositiveButton
+        ExpDialogChrome.showAlert(context) { builder ->
+            builder
+                .setTitle(R.string.tv_sidekick_scrub_to_action)
+                .setView(input)
+                .setNegativeButton(android.R.string.cancel, null)
+                .setPositiveButton(R.string.tv_sidekick_scrub_go) { _, _ ->
+                    val target = TvSidekick.parsePositionInput(input.text?.toString())
+                    if (target == null) {
+                        ExpDialogChrome.notify(context, R.string.tv_sidekick_scrub_invalid)
+                        return@setPositiveButton
+                    }
+                    mutate(fragment, token) { CastRoomRepository.seek(context, it, target) }
                 }
-                mutate(fragment, token) { CastRoomRepository.seek(context, it, target) }
-            }
-            .show()
+        }
     }
 
     private fun refreshSidekickChat(fragment: Fragment, token: String, chatView: TextView) {
@@ -996,37 +1001,38 @@ object CastRoomUi {
         if (index < payload.items.lastIndex) {
             options.add(context.getString(R.string.cast_room_move_down_action))
         }
-        androidx.appcompat.app.AlertDialog.Builder(context)
-            .setTitle(CastRoomQueue.displayLabel(item))
-            .setItems(options.toTypedArray()) { _, which ->
-                val label = options[which]
-                when (label) {
-                    context.getString(R.string.cast_room_play_now_action) ->
-                        mutate(fragment, token) {
-                            CastRoomRepository.playAt(context, it, index)
+        ExpDialogChrome.showAlert(context) { builder ->
+            builder
+                .setTitle(CastRoomQueue.displayLabel(item))
+                .setItems(options.toTypedArray()) { _, which ->
+                    val label = options[which]
+                    when (label) {
+                        context.getString(R.string.cast_room_play_now_action) ->
+                            mutate(fragment, token) {
+                                CastRoomRepository.playAt(context, it, index)
+                            }
+                        context.getString(R.string.cast_room_remove_action) -> {
+                            val itemId = item.id ?: return@setItems
+                            mutate(fragment, token) {
+                                CastRoomRepository.removeItem(context, it, itemId)
+                            }
                         }
-                    context.getString(R.string.cast_room_remove_action) -> {
-                        val itemId = item.id ?: return@setItems
-                        mutate(fragment, token) {
-                            CastRoomRepository.removeItem(context, it, itemId)
+                        context.getString(R.string.cast_room_move_up_action) -> {
+                            val moved = CastRoomQueue.moveItem(ids, index, index - 1) ?: return@setItems
+                            mutate(fragment, token) {
+                                CastRoomRepository.reorder(context, it, moved)
+                            }
                         }
-                    }
-                    context.getString(R.string.cast_room_move_up_action) -> {
-                        val moved = CastRoomQueue.moveItem(ids, index, index - 1) ?: return@setItems
-                        mutate(fragment, token) {
-                            CastRoomRepository.reorder(context, it, moved)
-                        }
-                    }
-                    context.getString(R.string.cast_room_move_down_action) -> {
-                        val moved = CastRoomQueue.moveItem(ids, index, index + 1) ?: return@setItems
-                        mutate(fragment, token) {
-                            CastRoomRepository.reorder(context, it, moved)
+                        context.getString(R.string.cast_room_move_down_action) -> {
+                            val moved = CastRoomQueue.moveItem(ids, index, index + 1) ?: return@setItems
+                            mutate(fragment, token) {
+                                CastRoomRepository.reorder(context, it, moved)
+                            }
                         }
                     }
                 }
-            }
-            .setNegativeButton(android.R.string.cancel, null)
-            .show()
+                .setNegativeButton(android.R.string.cancel, null)
+        }
     }
 
     private fun mutate(

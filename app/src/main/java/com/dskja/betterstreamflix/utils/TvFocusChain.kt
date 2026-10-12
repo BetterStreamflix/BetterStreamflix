@@ -12,9 +12,33 @@ object TvFocusChain {
         link(views, horizontal = false)
     }
 
+    /**
+     * Pure axis-link plan for JVM tests (FA-035). [visibleIds] are already filtered
+     * to focusable/visible nodes; returns prev/next per id. Orthogonal axis is never
+     * represented here — callers must not clear it.
+     */
+    fun planAxisLinks(visibleIds: List<Int>): List<AxisLink> {
+        if (visibleIds.isEmpty()) return emptyList()
+        return visibleIds.mapIndexed { index, id ->
+            AxisLink(
+                id = id,
+                previousId = visibleIds.getOrNull(index - 1) ?: View.NO_ID,
+                nextId = visibleIds.getOrNull(index + 1) ?: View.NO_ID,
+            )
+        }
+    }
+
+    data class AxisLink(
+        val id: Int,
+        val previousId: Int,
+        val nextId: Int,
+    )
+
     private fun link(views: Array<out View>, horizontal: Boolean) {
         val visible = views.filter { it.visibility == View.VISIBLE && it.isFocusable && it.isEnabled }
         views.filter { it !in visible }.forEach { view ->
+            // Clear only the axis we are linking — preserve the orthogonal axis
+            // so XML / prior vertical (or horizontal) links survive a rewire (FA-002).
             if (horizontal) {
                 view.nextFocusLeftId = View.NO_ID
                 view.nextFocusRightId = View.NO_ID
@@ -26,20 +50,17 @@ object TvFocusChain {
         visible.forEach { view ->
             if (view.id == View.NO_ID) view.id = View.generateViewId()
         }
-        visible.forEachIndexed { index, view ->
-            val previous = visible.getOrNull(index - 1)?.id ?: View.NO_ID
-            val next = visible.getOrNull(index + 1)?.id ?: View.NO_ID
+        val links = planAxisLinks(visible.map { it.id })
+        links.forEach { link ->
+            val view = visible.first { it.id == link.id }
             if (horizontal) {
-                view.nextFocusLeftId = previous
-                view.nextFocusRightId = next
-                // Clear stale vertical XML cross-links after a horizontal rewire.
-                view.nextFocusUpId = View.NO_ID
-                view.nextFocusDownId = View.NO_ID
+                view.nextFocusLeftId = link.previousId
+                view.nextFocusRightId = link.nextId
+                // Preserve nextFocusUp/Down — transport↔progress and detail CTAs rely on them.
             } else {
-                view.nextFocusUpId = previous
-                view.nextFocusDownId = next
-                view.nextFocusLeftId = View.NO_ID
-                view.nextFocusRightId = View.NO_ID
+                view.nextFocusUpId = link.previousId
+                view.nextFocusDownId = link.nextId
+                // Preserve nextFocusLeft/Right.
             }
         }
     }

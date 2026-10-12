@@ -34,6 +34,8 @@ data class ProfileTransferPayload(
     data class SettingsSnapshot(
         val libraryScope: String? = null,
         val selectedTheme: String? = null,
+        /** Compact / comfort — profile Leanback density (TV). */
+        val leanbackDensity: String? = null,
         val showContinueWatching: Boolean? = null,
         val showRecentlyWatched: Boolean? = null,
         val showNextEpisodes: Boolean? = null,

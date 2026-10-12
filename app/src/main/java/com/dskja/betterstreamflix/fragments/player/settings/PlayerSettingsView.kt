@@ -611,6 +611,7 @@ abstract class PlayerSettingsView @JvmOverloads constructor(
                 is Settings.SoftwareDecoder.Off -> false
             }
             Settings.SoftwareDecoder.selectedValue = if (newValue == Settings.SoftwareDecoder.isDefaultEnabled) null else newValue
+            Settings.SoftwareDecoder.persistForcedOffFromSelection()
             onSoftwareDecoderListener?.invoke(newValue)
         }
 
@@ -782,7 +783,20 @@ abstract class PlayerSettingsView @JvmOverloads constructor(
 
                 fun init(defaultEnabled: Boolean) {
                     isDefaultEnabled = defaultEnabled
-                    selectedValue = null
+                    // CC-006: restore Forced Off across process death when Auto would be On.
+                    selectedValue = when {
+                        UserPreferences.codecSoftwareForcedOff && defaultEnabled -> false
+                        UserPreferences.codecSoftwareForcedOff && !defaultEnabled -> {
+                            UserPreferences.codecSoftwareForcedOff = false
+                            null
+                        }
+                        else -> null
+                    }
+                }
+
+                fun persistForcedOffFromSelection() {
+                    UserPreferences.codecSoftwareForcedOff =
+                        selectedValue == false && isDefaultEnabled
                 }
             }
 

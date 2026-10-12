@@ -33,6 +33,8 @@ class LivePipZapPolicyTest {
         assertFalse(LivePipZapPolicy.isEligible(base.copy(isCasting = true)))
         assertFalse(LivePipZapPolicy.isEligible(base.copy(isSystemPip = true)))
         assertFalse(LivePipZapPolicy.isEligible(base.copy(hasChannelCandidate = false)))
+        assertFalse(LivePipZapPolicy.isEligible(base.copy(stickEnergyOrLowRam = true)))
+        assertFalse(LivePipZapPolicy.isEligible(base.copy(codecComfortActive = true)))
     }
 
     @Test

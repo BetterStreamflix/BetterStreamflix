@@ -77,9 +77,8 @@ class SubtitleOffsetRenderersFactory(context: Context) : DefaultRenderersFactory
         enableFloatOutput: Boolean,
         enableAudioTrackPlaybackParams: Boolean,
     ): AudioSink {
-        // PT-134: true Media3 bypass when Night is off — empty processor chain (zero copy).
-        // Toggle soft-rebuilds Exo (setOnNightAudioSelectedListener → displayVideo) so the
-        // processor is only in the sink while Night is actually enabled.
+        // PT-134 / CC-007: empty processor chain when Night is off (zero copy on sticks).
+        // Night PCM only while user-enabled Night is on — Comfort/Energy never force it.
         NightModeAudio.syncFromPreferences()
         val processors = if (NightModeAudio.enabled) {
             arrayOf(NightModeAudioProcessor())

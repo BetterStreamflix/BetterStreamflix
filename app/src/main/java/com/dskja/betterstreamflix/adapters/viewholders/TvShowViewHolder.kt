@@ -400,8 +400,7 @@ class TvShowViewHolder(
             val (w, h) = if (shelfDensity) {
                 com.dskja.betterstreamflix.ui.LeanbackDensityPolicy.shelfPosterOverridePx(dens)
             } else {
-                val height = (200f * dens).toInt().coerceAtLeast(400)
-                (height * 2 / 3f).toInt().coerceAtLeast(280) to height
+                com.dskja.betterstreamflix.ui.LeanbackDensityPolicy.gridPosterOverridePx(dens)
             }
             val reduce = DeviceCapabilities.shouldReduceHomeEffects(imageView.context)
             fallback(R.drawable.glide_fallback_cover)

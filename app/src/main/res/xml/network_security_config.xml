@@ -1,4 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+  SS-B10-06: Cleartext remains permitted for IPTV / LAN Cast proxy / Bypass WS.
+  Trust anchors stay system + ISRG. Domain-only cleartext is not practical for
+  arbitrary IPTV hosts — keep base cleartext but pair with host allowlists in
+  Bypass / Cast / resolve paths.
+-->
 <network-security-config>
     <base-config cleartextTrafficPermitted="true">
         <trust-anchors>

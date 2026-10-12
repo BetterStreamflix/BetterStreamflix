@@ -15,11 +15,16 @@ class BypassWebSocketServer(
     private val onDone: (token: String, cookies: String?) -> Unit
 ) : WebSocketServer(InetSocketAddress(port)) {
 
-    private val sessions = ConcurrentHashMap<String, String>()
+    private data class Session(
+        val payload: String,
+        @Volatile var boundPeer: String? = null,
+    )
+
+    private val sessions = ConcurrentHashMap<String, Session>()
     private val startedLatch = CountDownLatch(1)
 
     fun registerSession(token: String, payload: String) {
-        sessions[token] = payload
+        sessions[token] = Session(payload = payload)
     }
 
     fun clearSession(token: String) {
@@ -40,16 +45,26 @@ class BypassWebSocketServer(
 
     override fun onMessage(conn: WebSocket, message: String) {
         Log.d("BypassWS", "Message: $message")
+        val peer = peerKey(conn)
 
         when {
             message.startsWith("resolve:") -> {
                 val token = message.substringAfter("resolve:")
-                val payload = sessions[token]
-                if (payload != null) {
-                    conn.send("payload:$payload")
-                } else {
+                val session = sessions[token]
+                if (session == null) {
                     conn.send("error:unknown_session")
+                    return
                 }
+                // Bind token → first resolver peer; reject other peers (SEC-DL-01/03).
+                val bound = session.boundPeer
+                if (bound == null) {
+                    session.boundPeer = peer
+                } else if (bound != peer) {
+                    Log.w("BypassWS", "Rejecting resolve from unbound peer for token=$token")
+                    conn.send("error:unbound_peer")
+                    return
+                }
+                conn.send("payload:${session.payload}")
             }
 
             message.startsWith("done:") -> {
@@ -62,18 +77,33 @@ class BypassWebSocketServer(
                             String(Base64.getDecoder().decode(encoded), Charsets.UTF_8)
                         }.getOrNull()
                     }
-                // One-shot: token must be registered; remove before applying cookies
-                // so replay cannot inject cookies after completion (SEC-DL-03).
-                if (sessions.remove(token) != null) {
-                    // Bound cookie apply to SerienStream / AniWorld style cookie jars —
-                    // reject obviously hostile blobs (null bytes / extreme size).
-                    val safeCookies = cookies
-                        ?.takeIf { it.length <= MAX_COOKIE_CHARS && '\u0000' !in it }
-                    conn.send("ack:$token")
-                    onDone(token, safeCookies)
-                } else {
+                val session = sessions[token]
+                if (session == null) {
                     conn.send("error:unknown_session")
+                    return
                 }
+                // Require prior resolve: from this same peer before accepting cookies.
+                val bound = session.boundPeer
+                if (bound == null || bound != peer) {
+                    Log.w(
+                        "BypassWS",
+                        "Rejecting done: from unbound peer for token=$token (bound=$bound peer=$peer)",
+                    )
+                    conn.send("error:unbound_peer")
+                    return
+                }
+                // One-shot: remove before applying cookies so replay cannot inject
+                // cookies after completion (SEC-DL-03).
+                if (sessions.remove(token) == null) {
+                    conn.send("error:unknown_session")
+                    return
+                }
+                // Bound cookie apply to SerienStream / AniWorld style cookie jars —
+                // reject obviously hostile blobs (null bytes / extreme size).
+                val safeCookies = cookies
+                    ?.takeIf { it.length <= MAX_COOKIE_CHARS && '\u0000' !in it }
+                conn.send("ack:$token")
+                onDone(token, safeCookies)
             }
         }
     }
@@ -97,5 +127,20 @@ class BypassWebSocketServer(
 
     companion object {
         private const val MAX_COOKIE_CHARS = 16_384
+
+        /**
+         * Bind by remote IP only (not port). The phone opens separate sockets for
+         * `resolve:` and `done:`, so port-level binding would break the real flow.
+         */
+        private fun peerKey(conn: WebSocket): String {
+            val addr = conn.remoteSocketAddress
+            return when (addr) {
+                is InetSocketAddress ->
+                    addr.address?.hostAddress
+                        ?: addr.hostString?.substringBefore('%')
+                        ?: "unknown"
+                else -> addr?.toString() ?: "unknown"
+            }
+        }
     }
 }

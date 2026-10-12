@@ -191,7 +191,12 @@ class SeasonTvFragment : Fragment() {
             }
             setItemSpacing(resources.getDimension(R.dimen.season_episodes_spacing).toInt())
             // Leanback WRAP_CONTENT HGV is unsafe — pin like detail cast rows (TV-SEAS-06).
-            setRowHeight(resources.getDimensionPixelSize(R.dimen.season_episode_row_height))
+            setRowHeight(
+                com.dskja.betterstreamflix.ui.LeanbackDensityPolicy.dpToPx(
+                    this,
+                    com.dskja.betterstreamflix.ui.LeanbackDensityPolicy.seasonEpisodeRowHeightDp(),
+                ),
+            )
             setHasFixedSize(true)
         }
     }

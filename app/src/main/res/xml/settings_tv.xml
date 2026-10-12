@@ -128,6 +128,12 @@
                 android:key="PROFILE_IMPORT"
                 android:title="@string/profile_transfer_import_title"
                 android:summary="@string/profile_transfer_import_summary" />
+
+            <Preference
+                android:key="PARENT_DASHBOARD_OPEN"
+                android:title="@string/parent_dashboard_title"
+                android:summary="@string/parent_dashboard_summary"
+                android:widgetLayout="@layout/preference_widget_chevron" />
         </PreferenceCategory>
 
         <PreferenceCategory
@@ -356,6 +362,34 @@
                 android:summary="@string/profile_integration_summary"
                 android:defaultValue="true" />
         </PreferenceCategory>
+    </PreferenceScreen>
+
+    <!-- SS-B10-11: Kids Fortress Parent Dashboard on TV. -->
+    <PreferenceScreen
+        android:key="screen_parent_dashboard"
+        android:title="@string/parent_dashboard_title"
+        android:summary="@string/parent_dashboard_summary"
+        android:widgetLayout="@layout/preference_widget_chevron">
+
+        <PreferenceCategory
+            android:key="pc_parent_dashboard_overview"
+            android:title="@string/parent_dashboard_overview_title">
+
+            <Preference
+                android:key="PARENT_DASHBOARD_HOUSEHOLD"
+                android:title="@string/parent_dashboard_household_title"
+                android:selectable="false" />
+
+            <Preference
+                android:key="PARENT_DASHBOARD_EMPTY"
+                android:title="@string/parent_dashboard_empty_title"
+                android:summary="@string/parent_dashboard_empty_summary"
+                android:selectable="false" />
+        </PreferenceCategory>
+
+        <PreferenceCategory
+            android:key="pc_parent_dashboard_kids"
+            android:title="@string/parent_dashboard_kids_title" />
     </PreferenceScreen>
 
     <PreferenceScreen
@@ -1078,7 +1112,18 @@
                 android:key="STICK_ENERGY_MODE"
                 android:title="@string/settings_stick_energy_mode_title"
                 android:summary="@string/settings_stick_energy_mode_summary"
-                android:defaultValue="false" />
+                android:persistent="false" />
+
+            <Preference
+                android:key="CODEC_COMFORT_STATUS"
+                android:title="@string/settings_codec_comfort_title"
+                android:summary="@string/settings_codec_comfort_summary_idle"
+                android:selectable="false" />
+
+            <Preference
+                android:key="CODEC_COMFORT_RESET"
+                android:title="@string/settings_codec_comfort_reset"
+                android:summary="@string/settings_codec_comfort_summary_active" />
 
             <PreferenceScreen
                 android:key="screen_cinema_room"

@@ -16,7 +16,7 @@ object SearchTvRows {
 
     val MAX_LOCAL: Int get() = SearchResultGuard.maxLocalResults()
     val MAX_GLOBAL_PER_PROVIDER: Int get() = SearchResultGuard.maxGlobalPerProvider()
-    /** Comfort defaults; runtime uses [com.dskja.betterstreamflix.ui.LeanbackDensityPolicy]. */
+    /** Delegates to [com.dskja.betterstreamflix.ui.LeanbackDensityPolicy] (Compact/Comfort). */
     val GENRE_COLUMNS: Int
         get() = com.dskja.betterstreamflix.ui.LeanbackDensityPolicy.searchGenreColumns()
     val RESULT_COLUMNS: Int

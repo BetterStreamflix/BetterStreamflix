@@ -435,6 +435,10 @@ class CategoryViewHolder(
             listEmpty = category.list.isEmpty(),
         )
         bindShelfPin(binding.btnShelfPin)
+        // LD-037: Compact density shrinks shelf pin chrome.
+        if (binding.btnShelfPin.visibility == View.VISIBLE) {
+            com.dskja.betterstreamflix.ui.LeanbackDensityPolicy.applyChromeIconSize(binding.btnShelfPin)
+        }
 
         // Never keep empty CATEGORY shelves on screen — title-only rows still trap Leanback.
         // Search Global omits empty Success shelves; Home should not submit empties either.

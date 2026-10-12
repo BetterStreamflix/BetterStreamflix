@@ -139,6 +139,10 @@ object SessionHandoffUi {
     }
 
     fun promptClaimCode(activity: FragmentActivity) {
+        if (ProfileUnlockGate.requiresGateForActive()) {
+            // Wait for unlock; Settings re-entry or tryFlushPending resumes claim.
+            return
+        }
         if (!SupabaseProvider.isConfigured) {
             ExpDialogChrome.notify(activity, R.string.session_handoff_needs_supabase)
             return
@@ -204,6 +208,7 @@ object SessionHandoffUi {
                 Toast.LENGTH_LONG,
             ).show()
         }
+        // PIN gate + offline / auth queue via SessionHandoffPendingClaim.
         if (ProfileUnlockGate.requiresGateForActive()) {
             SessionHandoffPendingClaim.enqueue(appContext, cleaned)
             return
@@ -355,10 +360,15 @@ object SessionHandoffUi {
             ExpDialogChrome.notify(activity, R.string.session_handoff_invalid_code)
             return
         }
+        if (ProfileUnlockGate.requiresGateForActive()) {
+            SessionHandoffPendingClaim.enqueue(activity.applicationContext, code)
+            return
+        }
         activity.lifecycleScope.launch {
             val result = withContext(Dispatchers.IO) {
                 runCatching { SessionHandoffRepository.claimByCode(activity, code) }
             }
+            promptedPendingCodes.remove(code)
             if (activity.isFinishing || activity.isDestroyed) return@launch
             result.onFailure { error ->
                 ExpDialogChrome.notify(

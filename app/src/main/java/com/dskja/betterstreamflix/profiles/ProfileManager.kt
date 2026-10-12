@@ -59,6 +59,7 @@ object ProfileManager {
         "PARENTAL_CONTROL_HARD_LOCKED",
         "SELECTED_THEME",
         "SELECTED_THEME_UPDATED_AT_MILLIS",
+        "LEANBACK_DENSITY",
         // Subtitle Studio light — size / color / background per profile
         "CAPTION_TEXT_SIZE",
         "CAPTION_STYLE_FONT_COLOR",

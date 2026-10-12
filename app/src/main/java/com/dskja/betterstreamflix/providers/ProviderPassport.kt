@@ -1,10 +1,13 @@
 package com.dskja.betterstreamflix.providers
 
 import com.dskja.betterstreamflix.player.SerienStreamBypassHelper
+import com.dskja.betterstreamflix.ui.StickEnergyMode
 import com.dskja.betterstreamflix.utils.UserPreferences
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.withContext
 
 /**
@@ -162,12 +165,18 @@ object ProviderPassport {
                 }
             }
             if (validateSessions) {
+                // SE-009: serial session probes under Stick Energy.
+                val gate = Semaphore(StickEnergyMode.providerParallelism(default = 2))
                 coroutineScope {
                     val ss = async {
-                        runCatching { SerienStreamAuthManager.validateSession() }
+                        gate.withPermit {
+                            runCatching { SerienStreamAuthManager.validateSession() }
+                        }
                     }
                     val aw = async {
-                        runCatching { AniWorldAuthManager.validateSession() }
+                        gate.withPermit {
+                            runCatching { AniWorldAuthManager.validateSession() }
+                        }
                     }
                     ss.await()
                     aw.await()

@@ -668,8 +668,7 @@ class MovieViewHolder(
         }
         binding.ivMoviePoster.loadMoviePoster(movie) {
             val dens = binding.ivMoviePoster.resources.displayMetrics.density
-            val h = (200f * dens).toInt().coerceAtLeast(300)
-            val w = (h * 2 / 3f).toInt().coerceAtLeast(200)
+            val (w, h) = com.dskja.betterstreamflix.ui.LeanbackDensityPolicy.gridPosterOverridePx(dens)
             fallback(R.drawable.glide_fallback_cover)
                 .override(w, h)
                 .centerCrop()

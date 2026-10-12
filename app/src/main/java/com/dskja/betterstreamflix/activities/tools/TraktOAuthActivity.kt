@@ -20,6 +20,7 @@ import kotlinx.coroutines.withContext
  */
 class TraktOAuthActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
+        com.dskja.betterstreamflix.utils.AccessibilityPreferences.applyHighContrastOverlayAuto(this)
         super.onCreate(savedInstanceState)
         handle(intent)
     }
