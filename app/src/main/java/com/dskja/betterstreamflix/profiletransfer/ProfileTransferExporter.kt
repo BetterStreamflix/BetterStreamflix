@@ -11,6 +11,12 @@ import com.dskja.betterstreamflix.utils.UserPreferences
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
+/**
+ * Builds a profile transfer payload from the active profile.
+ *
+ * Provider favorite layout (sort/order) is snapshotted only for providers present in
+ * the exported watchlist — other providers' shelf layout is intentionally omitted (EI-010).
+ */
 object ProfileTransferExporter {
 
     suspend fun exportActive(context: Context): ProfileTransferPayload = withContext(Dispatchers.IO) {

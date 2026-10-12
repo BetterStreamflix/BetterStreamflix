@@ -14,6 +14,10 @@ import kotlin.math.max
  * Device-wide accessibility overlays: large text (fontScale) and high contrast theme.
  * Reads SharedPreferences directly so [wrap] works in attachBaseContext before
  * [UserPreferences.setup].
+ *
+ * App [HIGH_CONTRAST] is **UI chrome** (theme overlay), not Subtitle Studio captions.
+ * It does not auto-apply [com.dskja.betterstreamflix.player.SubtitleStudio.HIGH_CONTRAST]
+ * — users pick caption presets separately to avoid surprising caption changes (ST-009).
  */
 object AccessibilityPreferences {
     const val LARGE_TEXT_SCALE = 1.3f

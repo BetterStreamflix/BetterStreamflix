@@ -19,9 +19,12 @@ import kotlinx.coroutines.sync.withPermit
 
 object ParentalControlUtils {
 
-    /** Cap concurrent TMDb age lookups — Fire Stick Search fans out dozens of rows. */
-    private const val AGE_LOOKUP_CONCURRENCY_DEFAULT = 6
-    private const val AGE_LOOKUP_CONCURRENCY_CONSTRAINED = 2
+    /**
+     * Cap concurrent TMDb age lookups — Fire Stick Search fans out dozens of rows (KF-022).
+     * Constrained devices stay low to protect leanback search; phones get a modest fan-out.
+     */
+    private const val AGE_LOOKUP_CONCURRENCY_DEFAULT = 8
+    private const val AGE_LOOKUP_CONCURRENCY_CONSTRAINED = 3
 
     private val matureGenreMarkers = listOf(
         "horror", "terror", "thriller", "erotic", "erótica", "erotica",

@@ -1190,7 +1190,8 @@
             <PreferenceScreen
                 android:key="screen_subtitle_studio"
                 android:title="@string/subtitle_studio_title"
-                android:summary="@string/subtitle_studio_summary">
+                android:summary="@string/subtitle_studio_summary"
+                android:widgetLayout="@layout/preference_widget_chevron">
 
                 <com.dskja.betterstreamflix.fragments.settings.SubtitleStudioPreviewPreference
                     android:key="SUBTITLE_STUDIO_PREVIEW"

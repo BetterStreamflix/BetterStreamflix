@@ -950,6 +950,7 @@
     <string name="profile_guest_end">End Guest</string>
     <string name="profile_guest_end_confirm">End Guest now? Continue Watching and History for this session will be deleted.</string>
     <string name="profile_guest_ended_toast">Guest ended — Continue &amp; History cleared</string>
+    <string name="profile_guest_expired_toast">Guest expired — Continue &amp; History cleared</string>
     <string name="profile_hub_summary_fmt">%1$s · %2$d profiles</string>
     <string name="profile_avatar_choose">Choose an avatar</string>
     <string name="profile_avatar_crimson_signal">Crimson</string>
@@ -1930,7 +1931,7 @@
     <string name="settings_large_text_title">Large text</string>
     <string name="settings_large_text_summary">Enlarge app text for easier reading (restarts the app)</string>
     <string name="settings_high_contrast_title">High contrast</string>
-    <string name="settings_high_contrast_summary">Maximize text and focus-ring contrast across the app (restarts the app)</string>
+    <string name="settings_high_contrast_summary">Maximize text and focus-ring contrast across the app (restarts the app). Does not change Subtitle Studio captions.</string>
     <string name="a11y_untitled">Untitled</string>
     <string name="a11y_state_in_my_list">in My List</string>
     <string name="a11y_state_watched">watched</string>

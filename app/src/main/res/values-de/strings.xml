@@ -795,6 +795,7 @@
     <string name="profile_guest_end">Gast beenden</string>
     <string name="profile_guest_end_confirm">Gast jetzt beenden? Weitersehen und Verlauf dieser Sitzung werden gelöscht.</string>
     <string name="profile_guest_ended_toast">Gast beendet — Weitersehen &amp; Verlauf gelöscht</string>
+    <string name="profile_guest_expired_toast">Gast abgelaufen — Weitersehen &amp; Verlauf gelöscht</string>
     <string name="profile_hub_summary_fmt">%1$s · %2$d Profile</string>
     <string name="profile_avatar_choose">Avatar wählen</string>
     <string name="profile_avatar_crimson_signal">Crimson</string>
@@ -1663,7 +1664,7 @@
     <string name="settings_large_text_title">Große Schrift</string>
     <string name="settings_large_text_summary">App-Text vergrößern für bessere Lesbarkeit (startet die App neu)</string>
     <string name="settings_high_contrast_title">Hoher Kontrast</string>
-    <string name="settings_high_contrast_summary">Maximaler Kontrast für Text und Fokus-Ringe (startet die App neu)</string>
+    <string name="settings_high_contrast_summary">Maximaler Kontrast für Text und Fokus-Ringe (startet die App neu). Ändert nicht die Untertitel-Studio-Captions.</string>
     <string name="a11y_untitled">Ohne Titel</string>
     <string name="a11y_state_in_my_list">in Meiner Liste</string>
     <string name="a11y_state_watched">gesehen</string>
