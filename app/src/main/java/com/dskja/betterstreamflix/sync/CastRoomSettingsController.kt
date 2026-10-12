@@ -11,6 +11,7 @@ import androidx.lifecycle.LifecycleCoroutineScope
 import androidx.preference.Preference
 import com.dskja.betterstreamflix.R
 import com.dskja.betterstreamflix.activities.tools.QrScannerActivity
+import com.dskja.betterstreamflix.ui.LeanbackDensityPolicy
 import com.dskja.betterstreamflix.utils.ExpDialogChrome
 
 object CastRoomSettingsController {
@@ -115,7 +116,9 @@ object CastRoomSettingsController {
             hint = context.getString(R.string.cast_room_code_hint)
             setSingleLine()
         }
-        val pad = (16 * context.resources.displayMetrics.density).toInt()
+        val pad = LeanbackDensityPolicy.overlayChromePadPx(
+            context.resources.displayMetrics.density,
+        )
         val wrap = LinearLayout(context).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(pad, pad / 2, pad, 0)

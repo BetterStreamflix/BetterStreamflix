@@ -39,6 +39,14 @@ object AccessibilityPreferences {
     fun wrapAfterLanguage(context: Context): Context =
         wrap(AppLanguageManager.wrap(context))
 
+    /**
+     * LD-027 / LD-034: intentional no-op — do **not** shrink Configuration.densityDpi for
+     * Compact Leanback. Global dpi scales nav/player/dialogs and compounds Large Text.
+     * Compact sizing is owned by [com.dskja.betterstreamflix.ui.LeanbackDensityPolicy]
+     * plus [R.style.AppTheme_Tv_LeanbackCompactOverlay] from MainTvActivity.onCreate.
+     */
+    fun wrapLeanbackDensity(context: Context): Context = context
+
     fun isLargeTextEnabled(context: Context): Boolean =
         prefs(context).getBoolean(KEY_LARGE_TEXT, false)
 

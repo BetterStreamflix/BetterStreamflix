@@ -40,6 +40,7 @@ import com.dskja.betterstreamflix.database.AppDatabase
 import com.dskja.betterstreamflix.databinding.*
 import com.dskja.betterstreamflix.fragments.home.HomeTvFragment
 import com.dskja.betterstreamflix.fragments.home.HomeTvFragmentDirections
+import com.dskja.betterstreamflix.fragments.live.LiveHubTvFragment
 import androidx.core.content.ContextCompat
 import androidx.preference.PreferenceManager
 import androidx.appcompat.app.AlertDialog
@@ -393,14 +394,21 @@ class TvShowViewHolder(
         }
     }
 
-    private fun setPoster(imageView: ImageView, shelfDensity: Boolean = false) {
+    private fun setPoster(
+        imageView: ImageView,
+        shelfDensity: Boolean = false,
+        liveShelf: Boolean = false,
+    ) {
         imageView.scaleType = if (isIptvProvider()) ImageView.ScaleType.FIT_CENTER else ImageView.ScaleType.CENTER_CROP
         imageView.loadTvShowPoster(tvShow) {
             val dens = imageView.resources.displayMetrics.density
-            val (w, h) = if (shelfDensity) {
-                com.dskja.betterstreamflix.ui.LeanbackDensityPolicy.shelfPosterOverridePx(dens)
-            } else {
-                com.dskja.betterstreamflix.ui.LeanbackDensityPolicy.gridPosterOverridePx(dens)
+            val (w, h) = when {
+                liveShelf ->
+                    com.dskja.betterstreamflix.ui.LeanbackDensityPolicy.liveShelfPosterOverridePx(dens)
+                shelfDensity ->
+                    com.dskja.betterstreamflix.ui.LeanbackDensityPolicy.shelfPosterOverridePx(dens)
+                else ->
+                    com.dskja.betterstreamflix.ui.LeanbackDensityPolicy.gridPosterOverridePx(dens)
             }
             val reduce = DeviceCapabilities.shouldReduceHomeEffects(imageView.context)
             fallback(R.drawable.glide_fallback_cover)
@@ -507,8 +515,19 @@ class TvShowViewHolder(
                 }
             }
         }
-        com.dskja.betterstreamflix.ui.LeanbackDensityPolicy.applyShelfPosterHeight(binding.ivTvShowPoster)
-        setPoster(binding.ivTvShowPoster, shelfDensity = true)
+        // LD-026: Live Hub shelves use denser Compact poster height.
+        val onLiveHub = context.toActivity()?.getCurrentFragment() is LiveHubTvFragment
+        if (onLiveHub) {
+            com.dskja.betterstreamflix.ui.LeanbackDensityPolicy.applyLiveShelfPosterHeight(
+                binding.ivTvShowPoster,
+            )
+            setPoster(binding.ivTvShowPoster, shelfDensity = true, liveShelf = true)
+        } else {
+            com.dskja.betterstreamflix.ui.LeanbackDensityPolicy.applyShelfPosterHeight(
+                binding.ivTvShowPoster,
+            )
+            setPoster(binding.ivTvShowPoster, shelfDensity = true)
+        }
         bindRibbons(binding.ivTvShowFavoriteRibbon, binding.ivTvShowWatchedRibbon, binding.root.findViewById(R.id.iv_tv_show_download_ribbon))
         binding.tvTvShowQuality.apply {
             text = tvShow.quality ?: ""

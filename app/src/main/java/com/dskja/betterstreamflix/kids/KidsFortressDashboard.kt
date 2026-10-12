@@ -146,7 +146,8 @@ object KidsFortressDashboard {
                 val episodes = db.episodeDao().getWatchingEpisodesCapped().first().size
                 movies + episodes
             } else {
-                val db = AppDatabase.getInstanceForProvider(providerName, context, profileId)
+                val db = AppDatabase.getInstanceForProviderOrNull(providerName, context, profileId)
+                    ?: return@runCatching 0
                 try {
                     val movies = db.movieDao().getWatchingMoviesCapped().first().size
                     val episodes = db.episodeDao().getWatchingEpisodesCapped().first().size
