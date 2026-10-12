@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- TV Comfort Leanback default; Compact/Comfort override at bind via LeanbackDensityPolicy. -->
+    <dimen name="tv_shelf_poster_height">240dp</dimen>
+    <dimen name="continue_watching_poster_height">240dp</dimen>
+    <!-- Ambient Continue strip = Comfort shelf (240) + meta budget (64); runtime overrides. -->
+    <dimen name="tv_ambient_continue_strip_height">304dp</dimen>
+    <dimen name="tv_focus_stroke_width_compact">3dp</dimen>
+    <dimen name="tv_activated_stroke_width">5dp</dimen>
+</resources>

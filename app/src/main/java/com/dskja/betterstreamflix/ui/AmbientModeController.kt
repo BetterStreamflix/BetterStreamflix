@@ -77,7 +77,7 @@ class AmbientModeController(
             }
             // While active: exit if prefs / a11y / Stick Energy / modal gates flip.
             if (active) {
-                if (!enabled() || !highEndOk() || modalBlocking()) {
+                if (!enabled() || !highEndOk() || modalBlocking() || isModalBlocking()) {
                     exit(restoreFocus = true)
                 } else {
                     scheduleIdleCheck()
@@ -94,7 +94,7 @@ class AmbientModeController(
                     highEndOk = highEndOk(),
                     idleElapsedMs = elapsed,
                     poolSize = pool.size,
-                    modalBlocking = modalBlocking(),
+                    modalBlocking = modalBlocking() || isModalBlocking(),
                     alreadyActive = active,
                 )
             ) {
@@ -134,6 +134,7 @@ class AmbientModeController(
         strip.itemAnimator = null
         strip.clipChildren = false
         strip.clipToPadding = false
+        LeanbackDensityPolicy.applyAmbientContinueStripHeight(strip)
         ambientRoot.visibility = View.GONE
         ambientRoot.isFocusable = false
         ambientRoot.isClickable = false
@@ -167,7 +168,7 @@ class AmbientModeController(
             scheduleIdleCheck()
             return
         }
-        if (!enabled() || !highEndOk() || modalBlocking()) {
+        if (!enabled() || !highEndOk() || modalBlocking() || isModalBlocking()) {
             exit(restoreFocus = true)
         }
     }
@@ -191,6 +192,13 @@ class AmbientModeController(
             handler.post {
                 if (active) exit(restoreFocus = false)
             }
+            return false
+        }
+        // FA-029: UP/DOWN while strip focused are strip-safe (no accidental exit).
+        if (stripFocused &&
+            (event.keyCode == KeyEvent.KEYCODE_DPAD_UP ||
+                event.keyCode == KeyEvent.KEYCODE_DPAD_DOWN)
+        ) {
             return false
         }
         if (AmbientModePolicy.shouldExitOnKey(event.keyCode, stripFocused)) {
@@ -258,7 +266,7 @@ class AmbientModeController(
 
     private fun enter() {
         if (active || pool.isEmpty() || !fragment.isAdded) return
-        if (!enabled() || !highEndOk() || modalBlocking()) return
+        if (!enabled() || !highEndOk() || modalBlocking() || isModalBlocking()) return
         active = true
         imageIndex = 0
         burnTick = 0
@@ -282,8 +290,15 @@ class AmbientModeController(
         strip.post {
             if (!active) return@post
             if (stripAdapter.itemCount > 0) {
-                strip.requestFocus()
+                // FA-010: focus first strip child, not the HGV container.
                 strip.setSelectedPosition(0)
+                val child = strip.layoutManager?.findViewByPosition(0)
+                    ?: strip.getChildAt(0)
+                if (child != null) {
+                    child.requestFocus()
+                } else {
+                    strip.requestFocus()
+                }
             }
         }
     }
@@ -390,6 +405,7 @@ class AmbientModeController(
     }
 
     private fun bindContinueStrip(items: List<AppAdapter.Item>) {
+        LeanbackDensityPolicy.applyAmbientContinueStripHeight(strip)
         val stamped = items.take(AmbientModePolicy.MAX_CONTINUE).map { item ->
             when (item) {
                 is Episode -> item.also {
@@ -411,15 +427,8 @@ class AmbientModeController(
     }
 
     private fun applyStripDensityHeight() {
-        val ctx = fragment.context ?: return
-        val density = ctx.resources.displayMetrics.density
-        val hDp = LeanbackDensityPolicy.ambientStripHeightDp()
-        val hPx = (hDp * density).toInt()
-        val lp = strip.layoutParams ?: return
-        if (lp.height == hPx) return
-        lp.height = hPx
-        strip.layoutParams = lp
-        (strip.parent as? ViewGroup)?.requestLayout()
+        if (fragment.context == null) return
+        LeanbackDensityPolicy.applyAmbientContinueStripHeight(strip)
     }
 
     private fun scheduleIdleCheck() {
@@ -429,7 +438,7 @@ class AmbientModeController(
             handler.postDelayed(idleCheck, AmbientModePolicy.ACTIVE_GATE_RECHECK_MS)
             return
         }
-        if (!enabled() || !highEndOk() || pool.isEmpty() || modalBlocking()) return
+        if (!enabled() || !highEndOk() || pool.isEmpty() || modalBlocking() || isModalBlocking()) return
         val remaining = (AmbientModePolicy.IDLE_ENTER_MS -
             (System.currentTimeMillis() - lastActivityAt)).coerceAtLeast(1_000L)
         handler.postDelayed(idleCheck, remaining)
@@ -455,6 +464,38 @@ class AmbientModeController(
             reduceMotion = DeviceCapabilities.isAnimatorDurationScaleOff(ctx),
             highContrast = UserPreferences.highContrast,
         )
+    }
+
+    /** FA-008 / FA-030: block Ambient while dialogs / known modals own the screen. */
+    private fun isModalBlocking(): Boolean {
+        val fm = fragment.activity?.supportFragmentManager ?: return false
+        if (fm.fragments.any { it is androidx.fragment.app.DialogFragment && it.isVisible }) {
+            return true
+        }
+        // Profile picker / remix / options often use AlertDialog on the activity window.
+        val decor = fragment.activity?.window?.decorView
+        if (decor is android.view.ViewGroup) {
+            for (i in 0 until decor.childCount) {
+                val child = decor.getChildAt(i)
+                // Dialog windows sit as direct decor children with elevated elevation.
+                if (child !== fragment.activity?.findViewById(android.R.id.content) &&
+                    child.isShown &&
+                    child.javaClass.name.contains("DecorView", ignoreCase = true).not() &&
+                    child.elevation > 0f &&
+                    child.findFocus() != null
+                ) {
+                    return true
+                }
+            }
+        }
+        return runCatching {
+            fragment.requireActivity().supportFragmentManager
+                .primaryNavigationFragment
+            // Any shown DialogFragment already covered; also treat non-empty back stack of dialogs.
+            fm.backStackEntryCount > 0 && fm.fragments.any {
+                it.javaClass.simpleName.contains("Dialog", ignoreCase = true) && it.isVisible
+            }
+        }.getOrDefault(false)
     }
 
     private fun updateBrandChrome() {

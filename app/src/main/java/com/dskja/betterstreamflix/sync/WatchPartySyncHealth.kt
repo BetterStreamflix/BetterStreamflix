@@ -28,13 +28,13 @@ object WatchPartySyncHealth {
     )
 
     fun levelFor(driftMs: Long, hostAgeMs: Long?): Level {
-        if (hostAgeMs != null && hostAgeMs > WatchTogetherPro.HOST_STALE_MS) {
+        if (hostAgeMs != null && hostAgeMs > WatchTogetherPro.hostStaleMs()) {
             return Level.STALE
         }
         val drift = driftMs.coerceAtLeast(0L)
         return when {
             drift <= WatchTogetherPro.HEALTH_GOOD_MS -> Level.GOOD
-            drift <= WatchTogetherPro.HEALTH_LOST_MS -> Level.LAGGING
+            drift <= WatchTogetherPro.healthLostMs() -> Level.LAGGING
             else -> Level.LOST
         }
     }

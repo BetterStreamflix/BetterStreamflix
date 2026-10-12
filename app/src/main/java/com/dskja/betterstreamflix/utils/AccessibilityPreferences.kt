@@ -54,6 +54,17 @@ object AccessibilityPreferences {
         activity.theme.applyStyle(highContrastOverlay(mobile), true)
     }
 
+    /**
+     * FA-031: shared helper for secondary Activities — leanback → TV overlay,
+     * otherwise mobile.
+     */
+    fun applyHighContrastOverlayAuto(activity: Activity) {
+        val leanback = activity.packageManager.hasSystemFeature(
+            android.content.pm.PackageManager.FEATURE_LEANBACK,
+        )
+        applyHighContrastOverlay(activity, mobile = !leanback)
+    }
+
     fun posterLabel(
         context: Context,
         title: String?,

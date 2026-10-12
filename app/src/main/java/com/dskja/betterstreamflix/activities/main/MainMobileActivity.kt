@@ -95,6 +95,7 @@ class MainMobileActivity : FragmentActivity() {
         registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
             val wsUrl = pendingWs
             val token = pendingToken
+            val payloadBound = pendingPayloadBound
             val cookies =
                 result.data?.getStringExtra(BypassWebViewActivity.EXTRA_COOKIE_HEADER)?.trim()
 
@@ -105,8 +106,13 @@ class MainMobileActivity : FragmentActivity() {
             }
 
             // Never echo cookies to a non-LAN / unbound WebSocket (SEC-DL-01).
-            if (!BypassWebSocketEndpointHelper.isAllowedPeerWs(wsUrl)) {
-                Log.w("ResolverWS", "Refusing cookie send to disallowed ws peer")
+            // Require a prior successful payload bind for this exact (ws, token) pair.
+            if (!BypassWebSocketEndpointHelper.isAllowedPeerWs(wsUrl) || !payloadBound) {
+                Log.w(
+                    "ResolverWS",
+                    "Refusing cookie send to disallowed/unbound ws peer " +
+                        "(allowed=${BypassWebSocketEndpointHelper.isAllowedPeerWs(wsUrl)} bound=$payloadBound)",
+                )
                 return@registerForActivityResult
             }
 
@@ -123,6 +129,8 @@ class MainMobileActivity : FragmentActivity() {
 
     private var pendingWs: String? = null
     private var pendingToken: String? = null
+    /** Set only after a successful payload: response for the pending (ws, token) pair. */
+    private var pendingPayloadBound: Boolean = false
 
     private var updateAppDialog: UpdateAppMobileDialog? = null
 
@@ -562,7 +570,7 @@ class MainMobileActivity : FragmentActivity() {
             com.dskja.betterstreamflix.profiletransfer.ProfileTransferUi.tryFlushPending(this)
             com.dskja.betterstreamflix.sync.CastRoomUi.tryFlushPending(this)
             com.dskja.betterstreamflix.sync.CastHandoffUi.tryFlushPending(this)
-        com.dskja.betterstreamflix.sync.SessionHandoffUi.tryFlushPending(this)
+            com.dskja.betterstreamflix.sync.SessionHandoffUi.tryFlushPending(this)
             return
         }
         val host = navHost.childFragmentManager.primaryNavigationFragment ?: navHost
@@ -576,7 +584,7 @@ class MainMobileActivity : FragmentActivity() {
                 com.dskja.betterstreamflix.profiletransfer.ProfileTransferUi.tryFlushPending(this)
                 com.dskja.betterstreamflix.sync.CastRoomUi.tryFlushPending(this)
                 com.dskja.betterstreamflix.sync.CastHandoffUi.tryFlushPending(this)
-        com.dskja.betterstreamflix.sync.SessionHandoffUi.tryFlushPending(this)
+                com.dskja.betterstreamflix.sync.SessionHandoffUi.tryFlushPending(this)
             },
         )
     }
@@ -601,6 +609,7 @@ class MainMobileActivity : FragmentActivity() {
     private fun clearResolverState() {
         pendingWs = null
         pendingToken = null
+        pendingPayloadBound = false
     }
 
     private fun showUpdateDialog(state: MainViewModel.State.SuccessCheckingUpdate) {
@@ -1072,17 +1081,28 @@ class MainMobileActivity : FragmentActivity() {
         }
         pendingWs = ws
         pendingToken = token
+        pendingPayloadBound = false
 
         lifecycleScope.launch {
             val payload = requestResolverPayload(ws, token)
             if (payload == null) {
+                clearResolverState()
                 showResolverConnectionErrorDialog(ws, token)
                 return@launch
             }
             // Never load attacker payload URLs in Bypass WebView (SEC-DL-01 / WV-01).
             if (!isAllowedResolverPayloadUrl(payload.url)) {
                 Log.w("ResolverWS", "Rejected resolver payload URL: ${payload.url}")
+                clearResolverState()
                 showResolverConnectionErrorDialog(ws, token)
+                return@launch
+            }
+            // Bind cookie return to this successful resolve pair only.
+            if (pendingWs == ws && pendingToken == token) {
+                pendingPayloadBound = true
+            } else {
+                Log.w("ResolverWS", "Pending resolve pair changed; refusing payload bind")
+                clearResolverState()
                 return@launch
             }
 

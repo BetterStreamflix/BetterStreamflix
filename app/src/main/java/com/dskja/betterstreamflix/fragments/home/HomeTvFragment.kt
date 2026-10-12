@@ -134,9 +134,19 @@ class HomeTvFragment : Fragment() {
         val token = com.dskja.betterstreamflix.player.PlayerCleanExit.peekHomeFocusToken()
             ?: return false
         grid.post {
-            val root = _binding?.vgvHome ?: return@post
-            val landed = com.dskja.betterstreamflix.player.PlayerCleanExit
-                .restoreHomeFocus(root, token)
+            // FA-010: search ambient overlay + Home grid for Clean Exit tags.
+            val ambient = _binding?.root?.findViewById<View>(R.id.ambient_overlay)
+                ?: _binding?.root?.findViewById<View>(R.id.ambient_root)
+            val homeRoot = _binding?.vgvHome
+            val landed = (
+                ambient != null &&
+                    com.dskja.betterstreamflix.player.PlayerCleanExit
+                        .restoreHomeFocus(ambient, token)
+                ) || (
+                homeRoot != null &&
+                    com.dskja.betterstreamflix.player.PlayerCleanExit
+                        .restoreHomeFocus(homeRoot, token)
+                )
             com.dskja.betterstreamflix.player.PlayerCleanExit.consumeHomeFocusRestore()
             if (!landed) focusHomeContent()
         }
@@ -157,6 +167,10 @@ class HomeTvFragment : Fragment() {
 
         initializeHome()
         refreshProfileChip()
+        // LD-037: shrink remix chrome under Compact density.
+        binding.root.findViewById<View>(R.id.btn_home_remix)?.let {
+            com.dskja.betterstreamflix.ui.LeanbackDensityPolicy.applyChromeIconSize(it)
+        }
         cinemaRoomController = CinemaRoomController(
             fragment = this,
             root = binding.root,
@@ -196,8 +210,9 @@ class HomeTvFragment : Fragment() {
                                 showCatalogWarning(state.providerWarning)
                                 // Logo-only Room merges rematerialize SuccessLoading — don't
                                 // yank DPAD mid-scroll when focus is already on Home content.
-                                // Ambient strip focus lives outside vgvHome — never steal it.
-                                if ((!hadCatalog || !focusInsideHome) && !isAmbientActive()) {
+                                // FA-009: Ambient strip focus lives outside vgvHome — never steal it.
+                                if (!isAmbientActive() && (!hadCatalog || !focusInsideHome)) {
+
                                     focusHomeContent()
                                 }
                             }
@@ -237,10 +252,9 @@ class HomeTvFragment : Fragment() {
         super.onResume()
         refreshProfileChip()
         com.dskja.betterstreamflix.ui.TrailerPlaybackController.silenceAllActive()
-        // Clean Exit: prefer exact remembered tile after player; else Featured / first shelf.
-        if (com.dskja.betterstreamflix.player.PlayerCleanExit.shouldRestoreHomeFocus()) {
-            if (restoreCleanExitFocus()) return
-        }
+        // FA-021: Clean Exit restore is owned solely by MainTvActivity destination
+        // listener (focusHomeAfterCleanExit). Ambient exit still calls
+        // restoreCleanExitFocus() when leaving Ambient. Do not race here.
         // Returning from detail often leaves DPAD on side nav; restore content focus.
         val grid = _binding?.vgvHome
         val contentVisible = grid != null &&
@@ -405,7 +419,12 @@ class HomeTvFragment : Fragment() {
             }
             itemAnimator = null
             descendantFocusability = ViewGroup.FOCUS_AFTER_DESCENDANTS
-            setItemSpacing(resources.getDimension(R.dimen.home_spacing).toInt())
+            setItemSpacing(
+                com.dskja.betterstreamflix.ui.LeanbackDensityPolicy.dpToPx(
+                    this,
+                    com.dskja.betterstreamflix.ui.LeanbackDensityPolicy.itemSpacingDp(),
+                ),
+            )
             // Do not requestFocus while the adapter is empty — Leanback then loses the
             // focus target and DPAD stays trapped on the side nav until Movies/etc.
         }
@@ -703,7 +722,10 @@ class HomeTvFragment : Fragment() {
                         }
                     }
                 }
-                category.itemSpacing = resources.getDimension(R.dimen.home_spacing).toInt()
+                category.itemSpacing = com.dskja.betterstreamflix.ui.LeanbackDensityPolicy.dpToPx(
+                    binding.root,
+                    com.dskja.betterstreamflix.ui.LeanbackDensityPolicy.itemSpacingDp(),
+                )
                 category.itemType = when {
                     Category.isFeaturedName(category.name) -> AppAdapter.Type.CATEGORY_TV_SWIPER
                     else -> AppAdapter.Type.CATEGORY_TV_ITEM

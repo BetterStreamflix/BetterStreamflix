@@ -363,6 +363,7 @@ class SettingsTvFragment : LeanbackPreferenceFragmentCompat() {
                 "screen_provider_health" -> getString(R.string.settings_provider_health_title)
                 "screen_provider_passport" -> getString(R.string.settings_provider_passport_title)
                 "screen_notifications" -> getString(R.string.settings_screen_notifications)
+                "screen_appearance" -> getString(R.string.settings_category_appearance)
                 else -> getString(R.string.settings_screen_downloads)
             }
         findPreference<Preference>(key)?.isVisible = true
@@ -406,6 +407,17 @@ class SettingsTvFragment : LeanbackPreferenceFragmentCompat() {
         PlatformSettingsController.bind(this, lifecycleScope) { key ->
             findPreference(key)
         }
+        com.dskja.betterstreamflix.kids.ParentDashboardController.bind(
+            fragment = this,
+            scope = lifecycleScope,
+            findPreference = { key -> findPreference(key) },
+            onOpenDashboard = {
+                openNestedSettingsScreen(
+                    "screen_parent_dashboard",
+                    getString(R.string.parent_dashboard_title),
+                )
+            },
+        )
         ProfilesSettingsController.bind(
             fragment = this,
             scope = lifecycleScope,
@@ -469,7 +481,11 @@ class SettingsTvFragment : LeanbackPreferenceFragmentCompat() {
                     showSettingsInfo(getString(R.string.doh_provider_updated))
                 }
             },
-            onWebSocketBypassTest = { showWebSocketBypassTestDialog() },
+            onWebSocketBypassTest = if (BuildConfig.DEBUG) {
+                { showWebSocketBypassTestDialog() }
+            } else {
+                null
+            },
         )
 
         findPreference<EditTextPreference>("provider_streamingcommunity_domain")?.apply {
@@ -1380,7 +1396,7 @@ class SettingsTvFragment : LeanbackPreferenceFragmentCompat() {
                 }
                 UserPreferences.oledMode = false
                 UserPreferences.selectedTheme = newTheme
-                restartMainTvWithoutAnimation()
+                restartMainTvWithoutAnimation(openSettingsScreen = "screen_appearance")
                 true
             }
         }
@@ -1402,58 +1418,14 @@ class SettingsTvFragment : LeanbackPreferenceFragmentCompat() {
             }
             setOnPreferenceChangeListener { _, newValue ->
                 UserPreferences.leanbackDensity = newValue as String
-                restartMainTvWithoutAnimation()
+                restartMainTvWithoutAnimation(openSettingsScreen = "screen_appearance")
                 true
             }
         }
 
-        findPreference<SwitchPreference>("STICK_ENERGY_MODE")?.apply {
-            isChecked = com.dskja.betterstreamflix.ui.StickEnergyMode.isEnabled(requireContext())
-            summary = if (com.dskja.betterstreamflix.player.CodecComfort.isActive()) {
-                getString(R.string.settings_stick_energy_mode_summary_with_codec_comfort)
-            } else {
-                getString(R.string.settings_stick_energy_mode_summary)
-            }
-            setOnPreferenceChangeListener { _, newValue ->
-                UserPreferences.stickEnergyMode = newValue as Boolean
-                // Density / Large Text restart — Stick Energy also changes Ambient Ken Burns
-                // and Featured motion gates; restart so Home shelves + Ambient rebind cleanly.
-                restartMainTvWithoutAnimation()
-                true
-            }
-        }
+        bindStickEnergyAndCodecComfortPrefs()
+        bindCinemaAmbientEnergyHonesty()
 
-        findPreference<SwitchPreferenceCompat>("CINEMA_ROOM")?.apply {
-            isChecked = UserPreferences.cinemaRoomEnabled
-            setOnPreferenceChangeListener { _, newValue ->
-                val enabled = newValue as Boolean
-                UserPreferences.cinemaRoomEnabled = enabled
-                if (enabled) {
-                    com.dskja.betterstreamflix.ui.CinemaRoomController.onCinemaRoomEnabled()
-                }
-                findPreference<SwitchPreferenceCompat>("TV_AMBIENT_MODE")?.isEnabled = enabled
-                findPreference<SwitchPreferenceCompat>("CINEMA_AMBIENT_LIGHT")?.isEnabled = enabled
-                true
-            }
-        }
-
-        findPreference<SwitchPreferenceCompat>("TV_AMBIENT_MODE")?.apply {
-            isChecked = UserPreferences.tvAmbientModeEnabled
-            isEnabled = UserPreferences.cinemaRoomEnabled
-            setOnPreferenceChangeListener { _, newValue ->
-                UserPreferences.tvAmbientModeEnabled = newValue as Boolean
-                true
-            }
-        }
-
-        findPreference<SwitchPreferenceCompat>("CINEMA_AMBIENT_LIGHT")?.apply {
-            isChecked = UserPreferences.cinemaAmbientLightHints
-            isEnabled = UserPreferences.cinemaRoomEnabled
-            setOnPreferenceChangeListener { _, newValue ->
-                UserPreferences.cinemaAmbientLightHints = newValue as Boolean
-                true
-            }
-        }
 
         findPreference<Preference>("cinema_room_looks_info")?.apply {
             val look = ThemeManager.resolveLook(UserPreferences.selectedTheme)
@@ -1467,7 +1439,7 @@ class SettingsTvFragment : LeanbackPreferenceFragmentCompat() {
             isChecked = UserPreferences.largeText
             setOnPreferenceChangeListener { _, newValue ->
                 UserPreferences.largeText = newValue as Boolean
-                restartMainTvWithoutAnimation()
+                restartMainTvWithoutAnimation(openSettingsScreen = "screen_appearance")
                 true
             }
         }
@@ -1476,7 +1448,7 @@ class SettingsTvFragment : LeanbackPreferenceFragmentCompat() {
             isChecked = UserPreferences.highContrast
             setOnPreferenceChangeListener { _, newValue ->
                 UserPreferences.highContrast = newValue as Boolean
-                restartMainTvWithoutAnimation()
+                restartMainTvWithoutAnimation(openSettingsScreen = "screen_appearance")
                 true
             }
         }
@@ -2738,10 +2710,17 @@ class SettingsTvFragment : LeanbackPreferenceFragmentCompat() {
         applyScreenTitle()
         updateOverviewLabels()
         updateProviderVisibilityState()
+        // SE-010: refresh Energy / Comfort summaries when latch flips mid-session.
+        bindStickEnergyAndCodecComfortPrefs()
+        bindCinemaAmbientEnergyHonesty()
         PlatformSettingsController.refresh(this) { key -> findPreference(key) }
         ProfilesSettingsController.refresh(
             findPreference = { key -> findPreference(key) },
             context = requireContext(),
+        )
+        com.dskja.betterstreamflix.kids.ParentDashboardController.refreshOnResume(
+            fragment = this,
+            findPreference = { key -> findPreference(key) },
         )
         gateKidsProfileSettingsPrefs()
         ConnectionServicesController.refresh(
@@ -2805,6 +2784,8 @@ class SettingsTvFragment : LeanbackPreferenceFragmentCompat() {
     }
 
     private fun showWebSocketBypassTestDialog() {
+        // Release builds must not host the LAN WS bypass test (SS-B10-02 / SEC-DL-01).
+        if (!BuildConfig.DEBUG) return
         val defaultUrl = UserPreferences.currentProvider?.baseUrl ?: UserPreferences.cuevanaDomain.let { "https://$it" }
         val density = resources.displayMetrics.density
         val input = EditText(requireContext()).apply {
@@ -2928,10 +2909,112 @@ class SettingsTvFragment : LeanbackPreferenceFragmentCompat() {
         dialog.window?.setLayout(dialogWidth, LinearLayout.LayoutParams.WRAP_CONTENT)
     }
 
-    private fun restartMainTvWithoutAnimation() {
+    /**
+     * SE-010/011/012: Stick Energy reads UserPreferences only (non-persistent widget);
+     * Codec Comfort gets its own status + reset (CC-001/009) — not folded into Energy summary.
+     */
+    private fun bindStickEnergyAndCodecComfortPrefs() {
+        findPreference<SwitchPreference>("STICK_ENERGY_MODE")?.apply {
+            // SE-011/012: do not dual-write PreferenceManager default store / sticky auto-on.
+            isPersistent = false
+            val explicit = UserPreferences.stickEnergyModeExplicit
+            val enabled = com.dskja.betterstreamflix.ui.StickEnergyMode.isEnabled(requireContext())
+            isChecked = enabled
+            summary = when {
+                explicit == null && enabled ->
+                    getString(R.string.settings_stick_energy_mode_summary) +
+                        " · " + getString(R.string.settings_stick_energy_mode_summary_auto_on)
+                else -> getString(R.string.settings_stick_energy_mode_summary)
+            }
+            setOnPreferenceChangeListener { _, newValue ->
+                UserPreferences.stickEnergyMode = newValue as Boolean
+                bindCinemaAmbientEnergyHonesty()
+                summary = getString(R.string.settings_stick_energy_mode_summary)
+                // Stick Energy changes Ambient Ken Burns + Featured motion gates;
+                // restart so Home shelves + Ambient rebind cleanly.
+                restartMainTvWithoutAnimation(openSettingsScreen = "screen_appearance")
+                true
+            }
+        }
+
+        val comfortActive = com.dskja.betterstreamflix.player.CodecComfort.isActive()
+        findPreference<Preference>("CODEC_COMFORT_STATUS")?.apply {
+            summary = if (comfortActive) {
+                getString(R.string.settings_codec_comfort_summary_active)
+            } else {
+                getString(R.string.settings_codec_comfort_summary_idle)
+            }
+        }
+        findPreference<Preference>("CODEC_COMFORT_RESET")?.apply {
+            isVisible = comfortActive
+            isEnabled = comfortActive
+            setOnPreferenceClickListener {
+                com.dskja.betterstreamflix.player.CodecComfort.reset()
+                Toast.makeText(
+                    requireContext(),
+                    R.string.settings_codec_comfort_reset_done,
+                    Toast.LENGTH_SHORT,
+                ).show()
+                bindStickEnergyAndCodecComfortPrefs()
+                true
+            }
+        }
+    }
+
+    /** SE-005: dim Ambient / Ambient Light when Stick Energy effectively kills them. */
+    private fun bindCinemaAmbientEnergyHonesty() {
+        val energyOn = com.dskja.betterstreamflix.ui.StickEnergyMode.isEnabled(requireContext())
+        findPreference<SwitchPreferenceCompat>("CINEMA_ROOM")?.apply {
+            isChecked = UserPreferences.cinemaRoomEnabled
+            setOnPreferenceChangeListener { _, newValue ->
+                val enabled = newValue as Boolean
+                UserPreferences.cinemaRoomEnabled = enabled
+                if (enabled) {
+                    com.dskja.betterstreamflix.ui.CinemaRoomController.onCinemaRoomEnabled()
+                }
+                bindCinemaAmbientEnergyHonesty()
+                true
+            }
+        }
+        findPreference<SwitchPreferenceCompat>("TV_AMBIENT_MODE")?.apply {
+            isChecked = UserPreferences.tvAmbientModeEnabled
+            val cinemaOn = UserPreferences.cinemaRoomEnabled
+            isEnabled = cinemaOn && !energyOn
+            summary = when {
+                energyOn -> getString(R.string.settings_tv_ambient_disabled_by_energy)
+                else -> getString(R.string.settings_tv_ambient_mode_summary)
+            }
+            setOnPreferenceChangeListener { _, newValue ->
+                UserPreferences.tvAmbientModeEnabled = newValue as Boolean
+                true
+            }
+        }
+        findPreference<SwitchPreferenceCompat>("CINEMA_AMBIENT_LIGHT")?.apply {
+            isChecked = UserPreferences.cinemaAmbientLightHints
+            val cinemaOn = UserPreferences.cinemaRoomEnabled
+            isEnabled = cinemaOn && !energyOn
+            summary = when {
+                energyOn -> getString(R.string.settings_tv_ambient_disabled_by_energy)
+                else -> getString(R.string.settings_cinema_ambient_light_summary)
+            }
+            setOnPreferenceChangeListener { _, newValue ->
+                UserPreferences.cinemaAmbientLightHints = newValue as Boolean
+                true
+            }
+        }
+    }
+
+    private fun restartMainTvWithoutAnimation(openSettingsScreen: String? = null) {
         val activity = requireActivity()
+        if (!openSettingsScreen.isNullOrBlank()) {
+            SettingsDeepLink.pendingScreenKey = openSettingsScreen
+        }
         val intent = Intent(activity, MainTvActivity::class.java).apply {
             addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_NEW_TASK)
+            if (!openSettingsScreen.isNullOrBlank()) {
+                putExtra(MainTvActivity.EXTRA_OPEN_SETTINGS, true)
+                putExtra(MainTvActivity.EXTRA_SETTINGS_SCREEN, openSettingsScreen)
+            }
         }
         val options = ActivityOptions.makeCustomAnimation(activity, 0, 0)
         activity.finish()

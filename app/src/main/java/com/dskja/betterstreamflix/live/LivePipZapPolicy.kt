@@ -39,6 +39,10 @@ object LivePipZapPolicy {
         val isCasting: Boolean,
         val isSystemPip: Boolean,
         val hasChannelCandidate: Boolean,
+        /** SE-003: Stick Energy / low-RAM — dual Exo preview is too heavy. */
+        val stickEnergyOrLowRam: Boolean = false,
+        /** CC-004: Codec Comfort latch — prefer no HW preview path. */
+        val codecComfortActive: Boolean = false,
     )
 
     fun isEligible(state: Eligibility): Boolean {
@@ -47,6 +51,8 @@ object LivePipZapPolicy {
         if (state.isKidsOrAgeGated) return false
         if (state.isCasting) return false
         if (state.isSystemPip) return false
+        if (state.stickEnergyOrLowRam) return false
+        if (state.codecComfortActive) return false
         return state.hasChannelCandidate
     }
 

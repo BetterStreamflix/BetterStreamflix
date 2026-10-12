@@ -45,6 +45,9 @@ class LiveHubTvFragment : Fragment() {
     private val appAdapter = AppAdapter()
     private var command: LiveCommandController? = null
     private var lastHubCategories: List<Category> = emptyList()
+    /** Tracks empty→data for Live Command autofocus (FA-001). */
+    private var lastVisibleWasEmpty: Boolean = true
+    private var hasAutoFocusedChannels: Boolean = false
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -66,15 +69,29 @@ class LiveHubTvFragment : Fragment() {
             root = binding.root,
             isTv = true,
             onVisibleChanged = { cats, focusGrid ->
+                val nowEmpty = cats.none { it.list.isNotEmpty() }
+                val emptyToData = lastVisibleWasEmpty && !nowEmpty
+                val initialSuccess = !hasAutoFocusedChannels && !nowEmpty
                 display(cats)
-                if (focusGrid) {
-                    val searchFocused =
-                        binding.root.findViewById<View>(R.id.et_live_command_search)?.hasFocus() == true
-                    val q = command?.currentQuery().orEmpty()
-                    if (!searchFocused && q.isBlank()) {
-                        binding.vgvLiveHub.post { focusFirstChannel() }
+                // FA-001: autofocus on controller focusGrid / initial Success / empty→data;
+                // never steal focus from EPG search or mode/action chips.
+                val chromeFocused = command?.chromeHasFocus() == true
+                val searchFocused =
+                    binding.root.findViewById<View>(R.id.et_live_command_search)?.hasFocus() == true
+                val q = command?.currentQuery().orEmpty()
+                if ((focusGrid || initialSuccess || emptyToData) &&
+                    !chromeFocused &&
+                    !searchFocused &&
+                    q.isBlank()
+                ) {
+                    binding.vgvLiveHub.post {
+                        if (command?.chromeHasFocus() == true) return@post
+                        if (focusFirstChannel()) {
+                            hasAutoFocusedChannels = true
+                        }
                     }
                 }
+                lastVisibleWasEmpty = nowEmpty
             },
             onModeChanged = { mode ->
                 if (mode == LiveCommandMode.SPORT) {
@@ -211,7 +228,10 @@ class LiveHubTvFragment : Fragment() {
             }
             Category(category.name, shows).also {
                 it.identityKey = category.identityKey
-                it.itemSpacing = 16.dp(requireContext())
+                it.itemSpacing = com.dskja.betterstreamflix.ui.LeanbackDensityPolicy.dpToPx(
+                    requireView(),
+                    com.dskja.betterstreamflix.ui.LeanbackDensityPolicy.catalogItemSpacingDp(),
+                )
                 it.itemType = AppAdapter.Type.CATEGORY_TV_ITEM
             }
         }
@@ -319,7 +339,8 @@ class LiveHubTvFragment : Fragment() {
         banner.isFocusable = true
         banner.isFocusableInTouchMode = true
         banner.isClickable = true
-        banner.nextFocusDownId = R.id.vgv_live_hub
+        // FA-036: avoid container nextFocus trap — key handler focuses first channel.
+        banner.nextFocusDownId = View.NO_ID
         banner.contentDescription = getString(R.string.home_catalog_warning_tap_retry)
         banner.setOnKeyListener { _, keyCode, event ->
             if (event.action != KeyEvent.ACTION_DOWN || keyCode != KeyEvent.KEYCODE_DPAD_DOWN) {
@@ -369,17 +390,22 @@ class LiveHubTvFragment : Fragment() {
         )
         _binding?.root?.findViewById<View>(R.id.tv_home_profile_chip)?.let { chip ->
             chip.isFocusableInTouchMode = true
-            chip.nextFocusDownId = R.id.live_command_chrome
+            // FA-012: DOWN lands on first mode chip, not the chrome container.
+            val firstMode = command?.firstModeChip()
+            chip.nextFocusDownId = firstMode?.id ?: View.NO_ID
             chip.setOnKeyListener { _, keyCode, event ->
                 if (event.action != KeyEvent.ACTION_DOWN || keyCode != KeyEvent.KEYCODE_DPAD_DOWN) {
                     return@setOnKeyListener false
                 }
+                // FA-012: DOWN → first mode chip, then modes row / chrome, then grid.
+                val mode = command?.firstModeChip()
                 val chrome = _binding?.root?.findViewById<View>(R.id.live_command_chrome)
                 val modes = _binding?.root?.findViewById<View>(R.id.ll_live_command_modes)
                 when {
+                    mode?.requestFocus() == true -> true
                     modes?.requestFocus() == true -> true
                     chrome?.requestFocus() == true -> true
-                    else -> false
+                    else -> focusFirstChannel()
                 }
             }
         }

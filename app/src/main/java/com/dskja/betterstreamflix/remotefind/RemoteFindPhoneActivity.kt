@@ -26,6 +26,7 @@ class RemoteFindPhoneActivity : AppCompatActivity() {
     private var lastPadSendAt = 0L
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        com.dskja.betterstreamflix.utils.AccessibilityPreferences.applyHighContrastOverlayAuto(this)
         super.onCreate(savedInstanceState)
         binding = ActivityRemoteFindPhoneBinding.inflate(layoutInflater)
         setContentView(binding.root)

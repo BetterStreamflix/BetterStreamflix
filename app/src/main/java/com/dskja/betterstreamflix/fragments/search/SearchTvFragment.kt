@@ -504,7 +504,12 @@ class SearchTvFragment : Fragment(), SearchInputBridge.Target {
                     )
                 }
             }
-            setItemSpacing(resources.getDimension(R.dimen.search_spacing).toInt())
+            setItemSpacing(
+                com.dskja.betterstreamflix.ui.LeanbackDensityPolicy.dpToPx(
+                    this,
+                    com.dskja.betterstreamflix.ui.LeanbackDensityPolicy.catalogItemSpacingDp(),
+                ),
+            )
             addOnChildViewHolderSelectedListener(object : OnChildViewHolderSelectedListener() {
                 override fun onChildViewHolderSelected(
                     parent: RecyclerView,
@@ -565,10 +570,21 @@ class SearchTvFragment : Fragment(), SearchInputBridge.Target {
 
     private fun refreshMoodChips() {
         val row = binding.root.findViewById<android.widget.LinearLayout>(R.id.ll_search_mood) ?: return
-        val padH = (16 * resources.displayMetrics.density).toInt()
-        val padV = (10 * resources.displayMetrics.density).toInt()
-        val gap = (10 * resources.displayMetrics.density).toInt()
+        val densMode = com.dskja.betterstreamflix.ui.LeanbackDensityPolicy.mode()
+        val padH = com.dskja.betterstreamflix.ui.LeanbackDensityPolicy.dpToPx(
+            row,
+            com.dskja.betterstreamflix.ui.LeanbackDensityPolicy.searchMemoryChipPadHDp(densMode),
+        )
+        val padV = com.dskja.betterstreamflix.ui.LeanbackDensityPolicy.dpToPx(
+            row,
+            com.dskja.betterstreamflix.ui.LeanbackDensityPolicy.searchMemoryChipPadVDp(densMode),
+        )
+        val gap = com.dskja.betterstreamflix.ui.LeanbackDensityPolicy.dpToPx(
+            row,
+            com.dskja.betterstreamflix.ui.LeanbackDensityPolicy.itemSpacingDp(densMode),
+        )
         val bound = com.dskja.betterstreamflix.taste.TasteMoodUi.bindDetailed(
+
             context = requireContext(),
             row = row,
             selected = viewModel.currentMood(),
@@ -629,9 +645,19 @@ class SearchTvFragment : Fragment(), SearchInputBridge.Target {
         strip.visibility = View.VISIBLE
         binding.root.findViewById<View>(R.id.v_search_recent_edge_fade_start)?.visibility = View.VISIBLE
         binding.root.findViewById<View>(R.id.v_search_recent_edge_fade_end)?.visibility = View.VISIBLE
-        val padH = (16 * resources.displayMetrics.density).toInt()
-        val padV = (10 * resources.displayMetrics.density).toInt()
-        val gap = (10 * resources.displayMetrics.density).toInt()
+        val densMode = com.dskja.betterstreamflix.ui.LeanbackDensityPolicy.mode()
+        val padH = com.dskja.betterstreamflix.ui.LeanbackDensityPolicy.dpToPx(
+            strip,
+            com.dskja.betterstreamflix.ui.LeanbackDensityPolicy.searchMemoryChipPadHDp(densMode),
+        )
+        val padV = com.dskja.betterstreamflix.ui.LeanbackDensityPolicy.dpToPx(
+            strip,
+            com.dskja.betterstreamflix.ui.LeanbackDensityPolicy.searchMemoryChipPadVDp(densMode),
+        )
+        val gap = com.dskja.betterstreamflix.ui.LeanbackDensityPolicy.dpToPx(
+            strip,
+            com.dskja.betterstreamflix.ui.LeanbackDensityPolicy.itemSpacingDp(densMode),
+        )
         val bound = SearchMemoriesUi.bind(
             context = requireContext(),
             row = row,

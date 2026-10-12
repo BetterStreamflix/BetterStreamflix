@@ -55,6 +55,18 @@ object CinemaRoomPolicy {
     fun trailerCrossfadeMs(cinemaRoomEnabled: Boolean): Long =
         if (cinemaRoomEnabled) TRAILER_CROSSFADE_CINEMA_MS else TRAILER_CROSSFADE_BASE_MS
 
+    /**
+     * SE-006 / CC-008: under Stick Energy / reduce-motion, never pay the longer
+     * cinema dissolve — cap at the base handoff.
+     */
+    fun trailerCrossfadeMs(
+        cinemaRoomEnabled: Boolean,
+        reduceMotion: Boolean,
+    ): Long {
+        if (reduceMotion) return TRAILER_CROSSFADE_BASE_MS
+        return trailerCrossfadeMs(cinemaRoomEnabled)
+    }
+
     fun ambientCrossfadeMs(cinemaRoomEnabled: Boolean): Int =
         if (cinemaRoomEnabled) AMBIENT_CROSSFADE_CINEMA_MS else AmbientModePolicy.CROSSFADE_MS
 

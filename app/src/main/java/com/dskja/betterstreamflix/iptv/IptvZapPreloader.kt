@@ -186,7 +186,10 @@ object IptvZapPreloader {
 
     fun warmNeighbors(provider: Provider, radius: Int = DEFAULT_WARM_RADIUS) {
         if (provider !is IptvProvider) return
-        val neighbors = IptvLiveSession.neighbors(radius)
+        // SE-008: Stick Energy caps warm radius to 0–1 and serializes via single-job gate.
+        val effectiveRadius = com.dskja.betterstreamflix.ui.StickEnergyMode.zapWarmRadius(radius)
+        if (effectiveRadius <= 0) return
+        val neighbors = IptvLiveSession.neighbors(effectiveRadius)
         if (neighbors.isEmpty()) return
         neighbors.forEach { channel ->
             warmChannel(provider, channel)

@@ -133,8 +133,8 @@ object PlayerCleanExit {
         if (root == null || !root.isAttachedToWindow) return false
         val match = findTagged(root, token.itemKey) ?: return false
         if (!match.isShown) return false
-        match.isFocusable = true
-        match.isFocusableInTouchMode = true
+        // FA-040: never force-focusable a view intentionally disabled.
+        if (!match.isFocusable) return false
         return match.requestFocus()
     }
 

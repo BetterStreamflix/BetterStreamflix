@@ -5,8 +5,8 @@
             <corners android:radius="22dp" />
             <solid android:color="#1A2430" />
             <stroke
-                android:width="2dp"
-                android:color="#7F9CBC" />
+                android:width="?attr/tvFocusStrokeWidth"
+                android:color="?attr/tvFocusStrokeColor" />
         </shape>
     </item>
 
@@ -15,8 +15,8 @@
             <corners android:radius="22dp" />
             <solid android:color="#1A2430" />
             <stroke
-                android:width="2dp"
-                android:color="#7F9CBC" />
+                android:width="?attr/tvFocusStrokeWidth"
+                android:color="?attr/tvFocusStrokeColor" />
         </shape>
     </item>
 

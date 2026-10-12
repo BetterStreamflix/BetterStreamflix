@@ -1274,12 +1274,14 @@ class SettingsMobileFragment : PreferenceFragmentCompat() {
         }
 
         findPreference<SwitchPreference>("STICK_ENERGY_MODE")?.apply {
+            // SE-014: hide Stick Energy on phone unless leanback / Fire TV.
+            val showEnergy = com.dskja.betterstreamflix.utils.DeviceCapabilities.isLeanbackDevice(requireContext()) ||
+                com.dskja.betterstreamflix.utils.DeviceCapabilities.isAmazonFireTv(requireContext())
+            isVisible = showEnergy
+            if (!showEnergy) return@apply
+            isPersistent = false
             isChecked = com.dskja.betterstreamflix.ui.StickEnergyMode.isEnabled(requireContext())
-            summary = if (com.dskja.betterstreamflix.player.CodecComfort.isActive()) {
-                getString(R.string.settings_stick_energy_mode_summary_with_codec_comfort)
-            } else {
-                getString(R.string.settings_stick_energy_mode_summary)
-            }
+            summary = getString(R.string.settings_stick_energy_mode_summary)
             setOnPreferenceChangeListener { _, newValue ->
                 UserPreferences.stickEnergyMode = newValue as Boolean
                 requireActivity().apply {

@@ -11,7 +11,7 @@
     <ImageView
         android:id="@+id/iv_movie_poster"
         android:layout_width="0dp"
-        android:layout_height="@dimen/continue_watching_poster_height"
+        android:layout_height="@dimen/tv_shelf_poster_height"
         android:scaleType="centerCrop"
         android:importantForAccessibility="no"
         app:layout_constraintDimensionRatio="2:3"
