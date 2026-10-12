@@ -2680,4 +2680,7 @@
     <string name="watch_party_remote_failed">Remote-Befehl fehlgeschlagen: %1$s</string>
     <string name="watch_party_cd_remote">Watch-Together-Handy-Remote</string>
 
+
+    <!-- Batch 10 Player & Trust locale port (PT-019) -->
+    <string name="player_retry_external_player">Externer Player wird geöffnet…</string>
 </resources>

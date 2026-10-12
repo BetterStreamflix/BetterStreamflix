@@ -37,6 +37,11 @@ object ProviderServerAb {
     @Volatile
     internal var memoryStore: MutableMap<String, MutableMap<String, Stats>>? = null
 
+    /**
+     * Clears per-play de-dupe so the same hoster can be re-rewarded on a new
+     * server list / title within one player fragment lifetime (PT-026 — intentional).
+     * Does not wipe persisted profile A/B stats.
+     */
     fun clearSession() {
         sessionRewarded.clear()
     }
