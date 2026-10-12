@@ -32,7 +32,6 @@ import com.dskja.betterstreamflix.utils.UserPreferences
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import com.dskja.betterstreamflix.fragments.settings.setSummaryProviderOnce
 
 /**
  * Shared Downloads preference wiring for Mobile + TV Settings.
@@ -320,14 +319,14 @@ object DownloadsSettingsController {
         findPreference("DOWNLOAD_SOFT_LIMIT_GB")?.let { pref ->
             val edit = pref as? EditTextPreference ?: return@let
             edit.text = UserPreferences.downloadSoftLimitGb.toString()
-            edit.summaryProvider = Preference.SummaryProvider<EditTextPreference> { p ->
+            edit.setSummaryProviderOnce(Preference.SummaryProvider<EditTextPreference> { p ->
                 val gb = DownloadStats.clampSoftLimitGb(p.text)
                 if (gb <= 0) {
                     context.getString(R.string.settings_download_soft_limit_unlimited)
                 } else {
                     context.getString(R.string.settings_download_soft_limit_value, gb)
                 }
-            }
+            })
             edit.setOnPreferenceChangeListener { _, newValue ->
                 val clamped = DownloadStats.clampSoftLimitGb(newValue as? String)
                 UserPreferences.downloadSoftLimitGb = clamped

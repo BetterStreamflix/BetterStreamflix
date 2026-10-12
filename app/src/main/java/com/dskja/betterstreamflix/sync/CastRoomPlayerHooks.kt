@@ -32,6 +32,9 @@ object CastRoomPlayerHooks {
 
     fun refreshChrome(button: android.view.View?) {
         if (button == null) return
+        val active = CastRoomSession.isHost() || CastRoomSession.isController()
+        button.visibility = if (active) android.view.View.VISIBLE else android.view.View.GONE
+        if (!active) return
         button.isEnabled = true
         button.alpha = 1f
         button.contentDescription = when {

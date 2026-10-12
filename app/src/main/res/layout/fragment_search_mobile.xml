@@ -80,7 +80,7 @@
 
     </androidx.constraintlayout.widget.ConstraintLayout>
 
-    <com.google.android.material.switchmaterial.SwitchMaterial
+    <androidx.appcompat.widget.SwitchCompat
         android:id="@+id/sw_global_search"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
