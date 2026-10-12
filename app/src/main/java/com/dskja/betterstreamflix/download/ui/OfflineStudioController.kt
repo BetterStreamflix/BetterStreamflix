@@ -1,6 +1,7 @@
 package com.dskja.betterstreamflix.download.ui
 
 import android.view.View
+import android.widget.CompoundButton
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
@@ -20,7 +21,6 @@ import com.dskja.betterstreamflix.download.OfflineExpiryPolicy
 import com.dskja.betterstreamflix.fragments.settings.SettingsDeepLink
 import com.dskja.betterstreamflix.utils.ExpMotion
 import com.dskja.betterstreamflix.utils.UserPreferences
-import com.google.android.material.materialswitch.MaterialSwitch
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
@@ -58,9 +58,10 @@ class OfflineStudioController(
     private val expiryDelete: View? = root.findViewById(R.id.btn_offline_studio_expiry_delete)
     private val careEmpty: TextView? = root.findViewById(R.id.tv_offline_studio_care_empty)
 
-    private val smartSwitch: MaterialSwitch? = root.findViewById(R.id.switch_offline_studio_smart)
-    private val autoDeleteSwitch: MaterialSwitch? = root.findViewById(R.id.switch_offline_studio_auto_delete)
-    private val wifiSwitch: MaterialSwitch? = root.findViewById(R.id.switch_offline_studio_wifi)
+    // CompoundButton: TV layouts use CheckBox (Leanback-safe); mobile keeps MaterialSwitch.
+    private val smartSwitch: CompoundButton? = root.findViewById(R.id.switch_offline_studio_smart)
+    private val autoDeleteSwitch: CompoundButton? = root.findViewById(R.id.switch_offline_studio_auto_delete)
+    private val wifiSwitch: CompoundButton? = root.findViewById(R.id.switch_offline_studio_wifi)
     private val quotaSummary: TextView? = root.findViewById(R.id.tv_offline_studio_quota_summary)
     private val lookaheadValue: TextView? = root.findViewById(R.id.tv_offline_studio_lookahead_value)
     private val quotaValue: TextView? = root.findViewById(R.id.tv_offline_studio_quota_value)
@@ -99,8 +100,8 @@ class OfflineStudioController(
                 it.isFocusable = true
                 it.isFocusableInTouchMode = true
             }
-            // SS-B10-13: MaterialSwitch needs explicit Leanback focusability.
-            listOfNotNull(smartSwitch, autoDeleteSwitch).forEach { sw ->
+            // SS-B10-13: toggles need explicit Leanback focusability.
+            listOfNotNull(smartSwitch, autoDeleteSwitch, wifiSwitch).forEach { sw ->
                 sw.isFocusable = true
                 sw.isFocusableInTouchMode = true
                 sw.isClickable = true
@@ -384,24 +385,30 @@ class OfflineStudioController(
             snap.smartSeriesQuota,
             snap.seriesWithQuota,
         )
-        val used = DownloadStorage.formatBytes(ctx, DownloadStorage.usedBytes(ctx))
-        val free = DownloadStorage.formatBytes(ctx, DownloadStorage.freeBytes(ctx))
-        storageBody?.text = ctx.getString(
-            R.string.offline_studio_storage_body,
-            if (snap.softLimitGb <= 0) {
-                ctx.getString(R.string.settings_download_soft_limit_unlimited)
-            } else {
-                ctx.getString(R.string.settings_download_soft_limit_value, snap.softLimitGb)
-            },
-            snap.maxConcurrent,
-            if (snap.wifiOnly) {
-                ctx.getString(R.string.offline_studio_wifi_on)
-            } else {
-                ctx.getString(R.string.offline_studio_wifi_off)
-            },
-            used,
-            free,
-        )
+        // Disk walk must not run on the main collector (File IO on Main Thread).
+        fragment.viewLifecycleOwner.lifecycleScope.launch {
+            val (used, free) = withContext(Dispatchers.IO) {
+                DownloadStorage.formatBytes(ctx, DownloadStorage.usedBytes(ctx)) to
+                    DownloadStorage.formatBytes(ctx, DownloadStorage.freeBytes(ctx))
+            }
+            if (!fragment.isAdded) return@launch
+            storageBody?.text = ctx.getString(
+                R.string.offline_studio_storage_body,
+                if (snap.softLimitGb <= 0) {
+                    ctx.getString(R.string.settings_download_soft_limit_unlimited)
+                } else {
+                    ctx.getString(R.string.settings_download_soft_limit_value, snap.softLimitGb)
+                },
+                snap.maxConcurrent,
+                if (snap.wifiOnly) {
+                    ctx.getString(R.string.offline_studio_wifi_on)
+                } else {
+                    ctx.getString(R.string.offline_studio_wifi_off)
+                },
+                used,
+                free,
+            )
+        }
         wifiWindowBody?.text = wifiWindowSummary(ctx)
         packsBody?.text = when {
             snap.packCount <= 0 -> ctx.getString(R.string.offline_studio_packs_empty)

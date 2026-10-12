@@ -2,8 +2,10 @@ package com.dskja.betterstreamflix.download
 
 import android.app.Notification
 import android.content.Context
+import android.content.Intent
 import android.content.pm.ServiceInfo
 import android.os.Build
+import android.util.Log
 import androidx.media3.common.util.Util
 import androidx.media3.exoplayer.offline.Download
 import androidx.media3.exoplayer.offline.DownloadManager
@@ -21,8 +23,32 @@ class StreamflixDownloadService : DownloadService(
 ) {
     override fun onCreate() {
         // Beat the FGS timer before Media3 opens SimpleCache (BETTERSTREAMFLIX-2G).
+        // Never let startForeground abort process creation (BETTERSTREAMFLIX-2P).
         runCatching { promoteForegroundPlaceholder() }
+            .onFailure { logFgsBlocked("onCreate", it) }
         super.onCreate()
+    }
+
+    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        return try {
+            super.onStartCommand(intent, flags, startId)
+        } catch (wrapped: RuntimeException) {
+            // Class-name check: ForegroundServiceStartNotAllowedException is API 31+
+            // and must not be referenced on the minSdk 23 classpath.
+            if (isFgsStartNotAllowed(wrapped)) {
+                logFgsBlocked("onStartCommand", wrapped)
+                START_NOT_STICKY
+            } else {
+                throw wrapped
+            }
+        } catch (blocked: SecurityException) {
+            if (isFgsStartNotAllowed(blocked)) {
+                logFgsBlocked("onStartCommand", blocked)
+                START_NOT_STICKY
+            } else {
+                throw blocked
+            }
+        }
     }
 
     private fun promoteForegroundPlaceholder() {
@@ -42,6 +68,22 @@ class StreamflixDownloadService : DownloadService(
         } else {
             @Suppress("DEPRECATION")
             startForeground(FOREGROUND_NOTIFICATION_ID, notification)
+        }
+    }
+
+    private fun logFgsBlocked(where: String, error: Throwable) {
+        Log.w(
+            "StreamflixDownloadService",
+            "FGS blocked in $where (${error.javaClass.simpleName}: ${error.message})",
+        )
+        runCatching {
+            io.sentry.Sentry.addBreadcrumb(
+                io.sentry.Breadcrumb().apply {
+                    category = "download.fgs"
+                    message = "FGS blocked in $where: ${error.javaClass.simpleName}"
+                    level = io.sentry.SentryLevel.WARNING
+                },
+            )
         }
     }
 
@@ -118,6 +160,26 @@ class StreamflixDownloadService : DownloadService(
     companion object {
         const val FOREGROUND_NOTIFICATION_ID = 42001
         private const val JOB_ID = 4201
+
+        private fun isFgsStartNotAllowed(error: Throwable): Boolean {
+            var current: Throwable? = error
+            while (current != null) {
+                val name = current.javaClass.name
+                if (name == "android.app.ForegroundServiceStartNotAllowedException" ||
+                    name.endsWith("ForegroundServiceStartNotAllowedException")
+                ) {
+                    return true
+                }
+                val message = current.message.orEmpty()
+                if (message.contains("ForegroundServiceStartNotAllowed") ||
+                    message.contains("FGS type dataSync not allowed")
+                ) {
+                    return true
+                }
+                current = current.cause
+            }
+            return false
+        }
 
         /**
          * Prefer a foreground start (required while downloading). On Android 12+ a

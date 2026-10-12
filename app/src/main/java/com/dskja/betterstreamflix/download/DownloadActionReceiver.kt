@@ -37,7 +37,11 @@ class DownloadActionReceiver : BroadcastReceiver() {
                         }
                     }
                 }
-                StreamflixDownloadService.start(appContext)
+                when (StreamflixDownloadService.tryStart(appContext)) {
+                    StreamflixDownloadService.StartResult.Failed ->
+                        DownloadResumeScheduler.enqueue(appContext, replace = false)
+                    else -> Unit
+                }
             } finally {
                 pending.finish()
             }

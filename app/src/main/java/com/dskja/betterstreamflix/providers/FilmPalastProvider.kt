@@ -175,7 +175,8 @@ object FilmPalastProvider : Provider {
                     val imdbRatingText =
                         li.select("span.views b").lastOrNull()?.text()?.split("/")?.getOrNull(1)?.trim()
                     val rating = imdbRatingText?.toDoubleOrNull() ?: 0.0
-                    val tmdbMovie = TmdbUtils.getMovie(title, language = language)
+                    // Home slider: skip per-item TMDb (N+1). Banner falls back to poster;
+                    // detail screens still enrich via TmdbUtils.
 
                     if (isTvShowItem(title, href)) {
                         TvShow(
@@ -185,7 +186,7 @@ object FilmPalastProvider : Provider {
                             released = releaseYearText,
                             rating = rating,
                             poster = fullPosterUrl,
-                            banner = tmdbMovie?.banner
+                            banner = fullPosterUrl,
                         )
                     } else {
                         Movie(
@@ -195,7 +196,7 @@ object FilmPalastProvider : Provider {
                             released = releaseYearText,
                             rating = rating,
                             poster = fullPosterUrl,
-                            banner = tmdbMovie?.banner
+                            banner = fullPosterUrl,
                         )
                     }
                 }

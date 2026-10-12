@@ -114,7 +114,7 @@ object DownloadsSettingsController {
                             previousDownloadsDir = previousRoot.takeIf { wipe },
                         )
                         list.value = location.name
-                        refreshSummaries(findPreference, context)
+                        refreshSummaries(findPreference, context, scope)
                         ExpDialogChrome.notify(context, R.string.settings_download_storage_changed)
                     }
                     if (hasItems) {
@@ -153,7 +153,7 @@ object DownloadsSettingsController {
                         wipeAndRebuild = wipe,
                         previousDownloadsDir = previousRoot.takeIf { wipe },
                     )
-                    refreshSummaries(findPreference, context)
+                    refreshSummaries(findPreference, context, scope)
                     ExpDialogChrome.notify(context, R.string.settings_download_storage_folder_cleared)
                 }
                 if (hasItems) {
@@ -193,7 +193,7 @@ object DownloadsSettingsController {
                 .setSingleChoiceItems(labels, checked) { dialog, which ->
                     ExternalStreamHandoff.rememberChosenPackage(packages.getOrNull(which))
                     dialog.dismiss()
-                    refreshSummaries(findPreference, context)
+                    refreshSummaries(findPreference, context, scope)
                     ExpDialogChrome.notify(context, R.string.external_player_remembered)
                 }
                 .setNegativeButton(android.R.string.cancel, null)
@@ -207,7 +207,7 @@ object DownloadsSettingsController {
 
         findPreference("EXTERNAL_PLAYER_CLEAR")?.setOnPreferenceClickListener {
             ExternalStreamHandoff.clearPreferredPackage()
-            refreshSummaries(findPreference, context)
+            refreshSummaries(findPreference, context, scope)
             ExpDialogChrome.notify(context, R.string.external_player_clear_default)
             true
         }
@@ -232,7 +232,7 @@ object DownloadsSettingsController {
                 .setSingleChoiceItems(labels, checked) { dialog, which ->
                     ExternalDownloadHandoff.rememberChosenPackage(installed.getOrNull(which))
                     dialog.dismiss()
-                    refreshSummaries(findPreference, context)
+                    refreshSummaries(findPreference, context, scope)
                     ExpDialogChrome.notify(context, R.string.external_download_remembered)
                 }
                 .setNegativeButton(android.R.string.cancel, null)
@@ -246,7 +246,7 @@ object DownloadsSettingsController {
 
         findPreference("EXTERNAL_DOWNLOADER_CLEAR")?.setOnPreferenceClickListener {
             ExternalDownloadHandoff.clearPreferredPackage()
-            refreshSummaries(findPreference, context)
+            refreshSummaries(findPreference, context, scope)
             ExpDialogChrome.notify(context, R.string.settings_external_downloader_clear)
             true
         }
@@ -331,7 +331,7 @@ object DownloadsSettingsController {
                 val clamped = DownloadStats.clampSoftLimitGb(newValue as? String)
                 UserPreferences.downloadSoftLimitGb = clamped
                 edit.text = clamped.toString()
-                refreshSummaries(findPreference, context)
+                refreshSummaries(findPreference, context, scope)
                 true
             }
         }
@@ -388,7 +388,7 @@ object DownloadsSettingsController {
                     withContext(Dispatchers.IO) {
                         DownloadRepository.get(context).clearCompleted()
                     }
-                    refreshSummaries(findPreference, context)
+                    refreshSummaries(findPreference, context, scope)
                     ExpDialogChrome.notify(context, R.string.settings_download_cleared_completed)
                 }
             }
@@ -405,7 +405,7 @@ object DownloadsSettingsController {
                     withContext(Dispatchers.IO) {
                         DownloadRepository.get(context).clearFailed()
                     }
-                    refreshSummaries(findPreference, context)
+                    refreshSummaries(findPreference, context, scope)
                     ExpDialogChrome.notify(context, R.string.settings_download_cleared_failed)
                 }
             }
@@ -417,7 +417,7 @@ object DownloadsSettingsController {
                 val count = withContext(Dispatchers.IO) {
                     DownloadController.retryAllFailed(context)
                 }
-                refreshSummaries(findPreference, context)
+                refreshSummaries(findPreference, context, scope)
                 ExpDialogChrome.notify(
                     context,
                     context.getString(R.string.settings_download_retry_failed_toast, count),
@@ -436,7 +436,7 @@ object DownloadsSettingsController {
                     withContext(Dispatchers.IO) {
                         DownloadRepository.get(context).clearAll()
                     }
-                    refreshSummaries(findPreference, context)
+                    refreshSummaries(findPreference, context, scope)
                     ExpDialogChrome.notify(context, R.string.settings_download_cleared_all)
                 }
             }
@@ -458,7 +458,7 @@ object DownloadsSettingsController {
         val ok = DownloadTreeAccess.takePersistablePermission(context, uri)
         if (!ok) {
             ExpDialogChrome.notify(context, R.string.settings_download_storage_folder_failed)
-            refreshSummaries(findPreference, context)
+            refreshSummaries(findPreference, context, scope)
             return
         }
         fragment.lifecycleScope.launch {
@@ -475,7 +475,7 @@ object DownloadsSettingsController {
                         context,
                         R.string.settings_download_storage_folder_failed,
                     )
-                    refreshSummaries(findPreference, context)
+                    refreshSummaries(findPreference, context, scope)
                     return
                 }
                 StreamflixDownloadManager.relocate(
@@ -484,7 +484,7 @@ object DownloadsSettingsController {
                     previousDownloadsDir = previousRoot.takeIf { wipe },
                 )
                 ExpDialogChrome.notify(context, R.string.settings_download_storage_folder_set)
-                refreshSummaries(findPreference, context)
+                refreshSummaries(findPreference, context, scope)
             }
             if (hasItems) {
                 confirmClear(
@@ -494,7 +494,7 @@ object DownloadsSettingsController {
                     onConfirm = { finishRelocate(wipe = true) },
                     onCancel = {
                         DownloadTreeAccess.releasePersistablePermission(context, uri)
-                        refreshSummaries(findPreference, context)
+                        refreshSummaries(findPreference, context, scope)
                     },
                 )
             } else {
@@ -567,7 +567,7 @@ object DownloadsSettingsController {
         (findPreference("DOWNLOAD_STORAGE_LOCATION") as? ListPreference)?.value =
             UserPreferences.downloadStorageLocation.name
 
-        refreshSummaries(findPreference, context)
+        refreshSummaries(findPreference, context, scope)
         scope.launch {
             val items = withContext(Dispatchers.IO) {
                 DownloadRepository.get(context).getAllOnce()
@@ -583,12 +583,8 @@ object DownloadsSettingsController {
     private fun refreshSummaries(
         findPreference: (String) -> Preference?,
         context: android.content.Context,
+        scope: LifecycleCoroutineScope,
     ) {
-        findPreference("DOWNLOAD_STORAGE_PATH")?.summary =
-            DownloadStorage.absolutePathSummary(context)
-        findPreference("DOWNLOAD_STORAGE_USED")?.summary =
-            DownloadStats.storageSummary(context)
-
         val treeName = DownloadTreeAccess.displayName(context)
         findPreference("DOWNLOAD_STORAGE_PICK_FOLDER")?.summary =
             if (!treeName.isNullOrBlank()) {
@@ -620,6 +616,18 @@ object DownloadsSettingsController {
                 context.getString(R.string.settings_external_downloader_summary)
             }
         findPreference("EXTERNAL_DOWNLOADER_CLEAR")?.isEnabled = dlPkg.isNotBlank()
+
+        // Disk walks / SimpleCache probes stay off the UI thread.
+        scope.launch {
+            val pathSummary = withContext(Dispatchers.IO) {
+                DownloadStorage.absolutePathSummary(context)
+            }
+            val usedSummary = withContext(Dispatchers.IO) {
+                DownloadStats.storageSummary(context)
+            }
+            findPreference("DOWNLOAD_STORAGE_PATH")?.summary = pathSummary
+            findPreference("DOWNLOAD_STORAGE_USED")?.summary = usedSummary
+        }
     }
 
     private fun stripPublicMoviesOption(list: ListPreference) {
