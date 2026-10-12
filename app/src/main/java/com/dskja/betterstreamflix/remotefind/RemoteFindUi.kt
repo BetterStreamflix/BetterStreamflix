@@ -7,7 +7,6 @@ import android.view.Gravity
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
-import androidx.appcompat.app.AlertDialog
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.FragmentActivity
 import androidx.lifecycle.lifecycleScope
@@ -76,13 +75,14 @@ object RemoteFindUi {
                 },
             )
         }
-        val codeView = TextView(context).apply {
-            text = context.getString(R.string.remote_find_code_label, session.shortCode)
-            textSize = 28f
-            gravity = Gravity.CENTER
-            setPadding(0, 24, 0, 8)
-        }
-        container.addView(codeView)
+        container.addView(
+            TextView(context).apply {
+                text = context.getString(R.string.remote_find_code_label, session.shortCode)
+                textSize = 28f
+                gravity = Gravity.CENTER
+                setPadding(0, 24, 0, 8)
+            },
+        )
         val statusView = TextView(context).apply {
             text = if (RemoteFindSession.phoneConnected) {
                 context.getString(R.string.remote_find_host_phone_connected)
@@ -93,14 +93,15 @@ object RemoteFindUi {
             gravity = Gravity.CENTER
         }
         container.addView(statusView)
-        val dialog = AlertDialog.Builder(context)
-            .setTitle(R.string.remote_find_host_qr_title)
-            .setView(container)
-            .setPositiveButton(android.R.string.ok, null)
-            .setNeutralButton(R.string.remote_find_end_action) { _, _ ->
-                endHost(fragment)
-            }
-            .show()
+        val dialog = ExpDialogChrome.showAlert(context) { builder ->
+            builder
+                .setTitle(R.string.remote_find_host_qr_title)
+                .setView(container)
+                .setPositiveButton(android.R.string.ok, null)
+                .setNeutralButton(R.string.remote_find_end_action) { _, _ ->
+                    endHost(fragment)
+                }
+        }
         // Live-update when a phone pairs while the dialog is open.
         val poll = object : Runnable {
             override fun run() {

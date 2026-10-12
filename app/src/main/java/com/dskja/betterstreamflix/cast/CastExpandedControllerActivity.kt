@@ -12,6 +12,7 @@ import com.google.android.gms.cast.framework.media.widget.ExpandedControllerActi
 /** Full-screen Cast media controls (required by CastOptions notification target). */
 class CastExpandedControllerActivity : ExpandedControllerActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
+        com.dskja.betterstreamflix.utils.AccessibilityPreferences.applyHighContrastOverlayAuto(this)
         super.onCreate(savedInstanceState)
         // TV-safe polish without ExperimentalMobileDesign gate (Fire / Leanback remotes).
         window?.decorView?.let { decor ->

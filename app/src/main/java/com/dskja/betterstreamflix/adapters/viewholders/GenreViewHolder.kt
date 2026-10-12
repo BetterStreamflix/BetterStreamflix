@@ -107,6 +107,8 @@ class GenreViewHolder(
             }
         }
 
+        binding.tvGenreName.textSize =
+            com.dskja.betterstreamflix.ui.LeanbackDensityPolicy.genreLabelTextSp()
         binding.tvGenreName.text = genre.name
     }
 

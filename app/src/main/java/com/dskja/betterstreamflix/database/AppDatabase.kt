@@ -84,9 +84,16 @@ abstract class AppDatabase : RoomDatabase() {
         /**
          * Soft open for UI / ViewModels. Returns null when no provider is set or
          * the provider DB cannot be opened after one wipe-and-retry.
+         * Prefer this from fragments / adapters (SS-B10-08).
          */
         fun getInstanceOrNull(context: Context): AppDatabase? =
             runCatching { getInstance(context) }.getOrNull()
+
+        /**
+         * Soft-open alias for UI call sites mid provider-clear / TV restore.
+         * Same as [getInstanceOrNull] — never throws.
+         */
+        fun softOpen(context: Context): AppDatabase? = getInstanceOrNull(context)
 
         fun getInstance(context: Context): AppDatabase {
             val providerName = UserPreferences.currentProvider?.name

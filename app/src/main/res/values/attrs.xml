@@ -7,4 +7,5 @@
     <attr name="category_swiper_gradient_drawable" format="reference" />
     <!-- Accessibility / TV focus tokens (overridden by high-contrast overlay). -->
     <attr name="tvFocusStrokeColor" format="color" />
+    <attr name="tvFocusStrokeWidth" format="dimension" />
 </resources>

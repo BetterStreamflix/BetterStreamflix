@@ -31,6 +31,7 @@ internal object ProfileScopedPreferenceStore {
         "KIDS_BEDTIME_ENABLED",
         "PARENTAL_CONTROL_MAX_AGE",
         "SELECTED_THEME",
+        "LEANBACK_DENSITY",
     )
 
     fun attach(fragment: PreferenceFragmentCompat) {
@@ -68,6 +69,11 @@ internal object ProfileScopedPreferenceStore {
                         UserPreferences.selectedTheme = value
                     }
                 }
+                "LEANBACK_DENSITY" -> {
+                    if (!value.isNullOrBlank()) {
+                        UserPreferences.leanbackDensity = value
+                    }
+                }
             }
         }
 
@@ -76,6 +82,7 @@ internal object ProfileScopedPreferenceStore {
             "PARENTAL_CONTROL_MAX_AGE" ->
                 UserPreferences.parentalControlMaxAge?.toString().orEmpty()
             "SELECTED_THEME" -> UserPreferences.selectedTheme
+            "LEANBACK_DENSITY" -> UserPreferences.leanbackDensity
             else -> defValue
         }
 

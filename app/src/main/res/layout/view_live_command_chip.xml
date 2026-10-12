@@ -7,9 +7,10 @@
     android:ellipsize="end"
     android:fontFamily="@font/manrope"
     android:maxLines="1"
+    android:minHeight="36dp"
     android:paddingStart="14dp"
-    android:paddingTop="8dp"
+    android:paddingTop="10dp"
     android:paddingEnd="14dp"
-    android:paddingBottom="8dp"
-    android:textColor="#FFFFFFFF"
+    android:paddingBottom="10dp"
+    android:textColor="@color/cinema_text"
     android:textSize="13sp" />

@@ -1136,10 +1136,9 @@ class EpisodeViewHolder(
     private fun ImageView.loadContinueWatchingArtwork(withFallback: Boolean = false) {
         val tvShow = episode.tvShow
         val reduce = DeviceCapabilities.shouldReduceHomeEffects(context)
+        val dens = resources.displayMetrics.density
+        val (w, h) = com.dskja.betterstreamflix.ui.LeanbackDensityPolicy.shelfPosterOverridePx(dens)
         if (tvShow == null) {
-            val dens = resources.displayMetrics.density
-            val h = (120f * dens).toInt().coerceAtLeast(240)
-            val w = (h * 16 / 9f).toInt().coerceAtLeast(400)
             var request = Glide.with(context)
                 .load(
                     ArtworkUrls.preferPoster(episode.poster)
@@ -1164,6 +1163,7 @@ class EpisodeViewHolder(
             apply {
                 if (withFallback) fallback(R.drawable.glide_fallback_cover)
             }
+            override(w, h)
             centerCrop()
             if (!reduce) {
                 transition(DrawableTransitionOptions.withCrossFade())

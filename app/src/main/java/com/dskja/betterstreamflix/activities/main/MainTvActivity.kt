@@ -60,6 +60,11 @@ class MainTvActivity : FragmentActivity() {
     /** Tracks prior Nav destination so Clean Exit can restore focus after player. */
     private var lastNavDestinationId: Int? = null
 
+    companion object {
+        const val EXTRA_OPEN_SETTINGS = "open_settings"
+        const val EXTRA_SETTINGS_SCREEN = "settings_screen"
+    }
+
     override fun attachBaseContext(newBase: android.content.Context) {
         super.attachBaseContext(AccessibilityPreferences.wrapAfterLanguage(newBase))
     }
@@ -67,6 +72,12 @@ class MainTvActivity : FragmentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         // Il setup delle preferenze è già avvenuto in BetterStreamflixApp
         setTheme(ThemeManager.tvThemeRes(UserPreferences.selectedTheme))
+        // LD-010: Compact density wires theme stroke width before HC (HC wins if both).
+        if (com.dskja.betterstreamflix.ui.LeanbackDensityPolicy.mode() ==
+            com.dskja.betterstreamflix.ui.LeanbackDensityPolicy.Mode.COMPACT
+        ) {
+            theme.applyStyle(R.style.AppTheme_Tv_LeanbackCompactOverlay, true)
+        }
         AccessibilityPreferences.applyHighContrastOverlay(this, mobile = false)
 
         super.onCreate(savedInstanceState)
@@ -94,6 +105,10 @@ class MainTvActivity : FragmentActivity() {
                 val splash = _binding?.ivSplashOverlay ?: return@withEndAction
                 val focused = window?.currentFocus
                 splash.visibility = View.GONE
+                // SS-B10-09: defer content focus while PIN gate is up.
+                if (com.dskja.betterstreamflix.profiles.ProfileUnlockGate.requiresGateForActive()) {
+                    return@withEndAction
+                }
                 if (focused == null || focused == splash || focused == _binding?.navMainFragment) {
                     val host = supportFragmentManager
                         .findFragmentById(binding.navMainFragment.id) as? androidx.navigation.fragment.NavHostFragment
@@ -126,8 +141,11 @@ class MainTvActivity : FragmentActivity() {
         }
 
         if (savedInstanceState == null) {
-            UserPreferences.currentProvider?.let {
-                navController.navigate(R.id.home)
+            val openSettings = intent?.getBooleanExtra(EXTRA_OPEN_SETTINGS, false) == true
+            if (!openSettings) {
+                UserPreferences.currentProvider?.let {
+                    navController.navigate(R.id.home)
+                }
             }
         }
         binding.root.post { showProfileUnlockGateIfNeeded(navHostFragment) }
@@ -293,10 +311,11 @@ class MainTvActivity : FragmentActivity() {
                         binding.root.post { focusHomeContentOrNav() }
                     }
                     R.id.support -> {
+                        // FA-038: same focus restore as Settings / browse tabs.
                         if (!navController.navigateUp()) {
                             navigateToProviderHome(navController)
-                            binding.navMain.requestFocus()
                         }
+                        binding.root.post { focusHomeContentOrNav() }
                     }
                     else -> {
                         val playerFrag = getCurrentFragment() as? PlayerTvFragment
@@ -319,6 +338,7 @@ class MainTvActivity : FragmentActivity() {
         handleOpenDownloadsIntent(intent)
         handleOpenLiveIntent(intent)
         handleOpenFavoritesIntent(intent)
+        handleOpenSettingsIntent(intent)
         handleWidgetDeepLink(intent)
         handleSharedWatchlistIntent(intent)
         handleWatchPartyIntent(intent)
@@ -341,6 +361,7 @@ class MainTvActivity : FragmentActivity() {
         handleOpenDownloadsIntent(intent)
         handleOpenLiveIntent(intent)
         handleOpenFavoritesIntent(intent)
+        handleOpenSettingsIntent(intent)
         handleWidgetDeepLink(intent)
         handleSharedWatchlistIntent(intent)
         handleWatchPartyIntent(intent)
@@ -376,6 +397,19 @@ class MainTvActivity : FragmentActivity() {
     /** Notification / deep-link tap → Live hub (parity with [MainMobileActivity]). */
     private fun handleOpenLiveIntent(intent: Intent?) {
         if (intent?.getBooleanExtra("open_live", false) != true) return
+        // SS-B10-04: same targeting check as open_downloads + Kids Fortress gate.
+        val targetedUs = intent.component?.packageName == packageName ||
+            intent.`package` == packageName ||
+            callingPackage == null ||
+            callingPackage == packageName
+        if (!targetedUs) {
+            android.util.Log.w("MainTv", "Ignoring open_live from foreign caller=$callingPackage")
+            return
+        }
+        if (!com.dskja.betterstreamflix.kids.KidsFortress.liveHubAllowed()) {
+            android.util.Log.w("MainTv", "Ignoring open_live — Kids Fortress blocks Live Hub")
+            return
+        }
         val navHost =
             supportFragmentManager.findFragmentById(R.id.nav_main_fragment) as? NavHostFragment
                 ?: return
@@ -388,6 +422,14 @@ class MainTvActivity : FragmentActivity() {
     /** Notification tap → Favorites / My List (watchlist episode alerts). */
     private fun handleOpenFavoritesIntent(intent: Intent?) {
         if (intent?.getBooleanExtra("open_favorites", false) != true) return
+        val targetedUs = intent.component?.packageName == packageName ||
+            intent.`package` == packageName ||
+            callingPackage == null ||
+            callingPackage == packageName
+        if (!targetedUs) {
+            android.util.Log.w("MainTv", "Ignoring open_favorites from foreign caller=$callingPackage")
+            return
+        }
         val navHost =
             supportFragmentManager.findFragmentById(R.id.nav_main_fragment) as? NavHostFragment
                 ?: return
@@ -395,6 +437,25 @@ class MainTvActivity : FragmentActivity() {
         if (navController.currentDestination?.id != R.id.favorites) {
             runCatching { navController.navigate(R.id.favorites) }
         }
+    }
+
+    /** Appearance / density restart lands back on Settings (nested screen via deep link). */
+    private fun handleOpenSettingsIntent(intent: Intent?) {
+        if (intent?.getBooleanExtra(EXTRA_OPEN_SETTINGS, false) != true) return
+        val screen = intent.getStringExtra(EXTRA_SETTINGS_SCREEN)
+        if (!screen.isNullOrBlank()) {
+            com.dskja.betterstreamflix.fragments.settings.SettingsDeepLink.pendingScreenKey = screen
+        }
+        val navHost =
+            supportFragmentManager.findFragmentById(R.id.nav_main_fragment) as? NavHostFragment
+                ?: return
+        val navController = navHost.navController
+        if (navController.currentDestination?.id != R.id.settings) {
+            runCatching { navController.navigate(R.id.settings) }
+        }
+        // Consume so rotation / onNewIntent does not re-navigate forever.
+        intent.removeExtra(EXTRA_OPEN_SETTINGS)
+        intent.removeExtra(EXTRA_SETTINGS_SCREEN)
     }
 
     /** Widget / `betterstreamflix://live` deep links (parity with Mobile). */
@@ -675,7 +736,7 @@ class MainTvActivity : FragmentActivity() {
             com.dskja.betterstreamflix.profiletransfer.ProfileTransferUi.tryFlushPending(this)
             com.dskja.betterstreamflix.sync.CastRoomUi.tryFlushPending(this)
             com.dskja.betterstreamflix.sync.CastHandoffUi.tryFlushPending(this)
-        com.dskja.betterstreamflix.sync.SessionHandoffUi.tryFlushPending(this)
+            com.dskja.betterstreamflix.sync.SessionHandoffUi.tryFlushPending(this)
             return
         }
         val host = navHostFragment.childFragmentManager.primaryNavigationFragment
@@ -690,6 +751,7 @@ class MainTvActivity : FragmentActivity() {
                 com.dskja.betterstreamflix.sync.CastHandoffUi.tryFlushPending(this)
         com.dskja.betterstreamflix.sync.SessionHandoffUi.tryFlushPending(this)
                 com.dskja.betterstreamflix.sync.CastRoomUi.tryFlushPending(this)
+                com.dskja.betterstreamflix.sync.SessionHandoffUi.tryFlushPending(this)
             },
         )
     }
@@ -717,6 +779,7 @@ class MainTvActivity : FragmentActivity() {
         val provider = UserPreferences.currentProvider ?: return
         val supportsMovies = Provider.supportsMovies(provider)
         val supportsTvShows = Provider.supportsTvShows(provider)
+        // Age-gate + Kids Fortress (upstream Batch 10 + SS-B10-03 parity).
         val liveHubVisible = !com.dskja.betterstreamflix.utils.LiveHubCatalog.isAgeGated() &&
             com.dskja.betterstreamflix.kids.KidsFortress.liveHubAllowed()
         binding.navMain.menu.findItem(R.id.movies)?.isVisible = supportsMovies
@@ -811,22 +874,30 @@ class MainTvActivity : FragmentActivity() {
                 true
             }
             is com.dskja.betterstreamflix.fragments.search.SearchTvFragment -> {
-                frag.view?.findFocus()?.requestFocus()
+                // FA-027: first poster, not Leanback grid container.
                 val grid = frag.view?.findViewById<View>(R.id.vgv_search)
-                grid?.requestFocus() == true || frag.view?.requestFocus() == true
+                grid != null && com.dskja.betterstreamflix.ui.HomeProfileChip.focusFirstPoster(grid)
             }
             is com.dskja.betterstreamflix.fragments.movies.MoviesTvFragment -> {
-                frag.view?.findViewById<View>(R.id.vgv_movies)?.requestFocus() == true
+                val grid = frag.view?.findViewById<View>(R.id.vgv_movies)
+                grid != null && com.dskja.betterstreamflix.ui.HomeProfileChip.focusFirstPoster(grid)
             }
             is com.dskja.betterstreamflix.fragments.tv_shows.TvShowsTvFragment -> {
-                frag.view?.findViewById<View>(R.id.vgv_tv_shows)?.requestFocus() == true
+                val grid = frag.view?.findViewById<View>(R.id.vgv_tv_shows)
+                grid != null && com.dskja.betterstreamflix.ui.HomeProfileChip.focusFirstPoster(grid)
             }
             is com.dskja.betterstreamflix.fragments.favorites.FavoritesTvFragment -> {
-                frag.view?.findViewById<View>(R.id.rv_favorites)?.requestFocus() == true
+                val grid = frag.view?.findViewById<View>(R.id.rv_favorites)
+                grid != null && com.dskja.betterstreamflix.ui.HomeProfileChip.focusFirstPoster(grid)
             }
             is com.dskja.betterstreamflix.fragments.downloads.DownloadsTvFragment -> {
+                // Offline Studio: restore Clean Exit token; Leanback Edge: first poster, not list root.
                 frag.restoreCleanExitFocus() ||
-                    frag.view?.findViewById<View>(R.id.rv_downloads)?.requestFocus() == true ||
+                    run {
+                        val grid = frag.view?.findViewById<View>(R.id.rv_downloads)
+                        grid != null &&
+                            com.dskja.betterstreamflix.ui.HomeProfileChip.focusFirstPoster(grid)
+                    } ||
                     frag.view?.requestFocus() == true
             }
             else -> frag.view?.requestFocus() == true

@@ -17,9 +17,7 @@ import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.datasource.DefaultDataSource
 import androidx.media3.datasource.okhttp.OkHttpDataSource
-import androidx.media3.exoplayer.DefaultLoadControl
 import androidx.media3.exoplayer.ExoPlayer
-import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.ui.PlayerView
 import androidx.navigation.fragment.NavHostFragment
 import androidx.navigation.fragment.findNavController
@@ -178,8 +176,9 @@ class LivePipZapController(
         started = false
     }
 
-    private fun baseEligible(): Boolean =
-        LivePipZapPolicy.isEligible(
+    private fun baseEligible(): Boolean {
+        val ctx = fragment.context
+        return LivePipZapPolicy.isEligible(
             LivePipZapPolicy.Eligibility(
                 isLivePlayback = host.isLivePlayback(),
                 isOffline = host.isOfflinePlayback(),
@@ -187,8 +186,14 @@ class LivePipZapController(
                 isCasting = host.isCasting(),
                 isSystemPip = host.isSystemPip(),
                 hasChannelCandidate = hasChannelCandidate(),
+                stickEnergyOrLowRam = ctx != null && (
+                    com.dskja.betterstreamflix.ui.StickEnergyMode.isEnabled(ctx) ||
+                        DeviceCapabilities.isLowRamDevice(ctx)
+                    ),
+                codecComfortActive = com.dskja.betterstreamflix.player.CodecComfort.isActive(),
             ),
         )
+    }
 
     /** PZ-011: real candidate check — pins sync, or last resolve / active candidate. */
     private fun hasChannelCandidate(): Boolean {
@@ -339,23 +344,24 @@ class LivePipZapController(
     }
 
     private fun buildMutedPreviewPlayer(context: android.content.Context): ExoPlayer {
-        val constrained = DeviceCapabilities.shouldUseConstrainedPlayback(context)
-        val minBufferMs = if (constrained) 2_000 else 3_000
-        val maxBufferMs = if (constrained) 15_000 else 25_000
-        val playbackMs = if (constrained) 1_000 else 1_250
-        val rebufferMs = if (constrained) 2_000 else 2_500
-        val loadControl = DefaultLoadControl.Builder()
-            .setBufferDurationsMs(minBufferMs, maxBufferMs, playbackMs, rebufferMs)
-            .build()
         // PZ-004: reuse one client; shut down in stopPreviewPlayerOnly.
+        // CC-004: PlayerBuilderFactory applies Comfort/Energy SW + constrained buffers.
         val okHttp = streamingClient ?: PlaybackHttp.newStreamingClient().also { streamingClient = it }
         val http = OkHttpDataSource.Factory(okHttp)
         httpFactory = http
         val dataSource = DefaultDataSource.Factory(context, http)
-        val player = ExoPlayer.Builder(context)
-            .setMediaSourceFactory(DefaultMediaSourceFactory(dataSource))
-            .setLoadControl(loadControl)
-            .build()
+        val preferSw = com.dskja.betterstreamflix.ui.StickEnergyMode.preferSoftwareDecoder(context) ||
+            com.dskja.betterstreamflix.player.CodecComfort.preferSoftwareDecoder()
+        val player = com.dskja.betterstreamflix.player.PlayerBuilderFactory.build(
+            context = context,
+            dataSourceFactory = dataSource,
+            options = com.dskja.betterstreamflix.player.PlayerBuilderFactory.Options(
+                extraBuffering = false,
+                softwareDecoder = preferSw,
+                softwareDecoderForced = false,
+                liveOptimized = true,
+            ),
+        )
         player.volume = 0f
         // PZ-013: keep muted; leave USAGE_MEDIA as-is (handleAudioFocus=false).
         player.setAudioAttributes(

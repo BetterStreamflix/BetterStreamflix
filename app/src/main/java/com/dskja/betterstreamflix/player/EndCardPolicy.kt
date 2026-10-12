@@ -11,6 +11,14 @@ object EndCardPolicy {
     /** Seconds of chooser countdown before autoplay advances (when autoplay is on). */
     const val AUTOPLAY_COUNTDOWN_SEC: Int = 10
 
+    /** Shorter countdown under Codec Comfort / Stick Energy (CC-008). */
+    const val AUTOPLAY_COUNTDOWN_SEC_COMFORT: Int = 6
+
+    /** Effective autoplay countdown; capped when Comfort latched. */
+    fun autoplayCountdownSec(
+        codecComfortActive: Boolean = false,
+    ): Int = if (codecComfortActive) AUTOPLAY_COUNTDOWN_SEC_COMFORT else AUTOPLAY_COUNTDOWN_SEC
+
     fun shouldShowEndCard(
         reallyFinished: Boolean,
         stateEnded: Boolean,

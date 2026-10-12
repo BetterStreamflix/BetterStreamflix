@@ -1,13 +1,24 @@
 package com.dskja.betterstreamflix.ui
 
+import android.util.Log
 import android.view.View
+import android.view.ViewGroup
+import com.dskja.betterstreamflix.BuildConfig
+import com.dskja.betterstreamflix.profiles.ProfileManager
 import com.dskja.betterstreamflix.utils.UserPreferences
 
 /**
  * TV Leanback poster density: Compact (more tiles) vs Comfort (larger posters).
  *
- * Column counts and shelf poster heights are owned here so Movies / TV / Genre /
- * People / Search / Favorites / Downloads and Home shelves stay in sync.
+ * Column counts, shelf/grid poster sizes, Ambient Continue strip height, and
+ * common item spacings are owned here so Movies / TV / Genre / People / Search /
+ * Favorites / Downloads, Home shelves, Live pins, and Ambient stay in sync.
+ *
+ * Watch Together / Sidekick / Cast Room overlays are out of scope (no poster grids);
+ * post-party focus lands on density-correct shelves after rematerialize.
+ *
+ * Per-surface column ladders intentionally differ (catalog +2, genre/downloads +2,
+ * favorites tile-width math) — Compact always adds capacity relative to Comfort.
  */
 object LeanbackDensityPolicy {
 
@@ -16,6 +27,8 @@ object LeanbackDensityPolicy {
     /** High-end Leanback default — larger posters, fewer columns. */
     const val DEFAULT = COMFORT
 
+    private const val TAG = "LeanbackDensity"
+
     enum class Mode {
         COMPACT,
         COMFORT,
@@ -23,10 +36,28 @@ object LeanbackDensityPolicy {
 
     fun resolve(raw: String?): Mode = when (raw?.lowercase()) {
         COMPACT -> Mode.COMPACT
-        else -> Mode.COMFORT
+        COMFORT -> Mode.COMFORT
+        null, "" -> Mode.COMFORT
+        else -> {
+            runCatching {
+                if (BuildConfig.DEBUG) {
+                    Log.d(TAG, "Unknown leanback density \"$raw\" → Comfort")
+                }
+            }
+            Mode.COMFORT
+        }
     }
 
-    fun mode(raw: String? = UserPreferences.leanbackDensity): Mode = resolve(raw)
+    /**
+     * Effective mode for the active profile. Kids Fortress forces Comfort so
+     * Compact's denser wall does not apply on kids profiles (LD-019).
+     */
+    fun mode(raw: String? = UserPreferences.leanbackDensity): Mode {
+        if (runCatching { ProfileManager.isKidsActive() }.getOrDefault(false)) {
+            return Mode.COMFORT
+        }
+        return resolve(raw)
+    }
 
     fun valueOf(mode: Mode): String = when (mode) {
         Mode.COMPACT -> COMPACT
@@ -34,9 +65,16 @@ object LeanbackDensityPolicy {
     }
 
     /** Catalog / genre / people VerticalGridView column count. */
-    fun posterGridColumns(mode: Mode = mode()): Int = when (mode) {
-        Mode.COMPACT -> 7
-        Mode.COMFORT -> 5
+    fun posterGridColumns(
+        mode: Mode = mode(),
+        largeText: Boolean = runCatching { UserPreferences.largeText }.getOrDefault(false),
+    ): Int {
+        val base = when (mode) {
+            Mode.COMPACT -> 7
+            Mode.COMFORT -> 5
+        }
+        // Large Text + Compact packs labels into thin cells — drop one column (LD-009).
+        return if (largeText && mode == Mode.COMPACT) (base - 1).coerceAtLeast(5) else base
     }
 
     /** Home / search shelf poster ImageView height in dp. */
@@ -45,12 +83,22 @@ object LeanbackDensityPolicy {
         Mode.COMFORT -> 240
     }
 
+    /** Title + progress budget under Ambient Continue posters. */
+    fun ambientContinueMetaBudgetDp(mode: Mode = mode()): Int = when (mode) {
+        Mode.COMPACT -> 56
+        Mode.COMFORT -> 64
+    }
+
+    /** Ambient Continue HGV height: shelf poster + meta/title budget. */
+    fun ambientContinueStripHeightDp(mode: Mode = mode()): Int =
+        shelfPosterHeightDp(mode) + ambientContinueMetaBudgetDp(mode)
+
     /**
-     * Ambient Continue strip row height (poster + vertical padding).
-     * Matches shelf poster height so Comfort tiles are not clipped in a fixed 148dp row.
+     * Ambient Continue strip row height (poster + meta budget).
+     * Alias kept for callers that still use the shorter name.
      */
     fun ambientStripHeightDp(mode: Mode = mode()): Int =
-        shelfPosterHeightDp(mode) + 8
+        ambientContinueStripHeightDp(mode)
 
     /**
      * Featured hero card height hint (mobile card / density-aware surfaces).
@@ -61,15 +109,21 @@ object LeanbackDensityPolicy {
         Mode.COMFORT -> 580
     }
 
+    /** Catalog GRID cell poster height (decode + optional min height). */
+    fun gridPosterHeightDp(mode: Mode = mode()): Int = when (mode) {
+        Mode.COMPACT -> 160
+        Mode.COMFORT -> 200
+    }
+
     fun searchGenreColumns(mode: Mode = mode()): Int = when (mode) {
         Mode.COMPACT -> 6
         Mode.COMFORT -> 4
     }
 
-    fun searchResultColumns(mode: Mode = mode()): Int = when (mode) {
-        Mode.COMPACT -> 7
-        Mode.COMFORT -> 5
-    }
+    fun searchResultColumns(
+        mode: Mode = mode(),
+        largeText: Boolean = runCatching { UserPreferences.largeText }.getOrDefault(false),
+    ): Int = posterGridColumns(mode, largeText)
 
     /** Approximate tile width used for Favorites span math. */
     fun favoritesTileWidthDp(mode: Mode = mode()): Int = when (mode) {
@@ -87,19 +141,156 @@ object LeanbackDensityPolicy {
         return maxOf(minCols, screenWidthDp / favoritesTileWidthDp(mode).coerceAtLeast(1))
     }
 
-    /** Apply [shelfPosterHeightDp] to a TV shelf poster view (layout + next measure). */
-    fun applyShelfPosterHeight(poster: View, mode: Mode = mode()) {
-        val hPx = (shelfPosterHeightDp(mode) * poster.resources.displayMetrics.density).toInt()
-        val lp = poster.layoutParams ?: return
-        if (lp.height == hPx) return
-        lp.height = hPx
-        poster.layoutParams = lp
+    /** Home shelf / Live Hub horizontal item spacing. */
+    fun itemSpacingDp(mode: Mode = mode()): Int = when (mode) {
+        Mode.COMPACT -> 8
+        Mode.COMFORT -> 12
     }
 
-    /** Glide override height (px) for shelf posters; width follows 2:3. */
+    /** Movies / TV / Genre / Search catalog grid spacing. */
+    fun catalogItemSpacingDp(mode: Mode = mode()): Int = when (mode) {
+        Mode.COMPACT -> 12
+        Mode.COMFORT -> 16
+    }
+
+    fun downloadsLibrarySpacingDp(mode: Mode = mode()): Int = when (mode) {
+        Mode.COMPACT -> 8
+        Mode.COMFORT -> 12
+    }
+
+    fun peopleFilmographySpacingDp(mode: Mode = mode()): Int = when (mode) {
+        Mode.COMPACT -> 14
+        Mode.COMFORT -> 20
+    }
+
+    fun focusZoomScale(mode: Mode = mode()): Float = when (mode) {
+        Mode.COMPACT -> 1.05f
+        Mode.COMFORT -> 1.08f
+    }
+
+    fun focusStrokeWidthDp(mode: Mode = mode(), highContrast: Boolean = false): Int {
+        val base = when (mode) {
+            Mode.COMPACT -> 3
+            Mode.COMFORT -> 4
+        }
+        return if (highContrast) base + 2 else base
+    }
+
+    fun channelPinSizeDp(mode: Mode = mode()): Int = when (mode) {
+        Mode.COMPACT -> 52
+        Mode.COMFORT -> 64
+    }
+
+    fun channelPinItemWidthDp(mode: Mode = mode()): Int = when (mode) {
+        Mode.COMPACT -> 64
+        Mode.COMFORT -> 76
+    }
+
+    fun peopleAvatarSizeDp(mode: Mode = mode()): Int = when (mode) {
+        Mode.COMPACT -> 64
+        Mode.COMFORT -> 80
+    }
+
+    fun peopleItemWidthDp(mode: Mode = mode()): Int = when (mode) {
+        Mode.COMPACT -> 80
+        Mode.COMFORT -> 96
+    }
+
+    fun genreLabelTextSp(mode: Mode = mode()): Float = when (mode) {
+        Mode.COMPACT -> 13f
+        Mode.COMFORT -> 16f
+    }
+
+    fun supportBannerHeightDp(mode: Mode = mode()): Int = when (mode) {
+        Mode.COMPACT -> 88
+        Mode.COMFORT -> 110
+    }
+
+    fun seasonEpisodeRowHeightDp(mode: Mode = mode()): Int = when (mode) {
+        Mode.COMPACT -> 400
+        Mode.COMFORT -> 460
+    }
+
+    fun searchMemoryChipPadHDp(mode: Mode = mode()): Int = when (mode) {
+        Mode.COMPACT -> 12
+        Mode.COMFORT -> 16
+    }
+
+    fun searchMemoryChipPadVDp(mode: Mode = mode()): Int = when (mode) {
+        Mode.COMPACT -> 6
+        Mode.COMFORT -> 10
+    }
+
+    fun offlineStudioCompactChrome(mode: Mode = mode()): Boolean = mode == Mode.COMPACT
+
+    /** LD-037: Home remix / shelf pin chrome size (dp). */
+    fun chromeIconSizeDp(mode: Mode = mode()): Int = when (mode) {
+        Mode.COMPACT -> 40
+        Mode.COMFORT -> 48
+    }
+
+    fun applyChromeIconSize(view: View, mode: Mode = mode()) {
+        val sizePx = dpToPx(view, chromeIconSizeDp(mode))
+        val lp = view.layoutParams ?: return
+        if (lp.width == sizePx && lp.height == sizePx) return
+        lp.width = sizePx
+        lp.height = sizePx
+        view.layoutParams = lp
+        view.requestLayout()
+    }
+
+    /**
+     * Apply [shelfPosterHeightDp] (+ matching 2:3 width) to a TV shelf poster view.
+     */
+    fun applyShelfPosterHeight(poster: View, mode: Mode = mode()) {
+        val density = poster.resources.displayMetrics.density
+        val hPx = (shelfPosterHeightDp(mode) * density).toInt()
+        val wPx = (hPx * 2 / 3f).toInt()
+        val lp = poster.layoutParams ?: return
+        val widthFixed = lp.width != ViewGroup.LayoutParams.MATCH_PARENT &&
+            lp.width != ViewGroup.LayoutParams.WRAP_CONTENT &&
+            lp.width > 0
+        if (lp.height == hPx && (!widthFixed || lp.width == wPx)) {
+            return
+        }
+        lp.height = hPx
+        if (widthFixed || lp.width == ViewGroup.LayoutParams.WRAP_CONTENT) {
+            lp.width = wPx
+        }
+        poster.layoutParams = lp
+        poster.requestLayout()
+    }
+
+    /** Size Ambient Continue HGV from shelf poster height + meta budget. */
+    fun applyAmbientContinueStripHeight(strip: View, mode: Mode = mode()) {
+        val hPx = (ambientContinueStripHeightDp(mode) * strip.resources.displayMetrics.density).toInt()
+        val lp = strip.layoutParams ?: return
+        if (lp.height == hPx) return
+        lp.height = hPx
+        strip.layoutParams = lp
+        strip.requestLayout()
+        (strip as? androidx.leanback.widget.HorizontalGridView)?.setRowHeight(hPx)
+    }
+
+    /**
+     * Glide override for shelf posters; width follows 2:3.
+     * Floor is relative to mode height so density=1.0 still differs Compact vs Comfort.
+     */
     fun shelfPosterOverridePx(density: Float, mode: Mode = mode()): Pair<Int, Int> {
-        val h = (shelfPosterHeightDp(mode) * density).toInt().coerceAtLeast(360)
-        val w = (h * 2 / 3f).toInt().coerceAtLeast(240)
+        val hDp = shelfPosterHeightDp(mode)
+        val h = (hDp * density).toInt().coerceAtLeast(hDp)
+        val w = (h * 2 / 3f).toInt().coerceAtLeast((hDp * 2 / 3f).toInt().coerceAtLeast(1))
         return w to h
     }
+
+    /** Glide override for catalog GRID posters. */
+    fun gridPosterOverridePx(density: Float, mode: Mode = mode()): Pair<Int, Int> {
+        val hDp = gridPosterHeightDp(mode)
+        val h = (hDp * density).toInt().coerceAtLeast(hDp)
+        val w = (h * 2 / 3f).toInt().coerceAtLeast((hDp * 2 / 3f).toInt().coerceAtLeast(1))
+        return w to h
+    }
+
+    fun dpToPx(view: View, dp: Int): Int =
+        (dp * view.resources.displayMetrics.density).toInt()
 }

@@ -769,14 +769,18 @@ class PlayerMobileFragment : Fragment(),
                             }
                             PlaybackFailover.Action.RetrySoftwareDecoder -> {
                                 pendingPlayWithAfterResolve = false
-                                if (PlaybackFailover.isDecoderCapabilityFailure(state.error)) {
+                                val capability =
+                                    PlaybackFailover.isDecoderCapabilityFailure(state.error)
+                                if (capability) {
                                     com.dskja.betterstreamflix.player.CodecComfort
                                         .recordDecoderTrouble(requireContext())
                                 }
                                 failoverTimeline.recordSoftwareDecoder()
                                 // Leave currentSoftwareDecoder stale so needsReinit rebuilds Exo.
+                                // CC-005: force On only for capability; else Auto-on.
                                 PlayerSettingsView.Settings.SoftwareDecoder.init(true)
-                                PlayerSettingsView.Settings.SoftwareDecoder.selectedValue = true
+                                PlayerSettingsView.Settings.SoftwareDecoder.selectedValue =
+                                    if (capability) true else null
                                 showPlayerCue(R.string.player_retry_software_decoder)
                                 viewModel.getVideo(state.server)
                             }
@@ -2176,6 +2180,12 @@ class PlayerMobileFragment : Fragment(),
                     revealTrailerStreamBridge()
                     hideStuckOverlay()
                     livePipZapController?.onPrimaryPlaybackReady()
+                    // CC-001: decay Comfort latch after clean HW Auto sessions.
+                    if (!currentSoftwareDecoder &&
+                        PlayerSettingsView.Settings.SoftwareDecoder.selectedValue != true
+                    ) {
+                        com.dskja.betterstreamflix.player.CodecComfort.noteStableHardwarePlayback()
+                    }
                 }
                 val playWhenReady = ::player.isInitialized && !playerReleased && player.playWhenReady
                 stuckDetector.onPlaybackStateChanged(playbackState, playWhenReady)
@@ -2346,14 +2356,17 @@ class PlayerMobileFragment : Fragment(),
                     PlaybackFailover.Action.RetrySoftwareDecoder -> {
                         suppressBuiltInErrorOverlay()
                         pendingPlayWithAfterResolve = false
-                        if (PlaybackFailover.isDecoderCapabilityFailure(error)) {
+                        val capability = PlaybackFailover.isDecoderCapabilityFailure(error)
+                        if (capability) {
                             com.dskja.betterstreamflix.player.CodecComfort
                                 .recordDecoderTrouble(requireContext())
                         }
                         failoverTimeline.recordSoftwareDecoder()
                         // Leave currentSoftwareDecoder stale so needsReinit rebuilds Exo.
+                        // CC-005: force On only for capability; else Auto-on.
                         PlayerSettingsView.Settings.SoftwareDecoder.init(true)
-                        PlayerSettingsView.Settings.SoftwareDecoder.selectedValue = true
+                        PlayerSettingsView.Settings.SoftwareDecoder.selectedValue =
+                            if (capability) true else null
                         val video = currentVideo
                         val server = currentServer
                         if (video != null && server != null) {
@@ -3954,7 +3967,10 @@ class PlayerMobileFragment : Fragment(),
         if (shouldCountdown) {
             card.tvEndCardCountdown.isVisible = true
             endCardCountdownJob = viewLifecycleOwner.lifecycleScope.launch {
-                for (sec in EndCardPolicy.AUTOPLAY_COUNTDOWN_SEC downTo 1) {
+                val countdownSec = EndCardPolicy.autoplayCountdownSec(
+                    codecComfortActive = com.dskja.betterstreamflix.player.CodecComfort.isActive(),
+                )
+                for (sec in countdownSec downTo 1) {
                     if (endCardCountdownCancelled || isTearingDown || !isAdded || _binding == null) {
                         return@launch
                     }

@@ -93,6 +93,7 @@ object ProfileTransferImporter {
             UserPreferences.libraryScope = UserPreferences.LibraryScope.fromKey(it)
         }
         s.selectedTheme?.takeIf { it.isNotBlank() }?.let { UserPreferences.selectedTheme = it }
+        s.leanbackDensity?.takeIf { it.isNotBlank() }?.let { UserPreferences.leanbackDensity = it }
         s.showContinueWatching?.let { UserPreferences.showContinueWatching = it }
         s.showRecentlyWatched?.let { UserPreferences.showRecentlyWatched = it }
         s.showNextEpisodes?.let { UserPreferences.showNextEpisodes = it }

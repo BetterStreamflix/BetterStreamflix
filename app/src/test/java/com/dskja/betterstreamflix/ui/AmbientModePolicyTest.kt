@@ -228,7 +228,14 @@ class AmbientModePolicyTest {
         assertTrue(
             AmbientModePolicy.shouldExitOnKey(AmbientModePolicy.KEYCODE_DPAD_LEFT, false),
         )
-        // DPAD_UP (19) wakes Home.
-        assertTrue(AmbientModePolicy.shouldExitOnKey(19, true))
+        // FA-029: DPAD_UP/DOWN stay strip-safe while Continue has focus.
+        assertFalse(
+            AmbientModePolicy.shouldExitOnKey(AmbientModePolicy.KEYCODE_DPAD_UP, true),
+        )
+        assertFalse(
+            AmbientModePolicy.shouldExitOnKey(AmbientModePolicy.KEYCODE_DPAD_DOWN, true),
+        )
+        // Non-nav key still wakes Home.
+        assertTrue(AmbientModePolicy.shouldExitOnKey(82, true)) // KEYCODE_MENU
     }
 }

@@ -1,5 +1,8 @@
 package com.dskja.betterstreamflix.sync
 
+import android.content.Context
+import com.dskja.betterstreamflix.ui.StickEnergyMode
+
 /**
  * Watch Together Pro — session product on Watch Party:
  * lobby + join code, host controls, sync-health, TV-screen / phone-remote.
@@ -22,6 +25,14 @@ object WatchTogetherPro {
     /** Host heartbeat older than this → stale. */
     const val HOST_STALE_MS: Long = 8_000L
 
+    /** Default host poll while party is live. */
+    const val HOST_POLL_MS: Long = 2_500L
+
+    /** Stick Energy: wider resync thresholds + slower poll (SE-004). */
+    const val ENERGY_HEALTH_LOST_MS: Long = 12_000L
+    const val ENERGY_HOST_STALE_MS: Long = 12_000L
+    const val ENERGY_HOST_POLL_MS: Long = 4_000L
+
     fun isValidDisplayMode(mode: String?): Boolean =
         mode == MODE_SYNC_ALL || mode == MODE_TV_SCREEN
 
@@ -30,6 +41,19 @@ object WatchTogetherPro {
 
     fun isTvScreenMode(mode: String?): Boolean =
         normalizeDisplayMode(mode) == MODE_TV_SCREEN
+
+    fun healthLostMs(context: Context? = null): Long =
+        if (StickEnergyMode.isEnabled(context)) ENERGY_HEALTH_LOST_MS else HEALTH_LOST_MS
+
+    fun hostStaleMs(context: Context? = null): Long =
+        if (StickEnergyMode.isEnabled(context)) ENERGY_HOST_STALE_MS else HOST_STALE_MS
+
+    fun hostPollMs(context: Context? = null): Long =
+        if (StickEnergyMode.isEnabled(context)) ENERGY_HOST_POLL_MS else HOST_POLL_MS
+
+    /** Skip heavy TV-screen chrome motion under Stick Energy. */
+    fun shouldReducePartyChromeMotion(context: Context? = null): Boolean =
+        StickEnergyMode.isEnabled(context)
 
     fun clampSeek(positionMs: Long, durationMs: Long? = null): Long =
         TvSidekick.clampSeek(positionMs, durationMs)

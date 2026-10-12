@@ -268,7 +268,10 @@ class DownloadsTvFragment : Fragment() {
                 }
             }
             binding.rvDownloads.adapter = libraryAdapter
-            librarySpacing = SpacingItemDecoration(12.dp(requireContext())).also {
+            val libraryGap = com.dskja.betterstreamflix.ui.LeanbackDensityPolicy
+                .downloadsLibrarySpacingDp()
+                .dp(requireContext())
+            librarySpacing = SpacingItemDecoration(libraryGap).also {
                 binding.rvDownloads.addItemDecoration(it)
             }
             libraryAdapter.submitList(OfflineLibrary.toAppItems(libraryEntries, mobile = false))

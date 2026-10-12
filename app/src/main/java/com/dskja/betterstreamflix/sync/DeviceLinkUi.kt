@@ -11,7 +11,6 @@ import android.view.ViewGroup
 import android.widget.EditText
 import android.widget.LinearLayout
 import android.widget.TextView
-import androidx.appcompat.app.AlertDialog
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.FragmentActivity
 import androidx.lifecycle.lifecycleScope
@@ -71,14 +70,16 @@ object DeviceLinkUi {
             )
             addView(input)
         }
-        AlertDialog.Builder(activity)
-            .setTitle(R.string.device_link_enter_title)
-            .setView(container)
-            .setNegativeButton(android.R.string.cancel, null)
-            .setPositiveButton(R.string.device_link_enter_action) { _, _ ->
-                lookupAndSignIn(activity, input.text?.toString().orEmpty(), onSignedIn)
-            }
-            .show()
+        // SS-B10-12: full Leanback digit pad deferred (scope); themed dialog + button focus.
+        ExpDialogChrome.showAlert(activity) { builder ->
+            builder
+                .setTitle(R.string.device_link_enter_title)
+                .setView(container)
+                .setNegativeButton(android.R.string.cancel, null)
+                .setPositiveButton(R.string.device_link_enter_action) { _, _ ->
+                    lookupAndSignIn(activity, input.text?.toString().orEmpty(), onSignedIn)
+                }
+        }
     }
 
     private fun lookupAndSignIn(
@@ -141,16 +142,17 @@ object DeviceLinkUi {
                 ViewGroup.LayoutParams.WRAP_CONTENT,
             )
         }
-        AlertDialog.Builder(context)
-            .setTitle(R.string.device_link_offer_title)
-            .setView(container)
-            .setPositiveButton(R.string.device_link_offer_done, null)
-            .setNeutralButton(R.string.device_link_copy_code) { _, _ ->
-                val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager
-                clipboard?.setPrimaryClip(ClipData.newPlainText("link-code", display))
-                ExpDialogChrome.notify(context, R.string.device_link_copied)
-            }
-            .show()
+        ExpDialogChrome.showAlert(context) { builder ->
+            builder
+                .setTitle(R.string.device_link_offer_title)
+                .setView(container)
+                .setPositiveButton(R.string.device_link_offer_done, null)
+                .setNeutralButton(R.string.device_link_copy_code) { _, _ ->
+                    val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager
+                    clipboard?.setPrimaryClip(ClipData.newPlainText("link-code", display))
+                    ExpDialogChrome.notify(context, R.string.device_link_copied)
+                }
+        }
     }
 
     private fun guardReady(context: Context, requireSignedIn: Boolean): Boolean {

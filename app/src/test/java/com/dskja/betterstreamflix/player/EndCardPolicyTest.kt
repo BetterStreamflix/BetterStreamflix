@@ -89,4 +89,11 @@ class EndCardPolicyTest {
         assertEquals(0, EndCardPolicy.countdownLabelSec(-3))
         assertEquals(8, EndCardPolicy.countdownLabelSec(8))
     }
+
+    @Test
+    fun autoplayCountdown_capsUnderCodecComfort() {
+        assertEquals(10, EndCardPolicy.autoplayCountdownSec(codecComfortActive = false))
+        assertEquals(6, EndCardPolicy.autoplayCountdownSec(codecComfortActive = true))
+        assertEquals(6, EndCardPolicy.AUTOPLAY_COUNTDOWN_SEC_COMFORT)
+    }
 }

@@ -38,9 +38,12 @@ object TrailerStreamCrossfade {
     /**
      * Living-room Trailer→Play dissolve when Cinema Room is on (TV player).
      * Mobile keeps [CROSSFADE_MS] unless callers pass an explicit duration.
+     * Stick Energy / reduce-motion caps at [CROSSFADE_MS] (SE-006).
      */
-    fun revealDurationMs(cinemaRoomEnabled: Boolean): Long =
-        CinemaRoomPolicy.trailerCrossfadeMs(cinemaRoomEnabled)
+    fun revealDurationMs(
+        cinemaRoomEnabled: Boolean,
+        reduceMotion: Boolean = false,
+    ): Long = CinemaRoomPolicy.trailerCrossfadeMs(cinemaRoomEnabled, reduceMotion)
 
     data class Handoff(
         val contentId: String,

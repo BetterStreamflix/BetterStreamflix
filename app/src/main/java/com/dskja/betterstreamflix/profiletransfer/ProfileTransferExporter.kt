@@ -85,6 +85,7 @@ object ProfileTransferExporter {
         return ProfileTransferPayload.SettingsSnapshot(
             libraryScope = UserPreferences.libraryScope.key,
             selectedTheme = UserPreferences.selectedTheme,
+            leanbackDensity = UserPreferences.leanbackDensity,
             showContinueWatching = UserPreferences.showContinueWatching,
             showRecentlyWatched = UserPreferences.showRecentlyWatched,
             showNextEpisodes = UserPreferences.showNextEpisodes,
