@@ -1664,7 +1664,7 @@
     <string name="settings_large_text_title">Große Schrift</string>
     <string name="settings_large_text_summary">App-Text vergrößern für bessere Lesbarkeit (startet die App neu)</string>
     <string name="settings_high_contrast_title">Hoher Kontrast</string>
-    <string name="settings_high_contrast_summary">Maximaler Kontrast für Text und Fokus-Ringe (startet die App neu). Ändert nicht die Untertitel-Studio-Captions.</string>
+    <string name="settings_high_contrast_summary">Maximaler Kontrast für Text und Fokus-Ringe (startet die App neu). Wendet auch die Untertitel-Studio-Voreinstellung „Hoher Kontrast“ an.</string>
     <string name="a11y_untitled">Ohne Titel</string>
     <string name="a11y_state_in_my_list">in Meiner Liste</string>
     <string name="a11y_state_watched">gesehen</string>

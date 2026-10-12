@@ -16,4 +16,6 @@ Per-profile caption / Subtitle Studio styling is stored locally only — it is *
 
 **Realtime scope:** only `user_media_state` is in the `supabase_realtime` publication. Episode notes (`user_episode_notes`) and look/theme prefs (`user_profile_prefs`) are **poll/pull only** — clients sync them via WorkManager / Sync now / login merge, not postgres changes.
 
+**Device Link-Code (SC-004):** `get_device_link_by_code` burns the offer on first successful lookup (`looked_up_at`). Apply `20261012010000_device_link_burn_on_lookup.sql`. Claimers cache the returned email locally for password retries; other devices cannot re-probe the same code.
+
 After configuring the connection, users can create/sign into their own Supabase Auth account. Account and sync actions remain disabled until both connection fields are valid. Favorites sync across devices when signed in; **Share list** publishes a deep link (`betterstreamflix://list/…`) with a ~30-day TTL. Republish rotates the token; owners can revoke (delete) the shared row from Favorites. Watch Party links use `https://betterstreamflix.app/party/<token>`. Cast Room links use `https://betterstreamflix.app/cast/<token>`.

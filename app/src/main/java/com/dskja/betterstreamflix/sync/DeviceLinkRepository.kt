@@ -12,12 +12,12 @@ import java.time.Instant
 import java.time.temporal.ChronoUnit
 
 /**
- * Device link codes: 6-char offer, [TOKEN_TTL_MINUTES] TTL, single-use after claim.
+ * Device link codes: 6-char offer, [TOKEN_TTL_MINUTES] TTL.
  *
- * Lookup may return the host email while `claimed_at` is null (pairing needs email
- * before password). Codes are invalidated on new mint ([expireOwnedActiveOffers]) and
- * marked claimed after successful sign-in ([markClaimed]) — not burned on first lookup
- * so password retries still work (SC-004).
+ * SC-004: [lookupByCode] burns the server row on first successful reveal
+ * (`looked_up_at`). Password retries on the same device use
+ * [DeviceLinkLookupCache]. Codes are also invalidated on new mint
+ * ([expireOwnedActiveOffers]) and marked claimed after sign-in ([markClaimed]).
  */
 object DeviceLinkRepository {
     private const val TAG = "DeviceLink"
@@ -76,11 +76,16 @@ object DeviceLinkRepository {
     /**
      * TV/phone claimer path: may run without an existing session (SC-019).
      * Relies on anon-granted `get_device_link_by_code` RPC + RLS.
+     *
+     * First successful RPC burns the code server-side (SC-004). Subsequent
+     * calls for the same code on this device hit [DeviceLinkLookupCache].
      */
     suspend fun lookupByCode(context: Context, code: String): LookupResult {
         requireConfigured()
         rejectKids()
         val cleaned = DeviceLinkCodes.normalize(code) ?: error("Invalid link code")
+        DeviceLinkLookupCache.get(cleaned)?.let { return it }
+
         val appContext = context.applicationContext
         val profileId = ProfileManager.activeProfileId
         val client = SupabaseProvider.initializeForProfile(appContext, profileId)
@@ -95,13 +100,15 @@ object DeviceLinkRepository {
         }.getOrNull()
         val email = payload?.email?.trim().orEmpty()
         if (email.isEmpty() || !email.contains('@')) {
-            error("Link code not found or expired")
+            error("Link code not found, expired, or already used")
         }
-        return LookupResult(
+        val result = LookupResult(
             shortCode = payload?.shortCode ?: cleaned,
             email = email,
             expiresAt = payload?.expiresAt,
         )
+        DeviceLinkLookupCache.put(result.shortCode, result.email, result.expiresAt)
+        return result
     }
 
     /**
@@ -110,6 +117,7 @@ object DeviceLinkRepository {
      */
     suspend fun markClaimed(context: Context, code: String) {
         val cleaned = DeviceLinkCodes.normalize(code) ?: return
+        DeviceLinkLookupCache.clear(cleaned)
         val appContext = context.applicationContext
         val profileId = ProfileManager.activeProfileId
         val client = SupabaseProvider.initializeForProfile(appContext, profileId) ?: return

@@ -72,4 +72,13 @@ class SubtitleStudioTest {
         assertTrue(SubtitleStudio.YELLOW_LARGE.textSize > SubtitleStudio.CLASSIC.textSize)
         assertEquals(0xFFFFFF00.toInt(), SubtitleStudio.YELLOW_LARGE.fontColor)
     }
+
+    @Test
+    fun highContrastPreset_isReadyForAccessibilityToggle() {
+        // ST-009: AccessibilityPreferences.syncSubtitleStudioForHighContrast applies this.
+        val preset = SubtitleStudio.HIGH_CONTRAST
+        assertEquals("high_contrast", preset.id)
+        assertEquals(CaptionStyleCompat.EDGE_TYPE_OUTLINE, preset.edgeType)
+        assertTrue(preset.textSize >= 1.5f)
+    }
 }

@@ -57,6 +57,7 @@ import com.dskja.betterstreamflix.providers.SerienStreamProvider
 import com.dskja.betterstreamflix.providers.StreamingCommunityProvider
 import com.dskja.betterstreamflix.providers.TmdbProvider
 import com.dskja.betterstreamflix.player.SerienStreamBypassHelper
+import com.dskja.betterstreamflix.utils.AccessibilityPreferences
 import com.dskja.betterstreamflix.utils.AppLanguageManager
 import com.dskja.betterstreamflix.utils.CatalogSortMode
 import com.dskja.betterstreamflix.utils.SearchSortMode
@@ -1343,7 +1344,10 @@ class SettingsMobileFragment : PreferenceFragmentCompat() {
         findPreference<SwitchPreference>("HIGH_CONTRAST")?.apply {
             isChecked = UserPreferences.highContrast
             setOnPreferenceChangeListener { _, newValue ->
-                UserPreferences.highContrast = newValue as Boolean
+                val enabled = newValue as Boolean
+                UserPreferences.highContrast = enabled
+                // ST-009: align Subtitle Studio captions with accessibility High contrast.
+                AccessibilityPreferences.syncSubtitleStudioForHighContrast(enabled)
                 requireActivity().apply {
                     finish()
                     startActivity(Intent(this, MainMobileActivity::class.java))
