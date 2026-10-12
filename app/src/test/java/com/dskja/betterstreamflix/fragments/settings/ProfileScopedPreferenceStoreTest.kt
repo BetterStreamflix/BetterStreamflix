@@ -29,9 +29,18 @@ class ProfileScopedPreferenceStoreTest {
     fun mobileAndTvExposeTheSameScopedPreferenceKeys() {
         val mobile = readXml("settings_mobile.xml")
         val tv = readXml("settings_tv.xml")
-        ProfileScopedPreferenceStore.SCOPED_KEYS.forEach { key ->
+        val shared = ProfileScopedPreferenceStore.SCOPED_KEYS -
+            ProfileScopedPreferenceStore.TV_ONLY_SCOPED_KEYS
+        shared.forEach { key ->
             assertTrue("$key missing on mobile", mobile.contains("""android:key="$key""""))
             assertTrue("$key missing on tv", tv.contains("""android:key="$key""""))
+        }
+        ProfileScopedPreferenceStore.TV_ONLY_SCOPED_KEYS.forEach { key ->
+            assertTrue("$key missing on tv", tv.contains("""android:key="$key""""))
+            assertFalse(
+                "$key should stay TV-only",
+                mobile.contains("""android:key="$key""""),
+            )
         }
     }
 

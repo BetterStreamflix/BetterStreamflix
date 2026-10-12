@@ -53,12 +53,16 @@ object LeanbackDensityPolicy {
     /**
      * Effective mode for the active profile. Kids Fortress forces Comfort so
      * Compact's denser wall does not apply on kids profiles (LD-019).
+     *
+     * Prefs may be unread before [UserPreferences] setup (unit tests / early
+     * Search column probes) — fall back to Comfort rather than throwing.
      */
-    fun mode(raw: String? = UserPreferences.leanbackDensity): Mode {
+    fun mode(raw: String? = null): Mode {
         if (runCatching { ProfileManager.isKidsActive() }.getOrDefault(false)) {
             return Mode.COMFORT
         }
-        return resolve(raw)
+        val value = raw ?: runCatching { UserPreferences.leanbackDensity }.getOrNull()
+        return resolve(value)
     }
 
     fun valueOf(mode: Mode): String = when (mode) {
