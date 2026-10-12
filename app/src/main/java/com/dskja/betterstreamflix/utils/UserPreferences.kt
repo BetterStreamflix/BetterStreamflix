@@ -26,6 +26,12 @@ object UserPreferences {
 
     private const val TAG = "UserPrefsDebug"
 
+    /** Device-wide parental PIN salt (not profile-scoped). */
+    private const val HOUSEHOLD_PARENTAL_SALT = "parental_household"
+
+    /** Device-wide admin recovery PIN salt (not profile-scoped). */
+    private const val HOUSEHOLD_ADMIN_SALT = "admin_household"
+
     private lateinit var prefs: SharedPreferences
 
     // Default DoH Provider URL (Cloudflare)
@@ -728,15 +734,24 @@ object UserPreferences {
      * collapsed via [ThemeManager.resolveLook] so Settings never half-mix accents.
      */
     var selectedTheme: String
-        get() = ThemeManager.resolveLook(
-            profileScopedString(Key.SELECTED_THEME)
-                ?: Key.SELECTED_THEME.getString(),
-        )
-        set(value) {
-            val resolved = ThemeManager.resolveLook(value)
-            val previous = ThemeManager.resolveLook(
+        get() = ThemeManager.clampLookForKids(
+            ThemeManager.resolveLook(
                 profileScopedString(Key.SELECTED_THEME)
                     ?: Key.SELECTED_THEME.getString(),
+            ),
+            ProfileManager.isKidsActive(),
+        )
+        set(value) {
+            val resolved = ThemeManager.clampLookForKids(
+                ThemeManager.resolveLook(value),
+                ProfileManager.isKidsActive(),
+            )
+            val previous = ThemeManager.clampLookForKids(
+                ThemeManager.resolveLook(
+                    profileScopedString(Key.SELECTED_THEME)
+                        ?: Key.SELECTED_THEME.getString(),
+                ),
+                ProfileManager.isKidsActive(),
             )
             setProfileScopedString(Key.SELECTED_THEME, resolved)
             if (resolved != previous || selectedThemeUpdatedAtMillis <= 0L) {
@@ -953,20 +968,30 @@ object UserPreferences {
      * Permanent opt-out; soft shows use a long cool-down (see ThanksAfterBingePolicy).
      */
     var neverShowThanksAfterBinge: Boolean
-        get() = Key.NEVER_SHOW_THANKS_AFTER_BINGE.getBoolean() ?: false
-        set(value) = Key.NEVER_SHOW_THANKS_AFTER_BINGE.setBoolean(value)
+        get() = profileScopedBoolean(Key.NEVER_SHOW_THANKS_AFTER_BINGE)
+            ?: Key.NEVER_SHOW_THANKS_AFTER_BINGE.getBoolean()
+            ?: false
+        set(value) {
+            setProfileScopedBoolean(Key.NEVER_SHOW_THANKS_AFTER_BINGE, value)
+            Key.NEVER_SHOW_THANKS_AFTER_BINGE.setBoolean(value)
+        }
 
     var thanksAfterBingeLastShownAtMs: Long
-        get() = Key.THANKS_AFTER_BINGE_LAST_SHOWN_AT_MS.getLong() ?: 0L
-        set(value) = Key.THANKS_AFTER_BINGE_LAST_SHOWN_AT_MS.setLong(value)
+        get() = readThanksLong(Key.THANKS_AFTER_BINGE_LAST_SHOWN_AT_MS)
+        set(value) = setThanksLong(Key.THANKS_AFTER_BINGE_LAST_SHOWN_AT_MS, value)
 
     var thanksAfterBingeLastDismissedAtMs: Long
-        get() = Key.THANKS_AFTER_BINGE_LAST_DISMISSED_AT_MS.getLong() ?: 0L
-        set(value) = Key.THANKS_AFTER_BINGE_LAST_DISMISSED_AT_MS.setLong(value)
+        get() = readThanksLong(Key.THANKS_AFTER_BINGE_LAST_DISMISSED_AT_MS)
+        set(value) = setThanksLong(Key.THANKS_AFTER_BINGE_LAST_DISMISSED_AT_MS, value)
 
     var thanksAfterBingeShowCount: Int
-        get() = Key.THANKS_AFTER_BINGE_SHOW_COUNT.getInt() ?: 0
-        set(value) = Key.THANKS_AFTER_BINGE_SHOW_COUNT.setInt(value)
+        get() = profileScopedInt(Key.THANKS_AFTER_BINGE_SHOW_COUNT)
+            ?: Key.THANKS_AFTER_BINGE_SHOW_COUNT.getInt()
+            ?: 0
+        set(value) {
+            setProfileScopedInt(Key.THANKS_AFTER_BINGE_SHOW_COUNT, value)
+            Key.THANKS_AFTER_BINGE_SHOW_COUNT.setInt(value)
+        }
 
     /** Offline Expiry Nudge — last soft prompt timestamps (profile-scoped). */
     var offlineExpiryNudgeLastShownAtMs: Long
@@ -1309,6 +1334,21 @@ object UserPreferences {
             setProfileScopedLong(Key.KIDS_BEDTIME_BYPASS_UNTIL_MS, value.coerceAtLeast(0L))
         }
 
+    /**
+     * Optional wake minute-of-day (0–1439). Unset / invalid →
+     * [com.dskja.betterstreamflix.kids.KidsBedtime.WAKE_MINUTE_OF_DAY] (05:00).
+     * Not exposed in Settings UI yet (KB-007).
+     */
+    var kidsBedtimeWakeMinuteOfDay: Int
+        get() = profileScopedInt(Key.KIDS_BEDTIME_WAKE_MINUTE_OF_DAY)
+            ?: com.dskja.betterstreamflix.kids.KidsBedtime.WAKE_MINUTE_OF_DAY
+        set(value) {
+            setProfileScopedInt(
+                Key.KIDS_BEDTIME_WAKE_MINUTE_OF_DAY,
+                com.dskja.betterstreamflix.kids.KidsBedtime.clampMinuteOfDay(value),
+            )
+        }
+
     /** Peek Kids Bedtime enabled for any profile (Parent Dashboard). */
     fun kidsBedtimeEnabledFor(profileId: String): Boolean =
         readBoolean(ProfileManager.scopedPrefKeyFor(Key.KIDS_BEDTIME_ENABLED.name, profileId))
@@ -1363,30 +1403,41 @@ object UserPreferences {
         get() = libraryScope == LibraryScope.CROSS_PROVIDER
 
     /**
-     * Stored parental PIN hash (or legacy plaintext until first successful verify).
+     * Household parental PIN (device-wide, not profile-scoped).
+     * Kids / bedtime / cold-start unlock all read this same value.
      * Assigning a raw digit PIN always hashes via [PinHasher] before write.
      * Assign `""` to clear.
      */
     var parentalControlPin: String
-        get() = profileScopedString(Key.PARENTAL_CONTROL_PIN) ?: ""
+        get() = readHouseholdParentalPin()
         set(value) {
-            setProfileScopedString(
-                Key.PARENTAL_CONTROL_PIN,
-                hashParentalPinForStorage(value.trim(), ProfileManager.parentalPinSalt()),
+            val trimmed = value.trim()
+            if (trimmed.isEmpty()) {
+                Key.PARENTAL_CONTROL_PIN.setString(null)
+                return
+            }
+            Key.PARENTAL_CONTROL_PIN.setString(
+                hashParentalPinForStorage(trimmed, HOUSEHOLD_PARENTAL_SALT),
             )
         }
 
     /**
-     * Stored admin PIN hash (or legacy plaintext until first successful verify).
+     * Household admin recovery PIN (device-wide).
      * Assigning a raw digit PIN always hashes via [PinHasher] before write.
      * Assign `""` to clear.
      */
     var parentalControlAdminPin: String
-        get() = profileScopedString(Key.PARENTAL_CONTROL_ADMIN_PIN) ?: ""
+        get() = Key.PARENTAL_CONTROL_ADMIN_PIN.getString()
+            ?: profileScopedString(Key.PARENTAL_CONTROL_ADMIN_PIN)
+            ?: ""
         set(value) {
-            setProfileScopedString(
-                Key.PARENTAL_CONTROL_ADMIN_PIN,
-                hashParentalPinForStorage(value.trim(), ProfileManager.adminPinSalt()),
+            val trimmed = value.trim()
+            if (trimmed.isEmpty()) {
+                Key.PARENTAL_CONTROL_ADMIN_PIN.setString(null)
+                return
+            }
+            Key.PARENTAL_CONTROL_ADMIN_PIN.setString(
+                hashParentalPinForStorage(trimmed, HOUSEHOLD_ADMIN_SALT),
             )
         }
 
@@ -1397,21 +1448,27 @@ object UserPreferences {
         }
 
     var parentalControlFailedAttempts: Int
-        get() = profileScopedInt(Key.PARENTAL_CONTROL_FAILED_ATTEMPTS) ?: 0
+        get() = Key.PARENTAL_CONTROL_FAILED_ATTEMPTS.getInt()
+            ?: profileScopedInt(Key.PARENTAL_CONTROL_FAILED_ATTEMPTS)
+            ?: 0
         set(value) {
-            setProfileScopedInt(Key.PARENTAL_CONTROL_FAILED_ATTEMPTS, value)
+            Key.PARENTAL_CONTROL_FAILED_ATTEMPTS.setInt(value)
         }
 
     var parentalControlLockedUntilMillis: Long
-        get() = profileScopedLong(Key.PARENTAL_CONTROL_LOCKED_UNTIL) ?: 0L
+        get() = Key.PARENTAL_CONTROL_LOCKED_UNTIL.getLong()
+            ?: profileScopedLong(Key.PARENTAL_CONTROL_LOCKED_UNTIL)
+            ?: 0L
         set(value) {
-            setProfileScopedLong(Key.PARENTAL_CONTROL_LOCKED_UNTIL, value)
+            Key.PARENTAL_CONTROL_LOCKED_UNTIL.setLong(value)
         }
 
     var parentalControlHardLocked: Boolean
-        get() = profileScopedBoolean(Key.PARENTAL_CONTROL_HARD_LOCKED) ?: false
+        get() = Key.PARENTAL_CONTROL_HARD_LOCKED.getBoolean()
+            ?: profileScopedBoolean(Key.PARENTAL_CONTROL_HARD_LOCKED)
+            ?: false
         set(value) {
-            setProfileScopedBoolean(Key.PARENTAL_CONTROL_HARD_LOCKED, value)
+            Key.PARENTAL_CONTROL_HARD_LOCKED.setBoolean(value)
         }
 
     val isParentalControlActive: Boolean
@@ -1424,22 +1481,31 @@ object UserPreferences {
         get() = (parentalControlLockedUntilMillis - System.currentTimeMillis()).coerceAtLeast(0L)
 
     /**
-     * Verify the parental PIN. Legacy plaintext values are accepted once and
-     * re-hashed on success (lazy migration).
+     * Verify the household parental PIN. Legacy plaintext and old per-profile
+     * salts are accepted once and re-hashed to the household salt on success.
      */
     fun verifyParentalControlPin(entered: String): Boolean {
         val stored = parentalControlPin
         if (stored.isBlank()) return false
         if (PinHasher.looksLikePlaintextPin(stored)) {
             if (stored != entered) return false
-            // Lazy migrate: setter hashes raw PINs.
             parentalControlPin = entered
             return true
         }
-        return PinHasher.verify(entered, stored, ProfileManager.parentalPinSalt())
+        if (PinHasher.verify(entered, stored, HOUSEHOLD_PARENTAL_SALT)) {
+            return true
+        }
+        // Legacy per-profile salts (pre–household PIN).
+        for (profile in ProfileManager.profiles()) {
+            if (PinHasher.verify(entered, stored, ProfileManager.parentalPinSalt(profile.id))) {
+                parentalControlPin = entered
+                return true
+            }
+        }
+        return false
     }
 
-    /** Verify the admin recovery PIN with the same hash / migrate rules. */
+    /** Verify the household admin recovery PIN with the same hash / migrate rules. */
     fun verifyParentalControlAdminPin(entered: String): Boolean {
         val stored = parentalControlAdminPin
         if (stored.isBlank()) return false
@@ -1448,7 +1514,16 @@ object UserPreferences {
             parentalControlAdminPin = entered
             return true
         }
-        return PinHasher.verify(entered, stored, ProfileManager.adminPinSalt())
+        if (PinHasher.verify(entered, stored, HOUSEHOLD_ADMIN_SALT)) {
+            return true
+        }
+        for (profile in ProfileManager.profiles()) {
+            if (PinHasher.verify(entered, stored, ProfileManager.adminPinSalt(profile.id))) {
+                parentalControlAdminPin = entered
+                return true
+            }
+        }
+        return false
     }
 
     /**
@@ -1927,6 +2002,28 @@ object UserPreferences {
         return trimmed
     }
 
+    /**
+     * Household PIN key first; migrate any leftover profile-scoped PIN into the
+     * household slot so Kids sessions always see the adult-set PIN (KF-001).
+     */
+    private fun readHouseholdParentalPin(): String {
+        val household = Key.PARENTAL_CONTROL_PIN.getString()
+        if (!household.isNullOrBlank()) return household
+        val scopedActive = profileScopedString(Key.PARENTAL_CONTROL_PIN)
+        if (!scopedActive.isNullOrBlank()) {
+            Key.PARENTAL_CONTROL_PIN.setString(scopedActive)
+            return scopedActive
+        }
+        for (profile in ProfileManager.profiles()) {
+            val scoped = readString(ProfileManager.scopedPrefKeyFor("PARENTAL_CONTROL_PIN", profile.id))
+            if (!scoped.isNullOrBlank()) {
+                Key.PARENTAL_CONTROL_PIN.setString(scoped)
+                return scoped
+            }
+        }
+        return ""
+    }
+
     private fun profileScopedInt(key: Key): Int? =
         readInt(ProfileManager.scopedPrefKey(key.name))
 
@@ -1983,6 +2080,17 @@ object UserPreferences {
 
     private fun setProfileScopedLong(key: Key, value: Long) {
         prefs.edit { putLong(ProfileManager.scopedPrefKey(key.name), value) }
+    }
+
+    private fun readThanksLong(key: Key): Long {
+        profileScopedLong(key)?.let { return it }
+        val legacy = key.getLong() ?: return 0L
+        setProfileScopedLong(key, legacy)
+        return legacy
+    }
+
+    private fun setThanksLong(key: Key, value: Long) {
+        setProfileScopedLong(key, value)
     }
 
     private fun profileScopedStringSet(key: Key): Set<String> {
@@ -2061,6 +2169,7 @@ object UserPreferences {
         HOME_VISIT_FAVORITE_TV_IDS,
         KIDS_BEDTIME_ENABLED,
         KIDS_BEDTIME_MINUTE_OF_DAY,
+        KIDS_BEDTIME_WAKE_MINUTE_OF_DAY,
         KIDS_BEDTIME_LOCKED,
         KIDS_BEDTIME_BYPASS_UNTIL_MS,
         SHOW_QUARANTINED_PROVIDERS,

@@ -10,7 +10,8 @@ import java.util.concurrent.TimeUnit
  * Rules:
  * - Only after a season finale (caller-gated), never mid-season.
  * - Kids profiles never see it.
- * - Global Support “never again” opts out.
+ * - Guest profiles never see it.
+ * - Per-profile “never again” opts out (long-press dismiss).
  * - Soft show once, then a long cool-down ([COOLDOWN_MS]).
  * - Hard lifetime cap — never spam.
  */
@@ -27,14 +28,15 @@ object ThanksAfterBingePolicy {
      */
     fun isSeasonFinale(currentSeasonNumber: Int?, nextSeasonNumber: Int?): Boolean {
         if (currentSeasonNumber == null) return false
-        if (nextSeasonNumber == null) return true
+        if (nextSeasonNumber == null) return false
+        if (nextSeasonNumber == 0) return false
         return nextSeasonNumber != currentSeasonNumber
     }
 
     fun shouldShow(nowMs: Long = System.currentTimeMillis()): Boolean {
         if (ProfileManager.isKidsActive()) return false
+        if (ProfileManager.isGuestActive()) return false
         if (UserPreferences.neverShowThanksAfterBinge) return false
-        if (UserPreferences.neverShowSupportOnStart) return false
         if (UserPreferences.thanksAfterBingeShowCount >= MAX_SHOWS) return false
         val last = maxOf(
             UserPreferences.thanksAfterBingeLastShownAtMs,
@@ -53,17 +55,10 @@ object ThanksAfterBingePolicy {
 
     fun dismiss(nowMs: Long = System.currentTimeMillis()) {
         UserPreferences.thanksAfterBingeLastDismissedAtMs = nowMs
-        if (UserPreferences.thanksAfterBingeLastShownAtMs <= 0L) {
-            recordShown(nowMs)
-        }
     }
 
     fun openSupport(nowMs: Long = System.currentTimeMillis()) {
-        if (UserPreferences.thanksAfterBingeLastShownAtMs <= 0L) {
-            recordShown(nowMs)
-        } else {
-            UserPreferences.thanksAfterBingeLastShownAtMs = nowMs
-        }
+        UserPreferences.thanksAfterBingeLastShownAtMs = nowMs
         SupportPromptPolicy.markHubVisited(nowMs)
     }
 

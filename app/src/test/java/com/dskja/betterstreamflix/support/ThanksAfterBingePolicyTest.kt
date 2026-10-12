@@ -20,8 +20,13 @@ class ThanksAfterBingePolicyTest {
     }
 
     @Test
-    fun seasonFinaleWhenNoNext() {
-        assertTrue(ThanksAfterBingePolicy.isSeasonFinale(currentSeasonNumber = 2, nextSeasonNumber = null))
+    fun notFinaleWhenNextUnknown() {
+        assertFalse(ThanksAfterBingePolicy.isSeasonFinale(currentSeasonNumber = 2, nextSeasonNumber = null))
+    }
+
+    @Test
+    fun notFinaleWhenNextIsSpecialSeasonZero() {
+        assertFalse(ThanksAfterBingePolicy.isSeasonFinale(currentSeasonNumber = 2, nextSeasonNumber = 0))
     }
 
     @Test

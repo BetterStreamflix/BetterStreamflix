@@ -23,6 +23,10 @@ import com.dskja.betterstreamflix.profiles.ProfileUnlockGate
 import com.dskja.betterstreamflix.utils.ExpDialogChrome
 import com.dskja.betterstreamflix.utils.ExperimentalMobileDesign
 import com.dskja.betterstreamflix.utils.QrUtils
+import com.dskja.betterstreamflix.utils.UserPreferences
+import android.text.InputType
+import android.view.inputmethod.EditorInfo
+import android.widget.EditText
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -147,17 +151,6 @@ object ProfileTransferUi {
                 addView(image, LinearLayout.LayoutParams(qrSize, qrSize))
             }
             addView(hint)
-            if (qrUri != null) {
-                addView(
-                    TextView(context).apply {
-                        text = qrUri
-                        setTextSize(TypedValue.COMPLEX_UNIT_SP, 11f)
-                        setTextColor(ContextCompat.getColor(context, R.color.cinema_text_muted))
-                        setPadding(0, (density * 10).toInt(), 0, 0)
-                        setTextIsSelectable(true)
-                    },
-                )
-            }
         }
         val scroll = ScrollView(context).apply {
             isFillViewport = true
@@ -192,10 +185,9 @@ object ProfileTransferUi {
         fileName: String,
         payload: ProfileTransferPayload,
     ) {
-        val text = qrUri ?: fileJson
         val send = Intent(Intent.ACTION_SEND).apply {
-            type = if (qrUri != null) "text/plain" else "application/json"
-            putExtra(Intent.EXTRA_TEXT, text)
+            type = "application/json"
+            putExtra(Intent.EXTRA_TEXT, fileJson)
             putExtra(
                 Intent.EXTRA_SUBJECT,
                 context.getString(
@@ -213,7 +205,7 @@ object ProfileTransferUi {
                 ),
             )
         }.onFailure {
-            copyText(context, text)
+            copyText(context, fileJson)
         }
     }
 
@@ -339,14 +331,17 @@ object ProfileTransferUi {
             .setNegativeButton(android.R.string.cancel, null)
             .setPositiveButton(R.string.profile_transfer_import_confirm_action) { _, _ ->
                 importing = true
-                runImport(
-                    activity,
-                    payload,
-                    ProfileTransferImporter.Options(
-                        applyPersona = true,
-                        applyKidsFlag = applyKids,
-                    ),
+                val options = ProfileTransferImporter.Options(
+                    applyPersona = true,
+                    applyKidsFlag = applyKids,
                 )
+                if (applyKids) {
+                    promptParentalPinBeforeKidsImport(activity) {
+                        runImport(activity, payload, options)
+                    }
+                } else {
+                    runImport(activity, payload, options)
+                }
             }
             .create()
         dialog.setOnDismissListener {
@@ -414,6 +409,55 @@ object ProfileTransferUi {
                 out.write(json)
             } != null
         }.getOrDefault(false)
+
+    private fun promptParentalPinBeforeKidsImport(
+        activity: FragmentActivity,
+        onVerified: () -> Unit,
+    ) {
+        if (UserPreferences.parentalControlPin.isBlank()) {
+            ExpDialogChrome.notify(
+                activity,
+                R.string.profile_transfer_kids_import_requires_pin,
+                R.string.profile_transfer_import_confirm_title,
+            )
+            confirmInFlight = false
+            return
+        }
+        val input = EditText(ExpDialogChrome.themedContext(activity)).apply {
+            inputType = InputType.TYPE_CLASS_NUMBER or InputType.TYPE_NUMBER_VARIATION_PASSWORD
+            imeOptions = EditorInfo.IME_ACTION_DONE
+            hint = activity.getString(R.string.settings_parental_pin_hint)
+        }
+        val builder = if (ExperimentalMobileDesign.enabled()) {
+            MaterialAlertDialogBuilder(ExpDialogChrome.themedContext(activity))
+        } else {
+            androidx.appcompat.app.AlertDialog.Builder(activity)
+        }
+        builder
+            .setTitle(R.string.profile_transfer_kids_import_pin_title)
+            .setMessage(R.string.profile_transfer_kids_import_pin_message)
+            .setView(input)
+            .setPositiveButton(android.R.string.ok) { _, _ ->
+                val entered = input.text?.toString()?.trim().orEmpty()
+                if (UserPreferences.verifyParentalControlPin(entered)) {
+                    UserPreferences.registerParentalPinSuccess()
+                    onVerified()
+                } else {
+                    UserPreferences.registerParentalPinFailure()
+                    confirmInFlight = false
+                    ExpDialogChrome.notify(
+                        activity,
+                        R.string.settings_parental_invalid_pin,
+                        R.string.profile_transfer_import_confirm_title,
+                    )
+                }
+            }
+            .setNegativeButton(android.R.string.cancel) { _, _ ->
+                confirmInFlight = false
+            }
+            .show()
+            .also { ExpDialogChrome.polishButtons(it) }
+    }
 
     private fun copyText(context: Context, text: String) {
         val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager

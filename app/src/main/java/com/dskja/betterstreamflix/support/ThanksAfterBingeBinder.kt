@@ -42,19 +42,28 @@ object ThanksAfterBingeBinder {
         }
 
         panel.root.isVisible = true
-        ThanksAfterBingePolicy.recordShown()
         ExpMotion.popIn(panel.root)
 
         panel.cta.setOnClickListener {
             ExpMotion.hapticTap(it)
             ThanksAfterBingePolicy.openSupport()
+            ThanksAfterBingePolicy.recordShown()
             panel.root.isVisible = false
             onOpenSupport()
         }
         panel.dismiss.setOnClickListener {
             ExpMotion.hapticTap(it)
             ThanksAfterBingePolicy.dismiss()
+            ThanksAfterBingePolicy.recordShown()
             panel.root.isVisible = false
+        }
+        // Long-press dismiss → permanent opt-out for this profile.
+        panel.dismiss.setOnLongClickListener {
+            ExpMotion.hapticTap(it)
+            ThanksAfterBingePolicy.neverShowAgain()
+            ThanksAfterBingePolicy.recordShown()
+            panel.root.isVisible = false
+            true
         }
     }
 

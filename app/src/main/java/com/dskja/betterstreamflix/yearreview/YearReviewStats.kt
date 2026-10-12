@@ -52,4 +52,5 @@ data class YearReviewEpisodeEvent(
     val showPoster: String?,
     val runtimeMinutes: Int?,
     val watchedAtMs: Long,
+    val inProgressPositionMs: Long? = null,
 )

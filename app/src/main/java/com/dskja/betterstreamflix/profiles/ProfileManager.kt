@@ -51,13 +51,14 @@ object ProfileManager {
         "KIDS_BEDTIME_LOCKED",
         "KIDS_BEDTIME_BYPASS_UNTIL_MS",
         "LIBRARY_SCOPE",
-        "PARENTAL_CONTROL_PIN",
-        "PARENTAL_CONTROL_ADMIN_PIN",
+        // Age ceiling stays profile-scoped; household PIN/lockout use unsuffixed keys.
         "PARENTAL_CONTROL_MAX_AGE",
-        "PARENTAL_CONTROL_FAILED_ATTEMPTS",
-        "PARENTAL_CONTROL_LOCKED_UNTIL",
-        "PARENTAL_CONTROL_HARD_LOCKED",
         "SELECTED_THEME",
+        // Thanks After Binge — per-profile cool-down / opt-out
+        "NEVER_SHOW_THANKS_AFTER_BINGE",
+        "THANKS_AFTER_BINGE_LAST_SHOWN_AT_MS",
+        "THANKS_AFTER_BINGE_LAST_DISMISSED_AT_MS",
+        "THANKS_AFTER_BINGE_SHOW_COUNT",
         "SELECTED_THEME_UPDATED_AT_MILLIS",
         "LEANBACK_DENSITY",
         // Subtitle Studio light — size / color / background per profile
@@ -211,14 +212,34 @@ object ProfileManager {
     /**
      * Switching away from a parental-locked profile (kids / parental max-age) to a
      * profile without a ceiling requires verifying the parental PIN (or the active
-     * profile PIN as fallback).
+     * profile PIN as fallback). Also true for kid→kid during bedtime lock/window.
      */
     fun requiresParentalExitChallenge(target: UserProfile): Boolean {
-        if (hasParentalCeiling(target)) return false
         val active = activeProfile()
+        val hasHousehold = UserPreferences.parentalControlPin.isNotBlank()
+        val hasProfile = active?.pinHash != null
+        val switchingAway = active != null && active.id != target.id
+        val bedtimeBlock = switchingAway &&
+            active?.isKids == true &&
+            (
+                com.dskja.betterstreamflix.kids.KidsBedtime.isLocked() ||
+                    com.dskja.betterstreamflix.kids.KidsBedtime.isActiveWindow()
+                )
+        if (bedtimeBlock) {
+            return com.dskja.betterstreamflix.kids.KidsFortressPolicy.exitChallengeRequired(
+                leavingRestricted = true,
+                hasHouseholdPin = hasHousehold,
+                hasProfilePin = hasProfile,
+            )
+        }
+        if (hasParentalCeiling(target)) return false
         val leavingRestricted = hasParentalCeiling(active) || UserPreferences.isParentalControlActive
         if (!leavingRestricted) return false
-        return UserPreferences.parentalControlPin.isNotBlank() || active?.pinHash != null
+        return com.dskja.betterstreamflix.kids.KidsFortressPolicy.exitChallengeRequired(
+            leavingRestricted = true,
+            hasHouseholdPin = hasHousehold,
+            hasProfilePin = hasProfile,
+        )
     }
 
     fun profiles(): List<UserProfile> {
@@ -296,6 +317,12 @@ object ProfileManager {
     fun switchTo(context: Context, id: String, markUnlocked: Boolean = true): Boolean {
         require(::appContext.isInitialized) { "ProfileManager.init() must be called first" }
         val profile = profiles().find { it.id == id } ?: return false
+        // Refuse kids sessions without an exit PIN (household or profile) — KF-007.
+        if (profile.isKids &&
+            !com.dskja.betterstreamflix.kids.KidsFortress.fortressHealthy(profile)
+        ) {
+            return false
+        }
         val previous = activeProfile()
         if (activeProfileId == id) {
             applyKidsParentalDefaults(profile, previous)
@@ -361,11 +388,13 @@ object ProfileManager {
     fun updateMaxAgeRating(profileId: String, maxAge: Int?): Boolean {
         val previous = profiles().find { it.id == profileId }
         val clamped = maxAge?.coerceIn(0, 18)
+        // Age ceiling always lives on the UserProfile row for that kids id.
         val ok = updateProfile(profileId) { it.copy(maxAgeRating = clamped) }
         if (ok && profileId == activeProfileId) {
+            // After switch, prefs scope is the active profile — keep parental max
+            // age in sync so Settings / filters match the kids ceiling (KF-028).
             val updated = profiles().find { it.id == profileId }
             if (updated?.isKids == true) {
-                // Keep the scoped parental pref aligned so Settings lists match the filter.
                 UserPreferences.parentalControlMaxAge =
                     updated.maxAgeRating ?: KIDS_DEFAULT_MAX_AGE
             } else {
@@ -480,17 +509,19 @@ object ProfileManager {
             Context.MODE_PRIVATE,
         )
         val key = scopedPrefKeyFor("SELECTED_THEME", profile.id)
-        if (!force && prefs.contains(key)) return
+        val desired = com.dskja.betterstreamflix.utils.ThemeManager.defaultThemeForKids(profile.isKids)
+        val stored = prefs.getString(key, null)
+        val needsKidsClamp = profile.isKids &&
+            stored != null &&
+            com.dskja.betterstreamflix.utils.ThemeManager.resolveLook(stored) !=
+            com.dskja.betterstreamflix.utils.ThemeManager.KIDS_BRIGHT
+        if (!force && prefs.contains(key) && !needsKidsClamp) return
         // Active-profile writes go through UserPreferences so getters stay consistent.
         if (profile.id == activeProfileId) {
-            UserPreferences.selectedTheme =
-                com.dskja.betterstreamflix.utils.ThemeManager.defaultThemeForKids(profile.isKids)
+            UserPreferences.selectedTheme = desired
         } else {
             prefs.edit {
-                putString(
-                    key,
-                    com.dskja.betterstreamflix.utils.ThemeManager.defaultThemeForKids(profile.isKids),
-                )
+                putString(key, desired)
             }
         }
     }

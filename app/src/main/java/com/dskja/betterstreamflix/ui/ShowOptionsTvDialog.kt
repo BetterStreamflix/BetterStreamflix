@@ -129,23 +129,21 @@ class ShowOptionsTvDialog(
 
         binding.tvOptionsShowTitle.text = episode.tvShow?.title ?: ""
 
+        val epTitle = com.dskja.betterstreamflix.spoilers.SpoilerShield.displayTitle(
+            episode,
+            episodeNumberFallback = { context.getString(R.string.episode_number, it) },
+        )
         binding.tvShowSubtitle.text = episode.season?.takeIf { it.number != 0 }?.let { season ->
             context.getString(
                 R.string.episode_item_info,
                 season.number,
                 episode.number,
-                episode.title ?: context.getString(
-                    R.string.episode_number,
-                    episode.number
-                )
+                epTitle,
             )
         } ?: context.getString(
             R.string.episode_item_info_episode_only,
             episode.number,
-            episode.title ?: context.getString(
-                R.string.episode_number,
-                episode.number
-            )
+            epTitle,
         )
         styleSubtitlePill()
 

@@ -16,6 +16,10 @@ import java.io.FileOutputStream
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import java.util.UUID
+import android.text.StaticLayout
+import android.text.TextPaint
+import android.text.Layout
 
 /**
  * Renders a shareable PNG year-review card into `cache/share/`.
@@ -34,7 +38,7 @@ object YearReviewCardRenderer {
             val shareDir = File(context.cacheDir, "share").also { it.mkdirs() }
             val out = File(
                 shareDir,
-                "year_review_${stats.year}_${stats.profileName.hashCode()}.png",
+                "year_review_${stats.year}_${UUID.randomUUID()}.png",
             )
             FileOutputStream(out).use { stream ->
                 bitmap.compress(Bitmap.CompressFormat.PNG, 100, stream)
@@ -171,8 +175,14 @@ object YearReviewCardRenderer {
                 y += 64f
             } else {
                 stats.topSeries.forEachIndexed { index, series ->
-                    canvas.drawText("${index + 1}. ${series.title}", 72f, y, titlePaint)
-                    y += 48f
+                    y = drawWrappedText(
+                        canvas,
+                        "${index + 1}. ${series.title}",
+                        72f,
+                        y,
+                        WIDTH - 144f,
+                        titlePaint,
+                    ) + 12f
                     canvas.drawText(
                         context.getString(
                             R.string.year_review_series_detail,
@@ -205,8 +215,7 @@ object YearReviewCardRenderer {
                     detailPaint,
                 )
             } else {
-                canvas.drawText(binge.title, 72f, y, titlePaint)
-                y += 48f
+                y = drawWrappedText(canvas, binge.title, 72f, y, WIDTH - 144f, titlePaint) + 12f
                 canvas.drawText(
                     context.getString(
                         R.string.year_review_binge_detail,
@@ -265,4 +274,25 @@ object YearReviewCardRenderer {
 
     private fun typefaceOrDefault(context: Context, fontRes: Int, fallback: Typeface): Typeface =
         runCatching { ResourcesCompat.getFont(context, fontRes) }.getOrNull() ?: fallback
+
+    private fun drawWrappedText(
+        canvas: Canvas,
+        text: String,
+        x: Float,
+        startY: Float,
+        maxWidth: Float,
+        paint: Paint,
+    ): Float {
+        val textPaint = TextPaint(paint)
+        val layout = StaticLayout.Builder
+            .obtain(text, 0, text.length, textPaint, maxWidth.toInt().coerceAtLeast(1))
+            .setAlignment(Layout.Alignment.ALIGN_NORMAL)
+            .setLineSpacing(0f, 1f)
+            .build()
+        canvas.save()
+        canvas.translate(x, startY)
+        layout.draw(canvas)
+        canvas.restore()
+        return startY + layout.height
+    }
 }

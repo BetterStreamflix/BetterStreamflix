@@ -6,6 +6,7 @@ import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import kotlinx.serialization.json.Json
 
 class ProfileTransferCodecTest {
 
@@ -47,6 +48,27 @@ class ProfileTransferCodecTest {
                 ProfileTransferPayload.NoteItem("ep-1", "Paused after kitchen scene"),
             ),
         )
+    }
+
+    @Test
+    fun v2TamperedIntegrityRejected() {
+        val original = samplePayload()
+        val json = ProfileTransferCodec.encodeFileJson(original)
+        val tampered = json.replace("Alex", "Eve")
+        assertNull(ProfileTransferCodec.decodeFileJson(tampered))
+    }
+
+    @Test
+    fun legacyV1JsonStillDecodes() {
+        val legacy = samplePayload().copy(v = ProfileTransferPayload.VERSION_LEGACY, integrity = null)
+        val json = Json {
+            ignoreUnknownKeys = true
+            encodeDefaults = false
+            prettyPrint = true
+        }.encodeToString(legacy)
+        val decoded = ProfileTransferCodec.decodeFileJson(json)
+        assertNotNull(decoded)
+        assertEquals(ProfileTransferPayload.VERSION_LEGACY, decoded!!.v)
     }
 
     @Test

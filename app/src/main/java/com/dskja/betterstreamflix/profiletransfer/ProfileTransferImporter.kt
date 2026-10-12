@@ -40,7 +40,10 @@ object ProfileTransferImporter {
         payload: ProfileTransferPayload,
         options: Options = Options(),
     ): Result = withContext(Dispatchers.IO) {
-        require(payload.v == ProfileTransferPayload.VERSION) { "unsupported version" }
+        require(
+            payload.v == ProfileTransferPayload.VERSION ||
+                payload.v == ProfileTransferPayload.VERSION_LEGACY,
+        ) { "unsupported version" }
         require(payload.kind == ProfileTransferPayload.KIND) { "unsupported kind" }
         val app = context.applicationContext
 
@@ -102,6 +105,7 @@ object ProfileTransferImporter {
         s.homeShelfBlockOrder?.let { UserPreferences.homeShelfBlockOrder = it }
         s.homeShelfPinsJson?.let { UserPreferences.homeShelfPinsJson = it }
         s.seriesFastForwardEnabled?.let { UserPreferences.seriesFastForwardEnabled = it }
+        s.spoilerShieldEnabled?.let { UserPreferences.spoilerShieldEnabled = it }
         // Age ceiling only — never PINs / lockout.
         if (s.parentalControlMaxAge != null) {
             UserPreferences.parentalControlMaxAge = s.parentalControlMaxAge

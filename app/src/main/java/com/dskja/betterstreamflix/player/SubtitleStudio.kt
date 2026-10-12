@@ -68,15 +68,17 @@ object SubtitleStudio {
             style.foregroundColor.getRgb() == preset.fontColor.getRgb() &&
             style.foregroundColor.getAlpha() == preset.fontColor.getAlpha() &&
             style.backgroundColor == preset.backgroundColor &&
-            style.edgeType == preset.edgeType
+            style.edgeType == preset.edgeType &&
+            style.edgeColor == preset.edgeColor
     }
 
     fun applyPreset(preset: LightPreset) {
+        val windowColor = UserPreferences.captionStyle.windowColor
         UserPreferences.captionTextSize = preset.textSize
         UserPreferences.captionStyle = CaptionStyleCompat(
             preset.fontColor,
             preset.backgroundColor,
-            0x00000000, // transparent window (no android.graphics.Color — JVM tests)
+            windowColor,
             preset.edgeType,
             preset.edgeColor,
             null,

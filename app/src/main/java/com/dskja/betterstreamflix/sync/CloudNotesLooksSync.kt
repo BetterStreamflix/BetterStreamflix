@@ -69,6 +69,8 @@ object CloudNotesLooksSync {
             RemoteEpisodeNote(
                 userId = userId,
                 episodeId = episodeId,
+                providerName = record.providerName,
+                showId = record.showId,
                 text = record.text,
                 clientUpdatedAtMillis = record.updatedAtMillis,
             )
@@ -76,11 +78,9 @@ object CloudNotesLooksSync {
 
     fun collectLocalLook(userId: String): RemoteProfilePrefs {
         val look = ThemeManager.resolveLook(UserPreferences.selectedTheme)
-        val clock = UserPreferences.selectedThemeUpdatedAtMillis
-            .takeIf { it > 0L }
-            ?: System.currentTimeMillis().also {
-                UserPreferences.selectedThemeUpdatedAtMillis = it
-            }
+        // Do not bump the LWW clock as a side effect of collect — use 1L so remote
+        // wins when local was never touched, without rewriting prefs on sync.
+        val clock = UserPreferences.selectedThemeUpdatedAtMillis.takeIf { it > 0L } ?: 1L
         return RemoteProfilePrefs(
             userId = userId,
             look = look,
@@ -112,6 +112,8 @@ object CloudNotesLooksSync {
                         val local = RemoteEpisodeNote(
                             userId = userId,
                             episodeId = episodeId,
+                            providerName = mutation.providerName.orEmpty(),
+                            showId = mutation.showId.orEmpty(),
                             text = mutation.text.orEmpty(),
                             clientUpdatedAtMillis = mutation.clientUpdatedAtMillis,
                         )
@@ -151,7 +153,7 @@ object CloudNotesLooksSync {
             if (notesToUpload.isNotEmpty()) {
                 notesToUpload.chunked(250).forEach { chunk ->
                     client.from(NOTES_TABLE).upsert(chunk) {
-                        onConflict = "user_id,episode_id"
+                        onConflict = "user_id,provider_name,show_id,episode_id"
                     }
                     uploaded += chunk.size
                     onProgress(
@@ -224,7 +226,7 @@ object CloudNotesLooksSync {
         if (toUpload.isNotEmpty()) {
             toUpload.chunked(250).forEach { chunk ->
                 client.from(NOTES_TABLE).upsert(chunk) {
-                    onConflict = "user_id,episode_id"
+                    onConflict = "user_id,provider_name,show_id,episode_id"
                 }
             }
         }
@@ -270,9 +272,11 @@ object CloudNotesLooksSync {
             }
             EpisodeNotesStore.applyRemote(
                 context,
-                note.episodeId,
-                note.text,
-                note.clientUpdatedAtMillis,
+                episodeId = note.episodeId,
+                text = note.text,
+                updatedAtMillis = note.clientUpdatedAtMillis,
+                providerName = note.providerName,
+                showId = note.showId,
             )
         }
     }
