@@ -19,8 +19,9 @@ import kotlin.math.sin
  * - soft-knee compressor to tame loud action peaks
  * - gentle makeup + soft limiter
  *
- * Always stays in the sink chain; when [NightModeAudio.enabled] is false it
- * copies samples through unchanged so the toggle is instant.
+ * Attached only while Night is enabled ([SubtitleOffsetRenderersFactory] — PT-134).
+ * Soft-rebuild on toggle keeps a true empty-chain bypass when Night is off.
+ * If [NightModeAudio.enabled] flips mid-buffer before rebuild, samples copy through.
  */
 @UnstableApi
 class NightModeAudioProcessor : BaseAudioProcessor() {

@@ -192,6 +192,11 @@ object ProviderPassport {
         return resolveStatus(entry.signals)
     }
 
+    /**
+     * Passport covers providers with a real login / captcha clearance surface only
+     * (SerienStream, AniWorld, GuardaFlix). Other sources stay out of Passport by
+     * design (PT-024) — extend when a comparable auth/cookie gate exists.
+     */
     fun supportsPassport(provider: Provider): Boolean =
         provider is SerienStreamProvider ||
             provider is AniWorldProvider ||

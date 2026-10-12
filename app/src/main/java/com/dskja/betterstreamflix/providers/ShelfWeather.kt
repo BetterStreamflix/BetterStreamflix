@@ -11,6 +11,10 @@ import com.dskja.betterstreamflix.models.TvShow
  * Coupled to [ProviderHealth] quarantine / parked defaults and [ProviderSmoke]
  * circuit / flaky counters. Mixed personal shelves use majority / dominant-provider
  * rules (not worst-of-one).
+ *
+ * Distinct from [ProviderTrustLayer] outage banners (PT-025): Weather intentionally
+ * storms quarantined/parked shelves, while Trust outage names exclude those
+ * registry states so Home is not permanently SEVERE.
  */
 object ShelfWeather {
 
