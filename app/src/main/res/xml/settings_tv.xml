@@ -1197,6 +1197,13 @@
                     android:selectable="false" />
 
                 <ListPreference
+                    android:key="SUBTITLE_STUDIO_PRESET"
+                    android:title="@string/subtitle_studio_presets_title"
+                    android:entries="@array/subtitle_studio_preset_entries"
+                    android:entryValues="@array/subtitle_studio_preset_values"
+                    android:summary="@string/subtitle_studio_preset_hint" />
+
+                <ListPreference
                     android:key="SUBTITLE_STUDIO_SIZE"
                     android:title="@string/subtitle_studio_size_title"
                     android:entries="@array/subtitle_studio_size_entries"

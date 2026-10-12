@@ -42,4 +42,15 @@
         <item>191</item>
         <item>255</item>
     </string-array>
+
+    <string-array name="subtitle_studio_preset_entries">
+        <item>@string/subtitle_studio_preset_classic</item>
+        <item>@string/subtitle_studio_preset_yellow_large</item>
+        <item>@string/subtitle_studio_preset_high_contrast</item>
+    </string-array>
+    <string-array name="subtitle_studio_preset_values">
+        <item>classic</item>
+        <item>yellow_large</item>
+        <item>high_contrast</item>
+    </string-array>
 </resources>

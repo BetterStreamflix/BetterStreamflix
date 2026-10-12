@@ -17,11 +17,16 @@ import com.google.android.material.dialog.MaterialAlertDialogBuilder
  */
 object KidsBedtimeUi {
 
+    /**
+     * Identity of the [FragmentActivity] currently showing the lock sheet.
+     * Rotation creates a new activity, so a stale id does not block the new
+     * sheet; duplicate calls on the same activity still collapse (KB-010).
+     */
     @Volatile
-    private var lockDialogShowing: Boolean = false
+    private var lockDialogActivityId: Int? = null
 
     /** True while the non-dismissible bedtime PIN lock dialog is on screen. */
-    fun isLockDialogShowing(): Boolean = lockDialogShowing
+    fun isLockDialogShowing(): Boolean = lockDialogActivityId != null
 
     fun enabledSummary(context: Context): String {
         KidsBedtime.refreshLockState()
@@ -102,6 +107,9 @@ object KidsBedtimeUi {
     /**
      * Challenge PIN to clear the bedtime lock (and set overnight bypass).
      * Cancel leaves the lock engaged.
+     *
+     * When bedtime [KidsBedtime.applies] is false, this is a no-op: it must not
+     * call [KidsBedtime.unlockUntilWake] (KB-013).
      */
     fun challengeUnlock(
         context: Context,
@@ -136,7 +144,7 @@ object KidsBedtimeUi {
 
     /**
      * Show a Cinema-Ink bedtime lock sheet when [KidsBedtime.isLocked].
-     * Safe to call from Activity.onStart; ignores duplicates.
+     * Safe to call from Activity.onStart; ignores duplicates for the same activity.
      */
     fun maybeShowLock(
         activity: FragmentActivity,
@@ -144,14 +152,15 @@ object KidsBedtimeUi {
     ) {
         if (activity.isFinishing || activity.isDestroyed) return
         KidsBedtime.refreshLockState()
+        val activityId = System.identityHashCode(activity)
         if (!KidsBedtime.isLocked()) {
-            lockDialogShowing = false
+            if (lockDialogActivityId == activityId) lockDialogActivityId = null
             return
         }
-        if (lockDialogShowing) return
+        if (lockDialogActivityId == activityId) return
         if (activity.supportFragmentManager.isStateSaved) return
 
-        lockDialogShowing = true
+        lockDialogActivityId = activityId
         val time = KidsBedtime.formatMinuteOfDay(UserPreferences.kidsBedtimeMinuteOfDay)
         val dialog: AlertDialog = MaterialAlertDialogBuilder(activity)
             .setTitle(R.string.kids_bedtime_lock_title)
@@ -164,7 +173,7 @@ object KidsBedtimeUi {
                 challengeUnlock(
                     context = activity,
                     onUnlocked = {
-                        lockDialogShowing = false
+                        if (lockDialogActivityId == activityId) lockDialogActivityId = null
                         dialog.dismiss()
                         onUnlocked?.invoke()
                     },
@@ -175,9 +184,9 @@ object KidsBedtimeUi {
             }
         }
         dialog.setOnDismissListener {
-            // If still locked (cancel / wrong PIN path), allow a later onStart retry.
-            if (KidsBedtime.isLocked()) {
-                lockDialogShowing = false
+            // Always clear so onStart / rotation can retry (KB-010).
+            if (lockDialogActivityId == activityId) {
+                lockDialogActivityId = null
             }
         }
         dialog.show()
