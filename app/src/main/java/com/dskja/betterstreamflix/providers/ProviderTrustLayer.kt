@@ -51,7 +51,7 @@ object ProviderTrustLayer {
         val learned = if (providerName != null && ProviderServerAb.shouldTrack(currentProvider)) {
             ProviderServerAb.topServers(providerName, limit = 5, nowMs = nowMs).map { (name, stats) ->
                 LearnedServer(
-                    name = name,
+                    name = titleCaseServerName(name),
                     successes = stats.successes,
                     failures = stats.failures,
                     pinned = ProviderServerPriority.isPinnedName(providerName, name),
@@ -61,8 +61,14 @@ object ProviderTrustLayer {
             emptyList()
         }
         val pins = providerName?.let { ProviderServerPriority.pinsFor(it) }.orEmpty()
+        // Quarantined / parked registry entries are intentional product state — they must
+        // not inflate the temporary outage banner (probe failures + live circuits only).
         val outageNames = health.rows
             .filter { it.severity == ProviderHealthDashboard.Severity.DEAD }
+            .filter {
+                it.reason != ProviderHealthDashboard.Reason.QUARANTINED &&
+                    it.reason != ProviderHealthDashboard.Reason.PARKED
+            }
             .map { it.name }
         val currentDead = providerName != null &&
             outageNames.any { it.equals(providerName, ignoreCase = true) }
@@ -114,5 +120,19 @@ object ProviderTrustLayer {
             servers = abOrdered,
             preferredServerName = preferredServerName,
         )
+    }
+
+    /** Match Health dashboard title-casing for learned A/B keys (e.g. voe → Voe). */
+    internal fun titleCaseServerName(raw: String): String {
+        val trimmed = raw.trim()
+        if (trimmed.isEmpty()) return trimmed
+        return trimmed
+            .split(Regex("[\\s_\\-]+"))
+            .filter { it.isNotEmpty() }
+            .joinToString(" ") { part ->
+                part.replaceFirstChar { ch ->
+                    if (ch.isLowerCase()) ch.titlecase() else ch.toString()
+                }
+            }
     }
 }

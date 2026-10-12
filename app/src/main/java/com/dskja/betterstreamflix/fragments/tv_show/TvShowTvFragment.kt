@@ -101,6 +101,9 @@ class TvShowTvFragment : Fragment() {
 
     override fun onDestroyView() {
         com.dskja.betterstreamflix.ui.TrailerPlaybackController.silenceAllActive()
+        com.dskja.betterstreamflix.ui.TrailerPlayPipeline.endSession()
+        com.dskja.betterstreamflix.ui.TrailerStreamCrossfade.clear()
+        com.dskja.betterstreamflix.player.PlayerCleanExit.clearHomeRestore()
         _binding?.let { appAdapter.onSaveInstanceState(it.vgvTvShow) }
         lastContentSignature = null
         lastBannerKey = null

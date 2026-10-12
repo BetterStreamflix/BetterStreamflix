@@ -16,6 +16,8 @@ enum class FailoverStepKind {
     GEO,
     DOMAIN,
     GENERIC,
+    /** Collapsed “…” placeholder between head and tail of a long chain. */
+    ELLIPSIS,
     SOFTWARE_DECODER,
     EXTERNAL_PLAYER,
     OK,

@@ -84,11 +84,19 @@ object ProviderPassport {
     /** Pure status resolution — unit-tested without Android prefs. */
     fun resolveStatus(signals: Signals): Status = when (signals.kind) {
         Kind.CLEARANCE_GATE -> when {
+            // Failed live /account probe must not show green “Sitzung frisch”
+            // just because CF cookie names are still present.
+            signals.lastValidatedOk == false -> when {
+                signals.isLoggedIn || signals.hasWebSession || signals.hasClearance ->
+                    Status.CAPTCHA_DUE
+                else -> Status.LOGIN_DUE
+            }
             signals.hasClearance -> Status.SESSION_FRESH
             signals.isLoggedIn || signals.hasWebSession -> Status.CAPTCHA_DUE
             else -> Status.LOGIN_DUE
         }
         Kind.ACCOUNT_TOKEN -> when {
+            signals.lastValidatedOk == false -> Status.LOGIN_DUE
             signals.isLoggedIn -> Status.SESSION_FRESH
             else -> Status.LOGIN_DUE
         }
@@ -128,12 +136,31 @@ object ProviderPassport {
         return snapshotFromEntries(runtimeEntries(), nowMs)
     }
 
+    /** Shared TTL so Trust + Passport screens do not double-probe within a minute. */
+    const val REFRESH_TTL_MS: Long = 60_000L
+
+    @Volatile
+    private var cachedSnapshot: Snapshot? = null
+
+    @Volatile
+    private var cachedAtMs: Long = 0L
+
     /**
      * Re-read jars and optionally live-validate SerienStream / AniWorld account
      * probes so Settings can refresh “Sitzung frisch” after login/captcha.
      */
-    suspend fun refresh(validateSessions: Boolean = true): Snapshot =
+    suspend fun refresh(
+        validateSessions: Boolean = true,
+        force: Boolean = false,
+        nowMs: Long = System.currentTimeMillis(),
+    ): Snapshot =
         withContext(Dispatchers.IO) {
+            if (!force && validateSessions) {
+                val hit = cachedSnapshot
+                if (hit != null && nowMs - cachedAtMs < REFRESH_TTL_MS) {
+                    return@withContext hit
+                }
+            }
             if (validateSessions) {
                 coroutineScope {
                     val ss = async {
@@ -146,7 +173,10 @@ object ProviderPassport {
                     aw.await()
                 }
             }
-            snapshotFromRuntime()
+            val snap = snapshotFromRuntime(nowMs)
+            cachedSnapshot = snap
+            cachedAtMs = nowMs
+            snap
         }
 
     /** Status for picker badges — null when the provider has no passport. */
@@ -232,13 +262,12 @@ object ProviderPassport {
         )
     }
 
-    private fun detailFor(signals: Signals, status: Status): String? {
+    /** Prefer display name / domain — no English wire codes (Settings never binds detail). */
+    private fun detailFor(signals: Signals, @Suppress("UNUSED_PARAMETER") status: Status): String? {
         return when {
             !signals.displayName.isNullOrBlank() -> signals.displayName
-            status == Status.SESSION_FRESH && signals.lastValidatedOk == true -> "validated"
-            status == Status.CAPTCHA_DUE && signals.isLoggedIn -> "logged_in_no_clearance"
-            status == Status.LOGIN_DUE -> "signed_out"
-            else -> signals.domain
+            !signals.domain.isNullOrBlank() -> signals.domain
+            else -> null
         }
     }
 

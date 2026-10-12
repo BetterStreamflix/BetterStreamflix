@@ -15,10 +15,12 @@ object EndCardPolicy {
         reallyFinished: Boolean,
         stateEnded: Boolean,
         isLive: Boolean,
-        isCasting: Boolean,
+        @Suppress("UNUSED_PARAMETER") isCasting: Boolean,
         resolveInFlight: Boolean,
     ): Boolean {
-        if (isLive || isCasting || resolveInFlight) return false
+        // Casting still gets a local chooser (Similar / Back / Next) instead of
+        // silently autoplaying the next episode with no escape hatch.
+        if (isLive || resolveInFlight) return false
         return reallyFinished && stateEnded
     }
 

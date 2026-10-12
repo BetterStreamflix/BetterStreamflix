@@ -8,6 +8,24 @@ import org.junit.Test
 class StuckBufferDetectorTest {
 
     @Test
+    fun defaultsDisabledUntilConfigured() {
+        var now = 0L
+        val detector = StuckBufferDetector(
+            initialThresholdMs = 100L,
+            rebufferThresholdMs = 100L,
+            nowMs = { now },
+        )
+        detector.onPlaybackStateChanged(Player.STATE_BUFFERING, playWhenReady = true)
+        now = 500L
+        assertFalse(detector.pollShouldOffer(serverCount = 3))
+        detector.setEnabled(true)
+        detector.onPlaybackStateChanged(Player.STATE_BUFFERING, playWhenReady = true)
+        now = 700L
+        assertTrue(detector.pollShouldOffer(serverCount = 3))
+    }
+
+
+    @Test
     fun offersAfterInitialThreshold() {
         var now = 0L
         val detector = StuckBufferDetector(
@@ -15,6 +33,7 @@ class StuckBufferDetectorTest {
             rebufferThresholdMs = 800L,
             nowMs = { now },
         )
+        detector.setEnabled(true)
         detector.onPlaybackStateChanged(Player.STATE_BUFFERING, playWhenReady = true)
         assertFalse(detector.pollShouldOffer(serverCount = 3))
         now = 999L
@@ -31,6 +50,7 @@ class StuckBufferDetectorTest {
             rebufferThresholdMs = 1_000L,
             nowMs = { now },
         )
+        detector.setEnabled(true)
         detector.markPlaybackStarted()
         detector.onPlaybackStateChanged(Player.STATE_BUFFERING, playWhenReady = true)
         now = 999L
@@ -47,6 +67,7 @@ class StuckBufferDetectorTest {
             rebufferThresholdMs = 100L,
             nowMs = { now },
         )
+        detector.setEnabled(true)
         detector.onPlaybackStateChanged(Player.STATE_BUFFERING, playWhenReady = true)
         now = 200L
         assertTrue(detector.pollShouldOffer(serverCount = 2))
@@ -67,6 +88,7 @@ class StuckBufferDetectorTest {
             rebufferThresholdMs = 100L,
             nowMs = { now },
         )
+        detector.setEnabled(true)
         detector.onPlaybackStateChanged(Player.STATE_BUFFERING, playWhenReady = true)
         now = 200L
         assertFalse(detector.pollShouldOffer(serverCount = 1))
@@ -88,6 +110,7 @@ class StuckBufferDetectorTest {
             rebufferThresholdMs = 100L,
             nowMs = { now },
         )
+        detector.setEnabled(true)
         detector.onPlaybackStateChanged(Player.STATE_BUFFERING, playWhenReady = true)
         now = 200L
         assertTrue(detector.pollShouldOffer(serverCount = 3))
@@ -111,6 +134,7 @@ class StuckBufferDetectorTest {
             rebufferThresholdMs = 100L,
             nowMs = { now },
         )
+        detector.setEnabled(true)
         detector.onPlaybackStateChanged(Player.STATE_BUFFERING, playWhenReady = true)
         now = 90L
         detector.onServerChanged()

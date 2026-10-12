@@ -279,7 +279,7 @@
     <string name="server_why_badge_preferred">bevorzugt</string>
     <string name="server_why_badge_learned">gelernt</string>
     <string name="server_why_badge_failover">Failover</string>
-    <string name="server_why_badge_stuck">entsperrt</string>
+    <string name="server_why_badge_stuck">hängend behoben</string>
     <string name="provider_trust_server_unknown">Hoster</string>
     <string name="provider_outage_banner_title_severe">Quellen wirken down</string>
     <string name="provider_outage_banner_title_watch">Provider-Gesundheitswarnung</string>

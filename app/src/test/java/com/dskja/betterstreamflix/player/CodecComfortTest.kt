@@ -35,4 +35,10 @@ class CodecComfortTest {
     fun failuresBeforeActive_isTwo() {
         assertEquals(2, CodecComfort.FAILURES_BEFORE_ACTIVE)
     }
+
+    @Test
+    fun resolveActive_customThreshold() {
+        assertFalse(CodecComfort.resolveActive(2, threshold = 3))
+        assertTrue(CodecComfort.resolveActive(3, threshold = 3))
+    }
 }

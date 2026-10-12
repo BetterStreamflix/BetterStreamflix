@@ -2036,6 +2036,30 @@
                 app:iconSpaceReserved="false" />
         </PreferenceCategory>
 
+        <Preference
+            android:key="open_guardaflix_auth"
+            android:title="@string/settings_category_guardaflix"
+            android:summary="@string/guardaflix_sign_in_summary"
+            app:iconSpaceReserved="false" />
+
+        <PreferenceCategory
+            android:key="pc_provider_empty_state"
+            android:title="@string/settings_provider_connection_title"
+            app:iconSpaceReserved="false">
+
+            <Preference
+                android:key="provider_no_options"
+                android:title="@string/settings_provider_no_options_title"
+                android:summary="@string/settings_provider_no_options_summary"
+                app:iconSpaceReserved="false" />
+        </PreferenceCategory>
+    </PreferenceScreen>
+
+
+    <PreferenceScreen
+        android:key="screen_guardaflix_auth"
+        android:title="@string/settings_category_guardaflix"
+        app:iconSpaceReserved="false">
         <PreferenceCategory
             android:key="pc_guardaflix_settings"
             android:title="@string/settings_category_guardaflix"
@@ -2063,18 +2087,6 @@
                 android:key="provider_guardaflix_sign_out"
                 android:title="@string/guardaflix_sign_out"
                 android:summary="@string/guardaflix_sign_out_summary"
-                app:iconSpaceReserved="false" />
-        </PreferenceCategory>
-
-        <PreferenceCategory
-            android:key="pc_provider_empty_state"
-            android:title="@string/settings_provider_connection_title"
-            app:iconSpaceReserved="false">
-
-            <Preference
-                android:key="provider_no_options"
-                android:title="@string/settings_provider_no_options_title"
-                android:summary="@string/settings_provider_no_options_summary"
                 app:iconSpaceReserved="false" />
         </PreferenceCategory>
     </PreferenceScreen>

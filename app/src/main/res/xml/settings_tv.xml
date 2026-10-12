@@ -1716,6 +1716,27 @@
                 android:entryValues="@array/animeonlineninja_preferred_server_values" />
         </PreferenceCategory>
 
+        <Preference
+            android:key="open_guardaflix_auth"
+            android:title="@string/settings_category_guardaflix"
+            android:summary="@string/guardaflix_sign_in_summary" />
+
+        <PreferenceCategory
+            android:key="pc_provider_empty_state"
+            android:title="@string/settings_provider_connection_title">
+
+            <Preference
+                android:key="provider_no_options"
+                android:title="@string/settings_provider_no_options_title"
+                android:summary="@string/settings_provider_no_options_summary" />
+        </PreferenceCategory>
+    </PreferenceScreen>
+
+
+    <PreferenceScreen
+        android:key="screen_guardaflix_auth"
+        android:title="@string/settings_category_guardaflix">
+
         <PreferenceCategory
             android:key="pc_guardaflix_settings"
             android:title="@string/settings_category_guardaflix">
@@ -1739,16 +1760,6 @@
                 android:key="provider_guardaflix_sign_out"
                 android:title="@string/guardaflix_sign_out"
                 android:summary="@string/guardaflix_sign_out_summary" />
-        </PreferenceCategory>
-
-        <PreferenceCategory
-            android:key="pc_provider_empty_state"
-            android:title="@string/settings_provider_connection_title">
-
-            <Preference
-                android:key="provider_no_options"
-                android:title="@string/settings_provider_no_options_title"
-                android:summary="@string/settings_provider_no_options_summary" />
         </PreferenceCategory>
     </PreferenceScreen>
 

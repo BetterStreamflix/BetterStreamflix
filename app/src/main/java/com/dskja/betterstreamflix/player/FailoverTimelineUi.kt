@@ -28,21 +28,16 @@ object FailoverTimelineUi {
 
     fun bindErrorTimeline(root: View?, attempts: List<FailoverAttempt>) {
         val tv = root?.findViewById<TextView>(R.id.tv_failover_timeline) ?: return
-        if (!FailoverTimelineBuilder.shouldShowOnFailure(attempts) &&
-            !FailoverTimelineBuilder.shouldShowAfterSuccess(attempts)
-        ) {
-            tv.isGone = true
-            tv.text = null
-            return
-        }
-        // On give-up, show even without OK when there were multiple failures.
+        // Error chrome only — success cue uses a separate overlay.
         if (!FailoverTimelineBuilder.shouldShowOnFailure(attempts)) {
             tv.isGone = true
+            tv.text = null
             return
         }
         val line = formatLine(context = root.context, attempts = attempts)
         if (line.isNullOrBlank()) {
             tv.isGone = true
+            tv.text = null
             return
         }
         tv.text = line
@@ -57,7 +52,7 @@ object FailoverTimelineUi {
     }
 
     private fun stepLabel(context: Context, step: FailoverTimelineStep): String {
-        if (step.ellipsis) {
+        if (step.ellipsis || step.kind == FailoverStepKind.ELLIPSIS) {
             return context.getString(R.string.player_failover_timeline_ellipsis)
         }
         val reason = context.getString(reasonRes(step.kind))
@@ -79,6 +74,7 @@ object FailoverTimelineUi {
         FailoverStepKind.GEO -> R.string.player_failover_reason_geo
         FailoverStepKind.DOMAIN -> R.string.player_failover_reason_domain
         FailoverStepKind.GENERIC -> R.string.player_failover_reason_failed
+        FailoverStepKind.ELLIPSIS -> R.string.player_failover_timeline_ellipsis
         FailoverStepKind.SOFTWARE_DECODER -> R.string.player_failover_reason_software
         FailoverStepKind.EXTERNAL_PLAYER -> R.string.player_failover_reason_external
         FailoverStepKind.OK -> R.string.player_failover_reason_ok

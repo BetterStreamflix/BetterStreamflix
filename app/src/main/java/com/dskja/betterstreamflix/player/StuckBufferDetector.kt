@@ -14,18 +14,35 @@ class StuckBufferDetector(
     private val nowMs: () -> Long = { android.os.SystemClock.elapsedRealtime() },
 ) {
 
-    private var enabled: Boolean = true
+    /** Off until [setEnabled]/configure — avoids offering before the host wires gates. */
+    private var enabled: Boolean = false
     private var resolveInFlight: Boolean = false
     private var hasStartedPlayback: Boolean = false
     private var bufferingSinceMs: Long? = null
     private var offeredForStall: Boolean = false
     private var overlayVisible: Boolean = false
+    /** When SmartMute seeks exhausted the session budget, arm stuck sooner. */
+    private var acceleratedThresholdMs: Long? = null
 
     fun setEnabled(value: Boolean) {
         enabled = value
         if (!value) {
             clearStall()
             overlayVisible = false
+            acceleratedThresholdMs = null
+        }
+    }
+
+    /**
+     * After SmartMute's seek budget is spent, shorten the next stall offer so
+     * “Anderen Server” is not delayed by another full 10–12s clock.
+     */
+    fun armSoonerAfterSmartMute(thresholdMs: Long = SMARTMUTE_HANDOFF_THRESHOLD_MS) {
+        acceleratedThresholdMs = thresholdMs.coerceAtLeast(1_000L)
+        // Restart stall clock so the shorter threshold can fire from now.
+        if (bufferingSinceMs != null) {
+            bufferingSinceMs = nowMs()
+            offeredForStall = false
         }
     }
 
@@ -82,7 +99,8 @@ class StuckBufferDetector(
         if (!enabled || resolveInFlight || offeredForStall || overlayVisible) return false
         if (serverCount < 2) return false
         val since = bufferingSinceMs ?: return false
-        val threshold = if (hasStartedPlayback) rebufferThresholdMs else initialThresholdMs
+        val base = if (hasStartedPlayback) rebufferThresholdMs else initialThresholdMs
+        val threshold = acceleratedThresholdMs?.coerceAtMost(base) ?: base
         return nowMs() - since >= threshold
     }
 
@@ -95,9 +113,10 @@ class StuckBufferDetector(
     }
 
     fun reset() {
-        enabled = true
+        enabled = false
         resolveInFlight = false
         hasStartedPlayback = false
+        acceleratedThresholdMs = null
         clearStall()
         overlayVisible = false
     }
@@ -124,6 +143,8 @@ class StuckBufferDetector(
     companion object {
         const val DEFAULT_INITIAL_THRESHOLD_MS = 12_000L
         const val DEFAULT_REBUFFER_THRESHOLD_MS = 10_000L
+        /** Faster “Anderen Server” offer after SmartMute budget is exhausted. */
+        const val SMARTMUTE_HANDOFF_THRESHOLD_MS = 3_000L
         const val POLL_INTERVAL_MS = 500L
     }
 }
