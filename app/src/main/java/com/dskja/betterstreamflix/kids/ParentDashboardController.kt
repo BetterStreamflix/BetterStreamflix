@@ -18,6 +18,10 @@ import java.util.concurrent.atomic.AtomicInteger
 /**
  * Parent Dashboard — kids fortress status + Continue/Downloads isolation.
  * Bound to PreferenceScreen `screen_parent_dashboard` (Mobile + TV).
+ *
+ * Bedtime is **view-only** here (locked/on/off in the card summary). Parents
+ * edit bedtime from the kids profile Settings session, not by remote-editing
+ * another kid from this dashboard (KB-019).
  */
 object ParentDashboardController {
 

@@ -528,6 +528,7 @@
     <string name="subtitle_studio_preview_sample">Untertitel-Studio — Beispielzeile</string>
     <string name="subtitle_studio_preview_label">Vorschau</string>
     <string name="subtitle_studio_preset_hint">Größe · Farbe · Hintergrund</string>
+    <string name="subtitle_studio_presets_title">Schnellvorlagen</string>
     <string name="subtitle_studio_preset_classic">Studio · Klassisch</string>
     <string name="subtitle_studio_preset_yellow_large">Studio · Gelb groß</string>
     <string name="subtitle_studio_preset_high_contrast">Studio · Hoher Kontrast</string>

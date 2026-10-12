@@ -42,7 +42,80 @@ class ThanksAfterBingePolicyTest {
 
     @Test
     fun notFinaleWithoutCurrentSeason() {
+        // TB-008: null season metadata must not count as a finale.
         assertFalse(ThanksAfterBingePolicy.isSeasonFinale(currentSeasonNumber = null, nextSeasonNumber = 2))
         assertFalse(ThanksAfterBingePolicy.isSeasonFinale(currentSeasonNumber = null, nextSeasonNumber = null))
+    }
+
+    /** TB-006: persistence/cooldown/cap without Android prefs. */
+    @Test
+    fun shouldShowState_respectsCooldownDismissAndCap() {
+        val now = 1_000_000L
+        assertTrue(
+            ThanksAfterBingePolicy.shouldShowState(
+                isKids = false,
+                isGuest = false,
+                neverShow = false,
+                showCount = 0,
+                lastShownAtMs = 0L,
+                lastDismissedAtMs = 0L,
+                nowMs = now,
+            ),
+        )
+        assertFalse(
+            ThanksAfterBingePolicy.shouldShowState(
+                isKids = false,
+                isGuest = false,
+                neverShow = false,
+                showCount = 0,
+                lastShownAtMs = now - 1_000L,
+                lastDismissedAtMs = 0L,
+                nowMs = now,
+            ),
+        )
+        assertTrue(
+            ThanksAfterBingePolicy.shouldShowState(
+                isKids = false,
+                isGuest = false,
+                neverShow = false,
+                showCount = 1,
+                lastShownAtMs = now - ThanksAfterBingePolicy.COOLDOWN_MS,
+                lastDismissedAtMs = 0L,
+                nowMs = now,
+            ),
+        )
+        assertFalse(
+            ThanksAfterBingePolicy.shouldShowState(
+                isKids = false,
+                isGuest = false,
+                neverShow = true,
+                showCount = 0,
+                lastShownAtMs = 0L,
+                lastDismissedAtMs = 0L,
+                nowMs = now,
+            ),
+        )
+        assertFalse(
+            ThanksAfterBingePolicy.shouldShowState(
+                isKids = false,
+                isGuest = false,
+                neverShow = false,
+                showCount = ThanksAfterBingePolicy.MAX_SHOWS,
+                lastShownAtMs = 0L,
+                lastDismissedAtMs = 0L,
+                nowMs = now,
+            ),
+        )
+        assertFalse(
+            ThanksAfterBingePolicy.shouldShowState(
+                isKids = false,
+                isGuest = true,
+                neverShow = false,
+                showCount = 0,
+                lastShownAtMs = 0L,
+                lastDismissedAtMs = 0L,
+                nowMs = now,
+            ),
+        )
     }
 }

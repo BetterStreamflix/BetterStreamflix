@@ -306,12 +306,13 @@ class MainMobileActivity : FragmentActivity() {
             if (destination.id == R.id.player &&
                 com.dskja.betterstreamflix.kids.KidsBedtime.shouldBlockEnteringPlayer()
             ) {
-                binding.root.post {
-                    runCatching {
-                        if (navController.currentDestination?.id == R.id.player) {
-                            navController.popBackStack()
-                        }
+                // KB-016: pop synchronously to shrink one-frame player flash; PIN sheet posts.
+                runCatching {
+                    if (navController.currentDestination?.id == R.id.player) {
+                        navController.popBackStack()
                     }
+                }
+                binding.root.post {
                     com.dskja.betterstreamflix.kids.KidsBedtimeUi.blockPlayerEntry(this@MainMobileActivity)
                 }
             }

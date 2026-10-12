@@ -226,10 +226,15 @@ object ProfilesSettingsController {
                     }
                 }
                 UserPreferences.kidsBedtimeEnabled = enable
-                if (!enable) {
-                    UserPreferences.kidsBedtimeLocked = false
-                    UserPreferences.kidsBedtimeBypassUntilMs = 0L
-                } else {
+                // KB-011: disabling clears lock + overnight bypass.
+                val after = KidsBedtime.prefsAfterSetEnabled(
+                    enabled = enable,
+                    locked = UserPreferences.kidsBedtimeLocked,
+                    bypassUntilMs = UserPreferences.kidsBedtimeBypassUntilMs,
+                )
+                UserPreferences.kidsBedtimeLocked = after.locked
+                UserPreferences.kidsBedtimeBypassUntilMs = after.bypassUntilMs
+                if (enable) {
                     notifyUser(
                         context,
                         context.getString(R.string.kids_bedtime_enabled_toast),
