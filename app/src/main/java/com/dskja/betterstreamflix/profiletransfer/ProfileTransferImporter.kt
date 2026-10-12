@@ -15,6 +15,12 @@ import com.dskja.betterstreamflix.utils.UserPreferences
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
+/**
+ * Applies a decoded [ProfileTransferPayload] to the active profile.
+ *
+ * Settings apply is overwrite-by-design (EI-011): no three-way merge — last import wins
+ * for toggles, theme, and shelf-order keys present in the snapshot.
+ */
 object ProfileTransferImporter {
 
     data class Result(

@@ -3,6 +3,8 @@ package com.dskja.betterstreamflix.profiles
 import android.content.Context
 import android.os.Handler
 import android.os.Looper
+import android.widget.Toast
+import com.dskja.betterstreamflix.R
 import java.lang.ref.WeakReference
 
 /**
@@ -19,7 +21,14 @@ object GuestForegroundSweep {
     private val tick = object : Runnable {
         override fun run() {
             val context = contextRef?.get()?.applicationContext ?: return
-            runCatching { ProfileManager.sweepExpiredGuests(context) }
+            val removed = runCatching { ProfileManager.sweepExpiredGuests(context) }.getOrDefault(0)
+            if (removed > 0) {
+                Toast.makeText(
+                    context,
+                    R.string.profile_guest_expired_toast,
+                    Toast.LENGTH_LONG,
+                ).show()
+            }
             handler.postDelayed(this, INTERVAL_MS)
         }
     }

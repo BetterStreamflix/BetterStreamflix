@@ -132,6 +132,9 @@ object ProfileManager {
     /**
      * Creates or reuses the temporary Guest profile (one at a time).
      * Fresh shell when none exists or the previous guest already expired.
+     *
+     * Does **not** auto-switch the active profile (GP-009) — callers (e.g. profile
+     * picker [startGuestSession]) must [switchTo] after parental-exit checks.
      */
     fun createGuest(displayName: String = GuestProfilePolicy.DEFAULT_DISPLAY_NAME): UserProfile {
         require(::appContext.isInitialized) { "ProfileManager.init() must be called first" }
@@ -547,6 +550,11 @@ object ProfileManager {
      * Delete Room DB files, scoped prefs, and cached userdata for a removed profile.
      * The default profile is also wiped (provider `*.db` files + userdata cache);
      * only identity prefs for default stay (no scoped `_p_` suffix to clear).
+     *
+     * Guest wipe scope (GP-004): Room (`guest_*__` / `downloads__guest`), scoped prefs,
+     * notes, and userdata cache. Integrations/themes/favorites touched during the
+     * session are cleared with the profile delete; downloads folder for that guest id
+     * is removed. Account-level / other-profile data is untouched.
      */
     private fun wipeProfileLocalData(profileId: String) {
         runCatching {

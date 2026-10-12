@@ -43,12 +43,13 @@ class CloudSyncWorker(
                 }
             }
         } catch (_: Throwable) {
-            // Persistent failures (e.g. expired session) must not retry forever.
+            // SC-007: stop after MAX_ATTEMPTS; pending queues wait for the next enqueue.
             if (runAttemptCount < MAX_ATTEMPTS) Result.retry() else Result.success()
         }
     }
 
     private companion object {
+        /** Cap retries so auth/network flakes do not spin forever (SC-007). */
         const val MAX_ATTEMPTS = 5
     }
 }

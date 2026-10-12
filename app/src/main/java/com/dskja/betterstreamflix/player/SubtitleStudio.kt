@@ -1,10 +1,12 @@
 package com.dskja.betterstreamflix.player
 
+import android.content.Context
 import android.text.Layout
 import android.view.View
 import androidx.media3.common.text.Cue
 import androidx.media3.ui.CaptionStyleCompat
 import androidx.media3.ui.SubtitleView
+import com.dskja.betterstreamflix.R
 import com.dskja.betterstreamflix.utils.UserPreferences
 import com.dskja.betterstreamflix.utils.dp
 import com.dskja.betterstreamflix.utils.getAlpha
@@ -14,11 +16,24 @@ import com.dskja.betterstreamflix.utils.getRgb
  * Subtitle Studio light — per-profile size / color / background with a live
  * player preview. Wraps the existing caption prefs without replacing the full
  * edge/window editor.
+ *
+ * Kids profiles use the same caption defaults as adult (ST-016) — no separate
+ * kids caption seed; per-profile scoped prefs still isolate customizations.
  */
 object SubtitleStudio {
 
-    /** Default sample line shown while Caption style screens are open. */
+    /** English sample line; used when locale language is `en` (ST-007). */
     const val PREVIEW_SAMPLE_EN: String = "Subtitle Studio — sample line"
+
+    /** Preview text: English constant for `en*`, otherwise localized string. */
+    fun previewSampleText(context: Context): CharSequence {
+        val lang = java.util.Locale.getDefault().language
+        return if (lang.equals("en", ignoreCase = true)) {
+            PREVIEW_SAMPLE_EN
+        } else {
+            context.getString(R.string.subtitle_studio_preview_sample)
+        }
+    }
 
     /** ARGB helpers that stay unit-test friendly (no android.graphics.Color mocks). */
     private fun argb(alpha: Int, rgb: Int): Int =
@@ -115,7 +130,7 @@ object SubtitleStudio {
         view.visibility = View.GONE
     }
 
-    /** Caption-style editor screens that should keep the player preview up. */
+    /** Caption-style editor screens that should keep the player preview up (ST-014). */
     fun isStudioSettingName(name: String): Boolean =
-        name.startsWith("CAPTION_STYLE")
+        name.startsWith("CAPTION_STYLE") || name.startsWith("SUBTITLE_STUDIO")
 }

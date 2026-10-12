@@ -11,6 +11,14 @@ import io.github.jan.supabase.postgrest.rpc
 import java.time.Instant
 import java.time.temporal.ChronoUnit
 
+/**
+ * Device link codes: 6-char offer, [TOKEN_TTL_MINUTES] TTL, single-use after claim.
+ *
+ * Lookup may return the host email while `claimed_at` is null (pairing needs email
+ * before password). Codes are invalidated on new mint ([expireOwnedActiveOffers]) and
+ * marked claimed after successful sign-in ([markClaimed]) — not burned on first lookup
+ * so password retries still work (SC-004).
+ */
 object DeviceLinkRepository {
     private const val TAG = "DeviceLink"
     private const val TABLE = "device_link_codes"
@@ -65,6 +73,10 @@ object DeviceLinkRepository {
         )
     }
 
+    /**
+     * TV/phone claimer path: may run without an existing session (SC-019).
+     * Relies on anon-granted `get_device_link_by_code` RPC + RLS.
+     */
     suspend fun lookupByCode(context: Context, code: String): LookupResult {
         requireConfigured()
         rejectKids()
@@ -110,6 +122,7 @@ object DeviceLinkRepository {
         }.onFailure { Log.w(TAG, "Could not mark device link claimed", it) }
     }
 
+    /** SC-014: marks all host rows claimed when minting a new code (invalidates prior offers). */
     private suspend fun expireOwnedActiveOffers(
         context: Context,
         profileId: String,
