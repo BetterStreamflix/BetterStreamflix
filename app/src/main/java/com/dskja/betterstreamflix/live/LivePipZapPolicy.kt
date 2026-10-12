@@ -7,7 +7,6 @@ import com.dskja.betterstreamflix.models.Video
  * Eligible during VOD; picks a preview channel from pins then live favorites.
  */
 object LivePipZapPolicy {
-
     /** Preview audio is always muted so VOD keeps focus. */
     const val PREVIEW_MUTED = true
 
@@ -103,8 +102,14 @@ object LivePipZapPolicy {
         )
     }
 
-    /** TV: overlay may take focus only while player chrome is visible. */
+    /** TV: preview overlay may take focus only while player chrome is visible. */
     fun tvOverlayFocusable(chromeVisible: Boolean): Boolean = chromeVisible
+
+    /**
+     * TV: return-to-VOD chip stays focusable whenever visible so leanback users
+     * need not show chrome first (PZ-010).
+     */
+    fun tvReturnChipFocusable(visible: Boolean): Boolean = visible
 }
 
 /**
@@ -118,16 +123,23 @@ object LivePipZapSession {
     private var suppressClearOnDestroy: Boolean = false
 
     /**
-     * After promote we sticky-switch to IPTV before the VOD fragment tears down, so
-     * [onPlayerDestroyed] must not treat that destroy as “left live without returning”.
+     * Sticky across promote and subsequent LIVE→LIVE player destroys.
+     * Cleared only by [beginReturn] or [clear] (PZ-001).
      */
     @Volatile
-    private var protectAcrossPromoteNav: Boolean = false
+    private var retainForLiveSession: Boolean = false
 
     fun stash(ticket: LivePipZapPolicy.ReturnTicket) {
         this.ticket = ticket
         suppressClearOnDestroy = false
-        protectAcrossPromoteNav = true
+        retainForLiveSession = true
+    }
+
+    /** Re-stash after a failed return navigate (PZ-002). */
+    fun restore(ticket: LivePipZapPolicy.ReturnTicket) {
+        this.ticket = ticket
+        suppressClearOnDestroy = false
+        retainForLiveSession = true
     }
 
     fun peek(): LivePipZapPolicy.ReturnTicket? = ticket
@@ -139,14 +151,13 @@ object LivePipZapSession {
         val current = ticket ?: return null
         ticket = null
         suppressClearOnDestroy = true
-        protectAcrossPromoteNav = false
+        retainForLiveSession = false
         return current
     }
 
     fun onPlayerDestroyed(wasLivePlayback: Boolean) {
-        if (protectAcrossPromoteNav) {
-            // VOD player destroyed right after promote — keep the ticket for live.
-            protectAcrossPromoteNav = false
+        if (retainForLiveSession && wasLivePlayback) {
+            // Keep ticket across promote and CH± / live self-nav destroys.
             return
         }
         if (wasLivePlayback && !suppressClearOnDestroy) {
@@ -158,6 +169,6 @@ object LivePipZapSession {
     fun clear() {
         ticket = null
         suppressClearOnDestroy = false
-        protectAcrossPromoteNav = false
+        retainForLiveSession = false
     }
 }

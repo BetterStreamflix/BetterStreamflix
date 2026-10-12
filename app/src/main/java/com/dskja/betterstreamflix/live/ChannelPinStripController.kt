@@ -8,8 +8,10 @@ import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import androidx.navigation.fragment.NavHostFragment
 import com.dskja.betterstreamflix.R
+import com.dskja.betterstreamflix.fragments.live.LiveHubSectionZap
 import com.dskja.betterstreamflix.models.TvShow
 import com.dskja.betterstreamflix.profiles.ProfileManager
+import com.dskja.betterstreamflix.providers.Provider
 import com.dskja.betterstreamflix.ui.UserDataNotifier
 import com.dskja.betterstreamflix.utils.CrossProviderLibrary
 import com.dskja.betterstreamflix.utils.LiveHubCatalog
@@ -24,6 +26,8 @@ import kotlinx.coroutines.withContext
 /**
  * Binds [ChannelPinStripView] on Main Mobile/TV — load pins, seed from live favorites,
  * open channels, hide on player / kids.
+ *
+ * Long-click on a strip item unpins it (SL-007).
  */
 class ChannelPinStripController(
     private val activity: FragmentActivity,
@@ -57,9 +61,11 @@ class ChannelPinStripController(
 
     fun refresh() {
         refreshJob?.cancel()
+        // SL-003: hide immediately so kids/gate cannot click during IO.
+        strip.isVisible = false
         refreshJob = activity.lifecycleScope.launch {
             val gated = ProfileManager.isKidsActive() || LiveHubCatalog.isAgeGated()
-            if (gated) {
+            if (gated || !destinationAllowsStrip) {
                 strip.isVisible = false
                 return@launch
             }
@@ -70,22 +76,26 @@ class ChannelPinStripController(
                     .filter { LiveHubCatalog.isLiveFavorite(it) }
                     .map { LiveHubCatalog.enrichEpgLite(it) }
                 ChannelPinStore.seedFromFavoritesIfEmpty(activity, favorites)
-                ChannelPinStore.resolveShows(activity, favorites).map { show ->
-                    // Merge programNow from Live Hub favorites when pin stubs omit EPG.
+                // SL-009: enrich from hub binding + favorites when available.
+                val hub = LiveHubSectionZap.enrichmentCatalog()
+                val catalog = (favorites + hub).distinctBy { LiveHubCatalog.identityKey(it) }
+                ChannelPinStore.resolveShows(activity, catalog).map { show ->
                     val key = LiveHubCatalog.identityKey(show)
-                    val fromHub = favorites.firstOrNull { LiveHubCatalog.identityKey(it) == key }
+                    val fromHub = catalog.firstOrNull { LiveHubCatalog.identityKey(it) == key }
                     if (fromHub != null) {
                         if (show.programNow.isNullOrBlank()) {
                             show.programNow = LiveHubCatalog.programNowOf(fromHub)
                         }
                         if (show.poster.isNullOrBlank()) show.poster = fromHub.poster
-                    } else {
-                        LiveHubCatalog.enrichEpgLite(show)
                     }
                     show
                 }
             }
-            if (!destinationAllowsStrip || ProfileManager.isKidsActive()) {
+            // SL-002: re-check kids AND age-gate after IO.
+            if (!destinationAllowsStrip ||
+                ProfileManager.isKidsActive() ||
+                LiveHubCatalog.isAgeGated()
+            ) {
                 strip.isVisible = false
                 return@launch
             }
@@ -101,13 +111,18 @@ class ChannelPinStripController(
     }
 
     private fun openChannel(show: TvShow) {
-        val provider = show.providerName.orEmpty()
-        if (provider.isBlank() || show.id.isBlank()) return
+        // SL-003 / SL-008: block kids / age-gate opens.
+        if (ProfileManager.isKidsActive() || LiveHubCatalog.isAgeGated()) {
+            strip.isVisible = false
+            return
+        }
+        val providerName = show.providerName.orEmpty()
+        if (providerName.isBlank() || show.id.isBlank()) return
         WidgetDeepLinkRouter.handle(
             activity,
             WidgetDeepLinks.Target.LiveChannel(
                 id = show.id,
-                provider = provider,
+                provider = providerName,
                 title = show.title,
                 poster = show.poster,
             ),
@@ -136,14 +151,30 @@ class ChannelPinStripController(
 
     companion object {
         fun pinFromShowOptions(activity: FragmentActivity, show: TvShow): Boolean {
+            // SL-010: no pin mutations under kids / age-gate.
+            if (ProfileManager.isKidsActive() || LiveHubCatalog.isAgeGated()) {
+                return false
+            }
             if (!LiveHubCatalog.isLiveFavorite(show) || show.providerName.isNullOrBlank()) {
                 return false
             }
+            val alreadyPinned = ChannelPinStore.isPinned(activity, show)
+            val countBefore = ChannelPinStore.pinCount(activity)
             val pinned = ChannelPinStore.toggle(activity, show)
+            // SL-006: toast when pinning at capacity (eviction kept).
+            if (pinned && !alreadyPinned && countBefore >= ChannelPinStore.MAX_PINS) {
+                Toast.makeText(
+                    activity,
+                    activity.getString(
+                        R.string.meine_sender_leiste_pin_max,
+                        ChannelPinStore.MAX_PINS,
+                    ),
+                    Toast.LENGTH_SHORT,
+                ).show()
+            }
             // Keep library favorite in sync when pinning a live channel.
             if (pinned && !show.isFavorite) {
-                val provider = com.dskja.betterstreamflix.providers.Provider
-                    .findByName(show.providerName.orEmpty())
+                val provider = Provider.findByName(show.providerName.orEmpty())
                 if (provider != null) {
                     activity.lifecycleScope.launch(Dispatchers.IO) {
                         runCatching {

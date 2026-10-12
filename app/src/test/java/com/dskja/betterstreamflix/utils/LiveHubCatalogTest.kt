@@ -41,6 +41,47 @@ class LiveHubCatalogTest {
     }
 
     @Test
+    fun classifyBbcSportAsSportNotNews() {
+        assertEquals(
+            LiveHubCatalog.Section.SPORT,
+            LiveHubCatalog.classify("BBC Sport"),
+        )
+        assertEquals(
+            LiveHubCatalog.Section.SPORT,
+            LiveHubCatalog.classify("BBC SPORT HD"),
+        )
+    }
+
+    @Test
+    fun classifyBbcNewsAsNews() {
+        assertEquals(
+            LiveHubCatalog.Section.NEWS,
+            LiveHubCatalog.classify("BBC News"),
+        )
+    }
+
+    @Test
+    fun classifyPremierLeagueAsSportNotBarePremier() {
+        assertEquals(
+            LiveHubCatalog.Section.SPORT,
+            LiveHubCatalog.classify("Sky Premier League"),
+        )
+        // "Premiere" cinema-style titles must not match sport via bare "premier".
+        assertEquals(
+            LiveHubCatalog.Section.CHANNELS,
+            LiveHubCatalog.classify("Premiere Cinema"),
+        )
+    }
+
+    @Test
+    fun classifySportBeforeNewsInBlob() {
+        assertEquals(
+            LiveHubCatalog.Section.SPORT,
+            LiveHubCatalog.classify("ESPN News Brief"),
+        )
+    }
+
+    @Test
     fun buildCategoriesSplitsSportNewsChannels() {
         val shows = listOf(
             TvShow(id = "1", title = "ESPN", providerName = "DaddyLive TV"),
@@ -89,16 +130,17 @@ class LiveHubCatalogTest {
     }
 
     @Test
-    fun programNowOfUsesGroupFromOverview() {
+    fun programNowOfDoesNotInventGroupAsEpg() {
         val show = TvShow(
             id = "x",
             title = "ESPN",
             overview = "ESPN\nUnited States · Sports",
             providerName = "DaddyLive TV",
         )
-        assertEquals("Sports", LiveHubCatalog.programNowOf(show))
+        assertNull(LiveHubCatalog.programNowOf(show))
+        assertEquals("Sports", LiveHubCatalog.groupOf(show))
         LiveHubCatalog.enrichEpgLite(show)
-        assertEquals("Sports", show.programNow)
+        assertNull(show.programNow)
     }
 
     @Test

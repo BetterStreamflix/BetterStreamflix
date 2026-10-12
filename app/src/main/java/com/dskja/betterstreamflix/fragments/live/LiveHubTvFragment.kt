@@ -65,9 +65,16 @@ class LiveHubTvFragment : Fragment() {
             fragment = this,
             root = binding.root,
             isTv = true,
-            onVisibleChanged = { cats ->
+            onVisibleChanged = { cats, focusGrid ->
                 display(cats)
-                binding.vgvLiveHub.post { focusFirstChannel() }
+                if (focusGrid) {
+                    val searchFocused =
+                        binding.root.findViewById<View>(R.id.et_live_command_search)?.hasFocus() == true
+                    val q = command?.currentQuery().orEmpty()
+                    if (!searchFocused && q.isBlank()) {
+                        binding.vgvLiveHub.post { focusFirstChannel() }
+                    }
+                }
             },
             onModeChanged = { mode ->
                 if (mode == LiveCommandMode.SPORT) {
@@ -75,7 +82,13 @@ class LiveHubTvFragment : Fragment() {
                 }
             },
             focusPins = {
-                LiveCommandController.refreshPinStrip(activity)
+                val strip = activity?.findViewById<View>(R.id.channel_pin_strip)
+                if (strip != null) {
+                    strip.isVisible = true
+                    strip.post { strip.requestFocus() }
+                } else {
+                    LiveCommandController.refreshPinStrip(activity)
+                }
             },
         ).also { it.attach() }
 
@@ -100,7 +113,9 @@ class LiveHubTvFragment : Fragment() {
                     LiveHubViewModel.State.Restricted -> {
                         TvLoadingOverlay.hide(binding.isLoading.root)
                         hideWarning()
+                        lastHubCategories = emptyList()
                         command?.setRestricted(true)
+                        command?.bindEmpty()
                         displayRestricted()
                     }
                     is LiveHubViewModel.State.Success -> {
@@ -113,9 +128,7 @@ class LiveHubTvFragment : Fragment() {
                         )
                         TvLoadingOverlay.hide(binding.isLoading.root)
                         showWarning(state.warning)
-                        if (command?.currentMode() == LiveCommandMode.SPORT ||
-                            command?.currentMode() == LiveCommandMode.ALL
-                        ) {
+                        if (command?.currentMode() == LiveCommandMode.SPORT) {
                             warmSportZapRing(state.categories)
                         }
                     }
@@ -132,6 +145,8 @@ class LiveHubTvFragment : Fragment() {
                         }
                     }
                     is LiveHubViewModel.State.Failed -> {
+                        lastHubCategories = emptyList()
+                        command?.bindEmpty()
                         Toast.makeText(
                             requireContext(),
                             state.error.message ?: "",
@@ -185,15 +200,20 @@ class LiveHubTvFragment : Fragment() {
     }
 
     private fun display(categories: List<Category>) {
-        val visible = categories.filter { it.list.isNotEmpty() }
         val now = System.currentTimeMillis()
-        visible.forEach { category ->
-            category.list.filterIsInstance<TvShow>().forEach { show ->
-                show.itemType = AppAdapter.Type.TV_SHOW_TV_ITEM
-                enrichCatchUp(show, now)
+        val visible = categories.filter { it.list.isNotEmpty() }.map { category ->
+            val shows = category.list.filterIsInstance<TvShow>().map { show ->
+                // Copy so catch-up / display overlays never mutate shared hub rows.
+                show.copy().apply {
+                    itemType = AppAdapter.Type.TV_SHOW_TV_ITEM
+                    enrichCatchUp(this, now)
+                }
             }
-            category.itemSpacing = 16.dp(requireContext())
-            category.itemType = AppAdapter.Type.CATEGORY_TV_ITEM
+            Category(category.name, shows).also {
+                it.identityKey = category.identityKey
+                it.itemSpacing = 16.dp(requireContext())
+                it.itemType = AppAdapter.Type.CATEGORY_TV_ITEM
+            }
         }
         val zapCats = run {
             val preferred = command?.currentMode()?.let {
@@ -207,7 +227,7 @@ class LiveHubTvFragment : Fragment() {
         }
         LiveHubSectionZap.bindCategories(zapCats)
         val emptyForMode = visible.isEmpty() && lastHubCategories.isNotEmpty()
-        bindEmptyChrome(visible = visible.isEmpty())
+        bindEmptyChrome(visible = visible.isEmpty(), commandEmpty = emptyForMode)
         if (emptyForMode) {
             binding.tvLiveHubEmpty.text = emptyMessageForCommand()
         }
@@ -226,7 +246,14 @@ class LiveHubTvFragment : Fragment() {
                     )
                 }
             }
-            LiveCommandPolicy.CatchUpKind.UP_NEXT -> Unit
+            LiveCommandPolicy.CatchUpKind.UP_NEXT -> {
+                if (show.programNext.isNullOrBlank() && !hint.detail.isNullOrBlank()) {
+                    show.programNext = getString(
+                        R.string.live_command_catchup_up_next,
+                        hint.detail,
+                    )
+                }
+            }
             LiveCommandPolicy.CatchUpKind.LIVE_NOW -> Unit
         }
     }
@@ -236,18 +263,40 @@ class LiveHubTvFragment : Fragment() {
         if (q.isNotBlank()) return getString(R.string.live_command_empty_search)
         return when (command?.currentMode()) {
             LiveCommandMode.REMINDERS -> getString(R.string.live_command_empty_reminders)
+            LiveCommandMode.FAVORITES -> getString(R.string.live_command_empty_favorites)
+            LiveCommandMode.SPORT -> getString(R.string.live_command_empty_sport)
+            LiveCommandMode.NEWS -> getString(R.string.live_command_empty_news)
+            LiveCommandMode.CHANNELS -> getString(R.string.live_command_empty_channels)
             else -> getString(R.string.live_hub_empty_tv)
         }
     }
 
-    private fun bindEmptyChrome(visible: Boolean) {
-        binding.tvLiveHubEmpty.text = getString(R.string.live_hub_empty_tv)
+    private fun bindEmptyChrome(visible: Boolean, commandEmpty: Boolean = false) {
+        if (!commandEmpty) {
+            binding.tvLiveHubEmpty.text = getString(R.string.live_hub_empty_tv)
+        }
+        val ctaLabel = when {
+            command?.currentQuery()?.isNotBlank() == true ->
+                getString(R.string.exp_empty_clear_search)
+            commandEmpty && command?.currentMode() != null &&
+                command?.currentMode() != LiveCommandMode.ALL ->
+                getString(R.string.exp_empty_clear_filter)
+            else -> getString(R.string.exp_empty_try_channel)
+        }
+        binding.btnLiveHubEmptyCta.text = ctaLabel
         ExpEmptyChrome.bind(
             emptyView = binding.tvLiveHubEmpty,
             emptyRule = binding.vLiveHubEmptyRule,
             emptyCta = binding.btnLiveHubEmptyCta,
             visible = visible,
-            onCtaClick = { reload() },
+            onCtaClick = {
+                when {
+                    command?.currentQuery()?.isNotBlank() == true -> command?.clearQuery()
+                    commandEmpty && command?.currentMode() != LiveCommandMode.ALL ->
+                        command?.setMode(LiveCommandMode.ALL)
+                    else -> reload()
+                }
+            },
         )
     }
 
@@ -301,13 +350,15 @@ class LiveHubTvFragment : Fragment() {
     }
 
     private fun pipCandidateCount(categories: List<Category>): Int {
-        val pins = ChannelPinStore.pinCount(requireContext())
-        val favs = categories
+        val pinKeys = ChannelPinStore.list(requireContext()).map { it.key }.toHashSet()
+        val favKeys = categories
             .firstOrNull { it.identityKey == LiveHubCatalog.SECTION_FAVORITES }
             ?.list
-            ?.size
-            ?: 0
-        return (pins + favs).coerceAtLeast(pins)
+            ?.filterIsInstance<TvShow>()
+            ?.map { LiveHubCatalog.identityKey(it) }
+            ?.toHashSet()
+            .orEmpty()
+        return (pinKeys + favKeys).size
     }
 
     private fun refreshProfileChip() {
@@ -323,8 +374,13 @@ class LiveHubTvFragment : Fragment() {
                 if (event.action != KeyEvent.ACTION_DOWN || keyCode != KeyEvent.KEYCODE_DPAD_DOWN) {
                     return@setOnKeyListener false
                 }
-                focusFirstChannel()
-                true
+                val chrome = _binding?.root?.findViewById<View>(R.id.live_command_chrome)
+                val modes = _binding?.root?.findViewById<View>(R.id.ll_live_command_modes)
+                when {
+                    modes?.requestFocus() == true -> true
+                    chrome?.requestFocus() == true -> true
+                    else -> false
+                }
             }
         }
     }
@@ -344,6 +400,7 @@ class LiveHubTvFragment : Fragment() {
 
     override fun onDestroyView() {
         LiveHubSectionZap.clear()
+        command?.detach()
         command = null
         super.onDestroyView()
         _binding = null

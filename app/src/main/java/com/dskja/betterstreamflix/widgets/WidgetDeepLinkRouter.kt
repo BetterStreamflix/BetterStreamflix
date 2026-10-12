@@ -50,14 +50,17 @@ object WidgetDeepLinkRouter {
             title = target.title,
             poster = target.poster,
         ).apply { providerName = target.provider }
-        if (!IptvLiveSession.contains(target.id)) {
+        // ZP-010 / SL-008: prefer hub-scoped ring; else scoped merge with complete=false.
+        val prepared = com.dskja.betterstreamflix.fragments.live.LiveHubSectionZap
+            .preparePlayback(show, provider)
+        if (!prepared) {
             IptvLiveSession.rememberShows(
                 listOf(show),
                 provider,
                 clearOnProviderChange = false,
             )
+            IptvLiveSession.setCurrent(target.id)
         }
-        IptvLiveSession.setCurrent(target.id)
         val args = Bundle().apply {
             putString("id", target.id)
             putString("title", target.title)

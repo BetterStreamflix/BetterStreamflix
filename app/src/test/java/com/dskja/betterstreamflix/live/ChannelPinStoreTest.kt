@@ -108,4 +108,32 @@ class ChannelPinStoreTest {
         val pin = ChannelPinStore.Pin("42", "StreamSports99", "Fox")
         assertEquals("StreamSports99|42", pin.key)
     }
+
+    @Test
+    fun seedOnlyWhenPrefsKeyAbsent() {
+        // Empty favorites + absent key → leave key absent (retry later).
+        assertFalse(store.containsKey("CHANNEL_PINS_JSON"))
+        assertTrue(ChannelPinStore.seedFromFavoritesIfEmpty(context, emptyList()).isEmpty())
+        assertFalse(store.containsKey("CHANNEL_PINS_JSON"))
+
+        // Pin then clear → key present with "[]"; seed must not rewrite (SL-001).
+        ChannelPinStore.pin(context, show("f1", "DaddyLive TV", "Fav One"))
+        assertEquals(1, ChannelPinStore.list(context).size)
+        ChannelPinStore.clear(context)
+        assertEquals("[]", store["CHANNEL_PINS_JSON"])
+        assertTrue(ChannelPinStore.list(context).isEmpty())
+        val again = ChannelPinStore.seedFromFavoritesIfEmpty(
+            context,
+            listOf(show("f1", "DaddyLive TV", "Fav One")),
+        )
+        assertTrue(again.isEmpty())
+        assertTrue(ChannelPinStore.list(context).isEmpty())
+    }
+
+    @Test
+    fun toggleReturnsFalseWhenPinRejected() {
+        val blankProvider = TvShow(id = "x", title = "X").apply { providerName = "  " }
+        assertFalse(ChannelPinStore.toggle(context, blankProvider))
+        assertTrue(ChannelPinStore.list(context).isEmpty())
+    }
 }

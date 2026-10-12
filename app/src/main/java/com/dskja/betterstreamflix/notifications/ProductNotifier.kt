@@ -21,7 +21,10 @@ object ProductNotifier {
     const val CHANNEL_LIVE = "live_alerts"
 
     private const val NOTIFICATION_ID_EPISODE_BASE = 43000
-    private const val NOTIFICATION_ID_LIVE_BASE = 43100
+    /** Wide live id space to limit collisions across many favorites. */
+    private const val NOTIFICATION_ID_LIVE_BASE = 500_000
+    private const val NOTIFICATION_ID_LIVE_SLOTS = 100_000
+    private const val NOTIFICATION_ID_EPISODE_SLOTS = 90
 
     fun ensureChannels(context: Context) {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
@@ -84,6 +87,7 @@ object ProductNotifier {
         programHint: String?,
         identityKey: String,
         preKickoff: Boolean = false,
+        kickoffEpochMs: Long? = null,
     ) {
         if (!NotificationPermission.canPost(context)) return
         ensureChannels(context)
@@ -114,7 +118,7 @@ object ProductNotifier {
             .setAutoCancel(true)
             .setOnlyAlertOnce(true)
             .setContentIntent(openLiveIntent(context))
-            .addAction(snoozeAction(context, identityKey))
+            .addAction(snoozeAction(context, identityKey, showTitle, kickoffEpochMs))
             .setPriority(NotificationCompat.PRIORITY_DEFAULT)
             .setCategory(NotificationCompat.CATEGORY_REMINDER)
             .build()
@@ -125,15 +129,24 @@ object ProductNotifier {
     }
 
     fun liveNotificationId(identityKey: String): Int =
-        NOTIFICATION_ID_LIVE_BASE + Math.floorMod(identityKey.hashCode(), 90)
+        NOTIFICATION_ID_LIVE_BASE + Math.floorMod(identityKey.hashCode(), NOTIFICATION_ID_LIVE_SLOTS)
 
     private fun episodeNotificationId(identityKey: String): Int =
-        NOTIFICATION_ID_EPISODE_BASE + Math.floorMod(identityKey.hashCode(), 90)
+        NOTIFICATION_ID_EPISODE_BASE + Math.floorMod(identityKey.hashCode(), NOTIFICATION_ID_EPISODE_SLOTS)
 
-    private fun snoozeAction(context: Context, identityKey: String): NotificationCompat.Action {
+    private fun snoozeAction(
+        context: Context,
+        identityKey: String,
+        showTitle: String,
+        kickoffEpochMs: Long?,
+    ): NotificationCompat.Action {
         val intent = Intent(context, LiveReminderSnoozeReceiver::class.java).apply {
             action = LiveReminderSnoozeReceiver.ACTION_SNOOZE
             putExtra(LiveReminderSnoozeReceiver.EXTRA_IDENTITY, identityKey)
+            putExtra(LiveReminderSnoozeReceiver.EXTRA_TITLE, showTitle)
+            if (kickoffEpochMs != null && kickoffEpochMs > 0L) {
+                putExtra(LiveReminderSnoozeReceiver.EXTRA_KICKOFF, kickoffEpochMs)
+            }
         }
         val pending = PendingIntent.getBroadcast(
             context,

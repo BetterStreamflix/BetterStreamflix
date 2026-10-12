@@ -1,8 +1,11 @@
 package com.dskja.betterstreamflix.live
 
+import android.os.Handler
+import android.os.Looper
 import android.text.Editable
 import android.text.TextWatcher
 import android.view.View
+import android.view.accessibility.AccessibilityNodeInfo
 import android.view.inputmethod.EditorInfo
 import android.widget.EditText
 import android.widget.HorizontalScrollView
@@ -15,6 +18,7 @@ import androidx.fragment.app.FragmentActivity
 import com.dskja.betterstreamflix.R
 import com.dskja.betterstreamflix.models.Category
 import com.dskja.betterstreamflix.models.TvShow
+import com.dskja.betterstreamflix.notifications.LiveReminderArm
 import com.dskja.betterstreamflix.notifications.LiveReminderStore
 import com.dskja.betterstreamflix.ui.AmbientModePolicy
 import com.dskja.betterstreamflix.ui.FeaturedAdvancePolicy
@@ -23,16 +27,22 @@ import com.dskja.betterstreamflix.utils.DeviceCapabilities
 import com.dskja.betterstreamflix.utils.ExpMotion
 import com.dskja.betterstreamflix.utils.LiveHubCatalog
 import com.dskja.betterstreamflix.utils.UserPreferences
+import com.dskja.betterstreamflix.widgets.WidgetDeepLinkRouter
+import com.dskja.betterstreamflix.widgets.WidgetDeepLinks
 
 /**
  * Binds Live Command chrome on Live Hub (Mobile + TV): mode chips, EPG search,
  * command actions (Sender-Leiste / Reminders / Ambient / PiP Zap), status line.
+ *
+ * [onVisibleChanged] receives the visible categories and whether the host should
+ * move focus to the channel grid (mode change / initial bind only — never while
+ * the search box has focus or the query is non-blank).
  */
 class LiveCommandController(
     private val fragment: Fragment,
     private val root: View,
     private val isTv: Boolean,
-    private val onVisibleChanged: (List<Category>) -> Unit,
+    private val onVisibleChanged: (List<Category>, focusGrid: Boolean) -> Unit,
     private val onModeChanged: (LiveCommandMode) -> Unit = {},
     private val focusPins: () -> Unit = {},
 ) {
@@ -50,8 +60,11 @@ class LiveCommandController(
     private var hubCategories: List<Category> = emptyList()
     private var pinCount: Int = 0
     private var pipCandidates: Int = 0
+    private var initialBindDone: Boolean = false
 
     private val modeChips = LinkedHashMap<LiveCommandMode, TextView>()
+    private val searchHandler = Handler(Looper.getMainLooper())
+    private var searchDebounce: Runnable? = null
 
     fun attach() {
         chrome?.isVisible = true
@@ -61,8 +74,18 @@ class LiveCommandController(
         applySelection()
     }
 
+    fun detach() {
+        searchDebounce?.let { searchHandler.removeCallbacks(it) }
+        searchDebounce = null
+    }
+
     fun setRestricted(restricted: Boolean) {
         chrome?.isVisible = !restricted
+        if (restricted) {
+            hubCategories = emptyList()
+            pinCount = 0
+            pipCandidates = 0
+        }
     }
 
     fun bindHub(
@@ -72,14 +95,48 @@ class LiveCommandController(
     ) {
         hubCategories = categories
         this.pinCount = pinCount
-        this.pipCandidates = pipCandidates.coerceAtLeast(pinCount)
+        this.pipCandidates = pipCandidates.coerceAtLeast(0)
         refreshActions()
-        publish()
+        val focusGrid = !initialBindDone
+        initialBindDone = true
+        publish(focusGrid = focusGrid)
+    }
+
+    fun bindEmpty() {
+        hubCategories = emptyList()
+        pinCount = 0
+        pipCandidates = 0
+        refreshActions()
+        publish(focusGrid = false)
     }
 
     fun currentMode(): LiveCommandMode = mode
 
     fun currentQuery(): String = query
+
+    fun clearQuery() {
+        searchDebounce?.let { searchHandler.removeCallbacks(it) }
+        searchDebounce = null
+        query = ""
+        searchBox?.setText("")
+        searchClear?.isVisible = false
+        publish(focusGrid = false)
+    }
+
+    fun setMode(next: LiveCommandMode) {
+        selectMode(next)
+    }
+
+    private fun reminderLabels(): LiveCommandPolicy.ReminderLabelResources {
+        val ctx = fragment.requireContext()
+        return LiveCommandPolicy.ReminderLabelResources(
+            snoozed = ctx.getString(R.string.live_command_reminder_snoozed),
+            live = ctx.getString(R.string.live_command_reminder_live),
+            startsInHours = ctx.getString(R.string.live_command_reminder_starts_in_hours),
+            startsInMinutes = ctx.getString(R.string.live_command_reminder_starts_in_minutes),
+            startedMinutesAgo = ctx.getString(R.string.live_command_reminder_started_ago),
+        )
+    }
 
     private fun bindModeChips() {
         val host = modesHost ?: return
@@ -95,7 +152,7 @@ class LiveCommandController(
             }
             if (isTv) {
                 chip.isFocusable = true
-                chip.isFocusableInTouchMode = true
+                chip.isFocusableInTouchMode = false
             }
             host.addView(chip)
             modeChips[m] = chip
@@ -109,14 +166,13 @@ class LiveCommandController(
         box.setText(query)
         searchClear?.isVisible = query.isNotBlank()
         searchClear?.setOnClickListener {
-            box.setText("")
-            query = ""
-            publish()
+            clearQuery()
         }
         box.setOnEditorActionListener { _, actionId, _ ->
             if (actionId == EditorInfo.IME_ACTION_SEARCH) {
+                searchDebounce?.let { searchHandler.removeCallbacks(it) }
                 query = box.text?.toString().orEmpty()
-                publish()
+                publish(focusGrid = false)
                 true
             } else {
                 false
@@ -128,27 +184,35 @@ class LiveCommandController(
             override fun afterTextChanged(s: Editable?) {
                 query = s?.toString().orEmpty()
                 searchClear?.isVisible = query.isNotBlank()
-                publish()
+                searchDebounce?.let { searchHandler.removeCallbacks(it) }
+                val run = Runnable { publish(focusGrid = false) }
+                searchDebounce = run
+                searchHandler.postDelayed(run, SEARCH_DEBOUNCE_MS)
             }
         })
-        // TV: search is optional; keep focusable but not first.
+        // TV: keep focusable for DPAD but not touch-mode so keyboards don't steal first focus.
         box.isFocusable = true
-        box.isFocusableInTouchMode = !isTv || true
+        box.isFocusableInTouchMode = !isTv
+        updateSearchNextFocus()
     }
 
     private fun selectMode(next: LiveCommandMode) {
-        if (mode == next && query.isEmpty()) {
-            applySelection()
-            return
+        // Clear query when entering Reminders so search does not override the panel.
+        if (next == LiveCommandMode.REMINDERS && query.isNotBlank()) {
+            searchDebounce?.let { searchHandler.removeCallbacks(it) }
+            searchDebounce = null
+            query = ""
+            searchBox?.setText("")
+            searchClear?.isVisible = false
         }
+        val modeChanged = mode != next
         mode = next
         UserPreferences.liveCommandMode = next.name
-        if (next != LiveCommandMode.REMINDERS) {
-            // Keep query when switching shelves; clear only when entering reminders for clarity.
+        if (modeChanged) {
+            onModeChanged(next)
         }
-        onModeChanged(next)
         applySelection()
-        publish()
+        publish(focusGrid = isTv && modeChanged)
     }
 
     private fun applySelection() {
@@ -166,17 +230,38 @@ class LiveCommandController(
                     fragment.resources.getColor(R.color.white, fragment.requireContext().theme)
                 },
             )
+            val label = modeLabel(m)
+            chip.contentDescription = if (selected) {
+                fragment.getString(R.string.live_command_cd_mode_selected, label)
+            } else {
+                label
+            }
+            chip.accessibilityLiveRegion = if (selected) {
+                View.ACCESSIBILITY_LIVE_REGION_POLITE
+            } else {
+                View.ACCESSIBILITY_LIVE_REGION_NONE
+            }
+            chip.setAccessibilityDelegate(object : View.AccessibilityDelegate() {
+                override fun onInitializeAccessibilityNodeInfo(
+                    host: View,
+                    info: AccessibilityNodeInfo,
+                ) {
+                    super.onInitializeAccessibilityNodeInfo(host, info)
+                    info.isSelected = selected
+                }
+            })
         }
     }
 
-    private fun publish() {
+    private fun publish(focusGrid: Boolean) {
         val favorites = hubCategories
             .firstOrNull { it.identityKey == LiveHubCatalog.SECTION_FAVORITES }
             ?.list
             ?.filterIsInstance<TvShow>()
             .orEmpty()
         val now = System.currentTimeMillis()
-        val visible = LiveCommandPolicy.resolveVisible(
+        val labels = reminderLabels()
+        var visible = LiveCommandPolicy.resolveVisible(
             categories = hubCategories,
             mode = mode,
             query = query,
@@ -185,22 +270,53 @@ class LiveCommandController(
             favorites = favorites,
             nowMs = now,
             snoozedUntil = { LiveReminderStore.snoozedUntil(it) },
+            labels = labels,
         )
-        val reminderCount = LiveCommandPolicy.buildReminderRows(
+        // Restored REMINDERS with no rows → fall back to All after publish path.
+        if (mode == LiveCommandMode.REMINDERS &&
+            query.isBlank() &&
+            visible.isEmpty() &&
+            hubCategories.isNotEmpty()
+        ) {
+            mode = LiveCommandMode.ALL
+            UserPreferences.liveCommandMode = LiveCommandMode.ALL.name
+            applySelection()
+            visible = LiveCommandPolicy.resolveVisible(
+                categories = hubCategories,
+                mode = mode,
+                query = query,
+                searchLabel = fragment.getString(R.string.live_command_search_results),
+                remindersLabel = fragment.getString(R.string.live_command_mode_reminders),
+                favorites = favorites,
+                nowMs = now,
+                snoozedUntil = { LiveReminderStore.snoozedUntil(it) },
+                labels = labels,
+            )
+        }
+        val reminderRows = LiveCommandPolicy.buildReminderRows(
             favorites = favorites,
             nowMs = now,
             snoozedUntil = { LiveReminderStore.snoozedUntil(it) },
-        ).size
+            labels = labels,
+        )
+        val reminderCount = reminderRows.size
+        val shelfCount = visible.count { it.list.isNotEmpty() }
+        val itemCount = visible.sumOf { it.list.size }
+        val favoriteCount = favorites.size
         bindStatus(
             LiveCommandPolicy.statusLine(
                 mode = mode,
                 query = query,
-                visibleCount = visible.sumOf { it.list.size },
+                visibleCount = itemCount,
                 reminderCount = reminderCount,
                 pinCount = pinCount,
+                favoriteCount = favoriteCount,
+                shelfCount = shelfCount,
             ),
         )
-        onVisibleChanged(visible)
+        val searchFocused = searchBox?.hasFocus() == true
+        val allowFocus = focusGrid && query.isBlank() && !searchFocused
+        onVisibleChanged(visible, allowFocus)
     }
 
     private fun bindStatus(kind: LiveCommandPolicy.StatusKind) {
@@ -212,8 +328,10 @@ class LiveCommandController(
                 fragment.getString(R.string.live_command_status_reminders, kind.count)
             LiveCommandPolicy.StatusKind.SportZap ->
                 fragment.getString(R.string.live_command_status_sport_zap)
+            is LiveCommandPolicy.StatusKind.News ->
+                fragment.getString(R.string.live_command_status_news, kind.count)
             is LiveCommandPolicy.StatusKind.Favorites ->
-                fragment.getString(R.string.live_command_status_favorites, kind.pinCount)
+                fragment.getString(R.string.live_command_status_favorites, kind.favoriteCount)
             is LiveCommandPolicy.StatusKind.Mode ->
                 fragment.getString(R.string.live_command_status_mode, modeLabel(kind.mode), kind.shelves)
         }
@@ -223,9 +341,20 @@ class LiveCommandController(
     private fun refreshActions() {
         val host = actionsHost ?: return
         host.removeAllViews()
+        val favorites = hubCategories
+            .firstOrNull { it.identityKey == LiveHubCatalog.SECTION_FAVORITES }
+            ?.list
+            ?.filterIsInstance<TvShow>()
+            .orEmpty()
+        val reminderCount = LiveCommandPolicy.buildReminderRows(
+            favorites = favorites,
+            nowMs = System.currentTimeMillis(),
+            snoozedUntil = { LiveReminderStore.snoozedUntil(it) },
+            labels = reminderLabels(),
+        ).size
         val snapshot = LiveCommandPolicy.CommandSnapshot(
             pinCount = pinCount,
-            reminderCount = 0,
+            reminderCount = reminderCount,
             remindersEnabled = UserPreferences.notifyLiveFavoriteStarting,
             ambientEnabled = UserPreferences.tvAmbientModeEnabled,
             ambientAvailable = isTv &&
@@ -250,7 +379,7 @@ class LiveCommandController(
             chip.setTextColor(fragment.resources.getColor(R.color.white, fragment.requireContext().theme))
             if (isTv) {
                 chip.isFocusable = true
-                chip.isFocusableInTouchMode = true
+                chip.isFocusableInTouchMode = false
             }
             chip.setOnClickListener {
                 ExpMotion.hapticTap(it)
@@ -259,6 +388,17 @@ class LiveCommandController(
             host.addView(chip)
         }
         host.isVisible = host.childCount > 0
+        updateSearchNextFocus()
+    }
+
+    private fun updateSearchNextFocus() {
+        val box = searchBox ?: return
+        val actionsVisible = actionsHost?.isVisible == true && (actionsHost?.childCount ?: 0) > 0
+        box.nextFocusDownId = when {
+            actionsVisible -> R.id.ll_live_command_actions
+            isTv -> R.id.vgv_live_hub
+            else -> R.id.rv_live_hub
+        }
     }
 
     private fun handleAction(
@@ -276,15 +416,24 @@ class LiveCommandController(
                 ).show()
             }
             LiveCommandPolicy.CommandAction.REMINDERS -> {
-                if (!UserPreferences.notifyLiveFavoriteStarting) {
+                if (UserPreferences.notifyLiveFavoriteStarting) {
+                    LiveReminderArm.disarmFromUi(ctx)
+                    Toast.makeText(
+                        ctx,
+                        R.string.live_command_toast_reminders_off,
+                        Toast.LENGTH_SHORT,
+                    ).show()
+                } else {
                     UserPreferences.notifyLiveFavoriteStarting = true
+                    LiveReminderArm.armFromUi(fragment)
                     Toast.makeText(
                         ctx,
                         R.string.live_command_toast_reminders_on,
                         Toast.LENGTH_SHORT,
                     ).show()
-                    UserDataNotifier.notifyChanged()
                 }
+                UserDataNotifier.notifyChanged()
+                refreshActions()
                 selectMode(LiveCommandMode.REMINDERS)
             }
             LiveCommandPolicy.CommandAction.AMBIENT -> {
@@ -318,11 +467,25 @@ class LiveCommandController(
                 refreshActions()
             }
             LiveCommandPolicy.CommandAction.PIP_ZAP -> {
-                Toast.makeText(
-                    ctx,
-                    ctx.getString(R.string.live_command_toast_pip, snapshot.pipCandidateCount),
-                    Toast.LENGTH_SHORT,
-                ).show()
+                val activity = fragment.activity
+                val firstPin = ChannelPinStore.list(ctx).firstOrNull()
+                if (activity != null && firstPin != null) {
+                    WidgetDeepLinkRouter.handle(
+                        activity,
+                        WidgetDeepLinks.Target.LiveChannel(
+                            id = firstPin.id,
+                            provider = firstPin.provider,
+                            title = firstPin.title,
+                            poster = firstPin.poster,
+                        ),
+                    )
+                } else {
+                    Toast.makeText(
+                        ctx,
+                        R.string.live_command_toast_pip_need_live,
+                        Toast.LENGTH_SHORT,
+                    ).show()
+                }
             }
         }
     }
@@ -355,8 +518,9 @@ class LiveCommandController(
     }
 
     companion object {
+        private const val SEARCH_DEBOUNCE_MS = 200L
+
         fun refreshPinStrip(activity: FragmentActivity?) {
-            // Pin strip lives on Main activities — nudge via UserDataNotifier.
             UserDataNotifier.notifyChanged()
             activity ?: return
         }
