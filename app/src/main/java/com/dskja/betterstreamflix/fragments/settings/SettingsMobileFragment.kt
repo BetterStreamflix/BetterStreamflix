@@ -1237,6 +1237,7 @@ class SettingsMobileFragment : PreferenceFragmentCompat() {
 
         findPreference<ListPreference>("SELECTED_THEME")?.apply {
             // Looks Locked: migrate retired themes / OLED half-mix onto one of three Looks.
+            // Kids cannot pick adult Cinema-Ink shells (KF-008).
             val locked = ThemeManager.resolveLook(UserPreferences.selectedTheme)
             val kids = com.dskja.betterstreamflix.profiles.ProfileManager.isKidsActive()
             val clamped = if (kids) ThemeManager.KIDS_BRIGHT else locked
@@ -2563,6 +2564,7 @@ class SettingsMobileFragment : PreferenceFragmentCompat() {
         applyScreenTitle()
         updateOverviewLabels()
         updateProviderVisibilityState()
+        SubtitleStudioSettingsController.refresh(this)
         PlatformSettingsController.refresh(this) { key -> findPreference(key) }
         ProfilesSettingsController.refresh(
             findPreference = { key -> findPreference(key) },

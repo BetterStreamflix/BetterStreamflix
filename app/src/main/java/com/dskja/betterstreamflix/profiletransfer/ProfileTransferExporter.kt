@@ -26,6 +26,7 @@ object ProfileTransferExporter {
                 .forEach { show ->
                     add(show.toItem())
                 }
+        // Silent truncate — see ProfileTransferPayload.MAX_FILE_* caps.
         }.take(ProfileTransferPayload.MAX_FILE_WATCHLIST)
 
         val providers = watchlist.map { it.provider }.filter { it.isNotBlank() }.distinct()
@@ -94,7 +95,9 @@ object ProfileTransferExporter {
             homeShelfBlockOrder = UserPreferences.homeShelfBlockOrder.takeIf { it.isNotBlank() },
             homeShelfPinsJson = UserPreferences.homeShelfPinsJson.takeIf { it.isNotBlank() },
             seriesFastForwardEnabled = UserPreferences.seriesFastForwardEnabled,
-            parentalControlMaxAge = UserPreferences.parentalControlMaxAge,
+            spoilerShieldEnabled = UserPreferences.spoilerShieldEnabled,
+            // Age ceiling stays device-local — never transfer without a parental flow.
+            parentalControlMaxAge = null,
             favoriteSortByProvider = sort,
             favoriteItemOrderByProvider = itemOrder,
             favoriteCategoryOrderByProvider = catOrder,

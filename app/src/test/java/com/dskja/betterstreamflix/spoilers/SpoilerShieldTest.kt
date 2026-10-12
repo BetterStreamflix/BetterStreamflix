@@ -62,6 +62,24 @@ class SpoilerShieldTest {
     }
 
     @Test
+    fun inProgressWatchHistory_notShielded() {
+        val episode = ep().also {
+            it.watchHistory = com.dskja.betterstreamflix.models.WatchItem.WatchHistory(
+                lastPlaybackPositionMillis = 60_000L,
+                durationMillis = 120_000L,
+                lastEngagementTimeUtcMillis = 1L,
+            )
+        }
+        assertFalse(
+            SpoilerShield.isShielded(
+                episode,
+                isKids = { true },
+                adultOptIn = { false },
+            ),
+        )
+    }
+
+    @Test
     fun watched_notShielded() {
         assertFalse(
             SpoilerShield.isShielded(

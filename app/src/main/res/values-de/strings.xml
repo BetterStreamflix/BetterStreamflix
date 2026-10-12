@@ -534,6 +534,7 @@
     <string name="subtitle_studio_size_title">Textgröße</string>
     <string name="subtitle_studio_font_color_title">Schriftfarbe</string>
     <string name="subtitle_studio_background_title">Hintergrund</string>
+    <string name="subtitle_studio_custom_value">Benutzerdefiniert (%1$s)</string>
     <string name="player_settings_caption_style_reset_style_label">Stil Zurücksetzen</string>
     <string name="player_settings_caption_style_font_color_title">Schriftfarbe</string>
     <string name="player_settings_caption_style_font_color_label">Schriftfarbe</string>
@@ -849,6 +850,9 @@
     <string name="year_review_share_footer">Lokaler Jahres-Rückblick — ohne Cloud.</string>
     <string name="year_review_card_headline">%1$d</string>
     <string name="year_review_card_footer">Lokaler Jahres-Rückblick</string>
+    <string name="year_review_blocked_profile">Jahres-Rückblick ist auf Kids- oder Gast-Profilen nicht verfügbar.</string>
+    <string name="year_review_load_error">Jahres-Rückblick konnte nicht geladen werden. Später erneut versuchen.</string>
+    <string name="year_review_previous_year">%1$d anzeigen</string>
     <string name="profile_section_parental">Kindersicherung</string>
     <string name="profile_section_integrations">Profil-Integrationen</string>
     <string name="profile_active_title">Aktuelles Profil</string>
@@ -881,6 +885,9 @@
     <string name="profile_transfer_import_confirm_title">In dieses Profil importieren?</string>
     <string name="profile_transfer_import_confirm_message">%1$d Watchlist-Titel und %2$d Notizen zusammenführen und Settings anwenden. Quelle: %3$s. Offline-Downloads und PINs werden nie übertragen.</string>
     <string name="profile_transfer_import_confirm_action">Importieren</string>
+    <string name="profile_transfer_kids_import_pin_title">Eltern-PIN erforderlich</string>
+    <string name="profile_transfer_kids_import_pin_message">Gib deine Eltern-PIN ein, um ein Kids-Profil aus diesem Import zu übernehmen.</string>
+    <string name="profile_transfer_kids_import_requires_pin">Lege zuerst eine Eltern-PIN in den Einstellungen fest, bevor du ein Kids-Profil importierst.</string>
     <string name="profile_transfer_import_done">%1$d Watchlist-Titel und %2$d Notizen importiert</string>
     <string name="profile_transfer_import_failed">Import fehlgeschlagen: %1$s</string>
     <string name="profile_transfer_import_invalid">Kein gültiger Profil-Transfer</string>
@@ -942,6 +949,7 @@
     <string name="spoiler_shield_kids_pin_title">Erwachsene-PIN</string>
     <string name="spoiler_shield_kids_pin_message">Gib die Eltern- oder Profil-PIN ein, um Folgentitel und Vorschaubilder freizugeben.</string>
     <string name="spoiler_shield_kids_confirm_message">Folgentitel und Vorschaubilder für dieses Kids-Profil freigeben?</string>
+    <string name="spoiler_shield_kids_pin_required">Lege zuerst eine Eltern- oder Profil-PIN in den Einstellungen fest, bevor Spoiler auf diesem Kids-Profil sichtbar werden.</string>
     <string name="profile_kids_exit_requires_pin">Lege eine Eltern-PIN oder Profil-PIN fest, bevor du Kids verlässt</string>
     <string name="profile_kids_requires_exit_pin">Kids-Profile brauchen eine Eltern-PIN (oder eine PIN auf diesem Profil), damit Erwachsene sicher wechseln können</string>
     <string name="profile_kids_pin_clear_blocked">Lege zuerst eine Eltern-PIN fest — Kids-Profile können ihre Profil-PIN nicht ohne Eltern-PIN löschen</string>

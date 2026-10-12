@@ -9,6 +9,7 @@ import com.dskja.betterstreamflix.providers.Provider
 import com.dskja.betterstreamflix.utils.UserPreferences
 import java.util.Calendar
 import java.util.TimeZone
+import android.util.Log
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -17,6 +18,8 @@ import kotlinx.coroutines.withContext
  * then aggregates via [YearReviewCalculator].
  */
 object YearReviewRepository {
+
+    private const val TAG = "YearReviewRepository"
 
     suspend fun load(
         context: Context,
@@ -34,6 +37,8 @@ object YearReviewRepository {
         forEachProfileProviderDb(app, profileId) { providerName, db ->
             runCatching {
                 collectFromDb(db, providerName, movies, episodes)
+            }.onFailure { error ->
+                Log.w(TAG, "Year review DB read failed for $providerName", error)
             }
         }
 
@@ -66,10 +71,13 @@ object YearReviewRepository {
     private fun movieEvent(movie: Movie): YearReviewMovieEvent? {
         if (movie.isWatched) {
             val at = movie.watchedDate?.timeInMillis ?: return null
+            // Finish threshold is ~90% — credit watched portion, not full catalog runtime.
+            val catalog = movie.runtime?.takeIf { it > 0 }
+            val credited = catalog?.let { (it * 0.9).toInt().coerceAtLeast(1) }
             return YearReviewMovieEvent(
                 id = movie.id,
                 title = movie.title,
-                runtimeMinutes = movie.runtime,
+                runtimeMinutes = credited,
                 watchedAtMs = at,
             )
         }
@@ -90,22 +98,39 @@ object YearReviewRepository {
         tvShows: Map<String, com.dskja.betterstreamflix.models.TvShow>,
         providerName: String,
     ): YearReviewEpisodeEvent? {
-        if (!episode.isWatched) return null
-        val at = episode.watchedDate?.timeInMillis ?: return null
         val showId = episode.tvShow?.id?.takeIf { it.isNotBlank() } ?: return null
         val show = tvShows[showId]
         val title = show?.title?.takeIf { it.isNotBlank() }
             ?: episode.tvShow?.title?.takeIf { it.isNotBlank() }
             ?: showId
-        val runtime = show?.runtime ?: episode.tvShow?.runtime
+        val history = episode.watchHistory
+        val runtimeFromHistory = history?.durationMillis
+            ?.takeIf { it > 0L }
+            ?.let { (it / 60_000L).toInt().coerceAtLeast(1) }
+        val runtime = runtimeFromHistory ?: show?.runtime ?: episode.tvShow?.runtime
         val poster = show?.poster ?: episode.tvShow?.poster ?: episode.poster
+        val showKey = title.trim().lowercase()
+        if (episode.isWatched) {
+            val at = episode.watchedDate?.timeInMillis ?: return null
+            return YearReviewEpisodeEvent(
+                id = episode.id,
+                showKey = showKey,
+                showTitle = title,
+                showPoster = poster,
+                runtimeMinutes = runtime,
+                watchedAtMs = at,
+            )
+        }
+        if (history == null || history.lastPlaybackPositionMillis <= 0L) return null
         return YearReviewEpisodeEvent(
             id = episode.id,
-            showKey = "$providerName:$showId",
+            showKey = showKey,
             showTitle = title,
             showPoster = poster,
             runtimeMinutes = runtime,
-            watchedAtMs = at,
+            watchedAtMs = history.lastEngagementTimeUtcMillis,
+            inProgressPositionMs = history.lastPlaybackPositionMillis
+                .coerceAtMost(history.durationMillis.takeIf { it > 0 } ?: Long.MAX_VALUE),
         )
     }
 

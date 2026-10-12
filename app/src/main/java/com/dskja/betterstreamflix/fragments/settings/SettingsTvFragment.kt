@@ -1365,6 +1365,7 @@ class SettingsTvFragment : LeanbackPreferenceFragmentCompat() {
 
         findPreference<ListPreference>("SELECTED_THEME")?.apply {
             // Migrate legacy theme ids on Settings open (LOOK-04/05).
+            // Kids cannot pick adult Cinema-Ink shells (KF-008).
             val locked = ThemeManager.resolveLook(UserPreferences.selectedTheme)
             val kids = com.dskja.betterstreamflix.profiles.ProfileManager.isKidsActive()
             val clamped = if (kids) {
@@ -1377,7 +1378,6 @@ class SettingsTvFragment : LeanbackPreferenceFragmentCompat() {
             }
             UserPreferences.oledMode = false
             if (kids) {
-                // Kids may only keep Cinema-Ink Kids locally (sync already clamps).
                 entries = arrayOf(getString(R.string.theme_kids_bright))
                 entryValues = arrayOf(ThemeManager.KIDS_BRIGHT)
             }
@@ -2713,6 +2713,7 @@ class SettingsTvFragment : LeanbackPreferenceFragmentCompat() {
         // SE-010: refresh Energy / Comfort summaries when latch flips mid-session.
         bindStickEnergyAndCodecComfortPrefs()
         bindCinemaAmbientEnergyHonesty()
+        SubtitleStudioSettingsController.refresh(this)
         PlatformSettingsController.refresh(this) { key -> findPreference(key) }
         ProfilesSettingsController.refresh(
             findPreference = { key -> findPreference(key) },

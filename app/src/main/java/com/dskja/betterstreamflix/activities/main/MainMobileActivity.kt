@@ -535,6 +535,7 @@ class MainMobileActivity : FragmentActivity() {
         runCatching {
             com.dskja.betterstreamflix.profiles.ProfileManager.sweepExpiredGuests(this)
         }
+        com.dskja.betterstreamflix.profiles.GuestForegroundSweep.onStart(this)
         com.dskja.betterstreamflix.telegram.TelegramJoinGateController.onActivityStarted(
             this,
             telegramGateLauncher,
@@ -557,6 +558,7 @@ class MainMobileActivity : FragmentActivity() {
     }
 
     override fun onStop() {
+        com.dskja.betterstreamflix.profiles.GuestForegroundSweep.onStop()
         com.dskja.betterstreamflix.profiles.ProfileUnlockGate.markBackgrounded()
         super.onStop()
     }
@@ -976,6 +978,16 @@ class MainMobileActivity : FragmentActivity() {
             return true
         }
         if (intent.getBooleanExtra("open_live", false)) {
+            // Kids Fortress: redirect before Live Hub navigation (KF-009).
+            if (!com.dskja.betterstreamflix.kids.KidsFortress.liveHubAllowed()) {
+                val navHost =
+                    supportFragmentManager.findFragmentById(R.id.nav_main_fragment) as? NavHostFragment
+                val navController = navHost?.navController
+                if (navController != null && navController.currentDestination?.id != R.id.home) {
+                    navController.navigate(R.id.home)
+                }
+                return true
+            }
             val navHost =
                 supportFragmentManager.findFragmentById(R.id.nav_main_fragment) as? NavHostFragment
             val navController = navHost?.navController

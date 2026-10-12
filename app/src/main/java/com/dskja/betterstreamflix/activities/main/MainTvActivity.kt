@@ -414,6 +414,13 @@ class MainTvActivity : FragmentActivity() {
             supportFragmentManager.findFragmentById(R.id.nav_main_fragment) as? NavHostFragment
                 ?: return
         val navController = navHost.navController
+        // Kids Fortress: redirect before Live Hub navigation (KF-009).
+        if (!com.dskja.betterstreamflix.kids.KidsFortress.liveHubAllowed()) {
+            if (navController.currentDestination?.id != R.id.home) {
+                runCatching { navController.navigate(R.id.home) }
+            }
+            return
+        }
         if (navController.currentDestination?.id != R.id.live_hub) {
             runCatching { navController.navigate(R.id.live_hub) }
         }
@@ -639,6 +646,7 @@ class MainTvActivity : FragmentActivity() {
         runCatching {
             com.dskja.betterstreamflix.profiles.ProfileManager.sweepExpiredGuests(this)
         }
+        com.dskja.betterstreamflix.profiles.GuestForegroundSweep.onStart(this)
         val navHostFragment = supportFragmentManager
             .findFragmentById(binding.navMainFragment.id) as? NavHostFragment
         if (navHostFragment != null) {
@@ -657,6 +665,7 @@ class MainTvActivity : FragmentActivity() {
     }
 
     override fun onStop() {
+        com.dskja.betterstreamflix.profiles.GuestForegroundSweep.onStop()
         com.dskja.betterstreamflix.profiles.ProfileUnlockGate.markBackgrounded()
         super.onStop()
     }
@@ -790,6 +799,9 @@ class MainTvActivity : FragmentActivity() {
         } else {
             getString(R.string.main_menu_tv_shows)
         }
+        // Parity with Mobile: route Downloads/Live Hub through KidsFortress (KF-013/014).
+        binding.navMain.menu.findItem(R.id.downloads)?.isVisible =
+            com.dskja.betterstreamflix.kids.KidsFortress.downloadsNavVisible()
         binding.navMain.menu.findItem(R.id.live_hub)?.isVisible = liveHubVisible
 
         val navController = (supportFragmentManager.findFragmentById(R.id.nav_main_fragment) as? NavHostFragment)

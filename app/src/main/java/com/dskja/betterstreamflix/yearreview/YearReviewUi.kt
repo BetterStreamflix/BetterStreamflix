@@ -8,6 +8,7 @@ import androidx.appcompat.app.AlertDialog
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
 import com.dskja.betterstreamflix.R
+import com.dskja.betterstreamflix.profiles.ProfileManager
 import com.dskja.betterstreamflix.utils.ExpDialogChrome
 import com.dskja.betterstreamflix.utils.ExpMotion
 import com.dskja.betterstreamflix.utils.ExperimentalMobileDesign
@@ -27,11 +28,20 @@ object YearReviewUi {
 
     fun show(fragment: Fragment) {
         val context = fragment.requireContext()
+        if (ProfileManager.isKidsActive() || ProfileManager.isGuestActive()) {
+            ExpDialogChrome.notify(
+                context,
+                R.string.year_review_blocked_profile,
+                R.string.settings_year_review_title,
+            )
+            return
+        }
         val themed = ExpDialogChrome.themedContext(context)
-        val year = Calendar.getInstance().get(Calendar.YEAR)
+        var selectedYear = Calendar.getInstance().get(Calendar.YEAR)
         val content = LayoutInflater.from(themed)
             .inflate(R.layout.dialog_year_review, null, false)
 
+        val switchYear = content.findViewById<TextView>(R.id.tv_year_review_switch_year)
         val subtitle = content.findViewById<TextView>(R.id.tv_year_review_subtitle)
         val hoursView = content.findViewById<TextView>(R.id.tv_year_review_hours)
         val countsView = content.findViewById<TextView>(R.id.tv_year_review_counts)
@@ -57,37 +67,33 @@ object YearReviewUi {
         }
 
         val dialog = builder
-            .setTitle(context.getString(R.string.year_review_title, year))
+            .setTitle(context.getString(R.string.year_review_title, selectedYear))
             .setView(content)
             .setPositiveButton(R.string.year_review_share, null)
             .setNegativeButton(android.R.string.cancel, null)
             .create()
 
-        dialog.setOnShowListener {
-            val shareBtn = dialog.getButton(AlertDialog.BUTTON_POSITIVE)
-            shareBtn.isEnabled = false
-            shareBtn.setOnClickListener {
-                val stats = loadedStats ?: return@setOnClickListener
-                ExpMotion.hapticTap(shareBtn)
-                YearReviewShare.share(context.applicationContext, stats)
-            }
+        fun showError(message: String) {
+            loading.visibility = View.GONE
+            hoursView.visibility = View.GONE
+            hoursLabel.visibility = View.GONE
+            countsView.visibility = View.GONE
+            topHeading.visibility = View.GONE
+            topView.visibility = View.GONE
+            bingeHeading.visibility = View.GONE
+            bingeView.visibility = View.GONE
+            emptyView.visibility = View.VISIBLE
+            emptyView.text = message
+            dialog.getButton(AlertDialog.BUTTON_POSITIVE)?.isEnabled = false
         }
 
-        dialog.show()
-
-        fragment.viewLifecycleOwner.lifecycleScope.launch {
-            val stats = withContext(Dispatchers.IO) {
-                YearReviewRepository.load(context.applicationContext, year)
-            }
-            if (!fragment.isAdded) return@launch
+        fun presentStats(stats: YearReviewStats) {
             loading.visibility = View.GONE
             loadedStats = stats
-
             subtitle.text = context.getString(
                 R.string.year_review_subtitle,
                 stats.profileName,
             )
-
             if (!stats.hasActivity) {
                 hoursView.visibility = View.GONE
                 hoursLabel.visibility = View.GONE
@@ -97,9 +103,18 @@ object YearReviewUi {
                 bingeHeading.visibility = View.GONE
                 bingeView.visibility = View.GONE
                 emptyView.visibility = View.VISIBLE
+                emptyView.text = context.getString(R.string.year_review_empty)
                 dialog.getButton(AlertDialog.BUTTON_POSITIVE)?.isEnabled = false
-                return@launch
+                return
             }
+            emptyView.visibility = View.GONE
+            hoursView.visibility = View.VISIBLE
+            hoursLabel.visibility = View.VISIBLE
+            countsView.visibility = View.VISIBLE
+            topHeading.visibility = View.VISIBLE
+            topView.visibility = View.VISIBLE
+            bingeHeading.visibility = View.VISIBLE
+            bingeView.visibility = View.VISIBLE
 
             hoursView.text = YearReviewCardRenderer.formatHours(stats.totalHours)
             countsView.text = context.getString(
@@ -136,8 +151,6 @@ object YearReviewUi {
             }
 
             dialog.getButton(AlertDialog.BUTTON_POSITIVE)?.isEnabled = true
-
-            // Light presence motion for the stat blocks.
             listOf(hoursView, countsView, topView, bingeView).forEachIndexed { index, view ->
                 view.animate()
                     .alpha(1f)
@@ -146,5 +159,51 @@ object YearReviewUi {
                     .start()
             }
         }
+
+        lateinit var loadStats: () -> Unit
+        loadStats = {
+            loading.visibility = View.VISIBLE
+            emptyView.visibility = View.GONE
+            dialog.getButton(AlertDialog.BUTTON_POSITIVE)?.isEnabled = false
+            val prev = selectedYear - 1
+            if (prev >= 2020) {
+                switchYear.visibility = View.VISIBLE
+                switchYear.text = context.getString(R.string.year_review_previous_year, prev)
+                switchYear.setOnClickListener {
+                    ExpMotion.hapticTap(it)
+                    selectedYear = prev
+                    dialog.setTitle(context.getString(R.string.year_review_title, selectedYear))
+                    loadStats()
+                }
+            } else {
+                switchYear.visibility = View.GONE
+                switchYear.setOnClickListener(null)
+            }
+            fragment.viewLifecycleOwner.lifecycleScope.launch {
+                val stats = withContext(Dispatchers.IO) {
+                    runCatching {
+                        YearReviewRepository.load(context.applicationContext, selectedYear)
+                    }
+                }
+                if (!fragment.isAdded) return@launch
+                stats.onSuccess { presentStats(it) }
+                    .onFailure {
+                        showError(context.getString(R.string.year_review_load_error))
+                    }
+            }
+        }
+
+        dialog.setOnShowListener {
+            val shareBtn = dialog.getButton(AlertDialog.BUTTON_POSITIVE)
+            shareBtn.isEnabled = false
+            shareBtn.setOnClickListener {
+                val stats = loadedStats ?: return@setOnClickListener
+                ExpMotion.hapticTap(shareBtn)
+                YearReviewShare.share(context.applicationContext, stats)
+            }
+            loadStats()
+        }
+
+        dialog.show()
     }
 }

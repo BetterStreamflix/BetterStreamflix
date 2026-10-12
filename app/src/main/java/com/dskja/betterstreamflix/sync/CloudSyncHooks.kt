@@ -14,9 +14,11 @@ object CloudSyncHooks {
         episodeId: String,
         text: String,
         updatedAtMillis: Long,
+        providerName: String = "",
+        showId: String = "",
     ) {
         if (CloudSyncManager.isApplyingRemote) return
-        if (ProfileManager.isKidsActive()) return
+        if (ProfileManager.isKidsActive() || ProfileManager.isGuestActive()) return
         val appContext = context.applicationContext
         val profileId = ProfileManager.activeProfileId
         val userId = CloudSyncManager.currentUserId()
@@ -30,6 +32,8 @@ object CloudSyncHooks {
             episodeId = id,
             text = text,
             clientUpdatedAtMillis = updatedAtMillis,
+            providerName = providerName,
+            showId = showId,
             profileId = profileId,
         )
         CloudSyncScheduler.enqueue(appContext, profileId, userId)
@@ -41,7 +45,7 @@ object CloudSyncHooks {
         updatedAtMillis: Long,
     ) {
         if (CloudSyncManager.isApplyingRemote) return
-        if (ProfileManager.isKidsActive()) return
+        if (ProfileManager.isKidsActive() || ProfileManager.isGuestActive()) return
         val appContext = context.applicationContext
         val profileId = ProfileManager.activeProfileId
         val userId = CloudSyncManager.currentUserId()
@@ -101,6 +105,7 @@ object CloudSyncHooks {
         state: (userId: String, now: Long) -> RemoteMediaState,
     ) {
         if (CloudSyncManager.isApplyingRemote) return
+        if (ProfileManager.isKidsActive() || ProfileManager.isGuestActive()) return
         val appContext = context.applicationContext
         val profileId = ProfileManager.activeProfileId
         val userId = CloudSyncManager.currentUserId()
