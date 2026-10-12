@@ -1114,7 +1114,8 @@ class PlayerTvFragment : Fragment(),
                     endCardCountdownCancelled = true
                     endCardCountdownJob?.cancel()
                 }
-                delay(15_000L)
+                KidsBedtime.refreshLockState()
+                delay(3_000L)
             }
         }
     }

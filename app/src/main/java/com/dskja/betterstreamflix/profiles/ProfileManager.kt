@@ -48,6 +48,7 @@ object ProfileManager {
         "SEARCH_MOOD",
         "KIDS_BEDTIME_ENABLED",
         "KIDS_BEDTIME_MINUTE_OF_DAY",
+        "KIDS_BEDTIME_WAKE_MINUTE_OF_DAY",
         "KIDS_BEDTIME_LOCKED",
         "KIDS_BEDTIME_BYPASS_UNTIL_MS",
         "LIBRARY_SCOPE",
@@ -216,25 +217,23 @@ object ProfileManager {
      */
     fun requiresParentalExitChallenge(target: UserProfile): Boolean {
         val active = activeProfile()
-        val hasHousehold = UserPreferences.parentalControlPin.isNotBlank()
         val hasProfile = active?.pinHash != null
         val switchingAway = active != null && active.id != target.id
         val bedtimeBlock = switchingAway &&
             active?.isKids == true &&
-            (
+            runCatching {
                 com.dskja.betterstreamflix.kids.KidsBedtime.isLocked() ||
                     com.dskja.betterstreamflix.kids.KidsBedtime.isActiveWindow()
-                )
-        if (bedtimeBlock) {
-            return com.dskja.betterstreamflix.kids.KidsFortressPolicy.exitChallengeRequired(
-                leavingRestricted = true,
-                hasHouseholdPin = hasHousehold,
-                hasProfilePin = hasProfile,
-            )
-        }
-        if (hasParentalCeiling(target)) return false
-        val leavingRestricted = hasParentalCeiling(active) || UserPreferences.isParentalControlActive
+            }.getOrDefault(false)
+        // Kids/ceiling targets normally skip exit — except kid→kid during bedtime.
+        if (!bedtimeBlock && hasParentalCeiling(target)) return false
+        val leavingRestricted = bedtimeBlock ||
+            hasParentalCeiling(active) ||
+            runCatching { UserPreferences.isParentalControlActive }.getOrDefault(false)
         if (!leavingRestricted) return false
+        val hasHousehold = runCatching {
+            UserPreferences.parentalControlPin.isNotBlank()
+        }.getOrDefault(false)
         return com.dskja.betterstreamflix.kids.KidsFortressPolicy.exitChallengeRequired(
             leavingRestricted = true,
             hasHouseholdPin = hasHousehold,

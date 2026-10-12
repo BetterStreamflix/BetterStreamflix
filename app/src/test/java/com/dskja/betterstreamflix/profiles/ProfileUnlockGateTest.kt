@@ -74,6 +74,17 @@ class ProfileUnlockGateTest {
         assertFalse(ProfileUnlockGate.requiresGate(profile))
     }
 
+    @Test
+    fun kidsWithoutPin_requiresGateAgainAfterIdleClear() {
+        // KF-019: kids with no profile PIN must re-challenge after idle clears unlock.
+        val kids = sample(isKids = true, pinHash = null)
+        ProfileUnlockGate.markUnlocked(kids.id)
+        assertFalse(ProfileUnlockGate.requiresGate(kids))
+        fakeElapsed += ProfileUnlockGate.IDLE_TIMEOUT_MS + 1
+        assertTrue(ProfileUnlockGate.requiresGate(kids))
+        assertTrue(kids.pinHash == null && kids.isKids)
+    }
+
     private fun sample(
         id: String = "p1",
         isKids: Boolean = false,

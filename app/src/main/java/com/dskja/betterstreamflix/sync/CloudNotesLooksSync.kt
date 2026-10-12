@@ -56,9 +56,9 @@ object CloudNotesLooksSync {
      * kids_bright does not stick on adult profiles unless already chosen.
      */
     fun clampLookForActiveProfile(look: String, kidsActive: Boolean): String {
-        val resolved = ThemeManager.resolveLook(look)
+        val resolved = ThemeManager.clampLookForKids(look, kidsActive)
         return when {
-            kidsActive -> ThemeManager.KIDS_BRIGHT
+            kidsActive -> resolved
             resolved == ThemeManager.KIDS_BRIGHT -> ThemeManager.CINEMA_INK
             else -> resolved
         }

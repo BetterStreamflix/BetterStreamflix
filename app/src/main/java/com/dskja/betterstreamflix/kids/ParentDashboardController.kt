@@ -10,12 +10,14 @@ import androidx.preference.PreferenceScreen
 import com.dskja.betterstreamflix.R
 import com.dskja.betterstreamflix.download.DownloadStorage
 import com.dskja.betterstreamflix.profiles.ProfileManager
+import com.dskja.betterstreamflix.profiles.ProfileUnlockGate
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
+import java.util.concurrent.atomic.AtomicInteger
 
 /**
- * Phone Parent Dashboard — kids fortress status + Continue/Downloads isolation.
- * Bound to PreferenceScreen `screen_parent_dashboard`.
+ * Parent Dashboard — kids fortress status + Continue/Downloads isolation.
+ * Bound to PreferenceScreen `screen_parent_dashboard` (Mobile + TV).
  */
 object ParentDashboardController {
 
@@ -25,6 +27,7 @@ object ParentDashboardController {
     private const val PREF_EMPTY = "PARENT_DASHBOARD_EMPTY"
 
     private var refreshJob: Job? = null
+    private val refreshGeneration = AtomicInteger(0)
 
     fun bind(
         fragment: Fragment,
@@ -71,9 +74,13 @@ object ParentDashboardController {
         screen: PreferenceScreen,
         findPreference: (String) -> Preference?,
     ) {
+        // Generation token: in-flight loads that finish after a newer refresh
+        // are ignored instead of cancelling mid-bind (KF-015).
+        val generation = refreshGeneration.incrementAndGet()
         refreshJob?.cancel()
         refreshJob = scope.launch {
             val snapshot = KidsFortressDashboard.load(fragment.requireContext())
+            if (generation != refreshGeneration.get()) return@launch
             if (!fragment.isAdded) return@launch
             bindSnapshot(fragment, screen, findPreference, snapshot)
         }
@@ -166,8 +173,23 @@ object ParentDashboardController {
             .setMessage(ctx.getString(R.string.parent_dashboard_switch_message, displayName))
             .setNegativeButton(android.R.string.cancel, null)
             .setPositiveButton(R.string.parent_dashboard_switch_confirm) { _, _ ->
-                // Entering Kids from an adult session does not require an exit PIN.
-                ProfileManager.switchTo(ctx, profileId, markUnlocked = true)
+                // Defer unlock so cold-start / kids-without-PIN still challenges (KF-011).
+                val switched = ProfileManager.switchTo(ctx, profileId, markUnlocked = false)
+                if (!switched) {
+                    android.widget.Toast.makeText(
+                        ctx,
+                        ctx.getString(R.string.profile_kids_exit_requires_pin),
+                        android.widget.Toast.LENGTH_LONG,
+                    ).show()
+                    return@setPositiveButton
+                }
+                val activity = fragment.activity
+                if (activity != null) {
+                    ProfileUnlockGate.maybeShow(
+                        activity = activity,
+                        hostFragmentProvider = { fragment },
+                    )
+                }
             }
             .show()
     }

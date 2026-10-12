@@ -12,23 +12,32 @@ import java.util.Locale
 /**
  * Kids Bedtime — clock time → finish the current episode, then PIN lock.
  *
- * Window runs from the configured bedtime until [WAKE_MINUTE_OF_DAY] (05:00),
- * crossing midnight. A verified parental/profile PIN sets a bypass until wake.
+ * Window runs from the configured bedtime until [wakeMinuteOfDay] (default
+ * [WAKE_MINUTE_OF_DAY] = 05:00 local via [ZoneId.systemDefault]), crossing midnight.
+ * A verified parental/profile PIN sets a bypass until wake.
+ *
+ * Wake minute is not user-configurable in Settings yet; override via
+ * [UserPreferences.kidsBedtimeWakeMinuteOfDay] when set, else [WAKE_MINUTE_OF_DAY].
  */
 object KidsBedtime {
 
     /** Default 20:00 local. */
     const val DEFAULT_MINUTE_OF_DAY: Int = 20 * 60
 
-    /** Morning release when the overnight lock window ends. */
+    /**
+     * Default morning release when the overnight lock window ends (05:00 local).
+     * Not exposed in Settings — change [UserPreferences.kidsBedtimeWakeMinuteOfDay]
+     * or this constant. Always interpret with an explicit [ZoneId] (system default
+     * at call sites).
+     */
     const val WAKE_MINUTE_OF_DAY: Int = 5 * 60
 
     const val MIN_MINUTE_OF_DAY: Int = 0
     const val MAX_MINUTE_OF_DAY: Int = 23 * 60 + 59
 
-    /** Half-hour slots offered in Settings (17:00–23:00). */
+    /** Half-hour slots for leanback Settings (full day 00:00–23:30). */
     val SETTINGS_MINUTE_OPTIONS: IntArray =
-        IntArray(13) { index -> (17 * 60) + index * 30 }
+        IntArray(48) { index -> index * 30 }
 
     fun clampMinuteOfDay(minuteOfDay: Int): Int =
         minuteOfDay.coerceIn(MIN_MINUTE_OF_DAY, MAX_MINUTE_OF_DAY)
@@ -37,6 +46,11 @@ object KidsBedtime {
         val clamped = clampMinuteOfDay(minuteOfDay)
         return String.format(locale, "%02d:%02d", clamped / 60, clamped % 60)
     }
+
+    /** Resolved wake minute; falls back to [WAKE_MINUTE_OF_DAY] when prefs unavailable. */
+    fun wakeMinuteOfDay(): Int = runCatching {
+        clampMinuteOfDay(UserPreferences.kidsBedtimeWakeMinuteOfDay)
+    }.getOrDefault(WAKE_MINUTE_OF_DAY)
 
     /**
      * True when [minuteOfDayNow] falls in the bedtime→wake window.
@@ -86,7 +100,12 @@ object KidsBedtime {
     fun applies(
         enabled: Boolean = UserPreferences.kidsBedtimeEnabled,
         isKids: Boolean = ProfileManager.isKidsActive(),
-    ): Boolean = KidsFortressPolicy.bedtimeApplies(enabled = enabled, isKids = isKids)
+        isGuest: Boolean = ProfileManager.isGuestActive(),
+    ): Boolean = KidsFortressPolicy.bedtimeApplies(
+        enabled = enabled,
+        isKids = isKids,
+        isGuest = isGuest,
+    )
 
     fun isBypassActive(
         nowMs: Long = System.currentTimeMillis(),
@@ -98,15 +117,59 @@ object KidsBedtime {
         zone: ZoneId = ZoneId.systemDefault(),
         enabled: Boolean = UserPreferences.kidsBedtimeEnabled,
         isKids: Boolean = ProfileManager.isKidsActive(),
+        isGuest: Boolean = ProfileManager.isGuestActive(),
         bedtimeMinute: Int = UserPreferences.kidsBedtimeMinuteOfDay,
+        wakeMinute: Int = WAKE_MINUTE_OF_DAY,
         bypassUntilMs: Long = UserPreferences.kidsBedtimeBypassUntilMs,
     ): Boolean {
-        if (!applies(enabled, isKids)) return false
+        if (!applies(enabled, isKids, isGuest)) return false
         if (isBypassActive(nowMs, bypassUntilMs)) return false
-        return isInWindow(minuteOfDay(nowMs, zone), bedtimeMinute)
+        return isInWindow(minuteOfDay(nowMs, zone), bedtimeMinute, wakeMinute)
     }
 
+    /**
+     * Read-only lock check — does not mutate prefs. Call [refreshLockState] from
+     * engage / onStart / player loops to clear stale lock/bypass after wake.
+     */
     fun isLocked(
+        nowMs: Long = System.currentTimeMillis(),
+        zone: ZoneId = ZoneId.systemDefault(),
+    ): Boolean {
+        if (!applies()) return false
+        if (isBypassActive(nowMs)) return false
+        if (!UserPreferences.kidsBedtimeLocked) return false
+        return isInWindow(
+            minuteOfDay(nowMs, zone),
+            UserPreferences.kidsBedtimeMinuteOfDay,
+            wakeMinuteOfDay(),
+        )
+    }
+
+    /**
+     * Pure lock evaluation for tests (no [UserPreferences] access).
+     */
+    fun isLockedState(
+        nowMs: Long,
+        zone: ZoneId,
+        enabled: Boolean,
+        isKids: Boolean,
+        isGuest: Boolean,
+        lockedFlag: Boolean,
+        bedtimeMinute: Int,
+        wakeMinute: Int = WAKE_MINUTE_OF_DAY,
+        bypassUntilMs: Long = 0L,
+    ): Boolean {
+        if (!applies(enabled, isKids, isGuest)) return false
+        if (isBypassActive(nowMs, bypassUntilMs)) return false
+        if (!lockedFlag) return false
+        return isInWindow(minuteOfDay(nowMs, zone), bedtimeMinute, wakeMinute)
+    }
+
+    /**
+     * Clears stale lock/bypass after wake or when bypass is active.
+     * Returns whether the profile is still locked after refresh.
+     */
+    fun refreshLockState(
         nowMs: Long = System.currentTimeMillis(),
         zone: ZoneId = ZoneId.systemDefault(),
     ): Boolean {
@@ -118,8 +181,12 @@ object KidsBedtime {
             return false
         }
         if (!UserPreferences.kidsBedtimeLocked) return false
-        // Auto-clear after wake.
-        if (!isInWindow(minuteOfDay(nowMs, zone), UserPreferences.kidsBedtimeMinuteOfDay)) {
+        if (!isInWindow(
+                minuteOfDay(nowMs, zone),
+                UserPreferences.kidsBedtimeMinuteOfDay,
+                wakeMinuteOfDay(),
+            )
+        ) {
             UserPreferences.kidsBedtimeLocked = false
             return false
         }
@@ -139,7 +206,8 @@ object KidsBedtime {
         zone: ZoneId = ZoneId.systemDefault(),
     ) {
         UserPreferences.kidsBedtimeLocked = false
-        UserPreferences.kidsBedtimeBypassUntilMs = nextWakeEpochMs(nowMs, zone = zone)
+        UserPreferences.kidsBedtimeBypassUntilMs =
+            nextWakeEpochMs(nowMs, wakeMinute = wakeMinuteOfDay(), zone = zone)
     }
 
     fun shouldStopAfterEpisode(nowMs: Long = System.currentTimeMillis()): Boolean =

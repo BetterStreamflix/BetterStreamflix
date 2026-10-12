@@ -107,15 +107,21 @@ object ProfileUnlockGate {
                 fragment = host,
                 onSwitched = {
                     val active = ProfileManager.activeProfile()
-                    val parentalPin = UserPreferences.parentalControlPin
-                    // Kids with no profile PIN but a household parental PIN must still
-                    // challenge before the session unlocks (shared-device cold start).
-                    val needsParentalForKids = active?.isKids == true &&
-                        active.pinHash == null &&
-                        parentalPin.isNotBlank()
+                    // Kids without a profile PIN must always challenge the household
+                    // parental PIN (or refuse unlock if none is set) — KF-002.
+                    // fortressHealthy / kidsUnlockAllowed refuse silent unlock (KF-006/007).
+                    val needsParentalForKids = active?.isKids == true && active.pinHash == null
                     if (needsParentalForKids) {
                         // Leave unlockedProfileId null until parental PIN succeeds.
-                        // Cancel keeps the gate closed; Activity.onStart will re-prompt.
+                        // Cancel / missing PIN keeps the gate closed; onStart re-prompts.
+                        // Idle clear also re-enters here for kids-without-PIN (KF-019).
+                        ProfilesSettingsController.challengeKidsUnlock(activity) {
+                            markUnlocked(ProfileManager.activeProfileId)
+                            onUnlocked?.invoke()
+                        }
+                    } else if (active?.isKids == true &&
+                        !com.dskja.betterstreamflix.kids.KidsFortress.fortressHealthy(active)
+                    ) {
                         ProfilesSettingsController.challengeKidsUnlock(activity) {
                             markUnlocked(ProfileManager.activeProfileId)
                             onUnlocked?.invoke()

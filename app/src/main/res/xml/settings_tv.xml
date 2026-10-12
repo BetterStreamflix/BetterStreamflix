@@ -364,7 +364,7 @@
         </PreferenceCategory>
     </PreferenceScreen>
 
-    <!-- SS-B10-11: Kids Fortress Parent Dashboard on TV. -->
+    <!-- Kids Fortress — Parent Dashboard (adult sessions; Mobile + TV parity KF-010 / SS-B10-11). -->
     <PreferenceScreen
         android:key="screen_parent_dashboard"
         android:title="@string/parent_dashboard_title"

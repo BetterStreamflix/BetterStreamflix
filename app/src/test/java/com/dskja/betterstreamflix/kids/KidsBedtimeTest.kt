@@ -74,17 +74,79 @@ class KidsBedtimeTest {
     }
 
     @Test
-    fun settingsMinuteOptions_coverEveningHalfHours() {
-        assertEquals(17 * 60, KidsBedtime.SETTINGS_MINUTE_OPTIONS.first())
-        assertEquals(23 * 60, KidsBedtime.SETTINGS_MINUTE_OPTIONS.last())
-        assertEquals(13, KidsBedtime.SETTINGS_MINUTE_OPTIONS.size)
+    fun settingsMinuteOptions_coverFullDayHalfHours() {
+        assertEquals(0, KidsBedtime.SETTINGS_MINUTE_OPTIONS.first())
+        assertEquals(23 * 60 + 30, KidsBedtime.SETTINGS_MINUTE_OPTIONS.last())
+        assertEquals(48, KidsBedtime.SETTINGS_MINUTE_OPTIONS.size)
     }
 
     @Test
-    fun applies_requiresKidsAndEnabled() {
-        assertFalse(KidsBedtime.applies(enabled = true, isKids = false))
-        assertFalse(KidsBedtime.applies(enabled = false, isKids = true))
-        assertTrue(KidsBedtime.applies(enabled = true, isKids = true))
+    fun applies_requiresKidsOrGuestAndEnabled() {
+        assertFalse(KidsBedtime.applies(enabled = true, isKids = false, isGuest = false))
+        assertFalse(KidsBedtime.applies(enabled = false, isKids = true, isGuest = false))
+        assertTrue(KidsBedtime.applies(enabled = true, isKids = true, isGuest = false))
+        assertTrue(KidsBedtime.applies(enabled = true, isKids = false, isGuest = true))
+    }
+
+    @Test
+    fun isLockedState_outsideWindowIsFalse() {
+        val noon = java.time.LocalDate.of(2026, 10, 11)
+            .atTime(12, 0)
+            .toInstant(ZoneOffset.UTC)
+            .toEpochMilli()
+        assertFalse(
+            KidsBedtime.isLockedState(
+                nowMs = noon,
+                zone = ZoneOffset.UTC,
+                enabled = true,
+                isKids = true,
+                isGuest = false,
+                lockedFlag = true,
+                bedtimeMinute = 20 * 60,
+                wakeMinute = 5 * 60,
+            ),
+        )
+    }
+
+    @Test
+    fun isLockedState_inWindowWithFlagIsTrue() {
+        val evening = java.time.LocalDate.of(2026, 10, 11)
+            .atTime(21, 0)
+            .toInstant(ZoneOffset.UTC)
+            .toEpochMilli()
+        assertTrue(
+            KidsBedtime.isLockedState(
+                nowMs = evening,
+                zone = ZoneOffset.UTC,
+                enabled = true,
+                isKids = true,
+                isGuest = false,
+                lockedFlag = true,
+                bedtimeMinute = 20 * 60,
+                wakeMinute = 5 * 60,
+            ),
+        )
+        assertFalse(
+            KidsBedtime.isLockedState(
+                nowMs = evening,
+                zone = ZoneOffset.UTC,
+                enabled = true,
+                isKids = true,
+                isGuest = false,
+                lockedFlag = true,
+                bedtimeMinute = 20 * 60,
+                wakeMinute = 5 * 60,
+                bypassUntilMs = evening + 60_000L,
+            ),
+        )
+    }
+
+    @Test
+    fun isInWindow_respectsCustomWake() {
+        // 22:00 → 06:00
+        assertTrue(KidsBedtime.isInWindow(23 * 60, 22 * 60, wakeMinute = 6 * 60))
+        assertFalse(KidsBedtime.isInWindow(6 * 60, 22 * 60, wakeMinute = 6 * 60))
+        assertTrue(KidsBedtime.isInWindow(5 * 60, 22 * 60, wakeMinute = 6 * 60))
     }
 
     @Test
@@ -96,7 +158,9 @@ class KidsBedtimeTest {
                 zone = ZoneOffset.UTC,
                 enabled = true,
                 isKids = true,
+                isGuest = false,
                 bedtimeMinute = KidsBedtime.minuteOfDay(now, ZoneOffset.UTC),
+                wakeMinute = KidsBedtime.WAKE_MINUTE_OF_DAY,
                 bypassUntilMs = 0L,
             ),
         )
@@ -106,7 +170,9 @@ class KidsBedtimeTest {
                 zone = ZoneOffset.UTC,
                 enabled = true,
                 isKids = true,
+                isGuest = false,
                 bedtimeMinute = KidsBedtime.minuteOfDay(now, ZoneOffset.UTC),
+                wakeMinute = KidsBedtime.WAKE_MINUTE_OF_DAY,
                 bypassUntilMs = now + 60_000L,
             ),
         )
