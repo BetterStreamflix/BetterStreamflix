@@ -1364,36 +1364,31 @@ class SettingsTvFragment : LeanbackPreferenceFragmentCompat() {
         }
 
         findPreference<ListPreference>("SELECTED_THEME")?.apply {
-            // Migrate legacy theme ids on Settings open (LOOK-04/05).
+            // Looks Locked: migrate legacy theme ids on Settings open (LOOK-04/05).
             // Kids cannot pick adult Cinema-Ink shells (KF-008).
-            val locked = ThemeManager.resolveLook(UserPreferences.selectedTheme)
             val kids = com.dskja.betterstreamflix.profiles.ProfileManager.isKidsActive()
-            val clamped = if (kids) {
-                ThemeManager.KIDS_BRIGHT
-            } else {
-                locked
-            }
-            if (UserPreferences.selectedTheme != clamped) {
-                UserPreferences.selectedTheme = clamped
+            val locked = ThemeManager.clampLookForKids(
+                ThemeManager.resolveLook(UserPreferences.selectedTheme),
+                kids,
+            )
+            if (UserPreferences.selectedTheme != locked) {
+                UserPreferences.selectedTheme = locked
             }
             UserPreferences.oledMode = false
             if (kids) {
                 entries = arrayOf(getString(R.string.theme_kids_bright))
                 entryValues = arrayOf(ThemeManager.KIDS_BRIGHT)
             }
-            value = clamped
+            value = locked
             summaryProvider = Preference.SummaryProvider<ListPreference> { pref ->
                 getString(ThemeManager.titleRes(pref.value ?: ThemeManager.CINEMA_INK))
             }
 
             setOnPreferenceChangeListener { _, newValue ->
-                val kidsActive =
-                    com.dskja.betterstreamflix.profiles.ProfileManager.isKidsActive()
-                val newTheme = if (kidsActive) {
-                    ThemeManager.KIDS_BRIGHT
-                } else {
-                    ThemeManager.resolveLook(newValue as String)
-                }
+                val newTheme = ThemeManager.clampLookForKids(
+                    ThemeManager.resolveLook(newValue as String),
+                    com.dskja.betterstreamflix.profiles.ProfileManager.isKidsActive(),
+                )
                 UserPreferences.oledMode = false
                 UserPreferences.selectedTheme = newTheme
                 restartMainTvWithoutAnimation(openSettingsScreen = "screen_appearance")
@@ -2715,6 +2710,10 @@ class SettingsTvFragment : LeanbackPreferenceFragmentCompat() {
         bindCinemaAmbientEnergyHonesty()
         SubtitleStudioSettingsController.refresh(this)
         PlatformSettingsController.refresh(this) { key -> findPreference(key) }
+        com.dskja.betterstreamflix.kids.ParentDashboardController.refreshOnResume(
+            fragment = this,
+            findPreference = { key -> findPreference(key) },
+        )
         ProfilesSettingsController.refresh(
             findPreference = { key -> findPreference(key) },
             context = requireContext(),

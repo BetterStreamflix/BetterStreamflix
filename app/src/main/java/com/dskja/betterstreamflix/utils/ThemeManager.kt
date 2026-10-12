@@ -36,6 +36,12 @@ object ThemeManager {
     fun defaultThemeForKids(isKids: Boolean): String =
         if (isKids) KIDS_BRIGHT else CINEMA_INK
 
+    /** Kids sessions may only use Cinema-Ink Kids — never adult Cinema-Ink shells. */
+    fun clampLookForKids(look: String, isKids: Boolean): String {
+        val resolved = resolveLook(look)
+        return if (isKids) KIDS_BRIGHT else resolved
+    }
+
     /**
      * Collapse any stored theme (including retired palettes / OLED) onto one locked look.
      */

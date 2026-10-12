@@ -818,30 +818,39 @@ object WatchPartyUi {
                 displayMode = payload.displayMode,
             )
             val args = playerArgs(videoType, payload)
-            val navHost =
-                activity.supportFragmentManager.findFragmentById(R.id.nav_main_fragment) as? NavHostFragment
-            val nav = navHost?.navController
-            if (nav == null) {
-                ExpDialogChrome.notify(activity, R.string.watch_party_join_failed_nav)
-                WatchPartySession.clear()
+            fun navigateToPlayer() {
+                val navHost =
+                    activity.supportFragmentManager.findFragmentById(R.id.nav_main_fragment) as? NavHostFragment
+                val nav = navHost?.navController
+                if (nav == null) {
+                    ExpDialogChrome.notify(activity, R.string.watch_party_join_failed_nav)
+                    WatchPartySession.clear()
+                    return
+                }
+                val navigated = runCatching {
+                    when {
+                        nav.currentDestination?.getAction(R.id.action_playerMobileFragment_self) != null ->
+                            nav.navigate(R.id.action_playerMobileFragment_self, args)
+                        nav.currentDestination?.getAction(R.id.action_playerTvFragment_self) != null ->
+                            nav.navigate(R.id.action_playerTvFragment_self, args)
+                        else ->
+                            nav.navigate(R.id.action_global_player, args)
+                    }
+                }.isSuccess || runCatching {
+                    nav.navigate(R.id.player, args)
+                }.isSuccess
+                if (!navigated) {
+                    ExpDialogChrome.notify(activity, R.string.watch_party_join_failed_nav)
+                    WatchPartySession.clear()
+                }
+            }
+            if (com.dskja.betterstreamflix.kids.KidsBedtime.shouldBlockEnteringPlayer()) {
+                com.dskja.betterstreamflix.kids.KidsBedtimeUi.blockPlayerEntry(activity) {
+                    navigateToPlayer()
+                }
                 return@launch
             }
-            val navigated = runCatching {
-                when {
-                    nav.currentDestination?.getAction(R.id.action_playerMobileFragment_self) != null ->
-                        nav.navigate(R.id.action_playerMobileFragment_self, args)
-                    nav.currentDestination?.getAction(R.id.action_playerTvFragment_self) != null ->
-                        nav.navigate(R.id.action_playerTvFragment_self, args)
-                    else ->
-                        nav.navigate(R.id.action_global_player, args)
-                }
-            }.isSuccess || runCatching {
-                nav.navigate(R.id.player, args)
-            }.isSuccess
-            if (!navigated) {
-                ExpDialogChrome.notify(activity, R.string.watch_party_join_failed_nav)
-                WatchPartySession.clear()
-            }
+            navigateToPlayer()
         }
     }
 

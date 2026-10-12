@@ -4,17 +4,22 @@ import android.content.Context
 import android.net.Uri
 import android.os.Bundle
 import android.util.Log
+import android.widget.Toast
 import androidx.fragment.app.FragmentActivity
 import androidx.navigation.NavController
 import androidx.navigation.fragment.NavHostFragment
 import com.dskja.betterstreamflix.R
 import com.dskja.betterstreamflix.database.AppDatabase
+import com.dskja.betterstreamflix.kids.KidsBedtime
+import com.dskja.betterstreamflix.kids.KidsBedtimeUi
 import com.dskja.betterstreamflix.models.Episode
+import com.dskja.betterstreamflix.models.Movie
 import com.dskja.betterstreamflix.models.Season
 import com.dskja.betterstreamflix.models.TvShow
 import com.dskja.betterstreamflix.models.Video
 import com.dskja.betterstreamflix.providers.Provider
 import com.dskja.betterstreamflix.ui.FeaturedProviderSwitch
+import com.dskja.betterstreamflix.utils.ParentalControlUtils
 import com.dskja.betterstreamflix.utils.UserDataCache
 import com.dskja.betterstreamflix.utils.UserPreferences
 import com.dskja.betterstreamflix.utils.format
@@ -100,6 +105,7 @@ object TvWatchDeepLinkRouter {
             }
             return
         }
+        if (!guardPlaybackAllowed(context, movie = movie, tvShow = null)) return
         navigatePlayer(
             navController,
             id = movie.id,
@@ -129,6 +135,7 @@ object TvWatchDeepLinkRouter {
             return
         }
         val show = episode.tvShow
+        if (!guardPlaybackAllowed(context, movie = null, tvShow = show)) return
         val season = episode.season
         val subtitle = season?.takeIf { it.number != 0 }?.let {
             context.getString(
@@ -240,5 +247,52 @@ object TvWatchDeepLinkRouter {
                 Log.w(TAG, "navigate player failed: ${it.message}")
             }
         }
+    }
+
+    /**
+     * Age + bedtime pre-check before deep-link player open (KF-003).
+     * Fail closed when kids filtering is active and metadata is missing.
+     */
+    private suspend fun guardPlaybackAllowed(
+        context: Context,
+        movie: Movie?,
+        tvShow: TvShow?,
+    ): Boolean {
+        if (KidsBedtime.shouldBlockEnteringPlayer()) {
+            withContext(Dispatchers.Main) {
+                val activity = context as? FragmentActivity
+                if (activity != null) {
+                    KidsBedtimeUi.blockPlayerEntry(activity)
+                } else {
+                    Toast.makeText(
+                        context,
+                        R.string.kids_bedtime_new_playback_blocked,
+                        Toast.LENGTH_LONG,
+                    ).show()
+                }
+            }
+            return false
+        }
+        if (!ParentalControlUtils.isFilteringActive()) return true
+        val allowed = withContext(Dispatchers.IO) {
+            when {
+                movie != null -> ParentalControlUtils.isAllowed(movie)
+                tvShow != null -> ParentalControlUtils.isAllowed(tvShow)
+                // Orphan episode under kids / parental filter — fail closed.
+                else -> false
+            }
+        }
+        if (!allowed) {
+            withContext(Dispatchers.Main) {
+                Toast.makeText(
+                    context,
+                    R.string.parental_content_blocked,
+                    Toast.LENGTH_SHORT,
+                ).show()
+            }
+            Log.w(TAG, "Watch deep link blocked by age / kids filter")
+            return false
+        }
+        return true
     }
 }
