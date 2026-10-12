@@ -300,6 +300,13 @@ object DownloadOptionsController {
                             outcome.started,
                             outcome.total,
                         )
+                    outcome.skippedPrepareFailures > 0 ->
+                        activity.getString(
+                            R.string.download_season_partial_prepare_failures,
+                            outcome.started,
+                            outcome.total,
+                            outcome.skippedPrepareFailures,
+                        )
                     outcome.skippedQuota > 0 ->
                         activity.getString(
                             R.string.download_season_partial_quota,
@@ -319,7 +326,9 @@ object DownloadOptionsController {
                         )
                 }
                 notifyUser(activity, message)
-                onNavigateDownloads()
+                if (outcome.newlyQueued > 0 || outcome.started > 0) {
+                    onNavigateDownloads()
+                }
             }
             is DownloadEnqueueOutcome.AlreadyActive -> {
                 notifyUser(activity, activity.getString(R.string.downloads_already_active))
@@ -616,6 +625,7 @@ object DownloadOptionsController {
             DownloadErrorCode.NOSPACE,
             DownloadErrorCode.LOW_STORAGE,
             -> R.string.download_error_nospace
+            DownloadErrorCode.SOFT_LIMIT -> R.string.download_error_soft_limit
             // Prefer Failed.message (includes quota size) via fallback below.
             DownloadErrorCode.SERIES_QUOTA -> null
             DownloadErrorCode.WIFI_REQUIRED -> R.string.download_error_wifi

@@ -94,4 +94,46 @@ class DownloadPackLinksTest {
         assertTrue(encoded.length <= DownloadPackLinks.MAX_ENCODED_CHARS)
         assertEquals(12, DownloadPackLinks.decode(encoded)!!.episodeCount())
     }
+
+    @Test
+    fun encodeRejectsOversizedIdFields() {
+        val tooLong = "x".repeat(DownloadPackPayload.MAX_ID_CHARS + 1)
+        runCatching {
+            DownloadPackLinks.encode(
+                DownloadPackPayload(
+                    providerName = tooLong,
+                    tvShowId = "show",
+                    tvShowTitle = "T",
+                    seasonNumber = 1,
+                    episodes = listOf(DownloadPackPayload.EpisodeRef(id = "ep-1", number = 1)),
+                ),
+            )
+        }.fold(
+            onSuccess = { throw AssertionError("expected failure") },
+            onFailure = { assertTrue(it is IllegalArgumentException) },
+        )
+    }
+
+    @Test
+    fun decodeRejectsExpiredV2Pack() {
+        val payload = samplePayload(1).copy(
+            version = DownloadPackPayload.VERSION,
+            expiresAtEpochMs = System.currentTimeMillis() - 1_000L,
+        )
+        val encoded = DownloadPackLinks.encode(payload)
+        assertNull(DownloadPackLinks.decode(encoded))
+    }
+
+    @Test
+    fun encodeIncludesExpiresAtRoundTrip() {
+        val payload = samplePayload(2).copy(
+            expiresAtEpochMs = System.currentTimeMillis() + DownloadPackPayload.SHARE_TTL_MS,
+        )
+        val encoded = DownloadPackLinks.encode(payload)
+        val parsed = DownloadPackLinks.decode(encoded)
+        assertNotNull(parsed)
+        assertEquals(DownloadPackPayload.VERSION, parsed!!.version)
+        assertTrue(parsed.expiresAtEpochMs > 0L)
+        assertEquals(payload.tvShowId, parsed.tvShowId)
+    }
 }

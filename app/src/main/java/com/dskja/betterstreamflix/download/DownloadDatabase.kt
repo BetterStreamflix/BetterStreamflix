@@ -13,7 +13,7 @@ import com.dskja.betterstreamflix.profiles.ProfileManager
         DownloadItemEntity::class,
         DownloadSeasonPackEntity::class,
     ],
-    version = 4,
+    version = 5,
     exportSchema = false,
 )
 abstract class DownloadDatabase : RoomDatabase() {
@@ -71,6 +71,15 @@ abstract class DownloadDatabase : RoomDatabase() {
             }
         }
 
+        /** 4→5 stamps season packs with profileId (per-profile DB already isolates rows). */
+        val MIGRATION_4_5 = object : Migration(4, 5) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    "ALTER TABLE download_season_packs ADD COLUMN profileId TEXT NOT NULL DEFAULT ''",
+                )
+            }
+        }
+
         fun databaseNameFor(profileId: String = ProfileManager.activeProfileId): String {
             return if (profileId == ProfileManager.DEFAULT_PROFILE_ID) {
                 "downloads.db"
@@ -88,7 +97,7 @@ abstract class DownloadDatabase : RoomDatabase() {
                         context.applicationContext,
                         DownloadDatabase::class.java,
                         databaseNameFor(profileId),
-                    ).addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
+                    ).addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)
                         .build()
                         .also {
                             instance = it

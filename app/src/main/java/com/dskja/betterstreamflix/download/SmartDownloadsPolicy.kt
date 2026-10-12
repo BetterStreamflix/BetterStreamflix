@@ -16,9 +16,14 @@ object SmartDownloadsPolicy {
 
     fun clampSeriesQuota(value: Int): Int = value.coerceIn(MIN_SERIES_QUOTA, MAX_SERIES_QUOTA)
 
-    /** True when the row still occupies a Smart Downloads series slot. */
+    /**
+     * True when the row still occupies a Smart Downloads series slot.
+     * Only Smart-enqueued rows count — manual / season QUEUE downloads do not
+     * consume Smart quota (OS-005).
+     */
     fun countsTowardSeriesQuota(item: DownloadItemEntity): Boolean {
         if (item.kind != DownloadKind.EPISODE.name) return false
+        if (!item.smartEnqueued) return false
         return when (DownloadItemState.fromKey(item.state)) {
             DownloadItemState.QUEUED,
             DownloadItemState.PREPARING,
@@ -50,14 +55,22 @@ object SmartDownloadsPolicy {
     }
 
     /**
-     * Explicit one-tap season enqueue: fill remaining series-quota slots only
-     * (no lookahead cap — user asked for the whole season).
+     * Explicit one-tap season enqueue: user asked for the whole season.
+     * Not capped by Smart series quota — only by storage / network elsewhere.
+     * [quota] retained for API compatibility; ignored for budget size.
      */
     fun seasonEnqueueBudget(
         missingInSeason: Int,
         occupancy: Int,
         quota: Int,
-    ): Int = missingInSeason.coerceAtLeast(0).coerceAtMost(slotsRemaining(occupancy, quota))
+    ): Int {
+        // Explicit season is a user QUEUE action — do not apply Smart quota.
+        @Suppress("UNUSED_PARAMETER")
+        val ignoredOccupancy = occupancy
+        @Suppress("UNUSED_PARAMETER")
+        val ignoredQuota = quota
+        return missingInSeason.coerceAtLeast(0)
+    }
 
     fun seriesKeyOf(item: DownloadItemEntity): String? =
         DownloadSeriesFolders.seriesRef(item)?.key

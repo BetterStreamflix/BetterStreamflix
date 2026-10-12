@@ -825,7 +825,8 @@ class MainTvActivity : FragmentActivity() {
                 frag.view?.findViewById<View>(R.id.rv_favorites)?.requestFocus() == true
             }
             is com.dskja.betterstreamflix.fragments.downloads.DownloadsTvFragment -> {
-                frag.view?.findViewById<View>(R.id.rv_downloads)?.requestFocus() == true ||
+                frag.restoreCleanExitFocus() ||
+                    frag.view?.findViewById<View>(R.id.rv_downloads)?.requestFocus() == true ||
                     frag.view?.requestFocus() == true
             }
             else -> frag.view?.requestFocus() == true

@@ -43,6 +43,8 @@ enum class DownloadErrorCode {
     CLOUDFLARE,
     NETWORK,
     NOSPACE,
+    /** Soft storage limit reached (distinct from true disk-full NOSPACE). */
+    SOFT_LIMIT,
     WIFI_REQUIRED,
     /** Soft hold while free space / soft-limit is exhausted. */
     LOW_STORAGE,

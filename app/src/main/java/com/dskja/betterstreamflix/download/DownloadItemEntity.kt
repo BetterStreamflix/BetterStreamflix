@@ -71,4 +71,6 @@ data class DownloadSeasonPackEntity(
     val state: String = DownloadItemState.QUEUED.name,
     val createdAt: Long = System.currentTimeMillis(),
     val updatedAt: Long = System.currentTimeMillis(),
+    /** Profile stamp for clarity; per-profile DB files already isolate packs (OS-002). */
+    val profileId: String = "",
 )

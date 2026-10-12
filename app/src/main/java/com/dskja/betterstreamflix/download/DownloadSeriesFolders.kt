@@ -4,6 +4,8 @@ import android.content.Context
 import com.dskja.betterstreamflix.R
 import org.json.JSONObject
 import java.io.File
+import java.text.NumberFormat
+import java.util.Locale
 
 /**
  * Per-series folders under the downloads root for episode sidecars / progressive
@@ -99,27 +101,58 @@ object DownloadSeriesFolders {
         return when {
             hours > 0 && minutes > 0 ->
                 context?.getString(R.string.downloads_eta_hours_minutes, hours, minutes)
-                    ?: "${hours}h ${minutes}m"
+                    ?: localeEta(hours, "h", minutes, "m")
             hours > 0 ->
-                context?.getString(R.string.downloads_eta_hours, hours) ?: "${hours}h"
+                context?.getString(R.string.downloads_eta_hours, hours) ?: localeEta(hours, "h")
             minutes > 0 && seconds > 0 ->
                 context?.getString(R.string.downloads_eta_minutes_seconds, minutes, seconds)
-                    ?: "${minutes}m ${seconds}s"
+                    ?: localeEta(minutes, "m", seconds, "s")
             minutes > 0 ->
-                context?.getString(R.string.downloads_eta_minutes, minutes) ?: "${minutes}m"
+                context?.getString(R.string.downloads_eta_minutes, minutes) ?: localeEta(minutes, "m")
             else ->
-                context?.getString(R.string.downloads_eta_seconds, seconds) ?: "${seconds}s"
+                context?.getString(R.string.downloads_eta_seconds, seconds) ?: localeEta(seconds, "s")
+        }
+    }
+
+    /** Locale-aware numeric fallback when [formatEta] has no [Context] (OS-040). */
+    private fun localeEta(a: Int, aUnit: String, b: Int? = null, bUnit: String? = null): String {
+        val nf = NumberFormat.getIntegerInstance(Locale.getDefault())
+        return if (b != null && bUnit != null) {
+            "${nf.format(a)}$aUnit ${nf.format(b)}$bUnit"
+        } else {
+            "${nf.format(a)}$aUnit"
         }
     }
 
     /**
      * Failed rows that need a full re-download (cache/file gone), not a simple network retry.
      * Includes [DownloadErrorCode.STORAGE_RELOCATED] and [DownloadErrorCode.FILE_MISSING].
+     * Profile-agnostic / no-Context path — does not probe COMPLETED playability.
      */
     fun needsRedownload(item: DownloadItemEntity): Boolean {
         if (item.state != DownloadItemState.FAILED.name) return false
         return item.errorCode == DownloadErrorCode.STORAGE_RELOCATED.name ||
             item.errorCode == DownloadErrorCode.FILE_MISSING.name
+    }
+
+    /**
+     * Health probe: FAILED+FILE_MISSING/STORAGE_RELOCATED when unplayable, plus COMPLETED
+     * rows that fail [OfflinePlayback.canPlayOffline] so Care fills before FAILED reconcile (OS-019).
+     */
+    fun needsRedownload(context: android.content.Context, item: DownloadItemEntity): Boolean {
+        if (needsRedownload(item)) {
+            val playable = runCatching {
+                OfflinePlayback.canPlayOffline(context, item)
+            }.getOrDefault(false)
+            return !playable
+        }
+        if (item.state == DownloadItemState.COMPLETED.name) {
+            val playable = runCatching {
+                OfflinePlayback.canPlayOffline(context, item)
+            }.getOrDefault(false)
+            return !playable
+        }
+        return false
     }
 
     private fun ensureDir(dir: File): File? {
