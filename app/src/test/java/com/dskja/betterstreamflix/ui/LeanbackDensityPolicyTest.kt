@@ -130,6 +130,49 @@ class LeanbackDensityPolicyTest {
     }
 
     @Test
+    fun overlayChrome_tighterInCompact() {
+        val compact = LeanbackDensityPolicy.Mode.COMPACT
+        val comfort = LeanbackDensityPolicy.Mode.COMFORT
+        assertEquals(12, LeanbackDensityPolicy.overlayChromePadDp(compact))
+        assertEquals(16, LeanbackDensityPolicy.overlayChromePadDp(comfort))
+        assertTrue(
+            LeanbackDensityPolicy.overlayChromePadDp(comfort) >
+                LeanbackDensityPolicy.overlayChromePadDp(compact),
+        )
+        assertEquals(
+            LeanbackDensityPolicy.itemSpacingDp(compact),
+            LeanbackDensityPolicy.overlayStackGapDp(compact),
+        )
+        assertEquals(
+            LeanbackDensityPolicy.itemSpacingDp(comfort),
+            LeanbackDensityPolicy.overlayStackGapDp(comfort),
+        )
+        assertTrue(
+            LeanbackDensityPolicy.overlayStackGapDp(comfort) >
+                LeanbackDensityPolicy.overlayStackGapDp(compact),
+        )
+    }
+
+    @Test
+    fun liveShelf_denserInCompact() {
+        val compact = LeanbackDensityPolicy.Mode.COMPACT
+        val comfort = LeanbackDensityPolicy.Mode.COMFORT
+        assertEquals(150, LeanbackDensityPolicy.liveShelfPosterHeightDp(compact))
+        assertEquals(
+            LeanbackDensityPolicy.shelfPosterHeightDp(comfort),
+            LeanbackDensityPolicy.liveShelfPosterHeightDp(comfort),
+        )
+        assertTrue(
+            LeanbackDensityPolicy.liveShelfPosterHeightDp(compact) <
+                LeanbackDensityPolicy.shelfPosterHeightDp(compact),
+        )
+        assertTrue(
+            LeanbackDensityPolicy.liveShelfPosterHeightDp(comfort) >
+                LeanbackDensityPolicy.liveShelfPosterHeightDp(compact),
+        )
+    }
+
+    @Test
     fun focusZoom_smallerInCompact() {
         assertTrue(
             LeanbackDensityPolicy.focusZoomScale(LeanbackDensityPolicy.Mode.COMFORT) >

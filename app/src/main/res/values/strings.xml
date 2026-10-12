@@ -1585,7 +1585,7 @@
     <string name="cloud_sync_account_status">Account status</string>
     <string name="cloud_sync_signed_out">Not signed in</string>
     <string name="cloud_sync_signed_in_as">Signed in as %1$s</string>
-    <string name="cloud_sync_signed_in_notes_looks">Signed in as %1$s · Notes &amp; Looks sync on (Leanback density is per profile / transfer, not Cloud Looks)</string>
+    <string name="cloud_sync_signed_in_notes_looks">Signed in as %1$s · Notes, Looks &amp; Leanback density sync on</string>
     <string name="cloud_sync_sign_in">Sign in</string>
     <string name="cloud_sync_sign_in_summary">Use an existing email and password</string>
     <string name="cloud_sync_sign_up">Create account</string>
@@ -1623,6 +1623,8 @@
     <string name="device_link_offline">Connect to the internet for Link-Code</string>
     <string name="device_link_invalid_code">Enter a valid 6-character code</string>
     <string name="device_link_error">Link-Code failed: %1$s</string>
+    <string name="device_link_pad_backspace">Backspace</string>
+    <string name="device_link_pad_clear">Clear</string>
     <string name="profile_unlock_subtitle">Enter a PIN or pick who\'s watching to continue.</string>
     <string name="cloud_sync_progress_title">Account &amp; sync</string>
     <string name="cloud_sync_progress_connecting">Connecting…</string>
@@ -1892,7 +1894,7 @@
     <string name="settings_screen_appearance_summary">Theme, accessibility, immersive mode and screen layout adjustments</string>
     <string name="settings_theme_title">App Theme</string>
     <string name="settings_leanback_density_title">Leanback density</string>
-    <string name="settings_leanback_density_summary">Per profile. Compact shows more tiles; Comfort uses larger posters. Restarts the TV screen back to Appearance. With Large text, Compact uses fewer columns.</string>
+    <string name="settings_leanback_density_summary">Per profile. Compact shows more tiles; Comfort uses larger posters. Reloads TV UI back to Appearance. With Large text, Compact uses fewer columns.</string>
     <string name="settings_leanback_density_comfort">Comfort — larger posters</string>
     <string name="settings_leanback_density_compact">Compact — more tiles</string>
     <string name="settings_stick_energy_mode_title">Stick energy mode</string>

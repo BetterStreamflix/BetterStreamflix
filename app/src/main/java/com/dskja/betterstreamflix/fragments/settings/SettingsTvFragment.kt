@@ -202,7 +202,8 @@ class SettingsTvFragment : LeanbackPreferenceFragmentCompat() {
         currentScreenState = SettingsScreenState(rootKey = rootKey, title = null)
         renderCurrentScreen()
 
-        db = AppDatabase.getInstanceOrNull(requireContext())
+        // SS-B10-08: softOpen alias for UI mid provider-clear / TV restore.
+        db = AppDatabase.softOpen(requireContext())
         movieDao = db?.movieDao()
         tvShowDao = db?.tvShowDao()
         episodeDao = db?.episodeDao()
@@ -1414,7 +1415,20 @@ class SettingsTvFragment : LeanbackPreferenceFragmentCompat() {
             }
             setOnPreferenceChangeListener { _, newValue ->
                 UserPreferences.leanbackDensity = newValue as String
-                restartMainTvWithoutAnimation(openSettingsScreen = "screen_appearance")
+                // LD-023: prefer Activity.recreate() so Compact theme overlay rematerializes
+                // without CLEAR_TOP; keep SettingsDeepLink so Appearance reopens.
+                SettingsDeepLink.pendingScreenKey = "screen_appearance"
+                val activity = requireActivity()
+                val preferClearTop =
+                    com.dskja.betterstreamflix.utils.DeviceCapabilities.isLegacyFireOs(activity)
+                if (preferClearTop) {
+                    restartMainTvWithoutAnimation(openSettingsScreen = "screen_appearance")
+                } else {
+                    val recreated = runCatching { activity.recreate() }.isSuccess
+                    if (!recreated) {
+                        restartMainTvWithoutAnimation(openSettingsScreen = "screen_appearance")
+                    }
+                }
                 true
             }
         }

@@ -66,16 +66,20 @@ class MainTvActivity : FragmentActivity() {
     }
 
     override fun attachBaseContext(newBase: android.content.Context) {
-        super.attachBaseContext(AccessibilityPreferences.wrapAfterLanguage(newBase))
+        // LD-034: density hook — language + fontScale only. Compact Leanback is not
+        // applied via densityDpi (LD-027 superseded by LeanbackDensityPolicy + theme overlay).
+        val withLanguageAndText = AccessibilityPreferences.wrapAfterLanguage(newBase)
+        super.attachBaseContext(AccessibilityPreferences.wrapLeanbackDensity(withLanguageAndText))
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         // Il setup delle preferenze è già avvenuto in BetterStreamflixApp
         setTheme(ThemeManager.tvThemeRes(UserPreferences.selectedTheme))
-        // LD-010: Compact density wires theme stroke width before HC (HC wins if both).
-        if (com.dskja.betterstreamflix.ui.LeanbackDensityPolicy.mode() ==
-            com.dskja.betterstreamflix.ui.LeanbackDensityPolicy.Mode.COMPACT
-        ) {
+        // LD-027 / LD-034: resolve Compact/Comfort early and always apply Compact overlay
+        // when Compact (stroke + documented dimen contract). Shelf/Ambient heights stay
+        // runtime via LeanbackDensityPolicy — layout @dimen refs are not theme-item remappable.
+        val leanbackDensity = com.dskja.betterstreamflix.ui.LeanbackDensityPolicy.mode()
+        if (leanbackDensity == com.dskja.betterstreamflix.ui.LeanbackDensityPolicy.Mode.COMPACT) {
             theme.applyStyle(R.style.AppTheme_Tv_LeanbackCompactOverlay, true)
         }
         AccessibilityPreferences.applyHighContrastOverlay(this, mobile = false)

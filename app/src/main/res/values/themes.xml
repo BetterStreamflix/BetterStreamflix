@@ -757,7 +757,13 @@
         <item name="tvFocusStrokeWidth">@dimen/tv_focus_stroke_width_hc</item>
     </style>
 
-    <!-- LD-010: Compact Leanback — thinner focus stroke via theme attr (HC overlay wins after). -->
+    <!--
+      LD-010 / LD-027 / LD-034: Compact Leanback theme overlay.
+      Remaps focus stroke via theme attr (HC overlay wins after).
+      tv_shelf_poster_height / tv_ambient_continue_strip_height stay Comfort XML defaults;
+      Compact heights apply at bind via LeanbackDensityPolicy (layout @dimen cannot be
+      theme-item overridden without attr migration).
+    -->
     <style name="AppTheme.Tv.LeanbackCompactOverlay">
         <item name="tvFocusStrokeWidth">@dimen/tv_focus_stroke_width_compact</item>
     </style>

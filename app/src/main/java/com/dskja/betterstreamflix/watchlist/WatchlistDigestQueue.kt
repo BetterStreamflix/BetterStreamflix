@@ -142,7 +142,11 @@ object WatchlistDigestQueue {
         val currentName = UserPreferences.currentProvider?.name
         val currentDb = AppDatabase.getInstanceOrNull(context)
         val ownsDb = provider.name != currentName || currentDb == null
-        val db = if (!ownsDb) currentDb!! else AppDatabase.getInstanceForProvider(provider.name, context)
+        val db = if (!ownsDb) {
+            currentDb!!
+        } else {
+            AppDatabase.getInstanceForProviderOrNull(provider.name, context) ?: return false
+        }
         try {
             if (!db.isOpen) return false
             val episodeDao = db.episodeDao()

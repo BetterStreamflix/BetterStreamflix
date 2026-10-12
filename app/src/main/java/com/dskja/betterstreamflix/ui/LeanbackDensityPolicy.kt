@@ -14,8 +14,10 @@ import com.dskja.betterstreamflix.utils.UserPreferences
  * common item spacings are owned here so Movies / TV / Genre / People / Search /
  * Favorites / Downloads, Home shelves, Live pins, and Ambient stay in sync.
  *
- * Watch Together / Sidekick / Cast Room overlays are out of scope (no poster grids);
- * post-party focus lands on density-correct shelves after rematerialize.
+ * Watch Together / Sidekick / Cast Room overlays have no poster grids; they use the
+ * chrome density contract ([overlayChromePadDp] / [overlayStackGapDp]) so dialog and
+ * sheet padding tracks Compact vs Comfort. Post-party focus lands on density-correct
+ * shelves after rematerialize.
  *
  * Per-surface column ladders intentionally differ (catalog +2, genre/downloads +2,
  * favorites tile-width math) — Compact always adds capacity relative to Comfort.
@@ -83,11 +85,42 @@ object LeanbackDensityPolicy {
         Mode.COMFORT -> 240
     }
 
+    /**
+     * Live Hub horizontal shelf poster height (LD-026).
+     * Compact is denser than catalog shelves so more channels fit; Comfort matches
+     * [shelfPosterHeightDp].
+     */
+    fun liveShelfPosterHeightDp(mode: Mode = mode()): Int = when (mode) {
+        Mode.COMPACT -> 150
+        Mode.COMFORT -> shelfPosterHeightDp(mode)
+    }
+
     /** Title + progress budget under Ambient Continue posters. */
     fun ambientContinueMetaBudgetDp(mode: Mode = mode()): Int = when (mode) {
         Mode.COMPACT -> 56
         Mode.COMFORT -> 64
     }
+
+    /**
+     * Title/meta budget under standard Home shelf posters (FA-028).
+     * Matches Ambient Continue meta so row caps stay consistent.
+     */
+    fun shelfTitleMetaBudgetDp(mode: Mode = mode()): Int = ambientContinueMetaBudgetDp(mode)
+
+    /**
+     * Overlay dialog / sheet outer chrome pad (LD-018 / SS-B10-12).
+     * Compact 12dp / Comfort 16dp — Watch Together, Cast Room, Sidekick, Device Link.
+     */
+    fun overlayChromePadDp(mode: Mode = mode()): Int = when (mode) {
+        Mode.COMPACT -> 12
+        Mode.COMFORT -> 16
+    }
+
+    /**
+     * Overlay vertical stack / reaction-row gap (LD-018).
+     * Same ladder as [itemSpacingDp] (Compact 8 / Comfort 12).
+     */
+    fun overlayStackGapDp(mode: Mode = mode()): Int = itemSpacingDp(mode)
 
     /** Ambient Continue HGV height: shelf poster + meta/title budget. */
     fun ambientContinueStripHeightDp(mode: Mode = mode()): Int =
@@ -243,8 +276,19 @@ object LeanbackDensityPolicy {
      * Apply [shelfPosterHeightDp] (+ matching 2:3 width) to a TV shelf poster view.
      */
     fun applyShelfPosterHeight(poster: View, mode: Mode = mode()) {
+        applyPosterHeightDp(poster, shelfPosterHeightDp(mode))
+    }
+
+    /**
+     * Apply [liveShelfPosterHeightDp] (+ matching 2:3 width) for Live Hub shelves (LD-026).
+     */
+    fun applyLiveShelfPosterHeight(poster: View, mode: Mode = mode()) {
+        applyPosterHeightDp(poster, liveShelfPosterHeightDp(mode))
+    }
+
+    private fun applyPosterHeightDp(poster: View, heightDp: Int) {
         val density = poster.resources.displayMetrics.density
-        val hPx = (shelfPosterHeightDp(mode) * density).toInt()
+        val hPx = (heightDp * density).toInt()
         val wPx = (hPx * 2 / 3f).toInt()
         val lp = poster.layoutParams ?: return
         val widthFixed = lp.width != ViewGroup.LayoutParams.MATCH_PARENT &&
@@ -276,16 +320,18 @@ object LeanbackDensityPolicy {
      * Glide override for shelf posters; width follows 2:3.
      * Floor is relative to mode height so density=1.0 still differs Compact vs Comfort.
      */
-    fun shelfPosterOverridePx(density: Float, mode: Mode = mode()): Pair<Int, Int> {
-        val hDp = shelfPosterHeightDp(mode)
-        val h = (hDp * density).toInt().coerceAtLeast(hDp)
-        val w = (h * 2 / 3f).toInt().coerceAtLeast((hDp * 2 / 3f).toInt().coerceAtLeast(1))
-        return w to h
-    }
+    fun shelfPosterOverridePx(density: Float, mode: Mode = mode()): Pair<Int, Int> =
+        posterOverridePx(density, shelfPosterHeightDp(mode))
+
+    /** Glide override for Live Hub shelf posters (LD-026). */
+    fun liveShelfPosterOverridePx(density: Float, mode: Mode = mode()): Pair<Int, Int> =
+        posterOverridePx(density, liveShelfPosterHeightDp(mode))
 
     /** Glide override for catalog GRID posters. */
-    fun gridPosterOverridePx(density: Float, mode: Mode = mode()): Pair<Int, Int> {
-        val hDp = gridPosterHeightDp(mode)
+    fun gridPosterOverridePx(density: Float, mode: Mode = mode()): Pair<Int, Int> =
+        posterOverridePx(density, gridPosterHeightDp(mode))
+
+    private fun posterOverridePx(density: Float, hDp: Int): Pair<Int, Int> {
         val h = (hDp * density).toInt().coerceAtLeast(hDp)
         val w = (h * 2 / 3f).toInt().coerceAtLeast((hDp * 2 / 3f).toInt().coerceAtLeast(1))
         return w to h
@@ -293,4 +339,10 @@ object LeanbackDensityPolicy {
 
     fun dpToPx(view: View, dp: Int): Int =
         (dp * view.resources.displayMetrics.density).toInt()
+
+    fun overlayChromePadPx(density: Float, mode: Mode = mode()): Int =
+        (overlayChromePadDp(mode) * density).toInt()
+
+    fun overlayStackGapPx(density: Float, mode: Mode = mode()): Int =
+        (overlayStackGapDp(mode) * density).toInt()
 }

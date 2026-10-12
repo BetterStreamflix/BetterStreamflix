@@ -215,7 +215,10 @@ object ProfileTransferImporter {
                     continue
                 }
             } else {
-                AppDatabase.getInstanceForProvider(provider.name, context)
+                AppDatabase.getInstanceForProviderOrNull(provider.name, context) ?: run {
+                    skipped++
+                    continue
+                }
             }
             try {
                 when (item.mediaType) {

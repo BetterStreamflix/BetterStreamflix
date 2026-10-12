@@ -21,6 +21,7 @@ import com.dskja.betterstreamflix.models.Video
 import com.dskja.betterstreamflix.profiles.ProfileManager
 import com.dskja.betterstreamflix.profiles.ProfileUnlockGate
 import com.dskja.betterstreamflix.providers.Provider
+import com.dskja.betterstreamflix.ui.LeanbackDensityPolicy
 import com.dskja.betterstreamflix.utils.ExpDialogChrome
 import com.dskja.betterstreamflix.utils.QrUtils
 import com.dskja.betterstreamflix.utils.UserPreferences
@@ -209,9 +210,12 @@ object WatchPartyUi {
         val link = WatchPartyLinks.buildUri(token)
         val code = WatchPartySession.shortCode?.takeIf { it.isNotBlank() } ?: "------"
         val qr = runCatching { QrUtils.generate(link, 640) }.getOrNull()
+        val density = context.resources.displayMetrics.density
+        val chrome = LeanbackDensityPolicy.overlayChromePadPx(density)
+        val gap = LeanbackDensityPolicy.overlayStackGapPx(density)
         val container = LinearLayout(context).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(48, 32, 48, 16)
+            setPadding(chrome, chrome, chrome, chrome)
             gravity = Gravity.CENTER_HORIZONTAL
         }
         if (qr != null) {
@@ -231,7 +235,7 @@ object WatchPartyUi {
                 text = context.getString(R.string.watch_party_code_label, code)
                 textSize = 22f
                 gravity = Gravity.CENTER
-                setPadding(0, 24, 0, 8)
+                setPadding(0, gap * 2, 0, gap)
             },
         )
         container.addView(

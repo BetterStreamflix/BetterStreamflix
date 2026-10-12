@@ -119,7 +119,7 @@ object WatchlistDigestPlanner {
         val db = if (!ownsDb) {
             currentDb!!
         } else {
-            AppDatabase.getInstanceForProvider(provider.name, appContext)
+            AppDatabase.getInstanceForProviderOrNull(provider.name, appContext) ?: return null
         }
         try {
             if (!db.isOpen) return null

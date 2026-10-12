@@ -23,6 +23,7 @@ import com.dskja.betterstreamflix.download.DownloadConnectivityMonitor
 import com.dskja.betterstreamflix.models.Video
 import com.dskja.betterstreamflix.profiles.ProfileUnlockGate
 import com.dskja.betterstreamflix.providers.Provider
+import com.dskja.betterstreamflix.ui.LeanbackDensityPolicy
 import com.dskja.betterstreamflix.utils.ExpDialogChrome
 import com.dskja.betterstreamflix.utils.QrUtils
 import com.dskja.betterstreamflix.utils.UserPreferences
@@ -160,10 +161,13 @@ object CastRoomUi {
         val link = CastRoomLinks.buildUri(token)
         val code = shortCode?.takeIf { it.isNotBlank() } ?: "------"
         val qr = runCatching { QrUtils.generate(link, 640) }.getOrNull()
+        val density = context.resources.displayMetrics.density
+        val chrome = LeanbackDensityPolicy.overlayChromePadPx(density)
+        val gap = LeanbackDensityPolicy.overlayStackGapPx(density)
 
         val container = LinearLayout(context).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(48, 32, 48, 16)
+            setPadding(chrome, chrome, chrome, chrome)
             gravity = Gravity.CENTER_HORIZONTAL
         }
         if (qr != null) {
@@ -183,7 +187,7 @@ object CastRoomUi {
                 text = context.getString(R.string.cast_room_code_label, code)
                 textSize = 22f
                 gravity = Gravity.CENTER
-                setPadding(0, 24, 0, 8)
+                setPadding(0, gap * 2, 0, gap)
             },
         )
         container.addView(
@@ -707,16 +711,19 @@ object CastRoomUi {
     private fun renderControllerPanel(fragment: Fragment, payload: CastRoomPayload) {
         val context = fragment.context ?: return
         val token = CastRoomSession.token ?: return
+        val density = context.resources.displayMetrics.density
+        val chrome = LeanbackDensityPolicy.overlayChromePadPx(density)
+        val gap = LeanbackDensityPolicy.overlayStackGapPx(density)
         val scroll = ScrollView(context)
         val list = LinearLayout(context).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(40, 24, 40, 24)
+            setPadding(chrome * 2, chrome, chrome * 2, chrome)
         }
         scroll.addView(list)
 
         val nowPlayingView = TextView(context).apply {
             textSize = 16f
-            setPadding(0, 0, 0, 12)
+            setPadding(0, 0, 0, gap)
         }
         fun bindNowPlaying(p: CastRoomPayload) {
             val now = CastRoomQueue.nowPlaying(p)
@@ -774,7 +781,7 @@ object CastRoomUi {
         val chatView = TextView(context).apply {
             text = context.getString(R.string.tv_sidekick_chat_loading)
             textSize = 13f
-            setPadding(0, 8, 0, 8)
+            setPadding(0, gap, 0, gap)
         }
         list.addView(chatView)
         refreshSidekickChat(fragment, token, chatView)
@@ -831,7 +838,7 @@ object CastRoomUi {
                         val marker = if (index == p.nowPlayingIndex) "▶ " else "${index + 1}. "
                         text = marker + CastRoomQueue.displayLabel(item)
                         textSize = 15f
-                        setPadding(0, 18, 0, 18)
+                        setPadding(0, gap + gap / 2, 0, gap + gap / 2)
                         isClickable = true
                         setOnClickListener {
                             showItemActions(fragment, token, p, index, item)
@@ -884,9 +891,12 @@ object CastRoomUi {
 
     private fun sectionLabel(context: Context, titleRes: Int): TextView =
         TextView(context).apply {
+            val gap = LeanbackDensityPolicy.overlayStackGapPx(
+                context.resources.displayMetrics.density,
+            )
             text = context.getString(titleRes)
             textSize = 14f
-            setPadding(0, 18, 0, 8)
+            setPadding(0, gap + gap / 2, 0, gap)
             setTypeface(typeface, android.graphics.Typeface.BOLD)
         }
 
