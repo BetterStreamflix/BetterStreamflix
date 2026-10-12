@@ -20,6 +20,10 @@ object SettingsDeepLink {
         pendingScreenKey = "screen_aniworld_auth"
     }
 
+    fun openGuardaFlixAuth() {
+        pendingScreenKey = "screen_guardaflix_auth"
+    }
+
     fun openProviderTrust() {
         pendingScreenKey = "screen_provider_trust"
     }

@@ -70,9 +70,11 @@ class FailoverTimelineBuilderTest {
         val attempts = (1..6).map { n ->
             FailoverAttempt(n, "S$n", if (n == 6) FailoverStepKind.OK else FailoverStepKind.GENERIC)
         }
-        val labels = FailoverTimelineBuilder.wireLabels(FailoverTimelineBuilder.buildSteps(attempts))
+        val steps = FailoverTimelineBuilder.buildSteps(attempts)
+        val labels = FailoverTimelineBuilder.wireLabels(steps)
         assertEquals(4, labels.size)
         assertEquals("…", labels[2])
+        assertEquals(FailoverStepKind.ELLIPSIS, steps[2].kind)
         assertEquals("S6:OK", labels.last())
     }
 

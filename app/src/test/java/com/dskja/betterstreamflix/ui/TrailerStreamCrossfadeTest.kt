@@ -68,8 +68,22 @@ class TrailerStreamCrossfadeTest {
             imdbId = null,
         )
         TrailerStreamCrossfade.arm("m1", videoType)
+        assertNotNull(TrailerStreamCrossfade.consumeFor("M1"))
+        assertNull(TrailerStreamCrossfade.peek())
+        assertNull(TrailerStreamCrossfade.consumeFor("m1"))
+    }
+
+    @Test
+    fun consumeFor_missClearsStaleHandoff() {
+        val videoType = Video.Type.Movie(
+            id = "m1",
+            title = "Title",
+            releaseDate = "2024",
+            poster = "https://cdn.example.com/p.jpg",
+            imdbId = null,
+        )
+        TrailerStreamCrossfade.arm("m1", videoType)
         assertNull(TrailerStreamCrossfade.consumeFor("other"))
-        assertNotNull(TrailerStreamCrossfade.consumeFor("m1"))
         assertNull(TrailerStreamCrossfade.peek())
     }
 

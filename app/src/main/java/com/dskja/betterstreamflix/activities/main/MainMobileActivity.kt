@@ -311,7 +311,9 @@ class MainMobileActivity : FragmentActivity() {
                 // Clean Exit: bottom nav / deep links can leave the player without Back — kill audio.
                 PlaybackLifecycleGuard.stopActivePlayback()
                 if (leavingPlayer) {
-                    com.dskja.betterstreamflix.player.PlayerCleanExit.noteLeavingPlayer()
+                    com.dskja.betterstreamflix.player.PlayerCleanExit.noteLeavingPlayer(
+                        returningToHome = destination.id == R.id.home,
+                    )
                     runCatching {
                         com.dskja.betterstreamflix.ui.TrailerPlaybackController.silenceAllActive()
                     }

@@ -21,7 +21,7 @@ class EndCardPolicyTest {
     }
 
     @Test
-    fun hidesEndCardForLiveCastOrResolve() {
+    fun hidesEndCardForLiveOrResolve_butAllowsCastChooser() {
         assertFalse(
             EndCardPolicy.shouldShowEndCard(
                 reallyFinished = true,
@@ -31,7 +31,7 @@ class EndCardPolicyTest {
                 resolveInFlight = false,
             ),
         )
-        assertFalse(
+        assertTrue(
             EndCardPolicy.shouldShowEndCard(
                 reallyFinished = true,
                 stateEnded = true,

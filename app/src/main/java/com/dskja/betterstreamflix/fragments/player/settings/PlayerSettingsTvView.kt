@@ -493,6 +493,7 @@ class PlayerSettingsTvView @JvmOverloads constructor(
                                 is Settings.NightAudio.Off ->
                                     com.dskja.betterstreamflix.player.NightModeAudio.setPersisted(false)
                             }
+                            settingsView.onNightAudioListener?.invoke()
                             settingsView.hide()
                         }
 

@@ -171,8 +171,8 @@ object ProviderPassportSettingsController {
             "screen_aniworld_auth" to
                 context.getString(R.string.aniworld_auth_category_title)
         ProviderPassport.ActionTarget.GUARDAFLIX_AUTH ->
-            "screen_provider" to
-                context.getString(R.string.settings_category_provider_title)
+            "screen_guardaflix_auth" to
+                context.getString(R.string.settings_category_guardaflix)
         ProviderPassport.ActionTarget.NONE -> null to ""
     }
 }

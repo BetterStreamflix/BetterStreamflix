@@ -588,6 +588,12 @@ abstract class PlayerSettingsView @JvmOverloads constructor(
         this.onSoftwareDecoderListener = listener
     }
 
+    /** Soft-rebuild Exo so Night stereo downmix / channel cap re-applies mid-session. */
+    protected var onNightAudioListener: (() -> Unit)? = null
+    fun setOnNightAudioSelectedListener(listener: () -> Unit) {
+        this.onNightAudioListener = listener
+    }
+
     protected var onExtraBufferingSelected: ((Settings.ExtraBuffering) -> Unit) =
         fun(extraBuffering) {
             val newValue = when (extraBuffering) {

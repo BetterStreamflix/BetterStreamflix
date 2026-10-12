@@ -21,13 +21,24 @@ class FailoverTimelineSession {
         server: Video.Server?,
         servers: List<Video.Server>,
         error: Throwable?,
+        kind: FailoverStepKind? = null,
     ) {
         val index = PlaybackFailover.indexOfServer(servers, server)
         val ordinal = if (index >= 0) PlaybackFailover.serverOrdinal(index) else 0
         attempts += FailoverAttempt(
             serverOrdinal = ordinal,
             serverName = server?.name.orEmpty(),
-            kind = FailoverTimelineBuilder.kindFromError(error),
+            kind = kind ?: FailoverTimelineBuilder.kindFromError(error),
+        )
+    }
+
+    /** Stuck-buffer hop with no throwable — still belongs in the failover story. */
+    fun recordStuckHop(server: Video.Server?, servers: List<Video.Server>) {
+        recordServerFailure(
+            server = server,
+            servers = servers,
+            error = null,
+            kind = FailoverStepKind.TIMEOUT,
         )
     }
 
