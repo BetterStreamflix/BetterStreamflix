@@ -232,6 +232,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [1.1.7] — 2026-10-12
 
 ### Fixed
+- Build: `DownloadsSettingsController.onDownloadFolderPicked` uses `fragment.lifecycleScope` after refreshSummaries gained a scope param (compile break from 1.1.5)
 - TV Home ANR weight: chunked nested shelf bind (4+4/frame), fixed-size HGV, skip identical rebinds, stagger parent category rows; lighter edge-fade drawables
 - Providers TV: defer `Provider.providers` language enum off main; stagger large provider grid submitList
 

@@ -452,6 +452,8 @@ object DownloadsSettingsController {
         uri: Uri?,
     ) {
         val context = fragment.requireContext()
+        // onDownloadFolderPicked is outside bind()'s scope param — use the fragment's.
+        val scope = fragment.lifecycleScope
         if (uri == null) return
         // Take the SAF grant only — do not flip CUSTOM_FOLDER prefs until the
         // user confirms wipe/relocate (Cancel must leave the old root intact).
@@ -461,7 +463,7 @@ object DownloadsSettingsController {
             refreshSummaries(findPreference, context, scope)
             return
         }
-        fragment.lifecycleScope.launch {
+        scope.launch {
             val hasItems = withContext(Dispatchers.IO) {
                 StreamflixDownloadManager.hasCachedOrQueuedDownloads(context)
             }
