@@ -29,7 +29,9 @@ import com.dskja.betterstreamflix.utils.ExpEmptyChrome
 import com.dskja.betterstreamflix.utils.LoggingUtils
 import com.dskja.betterstreamflix.utils.TvLoadingOverlay
 import com.dskja.betterstreamflix.utils.UserPreferences
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.util.Locale
 
 class ProvidersTvFragment : Fragment() {
@@ -53,6 +55,7 @@ class ProvidersTvFragment : Fragment() {
     private var allProviders: List<ModelProvider> = emptyList()
     private var searchQuery: String = ""
     private var hasTakenListFocus: Boolean = false
+    private var providerSubmitToken: Any? = null
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -66,9 +69,21 @@ class ProvidersTvFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        initializeProviders()
+        initializeProvidersUi()
         initializeProviderSearch()
         TvLoadingOverlay.disarm(binding.isLoading.root)
+        // Provider.providers clinit builds every OkHttp client — never on main (ANR 21/2K).
+        viewLifecycleOwner.lifecycleScope.launch {
+            val langs = withContext(Dispatchers.IO) { buildLanguageOptions() }
+            if (!isAdded || _binding == null) return@launch
+            languageOptions = langs
+            languageLabels = mutableListOf(
+                getString(R.string.providers_all_languages),
+                getString(R.string.providers_favorites),
+            ).apply { addAll(langs.map { it.name }) }
+            restoreLanguageSelection()
+            updateLanguageChipLabel()
+        }
 
         viewLifecycleOwner.lifecycleScope.launch {
             viewModel.state.flowWithLifecycle(lifecycle, Lifecycle.State.STARTED).collect { state ->
@@ -122,8 +137,8 @@ class ProvidersTvFragment : Fragment() {
         _binding = null
     }
 
-    private fun initializeProviders() {
-        languageOptions = Provider.providers.keys
+    private fun buildLanguageOptions(): List<Language> =
+        Provider.providers.keys
             .distinctBy { it.language }
             .map {
                 val locale = Locale.forLanguageTag(it.language)
@@ -135,13 +150,7 @@ class ProvidersTvFragment : Fragment() {
             }
             .sortedBy { it.name.lowercase() }
 
-        languageLabels = mutableListOf(
-            getString(R.string.providers_all_languages),
-            getString(R.string.providers_favorites),
-        ).apply {
-            addAll(languageOptions.map { it.name })
-        }
-
+    private fun restoreLanguageSelection() {
         selectedLanguageIndex = when (val lang = UserPreferences.providerLanguage) {
             null -> 0
             "favorites" -> 1
@@ -150,6 +159,10 @@ class ProvidersTvFragment : Fragment() {
                 if (index != -1) index + 2 else 0
             }
         }
+    }
+
+    private fun initializeProvidersUi() {
+        restoreLanguageSelection()
         updateLanguageChipLabel()
 
         binding.btnProvidersLanguage.setOnClickListener {
@@ -167,18 +180,30 @@ class ProvidersTvFragment : Fragment() {
                 false
             }
         }
-        applyLanguageFilter(selectedLanguageIndex)
 
         binding.rvProviders.apply {
             adapter = appAdapter.apply {
                 stateRestorationPolicy = RecyclerView.Adapter.StateRestorationPolicy.PREVENT_WHEN_EMPTY
             }
+            itemAnimator = null
+            setItemViewCacheSize(8)
             addItemDecoration(
                 SpacingItemDecoration(
                     requireContext().resources.getDimension(R.dimen.providers_spacing).toInt()
                 )
             )
         }
+        // Catalog load without touching Provider.providers on main.
+        // Prefer the saved language code until languageOptions finishes on IO.
+        when (val saved = UserPreferences.providerLanguage) {
+            null -> viewModel.getProviders()
+            "favorites" -> viewModel.getProviders("favorites")
+            else -> viewModel.getProviders(saved)
+        }
+    }
+
+    companion object {
+        private const val PROVIDERS_INITIAL_BIND = 24
     }
 
     private fun updateLanguageChipLabel() {
@@ -311,10 +336,25 @@ class ProvidersTvFragment : Fragment() {
     }
 
     private fun applyProviderFilter(requestListFocus: Boolean) {
-        val filtered = ProvidersSearch.filter(allProviders, searchQuery)
-        appAdapter.submitList(filtered.onEach {
+        val filtered = ProvidersSearch.filter(allProviders, searchQuery).onEach {
             it.itemType = AppAdapter.Type.PROVIDER_TV_ITEM
-        })
+        }
+        // Stagger large provider grids so first paint does not inflate every tile.
+        val token = Any()
+        providerSubmitToken = token
+        val initial = if (filtered.size > PROVIDERS_INITIAL_BIND) {
+            filtered.take(PROVIDERS_INITIAL_BIND)
+        } else {
+            filtered
+        }
+        appAdapter.submitList(initial)
+        if (filtered.size > PROVIDERS_INITIAL_BIND) {
+            binding.rvProviders.post {
+                if (providerSubmitToken !== token) return@post
+                if (!isAdded || _binding == null) return@post
+                appAdapter.submitList(filtered)
+            }
+        }
         val empty = filtered.isEmpty()
         val searching = searchQuery.isNotBlank()
         binding.rvProviders.visibility = if (empty) View.GONE else View.VISIBLE

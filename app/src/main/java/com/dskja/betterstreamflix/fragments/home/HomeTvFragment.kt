@@ -59,6 +59,8 @@ class HomeTvFragment : Fragment() {
 
     private val appAdapter = AppAdapter()
     private var homeBindSignature: String? = null
+    /** Cancels in-flight staggered home submitList posts when a newer catalog arrives. */
+    private var homeSubmitToken: Any? = null
     private var cinemaRoomController: CinemaRoomController? = null
 
     /** True while Cinema Room Ambient owns the Home canvas (pauses Featured rotate). */
@@ -419,7 +421,8 @@ class HomeTvFragment : Fragment() {
                 stateRestorationPolicy = RecyclerView.Adapter.StateRestorationPolicy.PREVENT_WHEN_EMPTY
             }
             itemAnimator = null
-            setItemViewCacheSize(6)
+            // Fewer off-screen category rows retained → fewer nested HGV inflates during scroll.
+            setItemViewCacheSize(3)
             descendantFocusability = ViewGroup.FOCUS_AFTER_DESCENDANTS
             setItemSpacing(
                 com.dskja.betterstreamflix.ui.LeanbackDensityPolicy.dpToPx(
@@ -863,7 +866,19 @@ class HomeTvFragment : Fragment() {
             )
         }
 
-        appAdapter.submitList(homeItems)
+        // Stagger VerticalGridView category-row inflate: Featured (+ banners) + a couple
+        // of shelves first, then the rest on the next frame (BETTERSTREAMFLIX-3S/20).
+        val token = Any()
+        homeSubmitToken = token
+        val initialRows = homeItems.take(HOME_INITIAL_ROWS)
+        appAdapter.submitList(initialRows)
+        if (homeItems.size > HOME_INITIAL_ROWS) {
+            binding.vgvHome.post {
+                if (homeSubmitToken !== token) return@post
+                if (!isAdded || _binding == null) return@post
+                appAdapter.submitList(homeItems)
+            }
+        }
 
         val hasCatalogRows = homeItems.any { it is Category }
         ExpEmptyChrome.bind(
@@ -874,6 +889,11 @@ class HomeTvFragment : Fragment() {
             tintOnSurfaceVariant = false,
             onCtaClick = { runCatching { findNavController().navigate(R.id.providers) } },
         )
+    }
+
+    companion object {
+        /** First-pass Home rows (Featured + CW/banners + ~2 shelves) before full catalog. */
+        private const val HOME_INITIAL_ROWS = 4
     }
 
     private fun featuredItemKey(item: AppAdapter.Item): String = when (item) {

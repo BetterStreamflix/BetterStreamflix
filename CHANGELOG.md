@@ -229,6 +229,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Sentry drops JobCancellationException noise; `isSendDefaultPii` disabled
 - Cast stream proxy closes upstream OkHttp responses on playlist/error paths
 
+## [1.1.7] — 2026-10-12
+
+### Fixed
+- TV Home ANR weight: chunked nested shelf bind (4+4/frame), fixed-size HGV, skip identical rebinds, stagger parent category rows; lighter edge-fade drawables
+- Providers TV: defer `Provider.providers` language enum off main; stagger large provider grid submitList
+
+### Changed
+- Version 1.1.7 (10107)
+
 ## [1.1.6] — 2026-10-12
 
 ### Fixed
