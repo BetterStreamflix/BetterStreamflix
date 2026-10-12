@@ -35,7 +35,7 @@ object SharedWatchlistImporter {
             val db = if (ownsCurrent) {
                 AppDatabase.getInstanceOrNull(appContext) ?: continue
             } else {
-                AppDatabase.getInstanceForProvider(provider.name, appContext)
+                AppDatabase.getInstanceForProviderOrNull(provider.name, appContext) ?: continue
             }
             try {
                 when (item.mediaType) {

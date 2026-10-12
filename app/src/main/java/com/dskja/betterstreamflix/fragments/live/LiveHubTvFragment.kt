@@ -228,9 +228,10 @@ class LiveHubTvFragment : Fragment() {
             }
             Category(category.name, shows).also {
                 it.identityKey = category.identityKey
+                // LD-026: Live shelves use Home itemSpacing (not catalog grid spacing).
                 it.itemSpacing = com.dskja.betterstreamflix.ui.LeanbackDensityPolicy.dpToPx(
                     requireView(),
-                    com.dskja.betterstreamflix.ui.LeanbackDensityPolicy.catalogItemSpacingDp(),
+                    com.dskja.betterstreamflix.ui.LeanbackDensityPolicy.itemSpacingDp(),
                 )
                 it.itemType = AppAdapter.Type.CATEGORY_TV_ITEM
             }

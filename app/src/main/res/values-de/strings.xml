@@ -1038,7 +1038,7 @@
     <string name="shared_watchlist_share_needs_supabase">Richte Supabase unter Konto und Sync ein, bevor du eine Liste teilst</string>
     <string name="shared_watchlist_share_needs_sign_in">Melde dich unter Konto und Sync an, um deine Merkliste zu teilen</string>
     <string name="cloud_sync_kids_sign_in_blocked">Cloud-Anmeldung ist bei Kinderprofilen deaktiviert. Wechsle zuerst zu einem Erwachsenenprofil.</string>
-    <string name="cloud_sync_signed_in_notes_looks">Angemeldet als %1$s · Notizen &amp; Looks-Sync an (Leanback-Dichte ist pro Profil/Transfer, nicht Cloud-Looks)</string>
+    <string name="cloud_sync_signed_in_notes_looks">Angemeldet als %1$s · Notizen, Looks &amp; Leanback-Dichte-Sync an</string>
     <string name="device_link_show_title">Link-Code anzeigen</string>
     <string name="device_link_show_summary">6-stelligen Code anzeigen, damit ein anderes Gerät dieses Konto verknüpfen kann</string>
     <string name="device_link_show_summary_signed_out">Zuerst anmelden, um einen Link-Code zu zeigen</string>
@@ -1058,6 +1058,8 @@
     <string name="device_link_offline">Für Link-Code Internetverbindung nötig</string>
     <string name="device_link_invalid_code">Gib einen gültigen 6-stelligen Code ein</string>
     <string name="device_link_error">Link-Code fehlgeschlagen: %1$s</string>
+    <string name="device_link_pad_backspace">Löschen</string>
+    <string name="device_link_pad_clear">Leeren</string>
     <string name="shared_watchlist_share_offline">Stelle eine Internetverbindung her, um einen teilbaren Link zu veröffentlichen</string>
     <string name="shared_watchlist_share_failed">Merkliste konnte nicht geteilt werden: %1$s</string>
     <string name="shared_watchlist_revoke_action">Geteilten Link widerrufen</string>
@@ -1658,7 +1660,7 @@
     <string name="settings_oled_mode_summary">Graue Flächen app-weit durch echtes Schwarz ersetzen</string>
     <string name="settings_category_accessibility">Barrierefreiheit</string>
     <string name="settings_leanback_density_title">Leanback-Dichte</string>
-    <string name="settings_leanback_density_summary">Pro Profil. Kompakt zeigt mehr Kacheln; Komfort größere Poster. Startet den TV-Bildschirm neu zur Darstellung. Mit Großer Schrift nutzt Kompakt weniger Spalten.</string>
+    <string name="settings_leanback_density_summary">Pro Profil. Kompakt zeigt mehr Kacheln; Komfort größere Poster. Lädt die TV-Oberfläche neu und kehrt zu Darstellung zurück. Mit Großer Schrift nutzt Kompakt weniger Spalten.</string>
     <string name="settings_leanback_density_comfort">Komfort — größere Poster</string>
     <string name="settings_leanback_density_compact">Kompakt — mehr Kacheln</string>
     <string name="settings_large_text_title">Große Schrift</string>

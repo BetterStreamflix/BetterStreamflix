@@ -1,9 +1,16 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
   SS-B10-06: Cleartext remains permitted for IPTV / LAN Cast proxy / Bypass WS.
-  Trust anchors stay system + ISRG. Domain-only cleartext is not practical for
-  arbitrary IPTV hosts — keep base cleartext but pair with host allowlists in
-  Bypass / Cast / resolve paths.
+
+  Evidence that domain-only IPTV cleartext is impossible:
+  - Playlist / EPG hosts are user-supplied and unbounded (any hostname or raw IP).
+  - Android network-security-config has no CIDR / IP-range cleartext domain matching.
+  - Cast/Bypass LAN paths use localhost and 127.0.0.1 (documented below) plus
+    device LAN IPs that cannot be pre-listed as domains.
+
+  Therefore base-config cleartext stays true. Pair with app-level host allowlists
+  in Cast / Bypass / resolve paths (not NSC). Trust anchors stay system + ISRG.
+  See CleartextTrafficPolicy for the product justification string.
 -->
 <network-security-config>
     <base-config cleartextTrafficPermitted="true">
@@ -12,4 +19,10 @@
             <certificates src="@raw/isrg_root_x1" />
         </trust-anchors>
     </base-config>
+
+    <!-- Explicit LAN loopback documentation path (redundant while base is true). -->
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="true">localhost</domain>
+        <domain includeSubdomains="false">127.0.0.1</domain>
+    </domain-config>
 </network-security-config>

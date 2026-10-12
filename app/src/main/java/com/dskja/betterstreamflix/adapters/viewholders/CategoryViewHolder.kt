@@ -497,11 +497,30 @@ class CategoryViewHolder(
         }
         binding.hgvCategory.apply {
             visibility = View.VISIBLE
-            // setRowHeight requests a layout. Calling it on every rebind while the
-            // parent VerticalGridView is measuring is a Leanback stack overflow.
-            if (getTag(R.id.tv_shelf_row_height_tag) != true) {
-                setTag(R.id.tv_shelf_row_height_tag, true)
-                setRowHeight(ViewGroup.LayoutParams.WRAP_CONTENT)
+            // FA-028: Cap Home shelf row height (CW → Ambient strip; else poster + title meta).
+            // Tag stores density mode so recreate/density changes re-apply; avoid every-bind
+            // setRowHeight while the parent VerticalGridView is measuring (Leanback SO).
+            val densMode = com.dskja.betterstreamflix.ui.LeanbackDensityPolicy.mode()
+            val continueWatching = category.list.any { item ->
+                when (item.itemTypeOrNull()) {
+                    AppAdapter.Type.MOVIE_CONTINUE_WATCHING_TV_ITEM,
+                    AppAdapter.Type.EPISODE_CONTINUE_WATCHING_TV_ITEM,
+                    -> true
+                    else -> false
+                }
+            }
+            val heightDp = if (continueWatching) {
+                com.dskja.betterstreamflix.ui.LeanbackDensityPolicy.ambientContinueStripHeightDp(densMode)
+            } else {
+                com.dskja.betterstreamflix.ui.LeanbackDensityPolicy.shelfPosterHeightDp(densMode) +
+                    com.dskja.betterstreamflix.ui.LeanbackDensityPolicy.shelfTitleMetaBudgetDp(densMode)
+            }
+            val heightTag = densMode to continueWatching
+            if (getTag(R.id.tv_shelf_row_height_tag) != heightTag) {
+                setTag(R.id.tv_shelf_row_height_tag, heightTag)
+                setRowHeight(
+                    com.dskja.betterstreamflix.ui.LeanbackDensityPolicy.dpToPx(this, heightDp),
+                )
             }
 
             (context.toActivity()?.getCurrentFragment() as? HomeTvFragment)?.let { home ->

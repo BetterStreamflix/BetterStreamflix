@@ -1,5 +1,6 @@
 package com.dskja.betterstreamflix.sync
 
+import com.dskja.betterstreamflix.ui.LeanbackDensityPolicy
 import com.dskja.betterstreamflix.utils.ThemeManager
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -65,6 +66,49 @@ class CloudSyncNotesLooksMergeTest {
         val local = RemoteProfilePrefs("u1", ThemeManager.CINEMA_INK_LIGHT, 40L)
         val remote = RemoteProfilePrefs("u1", ThemeManager.CINEMA_INK, 40L)
         assertEquals(ThemeManager.CINEMA_INK_LIGHT, CloudNotesLooksSync.mergeLook(remote, local).look)
+    }
+
+    @Test
+    fun mergeLook_remoteWinsCarriesDensity() {
+        val local = RemoteProfilePrefs(
+            "u1",
+            ThemeManager.CINEMA_INK,
+            40L,
+            leanbackDensity = LeanbackDensityPolicy.COMPACT,
+        )
+        val remote = RemoteProfilePrefs(
+            "u1",
+            ThemeManager.CINEMA_INK_LIGHT,
+            90L,
+            leanbackDensity = LeanbackDensityPolicy.COMFORT,
+        )
+        val merged = CloudNotesLooksSync.mergeLook(remote, local)
+        assertEquals(ThemeManager.CINEMA_INK_LIGHT, merged.look)
+        assertEquals(LeanbackDensityPolicy.COMFORT, merged.leanbackDensity)
+    }
+
+    @Test
+    fun resolveLeanbackDensityForSync_defaultsAndNormalizes() {
+        assertEquals(
+            LeanbackDensityPolicy.COMFORT,
+            CloudNotesLooksSync.resolveLeanbackDensityForSync(null),
+        )
+        assertEquals(
+            LeanbackDensityPolicy.COMPACT,
+            CloudNotesLooksSync.resolveLeanbackDensityForSync("COMPACT"),
+        )
+        assertEquals(
+            LeanbackDensityPolicy.COMFORT,
+            CloudNotesLooksSync.resolveLeanbackDensityForSync("typo"),
+        )
+    }
+
+    @Test
+    fun shouldApplyRemoteLeanbackDensity_requiresNonBlank() {
+        assertFalse(CloudNotesLooksSync.shouldApplyRemoteLeanbackDensity(null))
+        assertFalse(CloudNotesLooksSync.shouldApplyRemoteLeanbackDensity(""))
+        assertFalse(CloudNotesLooksSync.shouldApplyRemoteLeanbackDensity("   "))
+        assertTrue(CloudNotesLooksSync.shouldApplyRemoteLeanbackDensity(LeanbackDensityPolicy.COMPACT))
     }
 
     @Test

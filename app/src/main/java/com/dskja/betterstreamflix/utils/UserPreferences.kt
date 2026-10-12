@@ -813,12 +813,41 @@ object UserPreferences {
         get() = profileScopedString(Key.LEANBACK_DENSITY)
             ?: Key.LEANBACK_DENSITY.getString()
             ?: com.dskja.betterstreamflix.ui.LeanbackDensityPolicy.DEFAULT
-        set(value) = setProfileScopedString(
+        set(value) {
+            val resolved = com.dskja.betterstreamflix.ui.LeanbackDensityPolicy.valueOf(
+                com.dskja.betterstreamflix.ui.LeanbackDensityPolicy.resolve(value),
+            )
+            val previous = com.dskja.betterstreamflix.ui.LeanbackDensityPolicy.valueOf(
+                com.dskja.betterstreamflix.ui.LeanbackDensityPolicy.resolve(
+                    profileScopedString(Key.LEANBACK_DENSITY)
+                        ?: Key.LEANBACK_DENSITY.getString(),
+                ),
+            )
+            setProfileScopedString(Key.LEANBACK_DENSITY, resolved)
+            // Density shares the Looks LWW clock so cloud upserts carry both (LD-007).
+            if (resolved != previous) {
+                val now = System.currentTimeMillis()
+                selectedThemeUpdatedAtMillis = now
+                runCatching {
+                    val app = com.dskja.betterstreamflix.BetterStreamflixApp.instance
+                    com.dskja.betterstreamflix.sync.CloudSyncHooks.look(
+                        app,
+                        ThemeManager.resolveLook(selectedTheme),
+                        now,
+                    )
+                }
+            }
+        }
+
+    /** Apply a remote Leanback density without enqueueing a cloud mutation. */
+    fun applyRemoteLeanbackDensity(density: String) {
+        setProfileScopedString(
             Key.LEANBACK_DENSITY,
             com.dskja.betterstreamflix.ui.LeanbackDensityPolicy.valueOf(
-                com.dskja.betterstreamflix.ui.LeanbackDensityPolicy.resolve(value),
+                com.dskja.betterstreamflix.ui.LeanbackDensityPolicy.resolve(density),
             ),
         )
+    }
 
     /**
      * Explicit Stick Energy Mode toggle, or null when never set (Fire TV auto-on —

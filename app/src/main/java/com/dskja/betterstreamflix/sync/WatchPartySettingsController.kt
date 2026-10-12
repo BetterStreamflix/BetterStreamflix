@@ -7,6 +7,7 @@ import androidx.appcompat.app.AlertDialog
 import androidx.fragment.app.Fragment
 import androidx.preference.Preference
 import com.dskja.betterstreamflix.R
+import com.dskja.betterstreamflix.ui.LeanbackDensityPolicy
 
 object WatchPartySettingsController {
 
@@ -71,7 +72,9 @@ object WatchPartySettingsController {
             hint = context.getString(R.string.watch_party_code_hint)
             setSingleLine()
         }
-        val pad = (16 * context.resources.displayMetrics.density).toInt()
+        val pad = LeanbackDensityPolicy.overlayChromePadPx(
+            context.resources.displayMetrics.density,
+        )
         val wrap = LinearLayout(context).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(pad, pad / 2, pad, 0)

@@ -2907,11 +2907,24 @@ for each row execute function public.set_user_episode_notes_server_updated_at();
 create table if not exists public.user_profile_prefs (
     user_id uuid not null default auth.uid() references auth.users(id) on delete cascade,
     look text not null default 'cinema_ink',
+    leanback_density text null,
     client_updated_at_millis bigint not null,
     server_updated_at timestamptz not null default now(),
     primary key (user_id),
-    constraint user_profile_prefs_look_chk check (char_length(look) between 1 and 64)
+    constraint user_profile_prefs_look_chk check (char_length(look) between 1 and 64),
+    constraint user_profile_prefs_leanback_density_chk
+        check (leanback_density is null or leanback_density in ('compact', 'comfort'))
 );
+
+alter table public.user_profile_prefs
+    add column if not exists leanback_density text null;
+
+alter table public.user_profile_prefs
+    drop constraint if exists user_profile_prefs_leanback_density_chk;
+
+alter table public.user_profile_prefs
+    add constraint user_profile_prefs_leanback_density_chk
+    check (leanback_density is null or leanback_density in ('compact', 'comfort'));
 
 alter table public.user_profile_prefs enable row level security;
 

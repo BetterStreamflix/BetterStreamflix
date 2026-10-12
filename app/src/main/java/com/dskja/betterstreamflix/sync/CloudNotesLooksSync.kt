@@ -2,6 +2,7 @@ package com.dskja.betterstreamflix.sync
 
 import android.content.Context
 import com.dskja.betterstreamflix.profiles.ProfileManager
+import com.dskja.betterstreamflix.ui.LeanbackDensityPolicy
 import com.dskja.betterstreamflix.utils.EpisodeNotesStore
 import com.dskja.betterstreamflix.utils.ThemeManager
 import com.dskja.betterstreamflix.utils.UserPreferences
@@ -68,6 +69,17 @@ object CloudNotesLooksSync {
         }
     }
 
+    /** Resolve compact/comfort for cloud upsert (null/blank/unknown → Comfort). */
+    fun resolveLeanbackDensityForSync(raw: String?): String =
+        LeanbackDensityPolicy.valueOf(LeanbackDensityPolicy.resolve(raw))
+
+    /**
+     * When the look-row LWW says remote wins, apply [remoteDensity] if present.
+     * Null/blank remote density leaves local prefs untouched (pre-migration rows).
+     */
+    fun shouldApplyRemoteLeanbackDensity(remoteDensity: String?): Boolean =
+        !remoteDensity.isNullOrBlank()
+
     fun collectLocalNotes(context: Context, userId: String): List<RemoteEpisodeNote> =
         EpisodeNotesStore.listRecordsForActiveProfile(context).map { (episodeId, record) ->
             RemoteEpisodeNote(
@@ -89,6 +101,7 @@ object CloudNotesLooksSync {
             userId = userId,
             look = look,
             clientUpdatedAtMillis = clock,
+            leanbackDensity = resolveLeanbackDensityForSync(UserPreferences.leanbackDensity),
         )
     }
 
@@ -133,6 +146,9 @@ object CloudNotesLooksSync {
                             userId = userId,
                             look = ThemeManager.resolveLook(mutation.look),
                             clientUpdatedAtMillis = mutation.clientUpdatedAtMillis,
+                            leanbackDensity = resolveLeanbackDensityForSync(
+                                UserPreferences.leanbackDensity,
+                            ),
                         )
                         if (remoteLook == null ||
                             lookLocalWins(local.clientUpdatedAtMillis, remoteLook.clientUpdatedAtMillis)
@@ -308,6 +324,9 @@ object CloudNotesLooksSync {
         val kids = ProfileManager.isKidsActive()
         val clamped = clampLookForActiveProfile(remote.look, kids)
         UserPreferences.applyRemoteSelectedTheme(clamped, remote.clientUpdatedAtMillis)
+        remote.leanbackDensity
+            ?.takeIf { shouldApplyRemoteLeanbackDensity(it) }
+            ?.let { UserPreferences.applyRemoteLeanbackDensity(it) }
     }
 
     /** SC-016: no client-side user_id filter — RLS scopes rows to the auth session. */
