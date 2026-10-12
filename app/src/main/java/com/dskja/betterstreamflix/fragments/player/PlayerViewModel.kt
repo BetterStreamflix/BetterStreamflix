@@ -106,6 +106,11 @@ class PlayerViewModel(
         if (com.dskja.betterstreamflix.utils.ParentalControlUtils.isFilteringActive()) {
             return
         }
+        // Sticky handoff so getServers() hits the channel's IPTV catalog, not a
+        // leftover VOD/sticky provider from Featured or a prior zap.
+        channel.providerName?.let { name ->
+            com.dskja.betterstreamflix.ui.FeaturedProviderSwitch.switchSticky(name)
+        }
         // Emit-only: destination player VM owns getServers (avoids double-fetch on zap).
         val episode = com.dskja.betterstreamflix.iptv.IptvLiveSession.toEpisodeType(channel)
         com.dskja.betterstreamflix.iptv.IptvLiveSession.setCurrent(channel.id)
@@ -159,8 +164,18 @@ class PlayerViewModel(
                     return@launch
                 }
 
-                val provider = UserPreferences.currentProvider
+                val sessionChannel =
+                    com.dskja.betterstreamflix.iptv.IptvLiveSession.current()
+                        ?.takeIf { it.id == id }
+                val provider = sessionChannel?.providerName
+                    ?.let { com.dskja.betterstreamflix.providers.Provider.findByName(it) }
+                    ?: UserPreferences.currentProvider
                     ?: throw Exception(com.dskja.betterstreamflix.BetterStreamflixApp.instance.getString(com.dskja.betterstreamflix.R.string.error_no_provider_selected))
+                if (sessionChannel?.providerName != null &&
+                    provider.name != UserPreferences.currentProvider?.name
+                ) {
+                    com.dskja.betterstreamflix.ui.FeaturedProviderSwitch.switchSticky(provider.name)
+                }
                 // Live zap: peek warm ±N neighbor servers (keep cache if getVideo fails).
                 // Trailer→Play: peek VOD servers warmed while the trailer played.
                 val warmed = if (provider is com.dskja.betterstreamflix.providers.IptvProvider) {

@@ -90,6 +90,24 @@ class LiveHubSectionZapTest {
     }
 
     @Test
+    fun preparePlaybackNewsKeepsSameProviderOnly() {
+        val news = Category(
+            "News",
+            listOf(
+                TvShow(id = "n1", title = "CNN", providerName = "IPTV-All World"),
+                TvShow(id = "n2", title = "BBC", providerName = "IPTV-All World"),
+                TvShow(id = "n3", title = "Sky News", providerName = "DaddyLive TV"),
+            ),
+        ).also { it.identityKey = LiveHubCatalog.SECTION_NEWS }
+        LiveHubSectionZap.bindCategories(listOf(news))
+        assertTrue(LiveHubSectionZap.preparePlayback(news.list[0] as TvShow, provider = null))
+        assertEquals(2, IptvLiveSession.size())
+        assertTrue(IptvLiveSession.isWindowComplete())
+        assertFalse(IptvLiveSession.contains("n3"))
+        assertEquals("IPTV-All World", IptvLiveSession.current()?.providerName)
+    }
+
+    @Test
     fun warmSportRingDoesNotClobberSessionWindow() {
         // Pre-existing playback window must survive hub warm (ZP-001).
         IptvLiveSession.replaceWindow(

@@ -847,6 +847,7 @@ class PlayerMobileFragment : Fragment(),
 
                     PlayerViewModel.SubtitleState.DownloadingOpenSubtitle -> {}
                     is PlayerViewModel.SubtitleState.SuccessDownloadingOpenSubtitle -> {
+                        if (!::player.isInitialized || playerReleased || isTearingDown) return@collect
                         val mediaUri = player.currentMediaItem?.localConfiguration?.uri
                         if (mediaUri == null || mediaUri.toString().isBlank()) {
                             notifyPlayer(R.string.player_subtitle_needs_playback, R.string.player_settings_subtitles_title)
@@ -886,6 +887,7 @@ class PlayerMobileFragment : Fragment(),
 
                     PlayerViewModel.SubtitleState.DownloadingSubDLSubtitle -> {}
                     is PlayerViewModel.SubtitleState.SuccessDownloadingSubDLSubtitle -> {
+                        if (!::player.isInitialized || playerReleased || isTearingDown) return@collect
                         val mediaUri = player.currentMediaItem?.localConfiguration?.uri
                         if (mediaUri == null || mediaUri.toString().isBlank()) {
                             notifyPlayer(R.string.player_subtitle_needs_playback, R.string.player_settings_subtitles_title)
@@ -1010,7 +1012,9 @@ class PlayerMobileFragment : Fragment(),
         )
 
     private fun isInPipMode(): Boolean =
-        activity?.isInPictureInPictureMode == true
+        // Some OEM / old FragmentActivity builds lack isInPictureInPictureMode
+        // (BETTERSTREAMFLIX-43 NoSuchMethodError).
+        runCatching { activity?.isInPictureInPictureMode == true }.getOrDefault(false)
 
     override fun onPause() {
         super.onPause()
@@ -3295,6 +3299,12 @@ class PlayerMobileFragment : Fragment(),
             is Video.Type.Movie -> t.id
         }
         com.dskja.betterstreamflix.iptv.IptvLiveSession.setCurrent(aroundId)
+        // Hub preparePlayback sets complete=true — never widen past that ring.
+        if (com.dskja.betterstreamflix.iptv.IptvLiveSession.isWindowComplete()) {
+            refreshLiveChannelMeta()
+            setupLiveChannelZapButtons()
+            return
+        }
         lifecycleScope.launch(Dispatchers.IO) {
             com.dskja.betterstreamflix.iptv.IptvLiveSession.ensureLoaded(provider, aroundId)
             withContext(Dispatchers.Main) {

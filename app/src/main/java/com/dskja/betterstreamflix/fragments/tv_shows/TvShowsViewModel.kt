@@ -120,7 +120,11 @@ class TvShowsViewModel(
                     }
                 ).filterIsInstance<TvShow>().let { CatalogSort.tvShows(it) }
 
-                if (providerName != UserPreferences.currentProvider?.name) return@launch
+                if (providerName != UserPreferences.currentProvider?.name) {
+                    // Sticky playback switched providers mid-fetch — never leave Loading stuck.
+                    viewModelScope.launch { getTvShows() }
+                    return@launch
+                }
                 page = 1
 
                 _state.emit(State.SuccessLoading(tvShows, tvShows.isNotEmpty()))
@@ -153,7 +157,10 @@ class TvShowsViewModel(
                     }
                 ).filterIsInstance<TvShow>().let { CatalogSort.tvShows(it) }
 
-                if (providerName != UserPreferences.currentProvider?.name) return@launch
+                if (providerName != UserPreferences.currentProvider?.name) {
+                    _state.emit(currentState)
+                    return@launch
+                }
                 page += 1
 
                 _state.emit(

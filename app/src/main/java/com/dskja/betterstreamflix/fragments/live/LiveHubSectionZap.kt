@@ -69,15 +69,15 @@ object LiveHubSectionZap {
     fun preparePlayback(tvShow: TvShow, provider: Provider?): Boolean {
         val showKey = LiveHubCatalog.identityKey(tvShow)
         val section = sectionByShowKey[showKey] ?: return false
-        val sectionKey = sectionKeyByShowKey[showKey]
-        val ring = when (sectionKey) {
-            LiveHubCatalog.SECTION_SPORT -> sportZapRing(tvShow, section)
-            else -> section
-        }
+        // Every hub shelf uses same-provider CH± — mixed News/Channels/Favorites
+        // rings left getServers() on the sticky current provider and failed zap.
+        val ring = sameProviderRing(tvShow, section)
+        val playProvider = provider
+            ?: tvShow.providerName?.let { runCatching { Provider.findByName(it) }.getOrNull() }
         val channels = ring.map { toChannel(it) }
-        IptvLiveSession.replaceWindow(channels, provider, complete = true)
+        IptvLiveSession.replaceWindow(channels, playProvider, complete = true)
         IptvLiveSession.setCurrent(tvShow.id)
-        val iptv = provider as? IptvProvider
+        val iptv = playProvider as? IptvProvider
         if (iptv != null) {
             warmRing(iptv, ring, aroundId = tvShow.id)
         }
@@ -88,10 +88,14 @@ object LiveHubSectionZap {
      * Dedicated Sport zap ring: always same-provider siblings so CH± stays
      * on a playable catalog (ZP-005). Size may be 1.
      */
-    fun sportZapRing(anchor: TvShow, sportShelf: List<TvShow>): List<TvShow> {
+    fun sportZapRing(anchor: TvShow, sportShelf: List<TvShow>): List<TvShow> =
+        sameProviderRing(anchor, sportShelf)
+
+    /** Same-provider siblings for any Live Hub shelf (Favorites / Sport / News / Channels). */
+    fun sameProviderRing(anchor: TvShow, shelf: List<TvShow>): List<TvShow> {
         val providerName = anchor.providerName.orEmpty()
         if (providerName.isBlank()) return listOf(anchor)
-        val sameProvider = sportShelf.filter {
+        val sameProvider = shelf.filter {
             it.providerName.equals(providerName, ignoreCase = true)
         }
         return sameProvider.ifEmpty { listOf(anchor) }
@@ -139,5 +143,6 @@ object LiveHubSectionZap {
             group = LiveHubCatalog.groupOf(show),
             programNow = LiveHubCatalog.programNowOf(show),
             programNext = LiveHubCatalog.programNextOf(show),
+            providerName = show.providerName,
         )
 }
