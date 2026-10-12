@@ -176,6 +176,7 @@ object DetailTrailerTvController {
         btn.setOnClickListener {
             ExpMotion.hapticTap(it)
             val active = session ?: TrailerPlayPipeline.activeSession
+            TrailerPlaybackController.silenceAllActive()
             TrailerStreamCrossfade.arm(active?.target)
             active?.onStreamNow?.invoke()
         }

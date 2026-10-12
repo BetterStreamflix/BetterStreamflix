@@ -8,6 +8,7 @@ import java.nio.ByteOrder
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
+// ByteBuffer / ByteOrder used by partial-frame Night test.
 
 @OptIn(UnstableApi::class)
 class NightModeAudioProcessorTest {
@@ -41,6 +42,30 @@ class NightModeAudioProcessorTest {
         val samples = readShorts(processor.output)
         assertEquals(64, samples.size)
         assertTrue(samples.all { it == 0.toShort() })
+        NightModeAudio.enabled = false
+        processor.reset()
+    }
+
+    @Test
+    fun nightKeepsPartialStereoFrameAcrossQueues() {
+        NightModeAudio.enabled = true
+        val processor = NightModeAudioProcessor()
+        processor.configure(
+            AudioProcessor.AudioFormat(/* sampleRate= */ 48_000, /* channelCount= */ 2, C.ENCODING_PCM_16BIT),
+        )
+        // One sample (2 bytes) — incomplete stereo frame; must not emit a desynced channel.
+        val partial = ByteBuffer.allocate(2).order(ByteOrder.nativeOrder())
+        partial.putShort(1000)
+        partial.flip()
+        processor.queueInput(partial)
+        assertEquals(0, processor.output.remaining())
+        // Second channel completes the frame.
+        val rest = ByteBuffer.allocate(2).order(ByteOrder.nativeOrder())
+        rest.putShort(-2000)
+        rest.flip()
+        processor.queueInput(rest)
+        val samples = readShorts(processor.output)
+        assertEquals(2, samples.size)
         NightModeAudio.enabled = false
         processor.reset()
     }

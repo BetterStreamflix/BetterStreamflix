@@ -4,12 +4,14 @@ import android.os.SystemClock
 import android.view.View
 import android.view.animation.DecelerateInterpolator
 import android.widget.ImageView
+import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.findViewTreeLifecycleOwner
 import androidx.lifecycle.lifecycleScope
 import com.bumptech.glide.Glide
 import com.bumptech.glide.load.resource.drawable.DrawableTransitionOptions
 import com.dskja.betterstreamflix.models.Video
 import com.dskja.betterstreamflix.utils.ArtworkUrls
+import java.util.Locale
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -50,6 +52,8 @@ object TrailerStreamCrossfade {
     @Volatile
     private var handoff: Handoff? = null
 
+    private val bridgeTimeouts = java.util.WeakHashMap<ImageView, Runnable>()
+
     /** Overridable for JVM unit tests. */
     @Volatile
     internal var elapsedRealtimeMs: () -> Long = { SystemClock.elapsedRealtime() }
@@ -60,7 +64,7 @@ object TrailerStreamCrossfade {
     }
 
     fun arm(contentId: String, videoType: Video.Type) {
-        val id = contentId.trim()
+        val id = canonicalizeId(contentId)
         if (id.isEmpty()) return
         val cover = coverUrlFor(videoType)
         val hot = TrailerPlayPipeline.isServersHot(id)
@@ -81,7 +85,12 @@ object TrailerStreamCrossfade {
 
     fun consumeFor(contentId: String): Handoff? {
         val current = handoff ?: return null
-        if (!current.contentId.equals(contentId.trim(), ignoreCase = true)) return null
+        val want = canonicalizeId(contentId)
+        if (!current.contentId.equals(want, ignoreCase = true)) {
+            // Stale / mismatched arm — drop so a later open does not flash the wrong cover.
+            handoff = null
+            return null
+        }
         handoff = null
         return current
     }
@@ -105,13 +114,13 @@ object TrailerStreamCrossfade {
 
     /**
      * Waits briefly for [TrailerPlayPipeline] warm servers, then runs [block]
-     * on the main thread. Always runs [block] — never blocks Stream Now forever.
+     * on the main thread when the host lifecycle is at least STARTED.
      */
     fun runWhenHot(host: View, contentId: String, block: () -> Unit) {
-        val id = contentId.trim()
+        val id = canonicalizeId(contentId)
         val owner = host.findViewTreeLifecycleOwner()
         if (owner == null) {
-            block()
+            // Detached host — do not navigate on a wrong back stack.
             return
         }
         owner.lifecycleScope.launch {
@@ -122,9 +131,10 @@ object TrailerStreamCrossfade {
             if (current != null && current.contentId.equals(id, ignoreCase = true)) {
                 handoff = current.copy(serverHot = hot || current.serverHot)
             }
+            if (!owner.lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED)) {
+                return@launch
+            }
             if (!host.isAttachedToWindow) {
-                // Host may be gone after trailer dismiss — still navigate.
-                block()
                 return@launch
             }
             block()
@@ -141,6 +151,7 @@ object TrailerStreamCrossfade {
         onTimeout: () -> Unit = { revealStream(bridge) },
     ): Boolean {
         val armed = consumeFor(contentId) ?: return false
+        cancelBridgeTimeout(bridge)
         bridge.animate().cancel()
         bridge.alpha = 1f
         bridge.visibility = View.VISIBLE
@@ -155,15 +166,18 @@ object TrailerStreamCrossfade {
             // Still cover black with ink-tone solid via existing ImageView background.
             bridge.setImageDrawable(null)
         }
-        bridge.postDelayed({
+        val timeout = Runnable {
             if (bridge.visibility == View.VISIBLE) onTimeout()
-        }, BRIDGE_MAX_MS)
+        }
+        bridgeTimeouts[bridge] = timeout
+        bridge.postDelayed(timeout, BRIDGE_MAX_MS)
         return true
     }
 
     /** Short dissolve once the stream has a first ready frame. */
     fun revealStream(bridge: ImageView, durationMs: Long = CROSSFADE_MS) {
         if (bridge.visibility != View.VISIBLE) return
+        cancelBridgeTimeout(bridge)
         bridge.animate().cancel()
         val reduce = durationMs <= 0L ||
             android.provider.Settings.Global.getFloat(
@@ -183,10 +197,20 @@ object TrailerStreamCrossfade {
             .start()
     }
 
-    private fun hideBridge(bridge: ImageView) {
+    fun hideBridge(bridge: ImageView) {
+        cancelBridgeTimeout(bridge)
         bridge.visibility = View.GONE
         bridge.alpha = 1f
         runCatching { Glide.with(bridge).clear(bridge) }
         bridge.setImageDrawable(null)
     }
+
+    private fun cancelBridgeTimeout(bridge: ImageView) {
+        val pending = bridgeTimeouts.remove(bridge) ?: return
+        bridge.removeCallbacks(pending)
+    }
+
+    /** Canonical content ids so warm cache + crossfade handoff agree (case-insensitive). */
+    fun canonicalizeId(contentId: String): String =
+        contentId.trim().lowercase(Locale.US)
 }

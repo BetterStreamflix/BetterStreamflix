@@ -357,6 +357,7 @@ class SettingsTvFragment : LeanbackPreferenceFragmentCompat() {
         val title = findPreference<PreferenceScreen>(key)?.title?.toString()
             ?: when (key) {
                 "screen_serienstream_auth" -> getString(R.string.serienstream_auth_category_title)
+                "screen_guardaflix_auth" -> getString(R.string.settings_category_guardaflix)
                 "screen_aniworld_auth" -> getString(R.string.aniworld_auth_category_title)
                 "screen_provider_trust" -> getString(R.string.settings_provider_trust_title)
                 "screen_provider_health" -> getString(R.string.settings_provider_health_title)
@@ -663,7 +664,10 @@ class SettingsTvFragment : LeanbackPreferenceFragmentCompat() {
             this,
             lifecycleScope,
             findPreference = { key -> findPreference(key) },
-            openScreen = { key, title -> openNestedSettingsScreen(key, title) },
+            openScreen = { key, title ->
+                findPreference<Preference>(key)?.isVisible = true
+                openNestedSettingsScreen(key, title)
+            },
         )
         NotificationsSettingsController.bind(this) { key -> findPreference(key) }
         findPreference<Preference>("PROVIDER_TRUST_OPEN")?.setOnPreferenceClickListener {
@@ -2154,6 +2158,17 @@ class SettingsTvFragment : LeanbackPreferenceFragmentCompat() {
         findPreference<PreferenceCategory>("pc_poseidon_settings")?.isVisible = isPoseidon
         findPreference<PreferenceCategory>("pc_animeonlineninja_settings")?.isVisible = isAnimeOnlineNinja
         findPreference<PreferenceCategory>("pc_guardaflix_settings")?.isVisible = isGuardaFlix
+        findPreference<PreferenceScreen>("screen_guardaflix_auth")?.isVisible = isGuardaFlix
+        findPreference<Preference>("open_guardaflix_auth")?.apply {
+            isVisible = isGuardaFlix
+            setOnPreferenceClickListener {
+                openNestedSettingsScreen(
+                    "screen_guardaflix_auth",
+                    getString(R.string.settings_category_guardaflix),
+                )
+                true
+            }
+        }
         findPreference<PreferenceCategory>("pc_provider_empty_state")?.isVisible = !hasConfigProvider && !hasSpecificOptions
 
         findPreference<Preference>("screen_serienstream_auth")?.isVisible = isSerienStream

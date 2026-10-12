@@ -19,6 +19,31 @@ class ProviderPassportTest {
     }
 
     @Test
+    fun clearanceGate_failedValidationForcesCaptchaDueEvenWithClearance() {
+        val status = ProviderPassport.resolveStatus(
+            ProviderPassport.Signals(
+                kind = ProviderPassport.Kind.CLEARANCE_GATE,
+                hasClearance = true,
+                isLoggedIn = true,
+                lastValidatedOk = false,
+            ),
+        )
+        assertEquals(ProviderPassport.Status.CAPTCHA_DUE, status)
+    }
+
+    @Test
+    fun accountToken_failedValidationForcesLoginDue() {
+        val status = ProviderPassport.resolveStatus(
+            ProviderPassport.Signals(
+                kind = ProviderPassport.Kind.ACCOUNT_TOKEN,
+                isLoggedIn = true,
+                lastValidatedOk = false,
+            ),
+        )
+        assertEquals(ProviderPassport.Status.LOGIN_DUE, status)
+    }
+
+    @Test
     fun clearanceGate_captchaDueWhenLoggedInWithoutClearance() {
         val status = ProviderPassport.resolveStatus(
             ProviderPassport.Signals(

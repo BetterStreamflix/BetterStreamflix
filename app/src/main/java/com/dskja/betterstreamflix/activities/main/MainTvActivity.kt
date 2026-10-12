@@ -161,7 +161,9 @@ class MainTvActivity : FragmentActivity() {
             if (destination.id != R.id.player) {
                 PlaybackLifecycleGuard.stopActivePlayback()
                 if (leavingPlayer) {
-                    PlayerCleanExit.noteLeavingPlayer()
+                    PlayerCleanExit.noteLeavingPlayer(
+                        returningToHome = destination.id == R.id.home,
+                    )
                     runCatching { TrailerPlaybackController.silenceAllActive() }
                 }
             }
