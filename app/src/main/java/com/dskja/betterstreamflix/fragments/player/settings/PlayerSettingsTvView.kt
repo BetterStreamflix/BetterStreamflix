@@ -265,7 +265,8 @@ class PlayerSettingsTvView @JvmOverloads constructor(
             )
 
         override fun onBindViewHolder(holder: SettingViewHolder, position: Int) {
-            holder.displaySettings(items[position])
+            val item = items.getOrNull(position) ?: return
+            holder.displaySettings(item)
         }
 
         override fun getItemCount() = items.size
@@ -279,7 +280,8 @@ class PlayerSettingsTvView @JvmOverloads constructor(
         init {
         }
 
-        fun displaySettings(item: Item) {
+        fun displaySettings(item: Item?) {
+            if (item == null) return
             binding.root.apply {
                 when (item) {
                     Settings.Subtitle.Style,

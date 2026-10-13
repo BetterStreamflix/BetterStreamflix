@@ -18,13 +18,13 @@
         android:background="@drawable/bg_channel_pin_ring"
         android:padding="3dp">
 
-        <com.google.android.material.imageview.ShapeableImageView
+        <ImageView
             android:id="@+id/iv_channel_pin"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             android:background="@drawable/bg_people_circle"
+            android:clipToOutline="true"
             android:scaleType="centerCrop"
-            app:shapeAppearanceOverlay="@style/ShapeAppearance.Lumina.Circle"
             tools:ignore="ContentDescription"
             tools:src="@drawable/ic_person_placeholder" />
 

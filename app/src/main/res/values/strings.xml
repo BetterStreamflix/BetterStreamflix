@@ -526,6 +526,7 @@
     <string name="settings_download_storage_clear_folder">Clear custom folder</string>
     <string name="settings_download_storage_folder_set">Download folder saved. New offline downloads use this volume.</string>
     <string name="settings_download_storage_folder_failed">Could not keep access to that folder. Try another location.</string>
+    <string name="settings_download_storage_folder_unavailable">This device has no folder picker. Choose another download location.</string>
     <string name="settings_download_storage_folder_cleared">Custom folder cleared</string>
     <string name="settings_download_storage_removable_unavailable">No removable storage detected</string>
     <string name="settings_download_storage_permission_lost">Folder access was revoked. Choose the folder again.</string>

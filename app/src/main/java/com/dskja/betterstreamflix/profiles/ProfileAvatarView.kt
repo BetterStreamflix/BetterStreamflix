@@ -31,10 +31,10 @@ class ProfileAvatarView @JvmOverloads constructor(
         gravity = Gravity.CENTER
         includeFontPadding = false
         setTextColor(0xFFFFFFFF.toInt())
-        // Some devices throw NotFoundException instead of returning null
-        // (BETTERSTREAMFLIX-3M MainTvActivity inflate crash).
-        typeface = runCatching { ResourcesCompat.getFont(context, R.font.syne) }.getOrNull()
-            ?: Typeface.create("sans-serif-medium", Typeface.BOLD)
+        // Never call ResourcesCompat.getFont during inflate — some OEM builds
+        // throw Resources$NotFoundException and abort Main*Activity
+        // (BETTERSTREAMFLIX-3M). Load the branded font lazily in [bind].
+        typeface = Typeface.create("sans-serif-medium", Typeface.BOLD)
         setShadowLayer(6f, 0f, 2f, 0x99000000.toInt())
     }
 
@@ -65,6 +65,9 @@ class ProfileAvatarView @JvmOverloads constructor(
         monogram.setTextSize(TypedValue.COMPLEX_UNIT_SP, textSizeSp)
         monogram.setTextColor(palette.onOrb)
         monogram.text = ProfileAvatarStyle.initialFor(displayName)
+        runCatching { ResourcesCompat.getFont(context, R.font.syne) }.getOrNull()?.let {
+            monogram.typeface = it
+        }
         background = null
     }
 
@@ -125,17 +128,21 @@ class ProfileAvatarView @JvmOverloads constructor(
         override fun onDraw(canvas: Canvas) {
             val w = width.toFloat()
             val h = height.toFloat()
+            if (w <= 0f || h <= 0f) return
             val cx = w / 2f
             val cy = h / 2f
             val r = minOf(w, h) / 2f
 
             val mid = if (palette.mid != 0) palette.mid else blend(palette.start, palette.end, 0.45f)
-            fillPaint.shader = android.graphics.LinearGradient(
-                0f, 0f, w * 0.92f, h,
-                intArrayOf(palette.start, mid, palette.end),
-                floatArrayOf(0f, 0.42f, 1f),
-                android.graphics.Shader.TileMode.CLAMP,
-            )
+            fillPaint.shader = runCatching {
+                android.graphics.LinearGradient(
+                    0f, 0f, w * 0.92f, h,
+                    intArrayOf(palette.start, mid, palette.end),
+                    floatArrayOf(0f, 0.42f, 1f),
+                    android.graphics.Shader.TileMode.CLAMP,
+                )
+            }.getOrNull()
+            fillPaint.color = palette.start
             canvas.drawCircle(cx, cy, r, fillPaint)
 
             // Soft top gloss.

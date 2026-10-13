@@ -999,7 +999,15 @@ class SettingsMobileFragment : PreferenceFragmentCompat() {
             lifecycleScope,
             findPreference = { key -> findPreference(key) },
             onPickDownloadFolder = {
-                pickDownloadFolderLauncher.launch(null)
+                // Some Leanback / OEM builds have no OPEN_DOCUMENT_TREE handler
+                // (BETTERSTREAMFLIX-41 ActivityNotFoundException).
+                runCatching { pickDownloadFolderLauncher.launch(null) }
+                    .onFailure {
+                        showSettingsInfo(
+                            getString(R.string.settings_download_storage_folder_unavailable),
+                            R.string.settings_download_storage_pick_folder,
+                        )
+                    }
             },
         )
 

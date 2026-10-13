@@ -295,7 +295,10 @@ class PlayerSettingsMobileView @JvmOverloads constructor(
             )
 
         override fun onBindViewHolder(holder: SettingViewHolder, position: Int) {
-            holder.displaySettings(items[position])
+            // OpenSubtitles/SubDL mutate their lists while RV binds — never crash
+            // on a raced/null slot (BETTERSTREAMFLIX-4A on 1.1.10).
+            val item = items.getOrNull(position) ?: return
+            holder.displaySettings(item)
         }
 
         override fun getItemCount() = items.size
@@ -313,7 +316,8 @@ class PlayerSettingsMobileView @JvmOverloads constructor(
             }
         }
 
-        fun displaySettings(item: Item) {
+        fun displaySettings(item: Item?) {
+            if (item == null) return
             binding.root.apply {
                 when (item) {
                     Settings.Subtitle.Style,

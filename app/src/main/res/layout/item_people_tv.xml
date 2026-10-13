@@ -8,12 +8,14 @@
     android:focusableInTouchMode="true"
     android:paddingBottom="4dp">
 
-    <com.google.android.material.imageview.ShapeableImageView
+    <!-- Framework ImageView: ShapeableImageView needs Material attrs Leanback lacks. -->
+    <ImageView
         android:id="@+id/iv_people_image"
         android:layout_width="80dp"
         android:layout_height="80dp"
         android:layout_marginTop="4dp"
         android:background="@drawable/bg_people_circle"
+        android:clipToOutline="true"
         android:duplicateParentState="true"
         android:foreground="@drawable/fg_tv_focus_ring_circle"
         android:importantForAccessibility="no"
@@ -22,9 +24,6 @@
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent"
-        app:shapeAppearanceOverlay="@style/ShapeAppearance.Lumina.Circle"
-        app:strokeColor="@color/cinema_stroke"
-        app:strokeWidth="1dp"
         tools:src="@drawable/ic_person_placeholder" />
 
     <TextView

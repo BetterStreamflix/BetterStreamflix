@@ -6,11 +6,9 @@ import android.content.Intent
 import android.content.pm.ServiceInfo
 import android.os.Build
 import android.util.Log
-import androidx.media3.common.util.Util
 import androidx.media3.exoplayer.offline.Download
 import androidx.media3.exoplayer.offline.DownloadManager
 import androidx.media3.exoplayer.offline.DownloadService
-import androidx.media3.exoplayer.scheduler.PlatformScheduler
 import androidx.media3.exoplayer.scheduler.Scheduler
 import com.dskja.betterstreamflix.R
 
@@ -90,8 +88,13 @@ class StreamflixDownloadService : DownloadService(
     override fun getDownloadManager(): DownloadManager =
         StreamflixDownloadManager.get(this)
 
-    override fun getScheduler(): Scheduler? =
-        if (Util.SDK_INT >= 21) PlatformScheduler(this, JOB_ID) else null
+    /**
+     * Do not let Media3 PlatformScheduler restart this dataSync FGS after boot /
+     * background — Android 12+ throws ForegroundServiceStartNotAllowedException
+     * (BETTERSTREAMFLIX-2P "FGS type dataSync not allowed to start from BOOT_COMPLETED").
+     * Resume is handled by [DownloadBootReceiver] → WorkManager → foreground-safe start.
+     */
+    override fun getScheduler(): Scheduler? = null
 
     override fun getForegroundNotification(
         downloads: MutableList<Download>,
@@ -159,7 +162,6 @@ class StreamflixDownloadService : DownloadService(
 
     companion object {
         const val FOREGROUND_NOTIFICATION_ID = 42001
-        private const val JOB_ID = 4201
 
         private fun isFgsStartNotAllowed(error: Throwable): Boolean {
             var current: Throwable? = error
