@@ -1528,16 +1528,24 @@ abstract class PlayerSettingsView @JvmOverloads constructor(
                     val list = mutableListOf<Item>()
 
                     fun showLoading() {
-                        list.clear()
-                        list.add(Loading)
+                        replace(listOf(Loading))
                     }
 
                     fun init(openSubtitles: List<com.dskja.betterstreamflix.utils.OpenSubtitles.Subtitle>) {
-                        list.clear()
-                        if (openSubtitles.isEmpty()) {
-                            list.add(Empty)
-                        } else {
-                            list.addAll(openSubtitles.map { Subtitle(it) })
+                        replace(
+                            if (openSubtitles.isEmpty()) {
+                                listOf(Empty)
+                            } else {
+                                openSubtitles.map { Subtitle(it) }
+                            },
+                        )
+                    }
+
+                    private fun replace(next: List<Item>) {
+                        // Atomic-ish swap so RV bind never sees a cleared empty mid-frame.
+                        synchronized(list) {
+                            list.clear()
+                            list.addAll(next)
                         }
                     }
                 }
@@ -1556,16 +1564,23 @@ abstract class PlayerSettingsView @JvmOverloads constructor(
                     val list = mutableListOf<Item>()
 
                     fun showLoading() {
-                        list.clear()
-                        list.add(Loading)
+                        replace(listOf(Loading))
                     }
 
                     fun init(subDLSubtitles: List<com.dskja.betterstreamflix.utils.SubDL.Subtitle>) {
-                        list.clear()
-                        if (subDLSubtitles.isEmpty()) {
-                            list.add(Empty)
-                        } else {
-                            list.addAll(subDLSubtitles.map { Subtitle(it) })
+                        replace(
+                            if (subDLSubtitles.isEmpty()) {
+                                listOf(Empty)
+                            } else {
+                                subDLSubtitles.map { Subtitle(it) }
+                            },
+                        )
+                    }
+
+                    private fun replace(next: List<Item>) {
+                        synchronized(list) {
+                            list.clear()
+                            list.addAll(next)
                         }
                     }
                 }
