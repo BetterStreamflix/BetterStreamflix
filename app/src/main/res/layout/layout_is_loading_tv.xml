@@ -116,6 +116,7 @@
         android:id="@+id/tv_is_loading_error"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
+        android:fontFamily="@font/manrope"
         android:text="@string/loading_error_title"
         android:textColor="?attr/colorOnSurface"
         android:textSize="20sp"

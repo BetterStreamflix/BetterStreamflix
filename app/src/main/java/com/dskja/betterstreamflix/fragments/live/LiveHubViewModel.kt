@@ -51,7 +51,7 @@ class LiveHubViewModel : ViewModel() {
             val warning: String? = null,
         ) : State()
         /** Catalog loaded cleanly but no live rows — show empty chrome, not an error toast. */
-        data object Empty : State()
+        data class Empty(val warning: String? = null) : State()
         data class Failed(val error: Exception) : State()
     }
 
@@ -95,7 +95,7 @@ class LiveHubViewModel : ViewModel() {
                     if (!lastWarning.isNullOrBlank()) {
                         _state.emit(State.Failed(Exception(lastWarning)))
                     } else {
-                        _state.emit(State.Empty)
+                        _state.emit(State.Empty(warning = null))
                     }
                     return@launch
                 }
@@ -139,7 +139,7 @@ class LiveHubViewModel : ViewModel() {
                     ),
                 )
                 if (categories.isEmpty()) {
-                    _state.emit(State.Empty)
+                    _state.emit(State.Empty(warning = lastWarning))
                 } else {
                     _state.emit(State.Success(categories, lastWarning))
                     scheduleLiveReminders(categories)

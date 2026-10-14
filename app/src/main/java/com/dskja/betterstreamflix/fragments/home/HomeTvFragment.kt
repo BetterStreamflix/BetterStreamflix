@@ -170,17 +170,12 @@ class HomeTvFragment : Fragment() {
 
         initializeHome()
         refreshProfileChip()
-        // LD-037: shrink remix chrome under Compact density.
-        binding.root.findViewById<View>(R.id.btn_home_remix)?.let {
-            com.dskja.betterstreamflix.ui.LeanbackDensityPolicy.applyChromeIconSize(it)
-        }
         cinemaRoomController = CinemaRoomController(
             fragment = this,
             root = binding.root,
             homeContent = binding.vgvHome,
             homeChrome = listOfNotNull(
                 binding.root.findViewById(R.id.tv_home_profile_chip),
-                binding.root.findViewById(R.id.btn_home_remix),
                 binding.root.findViewById(R.id.tv_home_catalog_warning),
             ),
             modalBlocking = { isAmbientModalBlocking() },
@@ -433,8 +428,6 @@ class HomeTvFragment : Fragment() {
             // Do not requestFocus while the adapter is empty — Leanback then loses the
             // focus target and DPAD stays trapped on the side nav until Movies/etc.
         }
-        // Home remix stays Settings-only — chrome button flooded Home.
-        binding.root.findViewById<View>(R.id.btn_home_remix)?.visibility = View.GONE
     }
 
     /**

@@ -188,8 +188,6 @@ class HomeMobileFragment : Fragment() {
 
         refreshProviderLogo()
         refreshProfileChip()
-        // Home remix stays Settings-only — chrome button flooded Home.
-        binding.root.findViewById<View>(R.id.btn_home_remix)?.visibility = View.GONE
         binding.ivProviderLogo.apply {
             isClickable = true
             isFocusable = true

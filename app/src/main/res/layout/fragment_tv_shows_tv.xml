@@ -38,6 +38,7 @@
         android:id="@+id/tv_tv_shows_empty"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
+        android:fontFamily="@font/manrope"
         android:gravity="center"
         android:padding="48dp"
         android:text="@string/tv_shows_empty"

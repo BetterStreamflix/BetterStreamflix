@@ -79,6 +79,16 @@ class OfflineStudioController(
     private var pendingScrollToPacks = false
 
     fun attach() {
+        // Library + Queue only — Care/Controls duplicate Settings and clutter Downloads.
+        chipCare?.visibility = View.GONE
+        chipControls?.visibility = View.GONE
+        carePanel?.visibility = View.GONE
+        controlsPanel?.visibility = View.GONE
+        when (viewModel.currentViewMode()) {
+            DownloadsViewMode.CARE, DownloadsViewMode.CONTROLS ->
+                viewModel.setViewMode(DownloadsViewMode.LIBRARY)
+            else -> Unit
+        }
         chipLibrary?.setOnClickListener {
             ExpMotion.hapticTap(it)
             viewModel.setViewMode(DownloadsViewMode.LIBRARY)
@@ -87,16 +97,8 @@ class OfflineStudioController(
             ExpMotion.hapticTap(it)
             viewModel.setViewMode(DownloadsViewMode.QUEUE)
         }
-        chipCare?.setOnClickListener {
-            ExpMotion.hapticTap(it)
-            viewModel.setViewMode(DownloadsViewMode.CARE)
-        }
-        chipControls?.setOnClickListener {
-            ExpMotion.hapticTap(it)
-            viewModel.setViewMode(DownloadsViewMode.CONTROLS)
-        }
         if (isTv) {
-            listOfNotNull(chipLibrary, chipQueue, chipCare, chipControls).forEach {
+            listOfNotNull(chipLibrary, chipQueue).forEach {
                 it.isFocusable = true
                 it.isFocusableInTouchMode = true
             }
@@ -204,16 +206,9 @@ class OfflineStudioController(
 
         statusRail?.setOnClickListener {
             ExpMotion.hapticTap(it)
-            val snap = viewModel.studioSnapshot.value
-            when {
-                snap.health.hasUnhealthy || snap.expiryCount > 0 ->
-                    viewModel.setViewMode(DownloadsViewMode.CARE)
-                snap.packCount > 0 && !snap.hasCareWork -> {
-                    pendingScrollToPacks = true
-                    viewModel.setViewMode(DownloadsViewMode.CONTROLS)
-                }
-                else -> viewModel.setViewMode(DownloadsViewMode.CONTROLS)
-            }
+            // Advanced Care/Controls live in Settings — keep Downloads on Library/Queue.
+            SettingsDeepLink.openDownloadsScreen()
+            fragment.findNavController().navigate(R.id.settings)
         }
 
         fragment.viewLifecycleOwner.lifecycleScope.launch {
@@ -224,23 +219,22 @@ class OfflineStudioController(
     }
 
     fun applyMode(mode: DownloadsViewMode) {
-        val library = mode == DownloadsViewMode.LIBRARY
-        val queue = mode == DownloadsViewMode.QUEUE
-        val care = mode == DownloadsViewMode.CARE
-        val controls = mode == DownloadsViewMode.CONTROLS
+        val safe = when (mode) {
+            DownloadsViewMode.CARE, DownloadsViewMode.CONTROLS -> DownloadsViewMode.LIBRARY
+            else -> mode
+        }
+        if (safe != mode) {
+            viewModel.setViewMode(safe)
+            return
+        }
+        val library = safe == DownloadsViewMode.LIBRARY
+        val queue = safe == DownloadsViewMode.QUEUE
         chipLibrary?.let { styleModeChip(it, library) }
         chipQueue?.let { styleModeChip(it, queue) }
-        chipCare?.let { styleModeChip(it, care) }
-        chipControls?.let { styleModeChip(it, controls) }
-        carePanel?.isVisible = care
-        controlsPanel?.isVisible = controls
-        if (controls) {
-            viewModel.refreshStudioPreferences()
-            if (pendingScrollToPacks) {
-                pendingScrollToPacks = false
-                scrollControlsToPacks()
-            }
-        }
+        chipCare?.visibility = View.GONE
+        chipControls?.visibility = View.GONE
+        carePanel?.isVisible = false
+        controlsPanel?.isVisible = false
     }
 
     fun modeTitleRes(mode: DownloadsViewMode): Int = when (mode) {

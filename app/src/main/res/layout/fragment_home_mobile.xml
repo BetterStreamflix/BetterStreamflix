@@ -61,23 +61,6 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent" />
 
-    <ImageButton
-        android:id="@+id/btn_home_remix"
-        android:visibility="gone"
-        android:layout_width="48dp"
-        android:layout_height="48dp"
-        android:layout_marginEnd="4dp"
-        android:background="@drawable/bg_provider_logo_home_mobile"
-        android:contentDescription="@string/home_remix_button_cd"
-        android:elevation="10dp"
-        android:padding="12dp"
-        android:scaleType="centerInside"
-        android:src="@drawable/ic_sort"
-        android:tint="@color/cinema_text"
-        app:layout_constraintBottom_toBottomOf="@id/iv_provider_logo"
-        app:layout_constraintEnd_toStartOf="@id/tv_home_profile_chip"
-        app:layout_constraintTop_toTopOf="@id/iv_provider_logo"
-        tools:ignore="UseAppTint" />
 
     <include
         android:id="@+id/tv_home_profile_chip"
