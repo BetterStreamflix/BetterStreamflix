@@ -40,7 +40,8 @@ object ExpEmptyChrome {
             }
         }
         emptyView.visibility = View.VISIBLE
-        emptyRule?.visibility = if (exp) View.VISIBLE else View.GONE
+        // Accent rule is Cinema default chrome, not Experimental-only.
+        emptyRule?.visibility = View.VISIBLE
         // Always offer a CTA when provided — empty Home must not trap Mobile or Leanback.
         val leanback = DeviceCapabilities.isLeanbackDevice(emptyView.context)
         emptyCta?.visibility = View.VISIBLE

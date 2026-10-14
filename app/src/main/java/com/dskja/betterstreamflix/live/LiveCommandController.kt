@@ -70,9 +70,11 @@ class LiveCommandController(
 
     fun attach() {
         chrome?.isVisible = true
+        // Modes-only by default — search + action chips flooded Live Hub (Mobile + TV).
+        root.findViewById<View>(R.id.cl_live_command_search)?.isVisible = false
+        root.findViewById<View>(R.id.hsv_live_command_actions)?.isVisible = false
+        statusView?.isVisible = false
         bindModeChips()
-        bindSearch()
-        refreshActions()
         applySelection()
     }
 
@@ -98,7 +100,7 @@ class LiveCommandController(
         hubCategories = categories
         this.pinCount = pinCount
         this.pipCandidates = pipCandidates.coerceAtLeast(0)
-        refreshActions()
+        // Modes-only chrome — do not rebuild search/actions/status flood.
         val focusGrid = !initialBindDone
         initialBindDone = true
         publish(focusGrid = focusGrid)
@@ -108,7 +110,6 @@ class LiveCommandController(
         hubCategories = emptyList()
         pinCount = 0
         pipCandidates = 0
-        refreshActions()
         publish(focusGrid = false)
     }
 
@@ -372,23 +373,10 @@ class LiveCommandController(
         onVisibleChanged(visible, allowFocus)
     }
 
+    @Suppress("UNUSED_PARAMETER")
     private fun bindStatus(kind: LiveCommandPolicy.StatusKind) {
-        val tv = statusView ?: return
-        tv.text = when (kind) {
-            is LiveCommandPolicy.StatusKind.Search ->
-                fragment.getString(R.string.live_command_status_search, kind.hits, kind.query)
-            is LiveCommandPolicy.StatusKind.Reminders ->
-                fragment.getString(R.string.live_command_status_reminders, kind.count)
-            LiveCommandPolicy.StatusKind.SportZap ->
-                fragment.getString(R.string.live_command_status_sport_zap)
-            is LiveCommandPolicy.StatusKind.News ->
-                fragment.getString(R.string.live_command_status_news, kind.count)
-            is LiveCommandPolicy.StatusKind.Favorites ->
-                fragment.getString(R.string.live_command_status_favorites, kind.favoriteCount)
-            is LiveCommandPolicy.StatusKind.Mode ->
-                fragment.getString(R.string.live_command_status_mode, modeLabel(kind.mode), kind.shelves)
-        }
-        tv.isVisible = true
+        // Status line kept off in modes-only chrome (reduces Live Hub clutter).
+        statusView?.isVisible = false
     }
 
     private fun refreshActions() {

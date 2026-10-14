@@ -226,7 +226,7 @@ object AnimeOnlineNinjaProvider : Provider, ProviderConfigUrl {
             referer = referer,
             origin = SITE_BASE_URL,
             userAgent = NetworkClient.USER_AGENT,
-            accept = "image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8",
+            accept = "image/webp,image/png,image/jpeg,image/*,*/*;q=0.8",
             cookie = currentClearanceCookie()
         )
     }

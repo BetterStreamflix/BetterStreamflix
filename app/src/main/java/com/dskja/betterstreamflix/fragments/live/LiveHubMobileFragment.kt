@@ -128,12 +128,16 @@ class LiveHubMobileFragment : Fragment() {
                             warmSportZapRing(state.categories)
                         }
                     }
-                    LiveHubViewModel.State.Empty -> {
+                    is LiveHubViewModel.State.Empty -> {
                         command?.setRestricted(false)
                         lastHubCategories = emptyList()
                         command?.bindHub(emptyList(), pinCount = 0, pipCandidates = 0)
                         ExpMotion.fadeOutAndHide(binding.isLoading.root)
-                        hideWarning()
+                        if (!state.warning.isNullOrBlank()) {
+                            showWarning(state.warning)
+                        } else {
+                            hideWarning()
+                        }
                     }
                     is LiveHubViewModel.State.Failed -> {
                         lastHubCategories = emptyList()

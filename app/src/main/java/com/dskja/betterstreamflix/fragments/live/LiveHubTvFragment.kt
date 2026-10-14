@@ -149,12 +149,16 @@ class LiveHubTvFragment : Fragment() {
                             warmSportZapRing(state.categories)
                         }
                     }
-                    LiveHubViewModel.State.Empty -> {
+                    is LiveHubViewModel.State.Empty -> {
                         command?.setRestricted(false)
                         lastHubCategories = emptyList()
                         command?.bindHub(emptyList(), pinCount = 0, pipCandidates = 0)
                         TvLoadingOverlay.hide(binding.isLoading.root)
-                        hideWarning()
+                        if (!state.warning.isNullOrBlank()) {
+                            showWarning(state.warning)
+                        } else {
+                            hideWarning()
+                        }
                         binding.btnLiveHubEmptyCta.post {
                             if (binding.btnLiveHubEmptyCta.isVisible) {
                                 binding.btnLiveHubEmptyCta.requestFocus()
