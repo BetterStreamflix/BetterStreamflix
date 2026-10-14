@@ -1,44 +1,44 @@
-<h1 align="center">BetterStreamflix</h1>
+<h1 align='center'>BetterStreamflix</h1>
 
-<p align="center">
-  <img src="./branding/ic_launcher-512.png" height="120px" alt="BetterStreamflix" />
+<p align='center'>
+  <img src='./branding/ic_launcher-512.png' height='120px' alt='BetterStreamflix' />
   <br />
-  <a href="https://github.com/dskja/BetterStreamflix/stargazers"><img src="https://img.shields.io/github/stars/dskja/BetterStreamflix" alt="Stars" /></a>
-  <a href="https://github.com/dskja/BetterStreamflix/blob/main/LICENSE"><img src="https://img.shields.io/github/license/dskja/BetterStreamflix" alt="License" /></a>
-  <a href="https://github.com/dskja/BetterStreamflix/releases/latest"><img src="https://img.shields.io/github/v/release/dskja/BetterStreamflix" alt="Release" /></a>
-  <a href="https://github.com/dskja/BetterStreamflix/releases"><img src="https://img.shields.io/github/downloads/dskja/BetterStreamflix/total" alt="Downloads" /></a>
-  <img src="https://img.shields.io/badge/Kotlin-Android%20TV%20%2B%20Mobile-7F52FF" alt="Kotlin" />
+  <a href='https://github.com/BetterStreamflix/BetterStreamflix/stargazers'><img src='https://img.shields.io/github/stars/BetterStreamflix/BetterStreamflix' alt='Stars' /></a>
+  <a href='https://github.com/BetterStreamflix/BetterStreamflix/blob/main/LICENSE'><img src='https://img.shields.io/github/license/BetterStreamflix/BetterStreamflix' alt='License' /></a>
+  <a href='https://github.com/BetterStreamflix/BetterStreamflix/releases/latest'><img src='https://img.shields.io/github/v/release/BetterStreamflix/BetterStreamflix' alt='Release' /></a>
+  <a href='https://github.com/BetterStreamflix/BetterStreamflix/releases'><img src='https://img.shields.io/github/downloads/BetterStreamflix/BetterStreamflix/total' alt='Downloads' /></a>
+  <img src='https://img.shields.io/badge/Kotlin-Android%20TV%20%2B%20Mobile-7F52FF' alt='Kotlin' />
   <br />
-  <a href="https://maidensail.com/startup/betterstreamflix" rel="dofollow"><img src="https://maidensail.com/badge/betterstreamflix.svg?theme=dark" alt="Featured on Maidensail" height="44"></a>
+  <a href='https://maidensail.com/startup/betterstreamflix' rel='dofollow'><img src='https://maidensail.com/badge/betterstreamflix.svg?theme=dark' alt='Featured on Maidensail' height='44'></a>
   <br />
-  <strong>v1.1.1</strong> · Maintained by <a href="https://github.com/dskja">dskja</a>
+  <strong>v1.1.1</strong> · Maintained by <a href='https://github.com/BetterStreamflix'>BetterStreamflix</a>
   <br />
   An actively maintained fork of Streamflix with extra fixes, providers and UX improvements for Android TV and mobile.
   <br />
-  <a href="https://github.com/dskja/BetterStreamflix/releases/latest">
+  <a href='https://github.com/BetterStreamflix/BetterStreamflix/releases/latest'>
     <strong>Download app »</strong>
   </a>
   <br />
   <br />
-  <a href="https://t.me/BetterStreamflix">Telegram channel</a>
+  <a href='https://t.me/BetterStreamflix'>Telegram channel</a>
   ·
-  <a href="https://discord.gg/R4F72rMUZ8">Discord</a>
+  <a href='https://discord.gg/R4F72rMUZ8'>Discord</a>
   ·
-  <a href="https://buymeacoffee.com/betterstreamflix">Buy me a coffee</a>
+  <a href='https://buymeacoffee.com/betterstreamflix'>Buy me a coffee</a>
   ·
-  <a href="https://www.patreon.com/BetterStreamflix">Patreon</a>
+  <a href='https://www.patreon.com/BetterStreamflix'>Patreon</a>
   ·
-  <a href="https://github.com/sponsors/dskja">GitHub Sponsors</a>
+  <a href='https://github.com/sponsors/BetterStreamflix'>GitHub Sponsors</a>
   ·
-  <a href="https://github.com/dskja/BetterStreamflix/issues">Report Bug</a>
+  <a href='https://github.com/BetterStreamflix/BetterStreamflix/issues'>Report Bug</a>
   ·
-  <a href="https://github.com/dskja/BetterStreamflix/issues">Request Feature</a>
+  <a href='https://github.com/BetterStreamflix/BetterStreamflix/issues'>Request Feature</a>
 </p>
 
 > **Support BetterStreamflix**  
 > Personal basic costs during a tight stretch — so development can continue.  
 > Not hosting, APIs, or servers.  
-> [Buy Me a Coffee](https://buymeacoffee.com/betterstreamflix) · [Patreon](https://www.patreon.com/BetterStreamflix) · [GitHub Sponsors](https://github.com/sponsors/dskja) · [Discord](https://discord.gg/R4F72rMUZ8)
+> [Buy Me a Coffee](https://buymeacoffee.com/betterstreamflix) · [Patreon](https://www.patreon.com/BetterStreamflix) · [GitHub Sponsors](https://github.com/sponsors/BetterStreamflix) · [Discord](https://discord.gg/R4F72rMUZ8)
 
 <details>
   <summary>Table of Contents</summary>
@@ -50,6 +50,7 @@
 - [Getting started](#getting-started)
   - [Prerequisites](#prerequisites)
   - [Setup](#setup)
+- [Supabase Sync (optional)](#supabase-sync-optional)
 - [Development](#development)
 - [Contributing](#contributing)
 - [Support](#support)
@@ -60,7 +61,7 @@
 
 ## About the project
 
-**BetterStreamflix** is maintained by **[dskja](https://github.com/dskja)**. It builds on the community Streamflix Reborn project and the original Streamflix app, with ongoing fixes and improvements.
+**BetterStreamflix** is maintained by **[BetterStreamflix](https://github.com/BetterStreamflix)**. It builds on the community Streamflix Reborn project and the original Streamflix app, with ongoing fixes and improvements.
 
 ### What is BetterStreamflix?
 
@@ -80,6 +81,7 @@ This app provides a user interface for accessing publicly available streaming co
 - Multiple providers (incl. SerienStream via [serien.domains](https://serien.domains) proxy)
 - Offline downloads with configurable storage location
 - Chromecast queue + subtitles
+- Optional **Supabase sync**: favorites and watch history across your own devices via a Supabase project that you create and control — see [Supabase Sync](#supabase-sync-optional)
 - Optional Experimental UI (Lumina) and platform Integrations hub (Trakt VIP-gated, Jellyfin, Plex, …). The standalone `experimental-ui/` Vite tree is an archive/prototype only — not built by Android CI (see [`experimental-ui/README.md`](./experimental-ui/README.md)).
 - Resume from last playback position
 - In-app update from this repository’s releases
@@ -106,10 +108,17 @@ Install [Android Studio](https://developer.android.com/studio)
 1. Clone the project
 
 ```bash
-git clone https://github.com/dskja/BetterStreamflix.git
+git clone https://github.com/BetterStreamflix/BetterStreamflix.git
 ```
 
 2. Open the project in Android Studio
+
+## Supabase Sync (optional)
+
+BetterStreamflix can synchronize favorites and watch history between your devices through a **Supabase project that you create and control** — no central BetterStreamflix server involved.
+
+- Setup guide: [supabase_installation.md](./supabase_installation.md)
+- Merging existing profiles: [SUPABASE_PROFILE_MERGE_GUIDE.md](./SUPABASE_PROFILE_MERGE_GUIDE.md)
 
 ## Development
 
@@ -154,7 +163,7 @@ Contributions are welcome.
 2. Create your feature branch (`git checkout -b feature/amazing-feature`)
 3. Commit your changes (`git commit -m 'feat: add some amazing feature'`)
 4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a pull request against [dskja/BetterStreamflix](https://github.com/dskja/BetterStreamflix)
+5. Open a pull request against [BetterStreamflix/BetterStreamflix](https://github.com/BetterStreamflix/BetterStreamflix)
 
 ## Support
 
@@ -164,7 +173,7 @@ Optional support for personal basic costs so development can continue — not ho
 | --- | --- |
 | Buy Me a Coffee | https://buymeacoffee.com/betterstreamflix · https://buymeacoff.ee/betterstreamflix |
 | Patreon | https://www.patreon.com/BetterStreamflix |
-| GitHub Sponsors | https://github.com/sponsors/dskja |
+| GitHub Sponsors | https://github.com/sponsors/BetterStreamflix |
 | Discord | https://discord.gg/R4F72rMUZ8 |
 | Telegram | https://t.me/BetterStreamflix |
 
@@ -190,7 +199,7 @@ Thank you to the people who keep BetterStreamflix going (also listed in-app unde
 ## Credits & Authors
 
 ### Maintainer
-- **[dskja](https://github.com/dskja)** — BetterStreamflix
+- **[BetterStreamflix](https://github.com/BetterStreamflix)** — BetterStreamflix
 - Telegram: [t.me/BetterStreamflix](https://t.me/BetterStreamflix)
 
 ### Upstream
@@ -203,8 +212,8 @@ Thank you to the people who keep BetterStreamflix going (also listed in-app unde
 
 This project is licensed under the `Apache-2.0` License — see the [LICENSE](LICENSE) file for details.
 
-<p align="center">
+<p align='center'>
   © 2022 Lory-Stan TANASI — original Streamflix<br />
   Built with respect for Streamflix Reborn and the original work<br />
-  © 2026 dskja / BetterStreamflix
+  © 2026 BetterStreamflix
 </p>
