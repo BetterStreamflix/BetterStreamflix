@@ -211,34 +211,22 @@
                 android:textColor="#FFFFFFFF"
                 android:textSize="14sp" />
 
+            <!-- Kept GONE for R.id + controller null-safety; Settings owns Care/Controls. -->
             <TextView
                 android:id="@+id/chip_mode_care"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginEnd="8dp"
-                android:background="@drawable/bg_download_filter_chip"
-                android:focusable="true"
-                android:paddingStart="16dp"
-                android:paddingTop="10dp"
-                android:paddingEnd="16dp"
-                android:paddingBottom="10dp"
+                android:focusable="false"
                 android:text="@string/offline_studio_mode_care"
-                android:textColor="#FFFFFFFF"
-                android:textSize="14sp" />
+                android:visibility="gone" />
 
             <TextView
                 android:id="@+id/chip_mode_controls"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:background="@drawable/bg_download_filter_chip"
-                android:focusable="true"
-                android:paddingStart="16dp"
-                android:paddingTop="10dp"
-                android:paddingEnd="16dp"
-                android:paddingBottom="10dp"
+                android:focusable="false"
                 android:text="@string/offline_studio_mode_controls"
-                android:textColor="#FFFFFFFF"
-                android:textSize="14sp" />
+                android:visibility="gone" />
         </LinearLayout>
     </HorizontalScrollView>
 
@@ -406,26 +394,6 @@
         app:layout_constraintEnd_toEndOf="@id/hsv_downloads_filters"
         app:layout_constraintTop_toTopOf="@id/hsv_downloads_filters" />
 
-    <include
-        layout="@layout/view_offline_studio_care"
-        android:layout_width="0dp"
-        android:layout_height="0dp"
-        android:visibility="gone"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/hsv_downloads_filters" />
-
-    <include
-        layout="@layout/view_offline_studio_controls"
-        android:layout_width="0dp"
-        android:layout_height="0dp"
-        android:visibility="gone"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/hsv_downloads_filters" />
-
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/rv_downloads"
         android:layout_width="0dp"
@@ -441,6 +409,7 @@
         android:id="@+id/tv_downloads_empty"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
+        android:fontFamily="@font/manrope"
         android:gravity="center"
         android:padding="48dp"
         android:text="@string/downloads_empty"

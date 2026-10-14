@@ -241,7 +241,6 @@ class LivePipZapController(
             CrossProviderLibrary.loadFavoriteTvShows(context)
         }.getOrDefault(emptyList())
             .filter { LiveHubCatalog.isLiveFavorite(it) }
-        ChannelPinStore.seedFromFavoritesIfEmpty(context, favorites)
         val pins = ChannelPinStore.list(context).map {
             LivePipZapPolicy.Candidate(
                 id = it.id,

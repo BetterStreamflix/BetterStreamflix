@@ -386,8 +386,6 @@ class DownloadsTvFragment : Fragment() {
         listOf(
             binding.chipModeLibrary,
             binding.chipModeQueue,
-            binding.chipModeCare,
-            binding.chipModeControls,
             binding.chipFilterAll,
             binding.chipFilterDownloading,
             binding.chipFilterCompleted,
@@ -401,11 +399,10 @@ class DownloadsTvFragment : Fragment() {
 
     private fun wireDownloadFocus() {
         binding.hsvDownloadsFilters.isFocusable = false
+        // Library + Queue only — Care/Controls chips stay GONE (Settings).
         TvFocusChain.linkHorizontal(
             binding.chipModeLibrary,
             binding.chipModeQueue,
-            binding.chipModeCare,
-            binding.chipModeControls,
         )
         TvFocusChain.linkHorizontal(
             binding.chipFilterAll,
@@ -415,23 +412,15 @@ class DownloadsTvFragment : Fragment() {
         )
         binding.chipModeLibrary.nextFocusLeftId = R.id.nav_main
         binding.chipFilterAll.nextFocusLeftId = R.id.nav_main
-        val snap = viewModel.studioSnapshot.value
         val modeDownId = when (viewModel.currentViewMode()) {
             DownloadsViewMode.LIBRARY -> binding.etOfflineLibrarySearch.id
-            DownloadsViewMode.QUEUE -> binding.chipFilterAll.id
-            DownloadsViewMode.CARE -> when {
-                snap.health.hasUnhealthy -> R.id.btn_offline_studio_health_redownload
-                snap.expiryCount > 0 -> R.id.btn_offline_studio_expiry_keep
-                else -> R.id.card_offline_studio_lane
-            }
-            DownloadsViewMode.CONTROLS -> R.id.switch_offline_studio_smart
+            else -> binding.chipFilterAll.id
         }
-        listOf(
+        val modeChips = listOf(
             binding.chipModeLibrary,
             binding.chipModeQueue,
-            binding.chipModeCare,
-            binding.chipModeControls,
-        ).forEach { chip ->
+        )
+        modeChips.forEach { chip ->
             chip.nextFocusUpId = binding.switchDownloadsWifiOnly.id
             chip.nextFocusDownId = modeDownId
         }
@@ -447,15 +436,9 @@ class DownloadsTvFragment : Fragment() {
         binding.etOfflineLibrarySearch.nextFocusUpId = binding.chipModeLibrary.id
         binding.etOfflineLibrarySearch.nextFocusLeftId = R.id.nav_main
         binding.btnDownloadsMenu.nextFocusDownId = binding.switchDownloadsWifiOnly.id
-        binding.btnDownloadsMenu.nextFocusLeftId = binding.chipModeControls.id
+        binding.btnDownloadsMenu.nextFocusLeftId = binding.chipModeQueue.id
         binding.switchDownloadsWifiOnly.nextFocusUpId = binding.btnDownloadsMenu.id
         binding.switchDownloadsWifiOnly.nextFocusLeftId = R.id.nav_main
-        val modeChips = listOf(
-            binding.chipModeLibrary,
-            binding.chipModeQueue,
-            binding.chipModeCare,
-            binding.chipModeControls,
-        )
         val healthCta = binding.btnDownloadsHealthRedownload
         if (healthCta.isVisible) {
             binding.switchDownloadsWifiOnly.nextFocusDownId = healthCta.id

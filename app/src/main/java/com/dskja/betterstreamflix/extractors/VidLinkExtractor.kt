@@ -70,10 +70,20 @@ class VidLinkExtractor : Extractor() {
                 // Shorter than the old 30s — EN stubs must not burn VIDEO_RESOLVE_TIMEOUT alone.
                 timeoutHandler.postDelayed(timeoutRunnable, 18_000L)
 
+                // Cancel may fire off the main thread — WebView requires main (see 2T).
                 continuation.invokeOnCancellation {
                     timeoutHandler.removeCallbacks(timeoutRunnable)
-                    webView.stopLoading()
-                    webView.destroy()
+                    val tearDown = Runnable {
+                        runCatching {
+                            webView.stopLoading()
+                            webView.destroy()
+                        }
+                    }
+                    if (Looper.myLooper() == Looper.getMainLooper()) {
+                        tearDown.run()
+                    } else {
+                        timeoutHandler.post(tearDown)
+                    }
                 }
 
                 fun finishWithJson(jsonData: String) {

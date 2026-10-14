@@ -97,6 +97,7 @@
         android:layout_height="wrap_content"
         android:drawableTop="@drawable/ic_favorite_disable"
         android:drawablePadding="18dp"
+        android:fontFamily="@font/manrope"
         android:gravity="center"
         android:padding="48dp"
         android:text="@string/favorites_empty"

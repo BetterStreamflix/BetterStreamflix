@@ -6,6 +6,7 @@
     android:background="@drawable/bg_download_filter_chip"
     android:ellipsize="end"
     android:fontFamily="@font/manrope"
+    android:foreground="@drawable/fg_tv_focus_ring"
     android:maxLines="1"
     android:minHeight="36dp"
     android:paddingStart="14dp"

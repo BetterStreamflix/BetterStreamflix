@@ -3,6 +3,7 @@
 
     <style name="AppTheme.Widget.Tv.Button" parent="@android:style/Widget.Material.Light.Button">
         <item name="android:background">@drawable/bg_button_tv</item>
+        <item name="android:fontFamily">@font/manrope</item>
         <item name="android:focusable">true</item>
         <item name="android:focusableInTouchMode">true</item>
         <item name="android:paddingTop">6dp</item>

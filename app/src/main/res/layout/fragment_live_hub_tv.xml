@@ -121,6 +121,7 @@
         android:id="@+id/tv_live_hub_empty"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
+        android:fontFamily="@font/manrope"
         android:gravity="center"
         android:padding="48dp"
         android:text="@string/live_hub_empty_tv"

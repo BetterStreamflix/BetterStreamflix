@@ -234,33 +234,20 @@
                 android:textColor="#FFFFFFFF"
                 android:textSize="13sp" />
 
+            <!-- Kept GONE for R.id + controller null-safety; Settings owns Care/Controls. -->
             <TextView
                 android:id="@+id/chip_mode_care"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_margin="4dp"
-                android:background="@drawable/bg_download_filter_chip"
-                android:paddingStart="14dp"
-                android:paddingTop="8dp"
-                android:paddingEnd="14dp"
-                android:paddingBottom="8dp"
                 android:text="@string/offline_studio_mode_care"
-                android:textColor="#FFFFFFFF"
-                android:textSize="13sp" />
+                android:visibility="gone" />
 
             <TextView
                 android:id="@+id/chip_mode_controls"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_margin="4dp"
-                android:background="@drawable/bg_download_filter_chip"
-                android:paddingStart="14dp"
-                android:paddingTop="8dp"
-                android:paddingEnd="14dp"
-                android:paddingBottom="8dp"
                 android:text="@string/offline_studio_mode_controls"
-                android:textColor="#FFFFFFFF"
-                android:textSize="13sp" />
+                android:visibility="gone" />
         </LinearLayout>
     </HorizontalScrollView>
 
@@ -399,26 +386,6 @@
                 android:textSize="13sp" />
         </LinearLayout>
     </HorizontalScrollView>
-
-    <include
-        layout="@layout/view_offline_studio_care"
-        android:layout_width="0dp"
-        android:layout_height="0dp"
-        android:visibility="gone"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/hsv_downloads_filters" />
-
-    <include
-        layout="@layout/view_offline_studio_controls"
-        android:layout_width="0dp"
-        android:layout_height="0dp"
-        android:visibility="gone"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/hsv_downloads_filters" />
 
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/rv_downloads"

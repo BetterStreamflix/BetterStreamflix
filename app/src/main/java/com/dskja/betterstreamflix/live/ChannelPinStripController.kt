@@ -82,7 +82,8 @@ class ChannelPinStripController(
                 }.getOrDefault(emptyList())
                     .filter { LiveHubCatalog.isLiveFavorite(it) }
                     .map { LiveHubCatalog.enrichEpgLite(it) }
-                ChannelPinStore.seedFromFavoritesIfEmpty(activity, favorites)
+                // Do not auto-seed pins from favorites — empty strip + Add is intentional
+                // when the user has not pinned (Settings opt-in alone must not flood).
                 // SL-009: enrich from hub binding + favorites when available.
                 val hub = LiveHubSectionZap.enrichmentCatalog()
                 val catalog = (favorites + hub).distinctBy { LiveHubCatalog.identityKey(it) }
