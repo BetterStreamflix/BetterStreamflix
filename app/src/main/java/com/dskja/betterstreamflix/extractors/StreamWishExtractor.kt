@@ -5,6 +5,8 @@ import com.dskja.betterstreamflix.utils.withExtractorTimeouts
 import android.annotation.SuppressLint
 import android.content.Context
 import android.net.Uri
+import android.os.Handler
+import android.os.Looper
 import android.webkit.WebResourceRequest
 import android.webkit.WebView
 import android.webkit.WebViewClient
@@ -226,8 +228,18 @@ open class StreamWishExtractor : Extractor() {
                     webView.loadUrl(url)
 
                     cont.invokeOnCancellation {
-                        webView.stopLoading()
-                        webView.destroy()
+                        val main = Handler(Looper.getMainLooper())
+                        val tearDown = Runnable {
+                            runCatching {
+                                webView.stopLoading()
+                                webView.destroy()
+                            }
+                        }
+                        if (Looper.myLooper() == Looper.getMainLooper()) {
+                            tearDown.run()
+                        } else {
+                            main.post(tearDown)
+                        }
                     }
                 }
             }

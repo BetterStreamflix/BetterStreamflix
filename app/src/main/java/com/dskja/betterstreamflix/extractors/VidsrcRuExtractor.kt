@@ -88,9 +88,21 @@ class VidsrcRuExtractor : Extractor() {
 
                 webView.loadUrl(link)
 
+                // Cancel may fire off the main thread (timeout / parent job). WebView
+                // requires the creating thread — post cleanup (BETTERSTREAMFLIX-2T).
                 continuation.invokeOnCancellation {
-                    webView.stopLoading()
-                    webView.destroy()
+                    timeoutHandler.removeCallbacks(timeoutRunnable)
+                    val tearDown = Runnable {
+                        runCatching {
+                            webView.stopLoading()
+                            webView.destroy()
+                        }
+                    }
+                    if (Looper.myLooper() == Looper.getMainLooper()) {
+                        tearDown.run()
+                    } else {
+                        timeoutHandler.post(tearDown)
+                    }
                 }
             }
         }

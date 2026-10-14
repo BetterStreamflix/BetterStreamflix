@@ -188,8 +188,6 @@ class DownloadsMobileFragment : Fragment() {
             listOf(
                 binding.chipModeLibrary,
                 binding.chipModeQueue,
-                binding.chipModeCare,
-                binding.chipModeControls,
             ).forEach {
                 with(com.dskja.betterstreamflix.utils.ExpPressEffects) { it.applyExpPress() }
             }
