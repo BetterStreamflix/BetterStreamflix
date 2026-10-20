@@ -59,12 +59,6 @@ internal object PlatformHubCategories {
             summaryRes = R.string.platform_player_backend_summary,
             iconRes = R.drawable.ic_exp_play,
         ),
-        Card(
-            screenKey = "screen_platform_plugins",
-            titleRes = R.string.platform_plugins_category,
-            summaryRes = R.string.platform_plugin_catalog_summary,
-            iconRes = R.drawable.ic_providers_language,
-        ),
     )
 
     fun liveSummary(context: Context, screenKey: String): String =

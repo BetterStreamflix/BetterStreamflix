@@ -116,12 +116,6 @@ object IntegrationStatus {
         }
     }
 
-    fun plugins(): Snapshot {
-        val count = runCatching { PluginRegistry.size }.getOrDefault(0)
-        return if (count > 0) Snapshot(Level.READY, count.toString())
-        else Snapshot(Level.NOT_CONFIGURED)
-    }
-
     fun tmdb(): Snapshot = when {
         !UserPreferences.enableTmdb ||
             !ProfileManager.isActiveIntegrationEnabled(UserProfile.Integration.TMDB) ->
@@ -132,7 +126,7 @@ object IntegrationStatus {
 
     fun hubOverview(context: Context): String {
         val snapshots = listOf(
-            trakt(), jellyfin(), plex(), debrid(), simkl(), openSubtitles(), player(context), plugins(), tmdb(),
+            trakt(), jellyfin(), plex(), debrid(), simkl(), openSubtitles(), player(context), tmdb(),
         )
         val connected = snapshots.count { it.isHealthy }
         return context.getString(R.string.platform_hub_overview, connected, snapshots.size)
@@ -158,7 +152,6 @@ object IntegrationStatus {
         "screen_platform_simkl" -> simkl()
         "screen_platform_subtitles" -> openSubtitles()
         "screen_platform_player" -> player(context)
-        "screen_platform_plugins" -> plugins()
         else -> Snapshot(Level.NOT_CONFIGURED)
     }
 

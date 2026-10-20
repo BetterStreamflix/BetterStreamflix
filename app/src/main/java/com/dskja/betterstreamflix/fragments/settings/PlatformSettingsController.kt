@@ -643,7 +643,6 @@ object PlatformSettingsController {
             true
         }
 
-        PluginSettingsController.bind(fragment, scope, findPreference)
         refreshIntegrationSummaries()
     }
 
@@ -691,7 +690,6 @@ object PlatformSettingsController {
         val simkl = IntegrationStatus.simkl()
         val os = IntegrationStatus.openSubtitles()
         val player = IntegrationStatus.player(context)
-        val plugins = IntegrationStatus.plugins()
 
         setStatus("platform_jellyfin_status", jellyfin)
         setStatus("platform_plex_status", plex)
@@ -707,7 +705,6 @@ object PlatformSettingsController {
         findPreference("screen_platform_simkl")?.summary = IntegrationStatus.label(context, simkl)
         findPreference("screen_platform_subtitles")?.summary = IntegrationStatus.label(context, os)
         findPreference("screen_platform_player")?.summary = IntegrationStatus.label(context, player)
-        findPreference("screen_platform_plugins")?.summary = IntegrationStatus.label(context, plugins)
         findPreference("screen_platform")?.summary = hubOverview(context)
 
         findPreference("platform_mpv_status")?.summary = when (PlayerBackendSelector.preferredKind()) {

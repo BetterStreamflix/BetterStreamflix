@@ -66,16 +66,6 @@ object ProfilesSettingsController {
         }
     }
 
-    private val integrationPrefKeys = mapOf(
-        "PROFILE_INT_TRAKT" to UserProfile.Integration.TRAKT,
-        "PROFILE_INT_JELLYFIN" to UserProfile.Integration.JELLYFIN,
-        "PROFILE_INT_PLEX" to UserProfile.Integration.PLEX,
-        "PROFILE_INT_DEBRID" to UserProfile.Integration.DEBRID,
-        "PROFILE_INT_SIMKL" to UserProfile.Integration.SIMKL,
-        "PROFILE_INT_OPENSUBTITLES" to UserProfile.Integration.OPENSUBTITLES,
-        "PROFILE_INT_TMDB" to UserProfile.Integration.TMDB,
-    )
-
     fun bind(
         fragment: Fragment,
         scope: LifecycleCoroutineScope,
@@ -307,21 +297,6 @@ object ProfilesSettingsController {
             true
         }
 
-        integrationPrefKeys.forEach { (prefKey, integration) ->
-            findPreference(prefKey)?.let { pref ->
-                val switch = pref as? SwitchPreferenceCompat ?: return@let
-                switch.setOnPreferenceChangeListener { _, newValue ->
-                    ProfileManager.setIntegrationEnabled(
-                        ProfileManager.activeProfileId,
-                        integration,
-                        newValue as Boolean,
-                    )
-                    refresh(findPreference, context, fragment)
-                    true
-                }
-            }
-        }
-
         refresh(findPreference, context, fragment)
     }
 
@@ -403,11 +378,9 @@ object ProfilesSettingsController {
         findPreference("PROFILE_YEAR_REVIEW")?.isVisible =
             profile != null && !profile.isKids && !profile.isGuest
 
-        val active = profile
-        integrationPrefKeys.forEach { (prefKey, integration) ->
-            (findPreference(prefKey) as? SwitchPreferenceCompat)?.isChecked =
-                active?.let { ProfileManager.isIntegrationEnabled(it, integration) } ?: true
-        }
+        // Parent Dashboard only exists when at least one Kids profile is present.
+        findPreference("PARENT_DASHBOARD_OPEN")?.isVisible =
+            ProfileManager.profiles().any { it.isKids }
 
         findPreference(ProfileHeroPreference.KEY)?.let { pref ->
             (pref as? ProfileHeroPreference)?.refresh()

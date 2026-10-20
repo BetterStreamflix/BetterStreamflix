@@ -218,6 +218,9 @@ class TvShowViewModel(
     /** In-page Episodes tab: remembered season for this show instance (not process-global). */
     var selectedSeasonId: String? = null
 
+    /** Auto-focus on the next episode fires once per detail open; re-binds must not yank the scroll. */
+    var episodesAutoFocused: Boolean = false
+
     private val loadingSeasonIds = mutableSetOf<String>()
     private val failedSeasonIds = mutableSetOf<String>()
     /** Seasons whose episode fetch already finished, including a legitimate empty list. */

@@ -305,52 +305,6 @@
                 android:summary="@string/settings_parental_unlock_summary" />
         </PreferenceCategory>
 
-        <PreferenceCategory
-            android:key="pc_profile_integrations"
-            android:title="@string/profile_section_integrations">
-
-            <SwitchPreferenceCompat
-                android:key="PROFILE_INT_TRAKT"
-                android:title="@string/profile_integration_trakt"
-                android:summary="@string/profile_integration_summary"
-                android:defaultValue="true" />
-
-            <SwitchPreferenceCompat
-                android:key="PROFILE_INT_JELLYFIN"
-                android:title="@string/profile_integration_jellyfin"
-                android:summary="@string/profile_integration_summary"
-                android:defaultValue="true" />
-
-            <SwitchPreferenceCompat
-                android:key="PROFILE_INT_PLEX"
-                android:title="@string/profile_integration_plex"
-                android:summary="@string/profile_integration_summary"
-                android:defaultValue="true" />
-
-            <SwitchPreferenceCompat
-                android:key="PROFILE_INT_DEBRID"
-                android:title="@string/profile_integration_debrid"
-                android:summary="@string/profile_integration_summary"
-                android:defaultValue="true" />
-
-            <SwitchPreferenceCompat
-                android:key="PROFILE_INT_SIMKL"
-                android:title="@string/profile_integration_simkl"
-                android:summary="@string/profile_integration_summary"
-                android:defaultValue="true" />
-
-            <SwitchPreferenceCompat
-                android:key="PROFILE_INT_OPENSUBTITLES"
-                android:title="@string/profile_integration_opensubtitles"
-                android:summary="@string/profile_integration_summary"
-                android:defaultValue="true" />
-
-            <SwitchPreferenceCompat
-                android:key="PROFILE_INT_TMDB"
-                android:title="@string/profile_integration_tmdb"
-                android:summary="@string/profile_integration_summary"
-                android:defaultValue="true" />
-        </PreferenceCategory>
     </PreferenceScreen>
 
     <!-- Kids Fortress — Parent Dashboard (adult sessions; Mobile + TV parity KF-010 / SS-B10-11). -->
@@ -734,57 +688,6 @@
                 android:key="platform_test_debrid"
                 android:title="@string/platform_test_debrid_title"
                 android:summary="@string/platform_test_debrid_summary"
-                app:iconSpaceReserved="false" />
-        </PreferenceScreen>
-
-        <PreferenceScreen
-            android:key="screen_platform_plugins"
-            android:title="@string/platform_plugins_category"
-            android:summary="@string/platform_plugin_catalog_summary"
-            android:widgetLayout="@layout/preference_widget_chevron"
-            app:iconSpaceReserved="false">
-            <SwitchPreferenceCompat
-                android:key="plugin_disable_jellyfin"
-                android:title="@string/platform_plugin_hide_jellyfin_title"
-                android:summary="@string/platform_plugin_hide_jellyfin_summary"
-                android:defaultValue="false"
-                app:iconSpaceReserved="false" />
-            <SwitchPreferenceCompat
-                android:key="plugin_disable_plex"
-                android:title="@string/platform_plugin_hide_plex_title"
-                android:summary="@string/platform_plugin_hide_plex_summary"
-                android:defaultValue="false"
-                app:iconSpaceReserved="false" />
-            <SwitchPreferenceCompat
-                android:key="plugin_disable_demo"
-                android:title="@string/platform_plugin_hide_demo_title"
-                android:summary="@string/platform_plugin_hide_demo_summary"
-                android:defaultValue="false"
-                app:iconSpaceReserved="false" />
-            <Preference
-                android:key="platform_plugin_catalog"
-                android:title="@string/platform_plugin_catalog_title"
-                android:summary="@string/platform_plugin_catalog_summary"
-                app:iconSpaceReserved="false" />
-            <Preference
-                android:key="platform_plugin_manage"
-                android:title="@string/platform_plugin_manage_title"
-                android:summary="@string/platform_plugin_manage_summary"
-                app:iconSpaceReserved="false" />
-            <Preference
-                android:key="platform_plugin_extensions"
-                android:title="@string/platform_plugin_extensions_title"
-                android:summary="@string/platform_plugin_extensions_summary"
-                app:iconSpaceReserved="false" />
-            <Preference
-                android:key="platform_plugin_install_local"
-                android:title="@string/platform_plugin_install_local_title"
-                android:summary="@string/platform_plugin_install_local_summary"
-                app:iconSpaceReserved="false" />
-            <Preference
-                android:key="platform_plugin_reload"
-                android:title="@string/platform_plugin_reload_title"
-                android:summary="@string/platform_plugin_reload_summary"
                 app:iconSpaceReserved="false" />
         </PreferenceScreen>
     </PreferenceScreen>
