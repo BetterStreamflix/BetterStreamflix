@@ -4,6 +4,7 @@ import androidx.fragment.app.Fragment
 import androidx.preference.Preference
 import androidx.preference.SwitchPreference
 import androidx.preference.SwitchPreferenceCompat
+import com.dskja.betterstreamflix.R
 import com.dskja.betterstreamflix.notifications.LiveFavoriteStartingChecker
 import com.dskja.betterstreamflix.notifications.LiveReminderScheduler
 import com.dskja.betterstreamflix.notifications.NotificationCheckScheduler

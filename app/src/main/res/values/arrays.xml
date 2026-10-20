@@ -318,24 +318,24 @@
     </string-array>
 
     <string-array name="profile_avatar_names">
-        <item>@string/profile_avatar_crimson_signal</item>
-        <item>@string/profile_avatar_ember_forge</item>
-        <item>@string/profile_avatar_aurora_tide</item>
-        <item>@string/profile_avatar_slate_noir</item>
-        <item>@string/profile_avatar_forest_grove</item>
-        <item>@string/profile_avatar_ocean_depth</item>
-        <item>@string/profile_avatar_gold_atelier</item>
-        <item>@string/profile_avatar_rose_velvet</item>
+        <item>@string/profile_avatar_popcorn</item>
+        <item>@string/profile_avatar_cat</item>
+        <item>@string/profile_avatar_fox</item>
+        <item>@string/profile_avatar_panda</item>
+        <item>@string/profile_avatar_ghost</item>
+        <item>@string/profile_avatar_robot</item>
+        <item>@string/profile_avatar_rocket</item>
+        <item>@string/profile_avatar_astro</item>
     </string-array>
     <string-array name="profile_avatar_values">
-        <item>crimson</item>
-        <item>ember</item>
-        <item>aurora</item>
-        <item>slate</item>
-        <item>forest</item>
-        <item>ocean</item>
-        <item>gold</item>
-        <item>rose</item>
+        <item>popcorn</item>
+        <item>cat</item>
+        <item>fox</item>
+        <item>panda</item>
+        <item>ghost</item>
+        <item>robot</item>
+        <item>rocket</item>
+        <item>astro</item>
     </string-array>
 
 </resources>
