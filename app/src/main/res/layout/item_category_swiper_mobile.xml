@@ -50,7 +50,7 @@
         android:shadowRadius="6"
         android:text="@string/home_swiper_eyebrow"
         android:textAllCaps="true"
-        android:textColor="#BDBDFFFFFF"
+        android:textColor="#BFFFFFFF"
         android:textSize="11sp"
         android:textStyle="bold"
         app:layout_constraintBottom_toTopOf="@id/fl_swiper_logo_slot"
