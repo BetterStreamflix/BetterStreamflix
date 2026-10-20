@@ -57,10 +57,72 @@
         <item>@string/subtitle_studio_preset_classic</item>
         <item>@string/subtitle_studio_preset_yellow_large</item>
         <item>@string/subtitle_studio_preset_high_contrast</item>
+        <item>@string/subtitle_studio_preset_cinema</item>
+        <item>@string/subtitle_studio_preset_outline</item>
+        <item>@string/subtitle_studio_preset_serif</item>
     </string-array>
     <string-array name="subtitle_studio_preset_values">
         <item>classic</item>
         <item>yellow_large</item>
         <item>high_contrast</item>
+        <item>cinema</item>
+        <item>outline</item>
+        <item>serif</item>
+    </string-array>
+
+    <string-array name="subtitle_studio_edge_entries">
+        <item>@string/subtitle_studio_edge_none</item>
+        <item>@string/subtitle_studio_edge_outline</item>
+        <item>@string/subtitle_studio_edge_drop_shadow</item>
+        <item>@string/subtitle_studio_edge_raised</item>
+        <item>@string/subtitle_studio_edge_depressed</item>
+    </string-array>
+    <string-array name="subtitle_studio_edge_values">
+        <item>0</item>
+        <item>1</item>
+        <item>3</item>
+        <item>4</item>
+        <item>2</item>
+    </string-array>
+
+    <string-array name="subtitle_studio_font_entries">
+        <item>@string/subtitle_studio_font_default</item>
+        <item>@string/subtitle_studio_font_sans</item>
+        <item>@string/subtitle_studio_font_serif</item>
+        <item>@string/subtitle_studio_font_mono</item>
+        <item>@string/subtitle_studio_font_cursive</item>
+    </string-array>
+    <string-array name="subtitle_studio_font_values">
+        <item>0</item>
+        <item>1</item>
+        <item>2</item>
+        <item>3</item>
+        <item>4</item>
+    </string-array>
+
+    <string-array name="subtitle_studio_opacity_entries">
+        <item>100%</item>
+        <item>85%</item>
+        <item>70%</item>
+        <item>50%</item>
+    </string-array>
+    <string-array name="subtitle_studio_opacity_values">
+        <item>255</item>
+        <item>217</item>
+        <item>179</item>
+        <item>128</item>
+    </string-array>
+
+    <string-array name="subtitle_studio_margin_entries">
+        <item>@string/subtitle_studio_margin_low</item>
+        <item>@string/subtitle_studio_margin_normal</item>
+        <item>@string/subtitle_studio_margin_high</item>
+        <item>@string/subtitle_studio_margin_max</item>
+    </string-array>
+    <string-array name="subtitle_studio_margin_values">
+        <item>8</item>
+        <item>24</item>
+        <item>48</item>
+        <item>80</item>
     </string-array>
 </resources>

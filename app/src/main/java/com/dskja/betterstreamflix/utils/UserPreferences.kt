@@ -1721,7 +1721,7 @@ object UserPreferences {
             profileScopedInt(Key.CAPTION_STYLE_EDGE_COLOR)
                 ?: Key.CAPTION_STYLE_EDGE_COLOR.getInt()
                 ?: PlayerSettingsView.Settings.Subtitle.Style.DEFAULT.edgeColor,
-            PlayerSettingsView.Settings.Subtitle.Style.DEFAULT.typeface
+            captionTypefaceOrDefault()
         )
         set(value) {
             setProfileScopedInt(Key.CAPTION_STYLE_FONT_COLOR, value.foregroundColor)
@@ -1738,6 +1738,26 @@ object UserPreferences {
         set(value) {
             setProfileScopedInt(Key.CAPTION_STYLE_MARGIN, value)
         }
+
+    /**
+     * Caption font family (Subtitle Studio). Persisted per profile as an index:
+     * 0 default, 1 sans-serif, 2 serif, 3 monospace, 4 cursive.
+     */
+    var captionTypefaceIndex: Int
+        get() = profileScopedInt(Key.CAPTION_STYLE_TYPEFACE)
+            ?: Key.CAPTION_STYLE_TYPEFACE.getInt()
+            ?: 0
+        set(value) {
+            setProfileScopedInt(Key.CAPTION_STYLE_TYPEFACE, value.coerceIn(0, 4))
+        }
+
+    fun captionTypefaceOrDefault(): android.graphics.Typeface? = when (captionTypefaceIndex) {
+        1 -> android.graphics.Typeface.SANS_SERIF
+        2 -> android.graphics.Typeface.SERIF
+        3 -> android.graphics.Typeface.MONOSPACE
+        4 -> android.graphics.Typeface.create("cursive", android.graphics.Typeface.NORMAL)
+        else -> PlayerSettingsView.Settings.Subtitle.Style.DEFAULT.typeface
+    }
 
     var qualityHeight: Int?
         get() = Key.QUALITY_HEIGHT.getInt()
@@ -2196,6 +2216,7 @@ object UserPreferences {
         CAPTION_STYLE_EDGE_TYPE,
         CAPTION_STYLE_EDGE_COLOR,
         CAPTION_STYLE_MARGIN,
+        CAPTION_STYLE_TYPEFACE,
         SCREEN_PADDING_X,
         SCREEN_PADDING_Y,
         QUALITY_HEIGHT,

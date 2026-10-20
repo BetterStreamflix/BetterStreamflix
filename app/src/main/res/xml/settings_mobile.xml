@@ -1217,6 +1217,47 @@
                     android:entryValues="@array/subtitle_studio_background_values"
                     android:defaultValue="128"
                     app:iconSpaceReserved="false" />
+
+                <ListPreference
+                    android:key="SUBTITLE_STUDIO_TEXT_OPACITY"
+                    android:title="@string/subtitle_studio_text_opacity_title"
+                    android:entries="@array/subtitle_studio_opacity_entries"
+                    android:entryValues="@array/subtitle_studio_opacity_values"
+                    android:defaultValue="255"
+                    app:iconSpaceReserved="false" />
+
+                <ListPreference
+                    android:key="SUBTITLE_STUDIO_EDGE"
+                    android:title="@string/subtitle_studio_edge_title"
+                    android:entries="@array/subtitle_studio_edge_entries"
+                    android:entryValues="@array/subtitle_studio_edge_values"
+                    android:defaultValue="0"
+                    app:iconSpaceReserved="false" />
+
+                <ListPreference
+                    android:key="SUBTITLE_STUDIO_FONT"
+                    android:title="@string/subtitle_studio_font_title"
+                    android:entries="@array/subtitle_studio_font_entries"
+                    android:entryValues="@array/subtitle_studio_font_values"
+                    android:defaultValue="0"
+                    app:iconSpaceReserved="false" />
+
+                <ListPreference
+                    android:key="SUBTITLE_STUDIO_WINDOW"
+                    android:title="@string/subtitle_studio_window_title"
+                    android:summary="@string/subtitle_studio_window_summary"
+                    android:entries="@array/subtitle_studio_background_entries"
+                    android:entryValues="@array/subtitle_studio_background_values"
+                    android:defaultValue="0"
+                    app:iconSpaceReserved="false" />
+
+                <ListPreference
+                    android:key="SUBTITLE_STUDIO_MARGIN"
+                    android:title="@string/subtitle_studio_margin_title"
+                    android:entries="@array/subtitle_studio_margin_entries"
+                    android:entryValues="@array/subtitle_studio_margin_values"
+                    android:defaultValue="24"
+                    app:iconSpaceReserved="false" />
             </PreferenceScreen>
         </PreferenceCategory>
     </PreferenceScreen>
