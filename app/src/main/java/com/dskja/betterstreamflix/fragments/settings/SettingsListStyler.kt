@@ -181,22 +181,13 @@ object SettingsListStyler {
         )
 
         title.typeface = outfit
-        val isLuminaGate = title.text?.toString() ==
-            context.getString(R.string.settings_experimental_new_design_title)
-        if (isLuminaGate) {
-            view.setBackgroundResource(
-                com.dskja.betterstreamflix.utils.ExperimentalMobileDesign.glassCardBackground(),
-            )
-            title.setTextColor(accent)
-        } else {
-            title.setTextColor(
-                com.google.android.material.color.MaterialColors.getColor(
-                    view,
-                    com.google.android.material.R.attr.colorOnSurface,
-                    0xFFE8E8E8.toInt(),
-                ),
-            )
-        }
+        title.setTextColor(
+            com.google.android.material.color.MaterialColors.getColor(
+                view,
+                com.google.android.material.R.attr.colorOnSurface,
+                0xFFE8E8E8.toInt(),
+            ),
+        )
         title.setTextSize(TypedValue.COMPLEX_UNIT_SP, if (isTv) 18f else 15f)
         title.letterSpacing = -0.015f
 
