@@ -393,6 +393,16 @@
                 android:summary="@string/platform_mpv_status_summary"
                 app:iconSpaceReserved="false"
                 app:selectable="false" />
+            <Preference
+                android:key="EXTERNAL_PLAYER_DEFAULT"
+                android:title="@string/settings_external_player_title"
+                android:summary="@string/settings_external_player_summary"
+                app:iconSpaceReserved="false" />
+            <Preference
+                android:key="EXTERNAL_PLAYER_CLEAR"
+                android:title="@string/external_player_clear_default"
+                android:summary="@string/external_player_clear_default_summary"
+                app:iconSpaceReserved="false" />
             <SwitchPreferenceCompat
                 android:key="CAST_QUEUE_NEXT_EPISODE"
                 android:title="@string/platform_cast_queue_title"
@@ -940,17 +950,7 @@
                 android:defaultValue="false" />
         </PreferenceCategory>
 
-        <PreferenceCategory android:title="@string/settings_downloads_cat_external">
-
-            <Preference
-                android:key="EXTERNAL_PLAYER_DEFAULT"
-                android:title="@string/settings_external_player_title"
-                android:summary="@string/settings_external_player_summary" />
-
-            <Preference
-                android:key="EXTERNAL_PLAYER_CLEAR"
-                android:title="@string/external_player_clear_default"
-                android:summary="@string/external_player_clear_default_summary" />
+        <PreferenceCategory android:title="@string/settings_downloads_cat_downloader">
 
             <Preference
                 android:key="EXTERNAL_DOWNLOADER_DEFAULT"

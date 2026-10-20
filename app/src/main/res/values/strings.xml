@@ -2474,7 +2474,7 @@
     <string name="settings_downloads_cat_storage">Storage</string>
     <string name="settings_downloads_cat_behavior">Downloads</string>
     <string name="settings_downloads_cat_smart">Smart downloads</string>
-    <string name="settings_downloads_cat_external">External apps</string>
+    <string name="settings_downloads_cat_downloader">External downloader</string>
     <string name="settings_downloads_cat_maintenance">Maintenance</string>
     <string name="settings_download_storage_clear_folder_summary">Unlink the picked folder and move downloads back to app storage</string>
     <string name="settings_download_soft_limit">Soft storage limit</string>
