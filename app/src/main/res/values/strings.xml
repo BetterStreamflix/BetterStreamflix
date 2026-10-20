@@ -2184,11 +2184,11 @@
     <string name="offline_library_mode">Library</string>
     <string name="offline_library_manage_mode">Manage</string>
     <string name="offline_studio_title">Offline Studio</string>
-    <string name="offline_studio_mode_queue">Lane</string>
-    <string name="offline_studio_mode_care">Care</string>
+    <string name="offline_studio_mode_queue">Queue</string>
+    <string name="offline_studio_mode_care">Health</string>
     <string name="offline_studio_mode_controls">Controls</string>
-    <string name="offline_studio_care_title">Offline Care</string>
-    <string name="offline_studio_controls_title">Studio Controls</string>
+    <string name="offline_studio_care_title">Storage health</string>
+    <string name="offline_studio_controls_title">Download controls</string>
     <string name="offline_studio_care_intro">Lane status, re-download health, and aging titles — keep your offline shelf healthy.</string>
     <string name="offline_studio_controls_intro">Smart Downloads, series quota, storage soft limit, and Packs — same prefs as Settings.</string>
     <string name="offline_studio_care_empty">Everything looks healthy. No re-downloads or aging titles right now.</string>

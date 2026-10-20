@@ -1964,11 +1964,11 @@
     <string name="offline_library_mode">Bibliothek</string>
     <string name="offline_library_manage_mode">Verwalten</string>
     <string name="offline_studio_title">Offline Studio</string>
-    <string name="offline_studio_mode_queue">Lane</string>
-    <string name="offline_studio_mode_care">Pflege</string>
+    <string name="offline_studio_mode_queue">Warteschlange</string>
+    <string name="offline_studio_mode_care">Zustand</string>
     <string name="offline_studio_mode_controls">Steuerung</string>
-    <string name="offline_studio_care_title">Offline-Pflege</string>
-    <string name="offline_studio_controls_title">Studio-Steuerung</string>
+    <string name="offline_studio_care_title">Speicher-Zustand</string>
+    <string name="offline_studio_controls_title">Download-Steuerung</string>
     <string name="offline_studio_care_intro">Lane-Status, Download-Gesundheit und alternde Titel — Offline-Regal gesund halten.</string>
     <string name="offline_studio_controls_intro">Smart Downloads, Serien-Kontingent, Soft-Limit und Packs — dieselben Einstellungen wie in den Settings.</string>
     <string name="offline_studio_care_empty">Alles gesund. Keine erneuten Downloads und keine alternden Titel.</string>
