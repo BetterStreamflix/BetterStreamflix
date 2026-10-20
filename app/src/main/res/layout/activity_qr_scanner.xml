@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="#000000">
@@ -10,38 +11,36 @@
         android:layout_height="match_parent" />
 
     <LinearLayout
+        android:id="@+id/ll_qr_scanner_header"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:background="#8C000000"
         android:gravity="center_vertical"
         android:orientation="horizontal"
-        android:paddingStart="16dp"
-        android:paddingTop="18dp"
-        android:paddingEnd="16dp"
-        android:paddingBottom="18dp">
+        android:paddingStart="20dp"
+        android:paddingTop="14dp"
+        android:paddingEnd="12dp"
+        android:paddingBottom="14dp">
 
         <TextView
+            android:id="@+id/tv_qr_scanner_title"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
+            android:fontFamily="@font/manrope"
             android:text="@string/settings_scan_resolver_qr_title"
             android:textColor="@android:color/white"
             android:textSize="20sp"
             android:textStyle="bold" />
 
-        <TextView
+        <ImageButton
             android:id="@+id/qr_scanner_close"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:clickable="true"
-            android:focusable="true"
-            android:paddingStart="12dp"
-            android:paddingTop="8dp"
-            android:paddingEnd="12dp"
-            android:paddingBottom="8dp"
-            android:text="@android:string/cancel"
-            android:textColor="@android:color/white"
-            android:textSize="15sp" />
+            android:layout_width="44dp"
+            android:layout_height="44dp"
+            android:background="@drawable/bg_qr_control_chip"
+            android:contentDescription="@android:string/cancel"
+            android:padding="11dp"
+            android:src="@drawable/ic_support_close" />
     </LinearLayout>
 
     <LinearLayout
@@ -52,15 +51,32 @@
         android:padding="24dp">
 
         <FrameLayout
+            android:id="@+id/fl_qr_scanner_frame"
             android:layout_width="280dp"
-            android:layout_height="280dp"
-            android:background="@drawable/bg_qr_scanner_frame" />
+            android:layout_height="280dp">
+
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:background="@drawable/bg_qr_scanner_frame" />
+
+            <View
+                android:id="@+id/v_qr_scan_line"
+                android:layout_width="match_parent"
+                android:layout_height="3dp"
+                android:layout_marginStart="14dp"
+                android:layout_marginTop="14dp"
+                android:layout_marginEnd="14dp"
+                android:background="@drawable/bg_qr_scan_line" />
+        </FrameLayout>
 
         <TextView
+            android:id="@+id/tv_qr_scanner_hint"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="18dp"
             android:background="#8C000000"
+            android:fontFamily="@font/manrope"
             android:gravity="center"
             android:paddingStart="16dp"
             android:paddingTop="10dp"
@@ -69,5 +85,16 @@
             android:text="@string/settings_scan_resolver_qr_summary"
             android:textColor="@android:color/white"
             android:textSize="15sp" />
+
+        <ImageButton
+            android:id="@+id/btn_qr_torch"
+            android:layout_width="52dp"
+            android:layout_height="52dp"
+            android:layout_marginTop="22dp"
+            android:background="@drawable/bg_qr_control_chip"
+            android:contentDescription="@string/qr_scanner_torch_cd"
+            android:padding="13dp"
+            android:src="@drawable/ic_qr_torch"
+            app:tint="#FFFFFFFF" />
     </LinearLayout>
 </FrameLayout>

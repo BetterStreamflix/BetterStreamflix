@@ -1243,6 +1243,7 @@
     <string name="platform_test_all_title">Test all integrations</string>
     <string name="platform_test_all_summary">Live probe every configured service</string>
     <string name="settings_scan_resolver_qr_title">Scan TV bypass QR</string>
+    <string name="qr_scanner_torch_cd">Toggle flashlight</string>
     <string name="settings_scan_resolver_qr_summary">Use this BetterStreamflix scanner for the QR on TV — a normal phone camera often opens Google instead of the app</string>
     <string name="player_bypass_qr_title">Solve captcha on phone</string>
     <string name="player_bypass_qr_instructions">1. Open BetterStreamflix on your phone (same Wi‑Fi as the TV).\n2. Go to Settings → Scan TV bypass QR (do not rely on the stock camera alone).\n3. Solve the captcha, then tap Continue. This dialog closes automatically.\n\nNo shared Wi‑Fi / VPN? On the phone: Settings → SerienStream → Sign in to SerienStream (saves cookies). On the TV you can also paste session cookies under the same settings — then playback skips the QR step.</string>
@@ -2181,7 +2182,7 @@
     <string name="downloads_title">Downloads</string>
     <string name="offline_library_title">Offline library</string>
     <string name="offline_library_badge">Downloaded only</string>
-    <string name="offline_library_tagline">Airplane mode ready · plays without network</string>
+    <string name="offline_library_tagline">Everything here plays offline — no internet needed</string>
     <string name="offline_library_mode">Library</string>
     <string name="offline_library_manage_mode">Manage</string>
     <string name="offline_studio_title">Offline Studio</string>
@@ -2225,8 +2226,8 @@
     <string name="offline_studio_stepper_soft_plus">Increase soft limit</string>
     <string name="offline_studio_stepper_concurrent_minus">Decrease parallel downloads</string>
     <string name="offline_studio_stepper_concurrent_plus">Increase parallel downloads</string>
-    <string name="offline_studio_packs_title">Download Packs</string>
-    <string name="offline_studio_packs_empty">No season packs yet. Download a season, then share it from here.</string>
+    <string name="offline_studio_packs_title">Season packs — share to other devices</string>
+    <string name="offline_studio_packs_empty">No season packs yet. Download a season, then hand its queue to another device via QR code or link — the other device downloads the same episodes itself (no files are copied).</string>
     <string name="offline_studio_packs_one">1 season pack ready to share</string>
     <string name="offline_studio_packs_many">%1$d season packs ready to share</string>
     <string name="offline_studio_pack_share">Share pack</string>
@@ -2236,10 +2237,10 @@
     <string name="offline_studio_pack_import_paste_message">Paste a BetterStreamflix pack link or URL.</string>
     <string name="offline_studio_pack_import_link_hint">https://betterstreamflix.app/pack?d=…</string>
     <string name="offline_studio_open_settings">Full download settings</string>
-    <string name="offline_studio_rail_lane">Lane %1$d</string>
-    <string name="offline_studio_rail_health">Health %1$d</string>
-    <string name="offline_studio_rail_expiry">Expiry %1$d</string>
-    <string name="offline_studio_rail_packs">Packs %1$d</string>
+    <string name="offline_studio_rail_lane">%1$d active</string>
+    <string name="offline_studio_rail_health">%1$d need repair</string>
+    <string name="offline_studio_rail_expiry">%1$d expiring</string>
+    <string name="offline_studio_rail_packs">%1$d shared pack(s)</string>
     <string name="offline_studio_expiry_delete_confirm">Delete %1$d aging offline titles? This cannot be undone.</string>
     <string name="offline_studio_wifi_toggle">Wi‑Fi only</string>
     <string name="offline_studio_max_concurrent">Parallel downloads</string>

@@ -68,6 +68,11 @@ class QrScannerActivity : AppCompatActivity() {
     private var selectedCameraId: String? = null
     private var previewSize: Size = Size(1280, 720)
     private var isOpeningCamera = false
+    private var previewSurface: Surface? = null
+    private var analysisSurface: Surface? = null
+    private var torchOn = false
+    private var torchAvailable = false
+    private var scanLineAnimator: android.animation.ValueAnimator? = null
 
     private val textureListener = object : TextureView.SurfaceTextureListener {
         override fun onSurfaceTextureAvailable(surface: SurfaceTexture, width: Int, height: Int) {
@@ -170,7 +175,14 @@ class QrScannerActivity : AppCompatActivity() {
             com.dskja.betterstreamflix.utils.ExpMotion.hapticTap(it)
             finish()
         }
+        binding.btnQrTorch.setOnClickListener {
+            com.dskja.betterstreamflix.utils.ExpMotion.hapticTap(it)
+            torchOn = !torchOn
+            updateTorchUi()
+            applyRepeatingRequest()
+        }
         binding.qrScannerPreview.surfaceTextureListener = textureListener
+        startScanLineAnimation()
 
         if (!packageManager.hasSystemFeature(PackageManager.FEATURE_CAMERA_ANY)) {
             notifyUser(
@@ -220,6 +232,8 @@ class QrScannerActivity : AppCompatActivity() {
         selectedCameraId = cameraId
 
         val characteristics = manager.getCameraCharacteristics(cameraId)
+        torchAvailable = characteristics.get(CameraCharacteristics.FLASH_INFO_AVAILABLE) == true
+        updateTorchUi()
         val configMap = characteristics.get(CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP)
         previewSize = choosePreviewSize(configMap)
         val analysisSize = chooseAnalysisSize(configMap)
@@ -249,20 +263,15 @@ class QrScannerActivity : AppCompatActivity() {
         val analysisReader = imageReader ?: return
 
         texture.setDefaultBufferSize(previewSize.width, previewSize.height)
-        val previewSurface = Surface(texture)
-        val analysisSurface = analysisReader.surface
-
-        val requestBuilder = device.createCaptureRequest(CameraDevice.TEMPLATE_PREVIEW).apply {
-            addTarget(previewSurface)
-            addTarget(analysisSurface)
-            set(CaptureRequest.CONTROL_MODE, CameraMetadata.CONTROL_MODE_AUTO)
-            set(CaptureRequest.CONTROL_AF_MODE, CaptureRequest.CONTROL_AF_MODE_CONTINUOUS_PICTURE)
-        }
+        val preview = Surface(texture)
+        val analysis = analysisReader.surface
+        previewSurface = preview
+        analysisSurface = analysis
 
         val stateCallback = object : CameraCaptureSession.StateCallback() {
             override fun onConfigured(session: CameraCaptureSession) {
                 captureSession = session
-                session.setRepeatingRequest(requestBuilder.build(), null, backgroundHandler)
+                applyRepeatingRequest()
             }
 
             override fun onConfigureFailed(session: CameraCaptureSession) {
@@ -276,17 +285,67 @@ class QrScannerActivity : AppCompatActivity() {
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.P) {
             createCaptureSessionApi28(
                 device = device,
-                previewSurface = previewSurface,
-                analysisSurface = analysisSurface,
+                previewSurface = preview,
+                analysisSurface = analysis,
                 stateCallback = stateCallback,
             )
         } else {
             @Suppress("DEPRECATION")
             device.createCaptureSession(
-                listOf(previewSurface, analysisSurface),
+                listOf(preview, analysis),
                 stateCallback,
                 backgroundHandler
             )
+        }
+    }
+
+    /** Rebuild + resubmit the preview request — honours the torch flag. */
+    private fun applyRepeatingRequest() {
+        val session = captureSession ?: return
+        val device = cameraDevice ?: return
+        val preview = previewSurface ?: return
+        val analysis = analysisSurface ?: return
+        val builder = device.createCaptureRequest(CameraDevice.TEMPLATE_PREVIEW).apply {
+            addTarget(preview)
+            addTarget(analysis)
+            set(CaptureRequest.CONTROL_MODE, CameraMetadata.CONTROL_MODE_AUTO)
+            set(CaptureRequest.CONTROL_AF_MODE, CaptureRequest.CONTROL_AF_MODE_CONTINUOUS_PICTURE)
+            set(
+                CaptureRequest.FLASH_MODE,
+                if (torchOn) CameraMetadata.FLASH_MODE_TORCH else CameraMetadata.FLASH_MODE_OFF,
+            )
+        }
+        runCatching {
+            session.setRepeatingRequest(builder.build(), null, backgroundHandler)
+        }
+    }
+
+    private fun updateTorchUi() {
+        binding.btnQrTorch.isEnabled = torchAvailable
+        binding.btnQrTorch.alpha = if (!torchAvailable) 0.35f else 1f
+        binding.btnQrTorch.setColorFilter(
+            if (torchOn) 0xFFFFD54F.toInt() else 0xFFFFFFFF.toInt(),
+        )
+    }
+
+    private fun startScanLineAnimation() {
+        val line = binding.vQrScanLine
+        val frame = binding.flQrScannerFrame
+        frame.post {
+            val marginPx = (14 * resources.displayMetrics.density).toInt()
+            val travel = (frame.height - marginPx * 2 - line.height).coerceAtLeast(0)
+            if (travel <= 0) return@post
+            scanLineAnimator?.cancel()
+            scanLineAnimator = android.animation.ValueAnimator.ofFloat(0f, travel.toFloat()).apply {
+                duration = 2200L
+                repeatMode = android.animation.ValueAnimator.REVERSE
+                repeatCount = android.animation.ValueAnimator.INFINITE
+                interpolator = android.view.animation.AccelerateDecelerateInterpolator()
+                addUpdateListener { anim ->
+                    line.translationY = anim.animatedValue as Float
+                }
+                start()
+            }
         }
     }
 
@@ -318,7 +377,16 @@ class QrScannerActivity : AppCompatActivity() {
         cameraDevice = null
         imageReader?.close()
         imageReader = null
+        previewSurface?.release()
+        previewSurface = null
+        analysisSurface = null
         isOpeningCamera = false
+    }
+
+    override fun onDestroy() {
+        scanLineAnimator?.cancel()
+        scanLineAnimator = null
+        super.onDestroy()
     }
 
     private fun startBackgroundThread() {

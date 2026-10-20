@@ -1514,6 +1514,7 @@
     <string name="settings_category_poseidon">Poseidonhd2-Einstellungen</string>
     <string name="settings_category_poseidon_domain">Poseidonhd2-Domainname</string>
     <string name="settings_scan_resolver_qr_title">TV-Bypass-QR scannen</string>
+    <string name="qr_scanner_torch_cd">Taschenlampe umschalten</string>
     <string name="settings_scan_resolver_qr_summary">Nutze diesen BetterStreamflix-Scanner für den QR auf dem TV — die normale Handykamera öffnet oft Google statt der App</string>
     <string name="player_bypass_qr_title">Captcha am Handy lösen</string>
     <string name="player_bypass_qr_instructions">1. Öffne BetterStreamflix am Handy (gleiches WLAN wie der TV).\n2. Einstellungen → TV-Bypass-QR scannen (nicht nur die Systemkamera).\n3. Captcha lösen, dann Weiter tippen. Dieser Dialog schließt sich automatisch.\n\nKein gemeinsames WLAN / VPN? Am Handy: Einstellungen → SerienStream → Bei SerienStream anmelden (Cookies speichern). Am TV kannst du unter denselben Einstellungen auch Session-Cookies einfügen — dann entfällt der QR-Schritt.</string>
@@ -1961,7 +1962,7 @@
     <string name="downloads_title">Downloads</string>
     <string name="offline_library_title">Offline-Bibliothek</string>
     <string name="offline_library_badge">Nur heruntergeladen</string>
-    <string name="offline_library_tagline">Flugzeugmodus · spielt ohne Netz</string>
+    <string name="offline_library_tagline">Alles hier läuft offline – kein Internet nötig</string>
     <string name="offline_library_mode">Bibliothek</string>
     <string name="offline_library_manage_mode">Verwalten</string>
     <string name="offline_studio_title">Offline Studio</string>
@@ -2005,8 +2006,8 @@
     <string name="offline_studio_stepper_soft_plus">Soft-Limit erhöhen</string>
     <string name="offline_studio_stepper_concurrent_minus">Parallele Downloads verringern</string>
     <string name="offline_studio_stepper_concurrent_plus">Parallele Downloads erhöhen</string>
-    <string name="offline_studio_packs_title">Download-Packs</string>
-    <string name="offline_studio_packs_empty">Noch keine Staffel-Packs. Lade eine Staffel und teile sie von hier.</string>
+    <string name="offline_studio_packs_title">Staffel-Packs – auf andere Geräte teilen</string>
+    <string name="offline_studio_packs_empty">Noch keine Staffel-Packs. Lade eine Staffel und gib ihre Warteschlange per QR-Code oder Link an ein anderes Gerät – dieses lädt dieselben Folgen selbst (keine Dateien werden kopiert).</string>
     <string name="offline_studio_packs_one">1 Staffel-Pack zum Teilen bereit</string>
     <string name="offline_studio_packs_many">%1$d Staffel-Packs zum Teilen bereit</string>
     <string name="offline_studio_pack_share">Pack teilen</string>
@@ -2016,10 +2017,10 @@
     <string name="offline_studio_pack_import_paste_message">Füge einen BetterStreamflix-Pack-Link oder eine URL ein.</string>
     <string name="offline_studio_pack_import_link_hint">https://betterstreamflix.app/pack?d=…</string>
     <string name="offline_studio_open_settings">Alle Download-Einstellungen</string>
-    <string name="offline_studio_rail_lane">Lane %1$d</string>
-    <string name="offline_studio_rail_health">Gesundheit %1$d</string>
-    <string name="offline_studio_rail_expiry">Ablauf %1$d</string>
-    <string name="offline_studio_rail_packs">Packs %1$d</string>
+    <string name="offline_studio_rail_lane">%1$d aktiv</string>
+    <string name="offline_studio_rail_health">%1$d brauchen Reparatur</string>
+    <string name="offline_studio_rail_expiry">%1$d laufen ab</string>
+    <string name="offline_studio_rail_packs">%1$d geteilte Pack(s)</string>
     <string name="offline_studio_expiry_delete_confirm">%1$d alternde Offline-Titel löschen? Das lässt sich nicht rückgängig machen.</string>
     <string name="offline_studio_wifi_toggle">Nur WLAN</string>
     <string name="offline_studio_max_concurrent">Parallele Downloads</string>
