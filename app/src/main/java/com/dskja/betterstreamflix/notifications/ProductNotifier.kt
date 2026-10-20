@@ -128,6 +128,32 @@ object ProductNotifier {
         }
     }
 
+    /**
+     * Settings → Notifications → "Send test notification".
+     * Posts on the watchlist channel so delivery, tap-target and channel
+     * sound/banner settings can be verified end-to-end.
+     * Returns false when posting is blocked (permission / channel off).
+     */
+    fun sendTestNotification(context: Context): Boolean {
+        if (!NotificationPermission.canPost(context)) return false
+        ensureChannels(context)
+        val body = context.getString(R.string.notify_test_body)
+        val notification = NotificationCompat.Builder(context, CHANNEL_WATCHLIST)
+            .setSmallIcon(R.drawable.ic_favorite_enable)
+            .setContentTitle(context.getString(R.string.notify_test_title))
+            .setContentText(body)
+            .setStyle(NotificationCompat.BigTextStyle().bigText(body))
+            .setAutoCancel(true)
+            .setContentIntent(openFavoritesIntent(context))
+            .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+            .build()
+        runCatching {
+            NotificationManagerCompat.from(context)
+                .notify(NOTIFICATION_ID_EPISODE_BASE - 1, notification)
+        }
+        return true
+    }
+
     fun liveNotificationId(identityKey: String): Int =
         NOTIFICATION_ID_LIVE_BASE + Math.floorMod(identityKey.hashCode(), NOTIFICATION_ID_LIVE_SLOTS)
 

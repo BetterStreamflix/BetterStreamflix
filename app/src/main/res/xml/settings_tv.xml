@@ -978,7 +978,20 @@
         android:summary="@string/settings_screen_notifications_summary"
         android:widgetLayout="@layout/preference_widget_chevron">
 
-        <PreferenceCategory android:title="@string/settings_screen_notifications">
+        <PreferenceCategory android:title="@string/settings_notify_cat_delivery">
+
+            <Preference
+                android:key="NOTIFICATIONS_SYSTEM_SETTINGS"
+                android:title="@string/settings_notifications_system_title"
+                android:widgetLayout="@layout/preference_widget_chevron" />
+
+            <Preference
+                android:key="NOTIFICATIONS_SEND_TEST"
+                android:title="@string/settings_notifications_test_title"
+                android:summary="@string/settings_notifications_test_summary" />
+        </PreferenceCategory>
+
+        <PreferenceCategory android:title="@string/settings_notify_cat_alerts">
 
             <SwitchPreference
                 android:key="NOTIFY_WATCHLIST_NEW_EPISODE"

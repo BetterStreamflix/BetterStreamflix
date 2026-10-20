@@ -2213,6 +2213,17 @@
     <string name="settings_download_notify_complete_summary">Hinweis, wenn ein Offline-Download fertig ist</string>
     <string name="settings_screen_notifications">Benachrichtigungen</string>
     <string name="settings_screen_notifications_summary">Watchlist-Folgen, Live-Favoriten, Downloads — nur mit Opt-in</string>
+    <string name="settings_notify_cat_delivery">Zustellung</string>
+    <string name="settings_notify_cat_alerts">Meldungen</string>
+    <string name="settings_notifications_system_title">System-Benachrichtigungseinstellungen</string>
+    <string name="settings_notifications_system_on">Erlaubt – tippen, um Kanäle zu verwalten</string>
+    <string name="settings_notifications_system_blocked">Von Android blockiert – tippen, um Einstellungen zu öffnen und zu erlauben</string>
+    <string name="settings_notifications_test_title">Test-Benachrichtigung senden</string>
+    <string name="settings_notifications_test_summary">Sendet eine Beispielmeldung, um Banner, Ton und Tipp-Verhalten zu prüfen</string>
+    <string name="settings_notifications_test_sent">Test-Benachrichtigung gesendet – Benachrichtigungsleiste prüfen</string>
+    <string name="settings_notifications_test_blocked">Benachrichtigungen sind blockiert – erst in den Systemeinstellungen erlauben</string>
+    <string name="notify_test_title">BetterStreamflix</string>
+    <string name="notify_test_body">Benachrichtigungen funktionieren. Tippen öffnet deine Favoriten.</string>
     <string name="settings_notify_watchlist_episode">Neue Watchlist-Folge</string>
     <string name="settings_notify_watchlist_episode_summary">Wenn eine Serie auf Meine Liste eine neue Folge bekommt</string>
     <string name="settings_notify_live_starting">Live-Erinnerungen (Favoriten)</string>

@@ -16,6 +16,53 @@ object NotificationsSettingsController {
         fragment: Fragment,
         findPreference: (String) -> Preference?,
     ) {
+        val context = fragment.requireContext()
+
+        findPreference("NOTIFICATIONS_SYSTEM_SETTINGS")?.apply {
+            fun applySummary(pref: Preference) {
+                pref.summary = if (NotificationPermission.canPost(context)) {
+                    context.getString(R.string.settings_notifications_system_on)
+                } else {
+                    context.getString(R.string.settings_notifications_system_blocked)
+                }
+            }
+            applySummary(this)
+            setOnPreferenceClickListener {
+                runCatching {
+                    context.startActivity(
+                        android.content.Intent(
+                            android.provider.Settings.ACTION_APP_NOTIFICATION_SETTINGS,
+                        ).putExtra(
+                            android.provider.Settings.EXTRA_APP_PACKAGE,
+                            context.packageName,
+                        ),
+                    )
+                }
+                true
+            }
+            // Reflect OS-level changes when returning from system settings.
+            val pref = this
+            fragment.lifecycle.addObserver(object : androidx.lifecycle.DefaultLifecycleObserver {
+                override fun onResume(owner: androidx.lifecycle.LifecycleOwner) {
+                    applySummary(pref)
+                }
+            })
+        }
+
+        findPreference("NOTIFICATIONS_SEND_TEST")?.setOnPreferenceClickListener {
+            val posted = com.dskja.betterstreamflix.notifications.ProductNotifier
+                .sendTestNotification(context)
+            if (!posted) {
+                fragment.activity?.let { NotificationPermission.maybeRequest(it) }
+            }
+            com.dskja.betterstreamflix.utils.ExpDialogChrome.notify(
+                context,
+                if (posted) R.string.settings_notifications_test_sent
+                else R.string.settings_notifications_test_blocked,
+            )
+            true
+        }
+
         bindSwitch(fragment, findPreference, "NOTIFY_WATCHLIST_NEW_EPISODE") { enabled ->
             UserPreferences.notifyWatchlistNewEpisode = enabled
         }

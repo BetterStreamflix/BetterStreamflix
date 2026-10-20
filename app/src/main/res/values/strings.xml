@@ -2444,6 +2444,17 @@
     <string name="settings_download_notify_complete_summary">Alert when an offline download completes</string>
     <string name="settings_screen_notifications">Notifications</string>
     <string name="settings_screen_notifications_summary">Watchlist episodes, Live favorites, downloads — opt-in only</string>
+    <string name="settings_notify_cat_delivery">Delivery</string>
+    <string name="settings_notify_cat_alerts">Alerts</string>
+    <string name="settings_notifications_system_title">System notification settings</string>
+    <string name="settings_notifications_system_on">Allowed — tap to manage channels</string>
+    <string name="settings_notifications_system_blocked">Blocked by Android — tap to open settings and allow</string>
+    <string name="settings_notifications_test_title">Send test notification</string>
+    <string name="settings_notifications_test_summary">Posts a sample alert so you can verify banners, sound and tap behavior</string>
+    <string name="settings_notifications_test_sent">Test notification sent — check your notification shade</string>
+    <string name="settings_notifications_test_blocked">Notifications are blocked — allow them in system settings first</string>
+    <string name="notify_test_title">BetterStreamflix</string>
+    <string name="notify_test_body">Notifications are working. Tapping opens your favorites.</string>
     <string name="settings_notify_watchlist_episode">New watchlist episode</string>
     <string name="settings_notify_watchlist_episode_summary">When a series on My List gets a new episode</string>
     <string name="settings_notify_live_starting">Live reminders (favorites)</string>

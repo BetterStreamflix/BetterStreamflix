@@ -1176,7 +1176,24 @@
         app:iconSpaceReserved="false">
 
         <PreferenceCategory
-            android:title="@string/settings_screen_notifications"
+            android:title="@string/settings_notify_cat_delivery"
+            app:iconSpaceReserved="false">
+
+            <Preference
+                android:key="NOTIFICATIONS_SYSTEM_SETTINGS"
+                android:title="@string/settings_notifications_system_title"
+                android:widgetLayout="@layout/preference_widget_chevron"
+                app:iconSpaceReserved="false" />
+
+            <Preference
+                android:key="NOTIFICATIONS_SEND_TEST"
+                android:title="@string/settings_notifications_test_title"
+                android:summary="@string/settings_notifications_test_summary"
+                app:iconSpaceReserved="false" />
+        </PreferenceCategory>
+
+        <PreferenceCategory
+            android:title="@string/settings_notify_cat_alerts"
             app:iconSpaceReserved="false">
 
             <SwitchPreference
