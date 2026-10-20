@@ -24,7 +24,6 @@ import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.findViewTreeLifecycleOwner
 import androidx.lifecycle.lifecycleScope
 import androidx.preference.PreferenceManager
-import com.bumptech.glide.Glide
 import com.dskja.betterstreamflix.R
 import com.dskja.betterstreamflix.databinding.ContentDetailTrailerMobileBinding
 import com.dskja.betterstreamflix.databinding.ItemDetailTrailerRowMobileBinding
@@ -382,10 +381,11 @@ class DetailTrailerMobilePlayer(
             row.tvDetailTrailerDesc.visibility = View.GONE
             val ytId = TrailerPlaybackController.youtubeVideoId(entry.url)
             if (ytId != null) {
-                Glide.with(row.ivDetailTrailerThumb)
-                    .load(TrailerCatalog.youtubeThumbUrl(ytId, thumbQuality))
-                    .centerCrop()
-                    .into(row.ivDetailTrailerThumb)
+                TrailerThumbLoader.into(
+                    target = row.ivDetailTrailerThumb,
+                    videoId = ytId,
+                    quality = thumbQuality,
+                )
             } else {
                 row.ivDetailTrailerThumb.setImageDrawable(null)
             }

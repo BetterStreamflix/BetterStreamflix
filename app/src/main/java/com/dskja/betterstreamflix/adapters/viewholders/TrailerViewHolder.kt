@@ -10,7 +10,6 @@ import androidx.viewbinding.ViewBinding
 import com.bumptech.glide.Glide
 import com.bumptech.glide.load.DataSource
 import com.bumptech.glide.load.engine.GlideException
-import com.bumptech.glide.load.resource.drawable.DrawableTransitionOptions
 import com.bumptech.glide.request.RequestListener
 import com.bumptech.glide.request.target.Target
 import com.dskja.betterstreamflix.R
@@ -21,6 +20,7 @@ import com.dskja.betterstreamflix.models.TrailerCatalog
 import com.dskja.betterstreamflix.ui.DetailTrailerTvController
 import com.dskja.betterstreamflix.ui.TrailerPlayPipeline
 import com.dskja.betterstreamflix.ui.TrailerPlaybackController
+import com.dskja.betterstreamflix.ui.TrailerThumbLoader
 import com.dskja.betterstreamflix.utils.ExpMotion
 import com.dskja.betterstreamflix.utils.TvFocusZoom
 import com.dskja.betterstreamflix.utils.getCurrentFragment
@@ -54,11 +54,11 @@ class TrailerViewHolder(
             ?: TrailerCatalog.THUMB_QUALITY_DEFAULT
         val ytId = TrailerPlaybackController.youtubeVideoId(trailer.url)
         if (ytId != null) {
-            Glide.with(binding.ivTrailerThumb)
-                .load(TrailerCatalog.youtubeThumbUrl(ytId, thumbQuality))
-                .centerCrop()
-                .transition(DrawableTransitionOptions.withCrossFade(160))
-                .listener(object : RequestListener<Drawable> {
+            TrailerThumbLoader.into(
+                target = binding.ivTrailerThumb,
+                videoId = ytId,
+                quality = thumbQuality,
+                listener = object : RequestListener<Drawable> {
                     override fun onLoadFailed(
                         e: GlideException?,
                         model: Any?,
@@ -79,8 +79,8 @@ class TrailerViewHolder(
                         revealPlay(binding)
                         return false
                     }
-                })
-                .into(binding.ivTrailerThumb)
+                },
+            )
         } else {
             Glide.with(binding.ivTrailerThumb).clear(binding.ivTrailerThumb)
             binding.ivTrailerThumb.setImageDrawable(null)

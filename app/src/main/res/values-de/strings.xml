@@ -1542,10 +1542,10 @@
     <string name="settings_trailer_player_reset">SmartTube-Versionsauswahl zurücksetzen</string>
     <string name="settings_trailer_player_reset_summary">Erzwingt, dass die App erneut fragt, welche SmartTube-Version (Stable/Beta) verwendet werden soll.</string>
     <string name="settings_trailer_thumb_quality_title">Trailer-Vorschaubildqualität</string>
-    <string name="settings_trailer_thumb_quality_summary">Bildqualität für Trailer-Listenposter</string>
-    <string name="settings_trailer_thumb_quality_hq">Hoch (Standard)</string>
-    <string name="settings_trailer_thumb_quality_max">Maximum</string>
-    <string name="settings_trailer_thumb_quality_sd">Standard</string>
+    <string name="settings_trailer_thumb_quality_summary">Schärfe der Poster in Trailer-Listen – fehlende Varianten fallen automatisch zurück</string>
+    <string name="settings_trailer_thumb_quality_hq">Hoch · 480p (Standard)</string>
+    <string name="settings_trailer_thumb_quality_max">Maximum · bis 1080p+</string>
+    <string name="settings_trailer_thumb_quality_sd">Standard · 640×480</string>
     <string name="settings_trailer_start_muted_title">Trailer stumm starten</string>
     <string name="settings_trailer_start_muted_summary">In-App-Trailer-Tab startet stumm, bis du den Ton einschaltest</string>
     <string name="settings_category_frenchstream">FrenchStream-Einstellungen</string>

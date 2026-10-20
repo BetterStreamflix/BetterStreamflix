@@ -105,6 +105,22 @@ object TrailerCatalog {
         return "https://img.youtube.com/vi/$videoId/$file"
     }
 
+    /**
+     * Ordered thumbnail URLs — preferred quality first, then progressively
+     * safer rungs. `maxresdefault`/`sddefault` 404 on many older or low-res
+     * uploads, while `hqdefault`/`mqdefault` exist for virtually every video.
+     * Feed the tail into Glide `.error(...)` chains so a missing max-res file
+     * degrades instead of leaving an empty card.
+     */
+    fun youtubeThumbChain(videoId: String, quality: String? = THUMB_QUALITY_DEFAULT): List<String> {
+        val ordered = when (quality) {
+            THUMB_QUALITY_HIGH -> listOf("maxresdefault.jpg", "sddefault.jpg", "hqdefault.jpg", "mqdefault.jpg")
+            THUMB_QUALITY_STANDARD -> listOf("sddefault.jpg", "hqdefault.jpg", "mqdefault.jpg")
+            else -> listOf("hqdefault.jpg", "mqdefault.jpg")
+        }
+        return ordered.map { "https://img.youtube.com/vi/$videoId/$it" }
+    }
+
     fun preferredPlayableUrl(entries: List<TrailerEntry>): String? =
         entries.firstOrNull { it.isYoutube }?.url
             ?: entries.firstOrNull()?.url
