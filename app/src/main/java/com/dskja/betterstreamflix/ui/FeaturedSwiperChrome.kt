@@ -191,12 +191,105 @@ object FeaturedSwiperChrome {
     }
 
     /**
+     * Mobile iOS-style circular My List chip: swaps plus/check glyph and plays
+     * the ring-pulse + icon-pop on state change (mirrors FeaturedAddToListButton
+     * on iOS — ring expands 1.0→1.22 fading out while the icon springs in).
+     */
+    fun bindMobileListButton(
+        button: View,
+        inList: Boolean,
+        animate: Boolean = false,
+        title: String? = null,
+    ) {
+        val icon = button.findViewById<android.widget.ImageView>(R.id.iv_swiper_list_icon)
+        icon?.setImageResource(if (inList) R.drawable.ic_featured_check else R.drawable.ic_featured_add)
+        val name = title?.takeIf { it.isNotBlank() }
+        button.contentDescription = if (name != null) {
+            button.context.getString(
+                if (inList) R.string.a11y_featured_in_my_list else R.string.a11y_featured_my_list,
+                name,
+            )
+        } else {
+            button.context.getString(
+                if (inList) R.string.home_swiper_in_my_list else R.string.home_swiper_my_list,
+            )
+        }
+        TooltipCompat.setTooltipText(
+            button,
+            button.context.getString(
+                if (inList) R.string.home_swiper_in_my_list else R.string.home_swiper_my_list,
+            ),
+        )
+        if (animate) playMobileListPulse(button)
+    }
+
+    /** iOS FeaturedAddToListButton ring burst: ring scales out + fades, icon pops. */
+    fun playMobileListPulse(button: View) {
+        val ring = button.findViewById<View>(R.id.v_swiper_list_ring)
+        val icon = button.findViewById<android.widget.ImageView>(R.id.iv_swiper_list_icon)
+        ring?.let { r ->
+            r.animate().cancel()
+            r.visibility = View.VISIBLE
+            r.scaleX = 1f
+            r.scaleY = 1f
+            r.alpha = 0.85f
+            r.animate()
+                .scaleX(1.22f).scaleY(1.22f)
+                .alpha(0f)
+                .setDuration(520L)
+                .withEndAction {
+                    r.visibility = View.GONE
+                    r.scaleX = 1f
+                    r.scaleY = 1f
+                    r.alpha = 1f
+                }
+                .start()
+        }
+        icon?.let { iv ->
+            iv.animate().cancel()
+            iv.scaleX = 1f
+            iv.scaleY = 1f
+            iv.animate()
+                .scaleX(1.18f).scaleY(1.18f)
+                .setDuration(140L)
+                .withEndAction {
+                    iv.animate().scaleX(1f).scaleY(1f).setDuration(160L).start()
+                }
+                .start()
+        }
+        button.animate().cancel()
+        button.scaleX = 1f
+        button.scaleY = 1f
+        button.animate()
+            .scaleX(1.06f).scaleY(1.06f)
+            .setDuration(140L)
+            .withEndAction {
+                button.animate().scaleX(1f).scaleY(1f).setDuration(160L).start()
+            }
+            .start()
+    }
+
+    /** Routes to the right binder depending on the bound view type. */
+    private fun bindAnyListButton(
+        button: View,
+        inList: Boolean,
+        animate: Boolean,
+        title: String?,
+    ) {
+        if (button is TextView) {
+            bindListButton(button, inList, animate = animate, title = title)
+        } else {
+            bindMobileListButton(button, inList, animate = animate, title = title)
+        }
+    }
+
+    /**
      * Observe Room favorite state so Featured CTAs stay in sync when the user
      * toggles My List from Detail / Favorites / another surface.
      */
     fun observeListState(
         anchor: View,
-        button: TextView,
+        button: View,
         movieId: String,
         apply: (Boolean) -> Unit,
     ): Job? {
@@ -212,7 +305,7 @@ object FeaturedSwiperChrome {
 
     fun observeListStateTv(
         anchor: View,
-        button: TextView,
+        button: View,
         tvShowId: String,
         apply: (Boolean) -> Unit,
     ): Job? {
@@ -227,7 +320,7 @@ object FeaturedSwiperChrome {
 
     fun toggleMovieFavorite(
         anchor: View,
-        button: TextView,
+        button: View,
         movie: Movie,
         onDone: ((Boolean) -> Unit)? = null,
     ) {
@@ -247,7 +340,7 @@ object FeaturedSwiperChrome {
                 movie.isFavorite = target
                 movie.poster = resolved.poster
                 movie.banner = resolved.banner
-                bindListButton(button, target, animate = true, title = movie.title)
+                bindAnyListButton(button, target, animate = true, title = movie.title)
                 onDone?.invoke(target)
             }
         }
@@ -255,7 +348,7 @@ object FeaturedSwiperChrome {
 
     fun toggleTvShowFavorite(
         anchor: View,
-        button: TextView,
+        button: View,
         tvShow: TvShow,
         onDone: ((Boolean) -> Unit)? = null,
     ) {
@@ -275,7 +368,7 @@ object FeaturedSwiperChrome {
                 tvShow.isFavorite = target
                 tvShow.poster = resolved.poster
                 tvShow.banner = resolved.banner
-                bindListButton(button, target, animate = true, title = tvShow.title)
+                bindAnyListButton(button, target, animate = true, title = tvShow.title)
                 onDone?.invoke(target)
             }
         }

@@ -728,10 +728,20 @@ class HomeMobileFragment : Fragment() {
         ) {
             val pos = parent.getChildAdapterPosition(view)
             val count = parent.adapter?.itemCount ?: return
-            if (pos == RecyclerView.NO_POSITION || pos >= count - 1) return
-            val item = (parent.adapter as? AppAdapter)?.items?.getOrNull(pos)
+            if (pos == RecyclerView.NO_POSITION) return
+            val items = (parent.adapter as? AppAdapter)?.items
+            val item = items?.getOrNull(pos)
             val featured = item is Category && Category.isFeaturedName(item.name)
-            outRect.bottom = if (featured) 0 else gapPx
+            if (pos < count - 1) {
+                outRect.bottom = if (featured) 0 else gapPx
+            }
+            // The shelf directly after the Featured hero needs real breathing
+            // room — its title row would otherwise hug the hero's bottom scrim
+            // and read as clipped/overlapping ("Latest Episodes" inside Featured).
+            val prev = items?.getOrNull(pos - 1)
+            if (prev is Category && Category.isFeaturedName(prev.name)) {
+                outRect.top = gapPx * 3
+            }
         }
     }
 

@@ -24,6 +24,9 @@ interface MovieDao {
     @Query("UPDATE movies SET logo = :logo, logoLanguage = :logoLanguage WHERE id = :id")
     fun updateLogo(id: String, logo: String?, logoLanguage: String?)
 
+    @Query("UPDATE movies SET banner = :banner WHERE id = :id")
+    fun updateBanner(id: String, banner: String?)
+
     @Query("SELECT * FROM movies WHERE id = :id")
     fun getByIdAsFlow(id: String): Flow<Movie?>
 

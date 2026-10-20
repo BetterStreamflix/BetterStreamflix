@@ -306,6 +306,8 @@
     <string name="switching_to_provider">Wechseln zu %s</string>
 
     <string name="home_swiper_watch_now">Ansehen</string>
+    <string name="home_swiper_eyebrow">Im Trend</string>
+    <string name="home_brand_featured">Featured</string>
     <string name="home_continue_watching">Weiterschauen</string>
     <string name="home_next_episodes">Nächste Folgen</string>
     <string name="home_new_this_week">Neu diese Woche</string>

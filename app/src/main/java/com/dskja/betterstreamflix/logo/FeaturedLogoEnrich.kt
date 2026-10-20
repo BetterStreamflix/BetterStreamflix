@@ -12,6 +12,8 @@ import com.dskja.betterstreamflix.models.TvShow
 import com.dskja.betterstreamflix.utils.TmdbUtils
 import com.dskja.betterstreamflix.utils.UserPreferences
 import com.dskja.betterstreamflix.utils.format
+import com.dskja.betterstreamflix.utils.loadMovieBanner
+import com.dskja.betterstreamflix.utils.loadTvShowBanner
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
@@ -78,7 +80,7 @@ object FeaturedLogoEnrich {
                                 item.logo,
                                 item.logoLanguage,
                                 UserPreferences.currentProvider?.language,
-                            )
+                            ) || needsBackdropUpgrade(item.banner, item.poster)
                         ) {
                             add(item)
                             i++
@@ -88,7 +90,7 @@ object FeaturedLogoEnrich {
                                 item.logo,
                                 item.logoLanguage,
                                 UserPreferences.currentProvider?.language,
-                            )
+                            ) || needsBackdropUpgrade(item.banner, item.poster)
                         ) {
                             add(item)
                             i++
@@ -111,12 +113,184 @@ object FeaturedLogoEnrich {
                         } catch (_: Exception) {
                             null
                         }
-                    } ?: return@forEach
-                    TmdbLogoGlide.prefetch(appCtx, url, wifiOnly = true)
+                    }
+                    if (url != null) TmdbLogoGlide.prefetch(appCtx, url, wifiOnly = true)
+                    // Upcoming slide needs a real backdrop too — resolve + persist
+                    // so the swiper binds it already upgraded.
+                    try {
+                        when (item) {
+                            is Movie -> if (needsBackdropUpgrade(item.banner, item.poster)) {
+                                resolveMovieBackdrop(item)?.let { backdrop ->
+                                    item.banner = backdrop
+                                    persistMovieBanner(item.id, backdrop)
+                                    prefetchBanner(appCtx, backdrop)
+                                }
+                            }
+                            is TvShow -> if (needsBackdropUpgrade(item.banner, item.poster)) {
+                                resolveTvBackdrop(item)?.let { backdrop ->
+                                    item.banner = backdrop
+                                    persistTvBanner(item.id, backdrop)
+                                    prefetchBanner(appCtx, backdrop)
+                                }
+                            }
+                        }
+                    } catch (e: CancellationException) {
+                        throw e
+                    } catch (_: Exception) {
+                    }
                 }
             }
         }
         start()
+    }
+
+    /**
+     * Featured cover upgrade: providers that only ship a portrait poster get it
+     * duplicated into `banner` (e.g. Anikoto), which centerCrops into a blurry,
+     * badly-framed hero. Detects poster-as-banner / missing banner, resolves a
+     * real TMDb backdrop, persists it into Room, and reloads the bound view.
+     * Runs on any connected network (one API call + one image for the visible
+     * hero) but respects data-saver.
+     */
+    fun enrichBackdropIfNeeded(
+        anchor: View,
+        imageView: android.widget.ImageView,
+        movie: Movie,
+    ) {
+        if (UserPreferences.dataSaverMode || !UserPreferences.enableTmdb) return
+        if (!needsBackdropUpgrade(movie.banner, movie.poster)) return
+        startBackdropJob(anchor, key = "m:${movie.id}") {
+            val backdrop = resolveMovieBackdrop(movie)
+            if (backdrop != null) {
+                movie.banner = backdrop
+                persistMovieBanner(movie.id, backdrop)
+                imageView.post {
+                    imageView.loadMovieBanner(movie, hero = false) {
+                        centerCrop().transition(
+                            com.bumptech.glide.load.resource.drawable.DrawableTransitionOptions
+                                .withCrossFade(320),
+                        )
+                    }
+                }
+            }
+        }
+    }
+
+    fun enrichBackdropIfNeeded(
+        anchor: View,
+        imageView: android.widget.ImageView,
+        tvShow: TvShow,
+    ) {
+        if (UserPreferences.dataSaverMode || !UserPreferences.enableTmdb) return
+        if (!needsBackdropUpgrade(tvShow.banner, tvShow.poster)) return
+        startBackdropJob(anchor, key = "t:${tvShow.id}") {
+            val backdrop = resolveTvBackdrop(tvShow)
+            if (backdrop != null) {
+                tvShow.banner = backdrop
+                persistTvBanner(tvShow.id, backdrop)
+                imageView.post {
+                    imageView.loadTvShowBanner(tvShow, hero = false) {
+                        centerCrop().transition(
+                            com.bumptech.glide.load.resource.drawable.DrawableTransitionOptions
+                                .withCrossFade(320),
+                        )
+                    }
+                }
+            }
+        }
+    }
+
+    /** Poster copied into banner, or no banner at all → TMDb backdrop worth fetching. */
+    private fun needsBackdropUpgrade(banner: String?, poster: String?): Boolean {
+        val b = banner?.trim().orEmpty()
+        if (b.isEmpty()) return true
+        val p = poster?.trim().orEmpty()
+        return p.isNotEmpty() && b == p
+    }
+
+    private val backdropJobs = java.util.WeakHashMap<View, MutableMap<String, Job>>()
+
+    private fun startBackdropJob(anchor: View, key: String, work: suspend () -> Unit) {
+        val owner = anchor.findViewTreeLifecycleOwner()
+        if (owner == null) {
+            anchor.addOnAttachStateChangeListener(object : View.OnAttachStateChangeListener {
+                override fun onViewAttachedToWindow(v: View) {
+                    anchor.removeOnAttachStateChangeListener(this)
+                    startBackdropJob(anchor, key, work)
+                }
+                override fun onViewDetachedFromWindow(v: View) = Unit
+            })
+            return
+        }
+        val map = synchronized(backdropJobs) {
+            backdropJobs.getOrPut(anchor) { mutableMapOf() }
+        }
+        if (map.containsKey(key)) return
+        map[key] = owner.lifecycleScope.launch {
+            try {
+                work()
+            } finally {
+                synchronized(backdropJobs) { backdropJobs[anchor]?.remove(key) }
+            }
+        }
+    }
+
+    private suspend fun resolveMovieBackdrop(movie: Movie): String? = withContext(Dispatchers.IO) {
+        runCatching {
+            val lang = UserPreferences.currentProvider?.language
+            val tmdb = movie.tmdbId?.toIntOrNull()?.let { TmdbUtils.getMovieById(it, lang) }
+                ?: movie.imdbId?.takeIf { it.isNotBlank() }
+                    ?.let { TmdbUtils.getMovieByImdbId(it, lang) }
+                ?: TmdbUtils.getMovie(
+                    movie.title,
+                    year = movie.released?.format("yyyy")?.toIntOrNull(),
+                    language = lang,
+                )
+            val banner = tmdb?.banner?.takeIf { it.isNotBlank() } ?: return@runCatching null
+            if (movie.tmdbId.isNullOrBlank()) movie.tmdbId = tmdb.tmdbId
+            if (movie.imdbId.isNullOrBlank()) movie.imdbId = tmdb.imdbId
+            banner
+        }.getOrNull()
+    }
+
+    private suspend fun resolveTvBackdrop(tvShow: TvShow): String? = withContext(Dispatchers.IO) {
+        runCatching {
+            val lang = UserPreferences.currentProvider?.language
+            val tmdb = tvShow.tmdbId?.toIntOrNull()?.let { TmdbUtils.getTvShowById(it, lang) }
+                ?: tvShow.imdbId?.takeIf { it.isNotBlank() }
+                    ?.let { TmdbUtils.getTvShowByImdbId(it, lang) }
+                ?: TmdbUtils.getTvShow(
+                    tvShow.title,
+                    year = tvShow.released?.format("yyyy")?.toIntOrNull(),
+                    language = lang,
+                )
+            val banner = tmdb?.banner?.takeIf { it.isNotBlank() } ?: return@runCatching null
+            if (tvShow.tmdbId.isNullOrBlank()) tvShow.tmdbId = tmdb.tmdbId
+            if (tvShow.imdbId.isNullOrBlank()) tvShow.imdbId = tmdb.imdbId
+            banner
+        }.getOrNull()
+    }
+
+    private suspend fun persistMovieBanner(id: String, banner: String) {
+        withContext(Dispatchers.IO) {
+            runCatching {
+                val db = com.dskja.betterstreamflix.database.AppDatabase
+                    .getInstanceOrNull(com.dskja.betterstreamflix.BetterStreamflixApp.instance)
+                    ?: return@runCatching
+                if (db.movieDao().getById(id) != null) db.movieDao().updateBanner(id, banner)
+            }
+        }
+    }
+
+    private suspend fun persistTvBanner(id: String, banner: String) {
+        withContext(Dispatchers.IO) {
+            runCatching {
+                val db = com.dskja.betterstreamflix.database.AppDatabase
+                    .getInstanceOrNull(com.dskja.betterstreamflix.BetterStreamflixApp.instance)
+                    ?: return@runCatching
+                if (db.tvShowDao().getById(id) != null) db.tvShowDao().updateBanner(id, banner)
+            }
+        }
     }
 
     /** Prefetch next slide banner at Featured decode size on unmetered networks. */

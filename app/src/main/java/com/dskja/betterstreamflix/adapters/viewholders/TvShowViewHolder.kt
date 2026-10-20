@@ -90,6 +90,7 @@ import com.dskja.betterstreamflix.models.TvShow
 import com.dskja.betterstreamflix.models.Video
 import com.dskja.betterstreamflix.ui.FeaturedHeroController
 import com.dskja.betterstreamflix.ui.FeaturedProviderSwitch
+import com.dskja.betterstreamflix.logo.FeaturedLogoEnrich
 import com.dskja.betterstreamflix.ui.FeaturedSwiperChrome
 import com.dskja.betterstreamflix.ui.SpacingItemDecoration
 import com.dskja.betterstreamflix.ui.ShowOptionsMobileDialog
@@ -845,7 +846,7 @@ class TvShowViewHolder(
             )
         }
 
-        FeaturedSwiperChrome.bindListButton(
+        FeaturedSwiperChrome.bindMobileListButton(
             binding.btnSwiperAddToList,
             tvShow.isFavorite,
             title = tvShow.title,
@@ -870,12 +871,19 @@ class TvShowViewHolder(
         ) { favorite ->
             if (tvShow.id != boundTvShowId) return@observeListStateTv
             tvShow.isFavorite = favorite
-            FeaturedSwiperChrome.bindListButton(
+            FeaturedSwiperChrome.bindMobileListButton(
                 binding.btnSwiperAddToList,
                 favorite,
                 title = tvShow.title,
             )
         }
+
+        // Featured cover upgrade — poster-as-banner providers get a real TMDb backdrop.
+        FeaturedLogoEnrich.enrichBackdropIfNeeded(
+            anchor = itemView,
+            imageView = binding.ivSwiperBackground,
+            tvShow = tvShow,
+        )
 
         // Nested clickables confuse TalkBack — keep chrome buttons primary.
         binding.root.isClickable = false
