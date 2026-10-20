@@ -807,7 +807,7 @@ class HomeMobileFragment : Fragment() {
                 .into(binding.ivHomeBackground)
             // Kenburns removed: continuous scale animation caused jank on home scroll.
         } else {
-            binding.ivHomeBackground.setImageResource(R.drawable.bg_exp_lumina_sky)
+            binding.ivHomeBackground.setImageResource(R.drawable.bg_home_sky_fallback)
             binding.root.findViewById<View>(R.id.v_home_glow)?.let { glow ->
                 glow.tag = null
                 val primary = com.google.android.material.color.MaterialColors.getColor(

@@ -635,7 +635,7 @@ class MainMobileActivity : FragmentActivity() {
             UserPreferences.currentProvider != null && isTopLevelProviderDestination(destinationId)
         val navVisibility = if (showBottomNav) View.VISIBLE else View.GONE
         binding.bnvMain.visibility = navVisibility
-        // Lumina: the floating glass pill wraps the nav — hide the container too.
+        // Nav container view shares the bottom-nav visibility state.
         binding.root.findViewById<View>(R.id.bv_main_nav)?.let { pill ->
             val wasVisible = pill.visibility == View.VISIBLE
             pill.visibility = navVisibility
