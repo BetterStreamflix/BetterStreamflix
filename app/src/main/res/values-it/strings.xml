@@ -417,7 +417,6 @@
     <string name="settings_autoplay_on">Attivato</string>
     <string name="settings_autoplay_off">Disattivato</string>
     <string name="settings_autoplay_buffer_title">Buffer di riproduzione automatica</string>
-    <string name="settings_autoplay_buffer_dialog_message">Imposta quanti secondi prima della fine dell\'episodio passare a quello successivo.</string>
     <string name="autoplay_settings">Impostazioni di riproduzione automatica</string>
     <string name="player_settings">Impostazioni player</string>
     <string name="settings_player_gestures">Gesture del player</string>

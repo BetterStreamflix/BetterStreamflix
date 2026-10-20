@@ -487,7 +487,6 @@
     <string name="settings_scan_resolver_failed">تعذر تشغيل ماسح QR على هذا الجهاز.</string>
     <string name="settings_category_provider_url_manual">إدخال يدوي</string>
     <string name="settings_autoplay_buffer_title">مهلة التشغيل التلقائي</string>
-    <string name="settings_autoplay_buffer_dialog_message">حدد عدد الثواني قبل نهاية الحلقة للانتقال إلى الحلقة التالية.</string>
     <string name="player_settings">إعدادات المشغل</string>
     <string name="settings_player_gestures">إيماءات المشغل</string>
     <string name="settings_player_gestures_on">تشغيل</string>

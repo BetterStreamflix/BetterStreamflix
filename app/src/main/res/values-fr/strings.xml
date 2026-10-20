@@ -364,7 +364,6 @@
     <string name="settings_autoplay_on">Activé</string>
     <string name="settings_autoplay_off">Désactivé</string>
     <string name="settings_autoplay_buffer_title">Délai avant l\'épisode suivant</string>
-    <string name="settings_autoplay_buffer_dialog_message">Réglez le nombre de secondes restant avant de passer à l\'épisode suivant.</string>
     <string name="autoplay_settings">Paramètres de lecture automatique</string>
     <string name="player_settings">Paramètres du lecteur</string>
     <string name="settings_player_gestures">Contrôles tactiles</string>
