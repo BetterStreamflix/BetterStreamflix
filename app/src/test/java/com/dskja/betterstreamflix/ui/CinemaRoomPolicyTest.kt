@@ -28,15 +28,15 @@ class CinemaRoomPolicyTest {
     }
 
     @Test
-    fun preferredLookOnEnable_kidsVsAdult() {
-        assertEquals(ThemeManager.KIDS_BRIGHT, CinemaRoomPolicy.preferredLookOnEnable(true))
+    fun preferredLookOnEnable_singleDarkLook() {
+        assertEquals(ThemeManager.CINEMA_INK, CinemaRoomPolicy.preferredLookOnEnable(true))
         assertEquals(ThemeManager.CINEMA_INK, CinemaRoomPolicy.preferredLookOnEnable(false))
     }
 
     @Test
-    fun looksHint_keepsLockedLook_collapsesRetired() {
+    fun looksHint_collapsesEveryRetiredLookToDark() {
         assertEquals(
-            ThemeManager.CINEMA_INK_LIGHT,
+            ThemeManager.CINEMA_INK,
             CinemaRoomPolicy.looksHint(ThemeManager.CINEMA_INK_LIGHT, isKidsProfile = false),
         )
         assertEquals(
@@ -44,8 +44,12 @@ class CinemaRoomPolicyTest {
             CinemaRoomPolicy.looksHint(ThemeManager.NERO_AMOLED_OLED, isKidsProfile = false),
         )
         assertEquals(
-            ThemeManager.KIDS_BRIGHT,
+            ThemeManager.CINEMA_INK,
             CinemaRoomPolicy.looksHint(ThemeManager.SUNSET_CINEMA, isKidsProfile = true),
+        )
+        assertEquals(
+            ThemeManager.CINEMA_INK,
+            CinemaRoomPolicy.looksHint(ThemeManager.KIDS_BRIGHT, isKidsProfile = true),
         )
     }
 

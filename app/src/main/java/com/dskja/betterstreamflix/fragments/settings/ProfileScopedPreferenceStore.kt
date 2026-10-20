@@ -31,7 +31,6 @@ internal object ProfileScopedPreferenceStore {
         "SPOILER_SHIELD_ENABLED",
         "KIDS_BEDTIME_ENABLED",
         "PARENTAL_CONTROL_MAX_AGE",
-        "SELECTED_THEME",
         "LEANBACK_DENSITY",
         "CHANNEL_PIN_STRIP_ENABLED",
         "CHANNEL_PIN_STRIP_LIVE_ONLY",
