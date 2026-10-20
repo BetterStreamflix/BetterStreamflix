@@ -26,6 +26,7 @@ import androidx.preference.PreferenceCategory
 import androidx.preference.PreferenceFragmentCompat
 import androidx.preference.PreferenceManager
 import androidx.preference.PreferenceScreen
+import androidx.preference.SeekBarPreference
 import androidx.preference.SwitchPreference
 import androidx.preference.SwitchPreferenceCompat
 import androidx.navigation.fragment.findNavController
@@ -990,13 +991,10 @@ class SettingsMobileFragment : PreferenceFragmentCompat() {
             }
         }
 
-        findPreference<EditTextPreference>("p_settings_autoplay_buffer")?.apply {
-            setSummaryProviderOnce(Preference.SummaryProvider<EditTextPreference> { pref ->
-                val value = pref.text?.toLongOrNull() ?: 3L
-                "$value s"
-            })
+        findPreference<SeekBarPreference>("AUTOPLAY_BUFFER")?.apply {
+            value = UserPreferences.autoplayBuffer.toInt().coerceIn(0, 30)
             setOnPreferenceChangeListener { _, newValue ->
-                UserPreferences.autoplayBuffer = (newValue as String).toLongOrNull() ?: 3L
+                UserPreferences.autoplayBuffer = (newValue as Int).toLong()
                 true
             }
         }

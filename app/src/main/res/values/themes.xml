@@ -48,14 +48,7 @@
         <item name="android:textSize">11sp</item>
     </style>
 
-    <!-- Material You experimental shell: M3 dark theme; DynamicColors applies
-         wallpaper-derived colors on Android 12+. Applied in MainMobileActivity
-         when EXPERIMENTAL_NEW_APP_DESIGN is on, so settings screens, dialogs
-         and system chrome follow the shell too. -->
-    <!-- Lumina accent: Ember (warm copper) -->
-    <!-- Lumina accent: Aurora (cool teal) -->
-    <!-- Lumina accent: Slate (cool silver) -->
-    <!-- Tema Nero Amoled/Oled per Mobile -->
+    <!-- Dark (Cinema-Ink) — the single locked look for mobile. -->
     <style name="AppTheme.Mobile.CinemaInk" parent="AppTheme.Mobile">
         <item name="app_background_color">@color/cinema_ink</item>
         <item name="android:windowBackground">@drawable/bg_splash_screen_cinema_ink</item>
@@ -74,7 +67,7 @@
     <!-- Tema di Default per TV -->
     <!--
       Leanback does not define AppCompat ripples or M3 surface-container attrs.
-      Shared Lumina layouts (profile picker, downloads, support) need these or
+      Shared layouts (profile picker, downloads, support) need these or
       inflate crashes on TV (Sentry BETTERSTREAMFLIX-1N).
     -->
     <style name="AppTheme.Tv" parent="Theme.Leanback">
@@ -90,7 +83,7 @@
         <!-- Framework ripples — available without AppCompat parent. -->
         <item name="selectableItemBackground">?android:attr/selectableItemBackground</item>
         <item name="selectableItemBackgroundBorderless">?android:attr/selectableItemBackgroundBorderless</item>
-        <!-- Material color attrs for shared Lumina layouts (profile chip, support). -->
+        <!-- Material color attrs for shared layouts (profile chip, support). -->
         <item name="colorPrimary">@color/m3_primary</item>
         <item name="colorOnPrimary">@color/m3_on_primary</item>
         <item name="colorPrimaryContainer">@color/m3_primary_container</item>
@@ -124,7 +117,7 @@
         <item name="tvFocusStrokeWidth">@dimen/tv_focus_stroke_width</item>
     </style>
 
-    <!-- Tema Nero Amoled/Oled per TV (Nero Puro #000000) -->
+    <!-- Dark (Cinema-Ink) — the single locked look for TV. -->
     <style name="AppTheme.CinemaInk" parent="AppTheme.Tv">
         <item name="app_background_color">@color/cinema_ink</item>
         <item name="preferenceTheme">@style/PreferenceThemeOverlayLeanbackSafe</item>

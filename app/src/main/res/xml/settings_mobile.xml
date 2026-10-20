@@ -761,12 +761,16 @@
                 android:summaryOff="@string/settings_autoplay_off"
                 app:iconSpaceReserved="false" />
 
-            <EditTextPreference
-                android:key="p_settings_autoplay_buffer"
+            <SeekBarPreference
+                android:key="AUTOPLAY_BUFFER"
                 android:title="@string/settings_autoplay_buffer_title"
-                android:dialogMessage="@string/settings_autoplay_buffer_dialog_message"
+                android:summary="@string/settings_autoplay_buffer_summary"
                 android:defaultValue="3"
-                android:inputType="number"
+                android:max="30"
+                app:min="0"
+                app:seekBarIncrement="1"
+                app:showSeekBarValue="true"
+                app:updatesContinuously="true"
                 app:iconSpaceReserved="false" />
         </PreferenceCategory>
 
@@ -804,13 +808,94 @@
                 app:useSimpleSummaryProvider="true"
                 app:iconSpaceReserved="false" />
 
-            <SwitchPreference
-                android:key="PLAYER_GESTURES"
+            <PreferenceScreen
+                android:key="screen_player_gestures"
                 android:title="@string/settings_player_gestures"
-                android:defaultValue="true"
-                android:summaryOn="@string/settings_player_gestures_on"
-                android:summaryOff="@string/settings_player_gestures_off"
-                app:iconSpaceReserved="false" />
+                android:summary="@string/settings_gestures_screen_summary"
+                android:widgetLayout="@layout/preference_widget_chevron"
+                app:iconSpaceReserved="false">
+
+                <SwitchPreference
+                    android:key="PLAYER_GESTURES"
+                    android:title="@string/settings_player_gestures"
+                    android:defaultValue="true"
+                    android:summaryOn="@string/settings_player_gestures_on"
+                    android:summaryOff="@string/settings_player_gestures_off"
+                    app:iconSpaceReserved="false" />
+
+                <PreferenceCategory
+                    android:title="@string/settings_gestures_individual_title"
+                    app:iconSpaceReserved="false">
+
+                    <SwitchPreference
+                        android:key="PLAYER_GESTURE_BRIGHTNESS"
+                        android:title="@string/settings_gesture_brightness_title"
+                        android:summary="@string/settings_gesture_brightness_summary"
+                        android:defaultValue="true"
+                        app:iconSpaceReserved="false" />
+
+                    <SwitchPreference
+                        android:key="PLAYER_GESTURE_VOLUME"
+                        android:title="@string/settings_gesture_volume_title"
+                        android:summary="@string/settings_gesture_volume_summary"
+                        android:defaultValue="true"
+                        app:iconSpaceReserved="false" />
+
+                    <SwitchPreference
+                        android:key="PLAYER_GESTURE_ZOOM"
+                        android:title="@string/settings_gesture_zoom_title"
+                        android:summary="@string/settings_gesture_zoom_summary"
+                        android:defaultValue="true"
+                        app:iconSpaceReserved="false" />
+
+                    <SwitchPreference
+                        android:key="PLAYER_GESTURE_DOUBLE_TAP"
+                        android:title="@string/settings_gesture_double_tap_title"
+                        android:summary="@string/settings_gesture_double_tap_summary"
+                        android:defaultValue="true"
+                        app:iconSpaceReserved="false" />
+                </PreferenceCategory>
+
+                <PreferenceCategory
+                    android:title="@string/settings_gestures_guide_title"
+                    app:iconSpaceReserved="false">
+
+                    <Preference
+                        android:key="gesture_guide_brightness"
+                        android:title="@string/settings_gesture_brightness_title"
+                        android:summary="@string/settings_gesture_guide_brightness"
+                        android:selectable="false"
+                        app:iconSpaceReserved="false" />
+
+                    <Preference
+                        android:key="gesture_guide_volume"
+                        android:title="@string/settings_gesture_volume_title"
+                        android:summary="@string/settings_gesture_guide_volume"
+                        android:selectable="false"
+                        app:iconSpaceReserved="false" />
+
+                    <Preference
+                        android:key="gesture_guide_zoom"
+                        android:title="@string/settings_gesture_zoom_title"
+                        android:summary="@string/settings_gesture_guide_zoom"
+                        android:selectable="false"
+                        app:iconSpaceReserved="false" />
+
+                    <Preference
+                        android:key="gesture_guide_double_tap"
+                        android:title="@string/settings_gesture_double_tap_title"
+                        android:summary="@string/settings_gesture_guide_double_tap"
+                        android:selectable="false"
+                        app:iconSpaceReserved="false" />
+
+                    <Preference
+                        android:key="gesture_guide_zoom_mode"
+                        android:title="@string/settings_gesture_zoom_mode_title"
+                        android:summary="@string/settings_gesture_guide_zoom_mode"
+                        android:selectable="false"
+                        app:iconSpaceReserved="false" />
+                </PreferenceCategory>
+            </PreferenceScreen>
 
             <SwitchPreference
                 android:key="KEEP_SCREEN_ON_WHEN_PAUSED"

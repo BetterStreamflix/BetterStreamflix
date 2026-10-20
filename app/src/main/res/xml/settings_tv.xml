@@ -707,12 +707,16 @@
                 android:summaryOn="@string/settings_autoplay_on"
                 android:summaryOff="@string/settings_autoplay_off" />
 
-            <EditTextPreference
-                android:key="p_settings_autoplay_buffer"
+            <SeekBarPreference
+                android:key="AUTOPLAY_BUFFER"
                 android:title="@string/settings_autoplay_buffer_title"
-                android:dialogMessage="@string/settings_autoplay_buffer_dialog_message"
+                android:summary="@string/settings_autoplay_buffer_summary"
                 android:defaultValue="3"
-                android:inputType="number" />
+                android:max="30"
+                app:min="0"
+                app:seekBarIncrement="1"
+                app:showSeekBarValue="true"
+                app:updatesContinuously="true" />
         </PreferenceCategory>
 
         <PreferenceCategory

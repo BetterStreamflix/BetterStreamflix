@@ -1085,13 +1085,10 @@ class SettingsTvFragment : LeanbackPreferenceFragmentCompat() {
             }
         }
 
-        findPreference<EditTextPreference>("p_settings_autoplay_buffer")?.apply {
-            setSummaryProviderOnce(Preference.SummaryProvider<EditTextPreference> { pref ->
-                val value = pref.text?.toLongOrNull() ?: 3L
-                "$value s"
-            })
+        findPreference<SeekBarPreference>("AUTOPLAY_BUFFER")?.apply {
+            value = UserPreferences.autoplayBuffer.toInt().coerceIn(0, 30)
             setOnPreferenceChangeListener { _, newValue ->
-                UserPreferences.autoplayBuffer = (newValue as String).toLongOrNull() ?: 3L
+                UserPreferences.autoplayBuffer = (newValue as Int).toLong()
                 true
             }
         }
@@ -2695,11 +2692,8 @@ class SettingsTvFragment : LeanbackPreferenceFragmentCompat() {
             scope = lifecycleScope,
         )
         
-        val bufferPref: EditTextPreference? = findPreference("p_settings_autoplay_buffer")
-        bufferPref?.setSummaryProviderOnce(Preference.SummaryProvider<EditTextPreference> { pref ->
-            val value = pref.text?.toLongOrNull() ?: 3L
-            "$value s"
-        })
+        findPreference<SeekBarPreference>("AUTOPLAY_BUFFER")?.value =
+            UserPreferences.autoplayBuffer.toInt().coerceIn(0, 30)
         updateParentalControlPreferenceState()
     }
 

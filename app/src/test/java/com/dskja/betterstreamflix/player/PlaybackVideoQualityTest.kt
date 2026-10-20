@@ -14,14 +14,22 @@ class PlaybackVideoQualityTest {
         assertEquals(PlaybackVideoQuality.P720, PlaybackVideoQuality.fromKey("P720"))
         assertEquals(PlaybackVideoQuality.P720, PlaybackVideoQuality.fromKey("720p"))
         assertEquals(PlaybackVideoQuality.P1080, PlaybackVideoQuality.fromKey("1080"))
+        assertEquals(PlaybackVideoQuality.P2160, PlaybackVideoQuality.fromKey("4k"))
+        assertEquals(PlaybackVideoQuality.P1440, PlaybackVideoQuality.fromKey("1440"))
+        assertEquals(PlaybackVideoQuality.P480, PlaybackVideoQuality.fromKey("480"))
+        assertEquals(PlaybackVideoQuality.P360, PlaybackVideoQuality.fromKey("P360"))
         assertEquals(PlaybackVideoQuality.AUTO, PlaybackVideoQuality.fromKey("unknown"))
     }
 
     @Test
     fun maxHeight_matchesRungs() {
         assertNull(PlaybackVideoQuality.AUTO.maxHeight)
+        assertEquals(2160, PlaybackVideoQuality.P2160.maxHeight)
+        assertEquals(1440, PlaybackVideoQuality.P1440.maxHeight)
         assertEquals(720, PlaybackVideoQuality.P720.maxHeight)
         assertEquals(1080, PlaybackVideoQuality.P1080.maxHeight)
+        assertEquals(480, PlaybackVideoQuality.P480.maxHeight)
+        assertEquals(360, PlaybackVideoQuality.P360.maxHeight)
     }
 
     @Test
@@ -39,6 +47,8 @@ class PlaybackVideoQualityTest {
         assertEquals(PlaybackVideoQuality.P1080, PlaybackVideoQuality.P1080.cappedForDataSaver(false))
         assertEquals(PlaybackVideoQuality.P720, PlaybackVideoQuality.AUTO.cappedForDataSaver(true))
         assertEquals(PlaybackVideoQuality.P720, PlaybackVideoQuality.P1080.cappedForDataSaver(true))
+        assertEquals(PlaybackVideoQuality.P720, PlaybackVideoQuality.P2160.cappedForDataSaver(true))
         assertEquals(PlaybackVideoQuality.P720, PlaybackVideoQuality.P720.cappedForDataSaver(true))
+        assertEquals(PlaybackVideoQuality.P480, PlaybackVideoQuality.P480.cappedForDataSaver(true))
     }
 }

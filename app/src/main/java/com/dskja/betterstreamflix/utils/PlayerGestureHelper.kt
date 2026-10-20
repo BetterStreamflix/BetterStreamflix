@@ -99,17 +99,20 @@ class PlayerGestureHelper(
                     }
                 }
 
-                if (e1.x < playerView.width / 2) {
+                val onLeftHalf = e1.x < playerView.width / 2
+                if (onLeftHalf) {
+                    if (!UserPreferences.playerGestureBrightness) { isScrolling = false; return false }
                     handleBrightness(distanceY / playerView.height)
                 } else {
+                    if (!UserPreferences.playerGestureVolume) { isScrolling = false; return false }
                     handleVolume(distanceY / playerView.height)
                 }
-                
+
                 return true
             }
-            
+
             override fun onDoubleTap(e: MotionEvent): Boolean {
-                if (controlsLocked) return false
+                if (controlsLocked || !UserPreferences.playerGestureDoubleTap) return false
                 val videoView = playerView.videoSurfaceView ?: return false
                 videoView.scaleX = 1.0f
                 videoView.scaleY = 1.0f
@@ -133,8 +136,10 @@ class PlayerGestureHelper(
             if (isManualZoom) return@setOnTouchListener false
 
             if (!UserPreferences.playerGestures) return@setOnTouchListener false
-            
-            scaleGestureDetector.onTouchEvent(event)
+
+            if (UserPreferences.playerGestureZoom) {
+                scaleGestureDetector.onTouchEvent(event)
+            }
             
             if (!isScaling) {
                 gestureDetector.onTouchEvent(event)

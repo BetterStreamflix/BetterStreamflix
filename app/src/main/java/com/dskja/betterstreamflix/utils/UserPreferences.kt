@@ -467,6 +467,22 @@ object UserPreferences {
             Key.KEEP_SCREEN_ON_WHEN_PAUSED.setBoolean(value)
         }
 
+    var playerGestureBrightness: Boolean
+        get() = Key.PLAYER_GESTURE_BRIGHTNESS.getBoolean() ?: true
+        set(value) = Key.PLAYER_GESTURE_BRIGHTNESS.setBoolean(value)
+
+    var playerGestureVolume: Boolean
+        get() = Key.PLAYER_GESTURE_VOLUME.getBoolean() ?: true
+        set(value) = Key.PLAYER_GESTURE_VOLUME.setBoolean(value)
+
+    var playerGestureZoom: Boolean
+        get() = Key.PLAYER_GESTURE_ZOOM.getBoolean() ?: true
+        set(value) = Key.PLAYER_GESTURE_ZOOM.setBoolean(value)
+
+    var playerGestureDoubleTap: Boolean
+        get() = Key.PLAYER_GESTURE_DOUBLE_TAP.getBoolean() ?: true
+        set(value) = Key.PLAYER_GESTURE_DOUBLE_TAP.setBoolean(value)
+
     var playerGestures: Boolean
         get() = Key.PLAYER_GESTURES.getBoolean() ?: true
         set(value) {
@@ -2231,6 +2247,10 @@ object UserPreferences {
         PROVIDER_CACHE,
         KEEP_SCREEN_ON_WHEN_PAUSED,
         PLAYER_GESTURES,
+        PLAYER_GESTURE_BRIGHTNESS,
+        PLAYER_GESTURE_VOLUME,
+        PLAYER_GESTURE_ZOOM,
+        PLAYER_GESTURE_DOUBLE_TAP,
         NIGHT_AUDIO_MODE,
         ALLOW_PHONE_PORTRAIT_PLAYBACK,
         DOWNLOAD_WITH_LONG_PRESS_HINT_SHOWN,
@@ -2458,8 +2478,11 @@ object UserPreferences {
 
         fun getLong(): Long? {
             if (!::prefs.isInitialized) return null
-            return when {
-                prefs.contains(name) -> prefs.getLong(name, 0)
+            if (!prefs.contains(name)) return null
+            return when (val raw = prefs.all[name]) {
+                is Long -> raw
+                is Int -> raw.toLong()
+                is String -> raw.toLongOrNull()
                 else -> null
             }
         }

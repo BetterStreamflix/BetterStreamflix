@@ -9,16 +9,24 @@ import androidx.media3.common.TrackSelectionParameters
  */
 enum class PlaybackVideoQuality {
     AUTO,
-    P720,
+    P2160,
+    P1440,
     P1080,
+    P720,
+    P480,
+    P360,
     ;
 
     /** Max video height in pixels, or null when uncapped (Auto). */
     val maxHeight: Int?
         get() = when (this) {
             AUTO -> null
-            P720 -> 720
+            P2160 -> 2160
+            P1440 -> 1440
             P1080 -> 1080
+            P720 -> 720
+            P480 -> 480
+            P360 -> 360
         }
 
     /** True when [height] is allowed under this preference. */
@@ -43,10 +51,8 @@ enum class PlaybackVideoQuality {
      */
     fun cappedForDataSaver(enabled: Boolean): PlaybackVideoQuality {
         if (!enabled) return this
-        return when (this) {
-            AUTO, P1080 -> P720
-            P720 -> P720
-        }
+        val max = maxHeight ?: return P720
+        return if (max > 720) P720 else this
     }
 
     companion object {
@@ -54,8 +60,12 @@ enum class PlaybackVideoQuality {
             if (key.isNullOrBlank()) return AUTO
             entries.find { it.name.equals(key, ignoreCase = true) }?.let { return it }
             return when (key.trim().lowercase().removeSuffix("p")) {
-                "720" -> P720
-                "1080" -> P1080
+                "2160", "4k", "uhd" -> P2160
+                "1440", "2k", "qhd" -> P1440
+                "1080", "fhd" -> P1080
+                "720", "hd" -> P720
+                "480", "sd" -> P480
+                "360" -> P360
                 "auto" -> AUTO
                 else -> AUTO
             }
