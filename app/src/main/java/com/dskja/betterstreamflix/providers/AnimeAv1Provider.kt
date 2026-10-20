@@ -121,6 +121,8 @@ object AnimeAv1Provider : Provider, ProviderConfigUrl {
                     if (bannerShows.isNotEmpty()) {
                         categories.add(Category(Category.FEATURED, bannerShows))
                     }
+                } catch (e: java.util.concurrent.CancellationException) {
+                    throw e
                 } catch (e: Exception) { /* No-op */ }
 
                 try {
@@ -144,6 +146,8 @@ object AnimeAv1Provider : Provider, ProviderConfigUrl {
                     if (latestEpisodes?.isNotEmpty() == true ) {
                         categories.add(Category("Últimos Episodios", latestEpisodes))
                     }
+                } catch (e: java.util.concurrent.CancellationException) {
+                    throw e
                 } catch (e: Exception) { /* No-op */ }
 
                 try {
@@ -162,10 +166,14 @@ object AnimeAv1Provider : Provider, ProviderConfigUrl {
                     if (airingShows.isNotEmpty()) {
                         categories.add(Category("Animes en Emisión", airingShows))
                     }
+                } catch (e: java.util.concurrent.CancellationException) {
+                    throw e
                 } catch (e: Exception) { /* No-op */ }
 
                 return@coroutineScope categories
             }
+        } catch (e: java.util.concurrent.CancellationException) {
+            throw e
         } catch (e: Exception) {
             return emptyList()
         }

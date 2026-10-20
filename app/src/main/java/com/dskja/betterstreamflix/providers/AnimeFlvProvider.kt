@@ -214,6 +214,8 @@ object AnimeFlvProvider : Provider, ProviderConfigUrl {
 
                 categories
             }
+        } catch (e: java.util.concurrent.CancellationException) {
+            throw e
         } catch (e: Exception) {
             Log.e(TAG, "getHome failed: ${e.message}", e)
             emptyList()

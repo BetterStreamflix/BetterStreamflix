@@ -47,7 +47,7 @@ object SubtitleStudioSettingsController {
             val size = UserPreferences.captionTextSize
             if (sizeOptions.any { abs(it - size) < 0.02f }) {
                 sizePref?.value = closestSizeValue(size)
-                sizePref?.clearSummaryText()
+                sizePref?.setSummaryText(sizePref?.entry)
             } else {
                 sizePref?.value = null
                 sizePref?.setSummaryText(
@@ -59,7 +59,7 @@ object SubtitleStudioSettingsController {
             val matchesPalette = colorFromKey(mappedKey)?.getRgb() == fg.getRgb()
             if (matchesPalette) {
                 colorPref?.value = mappedKey
-                colorPref?.clearSummaryText()
+                colorPref?.setSummaryText(colorPref?.entry)
             } else {
                 colorPref?.value = null
                 colorPref?.setSummaryText(
@@ -72,7 +72,7 @@ object SubtitleStudioSettingsController {
             val alpha = UserPreferences.captionStyle.backgroundColor.getAlpha()
             if (backgroundOptions.any { abs(it - alpha) <= 8 }) {
                 bgPref?.value = closestBackgroundValue(alpha)
-                bgPref?.clearSummaryText()
+                bgPref?.setSummaryText(bgPref?.entry)
             } else {
                 bgPref?.value = null
                 bgPref?.setSummaryText(

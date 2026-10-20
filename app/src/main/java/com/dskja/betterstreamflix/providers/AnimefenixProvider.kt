@@ -208,6 +208,8 @@ object AnimefenixProvider : Provider, ProviderConfigUrl {
                 }
                 categories
             }
+        } catch (e: java.util.concurrent.CancellationException) {
+            throw e
         } catch (e: Exception) {
             // If parallel directory call threw CF but home already filled categories, surface home.
             if (e.message?.contains("Animefenix", ignoreCase = true) == true) throw e
@@ -371,6 +373,8 @@ object AnimefenixProvider : Provider, ProviderConfigUrl {
                 genres = genres,
                 seasons = listOf(Season(id = url, number = 1, title = "Episodios", episodes = episodes))
             )
+        } catch (e: java.util.concurrent.CancellationException) {
+            throw e
         } catch (e: Exception) {
             Log.e(TAG, "getTvShow failed: ${e.message}", e)
             TvShow(id = id, title = "Error al cargar")

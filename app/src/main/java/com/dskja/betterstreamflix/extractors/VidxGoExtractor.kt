@@ -81,7 +81,7 @@ class VidxGoExtractor : Extractor() {
             
             val initialUri = Uri.parse(videoUrl)
             TokenManager.latestQuery = initialUri.encodedQuery
-            Log.d("TokenManager", "[INIT] Initial token set. expire=${expireTime}, query=${TokenManager.latestQuery?.take(60)}...")
+            Log.d("TokenManager", "[INIT] Initial token set. expire=${expireTime}")
 
             TokenManager.startRefresh {
                 while (isActive) {
@@ -97,7 +97,7 @@ class VidxGoExtractor : Extractor() {
 
                     delay(delayMs)
                     ensureActive()
-                    Log.d("TokenManager", "[REFRESH] Starting token refresh request at: $link")
+                    Log.d("TokenManager", "[REFRESH] Starting token refresh request at: ${runCatching { Uri.parse(link).host }.getOrNull()}")
                     try {
                         val updateRequest = Request.Builder()
                             .url(link)
@@ -124,9 +124,9 @@ class VidxGoExtractor : Extractor() {
                             if (newUrlStr != null) {
                                 val newUri = Uri.parse(newUrlStr)
                                 TokenManager.latestQuery = newUri.encodedQuery
-                                Log.d("TokenManager", "[REFRESH] New token saved. New expire=${expireTime}, query=${TokenManager.latestQuery?.take(60)}...")
+                                Log.d("TokenManager", "[REFRESH] New token saved. New expire=${expireTime}")
                             } else {
-                                Log.w("TokenManager", "[REFRESH] url not found in the response. Body: ${newHtml.take(200)}")
+                                Log.w("TokenManager", "[REFRESH] url not found in the response (body ${newHtml.length} chars)")
                             }
                         } else {
                             Log.w("TokenManager", "[REFRESH] Empty response body")
@@ -203,7 +203,7 @@ class VidxGoExtractor : Extractor() {
         TokenManager.latestQuery = initialUri.encodedQuery
 
         val initialExpireTime = initialExpireRaw
-        Log.d("TokenManager", "[FILM-INIT] Token/Expiry extracted from JS. token=$currentToken, expireTime=${initialExpireTime}")
+        Log.d("TokenManager", "[FILM-INIT] Token/Expiry extracted from JS. tokenPresent=${currentToken != null}, expireTime=${initialExpireTime}")
 
         if (filmRefreshUrl != null) {
             TokenManager.startRefresh {
@@ -221,7 +221,7 @@ class VidxGoExtractor : Extractor() {
 
                     delay(delayMs)
                     ensureActive()
-                    Log.d("TokenManager", "[FILM-REFRESH] Starting refresh at: $filmRefreshUrl")
+                    Log.d("TokenManager", "[FILM-REFRESH] Starting refresh at: ${runCatching { Uri.parse(filmRefreshUrl).host }.getOrNull()}")
                     try {
                         val updateRequest = Request.Builder()
                             .url(filmRefreshUrl)
@@ -248,9 +248,9 @@ class VidxGoExtractor : Extractor() {
                             if (newUrlStr != null) {
                                 val newUri = Uri.parse(newUrlStr)
                                 TokenManager.latestQuery = newUri.encodedQuery
-                                Log.d("TokenManager", "[FILM-REFRESH] New token saved. expire=${expireTime}, query=${TokenManager.latestQuery?.take(60)}...")
+                                Log.d("TokenManager", "[FILM-REFRESH] New token saved. expire=${expireTime}")
                             } else {
-                                Log.w("TokenManager", "[FILM-REFRESH] url not found. Body: ${newHtml.take(200)}")
+                                Log.w("TokenManager", "[FILM-REFRESH] url not found (body ${newHtml.length} chars)")
                             }
                         } else {
                             Log.w("TokenManager", "[FILM-REFRESH] Empty body")

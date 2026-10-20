@@ -159,6 +159,8 @@ class MovieViewModel(
             db?.movieDao()?.insert(enriched)
 
             _state.emit(State.SuccessLoading(enriched))
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
             Log.e("MovieViewModel", "getMovie: ", e)
             val fallback = metadataOnlyFallback(id)

@@ -464,6 +464,8 @@ object RidomoviesProvider : Provider, ProviderConfigUrl {
 
                 Genre(id = id, name = id.replaceFirstChar { it.uppercase() }, shows = shows)
             }
+        } catch (e: java.util.concurrent.CancellationException) {
+            throw e
         } catch (e: Exception) {
             Genre(id = id, name = id.replaceFirstChar { it.uppercase() }, shows = emptyList())
         }

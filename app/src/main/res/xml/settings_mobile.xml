@@ -1244,6 +1244,69 @@
                 app:iconSpaceReserved="false" />
 
             <SwitchPreference
+                android:key="EXPERIMENTAL_NEW_APP_DESIGN"
+                android:title="@string/settings_experimental_new_design_title"
+                android:summary="@string/settings_experimental_new_design_summary"
+                android:defaultValue="false"
+                app:iconSpaceReserved="false" />
+
+            <PreferenceScreen
+                android:key="screen_lumina_options"
+                android:title="@string/settings_lumina_options_title"
+                android:summary="@string/settings_lumina_options_summary"
+                android:widgetLayout="@layout/preference_widget_chevron"
+                app:iconSpaceReserved="false">
+
+                <PreferenceCategory
+                    android:title="@string/settings_lumina_options_title"
+                    app:iconSpaceReserved="false">
+
+                    <ListPreference
+                        android:key="EXPERIMENTAL_LUMINA_ACCENT"
+                        android:title="@string/settings_lumina_accent_title"
+                        android:entries="@array/lumina_accent_names"
+                        android:entryValues="@array/lumina_accent_values"
+                        android:defaultValue="crimson"
+                        app:iconSpaceReserved="false" />
+
+                    <SwitchPreference
+                        android:key="EXPERIMENTAL_LUMINA_PURE_BLACK"
+                        android:title="@string/settings_lumina_pure_black_title"
+                        android:summary="@string/settings_lumina_pure_black_summary"
+                        android:defaultValue="false"
+                        app:iconSpaceReserved="false" />
+
+                    <SwitchPreference
+                        android:key="EXPERIMENTAL_LUMINA_DYNAMIC_COLORS"
+                        android:title="@string/settings_lumina_dynamic_title"
+                        android:summary="@string/settings_lumina_dynamic_summary"
+                        android:defaultValue="false"
+                        app:iconSpaceReserved="false" />
+
+                    <SwitchPreference
+                        android:key="EXPERIMENTAL_LUMINA_NAV_AUTO_HIDE"
+                        android:title="@string/settings_lumina_nav_autohide_title"
+                        android:summary="@string/settings_lumina_nav_autohide_summary"
+                        android:defaultValue="true"
+                        app:iconSpaceReserved="false" />
+
+                    <SwitchPreference
+                        android:key="EXPERIMENTAL_LUMINA_HERO_PARALLAX"
+                        android:title="@string/settings_lumina_parallax_title"
+                        android:summary="@string/settings_lumina_parallax_summary"
+                        android:defaultValue="true"
+                        app:iconSpaceReserved="false" />
+
+                    <SwitchPreference
+                        android:key="EXPERIMENTAL_LUMINA_REDUCED_GLASS"
+                        android:title="@string/settings_lumina_reduced_glass_title"
+                        android:summary="@string/settings_lumina_reduced_glass_summary"
+                        android:defaultValue="false"
+                        app:iconSpaceReserved="false" />
+                </PreferenceCategory>
+            </PreferenceScreen>
+
+            <SwitchPreference
                 android:key="STICK_ENERGY_MODE"
                 android:title="@string/settings_stick_energy_mode_title"
                 android:summary="@string/settings_stick_energy_mode_summary"
@@ -1374,8 +1437,7 @@
                     android:entries="@array/subtitle_studio_size_entries"
                     android:entryValues="@array/subtitle_studio_size_values"
                     android:defaultValue="1"
-                    app:iconSpaceReserved="false"
-                    app:useSimpleSummaryProvider="true" />
+                    app:iconSpaceReserved="false" />
 
                 <ListPreference
                     android:key="SUBTITLE_STUDIO_FONT_COLOR"
@@ -1383,8 +1445,7 @@
                     android:entries="@array/subtitle_studio_font_color_entries"
                     android:entryValues="@array/subtitle_studio_font_color_values"
                     android:defaultValue="white"
-                    app:iconSpaceReserved="false"
-                    app:useSimpleSummaryProvider="true" />
+                    app:iconSpaceReserved="false" />
 
                 <ListPreference
                     android:key="SUBTITLE_STUDIO_BACKGROUND"
@@ -1392,8 +1453,7 @@
                     android:entries="@array/subtitle_studio_background_entries"
                     android:entryValues="@array/subtitle_studio_background_values"
                     android:defaultValue="128"
-                    app:iconSpaceReserved="false"
-                    app:useSimpleSummaryProvider="true" />
+                    app:iconSpaceReserved="false" />
             </PreferenceScreen>
         </PreferenceCategory>
     </PreferenceScreen>

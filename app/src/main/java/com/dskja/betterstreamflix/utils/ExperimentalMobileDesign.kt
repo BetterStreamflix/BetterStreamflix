@@ -3,13 +3,14 @@ package com.dskja.betterstreamflix.utils
 import android.app.Activity
 import android.content.Context
 import com.dskja.betterstreamflix.R
+import com.dskja.betterstreamflix.profiles.ProfileManager
 import com.google.android.material.color.DynamicColors
 
 /**
- * Retired. The app always uses the original Cinema Ink layouts.
- * [enabled] stays false so leftover call sites cannot swap in another shell.
- * Settings hub / Lumina assets remain in-tree (fork-only surface) but never attach
- * while [enabled] is false — do not delete those paths.
+ * Experimental "Lumina" shell — opt-in via Settings → Appearance.
+ * Glass cards, M3 surfaces, accent palettes and motion live inside the shared
+ * layouts behind [enabled] gates; the classic shell is unchanged when this is off.
+ * The React/Vite home shell stays retired ([useReactShell] is always false).
  */
 object ExperimentalMobileDesign {
 
@@ -25,18 +26,16 @@ object ExperimentalMobileDesign {
         }
     }
 
-    /** Retired. The original UI is the only shell. */
-    fun isAvailable(): Boolean = false
+    /** Lumina is opt-in everywhere; Kids profiles keep the locked Kids look. */
+    fun isAvailable(): Boolean = true
 
-    fun enabled(): Boolean = false
+    fun enabled(): Boolean =
+        UserPreferences.experimentalNewAppDesign && !ProfileManager.isKidsActive()
 
     fun useReactShell(): Boolean = false
 
-    /** Clear leftover experimental prefs from older installs. */
+    /** Clear prefs for retired surfaces only; the Lumina toggle itself stays user-owned. */
     fun enforceAvailabilityGate() {
-        if (UserPreferences.experimentalNewAppDesign) {
-            UserPreferences.experimentalNewAppDesign = false
-        }
         if (UserPreferences.experimentalReactHome) {
             UserPreferences.experimentalReactHome = false
         }
@@ -169,6 +168,51 @@ object ExperimentalMobileDesign {
         Accent.SLATE -> "#7A8B9A"
     }
 
+    /** Accent as a color int — TV focus rings, nav highlights, search chrome. */
+    @androidx.annotation.ColorInt
+    fun accentColor(): Int = android.graphics.Color.parseColor(accentCssHex())
+
+    /** TV theme resource for [Activity.setTheme] when Lumina is on. */
+    fun tvThemeRes(): Int {
+        val black = pureBlack()
+        return when (accent()) {
+            Accent.CRIMSON -> if (black) R.style.AppTheme_Tv_Lumina_PureBlack
+            else R.style.AppTheme_Tv_Lumina
+            Accent.EMBER -> if (black) R.style.AppTheme_Tv_Lumina_Ember_PureBlack
+            else R.style.AppTheme_Tv_Lumina_Ember
+            Accent.AURORA -> if (black) R.style.AppTheme_Tv_Lumina_Aurora_PureBlack
+            else R.style.AppTheme_Tv_Lumina_Aurora
+            Accent.SLATE -> if (black) R.style.AppTheme_Tv_Lumina_Slate_PureBlack
+            else R.style.AppTheme_Tv_Lumina_Slate
+        }
+    }
+
+    /** Nav/system-bar palette for the Lumina TV shell (mirrors ThemeManager.palette). */
+    fun palette(): ThemeManager.Palette {
+        if (UserPreferences.highContrast) {
+            return ThemeManager.Palette(
+                mobileNavBackground = android.graphics.Color.BLACK,
+                mobileNavActive = android.graphics.Color.WHITE,
+                mobileNavInactive = 0xFFF0F0F0.toInt(),
+                systemBar = android.graphics.Color.BLACK,
+                tvNavBackground = android.graphics.Color.BLACK,
+                tvHeaderPrimary = android.graphics.Color.WHITE,
+                tvHeaderSecondary = 0xFFF0F0F0.toInt(),
+            )
+        }
+        val background = if (pureBlack()) android.graphics.Color.BLACK
+        else android.graphics.Color.parseColor("#0A0D14")
+        return ThemeManager.Palette(
+            mobileNavBackground = background,
+            mobileNavActive = accentColor(),
+            mobileNavInactive = 0xFF9AA6BC.toInt(),
+            systemBar = background,
+            tvNavBackground = background,
+            tvHeaderPrimary = 0xFFF2F5FA.toInt(),
+            tvHeaderSecondary = 0xFF9AA6BC.toInt(),
+        )
+    }
+
     /**
      * Apply wallpaper-driven Material You tint when the user opted in.
      * Call after [Activity.setTheme] / [Activity.setContentView].
@@ -192,14 +236,17 @@ object ExperimentalMobileDesign {
             Accent.SLATE -> context.getString(R.string.exp_accent_slate)
         }
         val extras = buildList {
-            add(context.getString(R.string.exp_opt_react_shell_short))
             if (pureBlack()) add(context.getString(R.string.exp_opt_pure_black_short))
             if (dynamicColors()) add(context.getString(R.string.exp_opt_dynamic_short))
         }.joinToString(" · ")
-        return context.getString(
-            R.string.settings_experimental_lumina_active_summary_extra,
-            accentLabel,
-            extras,
-        )
+        return if (extras.isEmpty()) {
+            context.getString(R.string.settings_experimental_lumina_active_summary, accentLabel)
+        } else {
+            context.getString(
+                R.string.settings_experimental_lumina_active_summary_extra,
+                accentLabel,
+                extras,
+            )
+        }
     }
 }

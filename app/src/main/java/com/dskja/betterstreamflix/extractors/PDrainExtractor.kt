@@ -56,6 +56,8 @@ class PDrainExtractor : Extractor() {
                 )
             )
 
+        } catch (e: java.util.concurrent.CancellationException) {
+            throw e
         } catch (e: Exception) {
             throw Exception("PDrainExtractor failed: ${e.message}", e)
         }

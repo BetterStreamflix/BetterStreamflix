@@ -116,6 +116,8 @@ object PelisplustoProvider : Provider, ProviderConfigUrl {
             if (featured.isNotEmpty()) {
                 categories.add(Category(Category.FEATURED, featured))
             }
+        } catch (e: java.util.concurrent.CancellationException) {
+            throw e
         } catch (e: Exception) {
             Log.e(TAG, "getHome (featured): ${e.message}")
         }
@@ -123,6 +125,8 @@ object PelisplustoProvider : Provider, ProviderConfigUrl {
         try {
             val movies = parseShows(moviesDeferred.await()).filterIsInstance<Movie>()
             if (movies.isNotEmpty()) categories.add(Category("Películas", movies))
+        } catch (e: java.util.concurrent.CancellationException) {
+            throw e
         } catch (e: Exception) {
             Log.e(TAG, "getHome (movies): ${e.message}")
         }
@@ -130,6 +134,8 @@ object PelisplustoProvider : Provider, ProviderConfigUrl {
         try {
             val series = parseShows(seriesDeferred.await()).filterIsInstance<TvShow>()
             if (series.isNotEmpty()) categories.add(Category("Series", series))
+        } catch (e: java.util.concurrent.CancellationException) {
+            throw e
         } catch (e: Exception) {
             Log.e(TAG, "getHome (series): ${e.message}")
         }
@@ -137,6 +143,8 @@ object PelisplustoProvider : Provider, ProviderConfigUrl {
         try {
             val animes = parseShows(animesDeferred.await()).filterIsInstance<TvShow>()
             if (animes.isNotEmpty()) categories.add(Category("Animes", animes))
+        } catch (e: java.util.concurrent.CancellationException) {
+            throw e
         } catch (e: Exception) {
             Log.e(TAG, "getHome (animes): ${e.message}")
         }

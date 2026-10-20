@@ -215,9 +215,6 @@ class MovieViewHolder(
             is ContentDetailTrailerMobileBinding -> displayTrailerMobile(_binding)
             is ContentDetailTrailerTvBinding -> displayTrailerTv(_binding)
             is ContentDetailAboutMobileBinding -> displayAboutMobile(_binding)
-            is ContentDetailTabsMobileBinding -> displayTabsMobile(_binding)
-            is ContentDetailTrailerMobileBinding -> displayTrailerMobile(_binding)
-            is ContentDetailAboutMobileBinding -> displayAboutMobile(_binding)
         }
     }
 

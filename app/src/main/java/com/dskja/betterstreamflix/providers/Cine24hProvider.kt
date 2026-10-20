@@ -297,6 +297,8 @@ object Cine24hProvider : Provider, ProviderConfigUrl {
                 }
             }.mapNotNull { it.await() }
         }
+    } catch (e: java.util.concurrent.CancellationException) {
+        throw e
     } catch (_: Exception) { emptyList() }
 
     private suspend fun getIframeOptimized(url: String): String? {

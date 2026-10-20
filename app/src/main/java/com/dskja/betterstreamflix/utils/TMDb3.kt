@@ -1057,12 +1057,12 @@ object TMDb3 {
 
     val String.w500: String
         get() = when (this.startsWith("/")) {
-            true -> "https://image.tmdb.org/t/p/w500/$this"
+            true -> "https://image.tmdb.org/t/p/w500${this}"
             else -> this
         }
     val String.original: String
         get() = when (this.startsWith("/")) {
-            true -> "https://image.tmdb.org/t/p/original/$this"
+            true -> "https://image.tmdb.org/t/p/original${this}"
             else -> this
         }
 

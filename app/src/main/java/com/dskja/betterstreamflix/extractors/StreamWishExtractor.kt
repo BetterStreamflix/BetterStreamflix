@@ -118,7 +118,9 @@ open class StreamWishExtractor : Extractor() {
     )
 
     protected var referer = ""
-    val context = BetterStreamflixApp.instance.applicationContext
+    // Deferred: resolving the app instance at construction would crash if this class
+    // is loaded before BetterStreamflixApp.onCreate (e.g. Extractor list init, tests).
+    val context by lazy { BetterStreamflixApp.instance.applicationContext }
 
     override suspend fun extract(link: String): Video {
         if (referer.isEmpty()) {

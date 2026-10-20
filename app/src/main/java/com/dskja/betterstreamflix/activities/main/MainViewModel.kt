@@ -53,6 +53,8 @@ class MainViewModel : ViewModel() {
                 ?: throw Exception("Can't find update APK")
 
             _state.emit(State.SuccessCheckingUpdate(newReleases, asset))
+        } catch (e: java.util.concurrent.CancellationException) {
+            throw e
         } catch (e: Exception) {
             // Background check failures must stay silent — no toast / dialog on cold start.
             Log.e("MainViewModel", "checkUpdate: ", e)
@@ -69,6 +71,8 @@ class MainViewModel : ViewModel() {
             val apk = InAppUpdater.downloadApk(context, asset)
 
             _state.emit(State.SuccessDownloadingUpdate(apk))
+        } catch (e: java.util.concurrent.CancellationException) {
+            throw e
         } catch (e: Exception) {
             Log.e("MainViewModel", "downloadUpdate: ", e)
             _state.emit(State.FailedUpdate(e))

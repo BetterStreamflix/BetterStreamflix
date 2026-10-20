@@ -136,6 +136,8 @@ class PeopleViewModel(private val id: String, private val database: AppDatabase?
                     ),
                 )
                 return@launch
+            } catch (e: CancellationException) {
+                throw e
             } catch (primary: Exception) {
                 // TMDb numeric person ids (from enrichment) 404 on HTML providers.
                 val tmdbId = id.toIntOrNull()
@@ -158,6 +160,8 @@ class PeopleViewModel(private val id: String, private val database: AppDatabase?
                     hasMore = false,
                 ),
             )
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
             Log.e("PeopleViewModel", "getPeople: ", e)
             _state.emit(State.FailedLoading(e))
@@ -190,6 +194,8 @@ class PeopleViewModel(private val id: String, private val database: AppDatabase?
                         hasMore = people.filmography.isNotEmpty(),
                     )
                 )
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 Log.e("PeopleViewModel", "loadMorePeopleFilmography: ", e)
                 // Keep the already-loaded person page; just stop pagination.

@@ -355,6 +355,8 @@ class TvShowViewModel(
             db.seasonDao().insertAll(orderedTvShow.seasons)
 
             _state.emit(State.SuccessLoading(orderedTvShow))
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
             Log.e("TvShowViewModel", "getTvShow: ", e)
             val fallback = metadataOnlyFallback(id)
@@ -472,6 +474,8 @@ class TvShowViewModel(
             markSeasonEpisodesSettled(season.id)
 
             _seasonState.emit(SeasonState.SuccessLoading(tvShow, season, episodes))
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
             Log.e("TvShowViewModel", "getSeason: ", e)
             markSeasonEpisodeFailure(season.id)

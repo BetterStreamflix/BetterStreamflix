@@ -2492,6 +2492,8 @@ class SettingsMobileFragment : PreferenceFragmentCompat() {
                 } else {
                     showBackupResult(getString(R.string.backup_import_empty_file))
                 }
+            } catch (e: java.util.concurrent.CancellationException) {
+                throw e
             } catch (e: Exception) {
                 showBackupResult(getString(R.string.backup_import_read_error))
                 Log.e("BackupImportMobile", "Error reading/processing backup file", e)
@@ -2538,6 +2540,8 @@ class SettingsMobileFragment : PreferenceFragmentCompat() {
                     else getString(R.string.backup_import_error),
                     offerRestart = success,
                 )
+            } catch (e: java.util.concurrent.CancellationException) {
+                throw e
             } catch (e: Exception) {
                 showBackupResult(getString(R.string.backup_import_read_error))
                 Log.e("BackupImportMobile", "Error reading/processing database backup file", e)
@@ -2665,7 +2669,8 @@ class SettingsMobileFragment : PreferenceFragmentCompat() {
         findPreference<SwitchPreference>("EXPERIMENTAL_NEW_APP_DESIGN")?.apply {
             val available = ExperimentalMobileDesign.isAvailable()
             isEnabled = available
-            isChecked = available && UserPreferences.experimentalNewAppDesign
+            // Mirrors the effective shell — stays off while a Kids profile clamps Lumina.
+            isChecked = ExperimentalMobileDesign.enabled()
             summary = ExperimentalMobileDesign.summary(requireContext())
             setOnPreferenceChangeListener { _, newValue ->
                 if (!available) return@setOnPreferenceChangeListener false
@@ -2680,6 +2685,8 @@ class SettingsMobileFragment : PreferenceFragmentCompat() {
                 true
             }
         }
+        // Locked looks do not apply while the Lumina shell owns the activities.
+        findPreference<Preference>("SELECTED_THEME")?.isEnabled = !ExperimentalMobileDesign.enabled()
         findPreference<SwitchPreference>("EXPERIMENTAL_REACT_HOME")?.apply {
             val available = ExperimentalMobileDesign.isAvailable()
             val luminaOn = available && UserPreferences.experimentalNewAppDesign

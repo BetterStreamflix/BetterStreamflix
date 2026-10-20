@@ -38,6 +38,21 @@
     <!-- Shared TV DPAD focus stroke (HC overlay swaps via theme attr where used). -->
     <color name="tv_focus_stroke">#FFFFFFFF</color>
     <color name="tv_focus_stroke_high_contrast">#FFFFFF00</color>
+
+    <!-- Lumina (experimental TV shell) — deep-space base with aurora washes. -->
+    <color name="lumina_space">#FF0A0D14</color>
+    <color name="lumina_surface">#FF151B2B</color>
+    <color name="lumina_elevated">#FF1C2438</color>
+    <color name="lumina_text">#FFF2F5FA</color>
+    <color name="lumina_text_muted">#FF9AA6BC</color>
+    <color name="lumina_teal">#FF2BB8A6</color>
+    <color name="lumina_violet">#FF7C5CFF</color>
+    <!-- Per-accent focus rings (mirrors ExperimentalMobileDesign.accentCssHex). -->
+    <color name="lumina_focus_crimson">#FFE50914</color>
+    <color name="lumina_focus_ember">#FFE85A2A</color>
+    <color name="lumina_focus_aurora">#FF2BB8A6</color>
+    <color name="lumina_focus_slate">#FF7A8B9A</color>
+
     <color name="a11y_hc_background">#FF000000</color>
     <color name="a11y_hc_surface">#FF000000</color>
     <color name="a11y_hc_text">#FFFFFFFF</color>

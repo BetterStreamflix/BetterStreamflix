@@ -75,6 +75,9 @@ class MainMobileActivity : FragmentActivity() {
 
     private companion object {
         const val RESOLVER_TIMEOUT_MS = 12_000L
+
+        /** orderInCategory slot between home(10) and movies(30) — see menu XML. */
+        const val LIVE_HUB_MENU_ORDER = 20
     }
 
     private data class ResolverPayload(
@@ -777,7 +780,28 @@ class MainMobileActivity : FragmentActivity() {
         // Live/IPTV providers (and never under kids / parental age-gate).
         binding.bnvMain.menu.findItem(R.id.downloads)?.isVisible =
             com.dskja.betterstreamflix.kids.KidsFortress.downloadsNavVisible()
-        binding.bnvMain.menu.findItem(R.id.live_hub)?.isVisible = liveHubVisible
+
+        // BottomNavigationView rejects >6 items at menu-inflation time, so live_hub
+        // is not in the XML — it joins here for Live/IPTV providers, swapping in
+        // for an item this provider does not show (usually movies/tv_shows).
+        val navMenu = binding.bnvMain.menu
+        val liveItem = navMenu.findItem(R.id.live_hub)
+        if (liveHubVisible && liveItem == null) {
+            val hiddenSlot = intArrayOf(R.id.movies, R.id.tv_shows, R.id.downloads, R.id.favorites)
+                .firstOrNull { navMenu.findItem(it)?.isVisible == false }
+            hiddenSlot?.let { navMenu.removeItem(it) }
+            if (navMenu.size() < 6) {
+                navMenu.add(
+                    android.view.Menu.NONE,
+                    R.id.live_hub,
+                    LIVE_HUB_MENU_ORDER,
+                    R.string.main_menu_live,
+                ).setIcon(R.drawable.ic_menu_live)
+            }
+        } else if (!liveHubVisible && liveItem != null) {
+            navMenu.removeItem(R.id.live_hub)
+        }
+        navMenu.findItem(R.id.live_hub)?.isVisible = liveHubVisible
 
         val navHost =
             supportFragmentManager.findFragmentById(R.id.nav_main_fragment) as? NavHostFragment

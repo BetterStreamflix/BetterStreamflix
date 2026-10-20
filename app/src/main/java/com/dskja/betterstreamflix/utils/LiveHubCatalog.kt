@@ -176,6 +176,8 @@ object LiveHubCatalog {
                     }.awaitAll()
                 }
             }
+        } catch (e: java.util.concurrent.CancellationException) {
+            throw e
         } catch (e: Exception) {
             Log.w(TAG, "Live Hub overall timeout/fail: ${e.message}")
             warnings.add(

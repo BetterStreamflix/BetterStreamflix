@@ -270,6 +270,8 @@ object DoramasflixProvider : Provider, ProviderConfigUrl {
                     Category(name = "Películas Populares", list = popularMoviesDeferred.await()),
                 )
             }
+        } catch (e: java.util.concurrent.CancellationException) {
+            throw e
         } catch (_: Exception) {
             emptyList()
         }

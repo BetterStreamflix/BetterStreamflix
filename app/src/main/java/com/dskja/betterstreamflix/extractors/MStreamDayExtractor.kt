@@ -2,7 +2,7 @@ package com.dskja.betterstreamflix.extractors
 
 import okhttp3.OkHttpClient
 import com.dskja.betterstreamflix.utils.withExtractorTimeouts
-import android.util.Base64
+import java.util.Base64
 import com.tanasi.retrofit_jsoup.converter.JsoupConverterFactory
 import com.dskja.betterstreamflix.models.Video
 import com.dskja.betterstreamflix.utils.AADecoder
@@ -15,15 +15,17 @@ import retrofit2.http.Url
 // https://github.com/doGior/doGiorsHadEnough/blob/master/AnimeWorld/src/main/kotlin/it/dogior/hadEnough/VidguardExtractor.kt
 // https://github.com/Gujal00/ResolveURL/blob/master/script.module.resolveurl/lib/resolveurl/plugins/vidguard.py
 class MStreamDayExtractor : Extractor() {
-    override val name = Base64.decode(
-        "bW9mbGl4", Base64.NO_WRAP
-    ).toString(Charsets.UTF_8) + Base64.decode(
-        "LXN0cmVhbS5kYXk=", Base64.NO_WRAP
+    // java.util.Base64 (not android.util) — decodes identically and keeps the
+    // extractor constructible off-device (unit tests, Extractor list init).
+    override val name = Base64.getDecoder().decode(
+        "bW9mbGl4"
+    ).toString(Charsets.UTF_8) + Base64.getDecoder().decode(
+        "LXN0cmVhbS5kYXk="
     ).toString(Charsets.UTF_8)
-    override val mainUrl = Base64.decode(
-        "aHR0cHM6Ly9tb2ZsaXg=", Base64.NO_WRAP
-    ).toString(Charsets.UTF_8) + Base64.decode(
-        "LXN0cmVhbS5kYXk=", Base64.NO_WRAP
+    override val mainUrl = Base64.getDecoder().decode(
+        "aHR0cHM6Ly9tb2ZsaXg="
+    ).toString(Charsets.UTF_8) + Base64.getDecoder().decode(
+        "LXN0cmVhbS5kYXk="
     ).toString(Charsets.UTF_8)
 
     override suspend fun extract(link: String): Video {
@@ -83,7 +85,7 @@ class MStreamDayExtractor : Extractor() {
                 3 -> "="
                 else -> ""
             }
-            String(Base64.decode((it + padding).toByteArray(Charsets.UTF_8), Base64.DEFAULT))
+            String(Base64.getMimeDecoder().decode((it + padding).toByteArray(Charsets.UTF_8)))
         }
         val sigNew = sigBase64Decoded.dropLast(5).reversed().toCharArray().apply {
             for (i in indices step 2) {

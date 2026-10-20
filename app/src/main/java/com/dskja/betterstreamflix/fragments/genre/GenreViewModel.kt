@@ -161,6 +161,8 @@ class GenreViewModel(
             page = 1
 
             _state.emit(State.SuccessLoading(genre, true))
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
             Log.e("GenreViewModel", "getGenre: ", e)
             _state.emit(State.FailedLoading(e))
@@ -210,6 +212,8 @@ class GenreViewModel(
                         hasMore = genre.shows.isNotEmpty(),
                     )
                 )
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 Log.e("GenreViewModel", "loadMoreGenreShows: ", e)
                 _state.emit(State.FailedLoading(e))

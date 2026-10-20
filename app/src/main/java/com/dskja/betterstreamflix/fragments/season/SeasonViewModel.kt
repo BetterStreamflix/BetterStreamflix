@@ -161,6 +161,8 @@ class SeasonViewModel(
                 EpisodeManager.convertToVideoTypeEpisodes(episodes, db, seasonNumber)
             )
             _state.emit(State.SuccessLoadingEpisodes(episodes))
+        } catch (e: java.util.concurrent.CancellationException) {
+            throw e
         } catch (e: Throwable) {
             Log.e("SeasonViewModel", "getSeasonEpisodes: ", e)
             _state.emit(State.FailedLoadingEpisodes(e as? Exception ?: Exception(e)))

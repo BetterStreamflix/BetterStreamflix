@@ -1587,6 +1587,8 @@ class SettingsTvFragment : LeanbackPreferenceFragmentCompat() {
                 } else {
                     showBackupResult(getString(R.string.backup_import_empty_file))
                 }
+            } catch (e: java.util.concurrent.CancellationException) {
+                throw e
             } catch (e: Exception) {
                 showBackupResult(getString(R.string.backup_import_read_error))
                 Log.e("BackupImportTV", "Error reading/processing backup file", e)
@@ -1870,6 +1872,8 @@ class SettingsTvFragment : LeanbackPreferenceFragmentCompat() {
                     if (success) getString(R.string.backup_db_import_success)
                     else getString(R.string.backup_import_error),
                 )
+            } catch (e: java.util.concurrent.CancellationException) {
+                throw e
             } catch (error: Exception) {
                 showBackupResult(getString(R.string.backup_import_read_error))
                 Log.e("BackupImportTV", "Error reading database backup file", error)
@@ -2643,7 +2647,8 @@ class SettingsTvFragment : LeanbackPreferenceFragmentCompat() {
         findPreference<androidx.preference.SwitchPreference>("EXPERIMENTAL_NEW_APP_DESIGN")?.apply {
             val available = ExperimentalMobileDesign.isAvailable()
             isEnabled = available
-            isChecked = available && UserPreferences.experimentalNewAppDesign
+            // Mirrors the effective shell — stays off while a Kids profile clamps Lumina.
+            isChecked = ExperimentalMobileDesign.enabled()
             summary = ExperimentalMobileDesign.summary(requireContext())
             setOnPreferenceChangeListener { _, newValue ->
                 if (!available) return@setOnPreferenceChangeListener false
@@ -2655,18 +2660,29 @@ class SettingsTvFragment : LeanbackPreferenceFragmentCompat() {
                 true
             }
         }
+        // Locked looks do not apply while the Lumina shell owns the activities.
+        findPreference<Preference>("SELECTED_THEME")?.isEnabled = !ExperimentalMobileDesign.enabled()
     }
 
     private fun bindLuminaOptions() {
-        val luminaOn = false
+        val luminaOn = ExperimentalMobileDesign.enabled()
         findPreference<Preference>("screen_lumina_options")?.isVisible =
             ExperimentalMobileDesign.isAvailable() && luminaOn
+
+        fun restartShell() {
+            requireActivity().apply {
+                finish()
+                startActivity(Intent(this, MainTvActivity::class.java))
+            }
+        }
+
         (findPreference("EXPERIMENTAL_LUMINA_ACCENT") as? androidx.preference.ListPreference)?.apply {
             value = UserPreferences.experimentalLuminaAccent
             setSummaryProviderOnce(androidx.preference.ListPreference.SimpleSummaryProvider.getInstance())
             isEnabled = luminaOn
             setOnPreferenceChangeListener { _, newValue ->
                 UserPreferences.experimentalLuminaAccent = newValue.toString()
+                restartShell()
                 true
             }
         }
@@ -2686,8 +2702,12 @@ class SettingsTvFragment : LeanbackPreferenceFragmentCompat() {
                     else -> UserPreferences.experimentalLuminaReducedGlass
                 }
                 isEnabled = luminaOn
+                // Pure black and reduced glass remap the TV theme — restart like mobile.
+                val restartsShell = key == "EXPERIMENTAL_LUMINA_PURE_BLACK" ||
+                    key == "EXPERIMENTAL_LUMINA_REDUCED_GLASS"
                 setOnPreferenceChangeListener { _, newValue ->
                     setter(newValue as Boolean)
+                    if (restartsShell) restartShell()
                     true
                 }
             }

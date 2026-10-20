@@ -13,7 +13,6 @@ import java.io.PipedOutputStream
 import java.net.Inet4Address
 import java.net.Inet6Address
 import java.net.InetAddress
-import java.net.URLDecoder
 import java.nio.charset.StandardCharsets
 import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
@@ -175,11 +174,12 @@ class CastStreamProxyServer(
             return newFixedLengthResponse(Response.Status.UNAUTHORIZED, MIME_PLAINTEXT, "unauthorized")
         }
 
-        val encoded = session.parms["u"].orEmpty()
-        if (encoded.isBlank()) {
+        // NanoHTTPD already decodes query params once; decoding again would corrupt
+        // signed URLs containing literal '%' or '+' characters.
+        val target = session.parms["u"].orEmpty()
+        if (target.isBlank()) {
             return newFixedLengthResponse(Response.Status.BAD_REQUEST, MIME_PLAINTEXT, "missing u")
         }
-        val target = URLDecoder.decode(encoded, StandardCharsets.UTF_8.name())
         if (!target.startsWith("http://") && !target.startsWith("https://")) {
             return newFixedLengthResponse(Response.Status.BAD_REQUEST, MIME_PLAINTEXT, "unsupported scheme")
         }

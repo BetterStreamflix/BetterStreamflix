@@ -39,6 +39,7 @@ import com.dskja.betterstreamflix.providers.SoloLatinoProvider
 import com.dskja.betterstreamflix.providers.ZaluknijProvider
 import com.dskja.betterstreamflix.cast.CastPlaybackHub
 import com.dskja.betterstreamflix.utils.AccessibilityPreferences
+import com.dskja.betterstreamflix.utils.ExperimentalMobileDesign
 import com.dskja.betterstreamflix.utils.ThemeManager
 import com.dskja.betterstreamflix.utils.UserPreferences
 import com.dskja.betterstreamflix.utils.getCurrentFragment
@@ -74,7 +75,13 @@ class MainTvActivity : FragmentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         // Il setup delle preferenze è già avvenuto in BetterStreamflixApp
-        setTheme(ThemeManager.tvThemeRes(UserPreferences.selectedTheme))
+        setTheme(
+            if (ExperimentalMobileDesign.enabled()) {
+                ExperimentalMobileDesign.tvThemeRes()
+            } else {
+                ThemeManager.tvThemeRes(UserPreferences.selectedTheme)
+            }
+        )
         // LD-027 / LD-034: resolve Compact/Comfort early and always apply Compact overlay
         // when Compact (stroke + documented dimen contract). Shelf/Ambient heights stay
         // runtime via LeanbackDensityPolicy — layout @dimen refs are not theme-item remappable.
@@ -204,7 +211,7 @@ class MainTvActivity : FragmentActivity() {
                 }
                 header.tvNavigationHeaderTitle.text = UserPreferences.currentProvider?.name
                 header.tvNavigationHeaderSubtitle.text = getString(R.string.main_menu_change_provider)
-                val palette = ThemeManager.palette(UserPreferences.selectedTheme)
+                val palette = navPalette()
                 header.tvNavigationHeaderTitle.setTextColor(palette.tvHeaderPrimary)
                 header.tvNavigationHeaderSubtitle.setTextColor(palette.tvHeaderSecondary)
                 setBackgroundColor(palette.tvNavBackground)
@@ -769,8 +776,15 @@ class MainTvActivity : FragmentActivity() {
         )
     }
 
+    private fun navPalette(): ThemeManager.Palette =
+        if (ExperimentalMobileDesign.enabled()) {
+            ExperimentalMobileDesign.palette()
+        } else {
+            ThemeManager.palette(UserPreferences.selectedTheme)
+        }
+
     private fun applyThemeNavigationChrome() {
-        val palette = ThemeManager.palette(UserPreferences.selectedTheme)
+        val palette = navPalette()
         applySystemBarColors()
         binding.navMain.setBackgroundColor(palette.tvNavBackground)
         binding.navMain.headerView?.let { headerView ->
@@ -783,7 +797,7 @@ class MainTvActivity : FragmentActivity() {
 
     @Suppress("DEPRECATION")
     private fun applySystemBarColors() {
-        val systemBar = ThemeManager.palette(UserPreferences.selectedTheme).systemBar
+        val systemBar = navPalette().systemBar
         window.statusBarColor = systemBar
         window.navigationBarColor = systemBar
     }
