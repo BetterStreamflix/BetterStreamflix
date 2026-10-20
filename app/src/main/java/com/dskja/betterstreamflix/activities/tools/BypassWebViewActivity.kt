@@ -75,13 +75,7 @@ class BypassWebViewActivity : AppCompatActivity() {
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
-        setTheme(
-            if (ExperimentalMobileDesign.enabled()) {
-                ExperimentalMobileDesign.themeRes()
-            } else {
-                ThemeManager.mobileThemeRes(UserPreferences.selectedTheme)
-            }
-        )
+        setTheme(ThemeManager.mobileThemeRes(UserPreferences.selectedTheme))
         AccessibilityPreferences.applyHighContrastOverlay(this, mobile = true)
         if (ExperimentalMobileDesign.enabled()) {
             DynamicColors.applyToActivityIfAvailable(this)

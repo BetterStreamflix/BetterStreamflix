@@ -462,17 +462,17 @@ class ProviderViewHolder(
         when (provider.provider) {
             is SerienStreamProvider -> SettingsDeepLink.openSerienStreamAuth()
             is AniWorldProvider -> SettingsDeepLink.openAniWorldAuth()
-            is GuardaFlixProvider -> SettingsDeepLink.openProviderPassport()
+            is GuardaFlixProvider -> SettingsDeepLink.openGuardaFlixAuth()
             else -> return
         }
         runCatching {
             itemView.findNavController().navigate(R.id.settings)
         }.onFailure {
             if (provider.provider is GuardaFlixProvider) {
-                SettingsDeepLink.openProviderPassport()
+                SettingsDeepLink.openGuardaFlixAuth()
                 android.widget.Toast.makeText(
                     context,
-                    R.string.settings_provider_passport_title,
+                    R.string.settings_category_guardaflix,
                     android.widget.Toast.LENGTH_SHORT,
                 ).show()
                 return@onFailure

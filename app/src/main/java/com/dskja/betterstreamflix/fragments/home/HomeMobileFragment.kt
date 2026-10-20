@@ -490,7 +490,7 @@ class HomeMobileFragment : Fragment() {
             appAdapter.submitList(without)
         }
         appAdapter.onProviderOutageBannerClickListener = {
-            com.dskja.betterstreamflix.fragments.settings.SettingsDeepLink.openProviderTrust()
+            com.dskja.betterstreamflix.fragments.settings.SettingsDeepLink.openContentScreen()
             runCatching { findNavController().navigate(R.id.settings) }
         }
         appAdapter.onProviderOutageBannerDismissListener = {

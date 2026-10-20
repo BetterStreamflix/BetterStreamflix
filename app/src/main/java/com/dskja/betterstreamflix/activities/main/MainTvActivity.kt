@@ -75,13 +75,7 @@ class MainTvActivity : FragmentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         // Il setup delle preferenze è già avvenuto in BetterStreamflixApp
-        setTheme(
-            if (ExperimentalMobileDesign.enabled()) {
-                ExperimentalMobileDesign.tvThemeRes()
-            } else {
-                ThemeManager.tvThemeRes(UserPreferences.selectedTheme)
-            }
-        )
+        setTheme(ThemeManager.tvThemeRes(UserPreferences.selectedTheme))
         // LD-027 / LD-034: resolve Compact/Comfort early and always apply Compact overlay
         // when Compact (stroke + documented dimen contract). Shelf/Ambient heights stay
         // runtime via LeanbackDensityPolicy — layout @dimen refs are not theme-item remappable.
@@ -777,11 +771,7 @@ class MainTvActivity : FragmentActivity() {
     }
 
     private fun navPalette(): ThemeManager.Palette =
-        if (ExperimentalMobileDesign.enabled()) {
-            ExperimentalMobileDesign.palette()
-        } else {
-            ThemeManager.palette(UserPreferences.selectedTheme)
-        }
+        ThemeManager.palette(UserPreferences.selectedTheme)
 
     private fun applyThemeNavigationChrome() {
         val palette = navPalette()

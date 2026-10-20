@@ -511,13 +511,11 @@ object ProfileManager {
             Context.MODE_PRIVATE,
         )
         val key = scopedPrefKeyFor("SELECTED_THEME", profile.id)
-        val desired = com.dskja.betterstreamflix.utils.ThemeManager.defaultThemeForKids(profile.isKids)
-        val stored = prefs.getString(key, null)
-        val needsKidsClamp = profile.isKids &&
-            stored != null &&
-            com.dskja.betterstreamflix.utils.ThemeManager.resolveLook(stored) !=
-            com.dskja.betterstreamflix.utils.ThemeManager.KIDS_BRIGHT
-        if (!force && prefs.contains(key) && !needsKidsClamp) return
+        // Single Dark look — rewrite any stale value (kids_bright / retired palettes).
+        if (!force && prefs.getString(key, null) ==
+            com.dskja.betterstreamflix.utils.ThemeManager.CINEMA_INK
+        ) return
+        val desired = com.dskja.betterstreamflix.utils.ThemeManager.CINEMA_INK
         // Active-profile writes go through UserPreferences so getters stay consistent.
         if (profile.id == activeProfileId) {
             UserPreferences.selectedTheme = desired

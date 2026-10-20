@@ -28,27 +28,6 @@
                 android:defaultValue="false"
                 app:iconSpaceReserved="false" />
 
-            <Preference
-                android:key="PROVIDER_TRUST_OPEN"
-                android:title="@string/settings_provider_trust_title"
-                android:summary="@string/settings_provider_trust_summary"
-                android:widgetLayout="@layout/preference_widget_chevron"
-                app:iconSpaceReserved="false" />
-
-            <Preference
-                android:key="PROVIDER_HEALTH_OPEN"
-                android:title="@string/settings_provider_health_title"
-                android:summary="@string/settings_provider_health_summary"
-                android:widgetLayout="@layout/preference_widget_chevron"
-                app:iconSpaceReserved="false" />
-
-            <Preference
-                android:key="PROVIDER_PASSPORT_OPEN"
-                android:title="@string/settings_provider_passport_title"
-                android:summary="@string/settings_provider_passport_summary"
-                android:widgetLayout="@layout/preference_widget_chevron"
-                app:iconSpaceReserved="false" />
-
             <SwitchPreferenceCompat
                 android:key="SHOW_VAVOO_VOD_PROVIDERS"
                 android:title="@string/settings_show_vavoo_vod_title"
@@ -80,13 +59,6 @@
                 android:key="TMDB_CLEAR_CACHE"
                 android:title="@string/settings_tmdb_clear_cache_title"
                 android:summary="@string/settings_tmdb_clear_cache_summary"
-                app:iconSpaceReserved="false" />
-
-            <SwitchPreferenceCompat
-                android:key="ENABLE_TMDB_LOGOS"
-                android:title="@string/settings_enable_tmdb_logos_title"
-                android:summary="@string/settings_enable_tmdb_logos_summary"
-                android:defaultValue="true"
                 app:iconSpaceReserved="false" />
 
             <Preference
@@ -1234,110 +1206,12 @@
                 android:defaultValue="system"
                 app:iconSpaceReserved="false" />
 
-            <ListPreference
-                android:key="SELECTED_THEME"
-                android:title="@string/settings_theme_title"
-                android:summary="@string/settings_looks_locked_summary"
-                android:entries="@array/theme_names"
-                android:entryValues="@array/theme_values"
-                android:defaultValue="cinema_ink"
-                app:iconSpaceReserved="false" />
-
-            <SwitchPreference
-                android:key="EXPERIMENTAL_NEW_APP_DESIGN"
-                android:title="@string/settings_experimental_new_design_title"
-                android:summary="@string/settings_experimental_new_design_summary"
-                android:defaultValue="false"
-                app:iconSpaceReserved="false" />
-
-            <PreferenceScreen
-                android:key="screen_lumina_options"
-                android:title="@string/settings_lumina_options_title"
-                android:summary="@string/settings_lumina_options_summary"
-                android:widgetLayout="@layout/preference_widget_chevron"
-                app:iconSpaceReserved="false">
-
-                <PreferenceCategory
-                    android:title="@string/settings_lumina_options_title"
-                    app:iconSpaceReserved="false">
-
-                    <ListPreference
-                        android:key="EXPERIMENTAL_LUMINA_ACCENT"
-                        android:title="@string/settings_lumina_accent_title"
-                        android:entries="@array/lumina_accent_names"
-                        android:entryValues="@array/lumina_accent_values"
-                        android:defaultValue="crimson"
-                        app:iconSpaceReserved="false" />
-
-                    <SwitchPreference
-                        android:key="EXPERIMENTAL_LUMINA_PURE_BLACK"
-                        android:title="@string/settings_lumina_pure_black_title"
-                        android:summary="@string/settings_lumina_pure_black_summary"
-                        android:defaultValue="false"
-                        app:iconSpaceReserved="false" />
-
-                    <SwitchPreference
-                        android:key="EXPERIMENTAL_LUMINA_DYNAMIC_COLORS"
-                        android:title="@string/settings_lumina_dynamic_title"
-                        android:summary="@string/settings_lumina_dynamic_summary"
-                        android:defaultValue="false"
-                        app:iconSpaceReserved="false" />
-
-                    <SwitchPreference
-                        android:key="EXPERIMENTAL_LUMINA_NAV_AUTO_HIDE"
-                        android:title="@string/settings_lumina_nav_autohide_title"
-                        android:summary="@string/settings_lumina_nav_autohide_summary"
-                        android:defaultValue="true"
-                        app:iconSpaceReserved="false" />
-
-                    <SwitchPreference
-                        android:key="EXPERIMENTAL_LUMINA_HERO_PARALLAX"
-                        android:title="@string/settings_lumina_parallax_title"
-                        android:summary="@string/settings_lumina_parallax_summary"
-                        android:defaultValue="true"
-                        app:iconSpaceReserved="false" />
-
-                    <SwitchPreference
-                        android:key="EXPERIMENTAL_LUMINA_REDUCED_GLASS"
-                        android:title="@string/settings_lumina_reduced_glass_title"
-                        android:summary="@string/settings_lumina_reduced_glass_summary"
-                        android:defaultValue="false"
-                        app:iconSpaceReserved="false" />
-                </PreferenceCategory>
-            </PreferenceScreen>
-
             <SwitchPreference
                 android:key="STICK_ENERGY_MODE"
                 android:title="@string/settings_stick_energy_mode_title"
                 android:summary="@string/settings_stick_energy_mode_summary"
                 android:defaultValue="false"
                 app:iconSpaceReserved="false" />
-
-            <!-- Cinema Room master + Ambient nest (profile-scoped; affects TV Ambient). -->
-            <SwitchPreferenceCompat
-                android:key="CINEMA_ROOM"
-                android:title="@string/settings_cinema_room_master_title"
-                android:summary="@string/settings_cinema_room_mobile_summary"
-                android:defaultValue="true"
-                app:iconSpaceReserved="false" />
-
-            <SwitchPreferenceCompat
-                android:key="TV_AMBIENT_MODE"
-                android:title="@string/settings_tv_ambient_mode_title"
-                android:summary="@string/settings_tv_ambient_mode_mobile_summary"
-                android:defaultValue="true"
-                android:dependency="CINEMA_ROOM"
-                app:iconSpaceReserved="false" />
-
-            <SwitchPreferenceCompat
-                android:key="CINEMA_AMBIENT_LIGHT"
-                android:title="@string/settings_cinema_ambient_light_title"
-                android:summary="@string/settings_cinema_ambient_light_summary"
-                android:defaultValue="true"
-                android:dependency="CINEMA_ROOM"
-                app:iconSpaceReserved="false" />
-
-            <!-- OLED half-mix retired (Looks Locked) — do not re-add. -->
 
             <SwitchPreference
                 android:key="IMMERSIVE_MODE"
@@ -1346,12 +1220,6 @@
                 android:summaryOn="@string/settings_immersive_mode_on"
                 android:summaryOff="@string/settings_immersive_mode_off"
                 android:defaultValue="false"
-                app:iconSpaceReserved="false" />
-
-            <Preference
-                android:key="p_settings_support_preview"
-                android:title="@string/support_preview_title"
-                android:summary="@string/support_preview_summary"
                 app:iconSpaceReserved="false" />
 
             <ListPreference
@@ -1455,6 +1323,66 @@
                     android:defaultValue="128"
                     app:iconSpaceReserved="false" />
             </PreferenceScreen>
+        </PreferenceCategory>
+    </PreferenceScreen>
+
+    <PreferenceScreen
+        android:key="screen_cinema_room"
+        android:title="@string/settings_cinema_room_title"
+        android:summary="@string/settings_cinema_room_summary"
+        android:widgetLayout="@layout/preference_widget_chevron"
+        app:iconSpaceReserved="false">
+
+        <PreferenceCategory
+            android:key="pc_cinema_room_settings"
+            android:title="@string/settings_cinema_room_title"
+            app:iconSpaceReserved="false">
+
+            <com.dskja.betterstreamflix.fragments.settings.CinemaRoomPreviewPreference
+                android:key="CINEMA_ROOM_PREVIEW"
+                android:selectable="false"
+                app:iconSpaceReserved="false" />
+
+            <SwitchPreferenceCompat
+                android:key="CINEMA_ROOM"
+                android:title="@string/settings_cinema_room_master_title"
+                android:summary="@string/settings_cinema_room_mobile_summary"
+                android:defaultValue="true"
+                app:iconSpaceReserved="false" />
+
+            <SwitchPreferenceCompat
+                android:key="TV_AMBIENT_MODE"
+                android:title="@string/settings_tv_ambient_mode_title"
+                android:summary="@string/settings_tv_ambient_mode_mobile_summary"
+                android:defaultValue="true"
+                android:dependency="CINEMA_ROOM"
+                app:iconSpaceReserved="false" />
+
+            <SwitchPreferenceCompat
+                android:key="CINEMA_AMBIENT_LIGHT"
+                android:title="@string/settings_cinema_ambient_light_title"
+                android:summary="@string/settings_cinema_ambient_light_summary"
+                android:defaultValue="true"
+                android:dependency="CINEMA_ROOM"
+                app:iconSpaceReserved="false" />
+
+            <ListPreference
+                android:key="CINEMA_AMBIENT_IDLE_MS"
+                android:title="@string/settings_cinema_room_idle_title"
+                android:summary="@string/settings_cinema_room_idle_summary"
+                android:entries="@array/cinema_room_idle_names"
+                android:entryValues="@array/cinema_room_idle_values"
+                android:defaultValue="90000"
+                android:dependency="TV_AMBIENT_MODE"
+                app:iconSpaceReserved="false" />
+
+            <Preference
+                android:key="CINEMA_ROOM_PILLARS"
+                android:title="@string/settings_cinema_room_pillars_title"
+                android:summary="@string/settings_cinema_room_pillars_summary"
+                android:selectable="false"
+                android:dependency="CINEMA_ROOM"
+                app:iconSpaceReserved="false" />
         </PreferenceCategory>
     </PreferenceScreen>
 
@@ -1816,145 +1744,6 @@
                 android:summary="@string/connection_test_subdl_summary"
                 app:iconSpaceReserved="false" />
         </PreferenceCategory>
-    </PreferenceScreen>
-
-    <PreferenceScreen
-        android:key="screen_provider_trust"
-        android:title="@string/settings_provider_trust_title"
-        android:summary="@string/settings_provider_trust_summary"
-        android:widgetLayout="@layout/preference_widget_chevron"
-        app:iconSpaceReserved="false">
-
-        <PreferenceCategory
-            android:key="pc_provider_trust_summary"
-            android:title="@string/settings_provider_trust_title"
-            app:iconSpaceReserved="false">
-
-            <Preference
-                android:key="PROVIDER_TRUST_SUMMARY"
-                android:title="@string/settings_provider_trust_title"
-                android:summary="@string/settings_provider_trust_summary"
-                android:selectable="false"
-                app:iconSpaceReserved="false" />
-
-            <Preference
-                android:icon="@drawable/ic_refresh"
-                android:key="PROVIDER_TRUST_REFRESH"
-                android:title="@string/settings_provider_trust_refresh"
-                android:summary="@string/settings_provider_trust_summary"
-                app:iconSpaceReserved="false" />
-        </PreferenceCategory>
-
-        <PreferenceCategory
-            android:key="pc_provider_trust_outage"
-            android:title="@string/settings_provider_trust_outage_title"
-            app:iconSpaceReserved="false" />
-
-        <PreferenceCategory
-            android:key="pc_provider_trust_learned"
-            android:title="@string/settings_provider_trust_learned_title"
-            app:iconSpaceReserved="false" />
-
-        <PreferenceCategory
-            android:key="pc_provider_trust_pins"
-            android:title="@string/settings_provider_trust_pins_title"
-            app:iconSpaceReserved="false" />
-
-        <PreferenceCategory
-            android:key="pc_provider_trust_stack"
-            android:title="@string/settings_provider_trust_stack_title"
-            app:iconSpaceReserved="false">
-
-            <Preference
-                android:key="PROVIDER_TRUST_OPEN_HEALTH"
-                android:title="@string/settings_provider_trust_open_health"
-                android:summary="@string/settings_provider_health_summary"
-                android:widgetLayout="@layout/preference_widget_chevron"
-                app:iconSpaceReserved="false" />
-
-            <Preference
-                android:key="PROVIDER_TRUST_OPEN_PASSPORT"
-                android:title="@string/settings_provider_trust_open_passport"
-                android:summary="@string/settings_provider_passport_summary"
-                android:widgetLayout="@layout/preference_widget_chevron"
-                app:iconSpaceReserved="false" />
-        </PreferenceCategory>
-    </PreferenceScreen>
-
-    <PreferenceScreen
-        android:key="screen_provider_health"
-        android:title="@string/settings_provider_health_title"
-        android:summary="@string/settings_provider_health_summary"
-        android:widgetLayout="@layout/preference_widget_chevron"
-        app:iconSpaceReserved="false">
-
-        <PreferenceCategory
-            android:key="pc_provider_health_summary"
-            android:title="@string/settings_provider_health_title"
-            app:iconSpaceReserved="false">
-
-            <Preference
-                android:key="PROVIDER_HEALTH_SUMMARY"
-                android:title="@string/settings_provider_health_title"
-                android:summary="@string/settings_provider_health_summary"
-                android:selectable="false"
-                app:iconSpaceReserved="false" />
-
-            <Preference
-                android:icon="@drawable/ic_refresh"
-                android:key="PROVIDER_HEALTH_REFRESH"
-                android:title="@string/settings_provider_health_refresh"
-                android:summary="@string/settings_provider_health_summary"
-                app:iconSpaceReserved="false" />
-        </PreferenceCategory>
-
-        <PreferenceCategory
-            android:key="pc_provider_health_issues"
-            android:title="@string/settings_provider_health_issues_title"
-            app:iconSpaceReserved="false" />
-
-        <PreferenceCategory
-            android:key="pc_provider_health_ok"
-            android:title="@string/settings_provider_health_ok_title"
-            app:iconSpaceReserved="false" />
-    </PreferenceScreen>
-
-    <PreferenceScreen
-        android:key="screen_provider_passport"
-        android:title="@string/settings_provider_passport_title"
-        android:summary="@string/settings_provider_passport_summary"
-        android:widgetLayout="@layout/preference_widget_chevron"
-        app:iconSpaceReserved="false">
-
-        <PreferenceCategory
-            android:key="pc_provider_passport_summary"
-            android:title="@string/settings_provider_passport_title"
-            app:iconSpaceReserved="false">
-
-            <Preference
-                android:key="PROVIDER_PASSPORT_SUMMARY"
-                android:title="@string/settings_provider_passport_title"
-                android:summary="@string/settings_provider_passport_summary"
-                android:selectable="false"
-                app:iconSpaceReserved="false" />
-
-            <Preference
-                android:icon="@drawable/ic_refresh"
-                android:key="PROVIDER_PASSPORT_REFRESH"
-                android:title="@string/settings_provider_passport_refresh"
-                android:summary="@string/settings_provider_passport_summary"
-                app:iconSpaceReserved="false" />
-        </PreferenceCategory>
-
-        <PreferenceCategory
-            android:key="pc_provider_passport_attention"
-            android:title="@string/settings_provider_passport_attention_title"
-            app:iconSpaceReserved="false" />
-
-        <PreferenceCategory
-            android:key="pc_provider_passport_fresh"
-            android:title="@string/settings_provider_passport_fresh_title"
-            app:iconSpaceReserved="false" />
     </PreferenceScreen>
 
     <PreferenceScreen

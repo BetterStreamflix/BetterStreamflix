@@ -23,6 +23,7 @@ internal object ProfileScopedPreferenceStore {
         "SHOW_CONTINUE_WATCHING",
         "CINEMA_ROOM",
         "CINEMA_AMBIENT_LIGHT",
+        "CINEMA_AMBIENT_IDLE_MS",
         "TV_AMBIENT_MODE",
         "SHOW_RECENTLY_WATCHED",
         "SHOW_NEXT_EPISODES",
@@ -85,6 +86,9 @@ internal object ProfileScopedPreferenceStore {
                         UserPreferences.leanbackDensity = value
                     }
                 }
+                "CINEMA_AMBIENT_IDLE_MS" -> {
+                    value?.toLongOrNull()?.let { UserPreferences.cinemaAmbientIdleMs = it }
+                }
             }
         }
 
@@ -94,6 +98,7 @@ internal object ProfileScopedPreferenceStore {
                 UserPreferences.parentalControlMaxAge?.toString().orEmpty()
             "SELECTED_THEME" -> UserPreferences.selectedTheme
             "LEANBACK_DENSITY" -> UserPreferences.leanbackDensity
+            "CINEMA_AMBIENT_IDLE_MS" -> UserPreferences.cinemaAmbientIdleMs.toString()
             else -> defValue
         }
 

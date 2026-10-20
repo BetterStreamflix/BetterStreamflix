@@ -142,19 +142,12 @@ class MainMobileActivity : FragmentActivity() {
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
-        setTheme(
-            if (ExperimentalMobileDesign.enabled()) {
-                ExperimentalMobileDesign.themeRes()
-            } else {
-                ThemeManager.mobileThemeRes(UserPreferences.selectedTheme)
-            }
-        )
+        setTheme(ThemeManager.mobileThemeRes(UserPreferences.selectedTheme))
         AccessibilityPreferences.applyHighContrastOverlay(this, mobile = true)
         super.onCreate(savedInstanceState)
         // Finish a provider switch after CLEAR_TASK restart (Room reset deferred).
         UserPreferences.consumePendingProviderSwitch()
         UserPreferences.clearInvalidCurrentProvider()
-        ExperimentalMobileDesign.applyDynamicColors(this)
 
         WindowCompat.setDecorFitsSystemWindows(window, false)
         applySystemBarColors()

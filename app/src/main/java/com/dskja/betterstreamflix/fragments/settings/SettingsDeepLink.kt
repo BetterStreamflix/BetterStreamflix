@@ -28,16 +28,8 @@ object SettingsDeepLink {
         pendingScreenKey = "screen_guardaflix_auth"
     }
 
-    fun openProviderTrust() {
-        pendingScreenKey = "screen_provider_trust"
-    }
-
-    fun openProviderHealth() {
-        pendingScreenKey = "screen_provider_health"
-    }
-
-    fun openProviderPassport() {
-        pendingScreenKey = "screen_provider_passport"
+    fun openContentScreen() {
+        pendingScreenKey = "screen_content"
     }
 
     fun consumePendingScreenKey(): String? {

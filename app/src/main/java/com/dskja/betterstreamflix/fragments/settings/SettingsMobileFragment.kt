@@ -287,9 +287,6 @@ class SettingsMobileFragment : PreferenceFragmentCompat() {
                 "screen_serienstream_auth" -> getString(R.string.serienstream_auth_category_title)
                 "screen_aniworld_auth" -> getString(R.string.aniworld_auth_category_title)
                 "screen_guardaflix_auth" -> getString(R.string.settings_category_guardaflix)
-                "screen_provider_trust" -> getString(R.string.settings_provider_trust_title)
-                "screen_provider_health" -> getString(R.string.settings_provider_health_title)
-                "screen_provider_passport" -> getString(R.string.settings_provider_passport_title)
                 "screen_notifications" -> getString(R.string.settings_screen_notifications)
                 "screen_parent_dashboard" -> getString(R.string.parent_dashboard_title)
                 else -> getString(R.string.settings_screen_downloads)
@@ -523,17 +520,23 @@ class SettingsMobileFragment : PreferenceFragmentCompat() {
         PlatformSettingsController.bind(this, lifecycleScope) { key ->
             findPreference(key)
         }
-        com.dskja.betterstreamflix.kids.ParentDashboardController.bind(
-            fragment = this,
-            scope = lifecycleScope,
-            findPreference = { key -> findPreference(key) },
-            onOpenDashboard = {
-                openNestedSettingsScreen(
-                    "screen_parent_dashboard",
-                    getString(R.string.parent_dashboard_title),
-                )
-            },
-        )
+        // Parent Dashboard is only meaningful while a kids profile exists.
+        val hasKidsProfile = com.dskja.betterstreamflix.profiles.ProfileManager
+            .profiles().any { it.isKids }
+        findPreference<PreferenceScreen>("screen_parent_dashboard")?.isVisible = hasKidsProfile
+        if (hasKidsProfile) {
+            com.dskja.betterstreamflix.kids.ParentDashboardController.bind(
+                fragment = this,
+                scope = lifecycleScope,
+                findPreference = { key -> findPreference(key) },
+                onOpenDashboard = {
+                    openNestedSettingsScreen(
+                        "screen_parent_dashboard",
+                        getString(R.string.parent_dashboard_title),
+                    )
+                },
+            )
+        }
         ProfilesSettingsController.bind(
             fragment = this,
             scope = lifecycleScope,
@@ -793,46 +796,7 @@ class SettingsMobileFragment : PreferenceFragmentCompat() {
         TmdbSettingsController.bind(this, lifecycleScope) { key ->
             findPreference(key)
         }
-        ProviderTrustSettingsController.bind(
-            this,
-            lifecycleScope,
-            findPreference = { key -> findPreference(key) },
-            openScreen = { key, title -> openNestedSettingsScreen(key, title) },
-        )
-        ProviderHealthSettingsController.bind(this, lifecycleScope) { key ->
-            findPreference(key)
-        }
-        ProviderPassportSettingsController.bind(
-            this,
-            lifecycleScope,
-            findPreference = { key -> findPreference(key) },
-            openScreen = { key, title ->
-                findPreference<Preference>(key)?.isVisible = true
-                openNestedSettingsScreen(key, title)
-            },
-        )
         NotificationsSettingsController.bind(this) { key -> findPreference(key) }
-        findPreference<Preference>("PROVIDER_TRUST_OPEN")?.setOnPreferenceClickListener {
-            openNestedSettingsScreen(
-                "screen_provider_trust",
-                getString(R.string.settings_provider_trust_title),
-            )
-            true
-        }
-        findPreference<Preference>("PROVIDER_HEALTH_OPEN")?.setOnPreferenceClickListener {
-            openNestedSettingsScreen(
-                "screen_provider_health",
-                getString(R.string.settings_provider_health_title),
-            )
-            true
-        }
-        findPreference<Preference>("PROVIDER_PASSPORT_OPEN")?.setOnPreferenceClickListener {
-            openNestedSettingsScreen(
-                "screen_provider_passport",
-                getString(R.string.settings_provider_passport_title),
-            )
-            true
-        }
         findPreference<Preference>("NOTIFICATIONS_OPEN")?.setOnPreferenceClickListener {
             openNestedSettingsScreen(
                 "screen_notifications",
@@ -900,16 +864,6 @@ class SettingsMobileFragment : PreferenceFragmentCompat() {
             }
         }
 
-        findPreference<Preference>("p_settings_support_preview")?.apply {
-            // DEBUG builds only — do not gate on retired ExperimentalMobileDesign.
-            isVisible = BuildConfig.DEBUG
-            setOnPreferenceClickListener {
-                runCatching {
-                    findNavController().navigate(R.id.support_preview)
-                }
-                true
-            }
-        }
         bindExperimentalDesignGate()
 
         findPreference<Preference>("p_settings_about")?.apply {
@@ -1244,43 +1198,11 @@ class SettingsMobileFragment : PreferenceFragmentCompat() {
             }
         }
 
-        findPreference<ListPreference>("SELECTED_THEME")?.apply {
-            // Looks Locked: migrate retired themes / OLED half-mix onto one of three Looks.
-            // Kids cannot pick adult Cinema-Ink shells (KF-008).
-            val kids = com.dskja.betterstreamflix.profiles.ProfileManager.isKidsActive()
-            val locked = ThemeManager.clampLookForKids(
-                ThemeManager.resolveLook(UserPreferences.selectedTheme),
-                kids,
-            )
-            if (UserPreferences.selectedTheme != locked) {
-                UserPreferences.selectedTheme = locked
-            }
-            UserPreferences.oledMode = false
-            if (kids) {
-                entries = arrayOf(getString(R.string.theme_kids_bright))
-                entryValues = arrayOf(ThemeManager.KIDS_BRIGHT)
-            }
-            value = locked
-            setSummaryProviderOnce(Preference.SummaryProvider<ListPreference> { pref ->
-                getString(ThemeManager.titleRes(pref.value ?: ThemeManager.CINEMA_INK))
-            })
-            setOnPreferenceChangeListener { preference, newValue ->
-                val newTheme = ThemeManager.clampLookForKids(
-                    ThemeManager.resolveLook(newValue as String),
-                    com.dskja.betterstreamflix.profiles.ProfileManager.isKidsActive(),
-                )
-                UserPreferences.oledMode = false
-                UserPreferences.selectedTheme = newTheme
-                if (preference is ListPreference) {
-                    preference.value = newTheme
-                }
-                requireActivity().apply {
-                    finish()
-                    startActivity(Intent(this, MainMobileActivity::class.java))
-                }
-                true
-            }
+        // Single locked look — stored theme collapses onto Dark; no picker.
+        if (UserPreferences.selectedTheme != ThemeManager.CINEMA_INK) {
+            UserPreferences.selectedTheme = ThemeManager.CINEMA_INK
         }
+        UserPreferences.oledMode = false
 
         findPreference<SwitchPreference>("STICK_ENERGY_MODE")?.apply {
             // SE-014: hide Stick Energy on phone unless leanback / Fire TV.
@@ -1301,6 +1223,11 @@ class SettingsMobileFragment : PreferenceFragmentCompat() {
             }
         }
 
+        fun refreshCinemaRoomPreview() {
+            (findPreference<Preference>("CINEMA_ROOM_PREVIEW")
+                as? CinemaRoomPreviewPreference)?.refresh()
+        }
+
         findPreference<SwitchPreferenceCompat>("CINEMA_ROOM")?.apply {
             isChecked = UserPreferences.cinemaRoomEnabled
             summary = getString(R.string.settings_cinema_room_mobile_summary)
@@ -1312,6 +1239,9 @@ class SettingsMobileFragment : PreferenceFragmentCompat() {
                 }
                 findPreference<SwitchPreferenceCompat>("TV_AMBIENT_MODE")?.isEnabled = enabled
                 findPreference<SwitchPreferenceCompat>("CINEMA_AMBIENT_LIGHT")?.isEnabled = enabled
+                findPreference<ListPreference>("CINEMA_AMBIENT_IDLE_MS")?.isEnabled =
+                    enabled && UserPreferences.tvAmbientModeEnabled
+                refreshCinemaRoomPreview()
                 true
             }
         }
@@ -1321,7 +1251,11 @@ class SettingsMobileFragment : PreferenceFragmentCompat() {
             isEnabled = UserPreferences.cinemaRoomEnabled
             summary = getString(R.string.settings_tv_ambient_mode_mobile_summary)
             setOnPreferenceChangeListener { _, newValue ->
-                UserPreferences.tvAmbientModeEnabled = newValue as Boolean
+                val ambient = newValue as Boolean
+                UserPreferences.tvAmbientModeEnabled = ambient
+                findPreference<ListPreference>("CINEMA_AMBIENT_IDLE_MS")?.isEnabled =
+                    ambient && UserPreferences.cinemaRoomEnabled
+                refreshCinemaRoomPreview()
                 true
             }
         }
@@ -1331,11 +1265,25 @@ class SettingsMobileFragment : PreferenceFragmentCompat() {
             isEnabled = UserPreferences.cinemaRoomEnabled
             setOnPreferenceChangeListener { _, newValue ->
                 UserPreferences.cinemaAmbientLightHints = newValue as Boolean
+                refreshCinemaRoomPreview()
                 true
             }
         }
 
-        // OLED half-mix retired (Looks Locked) — preference removed from settings_mobile.xml.
+        findPreference<ListPreference>("CINEMA_AMBIENT_IDLE_MS")?.apply {
+            isEnabled = UserPreferences.cinemaRoomEnabled && UserPreferences.tvAmbientModeEnabled
+            value = UserPreferences.cinemaAmbientIdleMs.toString()
+            setSummaryProviderOnce(Preference.SummaryProvider<ListPreference> { pref ->
+                pref.entry?.toString().orEmpty()
+            })
+            setOnPreferenceChangeListener { preference, newValue ->
+                val ms = (newValue as? String)?.toLongOrNull() ?: return@setOnPreferenceChangeListener false
+                UserPreferences.cinemaAmbientIdleMs = ms
+                (preference as? ListPreference)?.value = ms.toString()
+                refreshCinemaRoomPreview()
+                true
+            }
+        }
 
         findPreference<SwitchPreference>("LARGE_TEXT")?.apply {
             isChecked = UserPreferences.largeText
@@ -1400,9 +1348,6 @@ class SettingsMobileFragment : PreferenceFragmentCompat() {
                 true
             }
         }
-
-        bindExperimentalDesignPreference()
-        bindLuminaOptions()
 
         findPreference<ListPreference>("CATALOG_SORT_MODE")?.apply {
             value = UserPreferences.catalogSortMode.name
@@ -2659,115 +2604,6 @@ class SettingsMobileFragment : PreferenceFragmentCompat() {
     }
 
     private fun bindExperimentalDesignGate() {
-        if (!ExperimentalMobileDesign.isAvailable() && UserPreferences.experimentalNewAppDesign) {
-            UserPreferences.experimentalNewAppDesign = false
-        }
-        findPreference<Preference>("screen_lumina_options")?.isVisible = ExperimentalMobileDesign.isAvailable()
-    }
-
-    private fun bindExperimentalDesignPreference() {
-        findPreference<SwitchPreference>("EXPERIMENTAL_NEW_APP_DESIGN")?.apply {
-            val available = ExperimentalMobileDesign.isAvailable()
-            isEnabled = available
-            // Mirrors the effective shell — stays off while a Kids profile clamps Lumina.
-            isChecked = ExperimentalMobileDesign.enabled()
-            summary = ExperimentalMobileDesign.summary(requireContext())
-            setOnPreferenceChangeListener { _, newValue ->
-                if (!available) return@setOnPreferenceChangeListener false
-                UserPreferences.experimentalNewAppDesign = newValue as Boolean
-                if (!(newValue as Boolean)) {
-                    UserPreferences.experimentalReactHome = false
-                }
-                requireActivity().apply {
-                    finish()
-                    startActivity(Intent(this, MainMobileActivity::class.java))
-                }
-                true
-            }
-        }
-        // Locked looks do not apply while the Lumina shell owns the activities.
-        findPreference<Preference>("SELECTED_THEME")?.isEnabled = !ExperimentalMobileDesign.enabled()
-        findPreference<SwitchPreference>("EXPERIMENTAL_REACT_HOME")?.apply {
-            val available = ExperimentalMobileDesign.isAvailable()
-            val luminaOn = available && UserPreferences.experimentalNewAppDesign
-            isVisible = available
-            isEnabled = luminaOn
-            isChecked = luminaOn && UserPreferences.experimentalReactHome
-            setOnPreferenceChangeListener { _, newValue ->
-                if (!luminaOn) return@setOnPreferenceChangeListener false
-                UserPreferences.experimentalReactHome = newValue as Boolean
-                requireActivity().apply {
-                    finish()
-                    startActivity(Intent(this, MainMobileActivity::class.java))
-                }
-                true
-            }
-        }
-    }
-
-    private fun bindLuminaOptions() {
-        val luminaOn = ExperimentalMobileDesign.enabled()
-        findPreference<Preference>("screen_lumina_options")?.isVisible = ExperimentalMobileDesign.isAvailable() && luminaOn
-
-        fun restartShell() {
-            requireActivity().apply {
-                finish()
-                startActivity(Intent(this, MainMobileActivity::class.java))
-            }
-        }
-
-        (findPreference("EXPERIMENTAL_LUMINA_ACCENT") as? ListPreference)?.apply {
-            value = UserPreferences.experimentalLuminaAccent
-            setSummaryProviderOnce(ListPreference.SimpleSummaryProvider.getInstance())
-            isEnabled = luminaOn
-            setOnPreferenceChangeListener { _, newValue ->
-                UserPreferences.experimentalLuminaAccent = newValue.toString()
-                restartShell()
-                true
-            }
-        }
-
-        fun bindToggle(key: String, get: () -> Boolean, set: (Boolean) -> Unit, restart: Boolean) {
-            (findPreference(key) as? SwitchPreference)?.apply {
-                isChecked = get()
-                isEnabled = luminaOn
-                setOnPreferenceChangeListener { _, newValue ->
-                    set(newValue as Boolean)
-                    if (restart) restartShell()
-                    true
-                }
-            }
-        }
-
-        bindToggle(
-            "EXPERIMENTAL_LUMINA_PURE_BLACK",
-            { UserPreferences.experimentalLuminaPureBlack },
-            { UserPreferences.experimentalLuminaPureBlack = it },
-            restart = true,
-        )
-        bindToggle(
-            "EXPERIMENTAL_LUMINA_DYNAMIC_COLORS",
-            { UserPreferences.experimentalLuminaDynamicColors },
-            { UserPreferences.experimentalLuminaDynamicColors = it },
-            restart = true,
-        )
-        bindToggle(
-            "EXPERIMENTAL_LUMINA_NAV_AUTO_HIDE",
-            { UserPreferences.experimentalLuminaNavAutoHide },
-            { UserPreferences.experimentalLuminaNavAutoHide = it },
-            restart = false,
-        )
-        bindToggle(
-            "EXPERIMENTAL_LUMINA_HERO_PARALLAX",
-            { UserPreferences.experimentalLuminaHeroParallax },
-            { UserPreferences.experimentalLuminaHeroParallax = it },
-            restart = false,
-        )
-        bindToggle(
-            "EXPERIMENTAL_LUMINA_REDUCED_GLASS",
-            { UserPreferences.experimentalLuminaReducedGlass },
-            { UserPreferences.experimentalLuminaReducedGlass = it },
-            restart = true,
-        )
+        // Lumina shell removed — Dark is the only look.
     }
 }

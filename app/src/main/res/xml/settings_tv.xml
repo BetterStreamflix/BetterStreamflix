@@ -24,24 +24,6 @@
                 android:summary="@string/settings_show_quarantined_providers_summary"
                 android:defaultValue="false" />
 
-            <Preference
-                android:key="PROVIDER_TRUST_OPEN"
-                android:title="@string/settings_provider_trust_title"
-                android:summary="@string/settings_provider_trust_summary"
-                android:widgetLayout="@layout/preference_widget_chevron" />
-
-            <Preference
-                android:key="PROVIDER_HEALTH_OPEN"
-                android:title="@string/settings_provider_health_title"
-                android:summary="@string/settings_provider_health_summary"
-                android:widgetLayout="@layout/preference_widget_chevron" />
-
-            <Preference
-                android:key="PROVIDER_PASSPORT_OPEN"
-                android:title="@string/settings_provider_passport_title"
-                android:summary="@string/settings_provider_passport_summary"
-                android:widgetLayout="@layout/preference_widget_chevron" />
-
             <SwitchPreferenceCompat
                 android:key="SHOW_VAVOO_VOD_PROVIDERS"
                 android:title="@string/settings_show_vavoo_vod_title"
@@ -69,12 +51,6 @@
                 android:key="TMDB_CLEAR_CACHE"
                 android:title="@string/settings_tmdb_clear_cache_title"
                 android:summary="@string/settings_tmdb_clear_cache_summary" />
-
-            <SwitchPreferenceCompat
-                android:key="ENABLE_TMDB_LOGOS"
-                android:title="@string/settings_enable_tmdb_logos_title"
-                android:summary="@string/settings_enable_tmdb_logos_summary"
-                android:defaultValue="true" />
 
             <Preference
                 android:key="TMDB_CLEAR_LOGO_CACHE"
@@ -1106,56 +1082,12 @@
                 android:defaultValue="system" />
 
             <ListPreference
-                android:key="SELECTED_THEME"
-                android:title="@string/settings_theme_title"
-                android:summary="@string/settings_looks_locked_summary"
-                android:entries="@array/theme_names"
-                android:entryValues="@array/theme_values"
-                android:defaultValue="cinema_ink" />
-
-            <ListPreference
                 android:key="LEANBACK_DENSITY"
                 android:title="@string/settings_leanback_density_title"
                 android:summary="@string/settings_leanback_density_summary"
                 android:entries="@array/leanback_density_names"
                 android:entryValues="@array/leanback_density_values"
                 android:defaultValue="comfort" />
-
-            <SwitchPreference
-                android:key="EXPERIMENTAL_NEW_APP_DESIGN"
-                android:title="@string/settings_experimental_new_design_title"
-                android:summary="@string/settings_experimental_new_design_summary"
-                android:defaultValue="false" />
-
-            <PreferenceScreen
-                android:key="screen_lumina_options"
-                android:title="@string/settings_lumina_options_title"
-                android:summary="@string/settings_lumina_options_summary"
-                android:widgetLayout="@layout/preference_widget_chevron">
-
-                <PreferenceCategory
-                    android:title="@string/settings_lumina_options_title">
-
-                    <ListPreference
-                        android:key="EXPERIMENTAL_LUMINA_ACCENT"
-                        android:title="@string/settings_lumina_accent_title"
-                        android:entries="@array/lumina_accent_names"
-                        android:entryValues="@array/lumina_accent_values"
-                        android:defaultValue="crimson" />
-
-                    <SwitchPreference
-                        android:key="EXPERIMENTAL_LUMINA_PURE_BLACK"
-                        android:title="@string/settings_lumina_pure_black_title"
-                        android:summary="@string/settings_lumina_pure_black_summary"
-                        android:defaultValue="false" />
-
-                    <SwitchPreference
-                        android:key="EXPERIMENTAL_LUMINA_REDUCED_GLASS"
-                        android:title="@string/settings_lumina_reduced_glass_title"
-                        android:summary="@string/settings_lumina_reduced_glass_summary"
-                        android:defaultValue="false" />
-                </PreferenceCategory>
-            </PreferenceScreen>
 
             <SwitchPreference
                 android:key="STICK_ENERGY_MODE"
@@ -1202,6 +1134,15 @@
                         android:summary="@string/settings_cinema_ambient_light_summary"
                         android:defaultValue="true"
                         android:dependency="CINEMA_ROOM" />
+
+                    <ListPreference
+                        android:key="CINEMA_AMBIENT_IDLE_MS"
+                        android:title="@string/settings_cinema_room_idle_title"
+                        android:summary="@string/settings_cinema_room_idle_summary"
+                        android:entries="@array/cinema_room_idle_names"
+                        android:entryValues="@array/cinema_room_idle_values"
+                        android:defaultValue="90000"
+                        android:dependency="TV_AMBIENT_MODE" />
 
                     <Preference
                         android:key="cinema_room_looks_info"
@@ -1555,123 +1496,6 @@
                 android:title="@string/connection_test_subdl_title"
                 android:summary="@string/connection_test_subdl_summary" />
         </PreferenceCategory>
-    </PreferenceScreen>
-
-    <PreferenceScreen
-        android:key="screen_provider_trust"
-        android:title="@string/settings_provider_trust_title"
-        android:summary="@string/settings_provider_trust_summary"
-        android:widgetLayout="@layout/preference_widget_chevron">
-
-        <PreferenceCategory
-            android:key="pc_provider_trust_summary"
-            android:title="@string/settings_provider_trust_title">
-
-            <Preference
-                android:key="PROVIDER_TRUST_SUMMARY"
-                android:title="@string/settings_provider_trust_title"
-                android:summary="@string/settings_provider_trust_summary"
-                android:selectable="false" />
-
-            <Preference
-                android:icon="@drawable/ic_refresh"
-                android:key="PROVIDER_TRUST_REFRESH"
-                android:title="@string/settings_provider_trust_refresh"
-                android:summary="@string/settings_provider_trust_summary" />
-        </PreferenceCategory>
-
-        <PreferenceCategory
-            android:key="pc_provider_trust_outage"
-            android:title="@string/settings_provider_trust_outage_title" />
-
-        <PreferenceCategory
-            android:key="pc_provider_trust_learned"
-            android:title="@string/settings_provider_trust_learned_title" />
-
-        <PreferenceCategory
-            android:key="pc_provider_trust_pins"
-            android:title="@string/settings_provider_trust_pins_title" />
-
-        <PreferenceCategory
-            android:key="pc_provider_trust_stack"
-            android:title="@string/settings_provider_trust_stack_title">
-
-            <Preference
-                android:key="PROVIDER_TRUST_OPEN_HEALTH"
-                android:title="@string/settings_provider_trust_open_health"
-                android:summary="@string/settings_provider_health_summary"
-                android:widgetLayout="@layout/preference_widget_chevron" />
-
-            <Preference
-                android:key="PROVIDER_TRUST_OPEN_PASSPORT"
-                android:title="@string/settings_provider_trust_open_passport"
-                android:summary="@string/settings_provider_passport_summary"
-                android:widgetLayout="@layout/preference_widget_chevron" />
-        </PreferenceCategory>
-    </PreferenceScreen>
-
-    <PreferenceScreen
-        android:key="screen_provider_health"
-        android:title="@string/settings_provider_health_title"
-        android:summary="@string/settings_provider_health_summary"
-        android:widgetLayout="@layout/preference_widget_chevron">
-
-        <PreferenceCategory
-            android:key="pc_provider_health_summary"
-            android:title="@string/settings_provider_health_title">
-
-            <Preference
-                android:key="PROVIDER_HEALTH_SUMMARY"
-                android:title="@string/settings_provider_health_title"
-                android:summary="@string/settings_provider_health_summary"
-                android:selectable="false" />
-
-            <Preference
-                android:icon="@drawable/ic_refresh"
-                android:key="PROVIDER_HEALTH_REFRESH"
-                android:title="@string/settings_provider_health_refresh"
-                android:summary="@string/settings_provider_health_summary" />
-        </PreferenceCategory>
-
-        <PreferenceCategory
-            android:key="pc_provider_health_issues"
-            android:title="@string/settings_provider_health_issues_title" />
-
-        <PreferenceCategory
-            android:key="pc_provider_health_ok"
-            android:title="@string/settings_provider_health_ok_title" />
-    </PreferenceScreen>
-
-    <PreferenceScreen
-        android:key="screen_provider_passport"
-        android:title="@string/settings_provider_passport_title"
-        android:summary="@string/settings_provider_passport_summary"
-        android:widgetLayout="@layout/preference_widget_chevron">
-
-        <PreferenceCategory
-            android:key="pc_provider_passport_summary"
-            android:title="@string/settings_provider_passport_title">
-
-            <Preference
-                android:key="PROVIDER_PASSPORT_SUMMARY"
-                android:title="@string/settings_provider_passport_title"
-                android:summary="@string/settings_provider_passport_summary"
-                android:selectable="false" />
-
-            <Preference
-                android:icon="@drawable/ic_refresh"
-                android:key="PROVIDER_PASSPORT_REFRESH"
-                android:title="@string/settings_provider_passport_refresh"
-                android:summary="@string/settings_provider_passport_summary" />
-        </PreferenceCategory>
-
-        <PreferenceCategory
-            android:key="pc_provider_passport_attention"
-            android:title="@string/settings_provider_passport_attention_title" />
-
-        <PreferenceCategory
-            android:key="pc_provider_passport_fresh"
-            android:title="@string/settings_provider_passport_fresh_title" />
     </PreferenceScreen>
 
     <PreferenceScreen

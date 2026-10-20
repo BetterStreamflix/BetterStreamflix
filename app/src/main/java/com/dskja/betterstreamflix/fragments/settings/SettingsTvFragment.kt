@@ -361,9 +361,6 @@ class SettingsTvFragment : LeanbackPreferenceFragmentCompat() {
                 "screen_serienstream_auth" -> getString(R.string.serienstream_auth_category_title)
                 "screen_guardaflix_auth" -> getString(R.string.settings_category_guardaflix)
                 "screen_aniworld_auth" -> getString(R.string.aniworld_auth_category_title)
-                "screen_provider_trust" -> getString(R.string.settings_provider_trust_title)
-                "screen_provider_health" -> getString(R.string.settings_provider_health_title)
-                "screen_provider_passport" -> getString(R.string.settings_provider_passport_title)
                 "screen_notifications" -> getString(R.string.settings_screen_notifications)
                 "screen_appearance" -> getString(R.string.settings_category_appearance)
                 else -> getString(R.string.settings_screen_downloads)
@@ -409,17 +406,23 @@ class SettingsTvFragment : LeanbackPreferenceFragmentCompat() {
         PlatformSettingsController.bind(this, lifecycleScope) { key ->
             findPreference(key)
         }
-        com.dskja.betterstreamflix.kids.ParentDashboardController.bind(
-            fragment = this,
-            scope = lifecycleScope,
-            findPreference = { key -> findPreference(key) },
-            onOpenDashboard = {
-                openNestedSettingsScreen(
-                    "screen_parent_dashboard",
-                    getString(R.string.parent_dashboard_title),
-                )
-            },
-        )
+        // Parent Dashboard is only meaningful while a kids profile exists.
+        val hasKidsProfile = com.dskja.betterstreamflix.profiles.ProfileManager
+            .profiles().any { it.isKids }
+        findPreference<PreferenceScreen>("screen_parent_dashboard")?.isVisible = hasKidsProfile
+        if (hasKidsProfile) {
+            com.dskja.betterstreamflix.kids.ParentDashboardController.bind(
+                fragment = this,
+                scope = lifecycleScope,
+                findPreference = { key -> findPreference(key) },
+                onOpenDashboard = {
+                    openNestedSettingsScreen(
+                        "screen_parent_dashboard",
+                        getString(R.string.parent_dashboard_title),
+                    )
+                },
+            )
+        }
         ProfilesSettingsController.bind(
             fragment = this,
             scope = lifecycleScope,
@@ -669,46 +672,7 @@ class SettingsTvFragment : LeanbackPreferenceFragmentCompat() {
         TmdbSettingsController.bind(this, lifecycleScope) { key ->
             findPreference(key)
         }
-        ProviderTrustSettingsController.bind(
-            this,
-            lifecycleScope,
-            findPreference = { key -> findPreference(key) },
-            openScreen = { key, title -> openNestedSettingsScreen(key, title) },
-        )
-        ProviderHealthSettingsController.bind(this, lifecycleScope) { key ->
-            findPreference(key)
-        }
-        ProviderPassportSettingsController.bind(
-            this,
-            lifecycleScope,
-            findPreference = { key -> findPreference(key) },
-            openScreen = { key, title ->
-                findPreference<Preference>(key)?.isVisible = true
-                openNestedSettingsScreen(key, title)
-            },
-        )
         NotificationsSettingsController.bind(this) { key -> findPreference(key) }
-        findPreference<Preference>("PROVIDER_TRUST_OPEN")?.setOnPreferenceClickListener {
-            openNestedSettingsScreen(
-                "screen_provider_trust",
-                getString(R.string.settings_provider_trust_title),
-            )
-            true
-        }
-        findPreference<Preference>("PROVIDER_HEALTH_OPEN")?.setOnPreferenceClickListener {
-            openNestedSettingsScreen(
-                "screen_provider_health",
-                getString(R.string.settings_provider_health_title),
-            )
-            true
-        }
-        findPreference<Preference>("PROVIDER_PASSPORT_OPEN")?.setOnPreferenceClickListener {
-            openNestedSettingsScreen(
-                "screen_provider_passport",
-                getString(R.string.settings_provider_passport_title),
-            )
-            true
-        }
         findPreference<Preference>("NOTIFICATIONS_OPEN")?.setOnPreferenceClickListener {
             openNestedSettingsScreen(
                 "screen_notifications",
@@ -1024,8 +988,6 @@ class SettingsTvFragment : LeanbackPreferenceFragmentCompat() {
         }
 
         bindExperimentalDesignGate()
-        bindExperimentalDesignPreference()
-        bindLuminaOptions()
 
         findPreference<Preference>("p_settings_about")?.apply {
             val titleStr = getString(R.string.settings_about)
@@ -1382,38 +1344,11 @@ class SettingsTvFragment : LeanbackPreferenceFragmentCompat() {
             true
         }
 
-        findPreference<ListPreference>("SELECTED_THEME")?.apply {
-            // Looks Locked: migrate legacy theme ids on Settings open (LOOK-04/05).
-            // Kids cannot pick adult Cinema-Ink shells (KF-008).
-            val kids = com.dskja.betterstreamflix.profiles.ProfileManager.isKidsActive()
-            val locked = ThemeManager.clampLookForKids(
-                ThemeManager.resolveLook(UserPreferences.selectedTheme),
-                kids,
-            )
-            if (UserPreferences.selectedTheme != locked) {
-                UserPreferences.selectedTheme = locked
-            }
-            UserPreferences.oledMode = false
-            if (kids) {
-                entries = arrayOf(getString(R.string.theme_kids_bright))
-                entryValues = arrayOf(ThemeManager.KIDS_BRIGHT)
-            }
-            value = locked
-            setSummaryProviderOnce(Preference.SummaryProvider<ListPreference> { pref ->
-                getString(ThemeManager.titleRes(pref.value ?: ThemeManager.CINEMA_INK))
-            })
-
-            setOnPreferenceChangeListener { _, newValue ->
-                val newTheme = ThemeManager.clampLookForKids(
-                    ThemeManager.resolveLook(newValue as String),
-                    com.dskja.betterstreamflix.profiles.ProfileManager.isKidsActive(),
-                )
-                UserPreferences.oledMode = false
-                UserPreferences.selectedTheme = newTheme
-                restartMainTvWithoutAnimation(openSettingsScreen = "screen_appearance")
-                true
-            }
+        // Single locked look — stored theme collapses onto Dark; no picker.
+        if (UserPreferences.selectedTheme != ThemeManager.CINEMA_INK) {
+            UserPreferences.selectedTheme = ThemeManager.CINEMA_INK
         }
+        UserPreferences.oledMode = false
 
         findPreference<ListPreference>("LEANBACK_DENSITY")?.apply {
             val density = com.dskja.betterstreamflix.ui.LeanbackDensityPolicy.valueOf(
@@ -2637,81 +2572,7 @@ class SettingsTvFragment : LeanbackPreferenceFragmentCompat() {
     }
 
     private fun bindExperimentalDesignGate() {
-        if (!ExperimentalMobileDesign.isAvailable() && UserPreferences.experimentalNewAppDesign) {
-            UserPreferences.experimentalNewAppDesign = false
-        }
-        findPreference<Preference>("screen_lumina_options")?.isVisible = ExperimentalMobileDesign.isAvailable()
-    }
-
-    private fun bindExperimentalDesignPreference() {
-        findPreference<androidx.preference.SwitchPreference>("EXPERIMENTAL_NEW_APP_DESIGN")?.apply {
-            val available = ExperimentalMobileDesign.isAvailable()
-            isEnabled = available
-            // Mirrors the effective shell — stays off while a Kids profile clamps Lumina.
-            isChecked = ExperimentalMobileDesign.enabled()
-            summary = ExperimentalMobileDesign.summary(requireContext())
-            setOnPreferenceChangeListener { _, newValue ->
-                if (!available) return@setOnPreferenceChangeListener false
-                UserPreferences.experimentalNewAppDesign = newValue as Boolean
-                requireActivity().apply {
-                    finish()
-                    startActivity(Intent(this, MainTvActivity::class.java))
-                }
-                true
-            }
-        }
-        // Locked looks do not apply while the Lumina shell owns the activities.
-        findPreference<Preference>("SELECTED_THEME")?.isEnabled = !ExperimentalMobileDesign.enabled()
-    }
-
-    private fun bindLuminaOptions() {
-        val luminaOn = ExperimentalMobileDesign.enabled()
-        findPreference<Preference>("screen_lumina_options")?.isVisible =
-            ExperimentalMobileDesign.isAvailable() && luminaOn
-
-        fun restartShell() {
-            requireActivity().apply {
-                finish()
-                startActivity(Intent(this, MainTvActivity::class.java))
-            }
-        }
-
-        (findPreference("EXPERIMENTAL_LUMINA_ACCENT") as? androidx.preference.ListPreference)?.apply {
-            value = UserPreferences.experimentalLuminaAccent
-            setSummaryProviderOnce(androidx.preference.ListPreference.SimpleSummaryProvider.getInstance())
-            isEnabled = luminaOn
-            setOnPreferenceChangeListener { _, newValue ->
-                UserPreferences.experimentalLuminaAccent = newValue.toString()
-                restartShell()
-                true
-            }
-        }
-        listOf(
-            "EXPERIMENTAL_LUMINA_PURE_BLACK" to { v: Boolean -> UserPreferences.experimentalLuminaPureBlack = v },
-            "EXPERIMENTAL_LUMINA_DYNAMIC_COLORS" to { v: Boolean -> UserPreferences.experimentalLuminaDynamicColors = v },
-            "EXPERIMENTAL_LUMINA_NAV_AUTO_HIDE" to { v: Boolean -> UserPreferences.experimentalLuminaNavAutoHide = v },
-            "EXPERIMENTAL_LUMINA_HERO_PARALLAX" to { v: Boolean -> UserPreferences.experimentalLuminaHeroParallax = v },
-            "EXPERIMENTAL_LUMINA_REDUCED_GLASS" to { v: Boolean -> UserPreferences.experimentalLuminaReducedGlass = v },
-        ).forEach { (key, setter) ->
-            findPreference<androidx.preference.SwitchPreference>(key)?.apply {
-                isChecked = when (key) {
-                    "EXPERIMENTAL_LUMINA_PURE_BLACK" -> UserPreferences.experimentalLuminaPureBlack
-                    "EXPERIMENTAL_LUMINA_DYNAMIC_COLORS" -> UserPreferences.experimentalLuminaDynamicColors
-                    "EXPERIMENTAL_LUMINA_NAV_AUTO_HIDE" -> UserPreferences.experimentalLuminaNavAutoHide
-                    "EXPERIMENTAL_LUMINA_HERO_PARALLAX" -> UserPreferences.experimentalLuminaHeroParallax
-                    else -> UserPreferences.experimentalLuminaReducedGlass
-                }
-                isEnabled = luminaOn
-                // Pure black and reduced glass remap the TV theme — restart like mobile.
-                val restartsShell = key == "EXPERIMENTAL_LUMINA_PURE_BLACK" ||
-                    key == "EXPERIMENTAL_LUMINA_REDUCED_GLASS"
-                setOnPreferenceChangeListener { _, newValue ->
-                    setter(newValue as Boolean)
-                    if (restartsShell) restartShell()
-                    true
-                }
-            }
-        }
+        // Lumina shell removed — Dark is the only look.
     }
 
     /** Hide Cast toggles on Fire OS / no-GMS where CastContext is unavailable. */
@@ -3058,6 +2919,18 @@ class SettingsTvFragment : LeanbackPreferenceFragmentCompat() {
             }
             setOnPreferenceChangeListener { _, newValue ->
                 UserPreferences.cinemaAmbientLightHints = newValue as Boolean
+                true
+            }
+        }
+        (findPreference("CINEMA_AMBIENT_IDLE_MS") as? androidx.preference.ListPreference)?.apply {
+            val cinemaOn = UserPreferences.cinemaRoomEnabled
+            isEnabled = cinemaOn && !energyOn && UserPreferences.tvAmbientModeEnabled
+            value = UserPreferences.cinemaAmbientIdleMs.toString()
+            setSummaryProviderOnce(androidx.preference.ListPreference.SimpleSummaryProvider.getInstance())
+            setOnPreferenceChangeListener { _, newValue ->
+                (newValue as? String)?.toLongOrNull()?.let {
+                    UserPreferences.cinemaAmbientIdleMs = it
+                }
                 true
             }
         }

@@ -310,9 +310,6 @@
         <action
             android:id="@+id/action_settings_to_support"
             app:destination="@id/support" />
-        <action
-            android:id="@+id/action_settings_to_support_preview"
-            app:destination="@id/support_preview" />
     </fragment>
     <fragment
         android:id="@+id/settings_about"
@@ -332,11 +329,6 @@
         android:name="com.dskja.betterstreamflix.fragments.support.SupportDetailsMobileFragment"
         android:label="fragment_support_details_mobile"
         tools:layout="@layout/fragment_support_details_mobile" />
-    <fragment
-        android:id="@+id/support_preview"
-        android:name="com.dskja.betterstreamflix.fragments.support.SupportPreviewMobileFragment"
-        android:label="fragment_support_preview_mobile"
-        tools:layout="@layout/fragment_support_preview_mobile" />
     <action
         android:id="@+id/action_global_support"
         app:destination="@id/support" />

@@ -19,10 +19,7 @@ import com.google.android.material.dialog.MaterialAlertDialogBuilder
 object ExpDialogChrome {
 
     fun themedContext(context: Context): Context {
-        val baseTheme = when {
-            ExperimentalMobileDesign.enabled() -> ExperimentalMobileDesign.themeRes()
-            else -> R.style.AppTheme_Mobile
-        }
+        val baseTheme = ThemeManager.mobileThemeRes(UserPreferences.selectedTheme)
         return ContextThemeWrapper(context, baseTheme)
     }
 

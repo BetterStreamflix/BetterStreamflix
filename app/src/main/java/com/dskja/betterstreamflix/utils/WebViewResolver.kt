@@ -525,11 +525,7 @@ class WebViewResolver(private val context: Context) {
                     }
                 }
 
-                val challengeTheme = if (ExperimentalMobileDesign.enabled()) {
-                    ExperimentalMobileDesign.themeRes()
-                } else {
-                    android.R.style.Theme_DeviceDefault_NoActionBar_Fullscreen
-                }
+                val challengeTheme = android.R.style.Theme_DeviceDefault_NoActionBar_Fullscreen
                 dialog = AlertDialog.Builder(uiContext, challengeTheme)
                     .setView(rootContainer)
                     .setCancelable(true)

@@ -1,15 +1,27 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Looks Locked: Cinema-Ink Dark / Light / Kids only — no half-mix palettes. -->
+    <!-- Single locked look: Dark. -->
     <string-array name="theme_names">
-        <item>@string/theme_cinema_ink</item>
-        <item>@string/theme_cinema_ink_light</item>
-        <item>@string/theme_kids_bright</item>
+        <item>@string/theme_dark</item>
     </string-array>
     <string-array name="theme_values">
         <item>cinema_ink</item>
-        <item>cinema_ink_light</item>
-        <item>kids_bright</item>
+    </string-array>
+
+    <!-- Cinema Room → Ambient start delay. -->
+    <string-array name="cinema_room_idle_names">
+        <item>@string/cinema_room_idle_30</item>
+        <item>@string/cinema_room_idle_60</item>
+        <item>@string/cinema_room_idle_90</item>
+        <item>@string/cinema_room_idle_120</item>
+        <item>@string/cinema_room_idle_300</item>
+    </string-array>
+    <string-array name="cinema_room_idle_values">
+        <item>30000</item>
+        <item>60000</item>
+        <item>90000</item>
+        <item>120000</item>
+        <item>300000</item>
     </string-array>
 
     <!-- TV Leanback poster density (Appearance → Leanback density). -->
@@ -295,19 +307,6 @@
         <item>PUBLIC_MOVIES</item>
         <item>REMOVABLE</item>
         <item>CUSTOM_FOLDER</item>
-    </string-array>
-
-    <string-array name="lumina_accent_names">
-        <item>@string/exp_accent_crimson</item>
-        <item>@string/exp_accent_ember</item>
-        <item>@string/exp_accent_aurora</item>
-        <item>@string/exp_accent_slate</item>
-    </string-array>
-    <string-array name="lumina_accent_values">
-        <item>crimson</item>
-        <item>ember</item>
-        <item>aurora</item>
-        <item>slate</item>
     </string-array>
 
     <string-array name="profile_avatar_names">

@@ -895,43 +895,17 @@ object UserPreferences {
         get() = Key.CODEC_SOFTWARE_FORCED_OFF.getBoolean() ?: false
         set(value) = Key.CODEC_SOFTWARE_FORCED_OFF.setBoolean(value)
 
-    /** Off-by-default complete mobile shell redesign. Requires activity restart. */
+    /** Retired Lumina shell flag — always off; key kept so stale prefs stay inert. */
     var experimentalNewAppDesign: Boolean
-        get() = Key.EXPERIMENTAL_NEW_APP_DESIGN.getBoolean() ?: false
-        set(value) = Key.EXPERIMENTAL_NEW_APP_DESIGN.setBoolean(value)
+        get() = false
+        set(@Suppress("UNUSED_PARAMETER") value) = Unit
 
     /**
-     * Opt-in React/Vite home shell (DEBUG + Lumina only). Default off so the native
-     * Featured ViewPager carousel stays active.
+     * Opt-in React/Vite home shell — retired with the Lumina shell. Always off.
      */
     var experimentalReactHome: Boolean
-        get() = Key.EXPERIMENTAL_REACT_HOME.getBoolean() ?: false
-        set(value) = Key.EXPERIMENTAL_REACT_HOME.setBoolean(value)
-
-    /** Lumina accent palette: crimson | ember | aurora | slate */
-    var experimentalLuminaAccent: String
-        get() = Key.EXPERIMENTAL_LUMINA_ACCENT.getString() ?: "crimson"
-        set(value) = Key.EXPERIMENTAL_LUMINA_ACCENT.setString(value)
-
-    var experimentalLuminaPureBlack: Boolean
-        get() = Key.EXPERIMENTAL_LUMINA_PURE_BLACK.getBoolean() ?: false
-        set(value) = Key.EXPERIMENTAL_LUMINA_PURE_BLACK.setBoolean(value)
-
-    var experimentalLuminaDynamicColors: Boolean
-        get() = Key.EXPERIMENTAL_LUMINA_DYNAMIC_COLORS.getBoolean() ?: false
-        set(value) = Key.EXPERIMENTAL_LUMINA_DYNAMIC_COLORS.setBoolean(value)
-
-    var experimentalLuminaNavAutoHide: Boolean
-        get() = Key.EXPERIMENTAL_LUMINA_NAV_AUTO_HIDE.getBoolean() ?: true
-        set(value) = Key.EXPERIMENTAL_LUMINA_NAV_AUTO_HIDE.setBoolean(value)
-
-    var experimentalLuminaHeroParallax: Boolean
-        get() = Key.EXPERIMENTAL_LUMINA_HERO_PARALLAX.getBoolean() ?: true
-        set(value) = Key.EXPERIMENTAL_LUMINA_HERO_PARALLAX.setBoolean(value)
-
-    var experimentalLuminaReducedGlass: Boolean
-        get() = Key.EXPERIMENTAL_LUMINA_REDUCED_GLASS.getBoolean() ?: false
-        set(value) = Key.EXPERIMENTAL_LUMINA_REDUCED_GLASS.setBoolean(value)
+        get() = false
+        set(@Suppress("UNUSED_PARAMETER") value) = Unit
 
     /**
      * When true, the startup support presentation is never shown.
@@ -1159,12 +1133,10 @@ object UserPreferences {
             }
         }
 
-    /** Master toggle for TMDb title logos (still requires [enableTmdb]). */
+    /** TMDb title logos are mandatory — always on (still requires [enableTmdb]). */
     var enableTmdbLogos: Boolean
-        get() = Key.ENABLE_TMDB_LOGOS.getBoolean() ?: true
-        set(value) {
-            Key.ENABLE_TMDB_LOGOS.setBoolean(value)
-        }
+        get() = true
+        set(@Suppress("UNUSED_PARAMETER") value) = Unit
 
     /** `original_first` (default) or `w1280_first`. */
     var tmdbLogoQuality: String
@@ -1231,6 +1203,16 @@ object UserPreferences {
         get() = profileScopedBoolean(Key.TV_AMBIENT_MODE) ?: true
         set(value) {
             setProfileScopedBoolean(Key.TV_AMBIENT_MODE, value)
+        }
+
+    /**
+     * How long TV Home must sit idle before the Ambient canvas enters.
+     * Profile-scoped; default 90s. Values: 30s / 60s / 90s / 2min / 5min.
+     */
+    var cinemaAmbientIdleMs: Long
+        get() = profileScopedLong(Key.CINEMA_AMBIENT_IDLE_MS) ?: 90_000L
+        set(value) {
+            setProfileScopedLong(Key.CINEMA_AMBIENT_IDLE_MS, value.coerceIn(15_000L, 900_000L))
         }
 
     /**
@@ -2247,6 +2229,7 @@ object UserPreferences {
         SHOW_CONTINUE_WATCHING,
         CINEMA_ROOM,
         CINEMA_AMBIENT_LIGHT,
+        CINEMA_AMBIENT_IDLE_MS,
         TV_AMBIENT_MODE,
         LIVE_COMMAND_MODE,
         SHOW_RECENTLY_WATCHED,
