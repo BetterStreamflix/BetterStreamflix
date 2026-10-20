@@ -3177,7 +3177,7 @@ class PlayerMobileFragment : Fragment(),
         if (useExp) ExpMotion.enterScreen(root)
         val title = android.widget.TextView(requireContext()).apply {
             text = getString(R.string.player_live_channel_guide)
-            if (useExp) setTextAppearance(R.style.TextAppearance_Lumina_Title)
+            if (useExp) setTextAppearance(R.style.TextAppearance_CinemaInk_Title)
             else setTextAppearance(com.google.android.material.R.style.TextAppearance_Material3_TitleLarge)
             setPadding(0, 0, 0, 8.dp(requireContext()))
         }
@@ -3215,7 +3215,7 @@ class PlayerMobileFragment : Fragment(),
                         if (!subtitle.isNullOrBlank()) append('\n').append(subtitle)
                     }
                     if (useExp) {
-                        setTextAppearance(R.style.TextAppearance_Lumina_Body)
+                        setTextAppearance(R.style.TextAppearance_CinemaInk_Body)
                         setBackgroundResource(ExperimentalMobileDesign.optionItemBackground())
                     }
                     setPadding(14.dp(requireContext()), 12.dp(requireContext()), 14.dp(requireContext()), 12.dp(requireContext()))
@@ -3258,7 +3258,7 @@ class PlayerMobileFragment : Fragment(),
                     append(getString(R.string.player_live_channel_meta, index + 1, channel.name))
                     if (!subtitle.isNullOrBlank()) append('\n').append(subtitle)
                 }
-                if (useExp) setTextAppearance(R.style.TextAppearance_Lumina_Body)
+                if (useExp) setTextAppearance(R.style.TextAppearance_CinemaInk_Body)
                 if (rowBg != 0) setBackgroundResource(rowBg)
                 setPadding(14.dp(requireContext()), 12.dp(requireContext()), 14.dp(requireContext()), 12.dp(requireContext()))
                 isClickable = true
@@ -3324,12 +3324,12 @@ class PlayerMobileFragment : Fragment(),
         ExperimentalMobileDesign.applyReducedGlass(emptyRoot)
         val emptyTitle = android.widget.TextView(requireContext()).apply {
             text = getString(R.string.player_live_channel_guide)
-            setTextAppearance(R.style.TextAppearance_Lumina_Title)
+            setTextAppearance(R.style.TextAppearance_CinemaInk_Title)
             setPadding(0, 12.dp(requireContext()), 0, 0)
         }
         val emptyBody = android.widget.TextView(requireContext()).apply {
             text = getString(R.string.player_live_no_more_channels)
-            setTextAppearance(R.style.TextAppearance_Lumina_Body)
+            setTextAppearance(R.style.TextAppearance_CinemaInk_Body)
             setPadding(0, 12.dp(requireContext()), 0, 16.dp(requireContext()))
         }
         emptyRoot.addView(emptyTitle)
@@ -3451,7 +3451,7 @@ class PlayerMobileFragment : Fragment(),
             tag = "exp_live_cue"
             text = message
             gravity = android.view.Gravity.CENTER
-            setTextAppearance(R.style.TextAppearance_Lumina_Caption)
+            setTextAppearance(R.style.TextAppearance_CinemaInk_Caption)
             setBackgroundResource(
                 if (ExperimentalMobileDesign.enabled()) {
                     ExperimentalMobileDesign.metaPillBackground()

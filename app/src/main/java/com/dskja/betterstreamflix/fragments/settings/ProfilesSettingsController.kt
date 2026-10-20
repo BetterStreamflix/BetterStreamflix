@@ -60,7 +60,7 @@ object ProfilesSettingsController {
         if (ExperimentalMobileDesign.enabled()) {
             input.setBackgroundResource(ExperimentalMobileDesign.searchFieldBackground())
             input.setPadding(pad, pad, pad, pad)
-            input.setTextAppearance(R.style.TextAppearance_Lumina_Body)
+            input.setTextAppearance(R.style.TextAppearance_CinemaInk_Body)
         } else {
             input.setPadding(pad, pad / 2, pad, pad / 2)
         }

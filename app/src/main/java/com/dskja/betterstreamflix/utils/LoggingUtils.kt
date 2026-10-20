@@ -68,7 +68,7 @@ object LoggingUtils {
             val body = TextView(context).apply {
                 text = logContent
                 setTextIsSelectable(true)
-                setTextAppearance(R.style.TextAppearance_Lumina_Caption)
+                setTextAppearance(R.style.TextAppearance_CinemaInk_Caption)
                 setPadding(48, 24, 48, 24)
                 setBackgroundResource(ExperimentalMobileDesign.glassCardBackground())
             }

@@ -132,7 +132,7 @@ object GuardaFlixAuthSettingsController {
             if (exp) {
                 setBackgroundResource(ExperimentalMobileDesign.searchFieldBackground())
                 setPadding(padding, padding, padding, padding)
-                setTextAppearance(R.style.TextAppearance_Lumina_Body)
+                setTextAppearance(R.style.TextAppearance_CinemaInk_Body)
             }
             block()
         }

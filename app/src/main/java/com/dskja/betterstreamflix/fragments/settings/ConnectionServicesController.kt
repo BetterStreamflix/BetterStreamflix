@@ -89,7 +89,7 @@ object ConnectionServicesController {
                     val pad = (20 * context.resources.displayMetrics.density).toInt()
                     editText.setBackgroundResource(ExperimentalMobileDesign.searchFieldBackground())
                     editText.setPadding(pad, pad, pad, pad)
-                    editText.setTextAppearance(R.style.TextAppearance_Lumina_Body)
+                    editText.setTextAppearance(R.style.TextAppearance_CinemaInk_Body)
                 }
             }
             edit.setOnPreferenceChangeListener { preference, newValue ->
@@ -123,7 +123,7 @@ object ConnectionServicesController {
                     val pad = (20 * context.resources.displayMetrics.density).toInt()
                     editText.setBackgroundResource(ExperimentalMobileDesign.searchFieldBackground())
                     editText.setPadding(pad, pad, pad, pad)
-                    editText.setTextAppearance(R.style.TextAppearance_Lumina_Body)
+                    editText.setTextAppearance(R.style.TextAppearance_CinemaInk_Body)
                 }
             }
             edit.setOnPreferenceChangeListener { preference, newValue ->

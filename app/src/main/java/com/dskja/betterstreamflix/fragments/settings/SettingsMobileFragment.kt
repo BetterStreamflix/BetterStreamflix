@@ -1093,7 +1093,7 @@ class SettingsMobileFragment : PreferenceFragmentCompat() {
                             val pad = (20 * resources.displayMetrics.density).toInt()
                             editText.setBackgroundResource(ExperimentalMobileDesign.searchFieldBackground())
                             editText.setPadding(pad, pad, pad, pad)
-                            editText.setTextAppearance(R.style.TextAppearance_Lumina_Body)
+                            editText.setTextAppearance(R.style.TextAppearance_CinemaInk_Body)
                         }
                     }
                     setOnPreferenceChangeListener { _, newValue ->
@@ -1134,7 +1134,7 @@ class SettingsMobileFragment : PreferenceFragmentCompat() {
                             val pad = (20 * resources.displayMetrics.density).toInt()
                             editText.setBackgroundResource(ExperimentalMobileDesign.searchFieldBackground())
                             editText.setPadding(pad, pad, pad, pad)
-                            editText.setTextAppearance(R.style.TextAppearance_Lumina_Body)
+                            editText.setTextAppearance(R.style.TextAppearance_CinemaInk_Body)
                         }
                     }
                     setOnPreferenceChangeListener { _, newValue ->
@@ -1489,7 +1489,7 @@ class SettingsMobileFragment : PreferenceFragmentCompat() {
                 if (ExperimentalMobileDesign.enabled()) {
                     setBackgroundResource(ExperimentalMobileDesign.searchFieldBackground())
                     setPadding(48, 36, 48, 36)
-                    setTextAppearance(R.style.TextAppearance_Lumina_Body)
+                    setTextAppearance(R.style.TextAppearance_CinemaInk_Body)
                 } else {
                     setPadding(48, 32, 48, 32)
                 }
@@ -2221,7 +2221,7 @@ class SettingsMobileFragment : PreferenceFragmentCompat() {
             if (ExperimentalMobileDesign.enabled()) {
                 setBackgroundResource(ExperimentalMobileDesign.searchFieldBackground())
                 setPadding(48, 36, 48, 36)
-                setTextAppearance(R.style.TextAppearance_Lumina_Body)
+                setTextAppearance(R.style.TextAppearance_CinemaInk_Body)
             }
         }
 
@@ -2301,7 +2301,7 @@ class SettingsMobileFragment : PreferenceFragmentCompat() {
             if (ExperimentalMobileDesign.enabled()) {
                 setBackgroundResource(ExperimentalMobileDesign.searchFieldBackground())
                 setPadding(48, 36, 48, 36)
-                setTextAppearance(R.style.TextAppearance_Lumina_Body)
+                setTextAppearance(R.style.TextAppearance_CinemaInk_Body)
             }
         }
 

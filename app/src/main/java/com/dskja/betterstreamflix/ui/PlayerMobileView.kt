@@ -146,7 +146,7 @@ class PlayerMobileView @JvmOverloads constructor(
             tag = "exp_zoom_cue"
             text = message
             gravity = android.view.Gravity.CENTER
-            setTextAppearance(R.style.TextAppearance_Lumina_Caption)
+            setTextAppearance(R.style.TextAppearance_CinemaInk_Caption)
             setBackgroundResource(
                 com.dskja.betterstreamflix.utils.ExperimentalMobileDesign.metaPillBackground(),
             )

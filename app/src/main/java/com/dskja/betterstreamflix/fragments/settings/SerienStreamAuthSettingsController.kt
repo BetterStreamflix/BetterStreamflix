@@ -242,7 +242,7 @@ object SerienStreamAuthSettingsController {
             if (exp) {
                 setBackgroundResource(ExperimentalMobileDesign.searchFieldBackground())
                 setPadding(padding, padding, padding, padding)
-                setTextAppearance(R.style.TextAppearance_Lumina_Body)
+                setTextAppearance(R.style.TextAppearance_CinemaInk_Body)
             }
             block()
         }
@@ -432,7 +432,7 @@ object SerienStreamAuthSettingsController {
             if (ExperimentalMobileDesign.enabled()) {
                 setBackgroundResource(ExperimentalMobileDesign.searchFieldBackground())
                 setPadding(padding, padding, padding, padding)
-                setTextAppearance(R.style.TextAppearance_Lumina_Body)
+                setTextAppearance(R.style.TextAppearance_CinemaInk_Body)
                 with(com.dskja.betterstreamflix.utils.ExpPressEffects) { applyExpPress() }
             }
         }

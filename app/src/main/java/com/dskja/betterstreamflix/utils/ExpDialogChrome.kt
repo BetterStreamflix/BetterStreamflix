@@ -132,7 +132,7 @@ object ExpDialogChrome {
         val body = TextView(themed).apply {
             text = message
             setTextIsSelectable(true)
-            setTextAppearance(R.style.TextAppearance_Lumina_Body)
+            setTextAppearance(R.style.TextAppearance_CinemaInk_Body)
             setPadding(
                 (16 * density).toInt(),
                 (14 * density).toInt(),

@@ -247,7 +247,7 @@ object CloudAccountSettingsController {
             if (exp) {
                 setBackgroundResource(ExperimentalMobileDesign.searchFieldBackground())
                 setPadding(padding, padding, padding, padding)
-                setTextAppearance(R.style.TextAppearance_Lumina_Body)
+                setTextAppearance(R.style.TextAppearance_CinemaInk_Body)
             }
         }
         val password = EditText(context).apply {
@@ -258,7 +258,7 @@ object CloudAccountSettingsController {
             if (exp) {
                 setBackgroundResource(ExperimentalMobileDesign.searchFieldBackground())
                 setPadding(padding, padding, padding, padding)
-                setTextAppearance(R.style.TextAppearance_Lumina_Body)
+                setTextAppearance(R.style.TextAppearance_CinemaInk_Body)
             }
         }
         val glass = if (exp) {
@@ -354,7 +354,7 @@ object CloudAccountSettingsController {
         val message = TextView(context).apply {
             setText(R.string.cloud_sync_progress_connecting)
             if (ExperimentalMobileDesign.enabled()) {
-                setTextAppearance(R.style.TextAppearance_Lumina_Body)
+                setTextAppearance(R.style.TextAppearance_CinemaInk_Body)
             }
         }
         val row = LinearLayout(context).apply {
