@@ -171,10 +171,14 @@ class DownloadRepository private constructor(
 
             val requestBuilder = DownloadRequest.Builder(media3Id, Uri.parse(streamUrl))
                 .setMimeType(mime)
-                .setCustomCacheKey(media3Id)
                 .setData(title.toByteArray(Charsets.UTF_8))
             if (streamKeys.isNotEmpty()) {
                 requestBuilder.setStreamKeys(streamKeys)
+            }
+            // Media3 throws "customCacheKey must be null for type: N" when the
+            // inferred type is adaptive (HLS/DASH/SS) — only set it for progressive.
+            if (isProgressiveRequest(streamUrl)) {
+                requestBuilder.setCustomCacheKey(media3Id)
             }
             val request = requestBuilder.build()
 
@@ -392,6 +396,16 @@ class DownloadRepository private constructor(
         )
     }
 
+    /** Mirrors Media3's DownloadRequest type inference: only progressive URLs may carry a customCacheKey. */
+    private fun isProgressiveRequest(url: String): Boolean {
+        val last = url.lowercase()
+            .substringBefore('?').substringBefore('#')
+            .substringAfterLast('/')
+        return !(last.endsWith(".m3u8") || last.endsWith(".mpd") ||
+            last.endsWith(".ism") || last.endsWith(".isml") ||
+            last.endsWith("manifest"))
+    }
+
     private fun isAdaptiveMimeOrUrl(mime: String, url: String): Boolean {
         val m = mime.lowercase()
         val u = url.lowercase()
@@ -438,11 +452,13 @@ class DownloadRepository private constructor(
                 }
             val requestBuilder = DownloadRequest.Builder(item.media3Id, Uri.parse(item.streamUrl))
                 .setMimeType(mime)
-                .setCustomCacheKey(item.media3Id)
                 .setData(item.title.toByteArray(Charsets.UTF_8))
             val streamKeys = deserializeStreamKeys(item.streamKeysJson)
             if (streamKeys.isNotEmpty()) {
                 requestBuilder.setStreamKeys(streamKeys)
+            }
+            if (isProgressiveRequest(item.streamUrl)) {
+                requestBuilder.setCustomCacheKey(item.media3Id)
             }
             requestBuilder.build()
         }
