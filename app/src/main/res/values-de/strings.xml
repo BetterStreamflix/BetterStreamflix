@@ -1000,6 +1000,12 @@
     <string name="profile_pin_saved">Profil-PIN gespeichert</string>
     <string name="profile_pin_enter">PIN für %1$s eingeben</string>
     <string name="profile_pin_invalid">Falsche PIN</string>
+    <string name="profile_pin_forgot">PIN vergessen?</string>
+    <string name="profile_pin_recovery_title">Profil-PIN zurücksetzen</string>
+    <string name="profile_pin_recovery_message">Gib die Haushalts- oder Admin-PIN ein, um die Sperre von %1$s zu entfernen.</string>
+    <string name="profile_pin_recovery_success">PIN entfernt – willkommen zurück, %1$s</string>
+    <string name="profile_pin_recovery_invalid">Diese Wiederherstellungs-PIN ist nicht korrekt.</string>
+    <string name="profile_pin_recovery_unavailable">Noch keine Wiederherstellungs-PIN gesetzt. Melde dich mit einem entsperrten Profil an und lege in Einstellungen → Jugendschutz eine Haushalts- oder Admin-PIN fest, um die Wiederherstellung zu aktivieren.</string>
     <string name="profile_integration_trakt">Trakt</string>
     <string name="profile_integration_jellyfin">Jellyfin</string>
     <string name="profile_integration_plex">Plex</string>
@@ -1728,7 +1734,7 @@
     <string name="settings_parental_pin_not_set">PIN nicht festgelegt</string>
     <string name="settings_parental_pin_set">PIN festgelegt</string>
     <string name="settings_parental_admin_pin_title">Admin-PIN</string>
-    <string name="settings_parental_admin_pin_summary">Wiederherstellungs-PIN zum Entsperren nach zu vielen falschen Versuchen</string>
+    <string name="settings_parental_admin_pin_summary">Letzte Instanz: entsperrt die Kindersicherung nach zu vielen Fehlversuchen und setzt vergessene Profil-PINs zurück</string>
     <string name="settings_parental_admin_pin_not_set">Admin-PIN nicht festgelegt</string>
     <string name="settings_parental_admin_pin_set">Admin-PIN festgelegt</string>
     <string name="settings_parental_unlock_title">Kindersicherung entsperren</string>

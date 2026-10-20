@@ -1154,6 +1154,12 @@
     <string name="profile_pin_saved">Profile PIN saved</string>
     <string name="profile_pin_enter">Enter PIN for %1$s</string>
     <string name="profile_pin_invalid">Incorrect PIN</string>
+    <string name="profile_pin_forgot">Forgot PIN?</string>
+    <string name="profile_pin_recovery_title">Reset profile PIN</string>
+    <string name="profile_pin_recovery_message">Enter the household or admin PIN to remove the lock on %1$s.</string>
+    <string name="profile_pin_recovery_success">PIN removed — welcome back, %1$s</string>
+    <string name="profile_pin_recovery_invalid">That recovery PIN is not correct.</string>
+    <string name="profile_pin_recovery_unavailable">No recovery PIN is set yet. Sign in with an unlocked profile and create a household or admin PIN in Settings → Parental controls to enable recovery.</string>
     <string name="profile_integration_trakt">Trakt</string>
     <string name="profile_integration_jellyfin">Jellyfin</string>
     <string name="profile_integration_plex">Plex</string>
@@ -2134,7 +2140,7 @@
     <string name="settings_parental_pin_not_set">PIN not set</string>
     <string name="settings_parental_pin_set">PIN set</string>
     <string name="settings_parental_admin_pin_title">Admin PIN</string>
-    <string name="settings_parental_admin_pin_summary">Recovery PIN to unlock parental controls after too many failed attempts</string>
+    <string name="settings_parental_admin_pin_summary">Last-resort PIN: unlocks parental controls after too many failed attempts and resets a forgotten profile PIN</string>
     <string name="settings_parental_admin_pin_not_set">Admin PIN not set</string>
     <string name="settings_parental_admin_pin_set">Admin PIN set</string>
     <string name="settings_parental_unlock_title">Unlock parental controls</string>

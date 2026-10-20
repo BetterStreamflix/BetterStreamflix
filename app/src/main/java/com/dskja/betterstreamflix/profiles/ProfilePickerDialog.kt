@@ -874,6 +874,13 @@ class ProfilePickerDialog : DialogFragment() {
         ).setView(view).create()
         dialog.window?.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
 
+        view.findViewById<TextView>(R.id.btn_profile_pin_forgot)?.apply {
+            visibility = android.view.View.VISIBLE
+            setOnClickListener {
+                ExpMotion.hapticTap(it)
+                showPinRecoveryDialog(profile, dialog, onVerified)
+            }
+        }
         view.findViewById<TextView>(R.id.btn_profile_pin_cancel).setOnClickListener {
             ExpMotion.hapticTap(it)
             dialog.dismiss()
@@ -911,6 +918,90 @@ class ProfilePickerDialog : DialogFragment() {
                     view.findViewById(R.id.v_profile_pin_rule),
                 )
                 ExpMotion.pulseAccentRule(view.findViewById(R.id.v_profile_pin_rule))
+            }
+        }
+        dialog.show()
+        input.requestFocus()
+    }
+
+    /**
+     * Forgot-PIN path: the household parental PIN or the admin recovery PIN
+     * removes a forgotten profile PIN and unlocks the profile.
+     */
+    private fun showPinRecoveryDialog(
+        profile: UserProfile,
+        pinDialog: androidx.appcompat.app.AlertDialog,
+        onVerified: () -> Unit,
+    ) {
+        val context = requireContext()
+        val hasRecovery = UserPreferences.parentalControlPin.isNotBlank() ||
+            UserPreferences.parentalControlAdminPin.isNotBlank()
+        if (!hasRecovery) {
+            ExpDialogChrome.notify(
+                context,
+                getString(R.string.profile_pin_recovery_unavailable),
+                R.string.profile_pin_forgot,
+            )
+            return
+        }
+        val view = LayoutInflater.from(context).inflate(R.layout.dialog_profile_pin, null, false)
+        view.findViewById<ProfileAvatarView>(R.id.pav_profile_pin_avatar)
+            .bind(profile, textSizeSp = 22f)
+        val title = view.findViewById<TextView>(R.id.tv_profile_pin_title)
+        title.text = getString(R.string.profile_pin_recovery_title)
+        // Explanatory line under the title — the shared PIN layout has no
+        // dedicated message slot.
+        val explanation = TextView(context).apply {
+            text = getString(R.string.profile_pin_recovery_message, profile.displayName)
+            gravity = android.view.Gravity.CENTER
+            setTextColor(androidx.core.content.ContextCompat.getColor(context, R.color.profile_text_secondary))
+            textSize = 13f
+        }
+        (title.parent as? android.widget.LinearLayout)?.let { parent ->
+            val idx = parent.indexOfChild(title) + 1
+            val lp = android.widget.LinearLayout.LayoutParams(
+                android.widget.LinearLayout.LayoutParams.MATCH_PARENT,
+                android.widget.LinearLayout.LayoutParams.WRAP_CONTENT,
+            )
+            lp.topMargin = (8 * resources.displayMetrics.density).toInt()
+            parent.addView(explanation, idx, lp)
+        }
+        val input = view.findViewById<EditText>(R.id.et_profile_pin)
+        input.hint = getString(R.string.settings_parental_pin_hint)
+
+        val dialog = (
+            if (ExperimentalMobileDesign.enabled()) MaterialAlertDialogBuilder(context)
+            else AlertDialog.Builder(context)
+        ).setView(view).create()
+        dialog.window?.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
+
+        view.findViewById<TextView>(R.id.btn_profile_pin_cancel).setOnClickListener {
+            ExpMotion.hapticTap(it)
+            dialog.dismiss()
+        }
+        view.findViewById<TextView>(R.id.btn_profile_pin_ok).setOnClickListener {
+            ExpMotion.hapticTap(it)
+            val pin = input.text?.toString()?.trim().orEmpty()
+            val ok = UserPreferences.verifyParentalControlPin(pin) ||
+                UserPreferences.verifyParentalControlAdminPin(pin)
+            if (ok) {
+                UserPreferences.registerParentalPinSuccess()
+                ProfileManager.clearPin(profile.id)
+                dialog.dismiss()
+                pinDialog.dismiss()
+                ExpDialogChrome.notify(
+                    context,
+                    getString(R.string.profile_pin_recovery_success, profile.displayName),
+                    R.string.profile_pin_recovery_title,
+                )
+                onVerified()
+            } else {
+                UserPreferences.registerParentalPinFailure()
+                ExpDialogChrome.notify(
+                    context,
+                    R.string.profile_pin_recovery_invalid,
+                    R.string.profile_pin_recovery_title,
+                )
             }
         }
         dialog.show()

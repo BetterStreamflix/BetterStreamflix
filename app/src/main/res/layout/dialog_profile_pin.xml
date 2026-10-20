@@ -56,6 +56,27 @@
         android:textColorHint="@color/profile_text_tertiary"
         android:textSize="18sp" />
 
+    <TextView
+        android:id="@+id/btn_profile_pin_forgot"
+        android:layout_width="wrap_content"
+        android:layout_height="40dp"
+        android:layout_gravity="center_horizontal"
+        android:layout_marginTop="10dp"
+        android:background="?android:attr/selectableItemBackgroundBorderless"
+        android:clickable="true"
+        android:focusable="true"
+        android:gravity="center"
+        android:nextFocusUp="@id/et_profile_pin"
+        android:paddingStart="16dp"
+        android:paddingEnd="16dp"
+        android:text="@string/profile_pin_forgot"
+        android:textAppearance="@style/TextAppearance.Lumina.Caption"
+        android:textColor="@color/profile_accent"
+        android:textSize="13sp"
+        android:textStyle="bold"
+        android:visibility="gone"
+        tools:visibility="visible" />
+
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
