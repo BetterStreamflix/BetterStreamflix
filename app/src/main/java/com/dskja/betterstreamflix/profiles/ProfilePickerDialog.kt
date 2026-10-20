@@ -1272,7 +1272,7 @@ class ProfilePickerDialog : DialogFragment() {
                 }
                 row.addView(orb)
             }
-            label.setText(ProfileAvatarStyle.paletteFor(selectedKey).titleRes)
+            label.setText(ProfileAvatarStyle.avatarFor(selectedKey).titleRes)
         }
     }
 }

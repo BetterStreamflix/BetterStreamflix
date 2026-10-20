@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <path
+        android:fillColor="#212121"
+        android:pathData="M0,0h108v108h-108z" />
+    <!-- head -->
+    <path
+        android:fillColor="#37474F"
+        android:pathData="M28,56a26,26 0 1,1 52,0a26,26 0 1,1 -52,0" />
+    <!-- face opening -->
+    <path
+        android:fillColor="#FFCC9C"
+        android:pathData="M34,48h40a4,4 0 0,1 4,4v8a4,4 0 0,1 -4,4h-40a4,4 0 0,1 -4,-4v-8a4,4 0 0,1 4,-4z" />
+    <!-- eyes -->
+    <path
+        android:fillColor="#263238"
+        android:pathData="M42,54a3.6,3.6 0 1,1 7.2,0a3.6,3.6 0 1,1 -7.2,0" />
+    <path
+        android:fillColor="#263238"
+        android:pathData="M58.8,54a3.6,3.6 0 1,1 7.2,0a3.6,3.6 0 1,1 -7.2,0" />
+    <!-- brows -->
+    <path
+        android:strokeColor="#263238"
+        android:strokeWidth="2"
+        android:strokeLineCap="round"
+        android:pathData="M41,49l9,-1.5M58,47.5l9,1.5" />
+    <!-- band tails -->
+    <path
+        android:fillColor="#37474F"
+        android:pathData="M76,50l10,-5l-2,8l-8,3z" />
+    <path
+        android:fillColor="#37474F"
+        android:pathData="M75,58l9,5l-8,3l-3,-6z" />
+</vector>

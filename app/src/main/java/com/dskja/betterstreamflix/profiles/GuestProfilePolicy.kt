@@ -12,7 +12,7 @@ package com.dskja.betterstreamflix.profiles
 object GuestProfilePolicy {
 
     const val TTL_MS: Long = 2L * 60L * 60L * 1000L
-    const val AVATAR_KEY: String = "slate"
+    const val AVATAR_KEY: String = "robot"
     const val DEFAULT_DISPLAY_NAME: String = "Guest"
 
     fun expiresAtMillis(createdAtMillis: Long): Long = createdAtMillis + TTL_MS

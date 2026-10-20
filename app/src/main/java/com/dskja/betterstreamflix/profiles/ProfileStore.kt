@@ -14,7 +14,7 @@ import org.json.JSONObject
 object ProfileStore {
 
     const val DEFAULT_PROFILE_ID = "default"
-    private const val DEFAULT_AVATAR_KEY = "crimson"
+    private const val DEFAULT_AVATAR_KEY = "popcorn"
 
     private const val PREFS = "beta_profiles"
     private const val KEY_PROFILES = "profiles_json"
@@ -32,14 +32,21 @@ object ProfileStore {
         val fromGson = runCatching {
             gson.fromJson(raw, Array<UserProfile>::class.java)?.toList().orEmpty()
         }.getOrNull()
-        if (fromGson != null) return fromGson
+        if (fromGson != null) return fromGson.map { migrateAvatarKey(it) }
         return runCatching { parseProfilesJson(raw) }.getOrDefault(emptyList())
+            .map { migrateAvatarKey(it) }
     }
 
     fun saveAll(context: Context, profiles: List<UserProfile>) {
         prefs(context).edit {
             putString(KEY_PROFILES, gson.toJson(profiles.toTypedArray()))
         }
+    }
+
+    /** Rewrites pre-illustration palette keys to the new avatar catalog. */
+    private fun migrateAvatarKey(profile: UserProfile): UserProfile {
+        val resolved = ProfileAvatarStyle.resolveKey(profile.avatarKey)
+        return if (resolved == profile.avatarKey) profile else profile.copy(avatarKey = resolved)
     }
 
     fun getActiveId(context: Context): String? =

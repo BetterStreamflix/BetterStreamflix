@@ -38,7 +38,7 @@ class ProfileHeroPreference @JvmOverloads constructor(
         holder.itemView.findViewById<TextView>(R.id.tv_profiles_settings_hero_name)?.text = name
         val meta = buildList {
             profile?.let {
-                add(context.getString(ProfileAvatarStyle.paletteFor(it.avatarKey).titleRes))
+                add(context.getString(ProfileAvatarStyle.avatarFor(it.avatarKey).titleRes))
             }
             add(context.getString(R.string.profile_picker_active))
             if (profile?.isKids == true) add(context.getString(R.string.profile_kids_badge_short))

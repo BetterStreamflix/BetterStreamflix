@@ -315,7 +315,7 @@ object ProfilesSettingsController {
 
         findPreference("PROFILE_AVATAR")?.apply {
             val key = profile?.avatarKey ?: ProfileManager.avatarKeys.first()
-            summary = context.getString(ProfileAvatarStyle.paletteFor(key).titleRes)
+            summary = context.getString(ProfileAvatarStyle.avatarFor(key).titleRes)
             val preview = context.getDrawable(R.drawable.bg_profile_avatar_preview)?.mutate()
             if (preview != null) {
                 DrawableCompat.setTint(preview, ProfileAvatarStyle.colorFor(key))
@@ -391,7 +391,7 @@ object ProfilesSettingsController {
     private fun activeSummary(context: Context, profile: UserProfile): String {
         val kids = if (profile.isKids) " · ${context.getString(R.string.profile_kids_badge_short)}" else ""
         val pin = if (profile.pinHash != null) " · ${context.getString(R.string.profile_picker_locked)}" else ""
-        val avatar = context.getString(ProfileAvatarStyle.paletteFor(profile.avatarKey).titleRes)
+        val avatar = context.getString(ProfileAvatarStyle.avatarFor(profile.avatarKey).titleRes)
         return "${profile.displayName}$kids$pin · $avatar"
     }
 
@@ -628,7 +628,7 @@ object ProfilesSettingsController {
             row.removeAllViews()
             val density = context.resources.displayMetrics.density
             preview.bind(selected, profile.displayName, textSizeSp = 22f)
-            label.setText(ProfileAvatarStyle.paletteFor(selected).titleRes)
+            label.setText(ProfileAvatarStyle.avatarFor(selected).titleRes)
             ProfileAvatarStyle.all().forEach { palette ->
                 val orb = ProfileAvatarView(context).apply {
                     layoutParams = LinearLayout.LayoutParams(
