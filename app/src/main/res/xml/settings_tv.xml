@@ -802,7 +802,7 @@
         android:summary="@string/settings_screen_downloads_summary"
         android:widgetLayout="@layout/preference_widget_chevron">
 
-        <PreferenceCategory android:title="@string/settings_screen_downloads">
+        <PreferenceCategory android:title="@string/settings_downloads_cat_storage">
 
             <ListPreference
                 android:key="DOWNLOAD_STORAGE_LOCATION"
@@ -820,12 +820,112 @@
 
             <Preference
                 android:key="DOWNLOAD_STORAGE_CLEAR_FOLDER"
-                android:title="@string/settings_download_storage_clear_folder" />
+                android:title="@string/settings_download_storage_clear_folder"
+                android:summary="@string/settings_download_storage_clear_folder_summary" />
 
             <Preference
                 android:key="DOWNLOAD_STORAGE_PATH"
                 android:title="@string/settings_download_storage_path"
                 android:selectable="false" />
+
+            <Preference
+                android:key="DOWNLOAD_STORAGE_USED"
+                android:title="@string/settings_download_storage_used"
+                android:selectable="false" />
+
+            <SeekBarPreference
+                android:key="DOWNLOAD_SOFT_LIMIT_GB"
+                android:title="@string/settings_download_soft_limit"
+                android:summary="@string/settings_download_soft_limit_summary"
+                android:defaultValue="20"
+                android:max="100"
+                app:min="0"
+                app:seekBarIncrement="5"
+                app:showSeekBarValue="true"
+                app:updatesContinuously="true" />
+        </PreferenceCategory>
+
+        <PreferenceCategory android:title="@string/settings_downloads_cat_behavior">
+
+            <SwitchPreference
+                android:key="DOWNLOAD_WIFI_ONLY"
+                android:title="@string/settings_download_wifi_only"
+                android:defaultValue="true"
+                android:summaryOn="@string/settings_download_wifi_only_summary_on"
+                android:summaryOff="@string/settings_download_wifi_only_summary_off" />
+
+            <ListPreference
+                android:key="DOWNLOAD_QUALITY_PRESET"
+                android:title="@string/settings_download_quality_preset"
+                android:summary="@string/settings_download_quality_preset_summary"
+                android:entries="@array/download_quality_preset_entries"
+                android:entryValues="@array/download_quality_preset_values"
+                android:defaultValue="ASK" />
+
+            <ListPreference
+                android:key="DOWNLOAD_MAX_CONCURRENT"
+                android:title="@string/settings_download_max_concurrent"
+                android:summary="@string/settings_download_max_concurrent_summary"
+                android:entries="@array/download_max_concurrent_entries"
+                android:entryValues="@array/download_max_concurrent_values"
+                android:defaultValue="2" />
+
+            <SwitchPreference
+                android:key="DOWNLOAD_FILTER_CURRENT_PROVIDER"
+                android:title="@string/settings_download_filter_provider"
+                android:summary="@string/settings_download_filter_provider_summary"
+                android:defaultValue="false" />
+
+            <SwitchPreference
+                android:key="DOWNLOAD_NOTIFY_COMPLETE"
+                android:title="@string/settings_download_notify_complete"
+                android:summary="@string/settings_download_notify_complete_summary"
+                android:defaultValue="true" />
+
+            <Preference
+                android:key="NOTIFICATIONS_OPEN"
+                android:title="@string/settings_screen_notifications"
+                android:summary="@string/settings_screen_notifications_summary"
+                android:widgetLayout="@layout/preference_widget_chevron" />
+
+            <Preference
+                android:key="DOWNLOAD_QUEUE_STATUS"
+                android:title="@string/settings_download_queue_status"
+                android:selectable="false" />
+        </PreferenceCategory>
+
+        <PreferenceCategory android:title="@string/settings_downloads_cat_smart">
+
+            <SwitchPreference
+                android:key="DOWNLOAD_SMART_ENABLED"
+                android:title="@string/settings_download_smart"
+                android:summary="@string/settings_download_smart_summary"
+                android:defaultValue="false" />
+
+            <ListPreference
+                android:key="DOWNLOAD_SMART_LOOKAHEAD"
+                android:title="@string/settings_download_smart_lookahead"
+                android:summary="@string/settings_download_smart_lookahead_summary"
+                android:entries="@array/download_smart_lookahead_entries"
+                android:entryValues="@array/download_smart_lookahead_values"
+                android:defaultValue="3" />
+
+            <ListPreference
+                android:key="DOWNLOAD_SMART_SERIES_QUOTA"
+                android:title="@string/settings_download_smart_series_quota"
+                android:summary="@string/settings_download_smart_series_quota_summary"
+                android:entries="@array/download_smart_series_quota_entries"
+                android:entryValues="@array/download_smart_series_quota_values"
+                android:defaultValue="3" />
+
+            <SwitchPreference
+                android:key="DOWNLOAD_AUTO_DELETE_WATCHED"
+                android:title="@string/settings_download_auto_delete_watched"
+                android:summary="@string/settings_download_auto_delete_watched_summary"
+                android:defaultValue="false" />
+        </PreferenceCategory>
+
+        <PreferenceCategory android:title="@string/settings_downloads_cat_external">
 
             <Preference
                 android:key="EXTERNAL_PLAYER_DEFAULT"
@@ -846,85 +946,9 @@
                 android:key="EXTERNAL_DOWNLOADER_CLEAR"
                 android:title="@string/settings_external_downloader_clear"
                 android:summary="@string/settings_external_downloader_none" />
+        </PreferenceCategory>
 
-            <SwitchPreference
-                android:key="DOWNLOAD_WIFI_ONLY"
-                android:title="@string/settings_download_wifi_only"
-                android:defaultValue="true"
-                android:summaryOn="@string/settings_download_wifi_only_summary_on"
-                android:summaryOff="@string/settings_download_wifi_only_summary_off" />
-
-            <ListPreference
-                android:key="DOWNLOAD_QUALITY_PRESET"
-                android:title="@string/settings_download_quality_preset"
-                android:entries="@array/download_quality_preset_entries"
-                android:entryValues="@array/download_quality_preset_values"
-                android:defaultValue="ASK" />
-
-            <ListPreference
-                android:key="DOWNLOAD_MAX_CONCURRENT"
-                android:title="@string/settings_download_max_concurrent"
-                android:entries="@array/download_max_concurrent_entries"
-                android:entryValues="@array/download_max_concurrent_values"
-                android:defaultValue="2" />
-
-            <SwitchPreference
-                android:key="DOWNLOAD_NOTIFY_COMPLETE"
-                android:title="@string/settings_download_notify_complete"
-                android:defaultValue="true" />
-
-            <Preference
-                android:key="NOTIFICATIONS_OPEN"
-                android:title="@string/settings_screen_notifications"
-                android:summary="@string/settings_screen_notifications_summary"
-                android:widgetLayout="@layout/preference_widget_chevron" />
-
-            <SwitchPreference
-                android:key="DOWNLOAD_FILTER_CURRENT_PROVIDER"
-                android:title="@string/settings_download_filter_provider"
-                android:defaultValue="false" />
-
-            <EditTextPreference
-                android:key="DOWNLOAD_SOFT_LIMIT_GB"
-                android:title="@string/settings_download_soft_limit"
-                android:defaultValue="20"
-                android:inputType="number" />
-
-            <SwitchPreference
-                android:key="DOWNLOAD_SMART_ENABLED"
-                android:title="@string/settings_download_smart"
-                android:summary="@string/settings_download_smart_summary"
-                android:defaultValue="false" />
-
-            <ListPreference
-                android:key="DOWNLOAD_SMART_LOOKAHEAD"
-                android:title="@string/settings_download_smart_lookahead"
-                android:entries="@array/download_smart_lookahead_entries"
-                android:entryValues="@array/download_smart_lookahead_values"
-                android:defaultValue="3" />
-
-            <ListPreference
-                android:key="DOWNLOAD_SMART_SERIES_QUOTA"
-                android:title="@string/settings_download_smart_series_quota"
-                android:entries="@array/download_smart_series_quota_entries"
-                android:entryValues="@array/download_smart_series_quota_values"
-                android:defaultValue="3" />
-
-            <SwitchPreference
-                android:key="DOWNLOAD_AUTO_DELETE_WATCHED"
-                android:title="@string/settings_download_auto_delete_watched"
-                android:summary="@string/settings_download_auto_delete_watched_summary"
-                android:defaultValue="false" />
-
-            <Preference
-                android:key="DOWNLOAD_STORAGE_USED"
-                android:title="@string/settings_download_storage_used"
-                android:selectable="false" />
-
-            <Preference
-                android:key="DOWNLOAD_QUEUE_STATUS"
-                android:title="@string/settings_download_queue_status"
-                android:selectable="false" />
+        <PreferenceCategory android:title="@string/settings_downloads_cat_maintenance">
 
             <Preference
                 android:key="DOWNLOAD_RETRY_FAILED"
@@ -933,15 +957,18 @@
 
             <Preference
                 android:key="DOWNLOAD_CLEAR_COMPLETED"
-                android:title="@string/settings_download_clear_completed" />
+                android:title="@string/settings_download_clear_completed"
+                android:summary="@string/settings_download_clear_completed_summary" />
 
             <Preference
                 android:key="DOWNLOAD_CLEAR_FAILED"
-                android:title="@string/settings_download_clear_failed" />
+                android:title="@string/settings_download_clear_failed"
+                android:summary="@string/settings_download_clear_failed_summary" />
 
             <Preference
                 android:key="DOWNLOAD_CLEAR_ALL"
-                android:title="@string/settings_download_clear_all" />
+                android:title="@string/settings_download_clear_all"
+                android:summary="@string/settings_download_clear_all_summary" />
         </PreferenceCategory>
     </PreferenceScreen>
 

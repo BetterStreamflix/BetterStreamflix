@@ -2454,24 +2454,34 @@ object UserPreferences {
 
         fun getBoolean(): Boolean? {
             if (!::prefs.isInitialized) return null
-            return when {
-                prefs.contains(name) -> prefs.getBoolean(name, false)
+            if (!prefs.contains(name)) return null
+            return when (val raw = prefs.all[name]) {
+                is Boolean -> raw
+                is String -> raw.equals("true", ignoreCase = true)
                 else -> null
             }
         }
 
         fun getFloat(): Float? {
             if (!::prefs.isInitialized) return null
-            return when {
-                prefs.contains(name) -> prefs.getFloat(name, 0F)
+            if (!prefs.contains(name)) return null
+            return when (val raw = prefs.all[name]) {
+                is Float -> raw
+                is Double -> raw.toFloat()
+                is Int -> raw.toFloat()
+                is Long -> raw.toFloat()
+                is String -> raw.toFloatOrNull()
                 else -> null
             }
         }
 
         fun getInt(): Int? {
             if (!::prefs.isInitialized) return null
-            return when {
-                prefs.contains(name) -> prefs.getInt(name, 0)
+            if (!prefs.contains(name)) return null
+            return when (val raw = prefs.all[name]) {
+                is Int -> raw
+                is Long -> raw.toInt()
+                is String -> raw.toIntOrNull()
                 else -> null
             }
         }

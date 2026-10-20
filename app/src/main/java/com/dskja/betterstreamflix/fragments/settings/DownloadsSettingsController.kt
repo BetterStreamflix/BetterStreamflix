@@ -9,9 +9,9 @@ import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.LifecycleCoroutineScope
 import androidx.lifecycle.lifecycleScope
-import androidx.preference.EditTextPreference
 import androidx.preference.ListPreference
 import androidx.preference.Preference
+import androidx.preference.SeekBarPreference
 import androidx.preference.SwitchPreference
 import com.dskja.betterstreamflix.R
 import com.dskja.betterstreamflix.download.DownloadController
@@ -317,20 +317,21 @@ object DownloadsSettingsController {
         }
 
         findPreference("DOWNLOAD_SOFT_LIMIT_GB")?.let { pref ->
-            val edit = pref as? EditTextPreference ?: return@let
-            edit.text = UserPreferences.downloadSoftLimitGb.toString()
-            edit.setSummaryProviderOnce(Preference.SummaryProvider<EditTextPreference> { p ->
-                val gb = DownloadStats.clampSoftLimitGb(p.text)
+            val seek = pref as? SeekBarPreference ?: return@let
+            fun summaryFor(gb: Int): String =
                 if (gb <= 0) {
                     context.getString(R.string.settings_download_soft_limit_unlimited)
                 } else {
                     context.getString(R.string.settings_download_soft_limit_value, gb)
                 }
+            seek.value = UserPreferences.downloadSoftLimitGb.coerceIn(0, 100)
+            seek.setSummaryProviderOnce(Preference.SummaryProvider<SeekBarPreference> { p ->
+                summaryFor(p.value)
             })
-            edit.setOnPreferenceChangeListener { _, newValue ->
-                val clamped = DownloadStats.clampSoftLimitGb(newValue as? String)
+            seek.setOnPreferenceChangeListener { _, newValue ->
+                val clamped = (newValue as? Int)?.coerceIn(0, 500)
+                    ?: UserPreferences.downloadSoftLimitGb
                 UserPreferences.downloadSoftLimitGb = clamped
-                edit.text = clamped.toString()
                 refreshSummaries(findPreference, context, scope)
                 true
             }
@@ -564,8 +565,8 @@ object DownloadsSettingsController {
             UserPreferences.downloadQualityPreset.name
         (findPreference("DOWNLOAD_MAX_CONCURRENT") as? ListPreference)?.value =
             UserPreferences.downloadMaxConcurrent.toString()
-        (findPreference("DOWNLOAD_SOFT_LIMIT_GB") as? EditTextPreference)?.text =
-            UserPreferences.downloadSoftLimitGb.toString()
+        (findPreference("DOWNLOAD_SOFT_LIMIT_GB") as? SeekBarPreference)?.value =
+            UserPreferences.downloadSoftLimitGb.coerceIn(0, 100)
         (findPreference("DOWNLOAD_STORAGE_LOCATION") as? ListPreference)?.value =
             UserPreferences.downloadStorageLocation.name
 
