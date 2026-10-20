@@ -2913,4 +2913,31 @@
     <string name="watch_party_remote_failed">Remote command failed: %1$s</string>
     <string name="watch_party_cd_remote">Watch Together phone remote</string>
 
+    <!-- Unified cast sheet (DLNA/Tizen + Smart-TV remote + mirroring) -->
+    <string name="cast_sheet_label">CAST TO</string>
+    <string name="cast_sheet_title">Play on the big screen</string>
+    <string name="cast_sheet_playing_on_tv">PLAYING ON TV</string>
+    <string name="cast_sheet_stop">Stop</string>
+    <string name="cast_sheet_google_cast">Chromecast / Google TV</string>
+    <string name="cast_sheet_google_cast_sub">GOOGLE CAST</string>
+    <string name="cast_sheet_scanning">SCANNING NETWORK…</string>
+    <string name="cast_sheet_tvs_label">TVS ON THIS NETWORK</string>
+    <string name="cast_sheet_looking">Looking for TVs (DLNA/UPnP)…</string>
+    <string name="cast_sheet_no_dlna">No DLNA renderers found — the TV and phone must share the same Wi-Fi.</string>
+    <string name="cast_sheet_remote_section">SMART-TV REMOTE · TIZEN 4+ / WEBOS</string>
+    <string name="cast_sheet_pair_label">PAIR A TV</string>
+    <string name="cast_sheet_pair_hint">TV IP — 192.168.…</string>
+    <string name="cast_sheet_kind_tizen">SAMSUNG TIZEN</string>
+    <string name="cast_sheet_kind_webos">LG WEBOS</string>
+    <string name="cast_sheet_pair">PAIR</string>
+    <string name="cast_sheet_pair_invalid">Enter the TV\'s IP (e.g. 192.168.1.20)</string>
+    <string name="cast_sheet_mirror">Screen mirroring</string>
+    <string name="cast_sheet_mirror_sub">SYSTEM · SMART VIEW / WIRELESS DISPLAY</string>
+    <string name="cast_sheet_dlna_sub">DLNA · %1$s</string>
+    <string name="cast_sheet_dlna_failed">Could not start playback on %1$s</string>
+    <string name="cast_sheet_start_playback_first">Start playback first, then cast to the TV</string>
+    <string name="cast_sheet_offline">offline</string>
+    <string name="cast_sheet_forget">FORGET</string>
+    <string name="cast_sheet_play_here">PLAY HERE</string>
+
 </resources>

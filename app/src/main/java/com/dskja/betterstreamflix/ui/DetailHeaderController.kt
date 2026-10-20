@@ -24,6 +24,12 @@ import com.dskja.betterstreamflix.utils.ExpMotion
  */
 object DetailHeaderController {
 
+    /** Cast sheet callbacks for the detail page — playback hasn't started yet. */
+    private object DetailCastCallbacks : CastSheet.Callbacks {
+        override fun currentStream(): CastSheet.CurrentStream? = null
+    }
+
+
     /** Fade starts only after the overlaid hero logo has scrolled away. */
     private const val SCROLL_START = 160f
     private const val COLLAPSE_RANGE = 260f
@@ -50,6 +56,11 @@ object DetailHeaderController {
                 ctx,
                 button,
             )
+            // Unified cast sheet — DLNA/Tizen renderers, Smart-TV remote, mirroring.
+            // No live stream on the detail page; the sheet explains that on pick.
+            button.setOnClickListener {
+                CastSheet.show(ctx, DetailCastCallbacks)
+            }
             button.visibility = View.VISIBLE
         }.onFailure {
             button.visibility = View.GONE

@@ -2713,4 +2713,31 @@
 
     <!-- Batch 10 Player & Trust locale port (PT-019) -->
     <string name="player_retry_external_player">Externer Player wird geöffnet…</string>
+
+    <!-- Unified cast sheet (DLNA/Tizen + Smart-TV remote + mirroring) -->
+    <string name="cast_sheet_label">CAST TO</string>
+    <string name="cast_sheet_title">Auf dem großen Bildschirm abspielen</string>
+    <string name="cast_sheet_playing_on_tv">LÄUFT AUF DEM TV</string>
+    <string name="cast_sheet_stop">Stopp</string>
+    <string name="cast_sheet_google_cast">Chromecast / Google TV</string>
+    <string name="cast_sheet_google_cast_sub">GOOGLE CAST</string>
+    <string name="cast_sheet_scanning">NETZWERK WIRD DURCHSUCHT…</string>
+    <string name="cast_sheet_tvs_label">TVS IN DIESEM NETZWERK</string>
+    <string name="cast_sheet_looking">Suche nach TVs (DLNA/UPnP)…</string>
+    <string name="cast_sheet_no_dlna">Keine DLNA-Renderer gefunden — TV und Handy müssen im selben WLAN sein.</string>
+    <string name="cast_sheet_remote_section">SMART-TV REMOTE · TIZEN 4+ / WEBOS</string>
+    <string name="cast_sheet_pair_label">TV KOPPELN</string>
+    <string name="cast_sheet_pair_hint">TV-IP — 192.168.…</string>
+    <string name="cast_sheet_kind_tizen">SAMSUNG TIZEN</string>
+    <string name="cast_sheet_kind_webos">LG WEBOS</string>
+    <string name="cast_sheet_pair">KOPPELN</string>
+    <string name="cast_sheet_pair_invalid">IP des TVs eingeben (z. B. 192.168.1.20)</string>
+    <string name="cast_sheet_mirror">Bildschirmspiegelung</string>
+    <string name="cast_sheet_mirror_sub">SYSTEM · SMART VIEW / WIRELESS DISPLAY</string>
+    <string name="cast_sheet_dlna_sub">DLNA · %1$s</string>
+    <string name="cast_sheet_dlna_failed">Wiedergabe auf %1$s konnte nicht gestartet werden</string>
+    <string name="cast_sheet_start_playback_first">Zuerst die Wiedergabe starten, dann auf den TV übertragen</string>
+    <string name="cast_sheet_offline">offline</string>
+    <string name="cast_sheet_forget">VERGESSEN</string>
+    <string name="cast_sheet_play_here">HIER ABSPIELEN</string>
 </resources>

@@ -302,6 +302,52 @@ class PlayerMobileFragment : Fragment(),
 
     private var currentVideo: Video? = null
     private var currentServer: Video.Server? = null
+
+    /** Unified cast sheet — hands the live stream to DLNA/Tizen and Smart-TV bridges. */
+    private val castSheetCallbacks = object : com.dskja.betterstreamflix.ui.CastSheet.Callbacks {
+        override fun currentStream(): com.dskja.betterstreamflix.ui.CastSheet.CurrentStream? {
+            if (isOfflinePlayback()) return null
+            val video = currentVideo ?: return null
+            val raw = player.currentMediaItem?.localConfiguration?.uri?.toString()
+                ?: video.source
+            val resolved = if (raw.startsWith("data:", ignoreCase = true)) {
+                decodeBase64Uri(raw)?.let { extractUrlFromPlaylist(it) }
+            } else {
+                raw
+            } ?: video.source.takeUnless { it.startsWith("data:", ignoreCase = true) }
+            val url = resolved?.takeUnless { it.startsWith("data:", ignoreCase = true) }
+                ?: return null
+            return com.dskja.betterstreamflix.ui.CastSheet.CurrentStream(
+                url = url,
+                title = resolvePlayerTitle(),
+                mimeType = video.type,
+                headers = lastCastHeaders,
+                positionMs = player.currentPosition,
+            )
+        }
+
+        override fun onDlnaStarted(renderer: com.dskja.betterstreamflix.cast.DlnaRenderer) {
+            if (::player.isInitialized && !playerReleased) {
+                runCatching { player.pause() }
+            }
+        }
+
+        override fun onDlnaStopped(positionMs: Long) {
+            if (::player.isInitialized && !playerReleased && positionMs > 0) {
+                runCatching {
+                    player.seekTo(positionMs)
+                    player.play()
+                }
+            }
+        }
+
+        override fun onSmartTvOpenUrl(deviceName: String) {
+            if (::player.isInitialized && !playerReleased) {
+                runCatching { player.pause() }
+            }
+        }
+    }
+
     private val stuckDetector = StuckBufferDetector()
     private var stuckHandler: android.os.Handler? = null
     private var stuckRunnable: Runnable? = null
@@ -4791,6 +4837,15 @@ class PlayerMobileFragment : Fragment(),
             CastPlaybackHub.ensureCastContext(requireContext())
             CastButtonFactory.setUpMediaRouteButton(requireContext(), routeButton)
             routeButton.isVisible = true
+            // Unified cast sheet — DLNA/Tizen renderers, Smart-TV remote, mirroring.
+            // The MediaRouteButton keeps its icon/state; tapping opens the sheet,
+            // whose Chromecast row owns the actual Google route dialog.
+            routeButton.setOnClickListener {
+                com.dskja.betterstreamflix.ui.CastSheet.show(
+                    requireContext(),
+                    castSheetCallbacks,
+                )
+            }
 
             castPlayer = CastPlaybackHub.obtainPlayer(requireContext())
             CastPlaybackHub.setSessionAvailabilityListener(object : SessionAvailabilityListener {
