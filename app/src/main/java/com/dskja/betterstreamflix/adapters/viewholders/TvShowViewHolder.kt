@@ -461,11 +461,11 @@ class TvShowViewHolder(
         bindTvShowProgress(binding.pbTvShowProgress)
         bindEpisodeBadge(binding.tvTvShowLastEpisode)
         binding.tvTvShowTitle.text = tvShow.title
-        com.dskja.betterstreamflix.logo.TitleLogoSurface.bindCachedOnly(
+        com.dskja.betterstreamflix.logo.TitleLogoSurface.bindAndMaybeResolve(
+            anchor = binding.root,
             imageView = binding.ivTvShowLogo,
             titleView = null,
-            logoUrl = tvShow.logo,
-            title = tvShow.title,
+            tvShow = tvShow,
             hideUntilReady = true,
         )
         if (ExperimentalMobileDesign.enabled() &&
@@ -583,11 +583,11 @@ class TvShowViewHolder(
         bindTvShowProgress(binding.pbTvShowProgress)
         bindEpisodeBadge(binding.tvTvShowLastEpisode)
         binding.tvTvShowTitle.text = tvShow.title
-        com.dskja.betterstreamflix.logo.TitleLogoSurface.bindCachedOnly(
+        com.dskja.betterstreamflix.logo.TitleLogoSurface.bindAndMaybeResolve(
+            anchor = binding.root,
             imageView = binding.ivTvShowLogo,
             titleView = null,
-            logoUrl = tvShow.logo,
-            title = tvShow.title,
+            tvShow = tvShow,
             hideUntilReady = true,
         )
         if (ExperimentalMobileDesign.enabled() &&

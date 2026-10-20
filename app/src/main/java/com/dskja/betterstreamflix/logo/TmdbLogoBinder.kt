@@ -20,6 +20,26 @@ object TmdbLogoBinder {
 
     private val jobs = java.util.WeakHashMap<View, Job>()
 
+    /**
+     * Short-lived negative cache for resolve misses: a title TMDb doesn't know
+     * would otherwise re-run the multi-step search on every RecyclerView rebind.
+     * 10 min TTL keeps it fresh without permanently blackholing late additions.
+     */
+    private const val MISS_TTL_MS = 10 * 60 * 1000L
+    private val resolveMisses = object : LinkedHashMap<String, Long>(128, 0.75f, true) {
+        override fun removeEldestEntry(
+            eldest: MutableMap.MutableEntry<String, Long>?,
+        ): Boolean = size > 128
+    }
+
+    private fun missKey(request: LogoRequest): String = buildString {
+        append(request.title.trim().lowercase())
+        append('|').append(request.isTv)
+        append('|').append(request.tmdbId.orEmpty())
+        append('|').append(request.imdbId.orEmpty())
+        append('|').append(request.language.orEmpty())
+    }
+
     fun cancel(anchor: View) {
         jobs.remove(anchor)?.cancel()
     }
@@ -31,6 +51,13 @@ object TmdbLogoBinder {
     ) {
         if (request.title.isBlank() && request.tmdbId.isNullOrBlank() && request.imdbId.isNullOrBlank()) {
             return
+        }
+        val missKey = missKey(request)
+        synchronized(resolveMisses) {
+            val missAt = resolveMisses[missKey]
+            if (missAt != null && System.currentTimeMillis() - missAt < MISS_TTL_MS) {
+                return
+            }
         }
         fun start() {
             val owner = anchor.findViewTreeLifecycleOwner()
@@ -63,7 +90,13 @@ object TmdbLogoBinder {
                         null
                     }
                 }
-                if (logo.isNullOrBlank()) return@launch
+                if (logo.isNullOrBlank()) {
+                    synchronized(resolveMisses) {
+                        resolveMisses[missKey] = System.currentTimeMillis()
+                    }
+                    return@launch
+                }
+                synchronized(resolveMisses) { resolveMisses.remove(missKey) }
                 if (TmdbLogoPicker.shouldUpgradeLogo(
                         request.existingLogo,
                         storedLang = null,

@@ -412,11 +412,11 @@ class MovieViewHolder(
         }
 
         binding.tvMovieTitle.text = movie.title
-        com.dskja.betterstreamflix.logo.TitleLogoSurface.bindCachedOnly(
+        com.dskja.betterstreamflix.logo.TitleLogoSurface.bindAndMaybeResolve(
+            anchor = binding.root,
             imageView = binding.ivMovieLogo,
             titleView = null,
-            logoUrl = movie.logo,
-            title = movie.title,
+            movie = movie,
             hideUntilReady = true,
         )
         if (ExperimentalMobileDesign.enabled() &&
@@ -608,11 +608,11 @@ class MovieViewHolder(
         bindMovieProgress(binding.pbMovieProgress)
 
         binding.tvMovieTitle.text = movie.title
-        com.dskja.betterstreamflix.logo.TitleLogoSurface.bindCachedOnly(
+        com.dskja.betterstreamflix.logo.TitleLogoSurface.bindAndMaybeResolve(
+            anchor = binding.root,
             imageView = binding.ivMovieLogo,
             titleView = null,
-            logoUrl = movie.logo,
-            title = movie.title,
+            movie = movie,
             hideUntilReady = true,
         )
         if (ExperimentalMobileDesign.enabled() &&
