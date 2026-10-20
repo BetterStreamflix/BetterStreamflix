@@ -154,6 +154,7 @@ object HomeRemixUi {
             val ctx = holder.itemView.context
             holder.title.setText(titleRes(block))
             holder.summary.setText(summaryRes(block))
+            holder.pos.text = (position + 1).toString()
             holder.handle.setOnTouchListener { v, event ->
                 if (event.actionMasked == MotionEvent.ACTION_DOWN) {
                     ExpMotion.hapticTap(v)
@@ -194,6 +195,7 @@ object HomeRemixUi {
         }
 
         class Holder(view: View) : RecyclerView.ViewHolder(view) {
+            val pos: TextView = view.findViewById(R.id.tv_home_remix_pos)
             val handle: ImageView = view.findViewById(R.id.iv_home_remix_handle)
             val title: TextView = view.findViewById(R.id.tv_home_remix_title)
             val summary: TextView = view.findViewById(R.id.tv_home_remix_summary)

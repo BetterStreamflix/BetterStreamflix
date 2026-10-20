@@ -18,10 +18,23 @@
     android:paddingEnd="10dp"
     android:paddingBottom="12dp">
 
+    <TextView
+        android:id="@+id/tv_home_remix_pos"
+        android:layout_width="30dp"
+        android:layout_height="30dp"
+        android:background="@drawable/bg_cert_badge"
+        android:fontFamily="@font/manrope"
+        android:gravity="center"
+        android:textColor="?attr/colorPrimary"
+        android:textSize="13sp"
+        android:textStyle="bold"
+        tools:text="1" />
+
     <ImageView
         android:id="@+id/iv_home_remix_handle"
         android:layout_width="28dp"
         android:layout_height="28dp"
+        android:layout_marginStart="10dp"
         android:contentDescription="@string/home_remix_drag_cd"
         android:src="@drawable/ic_sort"
         android:tint="?android:attr/textColorSecondary"

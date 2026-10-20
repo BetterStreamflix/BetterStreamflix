@@ -279,6 +279,15 @@ class SettingsMobileFragment : PreferenceFragmentCompat() {
         SettingsListStyler.attach(view, isTv = false)
         ensureSettingsHub(view)
         consumeSettingsDeepLink()
+        // Reserve a small top lane so the floating search chip (top-right)
+        // never overlaps the first preference row.
+        listView?.let { list ->
+            val topSpace = (64 * resources.displayMetrics.density).toInt()
+            if (list.paddingTop < topSpace) {
+                list.clipToPadding = false
+                list.setPadding(list.paddingLeft, topSpace, list.paddingRight, list.paddingBottom)
+            }
+        }
     }
 
     private fun consumeSettingsDeepLink() {

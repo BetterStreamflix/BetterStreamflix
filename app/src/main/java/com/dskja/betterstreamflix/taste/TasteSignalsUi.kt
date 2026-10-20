@@ -137,35 +137,69 @@ object TasteSignalsUi {
         onCleared: (() -> Unit)? = null,
     ) {
         val themed = ExpDialogChrome.themedContext(context)
-        val titles = TasteGraph.hiddenTitles(context)
-        val count = TasteGraph.negativeCount(context)
         val builder = if (ExperimentalMobileDesign.enabled()) {
             MaterialAlertDialogBuilder(themed)
         } else {
             AlertDialog.Builder(themed)
         }
-        val message = buildString {
-            append(context.getString(R.string.taste_clear_hidden_message, count))
-            if (titles.isNotEmpty()) {
-                append("\n\n")
-                append(context.getString(R.string.taste_hidden_list_title))
-                append("\n")
-                titles.take(12).forEach { append("• ").append(it).append('\n') }
-            }
-        }
-        builder
+        val view = android.view.LayoutInflater.from(themed)
+            .inflate(R.layout.dialog_taste_hidden, null, false)
+        val countView = view.findViewById<android.widget.TextView>(R.id.tv_taste_hidden_count)
+        val emptyView = view.findViewById<android.widget.TextView>(R.id.tv_taste_hidden_empty)
+        val list = view.findViewById<android.widget.LinearLayout>(R.id.ll_taste_hidden_list)
+
+        val dialog = builder
             .setTitle(R.string.taste_clear_hidden_title)
-            .setMessage(message)
-            .setPositiveButton(R.string.taste_clear_hidden_confirm) { _, _ ->
-                TasteGraph.clearNegatives(context)
-                onCleared?.invoke()
-            }
+            .setView(view)
+            .setPositiveButton(R.string.taste_clear_hidden_confirm, null)
             .setNegativeButton(android.R.string.cancel, null)
             .create()
-            .also { dialog ->
-                dialog.setOnShowListener { ExpDialogChrome.polishShown(dialog) }
-                dialog.show()
+
+        fun negativeEntries(): List<TasteSignalEntry> =
+            TasteGraphStore.loadSignals(context).filter {
+                it.kind == TasteSignalKind.HIDDEN || it.kind == TasteSignalKind.NOT_INTERESTED
+            }.distinctBy { it.identityKey }
+
+        fun refreshList() {
+            val entries = negativeEntries()
+            countView.text = context.getString(
+                R.string.taste_clear_hidden_message,
+                entries.size,
+            )
+            emptyView.visibility = if (entries.isEmpty()) View.VISIBLE else View.GONE
+            list.removeAllViews()
+            entries.take(40).forEach { entry ->
+                val row = android.view.LayoutInflater.from(themed)
+                    .inflate(R.layout.item_taste_hidden, list, false)
+                row.findViewById<android.widget.TextView>(R.id.tv_taste_hidden_title).text =
+                    entry.title.ifBlank { entry.identityKey }
+                row.findViewById<android.widget.TextView>(R.id.btn_taste_hidden_restore)
+                    .setOnClickListener {
+                        val app = context.applicationContext
+                        val kept = TasteGraphStore.loadSignals(app)
+                            .filterNot { it.identityKey == entry.identityKey }
+                        TasteGraphStore.saveSignals(app, kept)
+                        TasteGraph.invalidate()
+                        refreshList()
+                        onCleared?.invoke()
+                    }
+                list.addView(row)
             }
+            val hasEntries = entries.isNotEmpty()
+            dialog.getButton(AlertDialog.BUTTON_POSITIVE)?.isEnabled = hasEntries
+        }
+
+        dialog.setOnShowListener {
+            ExpDialogChrome.polishShown(dialog)
+            refreshList()
+            dialog.getButton(AlertDialog.BUTTON_POSITIVE)?.setOnClickListener {
+                TasteGraph.clearNegatives(context)
+                refreshList()
+                onCleared?.invoke()
+                dialog.dismiss()
+            }
+        }
+        dialog.show()
     }
 
     fun showClearAll(

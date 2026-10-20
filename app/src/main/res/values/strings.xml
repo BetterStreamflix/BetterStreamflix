@@ -154,6 +154,8 @@
     <string name="taste_hidden_snackbar">Hidden from For you</string>
     <string name="taste_not_interested_snackbar">Marked not interested</string>
     <string name="taste_hidden_list_title">Hidden titles</string>
+    <string name="taste_hidden_restore">Restore</string>
+    <string name="taste_hidden_empty">Nothing hidden — titles you hide or mark as not interested will show up here.</string>
     <string name="taste_memory_more_like_cd">More like %1$s</string>
     <string name="search_query_more_like">more like %1$s</string>
     <string name="search_filter_year">Year</string>
@@ -300,6 +302,7 @@
     <string name="settings_home_shelf_pins_title">Pinned home shelves</string>
     <string name="settings_home_shelf_pins_summary_empty">Pin up to 3 shelves under Featured (Continue, Live, Downloads…)</string>
     <string name="settings_home_shelf_pins_summary">Pinned: %1$s</string>
+    <string name="settings_home_shelf_pins_message">Pinned shelves float directly under Featured on Home — your fastest lanes first. Pick up to %1$d.</string>
     <string name="settings_channel_pin_strip_title">My channels strip</string>
     <string name="settings_channel_pin_strip_summary">Show pinned live channels above Home / Live</string>
     <string name="settings_channel_pin_strip_live_only_title">Only for Live providers</string>

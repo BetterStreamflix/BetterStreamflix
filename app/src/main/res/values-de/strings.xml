@@ -188,6 +188,8 @@
     <string name="taste_hidden_snackbar">Aus Für dich ausgeblendet</string>
     <string name="taste_not_interested_snackbar">Als kein Interesse markiert</string>
     <string name="taste_hidden_list_title">Ausgeblendete Titel</string>
+    <string name="taste_hidden_restore">Wiederherstellen</string>
+    <string name="taste_hidden_empty">Nichts ausgeblendet — Titel, die du versteckst oder als nicht interessant markierst, erscheinen hier.</string>
     <string name="taste_memory_more_like_cd">Mehr wie %1$s</string>
     <string name="search_query_more_like">ähnlich wie %1$s</string>
     <string name="search_filter_year">Jahr</string>
@@ -329,6 +331,7 @@
     <string name="settings_home_shelf_pins_title">Gepinnte Home-Regale</string>
     <string name="settings_home_shelf_pins_summary_empty">Bis zu 3 Regale unter Featured pinnen (Weiterschauen, Live, Downloads…)</string>
     <string name="settings_home_shelf_pins_summary">Gepinnt: %1$s</string>
+    <string name="settings_home_shelf_pins_message">Gepinnte Regale schweben direkt unter Featured auf Home – deine schnellsten Spuren zuerst. Wähle bis zu %1$d.</string>
     <string name="settings_channel_pin_strip_title">Meine-Sender-Leiste</string>
     <string name="settings_channel_pin_strip_summary">Gepinnte Live-Sender über Home / Live anzeigen</string>
     <string name="settings_channel_pin_strip_live_only_title">Nur bei Live-Providern</string>
