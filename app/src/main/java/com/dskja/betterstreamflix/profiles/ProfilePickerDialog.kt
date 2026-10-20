@@ -605,6 +605,8 @@ class ProfilePickerDialog : DialogFragment() {
                 isChecked = profile.isKids
             }
         }
+        form.findViewById<TextView>(R.id.tv_profile_kids_helper)?.visibility =
+            if (profile.isGuest) View.GONE else View.VISIBLE
         val pinInput = form.findViewById<EditText>(R.id.et_profile_create_pin)
         val clearPin = form.findViewById<CheckBox>(R.id.cb_profile_clear_pin)
         if (profile.isGuest) {

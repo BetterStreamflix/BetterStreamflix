@@ -3,7 +3,7 @@
     <!--
       Classic mobile shell stays on AppCompat, but shared Lumina layouts
       (profile chip, support dialogs, about) resolve Material color attrs.
-      Without these, TextAppearance.Lumina.* / ?attr/colorOnSurface inflate
+      Without these, TextAppearance.CinemaInk.* / ?attr/colorOnSurface inflate
       crashes at startup (Sentry BETTERSTREAMFLIX-14 / -15).
     -->
     <style name="AppTheme.Mobile" parent="Theme.AppCompat">

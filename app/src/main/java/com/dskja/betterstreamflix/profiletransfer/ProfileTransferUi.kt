@@ -215,29 +215,33 @@ object ProfileTransferUi {
         scanQr: () -> Unit,
     ) {
         val context = fragment.context ?: return
-        val options = arrayOf(
-            context.getString(R.string.profile_transfer_import_scan_qr),
-            context.getString(R.string.profile_transfer_import_open_file),
-            context.getString(R.string.profile_transfer_import_paste),
-        )
         val useGlass = ExperimentalMobileDesign.enabled()
         val builder = if (useGlass) {
             MaterialAlertDialogBuilder(ExpDialogChrome.themedContext(context))
         } else {
             androidx.appcompat.app.AlertDialog.Builder(context)
         }
-        builder
+        val content = android.view.LayoutInflater.from(context)
+            .inflate(R.layout.dialog_profile_transfer_import, null, false)
+        val dialog = builder
             .setTitle(R.string.profile_transfer_import_title)
-            .setItems(options) { _, which ->
-                when (which) {
-                    0 -> scanQr()
-                    1 -> openFile()
-                    2 -> showPasteDialog(fragment)
-                }
-            }
+            .setView(content)
             .setNegativeButton(android.R.string.cancel, null)
-            .show()
-            .also { ExpDialogChrome.polishButtons(it) }
+            .create()
+        content.findViewById<View>(R.id.row_import_scan_qr).setOnClickListener {
+            dialog.dismiss()
+            scanQr()
+        }
+        content.findViewById<View>(R.id.row_import_open_file).setOnClickListener {
+            dialog.dismiss()
+            openFile()
+        }
+        content.findViewById<View>(R.id.row_import_paste).setOnClickListener {
+            dialog.dismiss()
+            showPasteDialog(fragment)
+        }
+        dialog.setOnShowListener { ExpDialogChrome.polishButtons(dialog) }
+        dialog.show()
     }
 
     private fun showPasteDialog(fragment: Fragment) {

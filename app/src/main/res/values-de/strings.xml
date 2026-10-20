@@ -915,6 +915,10 @@
     <string name="profile_transfer_import_scan_qr">QR scannen</string>
     <string name="profile_transfer_import_open_file">Datei öffnen</string>
     <string name="profile_transfer_import_paste">Link oder JSON einfügen</string>
+    <string name="profile_transfer_import_message">Hol dir ein Profil von einem anderen Gerät – wähle, wie du es empfangen willst.</string>
+    <string name="profile_transfer_import_scan_qr_sub">Kamera auf den QR-Code des anderen Geräts richten</string>
+    <string name="profile_transfer_import_open_file_sub">Eine exportierte .json-Profildatei laden</string>
+    <string name="profile_transfer_import_paste_sub">Einen kopierten Transfer-Link oder rohes JSON einfügen</string>
     <string name="profile_transfer_paste_hint">betterstreamflix://profile?d=… oder JSON</string>
     <string name="profile_transfer_import_confirm_title">In dieses Profil importieren?</string>
     <string name="profile_transfer_import_confirm_message">%1$d Watchlist-Titel und %2$d Notizen zusammenführen und Settings anwenden. Quelle: %3$s. Offline-Downloads und PINs werden nie übertragen.</string>
@@ -928,6 +932,7 @@
     <string name="profile_transfer_scan_failed">QR-Scanner konnte nicht geöffnet werden</string>
     <string name="profile_delete_confirm">Profil \"%1$s\" löschen? Der Wiedergabeverlauf dieses Profils wird entfernt.</string>
     <string name="profile_kids_title">Kinderprofil</string>
+    <string name="profile_kids_helper">Altersgefilterter Katalog und PIN-gesicherter Ausstieg. Erfordert eine Profil- oder Haushalts-PIN.</string>
     <string name="profile_kids_summary">Jüngere Altersfreigabe und sicherere Standardwerte</string>
     <string name="profile_kids_max_age_title">Kids-Altersfreigabe</string>
     <string name="profile_kids_max_age_summary">Nur Titel bis zu diesem Alter in diesem Kids-Profil anzeigen</string>
@@ -1009,6 +1014,7 @@
     <string name="profile_pin_recovery_success">PIN entfernt – willkommen zurück, %1$s</string>
     <string name="profile_pin_recovery_invalid">Diese Wiederherstellungs-PIN ist nicht korrekt.</string>
     <string name="profile_pin_recovery_unavailable">Noch keine Wiederherstellungs-PIN gesetzt. Melde dich mit einem entsperrten Profil an und lege in Einstellungen → Jugendschutz eine Haushalts- oder Admin-PIN fest, um die Wiederherstellung zu aktivieren.</string>
+    <string name="profile_pin_recovery_hint">Vergessen? Die Haushalts- oder Admin-PIN kann eine verlorene Profil-PIN entfernen.</string>
     <string name="profile_integration_trakt">Trakt</string>
     <string name="profile_integration_jellyfin">Jellyfin</string>
     <string name="profile_integration_plex">Plex</string>

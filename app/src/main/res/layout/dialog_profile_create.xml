@@ -29,7 +29,7 @@
                 android:letterSpacing="0.14"
                 android:text="@string/profile_settings_hero_eyebrow"
                 android:textAllCaps="true"
-                android:textAppearance="@style/TextAppearance.Lumina.Eyebrow"
+                android:textAppearance="@style/TextAppearance.CinemaInk.Eyebrow"
                 android:textColor="@color/profile_accent"
                 android:textSize="11sp"
                 android:textStyle="bold" />
@@ -41,7 +41,7 @@
                 android:layout_marginTop="6dp"
                 android:fontFamily="@font/syne"
                 android:text="@string/profile_create_title"
-                android:textAppearance="@style/TextAppearance.Lumina.Title"
+                android:textAppearance="@style/TextAppearance.CinemaInk.Title"
                 android:textColor="@color/profile_text_primary"
                 android:textSize="24sp"
                 android:textStyle="bold" />
@@ -52,7 +52,7 @@
                 android:layout_height="wrap_content"
                 android:layout_marginTop="6dp"
                 android:text="@string/profile_create_subtitle"
-                android:textAppearance="@style/TextAppearance.Lumina.Body"
+                android:textAppearance="@style/TextAppearance.CinemaInk.Body"
                 android:textColor="@color/profile_text_secondary"
                 android:textSize="13sp" />
 
@@ -76,7 +76,7 @@
                 android:layout_height="wrap_content"
                 android:layout_marginTop="10dp"
                 android:gravity="center"
-                android:textAppearance="@style/TextAppearance.Lumina.Caption"
+                android:textAppearance="@style/TextAppearance.CinemaInk.Caption"
                 android:textColor="@color/profile_accent"
                 android:textSize="13sp"
                 android:textStyle="bold"
@@ -87,7 +87,7 @@
                 android:layout_height="wrap_content"
                 android:layout_marginTop="18dp"
                 android:text="@string/profile_name_hint"
-                android:textAppearance="@style/TextAppearance.Lumina.Caption"
+                android:textAppearance="@style/TextAppearance.CinemaInk.Caption"
                 android:textColor="@color/profile_text_secondary"
                 android:textSize="12sp"
                 android:textStyle="bold" />
@@ -104,7 +104,7 @@
                 android:inputType="textCapWords"
                 android:paddingStart="16dp"
                 android:paddingEnd="16dp"
-                android:textAppearance="@style/TextAppearance.Lumina.Body"
+                android:textAppearance="@style/TextAppearance.CinemaInk.Body"
                 android:textColor="@color/profile_text_primary"
                 android:textColorHint="@color/profile_text_tertiary"
                 android:textSize="15sp" />
@@ -114,7 +114,7 @@
                 android:layout_height="wrap_content"
                 android:layout_marginTop="20dp"
                 android:text="@string/profile_avatar_choose"
-                android:textAppearance="@style/TextAppearance.Lumina.Caption"
+                android:textAppearance="@style/TextAppearance.CinemaInk.Caption"
                 android:textColor="@color/profile_text_secondary"
                 android:textSize="12sp"
                 android:textStyle="bold" />
@@ -141,7 +141,7 @@
                 android:layout_height="wrap_content"
                 android:layout_marginTop="18dp"
                 android:text="@string/profile_pin_title"
-                android:textAppearance="@style/TextAppearance.Lumina.Caption"
+                android:textAppearance="@style/TextAppearance.CinemaInk.Caption"
                 android:textColor="@color/profile_text_secondary"
                 android:textSize="12sp"
                 android:textStyle="bold" />
@@ -159,10 +159,19 @@
                 android:maxLength="8"
                 android:paddingStart="16dp"
                 android:paddingEnd="16dp"
-                android:textAppearance="@style/TextAppearance.Lumina.Body"
+                android:textAppearance="@style/TextAppearance.CinemaInk.Body"
                 android:textColor="@color/profile_text_primary"
                 android:textColorHint="@color/profile_text_tertiary"
                 android:textSize="15sp" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:text="@string/profile_pin_recovery_hint"
+                android:textAppearance="@style/TextAppearance.CinemaInk.Caption"
+                android:textColor="@color/profile_text_tertiary"
+                android:textSize="12sp" />
 
             <CheckBox
                 android:id="@+id/cb_profile_clear_pin"
@@ -170,7 +179,7 @@
                 android:layout_height="wrap_content"
                 android:layout_marginTop="8dp"
                 android:text="@string/profile_pin_clear_title"
-                android:textAppearance="@style/TextAppearance.Lumina.Caption"
+                android:textAppearance="@style/TextAppearance.CinemaInk.Caption"
                 android:textColor="@color/profile_text_secondary"
                 android:visibility="gone"
                 tools:visibility="visible" />
@@ -181,8 +190,19 @@
                 android:layout_height="wrap_content"
                 android:layout_marginTop="8dp"
                 android:text="@string/profile_kids_title"
-                android:textAppearance="@style/TextAppearance.Lumina.Caption"
+                android:textAppearance="@style/TextAppearance.CinemaInk.Caption"
                 android:textColor="@color/profile_text_secondary" />
+
+            <TextView
+                android:id="@+id/tv_profile_kids_helper"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="32dp"
+                android:layout_marginTop="2dp"
+                android:text="@string/profile_kids_helper"
+                android:textAppearance="@style/TextAppearance.CinemaInk.Caption"
+                android:textColor="@color/profile_text_tertiary"
+                android:textSize="12sp" />
 
             <LinearLayout
                 android:layout_width="match_parent"
@@ -203,7 +223,7 @@
                     android:paddingStart="2dp"
                     android:paddingEnd="8dp"
                     android:text="@string/profile_advanced"
-                    android:textAppearance="@style/TextAppearance.Lumina.Caption"
+                    android:textAppearance="@style/TextAppearance.CinemaInk.Caption"
                     android:textColor="@color/profile_accent"
                     android:textSize="13sp"
                     android:textStyle="bold" />
@@ -224,7 +244,7 @@
                     android:layout_height="wrap_content"
                     android:layout_marginBottom="10dp"
                     android:text="@string/profile_integration_summary"
-                    android:textAppearance="@style/TextAppearance.Lumina.Caption"
+                    android:textAppearance="@style/TextAppearance.CinemaInk.Caption"
                     android:textColor="@color/profile_text_tertiary"
                     android:textSize="12sp" />
 
@@ -234,7 +254,7 @@
                     android:layout_height="wrap_content"
                     android:checked="true"
                     android:text="@string/profile_integration_trakt"
-                    android:textAppearance="@style/TextAppearance.Lumina.Body"
+                    android:textAppearance="@style/TextAppearance.CinemaInk.Body"
                     android:textColor="@color/profile_text_primary" />
 
                 <CheckBox
@@ -243,7 +263,7 @@
                     android:layout_height="wrap_content"
                     android:checked="true"
                     android:text="@string/profile_integration_jellyfin"
-                    android:textAppearance="@style/TextAppearance.Lumina.Body"
+                    android:textAppearance="@style/TextAppearance.CinemaInk.Body"
                     android:textColor="@color/profile_text_primary" />
 
                 <CheckBox
@@ -252,7 +272,7 @@
                     android:layout_height="wrap_content"
                     android:checked="true"
                     android:text="@string/profile_integration_plex"
-                    android:textAppearance="@style/TextAppearance.Lumina.Body"
+                    android:textAppearance="@style/TextAppearance.CinemaInk.Body"
                     android:textColor="@color/profile_text_primary" />
 
                 <CheckBox
@@ -261,7 +281,7 @@
                     android:layout_height="wrap_content"
                     android:checked="true"
                     android:text="@string/profile_integration_debrid"
-                    android:textAppearance="@style/TextAppearance.Lumina.Body"
+                    android:textAppearance="@style/TextAppearance.CinemaInk.Body"
                     android:textColor="@color/profile_text_primary" />
 
                 <CheckBox
@@ -270,7 +290,7 @@
                     android:layout_height="wrap_content"
                     android:checked="true"
                     android:text="@string/profile_integration_simkl"
-                    android:textAppearance="@style/TextAppearance.Lumina.Body"
+                    android:textAppearance="@style/TextAppearance.CinemaInk.Body"
                     android:textColor="@color/profile_text_primary" />
 
                 <CheckBox
@@ -279,7 +299,7 @@
                     android:layout_height="wrap_content"
                     android:checked="true"
                     android:text="@string/profile_integration_opensubtitles"
-                    android:textAppearance="@style/TextAppearance.Lumina.Body"
+                    android:textAppearance="@style/TextAppearance.CinemaInk.Body"
                     android:textColor="@color/profile_text_primary" />
 
                 <CheckBox
@@ -288,7 +308,7 @@
                     android:layout_height="wrap_content"
                     android:checked="true"
                     android:text="@string/profile_integration_tmdb"
-                    android:textAppearance="@style/TextAppearance.Lumina.Body"
+                    android:textAppearance="@style/TextAppearance.CinemaInk.Body"
                     android:textColor="@color/profile_text_primary" />
             </LinearLayout>
 
@@ -302,7 +322,7 @@
                 android:focusable="true"
                 android:gravity="center"
                 android:text="@string/profile_delete_title"
-                android:textAppearance="@style/TextAppearance.Lumina.Caption"
+                android:textAppearance="@style/TextAppearance.CinemaInk.Caption"
                 android:textColor="@color/profile_danger"
                 android:textSize="14sp"
                 android:textStyle="bold"
@@ -329,7 +349,7 @@
             android:paddingStart="16dp"
             android:paddingEnd="16dp"
             android:text="@android:string/cancel"
-            android:textAppearance="@style/TextAppearance.Lumina.Caption"
+            android:textAppearance="@style/TextAppearance.CinemaInk.Caption"
             android:textColor="@color/profile_text_secondary"
             android:textSize="14sp"
             android:textStyle="bold" />
@@ -348,7 +368,7 @@
             android:paddingStart="22dp"
             android:paddingEnd="22dp"
             android:text="@string/profile_save"
-            android:textAppearance="@style/TextAppearance.Lumina.Caption"
+            android:textAppearance="@style/TextAppearance.CinemaInk.Caption"
             android:textColor="@color/profile_on_accent"
             android:textSize="15sp"
             android:textStyle="bold" />

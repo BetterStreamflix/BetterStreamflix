@@ -1069,6 +1069,10 @@
     <string name="profile_transfer_import_scan_qr">Scan QR</string>
     <string name="profile_transfer_import_open_file">Open file</string>
     <string name="profile_transfer_import_paste">Paste link or JSON</string>
+    <string name="profile_transfer_import_message">Bring a profile from another device — pick how you want to receive it.</string>
+    <string name="profile_transfer_import_scan_qr_sub">Point the camera at the QR shown on the other device</string>
+    <string name="profile_transfer_import_open_file_sub">Load an exported .json profile file</string>
+    <string name="profile_transfer_import_paste_sub">Paste a copied transfer link or raw JSON</string>
     <string name="profile_transfer_paste_hint">betterstreamflix://profile?d=… or JSON</string>
     <string name="profile_transfer_import_confirm_title">Import into this profile?</string>
     <string name="profile_transfer_import_confirm_message">Merge %1$d watchlist titles and %2$d notes, and apply settings. Source: %3$s. Offline downloads and PINs are never transferred.</string>
@@ -1082,6 +1086,7 @@
     <string name="profile_transfer_scan_failed">Could not open the QR scanner</string>
     <string name="profile_delete_confirm">Delete profile \"%1$s\"? Watch history for this profile will be removed.</string>
     <string name="profile_kids_title">Kids profile</string>
+    <string name="profile_kids_helper">Age-filtered catalog and a PIN-gated exit. Requires a profile PIN or a household PIN.</string>
     <string name="profile_kids_summary">Applies a younger max age and safer defaults</string>
     <string name="profile_kids_max_age_title">Kids age rating</string>
     <string name="profile_kids_max_age_summary">Only show titles up to this age on this Kids profile</string>
@@ -1163,6 +1168,7 @@
     <string name="profile_pin_recovery_success">PIN removed — welcome back, %1$s</string>
     <string name="profile_pin_recovery_invalid">That recovery PIN is not correct.</string>
     <string name="profile_pin_recovery_unavailable">No recovery PIN is set yet. Sign in with an unlocked profile and create a household or admin PIN in Settings → Parental controls to enable recovery.</string>
+    <string name="profile_pin_recovery_hint">Forgot it later? The household or admin PIN can remove a lost profile PIN.</string>
     <string name="profile_integration_trakt">Trakt</string>
     <string name="profile_integration_jellyfin">Jellyfin</string>
     <string name="profile_integration_plex">Plex</string>
