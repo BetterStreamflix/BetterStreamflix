@@ -592,6 +592,12 @@ class SettingsMobileFragment : PreferenceFragmentCompat() {
                     },
                 )
             },
+            onOpenGlobalIntegrations = {
+                openNestedSettingsScreen(
+                    "screen_platform",
+                    getString(R.string.platform_settings_title),
+                )
+            },
         )
         ConnectionServicesController.bind(
             fragment = this,

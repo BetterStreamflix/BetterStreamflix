@@ -297,6 +297,25 @@
         </PreferenceCategory>
 
         <PreferenceCategory
+            android:key="pc_profile_integrations"
+            android:title="@string/profile_section_integrations"
+            app:iconSpaceReserved="false">
+
+            <Preference
+                android:key="PROFILE_INTEGRATIONS"
+                android:title="@string/profile_integrations_title"
+                android:summary="@string/profile_integrations_summary_all"
+                app:iconSpaceReserved="false" />
+
+            <Preference
+                android:key="PROFILE_INTEGRATIONS_GLOBAL"
+                android:title="@string/profile_integrations_global_title"
+                android:summary="@string/profile_integrations_global_summary"
+                android:widgetLayout="@layout/preference_widget_chevron"
+                app:iconSpaceReserved="false" />
+        </PreferenceCategory>
+
+        <PreferenceCategory
             android:key="pc_profile_parental"
             android:title="@string/profile_section_parental"
             app:iconSpaceReserved="false">

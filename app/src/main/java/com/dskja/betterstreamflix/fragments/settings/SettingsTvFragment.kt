@@ -462,6 +462,12 @@ class SettingsTvFragment : LeanbackPreferenceFragmentCompat() {
                     },
                 )
             },
+            onOpenGlobalIntegrations = {
+                openNestedSettingsScreen(
+                    "screen_platform",
+                    getString(R.string.platform_settings_title),
+                )
+            },
         )
         gateKidsProfileSettingsPrefs()
         ConnectionServicesController.bind(

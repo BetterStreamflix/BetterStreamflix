@@ -73,6 +73,7 @@ object ProfilesSettingsController {
         onProfileSwitched: (() -> Unit)? = null,
         onExportProfile: (() -> Unit)? = null,
         onImportProfile: (() -> Unit)? = null,
+        onOpenGlobalIntegrations: (() -> Unit)? = null,
     ) {
         val context = fragment.requireContext()
 
@@ -108,6 +109,16 @@ object ProfilesSettingsController {
 
         findPreference("PROFILE_AVATAR")?.setOnPreferenceClickListener {
             showAvatarPicker(fragment, findPreference)
+            true
+        }
+
+        findPreference("PROFILE_INTEGRATIONS")?.setOnPreferenceClickListener {
+            showIntegrationsDialog(fragment, findPreference)
+            true
+        }
+
+        findPreference("PROFILE_INTEGRATIONS_GLOBAL")?.setOnPreferenceClickListener {
+            onOpenGlobalIntegrations?.invoke()
             true
         }
 
@@ -374,6 +385,8 @@ object ProfilesSettingsController {
 
         findPreference("PROFILE_PIN_CLEAR")?.isVisible = profile?.pinHash != null
 
+        findPreference("PROFILE_INTEGRATIONS")?.summary = integrationsSummary(context, profile)
+
         // Year review is adult-only — hide entry on Kids / Guest (YR-001).
         findPreference("PROFILE_YEAR_REVIEW")?.isVisible =
             profile != null && !profile.isKids && !profile.isGuest
@@ -386,6 +399,68 @@ object ProfilesSettingsController {
             (pref as? ProfileHeroPreference)?.refresh()
                 ?: run { pref.summary = pref.summary }
         }
+    }
+
+    private val PROFILE_INTEGRATION_ITEMS = listOf(
+        UserProfile.Integration.TRAKT to R.string.profile_integration_trakt,
+        UserProfile.Integration.JELLYFIN to R.string.profile_integration_jellyfin,
+        UserProfile.Integration.PLEX to R.string.profile_integration_plex,
+        UserProfile.Integration.DEBRID to R.string.profile_integration_debrid,
+        UserProfile.Integration.SIMKL to R.string.profile_integration_simkl,
+        UserProfile.Integration.OPENSUBTITLES to R.string.profile_integration_opensubtitles,
+        UserProfile.Integration.TMDB to R.string.profile_integration_tmdb,
+    )
+
+    private fun integrationsSummary(context: Context, profile: UserProfile?): CharSequence {
+        val enabled = profile?.enabledIntegrations.orEmpty()
+            .ifEmpty { UserProfile.Integration.ALL }
+        return if (enabled.containsAll(UserProfile.Integration.ALL)) {
+            context.getString(R.string.profile_integrations_summary_all)
+        } else if (enabled.isEmpty()) {
+            context.getString(R.string.profile_integrations_summary_none)
+        } else {
+            val names = PROFILE_INTEGRATION_ITEMS
+                .filter { it.first in enabled }
+                .joinToString(" · ") { context.getString(it.second) }
+            context.getString(
+                R.string.profile_integrations_summary_some,
+                enabled.count { it in UserProfile.Integration.ALL },
+                names,
+            )
+        }
+    }
+
+    private fun showIntegrationsDialog(
+        fragment: Fragment,
+        findPreference: (String) -> Preference?,
+    ) {
+        val context = fragment.requireContext()
+        val profile = ProfileManager.activeProfile() ?: return
+        val enabledNow = profile.enabledIntegrations.ifEmpty { UserProfile.Integration.ALL }
+        val checked = BooleanArray(PROFILE_INTEGRATION_ITEMS.size) { index ->
+            PROFILE_INTEGRATION_ITEMS[index].first in enabledNow
+        }
+        // Item label: "Trakt — Signed in" so users see the global account state
+        // while deciding which integrations this profile may use.
+        val labels = PROFILE_INTEGRATION_ITEMS.map { (key, nameRes) ->
+            val status = com.dskja.betterstreamflix.platform.IntegrationStatus.globalOnly(key)
+            context.getString(nameRes) + " · " +
+                com.dskja.betterstreamflix.platform.IntegrationStatus.label(context, status)
+        }.toTypedArray()
+        alertBuilder(context)
+            .setTitle(R.string.profile_integrations_dialog_title)
+            .setMultiChoiceItems(labels, checked) { _, which, isChecked ->
+                checked[which] = isChecked
+            }
+            .setPositiveButton(android.R.string.ok) { _, _ ->
+                val selected = PROFILE_INTEGRATION_ITEMS
+                    .mapIndexedNotNull { index, (key, _) -> if (checked[index]) key else null }
+                    .toSet()
+                ProfileManager.setEnabledIntegrations(profile.id, selected)
+                refresh(findPreference, context, fragment)
+            }
+            .setNegativeButton(android.R.string.cancel, null)
+            .show()
     }
 
     private fun activeSummary(context: Context, profile: UserProfile): String {
