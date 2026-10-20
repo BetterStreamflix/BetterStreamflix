@@ -4,6 +4,7 @@ import android.content.Context
 import android.graphics.drawable.GradientDrawable
 import android.util.AttributeSet
 import android.widget.FrameLayout
+import android.widget.ImageView
 import androidx.appcompat.widget.AppCompatImageView
 
 /**
@@ -17,7 +18,7 @@ class ProfileAvatarView @JvmOverloads constructor(
 ) : FrameLayout(context, attrs, defStyleAttr) {
 
     private val image = AppCompatImageView(context).apply {
-        scaleType = AppCompatImageView.ScaleType.CENTER_CROP
+        scaleType = ImageView.ScaleType.CENTER_CROP
     }
 
     init {
