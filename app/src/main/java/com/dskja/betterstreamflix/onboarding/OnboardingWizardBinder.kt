@@ -201,6 +201,7 @@ class OnboardingWizardBinder(
             val logoView = row.findViewById<android.widget.ImageView>(R.id.iv_choice_logo)
             val checkView = row.findViewById<android.widget.ImageView>(R.id.iv_choice_check)
             nameView.text = provider.name
+            row.contentDescription = provider.name
             loadProviderLogo(logoView, provider.logo)
             val selected = draft.favoriteNames.contains(provider.name)
             row.isSelected = selected
