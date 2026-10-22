@@ -916,6 +916,26 @@ class SettingsMobileFragment : PreferenceFragmentCompat() {
             }
         }
 
+        findPreference<EditTextPreference>("FANART_API_KEY")?.apply {
+            summary = if (UserPreferences.fanartApiKey.isEmpty()) getString(R.string.settings_fanart_api_key_summary) else UserPreferences.fanartApiKey
+            text = UserPreferences.fanartApiKey
+            setOnPreferenceChangeListener { _, newValue ->
+                val newKey = (newValue as String).trim()
+                UserPreferences.fanartApiKey = newKey
+                summary = if (newKey.isEmpty()) getString(R.string.settings_fanart_api_key_summary) else newKey
+                val message = if (newKey.isEmpty()) {
+                    getString(R.string.settings_fanart_api_key_reset)
+                } else {
+                    getString(R.string.settings_fanart_api_key_success)
+                }
+                showSettingsInfo(message)
+                TmdbSettingsController.bind(this@SettingsMobileFragment, lifecycleScope) { key ->
+                    findPreference(key)
+                }
+                true
+            }
+        }
+
         findPreference<Preference>("p_settings_support")?.apply {
             val titleStr = getString(R.string.support_settings_entry_title)
             val spannableTitle = SpannableString(titleStr)
@@ -2575,6 +2595,11 @@ class SettingsMobileFragment : PreferenceFragmentCompat() {
         findPreference<EditTextPreference>("TMDB_API_KEY")?.apply {
             summary = if (UserPreferences.tmdbApiKey.isEmpty()) getString(R.string.settings_tmdb_api_key_summary) else UserPreferences.tmdbApiKey
             text = UserPreferences.tmdbApiKey
+        }
+
+        findPreference<EditTextPreference>("FANART_API_KEY")?.apply {
+            summary = if (UserPreferences.fanartApiKey.isEmpty()) getString(R.string.settings_fanart_api_key_summary) else UserPreferences.fanartApiKey
+            text = UserPreferences.fanartApiKey
         }
 
         findPreference<ListPreference>("APP_LANGUAGE")?.value =

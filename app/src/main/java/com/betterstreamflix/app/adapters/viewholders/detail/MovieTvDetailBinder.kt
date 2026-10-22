@@ -78,6 +78,7 @@ internal fun MovieViewHolder.bindMovieTvDetail(binding: ContentMovieTvBinding) {
         movie = movie,
         persist = true,
         allowAlternateOnFail = true,
+        hero = true,
         onLogoReady = { applyTvBrandChrome(logoReady = true) },
         onLogoFailed = { applyTvBrandChrome(logoReady = false) },
     )
@@ -238,6 +239,17 @@ internal fun MovieViewHolder.bindMovieTvDetail(binding: ContentMovieTvBinding) {
         rewireOverviewWatch()
         post { rewireOverviewWatch() }
     }
+
+    com.betterstreamflix.app.logo.LogoChipStrip.bind(
+        binding.stripMovieStudios.root,
+        context.getString(R.string.detail_about_studios_label),
+        com.betterstreamflix.app.logo.LogoChips.parse(movie.companyJson),
+    )
+    com.betterstreamflix.app.logo.LogoChipStrip.bind(
+        binding.stripMovieWatchProviders.root,
+        context.getString(R.string.detail_about_watch_label),
+        com.betterstreamflix.app.logo.LogoChips.parse(movie.watchProviderJson),
+    )
 
     binding.btnMovieWatchNow.apply {
         // Dual CTA: Watch streams online; completed downloads use the Download button.

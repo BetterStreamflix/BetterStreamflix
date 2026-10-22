@@ -1331,11 +1331,29 @@ class TvShowViewHolder(
             binding.tvDetailAboutIds.text = spanned
         }
 
+        val stripNetworks = binding.root.findViewById<View>(R.id.strip_detail_about_networks)
+        val stripWatch = binding.root.findViewById<View>(R.id.strip_detail_about_watch)
+        com.betterstreamflix.app.logo.LogoChipStrip.bind(
+            stripNetworks,
+            context.getString(R.string.detail_about_networks_label),
+            com.betterstreamflix.app.logo.LogoChips.parse(tvShow.networkJson)
+                .ifEmpty {
+                    com.betterstreamflix.app.logo.LogoChips.parse(tvShow.companyJson)
+                },
+        )
+        com.betterstreamflix.app.logo.LogoChipStrip.bind(
+            stripWatch,
+            context.getString(R.string.detail_about_watch_label),
+            com.betterstreamflix.app.logo.LogoChips.parse(tvShow.watchProviderJson),
+        )
+
         val anyFact = listOf(
             binding.tvDetailAboutQuality,
             binding.tvDetailAboutProvider,
             binding.tvDetailAboutIds,
-        ).any { it.visibility == View.VISIBLE }
+            stripNetworks,
+            stripWatch,
+        ).any { it != null && it.visibility == View.VISIBLE }
         binding.tvDetailAboutFactsLabel.visibility =
             if (anyFact) View.VISIBLE else View.GONE
         binding.llDetailAboutFacts.visibility =

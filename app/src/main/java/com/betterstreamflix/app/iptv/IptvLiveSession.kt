@@ -92,14 +92,35 @@ object IptvLiveSession {
                 channels.addAll(existing.values)
             }
         }
+        // Guide-window warm-up: prefetch the visible head of the catalog so
+        // pin strips / PiP previews don't cold-load per row.
+        channels.take(GUIDE_PREFETCH_COUNT).forEach { ch ->
+            runCatching {
+                com.betterstreamflix.app.logo.ChannelLogoLoader.prefetch(
+                    com.betterstreamflix.app.BetterStreamflixApp.instance,
+                    ch.id,
+                    ch.logo,
+                )
+            }
+        }
     }
+
+    private const val GUIDE_PREFETCH_COUNT = 24
 
     fun contains(id: String): Boolean = channels.any { it.id == id }
 
     private fun mergeChannel(prior: Channel?, incoming: Channel): Channel {
-        if (prior == null) return incoming
+        if (prior == null) {
+            return incoming.copy(
+                logo = com.betterstreamflix.app.logo.ChannelLogoStore
+                    .effectiveUrl(incoming.id, incoming.logo),
+            )
+        }
         return incoming.copy(
-            logo = incoming.logo ?: prior.logo,
+            logo = com.betterstreamflix.app.logo.ChannelLogoStore.effectiveUrl(
+                incoming.id,
+                incoming.logo ?: prior.logo,
+            ),
             group = incoming.group ?: prior.group,
             programNow = incoming.programNow ?: prior.programNow,
             programNext = incoming.programNext ?: prior.programNext,

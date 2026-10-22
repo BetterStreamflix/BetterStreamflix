@@ -204,6 +204,17 @@ internal fun MovieViewHolder.bindMovieMobileDetail(binding: ContentMovieMobileBi
         }
     }
 
+    com.betterstreamflix.app.logo.LogoChipStrip.bind(
+        binding.stripMovieStudios.root,
+        context.getString(R.string.detail_about_studios_label),
+        com.betterstreamflix.app.logo.LogoChips.parse(movie.companyJson),
+    )
+    com.betterstreamflix.app.logo.LogoChipStrip.bind(
+        binding.stripMovieWatchProviders.root,
+        context.getString(R.string.detail_about_watch_label),
+        com.betterstreamflix.app.logo.LogoChips.parse(movie.watchProviderJson),
+    )
+
     binding.btnMovieWatchNow.apply {
         // Dual CTA: Watch streams online; completed downloads use the Download button.
         text = DetailWatchLabels.movie(context, movie)

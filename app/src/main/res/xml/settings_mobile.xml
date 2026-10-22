@@ -73,6 +73,25 @@
                 android:title="@string/settings_tmdb_clear_logo_cache_title"
                 android:summary="@string/settings_tmdb_clear_logo_cache_summary"
                 app:iconSpaceReserved="false" />
+
+            <EditTextPreference
+                android:key="FANART_API_KEY"
+                android:title="@string/settings_fanart_api_key"
+                android:summary="@string/settings_fanart_api_key_summary"
+                android:inputType="text"
+                app:iconSpaceReserved="false" />
+
+            <Preference
+                android:key="TMDB_LOGO_STATS"
+                android:title="@string/settings_tmdb_logo_stats_title"
+                android:summary="@string/settings_tmdb_logo_stats_empty"
+                app:iconSpaceReserved="false" />
+
+            <Preference
+                android:key="TMDB_REFRESH_LOGOS"
+                android:title="@string/settings_tmdb_refresh_logos_title"
+                android:summary="@string/settings_tmdb_refresh_logos_summary"
+                app:iconSpaceReserved="false" />
         </PreferenceCategory>
     </PreferenceScreen>
 

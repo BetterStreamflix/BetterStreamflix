@@ -83,6 +83,7 @@ internal fun TvShowViewHolder.bindTvShowTvDetail(binding: ContentTvShowTvBinding
         tvShow = tvShow,
         persist = true,
         allowAlternateOnFail = true,
+        hero = true,
         onLogoReady = { applyTvBrandChrome(logoReady = true) },
         onLogoFailed = { applyTvBrandChrome(logoReady = false) },
     )
@@ -230,6 +231,21 @@ internal fun TvShowViewHolder.bindTvShowTvDetail(binding: ContentTvShowTvBinding
         rewireOverviewWatch()
         post { rewireOverviewWatch() }
     }
+
+    com.betterstreamflix.app.logo.LogoChipStrip.bind(
+        binding.stripTvShowNetworks.root,
+        context.getString(R.string.detail_about_networks_label),
+        com.betterstreamflix.app.logo.LogoChips.parse(tvShow.networkJson)
+            .ifEmpty {
+                com.betterstreamflix.app.logo.LogoChips.parse(tvShow.companyJson)
+            },
+    )
+    com.betterstreamflix.app.logo.LogoChipStrip.bind(
+        binding.stripTvShowWatchProviders.root,
+        context.getString(R.string.detail_about_watch_label),
+        com.betterstreamflix.app.logo.LogoChips.parse(tvShow.watchProviderJson),
+    )
+
     val episodeToWatch = tvShow.episodeToWatch
     val episodeSeason = resolveEpisodeSeason(episodeToWatch)
 

@@ -92,7 +92,13 @@ class BetterStreamflixApp : Application() {
         runCatching { UserPreferences.clearInvalidCurrentProvider() }
         runCatching {
             com.betterstreamflix.app.logo.TmdbLogoCache.init(this)
+            com.betterstreamflix.app.logo.TmdbLogoTelemetry.init(this)
+            com.betterstreamflix.app.logo.ChannelLogoStore.init(this)
+            com.betterstreamflix.app.logo.ProviderLogoStore.init(this)
+            com.betterstreamflix.app.logo.CustomLogoStore.init(this)
             UserPreferences.applyTmdbLogoTtls()
+            com.betterstreamflix.app.logo.FanartLogoFetch.apiKey =
+                UserPreferences.fanartApiKey
         }
         // Profiles must never kill cold start (BETTERSTREAMFLIX-1B was a Gson/R8
         // TypeToken crash inside ProfileStore during init on older builds).
@@ -184,6 +190,8 @@ class BetterStreamflixApp : Application() {
 
     override fun onTrimMemory(level: Int) {
         super.onTrimMemory(level)
+        // Push pending batched logo-cache writes to disk on any pressure signal.
+        runCatching { com.betterstreamflix.app.logo.TmdbLogoCache.flush() }
         if (level >= TRIM_MEMORY_RUNNING_MODERATE) {
             runCatching {
                 com.bumptech.glide.Glide.get(this).clearMemory()

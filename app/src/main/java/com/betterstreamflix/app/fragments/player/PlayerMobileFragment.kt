@@ -3572,6 +3572,7 @@ class PlayerMobileFragment : Fragment(),
                 imdbId = videoType.imdbId,
                 existingLogo = cachedUrl,
                 language = com.betterstreamflix.app.utils.UserPreferences.currentProvider?.language,
+                hero = true,
                 onResolved = onResolved,
             )
             is Video.Type.Episode -> com.betterstreamflix.app.logo.TitleLogoSurface.resolveAndBind(
@@ -3584,6 +3585,7 @@ class PlayerMobileFragment : Fragment(),
                 imdbId = videoType.tvShow.imdbId,
                 existingLogo = cachedUrl,
                 language = com.betterstreamflix.app.utils.UserPreferences.currentProvider?.language,
+                hero = true,
                 onResolved = onResolved,
             )
         }

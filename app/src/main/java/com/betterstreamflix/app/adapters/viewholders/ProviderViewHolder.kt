@@ -1,7 +1,6 @@
 package com.betterstreamflix.app.adapters.viewholders
 
 import android.content.Intent
-import android.graphics.drawable.PictureDrawable
 import android.view.View
 import android.widget.ImageView
 import android.widget.Toast
@@ -12,7 +11,6 @@ import androidx.navigation.findNavController
 import androidx.recyclerview.widget.RecyclerView
 import androidx.viewbinding.ViewBinding
 import com.bumptech.glide.Glide
-import com.bumptech.glide.load.resource.drawable.DrawableTransitionOptions
 import com.betterstreamflix.app.R
 import com.betterstreamflix.app.fragments.settings.SettingsDeepLink
 import com.betterstreamflix.app.providers.AniWorldProvider
@@ -485,33 +483,12 @@ class ProviderViewHolder(
     }
 
     private fun loadProviderLogo(imageView: ImageView) {
-        val logo = provider.logo.takeIf { it.isNotEmpty() }
-        val isSvg = logo?.substringBefore("?")?.endsWith(".svg", ignoreCase = true) == true
-
-        if (isSvg) {
-            // SOFTWARE layers on every TV provider tile force CPU raster during
-            // grid measure/draw and contribute to Providers ANRs. Keep hardware
-            // on Leanback; mobile may still need software for some SVG paths.
-            val leanback = com.betterstreamflix.app.utils.DeviceCapabilities
-                .isLeanbackDevice(context)
-            imageView.setLayerType(
-                if (leanback) View.LAYER_TYPE_NONE else View.LAYER_TYPE_SOFTWARE,
-                null,
-            )
-            Glide.with(context)
-                .`as`(PictureDrawable::class.java)
-                .load(logo)
-                .error(R.drawable.ic_provider_default_logo)
-                .into(imageView)
-        } else {
-            imageView.setLayerType(View.LAYER_TYPE_NONE, null)
-            Glide.with(context)
-                .load(logo ?: R.drawable.ic_provider_default_logo)
-                .error(R.drawable.ic_provider_default_logo)
-                .fitCenter()
-                .transition(DrawableTransitionOptions.withCrossFade())
-                .into(imageView)
-        }
+        com.betterstreamflix.app.logo.ProviderLogoLoader.bind(
+            imageView = imageView,
+            providerKey = provider.name,
+            name = provider.name,
+            url = provider.logo.takeIf { it.isNotEmpty() },
+        )
     }
     
     private fun toggleFavorite(provider: Provider) {

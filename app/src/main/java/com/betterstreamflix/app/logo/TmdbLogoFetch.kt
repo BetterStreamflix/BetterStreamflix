@@ -26,11 +26,13 @@ object TmdbLogoFetch {
     fun pickUrl(
         logos: List<TmdbLogoPicker.LogoCandidate>?,
         language: String?,
+        minPreferredWidth: Int = LogoConstants.MIN_PREFERRED_WIDTH,
     ): String? {
         val path = TmdbLogoPicker.pickBestFilePath(
             logos = logos,
             language = language,
             isExcluded = { filePath -> TmdbLogoCache.isFilePathBlacklisted(filePath) },
+            minPreferredWidth = minPreferredWidth,
         ) ?: return null
         return filePathToOriginalUrl(path)
     }

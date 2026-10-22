@@ -30,7 +30,7 @@ class ProviderNotSetException :
         Season::class,
         TvShow::class,
     ],
-    version = 10,
+    version = 11,
     exportSchema = false
 )
 @TypeConverters(Converters::class)
@@ -249,6 +249,7 @@ abstract class AppDatabase : RoomDatabase() {
                 .addMigrations(MIGRATION_7_8)
                 .addMigrations(MIGRATION_8_9)
                 .addMigrations(MIGRATION_9_10)
+                .addMigrations(MIGRATION_10_11)
                 .build()
         }
 
@@ -387,6 +388,16 @@ abstract class AppDatabase : RoomDatabase() {
                 db.execSQL("ALTER TABLE movies ADD COLUMN logoLanguage TEXT")
                 db.execSQL("ALTER TABLE tv_shows ADD COLUMN logo TEXT")
                 db.execSQL("ALTER TABLE tv_shows ADD COLUMN logoLanguage TEXT")
+            }
+        }
+
+        private val MIGRATION_10_11: Migration = object : Migration(10, 11) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                listOf("movies", "tv_shows").forEach { table ->
+                    db.execSQL("ALTER TABLE $table ADD COLUMN networkJson TEXT")
+                    db.execSQL("ALTER TABLE $table ADD COLUMN companyJson TEXT")
+                    db.execSQL("ALTER TABLE $table ADD COLUMN watchProviderJson TEXT")
+                }
             }
         }
     }

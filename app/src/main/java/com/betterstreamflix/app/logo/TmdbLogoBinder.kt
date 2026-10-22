@@ -83,6 +83,7 @@ object TmdbLogoBinder {
                             tmdbId = request.tmdbId,
                             imdbId = request.imdbId,
                             language = request.language,
+                            minPreferredWidth = request.minPreferredWidth,
                         )
                     } catch (e: CancellationException) {
                         throw e
@@ -113,6 +114,29 @@ object TmdbLogoBinder {
         start()
     }
 
+    private fun fadeTitleOut(titleView: TextView?) {
+        titleView ?: return
+        titleView.animate().cancel()
+        titleView.animate()
+            .alpha(0f)
+            .setDuration(160)
+            .withEndAction {
+                titleView.visibility = View.GONE
+                titleView.alpha = 1f
+            }
+            .start()
+    }
+
+    private fun fadeTitleIn(titleView: TextView?, alpha: Float = 1f) {
+        titleView ?: return
+        titleView.animate().cancel()
+        if (titleView.visibility != View.VISIBLE) {
+            titleView.visibility = View.VISIBLE
+            titleView.alpha = 0f
+        }
+        titleView.animate().alpha(alpha).setDuration(140).start()
+    }
+
     fun bindImage(
         imageView: ImageView,
         titleView: TextView?,
@@ -121,9 +145,11 @@ object TmdbLogoBinder {
         hideUntilReady: Boolean = true,
         stillCurrent: () -> Boolean = { true },
         applyContrastScrim: Boolean = false,
+        adaptiveHeight: Boolean = false,
         onLoadFailed: (() -> Unit)? = null,
         onLogoReady: ((String) -> Unit)? = null,
         onLogoFailed: (() -> Unit)? = null,
+        onAccent: ((Int) -> Unit)? = null,
     ) {
         titleView?.text = title
         // Never paint a hard plate onto the ImageView — that boxes/crushes TMDb logos.
@@ -136,8 +162,7 @@ object TmdbLogoBinder {
                 // INVISIBLE (not GONE) when parent is a fixed-height slot — no layout shift.
                 imageView.visibility = View.INVISIBLE
                 imageView.importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
-                titleView?.alpha = 1f
-                titleView?.visibility = View.VISIBLE
+                fadeTitleIn(titleView)
                 TitleLogoPresentation.applySlotPlate(imageView, showPlate = applyContrastScrim)
                 onLogoFailed?.invoke()
                 return
@@ -146,14 +171,12 @@ object TmdbLogoBinder {
                 // Keep title as a soft placeholder — never leave an empty black plate.
                 imageView.visibility = View.INVISIBLE
                 imageView.importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
-                titleView?.alpha = 0.62f
-                titleView?.visibility = View.VISIBLE
+                fadeTitleIn(titleView, alpha = 0.62f)
             }
             TitleLogoSlot.State.SHOW_LOGO -> {
                 imageView.visibility = View.VISIBLE
                 imageView.importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_YES
-                titleView?.alpha = 1f
-                titleView?.visibility = View.GONE
+                fadeTitleOut(titleView)
             }
         }
         TitleLogoPresentation.polishLogoImage(imageView)
@@ -163,13 +186,18 @@ object TmdbLogoBinder {
             stillCurrent = stillCurrent,
             hideUntilReady = hideUntilReady,
             contentDescription = title,
+            onAspect = { aspect ->
+                if (adaptiveHeight) {
+                    TitleLogoPresentation.adaptSlotForAspect(imageView, aspect)
+                }
+            },
+            onAccent = onAccent,
             onFailed = {
                 TitleLogoPresentation.clearImagePlate(imageView)
                 TitleLogoPresentation.clearSlotPlate(imageView)
                 imageView.visibility = View.INVISIBLE
                 imageView.importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
-                titleView?.alpha = 1f
-                titleView?.visibility = View.VISIBLE
+                fadeTitleIn(titleView)
                 TitleLogoPresentation.applySlotPlate(imageView, showPlate = applyContrastScrim)
                 onLogoFailed?.invoke()
                 onLoadFailed?.invoke()
@@ -179,8 +207,13 @@ object TmdbLogoBinder {
                 TitleLogoPresentation.clearSlotPlate(imageView)
                 imageView.visibility = View.VISIBLE
                 imageView.importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_YES
-                titleView?.alpha = 1f
-                titleView?.visibility = View.GONE
+                fadeTitleOut(titleView)
+                // Soft shadow keeps transparent wordmarks legible on bright art —
+                // wrapped post-ready so Glide still owns the target lifecycle.
+                imageView.post {
+                    val current = imageView.drawable ?: return@post
+                    imageView.setImageDrawable(TitleLogoPresentation.withSoftShadow(current))
+                }
                 onLogoReady?.invoke(readyUrl)
             },
         )

@@ -123,6 +123,7 @@ object DetailHeaderController {
             movie = movie,
             persist = true,
             allowAlternateOnFail = true,
+            hero = true,
             stillCurrent = {
                 isCurrentGeneration(root, generation) &&
                     root.findViewById<TextView>(R.id.tv_detail_header_title)?.text?.toString() ==
@@ -166,6 +167,7 @@ object DetailHeaderController {
             tvShow = tvShow,
             persist = true,
             allowAlternateOnFail = true,
+            hero = true,
             stillCurrent = {
                 isCurrentGeneration(root, generation) &&
                     root.findViewById<TextView>(R.id.tv_detail_header_title)?.text?.toString() ==

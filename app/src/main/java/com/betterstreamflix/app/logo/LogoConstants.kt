@@ -30,10 +30,25 @@ object LogoConstants {
     const val MAX_DISK_ENTRY_AGE_MS = 336L * 60L * 60L * 1000L
 
     const val MIN_PREFERRED_WIDTH = 200
+
+    /** Wide hero slots (Featured / detail hero) want bigger wordmarks. */
+    const val HERO_MIN_PREFERRED_WIDTH = 400
+
     const val MIN_ASPECT_FOR_WORDMARK = 1.2f
 
-    /** Memory LRU capacity (entries). */
+    /** Memory LRU capacity (entries) — scaled by device RAM class at init. */
     const val MEMORY_CACHE_MAX_ENTRIES = 256
+    const val MEMORY_CACHE_MAX_ENTRIES_LOW = 128
+    const val MEMORY_CACHE_MAX_ENTRIES_HIGH = 512
+
+    /** Session network-fetch budget — beyond it resolves serve cache/miss only. */
+    const val SESSION_FETCH_BUDGET = 400
+
+    /** Cooldown after an HTTP 429 before logo fetches resume. */
+    const val RATE_LIMIT_COOLDOWN_MS = 60_000L
+
+    /** Channel-logo persisted hit TTL (channels rarely rebrand). */
+    const val CHANNEL_LOGO_HIT_TTL_MS = 30L * 24L * 60L * 60L * 1000L
 
     /** Network retries for transient logo detail failures. */
     const val NETWORK_RETRY_COUNT = 1

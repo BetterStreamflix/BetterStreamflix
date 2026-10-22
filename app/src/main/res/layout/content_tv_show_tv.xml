@@ -219,6 +219,32 @@
         app:layout_goneMarginStart="64dp"
         tools:text="Overview" />
 
+    <include
+        android:id="@+id/strip_tv_show_networks"
+        layout="@layout/view_logo_chip_strip"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="36dp"
+        android:layout_marginTop="14dp"
+        android:layout_marginEnd="64dp"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toEndOf="@id/iv_tv_show_poster"
+        app:layout_constraintTop_toBottomOf="@id/tv_tv_show_overview"
+        app:layout_goneMarginStart="64dp" />
+
+    <include
+        android:id="@+id/strip_tv_show_watch_providers"
+        layout="@layout/view_logo_chip_strip"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="36dp"
+        android:layout_marginTop="14dp"
+        android:layout_marginEnd="64dp"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toEndOf="@id/iv_tv_show_poster"
+        app:layout_constraintTop_toBottomOf="@id/strip_tv_show_networks"
+        app:layout_goneMarginStart="64dp" />
+
     <TextView
         android:id="@+id/btn_tv_show_watch_now"
         style="@style/AppTheme.Widget.Tv.Button.DetailPrimary"
@@ -232,7 +258,7 @@
         android:nextFocusRight="@id/btn_tv_show_favorite"
         android:text="@string/tv_show_watch_season_episode"
         app:layout_constraintStart_toEndOf="@id/iv_tv_show_poster"
-        app:layout_constraintTop_toBottomOf="@id/tv_tv_show_overview"
+        app:layout_constraintTop_toBottomOf="@id/strip_tv_show_watch_providers"
         app:layout_goneMarginStart="64dp" />
 
     <ProgressBar
@@ -265,7 +291,7 @@
         android:nextFocusRight="@id/btn_tv_show_trailer"
         android:text="@string/detail_action_list"
         app:layout_constraintStart_toEndOf="@id/btn_tv_show_watch_now"
-        app:layout_constraintTop_toBottomOf="@id/tv_tv_show_overview" />
+        app:layout_constraintTop_toBottomOf="@id/strip_tv_show_watch_providers" />
 
     <TextView
         android:id="@+id/btn_tv_show_trailer"
@@ -281,7 +307,7 @@
         android:nextFocusRight="@id/btn_tv_show_download"
         android:text="@string/tv_show_trailer"
         app:layout_constraintStart_toEndOf="@id/btn_tv_show_favorite"
-        app:layout_constraintTop_toBottomOf="@id/tv_tv_show_overview" />
+        app:layout_constraintTop_toBottomOf="@id/strip_tv_show_watch_providers" />
 
     <TextView
         android:id="@+id/btn_tv_show_download"
@@ -296,7 +322,7 @@
         android:nextFocusLeft="@id/btn_tv_show_trailer"
         android:text="@string/option_show_download"
         app:layout_constraintStart_toEndOf="@id/btn_tv_show_trailer"
-        app:layout_constraintTop_toBottomOf="@id/tv_tv_show_overview" />
+        app:layout_constraintTop_toBottomOf="@id/strip_tv_show_watch_providers" />
 
     <TextView
         android:id="@+id/btn_tv_show_watched"

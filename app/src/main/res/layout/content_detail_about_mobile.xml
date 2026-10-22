@@ -302,6 +302,20 @@
             android:visibility="gone"
             tools:text="TMDb 1399 · IMDb tt0121955"
             tools:visibility="visible" />
+
+        <include
+            android:id="@+id/strip_detail_about_networks"
+            layout="@layout/view_logo_chip_strip"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp" />
+
+        <include
+            android:id="@+id/strip_detail_about_watch"
+            layout="@layout/view_logo_chip_strip"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp" />
     </LinearLayout>
 
     <!-- Legacy stubs kept gone so older callers / generated bindings stay safe during migrate. -->

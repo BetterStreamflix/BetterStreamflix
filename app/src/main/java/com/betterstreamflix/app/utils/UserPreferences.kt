@@ -1142,6 +1142,15 @@ object UserPreferences {
             Key.TMDB_API_KEY.setString(value)
             TMDb3.rebuildService()
         }
+
+    /** Personal Fanart.tv API key — enables the second title-logo source. */
+    var fanartApiKey: String
+        get() = Key.FANART_API_KEY.getString() ?: ""
+        set(value) {
+            Key.FANART_API_KEY.setString(value)
+            com.betterstreamflix.app.logo.FanartLogoFetch.apiKey =
+                value.trim().takeIf { it.isNotEmpty() }
+        }
     var enableTmdb: Boolean
         get() = Key.ENABLE_TMDB.getBoolean() ?: true
         set(value) {
@@ -2257,6 +2266,7 @@ object UserPreferences {
         DOWNLOAD_WITH_LONG_PRESS_HINT_SHOWN,
         IMMERSIVE_MODE,
         TMDB_API_KEY,
+        FANART_API_KEY,
         SUBDL_API_KEY,
         FORCE_EXTRA_BUFFERING,
         PLAYBACK_VIDEO_QUALITY,

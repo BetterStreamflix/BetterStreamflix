@@ -790,6 +790,25 @@ class SettingsTvFragment : LeanbackPreferenceFragmentCompat() {
                 true
             }
         }
+        findPreference<EditTextPreference>("FANART_API_KEY")?.apply {
+            summary = if (UserPreferences.fanartApiKey.isEmpty()) getString(R.string.settings_fanart_api_key_summary) else UserPreferences.fanartApiKey
+            text = UserPreferences.fanartApiKey
+            setOnPreferenceChangeListener { _, newValue ->
+                val newKey = (newValue as String).trim()
+                UserPreferences.fanartApiKey = newKey
+                summary = if (newKey.isEmpty()) getString(R.string.settings_fanart_api_key_summary) else newKey
+                val message = if (newKey.isEmpty()) {
+                    getString(R.string.settings_fanart_api_key_reset)
+                } else {
+                    getString(R.string.settings_fanart_api_key_success)
+                }
+                showSettingsInfo(message)
+                TmdbSettingsController.bind(this@SettingsTvFragment, lifecycleScope) { key ->
+                    findPreference(key)
+                }
+                true
+            }
+        }
         findPreference<SwitchPreferenceCompat>("ENABLE_TMDB")?.apply {
             isChecked = UserPreferences.enableTmdb
 
@@ -2741,6 +2760,11 @@ class SettingsTvFragment : LeanbackPreferenceFragmentCompat() {
         findPreference<EditTextPreference>("TMDB_API_KEY")?.apply {
             summary = if (UserPreferences.tmdbApiKey.isEmpty()) getString(R.string.settings_tmdb_api_key_summary) else UserPreferences.tmdbApiKey
             text = UserPreferences.tmdbApiKey
+        }
+
+        findPreference<EditTextPreference>("FANART_API_KEY")?.apply {
+            summary = if (UserPreferences.fanartApiKey.isEmpty()) getString(R.string.settings_fanart_api_key_summary) else UserPreferences.fanartApiKey
+            text = UserPreferences.fanartApiKey
         }
 
         findPreference<ListPreference>("APP_LANGUAGE")?.value =

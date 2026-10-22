@@ -201,7 +201,7 @@ class OnboardingWizardBinder(
             val checkView = row.findViewById<android.widget.ImageView>(R.id.iv_choice_check)
             nameView.text = provider.name
             row.contentDescription = provider.name
-            loadProviderLogo(logoView, provider.logo)
+            loadProviderLogo(logoView, provider.name, provider.logo)
             val selected = draft.favoriteNames.contains(provider.name)
             row.isSelected = selected
             applyProviderRowStyle(row, nameView, checkView, selected)
@@ -254,33 +254,14 @@ class OnboardingWizardBinder(
         return view
     }
 
-    /** Same SVG-aware logo path as ProviderViewHolder (remote URL or default). */
-    private fun loadProviderLogo(imageView: android.widget.ImageView, logo: String?) {
-        val url = logo?.takeIf { it.isNotEmpty() }
-        val isSvg = url?.substringBefore("?")?.endsWith(".svg", ignoreCase = true) == true
-        val context = imageView.context
-        if (isSvg) {
-            imageView.setLayerType(
-                if (isTv) View.LAYER_TYPE_NONE else View.LAYER_TYPE_SOFTWARE,
-                null,
-            )
-            com.bumptech.glide.Glide.with(context)
-                .`as`(android.graphics.drawable.PictureDrawable::class.java)
-                .load(url)
-                .error(R.drawable.ic_provider_default_logo)
-                .into(imageView)
-        } else {
-            imageView.setLayerType(View.LAYER_TYPE_NONE, null)
-            com.bumptech.glide.Glide.with(context)
-                .load(url ?: R.drawable.ic_provider_default_logo)
-                .error(R.drawable.ic_provider_default_logo)
-                .fitCenter()
-                .transition(
-                    com.bumptech.glide.load.resource.drawable.DrawableTransitionOptions
-                        .withCrossFade(),
-                )
-                .into(imageView)
-        }
+    /** Unified provider-logo path (last-good cache, blacklist, lettermark). */
+    private fun loadProviderLogo(imageView: android.widget.ImageView, name: String, logo: String?) {
+        com.betterstreamflix.app.logo.ProviderLogoLoader.bind(
+            imageView = imageView,
+            providerKey = name,
+            name = name,
+            url = logo?.takeIf { it.isNotEmpty() },
+        )
     }
 
     private fun applyProviderRowStyle(

@@ -53,12 +53,20 @@ object TmdbLogoGlide {
         stillCurrent: () -> Boolean = { true },
         hideUntilReady: Boolean = false,
         contentDescription: String? = null,
+        onAspect: ((Float) -> Unit)? = null,
+        onAccent: ((Int) -> Unit)? = null,
         onFailed: () -> Unit,
         onReady: (readyUrl: String) -> Unit,
     ) {
         if (!contentDescription.isNullOrBlank()) {
             imageView.contentDescription = contentDescription
             imageView.importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_YES
+        }
+        val isSvg = logoUrl?.substringBefore('?')
+            ?.endsWith(".svg", ignoreCase = true) == true
+        if (isSvg) {
+            loadSvg(imageView, logoUrl, stillCurrent, hideUntilReady, onAspect, onFailed, onReady)
+            return
         }
         val sizes = ArtworkUrls.logoSizeLadder(logoUrl)
         if (sizes.isEmpty()) {
@@ -72,11 +80,13 @@ object TmdbLogoGlide {
         val overrideW = imageView.width.takeIf { it > 0 }
         val overrideH = imageView.height.takeIf { it > 0 }
 
+        var lastError: com.bumptech.glide.load.engine.GlideException? = null
         fun attempt(index: Int) {
             val url = sizes.getOrNull(index)
             if (url.isNullOrBlank()) {
                 if (stillCurrent()) {
                     TmdbLogoTelemetry.recordGlideFail()
+                    classifyFailure(lastError)
                     if (TmdbLogoPicker.isTrustedTmdbLogo(logoUrl)) {
                         TmdbLogoCache.markDecodeFailed(logoUrl)
                     }
@@ -111,6 +121,7 @@ object TmdbLogoGlide {
                     ): Boolean {
                         if (!stillCurrent()) return false
                         if (imageView.getTag(LOGO_URL_TAG) != url) return false
+                        lastError = e
                         // Never start/clear a load synchronously inside a Glide
                         // callback (BETTERSTREAMFLIX-2Q CallbackException).
                         mainHandler.post {
@@ -142,6 +153,13 @@ object TmdbLogoGlide {
                         if (hideUntilReady) {
                             imageView.visibility = View.VISIBLE
                         }
+                        onAspect?.invoke(
+                            resource.intrinsicWidth.toFloat() / resource.intrinsicHeight,
+                        )
+                        if (onAccent != null) {
+                            TitleLogoPresentation.extractAccentColor(resource)
+                                ?.let(onAccent)
+                        }
                         onReady(url)
                         return false
                     }
@@ -150,6 +168,89 @@ object TmdbLogoGlide {
         }
 
         attempt(0)
+    }
+
+    /**
+     * SVG wordmarks via the registered SvgDecoder/SvgDrawableTranscoder — no size
+     * ladder (single URL), PictureDrawable needs software layer off-TV.
+     */
+    private fun loadSvg(
+        imageView: ImageView,
+        logoUrl: String?,
+        stillCurrent: () -> Boolean,
+        hideUntilReady: Boolean,
+        onAspect: ((Float) -> Unit)?,
+        onFailed: () -> Unit,
+        onReady: (readyUrl: String) -> Unit,
+    ) {
+        if (hideUntilReady) imageView.visibility = View.INVISIBLE
+        val leanback = com.betterstreamflix.app.utils.DeviceCapabilities
+            .isLeanbackDevice(imageView.context)
+        imageView.setLayerType(
+            if (leanback) View.LAYER_TYPE_NONE else View.LAYER_TYPE_SOFTWARE,
+            null,
+        )
+        imageView.setTag(LOGO_URL_TAG, logoUrl)
+        Glide.with(imageView)
+            .`as`(android.graphics.drawable.PictureDrawable::class.java)
+            .load(logoUrl)
+            .diskCacheStrategy(DiskCacheStrategy.AUTOMATIC)
+            .listener(object : RequestListener<android.graphics.drawable.PictureDrawable> {
+                override fun onLoadFailed(
+                    e: GlideException?,
+                    model: Any?,
+                    target: Target<android.graphics.drawable.PictureDrawable>,
+                    isFirstResource: Boolean,
+                ): Boolean {
+                    if (!stillCurrent()) return false
+                    if (imageView.getTag(LOGO_URL_TAG) != logoUrl) return false
+                    TmdbLogoTelemetry.recordGlideFail()
+                    classifyFailure(e)
+                    if (TmdbLogoPicker.isTrustedTmdbLogo(logoUrl)) {
+                        TmdbLogoCache.markDecodeFailed(logoUrl)
+                    }
+                    onFailed()
+                    return true
+                }
+
+                override fun onResourceReady(
+                    resource: android.graphics.drawable.PictureDrawable,
+                    model: Any,
+                    target: Target<android.graphics.drawable.PictureDrawable>?,
+                    dataSource: DataSource,
+                    isFirstResource: Boolean,
+                ): Boolean {
+                    if (!stillCurrent()) return false
+                    if (imageView.getTag(LOGO_URL_TAG) != logoUrl) return false
+                    if (resource.intrinsicWidth <= 1 || resource.intrinsicHeight <= 1) {
+                        mainHandler.post { onFailed() }
+                        return true
+                    }
+                    if (hideUntilReady) imageView.visibility = View.VISIBLE
+                    onAspect?.invoke(
+                        resource.intrinsicWidth.toFloat() / resource.intrinsicHeight,
+                    )
+                    onReady(logoUrl.orEmpty())
+                    return false
+                }
+            })
+            .into(imageView)
+    }
+
+    /** Classifies the last ladder failure for telemetry (404 vs corrupt vs other). */
+    private fun classifyFailure(e: GlideException?) {
+        val causes = e?.rootCauses.orEmpty().map { it.toString() }
+        when {
+            causes.any { "404" in it || "Not Found" in it } ->
+                TmdbLogoTelemetry.recordGlideFailNotFound()
+            causes.any {
+                "decode" in it.lowercase() ||
+                    "IOException" in it ||
+                    "MarkException" in it ||
+                    "corrupt" in it.lowercase()
+            } -> TmdbLogoTelemetry.recordGlideFailCorrupt()
+            e != null -> TmdbLogoTelemetry.recordGlideFailOther()
+        }
     }
 
     private fun isMetered(context: Context): Boolean {

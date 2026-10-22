@@ -314,6 +314,30 @@
         app:constraint_referenced_ids="tv_movie_overview,tv_movie_overview_more" />
 
     <!-- Primary pair: Watch + My List (equal weight), then quieter utility icons. -->
+    <include
+        android:id="@+id/strip_movie_studios"
+        layout="@layout/view_logo_chip_strip"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="20dp"
+        android:layout_marginTop="12dp"
+        android:layout_marginEnd="20dp"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/barrier_movie_synopsis" />
+
+    <include
+        android:id="@+id/strip_movie_watch_providers"
+        layout="@layout/view_logo_chip_strip"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="20dp"
+        android:layout_marginTop="8dp"
+        android:layout_marginEnd="20dp"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/strip_movie_studios" />
+
     <LinearLayout
         android:id="@+id/ll_movie_primary_cta"
         android:layout_width="0dp"
@@ -325,7 +349,7 @@
         android:orientation="horizontal"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/barrier_movie_synopsis">
+        app:layout_constraintTop_toBottomOf="@id/strip_movie_watch_providers">
 
         <TextView
             android:id="@+id/btn_movie_watch_now"

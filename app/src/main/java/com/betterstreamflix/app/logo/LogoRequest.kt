@@ -20,4 +20,6 @@ data class LogoRequest(
     val language: String? = null,
     val existingLogo: String? = null,
     val existingSource: LogoSource = LogoSource.UNKNOWN,
+    /** Surface minimum preferred width — hero slots pass HERO_MIN_PREFERRED_WIDTH. */
+    val minPreferredWidth: Int = LogoConstants.MIN_PREFERRED_WIDTH,
 )

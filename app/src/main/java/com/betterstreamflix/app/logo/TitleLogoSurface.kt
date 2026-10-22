@@ -27,13 +27,34 @@ object TitleLogoSurface {
         persist: Boolean = true,
         allowAlternateOnFail: Boolean = true,
         stillCurrent: (() -> Boolean)? = null,
+        hero: Boolean = false,
         onResolved: ((String, LogoSource) -> Unit)? = null,
         onLogoReady: ((String) -> Unit)? = null,
         onLogoFailed: (() -> Unit)? = null,
+        onAccent: ((Int) -> Unit)? = null,
     ) {
         TmdbLogoBinder.cancel(anchor)
         anchor.setTag(TITLE_TAG, movie.title)
         val currentCheck = stillCurrent ?: { anchor.getTag(TITLE_TAG) == movie.title }
+        val custom = CustomLogoStore.get(isTv = false, movie.id)
+        if (custom != null) {
+            // USER override wins: bind it and skip auto-resolve entirely.
+            movie.logo = custom
+            movie.logoSource = LogoSource.USER
+            TmdbLogoBinder.bindImage(
+                imageView = imageView,
+                titleView = titleView,
+                logoUrl = custom,
+                title = movie.title,
+                hideUntilReady = hideUntilReady,
+                stillCurrent = currentCheck,
+                onLogoReady = onLogoReady,
+                onLogoFailed = onLogoFailed,
+                onAccent = onAccent,
+            )
+            onResolved?.invoke(custom, LogoSource.USER)
+            return
+        }
         val current = movie.logo
         val wantedLang = UserPreferences.currentProvider?.language
         TmdbLogoBinder.bindImage(
@@ -50,21 +71,22 @@ object TitleLogoSurface {
                 ) {
                     resolveMovie(
                         anchor, movie, imageView, titleView,
-                        hideUntilReady, persist, currentCheck, onResolved,
-                        onLogoReady, onLogoFailed,
+                        hideUntilReady, persist, currentCheck, hero, onResolved,
+                        onLogoReady, onLogoFailed, onAccent,
                     )
                 }
             },
             onLogoReady = onLogoReady,
             onLogoFailed = onLogoFailed,
+            onAccent = onAccent,
         )
         if (!UserPreferences.dataSaverMode &&
             TmdbLogoPicker.shouldUpgradeLogo(current, movie.logoLanguage, wantedLang)
         ) {
             resolveMovie(
                 anchor, movie, imageView, titleView,
-                hideUntilReady, persist, currentCheck, onResolved,
-                onLogoReady, onLogoFailed,
+                hideUntilReady, persist, currentCheck, hero, onResolved,
+                onLogoReady, onLogoFailed, onAccent,
             )
         }
     }
@@ -78,13 +100,33 @@ object TitleLogoSurface {
         persist: Boolean = true,
         allowAlternateOnFail: Boolean = true,
         stillCurrent: (() -> Boolean)? = null,
+        hero: Boolean = false,
         onResolved: ((String, LogoSource) -> Unit)? = null,
         onLogoReady: ((String) -> Unit)? = null,
         onLogoFailed: (() -> Unit)? = null,
+        onAccent: ((Int) -> Unit)? = null,
     ) {
         TmdbLogoBinder.cancel(anchor)
         anchor.setTag(TITLE_TAG, tvShow.title)
         val currentCheck = stillCurrent ?: { anchor.getTag(TITLE_TAG) == tvShow.title }
+        val custom = CustomLogoStore.get(isTv = true, tvShow.id)
+        if (custom != null) {
+            tvShow.logo = custom
+            tvShow.logoSource = LogoSource.USER
+            TmdbLogoBinder.bindImage(
+                imageView = imageView,
+                titleView = titleView,
+                logoUrl = custom,
+                title = tvShow.title,
+                hideUntilReady = hideUntilReady,
+                stillCurrent = currentCheck,
+                onLogoReady = onLogoReady,
+                onLogoFailed = onLogoFailed,
+                onAccent = onAccent,
+            )
+            onResolved?.invoke(custom, LogoSource.USER)
+            return
+        }
         val current = tvShow.logo
         val wantedLang = UserPreferences.currentProvider?.language
         TmdbLogoBinder.bindImage(
@@ -101,21 +143,22 @@ object TitleLogoSurface {
                 ) {
                     resolveTv(
                         anchor, tvShow, imageView, titleView,
-                        hideUntilReady, persist, currentCheck, onResolved,
-                        onLogoReady, onLogoFailed,
+                        hideUntilReady, persist, currentCheck, hero, onResolved,
+                        onLogoReady, onLogoFailed, onAccent,
                     )
                 }
             },
             onLogoReady = onLogoReady,
             onLogoFailed = onLogoFailed,
+            onAccent = onAccent,
         )
         if (!UserPreferences.dataSaverMode &&
             TmdbLogoPicker.shouldUpgradeLogo(current, tvShow.logoLanguage, wantedLang)
         ) {
             resolveTv(
                 anchor, tvShow, imageView, titleView,
-                hideUntilReady, persist, currentCheck, onResolved,
-                onLogoReady, onLogoFailed,
+                hideUntilReady, persist, currentCheck, hero, onResolved,
+                onLogoReady, onLogoFailed, onAccent,
             )
         }
     }
@@ -155,7 +198,9 @@ object TitleLogoSurface {
         existingLogoLanguage: String? = null,
         language: String? = UserPreferences.currentProvider?.language,
         hideUntilReady: Boolean = true,
+        hero: Boolean = false,
         onResolved: ((String, LogoSource) -> Unit)? = null,
+        onAccent: ((Int) -> Unit)? = null,
     ) {
         TmdbLogoBinder.cancel(anchor)
         anchor.setTag(TITLE_TAG, title)
@@ -168,6 +213,7 @@ object TitleLogoSurface {
             title = title,
             hideUntilReady = hideUntilReady,
             stillCurrent = stillCurrent,
+            onAccent = onAccent,
         )
         if (UserPreferences.dataSaverMode) return
         if (!TmdbLogoPicker.shouldUpgradeLogo(existingLogo, existingLogoLanguage, wantedLang)) return
@@ -181,6 +227,11 @@ object TitleLogoSurface {
                 imdbId = imdbId,
                 language = wantedLang,
                 existingLogo = existingLogo,
+                minPreferredWidth = if (hero) {
+                    LogoConstants.HERO_MIN_PREFERRED_WIDTH
+                } else {
+                    LogoConstants.MIN_PREFERRED_WIDTH
+                },
             ),
         ) { url, source ->
             onResolved?.invoke(url, source)
@@ -192,6 +243,7 @@ object TitleLogoSurface {
                     title = title,
                     hideUntilReady = hideUntilReady,
                     stillCurrent = stillCurrent,
+                    onAccent = onAccent,
                 )
             }
         }
@@ -205,9 +257,11 @@ object TitleLogoSurface {
         hideUntilReady: Boolean,
         persist: Boolean,
         stillCurrent: () -> Boolean,
+        hero: Boolean,
         onResolved: ((String, LogoSource) -> Unit)?,
         onLogoReady: ((String) -> Unit)?,
         onLogoFailed: (() -> Unit)?,
+        onAccent: ((Int) -> Unit)? = null,
     ) {
         val wantedLang = UserPreferences.currentProvider?.language
         TmdbLogoBinder.resolve(
@@ -221,6 +275,11 @@ object TitleLogoSurface {
                 language = wantedLang,
                 existingLogo = movie.logo,
                 existingSource = movie.logoSource,
+                minPreferredWidth = if (hero) {
+                    LogoConstants.HERO_MIN_PREFERRED_WIDTH
+                } else {
+                    LogoConstants.MIN_PREFERRED_WIDTH
+                },
             ),
         ) { url, source ->
             movie.logo = url
@@ -238,6 +297,7 @@ object TitleLogoSurface {
                     stillCurrent = stillCurrent,
                     onLogoReady = onLogoReady,
                     onLogoFailed = onLogoFailed,
+                    onAccent = onAccent,
                 )
             }
         }
@@ -251,9 +311,11 @@ object TitleLogoSurface {
         hideUntilReady: Boolean,
         persist: Boolean,
         stillCurrent: () -> Boolean,
+        hero: Boolean,
         onResolved: ((String, LogoSource) -> Unit)?,
         onLogoReady: ((String) -> Unit)?,
         onLogoFailed: (() -> Unit)?,
+        onAccent: ((Int) -> Unit)? = null,
     ) {
         val wantedLang = UserPreferences.currentProvider?.language
         TmdbLogoBinder.resolve(
@@ -267,6 +329,11 @@ object TitleLogoSurface {
                 language = wantedLang,
                 existingLogo = tvShow.logo,
                 existingSource = tvShow.logoSource,
+                minPreferredWidth = if (hero) {
+                    LogoConstants.HERO_MIN_PREFERRED_WIDTH
+                } else {
+                    LogoConstants.MIN_PREFERRED_WIDTH
+                },
             ),
         ) { url, source ->
             tvShow.logo = url
@@ -284,6 +351,7 @@ object TitleLogoSurface {
                     stillCurrent = stillCurrent,
                     onLogoReady = onLogoReady,
                     onLogoFailed = onLogoFailed,
+                    onAccent = onAccent,
                 )
             }
         }

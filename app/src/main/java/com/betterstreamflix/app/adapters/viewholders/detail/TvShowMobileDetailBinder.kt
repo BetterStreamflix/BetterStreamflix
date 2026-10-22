@@ -219,6 +219,21 @@ internal fun TvShowViewHolder.bindTvShowMobileDetail(binding: ContentTvShowMobil
             setOnClickListener(null)
         }
     }
+
+    com.betterstreamflix.app.logo.LogoChipStrip.bind(
+        binding.stripTvShowNetworks.root,
+        context.getString(R.string.detail_about_networks_label),
+        com.betterstreamflix.app.logo.LogoChips.parse(tvShow.networkJson)
+            .ifEmpty {
+                com.betterstreamflix.app.logo.LogoChips.parse(tvShow.companyJson)
+            },
+    )
+    com.betterstreamflix.app.logo.LogoChipStrip.bind(
+        binding.stripTvShowWatchProviders.root,
+        context.getString(R.string.detail_about_watch_label),
+        com.betterstreamflix.app.logo.LogoChips.parse(tvShow.watchProviderJson),
+    )
+
     val episodeToWatch = tvShow.episodeToWatch
     val episodeSeason = resolveEpisodeSeason(episodeToWatch)
     binding.btnTvShowWatchNow.apply {

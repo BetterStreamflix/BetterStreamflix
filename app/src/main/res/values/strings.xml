@@ -1937,8 +1937,8 @@
     <string name="settings_tmdb_clear_cache_summary">Drop cached details, IMDb finds and search matches</string>
     <string name="settings_tmdb_cache_cleared">TMDb cache cleared</string>
     <string name="settings_tmdb_clear_logo_cache_title">Clear title logo cache</string>
-    <string name="settings_tmdb_clear_logo_cache_summary">Drop only cached title logo URLs (keeps other TMDb data)</string>
-    <string name="settings_tmdb_logo_cache_cleared">Title logo cache cleared</string>
+    <string name="settings_tmdb_clear_logo_cache_summary">Drop cached title, channel and provider logo URLs (keeps other TMDb data and your custom logos)</string>
+    <string name="settings_tmdb_logo_cache_cleared">Logo caches cleared</string>
 
     <string name="settings_category_subdl">SubDL Settings</string>
     <string name="settings_subdl_api_key">SubDL API Key</string>
@@ -2774,4 +2774,24 @@
     <string name="cast_sheet_forget">FORGET</string>
     <string name="cast_sheet_play_here">PLAY HERE</string>
 
+    <string name="settings_fanart_api_key">Fanart.tv API key</string>
+    <string name="settings_fanart_api_key_summary">Personal key for the Fanart.tv artwork source — unlocks a second provider for title logos</string>
+    <string name="settings_tmdb_logo_stats_title">Title logo statistics</string>
+    <string name="settings_tmdb_logo_stats_empty">No lookups yet this session</string>
+    <string name="settings_tmdb_refresh_logos_title">Refresh all title logos</string>
+    <string name="settings_tmdb_refresh_logos_summary">Re-resolve logos for favorites and library entries in the background</string>
+    <string name="settings_tmdb_logos_refreshed">Logo refresh queued for %1$d items</string>
+    <string name="settings_tmdb_logos_refresh_running">Refreshing logos for %1$d titles…</string>
+    <string name="detail_about_networks_label">Networks</string>
+    <string name="detail_about_studios_label">Studios</string>
+    <string name="detail_about_watch_label">Available on</string>
+    <string name="option_custom_logo">Custom title logo…</string>
+    <string name="custom_logo_dialog_title">Custom logo — %1$s</string>
+    <string name="custom_logo_hint">https://… logo URL (empty = remove)</string>
+    <string name="custom_logo_invalid">Enter an http(s) URL or leave empty</string>
+    <string name="custom_logo_saved">Custom logo saved — takes precedence over auto-resolved logos</string>
+    <string name="custom_logo_removed">Custom logo removed</string>
+    <string name="custom_logo_remove">Remove</string>
+    <string name="settings_fanart_api_key_success">Fanart.tv API key saved</string>
+    <string name="settings_fanart_api_key_reset">Fanart.tv key removed — source disabled</string>
 </resources>

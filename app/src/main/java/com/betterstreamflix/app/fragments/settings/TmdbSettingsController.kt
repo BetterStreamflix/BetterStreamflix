@@ -35,6 +35,16 @@ object TmdbSettingsController {
         val clearPref = findPreference("TMDB_CLEAR_CACHE")
         val clearLogoPref = findPreference("TMDB_CLEAR_LOGO_CACHE")
         val statusPref = findPreference("TMDB_STATUS")
+        val statsPref = findPreference("TMDB_LOGO_STATS")
+        val refreshPref = findPreference("TMDB_REFRESH_LOGOS")
+
+        fun refreshStats() {
+            val summary = com.betterstreamflix.app.logo.TmdbLogoTelemetry.settingsSummary()
+            statsPref?.summary = summary.ifBlank {
+                context.getString(R.string.settings_tmdb_logo_stats_empty)
+            }
+        }
+        refreshStats()
 
         fun refreshStatus() {
             statusPref?.summary = when {
@@ -84,7 +94,29 @@ object TmdbSettingsController {
         clearLogoPref?.setOnPreferenceClickListener {
             TmdbLogoCache.clearLogoOnly()
             TmdbCache.clearLogos()
+            com.betterstreamflix.app.logo.ChannelLogoStore.clearAll()
+            com.betterstreamflix.app.logo.ProviderLogoStore.clearAll()
             notifyUser(context, R.string.settings_tmdb_logo_cache_cleared)
+            true
+        }
+
+        refreshPref?.setOnPreferenceClickListener {
+            if (com.betterstreamflix.app.logo.LogoBulkRefresh.running) {
+                return@setOnPreferenceClickListener true
+            }
+            refreshPref.isEnabled = false
+            scope.launch {
+                val count = withContext(Dispatchers.IO) {
+                    com.betterstreamflix.app.logo.LogoBulkRefresh.refreshPersisted(context)
+                }
+                refreshPref.isEnabled = true
+                refreshStats()
+                ExpDialogChrome.notify(
+                    context,
+                    context.getString(R.string.settings_tmdb_logos_refreshed, count),
+                    R.string.settings_category_tmdb,
+                )
+            }
             true
         }
     }

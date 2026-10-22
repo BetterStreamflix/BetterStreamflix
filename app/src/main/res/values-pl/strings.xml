@@ -2286,8 +2286,8 @@
     <string name="settings_tmdb_clear_cache_summary">Usuń zapisane szczegóły, wyszukiwania IMDb i dopasowania</string>
     <string name="settings_tmdb_cache_cleared">Pamięć podręczna TMDb wyczyszczona</string>
     <string name="settings_tmdb_clear_logo_cache_title">Wyczyść cache logo tytułów</string>
-    <string name="settings_tmdb_clear_logo_cache_summary">Usuń tylko zapisane URL-e logo tytułów (zachowuje inne dane TMDb)</string>
-    <string name="settings_tmdb_logo_cache_cleared">Cache logo tytułów wyczyszczony</string>
+    <string name="settings_tmdb_clear_logo_cache_summary">Usuwa zapisane adresy URL logo tytułów, kanałów i dostawców (zachowuje inne dane TMDb i logo niestandardowe)</string>
+    <string name="settings_tmdb_logo_cache_cleared">Cache logo wyczyszczone</string>
     <string name="settings_category_subdl">Ustawienia SubDL</string>
     <string name="settings_subdl_api_key">Klucz API SubDL</string>
     <string name="settings_subdl_api_key_summary">Wpisz swój osobisty klucz API SubDL, by włączyć SubDL w ustawieniach napisów odtwarzacza</string>
@@ -2751,4 +2751,24 @@
         <item quantity="many">%d pobrań nie było otwieranych od 30 dni. Zachować je czy zwolnić miejsce?</item>
         <item quantity="other">%d pobrania nie było otwierane od 30 dni. Zachować je czy zwolnić miejsce?</item>
     </plurals>
+    <string name="settings_fanart_api_key">Klucz API Fanart.tv</string>
+    <string name="settings_fanart_api_key_summary">Osobisty klucz do źródła grafik Fanart.tv — odblokowuje drugiego dostawcę logo tytułów</string>
+    <string name="settings_fanart_api_key_success">Zapisano klucz API Fanart.tv</string>
+    <string name="settings_fanart_api_key_reset">Usunięto klucz Fanart.tv — źródło wyłączone</string>
+    <string name="settings_tmdb_logo_stats_title">Statystyki logo tytułów</string>
+    <string name="settings_tmdb_logo_stats_empty">Brak wyszukiwań w tej sesji</string>
+    <string name="settings_tmdb_refresh_logos_title">Odśwież wszystkie logo tytułów</string>
+    <string name="settings_tmdb_refresh_logos_summary">Ponownie rozpoznaje logo ulubionych i pozycji biblioteki w tle</string>
+    <string name="settings_tmdb_logos_refreshed">Odświeżanie logo w kolejce dla %1$d pozycji</string>
+    <string name="settings_tmdb_logos_refresh_running">Odświeżanie logo %1$d tytułów…</string>
+    <string name="detail_about_networks_label">Sieci</string>
+    <string name="detail_about_studios_label">Studia</string>
+    <string name="detail_about_watch_label">Dostępne w</string>
+    <string name="option_custom_logo">Niestandardowe logo tytułu…</string>
+    <string name="custom_logo_dialog_title">Niestandardowe logo — %1$s</string>
+    <string name="custom_logo_hint">Adres URL logo https://… (puste = usuń)</string>
+    <string name="custom_logo_invalid">Wpisz adres URL http(s) lub pozostaw puste</string>
+    <string name="custom_logo_saved">Niestandardowe logo zapisane — ma pierwszeństwo przed automatycznie rozpoznanymi</string>
+    <string name="custom_logo_removed">Niestandardowe logo usunięte</string>
+    <string name="custom_logo_remove">Usuń</string>
 </resources>

@@ -103,12 +103,17 @@ class ChannelPinStripView @JvmOverloads constructor(
             }.getOrNull()
             val pin = com.betterstreamflix.app.ui.LeanbackDensityPolicy.channelPinSizeDp()
             val pinPx = com.betterstreamflix.app.ui.LeanbackDensityPolicy.dpToPx(image, pin)
-            Glide.with(image)
-                .load(cover ?: show.poster)
-                .placeholder(R.drawable.bg_people_circle)
-                .error(R.drawable.bg_people_circle)
-                .override(pinPx, pinPx)
-                .into(image)
+            image.layoutParams = image.layoutParams?.apply {
+                width = pinPx
+                height = pinPx
+            }
+            // Unified channel-logo path: normalize + blacklist + lettermark.
+            com.betterstreamflix.app.logo.ChannelLogoLoader.bind(
+                imageView = image,
+                channelId = show.id.ifBlank { show.title },
+                name = show.title,
+                url = cover ?: show.poster,
+            )
             // SL-007: long-click unpins; nextFocusDown into main content.
             itemView.contentDescription = context.getString(
                 R.string.meine_sender_leiste_pin_cd,

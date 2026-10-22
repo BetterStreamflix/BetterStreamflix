@@ -99,6 +99,7 @@ object FeaturedSwiperChrome {
      * candidate after a trusted decode failure.
      */
     fun resolveAndBindLogo(binding: ItemCategorySwiperMobileBinding, movie: Movie) {
+        resetEyebrow(binding.tvSwiperEyebrow)
         TitleLogoSurface.bindAndMaybeResolve(
             anchor = binding.root,
             imageView = binding.ivSwiperLogo,
@@ -106,6 +107,8 @@ object FeaturedSwiperChrome {
             movie = movie,
             persist = true,
             allowAlternateOnFail = true,
+            hero = true,
+            onAccent = { tintEyebrow(binding.tvSwiperEyebrow, it) },
         )
     }
 
@@ -115,6 +118,7 @@ object FeaturedSwiperChrome {
      * candidate after a trusted decode failure.
      */
     fun resolveAndBindLogo(binding: ItemCategorySwiperMobileBinding, tvShow: TvShow) {
+        resetEyebrow(binding.tvSwiperEyebrow)
         TitleLogoSurface.bindAndMaybeResolve(
             anchor = binding.root,
             imageView = binding.ivSwiperLogo,
@@ -122,6 +126,8 @@ object FeaturedSwiperChrome {
             tvShow = tvShow,
             persist = true,
             allowAlternateOnFail = true,
+            hero = true,
+            onAccent = { tintEyebrow(binding.tvSwiperEyebrow, it) },
         )
     }
 
@@ -133,6 +139,7 @@ object FeaturedSwiperChrome {
             movie = movie,
             persist = true,
             allowAlternateOnFail = true,
+            hero = true,
         )
     }
 
@@ -144,7 +151,32 @@ object FeaturedSwiperChrome {
             tvShow = tvShow,
             persist = true,
             allowAlternateOnFail = true,
+            hero = true,
         )
+    }
+
+    /** Static eyebrow base color from item_category_swiper_mobile (#BFFFFFFF). */
+    private const val EYEBROW_BASE_COLOR = 0xBFFFFFFF.toInt()
+
+    /** Reset accent tint before a new page binds so stale brand color never leaks. */
+    fun resetEyebrow(eyebrow: TextView?) {
+        eyebrow?.setTextColor(EYEBROW_BASE_COLOR)
+    }
+
+    /** Logo-derived accent on the eyebrow label, lifted toward white for readability. */
+    private fun tintEyebrow(eyebrow: TextView?, accent: Int) {
+        eyebrow ?: return
+        val lift = 0.45f
+        val blended = android.graphics.Color.argb(
+            255,
+            (android.graphics.Color.red(accent) +
+                ((255 - android.graphics.Color.red(accent)) * lift)).toInt(),
+            (android.graphics.Color.green(accent) +
+                ((255 - android.graphics.Color.green(accent)) * lift)).toInt(),
+            (android.graphics.Color.blue(accent) +
+                ((255 - android.graphics.Color.blue(accent)) * lift)).toInt(),
+        )
+        eyebrow.setTextColor(blended)
     }
 
     /** Cancel in-flight featured logo work when the page is recycled. */

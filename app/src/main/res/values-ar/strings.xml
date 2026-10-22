@@ -2073,8 +2073,8 @@
     <string name="player_live_watching_m">%1$dM يشاهدون</string>
     <string name="player_live_current_mark">\u0020◀</string>
     <string name="settings_tmdb_clear_logo_cache_title">مسح ذاكرة شعارات العناوين</string>
-    <string name="settings_tmdb_clear_logo_cache_summary">إسقاط روابط شعارات العناوين المخزنة فقط (يحفظ بيانات TMDb الأخرى)</string>
-    <string name="settings_tmdb_logo_cache_cleared">تم مسح ذاكرة شعارات العناوين</string>
+    <string name="settings_tmdb_clear_logo_cache_summary">إسقاط روابط شعارات العناوين والقنوات والموفرين المخزنة (يحفظ بيانات TMDb الأخرى وشعاراتك المخصصة)</string>
+    <string name="settings_tmdb_logo_cache_cleared">تم مسح ذاكرات الشعارات</string>
     <string name="settings_library_scope_title">المفضلة ومتابعة المشاهدة</string>
     <string name="settings_library_scope_summary">اختر ما إذا كانت القوائم تبقى لكل مزود أو تعرض عناصر من كل مزود</string>
     <string name="settings_library_scope_per_provider">لكل مزود</string>
@@ -2762,4 +2762,24 @@
         <item quantity="many">لم يُفتح %d تنزيلاً منذ 30 يوماً. الاحتفاظ بها أم تحرير المساحة؟</item>
         <item quantity="other">لم يُفتح %d تنزيل منذ 30 يوماً. الاحتفاظ به أم تحرير المساحة؟</item>
     </plurals>
+    <string name="settings_fanart_api_key">مفتاح Fanart.tv API</string>
+    <string name="settings_fanart_api_key_summary">مفتاح شخصي لمصدر الأعمال الفنية Fanart.tv — يفعّل موفرًا ثانيًا لشعارات العناوين</string>
+    <string name="settings_fanart_api_key_success">تم حفظ مفتاح Fanart.tv API</string>
+    <string name="settings_fanart_api_key_reset">تمت إزالة مفتاح Fanart.tv — تم تعطيل المصدر</string>
+    <string name="settings_tmdb_logo_stats_title">إحصاءات شعارات العناوين</string>
+    <string name="settings_tmdb_logo_stats_empty">لا عمليات بحث في هذه الجلسة بعد</string>
+    <string name="settings_tmdb_refresh_logos_title">تحديث جميع شعارات العناوين</string>
+    <string name="settings_tmdb_refresh_logos_summary">إعادة حل شعارات المفضلة وعناصر المكتبة في الخلفية</string>
+    <string name="settings_tmdb_logos_refreshed">تمت جدولة تحديث الشعارات لـ %1$d عنصرًا</string>
+    <string name="settings_tmdb_logos_refresh_running">جارٍ تحديث شعارات %1$d عنوانًا…</string>
+    <string name="detail_about_networks_label">الشبكات</string>
+    <string name="detail_about_studios_label">الاستوديوهات</string>
+    <string name="detail_about_watch_label">متوفر على</string>
+    <string name="option_custom_logo">شعار عنوان مخصص…</string>
+    <string name="custom_logo_dialog_title">شعار مخصص — %1$s</string>
+    <string name="custom_logo_hint">عنوان URL للشعار https://… (فارغ = إزالة)</string>
+    <string name="custom_logo_invalid">أدخل عنوان URL (‏http(s)‏) أو اتركه فارغًا</string>
+    <string name="custom_logo_saved">تم حفظ الشعار المخصص — له أولوية على الشعارات المحلولة تلقائيًا</string>
+    <string name="custom_logo_removed">تمت إزالة الشعار المخصص</string>
+    <string name="custom_logo_remove">إزالة</string>
 </resources>

@@ -62,6 +62,22 @@
                 android:key="TMDB_CLEAR_LOGO_CACHE"
                 android:title="@string/settings_tmdb_clear_logo_cache_title"
                 android:summary="@string/settings_tmdb_clear_logo_cache_summary" />
+
+            <EditTextPreference
+                android:key="FANART_API_KEY"
+                android:title="@string/settings_fanart_api_key"
+                android:summary="@string/settings_fanart_api_key_summary"
+                android:inputType="text" />
+
+            <Preference
+                android:key="TMDB_LOGO_STATS"
+                android:title="@string/settings_tmdb_logo_stats_title"
+                android:summary="@string/settings_tmdb_logo_stats_empty" />
+
+            <Preference
+                android:key="TMDB_REFRESH_LOGOS"
+                android:title="@string/settings_tmdb_refresh_logos_title"
+                android:summary="@string/settings_tmdb_refresh_logos_summary" />
         </PreferenceCategory>
     </PreferenceScreen>
 

@@ -66,6 +66,15 @@ class Movie(
     var logoSource: com.betterstreamflix.app.logo.LogoSource =
         com.betterstreamflix.app.logo.LogoSource.UNKNOWN
 
+    /** Encoded network chips (`name|url` rows) — see LogoChips. */
+    var networkJson: String? = null
+
+    /** Encoded production-company chips (`name|url` rows). */
+    var companyJson: String? = null
+
+    /** Encoded watch-provider chips for the user's region (`name|url` rows). */
+    var watchProviderJson: String? = null
+
     override var isWatched: Boolean = false
     override var watchedDate: Calendar? = null
 

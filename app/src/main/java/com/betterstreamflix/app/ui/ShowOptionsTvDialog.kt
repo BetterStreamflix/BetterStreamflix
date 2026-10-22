@@ -19,6 +19,7 @@ import com.betterstreamflix.app.fragments.home.HomeTvFragmentDirections
 import com.betterstreamflix.app.models.Episode
 import com.betterstreamflix.app.models.Movie
 import com.betterstreamflix.app.models.TvShow
+import com.betterstreamflix.app.utils.ExpMotion
 import com.betterstreamflix.app.utils.UserDataCache
 import com.betterstreamflix.app.utils.UserPreferences
 import com.betterstreamflix.app.utils.format
@@ -96,6 +97,7 @@ class ShowOptionsTvDialog(
         binding.btnOptionShowWatched,
         binding.btnOptionShowDownload,
         binding.btnOptionShowTaste,
+        binding.btnOptionCustomLogo,
         binding.btnOptionEpisodeNote,
         binding.btnOptionEpisodeMarkAllPreviousWatched,
         binding.btnOptionProgramClear,
@@ -346,6 +348,7 @@ class ShowOptionsTvDialog(
 
         binding.btnOptionRecentlyWatchedClear.visibility = View.GONE
         binding.btnOptionShowTaste.visibility = View.GONE
+        binding.btnOptionCustomLogo.visibility = View.GONE
     }
 
     private fun displayMovie(movie: Movie) {
@@ -402,6 +405,16 @@ class ShowOptionsTvDialog(
         }
 
         bindTasteOption(freshMovie)
+
+        binding.btnOptionCustomLogo.apply {
+            visibility = View.VISIBLE
+            setOnClickListener {
+                ExpMotion.hapticTap(it)
+                com.betterstreamflix.app.logo.CustomLogoDialog.show(
+                    context, freshMovie.title, isTv = false, id = freshMovie.id,
+                ) { dismiss() }
+            }
+        }
 
         binding.btnOptionShowWatched.apply {
             setOnClickListener {
@@ -547,6 +560,16 @@ class ShowOptionsTvDialog(
         bindTasteOption(freshTvShow)
 
         bindChannelPinOption(freshTvShow)
+
+        binding.btnOptionCustomLogo.apply {
+            visibility = View.VISIBLE
+            setOnClickListener {
+                ExpMotion.hapticTap(it)
+                com.betterstreamflix.app.logo.CustomLogoDialog.show(
+                    context, freshTvShow.title, isTv = true, id = freshTvShow.id,
+                ) { dismiss() }
+            }
+        }
 
         binding.btnOptionShowWatched.visibility = View.GONE
         binding.btnOptionShowDownload.visibility = View.GONE

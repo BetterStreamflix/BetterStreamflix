@@ -2366,8 +2366,8 @@
     <string name="live_pip_zap_return_cd">Volver al vídeo anterior</string>
     <string name="player_go_live">Ir a En vivo</string>
     <string name="settings_tmdb_clear_logo_cache_title">Borrar caché de logos de títulos</string>
-    <string name="settings_tmdb_clear_logo_cache_summary">Eliminar solo las URLs de logos de títulos en caché (mantiene otros datos de TMDb)</string>
-    <string name="settings_tmdb_logo_cache_cleared">Caché de logos de títulos borrada</string>
+    <string name="settings_tmdb_clear_logo_cache_summary">Descarta las URLs en caché de logos de títulos, canales y proveedores (conserva otros datos de TMDb y tus logos personalizados)</string>
+    <string name="settings_tmdb_logo_cache_cleared">Cachés de logos borradas</string>
     <string name="parental_content_blocked">Este título no está disponible con tus ajustes de edad actuales.</string>
     <string name="offline_library_title">Biblioteca offline</string>
     <string name="offline_library_badge">Solo descargado</string>
@@ -2762,4 +2762,24 @@
         <item quantity="one">%d descarga no se ha abierto en 30 días. ¿Mantenerla o liberar el espacio?</item>
         <item quantity="other">%d descargas no se han abierto en 30 días. ¿Mantenerlas o liberar el espacio?</item>
     </plurals>
+    <string name="settings_fanart_api_key">Clave de API de Fanart.tv</string>
+    <string name="settings_fanart_api_key_summary">Clave personal para la fuente de ilustraciones Fanart.tv: habilita un segundo proveedor de logotipos de títulos</string>
+    <string name="settings_fanart_api_key_success">Clave de API de Fanart.tv guardada</string>
+    <string name="settings_fanart_api_key_reset">Clave de Fanart.tv eliminada: fuente desactivada</string>
+    <string name="settings_tmdb_logo_stats_title">Estadísticas de logotipos de títulos</string>
+    <string name="settings_tmdb_logo_stats_empty">Aún no hay búsquedas en esta sesión</string>
+    <string name="settings_tmdb_refresh_logos_title">Actualizar todos los logotipos de títulos</string>
+    <string name="settings_tmdb_refresh_logos_summary">Vuelve a resolver los logotipos de favoritos y elementos de la biblioteca en segundo plano</string>
+    <string name="settings_tmdb_logos_refreshed">Actualización de logotipos en cola para %1$d elementos</string>
+    <string name="settings_tmdb_logos_refresh_running">Actualizando logotipos de %1$d títulos…</string>
+    <string name="detail_about_networks_label">Cadenas</string>
+    <string name="detail_about_studios_label">Estudios</string>
+    <string name="detail_about_watch_label">Disponible en</string>
+    <string name="option_custom_logo">Logotipo de título personalizado…</string>
+    <string name="custom_logo_dialog_title">Logotipo personalizado: %1$s</string>
+    <string name="custom_logo_hint">URL del logotipo https://… (vacío = quitar)</string>
+    <string name="custom_logo_invalid">Introduce una URL http(s) o déjalo vacío</string>
+    <string name="custom_logo_saved">Logotipo personalizado guardado: tiene prioridad sobre los resueltos automáticamente</string>
+    <string name="custom_logo_removed">Logotipo personalizado eliminado</string>
+    <string name="custom_logo_remove">Quitar</string>
 </resources>

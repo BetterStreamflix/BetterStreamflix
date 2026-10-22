@@ -2363,8 +2363,8 @@
     <string name="live_pip_zap_return_cd">Torna al video precedente</string>
     <string name="player_go_live">Vai alla diretta</string>
     <string name="settings_tmdb_clear_logo_cache_title">Svuota cache loghi titoli</string>
-    <string name="settings_tmdb_clear_logo_cache_summary">Elimina solo gli URL di loghi titoli in cache (mantiene gli altri dati TMDb)</string>
-    <string name="settings_tmdb_logo_cache_cleared">Cache loghi titoli svuotata</string>
+    <string name="settings_tmdb_clear_logo_cache_summary">Elimina gli URL in cache dei loghi di titoli, canali e provider (conserva gli altri dati TMDb e i loghi personalizzati)</string>
+    <string name="settings_tmdb_logo_cache_cleared">Cache loghi svuotate</string>
     <string name="parental_content_blocked">Questo titolo non è disponibile con le tue impostazioni di età attuali.</string>
     <string name="offline_library_title">Libreria offline</string>
     <string name="offline_library_badge">Solo scaricati</string>
@@ -2759,4 +2759,24 @@
         <item quantity="one">%d download non è stato aperto da 30 giorni. Mantenerlo o liberare lo spazio?</item>
         <item quantity="other">%d download non sono stati aperti da 30 giorni. Mantenerli o liberare lo spazio?</item>
     </plurals>
+    <string name="settings_fanart_api_key">Chiave API Fanart.tv</string>
+    <string name="settings_fanart_api_key_summary">Chiave personale per la sorgente artwork Fanart.tv: sblocca un secondo provider per i loghi dei titoli</string>
+    <string name="settings_fanart_api_key_success">Chiave API Fanart.tv salvata</string>
+    <string name="settings_fanart_api_key_reset">Chiave Fanart.tv rimossa — sorgente disattivata</string>
+    <string name="settings_tmdb_logo_stats_title">Statistiche dei loghi dei titoli</string>
+    <string name="settings_tmdb_logo_stats_empty">Nessuna ricerca in questa sessione</string>
+    <string name="settings_tmdb_refresh_logos_title">Aggiorna tutti i loghi dei titoli</string>
+    <string name="settings_tmdb_refresh_logos_summary">Risolve di nuovo i loghi per preferiti ed elementi della libreria in background</string>
+    <string name="settings_tmdb_logos_refreshed">Aggiornamento loghi in coda per %1$d elementi</string>
+    <string name="settings_tmdb_logos_refresh_running">Aggiornamento dei loghi di %1$d titoli…</string>
+    <string name="detail_about_networks_label">Reti</string>
+    <string name="detail_about_studios_label">Studi</string>
+    <string name="detail_about_watch_label">Disponibile su</string>
+    <string name="option_custom_logo">Logo del titolo personalizzato…</string>
+    <string name="custom_logo_dialog_title">Logo personalizzato — %1$s</string>
+    <string name="custom_logo_hint">URL del logo https://… (vuoto = rimuovi)</string>
+    <string name="custom_logo_invalid">Inserisci un URL http(s) o lascia vuoto</string>
+    <string name="custom_logo_saved">Logo personalizzato salvato — ha la precedenza sui loghi risolti automaticamente</string>
+    <string name="custom_logo_removed">Logo personalizzato rimosso</string>
+    <string name="custom_logo_remove">Rimuovi</string>
 </resources>

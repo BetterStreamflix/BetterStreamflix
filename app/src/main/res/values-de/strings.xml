@@ -1397,8 +1397,8 @@
     <string name="settings_tmdb_clear_cache_summary">Gecachte Details, IMDb-Finds und Suchtreffer verwerfen</string>
     <string name="settings_tmdb_cache_cleared">TMDb-Cache geleert</string>
     <string name="settings_tmdb_clear_logo_cache_title">Titel-Logo-Cache leeren</string>
-    <string name="settings_tmdb_clear_logo_cache_summary">Nur gecachte Titel-Logo-URLs verwerfen (andere TMDb-Daten bleiben)</string>
-    <string name="settings_tmdb_logo_cache_cleared">Titel-Logo-Cache geleert</string>
+    <string name="settings_tmdb_clear_logo_cache_summary">Verwirft gecachte Titel-, Sender- und Provider-Logo-URLs (andere TMDb-Daten und eigene Logos bleiben)</string>
+    <string name="settings_tmdb_logo_cache_cleared">Logo-Caches geleert</string>
     <string name="settings_category_subdl">SubDL-Einstellungen</string>
     <string name="settings_subdl_api_key">SubDL API-Key</string>
     <string name="settings_subdl_api_key_summary">Eigener SubDL API-Key für Untertitel</string>
@@ -2769,4 +2769,24 @@
         <item quantity="one">Wende %d Cloud-Element an…</item>
         <item quantity="other">Wende %d Cloud-Elemente an…</item>
     </plurals>
+    <string name="settings_fanart_api_key">Fanart.tv API-Schlüssel</string>
+    <string name="settings_fanart_api_key_summary">Persönlicher Schlüssel für die Fanart.tv-Artwork-Quelle — entsperrt eine zweite Quelle für Titel-Logos</string>
+    <string name="settings_tmdb_logo_stats_title">Titel-Logo-Statistik</string>
+    <string name="settings_tmdb_logo_stats_empty">Diese Sitzung noch keine Abfragen</string>
+    <string name="settings_tmdb_refresh_logos_title">Alle Titel-Logos aktualisieren</string>
+    <string name="settings_tmdb_refresh_logos_summary">Logos für Favoriten und Bibliothek im Hintergrund neu auflösen</string>
+    <string name="settings_tmdb_logos_refreshed">Logo-Aktualisierung für %1$d Einträge gestartet</string>
+    <string name="settings_tmdb_logos_refresh_running">Logos für %1$d Titel werden aktualisiert…</string>
+    <string name="detail_about_networks_label">Sender</string>
+    <string name="detail_about_studios_label">Studios</string>
+    <string name="detail_about_watch_label">Verfügbar auf</string>
+    <string name="option_custom_logo">Eigenes Titel-Logo…</string>
+    <string name="custom_logo_dialog_title">Eigenes Logo — %1$s</string>
+    <string name="custom_logo_hint">https://… Logo-URL (leer = entfernen)</string>
+    <string name="custom_logo_invalid">http(s)-URL eingeben oder leer lassen</string>
+    <string name="custom_logo_saved">Eigenes Logo gespeichert — hat Vorrang vor automatisch aufgelösten Logos</string>
+    <string name="custom_logo_removed">Eigenes Logo entfernt</string>
+    <string name="custom_logo_remove">Entfernen</string>
+    <string name="settings_fanart_api_key_success">Fanart.tv-API-Schlüssel gespeichert</string>
+    <string name="settings_fanart_api_key_reset">Fanart.tv-Schlüssel entfernt — Quelle deaktiviert</string>
 </resources>

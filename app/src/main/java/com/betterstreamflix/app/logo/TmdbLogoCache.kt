@@ -1,21 +1,19 @@
 package com.betterstreamflix.app.logo
 
 import android.content.Context
-import android.content.SharedPreferences
 import com.betterstreamflix.app.utils.ArtworkUrls
 import java.util.LinkedHashMap
 import java.util.concurrent.ConcurrentHashMap
 import kotlinx.coroutines.CompletableDeferred
 
 /**
- * Memory LRU + disk (SharedPreferences) logo URL cache with TTLs, fail blacklist,
- * and single-flight inflight map.
+ * Memory LRU + file-backed disk ([LogoDiskStore]) logo URL cache with TTLs,
+ * fail blacklist, and single-flight inflight map.
  */
 object TmdbLogoCache {
 
-    private const val DISK_PREFIX = "logo|"
-    private const val BLACKLIST_PREFIX = "bl|"
-    private const val META_VERSION = "meta_version"
+    @Volatile
+    private var memoryCapacity = LogoConstants.MEMORY_CACHE_MAX_ENTRIES
 
     private val memory = object : LinkedHashMap<String, TmdbLogoPicker.CacheEntry>(
         LogoConstants.MEMORY_CACHE_MAX_ENTRIES,
@@ -24,7 +22,7 @@ object TmdbLogoCache {
     ) {
         override fun removeEldestEntry(
             eldest: MutableMap.MutableEntry<String, TmdbLogoPicker.CacheEntry>?,
-        ): Boolean = size > LogoConstants.MEMORY_CACHE_MAX_ENTRIES
+        ): Boolean = size > memoryCapacity
     }
 
     private val inflight = ConcurrentHashMap<String, CompletableDeferred<String?>>()
@@ -34,8 +32,11 @@ object TmdbLogoCache {
     /** Basename → identity set, so file-path exclusion is O(1) per candidate. */
     private val failByBasename = ConcurrentHashMap<String, MutableSet<String>>()
 
-    @Volatile
-    private var prefs: SharedPreferences? = null
+    /** URL-identity → cache keys holding it, so decode-fail eviction is O(1). */
+    private val keysByIdentity = ConcurrentHashMap<String, MutableSet<String>>()
+
+    /** Reverse edge of [keysByIdentity] for cheap de-indexing on overwrite. */
+    private val identityByKey = ConcurrentHashMap<String, String>()
 
     @Volatile
     private var missTtlMs: Long = LogoConstants.DEFAULT_MISS_TTL_MS
@@ -44,48 +45,35 @@ object TmdbLogoCache {
     private var hitTtlMs: Long = LogoConstants.DEFAULT_HIT_TTL_MS
 
     fun init(context: Context) {
-        val p = context.applicationContext.getSharedPreferences(
-            LogoConstants.PREFS_FILE,
-            Context.MODE_PRIVATE,
-        )
-        prefs = p
-        val stored = p.getInt(META_VERSION, 0)
-        if (stored != LogoConstants.DISK_CACHE_VERSION) {
-            p.edit().clear().putInt(META_VERSION, LogoConstants.DISK_CACHE_VERSION).apply()
+        // Memory LRU sized by RAM class: sticks keep a small hot set, flagships
+        // hold a whole Featured/detail session in memory.
+        val am = context.getSystemService(Context.ACTIVITY_SERVICE)
+            as? android.app.ActivityManager
+        memoryCapacity = when {
+            am == null || am.isLowRamDevice -> LogoConstants.MEMORY_CACHE_MAX_ENTRIES_LOW
+            am.memoryClass >= 192 -> LogoConstants.MEMORY_CACHE_MAX_ENTRIES_HIGH
+            else -> LogoConstants.MEMORY_CACHE_MAX_ENTRIES
         }
+        LogoDiskStore.init(context)
         // Hydrate the persisted decode-fail blacklist so trusted-broken logo URLs
         // stay suppressed across restarts, and bound disk growth by dropping
-        // malformed rows plus entries older than the maximum configurable TTL
-        // (per-entry TTLs are only applied at read time, since configureTtls()
-        // runs after init).
+        // entries older than the maximum configurable TTL (per-entry TTLs are
+        // only applied at read time, since configureTtls() runs after init).
         val now = System.currentTimeMillis()
-        val prune = mutableListOf<String>()
-        p.all.forEach { (k, v) ->
-            when {
-                k.startsWith(BLACKLIST_PREFIX) -> {
-                    val at = v as? Long
-                    if (at == null || now - at > LogoConstants.FAIL_BLACKLIST_TTL_MS) {
-                        prune.add(k)
-                    } else {
-                        val identity = k.removePrefix(BLACKLIST_PREFIX)
-                        failBlacklist[identity] = at
-                        indexBlacklist(identity)
-                    }
-                }
-                k.startsWith(DISK_PREFIX) -> {
-                    val raw = v as? String
-                    val sep = raw?.lastIndexOf('|') ?: -1
-                    val at = raw?.substring(sep + 1)?.toLongOrNull()
-                    if (sep < 0 || at == null || now - at > LogoConstants.MAX_DISK_ENTRY_AGE_MS) {
-                        prune.add(k)
-                    }
-                }
+        LogoDiskStore.forEachBlacklist { identity, at ->
+            if (now - at > LogoConstants.FAIL_BLACKLIST_TTL_MS) {
+                LogoDiskStore.removeBlacklist(identity)
+            } else {
+                failBlacklist[identity] = at
+                indexBlacklist(identity)
             }
         }
-        if (prune.isNotEmpty()) {
-            val edits = p.edit()
-            prune.forEach { edits.remove(it) }
-            edits.apply()
+        LogoDiskStore.forEachEntry { cacheKey, value, at ->
+            if (now - at > LogoConstants.MAX_DISK_ENTRY_AGE_MS) {
+                LogoDiskStore.remove(cacheKey)
+            } else {
+                indexUrl(cacheKey, value)
+            }
         }
     }
 
@@ -99,7 +87,9 @@ object TmdbLogoCache {
         inflight.clear()
         failBlacklist.clear()
         failByBasename.clear()
-        prefs?.edit()?.clear()?.putInt(META_VERSION, LogoConstants.DISK_CACHE_VERSION)?.apply()
+        keysByIdentity.clear()
+        identityByKey.clear()
+        LogoDiskStore.clearAll()
     }
 
     /** Logo-only clear — same as clearAll for this cache. */
@@ -110,7 +100,7 @@ object TmdbLogoCache {
         if (identity.isEmpty()) return
         failBlacklist[identity] = nowMs
         indexBlacklist(identity)
-        prefs?.edit()?.putLong(BLACKLIST_PREFIX + identity, nowMs)?.apply()
+        LogoDiskStore.putBlacklist(identity, nowMs)
         TmdbLogoTelemetry.recordFailBlacklist()
     }
 
@@ -163,12 +153,29 @@ object TmdbLogoCache {
     private fun evictBlacklist(identity: String) {
         failBlacklist.remove(identity)
         deindexBlacklist(identity)
-        prefs?.edit()?.remove(BLACKLIST_PREFIX + identity)?.apply()
+        LogoDiskStore.removeBlacklist(identity)
+    }
+
+    private fun indexUrl(cacheKey: String, url: String?) {
+        val identity = ArtworkUrls.logoFileIdentity(url)
+        if (identity.isEmpty()) return
+        // Move the key between identity buckets when the stored URL changes.
+        identityByKey[cacheKey]?.let { old ->
+            keysByIdentity[old]?.remove(cacheKey)
+        }
+        identityByKey[cacheKey] = identity
+        keysByIdentity.getOrPut(identity) { ConcurrentHashMap.newKeySet() }.add(cacheKey)
+    }
+
+    private fun deindexUrl(cacheKey: String) {
+        val identity = identityByKey.remove(cacheKey) ?: return
+        keysByIdentity[identity]?.remove(cacheKey)
     }
 
     fun invalidateKey(cacheKey: String) {
         synchronized(memory) { memory.remove(cacheKey) }
-        prefs?.edit()?.remove(DISK_PREFIX + cacheKey)?.apply()
+        deindexUrl(cacheKey)
+        LogoDiskStore.remove(cacheKey)
     }
 
     /**
@@ -181,26 +188,28 @@ object TmdbLogoCache {
         if (target.isEmpty()) return
         blacklistUrl(target, nowMs)
         val identity = ArtworkUrls.logoFileIdentity(target)
-        val toRemove = mutableListOf<String>()
-        synchronized(memory) {
-            memory.forEach { (k, v) ->
-                if (ArtworkUrls.logoFileIdentity(v.value) == identity || v.value == target) {
-                    toRemove.add(k)
+        // Index-driven eviction: only cache keys that stored this URL identity —
+        // no full-memory/disk scan per decode failure.
+        val candidates = mutableSetOf<String>().apply {
+            keysByIdentity[identity]?.let { addAll(it) }
+            // Keys written before this session's index existed still carry the
+            // exact-URL disk value — sweep memory for a direct match.
+            synchronized(memory) {
+                memory.forEach { (k, v) ->
+                    if (v.value == target ||
+                        ArtworkUrls.logoFileIdentity(v.value) == identity
+                    ) {
+                        add(k)
+                    }
                 }
             }
-            toRemove.forEach { memory.remove(it) }
         }
-        val edits = prefs?.edit() ?: return
-        prefs?.all?.forEach { (k, v) ->
-            if (!k.startsWith(DISK_PREFIX) || v !is String) return@forEach
-            val sep = v.lastIndexOf('|')
-            if (sep <= 0) return@forEach
-            val storedUrl = v.substring(0, sep)
-            if (ArtworkUrls.logoFileIdentity(storedUrl) == identity || storedUrl == target) {
-                edits.remove(k)
-            }
+        if (candidates.isEmpty()) return
+        candidates.forEach { key ->
+            synchronized(memory) { memory.remove(key) }
+            deindexUrl(key)
+            LogoDiskStore.remove(key)
         }
-        edits.apply()
     }
 
     fun invalidateByUrl(url: String?) = markDecodeFailed(url)
@@ -249,6 +258,7 @@ object TmdbLogoCache {
         val safe = resolvedUrl?.takeIf { it.isNotBlank() && !isBlacklisted(it, nowMs) }
         val entry = TmdbLogoPicker.storeEntry(safe, nowMs)
         synchronized(memory) { memory[cacheKey] = entry }
+        indexUrl(cacheKey, safe)
         writeDisk(cacheKey, entry)
     }
 
@@ -267,18 +277,14 @@ object TmdbLogoCache {
     }
 
     private fun readDisk(cacheKey: String): TmdbLogoPicker.CacheEntry? {
-        val raw = prefs?.getString(DISK_PREFIX + cacheKey, null) ?: return null
-        val sep = raw.lastIndexOf('|')
-        // sep == 0 is a persisted miss ("|<ts>"), not a malformed row.
-        if (sep < 0) return null
-        val at = raw.substring(sep + 1).toLongOrNull() ?: return null
-        val value = raw.substring(0, sep)
-        return TmdbLogoPicker.CacheEntry(value, at)
+        val row = LogoDiskStore.get(cacheKey) ?: return null
+        return TmdbLogoPicker.CacheEntry(row.first, row.second)
     }
 
     private fun writeDisk(cacheKey: String, entry: TmdbLogoPicker.CacheEntry) {
-        prefs?.edit()
-            ?.putString(DISK_PREFIX + cacheKey, "${entry.value}|${entry.cachedAtMs}")
-            ?.apply()
+        LogoDiskStore.put(cacheKey, entry.value, entry.cachedAtMs)
     }
+
+    /** Force-persist pending batched writes (app pause / trim). */
+    fun flush() = LogoDiskStore.flushNow()
 }

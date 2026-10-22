@@ -48,12 +48,17 @@ object TmdbLogoPicker {
     fun inflightKey(isTv: Boolean, tmdbId: Int, language: String?): String =
         "${if (isTv) "tv" else "movie"}:${cacheKey(tmdbId, language)}"
 
+    /**
+     * Trusted logo-URL hosts (TMDb CDN + Fanart.tv assets). Decode-fail blacklist
+     * and upgrade gates only make sense for artwork these sources can re-serve.
+     */
     fun isTrustedTmdbLogo(url: String?): Boolean {
         val value = url?.trim().orEmpty()
         if (value.isEmpty()) return false
         // Accept primary CDN and common mirrors / https variants.
         return value.contains("image.tmdb.org", ignoreCase = true) ||
-            value.contains("themoviedb.org/t/p/", ignoreCase = true)
+            value.contains("themoviedb.org/t/p/", ignoreCase = true) ||
+            value.contains("assets.fanart.tv", ignoreCase = true)
     }
 
     /**
@@ -123,8 +128,32 @@ object TmdbLogoPicker {
         CacheEntry(storeValue(resolvedUrl), nowMs)
 
     /**
-     * Language → English → language-less → other.
-     * Prefers wordmark-like aspect ratios and wider files; skips SVG.
+     * Ordered language fallback chain for ranking, e.g. "de-AT" → [de, en, <null>].
+     * Rank of a candidate = index of its iso in this chain; untagged candidates
+     * (iso null) sit in the language-less slot, everything else ranks last.
+     * Callers may pass [extraLanguages] to inject regional variants
+     * (e.g. ["pt"] for a pt-BR user before falling back to en).
+     */
+    fun languageRankChain(
+        language: String?,
+        extraLanguages: List<String> = emptyList(),
+    ): List<String?> {
+        val chain = mutableListOf<String?>()
+        val primary = primaryLanguage(language).takeIf { it.isNotBlank() }
+        if (primary != null) chain += primary
+        extraLanguages.forEach { lang ->
+            val p = primaryLanguage(lang)
+            if (p.isNotBlank() && p !in chain) chain += p
+        }
+        if ("en" !in chain) chain += "en"
+        chain += null // language-less artwork last before foreign languages
+        return chain
+    }
+
+    /**
+     * Language chain → English → language-less → other.
+     * Prefers wordmark-like aspect ratios and wider files; SVG ranks last (only
+     * rendered when the surface supports the SVG pipeline).
      * Stable secondary sort by filePath for determinism.
      */
     fun pickBestFilePath(
@@ -132,16 +161,15 @@ object TmdbLogoPicker {
         language: String?,
         excludedFilePaths: Set<String> = emptySet(),
         isExcluded: (String) -> Boolean = { false },
+        minPreferredWidth: Int = LogoConstants.MIN_PREFERRED_WIDTH,
+        allowSvg: Boolean = true,
+        extraLanguages: List<String> = emptyList(),
     ): String? {
-        val wanted = primaryLanguage(language).takeIf { it.isNotBlank() }
+        val chain = languageRankChain(language, extraLanguages)
         fun rank(image: LogoCandidate): Int {
             val iso = image.iso639?.lowercase()
-            return when {
-                wanted != null && iso == wanted -> 0
-                iso == "en" -> 1
-                iso.isNullOrBlank() -> 2
-                else -> 3
-            }
+            val idx = chain.indexOfFirst { it == iso || (it == null && iso.isNullOrBlank()) }
+            return if (idx >= 0) idx else chain.size
         }
         fun aspect(image: LogoCandidate): Float {
             val w = image.width ?: return 0f
@@ -149,8 +177,8 @@ object TmdbLogoPicker {
             return w.toFloat() / h.toFloat()
         }
         val usable = logos
-            ?.filterNot { it.filePath.endsWith(".svg", ignoreCase = true) }
             ?.filter { it.filePath.isNotBlank() }
+            ?.filter { allowSvg || !it.filePath.endsWith(".svg", ignoreCase = true) }
             ?.filter { it.filePath !in excludedFilePaths }
             ?.filterNot { isExcluded(it.filePath) }
             .orEmpty()
@@ -160,9 +188,9 @@ object TmdbLogoPicker {
         // best available rank bucket.
         val bestRank = usable.minOf { rank(it) }
         val bucket = usable.filter { rank(it) == bestRank }
-        val hasWide = bucket.any { (it.width ?: 0) >= LogoConstants.MIN_PREFERRED_WIDTH }
+        val hasWide = bucket.any { (it.width ?: 0) >= minPreferredWidth }
         val pool = if (hasWide) {
-            bucket.filter { (it.width ?: 0) >= LogoConstants.MIN_PREFERRED_WIDTH }
+            bucket.filter { (it.width ?: 0) >= minPreferredWidth }
         } else {
             bucket
         }
@@ -176,10 +204,17 @@ object TmdbLogoPicker {
                         else -> 0
                     }
                 }
-                    .thenByDescending { it.voteCount ?: 0 }
-                    .thenByDescending { it.voteAverage ?: 0f }
+                    // Composite quality score: community votes dominate, then
+                    // resolution contributes a bounded share so a crisp unvoted
+                    // file can still beat a tiny heavily-voted one.
+                    .thenByDescending {
+                        (it.voteCount ?: 0) * 4 +
+                            ((it.voteAverage ?: 0f) * 25f).toInt() +
+                            (it.width ?: 0).coerceAtMost(3000) / 50
+                    }
+                    // Raster formats first — SVG is the last-resort candidate.
+                    .thenBy { it.filePath.endsWith(".svg", ignoreCase = true) }
                     .thenByDescending { it.width ?: 0 }
-                    .thenByDescending { it.height ?: 0 }
                     .thenBy { it.filePath },
             )
             .firstOrNull()

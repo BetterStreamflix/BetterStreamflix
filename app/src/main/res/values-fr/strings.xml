@@ -2366,8 +2366,8 @@
     <string name="live_pip_zap_return_cd">Retour à la vidéo précédente</string>
     <string name="player_go_live">Aller au direct</string>
     <string name="settings_tmdb_clear_logo_cache_title">Vider le cache des logos de titres</string>
-    <string name="settings_tmdb_clear_logo_cache_summary">Supprimer seulement les URLs de logos de titres en cache (garde les autres données TMDb)</string>
-    <string name="settings_tmdb_logo_cache_cleared">Cache des logos de titres vidé</string>
+    <string name="settings_tmdb_clear_logo_cache_summary">Supprime les URLs en cache des logos de titres, chaînes et fournisseurs (conserve les autres données TMDb et vos logos personnalisés)</string>
+    <string name="settings_tmdb_logo_cache_cleared">Caches de logos vidés</string>
     <string name="parental_content_blocked">Ce titre n'est pas disponible avec tes réglages d'âge actuels.</string>
     <string name="offline_library_title">Bibliothèque hors ligne</string>
     <string name="offline_library_badge">Téléchargé seulement</string>
@@ -2762,4 +2762,24 @@
         <item quantity="one">%d téléchargement n'a pas été ouvert depuis 30 jours. Le garder ou libérer l'espace ?</item>
         <item quantity="other">%d téléchargements n'ont pas été ouverts depuis 30 jours. Les garder ou libérer l'espace ?</item>
     </plurals>
+    <string name="settings_fanart_api_key">Clé API Fanart.tv</string>
+    <string name="settings_fanart_api_key_summary">Clé personnelle pour la source d\'images Fanart.tv — active un second fournisseur de logos de titres</string>
+    <string name="settings_fanart_api_key_success">Clé API Fanart.tv enregistrée</string>
+    <string name="settings_fanart_api_key_reset">Clé Fanart.tv supprimée — source désactivée</string>
+    <string name="settings_tmdb_logo_stats_title">Statistiques des logos de titres</string>
+    <string name="settings_tmdb_logo_stats_empty">Aucune recherche pour l\'instant dans cette session</string>
+    <string name="settings_tmdb_refresh_logos_title">Actualiser tous les logos de titres</string>
+    <string name="settings_tmdb_refresh_logos_summary">Résout à nouveau les logos des favoris et des éléments de la bibliothèque en arrière-plan</string>
+    <string name="settings_tmdb_logos_refreshed">Actualisation des logos en file d\'attente pour %1$d éléments</string>
+    <string name="settings_tmdb_logos_refresh_running">Actualisation des logos de %1$d titres…</string>
+    <string name="detail_about_networks_label">Chaînes</string>
+    <string name="detail_about_studios_label">Studios</string>
+    <string name="detail_about_watch_label">Disponible sur</string>
+    <string name="option_custom_logo">Logo de titre personnalisé…</string>
+    <string name="custom_logo_dialog_title">Logo personnalisé — %1$s</string>
+    <string name="custom_logo_hint">URL du logo https://… (vide = supprimer)</string>
+    <string name="custom_logo_invalid">Saisissez une URL http(s) ou laissez vide</string>
+    <string name="custom_logo_saved">Logo personnalisé enregistré — prioritaire sur les logos résolus automatiquement</string>
+    <string name="custom_logo_removed">Logo personnalisé supprimé</string>
+    <string name="custom_logo_remove">Supprimer</string>
 </resources>

@@ -250,6 +250,7 @@ class ShowOptionsMobileDialog(
         }
 
         binding.btnOptionShowTaste.visibility = View.GONE
+        binding.btnOptionCustomLogo.visibility = View.GONE
 
         binding.btnOptionEpisodeNote.apply {
             text = EpisodeNotesUi.optionLabel(context, episode.id)
@@ -494,6 +495,16 @@ class ShowOptionsMobileDialog(
 
         bindTasteOption(freshMovie)
 
+        binding.btnOptionCustomLogo.apply {
+            visibility = View.VISIBLE
+            setOnClickListener {
+                ExpMotion.hapticTap(it)
+                com.betterstreamflix.app.logo.CustomLogoDialog.show(
+                    context, freshMovie.title, isTv = false, id = freshMovie.id,
+                ) { dismiss() }
+            }
+        }
+
         binding.btnOptionProgramClear.apply {
             setOnClickListener {
                 ExpMotion.hapticTap(it)
@@ -606,6 +617,16 @@ class ShowOptionsMobileDialog(
         binding.btnOptionProgramClear.visibility = View.GONE
 
         bindTasteOption(freshTvShow)
+
+        binding.btnOptionCustomLogo.apply {
+            visibility = View.VISIBLE
+            setOnClickListener {
+                ExpMotion.hapticTap(it)
+                com.betterstreamflix.app.logo.CustomLogoDialog.show(
+                    context, freshTvShow.title, isTv = true, id = freshTvShow.id,
+                ) { dismiss() }
+            }
+        }
 
         binding.btnOptionRecentlyWatchedClear.apply {
             setOnClickListener {
