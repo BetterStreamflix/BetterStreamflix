@@ -292,11 +292,7 @@ object DownloadPackUi {
             }
         }
         dialog.setOnShowListener {
-            if (glass != null) {
-                ExpDialogChrome.polishGlassMessageShown(dialog, glass)
-            } else {
-                ExpDialogChrome.polishButtons(dialog)
-            }
+            ExpDialogChrome.polishButtons(dialog)
         }
         dialog.show()
     }

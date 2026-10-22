@@ -7,6 +7,7 @@ import android.view.ViewGroup
 import androidx.fragment.app.Fragment
 import androidx.navigation.fragment.findNavController
 import com.dskja.betterstreamflix.BuildConfig
+import com.dskja.betterstreamflix.R
 import com.dskja.betterstreamflix.databinding.FragmentAboutMobileBinding
 import com.dskja.betterstreamflix.support.SupportHubBinder
 import com.dskja.betterstreamflix.support.SupportLinkOpener

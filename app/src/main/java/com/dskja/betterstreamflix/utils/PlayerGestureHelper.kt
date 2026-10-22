@@ -1,6 +1,7 @@
 package com.dskja.betterstreamflix.utils
 
 import android.content.Context
+import com.dskja.betterstreamflix.R
 import android.media.AudioManager
 import android.os.SystemClock
 import android.provider.Settings
@@ -286,17 +287,15 @@ class PlayerGestureHelper(
         hideJob?.cancel()
         hideJob = CoroutineScope(Dispatchers.Main).launch {
             delay(1000)
-            {
-                if (brightnessLayout.visibility == View.VISIBLE) {
-                    ExpMotion.fadeOutAndHide(brightnessLayout)
-                } else {
-                    brightnessLayout.visibility = View.GONE
-                }
-                if (volumeLayout.visibility == View.VISIBLE) {
-                    ExpMotion.fadeOutAndHide(volumeLayout)
-                } else {
-                    volumeLayout.visibility = View.GONE
-                }
+            if (brightnessLayout.visibility == View.VISIBLE) {
+                ExpMotion.fadeOutAndHide(brightnessLayout)
+            } else {
+                brightnessLayout.visibility = View.GONE
+            }
+            if (volumeLayout.visibility == View.VISIBLE) {
+                ExpMotion.fadeOutAndHide(volumeLayout)
+            } else {
+                volumeLayout.visibility = View.GONE
             }
         }
     }

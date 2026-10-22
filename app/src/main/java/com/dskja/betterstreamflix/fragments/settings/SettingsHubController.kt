@@ -50,8 +50,7 @@ internal class SettingsHubController(
     fun updateVisibility() {
         detach()
         return
-        val binding = hubBinding
-        if (binding == null) return
+        val binding = hubBinding ?: return
 
         val key = currentRootKey()
         val mode = when (key) {

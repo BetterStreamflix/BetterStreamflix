@@ -729,18 +729,16 @@ object TrailerPlaybackController {
                             setBackgroundDrawableResource(android.R.color.transparent)
                             setDimAmount(0.88f)
                         }
-                        {
-                            ExpMotion.enterScreen(root)
-                            ExpMotion.revealHeader(
-                                root.findViewById(R.id.tv_trailer_title),
-                                root.findViewById(R.id.v_trailer_accent_rule),
-                            )
-                            ExpMotion.pulseAccentRule(
-                                root.findViewById(R.id.v_trailer_accent_rule),
-                            )
-                            ExpMotion.popIn(root.findViewById(R.id.btn_trailer_close))
-                            ExpMotion.popIn(root.findViewById(R.id.btn_trailer_open_external))
-                        }
+                        ExpMotion.enterScreen(root)
+                        ExpMotion.revealHeader(
+                            root.findViewById(R.id.tv_trailer_title),
+                            root.findViewById(R.id.v_trailer_accent_rule),
+                        )
+                        ExpMotion.pulseAccentRule(
+                            root.findViewById(R.id.v_trailer_accent_rule),
+                        )
+                        ExpMotion.popIn(root.findViewById(R.id.btn_trailer_close))
+                        ExpMotion.popIn(root.findViewById(R.id.btn_trailer_open_external))
                     }
                 }
         }

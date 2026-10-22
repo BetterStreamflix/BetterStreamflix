@@ -13,25 +13,25 @@
             <corners android:radius="4dp" />
         </shape>
     </item>
-    <item android:left="14dp" android:top="44dp" android:right="50%" android:bottom="60dp">
+    <item android:left="14dp" android:top="44dp" android:right="118dp" android:bottom="60dp">
         <shape>
             <solid android:color="#FF2A2A38" />
             <corners android:radius="8dp" />
         </shape>
     </item>
-    <item android:left="50%" android:top="44dp" android:right="14dp" android:bottom="60dp">
+    <item android:left="122dp" android:top="44dp" android:right="14dp" android:bottom="60dp">
         <shape>
             <solid android:color="#FF2A2A38" />
             <corners android:radius="8dp" />
         </shape>
     </item>
-    <item android:left="14dp" android:top="72dp" android:right="50%" android:bottom="14dp">
+    <item android:left="14dp" android:top="72dp" android:right="118dp" android:bottom="14dp">
         <shape>
             <solid android:color="#FF2A2A38" />
             <corners android:radius="8dp" />
         </shape>
     </item>
-    <item android:left="50%" android:top="72dp" android:right="14dp" android:bottom="14dp">
+    <item android:left="122dp" android:top="72dp" android:right="14dp" android:bottom="14dp">
         <shape>
             <solid android:color="#FF2A2A38" />
             <corners android:radius="8dp" />

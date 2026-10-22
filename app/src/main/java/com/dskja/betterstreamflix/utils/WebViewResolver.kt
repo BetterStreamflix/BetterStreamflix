@@ -480,38 +480,36 @@ class WebViewResolver(private val context: Context) {
                     // Mobile: Solo WebView a tutto schermo
                     (webView?.parent as? ViewGroup)?.removeView(webView)
                     rootContainer.addView(webView, RelativeLayout.LayoutParams(-1, -1))
-                    {
-                        val density = uiContext.resources.displayMetrics.density
-                        val chipSize = (44 * density).toInt()
-                        val margin = (14 * density).toInt()
-                        val closeBtn = android.widget.ImageButton(uiContext).apply {
-                            setImageResource(R.drawable.ic_support_close)
-                            setBackgroundResource(R.drawable.bg_detail_icon_chip)
-                            val onSurface = runCatching {
-                                com.google.android.material.color.MaterialColors.getColor(
-                                    uiContext,
-                                    com.google.android.material.R.attr.colorOnSurface,
-                                    Color.WHITE,
-                                )
-                            }.getOrElse { Color.WHITE }
-                            imageTintList = android.content.res.ColorStateList.valueOf(onSurface)
-                            contentDescription = uiContext.getString(R.string.support_startup_close_cd)
-                            setOnClickListener {
-                                ExpMotion.hapticTap(it)
-                                dialog?.cancel()
-                            }
+                    val density = uiContext.resources.displayMetrics.density
+                    val chipSize = (44 * density).toInt()
+                    val margin = (14 * density).toInt()
+                    val closeBtn = android.widget.ImageButton(uiContext).apply {
+                        setImageResource(R.drawable.ic_support_close)
+                        setBackgroundResource(R.drawable.bg_detail_icon_chip)
+                        val onSurface = runCatching {
+                            com.google.android.material.color.MaterialColors.getColor(
+                                uiContext,
+                                com.google.android.material.R.attr.colorOnSurface,
+                                Color.WHITE,
+                            )
+                        }.getOrElse { Color.WHITE }
+                        imageTintList = android.content.res.ColorStateList.valueOf(onSurface)
+                        contentDescription = uiContext.getString(R.string.support_startup_close_cd)
+                        setOnClickListener {
+                            ExpMotion.hapticTap(it)
+                            dialog?.cancel()
                         }
-                        with(com.dskja.betterstreamflix.utils.ExpPressEffects) { closeBtn.applyExpPress() }
-                        rootContainer.addView(
-                            closeBtn,
-                            RelativeLayout.LayoutParams(chipSize, chipSize).apply {
-                                addRule(RelativeLayout.ALIGN_PARENT_TOP)
-                                addRule(RelativeLayout.ALIGN_PARENT_END)
-                                setMargins(margin, margin, margin, margin)
-                            },
-                        )
-                        ExpMotion.popIn(closeBtn)
                     }
+                    with(com.dskja.betterstreamflix.utils.ExpPressEffects) { closeBtn.applyExpPress() }
+                    rootContainer.addView(
+                        closeBtn,
+                        RelativeLayout.LayoutParams(chipSize, chipSize).apply {
+                            addRule(RelativeLayout.ALIGN_PARENT_TOP)
+                            addRule(RelativeLayout.ALIGN_PARENT_END)
+                            setMargins(margin, margin, margin, margin)
+                        },
+                    )
+                    ExpMotion.popIn(closeBtn)
                 }
 
                 val challengeTheme = android.R.style.Theme_DeviceDefault_NoActionBar_Fullscreen
@@ -533,13 +531,11 @@ class WebViewResolver(private val context: Context) {
                     .create()
 
                 dialog?.show()
-                {
-                    dialog?.window?.setLayout(
-                        ViewGroup.LayoutParams.MATCH_PARENT,
-                        ViewGroup.LayoutParams.MATCH_PARENT,
-                    )
-                    ExpMotion.enterScreen(rootContainer)
-                }
+                dialog?.window?.setLayout(
+                    ViewGroup.LayoutParams.MATCH_PARENT,
+                    ViewGroup.LayoutParams.MATCH_PARENT,
+                )
+                ExpMotion.enterScreen(rootContainer)
 
                 if (isTv) {
                     rootContainer.post {
