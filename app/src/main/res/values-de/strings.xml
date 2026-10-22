@@ -458,6 +458,9 @@
     <string name="subtitle_studio_preset_cinema">Studio · Kino</string>
     <string name="subtitle_studio_preset_outline">Studio · Umriss</string>
     <string name="subtitle_studio_preset_serif">Studio · Serif</string>
+    <string name="subtitle_studio_preset_night">Studio · Nacht</string>
+    <string name="subtitle_studio_preset_boxed">Studio · Box</string>
+    <string name="subtitle_studio_preset_access">Studio · Maximale Lesbarkeit</string>
     <string name="subtitle_studio_size_title">Textgröße</string>
     <string name="subtitle_studio_font_color_title">Schriftfarbe</string>
     <string name="subtitle_studio_background_title">Hintergrund</string>

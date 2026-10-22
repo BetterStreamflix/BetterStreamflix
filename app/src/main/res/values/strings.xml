@@ -568,6 +568,9 @@
     <string name="subtitle_studio_preset_cinema">Studio · Cinema</string>
     <string name="subtitle_studio_preset_outline">Studio · Outline</string>
     <string name="subtitle_studio_preset_serif">Studio · Serif</string>
+    <string name="subtitle_studio_preset_night">Studio · Night</string>
+    <string name="subtitle_studio_preset_boxed">Studio · Boxed</string>
+    <string name="subtitle_studio_preset_access">Studio · Max readability</string>
     <string name="subtitle_studio_size_title">Text size</string>
     <string name="subtitle_studio_font_color_title">Font color</string>
     <string name="subtitle_studio_background_title">Background</string>

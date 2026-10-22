@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8"?>
+<shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
+    <shortcut
+        android:shortcutId="search"
+        android:enabled="true"
+        android:icon="@drawable/ic_menu_search"
+        android:shortcutShortLabel="@string/main_menu_search"
+        android:shortcutLongLabel="@string/main_menu_search"
+        android:shortcutDisabledMessage="@string/main_menu_search">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:targetClass="com.dskja.betterstreamflix.activities.main.MainMobileActivity">
+            <extra android:name="open_search" android:value="true" />
+        </intent>
+        <categories android:name="android.shortcut.conversation" />
+    </shortcut>
+    <shortcut
+        android:shortcutId="favorites"
+        android:enabled="true"
+        android:icon="@drawable/ic_favorite_enable"
+        android:shortcutShortLabel="@string/main_menu_favorites"
+        android:shortcutLongLabel="@string/main_menu_favorites"
+        android:shortcutDisabledMessage="@string/main_menu_favorites">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:targetClass="com.dskja.betterstreamflix.activities.main.MainMobileActivity">
+            <extra android:name="open_favorites" android:value="true" />
+        </intent>
+        <categories android:name="android.shortcut.conversation" />
+    </shortcut>
+    <shortcut
+        android:shortcutId="downloads"
+        android:enabled="true"
+        android:icon="@drawable/ic_menu_downloads"
+        android:shortcutShortLabel="@string/main_menu_downloads"
+        android:shortcutLongLabel="@string/main_menu_downloads"
+        android:shortcutDisabledMessage="@string/main_menu_downloads">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:targetClass="com.dskja.betterstreamflix.activities.main.MainMobileActivity">
+            <extra android:name="open_downloads" android:value="true" />
+        </intent>
+        <categories android:name="android.shortcut.conversation" />
+    </shortcut>
+</shortcuts>

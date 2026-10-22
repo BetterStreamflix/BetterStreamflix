@@ -1036,6 +1036,23 @@ class MainMobileActivity : FragmentActivity() {
             }
             return true
         }
+        if (intent.getBooleanExtra("open_search", false)) {
+            val targetedUs = intent.component?.packageName == packageName ||
+                intent.`package` == packageName ||
+                callingPackage == null ||
+                callingPackage == packageName
+            if (!targetedUs) {
+                Log.w("MainMobile", "Ignoring open_search from foreign caller=$callingPackage")
+                return true
+            }
+            val navHost =
+                supportFragmentManager.findFragmentById(R.id.nav_main_fragment) as? NavHostFragment
+            val navController = navHost?.navController
+            if (navController != null && navController.currentDestination?.id != R.id.search) {
+                navController.navigate(R.id.search)
+            }
+            return true
+        }
         if (intent.getBooleanExtra("open_favorites", false)) {
             val navHost =
                 supportFragmentManager.findFragmentById(R.id.nav_main_fragment) as? NavHostFragment

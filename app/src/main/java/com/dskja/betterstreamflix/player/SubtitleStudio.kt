@@ -110,7 +110,41 @@ object SubtitleStudio {
         typefaceIndex = 2,
     )
 
-    val presets: List<LightPreset> = listOf(CLASSIC, YELLOW_LARGE, HIGH_CONTRAST, CINEMA, OUTLINE, SERIF)
+    /** Dark-room viewing — dim amber, no box, barely lifts the black floor. */
+    val NIGHT = LightPreset(
+        id = "night",
+        titleRes = com.dskja.betterstreamflix.R.string.subtitle_studio_preset_night,
+        textSize = 0.9f,
+        fontColor = 0xC0FFC9A0.toInt(),
+        backgroundColor = Color.TRANSPARENT,
+        edgeType = CaptionStyleCompat.EDGE_TYPE_DROP_SHADOW,
+        edgeColor = 0x99000000.toInt(),
+    )
+
+    /** Bright scenes / HDR — fully opaque black box for guaranteed separation. */
+    val BOXED = LightPreset(
+        id = "boxed",
+        titleRes = com.dskja.betterstreamflix.R.string.subtitle_studio_preset_boxed,
+        textSize = 1f,
+        fontColor = 0xFFFFFFFF.toInt(),
+        backgroundColor = 0xFF000000.toInt(),
+    )
+
+    /** Low-vision readability — largest size, warm yellow, hard outline. */
+    val ACCESS = LightPreset(
+        id = "access",
+        titleRes = com.dskja.betterstreamflix.R.string.subtitle_studio_preset_access,
+        textSize = 1.75f,
+        fontColor = 0xFFFFF176.toInt(),
+        backgroundColor = argb(160, 0x000000),
+        edgeType = CaptionStyleCompat.EDGE_TYPE_OUTLINE,
+        edgeColor = 0xFF000000.toInt(),
+    )
+
+    val presets: List<LightPreset> = listOf(
+        CLASSIC, YELLOW_LARGE, HIGH_CONTRAST, CINEMA, OUTLINE, SERIF,
+        NIGHT, BOXED, ACCESS,
+    )
 
     fun matchesCurrent(preset: LightPreset): Boolean {
         val style = UserPreferences.captionStyle
