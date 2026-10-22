@@ -34,7 +34,11 @@ object LogoDiskStore {
     @Volatile
     private var legacyPrefs: android.content.SharedPreferences? = null
 
-    private val handler = Handler(Looper.getMainLooper())
+    // Nullable: plain JVM unit tests have no main looper — the in-memory
+    // maps still serve reads, scheduling just becomes a no-op there.
+    private val handler: Handler? by lazy {
+        runCatching { Handler(Looper.getMainLooper()) }.getOrNull()
+    }
     private val flushScheduled = AtomicBoolean()
     private val dirty = AtomicBoolean()
 
@@ -89,7 +93,7 @@ object LogoDiskStore {
     fun clearAll() {
         entries.clear()
         blacklist.clear()
-        handler.removeCallbacks(flushRunnable)
+        handler?.removeCallbacks(flushRunnable)
         flushScheduled.set(false)
         dirty.set(false)
         runCatching { file?.writeText("") }
@@ -103,14 +107,16 @@ object LogoDiskStore {
         // Hard cap: never delay past MAX_FLUSH_DELAY_MS once dirty.
         val delay = if (now - dirtySinceMs > MAX_FLUSH_DELAY_MS) 0L else FLUSH_DELAY_MS
         if (flushScheduled.compareAndSet(false, true)) {
-            handler.postDelayed(flushRunnable, delay)
+            if (handler?.postDelayed(flushRunnable, delay) != true) {
+                flushScheduled.set(false)
+            }
         }
     }
 
     /** Write-through — call on app pause / trim so nothing sits dirty. */
     fun flushNow() {
         flushScheduled.set(false)
-        handler.removeCallbacks(flushRunnable)
+        handler?.removeCallbacks(flushRunnable)
         if (!dirty.getAndSet(false)) return
         val f = file ?: return
         runCatching {
