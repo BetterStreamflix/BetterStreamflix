@@ -1,12 +1,11 @@
 <resources>
 
     <!--
-      Classic mobile shell stays on AppCompat, but shared Cinema-Ink layouts
-      (profile chip, support dialogs, about) resolve Material color attrs.
-      Without these, TextAppearance.CinemaInk.* / ?attr/colorOnSurface inflate
-      crashes at startup (Sentry BETTERSTREAMFLIX-14 / -15).
+      Bridge keeps AppCompat view inflation (no MaterialComponentsViewInflater
+      swap) while satisfying ThemeEnforcement for BadgeDrawable, BottomSheetDialog
+      and other material widgets that hard-crash on a pure AppCompat theme.
     -->
-    <style name="AppTheme.Mobile" parent="Theme.AppCompat">
+    <style name="AppTheme.Mobile" parent="Theme.MaterialComponents.Bridge">
         <item name="windowActionBar">false</item>
         <item name="windowNoTitle">true</item>
         <item name="app_background_color">#181818</item>
