@@ -1668,8 +1668,8 @@ class CategoryViewHolder(
             context,
             R.color.cinema_glass_bright,
         )
-        val dotSize = if (true) 6.dp(context) else 15
-        val activeWidth = if (true) 28 else 15
+        val dotSize = 6.dp(context)
+        val activeWidth = 28.dp(context)
         val safeSelected = selected.coerceIn(0, total - 1)
         container.children.forEachIndexed { index, view ->
             val isActive = safeSelected == index

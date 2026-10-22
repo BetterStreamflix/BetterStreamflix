@@ -50,7 +50,7 @@ object FeaturedLogoEnrich {
         wifiOnly: Boolean = true,
     ) {
         if (UserPreferences.dataSaverMode) return
-        if (!UserPreferences.enableTmdb || !UserPreferences.enableTmdbLogos) return
+        if (!UserPreferences.enableTmdb) return
         if (items.isEmpty() || count <= 0) return
         FeaturedNetworkMonitor.ensureRegistered(context)
         FeaturedNetworkMonitor.addListener(meteredListener)

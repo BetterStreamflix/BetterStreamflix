@@ -40,7 +40,7 @@ class PlayerMobileView @JvmOverloads constructor(
         }.onFailure {
             Log.w(TAG, "controller reflection failed: ${it.message}")
         }.getOrNull()
-            ?: findViewById(androidx.media3.ui.R.id.exo_controller)
+            ?: findViewById<PlayerControlView?>(androidx.media3.ui.R.id.exo_controller)
         if (resolved == null) {
             Log.e(TAG, "PlayerControlView missing — skipping chrome binds")
         }

@@ -1154,11 +1154,6 @@ object UserPreferences {
             }
         }
 
-    /** TMDb title logos are mandatory — always on (still requires [enableTmdb]). */
-    var enableTmdbLogos: Boolean
-        get() = true
-        set(@Suppress("UNUSED_PARAMETER") value) = Unit
-
     /** `original_first` (default) or `w1280_first`. */
     var tmdbLogoQuality: String
         get() = Key.TMDB_LOGO_QUALITY.getString() ?: "original_first"
