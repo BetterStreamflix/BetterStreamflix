@@ -57,7 +57,7 @@ object TmdbUtils {
     /**
      * Picks the title logo that best matches the UI language, preferring a language hit,
      * then English, then language-less artwork, and finally the highest-voted / widest file.
-     * Skips SVG.
+     * SVGs stay eligible — surfaces route them through the SVG pipeline.
      */
     private fun pickBestLogo(
         logos: List<TMDb3.Images.FileImage>?,

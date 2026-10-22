@@ -138,10 +138,23 @@ object TmdbLogoPicker {
     fun valueFromCache(cached: String?): String? =
         cached?.takeIf { it.isNotBlank() && it != LOGO_MISS }
 
-    fun pickBestFilePath(logos: List<LogoCandidate>?, language: String?): String? =
+    fun pickBestFilePath(
+        logos: List<LogoCandidate>?,
+        language: String?,
+        excludedFilePaths: Set<String> = emptySet(),
+        isExcluded: (String) -> Boolean = { false },
+        minPreferredWidth: Int = com.betterstreamflix.app.logo.LogoConstants.MIN_PREFERRED_WIDTH,
+        allowSvg: Boolean = true,
+        extraLanguages: List<String> = emptyList(),
+    ): String? =
         com.betterstreamflix.app.logo.TmdbLogoPicker.pickBestFilePath(
             logos?.map { it.toLogo() },
             language,
+            excludedFilePaths,
+            isExcluded,
+            minPreferredWidth,
+            allowSvg,
+            extraLanguages,
         )
 
     fun isAcceptableSearchHit(

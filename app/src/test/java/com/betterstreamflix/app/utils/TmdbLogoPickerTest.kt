@@ -149,7 +149,7 @@ class TmdbLogoPickerTest {
     }
 
     @Test
-    fun pickBestSkipsSvgAndPrefersRequestedLanguage() {
+    fun pickBestPrefersRequestedLanguageAndRanksSvgByScore() {
         val logos = listOf(
             TmdbLogoPicker.LogoCandidate("/en.svg", iso639 = "en", voteCount = 999, width = 800),
             TmdbLogoPicker.LogoCandidate("/de.png", iso639 = "de", voteCount = 10, width = 600),
@@ -157,7 +157,13 @@ class TmdbLogoPickerTest {
             TmdbLogoPicker.LogoCandidate("/null.png", iso639 = null, voteCount = 80, width = 900),
         )
         assertEquals("/de.png", TmdbLogoPicker.pickBestFilePath(logos, "de-DE"))
-        assertEquals("/en.png", TmdbLogoPicker.pickBestFilePath(logos, "en"))
+        // SVG is loadable via the pipeline — the heavily-voted SVG wins on score.
+        assertEquals("/en.svg", TmdbLogoPicker.pickBestFilePath(logos, "en"))
+        // Surfaces without SVG support can still opt out entirely.
+        assertEquals(
+            "/en.png",
+            TmdbLogoPicker.pickBestFilePath(logos, "en", allowSvg = false),
+        )
     }
 
     @Test
@@ -231,15 +237,14 @@ class TmdbLogoPickerTest {
     }
 
     @Test
-    fun pickBestReturnsNullForEmptyOrSvgOnly() {
+    fun pickBestReturnsNullForEmptyOrSvgOptOut() {
         assertNull(TmdbLogoPicker.pickBestFilePath(null, "en"))
         assertNull(TmdbLogoPicker.pickBestFilePath(emptyList(), "en"))
-        assertNull(
-            TmdbLogoPicker.pickBestFilePath(
-                listOf(TmdbLogoPicker.LogoCandidate("/x.svg", iso639 = "en", voteCount = 100, width = 800)),
-                "en",
-            ),
+        val svgOnly = listOf(
+            TmdbLogoPicker.LogoCandidate("/x.svg", iso639 = "en", voteCount = 100, width = 800),
         )
+        assertNull(TmdbLogoPicker.pickBestFilePath(svgOnly, "en", allowSvg = false))
+        assertEquals("/x.svg", TmdbLogoPicker.pickBestFilePath(svgOnly, "en"))
     }
 
     @Test
